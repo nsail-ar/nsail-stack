@@ -63,19 +63,22 @@ jobs:
           node-version: 24
           cache: npm
 
-      # The sample's host builds its React client, and the TypeScript packages carry their own
-      # typecheck and tests.
-      - name: npm
-        run: |
-          npm ci
-          npm run typecheck
-          npm test
+      # The sample's host builds its React client during the .NET build.
+      - name: npm install
+        run: npm ci
 
       - name: Restore
         run: dotnet restore NSail.sln
 
       - name: Build
         run: dotnet build NSail.sln --configuration Release --no-restore -p:Version=$VERSION
+
+      # After the build: the sample's sdk.ts is generated from the .NET Sdk assembly and is not
+      # committed.
+      - name: npm typecheck and test
+        run: |
+          npm run typecheck
+          npm test
 
       - name: Test
         run: dotnet test NSail.sln --configuration Release --no-build
