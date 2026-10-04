@@ -1,0 +1,98 @@
+name: CI
+
+# Build, test and pack on every pull request and every push to main; a push to main also
+# publishes the packages to this repository's GitHub Packages feed as 0.1.0-ci.<run>.
+#
+# GitHub-hosted runners, never the monorepo's self-hosted iron: this repository goes public,
+# and a fork's pull request on a self-hosted runner runs a stranger's code on our machine.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      packages: write
+
+    # The data harnesses create throwaway databases on a real Postgres. TestDatabase connects
+    # as postgres@localhost and takes the password from PGPASSWORD (ConnectionStrings.Complete).
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGPASSWORD: ci
+      DOTNET_NOLOGO: true
+      VERSION: 0.1.0-ci.${{ github.run_number }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      # The sample's host builds its React client, and the TypeScript packages carry their own
+      # typecheck and tests.
+      - name: npm
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+
+      - name: Restore
+        run: dotnet restore NSail.sln
+
+      - name: Build
+        run: dotnet build NSail.sln --configuration Release --no-restore -p:Version=$VERSION
+
+      - name: Test
+        run: dotnet test NSail.sln --configuration Release --no-build
+
+      - name: Pack
+        run: dotnet pack NSail.sln --configuration Release --no-build -p:Version=$VERSION --output artifacts
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: packages
+          path: artifacts/*
+          retention-days: 14
+
+      - name: Publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: >-
+          dotnet nuget push "artifacts/*.nupkg"
+          --source https://nuget.pkg.github.com/nsail-ar/index.json
+          --api-key ${{ secrets.GITHUB_TOKEN }}
+          --skip-duplicate

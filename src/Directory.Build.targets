@@ -1,0 +1,13 @@
+<Project>
+
+	<!-- Owned by this repository, never mirrored; the monorepo's root targets still apply. -->
+	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)..'))" />
+
+	<!-- A project that ships no assembly of its own (the source generator packs its dll under
+	     analyzers/ by hand) has nothing for a symbol package to carry: NU5017. Here rather than
+	     in the props because IncludeBuildOutput is only known after the project file. -->
+	<PropertyGroup Condition="'$(IncludeBuildOutput)' == 'false'">
+		<IncludeSymbols>false</IncludeSymbols>
+	</PropertyGroup>
+
+</Project>

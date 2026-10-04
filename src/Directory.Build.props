@@ -1,0 +1,28 @@
+<Project>
+
+	<!-- Owned by this repository, never mirrored: the monorepo's root props still apply, and
+	     every Stack project gets the package metadata on top. The version is not set here —
+	     CI passes it (-p:Version), so a local pack is always an obvious 0.0.0-dev. -->
+	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
+
+	<PropertyGroup>
+		<Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
+		<Authors>Leonardo Porro</Authors>
+		<Copyright>Copyright (c) 2026 Leonardo Porro</Copyright>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageProjectUrl>https://github.com/nsail-ar/nsail-stack</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/nsail-ar/nsail-stack</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	</PropertyGroup>
+
+	<!-- Every Stack project is a package, the ones on the Web SDK too (it defaults them to
+	     unpackable, as if every Web project were a host). The sample is code to read and run. -->
+	<PropertyGroup>
+		<IsPackable>true</IsPackable>
+		<IsPackable Condition="$(MSBuildProjectDirectory.Replace('\', '/').Contains('/src/Stack/Sample/'))">false</IsPackable>
+	</PropertyGroup>
+
+</Project>

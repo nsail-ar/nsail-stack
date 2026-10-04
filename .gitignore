@@ -1,0 +1,31 @@
+## Build output
+bin/
+obj/
+artifacts/
+TestResult*/
+
+## Editors
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.rsuser
+
+## Node
+node_modules/
+
+## Packages
+*.nupkg
+*.snupkg
+
+## Secrets
+.env
+*.pfx
+*.pem
+*.key
+secrets.json
+appsettings.Development.json
+
+## The sample's React build, written beside the host that serves it
+src/Stack/Sample/NSail.Sample.Web/react/
