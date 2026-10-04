@@ -1,0 +1,49 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<div class="@GetClasses()">
+    @ChildContent
+</div>
+
+@code {
+
+    /// <summary>The items the form is laid out on — each one an <c>NsFormGridItem</c> declaring
+    /// its own width nature (content, grow or full), never a column fraction.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Space left between rows and columns, on the house scale. The default is the
+    /// same 16px the form grid has always used.</summary>
+    [Parameter]
+    public NsSize Gap { get; set; } = NsSize.Md;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-grid")
+            .Add(GetGapClass())
+            .Add(Class)
+            .ToString();
+    }
+
+    // The vendor's own gap-{n} utilities on the same scale the flex arrangers already spend
+    // (NsPanel writes gap-4), and the same numbers this grid's predecessor handed MudGrid as
+    // Spacing — so migrating a form changes how it measures, never how far apart it sits.
+    string GetGapClass()
+    {
+        return Gap switch
+        {
+            NsSize.None => "gap-0",
+            NsSize.Xs => "gap-1",
+            NsSize.Sm => "gap-2",
+            NsSize.Lg => "gap-6",
+            NsSize.Xl => "gap-8",
+            NsSize.Xxl => "gap-10",
+            _ => "gap-4"
+        };
+    }
+}

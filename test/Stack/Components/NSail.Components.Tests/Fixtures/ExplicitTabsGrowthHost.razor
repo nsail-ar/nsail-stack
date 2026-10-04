@@ -1,0 +1,24 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* EyesEditor's own composition: a growing panel whose tabs sit among other sections and say
+   so at the call site. *@
+<NsPanel>
+    <Content>
+        <NsTabs Grow="Grow">
+            <NsTab Title="First">
+                <div class="first-content"></div>
+            </NsTab>
+        </NsTabs>
+    </Content>
+</NsPanel>
+
+@code {
+
+    [Parameter]
+    public bool Grow { get; set; }
+}

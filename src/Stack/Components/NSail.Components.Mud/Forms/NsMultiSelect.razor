@@ -1,0 +1,85 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TItem
+@typeparam TValue
+
+@* ShrinkLabel is declared off the SELECTION for the reason NsSelect's is declared off its
+   value: the text this field shows is resolved out of Items, so a caller filling them from a
+   read holds a selection for a render it cannot yet name. *@
+<MudSelect T="TValue" MultiSelection="true"
+           SelectedValues="(Value ?? []).ToList()" SelectedValuesChanged="OnChanged"
+           ShrinkLabel="@HoldsValues()"
+           ToStringFunc="GetValueText"
+           Label="@Label" Placeholder="@Placeholder"
+           Error="@HasError" ErrorText="@ErrorText"
+           Variant="Variant.Outlined" Margin="Margin.Dense">
+    @if (Items is not null)
+    {
+        @foreach (var item in Items)
+        {
+            <MudSelectItem T="TValue" Value="@GetItemValue(item)">@GetItemText(item)</MudSelectItem>
+        }
+    }
+</MudSelect>
+
+@code {
+
+    [Parameter]
+    public IEnumerable<TValue>? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<List<TValue>> ValueChanged { get; set; }
+
+    [Parameter]
+    public IEnumerable<TItem>? Items { get; set; }
+
+    [Parameter, EditorRequired]
+    public Func<TItem, TValue> ItemValue { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public Func<TItem, string> ItemText { get; set; } = default!;
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public string? ErrorText { get; set; }
+
+    bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
+
+    bool HoldsValues()
+    {
+        return Value is not null && Value.Any();
+    }
+
+    Task OnChanged(IEnumerable<TValue> selected)
+    {
+        return ValueChanged.InvokeAsync(selected.ToList());
+    }
+
+    TValue GetItemValue(TItem item)
+    {
+        return ItemValue(item);
+    }
+
+    string GetItemText(TItem item)
+    {
+        return ItemText(item);
+    }
+
+    string GetValueText(TValue value)
+    {
+        if (Items is null)
+        {
+            return string.Empty;
+        }
+
+        var item = Items.FirstOrDefault(candidate => Equals(GetItemValue(candidate), value));
+        return item is null ? string.Empty : GetItemText(item);
+    }
+}

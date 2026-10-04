@@ -1,0 +1,13 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/new"
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* No Target: this link navigates the surface it is rendered in. Under a live cascade inside
+   the aside that is the aside's own query parameter; with a dead cascade it is the bare
+   route — which is exactly what a lost Target also produces, and why this link is the one
+   that tells the two apart. *@
+<NsLink Href="probe/other" Label="Inside" Class="probe-inside" />

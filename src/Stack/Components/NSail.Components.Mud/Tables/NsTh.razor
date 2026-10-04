@@ -1,0 +1,68 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using System.Linq.Expressions
+@using NSail.Localization
+@using NSail.Metadata
+
+@inject StringManager Strings
+@inject MetadataProvider Metadata
+
+<MudTh Class="@GetClasses()">
+    @if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        @_label
+    }
+</MudTh>
+
+@code {
+
+    string? _key;
+    string? _label;
+
+    [CascadingParameter]
+    TableColumns? Columns { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Field the column shows ("() => context.Name"): drives the localized header.
+    /// The expression is inspected, never executed.</summary>
+    [Parameter]
+    public Expression<Func<object?>>? For { get; set; }
+
+    /// <summary>Container width the column appears from, so a wide grid gives up its least
+    /// important columns one at a time instead of collapsing all at once. Declared here and
+    /// here only — the cells below follow. None (the default) keeps the column always.</summary>
+    [Parameter]
+    public NsSize Breakpoint { get; set; } = NsSize.None;
+
+    // A header that names no field and shows no text is the action column: it is the one
+    // column with nothing to key on, which is already why it never hides. Deriving it here
+    // is what lets the column's width belong to the column instead of to every grid.
+    string GetClasses()
+    {
+        return new NsClassBuilder(NsResponsive.CellClasses(Breakpoint))
+            .Add("ns-actions", For is null && ChildContent is null)
+            .ToString();
+    }
+
+    protected override void OnParametersSet()
+    {
+        _key = ForExpression.GetTarget(For) is { } target
+            ? Metadata.KeyFor(target.Type, target.Member)
+            : null;
+
+        _label = _key is null ? null : Strings.Translate(_key);
+
+        if (_key is not null)
+        {
+            Columns?.Declare(_key, Breakpoint);
+        }
+    }
+}

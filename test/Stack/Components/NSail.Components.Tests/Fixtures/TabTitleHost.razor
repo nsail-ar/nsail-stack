@@ -1,0 +1,21 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Localization
+
+@inject StringManager Strings
+
+@* How every real consumer names a tab: the page resolves the key and hands NsTab the
+   finished text (UpdatePartyPage does exactly this with Directory.Party.Identity). NsTab
+   binds no expression and names no type, so there is nothing in it to derive a key from. *@
+<NsTabs>
+    <NsTab Title="@Strings.Translate("Directory.Party.Identity")">
+        <div class="identity-content"></div>
+    </NsTab>
+    <NsTab Title="@Strings.Translate("Directory.Party.Untranslated")">
+        <div class="untranslated-content"></div>
+    </NsTab>
+</NsTabs>

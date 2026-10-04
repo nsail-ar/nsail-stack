@@ -1,0 +1,50 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject IJSRuntime JS
+
+@* Draws nothing: what it contributes is where it stands. window.nsapp.appReady means "the
+   screen under the splash is interactive", and that is only true from inside the routed
+   subtree — sent from the gate above it, the signal describes an empty frame the routed page
+   has not reached yet, and the latch on the browser side makes the first call the only one. So
+   this stands wherever a page lands, and nowhere a page might still be coming. *@
+
+@code {
+
+    bool _announced;
+
+    [CascadingParameter]
+    Task<AuthenticationState>? Authentication { get; set; }
+
+    // Awaiting the state is ordering, not authorization — the same await NsSetup makes for the
+    // same reason. AuthorizeRouteView holds the page back until this very task answers, so an
+    // announcement that does not wait for it is an announcement about an empty frame. Where
+    // the prerender handed the session over, which is every boot of a composed app, the task
+    // is already complete and the await costs no render at all.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Authentication is not null)
+        {
+            await Authentication;
+        }
+    }
+
+    // Not `firstRender`: the render that lands while the state above is still in flight is a
+    // render this component performed, and the page is not in the DOM yet. A batch's DOM is
+    // applied before any OnAfterRender in that batch runs, so the first render that finds the
+    // state settled is one the routed page's own markup has already landed with.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_announced || Authentication is { IsCompleted: false })
+        {
+            return;
+        }
+
+        _announced = true;
+
+        await JS.InvokeVoidAsync("window.nsapp.appReady");
+    }
+}

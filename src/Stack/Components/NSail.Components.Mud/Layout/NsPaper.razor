@@ -1,0 +1,45 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<MudPaper Outlined="@Outlined" Elevation="@GetElevation()" Class="@GetClasses()">
+    @ChildContent
+</MudPaper>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public bool Outlined { get; set; }
+
+    [Parameter]
+    public NsSize Elevation { get; set; } = NsSize.None;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    // ns-paper: the hook that says a sheet is around whatever this holds, so a component
+    // carrying a sheet of its own (NsTable) drops it and leaves one frame (ns-mud.css).
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-paper d-flex flex-1")
+            .Add(Class)
+            .ToString();
+    }
+
+    int GetElevation()
+    {
+        return Elevation switch
+        {
+            NsSize.None => 0,
+            NsSize.Xs => 1,
+            NsSize.Sm => 2,
+            NsSize.Md => 4,
+            NsSize.Lg => 8,
+            NsSize.Xl => 16,
+            _ => 0
+        };
+    }
+}

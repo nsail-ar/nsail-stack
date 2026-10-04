@@ -1,0 +1,45 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+<NsForm TModel="FormProblemModel" Model="Model" OnSubmit="HandleSubmit" OnProblem="HandleProblem" OnReload="HandleReload">
+    <NsTextField @bind-Value="context.Name" />
+    <NsTextField @bind-Value="context.Alias" />
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public FormProblemModel Model { get; set; } = default!;
+
+    /// <summary>What the server answered — the handler reports it exactly the way a real page
+    /// does, by putting it on the submit args for the Runner to raise.</summary>
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    [Parameter]
+    public EventCallback<ProblemEventArgs> Reported { get; set; }
+
+    /// <summary>The screen's own refetch, which a conflict refusal is allowed to offer.</summary>
+    [Parameter]
+    public EventCallback Reloaded { get; set; }
+
+    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    {
+        args.Problem = Problem;
+    }
+
+    Task HandleProblem(ProblemEventArgs args)
+    {
+        return Reported.InvokeAsync(args);
+    }
+
+    Task HandleReload()
+    {
+        return Reloaded.InvokeAsync();
+    }
+}

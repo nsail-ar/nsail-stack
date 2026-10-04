@@ -1,0 +1,165 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using NSail.Builds
+@using NSail.Localization
+@using NSail.Messaging.Runtime
+@using NSail.Messaging.Runtime.Publishing
+
+@implements IDisposable
+
+@inject IBrandProvider Brands
+@inject IThemeProvider Themes
+@inject Mediator Mediator
+@inject PersistentComponentState Handoff
+@inject ServerBuild ServerBuild
+@inject DialogManager Dialogs
+@inject StringManager Strings
+@inject NavigationManager Navigation
+@inject PushFeed Push
+
+<NsTheme Brand="@_brand" Dark="@_settings.DarkMode" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+
+@code {
+
+    const string BrandKey = "NSail.Brand";
+    const string ThemeKey = "NSail.Theme";
+
+    // What the prerender persists when it resolved nothing, so the client restores the same
+    // grey NsTheme would have fallen back to rather than a second one.
+    static readonly Brand Fallback = NsTheme.Neutral();
+
+    Brand _brand = Fallback;
+    ThemeSettings _settings = new();
+
+    IDisposable? _subscription;
+    PersistingComponentStateSubscription _persisting;
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    // NsSetup is not an NsPartial -- it is the root that mounts the vendor providers, above
+    // every page -- so it wires the subscription the way NsPartial.Subscribe does underneath:
+    // Mediator.Subscribe marshalled to the renderer, disposed with the component.
+    protected override void OnInitialized()
+    {
+        Restore();
+
+        _persisting = Handoff.RegisterOnPersisting(Persist);
+
+        _subscription = Mediator.Subscribe<BrandChanged>(
+            (message, cancellationToken) => InvokeAsync(() => Apply(cancellationToken)));
+
+        ServerBuild.Changed += OnServerMoved;
+
+        // Asked as well as subscribed: the client's first send is the language negotiation,
+        // which runs before a component exists, so a deploy that landed a moment before this
+        // tab booted has already been heard and would never be announced again.
+        if (ServerBuild.Moved)
+        {
+            OnServerMoved();
+        }
+    }
+
+    // The reload is the operator's own: a forced one mid-form costs whatever was typed, so the
+    // offer waits on screen and blocks nothing until it is taken.
+    void OnServerMoved()
+    {
+        _ = InvokeAsync(() => Dialogs.Offer(
+            Strings.Translate("Common.NewVersion"),
+            Strings.Translate("Common.Reload"),
+            () => Navigation.Refresh(forceReload: true)));
+    }
+
+    // Awaiting the state is ordering, not authorization: the client fills its Session while
+    // this task completes, and a brand provider that resolves per organization reads it.
+    // The state renews on sign-in and on an organization switch, which is when a brand can
+    // change, so this is also how a new one reaches the screen.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AuthenticationState is not null)
+        {
+            await Listen(await AuthenticationState);
+        }
+
+        await Apply(CancellationToken.None);
+    }
+
+    // The server's push is a signed-in session's alone: the hub refuses anybody else, and a tab
+    // that signs out must stop hearing the tenant it left. Here because this is the one root
+    // every page renders under, in the scope the screens subscribe in.
+    async Task Listen(AuthenticationState state)
+    {
+        if (state.User.Identity?.IsAuthenticated == true)
+        {
+            Push.Open();
+        }
+        else
+        {
+            await Push.Close();
+        }
+    }
+
+    // The prerender already resolved a brand against the cookie session, so the client is
+    // handed the answer instead of asking for it again. Synchronous and before the first
+    // render on purpose: anything awaited here paints something else first.
+    void Restore()
+    {
+        if (!Handoff.TryTakeFromJson<Brand>(BrandKey, out var brand) || brand is null)
+            return;
+
+        Handoff.TryTakeFromJson<ThemeSettings>(ThemeKey, out var settings);
+
+        Show(brand, settings ?? new ThemeSettings());
+    }
+
+    // Runs on the server at the end of the prerender, never on the client. It persists what
+    // was painted rather than re-resolving, which is what makes the client's first render
+    // equal to the server's last one whether or not a brand was resolved.
+    Task Persist()
+    {
+        Handoff.PersistAsJson(BrandKey, _brand);
+        Handoff.PersistAsJson(ThemeKey, _settings);
+
+        return Task.CompletedTask;
+    }
+
+    async Task Apply(CancellationToken cancellationToken)
+    {
+        // Null is "I cannot tell yet which organization this is", not a brand, and the theme
+        // in hand -- handed over by the prerender, or Neutral -- is a better answer than any
+        // default. Applying it here is the flicker: it is what repaints a branded screen
+        // with the framework's own colours while the auth state is still resolving.
+        if (await Brands.GetBrand(cancellationToken) is not { } brand)
+            return;
+
+        // Anonymous or settings-less products keep the brand default: the provider answers
+        // with an unset preference rather than failing.
+        var settings = await Themes.GetTheme(cancellationToken);
+
+        Show(brand, settings);
+
+        StateHasChanged();
+    }
+
+    // Brand and preference move together, and straight to the new pair: re-entering through
+    // Fallback between them is what the user reads as the flicker.
+    void Show(Brand brand, ThemeSettings settings)
+    {
+        _brand = brand;
+        _settings = settings;
+    }
+
+    public void Dispose()
+    {
+        _subscription?.Dispose();
+        _persisting.Dispose();
+
+        ServerBuild.Changed -= OnServerMoved;
+    }
+}

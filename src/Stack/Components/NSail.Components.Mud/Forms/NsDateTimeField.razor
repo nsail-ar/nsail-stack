@@ -1,0 +1,55 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+@using NSail.Localization
+
+@inject LanguageProvider Language
+
+@* Both pickers name the culture for the same reason NsDateField does: left unset, the
+   vendor lays out its calendar — month names, first day of the week — against the ambient
+   CurrentCulture, which is the request's on the server and the BROWSER's on the WebAssembly
+   client. The two disagree the moment a reader's browser is not the app's language — measured
+   on this control, same page and same instant, server "4/8/2026" against client "8/5/2026" —
+   and a day-first reading of a month-first string is a silently wrong date, not a formatting
+   nuisance. The text half of that answer is the converter's (DateText), which is handed the
+   same culture rather than reading one of its own. *@
+<div class="d-flex flex-column gap-2">
+    @* Converter before Date, for the reason NsDateField's own copy of this picker carries: the
+       vendor writes its box from the converter as Date is assigned, and Blazor assigns in the
+       order written here. *@
+    <MudDatePicker Converter="_text"
+                   Date="MudDate"
+                   DateChanged="OnDateChanged"
+                   TextChanged="OnTextChanged"
+                   Label="@GetLabel()"
+                   Placeholder="@GetPlaceholder()"
+                   Required="IsRequired"
+                   Disabled="IsDisabled"
+                   ReadOnly="IsReadOnly"
+                   Editable="true"
+                   Culture="@RegionCulture.For(Language)"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Error="@HasError()"
+                   ErrorText="@GetErrorText()"
+                   UserAttributes="InputAttributes" />
+    @* The two boxes are ONE field, so a refusal marks both of them, for the eye and for the
+       tree: a red date box beside a grey time box reads as the hour being fine when what was
+       refused is the instant they spell together. The sentence stays the date box's — one field
+       says one message however many boxes it wears — which is why the mark arrives as the
+       vendor's own error class instead of its Error parameter (TimeMark). *@
+    <MudTimePicker Time="MudTime"
+                   TimeChanged="OnTimeChanged"
+                   Disabled="IsDisabled"
+                   ReadOnly="IsReadOnly"
+                   Culture="@RegionCulture.For(Language)"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Class="@TimeMark"
+                   UserAttributes="@TimeAttributes" />
+</div>
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />

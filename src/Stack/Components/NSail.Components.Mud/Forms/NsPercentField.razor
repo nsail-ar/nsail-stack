@@ -1,0 +1,40 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+@using System.Globalization
+@using NSail.Localization
+
+@inject LanguageProvider Language
+
+<MudNumericField T="TValue"
+                 Value="Value"
+                 ValueChanged="SetValue"
+                 Label="@GetLabel()"
+                 Placeholder="@Placeholder"
+                 Required="IsRequired"
+                 Disabled="IsDisabled"
+                 ReadOnly="IsReadOnly"
+                 AutoFocus="AutoFocus"
+                 Immediate="Immediate"
+                 Format="P"
+                 Culture="@FigureCulture"
+                 Variant="Variant.Outlined"
+                 Margin="Margin.Dense"
+                 Error="@HasError()"
+                 ErrorText="@GetErrorText()"
+                 UserAttributes="InputAttributes" />
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+
+@code {
+
+    // Percent is the numeric family too (Story: "los campos se seleccionan al recibir
+    // foco").
+    protected override bool SelectOnFocus => true;
+
+    // And the same decimal comma as NsNumericField's: the vendor's default is invariant.
+    CultureInfo FigureCulture => RegionCulture.For(Language);
+}

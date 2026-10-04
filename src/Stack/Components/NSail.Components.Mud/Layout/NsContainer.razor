@@ -1,0 +1,71 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using MudBlazor
+@implements IDisposable
+
+<MudContainer MaxWidth="@GetMaxWidth()" Fixed="@Fixed" Class="@GetClasses()">
+    @ChildContent
+</MudContainer>
+
+@code {
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    [Parameter]
+    public NsSize MaxWidth { get; set; } = NsSize.Lg;
+
+    [Parameter]
+    public bool Fixed { get; set; }
+
+    [Parameter]
+    public bool Horizontal { get; set; }
+
+    [Parameter]
+    public bool Grow { get; set; } = true;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged += OnSurfaceStateChanged;
+        }
+    }
+
+    void OnSurfaceStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged -= OnSurfaceStateChanged;
+        }
+    }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder("d-flex min-h-0 pa-4")
+            .Add("flex-column", !Horizontal)
+            .Add("flex-1", Grow)
+            .ToString();
+    }
+
+    MaxWidth GetMaxWidth()
+    {
+        return (Surface?.Size ?? MaxWidth) switch
+        {
+            NsSize.None => MudBlazor.MaxWidth.False,
+            NsSize.Xs => MudBlazor.MaxWidth.ExtraSmall,
+            NsSize.Sm => MudBlazor.MaxWidth.Small,
+            NsSize.Md => MudBlazor.MaxWidth.Medium,
+            NsSize.Lg => MudBlazor.MaxWidth.Large,
+            NsSize.Xl => MudBlazor.MaxWidth.ExtraLarge,
+            NsSize.Xxl => MudBlazor.MaxWidth.ExtraExtraLarge,
+            _ => MudBlazor.MaxWidth.Large
+        };
+    }
+}

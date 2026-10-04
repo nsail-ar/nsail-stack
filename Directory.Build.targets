@@ -1,0 +1,45 @@
+<Project>
+
+	<!-- CS8669 comes out of Razor's generated code, never out of ours: a nullable type argument
+	     (TItem="string?", TValue="Guid?" — idiomatic here, filters and selects are nullable by
+	     design) is emitted into a file the generator leaves outside a #nullable context. Every
+	     project sets Nullable=enable, so handwritten code cannot raise it. Scoped to Razor
+	     projects so the warning still means something everywhere else.
+
+	     This lives in .targets, not .props: UsingMicrosoftNETSdkRazor is set by the SDK, which
+	     is imported after .props is evaluated — the condition would never match there. -->
+	<PropertyGroup Condition="'$(UsingMicrosoftNETSdkRazor)' == 'true'">
+		<NoWarn>$(NoWarn);CS8669</NoWarn>
+	</PropertyGroup>
+
+	<!-- RZ10012 — "markup element with unexpected name" — is Razor saying it could not resolve a
+	     capitalized element to a component: it then emits the tag as literal markup, so the page
+	     ships a dead <nsswitch> element with no control, no binding and no callback, and still
+	     builds. There is no legitimate capitalized unresolved element in this tree, so the only
+	     thing this warning ever means is a component that does not exist or a missing @using —
+	     a defect that only a reader can otherwise catch, and one nobody caught among 160 other
+	     warnings (nsail#1190). Promoted here, not in .props, for the same SDK-import reason as
+	     above. -->
+	<PropertyGroup Condition="'$(UsingMicrosoftNETSdkRazor)' == 'true'">
+		<WarningsAsErrors>$(WarningsAsErrors);RZ10012</WarningsAsErrors>
+	</PropertyGroup>
+
+	<!-- The Razor SDK globs every root-level *.json as Content with
+	     CopyToPublishDirectory=PreserveNewest ("publish all JSON files"). The strings*.json
+	     localization files are EmbeddedResource by convention — read from the assembly, never
+	     from disk — and left as Content too they all flatten to the publish root and collide
+	     (NETSDK1152, first seen on the first-ever Release publish). Removing them from Content
+	     here covers every current and future kit without per-csproj repetition. -->
+	<ItemGroup Condition="'$(UsingMicrosoftNETSdkRazor)' == 'true'">
+		<Content Remove="strings*.json" />
+	</ItemGroup>
+
+	<!-- Every bUnit test assembly compiles the shared CI wait-timeout widener; the
+	     condition keys on the package reference itself, so no project opts in by name.
+	     This lives in .targets because PackageReference items do not exist yet when
+	     .props is evaluated. -->
+	<ItemGroup Condition="@(PackageReference->WithMetadataValue('Identity', 'bunit')->Count()) &gt; 0">
+		<Compile Include="$(MSBuildThisFileDirectory)test\Shared\BunitWaitTimeout.cs" Link="Fixtures\BunitWaitTimeout.cs" />
+	</ItemGroup>
+
+</Project>

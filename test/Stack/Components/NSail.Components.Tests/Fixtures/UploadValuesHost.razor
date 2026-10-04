@@ -1,0 +1,36 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+@using NSail.Components
+
+@* A form holding the multi-file field the way a real document does: the ordered list of ids
+   IS the value, so a reorder and a clear both arrive here as a new list. *@
+<NsForm TModel="UploadValuesModel" Model="Model" OnSubmit="@(_ => Task.CompletedTask)">
+    <NsMultiFileUpload Value="Model.Images" ValueChanged="OnChanged" For="() => Model.Images"
+                       Preview="Preview" Store="Store" Accept="image/*" />
+</NsForm>
+
+@code {
+
+    [Parameter]
+    public UploadValuesModel Model { get; set; } = new();
+
+    [Parameter]
+    public bool Preview { get; set; }
+
+    [Parameter]
+    public IFileStore? Store { get; set; }
+
+    /// <summary>Every list the field raised, in order — what the test reads instead of
+    /// guessing at the component's insides.</summary>
+    public List<IReadOnlyList<Guid>> Raised { get; } = [];
+
+    Task OnChanged(IReadOnlyList<Guid>? values)
+    {
+        Raised.Add(values ?? []);
+        Model.Images = [.. values ?? []];
+
+        return Task.CompletedTask;
+    }
+}

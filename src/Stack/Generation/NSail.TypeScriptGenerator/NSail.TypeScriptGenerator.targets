@@ -1,0 +1,31 @@
+<Project>
+
+	<!-- Imported by a host that ships a TypeScript client. The host names the Sdk assemblies the
+	     client speaks to and the file to write; the contract is read from the host's own output,
+	     after it built, so the TypeScript can never describe an Sdk the host does not serve.
+
+	     <TypeScriptSdk Include="NSail.Sample.Sdk" />
+	     <PropertyGroup><TypeScriptOutput>..\NSail.Sample.React\src\sdk.ts</TypeScriptOutput></PropertyGroup> -->
+
+	<ItemGroup>
+		<ProjectReference Include="$(MSBuildThisFileDirectory)NSail.TypeScriptGenerator.csproj">
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+			<Private>false</Private>
+		</ProjectReference>
+	</ItemGroup>
+
+	<Target Name="GenerateTypeScript"
+	        AfterTargets="Build"
+	        Condition="'$(TypeScriptOutput)' != '' And '@(TypeScriptSdk)' != ''"
+	        Inputs="@(TypeScriptSdk->'$(TargetDir)%(Identity).dll')"
+	        Outputs="$(TypeScriptOutput)">
+		<PropertyGroup>
+			<_TypeScriptGenerator>$(MSBuildThisFileDirectory)bin/$(Configuration)/net10.0/NSail.TypeScriptGenerator.dll</_TypeScriptGenerator>
+		</PropertyGroup>
+		<Exec Command="dotnet &quot;$(_TypeScriptGenerator)&quot; @(TypeScriptSdk->'--assembly &quot;$(TargetDir)%(Identity).dll&quot;', ' ') --out &quot;$(TypeScriptOutput)&quot;" />
+		<!-- The generator leaves an unchanged file untouched; touching it here keeps the target
+		     incremental all the same. -->
+		<Touch Files="$(TypeScriptOutput)" />
+	</Target>
+
+</Project>

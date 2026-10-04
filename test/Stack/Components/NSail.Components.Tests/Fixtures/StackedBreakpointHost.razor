@@ -1,0 +1,32 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+@* Icon buttons carry a MudTooltip, which is a popover: without a provider in the tree
+   MudBlazor throws before the grid renders at all. *@
+<MudPopoverProvider />
+
+@* A grid shaped like WorkOrdersPage's saldos: one column that never declares (Name), one
+   that only earns its place from Lg up (Age), and the action column, which names nothing
+   at all. *@
+<NsTable TRow="TestModel" Rows="Page">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+        <NsTh For="() => context.Age" Breakpoint="NsSize.Lg" />
+        <NsTh />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd For="() => row.Age">@row.Age</NsTd>
+        <NsTd />
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    DataPage<TestModel> Page { get; } = DataPage<TestModel>.From([new TestModel { Name = "Ana", Age = 3 }]);
+}

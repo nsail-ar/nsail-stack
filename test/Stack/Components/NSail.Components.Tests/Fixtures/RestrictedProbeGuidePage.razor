@@ -1,0 +1,10 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/guide-restricted"
+@namespace NSail.Components.Tests.Fixtures
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "employee")]
+
+@* The guide door's own gate, proved against a screen a session may be refused — the same
+   shape a product's real [Authorize<T>] manual carries. *@
+<div class="probe-guide-restricted"></div>

@@ -1,0 +1,54 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@inherits NsLookupBase<SelectRef, Guid?, SelectSaved>
+
+@* A kit's *Lookup reduced to what NsLookupBase decides: the concept's create page and
+   nothing else. Both instances a screen mounts are the same control, so which one adopts a
+   save cannot come from anything the facade says. *@
+<NsAutocomplete TItem="SelectRef" TValue="Guid?" Grow
+                Value="Value" ValueChanged="ValueChanged" ValueExpression="ValueExpression" For="For"
+                OnSearch="Search" OnLoad="Load"
+                ItemValue="ItemValue" ItemText="item => item.DisplayName"
+                Label="@Label" Required="Required"
+                CreateRoute="@CreateRoute" CreateTarget="Target" />
+
+@code {
+
+    protected override Type CreatePage => typeof(SelectCreatePage);
+
+    // Resolved rather than injected: the tests that only care about which lookup ADOPTS a save
+    // register no store, and a facade that could not construct without one would take the whole
+    // adoption suite with it.
+    SelectStore? Store
+    {
+        get { return Services.GetService(typeof(SelectStore)) as SelectStore; }
+    }
+
+    async Task Search(SearchEventArgs<SelectRef> args)
+    {
+        if (Store is not { } store)
+        {
+            args.Results = [];
+            return;
+        }
+
+        args.Results = await store.Search(args.Text, args.CancellationToken);
+    }
+
+    async Task Load(LoadEventArgs<SelectRef, Guid?> args)
+    {
+        if (Store is not { } store || args.Value is not { } id)
+        {
+            args.Item = null;
+            return;
+        }
+
+        args.Item = await store.Find(id, args.CancellationToken);
+    }
+
+}

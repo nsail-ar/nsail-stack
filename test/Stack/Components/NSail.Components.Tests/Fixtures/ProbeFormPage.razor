@@ -1,0 +1,33 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/form"
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* A routed page carrying a real NsForm, so a surface hosting it is dirtied the way a person
+   dirties one — typing into a field the form tracks. The model is the page's own and is
+   rebuilt on every mount, which is what makes "the typed state survived" mean the page was
+   never torn down rather than merely re-rendered.
+
+   The strip is the shape UpdatePartyPage has: a page routed by its own query, which switching
+   a tab writes back through the surface. The tracked field lives inside a tab because that is
+   where a real screen puts it, and KeepPanelsAlive is what leaves it readable from the DOM
+   after the switch. *@
+<NsForm TModel="SubmitTrackingModel" Model="_model">
+    <NsTabs BindQuery="true">
+        <NsTab Title="One" Name="one">
+            <NsTextField @bind-Value="context.Name" />
+        </NsTab>
+        <NsTab Title="Other" Name="other">
+            <div class="tab-other"></div>
+        </NsTab>
+    </NsTabs>
+    <NsSubmit />
+</NsForm>
+
+@code {
+
+    readonly SubmitTrackingModel _model = new();
+}

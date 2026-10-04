@@ -1,0 +1,30 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+
+@* A menu whose trigger is a face of the caller's own — the shape a lookup's option row takes
+   when it opens its quotes beside itself. The provider is here because the body is a portal:
+   without one there is no open menu to assert anything about. *@
+<MudPopoverProvider />
+
+<NsMenu Content="@Face" Label="Suppliers" Beside="true">
+    <NsMenuItem Action="@Pick" Label="Barato" />
+    <NsMenuItem Action="@Pick" Label="Caro" />
+</NsMenu>
+
+@code {
+
+    /// <summary>The face's own text, so a re-render of the tree is visible in the markup and
+    /// not only in a render count.</summary>
+    [Parameter]
+    public string Name { get; set; } = "sku-1";
+
+    [Parameter]
+    public EventCallback OnPick { get; set; }
+
+    RenderFragment Face => @<span class="probe-face">@Name</span>;
+
+    ActionItem Pick => new() { Name = "SelectSupplier", OnClick = () => OnPick.InvokeAsync() };
+}

@@ -1,0 +1,16 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@inherits NsPartial
+
+<p id="figure">@_answer.Count</p>
+
+@code {
+
+    ProbeAnswer _answer = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _answer = await Send(new ProbeRead());
+    }
+}

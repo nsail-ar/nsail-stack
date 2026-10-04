@@ -1,0 +1,90 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using System.Reflection
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+
+@namespace NSail.Components
+
+@inject NavigationManager Navigation
+@inject IEnumerable<IRouteContributor> RouteContributors
+@inject IServiceProvider Services
+
+<Router AppAssembly="_appAssembly" AdditionalAssemblies="_additionalAssemblies" NotFoundPage="NotFoundPage">
+    <Found Context="routeData">
+        <CascadingValue Value="_routeTable" IsFixed="true">
+            <NsSurfaceContext Context="surface">
+                @* The gate wraps the view and not the other way round: a redirect must happen
+                   before AuthorizeRouteView constructs the destination's layout, which is what
+                   makes "no MainLayout renders" true rather than merely invisible. *@
+                <NsRouteGate PageType="routeData.PageType">
+                    <AuthorizeRouteView RouteData="routeData" DefaultLayout="DefaultLayout">
+                        <NotAuthorized>
+                            <NsNotAuthorized SignInPage="@SignInPage" />
+                        </NotAuthorized>
+                    </AuthorizeRouteView>
+                    <FocusOnNavigate RouteData="routeData" Selector="@FocusSelector" />
+                    <NsAppReady />
+                </NsRouteGate>
+            </NsSurfaceContext>
+        </CascadingValue>
+    </Found>
+    <NotFound>
+        @* This branch renders outside the gate — an address that matches no page is never
+           gated — so it carries its own arrival: a splash waiting on a signal that only the
+           gate's side sends would sit over the not-found face forever. *@
+        @NotFound
+        <NsAppReady />
+    </NotFound>
+</Router>
+
+@code {
+
+    Assembly _appAssembly = default!;
+    IReadOnlyList<Assembly> _additionalAssemblies = [];
+    RouteTable _routeTable = default!;
+
+    [Parameter]
+    public Assembly? AppAssembly { get; set; }
+
+    [Parameter]
+    public IEnumerable<Assembly>? AdditionalAssemblies { get; set; }
+
+    [Parameter]
+    public Type? DefaultLayout { get; set; }
+
+    [Parameter]
+    public Type? NotFoundPage { get; set; }
+
+    [Parameter]
+    public string FocusSelector { get; set; } = "h1";
+
+    /// <summary>Page the router redirects an anonymous visitor to. A Type and not a path:
+    /// the URL is derived from the route table, and a Stack component names no app route.</summary>
+    [Parameter]
+    public Type? SignInPage { get; set; }
+
+    /// <summary>Rendered when the address matches no page in the app — a Stack component
+    /// names no app-specific look, so the app hands its own (Mud's NsPageNotFound, which
+    /// knows the app's home page and its branding logo route).</summary>
+    [Parameter]
+    public RenderFragment? NotFound { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _appAssembly = AppAssembly
+            ?? DefaultLayout?.Assembly
+            ?? throw new ArgumentNullException("AppAssembly", "AppAssembly or DefaultLayout must be provided.");
+
+        _additionalAssemblies = (AdditionalAssemblies ?? RouteContributors.Select(x => x.Assembly))
+            .Where(x => x != _appAssembly)
+            .Distinct()
+            .ToArray();
+
+        // Explicit assembly parameters bypass the DI table (built from contributors only).
+        _routeTable = AppAssembly is null && AdditionalAssemblies is null
+            ? Services.GetService(typeof(RouteTable)) as RouteTable ?? new RouteTable(_appAssembly, _additionalAssemblies)
+            : new RouteTable(_appAssembly, _additionalAssemblies);
+    }
+}

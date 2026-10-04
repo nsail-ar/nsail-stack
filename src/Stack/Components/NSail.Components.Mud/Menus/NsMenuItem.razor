@@ -1,0 +1,176 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using NSail.Localization
+@using NSail.Metadata
+
+@inherits NsActBase
+
+@inject StringManager Strings
+@inject MetadataProvider Metadata
+@inject RouteTable Routes
+@inject RootSurface Root
+@inject IServiceProvider Services
+
+@* The form's word reaches a row through the menu that drew it (NsMenu), which is what lets a
+   row answer it from inside the vendor's popover: a row whose act is a way IN is not offered
+   where the form refuses writes, and the kit that drew the menu names nothing. *@
+@if (_allowed && Offers(Action))
+{
+    <MudMenuItem Icon="@(Action.Icon?.Markup)"
+                 Disabled="@Action.Disabled"
+                 Class="@(Selected == true ? "ns-menu-item ns-menu-item-selected" : "ns-menu-item")"
+                 UserAttributes="@Choice"
+                 OnClick="Run">
+        @* The row is laid out here rather than by a rule on the vendor's own text slot: the
+           check has to be pushed to the far edge, and reaching into the vendor's internals to
+           make its slot a flex box would tie this component to a class name it does not own. *@
+        <span class="ns-menu-item-row">
+            <span class="ns-menu-item-label">@(Label ?? Action.GetLabel(Strings, Metadata))</span>
+            @if (Selected == true)
+            {
+                @* Trailing, not in the icon gutter: a check in front would indent the one chosen
+                   row past every other and the list would stop reading as a column of equals. *@
+                <NsIcon Icon="@NsIcons.Check" Size="NsSize.Sm" Class="ns-menu-item-check" />
+            }
+        </span>
+    </MudMenuItem>
+}
+
+@code {
+
+    // A plain row writes no role: the list is the vendor's role="menu" and the vendor's own row
+    // answers menuitem inside it, so anything written here would only disagree with both. A row
+    // that is one of a single choice is the exception, because menuitem carries no state at all
+    // — aria-checked belongs to menuitemradio, and the trailing check is an aria-hidden glyph,
+    // so without the pair the state is drawn and never announced.
+    // One instance each rather than a fresh dictionary per render: the vendor reads a new
+    // dictionary as a changed parameter (NsButton carries the same concern).
+    static readonly Dictionary<string, object> Verb = [];
+
+    static readonly Dictionary<string, object> Offered = new()
+    {
+        ["role"] = "menuitemradio",
+        ["aria-checked"] = "false",
+    };
+
+    static readonly Dictionary<string, object> Chosen = new()
+    {
+        ["role"] = "menuitemradio",
+        ["aria-checked"] = "true",
+    };
+
+    Dictionary<string, object> Choice
+    {
+        get
+        {
+            return Selected switch
+            {
+                true => Chosen,
+                false => Offered,
+                null => Verb
+            };
+        }
+    }
+
+    // Deny-by-default only once a gate exists to ask: a command row carries no destination and
+    // a host with no security registered (a component test, a surface without Iam) must still
+    // render, which is why the flag starts true and only OnParametersSetAsync can turn it off.
+    bool _allowed = true;
+
+    [CascadingParameter]
+    Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    /// <summary>The row's behavior and its face: a link (PageType) or a command (OnClick),
+    /// exactly as every other action in the house is modelled. Nothing new is written for a
+    /// row that already exists elsewhere on the page — NsPartial.GetLink builds the link half.
+    /// The COMMAND half is a bare handler here, never NsPartial.GetAction: that one wraps the
+    /// call in a run of the offering component's own, and by the time a row is chosen the menu
+    /// has closed and taken that component with it. This row supplies the run instead.</summary>
+    [Parameter, EditorRequired]
+    public ActionItem Action { get; set; } = default!;
+
+    /// <summary>Overrides the derived label for a row whose text is DATA — an organization's
+    /// name, a saved filter — rather than a verb the string catalog names.</summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>Whether this row is the one in force among the choices a single-choice menu
+    /// offers — true draws a trailing check. Unset is the answer for a row that is a VERB and
+    /// belongs to no choice at all: false is not "some other row won", it is this row standing
+    /// among the alternatives and losing, and a sign-out that claimed it would be offered as
+    /// one of them.</summary>
+    [Parameter]
+    public bool? Selected { get; set; }
+
+    // A row runs from inside the vendor's popover tree, which is a sibling of the router: the
+    // cascade the menu's own position could see never reaches in here, and the root surface
+    // answers for that exactly as the cascade would. Dropping the target and navigating
+    // full-page instead would be the same silent downgrade NsLink guards against.
+    SurfaceContext Anchored => Surface ?? Root.Surface;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Resolved, never injected, and asked the same way NsActionToolbar.Allows already
+        // does: a hidden menu entry, a hidden create entry and a hidden NsPageLink must never
+        // disagree about the same destination (ui/actions.md).
+        _allowed = Action.PageType is null
+            || Services.GetService(typeof(PageGate)) is not PageGate gate
+            || await gate.Allows(Action.PageType, AuthenticationState);
+    }
+
+    async Task Run()
+    {
+        if (Action.PageType is not null)
+        {
+            var route = Routes.GetUrl(Action.PageType, Action.Parameters);
+
+            Anchored.Follow(Anchored.GetHref(route, Action.Target), Action.Target);
+
+            return;
+        }
+
+        if (Action.OnClick is null)
+        {
+            return;
+        }
+
+        // Detached on purpose. Choosing a row closes the menu, which unmounts everything that
+        // drew it — this component included — so a Runner belonging to any of it is already
+        // disposed when the handler starts, and the command would vanish without a word. The
+        // host below is not the render tree's, so the work outlives the menu; the bar still
+        // shows it while it runs (Enter/Exit need no subscriber), but Anchored falls back to
+        // the root surface here, and nobody's OnProblem answers that one — a refusal reaches
+        // no screen (nsail#1676). A command whose handler can be refused catches its own
+        // BusinessException and answers with an Alert (ui/fields.md).
+        using var runner = new Runner(new Detached(Anchored));
+
+        await runner.Run(Action.OnClick);
+    }
+
+    sealed class Detached : IRunHost
+    {
+        readonly SurfaceContext _surface;
+
+        public Detached(SurfaceContext surface)
+        {
+            _surface = surface;
+        }
+
+        public SurfaceContext? Surface => _surface;
+
+        public object Source => this;
+
+        public Task Report(ProblemEventArgs args)
+        {
+            return _surface.Report(args);
+        }
+
+        public void StateChanged()
+        {
+        }
+    }
+}

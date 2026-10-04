@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- The tenancy seam, because the runner is what enters a tenant: a job states whether its
+         tick is one tenant's or the install's, and the vocabulary that answer is written in
+         (TenancyScope, Tenant, the roster) is this project's, not a second copy of it. -->
+    <ProjectReference Include="..\..\Data\NSail.Data\NSail.Data.csproj" />
+    <ProjectReference Include="..\..\Security\NSail.Security\NSail.Security.csproj" />
+    <!-- The install's language, read the way the request edge reads it (LanguageOptions off
+         the configuration): a job runs in it, since no request is there to set one. -->
+    <ProjectReference Include="..\..\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
+    <ProjectReference Include="..\..\Localization\NSail.Localization\NSail.Localization.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+  </ItemGroup>
+
+</Project>

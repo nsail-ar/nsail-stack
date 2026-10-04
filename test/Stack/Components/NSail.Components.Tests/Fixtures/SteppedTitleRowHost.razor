@@ -1,0 +1,35 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* One title row at a time, replaced by the step: the shape every two-step screen writes
+   (RegisterStockMovementPage, CreateAppointmentPage) — two rows in an @if/else, so the arriving
+   one is a different component instance and Blazor initializes it BEFORE it disposes the one
+   leaving. The drawer's toggle has to arrive with it. *@
+<CascadingValue Value="Surface" IsFixed="true">
+    <CascadingValue Value="LayoutState" IsFixed="true">
+        @if (!SecondStep)
+        {
+            <NsTitleBar Title="Pedir el código" />
+        }
+        else
+        {
+            <NsTitleBar Title="Escribir el código" />
+        }
+    </CascadingValue>
+</CascadingValue>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public SurfaceContext Surface { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public NsLayoutState LayoutState { get; set; } = default!;
+
+    [Parameter]
+    public bool SecondStep { get; set; }
+}

@@ -1,0 +1,70 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.DependencyInjection
+@using NSail.Localization
+
+@inject IServiceProvider Services
+@inject StringManager Strings
+@inject PageGate Gate
+
+@* Nothing where the app registered no guide page (AddGuidePage), and nothing where the
+   session may not open it: a door to a room that was never built, or one the session is
+   refused at, is a dead link, and a screen that asked for one is not a screen to break. *@
+@if (_route is { } route)
+{
+    <NsLink Href="@route.GetUrl(_chapter)"
+            Fragment="@_section"
+            Target="@Surfaces.Auto"
+            As="@NsAs.Inline"
+            Icon="@NsIcons.Help"
+            Label="@Text"
+            Class="ns-guide-link"
+            Breakpoint="@Breakpoint" />
+}
+
+@code {
+
+    GuideRoute? _route;
+    string? _chapter;
+    string? _section;
+
+    /// <summary>Where in the guide this screen is explained: "{chapter}" or
+    /// "{chapter}#{section}", the section being a heading's own slug.</summary>
+    [Parameter, EditorRequired]
+    public string Topic { get; set; } = string.Empty;
+
+    /// <summary>The word on the button, and its tooltip and accessible name when it shows no
+    /// word. Unset it reads Ayuda; a screen that IS a sequence of steps says Instrucciones.</summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>Container width from which the word shows beside the glyph, the same reading
+    /// every control's Breakpoint has. The default is Never — the glyph alone at every width,
+    /// its word left as its tooltip and its accessible name; a screen that wants the word writes
+    /// Always. The rank never moves with it: a door to the guide is a title bar's utility, which
+    /// is the flat rung at every width (nsail#925).</summary>
+    [Parameter]
+    public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Never;
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    string Text => Label ?? Strings.Translate("Common.Guide");
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Services.GetService<GuideRoute>() is { } route && await Gate.Allows(route.PageType, AuthenticationState))
+        {
+            _route = route;
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        (_chapter, _section) = GuideRoute.Split(Topic);
+    }
+}

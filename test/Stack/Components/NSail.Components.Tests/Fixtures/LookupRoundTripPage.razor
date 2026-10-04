@@ -1,0 +1,60 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/lookup/aside"
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@inherits NsPage
+
+@* Armar Orden de Trabajo, reduced: a tracked form that opens in the aside, one required lookup
+   that can create its own row, and an :after that sends on every pick — so the create page's
+   own publish lands in the middle of a submit that is not the only thing happening on that
+   turn. The popover provider is the page's because the dropdown renders into a portal. *@
+<MudPopoverProvider />
+
+<NsForm TModel="LookupRoundTripModel" Model="_model" OnSubmit="OnSubmit">
+    <NsPanel>
+        <Content>
+            <SelectLookup Create Label="Taller" @bind-Value="context.PickedId"
+                          @bind-Value:after="() => AfterPicked(context.PickedId)" />
+        </Content>
+        <Footer>
+            <NsSubmit />
+        </Footer>
+    </NsPanel>
+</NsForm>
+
+<p class="probe-picked">@_model.PickedId</p>
+<p class="probe-after">@_after</p>
+
+@code {
+
+    readonly LookupRoundTripModel _model = new();
+
+    string? _after;
+
+    protected override void OnCreated()
+    {
+        SetSize(NsSize.Sm);
+    }
+
+    async Task AfterPicked(Guid? id)
+    {
+        if (Services.GetService(typeof(SelectStore)) is not SelectStore store || id is not { } value)
+        {
+            _after = null;
+            return;
+        }
+
+        _after = (await store.Find(value, CancellationToken))?.DisplayName;
+    }
+
+    Task OnSubmit(SubmitEventArgs<LookupRoundTripModel> args)
+    {
+        return Task.CompletedTask;
+    }
+
+}

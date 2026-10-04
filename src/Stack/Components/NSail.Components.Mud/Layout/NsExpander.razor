@@ -1,0 +1,71 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using NSail.Localization
+
+@inject StringManager Strings
+
+@* A line that is always on screen and the detail behind it, one click away. Written for the
+   strip at the foot of a surface — the figure a document comes to, stated in the footer the
+   acts already occupy — which is why the detail opens ABOVE the summary: downward it would
+   open off the screen, and taken out of the flow it costs the row no height at all, so the
+   footer reads on one line whether or not anybody opened it. *@
+<div class="@GetClasses()" @onkeydown="OnKeyDown">
+    @* In the document whether or not it is open, hidden by the stylesheet while it is not: what
+       the summary states is DERIVED from what the detail holds — a total from the block of
+       figures behind it — and a detail torn out of the document takes that arithmetic, and any
+       field's registration in the surrounding form, with it. NsTabs' KeepPanelsAlive is the same
+       answer to the same trap; NsHelp's is the opposite one, and correct there, because the
+       paragraph it carries is content nobody asked for yet. *@
+    <div class="ns-expander-detail">
+        @Detail
+    </div>
+    <div class="ns-expander-summary">
+        @Summary
+        <NsButton As="NsAs.Inline"
+                  Breakpoint="NsBreakpoint.Never"
+                  Size="NsSize.Sm"
+                  Icon="@NsIcons.ChevronRight"
+                  Class="ns-expander-toggle"
+                  Label="@Strings.Translate("Common.Details")"
+                  Expanded="_open"
+                  OnClick="Toggle" />
+    </div>
+</div>
+
+@code {
+
+    bool _open;
+
+    /// <summary>The line that is always shown, beside the chevron that opens the rest.</summary>
+    [Parameter]
+    public RenderFragment? Summary { get; set; }
+
+    /// <summary>What the chevron opens, drawn over whatever sits above the summary.</summary>
+    [Parameter]
+    public RenderFragment? Detail { get; set; }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-expander")
+            .Add("ns-expander-open", _open)
+            .ToString();
+    }
+
+    void Toggle()
+    {
+        _open = !_open;
+    }
+
+    // Anything that opens on a click owes the same click a way back out; the chevron is that way
+    // and never leaves the screen, so the key is the courtesy and not the exit.
+    void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            _open = false;
+        }
+    }
+}

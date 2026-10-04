@@ -1,0 +1,24 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/lookup"
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@inherits NsPage
+
+@* Nueva OT, reduced: two fields of the same concept on one screen, each able to create it.
+   Creating from one of them is what used to write both. *@
+<p class="probe-first">@_first</p>
+<p class="probe-second">@_second</p>
+
+<SelectLookup Create Label="First" @bind-Value="_first" />
+<SelectLookup Create Label="Second" @bind-Value="_second" />
+
+@code {
+
+    Guid? _first;
+    Guid? _second;
+
+}

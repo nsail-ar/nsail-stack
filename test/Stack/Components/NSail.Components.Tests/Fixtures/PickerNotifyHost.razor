@@ -1,0 +1,67 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+@using NSail.Components
+
+@* Straight at the seam: a real EditContext, a picker, and a counter on OnFieldChanged.
+   The Value parameter is pushed from outside; nothing is typed. *@
+<MudPopoverProvider />
+
+<EditForm EditContext="_editContext">
+    <NsDateField TValue="DateOnly" Value="Model.DateOnlyValue"
+                 ValueChanged="OnValueChanged"
+                 ValueExpression="() => Model.DateOnlyValue" />
+</EditForm>
+
+@code {
+
+    EditContext _editContext = default!;
+
+    [Parameter, EditorRequired]
+    public FieldProbeModel Model { get; set; } = default!;
+
+    public int Notifications { get; private set; }
+
+    public List<string> Fields { get; } = [];
+
+    protected override void OnInitialized()
+    {
+        _editContext = new EditContext(Model);
+        _editContext.OnFieldChanged += (_, args) =>
+        {
+            Notifications++;
+            Fields.Add(args.FieldIdentifier.FieldName);
+        };
+    }
+
+    void OnValueChanged(DateOnly value)
+    {
+        Model.DateOnlyValue = value;
+    }
+
+    public void FillInPlace()
+    {
+        Model.DateOnlyValue = new DateOnly(2026, 4, 8);
+
+        StateHasChanged();
+    }
+
+    /// <summary>The other page shape: a fresh model instance, and the EditContext rebuilt
+    /// over it the way NsForm does.</summary>
+    public void Swap()
+    {
+        Model = FieldProbeModel.Preset();
+        _editContext = new EditContext(Model);
+        _editContext.OnFieldChanged += (_, args) =>
+        {
+            Notifications++;
+            Fields.Add("swapped:" + args.FieldIdentifier.FieldName);
+        };
+
+        StateHasChanged();
+    }
+}

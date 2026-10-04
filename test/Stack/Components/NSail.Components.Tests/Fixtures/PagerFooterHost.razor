@@ -1,0 +1,39 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+@* Icon buttons carry a MudTooltip, which is a popover: without a provider in the tree
+   MudBlazor throws before the grid renders at all. *@
+<MudPopoverProvider />
+
+@* A server-paged grid — OnQuery is what puts the pager under the table at all. *@
+<NsTable TRow="TestModel" Rows="Page" OnQuery="Query">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+        <NsTh />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd />
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    DataPage<TestModel> Page { get; set; } = new()
+    {
+        Items = [new TestModel { Name = "Ana", Age = 3 }],
+        PageIndex = 0,
+        PageSize = 10,
+        TotalCount = 18
+    };
+
+    Task Query(QueryEventArgs args)
+    {
+        return Task.CompletedTask;
+    }
+}

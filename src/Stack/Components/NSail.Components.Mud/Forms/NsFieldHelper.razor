@@ -1,0 +1,69 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@if (!HasError && !string.IsNullOrEmpty(Text))
+{
+    <NsText Secondary Size="NsSize.Xs" Class="ns-field-helper">@Text</NsText>
+}
+
+@* The words for the eye, drawn only where no input draws them. The vendor's own helper node
+   carries the sentence for every field that wraps an input, and borrowing its two classes is
+   what makes this one the same .75rem/1.66 box in the same error colour — the house invents no
+   second look for a refusal. It announces itself because nothing can describe it: with no input
+   there is no aria-describedby to hang on anything, so the clipped twin below is withheld too
+   (a node no reference reaches is read by nobody) and role="alert" speaks the sentence the
+   moment it arrives. *@
+@if (HasError && Shown)
+{
+    <p class="mud-input-helper-text mud-input-error ns-field-helper" role="alert">@Message</p>
+}
+
+@if (HasError && DescribedBy is { Length: > 0 })
+{
+    <span id="@DescribedBy" class="ns-field-described">@Message</span>
+}
+
+@code {
+
+    /// <summary>"What goes here" — the field's one-line hint (intentional-ui.md), rendered by
+    /// the house rather than through the vendor's own HelperText slot: that slot is one string
+    /// per control and the refusal is what NSail puts in it, so a hint routed there would be
+    /// the two competing for one node instead of the strip's two tenants taking turns
+    /// (ns-mud.css, the under-field zone). This renders in normal flow right after the field it
+    /// belongs to — real height, honest wrap. Every Ns*Field composes it once, here, so no
+    /// screen decides how a hint reaches the page.</summary>
+    [Parameter]
+    public string? Text { get; set; }
+
+    /// <summary>The refusal the field is currently drawing, verbatim. It arrives here for one
+    /// reason: the vendor draws those words in a node nothing names, so a screen reader is told
+    /// the input is invalid and none of the why. The copy below carries them where an
+    /// assistive technology can be pointed at them, and the field's aria-describedby does the
+    /// pointing.</summary>
+    [Parameter]
+    public string? Message { get; set; }
+
+    /// <summary>Whether the refusal's words are THIS component's to draw for the eye. Off for
+    /// every field that wraps a vendor input — that input draws the sentence itself, and a
+    /// second copy here would be the same message in two places. On for a field with no input
+    /// of its own (NsFieldRefusal), where nothing else would draw it at all.</summary>
+    [Parameter]
+    public bool Shown { get; set; }
+
+    /// <summary>The id the field hands its own input to be described by, minted by the field so
+    /// the reference and the node it names cannot be minted apart. Null while the field is
+    /// clean — there is no refusal to name yet, and nothing here is rendered either: a hidden
+    /// node no reference reaches is read by nobody, eye or otherwise.</summary>
+    [Parameter]
+    public string? DescribedBy { get; set; }
+
+    // Derived from the message rather than passed beside it: two flags for one condition can
+    // disagree, and the one that draws nothing wins. The hint yields the whole strip to a
+    // refusal, box included: both stand in normal flow under the field (ns-mud.css, the
+    // under-field zone), so a hint kept invisible would spend an empty line beside the very
+    // message it stepped aside for. Going costs nothing either — the two are the same
+    // .75rem/1.66 box, so a one-line refusal lands exactly where the hint stood.
+    bool HasError => !string.IsNullOrWhiteSpace(Message);
+}

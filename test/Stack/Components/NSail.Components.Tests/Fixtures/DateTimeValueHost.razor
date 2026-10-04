@@ -1,0 +1,19 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+
+@* Both pickers render through popover-bearing controls, so the provider has to be in the
+   tree for the field to render at all — the SelectValueHost rule, same reason. *@
+<MudPopoverProvider />
+
+<NsDateTimeField TValue="DateTime" Value="Value" ValueChanged="ValueChanged" />
+
+@code {
+
+    [Parameter]
+    public DateTime Value { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime> ValueChanged { get; set; }
+}

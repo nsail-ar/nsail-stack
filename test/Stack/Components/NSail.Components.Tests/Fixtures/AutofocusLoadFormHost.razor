@@ -1,0 +1,45 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@typeparam TModel where TModel : class, new()
+
+@* The create screen that reads its first model rather than handing one in
+   (CreateAppointmentNotePage): the document is not there to focus until OnLoad answers, and
+   this fixture holds that answer back until the test releases it. *@
+<MudPopoverProvider />
+
+<NsForm TModel="TModel" OnLoad="OnLoad" OnSubmit="OnSubmit" FocusFirstField="FocusFirstField">
+    <NsTextField @bind-Value="_text" />
+</NsForm>
+
+@code {
+
+    readonly TaskCompletionSource<TModel> _read = new();
+
+    string? _text;
+
+    public int Submits { get; private set; }
+
+    [Parameter]
+    public bool? FocusFirstField { get; set; }
+
+    public void Answer()
+    {
+        _read.TrySetResult(new TModel());
+    }
+
+    async Task OnLoad(LoadEventArgs<TModel> args)
+    {
+        args.Model = await _read.Task;
+    }
+
+    void OnSubmit(SubmitEventArgs<TModel> args)
+    {
+        Submits++;
+    }
+}

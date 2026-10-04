@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>NSail.Sample</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Generation\NSail.SourceGeneration.Annotations\NSail.SourceGeneration.Annotations.csproj" />
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj" />
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Http\NSail.Messaging.Http.csproj" />
+		<ProjectReference Include="..\..\Security\NSail.Security\NSail.Security.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="NSail.Messaging.Annotations" />
+		<Using Include="NSail.Messaging.Annotations.Method" Static="true" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Generation\NSail.SourceGenerator\NSail.SourceGenerator.csproj">
+			<OutputItemType>Analyzer</OutputItemType>
+			<PrivateAssets>all</PrivateAssets>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
+	</ItemGroup>
+
+</Project>

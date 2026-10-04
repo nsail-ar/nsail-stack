@@ -1,0 +1,13 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@* The nav drawer as NsMainLayout mounts it: a MudDrawer carrying the house's ns-nav-drawer
+   class, with NsNavMenu — an NsPanel since 8c0f65ac — inside it. *@
+<MudDrawer Open="true" Class="ns-nav-drawer">
+    <NsNavMenu />
+</MudDrawer>

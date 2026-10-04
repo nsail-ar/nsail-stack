@@ -1,0 +1,4 @@
+# Shell scripts must keep LF endings regardless of the checkout platform —
+# CRLF breaks the shebang and heredocs when these run on the Linux VPS.
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf

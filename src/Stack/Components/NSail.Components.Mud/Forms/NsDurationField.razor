@@ -1,0 +1,31 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+@* A length of time, not a point in one. A clock picker cannot carry a day or more —
+   TimeSpan.FromHours(24) reads back as 00:00 — so a span that can reach that far is asked
+   as a number of hours. NsTimeField stays the control for a time of day. *@
+<MudNumericField T="double?"
+                 Value="Hours"
+                 ValueChanged="OnHoursChanged"
+                 Label="@GetLabel()"
+                 Placeholder="@Placeholder"
+                 Required="IsRequired"
+                 Disabled="IsDisabled"
+                 ReadOnly="IsReadOnly"
+                 AutoFocus="AutoFocus"
+                 Immediate="Immediate"
+                 Min="Minimum"
+                 Format="0.##"
+                 Culture="@FigureCulture"
+                 Adornment="Adornment.End"
+                 AdornmentText="@Unit"
+                 Variant="Variant.Outlined"
+                 Margin="Margin.Dense"
+                 Error="@HasError()"
+                 ErrorText="@GetErrorText()"
+                 UserAttributes="InputAttributes" />
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />

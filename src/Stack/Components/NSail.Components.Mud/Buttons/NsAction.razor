@@ -1,0 +1,83 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+@using NSail.Metadata
+
+@inherits NsActBase
+
+@inject StringManager Strings
+@inject MetadataProvider Metadata
+
+@if (Offers(Action))
+{
+    <NsButton As="@As"
+              Icon="@(_running ? NsIcons.Progress : Action?.Icon)"
+              Breakpoint="@Breakpoint"
+              Label="@(_running ? Strings.Translate("Common.Loading") : Action?.GetLabel(Strings, Metadata))"
+              Disabled="@(Disabled || _running || (Action?.Disabled ?? false))"
+              Class="@Class"
+              Size="@Size"
+              OnClick="HandleClick" />
+}
+
+@code {
+
+    /// <summary>Runs an ActionItem — build one with NsPartial.GetAction(Method, [arg,] icon):
+    /// one call supplies the click, the icon and the label ("Actions.{Method}") together,
+    /// the same shape contributed actions already use. For a handler with no natural
+    /// ActionItem (or ambient wiring like NsSubmit/NsClose need), use NsButton directly.</summary>
+    [Parameter, EditorRequired]
+    public ActionItem? Action { get; set; }
+
+    /// <summary>Intention only. Inline is the default because an ActionItem's own face is
+    /// the toolbar glyph; a page that wants the act worded gives it an intention and a
+    /// Breakpoint the word survives.</summary>
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Inline;
+
+    /// <summary>Never by default, since a row's actions are glyphs: the derived label stays
+    /// the name and is not drawn. Always words the button (see NsButton).</summary>
+    [Parameter]
+    public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Never;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    // Holds the icon at NsIcons.Progress for as long as the call is in flight (nsail#1346):
+    // this is the one seam every contributed action's OnClick renders through, so the fix
+    // lands here rather than per contributor. No Runner: the handler already runs through
+    // one where that matters — NsPartial.GetAction wraps a host's own act, and a contributed
+    // OnClick reports its own refusals (WhatsAppTemplateSyncContributor) — so a second one
+    // here would report the same refusal twice. The guard below is what a Runner's own
+    // "already running" throw stands for elsewhere: Disabled keeps a re-entrant click from
+    // reaching the vendor's button at all, and this is the fallback for whatever reaches
+    // HandleClick anyway.
+    bool _running;
+
+    async Task HandleClick()
+    {
+        if (Action?.OnClick is null || _running)
+        {
+            return;
+        }
+
+        _running = true;
+
+        try
+        {
+            await Action.OnClick();
+        }
+        finally
+        {
+            _running = false;
+        }
+    }
+}

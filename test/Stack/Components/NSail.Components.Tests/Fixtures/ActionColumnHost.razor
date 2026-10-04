@@ -1,0 +1,49 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+@* Icon buttons carry a MudTooltip, which is a popover: without a provider in the tree
+   MudBlazor throws before the grid renders at all. *@
+<MudPopoverProvider />
+
+@* A grid shaped like the real ones: a keyed column, a computed column that labels its own
+   cells, and the action column, which names nothing at all — and whose whole content is one
+   toolbar, the way every swept grid composes it (intentional-ui, grids). *@
+<NsTable TRow="TestModel" Rows="Page">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+        <NsTh>Total</NsTh>
+        <NsTh />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd DataLabel="Total">@row.Age</NsTd>
+        <NsTd>
+            <NsActionToolbar Actions="Actions" Resolving="Resolving" Leading="Leading" Constant="Constant" MaxVisible="MaxVisible" />
+        </NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    [Parameter]
+    public IReadOnlyList<ActionItem> Actions { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<ActionItem> Leading { get; set; } = [];
+
+    [Parameter]
+    public ActionItem? Constant { get; set; }
+
+    [Parameter]
+    public int MaxVisible { get; set; } = 3;
+
+    [Parameter]
+    public bool Resolving { get; set; }
+
+    DataPage<TestModel> Page { get; } = DataPage<TestModel>.From([new TestModel { Name = "Ana", Age = 3 }]);
+}

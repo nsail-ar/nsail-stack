@@ -1,0 +1,36 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+
+@* The menu opens into a popover, which is a portal: without a provider in the tree there is
+   no open menu to assert anything about. *@
+<MudPopoverProvider />
+
+<NsMenu Icon="@NsIcons.More" Label="Session">
+    <NsMenuBlock>
+        <span class="probe-identity">Amina</span>
+    </NsMenuBlock>
+    <NsMenuItem Action="@Switch" Label="Alpha" Selected="true" />
+    <NsMenuItem Action="@Switch" Label="Beta" Selected="false" />
+    <NsMenuDivider />
+    <NsMenuItem Action="@Profile" />
+    <NsMenu Label="Change organization">
+        <NsMenuItem Action="@Switch" Label="Gamma" Selected="false" />
+    </NsMenu>
+    <MenuBodyProbe OnRan="OnSwitch" />
+    <NsMenuBlock>
+        <span class="probe-version">v1.2.3</span>
+    </NsMenuBlock>
+</NsMenu>
+
+@code {
+
+    [Parameter]
+    public EventCallback OnSwitch { get; set; }
+
+    ActionItem Switch => new() { Name = "SelectOrganization", OnClick = () => OnSwitch.InvokeAsync() };
+
+    ActionItem Profile => new() { Name = "Profile", PageType = typeof(ProbeAdminPage), Target = Surfaces.Main };
+}

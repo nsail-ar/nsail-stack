@@ -1,0 +1,35 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+@using MudBlazor
+@using NSail.Components
+
+@* An icon button carries a tooltip, which is a popover, and the provider only marks the
+   popover service ready from its own OnAfterRender: an outlet mounted in the very first pass
+   throws before anything renders. It arrives on the pass after, which is also how a real row
+   arrives — the grid draws, its page answers, and the row founds its outlet then. *@
+<MudPopoverProvider />
+
+<div id="page">
+    <span id="subject">@Context</span>
+    @if (Mounted)
+    {
+        <ProbeRowOutlet Context="@Context" Leading="Leading" Constant="Constant" />
+    }
+</div>
+
+@code {
+
+    [Parameter]
+    public bool Mounted { get; set; }
+
+    [Parameter]
+    public string Context { get; set; } = "Ana";
+
+    [Parameter]
+    public IReadOnlyList<ActionItem> Leading { get; set; } = [];
+
+    [Parameter]
+    public ActionItem? Constant { get; set; }
+}

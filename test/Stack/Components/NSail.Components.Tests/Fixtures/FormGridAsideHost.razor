@@ -1,0 +1,51 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@* The chain the container-query doctrine depends on, assembled the way a real screen
+   assembles it: a real MudLayout (both products' MainLayout.razor renders the aside inside
+   one, never bare), an aside drawer hardcoded Mode="Docked" the same way, the page's NsPanel
+   inside it, and the form's grid inside that. What the spans measure is whichever ancestor
+   declared ns-container, so this fixture exists to show which one that is when the grid is
+   hosted in a surface. The MudLayout ancestor matters beyond nesting: MudDrawer.IsFixed reads
+   "is my DrawerContainer literally a MudLayout", which flips the drawer between position:fixed
+   (the CSS chain's own comments assume this) and position:absolute against a bare stand-in --
+   a fixture without the real ancestor answers that question wrong. Xl is CreateWorkOrderPage's
+   own size (SetSize in OnCreated), not the Md default: the width chain a size-shaped bug would
+   hit is the one this fixture should carry. *@
+<CascadingValue Value="RouteTable">
+    <MudLayout>
+        <MudMainContent />
+        <NsSurfaceContext Name="@Surfaces.Aside" Context="surface">
+            @{ _surface = surface; surface.SetSize(NsSize.Xl); }
+            <NsDrawer Mode="NsDrawerMode.Docked">
+                <NsPanel>
+                    <Content>
+                        <NsFormGrid>
+                            <NsFormGridItem>
+                                <div class="grid-probe-date">fecha</div>
+                            </NsFormGridItem>
+                            <NsFormGridItem Grow>
+                                <div class="grid-probe-patient">paciente</div>
+                            </NsFormGridItem>
+                        </NsFormGrid>
+                    </Content>
+                </NsPanel>
+            </NsDrawer>
+        </NsSurfaceContext>
+    </MudLayout>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    public SurfaceContext? Surface => _surface;
+}

@@ -1,0 +1,74 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using MudBlazor
+
+@* The GoogleSettingsPage shape: the form renders first over an empty model, then the read
+   comes back and the page swaps in a loaded one. Nobody typed. *@
+<MudPopoverProvider />
+
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Context="surface">
+        @{ _surface = surface; }
+        <NsForm TModel="FieldProbeModel" Model="_model">
+            <NsCheckBox TValue="bool" @bind-Value="context.Flag" />
+            <NsTextField @bind-Value="context.Text" />
+            <NsSelect TItem="SelectOption" TValue="Guid?" @bind-Value="context.Choice"
+                      Items="Options" ItemValue="o => o.Id" ItemText="o => o.Name" />
+            <NsDateField TValue="DateOnly" @bind-Value="context.DateOnlyValue" />
+            <NsSubmit Class="tracked-submit" />
+        </NsForm>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+    FieldProbeModel _model = new();
+
+    static readonly SelectOption[] Options =
+    [
+        new(Guid.Parse("11111111-1111-1111-1111-111111111111"), "First"),
+        new(Guid.Parse("22222222-2222-2222-2222-222222222222"), "Second"),
+    ];
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    /// <summary>Replaces the model the way a page's Load() does — a fresh instance, after
+    /// the first render.</summary>
+    [Parameter]
+    public bool SwapInstance { get; set; } = true;
+
+    public SurfaceContext? Surface => _surface;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // The read coming back from the API.
+        await Task.Yield();
+
+        if (SwapInstance)
+        {
+            _model = FieldProbeModel.Preset();
+        }
+        else
+        {
+            // The other page shape: the same instance, filled in place.
+            var loaded = FieldProbeModel.Preset();
+            _model.Flag = loaded.Flag;
+            _model.Text = loaded.Text;
+            _model.Choice = loaded.Choice;
+            _model.DateOnlyValue = loaded.DateOnlyValue;
+        }
+
+        StateHasChanged();
+    }
+}

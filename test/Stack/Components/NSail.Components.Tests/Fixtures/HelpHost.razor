@@ -1,0 +1,16 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+
+@* The bubble and the click-catcher under it are both portals: the provider has to be in the
+   tree for either to exist at all (LookupCreateHost carries the same note). *@
+<MudPopoverProvider />
+
+<NsHelp Key="@Key" />
+
+@code {
+
+    [Parameter]
+    public string Key { get; set; } = string.Empty;
+}

@@ -1,0 +1,79 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@implements IDisposable
+
+@* The ways out of a dialog, answering the form inside it. MudDialog hands TitleContent to the
+   dialog instance, which the provider renders in its own tree — above the hosted component and the
+   NsForm in it — so no cascade of that form reaches the header X: the word travels UP through the
+   surface (NsForm reports, SurfaceContext.FormRefuses) and is re-provided here under the very name
+   NsForm cascades, so NsClose reads one name on every surface and knows which none it is on.
+   Nothing here would redraw on its own — mutating the surface re-renders nothing — so the surface's
+   own StateChanged is the wire, the same one NsPage subscribes to. Escape is the same exit's second
+   face and goes back to the host (Saving), which is the only one holding the dialog instance. *@
+<CascadingValue Value="Refuses" Name="ParentDisabled">
+    @ChildContent
+</CascadingValue>
+
+@code {
+
+    bool _reported;
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    /// <summary>Raised when the hosted form's own submit starts and when it ends, for the dialog's
+    /// other way out: Escape is the vendor's own handler and only the host holds the dialog instance
+    /// it is set on, so the host withdraws the key for the length of the save (NsOpenDialog). It
+    /// arrives as a call rather than being read there because the instance's cascade does not reach
+    /// TitleContent — the very reason this component exists.
+    /// <para>The SAVE and not the whole refusal, and that is a constraint rather than a shortcut: a
+    /// form standing Disabled refuses writes for as long as the screen says so, the X greys with it,
+    /// and a dialog takes no backdrop click and no Back — withdrawing Escape for a refusal with no
+    /// end would leave the reader with no way out of the dialog at all. A save ends.</para></summary>
+    [Parameter]
+    public EventCallback<bool> Saving { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    bool Refuses => Surface?.FormRefuses == true;
+
+    bool Saves => Surface?.FormRunning == true;
+
+    protected override void OnInitialized()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged += OnSurfaceStateChanged;
+        }
+    }
+
+    // Told on the edge and not on every render: the host's answer re-renders the dialog, which
+    // renders this again, so a call per render would never settle.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Saves == _reported)
+        {
+            return;
+        }
+
+        _reported = Saves;
+
+        await Saving.InvokeAsync(_reported);
+    }
+
+    void OnSurfaceStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged -= OnSurfaceStateChanged;
+        }
+    }
+}

@@ -1,0 +1,62 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+<MudPopoverProvider />
+
+@* the WorkOrder line editor's own shape (nsail#480): a column that always shows, one that only
+   earns its width from a container size up, and an inline editor covering both. Two rows, so
+   one can be open for editing while the other is still being read. *@
+@{
+    RenderFragment<TestModel> editor = row =>
+        @<text>
+            <NsTd For="() => row.Name">
+                <NsTextField @bind-Value="row.Name" Label="" />
+            </NsTd>
+            <NsTd For="() => row.Age">
+                <NsNumericField TValue="int" @bind-Value="row.Age" Label="" />
+            </NsTd>
+        </text>;
+}
+
+<NsTable TRow="TestModel" Rows="Page" Title="Renglones" RowEditor="editor" NewRow="NewRow" OnRowRemove="Remove">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+        <NsTh For="() => context.Age" Breakpoint="NsSize.Lg" />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd For="() => row.Age">@row.Age</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    readonly List<TestModel> _rows =
+    [
+        new TestModel { Name = "Ana", Age = 3 },
+        new TestModel { Name = "Bruno", Age = 4 }
+    ];
+
+    DataPage<TestModel> Page => DataPage<TestModel>.From(_rows);
+
+    TestModel NewRow()
+    {
+        var row = new TestModel();
+
+        _rows.Add(row);
+
+        return row;
+    }
+
+    void Remove(RowEditEventArgs<TestModel> args)
+    {
+        _rows.Remove(args.Row);
+    }
+}

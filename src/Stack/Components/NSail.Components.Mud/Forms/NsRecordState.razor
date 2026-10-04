@@ -1,0 +1,27 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@inherits NsFieldBase<bool>
+
+<MudSwitch T="bool"
+           Value="Value"
+           ValueChanged="SetValue"
+           For="For"
+           Label="@GetLabel()"
+           Disabled="IsDisabled"
+           ReadOnly="IsReadOnly"
+           Color="Color.Primary"
+           Size="Size.Small"
+           Class="ns-record-state" />
+
+@code {
+
+    /// <summary>The record's liveness as form data, never chrome: a regular field an editor
+    /// places in its own NsFormGrid, tracked and dirtied like any other. Flags that are data
+    /// stay in the form the same way.</summary>
+    protected override string? BuildDefaultLabel()
+    {
+        return Strings.Translate("Common.Enabled");
+    }
+}

@@ -1,0 +1,36 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+
+@* The popover the dropdown renders into is a portal: the provider has to be in the tree
+   for the open list to exist at all. *@
+<MudPopoverProvider />
+
+<NsAutocomplete TItem="SelectRef" TValue="Guid"
+                Items="Items"
+                ItemValue="@(item => item.Id)"
+                ItemText="@(item => item.DisplayName)"
+                Label="Persona"
+                CreateRoute="@CreateRoute"
+                CreateTarget="CreateTarget"
+                Value="Value"
+                ValueChanged="ValueChanged" />
+
+@code {
+
+    [Parameter]
+    public IEnumerable<SelectRef>? Items { get; set; }
+
+    [Parameter]
+    public string? CreateRoute { get; set; }
+
+    [Parameter]
+    public Surface? CreateTarget { get; set; }
+
+    [Parameter]
+    public Guid Value { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> ValueChanged { get; set; }
+}

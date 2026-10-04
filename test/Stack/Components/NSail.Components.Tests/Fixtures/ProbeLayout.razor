@@ -1,0 +1,29 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+@inherits LayoutComponentBase
+
+@using Microsoft.AspNetCore.Components
+@using NSail.Components
+
+@* The shape both products' MainLayout has: the routed page inside the shell's content, the
+   modal surface beside it, and the aside surface as a sibling slot — each hosting its own
+   routed page. A link resolves its href against whichever surface it is rendered under, so
+   the nesting is the fixture — a link wired directly under NsSurfaceContext never crosses
+   the layout at all. *@
+<NsMainLayout>
+    <Content>
+        @Body
+        <NsSurface Name="@Surfaces.Modal" Context="routeData">
+            <NsDialog>
+                <RouteView RouteData="@routeData" />
+            </NsDialog>
+        </NsSurface>
+    </Content>
+    <Aside>
+        <NsSurface Name="@Surfaces.Aside" Context="routeData">
+            <RouteView RouteData="@routeData" />
+        </NsSurface>
+    </Aside>
+</NsMainLayout>

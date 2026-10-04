@@ -1,0 +1,107 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@inject RouteTable Routes
+
+@* NsSurfaceContext expects RouteTable cascaded from NsRouter's tree, which this
+   dialog host sits outside of (MudDialogProvider is a sibling of the router in
+   App.razor) — re-provide the cascade locally from DI (same singleton either way)
+   so the rest of the machinery (NavigationLock, HasWork/HasChanges) is identical
+   to a routed page; only Close targets the MudDialog instead of a query parameter. *@
+<CascadingValue Value="Routes" IsFixed="true">
+    <NsSurfaceContext Name="@Surfaces.Dialog" Close="@(() => MudDialog.Close())" Context="surface">
+        @* MudBlazor's own .mud-dialog-content is a plain block box (flex:1 1 auto + overflow:auto
+           as a FLEX ITEM of .mud-dialog, but never display:flex itself) — the min-h-0/flex-1
+           chain NsPanel's own Header/Content/Footer split depends on needs its immediate parent
+           to BE a flex container, or those classes on NsPanel's root are inert. ContentClass
+           restores exactly the chain NsDialog (the routed modal surface) already gets for free
+           from NsCloseOnEscape's own flex-column div: NsForm renders display:contents, so a
+           hosted NsPanel becomes THIS element's direct flex child and can finally shrink to the
+           dialog's bounded height, letting its own Content scroll while its Footer stays pinned
+           — instead of .mud-dialog-content being the one and only scroll owner, dragging
+           whatever a form renders last (its submit row) into the scroll with everything else.
+
+           ns-container on the same box, for the same reason one level up: a dialog is
+           PORTALED — MudDialogProvider renders it as a sibling of the router, so not one of
+           its ancestors is the ns-container NsPanel and NsCard declare. Without it every
+           d-c-* utility inside it resolves against no container at all: a container query
+           that matches nothing leaves the mobile-first half standing, so d-c-none wins at
+           every width, a hosted NsButton's label (NsResponsive) hides forever, and every
+           dialog button renders icon-only. The dialog's own content box is the honest
+           measuring reference: it is what
+           the buttons are actually laid out in. A hosted NsPanel still declares its own
+           nearer one, so a form inside a dialog measures the panel exactly as it does
+           anywhere else — this only answers for what no panel wraps. *@
+        <MudDialog ContentClass="d-flex flex-column ns-container">
+            <TitleContent>
+                @* MudDialog hands TitleContent to the dialog instance, which renders it in
+                   the provider's tree — above this component, so nothing here stands in a
+                   cascade a routed surface's chrome takes for granted. Two are re-provided:
+                   the surface, or the X would erase itself for want of one, and the hosted
+                   form's own refusal, which travels up through that surface and comes back
+                   down through NsDialogExit — which reports the save back here for Escape,
+                   the one thing the X cannot answer for itself. DialogContent needs neither,
+                   MudDialog renders it in place. *@
+                <CascadingValue Value="surface" IsFixed="true">
+                    <NsDialogExit Saving="WithdrawEscape">
+                        <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween">
+                            @if (!string.IsNullOrEmpty(Title))
+                            {
+                                <MudText Typo="Typo.h6">@Title</MudText>
+                            }
+                            <NsClose As="NsAs.Inline" />
+                        </NsStack>
+                    </NsDialogExit>
+                </CascadingValue>
+            </TitleContent>
+            <DialogContent>
+                <DynamicComponent Type="ComponentType" Parameters="ResolvedParameters" />
+            </DialogContent>
+        </MudDialog>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    bool? _granted;
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Type ComponentType { get; set; } = default!;
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public IReadOnlyDictionary<string, object?>? ComponentParameters { get; set; }
+
+    Dictionary<string, object> ResolvedParameters =>
+        ComponentParameters?.ToDictionary(static kv => kv.Key, static kv => kv.Value!)
+        ?? [];
+
+    protected override void OnInitialized()
+    {
+        // What the opener asked for, read once: the restore below must hand back that answer and not
+        // a second literal of it, and null is its own answer there — the provider's global decides.
+        _granted = MudDialog.Options.CloseOnEscapeKey;
+    }
+
+    // Escape is the VENDOR's own handler and it closes this instance directly, reaching neither
+    // Surface.Close() nor the refusal the X draws. With BackdropClick off the X and Escape are the
+    // only two ways out (MudDialogManager), so greying one while the other walks out mid-save closes
+    // one of two: the key is withdrawn for the length of the save and handed back after it. The
+    // option is the whole answer here — rolling our own key handler would take a document-level
+    // interceptor's reach down to one element's focus and miss every key pressed with a select's
+    // popover open.
+    Task WithdrawEscape(bool saving)
+    {
+        return MudDialog.SetOptionsAsync(MudDialog.Options with
+        {
+            CloseOnEscapeKey = saving ? false : _granted
+        });
+    }
+}

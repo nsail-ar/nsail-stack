@@ -1,0 +1,16 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/guide"
+@page "/guide/{Chapter}"
+@namespace NSail.Components.Tests.Fixtures
+
+@* Stands in for a product's own guide screen: the Stack never names one, so a test that
+   exercises a door to the guide registers this the same way an app registers its own. *@
+<div class="probe-guide"></div>
+
+@code {
+
+    [Parameter]
+    public string? Chapter { get; set; }
+}

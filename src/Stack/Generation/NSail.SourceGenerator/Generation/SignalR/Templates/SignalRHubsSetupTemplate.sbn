@@ -1,0 +1,20 @@
+#nullable enable
+
+using Microsoft.Extensions.DependencyInjection;
+
+namespace {{ Namespace }}
+{
+    {{ ClassDeclaration }}
+    {
+        {{ MethodDeclaration }}
+        {
+            // The push's own services ride with the first kit that pushes, so a composition
+            // that mounts this kit alone — a handler harness — resolves every publisher it
+            // registers; a host that composed the push first (AddBaseWebApi) keeps its own.
+            global::NSail.Messaging.WebApi.Setup.AddPush({{ ServicesParameterName }});
+            {{~ for Message in Messages ~}}
+            {{ ServicesParameterName }}.AddScoped<global::NSail.Messaging.Runtime.Publishing.IPublisher<{{ Message }}>, global::NSail.Messaging.WebApi.Push.PushPublisher<{{ Message }}>>();
+            {{~ end ~}}
+        }
+    }
+}

@@ -1,0 +1,90 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using Microsoft.AspNetCore.Components.Forms
+@inherits NsUploadBase<Guid?>
+
+<NsField Label="@GetLabel()" Helper="@Helper" Disabled="IsDisabled" ErrorText="@GetFieldError()">
+    <NsStack Gap="NsSize.Sm" Class="ns-upload">
+        @if (Preview)
+        {
+            @if (Value is { } id)
+            {
+                <div class="ns-upload-cards">@Card(id)</div>
+            }
+            else
+            {
+                @Empty
+            }
+        }
+        <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween" Gap="NsSize.Sm" Class="ns-upload-line">
+            <NsText Size="NsSize.Sm" Secondary="@(Value is null)">@GetLineText(Value)</NsText>
+            @if (ClearsOnLine)
+            {
+                @Clear
+            }
+            else
+            {
+                @Trigger
+            }
+        </NsStack>
+    </NsStack>
+</NsField>
+
+@code {
+
+    // The one action icon rule: a field line carries exactly one, like every other Mud
+    // field. Without a preview the clear is it once there is something to clear; with a
+    // preview the image carries the clear and the line keeps the trigger.
+    bool ClearsOnLine => !Preview && Value is not null;
+
+    RenderFragment Empty =>
+    @<div class="ns-upload-empty">
+        <NsIcon Icon="NsIcons.Image" />
+    </div>;
+
+    // The vendor is the picker and nothing else: its own file list is suppressed with an
+    // empty SelectedTemplate, or it draws a chip of its own beside the house's thumbnail --
+    // the same file named twice, once in chrome this component does not own (Leonardo, twice:
+    // "sigue mostrando ese pill feo").
+    RenderFragment Trigger =>
+    @<span class="ns-upload-trigger">
+        <MudFileUpload T="IBrowserFile" FilesChanged="Pick" Accept="@Accept" Disabled="@IsTriggerDisabled()">
+            <CustomContent Context="upload">
+                <NsButton Label="@GetTriggerLabel()" Disabled="@IsTriggerDisabled()" OnClick="@(() => upload.OpenFilePickerAsync())" />
+            </CustomContent>
+            <SelectedTemplate></SelectedTemplate>
+        </MudFileUpload>
+    </span>;
+
+    RenderFragment<Guid> Card => id =>
+    @<div class="ns-upload-card">
+        @if (GetUrl(id) is { Length: > 0 } url)
+        {
+            <img src="@url" alt="@GetLineText(id)" />
+        }
+        @Clear
+    </div>;
+
+    RenderFragment Clear =>
+    @<NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Size="NsSize.Sm" Icon="NsIcons.Close" Class="ns-upload-clear"
+               Label="@GetClearLabel()"
+               Disabled="@IsClearDisabled()"
+               OnClick="@(() => SetValue(null))" />;
+
+    // One file is the whole value, so a pick with something already held REPLACES it: there is
+    // no list to append to and never was one to show.
+    async Task Pick(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        if (await Upload(file) is { } id)
+        {
+            await SetValue(id);
+        }
+    }
+}

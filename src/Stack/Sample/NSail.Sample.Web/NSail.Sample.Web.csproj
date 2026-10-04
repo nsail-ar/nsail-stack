@@ -1,0 +1,72 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+		<RootNamespace>NSail.Sample</RootNamespace>
+		<!-- The React build's output, served from disk by MapReactClient: never content of this
+		     project, so the Blazor client's static assets do not pick it up. -->
+		<DefaultItemExcludes>$(DefaultItemExcludes);react/**</DefaultItemExcludes>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.9" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\BaseServices\NSail.BaseServices.WebApi\NSail.BaseServices.WebApi.csproj" />
+		<ProjectReference Include="..\..\BaseServices\NSail.BaseServices.WebApp\NSail.BaseServices.WebApp.csproj" />
+		<ProjectReference Include="..\..\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
+		<ProjectReference Include="..\..\Data\NSail.Data\NSail.Data.csproj" />
+		<ProjectReference Include="..\..\Localization\NSail.Localization\NSail.Localization.csproj" />
+		<ProjectReference Include="..\NSail.Sample.Data\NSail.Sample.Data.csproj" />
+		<ProjectReference Include="..\NSail.Sample.Sdk\NSail.Sample.Sdk.csproj" />
+		<ProjectReference Include="..\NSail.Sample.Wasm\NSail.Sample.Wasm.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Generation\NSail.SourceGenerator\NSail.SourceGenerator.csproj">
+			<OutputItemType>Analyzer</OutputItemType>
+			<PrivateAssets>all</PrivateAssets>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
+	</ItemGroup>
+
+	<!-- The React client speaks to this host's Sdk through the TypeScript the generator writes from
+	     it, then is built into react/ beside this project. The client build needs the npm
+	     workspace installed at the repository root (npm install); without it the host still
+	     builds, and its React address answers a line saying the client is missing. -->
+	<ItemGroup>
+		<TypeScriptSdk Include="NSail.Sample.Sdk" />
+	</ItemGroup>
+
+	<PropertyGroup>
+		<ReactClientDirectory>$(MSBuildProjectDirectory)/../NSail.Sample.React</ReactClientDirectory>
+		<TypeScriptOutput>$(ReactClientDirectory)/src/sdk.ts</TypeScriptOutput>
+		<NpmWorkspaceRoot>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), package.json))</NpmWorkspaceRoot>
+	</PropertyGroup>
+
+	<Import Project="..\..\Generation\NSail.TypeScriptGenerator\NSail.TypeScriptGenerator.targets" />
+
+	<Target Name="BuildReactClient"
+	        AfterTargets="GenerateTypeScript"
+	        Condition="Exists('$(NpmWorkspaceRoot)/node_modules')"
+	        Inputs="$(TypeScriptOutput);@(ReactClientSource)"
+	        Outputs="$(MSBuildProjectDirectory)/react/index.html">
+		<Exec Command="npm run build --workspace=@nsail/sample-react" WorkingDirectory="$(NpmWorkspaceRoot)" />
+	</Target>
+
+	<Target Name="WarnReactClientMissing" AfterTargets="GenerateTypeScript" Condition="!Exists('$(NpmWorkspaceRoot)/node_modules')">
+		<Message Importance="high" Text="NSail.Sample.Web: the React client was not built (run npm install at $(NpmWorkspaceRoot))." />
+	</Target>
+
+	<ItemGroup>
+		<ReactClientSource Include="$(ReactClientDirectory)/src/**;$(ReactClientDirectory)/index.html;$(ReactClientDirectory)/vite.config.ts" />
+		<ReactClientSource Include="$(MSBuildProjectDirectory)/../../Components/NSail.Components.React/src/**" />
+		<ReactClientSource Include="$(MSBuildProjectDirectory)/../../Messaging/NSail.Messaging.TypeScript/src/**" />
+	</ItemGroup>
+
+</Project>

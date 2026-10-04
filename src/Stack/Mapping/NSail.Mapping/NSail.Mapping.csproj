@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<ProjectReference Include="..\NSail.Mapping.Annotations\NSail.Mapping.Annotations.csproj" />
+	</ItemGroup>
+
+</Project>

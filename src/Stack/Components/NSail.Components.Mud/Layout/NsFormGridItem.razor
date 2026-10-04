@@ -1,0 +1,54 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<div class="@GetClasses()">
+    @ChildContent
+</div>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Fill the row's free space instead of taking the field's own width, sharing that
+    /// surplus equally with any other growing item on the line. This is the escape hatch the
+    /// content-width default leaves open: a field whose natural width the screen would rather see
+    /// stretched — a free-text name beside short identity fields — asks for it here, and a
+    /// content-width field forced to fill when the layout calls for it says so the same way
+    /// (Leonardo, "por las dudas"). Ignored when <see cref="Full"/> is set.</summary>
+    [Parameter]
+    public bool Grow { get; set; }
+
+    /// <summary>Take the whole row alone — the mode for a block that is not a header field: a
+    /// line editor, a notes area, a sub-panel. It is not a width the eye reads as a field; it is
+    /// "this content owns its line", so it never shares and never sits at a field's content
+    /// width.</summary>
+    [Parameter]
+    public bool Full { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    // Three natures, never a fraction: content-width (the default — the field's own width, never
+    // stretched to fill a lonely row), grow (fills and shares the surplus), and full (a block that
+    // owns its line). Full wins over Grow so a block asked for both is unambiguous rather than
+    // guarded at the call site.
+    string GetClasses()
+    {
+        return new NsClassBuilder(ModeClass())
+            .Add(Class)
+            .ToString();
+    }
+
+    string ModeClass()
+    {
+        if (Full)
+        {
+            return "ns-form-field-full";
+        }
+
+        return Grow ? "ns-form-field-grow" : "ns-form-field";
+    }
+}

@@ -1,0 +1,187 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using NSail.Localization
+@using NSail.Metadata
+@using NSail.Security
+
+@inject IEnumerable<IDashboardContributor> Contributors
+@inject PageGate Gate
+@inject RouteTable Routes
+@inject StringManager Strings
+@inject MetadataProvider Metadata
+@inject IServiceProvider Services
+
+@* Nothing renders until the gate has answered: the empty content shown first and the cards
+   a moment later is exactly the content→content flash the one-arrival rule forbids. *@
+@if (_resolved && _items.Count == 0)
+{
+    @Empty
+}
+else if (_items.Count > 0)
+{
+    @* The dashboard is the one main-surface page that is neither a table nor a panel, so it
+       says out loud who owns its scroll. Without Grow+Scroll the grid is a stretched flex
+       item of NsContainer: its height is the container's, the auto rows are computed against
+       that definite height, and every card is compressed to a fraction of its content —
+       which then paints outside its own border. A scrollbar further out cannot fix a box
+       that was told to be short. *@
+    <NsStack Grow Scroll>
+        <div class="ns-dashboard">
+            @foreach (var item in _items)
+            {
+                <div class="@(item.Tall == true ? "ns-dashboard-item ns-dashboard-tall" : "ns-dashboard-item")">
+                    @* The slot is what tells a card that rendered nothing from one that did:
+                       the wrapper always renders, so without a marked place for the card the
+                       stylesheet has no way to ask, and a mute card pins an empty cell open.
+                       d-contents keeps the slot out of the layout, so the card is still the
+                       grid item's own child. *@
+                    <div class="ns-dashboard-card d-contents">
+                        @* The door is cascaded, not drawn here: it belongs in the card
+                           header's own row, end-aligned beside whatever acts the card already
+                           put there, and only the card knows where that row is. Not IsFixed:
+                           the gate is asked again whenever the parameters change, and a door
+                           that appeared after a session gained the page must reach the card
+                           that was already standing. *@
+                        <CascadingValue Value="@Door(item)">
+                            <DynamicComponent @key="item.CardType" Type="item.CardType!" Parameters="@GetParameters(item)" />
+                        </CascadingValue>
+                    </div>
+                </div>
+            }
+        </div>
+    </NsStack>
+}
+
+@code {
+
+    IReadOnlyList<DashboardItem> _items = [];
+
+    // Keyed by CardType rather than PageType: two cards could name the same destination, and
+    // the door belongs to the card it was contributed beside.
+    Dictionary<Type, CardDoor> _doors = [];
+
+    bool _resolved;
+
+    /// <summary>What this dashboard shows when the session may open none of the contributed
+    /// cards — the app's own answer to "there is nothing here for you", derived from the
+    /// permission model rather than from who the caller is.</summary>
+    [Parameter]
+    public RenderFragment? Empty { get; set; }
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Awaiting the state is ordering as much as it is the user: the client fills its
+        // Session and effective policies while this task completes, and the gate reads
+        // those. Asked any earlier, every card answers "denied".
+        var user = AuthenticationState is null
+            ? new ClaimsPrincipal(new ClaimsIdentity())
+            : (await AuthenticationState).User;
+
+        // Resolved, never injected: a host with no security registered (a component test, a
+        // surface without Iam) must still render, the same permissive default CanSend takes.
+        var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
+        var session = (Services.GetService(typeof(SessionProvider)) as SessionProvider)?.Session;
+
+        _items = await Collect(Contributors, Gate, user, security, session);
+        _doors = await ResolveDoors(_items, Gate, Routes, Strings, Metadata, user);
+        _resolved = true;
+    }
+
+    CardDoor? Door(DashboardItem item)
+    {
+        return _doors.GetValueOrDefault(item.CardType!);
+    }
+
+    // The door is gated by the destination page's own authorize attributes, the same single
+    // gate the nav menu, a lookup's create entry and NsPageLink itself ask — so a card visible
+    // to a session that cannot open its page renders with no door rather than a dead one.
+    static async Task<Dictionary<Type, CardDoor>> ResolveDoors(
+        IReadOnlyList<DashboardItem> items, PageGate gate, RouteTable routes,
+        StringManager strings, MetadataProvider metadata, ClaimsPrincipal user)
+    {
+        var doors = new Dictionary<Type, CardDoor>();
+
+        foreach (var item in items)
+        {
+            if (item.PageType is not { } pageType || !await gate.Allows(pageType, user))
+            {
+                continue;
+            }
+
+            // Main is said here and nowhere else: every dashboard card is a screen the session
+            // stays in, never a panel passed through, so the door is minted in one place rather
+            // than left for a card to declare (Leonardo, 2026-09-16: "todos en main").
+            doors[item.CardType!] = new CardDoor(
+                routes.GetUrl(pageType),
+                strings.Translate(metadata.KeyFor(item.CardType!, "Title")),
+                Surfaces.Main);
+        }
+
+        return doors;
+    }
+
+    internal static async Task<IReadOnlyList<DashboardItem>> Collect(
+        IEnumerable<IDashboardContributor> contributors, PageGate gate, ClaimsPrincipal user,
+        SecurityManager? security = null, Session? session = null)
+    {
+        var items = new List<DashboardItem>();
+
+        foreach (var contributor in contributors)
+        {
+            items.AddRange(await contributor.GetItems());
+        }
+
+        return await Allowed(items, gate, user, security, session);
+    }
+
+    // The merge runs before the gate, so a card hidden by an app never reaches it and an
+    // override arrives carrying the kit's own CardType — which is what the gate reads.
+    /// <summary>Merges and gates a dashboard's contributed items the same way `NsDashboard`
+    /// itself does — public so a product's own composition test can prove what a session sees
+    /// against its real `IDashboardContributor`s, `SecurityManager` and seeded policies, rather
+    /// than reimplementing the gate by hand.</summary>
+    public static async Task<IReadOnlyList<DashboardItem>> Allowed(
+        IReadOnlyList<DashboardItem> items, PageGate gate, ClaimsPrincipal user,
+        SecurityManager? security = null, Session? session = null)
+    {
+        var merged = DashboardItem.Merge(items);
+        var allowed = new List<DashboardItem>(merged.Count);
+
+        foreach (var item in merged)
+        {
+            if (!await gate.Allows(item.CardType!, user))
+            {
+                continue;
+            }
+
+            // The coarse gate answers "may this session ever send this message" — a card whose
+            // own use of it is inherently org-wide or professional-only can pass that on a
+            // portal session's constrained grant and then have nothing to show (nsail#1607).
+            // Eligible is the card's own, narrower answer for exactly that gap.
+            if (item.Eligible?.Invoke(security, session) == false)
+            {
+                continue;
+            }
+
+            allowed.Add(item);
+        }
+
+        return allowed;
+    }
+
+    static Dictionary<string, object> GetParameters(DashboardItem item)
+    {
+        return new Dictionary<string, object>
+        {
+            ["Icon"] = item.Icon!
+        };
+    }
+}

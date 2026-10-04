@@ -1,0 +1,40 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Forms
+@using NSail.Components
+
+<NsForm TModel="TabFormModel" Model="Model" OnSubmit="HandleSubmit" @ref="_form">
+    <NsTabs>
+        <NsTab Title="First">
+            <NsTextField @bind-Value="context.First" />
+        </NsTab>
+        <NsTab Title="Second">
+            <InitTracker @ref="_tracker" />
+            <NsTextField @bind-Value="context.Second" />
+        </NsTab>
+    </NsTabs>
+</NsForm>
+
+@code {
+
+    NsForm<TabFormModel>? _form;
+    InitTracker? _tracker;
+
+    [Parameter, EditorRequired]
+    public TabFormModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    public NsForm<TabFormModel>? Form => _form;
+
+    public int? TrackerInitCount => _tracker?.InitCount;
+
+    async Task HandleSubmit()
+    {
+        await Submitted.InvokeAsync();
+    }
+}

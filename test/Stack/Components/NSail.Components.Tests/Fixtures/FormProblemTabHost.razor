@@ -1,0 +1,32 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+<NsForm TModel="FormProblemModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsTabs>
+        <NsTab Title="First">
+            <NsTextField @bind-Value="context.Name" />
+        </NsTab>
+        <NsTab Title="Second">
+            <NsTextField @bind-Value="context.Alias" />
+        </NsTab>
+    </NsTabs>
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public FormProblemModel Model { get; set; } = default!;
+
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    {
+        args.Problem = Problem;
+    }
+}

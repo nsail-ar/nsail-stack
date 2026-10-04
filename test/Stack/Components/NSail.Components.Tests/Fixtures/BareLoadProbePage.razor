@@ -1,0 +1,51 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+@inherits NsPage
+
+@* The unconverted screen: everything it needs is read in OnCreatedAsync, with no region to
+   draw a failure in. What it owes is narrower -- the app it is mounted in must survive the
+   read failing, and must survive a click that lands while the read is still in flight. The
+   button runs its work the way GetAction runs a row's. *@
+<div id="ns-probe-page">page</div>
+<NsButton Label="Act" OnClick="Act" Class="ns-probe-act" />
+
+@code {
+
+    [Parameter]
+    public Problem? Refusal { get; set; }
+
+    /// <summary>Holds the page's own load open so a test can click during it.</summary>
+    [Parameter]
+    public TaskCompletionSource? Gate { get; set; }
+
+    public int Acts { get; private set; }
+
+    protected override async Task OnCreatedAsync()
+    {
+        if (Gate is not null)
+        {
+            await Gate.Task;
+        }
+
+        if (Refusal is not null)
+        {
+            throw new BusinessException(Refusal);
+        }
+    }
+
+    Task Act()
+    {
+        return Run(() =>
+        {
+            Acts++;
+
+            return Task.CompletedTask;
+        });
+    }
+}

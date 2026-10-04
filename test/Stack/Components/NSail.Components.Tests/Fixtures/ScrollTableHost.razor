@@ -1,0 +1,53 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+<MudPopoverProvider />
+
+@* Mode is set explicitly: these tests pin the scroll branch itself, not the device
+   question that Auto asks to reach it. *@
+<NsTable TRow="TestModel" Rows="Page" OnQuery="Query" Mode="Mode">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    [Parameter]
+    public NsTableMode Mode { get; set; } = NsTableMode.Scroll;
+
+    [Parameter]
+    public int Total { get; set; } = 60;
+
+    public int Queries { get; private set; }
+
+    DataPage<TestModel> Page { get; set; } = DataPage<TestModel>.Empty();
+
+    Task Query(QueryEventArgs args)
+    {
+        Queries++;
+
+        var skip = args.PageIndex * args.PageSize;
+
+        Page = new DataPage<TestModel>
+        {
+            Items = Enumerable
+                .Range(skip, Math.Clamp(Total - skip, 0, args.PageSize))
+                .Select(i => new TestModel { Name = $"Row {i:D3}", Age = i })
+                .ToList(),
+            PageIndex = args.PageIndex,
+            PageSize = args.PageSize,
+            TotalCount = Total
+        };
+
+        return Task.CompletedTask;
+    }
+}

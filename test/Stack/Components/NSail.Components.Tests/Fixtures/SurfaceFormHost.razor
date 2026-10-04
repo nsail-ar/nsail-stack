@@ -1,0 +1,188 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+@* The same pair NsRouter mounts for every routed page — a real NsSurfaceContext wrapping a
+   real NsForm — so the close decision is exercised through the machinery a browser drives
+   rather than a stand-in calling Close() by hand. Name null is the main surface; a named one
+   ("aside", "modal") is an overlay; a Close override is what NsOpenDialog hands a dialog. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Name="Name" Close="Close" Context="surface">
+        @{ _surface = surface; }
+        <NsForm TModel="SubmitTrackingModel" Model="Model" OnSubmit="HandleSubmit" Untracked="Untracked" KeepOpen="KeepOpen" @ref="_form">
+            <NsTextField @bind-Value="context.Name" />
+            @* The collection editor every real document carries beside its fields: it mutates
+               state the EditContext never sees, so it reports the SURFACE rather than the form
+               (LocationsEditor, EyesEditor, every *LinesEditor). *@
+            <DirtySourceProbe @ref="_probe" />
+            <NsSubmit />
+        </NsForm>
+        @* The settings page's shape: a second tracked document on the same surface, saved by
+           its own button (SmtpSettingsPage/WhatsAppSettingsPage + ChannelQuotaPanel). Off by
+           default, so every other fact here reads one form and one submit. *@
+        @if (Sibling)
+        {
+            <NsForm TModel="SubmitTrackingModel" Model="_sibling" OnSubmit="HandleSibling" Untracked="SiblingUntracked" @ref="_siblingForm">
+                <NsTextField @bind-Value="context.Name" />
+                <NsSubmit />
+            </NsForm>
+        }
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    readonly SubmitTrackingModel _sibling = new();
+
+    SurfaceContext? _surface;
+    DirtySourceProbe? _probe;
+    bool _reported;
+    NsForm<SubmitTrackingModel>? _form;
+    NsForm<SubmitTrackingModel>? _siblingForm;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public SubmitTrackingModel Model { get; set; } = default!;
+
+    [Parameter]
+    public Surface? Name { get; set; }
+
+    [Parameter]
+    public Action? Close { get; set; }
+
+    [Parameter]
+    public bool Untracked { get; set; }
+
+    [Parameter]
+    public bool KeepOpen { get; set; }
+
+    /// <summary>Renders a second tracked form beside the first, on the same surface.</summary>
+    [Parameter]
+    public bool Sibling { get; set; }
+
+    /// <summary>That second form as a filter or an act instead of a document — the "Probar" a
+    /// settings page draws beside its Guardar (SmtpSettingsPage, WhatsAppSettingsPage).</summary>
+    [Parameter]
+    public bool SiblingUntracked { get; set; }
+
+    /// <summary>The route the handler moves its own surface to before returning — what every
+    /// create page does on save (Navigate&lt;UpdateXPage&gt;, create-thin-then-enrich).</summary>
+    [Parameter]
+    public string? NavigatesTo { get; set; }
+
+    /// <summary>What the server answered, reported the way a real page reports it: on the
+    /// submit args, for the Runner to raise.</summary>
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    /// <summary>The handler gives up before saving anything — LocationForm's unchosen type, a
+    /// confirmation the user declined — and says so the only way it can.</summary>
+    [Parameter]
+    public bool Aborts { get; set; }
+
+    /// <summary>The editor reports the surface while the submit is in flight, rather than before
+    /// it: the save's own echo — a render the handler's publishes provoked re-entering an editor,
+    /// an async default landing late.</summary>
+    [Parameter]
+    public bool ReportsWhileSaving { get; set; }
+
+    /// <summary>The editor is re-entered by the render the SPEND itself provokes, before the
+    /// handler has begun: the surface going clean is a StateChanged, NsPage turns that into a
+    /// StateHasChanged, and an editor whose rows no EditContext sees reports itself again from in
+    /// there. Earlier than ReportsWhileSaving by two statements, which is the whole point.</summary>
+    [Parameter]
+    public bool ReportsOnTheSpend { get; set; }
+
+    /// <summary>The OTHER document reports itself while this one's submit is in flight: a person
+    /// typing into the second form on a settings screen while the first one saves. Nothing about
+    /// that edit belongs to this submit, so neither its spend nor its window may take it.</summary>
+    [Parameter]
+    public bool SiblingReportsWhileSaving { get; set; }
+
+    /// <summary>Whatever else a fact needs to happen WHILE this submit is in flight, in the order
+    /// it wants: the echo and the sibling's own submit interleaved, which is the only way to say
+    /// which of them came first.</summary>
+    [Parameter]
+    public Func<SurfaceFormHost, Task>? WhileSaving { get; set; }
+
+    /// <summary>The same, inside the SIBLING's own submit: its echo, its refusal (args.Abort) —
+    /// the interleavings only a second document can make.</summary>
+    [Parameter]
+    public Func<SurfaceFormHost, SubmitEventArgs<SubmitTrackingModel>, Task>? WhileSiblingSaving { get; set; }
+
+    public SurfaceContext? Surface => _surface;
+
+    public DirtySourceProbe? Probe => _probe;
+
+    public NsForm<SubmitTrackingModel>? Form => _form;
+
+    public NsForm<SubmitTrackingModel>? SiblingForm => _siblingForm;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && ReportsOnTheSpend && _surface is not null)
+        {
+            _surface.StateChanged += OnSurfaceWentClean;
+        }
+    }
+
+    // The spend's own answer, taken once: the surface says it holds no changes and the editor
+    // reports again from the render that announcement provokes.
+    void OnSurfaceWentClean()
+    {
+        if (_reported || _surface is null || _surface.HasChanges)
+        {
+            return;
+        }
+
+        _reported = true;
+
+        _probe?.MarkDirty();
+    }
+
+    async Task HandleSubmit(SubmitEventArgs<SubmitTrackingModel> args)
+    {
+        if (ReportsWhileSaving)
+        {
+            _probe?.MarkDirty();
+        }
+
+        if (SiblingReportsWhileSaving && _siblingForm is not null)
+        {
+            _surface?.SetDirty(_siblingForm);
+        }
+
+        if (WhileSaving is not null)
+        {
+            await WhileSaving(this);
+        }
+
+        if (Aborts)
+        {
+            args.Abort();
+
+            return;
+        }
+
+        args.Problem = Problem;
+
+        if (Problem is null && NavigatesTo is not null)
+        {
+            _surface?.Navigate(NavigatesTo);
+        }
+    }
+
+    async Task HandleSibling(SubmitEventArgs<SubmitTrackingModel> args)
+    {
+        if (WhileSiblingSaving is not null)
+        {
+            await WhileSiblingSaving(this, args);
+        }
+    }
+}

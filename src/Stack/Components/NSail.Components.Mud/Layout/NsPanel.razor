@@ -1,0 +1,118 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@implements IDisposable
+
+<div class="@GetClasses()">
+
+    @if (Header is not null)
+    {
+        <div>
+            @Header
+        </div>
+    }
+
+    @if (Content is not null)
+    {
+        @* gap-2 spaces stacked sections (a toolbar above its grid); inert with a single child.
+           ns-scroll-shadow (ns-mud.css): the scroll edge itself says there is more, a
+           gradient that exists only while content hides in that direction — every panel and
+           dialog inherits it centrally, from here. *@
+        <div class="d-flex flex-column flex-fill min-h-0 overflow-y-auto gap-2 ns-scroll-shadow">
+            @* A panel's content always grows and always owns this scroll, so anything inside it
+               that would own a scroll of its own (NsTabs' panel wrapper) has a real height to
+               resolve against. NsCard says the same thing, conditionally on its own Grow. *@
+            <CascadingValue Value="@ContentGrowth.Grows" IsFixed="true">
+                @Content
+            </CascadingValue>
+        </div>
+    }
+
+    @if (Footer is not null)
+    {
+        @* ns-panel-footer: the one hook every document page's footer shares (dialogs and
+           forms alike), so the emphasis-ladder collapse (ns-mud.css) scopes to it centrally
+           instead of each page wiring its own Breakpoint. *@
+        <div class="d-flex justify-end align-center gap-2 ns-panel-footer">
+            @* The enclosing form's field-less refusals, seated in the row the buttons already
+               occupy: flexible width beside right-anchored buttons, so appearing reserves
+               nothing and moves nothing. Claimed in OnParametersSet so the form knows not to
+               draw its own fallback strip. *@
+            @if (Form is { } form && form.Problems.Count > 0)
+            {
+                <div class="ns-form-problem ns-form-problem-shown ns-form-problem-inline" role="alert">
+                    <div class="ns-form-problem-text">
+                        @foreach (var text in form.Problems)
+                        {
+                            <span>@text</span>
+                        }
+                    </div>
+                    @* Beside the message, not under it: the strip is the flexible member of the
+                       row the buttons already occupy, so an act that added a line would move
+                       them. *@
+                    @if (form.ReloadAct is { } label)
+                    {
+                        <button type="button" class="ns-form-problem-act" @onclick="form.Reload">@label</button>
+                    }
+                </div>
+            }
+            @Footer
+        </div>
+    }
+
+</div>
+
+@code {
+
+    bool _claimed;
+
+    [Parameter]
+    public bool Grow { get; set; } = true;
+
+    // ns-container: the screen's chrome is what d-c-* utilities measure against, so a
+    // control collapses on the width this panel has, not the browser window's.
+    string GetClasses() => new NsClassBuilder("ns-container d-flex flex-column min-h-0 gap-4")
+        .Add("flex-1", Grow)
+        .ToString();
+
+    [Parameter]
+    public RenderFragment? Header { get; set; }
+
+    [Parameter]
+    public RenderFragment? Content { get; set; }
+
+    [Parameter]
+    public RenderFragment? Footer { get; set; }
+
+    [CascadingParameter]
+    IFormProblems? Form { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // Only a panel that renders a footer claims: the claim is a promise to show them,
+        // and a footerless panel has nowhere to keep it.
+        if (!_claimed && Form is not null && Footer is not null)
+        {
+            Form.Claim();
+            Form.Changed += OnFormChanged;
+            _claimed = true;
+        }
+    }
+
+    void OnFormChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        if (_claimed && Form is not null)
+        {
+            Form.Release();
+            Form.Changed -= OnFormChanged;
+            _claimed = false;
+        }
+    }
+}

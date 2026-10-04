@@ -1,0 +1,30 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@inherits LayoutComponentBase
+@using NSail.Sample.Home
+
+<NsMainLayout>
+    <Drawer>
+        <NsNavMenu />
+    </Drawer>
+    <Content>
+        <NsContainer>
+            <NsErrorBoundary HomePage="typeof(HomePage)">
+                @Body
+            </NsErrorBoundary>
+        </NsContainer>
+        <NsSurface Name="@Surfaces.Modal" Context="routeData">
+            <NsDialog>
+                <RouteView RouteData="@routeData" />
+            </NsDialog>
+        </NsSurface>
+    </Content>
+    <Aside>
+        <NsSurface Name="@Surfaces.Aside" Context="routeData">
+            <NsDrawer Mode="NsDrawerMode.Docked">
+                <RouteView RouteData="@routeData" />
+            </NsDrawer>
+        </NsSurface>
+    </Aside>
+</NsMainLayout>

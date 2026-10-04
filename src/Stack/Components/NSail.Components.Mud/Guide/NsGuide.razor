@@ -1,0 +1,287 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.JSInterop
+@using NSail.Localization
+@using NSail.Text
+
+@inherits NsComponent
+
+@inject IEnumerable<IGuideContributor> Contributors
+@inject GuideReader Reader
+@inject GuideRoute Route
+@inject StringManager Strings
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@if (_chapters.Count > 0)
+{
+    <div class="ns-guide">
+
+        @* The index beside the content: every chapter in weight order and, under the open one,
+           its own sections. One line per entry, the shape the onboarding's progress rail already
+           has (ui/wizard.md) — the chapter list costs no fetch, the sections appear with the
+           chapter they were read off. Below the drawer's own edge this same rail is what the
+           drawer draws, so the two are never on screen together. *@
+        @if (IsMain)
+        {
+            <nav class="@GetRailClasses()">
+                @Rail()
+            </nav>
+        }
+
+        <div class="ns-guide-page">
+
+            @* The index inside an overlay — the aside a guide button opens, full screen on a
+               phone: the frame's own drawer is behind it and out of reach, and a column beside
+               nothing is not a rail, so the chapter list is a choice a switcher offers and the
+               open chapter's sections stay a list because they are where the reader is. *@
+            @if (!IsMain)
+            {
+                <div class="ns-guide-index">
+                    <NsMenu Label="@GetName(_open)">
+                        @foreach (var chapter in _chapters)
+                        {
+                            <NsMenuItem Action="@ChapterAction(chapter)"
+                                        Label="@GetName(chapter)"
+                                        Selected="@IsOpen(chapter)" />
+                        }
+                    </NsMenu>
+
+                    @foreach (var section in Sections)
+                    {
+                        <NsLink Href="@Route.GetUrl(_open!.File)"
+                                Fragment="@section.Slug"
+                                Label="@section.Text"
+                                Class="@SectionClasses(section)" />
+                    }
+                </div>
+            }
+
+            <div class="ns-markdown ns-guide-body">
+                @if (Body is { } body)
+                {
+                    @Markdown.ToHtml(body.Body, body.Options)
+                }
+                else if (IsMissing)
+                {
+                    <NsText>@Strings.Translate("Common.GuideMissing")</NsText>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    IReadOnlyList<GuideItem> _chapters = [];
+    GuideItem? _open;
+    GuideItem? _requested;
+    GuideItem? _read;
+    GuideChapter? _body;
+    string? _shown;
+    RenderFragment? _published;
+
+    /// <summary>The chapter's own file name, off the address (/guide/{chapter}). Unknown or
+    /// absent opens the first chapter, so both /guide and a stale link land somewhere.</summary>
+    [Parameter]
+    public string? Chapter { get; set; }
+
+    // What is on screen is bound to the chapter it was read for, never merely to "something was
+    // read": the rail marks the new chapter the moment the address changes, and a body kept from
+    // the previous one would then be the wrong text under the right title for as long as the
+    // fetch takes. _read names the chapter _body answers for; until they agree the chapter is
+    // still arriving and the page shows nothing.
+    bool IsRead => _open is not null && ReferenceEquals(_read, _open);
+
+    GuideChapter? Body => IsRead ? _body : null;
+
+    bool IsMissing => IsRead && _body is null;
+
+    IReadOnlyList<MarkdownHeading> Sections => Body?.Sections ?? [];
+
+    /// <summary>Which of the two faces this instance wears. The main surface has a frame around
+    /// it — a column beside the content and, under the drawer's own edge, the drawer; an overlay
+    /// has neither and gets the switcher. The hosting surface decides it, never the caller: the
+    /// same markup is written once and reads correctly wherever a guide button opens it.</summary>
+    bool IsMain => Surface is null || Surface.IsMain;
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _chapters = await GuideItem.Collect(Contributors);
+        _open = GuideItem.Open(_chapters, Chapter);
+
+        Publish();
+    }
+
+    // Every entry of the index, once: the column beside the content renders it and, below the
+    // drawer's edge where there is no column, the drawer the nav lives in renders the same
+    // fragment. One list, two places, so neither can drift from the other.
+    RenderFragment Rail()
+    {
+        return __builder =>
+        {
+            @foreach (var chapter in _chapters)
+            {
+                <NsLink Href="@Route.GetUrl(chapter.File)"
+                        Label="@GetName(chapter)"
+                        Class="@ChapterClasses(chapter)" />
+
+                @if (IsOpen(chapter))
+                {
+                    foreach (var section in Sections)
+                    {
+                        <NsLink Href="@Route.GetUrl(chapter.File)"
+                                Fragment="@section.Slug"
+                                Label="@section.Text"
+                                Class="@SectionClasses(section)" />
+                    }
+                }
+            }
+        };
+    }
+
+    // The drawer draws what the page announced, so it has to be told when what it draws changed:
+    // the chapter that opened, the sections that arrived with it, the section the address marks.
+    // A fresh fragment every time is the signal — the surface compares references, and what moved
+    // is inside a closure it cannot see into.
+    void Publish()
+    {
+        if (Surface is not { } surface || !IsMain)
+        {
+            return;
+        }
+
+        _published = _chapters.Count > 0 ? Rail() : null;
+
+        surface.AnnounceIndex(_published);
+    }
+
+    // The rail answers to the WINDOW and not to its container, and it is the exception
+    // styling.md names: the drawer it trades places with docks or hides on exactly this edge, so
+    // one of the two is always on screen and never both.
+    string GetRailClasses()
+    {
+        return new NsClassBuilder("ns-guide-rail")
+            .Add(NsResponsive.ShownFromWindow(NsSize.Md))
+            .ToString();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The body is read here and nowhere earlier on purpose: a server prerender that fetched
+        // this would be the host asking itself for its own static file, and the rail is worth
+        // rendering without it. OnAfterRender never runs in a prerender, on either host.
+        if (_open is { } open && !ReferenceEquals(_requested, open))
+        {
+            _requested = open;
+            _shown = null;
+
+            await Run(async token =>
+            {
+                var read = await Reader.Read(open, token);
+
+                _body = read;
+                _read = open;
+            });
+
+            Publish();
+
+            await InvokeAsync(StateHasChanged);
+
+            return;
+        }
+
+        await ShowSection();
+    }
+
+    // The anchor is spent once per fragment: the browser has no element to scroll to until the
+    // chapter it names has rendered, so the address is re-read after every render rather than
+    // once on arrival, and a fragment already honoured is not chased again on the next one.
+    async Task ShowSection()
+    {
+        var section = Fragment();
+
+        if (Body is null || string.IsNullOrEmpty(section) || section == _shown)
+        {
+            return;
+        }
+
+        _shown = section;
+
+        await JS.InvokeVoidAsync("nsapp.scrollToId", section);
+    }
+
+    string? Fragment()
+    {
+        var fragment = Navigation.ToAbsoluteUri(Navigation.Uri).Fragment;
+
+        return fragment.Length > 1 ? fragment[1..] : null;
+    }
+
+    void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        Publish();
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    bool IsOpen(GuideItem chapter)
+    {
+        return ReferenceEquals(chapter, _open);
+    }
+
+    ActionItem ChapterAction(GuideItem chapter)
+    {
+        return new ActionItem
+        {
+            Name = chapter.Name,
+            PageType = Route.PageType,
+            Parameters = new { chapter = chapter.File }
+        };
+    }
+
+    string GetName(GuideItem? chapter)
+    {
+        return chapter is null ? string.Empty : Strings.Translate($"Guide.{chapter.Name}", chapter.Name);
+    }
+
+    string ChapterClasses(GuideItem chapter)
+    {
+        return new NsClassBuilder("ns-guide-entry ns-guide-chapter")
+            .Add("ns-guide-entry-current", IsOpen(chapter))
+            .ToString();
+    }
+
+    string SectionClasses(MarkdownHeading section)
+    {
+        return new NsClassBuilder("ns-guide-entry ns-guide-section")
+            .Add("ns-guide-entry-current", section.Slug == Fragment())
+            .ToString();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Navigation.LocationChanged -= OnLocationChanged;
+
+            // Only what this page put there: the main surface outlives navigation, and the
+            // arriving screen has already announced its own by the time this one is torn down.
+            if (Surface is { } surface && ReferenceEquals(surface.Index, _published))
+            {
+                surface.AnnounceIndex(null);
+            }
+        }
+
+        base.Dispose(disposing);
+    }
+}

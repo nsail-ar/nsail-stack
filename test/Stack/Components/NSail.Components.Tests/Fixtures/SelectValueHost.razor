@@ -1,0 +1,42 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@typeparam TItem
+@typeparam TValue
+
+@* MudSelect renders its closed field through a popover-bearing input control, so the
+   provider has to be in the tree for the component to render at all. *@
+<MudPopoverProvider />
+
+<NsSelect TItem="TItem" TValue="TValue"
+          Items="Items" ItemValue="ItemValue" ItemText="ItemText" ItemTemplate="ItemTemplate"
+          Label="@Label" Placeholder="@Placeholder" Required="Required"
+          Value="Value" />
+
+@code {
+
+    [Parameter]
+    public IEnumerable<TItem>? Items { get; set; }
+
+    [Parameter]
+    public TValue? Value { get; set; }
+
+    [Parameter]
+    public Func<TItem, TValue>? ItemValue { get; set; }
+
+    [Parameter]
+    public Func<TItem, string>? ItemText { get; set; }
+
+    [Parameter]
+    public RenderFragment<TItem>? ItemTemplate { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+}

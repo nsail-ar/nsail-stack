@@ -1,0 +1,14 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@inherits NsPickerBase
+
+@* A picker reduced to what NsPickerBase decides: what the control answers about its own
+   writability. Every gate a real picker carries — a create door, a question a chosen row
+   still owes, a chip's remove — reads exactly this pair. *@
+<p class="probe-readonly">@IsReadOnly</p>
+<p class="probe-disabled">@IsDisabled</p>

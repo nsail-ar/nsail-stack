@@ -1,0 +1,73 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+@* The GoogleSettingsPage shape after nsail#198: the page hands the read to the form and holds
+   no model of its own, so there is nothing to render blank when the read fails. *@
+<NsForm TModel="FormProblemModel" OnLoad="HandleLoad" OnSubmit="HandleSubmit">
+    <NsTextField @bind-Value="context.Name" />
+    <NsSubmit />
+</NsForm>
+
+@code {
+
+    /// <summary>How many times the read ran — the first arrival, every retry, and the refetch a
+    /// save that keeps the page open asks for.</summary>
+    public int Reads { get; private set; }
+
+    public FormProblemModel? Submitted { get; private set; }
+
+    /// <summary>Reads with an index below this one refuse: 1 fails the first arrival and lets
+    /// the retry through, which is the transient failure the act exists for.</summary>
+    [Parameter]
+    public int FailUntil { get; set; }
+
+    /// <summary>Whether the refusal arrives as an exception (an HTTP sender's answer to a 500)
+    /// rather than as a Problem the handler put on the args.</summary>
+    [Parameter]
+    public bool Throws { get; set; }
+
+    /// <summary>A read that answers nothing at all and refuses nothing either.</summary>
+    [Parameter]
+    public bool AnswersNothing { get; set; }
+
+    /// <summary>What the read answers with — a blank model is the document that does not exist
+    /// yet, and it is not a failure.</summary>
+    [Parameter]
+    public Func<FormProblemModel>? Answer { get; set; }
+
+    Task HandleLoad(LoadEventArgs<FormProblemModel> args)
+    {
+        Reads++;
+
+        if (Reads <= FailUntil)
+        {
+            var problem = BusinessProblem.RuleViolation("Read", "La lectura no llegó.");
+
+            if (Throws)
+            {
+                throw new BusinessException(problem);
+            }
+
+            args.Problem = problem;
+
+            return Task.CompletedTask;
+        }
+
+        if (!AnswersNothing)
+        {
+            args.Model = Answer is null ? new FormProblemModel { Name = "guardado" } : Answer();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    {
+        Submitted = args.Model;
+    }
+}

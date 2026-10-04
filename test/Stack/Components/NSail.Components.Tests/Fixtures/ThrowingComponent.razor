@@ -1,0 +1,25 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@* NsErrorBoundaryTests' own crashing page stand-in: a page that raised an unhandled
+   exception mid-render (the story's SenderNotFound) never gets to draw anything, so this
+   throws in OnParametersSet rather than in markup -- the same lifecycle stage a real
+   handler failure would land in. Throw toggles per render so a test can flip it false and
+   prove NsErrorBoundary's Recover() actually remounts fresh content instead of restating
+   the caught exception. *@
+<div id="ns-probe-throwing-child">ok</div>
+
+@code {
+    [Parameter]
+    public bool Throw { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Throw)
+        {
+            throw new InvalidOperationException("probe: unhandled render error");
+        }
+    }
+}

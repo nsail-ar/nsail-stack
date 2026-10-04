@@ -1,0 +1,19 @@
+{
+  "name": "@nsail/sample-react",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The sample's React client: built by the Web host's build into react/ beside it and served under /react.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nsail/components": "0.1.0",
+    "@nsail/messaging": "0.1.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router": "^8.4.0"
+  }
+}

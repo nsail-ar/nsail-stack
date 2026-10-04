@@ -1,0 +1,70 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<MudField Label="@Label"
+          Variant="Variant.Outlined"
+          Margin="Margin.Dense"
+          Disabled="Disabled"
+          Error="HasError"
+          ErrorText="@ErrorText"
+          UserAttributes="@Described">
+    @ChildContent
+</MudField>
+<NsFieldHelper Text="@Helper" Message="@ErrorText" DescribedBy="@DescribedBy" />
+
+@code {
+
+    /// <summary>What the field holds. This is the field chrome alone — the label, the
+    /// outline and the problem line that every other Ns*Field inherits from its own vendor
+    /// input — for a field the user operates through composed controls rather than one
+    /// input, so it still reads as a field beside its neighbours in a form grid.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>The problem to show under the field; null is "no problem". There is no
+    /// separate error flag on purpose — two of them can disagree, and the one that renders
+    /// nothing wins.</summary>
+    [Parameter]
+    public string? ErrorText { get; set; }
+
+    /// <summary>The sentence under the field that explains what to put in it — the same
+    /// parameter every other Ns*Field carries, so a composed field says as much as a plain
+    /// one.</summary>
+    [Parameter]
+    public string? Helper { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
+
+    // Minted here rather than inherited: this is the one field chrome that drives no input of
+    // its own, so it has no NsFieldBase to take the id from. Nothing ties the two mints
+    // together beyond both being unique — ids are named, never compared.
+    string DescribedBy { get; } = $"ns-field-{Guid.NewGuid():N}";
+
+    static readonly Dictionary<string, object> Undescribed = [];
+
+    // The controls inside are the caller's, so the field's own box is the only element the house
+    // owns here to hang the reference on. Built once and reused: a fresh dictionary per render
+    // reads as a changed parameter and re-renders the vendor field for nothing.
+    Dictionary<string, object> Described
+    {
+        get
+        {
+            if (!HasError)
+            {
+                return Undescribed;
+            }
+
+            return _described ??= new Dictionary<string, object> { ["aria-describedby"] = DescribedBy };
+        }
+    }
+
+    Dictionary<string, object>? _described;
+}

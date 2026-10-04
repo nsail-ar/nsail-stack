@@ -1,0 +1,23 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using NSail.Components
+
+@* The drawer as a product actually hosts it: the session cascading above, both slots filled
+   below. A render of this host re-supplies the menu's parameters exactly as MudDrawer
+   re-invoking MainLayout's Drawer fragment does. *@
+<CascadingAuthenticationState>
+    <NsNavMenu>
+        <Brand><span class="probe-brand">@Tick</span></Brand>
+        <Session><span class="probe-session">@Tick</span></Session>
+    </NsNavMenu>
+</CascadingAuthenticationState>
+
+@code {
+
+    [Parameter]
+    public int Tick { get; set; }
+}

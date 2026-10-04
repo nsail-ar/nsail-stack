@@ -1,0 +1,38 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@typeparam TModel where TModel : class, new()
+
+@* Generic over the model's own type, so a test can tell NsForm's two derivation signals apart:
+   the name (messaging.md's Create* convention) and the shape -- Model handed in directly, no
+   OnLoad -- which this fixture always is. *@
+<MudPopoverProvider />
+
+<NsForm TModel="TModel" Model="_model" OnSubmit="OnSubmit" Untracked="Untracked" FocusFirstField="FocusFirstField">
+    <NsTextField @bind-Value="_text" />
+</NsForm>
+
+@code {
+
+    TModel _model = new();
+
+    string? _text;
+
+    public int Submits { get; private set; }
+
+    [Parameter]
+    public bool Untracked { get; set; }
+
+    [Parameter]
+    public bool? FocusFirstField { get; set; }
+
+    void OnSubmit(SubmitEventArgs<TModel> args)
+    {
+        Submits++;
+    }
+}

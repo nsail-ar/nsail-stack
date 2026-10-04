@@ -1,0 +1,119 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+@* The two collection hosts a document composes its lines with, mounted the way every row
+   editor in the app mounts them — inside the form that submits the document (SaleLinesEditor's
+   table, TendersEditor's list). Each is handed an editor and a factory, so both offer a way in
+   unless the form takes it away. Context is named on the form because NsTable's own templates
+   claim the default one. *@
+<MudPopoverProvider />
+
+@{
+    RenderFragment<TestModel> rowEditor = row =>
+        @<text>
+            <NsTd For="() => row.Name">
+                <NsTextField @bind-Value="row.Name" Label="" />
+            </NsTd>
+        </text>;
+}
+
+<NsForm TModel="TestModel" Model="_document" Context="document"
+        ReadOnly="ReadOnly" Disabled="Disabled" Untracked>
+    <NsTable TRow="TestModel" Rows="Page" Title="Líneas" @ref="_table"
+             RowEditor="rowEditor" NewRow="NewRow" OnRowRemove="RemoveRow">
+        <HeaderContent>
+            <NsTh For="() => context.Name" />
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <NsTd For="() => row.Name">@row.Name</NsTd>
+        </RowTemplate>
+    </NsTable>
+
+    <NsListEditor TItem="TestModel" Items="_items" Title="Pagos" @ref="_list"
+                  NewItem="NewItem" OnRemove="RemoveItem">
+        <Actions>
+            <NsButton Label="Traer" Breakpoint="NsBreakpoint.Always" OnClick="Bring" />
+        </Actions>
+        <ItemTemplate Context="item">
+            <span class="item-name">@item.Name</span>
+        </ItemTemplate>
+        <ItemEditor Context="item">
+            <NsTextField @bind-Value="item.Name" />
+        </ItemEditor>
+    </NsListEditor>
+</NsForm>
+
+@code {
+
+    readonly TestModel _document = new();
+
+    readonly List<TestModel> _rows = [new TestModel { Name = "Ana" }];
+
+    readonly List<TestModel> _items = [new TestModel { Name = "Bruno" }];
+
+    NsTable<TestModel>? _table;
+
+    NsListEditor<TestModel>? _list;
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    public IReadOnlyList<TestModel> Rows => _rows;
+
+    public IReadOnlyList<TestModel> Items => _items;
+
+    public int BringInvocations { get; private set; }
+
+    DataPage<TestModel> Page => DataPage<TestModel>.From(_rows);
+
+    /// <summary>The second door into a collection: a page that adds from chrome of its own —
+    /// Nueva Venta's tab strip — calls the host directly instead of pressing its +.</summary>
+    public void AddThroughTheTable()
+    {
+        _table?.Add();
+    }
+
+    public void AddThroughTheList()
+    {
+        _list?.Add();
+    }
+
+    TestModel NewRow()
+    {
+        var row = new TestModel { Name = "Nueva" };
+
+        _rows.Add(row);
+
+        return row;
+    }
+
+    static TestModel NewItem()
+    {
+        return new TestModel { Name = "Nuevo" };
+    }
+
+    void RemoveRow(RowEditEventArgs<TestModel> args)
+    {
+        _rows.Remove(args.Row);
+    }
+
+    void RemoveItem(RowEditEventArgs<TestModel> args)
+    {
+        _items.Remove(args.Row);
+    }
+
+    void Bring()
+    {
+        BringInvocations++;
+    }
+}

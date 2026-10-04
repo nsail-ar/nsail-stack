@@ -1,0 +1,16 @@
+#nullable enable
+
+using Microsoft.Extensions.DependencyInjection;
+
+namespace {{ Namespace }}
+{
+    {{ ClassDeclaration }}
+    {
+        {{ MethodDeclaration }}
+        {
+            {{~ for Message in Messages ~}}
+            {{ ServicesParameterName }}.AddSingleton<global::NSail.Messaging.Runtime.Publishing.PushedMessage>(new global::NSail.Messaging.Runtime.Publishing.PushedMessage<{{ Message }}>());
+            {{~ end ~}}
+        }
+    }
+}

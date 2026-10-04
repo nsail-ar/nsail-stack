@@ -1,0 +1,92 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+@* The shape every inline editor in the app has (SaleLinesEditor, EntryLinesEditor…):
+   one field per column, each asking for no visible label because the
+   column header above it already says the word. *@
+<MudPopoverProvider />
+
+@{
+    RenderFragment<TestModel> editor = row =>
+        @<text>
+            <NsTd For="() => row.Name">
+                @switch (Kind)
+                {
+                    case "select":
+                        <NsSelect TItem="string" TValue="string" Label="" Items="Options" @bind-Value="row.Name" />
+                        break;
+                    case "autocomplete":
+                        <NsAutocomplete TItem="string" TValue="string" Label="" Items="Options" @bind-Value="row.Name" />
+                        break;
+                    @* The shape a lookup binding one whole row takes (AvailableProductLookup):
+                       Value and ValueChanged by hand, so there is no binding expression for
+                       the field to read its own member off. *@
+                    case "unbound":
+                        <NsAutocomplete TItem="string" TValue="string" Label="" Items="Options"
+                                        Value="row.Name" ValueChanged="value => row.Name = value" />
+                        break;
+                    default:
+                        <NsTextField @bind-Value="row.Name" Label="" />
+                        break;
+                }
+            </NsTd>
+            <NsTd For="() => row.Age">
+                <NsNumericField TValue="int" @bind-Value="row.Age" Label="" />
+            </NsTd>
+        </text>;
+}
+
+<NsTable TRow="TestModel" Rows="Page" Title="Renglones" RowEditor="editor" NewRow="NewRow" OnRowRemove="Remove">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+        <NsTh For="() => context.Age" />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd For="() => row.Age">@row.Age</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@* The same field bound to the same member, outside any cell and with no Label at all: the
+   control the editor's cells are compared against. *@
+<div id="loose">
+    <NsTextField @bind-Value="Loose.Name" />
+</div>
+
+@code {
+
+    static readonly string[] Options = ["Ana", "Bruno"];
+
+    readonly List<TestModel> _rows = [new TestModel { Name = "Ana", Age = 3 }];
+
+    /// <summary>Which control the keyed column edits with: "text", "select", "autocomplete".
+    /// The three vendor inputs a real inline editor reaches for, each splatting the field's
+    /// attributes through a different internal path.</summary>
+    [Parameter]
+    public string Kind { get; set; } = "text";
+
+    DataPage<TestModel> Page => DataPage<TestModel>.From(_rows);
+
+    TestModel Loose { get; } = new();
+
+    TestModel NewRow()
+    {
+        var row = new TestModel();
+
+        _rows.Add(row);
+
+        return row;
+    }
+
+    void Remove(RowEditEventArgs<TestModel> args)
+    {
+        _rows.Remove(args.Row);
+    }
+}

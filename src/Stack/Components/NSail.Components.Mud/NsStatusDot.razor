@@ -1,0 +1,24 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<span class="@GetClasses()" role="img" aria-label="@Title" title="@Title"></span>
+
+@code {
+
+    /// <summary>The state's own tone, the same vocabulary <see cref="NsStatusText"/> paints a
+    /// word with. Null is the neutral — a state that is neither an alert nor an outcome.</summary>
+    [Parameter]
+    public NsSeverity? Severity { get; set; }
+
+    /// <summary>The state in words, the dot's accessible name and its tooltip. Required: a
+    /// dot without it is colour alone.</summary>
+    [Parameter, EditorRequired]
+    public string? Title { get; set; }
+
+    string GetClasses()
+    {
+        return $"ns-status-dot {NsSeverityMapper.ToStatusClass(Severity)}";
+    }
+}

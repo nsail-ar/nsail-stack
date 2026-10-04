@@ -1,0 +1,22 @@
+{
+  "name": "@nsail/components",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Ns* components for a React client: pages, tables, forms and fields drawn from the descriptors an Sdk generates.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ns.css": "./src/ns.css"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "dependencies": {
+    "@nsail/messaging": "0.1.0"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}

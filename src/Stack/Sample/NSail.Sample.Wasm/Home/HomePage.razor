@@ -1,0 +1,25 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/"
+
+@using NSail.Sample.Contacts
+
+@inherits NsPage
+
+<NsPanel>
+    <Header>
+        <NsPageHeader Title="@GetTitle()" />
+    </Header>
+    <Content>
+        <NsStack Gap="Md">
+            <NsText>@Translate("Intro")</NsText>
+            <NsStack Horizontal Gap="Sm">
+                <NsPageLink TPage="ContactsPage" As="NsAs.Main" Icon="@NsIcons.People" Label="@Translate("Blazor")" />
+                @* A new tab: the React build is another document, and Blazor's router would
+                   otherwise intercept an address on its own origin. *@
+                <NsLink Href="@ReactClient.Path" Target="@Blank" As="NsAs.Default" Label="@Translate("React")" />
+            </NsStack>
+        </NsStack>
+    </Content>
+</NsPanel>

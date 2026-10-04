@@ -1,0 +1,101 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/contacts"
+
+@using NSail.Paging
+@using NSail.Sample.Contacts.Models
+
+@attribute [Authorize<ListContacts>]
+@inherits NsPage
+
+<NsPanel>
+    <Header>
+        <NsPageHeader Title="@GetTitle()"
+                      SearchText="@_filter.Search" SearchTextChanged="OnSearchChanged"
+                      FilterCount="@(_filter.Kind is null ? 0 : 1)">
+            <Actions>
+                <NsPageLink TPage="CreateContactPage" As="NsAs.Main" Icon="@NsIcons.Add" Target="@Aside" Label="@Translate("Common.New")" />
+            </Actions>
+            <Filter>
+                <NsFormGrid>
+                    <NsFormGridItem>
+                        <NsSelect TItem="Option<ContactKind?>" TValue="ContactKind?"
+                                  Value="_filter.Kind" ValueChanged="OnKindChanged"
+                                  Items="@(GetItems<ContactKind>())" />
+                    </NsFormGridItem>
+                </NsFormGrid>
+            </Filter>
+        </NsPageHeader>
+    </Header>
+    <Content>
+        <NsTable TRow="ContactRow" Rows="_rows" OnQuery="OnQuery" @ref="_table">
+            <HeaderContent>
+                <NsTh For="() => context.Name" />
+                <NsTh For="() => context.Kind" Breakpoint="Sm" />
+                <NsTh For="() => context.Email" Breakpoint="Md" />
+                <NsTh For="() => context.Phone" Breakpoint="Md" />
+                <NsTh For="() => context.Rating" Breakpoint="Lg" />
+                <NsTh For="() => context.IsFavorite" Breakpoint="Lg" />
+                <NsTh For="() => context.UpdatedAt" Breakpoint="Lg" />
+                <NsTh />
+            </HeaderContent>
+            <RowTemplate Context="row">
+                <NsTd For="() => row.Name">@row.Name</NsTd>
+                <NsTd For="() => row.Kind">@Translate(row.Kind)</NsTd>
+                <NsTd For="() => row.Email">@row.Email</NsTd>
+                <NsTd For="() => row.Phone">@row.Phone</NsTd>
+                <NsTd For="() => row.Rating">@row.Rating</NsTd>
+                <NsTd For="() => row.IsFavorite">@(row.IsFavorite ? "✓" : "")</NsTd>
+                <NsTd For="() => row.UpdatedAt">@row.UpdatedAt.ToLocalTime().ToString("g")</NsTd>
+                <NsTd>
+                    <NsActionToolbar Leading="@(new[] { GetAction(Delete, row, NsIcons.Delete) })"
+                                     Constant="@(GetLink<UpdateContactPage>(NsIcons.Edit, new { id = row.Id }, Aside))" />
+                </NsTd>
+            </RowTemplate>
+        </NsTable>
+    </Content>
+</NsPanel>
+
+@code {
+
+    DataPage<ContactRow> _rows = DataPage<ContactRow>.Empty();
+    ListContacts _filter = new();
+    NsTable<ContactRow>? _table;
+
+    protected override void OnCreated()
+    {
+        Subscribe<ContactSaved>((_, _) => _table?.Reload() ?? Task.CompletedTask);
+    }
+
+    async Task OnQuery(QueryEventArgs args)
+    {
+        _filter.PageIndex = args.PageIndex;
+        _filter.PageSize = args.PageSize;
+        _filter.Search = string.IsNullOrWhiteSpace(_filter.Search) ? null : _filter.Search.Trim();
+
+        _rows = await Send(_filter);
+    }
+
+    Task OnSearchChanged(string? text)
+    {
+        _filter.Search = text;
+
+        return _table?.Reload(first: true) ?? Task.CompletedTask;
+    }
+
+    Task OnKindChanged(ContactKind? kind)
+    {
+        _filter.Kind = kind;
+
+        return _table?.Reload(first: true) ?? Task.CompletedTask;
+    }
+
+    async Task Delete(ContactRow row)
+    {
+        if (await ConfirmSend(new DeleteContact { Id = row.Id }))
+        {
+            await (_table?.Reload() ?? Task.CompletedTask);
+        }
+    }
+}

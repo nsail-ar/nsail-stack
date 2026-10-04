@@ -1,0 +1,735 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using Microsoft.AspNetCore.Components.Forms
+@using NSail.Localization
+
+@typeparam TModel where TModel : class
+@inherits NsComponent
+@implements IFieldTracker
+@implements IFormProblems
+@implements IFormDocument
+
+@inject StringManager Strings
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+@* A read that failed leaves nothing to edit, so nothing editable is in the document: the
+   refusal and the one act that answers it stand where the fields would have been. The submit
+   is not disabled — it does not exist — which is what makes "a form only submits a model it
+   loaded" structural instead of a check each screen remembers to write. *@
+@if (_loadProblem is not null)
+{
+    <div class="ns-form-problem ns-form-problem-shown" role="alert">
+        <div class="ns-form-problem-text">
+            @foreach (var text in LoadTexts())
+            {
+                <span>@text</span>
+            }
+        </div>
+        <button type="button" class="ns-form-problem-act" disabled="@IsRunning" @onclick="Refetch">
+            @Strings.Translate("Common.Retry")
+        </button>
+    </div>
+}
+else if (HasDocument)
+{
+    <EditForm EditContext="_editContext"
+              OnSubmit="HandleSubmit"
+              FormName="@FormName"
+              id="@_formId"
+              class="ns-form d-contents">
+        @* Without this, EditContext.Validate() has no subscriber to OnValidationRequested,
+           so it always answers "valid" — every [Required]/[MaxLength] on the model was
+           inert client-side and the API's Problem was the first the user ever heard of it
+           (intentional-ui.md: the field speaks first). NsDataAnnotationsValidator instead of
+           the vendor's own: a [Required] failure needs the app's word (Problems.Required),
+           not the BCL's English-only default text. *@
+        <NsDataAnnotationsValidator />
+        @* The fields freeze for the length of the submit: the handler is reading the model
+           the user would be editing. IsRunning comes from this form's own Runner, so a
+           sibling form's work never reaches here and a nested form shadows this cascade. *@
+        <CascadingValue Value="Refuses" Name="ParentDisabled">
+            @* The form's word is two words, and they go down as two names. The OR above is what
+               an EDIT answers — a field is frozen either way, and the vendor's own buttons read
+               that name for themselves. This one is the refusal alone, for the acts that have to
+               tell it from the freeze: an OR cannot be taken back apart once both halves are
+               true, and a button that drives no submit still owes the refusal its grey while a
+               submit is in flight. *@
+            <CascadingValue Value="Disabled" Name="FormDisabled">
+                <CascadingValue Value="ReadOnly" Name="ParentReadOnly">
+                    <CascadingValue Value="!Untracked" Name="FormTracked">
+                        <CascadingValue Value="IsRunning" Name="FormRunning">
+                            @* Every field under the form announces itself here, so the form knows
+                               which members are actually on screen when a refusal arrives naming
+                               one. NsTab shadows this cascade and forwards to it. *@
+                            <CascadingValue Value="(IFieldTracker)this" IsFixed="true">
+                                <CascadingValue Value="(IFormProblems)this" IsFixed="true">
+                                    @ChildContent(_model)
+                                </CascadingValue>
+                            </CascadingValue>
+                        </CascadingValue>
+                    </CascadingValue>
+                </CascadingValue>
+            </CascadingValue>
+        </CascadingValue>
+
+        @* What the server refused that names no field this form renders. The panel footer
+           that holds the submit claims it (IFormProblems) and seats it in its own row, beside
+           the button that asked — a row that already exists, so nothing is reserved and
+           nothing jumps. This fallback is only for a form no footer claimed (a bare card),
+           and it draws only when there is something to say. The text is the sender's own,
+           already localized — the Stack invents no wording here. *@
+        @if (_claims == 0 && _formProblems.Count > 0)
+        {
+            <div class="ns-form-problem ns-form-problem-shown" role="alert">
+                <div class="ns-form-problem-text">
+                    @foreach (var text in _formProblems)
+                    {
+                        <span>@text</span>
+                    }
+                </div>
+                @if (ReloadLabel() is { } label)
+                {
+                    <button type="button" class="ns-form-problem-act" @onclick="ReloadRequested">@label</button>
+                }
+            </div>
+        }
+    </EditForm>
+}
+
+@code {
+
+    // Two independent reasons a screen counts as "create", either one enough: the naming
+    // convention every create message follows (messaging.md), which also catches a create
+    // screen whose model needs a server round trip before it can be blank (OnLoad answering
+    // a NEW model, not reading an existing one — CreateAppointmentNotePage); and a tracked
+    // form handed a model directly with no read behind it at all, the newborn document itself
+    // regardless of what verb named it (RegisterClient, OpenTicket — naming.md's closed verb
+    // set does not cover every message that mints one). FocusFirstField overrides either
+    // answer for where it lies instead: a Create*-shaped model reused to EDIT something that
+    // already exists (UpdatePartyPage locks Kind and reads through OnLoad — the name says
+    // create, OnLoad says otherwise, and the name wins unless told not to), or an Untracked
+    // form that still mints a document (RegisterPractitionerForm, inside a dialog).
+    static readonly bool NameSaysCreate = typeof(TModel).Name.StartsWith("Create", StringComparison.Ordinal);
+
+    bool IsCreate => FocusFirstField ?? (NameSaysCreate || (!Untracked && !OnLoad.HasDelegate));
+
+    readonly string _formId = $"ns-form-{Guid.NewGuid():N}";
+    readonly HashSet<FieldIdentifier> _rendered = [];
+    readonly List<string> _formProblems = [];
+
+    EditContext? _editContext;
+    ValidationMessageStore? _messages;
+    TModel? _model;
+    TModel? _loaded;
+    Problem? _loadProblem;
+    bool _loading;
+    bool _refused;
+    bool _reloadable;
+    bool _focusPending;
+
+    /// <summary>The model to edit when the page already holds one — a create page's blank
+    /// document, a filter. A form that names <see cref="OnLoad"/> takes its model from there
+    /// instead, and this is not read at all.</summary>
+    [Parameter]
+    public TModel? Model { get; set; }
+
+    /// <summary>The read that produces the model this form edits — the twin of
+    /// <see cref="OnSubmit"/>. The form owns what happens when it fails: it renders the refusal
+    /// and a retry instead of its fields, so the save that would write blanks over stored data
+    /// is never on screen to press. A document that legitimately does not exist yet is not a
+    /// failure — the handler answers with a new model, and there the blank IS the data.
+    ///
+    /// It runs once, when the form is created: a screen whose read depends on a route parameter
+    /// keys the form on it (@key) so a new document is a new form.</summary>
+    [Parameter]
+    public EventCallback<LoadEventArgs<TModel>> OnLoad { get; set; }
+
+    /// <summary>Untracked forms (filters, search, an act a dialog collects) hold no document:
+    /// they never report unsaved changes. That is all it says — whether a successful submit
+    /// closes the surface is the surface's question, not this one (Finishes).</summary>
+    [Parameter]
+    public bool Untracked { get; set; }
+
+    /// <summary>Keeps a popup surface open after a successful save — the multi-add loop that
+    /// files one document and offers the next on the same surface. The default is the
+    /// opposite: an aside, a modal or a dialog closes, which is how the user learns the save
+    /// took. It says nothing on the main surface, which never closes.</summary>
+    [Parameter]
+    public bool KeepOpen { get; set; }
+
+    /// <summary>Overrides the derived create/edit answer where both of its signals get it
+    /// wrong — a Create*-shaped model reused to edit something that already exists
+    /// (<c>UpdatePartyPage</c> locks Kind and loads through <see cref="OnLoad"/>, so the name
+    /// outvotes <see cref="Untracked"/>/<see cref="OnLoad"/> and still needs telling), or a
+    /// repeatable inline form that is not a screen of its own (<c>PriceListItemAdder</c>) or an
+    /// Untracked form that still mints a document in a dialog (<c>RegisterPractitionerForm</c>),
+    /// where <see cref="Untracked"/> itself answers wrong. Unset keeps the derived
+    /// answer.</summary>
+    [Parameter]
+    public bool? FocusFirstField { get; set; }
+
+    [Parameter, EditorRequired]
+    public RenderFragment<TModel> ChildContent { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<SubmitEventArgs<TModel>> OnSubmit { get; set; }
+
+    /// <summary>Refetches the document the form is editing, offered only while the refusal on
+    /// screen is a concurrency conflict — the screen's own first read run again, reachable from
+    /// the message that says the row moved. A form that names <see cref="OnLoad"/> already owns
+    /// that read and needs none of this.</summary>
+    [Parameter]
+    public EventCallback OnReload { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; } 
+
+    [Parameter]
+    public string? FormName { get; set; }
+
+    /// <summary>The document the form is editing, from whichever half produced it: the
+    /// <see cref="Model"/> a page handed in, or what <see cref="OnLoad"/> answered with. Null
+    /// while a read is running and after one that failed — which is precisely when the form
+    /// renders no fields and no submit.</summary>
+    public TModel? Document
+    {
+        get { return _model; }
+    }
+
+    TModel? Source => OnLoad.HasDelegate ? _loaded : Model;
+
+    // What every field under this form answers: Disabled refuses writes outright, and a submit in
+    // flight freezes them for the length of it. One property, so the cascade and the word the
+    // surface carries for chrome that cascade cannot reach cannot come apart.
+    bool Refuses => Disabled || IsRunning;
+
+    // A read still running and one that failed leave nothing to edit, so neither branch above draws
+    // a field, a footer or a cascade.
+    bool HasDocument => _editContext is not null && _model is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (OnLoad.HasDelegate)
+        {
+            await Refetch();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        EnsureEditContext();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusPending)
+        {
+            _focusPending = false;
+
+            await JS.InvokeVoidAsync("nsapp.focusFirst", _formId);
+        }
+    }
+
+    // The word goes UP for the one control that cannot read the cascade: a dialog's header X is
+    // drawn in the vendor's own tree, above the hosted component and this form (NsOpenDialog), so
+    // the surface is the one object both ends hold (SurfaceContext.FormRefuses, NsDialogExit). As
+    // two words, exactly as the cascades below go down as two names — what may be withheld for the
+    // length of a save alone has to tell the freeze from the refusal. Reported from here rather
+    // than eagerly at each edge, because what the X owes is exactly what this form has just
+    // cascaded — a form with no document on screen refuses nothing.
+    protected override void OnAfterRender(bool firstRender)
+    {
+        Surface?.SetRefusing(this, HasDocument && Disabled, HasDocument && IsRunning);
+    }
+
+    /// <summary>Reads the model again from outside the form's own chrome — the twin of Submit,
+    /// for a page act that moved the document this form is editing without going through it (a
+    /// state transition, a deleted override). A form with no load half has nothing to run.</summary>
+    public Task Load()
+    {
+        return OnLoad.HasDelegate ? Refetch() : Task.CompletedTask;
+    }
+
+    /// <summary>Runs the load and settles which of the three states the form is in: loaded,
+    /// empty by design (a model the handler answered with, blank because the document is), or
+    /// failed. Only the first two put fields on screen.</summary>
+    async Task Refetch()
+    {
+        var args = new LoadEventArgs<TModel>();
+
+        _loading = true;
+        _loadProblem = null;
+
+        try
+        {
+            await Runner.Raise(OnLoad, args);
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        // A read that answered nothing and refused nothing still leaves no document to edit,
+        // and rendering fields over a model nobody produced is the defect this half exists to
+        // remove — so it is a failure like any other, said out loud rather than drawn blank.
+        if (_loadProblem is null && args.Model is null)
+        {
+            _loadProblem = SystemProblem.Unhandled();
+        }
+
+        _loaded = _loadProblem is null ? args.Model : null;
+
+        EnsureEditContext();
+    }
+
+    /// <summary>What the failed read says, placed by the same rule a refused save is placed by:
+    /// the issues carry the reason, and a problem with none has only its title.</summary>
+    IReadOnlyList<string> LoadTexts()
+    {
+        if (_loadProblem is not { } problem)
+        {
+            return [];
+        }
+
+        if (problem.Issues.Count == 0)
+        {
+            return [Strings.Translate(problem)];
+        }
+
+        return [.. problem.Issues.Select(issue => Describe(issue, problem))];
+    }
+
+    string Describe(Issue issue, Problem problem)
+    {
+        var message = Strings.Translate(issue);
+
+        return string.IsNullOrWhiteSpace(message) ? Strings.Translate(problem) : message;
+    }
+
+    /// <summary>Submits from outside the form's own chrome and answers whether it took — what a
+    /// wizard step's Participate hook returns, since the sequence owns Next and the step draws
+    /// no submit of its own. Refused means the form drew the reason and is still on screen:
+    /// either a field the validator answered, or a Problem ApplyProblem placed.</summary>
+    public async Task<bool> Submit()
+    {
+        // Answered before the flag is touched: the save in flight owns it, and marking it refused
+        // from here would hand that save's reports back the moment it finishes.
+        if (IsRunning)
+        {
+            return false;
+        }
+
+        _refused = true;
+
+        await HandleSubmit();
+
+        return !_refused;
+    }
+
+    async Task HandleSubmit()
+    {
+        if (_editContext is null || _messages is null || _model is null)
+        {
+            return;
+        }
+
+        // One save at a time, and the one in flight is the answer: a submit that arrives while
+        // it runs is the same intention twice — Enter in a field that also saves on change
+        // raises both — and a second Raise on a busy Runner throws instead of waiting.
+        if (IsRunning)
+        {
+            return;
+        }
+
+        ClearProblems();
+
+        if (!_editContext.Validate())
+        {
+            return;
+        }
+
+        _refused = false;
+
+        var surface = Surface;
+
+        // Spent before the handler runs: the unsaved-changes lock must not fire on a successful
+        // save. Not this form's report alone — the editors' beside it too, because a collection
+        // editor's rows are not in the EditContext, so every one of them reports the surface
+        // itself (SetDirty(this) — LocationsEditor, EyesEditor, every *LinesEditor) and those
+        // rows are part of the very document this submit is saving. Left to each page to spend
+        // by hand, "a successful save closes the surface" is a rule every page has to remember,
+        // and one that forgets never closes its popup (nsail#1420). An untracked form holds no
+        // document — a filter applied in an aside is not the save of what stands beside it — so
+        // it spends nobody's report but its own. Held, because a refusal owes them back.
+        //
+        // The spend BRACKETS the handler (BeginSave/EndSave) rather than merely preceding it: the
+        // handler's own publishes provoke a render that re-files a report from inside it, in time
+        // to arm the exit guard against the navigation the handler ends with (nsail#1450). The
+        // window belongs to THIS call and is closed by the same one, so another submit — a
+        // sibling's, or a second press of this form's own — neither closes it nor reads what it
+        // holds; an untracked form closes no window because it opens none.
+        //
+        // The window opens BEFORE the spend, not after it: the spend's own answer re-renders this
+        // surface (SurfaceContext.StateChanged, which NsPage turns into StateHasChanged), and an
+        // editor re-entered by that render reports again — outside a window that had not opened
+        // yet, so nothing would hold it and nothing would ever spend it (nsail#1471).
+        IReadOnlyCollection<object> spent = [];
+        SurfaceContext.SaveWindow? window = null;
+
+        if (Untracked)
+        {
+            surface?.SetUnchanged(this);
+        }
+        else
+        {
+            window = surface?.BeginSave(this);
+            spent = surface?.ClearChanges(this) ?? [];
+        }
+
+        var uri = Navigation.Uri;
+        var finishes = Finishes(surface);
+        var args = new SubmitEventArgs<TModel>
+        {
+            Model = _model
+        };
+
+        // Told before the handler runs, not after: the surface drops the in-place navigation
+        // a create page ends its submit with, so the close is the only move that happens.
+        surface?.SetFinishing(finishes);
+
+        IReadOnlyCollection<object> echoed = [];
+
+        try
+        {
+            await Runner.Raise(OnSubmit, args);
+        }
+        finally
+        {
+            surface?.SetFinishing(false);
+            echoed = surface?.EndSave(window) ?? [];
+        }
+
+        // A handler that gave up on the submit refused it as surely as the server would have,
+        // and the form owes the same answer to both of its readers: the surface it would have
+        // finished, and the wizard step asking whether Next may move (Submit).
+        if (args.Aborted)
+        {
+            _refused = true;
+        }
+
+        // Nothing was saved, so nothing was spent: every report this submit took goes back,
+        // leaving the surface exactly as dirty as it found it. Here and not in ApplyProblem
+        // because a refusal has two doors and only one of them carries a Problem — an Abort
+        // passes nowhere else — and a report left spent greys out Guardar and silences the
+        // navigation guard over edits nobody saved. Put back, never re-derived: what the window
+        // held while the handler ran goes back with it, so a report filed in there is kept by a
+        // refusal and dropped only by a save that took. Through PutBack and not SetDirty because
+        // another submit's window may still be open over these — it inherits them and owes them
+        // back at its own close. A source that UNMOUNTED during the handler takes nothing back —
+        // a retired source is refused — and that is the intent: the edit left with the component,
+        // and a report nobody is left to spend is what would lock every later screen on this
+        // surface.
+        if (_refused)
+        {
+            surface?.PutBack(spent.Concat(echoed));
+        }
+
+        if (finishes && Finished(surface!, uri))
+        {
+            surface!.Close();
+
+            return;
+        }
+
+        // Master/detail: a save that leaves the page open leaves it showing a document that has
+        // just moved — its concurrency version at least — so the half that owns the read goes
+        // and gets it again. A refusal does the opposite and keeps every value the user typed
+        // (ApplyProblem), and an address that moved means the handler already navigated.
+        if (!_refused
+            && OnLoad.HasDelegate
+            && string.Equals(Navigation.Uri, uri, StringComparison.Ordinal))
+        {
+            await Refetch();
+        }
+    }
+
+    /// <summary>A popup's document is finished when it saves, so the surface closes — the
+    /// honest signal that the save took, in every case (Leonardo, 2026-08-05: the user was
+    /// left "esperando a que pase algo"). The main surface is the opposite case and stays
+    /// open, repopulating instead (intentional-ui.md, master/detail).</summary>
+    bool Finishes(SurfaceContext? surface)
+    {
+        // A multi-add loop says so itself.
+        if (KeepOpen || surface is null || surface.IsMain)
+        {
+            return false;
+        }
+
+        // Untracked answers one question only — this form holds no document — and a document
+        // is the only thing a ROUTED overlay can be finished by: a filter or a search applied
+        // in an aside leaves it open, the same reason it reports no unsaved changes. A dialog
+        // is not a place: it was opened programmatically to ask one thing, so the act
+        // succeeding is what finishes it whether or not anything was tracked on the way.
+        return !Untracked || surface.IsHosted;
+    }
+
+    bool Finished(SurfaceContext surface, string uri)
+    {
+        // Refused means the submit came back with a problem or the handler gave up: the
+        // document is not finished, and closing would destroy the message the form just drew.
+        // The surface's own dirty flag says the same thing for a tracked form (ApplyProblem
+        // re-marks it) and speaks besides for anything else on the surface still holding an
+        // edit — an untracked form marks nothing, which is why its own refusal has to answer.
+        if (_refused || surface.HasChanges)
+        {
+            return false;
+        }
+
+        // An address that moved while this surface was dropping its own navigations moved for
+        // a reason of someone else's — a modal opened, a full-page navigation left. Whoever
+        // moved it already said where the user goes.
+        return string.Equals(Navigation.Uri, uri, StringComparison.Ordinal);
+    }
+
+    int _claims;
+
+    IReadOnlyList<string> IFormProblems.Problems => _formProblems;
+
+    string? IFormProblems.ReloadAct => ReloadLabel();
+
+    Task IFormProblems.Reload()
+    {
+        return ReloadRequested();
+    }
+
+    // A form that owns its read owns this act too: the conflict's Recargar is that same first
+    // read run again, and a screen that handed its load half over has none left to wire.
+    Task ReloadRequested()
+    {
+        return OnLoad.HasDelegate ? Refetch() : OnReload.InvokeAsync();
+    }
+
+    string? ReloadLabel()
+    {
+        return _reloadable && (OnReload.HasDelegate || OnLoad.HasDelegate)
+            ? Strings.Translate("Common.Reload")
+            : null;
+    }
+
+    public event Action? Changed;
+
+    void IFormProblems.Claim()
+    {
+        _claims++;
+    }
+
+    void IFormProblems.Release()
+    {
+        _claims--;
+    }
+
+    void IFieldTracker.Track(FieldIdentifier identifier)
+    {
+        _rendered.Add(identifier);
+    }
+
+    void IFieldTracker.Untrack(FieldIdentifier identifier)
+    {
+        _rendered.Remove(identifier);
+    }
+
+    /// <summary>A form the user is looking at answers its own refusals: an issue naming a field
+    /// it renders draws under that field, everything else draws at form level. Either way the
+    /// report is handled here and never becomes a toast the user has to connect back to a form
+    /// by themselves.</summary>
+    public override async Task Report(ProblemEventArgs args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        if (!args.Handled)
+        {
+            // A refusal that arrives while the read runs belongs to the read: there is no field
+            // to anchor it under and no edit to keep, so it becomes the failed-load state
+            // instead of a message beside fields that will not render.
+            if (_loading)
+            {
+                _loadProblem = args.Problem;
+                args.Handled = true;
+            }
+            else if (ApplyProblem(args.Problem))
+            {
+                args.Handled = true;
+            }
+        }
+
+        await base.Report(args);
+    }
+
+    void EnsureEditContext()
+    {
+        var source = Source;
+
+        if (source is null)
+        {
+            _model = null;
+            _editContext = null;
+            _messages = null;
+            Surface?.SetUnchanged(this);
+            return;
+        }
+
+        if (ReferenceEquals(_model, source) && _editContext is not null && _messages is not null)
+        {
+            return;
+        }
+
+        // The document's first appearance, and only that one: a page kept open across a save
+        // (master/detail, a multi-add loop) already had _model set, so a later document moving
+        // in under it never repeats this.
+        _focusPending = IsCreate && _model is null;
+
+        _model = source;
+        _rendered.Clear();
+        _formProblems.Clear();
+        _reloadable = false;
+        Changed?.Invoke();
+        _editContext = new EditContext(source);
+        _editContext.OnFieldChanged += OnFieldChanged;
+        _messages = new ValidationMessageStore(_editContext);
+
+        Surface?.SetUnchanged(this);
+    }
+
+    void OnFieldChanged(object? sender, FieldChangedEventArgs args)
+    {
+        if (!Untracked)
+        {
+            Surface?.SetDirty(this);
+        }
+    }
+
+    void ClearProblems()
+    {
+        _messages?.Clear();
+        _formProblems.Clear();
+        _reloadable = false;
+        _editContext?.NotifyValidationStateChanged();
+        Changed?.Invoke();
+    }
+
+    /// <summary>Draws the problem where the user can see it: each issue under the field it
+    /// names when this form renders that field, at form level otherwise — an issue naming a
+    /// member no field bound, an issue naming a rule, or a problem carrying no issue at all.
+    /// Returns whether it drew anything, which is what tells the caller nothing is left to
+    /// report elsewhere.</summary>
+    bool ApplyProblem(Problem? problem)
+    {
+        if (_editContext is null || _messages is null || _model is null)
+        {
+            return false;
+        }
+
+        _messages.Clear();
+        _formProblems.Clear();
+
+        // The values the user typed are never touched by a refusal — the model is theirs. What
+        // a conflict adds is one act: go and get the row that moved, which is the screen's own
+        // first read run again.
+        _reloadable = problem?.Code == BusinessProblem.ConflictCode;
+
+        if (problem is null)
+        {
+            _editContext.NotifyValidationStateChanged();
+            Changed?.Invoke();
+
+            return false;
+        }
+
+        if (!Untracked)
+        {
+            Surface?.SetDirty(this);
+        }
+
+        // A refusal with nothing itemized still has to say something: the title is all it
+        // carries, and silence is the one answer this form is not allowed to give.
+        if (problem.Issues.Count == 0)
+        {
+            _formProblems.Add(Strings.Translate(problem));
+        }
+
+        foreach (var issue in problem.Issues)
+        {
+            var message = Describe(issue, problem);
+
+            // Being a real property is not enough — the counter sale's tenders were a real
+            // property of the message and the screen bound its own local list, so the refusal
+            // went under an input that never rendered and disappeared (6062c3fb). Only a field
+            // that announced itself to this form can carry a message.
+            var identifier = string.IsNullOrWhiteSpace(issue.Source)
+                ? null
+                : TryCreateFieldIdentifier(_model, issue.Source);
+
+            if (identifier is { } field && _rendered.Contains(field))
+            {
+                _messages.Add(field, message);
+            }
+            else
+            {
+                _formProblems.Add(message);
+            }
+        }
+
+        _editContext.NotifyValidationStateChanged();
+        Changed?.Invoke();
+
+        _refused = true;
+
+        return true;
+    }
+
+    static FieldIdentifier? TryCreateFieldIdentifier(object model, string path)
+    {
+        var current = model;
+        var parts = path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (parts.Length == 0)
+        {
+            return null;
+        }
+
+        for (var i = 0; i < parts.Length - 1; i++)
+        {
+            var property = current.GetType().GetProperty(parts[i]);
+
+            if (property is null)
+            {
+                return null;
+            }
+
+            var value = property.GetValue(current);
+
+            if (value is null)
+            {
+                return null;
+            }
+
+            current = value;
+        }
+
+        // The last segment is checked too: an issue about a rule ("HasChildren") must not
+        // pass as a field, or its message would be attached to an input that never renders.
+        if (current.GetType().GetProperty(parts[^1]) is null)
+        {
+            return null;
+        }
+
+        return new FieldIdentifier(current, parts[^1]);
+    }
+}

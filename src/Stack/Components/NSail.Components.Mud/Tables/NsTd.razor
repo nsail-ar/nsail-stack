@@ -1,0 +1,74 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using System.Linq.Expressions
+@using NSail.Localization
+@using NSail.Metadata
+
+@inject StringManager Strings
+@inject MetadataProvider Metadata
+
+<MudTd DataLabel="@(_label ?? DataLabel)" Class="@GetClasses()">
+    @* The cell's own name, offered to whatever it holds: a field that binds a member derives
+       the same key by itself, and one bound by hand (Value/ValueChanged, no expression to
+       inspect) has nothing else to be named by — the header is still the word above it. *@
+    <CascadingValue Name="CellLabel" Value="@(_label ?? DataLabel)">
+        @ChildContent
+    </CascadingValue>
+</MudTd>
+
+@code {
+
+    string? _key;
+    string? _label;
+
+    [CascadingParameter]
+    TableColumns? Columns { get; set; }
+
+    [CascadingParameter]
+    TableRowEdit? RowEdit { get; set; }
+
+    /// <summary>Field the cell shows ("() => row.Name"): drives the localized DataLabel
+    /// (the per-cell header of the stacked mobile layout), same key as the NsTh header —
+    /// which is also how the cell picks up that column's Breakpoint.
+    /// The expression is inspected, never executed.</summary>
+    [Parameter]
+    public Expression<Func<object?>>? For { get; set; }
+
+    [Parameter]
+    public string? DataLabel { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    // The header's twin: a cell naming no field and carrying no label of its own is the
+    // action cell — the only one with nothing to say about itself. A cell that labels itself
+    // by hand (a computed Total) is a column like any other and keeps its natural width.
+    //
+    // A read column may hide by breakpoint, an edit input never (ui/hosts.md): a cell of the
+    // row open for editing drops the column's hide classes, so a phone still has every field
+    // to type into while the rows being read keep hiding theirs.
+    //
+    // The same cascade names the cell for the stylesheet: ns-table-editing says a row
+    // somewhere is open, while a cell of THAT row is what stacks as a form line — its label
+    // above its field, one left edge for the whole row (ns-mud.css, the stacked block).
+    string GetClasses()
+    {
+        var breakpoint = RowEdit is null ? Columns?.BreakpointFor(_key) ?? NsSize.None : NsSize.None;
+
+        return new NsClassBuilder(NsResponsive.CellClasses(breakpoint))
+            .Add("ns-cell-editing", RowEdit is not null)
+            .Add("ns-actions", For is null && DataLabel is null)
+            .ToString();
+    }
+
+    protected override void OnParametersSet()
+    {
+        _key = ForExpression.GetTarget(For) is { } target
+            ? Metadata.KeyFor(target.Type, target.Member)
+            : null;
+
+        _label = _key is null ? null : Strings.Translate(_key);
+    }
+}

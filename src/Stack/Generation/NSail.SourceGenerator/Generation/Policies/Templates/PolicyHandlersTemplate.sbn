@@ -1,0 +1,47 @@
+#nullable enable
+
+using Microsoft.Extensions.DependencyInjection;
+
+namespace {{ Namespace }}
+{
+    {{ ClassDeclaration }}
+    {
+        {{ MethodDeclaration }}
+        {
+            {{~ for Handler in Handlers ~}}
+            {{ ServicesParameterName }}.AddSingleton(new global::NSail.Messaging.Runtime.MessageRegistration(typeof({{ Handler.MessageType }})));
+            {{ ServicesParameterName }}.AddSingleton(new global::NSail.Security.PolicyHandlerFactory(typeof({{ Handler.MessageType }}), static policy => new {{ Handler.HandlerName }}(policy)) { Fields = new global::System.Collections.Generic.Dictionary<string, global::NSail.Security.Annotations.RestrictAs>(global::System.StringComparer.Ordinal) { {{ for Field in Handler.Fields }}["{{ Field.Name }}"] = global::NSail.Security.Annotations.RestrictAs.{{ Field.Kind }}{{ if !for.last }}, {{ end }}{{ end }} }, Requires = new global::System.Type[] { {{ for Required in Handler.Requires }}typeof({{ Required }}){{ if !for.last }}, {{ end }}{{ end }} } });
+            {{~ end ~}}
+        }
+    }
+
+    {{~ for Handler in Handlers ~}}
+    internal sealed class {{ Handler.HandlerName }} : global::NSail.Security.PolicyHandler
+    {
+        public {{ Handler.HandlerName }}(global::NSail.Security.Policy policy)
+            : base(policy)
+        {
+        }
+
+        public override async global::System.Threading.Tasks.Task<bool> Authorize(object message, global::NSail.Security.Session session, global::NSail.Security.RelationProvider relations, global::System.Threading.CancellationToken cancellationToken)
+        {
+            if (message is not {{ Handler.MessageType }} m)
+                return false;
+
+            {{~ for Field in Handler.Fields ~}}
+            {{~ if Field.Kind == "Flag" ~}}
+            if (!Satisfies("{{ Field.Name }}", m.{{ Field.Name }}))
+                return false;
+
+            {{~ else ~}}
+            if (!await Satisfies("{{ Field.Name }}", m.{{ Field.Name }}, global::NSail.Security.Annotations.RestrictAs.{{ Field.Kind }}, session, relations, cancellationToken).ConfigureAwait(false))
+                return false;
+
+            {{~ end ~}}
+            {{~ end ~}}
+            return true;
+        }
+    }
+
+    {{~ end ~}}
+}

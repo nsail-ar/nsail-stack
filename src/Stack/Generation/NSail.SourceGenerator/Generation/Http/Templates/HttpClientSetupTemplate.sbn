@@ -1,0 +1,23 @@
+#nullable enable
+
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using NSail.Messaging;
+using NSail.Messaging.Runtime;
+using NSail.Messaging.Runtime.Sending;
+using NSail.Messaging.Http;
+
+namespace {{ Namespace }}
+{
+    {{ ClassDeclaration }}
+    {
+        {{ MethodDeclaration }}
+        {
+            {{~ for client in Messages ~}}
+            {{ ServicesParameterName }}.AddScoped<ISender<{{ client.MessageType }}{{ if client.ReturnType != "void" }}, {{ client.ReturnType }}{{ end }}>, {{ client.MessageType }}HttpSender>();
+            {{~ end ~}}
+        }
+    }
+}

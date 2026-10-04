@@ -1,0 +1,83 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@inject RouteTable Routes
+@inject StringManager Strings
+
+@* The chrome NsPageNotFound and NsPageError share -- calqued off NsSplash's own face (see
+   NsPageNotFound's own note): the logo, a short message and a door back home. The two
+   callers differ only in the words and in whether a second escape hatch rides beside the
+   door (NsPageError's Reload) -- never in the frame itself, so the frame lives once, here. *@
+<div id="@Id" class="fixed inset-0 z-max d-flex flex-column align-center justify-center pa-6 bg-background">
+    <NsStack Align="NsAlign.Center" Gap="NsSize.Md">
+        @if (LogoUrl is not null)
+        {
+            <NsRemoteImage Url="@LogoUrl" Alt="" Height="72" As="NsAs.Main" />
+        }
+
+        <NsText As="NsTextAs.Title">@Message</NsText>
+
+        @if (Detail is not null)
+        {
+            <NsText As="NsTextAs.Subtitle">@Detail</NsText>
+        }
+
+        <NsStack Horizontal Align="NsAlign.Center" Gap="NsSize.Md">
+            @if (_homeUrl is not null)
+            {
+                <NsLink Href="@_homeUrl" Label="@Strings.Translate("Common.Home")" As="NsAs.Main" Class="@HomeClass" />
+            }
+
+            @Actions
+        </NsStack>
+    </NsStack>
+</div>
+
+@code {
+
+    string? _homeUrl;
+
+    /// <summary>The DOM anchor each caller is pinned by in tests -- a Stack component names
+    /// no id of its own, so the caller supplies its own (ns-page-not-found, ns-page-error).</summary>
+    [Parameter, EditorRequired]
+    public string Id { get; set; } = "";
+
+    /// <summary>The app's own well-known logo route (same shape as NsSplash's own
+    /// parameter) — a plain string, no coupling, and no default: a Stack component names
+    /// no app-specific URL.</summary>
+    [Parameter]
+    public string? LogoUrl { get; set; }
+
+    /// <summary>The page mounted at the app's root, where the door back leads. A Type and
+    /// not a path: the URL comes from the route table, never written.</summary>
+    [Parameter]
+    public Type? HomePage { get; set; }
+
+    /// <summary>Already-translated: the two callers ask different keys
+    /// (Common.PageNotFound, Common.UnhandledError), so translation is the caller's
+    /// business, not this shared frame's.</summary>
+    [Parameter, EditorRequired]
+    public string Message { get; set; } = "";
+
+    /// <summary>A second, quieter line under the message — already-translated, like the
+    /// message itself. NsPageError's trace handle; nothing for NsPageNotFound, which has
+    /// nothing more to say than that the address is not one.</summary>
+    [Parameter]
+    public string? Detail { get; set; }
+
+    [Parameter]
+    public string? HomeClass { get; set; }
+
+    /// <summary>Rendered beside the Home door, trailing it — NsPageError's Reload button.
+    /// Empty for NsPageNotFound, which has nothing else to offer.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _homeUrl = HomePage is not null ? Routes.GetUrl(HomePage) : null;
+    }
+}

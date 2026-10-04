@@ -1,0 +1,35 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+@typeparam TItem
+@typeparam TValue
+
+@using MudBlazor
+
+@* SelectValueHost's twin for the multi-valued field: the closed box renders through a
+   popover-bearing input control, so the provider has to be in the tree for it to render. *@
+<MudPopoverProvider />
+
+<NsMultiSelect TItem="TItem" TValue="TValue"
+               Items="Items" ItemValue="ItemValue" ItemText="ItemText"
+               Label="@Label"
+               Value="Value" />
+
+@code {
+
+    [Parameter]
+    public IEnumerable<TItem>? Items { get; set; }
+
+    [Parameter]
+    public IEnumerable<TValue>? Value { get; set; }
+
+    [Parameter]
+    public Func<TItem, TValue> ItemValue { get; set; } = default!;
+
+    [Parameter]
+    public Func<TItem, string> ItemText { get; set; } = default!;
+
+    [Parameter]
+    public string? Label { get; set; }
+}

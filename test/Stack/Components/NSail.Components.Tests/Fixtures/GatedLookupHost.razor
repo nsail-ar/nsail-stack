@@ -1,0 +1,32 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+
+@* A lookup whose two reads the test owns: the search the open dropdown runs and the resolve an
+   arriving value asks for. Both are held open on purpose, so the order they overlap in is the
+   test's and not the machine's. *@
+<MudPopoverProvider />
+
+<NsAutocomplete TItem="SelectRef" TValue="Guid?"
+                Value="Value" ValueChanged="ValueChanged"
+                OnSearch="OnSearch" OnLoad="OnLoad"
+                ItemValue="@(item => item.Id)"
+                ItemText="@(item => item.DisplayName)"
+                Label="Taller" />
+
+@code {
+
+    [Parameter]
+    public Guid? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid?> ValueChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<SearchEventArgs<SelectRef>> OnSearch { get; set; }
+
+    [Parameter]
+    public EventCallback<LoadEventArgs<SelectRef, Guid?>> OnLoad { get; set; }
+
+}

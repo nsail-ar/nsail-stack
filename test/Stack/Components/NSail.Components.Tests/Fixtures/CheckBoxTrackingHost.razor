@@ -1,0 +1,46 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* Same recipe as SubmitTrackingHost: a real NsSurfaceContext + NsForm, driven through
+   real DOM events, so the test proves what a browser click proves — not a stand-in
+   calling SetDirty by hand. Flag pairs a checkbox with a text field because the defect
+   this guards against (GoogleSettingsPage) is exactly that combo: a toggle beside a
+   pasted secret, saved together. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Context="surface">
+        @{ _surface = surface; }
+        <NsForm TModel="CheckBoxTrackingModel" Model="Model" OnSubmit="HandleSubmit" Untracked="Untracked">
+            <NsCheckBox TValue="bool" @bind-Value="context.Flag" />
+            <NsTextField @bind-Value="context.Secret" />
+            <NsSubmit Class="tracked-submit" />
+        </NsForm>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public CheckBoxTrackingModel Model { get; set; } = default!;
+
+    [Parameter]
+    public bool Untracked { get; set; }
+
+    [Parameter]
+    public EventCallback<CheckBoxTrackingModel> Submitted { get; set; }
+
+    public SurfaceContext? Surface => _surface;
+
+    Task HandleSubmit(SubmitEventArgs<CheckBoxTrackingModel> args)
+    {
+        return Submitted.InvokeAsync(args.Model);
+    }
+}

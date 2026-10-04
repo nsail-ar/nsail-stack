@@ -1,0 +1,18 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+<NsApp>
+    <Head>
+        <HeadOutlet @rendermode="_renderMode" />
+        <NsAssets />
+    </Head>
+    <Body>
+        <NsSplash />
+        <NsSetup @rendermode="_renderMode" />
+        <Routes @rendermode="_renderMode" />
+    </Body>
+</NsApp>
+
+@code {
+    IComponentRenderMode _renderMode => RenderMode.InteractiveWebAssembly;
+}

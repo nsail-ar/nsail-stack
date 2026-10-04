@@ -1,0 +1,16 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using NSail.Components
+
+@* The root both products boot: the cascade over the router, so an authentication state
+   change reaches AuthorizeRouteView the way it does in the app. *@
+<CascadingAuthenticationState>
+    <NsRouter AppAssembly="typeof(ProbePage).Assembly"
+              AdditionalAssemblies="[]"
+              SignInPage="typeof(ProbeSignInPage)"
+              DefaultLayout="typeof(ProbeLayout)" />
+</CascadingAuthenticationState>

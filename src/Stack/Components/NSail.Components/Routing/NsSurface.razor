@@ -1,0 +1,54 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@inject NavigationManager Navigation
+@implements IDisposable
+
+@if (_routeData is not null)
+{
+    @* Keyed by the route's PATH: another path is another document, so a component serving
+       several templates never keeps parameters from the previous route. The query is left out
+       of the key on purpose — it is filter or component state, and remounting on it would
+       throw away the page a tab switch or a search is written from. *@
+    <NsSurfaceContext @key="_path" Name="@Name" Context="surface">
+        @ChildContent(_routeData)
+    </NsSurfaceContext>
+}
+
+@code {
+
+    RouteData? _routeData;
+    string? _path;
+
+    [Parameter, EditorRequired]
+    public Surface Name { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public RenderFragment<RouteData> ChildContent { get; set; } = default!;
+
+    [CascadingParameter]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        UpdateRoute();
+    }
+
+    void OnLocationChanged(object? sender, LocationChangedEventArgs args) => UpdateRoute();
+
+    void UpdateRoute()
+    {
+        var route = SurfaceQuery.GetRoute(Navigation, Name);
+        _routeData = route is not null ? RouteTable.Match(route) : null;
+        _path = _routeData is not null ? SurfaceQuery.RoutePath(route) : null;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

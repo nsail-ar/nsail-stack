@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>NSail.Data</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The unit of work is a messaging-runtime contract and the store that implements it is
+		     this module's DbContext, so the edge points this way: the alternative is the
+		     messaging runtime knowing about EF Core. -->
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
+	</ItemGroup>
+
+</Project>

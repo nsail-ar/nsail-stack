@@ -1,0 +1,34 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+@* The refusal line alone: a field with no input, no label and no outline, for a member a
+   composed editor edits without rendering a field for it (an attendee list, drawn as a panel of
+   rows). Being RENDERED is what anchors an issue — NsForm draws under a member only when a
+   field announced that identifier — so this is what an editor places to be announced, and
+   NsFieldBase does the announcing and the reading off the EditContext exactly as it does for a
+   field that has a box.
+
+   The expression belongs to the PAGE, not to the editor: FieldIdentifier resolves the owner
+   object the member hangs off, so a For written inside an editor would name the editor and
+   never match the model the form holds.
+
+   Clean, it renders nothing at all — the member it answers for costs the surface no height
+   until something refuses it. *@
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" Shown />
+
+@code {
+
+    // The anchor holds no value — nothing binds through it — so Required has nothing of its own
+    // to judge and must not be allowed to mint a refusal from the base's client-side check: the
+    // unset Value reads as empty, and "Problems.Required" posted here is a refusal nobody can
+    // clear, because there is no box to fill. A requirement over a composed editor's member is
+    // the server's, drawn here when it answers.
+    protected override bool IsValueEmpty()
+    {
+        return false;
+    }
+}

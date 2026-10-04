@@ -1,0 +1,63 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* Secondary is the *text* rank, not the palette's secondary accent — the two meanings of
+   the word collide here, and taking the accent painted every muted line in the brand's
+   spare colour (MudBlazor's own pink, since a brand may leave it unset). *@
+<MudText Typo="@GetTypo()" Class="@GetClasses()">
+    @ChildContent
+</MudText>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Semantic role — Title overrides Size with the heading treatment.</summary>
+    [Parameter]
+    public NsTextAs As { get; set; } = NsTextAs.Body;
+
+    /// <summary>Typographic scale, reusing NsSize (Md = body text, Lg+ = headings). Ignored when As="Title".</summary>
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    [Parameter]
+    public bool Secondary { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder()
+            .Add("ns-text-muted", Secondary)
+            .Add(Class)
+            .ToString();
+    }
+
+    Typo GetTypo()
+    {
+        if (As == NsTextAs.Title)
+        {
+            return Typo.h6;
+        }
+
+        if (As == NsTextAs.Subtitle)
+        {
+            return Typo.subtitle1;
+        }
+
+        return Size switch
+        {
+            NsSize.Xs => Typo.caption,
+            NsSize.Sm => Typo.body2,
+            NsSize.Md => Typo.body1,
+            NsSize.Lg => Typo.h6,
+            NsSize.Xl => Typo.h5,
+            NsSize.Xxl => Typo.h4,
+            _ => Typo.body1
+        };
+    }
+}

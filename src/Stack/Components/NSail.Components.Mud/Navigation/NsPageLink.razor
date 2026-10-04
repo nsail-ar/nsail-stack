@@ -1,0 +1,97 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TPage where TPage : IComponent
+@using Microsoft.AspNetCore.Components.Authorization
+@using NSail.Localization
+@using NSail.Metadata
+
+@inject RouteTable Routes
+@inject StringManager Strings
+@inject MetadataProvider Metadata
+@inject PageGate Gate
+
+@if (_allowed)
+{
+    <NsLink Href="@_href"
+            Target="@Target"
+            As="@As"
+            Icon="@Icon"
+            Label="@_label"
+            Size="@Size"
+            Disabled="@Disabled"
+            Breakpoint="@Breakpoint"
+            Class="@ProbedClass" />
+}
+
+@code {
+
+    string _href = string.Empty;
+    string? _label;
+
+    // Deny-by-default, same as the nav menu and the outlets asking the same gate: an entry
+    // whose gate has not answered yet stays hidden rather than flashing visible first.
+    bool _allowed;
+
+    [CascadingParameter]
+    Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    /// <summary>Route values for TPage, as an anonymous object ("new { id = row.Id }").</summary>
+    [Parameter]
+    public object? Parameters { get; set; }
+
+    [Parameter]
+    public Surface? Target { get; set; }
+
+    /// <summary>Intention only — Inline (default), Default, Main, Important. Whether the
+    /// label is drawn is Breakpoint's, not this one's.</summary>
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Inline;
+
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    /// <summary>Overrides the derived label (TPage's own "{Area}.{Page}.Title").</summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>Greys the link out and drops its href — for a scoped route whose scope
+    /// hasn't been picked yet (its token would resolve to an empty segment).</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Container width from which the label shows next to the icon; Always pins it
+    /// on and Never leaves the page's own title as the name alone (see NsLink).</summary>
+    [Parameter]
+    public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Sm;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    // NsLink's data-ns-probe reports the Target it RECEIVED, which cannot say whether this
+    // component had one to hand over: the two hops fail identically from the anchor's side.
+    // The token rides the Class that already reaches the anchor in every chrome, so one DOM
+    // read covers both. It matches no stylesheet, and RELEASE emits the Class unchanged.
+#if DEBUG
+    string? ProbedClass => new NsClassBuilder(Class)
+        .Add($"ns-probe-pagelink-{Target?.Name ?? "null"}")
+        .ToString();
+#else
+    string? ProbedClass => Class;
+#endif
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _href = Routes.GetUrl(typeof(TPage), Parameters);
+        _label = Label ?? Strings.Translate(Metadata.KeyFor(typeof(TPage), "Title"));
+
+        // The same single gate the nav menu, a lookup's create entry and a link ActionItem
+        // ask (ce3d6110's CanSend/page-gate twin) -- a hidden menu entry, a hidden create
+        // entry and a hidden NsPageLink must never disagree about the same destination.
+        _allowed = await Gate.Allows(typeof(TPage), AuthenticationState);
+    }
+}

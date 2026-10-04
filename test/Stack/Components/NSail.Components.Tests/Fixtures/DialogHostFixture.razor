@@ -1,0 +1,13 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+
+@* Everything DialogManager.Open needs to actually render: MudDialogProvider is the tree
+   NsOpenDialog's TitleContent renders into (a sibling of the app's router, per a33dbe8),
+   so a test that never mounts it can't reproduce the bug the fix addressed. *@
+
+<MudPopoverProvider />
+<MudDialogProvider />

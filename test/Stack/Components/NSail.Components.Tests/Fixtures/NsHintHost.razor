@@ -1,0 +1,19 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Icons
+
+@* Same portal need as HelpHost — the popover and its click-catcher live behind the provider. *@
+<MudPopoverProvider />
+
+<NsHint Icon="@Icon" Text="@Text" />
+
+@code {
+
+    [Parameter]
+    public Glyph Icon { get; set; } = NsIcons.Warning;
+
+    [Parameter]
+    public string Text { get; set; } = string.Empty;
+}

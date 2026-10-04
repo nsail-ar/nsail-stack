@@ -1,0 +1,144 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using MudBlazor
+
+@* Instrumentation: one field kind per render, inside a real NsSurfaceContext + NsForm.
+   Nothing is ever typed — whatever reports HasChanges raised a field notification the
+   vendor invented. Mode is how the model arrives: empty, already loaded, or loaded after
+   the first render (the settings-page shape) either as a fresh instance or filled in
+   place. *@
+<MudPopoverProvider />
+
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Context="surface">
+        @{ _surface = surface; }
+        <NsForm TModel="FieldProbeModel" Model="_model">
+            @switch (Kind)
+            {
+                case "text":
+                    <NsTextField @bind-Value="context.Text" />
+                    break;
+                case "password":
+                    <NsPasswordField @bind-Value="context.Text" />
+                    break;
+                case "textarea":
+                    <NsTextArea @bind-Value="context.Text" />
+                    break;
+                case "email":
+                    <NsEmailField @bind-Value="context.Text" />
+                    break;
+                case "phone":
+                    <NsPhoneField @bind-Value="context.Text" />
+                    break;
+                case "url":
+                    <NsUrlField @bind-Value="context.Text" />
+                    break;
+                case "color":
+                    <NsColorField @bind-Value="context.Color" />
+                    break;
+                case "numeric":
+                    <NsNumericField TValue="int?" @bind-Value="context.Number" />
+                    break;
+                case "money":
+                    <NsMoneyField TValue="decimal?" @bind-Value="context.Money" />
+                    break;
+                case "percent":
+                    <NsPercentField TValue="decimal?" @bind-Value="context.Percent" />
+                    break;
+                case "duration":
+                    <NsDurationField TValue="TimeSpan?" @bind-Value="context.Duration" />
+                    break;
+                case "date":
+                    <NsDateField TValue="DateTime?" @bind-Value="context.Date" />
+                    break;
+                @* The CreateWorkOrderPage shape: a non-nullable DateOnly that arrives
+                   already holding today, not an empty box. *@
+                case "dateonly":
+                    <NsDateField TValue="DateOnly" @bind-Value="context.DateOnlyValue" />
+                    break;
+                case "time":
+                    <NsTimeField TValue="TimeSpan?" @bind-Value="context.Time" />
+                    break;
+                case "datetime":
+                    <NsDateTimeField TValue="DateTime?" @bind-Value="context.Moment" />
+                    break;
+                case "select":
+                    <NsSelect TItem="SelectOption" TValue="Guid?" @bind-Value="context.Choice"
+                              Items="Options" ItemValue="o => o.Id" ItemText="o => o.Name" />
+                    break;
+                case "select-required":
+                    <NsSelect TItem="SelectOption" TValue="Guid" @bind-Value="context.RequiredChoice"
+                              Items="Options" ItemValue="o => o.Id" ItemText="o => o.Name" />
+                    break;
+                case "autocomplete":
+                    <NsAutocomplete TItem="SelectOption" TValue="Guid?" @bind-Value="context.Choice"
+                                    Items="Options" ItemValue="o => o.Id" ItemText="o => o.Name" />
+                    break;
+                case "checkbox":
+                    <NsCheckBox TValue="bool" @bind-Value="context.Flag" />
+                    break;
+            }
+            <NsSubmit Class="tracked-submit" />
+        </NsForm>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+    FieldProbeModel _model = new();
+
+    static readonly SelectOption[] Options =
+    [
+        new(Guid.Parse("11111111-1111-1111-1111-111111111111"), "First"),
+        new(Guid.Parse("22222222-2222-2222-2222-222222222222"), "Second"),
+    ];
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Kind { get; set; } = default!;
+
+    /// <summary>"empty", "preset", "load-swap", "load-inplace".</summary>
+    [Parameter, EditorRequired]
+    public string Mode { get; set; } = default!;
+
+    public SurfaceContext? Surface => _surface;
+
+    public bool Loaded { get; private set; }
+
+    protected override void OnInitialized()
+    {
+        _model = Mode == "preset" ? FieldProbeModel.Preset() : new FieldProbeModel();
+        Loaded = Mode is "empty" or "preset";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || Loaded)
+        {
+            return;
+        }
+
+        // The read coming back from the API, after the form has already rendered once.
+        await Task.Yield();
+
+        if (Mode == "load-swap")
+        {
+            _model = FieldProbeModel.Preset();
+        }
+        else
+        {
+            FieldProbeModel.FillInPlace(_model);
+        }
+
+        Loaded = true;
+
+        StateHasChanged();
+    }
+}

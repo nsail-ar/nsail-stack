@@ -1,0 +1,257 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using NSail.Localization
+@using NSail.Metadata
+
+@inherits NsActBase
+
+@inject StringManager Strings
+@inject MetadataProvider Metadata
+@inject RouteTable Routes
+@inject IServiceProvider Services
+
+@{
+    RenderFragment<ActionItem> chrome = item =>
+        @<text>
+            @if (item.Menu is not null)
+            {
+                @* The item's own word, forwarded rather than asked again: an act that writes
+                   never reaches this line — it fell out with the gate below — so a menu left
+                   to the default would withhold the very contribution that declared it
+                   changes nothing. *@
+                <NsMenu Icon="@item.Icon"
+                        Content="@item.Content"
+                        Label="@GetName(item)"
+                        Size="@(Size ?? NsSize.Md)"
+                        Writes="@item.Writes">
+                    @item.Menu
+                </NsMenu>
+            }
+            else if (item.PageType is not null && !item.Disabled)
+            {
+                <NsLink As="@NsAs.Inline"
+                        Breakpoint="NsBreakpoint.Never"
+                        Icon="@item.Icon"
+                        Content="@item.Content"
+                        Size="@(Size ?? NsSize.Md)"
+                        Label="@GetName(item)"
+                        Href="@GetRoute(item)"
+                        Target="@item.Target" />
+            }
+            else
+            {
+                @* The same size as the link branch above: one toolbar mixing a command and a
+                   link would otherwise render two different icon boxes, and a slot that is not
+                   one width is not a slot. *@
+                <NsAction Action="@item" Size="@(Size ?? NsSize.Md)" />
+            }
+        </text>;
+
+    @* A verb that reports a STATE wears that state's tone, in the status channel's own
+       vocabulary and never a palette of the toolbar's (NsStatusText, NsStatusDot). It is a
+       WRAPPER and not a class on the control: both chromes below paint themselves with the
+       vendor's inherit colour, which resolves to whatever the box around them computed, so a
+       class fighting the vendor's own selector for specificity is a fight nothing has to
+       have. *@
+    RenderFragment<ActionItem> icon = item =>
+        @<text>
+            @if (item.Severity is { } severity)
+            {
+                <span class="ns-status-text @NsSeverityMapper.ToStatusClass(severity) d-inline-flex align-center">
+                    @chrome(item)
+                </span>
+            }
+            else
+            {
+                @chrome(item)
+            }
+        </text>;
+}
+
+@* Rows host OnRowClick: icon clicks must not reach it. The span renders even with nothing
+   in it: --ns-action-slots is what a grid's action column reserves (see ns-mud.css), and a
+   row whose contributors offered nothing must still hold that reserve or its neighbours'
+   icons move. Outside a cell the reserve does not apply, so an empty toolbar is an empty
+   box, exactly as it always rendered. *@
+<span class="ns-action-toolbar d-inline-flex align-center gap-1"
+      style="--ns-action-slots: @Slots"
+      @onclick:stopPropagation>
+    @foreach (var item in Visible())
+    {
+        @icon(item)
+    }
+    @if (Resolving)
+    {
+        @* Where the first contribution is going to land, so what arrives replaces the mark
+           instead of pushing the row's fixed target sideways: the constant and the kebab close
+           the row and the strip packs to that edge (ns-mud.css), so the mark grows leftward
+           from a target that never moves. *@
+        <span class="ns-action-mark d-inline-flex align-center">
+            <NsIcon Icon="@NsIcons.Progress" Title="@Strings.Translate("Common.Loading")" />
+        </span>
+    }
+    @if (_constant is not null)
+    {
+        @icon(_constant)
+    }
+    @if (_items.Count > MaxVisible)
+    {
+        @* The kebab now CLOSES the row (Leonardo, 2026-08-11): the constant is the fixed
+           target muscle memory aims at, and a row that just grew a fourth verb must not
+           shove that target sideways every time the overflow appears or disappears — the
+           kebab is the one whose presence is conditional, so it is the one that moves. Left
+           on Small it would be the one visibly smaller box in the row. *@
+        @* Writes="false" is not an exemption, it is where the answer already came from: every
+           row below survived the form's word up in OnParametersSetAsync, so asking the face the
+           same question would take the kebab away from a read-only row that still has links to
+           offer. *@
+        @* The face carries a word of its own (ui/menus.md): nothing can count the rows before
+           the trigger is used, so the overflow is named for what it IS rather than for what is
+           in it — and a glyph with no name is a button a reader meets unnamed and a pointer
+           meets bare. *@
+        <NsMenu Icon="@NsIcons.More" Label="@Strings.Translate("Common.MoreActions")" Writes="false">
+            @{
+                var overflow = Overflow();
+            }
+            @for (var i = 0; i < overflow.Count; i++)
+            {
+                @if (i > 0 && !Equals(overflow[i - 1].Group, overflow[i].Group))
+                {
+                    @* Between items only, which is what keeps the rule off both ends of the
+                       list and off a menu whose items all share one affinity — a divider that
+                       separates nothing is noise the reader has to rule out. *@
+                    <NsMenuDivider />
+                }
+                <NsMenuItem Action="@overflow[i]" />
+            }
+        </NsMenu>
+    }
+</span>
+
+@code {
+
+    List<ActionItem> _items = [];
+    ActionItem? _constant;
+
+    [CascadingParameter]
+    Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    /// <summary>Actions to show, already resolved, gated and ordered by an outlet.</summary>
+    [Parameter]
+    public IReadOnlyList<ActionItem> Actions { get; set; } = [];
+
+    /// <summary>Whether the outlet's contributors are still answering. While they are, the
+    /// slot their verbs will fill carries a loading mark, so a contribution that has to ask
+    /// something slow announces itself instead of popping into a row that had already drawn.
+    /// Never set by a host handing over its own verbs: those are resolved before they get
+    /// here.</summary>
+    [Parameter]
+    public bool Resolving { get; set; }
+
+    /// <summary>The host's own fixed verbs, shown before the contributions and capped with
+    /// them — one action cell per row (intentional-ui, grids), so a page's links and what a
+    /// kit contributed share one reserve, one cap and one overflow instead of standing beside
+    /// each other with a hole in between.</summary>
+    [Parameter]
+    public IReadOnlyList<ActionItem> Leading { get; set; } = [];
+
+    /// <summary>The row's constant — its ficha, or its edit where there is none. Rendered
+    /// right after the visible verbs and before the kebab (the kebab closes the row, not the
+    /// constant): it is the fixed target muscle memory aims at, so it never counts against
+    /// the cap and never folds into the overflow.</summary>
+    [Parameter]
+    public ActionItem? Constant { get; set; }
+
+    /// <summary>Actions shown as icons before the rest fold into the kebab. Three is what a
+    /// grid's action column reserves room for beside that kebab, so a row never grows past
+    /// the column it is in. Zero is the honest end of the same range — the row shows its
+    /// constant and its kebab and nothing else — and the reserve still comes out right,
+    /// because the constant was never inside the cap.</summary>
+    [Parameter]
+    public int MaxVisible { get; set; } = 3;
+
+    /// <summary>Overrides the icon size for every action this toolbar renders. Unset is the
+    /// house's ordinary icon action (Md); the AppBar asks for a larger one so its icons read
+    /// at shell scale. A grid's action column compacts the box it is given regardless
+    /// (ns-mud.css), which is what lets one size serve a row and a page header alike.</summary>
+    [Parameter]
+    public NsSize? Size { get; set; }
+
+    /// <summary>What the action column reserves: the cap, the overflow beside it, and the
+    /// constant when the row carries one — the whole cell, honestly, now that the whole cell
+    /// is this one toolbar.</summary>
+    int Slots => MaxVisible + 1 + (_constant is null ? 0 : 1);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Actions arrive gated by the outlet that resolved them; Leading and Constant are the
+        // host's own and reach the same single gate here, so a row action to a page the
+        // session cannot open never renders — whoever wrote it.
+        var leading = await Allowed(Leading);
+
+        // Weight orders each side, never across them: the host's own verbs come first because
+        // they are the row's reason to exist, and a kit that contributes an occasional action
+        // takes the slots left over — which is what keeps a new contributor from widening
+        // every row it reaches. Contributions arrive weighted by the outlet already.
+        //
+        // What a form that refuses writes takes away falls out HERE, beside the gate and before
+        // the cap: an item kept in the list and withheld by its own chrome would still be
+        // counted, so the visible slice would spend slots on nothing and the remainder would
+        // open a kebab with nothing in it.
+        _items = leading.OrderBy(item => item.Weight).Concat(Actions).Where(Offers).ToList();
+        _constant = Constant is not null && Offers(Constant) && await Allows(Constant) ? Constant : null;
+    }
+
+    async Task<List<ActionItem>> Allowed(IReadOnlyList<ActionItem> items)
+    {
+        var allowed = new List<ActionItem>(items.Count);
+
+        foreach (var item in items)
+        {
+            if (await Allows(item))
+            {
+                allowed.Add(item);
+            }
+        }
+
+        return allowed;
+    }
+
+    async Task<bool> Allows(ActionItem item)
+    {
+        // Resolved, never injected: a host with no security registered (a component test, a
+        // surface without Iam) must still render its markup rather than fail to construct it
+        // — the permissive default NsPartial.CanSend already takes. A command carries no
+        // destination, so there is nothing to ask about it.
+        if (item.PageType is null || Services.GetService(typeof(PageGate)) is not PageGate gate)
+        {
+            return true;
+        }
+
+        return await gate.Allows(item.PageType, AuthenticationState);
+    }
+
+    string GetName(ActionItem item)
+    {
+        return item.GetLabel(Strings, Metadata);
+    }
+
+    IEnumerable<ActionItem> Visible()
+    {
+        return _items.Count > MaxVisible ? _items.Take(MaxVisible) : _items;
+    }
+
+    List<ActionItem> Overflow()
+    {
+        return _items.Skip(MaxVisible).ToList();
+    }
+
+    string GetRoute(ActionItem item)
+    {
+        return Routes.GetUrl(item.PageType!, item.Parameters);
+    }
+}

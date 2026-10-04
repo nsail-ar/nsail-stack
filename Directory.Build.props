@@ -1,0 +1,13 @@
+<Project>
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<!-- No .editorconfig exists yet, so this has no effect today. It is the prerequisite
+		     the doctrine-compiles work needs: once style rules are declared, this is what
+		     turns them into build warnings/errors instead of editor-only hints. -->
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+	</PropertyGroup>
+
+</Project>

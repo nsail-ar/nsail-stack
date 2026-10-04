@@ -1,0 +1,110 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+@using System.Globalization
+@using NSail.Localization
+
+@inject LanguageProvider Language
+
+<MudNumericField T="TValue"
+                 Value="Value"
+                 ValueChanged="SetValue"
+                 Label="@GetLabel()"
+                 Placeholder="@Placeholder"
+                 Required="IsRequired"
+                 Disabled="IsDisabled"
+                 ReadOnly="IsReadOnly"
+                 AutoFocus="AutoFocus"
+                 Immediate="Immediate"
+                 @attributes="BoundsAttributes"
+                 Format="N2"
+                 Culture="@MoneyCulture"
+                 Adornment="@(Currency is { Length: > 0 } ? Adornment.End : Adornment.None)"
+                 AdornmentText="@Currency"
+                 Variant="Variant.Outlined"
+                 Margin="Margin.Dense"
+                 Error="@HasError()"
+                 ErrorText="@GetErrorText()"
+                 UserAttributes="InputAttributes" />
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+
+@code {
+
+    bool _minSet;
+    TValue? _min;
+
+    bool _maxSet;
+    TValue? _max;
+
+    /// <summary>The lowest amount the field accepts (the vendor's own Min knob, never named in
+    /// a page). Unset keeps the vendor's default — the sentinel is whether the parameter was
+    /// ever assigned, not a null check, since TValue may itself be a non-nullable numeric type
+    /// with no null to compare against. The bound is the caller's rule, not the Stack's: this
+    /// field neither invents one nor words the refusal.</summary>
+    [Parameter]
+    public TValue? Min
+    {
+        get => _min;
+        set
+        {
+            _minSet = true;
+            _min = value;
+        }
+    }
+
+    /// <summary>The highest amount the field accepts, on the same terms as <see cref="Min"/>.</summary>
+    [Parameter]
+    public TValue? Max
+    {
+        get => _max;
+        set
+        {
+            _maxSet = true;
+            _max = value;
+        }
+    }
+
+    /// <summary>The code of the currency the amount is in, worn beside the figure — set only
+    /// when that currency is not the install's own. Unset, the field reads exactly like every
+    /// total and saldo beside it: the figure alone, in the reader's grouping.</summary>
+    [Parameter]
+    public string? Currency { get; set; }
+
+    Dictionary<string, object>? BoundsAttributes
+    {
+        get
+        {
+            if (!_minSet && !_maxSet)
+            {
+                return null;
+            }
+
+            var bounds = new Dictionary<string, object>();
+
+            if (_minSet)
+            {
+                bounds["Min"] = _min!;
+            }
+
+            if (_maxSet)
+            {
+                bounds["Max"] = _max!;
+            }
+
+            return bounds;
+        }
+    }
+
+    // MudFormComponent's Culture defaults to CultureInfo.InvariantCulture, which groups and
+    // parses a figure the English way ("48,600.00") under Spanish words. Never "C": it prints
+    // the region's own sign whatever currency the amount is really in.
+    CultureInfo MoneyCulture => RegionCulture.For(Language);
+
+    // Money is the mostrador field itself (Story: "los campos se seleccionan al recibir
+    // foco") — tab into Importe showing 0,00, type 500, it replaces.
+    protected override bool SelectOnFocus => true;
+}

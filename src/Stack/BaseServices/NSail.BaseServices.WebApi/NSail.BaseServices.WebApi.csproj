@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Backup\NSail.Backup\NSail.Backup.csproj" />
+		<ProjectReference Include="..\..\Data\NSail.Data\NSail.Data.csproj" />
+		<!-- What a message declares about its own transport, which is what the throttle reads
+		     off the type the matched route already names. -->
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj" />
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.WebApi\NSail.Messaging.WebApi.csproj" />
+		<ProjectReference Include="..\..\Security\NSail.Security\NSail.Security.csproj" />
+		<ProjectReference Include="..\..\Telemetry\NSail.Telemetry\NSail.Telemetry.csproj" />
+	</ItemGroup>
+
+</Project>
+

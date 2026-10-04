@@ -1,0 +1,144 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@inherits NsComponent
+
+@using NSail.Localization
+@using NSail.Problems
+
+@inject StringManager Strings
+@inject ProblemManager Problems
+
+@* The in-place twin of NsErrorBoundary: that one catches what reached the layout and hands
+   the whole app the error splash, this one keeps a failed READ inside the region it was
+   going to fill. Three states and no fourth -- not read yet, read, could not be read -- so
+   nothing that failed can be mistaken for nothing that exists (a table's own NoRecords, a
+   card's zeros). The wording is the sender's, already localized: the Stack invents none. *@
+@if (_problem is not null)
+{
+    <NsStack Gap="NsSize.Sm" Align="NsAlign.Center" Margin="NsSize.Md" Class="ns-load-problem">
+        <NsText Secondary>@Problems.GetMessage(_problem)</NsText>
+        <NsButton Label="@Strings.Translate("Common.Retry")"
+                  Disabled="@(_read is not null)"
+                  OnClick="Reload"
+                  Class="ns-load-retry" />
+    </NsStack>
+}
+else if (_loaded)
+{
+    @ChildContent
+}
+
+@code {
+
+    Problem? _problem;
+    bool _loaded;
+    Read? _read;
+
+    /// <summary>Reads what this region shows. It runs on a Runner of the read's own, so a
+    /// refusal becomes a Problem drawn here instead of an exception the layout catches — and
+    /// the retry re-runs THIS, nothing else on the page. Pass args.CancellationToken to
+    /// whatever it sends.</summary>
+    [Parameter, EditorRequired]
+    public EventCallback<ReadEventArgs> OnLoad { get; set; }
+
+    /// <summary>Drawn only once the load succeeded: content the reader can trust every time
+    /// it is on screen.</summary>
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        return Load();
+    }
+
+    /// <summary>Reads again — the retry's own act, and the door a screen re-reads through when
+    /// its filters moved or a saved event arrived. A screen keeps a reference to reach it.</summary>
+    public Task Reload()
+    {
+        return Load();
+    }
+
+    async Task Load()
+    {
+        var superseded = _read;
+        var read = new Read(this);
+
+        _read = read;
+
+        // Cancelled AND replaced. Cancelling is what a read that honours its token stops for;
+        // replacing is what makes the one that does not harmless anyway — each read catches
+        // its own refusal in its own object, so a read superseded mid-flight (a filter moved,
+        // a Saved event landed) has nowhere to write a failure over rows the read that
+        // replaced it already brought back.
+        superseded?.Cancel();
+
+        await read.Run(OnLoad);
+
+        if (!ReferenceEquals(_read, read))
+        {
+            return;
+        }
+
+        _read = null;
+        _problem = read.Problem;
+        _loaded = read.Problem is null;
+
+        StateHasChanged();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _read?.Cancel();
+        }
+
+        base.Dispose(disposing);
+    }
+
+    sealed class Read : IRunHost
+    {
+        readonly NsLoad _region;
+        readonly Runner _runner;
+
+        public Read(NsLoad region)
+        {
+            _region = region;
+            _runner = new(this);
+        }
+
+        public Problem? Problem { get; private set; }
+
+        public SurfaceContext? Surface => _region.Surface;
+
+        object IRunHost.Source => _region;
+
+        public Task Run(EventCallback<ReadEventArgs> load)
+        {
+            return _runner.Raise(load, new ReadEventArgs());
+        }
+
+        public void Cancel()
+        {
+            _runner.Cancel();
+        }
+
+        public Task Report(ProblemEventArgs args)
+        {
+            Problem = args.Problem;
+
+            // Handled here and nowhere else: a toast fades and carries no retry, and the
+            // surface would raise one for a failure this region is already drawing.
+            args.Handled = true;
+
+            return _region.Report(args);
+        }
+
+        void IRunHost.StateChanged()
+        {
+            ((IRunHost)_region).StateChanged();
+        }
+    }
+}

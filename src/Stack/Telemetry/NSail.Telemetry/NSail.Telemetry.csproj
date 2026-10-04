@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+		<RootNamespace>NSail.Telemetry</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.18.0" />
+		<PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.18.0" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.18.0-beta.1" />
+		<PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.18.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Named, not typed twice: the background runner's meter is subscribed below by the
+		     constant that declares it, so a rename cannot leave the subscription pointing at a
+		     meter nobody emits on — which fails silently, in production, with a green build.
+		     The arrow points this way because the other one puts the OTLP exporter packages
+		     behind every kit that ships a job. -->
+		<ProjectReference Include="..\..\Background\NSail.Background\NSail.Background.csproj" />
+		<ProjectReference Include="..\..\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
+		<ProjectReference Include="..\..\Metadata\NSail.Metadata\NSail.Metadata.csproj" />
+	</ItemGroup>
+
+</Project>

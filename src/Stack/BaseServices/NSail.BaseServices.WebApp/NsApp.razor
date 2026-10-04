@@ -1,0 +1,32 @@
+﻿@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+<!DOCTYPE html>
+<html lang="@System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <ResourcePreloader />
+    <ImportMap />
+    <link href="@Assets["_content/NSail.BaseServices.WebApp/ns.css"]" rel="stylesheet" />
+    <script src="@Assets["_content/NSail.BaseServices.WebApp/ns.js"]"></script>
+    @Head
+</head>
+
+<body>
+    @Body
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+
+</html>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? Head { get; set; }
+
+    [Parameter]
+    public RenderFragment? Body { get; set; }
+}

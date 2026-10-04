@@ -1,0 +1,147 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@inject StringManager Strings
+
+<div id="ns-splash" class="fixed inset-0 z-max d-flex flex-column align-center justify-center pa-6 bg-background">
+
+    <div class="d-flex flex-column align-center gap-4" style="max-width:320px; width:100%;">
+
+        @* The mark -- logo above, company name below, both permanent (the WhatsApp-desktop
+           shape) -- and the bar share one fit-content box so the bar's own width tracks
+           whatever the mark actually measures, never the page. The bar then bleeds 8px past
+           that box on each side (ns-mud's own gap-2 unit, reused rather than invented) so it
+           reads as "the mark's underline, drawn a bit wider" instead of a plain fitted rule.
+           A minimum width holds the floor for the no-logo, name-not-arrived-yet moment --
+           without it the box has nothing to size against but the bar itself, which collapses
+           to a sliver instead of reading as a deliberate progress bar.
+
+           #8a8782 below is the CSS fallback for --mud-palette-primary, painted only until
+           MudThemeProvider sets the real variable -- a WASM boot's very first frame has no
+           theme yet, so this literal is what the eye actually sees for an instant. It matches
+           NsTheme's own Neutral() grey (NsSetupBrandTests.NeutralDark), never a brand's
+           colour: a fallback that guesses would flash the wrong one on every install but the
+           one it guessed right. *@
+        <div class="d-flex flex-column align-center gap-4" style="width:fit-content; min-width:200px; max-width:100%;">
+            @if (LogoUrl is not null)
+            {
+                <div id="ns-splash-logo" data-logo="@LogoUrl"
+                     style="height:72px; color:var(--mud-palette-primary, #8a8782);">
+                    <img src="@LogoUrl" alt="" style="height:72px; max-width:100%;"
+                         onerror="this.style.display='none'; this.parentElement.dataset.failed='1';" />
+                </div>
+            }
+
+            @* Populated by the script below from the same anonymous branding read the logo
+               inlining uses -- stays display:none until the name arrives so there is no empty
+               gap while the fetch is in flight. *@
+            <div id="ns-splash-name" data-brand-url="@BrandUrl"
+                 style="display:none; text-align:center; color:var(--mud-palette-text-primary, #ececea); font-size:1.25rem; font-weight:500; line-height:1.3;">
+            </div>
+
+            <div class="ns-splash-track rounded-pill overflow-hidden" style="width:calc(100% + 16px); margin:0 -8px; height:5px; background:rgba(128,128,128,.24);">
+                <div class="rounded-pill"
+                     style="
+                        width:var(--blazor-load-percentage, 0%);
+                        height:5px;
+                        background:var(--mud-palette-primary, #8a8782);
+                        transition:width 350ms ease-out;
+                        ">
+                </div>
+            </div>
+        </div>
+
+        <div style="color:var(--mud-palette-text-secondary, #b3b0ab); font-size:0.875rem;">
+            @Strings.Translate("Common.Loading") <span class="ns-splash-percent"></span>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    (function () {
+        const nameEl = document.getElementById("ns-splash-name");
+
+        if (!nameEl || !nameEl.dataset.brandUrl)
+            return;
+
+        // Same anonymous, pre-session route family as the logo (AnonymousBrandingRoutes):
+        // reachable before WASM boots or any org is known from a cookie session.
+        fetch(nameEl.dataset.brandUrl, { credentials: "same-origin" })
+            .then(response => response.ok ? response.json() : null)
+            .then(data => {
+                if (!data || !data.name)
+                    return;
+
+                nameEl.textContent = data.name;
+                nameEl.style.display = "";
+            })
+            .catch(() => { });
+    })();
+
+    (function () {
+        const host = document.getElementById("ns-splash-logo");
+
+        if (!host)
+            return;
+
+        // An <img> is its own document and cannot inherit the colour around it, so an SVG
+        // logo drawn with currentColor renders black. Inlining is the only way it takes the
+        // primary the container carries -- and only an SVG is inlined, so a raster logo keeps
+        // its own baked colours through the <img> that is already here.
+        fetch(host.dataset.logo, { credentials: "same-origin" })
+            .then(response => {
+                const type = (response.headers.get("content-type") || "").split(";")[0].trim();
+
+                return response.ok && type === "image/svg+xml" ? response.text() : null;
+            })
+            .then(svg => {
+                if (!svg)
+                    return;
+
+                host.innerHTML = svg;
+
+                const root = host.firstElementChild;
+
+                if (root) {
+                    root.style.height = "72px";
+                    root.style.width = "auto";
+                }
+            })
+            .catch(() => { });
+    })();
+
+    window.nsapp.onAppReady(() => {
+        const el = document.getElementById("ns-splash");
+
+        if (!el)
+            return;
+
+        el.style.transition = "opacity 350ms ease";
+        el.style.opacity = "0";
+
+        setTimeout(() => el.remove(), 350);
+    }, { once: true });
+</script>
+
+@code {
+    /// <summary>The app's own well-known logo route (Optical passes the Branding kit's
+    /// anonymous "api/branding/logo", reachable before WASM boots and before any session
+    /// exists) — a plain string, no coupling, and no default: a Stack component names no
+    /// app-specific URL. An SVG response is inlined so it can inherit the splash's primary
+    /// colour, so the route it names must serve sanitized SVG (Branding's endpoint runs it
+    /// through <c>SvgSanitizer</c>'s allowlist); anything else stays an isolated
+    /// <c>&lt;img&gt;</c>.</summary>
+    [Parameter]
+    public string? LogoUrl { get; set; }
+
+    /// <summary>The app's anonymous branding-info route (Optical/Therapy pass
+    /// "api/branding/public") — read only for its <c>Name</c>, rendered under the logo (or
+    /// alone, when there is none). Same no-coupling shape as <see cref="LogoUrl"/>: a plain
+    /// string, no app-specific default.</summary>
+    [Parameter]
+    public string? BrandUrl { get; set; }
+}

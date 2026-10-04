@@ -1,0 +1,73 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@inject StringManager Strings
+
+@* Nothing to close on the default surface (the main page): the control removes itself. *@
+@if (Surface is not null && !Surface.IsMain)
+{
+    @* The header X is the house's one button at the flat rank with no word to draw, drawn by
+       NsButton like every other glyph in the chrome rather than by a second icon button of
+       its own. *@
+    @if (As == NsAs.Inline)
+    {
+        <NsButton As="NsAs.Inline"
+                  Breakpoint="NsBreakpoint.Never"
+                  Icon="@NsIcons.Close"
+                  Label="@Strings.Translate("Common.Close")"
+                  Disabled="@ParentDisabled"
+                  OnClick="@(() => Surface.Close())"
+                  Class="@Class" />
+    }
+    else
+    {
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Default"
+                   Disabled="@ParentDisabled"
+                   OnClick="@(() => Surface.Close())"
+                   Class="@Class">
+            @if (ChildContent is not null)
+            {
+                @ChildContent
+            }
+            else
+            {
+                @Strings.Translate("Common.Close")
+            }
+        </MudButton>
+    }
+}
+
+@code {
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    /// <summary>What the form around this control refuses — Disabled, or the freeze a running
+    /// submit puts on every field under it. Read here rather than left to the two faces, because
+    /// where both stand in the same cascade they have to answer it together: the header X is an
+    /// NsButton, which decides for itself, and the worded one is a vendor button reading the same
+    /// cascade on its own terms (ui/actions.md) — without this the X stays live over a Cancelar
+    /// that has gone grey, one way out of a surface disagreeing with the other.
+    /// <para>A DIALOG's X stands outside that cascade — NsOpenDialog draws it in TitleContent, which
+    /// MudDialog renders in the provider's tree, above the hosted component and the NsForm inside it
+    /// — and reads this same name all the same: the form's word travels up through the surface
+    /// (SurfaceContext.FormRefuses) and NsDialogExit re-provides it there. So nothing here knows
+    /// which surface it is on, and both faces answer on every one of them.</para></summary>
+    [CascadingParameter(Name = "ParentDisabled")]
+    bool ParentDisabled { get; set; }
+
+    /// <summary>Rank only: default is the footer's worded button ("Cancelar"); Inline — the
+    /// flat rung with nothing to word — is the header's X.</summary>
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Default;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

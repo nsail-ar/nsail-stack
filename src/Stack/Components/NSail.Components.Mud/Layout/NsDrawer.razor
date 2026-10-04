@@ -1,0 +1,195 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using MudBlazor.Interfaces
+@using MudBlazor.Services
+@implements IAsyncDisposable
+
+@inject IBrowserViewportService Viewport
+
+<MudDrawer Open="_open"
+           OpenChanged="OnOpenChanged"
+           Anchor="Anchor.End"
+           Variant="@GetVariant()"
+           ClipMode="@GetClipMode()"
+           Elevation="8"
+           Overlay="@(!IsDocked)"
+           Width="@GetWidth()"
+           Class="@GetClasses()"
+           Style="@GetStyle()">
+    <MudContainer Class="@($"d-flex flex-column h-full min-h-0 {PaddingClass}")">
+        <NsCloseOnEscape Class="d-flex flex-column flex-1 min-h-0">
+            @ChildContent
+        </NsCloseOnEscape>
+    </MudContainer>
+</MudDrawer>
+
+@code {
+
+    readonly Guid _viewportSubscription = Guid.NewGuid();
+
+    bool _open = true;
+
+    // Assume a wide viewport until measured (prerender / first render): a docked
+    // drawer degrades gracefully, an overlay flash over the content would not.
+    Breakpoint _breakpoint = Breakpoint.Lg;
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    [CascadingParameter]
+    MudDrawerContainer? Container { get; set; }
+
+    [CascadingParameter]
+    NsLayoutState? LayoutState { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Overlay always covers the content; Docked pushes it aside on wide screens.</summary>
+    [Parameter]
+    public NsDrawerMode Mode { get; set; } = NsDrawerMode.Overlay;
+
+    /// <summary>Drawer width fallback when there is no surface cascade (Xs 320px … Xxl 1140px, capped at the viewport).</summary>
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    [Parameter]
+    public NsSize Padding { get; set; } = NsSize.Md;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    bool IsDocked =>
+        Mode == NsDrawerMode.Docked
+        && !(Surface?.Floating ?? false)
+        && _breakpoint is >= Breakpoint.Md and <= Breakpoint.Xxl;
+
+    // Responsive is deliberately not used: it closes itself below the breakpoint,
+    // which would desync the URL-driven surface. The variant is picked here instead.
+    DrawerVariant GetVariant() => IsDocked ? DrawerVariant.Persistent : DrawerVariant.Temporary;
+
+    // Always clips below the app bar when the layout has one; with no Header slot
+    // (nsail#609) there is no bar to sit under, and MudBlazor's own clipped-always
+    // geometry would otherwise reserve a bar-height gap nothing ever draws (nsail#666).
+    DrawerClipMode GetClipMode()
+    {
+        return (LayoutState?.HasHeader ?? true) ? DrawerClipMode.Always : DrawerClipMode.Never;
+    }
+
+    string GetWidth() => (Surface?.Size ?? Size) switch
+    {
+        NsSize.Xs => "320px",
+        NsSize.Sm => "400px",
+        NsSize.Md => "480px",
+        NsSize.Lg => "720px",
+        // Xl means as wide as the surface may be — never full-bleed. 100% resolves against
+        // the drawer's own positioning box (the viewport, being fixed), and .ns-drawer's
+        // max-width in ns-mud.css is what turns "as wide as it may be" into a real number:
+        // the viewport less the nav gutter on desktop, the whole viewport below the nav's
+        // docking breakpoint. The cap lives there rather than here because it is the rule
+        // for every size, not for this one — an Xxl aside on a 1280px laptop would cover the
+        // menu just as thoroughly.
+        NsSize.Xl => "100%",
+        NsSize.Xxl => "1140px",
+        _ => "480px"
+    };
+
+    string GetClasses() => new NsClassBuilder("ns-drawer")
+        .Add(Class)
+        .ToString();
+
+    // Docked and temporary are two different places in the stack, and MudBlazor already ranks
+    // them: a docked drawer is chrome BESIDE the page and sits under the app bar
+    // (--mud-zindex-drawer, 1100 against the bar's 1300); a temporary one is a sheet OVER the
+    // page and sits above it, with the backdrop MudDrawer paints for it in between
+    // (--mud-zindex-appbar + 1). Pinning one surface tier on both — and the floating one, at
+    // that: SurfaceContext's ladder starts at exactly --mud-zindex-appbar, so its first rung
+    // is the bar's own — is what let a docked aside paint across the app's constant chrome.
+    // Lowering that single number for both would only move the failure to mobile, where the
+    // sheet would end up under its own backdrop. Read from the vendor's variables rather than
+    // restated, so the two rankings cannot drift. A modal still outranks either: that is what
+    // SurfaceContext.ZIndex is for, and NsDialog is now its only reader.
+    string GetStyle()
+    {
+        return IsDocked
+            ? "z-index: var(--mud-zindex-drawer)"
+            : "z-index: calc(var(--mud-zindex-appbar) + 2)";
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged += OnSurfaceStateChanged;
+        }
+    }
+
+    void OnSurfaceStateChanged() => _ = InvokeAsync(() =>
+    {
+        StateHasChanged();
+
+        // A fixed drawer's width is painted by the container (--mud-drawer-width-*),
+        // and MudDrawer never notifies it of Width changes — refresh it here.
+        (Container as IMudStateHasChanged)?.StateHasChanged();
+    });
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Viewport.SubscribeAsync(
+                _viewportSubscription,
+                OnViewportChanged,
+                new ResizeOptions { NotifyOnBreakpointOnly = true },
+                fireImmediately: true);
+        }
+    }
+
+    void OnViewportChanged(BrowserViewportEventArgs args)
+    {
+        if (_breakpoint == args.Breakpoint)
+        {
+            return;
+        }
+
+        _breakpoint = args.Breakpoint;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    void OnOpenChanged(bool open)
+    {
+        // The drawer's visibility is URL-driven (NsSurface renders it while the
+        // query parameter is present). When MudBlazor asks to close (backdrop
+        // click), turn that into a real close so the URL stays in sync.
+        if (!open)
+        {
+            Surface?.Close();
+        }
+
+        _open = true;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged -= OnSurfaceStateChanged;
+        }
+
+        await Viewport.UnsubscribeAsync(_viewportSubscription);
+    }
+
+    string PaddingClass => Padding switch
+    {
+        NsSize.None => "pa-0",
+        NsSize.Xs => "pa-1",
+        NsSize.Sm => "pa-2",
+        NsSize.Md => "pa-4",
+        NsSize.Lg => "pa-6",
+        NsSize.Xl => "pa-8",
+        NsSize.Xxl => "pa-10",
+        _ => "pa-4"
+    };
+}

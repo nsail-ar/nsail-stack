@@ -1,0 +1,81 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+@inherits NsPage
+
+@* A page whose content comes from a read, wired the way a list page wires one: the region
+   owns the load, the page keeps a handle to re-read through. Creates counts the page's own
+   initialization so a retry can be proven to re-run the read and nothing else. *@
+<NsLoad @ref="_load" OnLoad="Load">
+    <div id="ns-probe-loaded">@_value</div>
+</NsLoad>
+
+@code {
+
+    NsLoad? _load;
+    string? _value;
+
+    /// <summary>What the read answers with, or null for a read that succeeds.</summary>
+    [Parameter]
+    public Problem? Refusal { get; set; }
+
+    /// <summary>Holds the read open so a test can look at the region while it is still in
+    /// flight — the tick a table used to spend claiming it had no records.</summary>
+    [Parameter]
+    public TaskCompletionSource? Gate { get; set; }
+
+    public int Reads { get; private set; }
+
+    public int Creates { get; private set; }
+
+    /// <summary>Counted at the throw, so a test can wait for a read it superseded to have
+    /// actually refused before asking what the region drew.</summary>
+    public int Refusals { get; private set; }
+
+    /// <summary>The token each read was handed, in order — a real screen passes it to Send.</summary>
+    public List<CancellationToken> Tokens { get; } = [];
+
+    protected override Task OnCreatedAsync()
+    {
+        Creates++;
+
+        return Task.CompletedTask;
+    }
+
+    public Task Reload()
+    {
+        return _load?.Reload() ?? Task.CompletedTask;
+    }
+
+    async Task Load(ReadEventArgs args)
+    {
+        var read = ++Reads;
+
+        Tokens.Add(args.CancellationToken);
+
+        // What this read answers with is fixed when it starts, the way a read that is already
+        // in flight keeps sending what it was sent with: a test that supersedes it changes the
+        // parameters for the NEXT read, not for this one.
+        var gate = Gate;
+        var refusal = Refusal;
+
+        if (gate is not null)
+        {
+            await gate.Task;
+        }
+
+        if (refusal is not null)
+        {
+            Refusals++;
+
+            throw new BusinessException(refusal);
+        }
+
+        _value = $"read {read}";
+    }
+}

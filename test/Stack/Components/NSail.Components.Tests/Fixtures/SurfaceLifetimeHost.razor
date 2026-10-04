@@ -1,0 +1,51 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* One surface, two pages: the default surface outlives navigation (only named surfaces
+   remount per route), so what the first page left on it is what the second one inherits. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Context="surface">
+        @{ _surface = surface; }
+        @if (Showing)
+        {
+            <DirtySourceProbe @ref="_probe" />
+            <NsForm TModel="SubmitTrackingModel" Model="Model">
+                <NsTextField @bind-Value="context.Name" />
+                <NsSubmit Class="tracked-submit" />
+            </NsForm>
+        }
+        else
+        {
+            <NsForm TModel="SubmitTrackingModel" Model="Next">
+                <NsTextField @bind-Value="context.Name" />
+                <NsSubmit Class="next-submit" />
+            </NsForm>
+        }
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+    DirtySourceProbe? _probe;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter]
+    public SubmitTrackingModel Model { get; set; } = new();
+
+    [Parameter]
+    public SubmitTrackingModel Next { get; set; } = new();
+
+    [Parameter]
+    public bool Showing { get; set; } = true;
+
+    public SurfaceContext? Surface => _surface;
+
+    public DirtySourceProbe? Probe => _probe;
+}

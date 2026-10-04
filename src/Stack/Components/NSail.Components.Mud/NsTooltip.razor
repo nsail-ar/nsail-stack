@@ -1,0 +1,20 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* Detail on demand: what the element already says, said in full. It is never the only place
+   a fact lives — a reader on a touch screen has no hover — so what rides here is the long
+   form of something already on screen, never something only this can tell. *@
+<MudTooltip Text="@Text" Placement="Placement.Bottom" Arrow>
+    @ChildContent
+</MudTooltip>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Text { get; set; }
+}

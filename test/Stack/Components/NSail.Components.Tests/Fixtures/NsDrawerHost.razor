@@ -1,0 +1,35 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* Mirrors UpdatePartyHost's shape (Directory.Shared.Tests): a real NsSurfaceContext, the
+   same component NsRouter provides for every routed page, so NsDrawer/NsClose/the
+   NavigationLock unsaved-changes guard all read the real SurfaceContext rather than a
+   stand-in — exactly what proving GetWidth's Xl case and backdrop behavior needs. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Name="@Surfaces.Aside" Context="surface">
+        @{ _surface = surface; }
+        <NsDrawer Mode="Mode">
+            <div class="drawer-probe-body">
+                <NsClose As="NsAs.Inline" Class="drawer-close" />
+                probe
+            </div>
+        </NsDrawer>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter]
+    public NsDrawerMode Mode { get; set; } = NsDrawerMode.Overlay;
+
+    public SurfaceContext? Surface => _surface;
+}

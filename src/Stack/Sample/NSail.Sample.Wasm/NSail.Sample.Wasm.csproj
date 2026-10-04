@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+	<PropertyGroup>
+		<NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
+		<StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+		<BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+		<RootNamespace>NSail.Sample</RootNamespace>
+		<!-- Fingerprinted asset names drift between incremental builds: the boot manifest asks
+		     for a hash the server no longer maps, and the app never goes interactive. Stable
+		     names in Debug. -->
+		<WasmFingerprintAssets Condition="'$(Configuration)' == 'Debug'">false</WasmFingerprintAssets>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.9" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\BaseServices\NSail.BaseServices.Wasm\NSail.BaseServices.Wasm.csproj" />
+		<ProjectReference Include="..\..\Components\NSail.Components.Mud\NSail.Components.Mud.csproj" />
+		<ProjectReference Include="..\NSail.Sample.Sdk\NSail.Sample.Sdk.csproj" />
+	</ItemGroup>
+
+	<!-- The screens' texts, and the React client's too: the host serves this same catalog to the
+	     browser that runs no .NET (GetStrings), so both clients say one sentence per key. -->
+	<ItemGroup>
+		<EmbeddedResource Include="strings*.json" />
+		<EmbeddedResource Update="strings.*.json">
+			<DependentUpon>strings.json</DependentUpon>
+			<LogicalName>$(RootNamespace).%(Filename)%(Extension)</LogicalName>
+			<WithCulture>false</WithCulture>
+		</EmbeddedResource>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Generation\NSail.SourceGenerator\NSail.SourceGenerator.csproj">
+			<OutputItemType>Analyzer</OutputItemType>
+			<PrivateAssets>all</PrivateAssets>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
+	</ItemGroup>
+
+</Project>

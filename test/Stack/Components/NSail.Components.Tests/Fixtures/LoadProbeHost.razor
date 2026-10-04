@@ -1,0 +1,49 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+@* The whole chain a real screen hangs from: the layout's boundary, a real surface, and the
+   page inside it. Nothing here is a stand-in, so a failure that escaped the region would
+   land exactly where it lands in the app -- on the splash, or on the surface's own toast. *@
+<NsErrorBoundary>
+    <CascadingValue Value="RouteTable">
+        <NsSurfaceContext Context="surface">
+            @if (Bare)
+            {
+                <BareLoadProbePage @ref="_bare" Refusal="Refusal" Gate="Gate" />
+            }
+            else
+            {
+                <LoadProbePage @ref="_page" Refusal="Refusal" Gate="Gate" />
+            }
+        </NsSurfaceContext>
+    </CascadingValue>
+</NsErrorBoundary>
+
+@code {
+
+    LoadProbePage? _page;
+    BareLoadProbePage? _bare;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter]
+    public Problem? Refusal { get; set; }
+
+    [Parameter]
+    public TaskCompletionSource? Gate { get; set; }
+
+    /// <summary>Renders the page that still loads from OnCreatedAsync instead of the one that
+    /// declares a region — the floor NsPage owes every screen that has not been converted.</summary>
+    [Parameter]
+    public bool Bare { get; set; }
+
+    public LoadProbePage? Page => _page;
+
+    public BareLoadProbePage? BarePage => _bare;
+}

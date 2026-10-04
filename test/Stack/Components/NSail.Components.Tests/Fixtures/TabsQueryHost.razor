@@ -1,0 +1,56 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* The tabs control mounted the way a screen mounts it: inside the same NsSurfaceContext
+   NsRouter gives a routed page, so the binding reads and writes the string that surface is
+   routed by — the address bar on the main surface, the inner ?aside= route in an overlay,
+   nothing at all in a dialog. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Name="Name" Close="Close" Context="surface">
+        <NsTabs BindQuery="BindQuery" @bind-ActivePanelIndex="ActiveTab">
+            <NsTab Title="Identity" Name="@Named("identity")">
+                <div class="tab-identity"></div>
+            </NsTab>
+            <NsTab Title="Locations" Name="@Named("locations")">
+                <div class="tab-locations"></div>
+            </NsTab>
+            <NsTab Title="Accounts" Name="@Named("accounts")">
+                <div class="tab-accounts"></div>
+            </NsTab>
+        </NsTabs>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter]
+    public Surface? Name { get; set; }
+
+    /// <summary>Wires this host as a host-managed surface (a dialog) instead of a
+    /// query-addressable one — the same override NsOpenDialog passes its own SurfaceContext.</summary>
+    [Parameter]
+    public Action? Close { get; set; }
+
+    [Parameter]
+    public bool BindQuery { get; set; }
+
+    /// <summary>Strips every tab's Name, which is the case the index fallback answers.</summary>
+    [Parameter]
+    public bool Unnamed { get; set; }
+
+    /// <summary>The page's own field behind @@bind-ActivePanelIndex — public so a test can read
+    /// which tab the screen believes is showing, not merely which panel the vendor painted.</summary>
+    public int ActiveTab { get; set; }
+
+    string? Named(string name)
+    {
+        return Unnamed ? null : name;
+    }
+}

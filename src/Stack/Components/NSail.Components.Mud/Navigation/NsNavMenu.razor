@@ -1,0 +1,633 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using NSail.Localization
+@using NSail.Messaging.Runtime
+@using System.Security.Claims
+
+@implements IDisposable
+
+@inject NavMenu Menu
+@inject StringManager Strings
+@inject RouteTable Routes
+@inject NavigationManager Navigation
+@inject PageGate Gate
+@inject Mediator Mediator
+
+@* The drawer is a surface like any other, so it wears the house's panel anatomy rather than
+   a flat pile the host scrolls whole: the search field stays put in the Header, the entries
+   are the only thing that moves, and the Footer holds the foot of the drawer open. NsPanel
+   literally and not a hand-rolled copy — the min-h-0 chain that makes exactly one box the
+   scroller is the part that is easy to get subtly wrong twice. *@
+<NsPanel>
+    <Header>
+        @if (Brand is not null)
+        {
+            @* The drawer owns the brand, always — full height on desktop, the header of
+               the temporary sheet on mobile (Leonardo, nsail#378). One place shows it, so
+               no viewport can show it twice. *@
+            <div class="d-flex align-center px-4 ns-nav-brand">
+                @Brand
+            </div>
+        }
+        <div class="pa-2">
+            <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Grow />
+        </div>
+    </Header>
+    <Content>
+        @* The page's own index, above the app's map and never instead of it. The drawer is the
+           frame's one gutter, so a screen whose rail cannot stand beside its content shares this
+           one rather than taking it (ui/guide.md) — and it is here that the rail collapses to,
+           exactly as the nav itself does. Measured by the WINDOW, the one measurement that is
+           not the surface's own: this drawer docks or hides on exactly that edge, and above it
+           the page has its own room and draws the rail itself (styling.md). *@
+        @if (Surface?.Index is { } index)
+        {
+            <div class="@GetIndexClasses()">
+                @index
+
+                <div class="ns-nav-divider" role="separator"></div>
+            </div>
+        }
+
+        <MudNavMenu>
+            @foreach (var item in Shown(_items))
+            {
+                @Render(item)
+            }
+        </MudNavMenu>
+    </Content>
+    <Footer>
+        @* The foot of the drawer is where the actor is named, sticky under the entries that
+           scroll past it: the panel's footer is outside the scroller by construction, so this
+           needs no positioning of its own. What goes in it is the app's, never the Stack's —
+           the Stack has no session to name. *@
+        @if (Session is not null)
+        {
+            <div class="ns-nav-session">
+                @Session
+            </div>
+        }
+    </Footer>
+</NsPanel>
+
+@code {
+
+    readonly HashSet<NavMenuItem> _hidden = [];
+
+    IReadOnlyList<NavMenuItem> _items = [];
+
+    IReadOnlyDictionary<string, int> _counts = new Dictionary<string, int>(StringComparer.Ordinal);
+
+    Task<AuthenticationState>? _source;
+
+    bool _built;
+
+    List<NavMenuItem> _expanded = [];
+
+    NavMenuItem? _active;
+
+    bool _manual;
+
+    string _search = string.Empty;
+
+    IDisposable? _recount;
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    /// <summary>The surface this drawer frames — the main one, since the drawer is the frame.
+    /// What its page announced as an index is what the block above the map draws.</summary>
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    /// <summary>The install's own name and logo, always at the top of the drawer header.</summary>
+    [Parameter]
+    public RenderFragment? Brand { get; set; }
+
+    /// <summary>The actor's own chip — avatar, name, current organization — at the foot of the
+    /// drawer, and the trigger of whatever menu the app anchors on it.</summary>
+    [Parameter]
+    public RenderFragment? Session { get; set; }
+
+    // The install's own word wins where it wrote one, and it is not a catalog entry: a shop's
+    // noun for a door is stored beside the arrangement that placed the door, so nothing has to
+    // reach the catalogs to change it. Everywhere else the label is what it has always been.
+    string GetName(NavMenuItem item)
+    {
+        return item.Label is { Length: > 0 } label
+            ? label
+            : Strings.Translate($"NavMenu.{item.Name}", item.Name);
+    }
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+
+        // NsPartial.Subscribe's two favours, hand-rolled: this is a plain component, so the
+        // marshal onto the renderer and the redraw after the handler are written here rather
+        // than inherited. Nothing else about the drawer wants NsPartial.
+        _recount = Mediator.Subscribe<NavMenuCountsChanged>((_, _) => InvokeAsync(async () =>
+        {
+            await Recount();
+
+            StateHasChanged();
+        }));
+
+        if (Surface is not null)
+        {
+            Surface.IndexChanged += HandleIndexChanged;
+        }
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
+
+        _recount?.Dispose();
+
+        if (Surface is not null)
+        {
+            Surface.IndexChanged -= HandleIndexChanged;
+        }
+    }
+
+    // The page announces from its own render, which runs after the drawer's: the drawer is the
+    // layout's gutter and the page is its body. Nothing would redraw it without this.
+    void HandleIndexChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    string GetIndexClasses()
+    {
+        return new NsClassBuilder("ns-nav-index flex-column")
+            .Add(NsResponsive.ShownBelowWindow(NsSize.Md))
+            .ToString();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // What is drawn is a function of two things: the tree NavMenu holds, and the session the
+        // permission gate reads it against. A parameter set is a signal that neither changed —
+        // a RenderFragment parameter never compares equal to itself, so every render of whatever
+        // hosts the drawer arrives here, and asking the gate about every entry again buys
+        // nothing. Both fields are assigned before the first await, so a set arriving while this
+        // build is still running finds it already claimed rather than starting a second one, and
+        // the items keep their identity — which is what _expanded and _active are held by.
+        if (_built && ReferenceEquals(_source, AuthenticationState))
+        {
+            return;
+        }
+
+        _built = true;
+        _source = AuthenticationState;
+
+        // Awaiting the state is ordering as much as it is the user: the client fills its
+        // Session and effective policies while this task completes, and the gate reads
+        // those. Asked any earlier, every entry answers "denied".
+        var user = AuthenticationState is null
+            ? new ClaimsPrincipal(new ClaimsIdentity())
+            : (await AuthenticationState).User;
+
+        var merged = await Menu.GetItems(AuthenticationState);
+
+        _hidden.Clear();
+
+        foreach (var item in merged)
+        {
+            await Hide(item, user);
+        }
+
+        // Assigned last, so nothing renders before it knows what to leave out.
+        _items = merged;
+
+        ApplyRoute();
+
+        await Recount();
+    }
+
+    // One of the two moments a number is asked again, and the cheap one: a navigation already
+    // costs the arriving page's own reads, and it is the moment a person looks at the map again.
+    // The other is NavMenuCountsChanged, which is what covers the act taken — here or in another
+    // seat — without anybody leaving the page. Neither is a clock of the drawer's own: the
+    // drawer counts when it is told to, and what does the telling is whoever knows the work
+    // moved.
+    void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        ApplyRoute();
+
+        _ = InvokeAsync(async () =>
+        {
+            await Recount();
+
+            StateHasChanged();
+        });
+    }
+
+    async Task Recount()
+    {
+        _counts = await Menu.GetCounts();
+    }
+
+    int Count(NavMenuItem item)
+    {
+        return _counts.TryGetValue(item.Name, out var count) ? count : 0;
+    }
+
+    void SetSearch(string? value)
+    {
+        _search = value ?? string.Empty;
+    }
+
+    IEnumerable<NavMenuItem> Visible(IEnumerable<NavMenuItem> items)
+    {
+        return items.Where(item => !_hidden.Contains(item));
+    }
+
+    // The permission gate runs first and the search filters what it left: an entry the
+    // session may not open never becomes findable by typing its name. What the gate and the
+    // search leave behind can still strand a separator with nothing on one side of it — that
+    // is the same "a rule between nothing and nothing" the search filter already refuses, so
+    // Collapse applies it once more, per level, over whatever survived.
+    IEnumerable<NavMenuItem> Shown(IEnumerable<NavMenuItem> items)
+    {
+        return Collapse(Visible(items).Where(Keeps));
+    }
+
+    // A run of consecutive separators draws one line, and one leading or trailing the level
+    // draws none: each would otherwise separate a family from a permission's empty band
+    // rather than from another family. Only the first of a run is kept, and only once
+    // something has already been drawn above it.
+    static IEnumerable<NavMenuItem> Collapse(IEnumerable<NavMenuItem> items)
+    {
+        NavMenuItem? pending = null;
+        var any = false;
+
+        foreach (var item in items)
+        {
+            if (item.IsSeparator)
+            {
+                if (any)
+                {
+                    pending ??= item;
+                }
+
+                continue;
+            }
+
+            if (pending is not null)
+            {
+                yield return pending;
+
+                pending = null;
+            }
+
+            yield return item;
+
+            any = true;
+        }
+    }
+
+    bool Keeps(NavMenuItem item)
+    {
+        if (_search.Length == 0)
+        {
+            return true;
+        }
+
+        // A filtered drawer is a list of matches, not the map any more: the two families a
+        // line was placed between are gone, so the line goes with them rather than floating
+        // over results it no longer separates.
+        if (item.IsSeparator)
+        {
+            return false;
+        }
+
+        if (item.Items.Count > 0)
+        {
+            return Shown(item.Items).Any();
+        }
+
+        return NsSearchText.Contains(GetName(item), _search);
+    }
+
+    bool IsExpanded(NavMenuItem item)
+    {
+        if (_search.Length > 0)
+        {
+            return true;
+        }
+
+        return _expanded.Contains(item);
+    }
+
+    void SetExpanded(NavMenuItem item, bool expanded)
+    {
+        // While searching every group renders open regardless, so a toggle would only
+        // rewrite the state the search is about to restore.
+        if (_search.Length > 0)
+        {
+            return;
+        }
+
+        var path = PathTo(item, _items);
+
+        if (path is null)
+        {
+            return;
+        }
+
+        if (!expanded)
+        {
+            path.Remove(item);
+        }
+
+        _expanded = path;
+        _manual = true;
+    }
+
+    void ApplyRoute()
+    {
+        var leaf = FindActive(_items);
+
+        _active = leaf;
+
+        if (leaf is null)
+        {
+            return;
+        }
+
+        var path = PathTo(leaf, _items);
+
+        if (path is null)
+        {
+            return;
+        }
+
+        path.Remove(leaf);
+
+        // A leaf with no group above it owns no area, and a route matching nothing at all
+        // leaves the last expansion alone: the menu never collapses to nothing.
+        if (path.Count == 0)
+        {
+            return;
+        }
+
+        if (_manual && _expanded.Count > 0 && ReferenceEquals(_expanded[0], path[0]))
+        {
+            return;
+        }
+
+        _expanded = path;
+        _manual = false;
+    }
+
+    List<NavMenuItem>? PathTo(NavMenuItem target, IEnumerable<NavMenuItem> items)
+    {
+        foreach (var item in items)
+        {
+            if (ReferenceEquals(item, target))
+            {
+                return [item];
+            }
+
+            if (PathTo(target, item.Items) is { } path)
+            {
+                path.Insert(0, item);
+
+                return path;
+            }
+        }
+
+        return null;
+    }
+
+    NavMenuItem? FindActive(IEnumerable<NavMenuItem> items)
+    {
+        var current = GetCurrentPath();
+        var currentQuery = GetQuery(Navigation.ToBaseRelativePath(Navigation.Uri));
+
+        NavMenuItem? active = null;
+        var length = -1;
+        var specificity = -1;
+        var openness = -1;
+
+        foreach (var leaf in Leaves(items))
+        {
+            var target = Routes.GetUrl(leaf.PageType!, leaf.Parameters);
+            var url = Trim(target);
+            var query = GetQuery(target);
+
+            // A prefix match on the path, longest first, so a nested route picks its own
+            // entry rather than the section root.
+            var matches = url.Length == 0
+                ? current.Length == 0
+                : current.Equals(url, StringComparison.OrdinalIgnoreCase)
+                    || current.StartsWith(url + "/", StringComparison.OrdinalIgnoreCase);
+
+            // Two leaves can name one page and differ only by a deep-link filter (Personas
+            // bare, Pacientes with RoleIds): the path ties, so the query decides. A leaf
+            // carrying parameters is active only where the URL carries them too, and there
+            // it outranks the bare leaf that matches everywhere else.
+            if (!matches || !query.All(currentQuery.Contains))
+            {
+                continue;
+            }
+
+            // Two doors onto one page tie on both keys above — Optical's Mi Cuenta > Turnos and
+            // Contactología > Turnos are the same route with the same query — and the URL holds
+            // nothing that tells them apart. The open branch does: a person reaches the page
+            // through the door they could see, so the section they have open is the one that
+            // keeps the mark and stays open. Arriving on the route cold, with nothing expanded,
+            // falls back to the first door in the tree, which is all there is to go on.
+            var opened = Opened(leaf) ? 1 : 0;
+
+            if (url.Length > length
+                || (url.Length == length && query.Count > specificity)
+                || (url.Length == length && query.Count == specificity && opened > openness))
+            {
+                active = leaf;
+                length = url.Length;
+                specificity = query.Count;
+                openness = opened;
+            }
+        }
+
+        return active;
+    }
+
+    // Inside a group the person has open. _expanded is one path and not a set of them, so at
+    // most one branch is open at a time, and a leaf is in it when its own group is on that path.
+    bool Opened(NavMenuItem leaf)
+    {
+        if (_expanded.Count == 0 || PathTo(leaf, _items) is not { Count: > 1 } path)
+        {
+            return false;
+        }
+
+        return _expanded.Contains(path[^2]);
+    }
+
+    string ActiveClass(NavMenuItem item)
+    {
+        return ReferenceEquals(_active, item) ? "active" : string.Empty;
+    }
+
+    IEnumerable<NavMenuItem> Leaves(IEnumerable<NavMenuItem> items)
+    {
+        foreach (var item in Visible(items))
+        {
+            if (item.Items.Count > 0)
+            {
+                foreach (var leaf in Leaves(item.Items))
+                {
+                    yield return leaf;
+                }
+            }
+            else if (item.PageType is not null)
+            {
+                yield return item;
+            }
+        }
+    }
+
+    string GetCurrentPath()
+    {
+        return Trim(Navigation.ToBaseRelativePath(Navigation.Uri));
+    }
+
+    static HashSet<string> GetQuery(string url)
+    {
+        var pairs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var start = url.IndexOf('?');
+
+        if (start < 0)
+        {
+            return pairs;
+        }
+
+        var end = url.IndexOf('#', start);
+        var query = end < 0 ? url[(start + 1)..] : url[(start + 1)..end];
+
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            pairs.Add(pair);
+        }
+
+        return pairs;
+    }
+
+    static string Trim(string url)
+    {
+        var end = url.AsSpan().IndexOfAny('?', '#');
+
+        return (end < 0 ? url : url[..end]).Trim('/');
+    }
+
+    async Task<bool> Hide(NavMenuItem item, ClaimsPrincipal user)
+    {
+        bool hidden;
+
+        // A separator names no page, so there is nothing for the gate to answer about: it is
+        // drawn where its author placed it, and it can never be what keeps a group alive.
+        if (item.IsSeparator)
+        {
+            return false;
+        }
+
+        // Hidden by whoever arranged the menu, which is a decision and not a permission: the
+        // branch under it is never asked about, and never drawn. It stays in the tree the
+        // whole app shares, so NavMenuItem.Find still answers and the pages below keep the
+        // glyph on their own title bars.
+        if (item.Visible == false)
+        {
+            _hidden.Add(item);
+
+            return true;
+        }
+
+        // The door's own permission, where whoever composed the menu declared one: a second
+        // condition ANDed with what the branch below answers, asked here so a GROUP can carry
+        // it too — a group is otherwise never asked about itself, and a section whose every
+        // child a session legitimately holds is exactly the case that needs it
+        // (permissions.md). Denied, the branch under it is not asked about, the same way a
+        // hidden entry's is not.
+        if (item.Permission is { } permission && !await Gate.Permits(permission, user))
+        {
+            _hidden.Add(item);
+
+            return true;
+        }
+
+        if (item.Items.Count > 0)
+        {
+            // Every child is evaluated, never short-circuited: each records its own
+            // visibility, and the group goes only when all of them did.
+            hidden = true;
+
+            foreach (var child in item.Items)
+            {
+                if (!await Hide(child, user) && !child.IsSeparator)
+                {
+                    hidden = false;
+                }
+            }
+        }
+        else
+        {
+            hidden = item.PageType is null || !await Gate.Allows(item.PageType, user);
+        }
+
+        if (hidden)
+        {
+            _hidden.Add(item);
+        }
+
+        return hidden;
+    }
+
+    RenderFragment Render(NavMenuItem item)
+    {
+        return __builder =>
+        {
+            if (item.IsSeparator)
+            {
+                @* Presentational to the list — role="separator" and no tab stop — so the
+                   drawer never offers a row that goes nowhere (NsMenuDivider's own note). *@
+                <div class="ns-nav-divider" role="separator"></div>
+            }
+            else if (item.Items.Count > 0)
+            {
+                <MudNavGroup Title="@GetName(item)" Icon="@(item.Icon?.Markup)" Expanded="@IsExpanded(item)" ExpandedChanged="@(expanded => SetExpanded(item, expanded))">
+                    @foreach (var child in Shown(item.Items))
+                    {
+                        @Render(child)
+                    }
+                </MudNavGroup>
+            }
+            else if (item.PageType is not null)
+            {
+                @* The vendor's prefix match is blind to the query, so it cannot tell two
+                   leaves naming one page apart: it decides only whether a class is added,
+                   and the class it adds is the styling one only for the same active leaf
+                   the expansion uses. *@
+                <MudNavLink Href="@Routes.GetUrl(item.PageType, item.Parameters)" Icon="@(item.Icon?.Markup)" Match="NavLinkMatch.Prefix" ActiveClass="@ActiveClass(item)">
+                    @GetName(item)
+                    @* The number rides INSIDE the link's own label, not beside it: the whole
+                       row is one target, and a badge outside it would be a second thing to
+                       aim at that goes to the same place. Drawn only when there is something
+                       to say — a zero is a claim that the person has to read to dismiss. *@
+                    @if (Count(item) is > 0 and var count)
+                    {
+                        <span class="ns-nav-count">@count</span>
+                    }
+                </MudNavLink>
+            }
+        };
+    }
+}

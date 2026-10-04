@@ -1,0 +1,41 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* Same recipe as NsDrawerHost: a real NsSurfaceContext, the same component NsRouter provides
+   for every routed page, so NsSubmit reads the real HasChanges rather than a stand-in. Two
+   heroes side by side, same form, same model — the only difference is Untracked. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Context="surface">
+        @{ _surface = surface; }
+        <NsForm TModel="SubmitTrackingModel" Model="Model" OnSubmit="HandleSubmit">
+            <NsTextField @bind-Value="context.Name" />
+            <NsSubmit Class="tracked-submit" />
+            <NsSubmit Untracked Class="untracked-submit" />
+        </NsForm>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public SubmitTrackingModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    public SurfaceContext? Surface => _surface;
+
+    Task HandleSubmit()
+    {
+        return Submitted.InvokeAsync();
+    }
+}

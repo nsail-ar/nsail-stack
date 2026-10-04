@@ -1,0 +1,54 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<MudIcon Icon="@(Icon?.Markup)" Size="@GetSize()" Title="@Title" Class="@GetClasses()" />
+
+@code {
+
+    /// <summary>An entry of <see cref="NsIcons"/> (or a product's own catalog) — never a
+    /// vendor icon named at the call site.</summary>
+    [Parameter, EditorRequired]
+    public Glyph? Icon { get; set; }
+
+    /// <summary>Typographic scale, reusing NsSize the way NsText does: Sm 16px, Md 20px,
+    /// Lg 24px. The vendor only has three steps, so the ends of the scale flatten onto them.
+    /// The px each step means is set once in ns-mud.css and holds for every icon in the app,
+    /// including the ones a control renders itself (a nav link, a button) and never asks
+    /// this component about.</summary>
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    /// <summary>Accessible name and tooltip. Set it whenever the icon carries meaning the
+    /// surrounding text does not already give.</summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>The tone the glyph carries, in the status channel's own vocabulary
+    /// (NsStatusText, NsStatusDot): a warning mark beside the sentence that says what is
+    /// wrong. Null is the ordinary glyph, at the ink of whatever it names.</summary>
+    [Parameter]
+    public NsSeverity? Severity { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder()
+            .Add($"ns-status-text {NsSeverityMapper.ToStatusClass(Severity)}", Severity is not null)
+            .Add(Class)
+            .ToString();
+    }
+
+    MudBlazor.Size GetSize()
+    {
+        return Size switch
+        {
+            NsSize.Xs or NsSize.Sm => MudBlazor.Size.Small,
+            NsSize.Lg or NsSize.Xl or NsSize.Xxl => MudBlazor.Size.Large,
+            _ => MudBlazor.Size.Medium
+        };
+    }
+}

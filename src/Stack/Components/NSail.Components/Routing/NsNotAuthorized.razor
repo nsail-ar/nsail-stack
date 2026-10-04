@@ -1,0 +1,99 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using NSail.Localization
+@using NSail.Security
+@using System.Security.Claims
+
+@namespace NSail.Components
+
+@inject NavigationManager Navigation
+@inject StringManager Strings
+
+@if (_forbidden)
+{
+    <p role="alert">@Strings.Translate("Common.NotAuthorized")</p>
+}
+
+@code {
+
+    bool _forbidden;
+    bool _redirected;
+
+    [CascadingParameter]
+    public Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    /// <summary>Page an anonymous visitor is redirected to. A Type and not a path: the URL
+    /// comes from the route table, never written.</summary>
+    [Parameter]
+    public Type? SignInPage { get; set; }
+
+    [CascadingParameter]
+    public RouteTable? RouteTable { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var state = AuthenticationState is null ? null : await AuthenticationState;
+
+        // Signed in but missing a required role/policy: redirecting to sign-in would loop.
+        _forbidden = state?.User.Identity?.IsAuthenticated == true;
+
+        // Once per visitor, not once per parameter set: the redirect below changes the address,
+        // every ancestor between the router and this component re-renders on that, and the
+        // second pass would escape the address it had just written into the first one. Each
+        // round roughly doubles the URL, which is what pegs a whole browser tab rather than
+        // merely looping (nsail#469). NsRouteGate guards its own redirect the same way.
+        if (_forbidden || _redirected)
+        {
+            return;
+        }
+
+        _redirected = true;
+
+        Navigation.NavigateTo(GetSignInUrl(state?.User), replace: true);
+    }
+
+    string GetSignInUrl(ClaimsPrincipal? user)
+    {
+        var signInPath = GetSignInPath();
+        var here = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var query = new List<string>();
+
+        // The address the visitor was on is worth carrying back only when it is somewhere else.
+        // Sign-in naming itself as the return trip is a trip to nowhere, and it is the shape a
+        // re-entrant redirect feeds on, so the second guard is the address and not a flag.
+        // Compared without case, the way the browser and the route table both match a route.
+        // The app root is where a sign-in lands with no return address anyway, so naming it adds
+        // only an empty parameter.
+        var path = here.Split('?', '#')[0].Trim('/');
+
+        if (path.Length > 0 && !string.Equals(path, signInPath.Trim('/'), StringComparison.OrdinalIgnoreCase))
+        {
+            query.Add($"{SignInRoutes.ReturnUrlParameter}={Uri.EscapeDataString(here)}");
+        }
+
+        // Why they are here, when the state they were left with knows. An anonymous state that
+        // is the wreck of a credential the server refused says so (SignInRoutes.StaleClaim), and
+        // this is the only hand that can pass it on: in a WebAssembly app the refusal arrived as
+        // a 401 on a send and took the ticket with it, so the door has nothing left to ask.
+        if (user?.FindFirst(SignInRoutes.StaleClaim) is not null)
+        {
+            query.Add($"{SignInRoutes.StaleParameter}=1");
+        }
+
+        return query.Count is 0 ? signInPath : $"{signInPath}?{string.Join('&', query)}";
+    }
+
+    // The app that never names a sign-in page keeps the Iam kit's own route, which is where
+    // every product's sign-in lives today; naming the page overrides it without a path.
+    string GetSignInPath()
+    {
+        if (SignInPage is null || RouteTable is null)
+        {
+            return "/iam/sign-in";
+        }
+
+        return RouteTable.GetUrl(SignInPage);
+    }
+}

@@ -1,0 +1,41 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<MudProgressLinear Value="@Percent" Min="0" Max="100" Color="@GetColor()" Size="Size.Large" Rounded="true" Class="@Class" />
+
+@code {
+
+    /// <summary>How much of the allowance is spent. Value and Max are the caller's own units —
+    /// the percentage is worked out here so no page does the arithmetic twice, and it is clamped
+    /// so a reading past the ceiling still draws a full bar instead of overflowing it.</summary>
+    [Parameter]
+    public double Value { get; set; }
+
+    [Parameter]
+    public double Max { get; set; } = 100;
+
+    /// <summary>What the reading means, in the words the action components use: Danger is the
+    /// one that says the allowance is spent.</summary>
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Main;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    double Percent
+    {
+        get { return Max <= 0 ? 0 : Math.Clamp(Value / Max * 100, 0, 100); }
+    }
+
+    Color GetColor()
+    {
+        return As switch
+        {
+            NsAs.Danger => Color.Warning,
+            NsAs.Default => Color.Info,
+            _ => Color.Primary
+        };
+    }
+}

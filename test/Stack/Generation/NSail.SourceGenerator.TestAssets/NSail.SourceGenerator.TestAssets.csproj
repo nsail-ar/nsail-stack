@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\..\src\Stack\Injection\NSail.Injection.Annotations\NSail.Injection.Annotations.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Mapping\NSail.Mapping.Annotations\NSail.Mapping.Annotations.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging\NSail.Messaging.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="NSail.Messaging.Annotations" />
+		<Using Include="NSail.Messaging.Annotations.Method" Static="true" />
+	</ItemGroup>
+
+</Project>
+

@@ -1,0 +1,38 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* Read out, not only painted: a refusal that arrives with the page is a block of colour to
+   everyone who cannot see it, and the vendor marks none of it. Danger is the tone that has to be
+   heard before the person acts, so it carries the same role the house puts on the fieldless
+   refusal box (NsForm, NsPanel). No other tone is marked: those are copy that sits on the screen
+   rather than news, and an aria-live region around static text announces nothing. *@
+<MudAlert Severity="@GetSeverity()" Variant="Variant.Filled" Dense="false" Class="@Class"
+          role="@(As == NsAs.Danger ? "alert" : null)">
+    @ChildContent
+</MudAlert>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>What the message is, in the same word the action components use: Danger is
+    /// the one that says "read this before you continue".</summary>
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Default;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    Severity GetSeverity()
+    {
+        return As switch
+        {
+            NsAs.Danger => Severity.Warning,
+            NsAs.Main => Severity.Success,
+            _ => Severity.Info
+        };
+    }
+}

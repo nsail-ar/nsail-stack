@@ -1,0 +1,69 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* NsHelp's own mechanism (nsail#182) — an icon that carries a paragraph nothing else on the
+   row has room for, unloaded from the document until asked for, dismissed the same three ways
+   — generalized for a caller whose text is not one fixed translation key: a per-row fact
+   (nsail#679-sibling, "Solo quedan {0} en stock") that changes with the data, and an icon that
+   is not always the Help glyph. NsHelp keeps its own single-parameter contract (its own test
+   guards it); this is the sibling for everyone else. *@
+<span class="ns-help d-inline-flex align-center @Class" @onkeydown="OnKeyDown">
+    <NsButton As="@NsAs.Inline" Breakpoint="NsBreakpoint.Never"
+              Icon="@Icon"
+              Size="@NsSize.Sm"
+              Label="@Text"
+              Expanded="_open"
+              OnClick="Toggle" />
+
+    @if (_open)
+    {
+        <MudPopover Open="true"
+                    AnchorOrigin="@Origin.BottomLeft"
+                    TransformOrigin="@Origin.TopLeft"
+                    Class="ns-help-popover">
+            <div class="ns-help-text">@Text</div>
+        </MudPopover>
+
+        <MudOverlay Visible="true"
+                    LockScroll="false"
+                    ZIndex="@(SurfaceContext.VendorZIndex - 1)"
+                    OnClick="Close" />
+    }
+</span>
+
+@code {
+
+    bool _open;
+
+    [Parameter, EditorRequired]
+    public Glyph Icon { get; set; }
+
+    /// <summary>Already resolved — the button's own accessible name/tooltip and the popover's
+    /// body are the same string, because a fact worth a click is worth saying in full on
+    /// hover too.</summary>
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    void Toggle()
+    {
+        _open = !_open;
+    }
+
+    void Close()
+    {
+        _open = false;
+    }
+
+    void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Close();
+        }
+    }
+}

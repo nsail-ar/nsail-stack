@@ -1,0 +1,38 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+<MudPopoverProvider />
+
+@* Page mode explicitly: what these tests are about is the sentence a table with no rows
+   prints, not the device question Auto asks. *@
+<NsTable TRow="TestModel" Rows="Page" OnQuery="Query" Mode="NsTableMode.Page" Empty="Empty">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? Empty { get; set; }
+
+    /// <summary>Held, the read has not answered yet — which is the state a table may not
+    /// describe the data from. Unset, the answer is in hand on the first query.</summary>
+    [Parameter]
+    public TaskCompletionSource? Gate { get; set; }
+
+    DataPage<TestModel> Page { get; set; } = DataPage<TestModel>.Empty();
+
+    Task Query(QueryEventArgs args)
+    {
+        return Gate?.Task ?? Task.CompletedTask;
+    }
+}

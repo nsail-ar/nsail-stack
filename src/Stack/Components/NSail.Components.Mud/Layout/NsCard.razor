@@ -1,0 +1,117 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<MudCard Class="@GetClasses()">
+
+    @if (Header is not null || Door is not null)
+    {
+        @* ns-card-header is where the title's glyph gets its rank: every card writes the same
+           NsIcon beside its NsText As="Title", so the ink is said once here rather than at
+           every call site (ns-mud.css).
+           Both slots are handed over as parameters rather than as elements: the actions slot
+           has to be ABSENT, not empty, for a card with no door — the vendor renders a box for
+           the fragment it was given, and an empty one would leave the row's own gap hanging
+           off the end of every card that has nothing to put there. *@
+        <MudCardHeader Class="ns-card-header mud-typography mud-typography-h5"
+                       CardHeaderContent="@Header"
+                       CardHeaderActions="@DoorLink" />
+    }
+
+    @if (Content is not null)
+    {
+        <MudCardContent Class="@GetContentClasses()">
+            @* What the content is standing on, said out loud: a component inside it that would
+               own a scroll of its own (NsTabs' panel wrapper) has no other way to learn whether
+               there is a definite height here to resolve against, and a page restating it at
+               every call site is a second copy of this card's own Grow, waiting to drift.
+               The door is cascaded away in the same breath: it belongs to THIS card's header,
+               and a card nested in the content would otherwise draw a second one. *@
+            <CascadingValue Value="@ContentGrowth.For(Grow)">
+                <CascadingValue Value="@((CardDoor?)null)">
+                    @Content
+                </CascadingValue>
+            </CascadingValue>
+        </MudCardContent>
+    }
+
+    @if (Footer is not null)
+    {
+        <MudCardActions Class="d-flex justify-end gap-2">
+            @Footer
+        </MudCardActions>
+    }
+
+</MudCard>
+
+@code {
+
+    // Supplied by the host that placed this card (NsDashboard), never by the page and never
+    // by the card itself: the card's own screen, drawn as the last item of the header's row.
+    [CascadingParameter]
+    CardDoor? Door { get; set; }
+
+    // The way into the screen this card stands for, at the end of the header's own row and
+    // beside whatever acts the card already put there — a card never positions it and never
+    // knows it is on a dashboard. Default at Never: a door LEADS somewhere without being the
+    // act the card is about, which is Important's job. The target is the host's word, not the
+    // card's: a card is handed the target, never the choice.
+    RenderFragment? DoorLink
+    {
+        get
+        {
+            if (Door is not { } door)
+            {
+                return null;
+            }
+
+            return @<NsLink Href="@door.Href"
+                            As="NsAs.Default"
+                            Breakpoint="NsBreakpoint.Never"
+                            Icon="@NsIcons.Search"
+                            Label="@door.Name"
+                            Target="@door.Target" />;
+        }
+    }
+
+    [Parameter]
+    public bool Grow { get; set; } = true;
+
+    // ns-card: the hook that says this card's edge is around whatever it holds, so a component
+    // carrying a sheet of its own (NsTable) drops it and leaves one frame (ns-mud.css).
+    // ns-container: the screen's chrome is what d-c-* utilities measure against, so a
+    // control collapses on the width this card has, not the browser window's.
+    // min-h-0 rides with flex-1 and never alone: the growing card is flex:1 1 0% and must
+    // shrink to its bounded parent so its Content scrolls internally — min-height:0 is the pair
+    // of that overflow. A non-growing card takes its natural height, and there min-height:0
+    // only strips the content floor (min-height:auto) that stops a scrolling parent from
+    // flex-shrinking the card below its own content, painting the tab's fields outside the
+    // card border (Mi Perfil's Identidad tab).
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-card ns-container d-flex flex-column")
+            .Add("flex-1 min-h-0", Grow)
+            .ToString();
+    }
+
+    // Grow=false is a local arranger (a dashboard card among many): its content takes its
+    // natural height so the page owns the one scrollbar, not the card. Grow=true keeps the
+    // page-level-filler behavior (a root card growing to its surface, content scrolling
+    // internally while Header/Footer stay pinned).
+    string GetContentClasses()
+    {
+        return new NsClassBuilder("d-flex flex-column")
+            .Add("flex-fill min-h-0 overflow-y-auto", Grow)
+            .ToString();
+    }
+
+    [Parameter]
+    public RenderFragment? Header { get; set; }
+
+    [Parameter]
+    public RenderFragment? Content { get; set; }
+
+    [Parameter]
+    public RenderFragment? Footer { get; set; }
+}

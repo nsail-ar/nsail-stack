@@ -1,0 +1,21 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+
+@* An icon button carries a MudTooltip, which is a popover: without the provider ready in the
+   tree MudBlazor throws before anything renders. The first pass mounts with Action unset, so
+   nothing here is an icon button yet (NsAction with a null Action still renders NsButton, but
+   with no Icon there is no tooltip to open) — the provider marks itself ready in that pass's
+   own OnAfterRender, and the test's own Render call is free to hand over an Action with an
+   Icon on the pass after (NsActionColumnTests' note). *@
+<MudPopoverProvider />
+
+<NsAction Action="@Action" />
+
+@code {
+
+    [Parameter]
+    public ActionItem? Action { get; set; }
+}

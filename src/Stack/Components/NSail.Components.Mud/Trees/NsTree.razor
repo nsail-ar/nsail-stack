@@ -1,0 +1,214 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TItem where TItem : class
+
+@if (Searchable)
+{
+    <div class="pb-2">
+        <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Grow />
+    </div>
+}
+
+<MudTreeView T="TItem"
+             SelectionMode="@GetSelectionMode()"
+             SelectedValue="Selected"
+             SelectedValueChanged="OnSelectedChanged"
+             SelectedValues="Marked"
+             SelectedValuesChanged="OnMarkedChanged"
+             TriState="true"
+             AutoSelectParent="true"
+             Hover="true"
+             Dense="@Dense"
+             Class="ns-tree">
+    @foreach (var item in Items)
+    {
+        @Render(item)
+    }
+</MudTreeView>
+
+@code {
+
+    string _search = string.Empty;
+
+    HashSet<TItem>? _found;
+
+    /// <summary>Root items; children resolve through Children — the whole tree is in
+    /// memory (org-chart sized trees don't lazy load).</summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TItem> Items { get; set; } = [];
+
+    [Parameter, EditorRequired]
+    public Func<TItem, IReadOnlyList<TItem>> Children { get; set; } = default!;
+
+    [Parameter]
+    public Func<TItem, string>? ItemText { get; set; }
+
+    /// <summary>Custom row body (name + inline actions); replaces the plain ItemText
+    /// rendering. The expand toggle stays native either way.</summary>
+    [Parameter]
+    public RenderFragment<TItem>? ItemTemplate { get; set; }
+
+    /// <summary>Squeezes rows to a single line of text (MudBlazor drops the row's
+    /// min-height and most of its padding). Off by default: an ItemTemplate with more than
+    /// a name needs the room.</summary>
+    [Parameter]
+    public bool Dense { get; set; }
+
+    /// <summary>Opens every branch, for when the tree is showing a result set rather than a
+    /// structure to browse: a filtered tree that renders collapsed has found the match and
+    /// hidden it. It drives expansion while it is on, so the page turns it off to hand the
+    /// tree back to the user.</summary>
+    [Parameter]
+    public bool Expanded { get; set; }
+
+    [Parameter]
+    public TItem? Selected { get; set; }
+
+    [Parameter]
+    public EventCallback<TItem?> SelectedChanged { get; set; }
+
+    /// <summary>The items the user has checked. Binding it is what turns the tree into a
+    /// checkbox tree — null (the default) is the plain single-selection tree, and an empty
+    /// collection is a checkbox tree with nothing checked yet, so the two modes cannot be
+    /// confused and no second flag can contradict this one. A branch whose children are
+    /// partly checked shows the indeterminate box; that third state is read off the
+    /// children every render and is never a value in here.</summary>
+    [Parameter]
+    public IReadOnlyCollection<TItem>? Marked { get; set; }
+
+    [Parameter]
+    public EventCallback<IReadOnlyCollection<TItem>> MarkedChanged { get; set; }
+
+    /// <summary>Puts a search field above the tree that hides everything but the matches and
+    /// the branches leading to them, accent-insensitively. It reads the same text ItemText
+    /// gives the rows, so a tree with an ItemTemplate still has to supply ItemText for its
+    /// rows to be findable.</summary>
+    [Parameter]
+    public bool Searchable { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        Find();
+    }
+
+    Task OnSelectedChanged(TItem? item)
+    {
+        Selected = item;
+
+        return SelectedChanged.InvokeAsync(item);
+    }
+
+    Task OnMarkedChanged(IReadOnlyCollection<TItem> items)
+    {
+        Marked = items;
+
+        return MarkedChanged.InvokeAsync(items);
+    }
+
+    SelectionMode GetSelectionMode()
+    {
+        return Marked is null ? SelectionMode.SingleSelection : SelectionMode.MultiSelection;
+    }
+
+    void SetSearch(string? value)
+    {
+        _search = value?.Trim() ?? string.Empty;
+
+        Find();
+    }
+
+    void Find()
+    {
+        _found = _search.Length == 0 ? null : Collect();
+    }
+
+    HashSet<TItem> Collect()
+    {
+        var found = new HashSet<TItem>();
+
+        foreach (var item in Items)
+        {
+            Walk(item, found);
+        }
+
+        return found;
+    }
+
+    // A match keeps its whole ancestor chain: shown alone it would render as a root, and the
+    // branch it was found in is most of what the tree was telling the user.
+    bool Walk(TItem item, HashSet<TItem> found)
+    {
+        var matched = NsSearchText.Contains(GetText(item), _search);
+
+        foreach (var child in Children(item))
+        {
+            // |= and not ||, so every branch is walked and every match lands in the set.
+            matched |= Walk(child, found);
+        }
+
+        if (matched)
+        {
+            found.Add(item);
+        }
+
+        return matched;
+    }
+
+    // Filtering hides through Visible rather than skipping the item in the loop, so a node
+    // the search narrowed away stays registered with MudTreeView instead of unmounting:
+    // SetSelectedValuesAsync discards values it cannot match to an item it knows about, and
+    // a checked node the filter had removed would be exactly one of those.
+    bool IsShown(TItem item)
+    {
+        return _found is null || _found.Contains(item);
+    }
+
+    bool IsExpanded(TItem item)
+    {
+        return Expanded || _found is not null;
+    }
+
+    string GetText(TItem item) => ItemText?.Invoke(item) ?? item.ToString() ?? string.Empty;
+
+    // MudTreeViewItem shows the expand arrow whenever ChildContent is set, even if it
+    // renders nothing — a named section like <ChildContent> has to be an unconditional
+    // top-level child of the component tag (Razor won't compile it inside an @if), so a
+    // leaf node needs its own tag that omits the section entirely, not just CanExpand="false".
+    RenderFragment Render(TItem item) => __builder =>
+    {
+        var children = Children(item);
+
+        if (children.Count > 0)
+        {
+            <MudTreeViewItem T="TItem" Value="@item" CanExpand="true" Expanded="@IsExpanded(item)" Visible="@IsShown(item)">
+                <BodyContent Context="_">@RenderBody(item)</BodyContent>
+                <ChildContent>
+                    @foreach (var child in children)
+                    {
+                        @Render(child)
+                    }
+                </ChildContent>
+            </MudTreeViewItem>
+        }
+        else
+        {
+            <MudTreeViewItem T="TItem" Value="@item" CanExpand="false" Visible="@IsShown(item)">
+                <BodyContent Context="_">@RenderBody(item)</BodyContent>
+            </MudTreeViewItem>
+        }
+    };
+
+    RenderFragment RenderBody(TItem item) => __builder =>
+    {
+        if (ItemTemplate is not null)
+        {
+            @ItemTemplate(item)
+        }
+        else
+        {
+            <MudText>@GetText(item)</MudText>
+        }
+    };
+}

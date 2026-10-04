@@ -1,0 +1,33 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+@using NSail.Components
+
+@* One file is the whole value, held the way a consuming form holds it: every pick arrives
+   here as the new value, and a pick over a value already held arrives as a replacement. *@
+<NsFileUpload Value="Value" ValueChanged="OnChanged" Preview="Preview" Store="Store" Accept="image/*" />
+
+@code {
+
+    [Parameter]
+    public Guid? Value { get; set; }
+
+    [Parameter]
+    public bool Preview { get; set; }
+
+    [Parameter]
+    public IFileStore? Store { get; set; }
+
+    /// <summary>Every value the field raised, in order — what the test reads instead of
+    /// guessing at the component's insides.</summary>
+    public List<Guid?> Raised { get; } = [];
+
+    Task OnChanged(Guid? value)
+    {
+        Raised.Add(value);
+        Value = value;
+
+        return Task.CompletedTask;
+    }
+}

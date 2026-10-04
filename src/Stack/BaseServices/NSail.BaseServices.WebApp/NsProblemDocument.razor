@@ -1,0 +1,32 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@* The whole document a dead request answers with, and not just the face: the request never
+   reached the app's own root component, so nothing else is going to emit the shell the face
+   is styled by. Same NsApp chrome and same NsAssets the app's own root composes, so the page
+   a reader lands on here looks like the app they were already in. *@
+<NsApp>
+    <Head>
+        <NsAssets />
+    </Head>
+    <Body>
+        @* The face reads its colours off --mud-palette-*, which the vendor stylesheet leaves
+           unset: under the layout NsSetup has already mounted the theme, and here nothing has,
+           so the document mounts it itself. No brand was resolved -- the request died before
+           anything could -- so NsTheme paints its neutral grey. *@
+        <NsTheme />
+        <NsPageError HomePage="@HomePage" Handle="@Handle" />
+    </Body>
+</NsApp>
+
+@code {
+
+    /// <summary>The page mounted at the app's root, where the door back leads — read off the
+    /// route table by whoever renders this, never written.</summary>
+    [Parameter]
+    public Type? HomePage { get; set; }
+
+    /// <summary>The request's own trace id, the reference a report is filed by.</summary>
+    [Parameter]
+    public string? Handle { get; set; }
+}

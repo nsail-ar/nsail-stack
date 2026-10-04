@@ -1,0 +1,52 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Problems
+
+@* One of each field shape that renders a vendor input control, because the anchor the message
+   hangs off is that box: a plain text field, a select, a picker, and the chrome-only NsField.
+   Laid on a real NsFormGrid, because the gap it draws between rows is what hosts the message
+   and its own bottom reservation is where the LAST row's lands. *@
+<MudPopoverProvider />
+
+<NsForm TModel="ReservedGeometryModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsFormGrid>
+        <NsFormGridItem>
+            <NsTextField @bind-Value="context.Name" />
+        </NsFormGridItem>
+        <NsFormGridItem>
+            <NsSelect TItem="SelectOption" TValue="Guid?" @bind-Value="context.Choice"
+                      Items="Options" ItemValue="o => o.Id" ItemText="o => o.Name" />
+        </NsFormGridItem>
+        <NsFormGridItem>
+            <NsDateField TValue="DateOnly?" @bind-Value="context.Date" />
+        </NsFormGridItem>
+        <NsFormGridItem>
+            <NsField Label="Composed">composed</NsField>
+        </NsFormGridItem>
+    </NsFormGrid>
+    <NsSubmit />
+</NsForm>
+
+@code {
+
+    static readonly SelectOption[] Options =
+    [
+        new(Guid.Parse("11111111-1111-1111-1111-111111111111"), "First"),
+    ];
+
+    [Parameter, EditorRequired]
+    public ReservedGeometryModel Model { get; set; } = default!;
+
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    void HandleSubmit(SubmitEventArgs<ReservedGeometryModel> args)
+    {
+        args.Problem = Problem;
+    }
+}

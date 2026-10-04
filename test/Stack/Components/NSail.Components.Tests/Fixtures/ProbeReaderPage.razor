@@ -1,0 +1,34 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/rerender"
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@inherits NsPage
+
+@* The main-surface half of the circuit: the shape ClientPage/PartyContactCard/WorkOrdersPage
+   all share — Subscribe in OnCreated, the handler mutates a field and nothing else, exactly
+   as those pages read today. If the field changes but the paragraph below does not, the
+   circuit closed in the mediator and died in the renderer. *@
+<p class="probe-value">@_value</p>
+<NsLink Href="probe/rerender/writer" Target="@Surfaces.Aside" Label="Open" Class="probe-open" />
+
+@code {
+
+    string _value = "initial";
+
+    protected override void OnCreated()
+    {
+        Subscribe<ProbeSaved>((_, _) => Load());
+    }
+
+    Task Load()
+    {
+        _value = "updated";
+
+        return Task.CompletedTask;
+    }
+
+}

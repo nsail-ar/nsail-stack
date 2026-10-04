@@ -1,0 +1,149 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using Microsoft.AspNetCore.Components.Forms
+@inherits NsUploadBase<IReadOnlyList<Guid>>
+
+<NsField Label="@GetLabel()" Helper="@Helper" Disabled="IsDisabled" ErrorText="@GetFieldError()">
+    <NsStack Gap="NsSize.Sm" Class="ns-upload">
+        @if (Preview)
+        {
+            <MudDropContainer @ref="_container" T="Guid" Items="Current" ItemsSelector="@((_, _) => true)"
+                              ItemDropped="OnDropped" Class="ns-upload-cards">
+                <ChildContent>
+                    <MudDropZone T="Guid" Identifier="@Zone" AllowReorder="true" Class="ns-upload-zone" />
+                </ChildContent>
+                <ItemRenderer>
+                    @Card(context)
+                </ItemRenderer>
+            </MudDropContainer>
+            @if (Current.Count == 0)
+            {
+                @Empty
+            }
+        }
+        else
+        {
+            @foreach (var id in Current)
+            {
+                <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween" Gap="NsSize.Sm" Class="ns-upload-line">
+                    <NsText Size="NsSize.Sm">@GetLineText(id)</NsText>
+                    @Clear(id)
+                </NsStack>
+            }
+            @if (Current.Count == 0)
+            {
+                <NsStack Horizontal Align="NsAlign.Center" Gap="NsSize.Sm" Class="ns-upload-line">
+                    <NsText Size="NsSize.Sm" Secondary>@GetLineText(null)</NsText>
+                </NsStack>
+            }
+        }
+        <NsStack Horizontal Justify="NsAlign.End" Gap="NsSize.Sm" Class="ns-upload-actions">
+            @Trigger
+        </NsStack>
+    </NsStack>
+</NsField>
+
+@code {
+
+    // The vendor caches the container's items and only re-reads them when told to: a list
+    // this component just replaced (a pick, a clear, a reorder) would otherwise keep
+    // rendering the previous order.
+    MudDropContainer<Guid>? _container;
+
+    const string Zone = "files";
+
+    IReadOnlyList<Guid> Current => Value ?? [];
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        _container?.Refresh();
+    }
+
+    protected override bool IsValueEmpty()
+    {
+        return Current.Count == 0;
+    }
+
+    RenderFragment Empty =>
+    @<div class="ns-upload-empty">
+        <NsIcon Icon="NsIcons.Image" />
+    </div>;
+
+    // Multi always shows the trigger -- nothing has to be cleared before the next file is
+    // added -- and the vendor's own file list is suppressed with an empty SelectedTemplate:
+    // the files are already drawn by the house, once, and a chip beside them names the same
+    // file in chrome this component does not own.
+    RenderFragment Trigger =>
+    @<span class="ns-upload-trigger">
+        <MudFileUpload T="IReadOnlyList<IBrowserFile>" FilesChanged="Pick" Accept="@Accept" Disabled="@IsTriggerDisabled()" MaximumFileCount="100">
+            <CustomContent Context="upload">
+                <NsButton Label="@GetTriggerLabel()" Disabled="@IsTriggerDisabled()" OnClick="@(() => upload.OpenFilePickerAsync())" />
+            </CustomContent>
+            <SelectedTemplate></SelectedTemplate>
+        </MudFileUpload>
+    </span>;
+
+    RenderFragment<Guid> Card => id =>
+    @<div class="ns-upload-card">
+        @if (GetUrl(id) is { Length: > 0 } url)
+        {
+            <img src="@url" alt="@GetLineText(id)" />
+        }
+        @Clear(id)
+    </div>;
+
+    RenderFragment<Guid> Clear => id =>
+    @<NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Size="NsSize.Sm" Icon="NsIcons.Close" Class="ns-upload-clear"
+               Label="@GetClearLabel()"
+               Disabled="@IsClearDisabled()"
+               OnClick="@(() => Remove(id))" />;
+
+    // One selection is one edit: the new ids are collected against the list this field is
+    // holding and raised once. Raising per file would read Current again before the consumer
+    // had handed the previous list back, and every file but the last would be lost.
+    async Task Pick(IReadOnlyList<IBrowserFile>? files)
+    {
+        var next = Current.ToList();
+        var count = next.Count;
+
+        foreach (var file in files ?? [])
+        {
+            if (await Upload(file) is { } id)
+            {
+                next.Add(id);
+            }
+        }
+
+        if (next.Count != count)
+        {
+            await SetValue(next);
+        }
+    }
+
+    // Removing an id is the whole deletion gesture: the bytes stay where they are until the
+    // form the user is filling is submitted, and the handler that owns the document diffs
+    // what it was given against what it had. Nothing here talks to a server, so a cancelled
+    // form loses nothing it was holding.
+    Task Remove(Guid id)
+    {
+        return SetValue([.. Current.Where(current => current != id)]);
+    }
+
+    Task OnDropped(MudItemDropInfo<Guid> info)
+    {
+        var ordered = Current.ToList();
+        var from = ordered.IndexOf(info.Item);
+
+        if (from < 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        ordered.RemoveAt(from);
+        ordered.Insert(Math.Clamp(info.IndexInZone, 0, ordered.Count), info.Item);
+
+        return SetValue(ordered);
+    }
+}

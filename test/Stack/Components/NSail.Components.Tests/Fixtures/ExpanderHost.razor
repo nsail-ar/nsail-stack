@@ -1,0 +1,20 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@* The chevron is a wordless flat act, so it carries the vendor's tooltip — which is a popover,
+   and a popover with no provider standing throws on render. *@
+<MudPopoverProvider />
+
+<NsExpander>
+    <Summary>
+        <span class="strip">Total</span>
+    </Summary>
+    <Detail>
+        <span class="working">Neto</span>
+    </Detail>
+</NsExpander>

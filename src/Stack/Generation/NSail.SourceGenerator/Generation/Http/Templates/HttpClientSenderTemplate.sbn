@@ -1,0 +1,39 @@
+#nullable enable
+
+using NSail.Messaging;
+using NSail.Messaging.Http;
+using NSail.Messaging.Runtime.Context;
+
+namespace {{ MessageType.Namespace }};
+
+public sealed class {{ MessageType.ClassName }}HttpSender : HttpSender<{{ MessageType }}{{ if ReturnType != "void" }}, {{ ReturnType }}{{ end }}>
+{
+    public {{ MessageType.ClassName }}HttpSender(IHttpClientFactory httpClientFactory, MessageContextAccessor deliveries)
+        : base(httpClientFactory, deliveries)
+    {
+    }
+
+    protected override string Name => "{{ ServiceEndpoint }}";
+
+    protected override HttpRequestMessage BuildMessage({{ MessageType.ClassName }} message)
+    {
+        return CreateBuilder()
+            .Method(HttpMethod.{{ HttpMethod }})
+            .Path($"{{ Route }}")
+{{~ for binding in Bindings ~}}
+{{~ case binding.BindingSource ~}}
+{{~ when "Query" ~}}
+{{~ if binding.IsCollection ~}}
+            .AddQuery("{{ binding.Name }}", (System.Collections.Generic.IEnumerable<{{ binding.ElementType }}>?)message.{{ binding.PropertyName }})
+{{~ else ~}}
+            .AddQuery("{{ binding.Name }}", message.{{ binding.PropertyName }})
+{{~ end ~}}
+{{~ when "Body" ~}}
+            .AddJsonContent(message)
+{{~ when "Header" ~}}
+            .AddHeader(message)
+{{~ end ~}}
+{{~ end ~}}
+            .Build();
+    }
+}

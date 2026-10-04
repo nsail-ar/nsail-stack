@@ -1,0 +1,73 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Icons
+@using NSail.Testing.Models
+
+@inherits NsPartial
+
+@* The menus a form can hold: the one a kit draws for itself beside the field its rows write
+   (OpticalJobCard's Comparar), one whose rows answer one by one, and the two the toolbar
+   draws — a contributed act offering a CHOICE, and the overflow kebab. *@
+<MudPopoverProvider />
+
+<NsForm TModel="TestModel" Model="_document" ReadOnly="ReadOnly" Disabled="Disabled" Untracked>
+    <NsMenu Label="Comparar" Size="NsSize.Sm">
+        <NsMenuItem Action="@Choose" Label="Taller Barato" Selected="true" />
+        <NsMenuItem Action="@Choose" Label="Taller Caro" Selected="false" />
+    </NsMenu>
+    <NsMenu Label="Mixta" Size="NsSize.Sm" Writes="false">
+        <NsMenuItem Action="@Choose" Label="Taller Caro" />
+        <NsMenuItem Action="@Read" Label="Ver el presupuesto" />
+    </NsMenu>
+    <NsActionToolbar Leading="Verbs()" MaxVisible="2" />
+</NsForm>
+
+@code {
+
+    readonly TestModel _document = new();
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    ActionItem Choose => new() { Name = "Workshop", OnClick = () => Task.CompletedTask };
+
+    ActionItem Read => new() { Name = "Quote", OnClick = () => Task.CompletedTask, Writes = false };
+
+    // The weights put both menu acts inside the cap: an ActionItem whose act is a Menu has no
+    // chrome in the overflow, which is a hole of its own and not this story's.
+    IReadOnlyList<ActionItem> Verbs()
+    {
+        return
+        [
+            new ActionItem { Name = "Compare", Icon = NsIcons.Search, Menu = Reading, Writes = false, Weight = -2 },
+            new ActionItem { Name = "Assign", Icon = NsIcons.Edit, Menu = Writing, Weight = -1 },
+            GetAction(Archive, NsIcons.Delete),
+            GetAction(Contact, NsIcons.Send, writes: false),
+            GetAction(Print, NsIcons.Print, writes: false),
+        ];
+    }
+
+    RenderFragment Reading => @<NsMenuItem Action="@Read" Label="Ver el presupuesto" />;
+
+    RenderFragment Writing => @<NsMenuItem Action="@Choose" Label="Taller Caro" />;
+
+    void Archive()
+    {
+    }
+
+    void Contact()
+    {
+    }
+
+    void Print()
+    {
+    }
+}

@@ -1,0 +1,248 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* The flat rung has no box to square off, so its icon-only face is the vendor's own bare
+   glyph — the one a grid row's actions, a title bar's utilities and the header X all wear.
+   Every other intention keeps the chromed button below and loses its label to ns-square,
+   which is what makes "one button, intention in As" true of the markup and not only of the
+   look (ui/actions.md). *@
+@* The vendor's own button reads a cascade named ParentDisabled for itself — the same name
+   NsForm cascades — so until it is shadowed, every button under a form the Stack froze went
+   dead without NSail deciding it should, this component's Disabled parameter being only half
+   the answer it printed. Shadowed to false so IsDisabled below is the whole of it: the button
+   owes its caller one rule, and the vendor is not a second opinion (principles.md, the vendor
+   stops at the boundary). *@
+<CascadingValue Value="false" Name="ParentDisabled" IsFixed="true">
+    @if (Wordless && As == NsAs.Inline)
+    {
+        <MudTooltip Text="@Label">
+            <MudIconButton Icon="@(Icon?.Markup)"
+                           Size="@GetSize()"
+                           Color="Color.Inherit"
+                           Disabled="@IsDisabled"
+                           OnClick="@(_ => HandleClick())"
+                           Class="@Class"
+                           UserAttributes="_ariaAttributes" />
+        </MudTooltip>
+    }
+    else
+    {
+        <MudButton ButtonType="ButtonType.Button"
+                   Variant="@GetVariant()"
+                   Color="@GetColor()"
+                   Size="@GetSize()"
+                   StartIcon="@(Icon?.Markup)"
+                   Disabled="@IsDisabled"
+                   OnClick="@(_ => HandleClick())"
+                   Class="@GetClasses()"
+                   UserAttributes="_ariaAttributes">
+            <span class="@LabelClasses">@(Wordless ? null : Label)</span>
+        </MudButton>
+    }
+</CascadingValue>
+
+@code {
+
+    /// <summary>A plain command button, no wiring beyond the parameters below. Submitting
+    /// is NsSubmit, closing is NsClose, navigating is NsLink — those read ambient state
+    /// (form/surface) this one reads only where <see cref="Submits"/> says to. Intention
+    /// only: Default, Main, Important, Danger and the flat Inline. Whether the label is
+    /// drawn is Breakpoint's, not this one's.</summary>
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Default;
+
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    /// <summary>The button's name: its text where there is a label to draw, and its tooltip
+    /// and accessible name always — set it either way.</summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    /// <summary>Container width from which the label shows next to the icon; below it the
+    /// button is its glyph alone. Always pins the label on, Never takes it away at every
+    /// width — the Label stays the name (tooltip and accessible name) and is not drawn.
+    /// The one thing that decides whether the text shows, so a rank never has to. No effect
+    /// without an Icon: there would be nothing left to click.</summary>
+    [Parameter]
+    public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Sm;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Declares that this button drives the surrounding form's Submit() — an act that
+    /// saves the same document the hero saves (Presupuestar beside Crear, Recibir beside
+    /// Recibir y verificar). It is what makes the button stop being pressable while that form
+    /// is saving, the answer NsSubmit already gives: a second press there re-enters the form's
+    /// Runner and can only earn its refusal.
+    /// <para>Opt-in, and it has to be: standing under a form says nothing about being about the
+    /// form. An Agregar, a tab's own act, a panel beside the fields are all drawn inside the
+    /// same cascade, and a save in flight is not their business.</para></summary>
+    [Parameter]
+    public bool Submits { get; set; }
+
+    /// <summary>Set it when the button is a disclosure trigger — it announces whether the thing
+    /// it opens is currently on screen. Null, the default, is a button that opens nothing and
+    /// says nothing about it; false is a disclosure that happens to be closed, and the two are
+    /// not the same claim.</summary>
+    [Parameter]
+    public bool? Expanded { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    /// <summary>One cascade carrying two answers OR'd together: the form was Disabled outright,
+    /// or a submit is running and every field under it is frozen for its length (NsActBase reads
+    /// the same name for an act, and so does the vendor). Read here only where the two names
+    /// below do not reach — see ParentRefuses.</summary>
+    [CascadingParameter(Name = "ParentDisabled")]
+    bool ParentDisabled { get; set; }
+
+    /// <summary>The form's refusal on its own — NsForm cascades it beside the OR precisely so an
+    /// act can tell it from the freeze. A button that drives no submit is refused by this and
+    /// not by the save.</summary>
+    [CascadingParameter(Name = "FormDisabled")]
+    bool FormDisabled { get; set; }
+
+    /// <summary>Cascaded by NsForm while its own submit handler runs — the button cannot track
+    /// this itself, the form owns the run. Read only to tell the freeze apart from the refusal,
+    /// and to answer for a button that declared it Submits.</summary>
+    [CascadingParameter(Name = "FormRunning")]
+    bool FormRunning { get; set; }
+
+    Dictionary<string, object>? _ariaAttributes;
+
+    // A form's word is two words. Disabled means it refuses writes, and a button drawn in it is
+    // refused with the fields — read from FormDisabled, the form's own word, so a refusal a
+    // running submit is standing on top of still counts. Merely SAVING is not that: the save
+    // refuses the acts that drive it and nothing else, so an Agregar, a tab's own act, a filter
+    // in the panel beside them keep working while it runs.
+    // The second term is for the far side of a PORTAL: NsMenu carries the OR across the vendor's
+    // popover and NsDialogExit carries it into a dialog's title row, and neither of the other two
+    // names reaches either place — so there the OR is the only word there is, and FormRunning being
+    // false there is what makes reading it the right answer rather than a reconstruction.
+    bool ParentRefuses => FormDisabled || (ParentDisabled && !FormRunning);
+
+    // Greyed and nothing more. NsSubmit swaps its own icon for NsIcons.Progress besides, and
+    // that spinner is the FORM's report, not the button's: one per running form is the whole
+    // news, and a second one turning beside it in the same footer bills it twice. This
+    // button's Icon is the act's own name (Presupuestar's note, Recibir's box), which is what
+    // it still has to say while it waits.
+    bool IsDisabled => Disabled || ParentRefuses || (Submits && FormRunning);
+
+    // The attribute is what a browser refuses on, and this is the fallback for a press that
+    // arrives anyway — the vendor's own button hands its click on without reading the state it
+    // just drew. What waits on the other side of a re-entrant press is the form's Runner and
+    // its "already running" throw, so the refusal is answered here rather than surfaced there.
+    Task HandleClick()
+    {
+        if (IsDisabled)
+        {
+            return Task.CompletedTask;
+        }
+
+        return OnClick.InvokeAsync();
+    }
+
+    // The tooltip paints a hover popover; it does not NAME the button under it, and an icon
+    // button carries no text of its own — so without this the control is anonymous to a screen
+    // reader and unreachable by a semantic selector, which is exactly what Label's own summary
+    // already promises it is not. Set on the chromed branch too, not just the glyph: a container
+    // rule elsewhere (the emphasis-ladder footer, ns-mud.css) may collapse the visible label to
+    // display:none on its own terms, and display:none content drops out of the accessible-name
+    // computation — the label span alone is not enough once that can happen, the same way a
+    // RowEditor field with a blank visible Label still carries its aria-label. Rebuilt only when
+    // one of the values in it actually changes: a fresh dictionary every render reads as a
+    // changed parameter to the vendor's button (NsFieldBase.InputAttributes carries the same
+    // concern).
+    protected override void OnParametersSet()
+    {
+        // Spelled out as text rather than handed over as the bool it is: Blazor renders a bool
+        // attribute value as HTML's boolean-attribute convention — present for true, absent for
+        // false — and aria-expanded is not one of those. Absent means "not a disclosure at all",
+        // which is the one thing a closed bubble's trigger must not say.
+        string? expanded = Expanded switch
+        {
+            true => "true",
+            false => "false",
+            _ => null
+        };
+
+        if (_ariaAttributes?.GetValueOrDefault("aria-label") as string == Label
+            && _ariaAttributes?.GetValueOrDefault("aria-expanded") as string == expanded)
+        {
+            return;
+        }
+
+        Dictionary<string, object>? attributes = null;
+
+        if (Label is { Length: > 0 })
+        {
+            attributes = new Dictionary<string, object> { ["aria-label"] = Label };
+        }
+
+        if (expanded is not null)
+        {
+            attributes ??= new Dictionary<string, object>();
+            attributes["aria-expanded"] = expanded;
+        }
+
+        _ariaAttributes = attributes;
+    }
+
+    // No word to draw at any width: either the breakpoint says Never, or no name was handed
+    // over to draw in the first place. Both are the same state to everything downstream,
+    // which is why the render asks this and never asks As.
+    bool Wordless => Icon is not null && (Breakpoint == NsBreakpoint.Never || Label is null or "");
+
+    // A control with no label at any width has nothing to COLLAPSE, so it takes none of the
+    // breakpoint's hooks: ns-square carries its own whisper ungated (ns-mud.css), and both
+    // hooks at once would draw the bubble twice on the same hover.
+    string LabelClasses => Wordless ? "ns-button-label" : NsResponsive.LabelClasses(Icon, Breakpoint);
+
+    // The vendor has no soft-accent variant, so Important is painted from a class over its
+    // filled one (ns-mud.css) rather than by handing a page a Variant it must not name.
+    // ns-square is the same file's answer to an intention with no label: the vendor's button
+    // is a rectangle with a 64px floor, and a glyph alone in it reads as a stretched pill.
+    string GetClasses()
+    {
+        return new NsClassBuilder(Wordless ? null : NsResponsive.CollapseClass(Icon, Breakpoint))
+            .Add("ns-important", As == NsAs.Important)
+            .Add("ns-square", Wordless)
+            .Add(Class)
+            .ToString();
+    }
+
+    Size GetSize()
+    {
+        return Size switch
+        {
+            NsSize.None or NsSize.Xs or NsSize.Sm => MudBlazor.Size.Small,
+            NsSize.Lg or NsSize.Xl or NsSize.Xxl => MudBlazor.Size.Large,
+            _ => MudBlazor.Size.Medium
+        };
+    }
+
+    Variant GetVariant()
+    {
+        return As == NsAs.Inline ? Variant.Text : Variant.Filled;
+    }
+
+    Color GetColor()
+    {
+        return As switch
+        {
+            NsAs.Main => Color.Primary,
+            NsAs.Danger => Color.Error,
+            _ => Color.Default
+        };
+    }
+}

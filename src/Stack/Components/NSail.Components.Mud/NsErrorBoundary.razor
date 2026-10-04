@@ -1,0 +1,61 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Routing
+@implements IDisposable
+
+@inject NavigationManager Navigation
+
+@* The layout-level catch for an unhandled render/load error (a 500 SenderNotFound, a raw
+   Problem the caller never turned into a message on screen): without this, Blazor's own
+   ErrorBoundary is absent entirely and the exception surfaces however the host renders it
+   -- the raw JSON the story reports. ErrorContent gets NsPageError instead, the same
+   splash-faced chrome NsPageNotFound already wears for "nothing routed here". *@
+<ErrorBoundary @ref="_boundary">
+    <ChildContent>
+        @ChildContent
+    </ChildContent>
+    <ErrorContent>
+        <NsPageError LogoUrl="@LogoUrl" HomePage="@HomePage" />
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+
+    ErrorBoundary? _boundary;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The app's own well-known logo route, forwarded to NsPageError unchanged —
+    /// a plain string, no coupling, and no default: a Stack component names no app-specific
+    /// URL.</summary>
+    [Parameter]
+    public string? LogoUrl { get; set; }
+
+    /// <summary>The page mounted at the app's root, where NsPageError's door back leads.</summary>
+    [Parameter]
+    public Type? HomePage { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    // A boundary that stayed tripped would leave every later page under this layout
+    // showing the previous page's crash -- navigating away is the signal that the user
+    // means to try something else, so each move gets a clean slate to fail or succeed on
+    // its own. Recover() alone (not a re-render) is what clears the caught exception and
+    // lets ChildContent mount fresh.
+    void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        _boundary?.Recover();
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

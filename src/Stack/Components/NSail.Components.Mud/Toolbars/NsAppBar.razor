@@ -1,0 +1,163 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using MudBlazor
+@using NSail.Localization
+@implements IDisposable
+
+@inject StringManager Strings
+
+@* No Color: forcing Primary puts mud-theme-primary on the header, which resolves the raw
+   brand primary at full strength and takes its text from primary-text — the appbar slots the
+   brand fills are then painted over and never seen. Left at the default, the bar wears
+   AppbarBackground/AppbarText, which is where the brand's own chrome lands. *@
+<MudAppBar Elevation="2" Class="@GetBarClasses()">
+
+    @if (ShowDrawerButton && LayoutState != null)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Edge="Edge.Start"
+                       Color="Color.Inherit"
+                       OnClick="LayoutState.ToggleDrawer" />
+    }
+
+    @* nsail#606: no page announcing on this bar lends its slot any more, so
+       GetBrandClasses always keeps this off screen. *@
+    @if (Brand is not null)
+    {
+        @* Drawn, never mounted and unmounted: the brand is a load, and hanging its lifetime on
+           what the current page announced would re-run that load on every arrival at the screen
+           that lends its slot. The announcement moves a class, not a component. *@
+        <div class="@GetBrandClasses()">@Brand</div>
+    }
+
+    @* The surface's announcement, drawn where the window already names itself. The page's
+       glyph and the loading indicator share ONE slot, never two: while the surface has work
+       the icon IS the spinner and the glyph returns when it ends, so the title never shifts
+       under the eye. A page with no glyph of its own lends the same empty slot. *@
+    <div class="@GetAnnouncementClasses()">
+        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="min-w-0">
+            @if (Surface?.HasWork == true)
+            {
+                <NsIcon Icon="@NsIcons.Progress" Title="@Strings.Translate("Common.Loading")" />
+            }
+            else if (Surface?.Icon is { } icon)
+            {
+                <NsIcon Icon="@icon" />
+            }
+
+            @if (Surface?.Title is { Length: > 0 } title)
+            {
+                <NsText As="NsTextAs.Title" Class="text-truncate">@title</NsText>
+            }
+            else if (Title is not null)
+            {
+                @Title
+            }
+        </NsStack>
+    </div>
+
+    <MudSpacer />
+
+    @* The bar that stands in for a hidden drawer carries the hamburger and the announcement
+       and nothing else: the acts live in the drawer it opens, and the page's own utilities
+       ride its title bar, where the page draws them at every width (nsail#517). *@
+    @if (!StandsInForDrawer)
+    {
+        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center">
+            @if (Surface?.Utilities is { } utilities)
+            {
+                @utilities
+            }
+
+            @if (Actions is not null)
+            {
+                @Actions
+            }
+        </NsStack>
+    }
+
+</MudAppBar>
+
+@code {
+    [CascadingParameter]
+    public NsLayoutState? LayoutState { get; set; }
+
+    /// <summary>The surface the bar frames — the main one, since the bar is the frame. Its
+    /// announcement is what the bar's middle draws (SurfaceContext.Announce).</summary>
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    /// <summary>What the bar names when no page announced anything — the wizard's heading,
+    /// where the frame speaks for a screen that has no title bar of its own. A page's own
+    /// announcement always wins.</summary>
+    [Parameter]
+    public RenderFragment? Title { get; set; }
+
+    /// <summary>The app's own utilities — the session menu, settings — after the page's.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    /// <summary>The install's identity — logo and organization name. Nothing announcing on this
+    /// bar ever trades its name for it any more (nsail#606), so it never draws.</summary>
+    [Parameter]
+    public RenderFragment? Brand { get; set; }
+
+    [Parameter]
+    public bool ShowDrawerButton { get; set; } = true;
+
+    /// <summary>Whether this bar exists only for the widths the nav drawer is hidden at. The
+    /// shell's bar does: from the drawer's own breakpoint up the drawer is docked, carries the
+    /// brand and the session, and every screen names itself in its own title bar — so there is
+    /// no row left for a bar to draw (nsail#517). A layout with no drawer to stand in for — the
+    /// wizard's, sign-in's — leaves it off and keeps its bar at every width.</summary>
+    [Parameter]
+    public bool StandsInForDrawer { get; set; }
+
+    // Gone at exactly the widths MudDrawer docks at, through the same pair the brand and the
+    // announcement already split on, so the bar cannot survive one breakpoint past the drawer
+    // it stands in for.
+    string GetBarClasses()
+    {
+        return StandsInForDrawer ? NsResponsive.ShownBelowWindow(NsSize.Md) : string.Empty;
+    }
+
+    string GetAnnouncementClasses()
+    {
+        return new NsClassBuilder("d-flex").Add("align-center min-w-0").ToString();
+    }
+
+    // Nothing announcing on this bar ever lends its slot any more (nsail#606) — the brand
+    // never draws.
+    string GetBrandClasses()
+    {
+        return "d-none";
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Surface is not null)
+        {
+            Surface.AnnouncementChanged += OnAnnouncementChanged;
+            Surface.StateChanged += OnAnnouncementChanged;
+        }
+    }
+
+    // The page announces from its own render, which runs after the bar's: the bar is the
+    // layout's header and the page is its body. Nothing would redraw it without this.
+    void OnAnnouncementChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        if (Surface is not null)
+        {
+            Surface.AnnouncementChanged -= OnAnnouncementChanged;
+            Surface.StateChanged -= OnAnnouncementChanged;
+        }
+    }
+}

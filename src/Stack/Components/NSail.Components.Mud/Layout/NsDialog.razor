@@ -1,0 +1,121 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@implements IDisposable
+
+@* Own chrome instead of MudDialog: the inline MudDialog portals into MudDialogProvider,
+   which breaks the ancestor cascade and leaves a ghost dialog when the surface unmounts. *@
+@* Both boxes cover the VIEWPORT, at every width. A modal dims everything under it — bar,
+   nav gutter, an aside standing open beside it, the page — and a click landing anywhere
+   outside the paper lands on the overlay, never on the chrome underneath. A desktop inset
+   sized to the docked nav's own width would leave exactly that width lit: with an aside
+   open at Xl it is the ASIDE showing through the strip, not the nav, and the strip would be
+   dark or bright by accident of how wide the nav happens to be. *@
+@* Class is the vendor's own opt-out, not styling — it carries no CSS at all and is read by
+   MudOverlay.RenderOutsideOfSection. Without it a MudOverlay renders through
+   <SectionContent SectionName="mud-overlay-to-popover-provider">, and MudPopoverProvider holds
+   the ONE SectionOutlet that receives it: a section shows its last registrant alone, so the
+   next overlay to reach it takes this backdrop out of the DOM for as long as it stands. A
+   lookup's dropdown mounts one (MudAutocomplete's own AutoClose overlay) the moment it opens. *@
+<MudOverlay Visible="true" DarkBackground="true" ZIndex="@(GetZIndex() - 1)" Class="mud-skip-overlay-section" />
+
+<div class="fixed inset-0 d-flex align-center justify-center" style="@($"z-index: {GetZIndex()}")">
+    <MudPaper Elevation="24" Class="ns-dialog d-flex flex-column" Style="@GetStyle()">
+        <NsCloseOnEscape Class="@GetContentClasses()">
+            @ChildContent
+        </NsCloseOnEscape>
+    </MudPaper>
+</div>
+
+@code {
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    /// <summary>Dialog size fallback when there is no surface cascade.</summary>
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public NsSize Padding { get; set; } = NsSize.Md;
+
+    protected override void OnInitialized()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged += OnSurfaceStateChanged;
+        }
+    }
+
+    void OnSurfaceStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged -= OnSurfaceStateChanged;
+        }
+    }
+
+    // Was a hardcoded 1300/1299 pair — that only ever wins against a drawer that happens to
+    // mount below it. Surface.ZIndex is the stack position instead: a modal escalated from
+    // an open aside always lands one tier above it, however many drawers came before.
+    int GetZIndex() => Surface?.ZIndex ?? 1300;
+
+    // Both axes are fixed against the viewport, never against the content: a min-height would
+    // let content past it grow the box, so the paper takes a real height instead. Custom
+    // properties rather than inline width/height, so .ns-dialog in ns-mud.css can still
+    // override both below the phone breakpoint — the seam .ns-drawer's max-width already uses
+    // for Xl.
+    string GetStyle()
+    {
+        var (width, height) = (Surface?.Size ?? Size) switch
+        {
+            NsSize.Xs => (400, 240),
+            NsSize.Sm => (500, 300),
+            NsSize.Md => (640, 360),
+            NsSize.Lg => (800, 440),
+            NsSize.Xl => (960, 520),
+            NsSize.Xxl => (1140, 600),
+            _ => (640, 360)
+        };
+
+        return $"--ns-dialog-width: min({width}px, calc(100vw - 32px)); " +
+               $"--ns-dialog-height: min({height}px, calc(100vh - 32px));";
+    }
+
+    // ns-container: the modal is a fixed box over the page, so nothing above it is the
+    // ns-container NsPanel and NsCard declare — the layout's own chrome is not one and the
+    // page underneath is not an ancestor at all. Without it every d-c-* utility inside a modal
+    // resolves against no container, which leaves the mobile-first half standing (d-c-none at
+    // every width) and a hosted button's label hidden forever. Declared on the content box
+    // rather than the paper: the paper carries the dialog's padding, and what a control is
+    // actually laid out in is the box inside it. A hosted NsPanel still declares its own
+    // nearer container, so a form measures the panel exactly as it does anywhere else.
+    // No overflow-y-auto: the dialog is a frame of known, still size, and it does not scroll
+    // its own content — the same contract NsContainer already honors for the main surface.
+    // min-h-0 is what lets a hosted NsPanel's own Content div (ns-mud.css, ns-scroll-shadow)
+    // shrink to the room this frame actually has and own the scroll itself.
+    string GetContentClasses()
+    {
+        return new NsClassBuilder("ns-container d-flex flex-column flex-1 min-h-0")
+            .Add(PaddingClass)
+            .ToString();
+    }
+
+    string PaddingClass => Padding switch
+    {
+        NsSize.None => "pa-0",
+        NsSize.Xs => "pa-1",
+        NsSize.Sm => "pa-2",
+        NsSize.Md => "pa-4",
+        NsSize.Lg => "pa-6",
+        NsSize.Xl => "pa-8",
+        NsSize.Xxl => "pa-10",
+        _ => "pa-4"
+    };
+}

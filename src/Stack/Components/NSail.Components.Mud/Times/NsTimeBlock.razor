@@ -1,0 +1,224 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using System.Globalization
+@using Microsoft.JSInterop
+
+@inject IJSRuntime JS
+
+@if (Scale is not null && Scale.Holds(Starts))
+{
+    @if (IsClickable)
+    {
+        @* A real button, so focus, Enter, Space and the role come from the browser rather
+           than from a div taught to imitate one. ReadOnly no longer refuses a click outright
+           (single-calendar-draft's overlay detail, 2026-08-12): a read-only block may open an
+           informational dialog about what it is, which is not an edit affordance — the caller
+           is the one who must never wire an edit here, and ReadOnly's own class keeps the
+           block's dotted, muted look regardless of which kind of click it carries. *@
+        <button type="button" class="@GetClasses()" style="@GetStyle()" aria-label="@AriaLabel" title="@Tooltip" @ref="_button" @onclick="Click">
+            <div class="ns-time-block-lines">
+                @ChildContent
+            </div>
+        </button>
+    }
+    else
+    {
+        <div class="@GetClasses()" style="@GetStyle()" title="@Tooltip">
+            @* Everything the caller hands over goes inside this box and never straight into
+               the block: how many of those lines the block has room to draw WHOLE is decided
+               in ns-mud.css against the height above, and a line drawn half is what the box
+               exists to prevent (nsail#787). The caller orders them — what a short block gives
+               up is its trailing lines, so the first line is the one that must matter. *@
+            <div class="ns-time-block-lines">
+                @ChildContent
+            </div>
+        </div>
+    }
+}
+
+@code {
+
+    ElementReference _button;
+
+    [CascadingParameter]
+    TimeGridScale? Scale { get; set; }
+
+    /// <summary>When the block starts, on the same wall clock the grid's days are counted in
+    /// — never a UTC instant: the column it lands in and the offset within it both come
+    /// straight off this value, which is what makes a day that gains or loses an hour render
+    /// where the clock on the wall says it does.</summary>
+    [Parameter, EditorRequired]
+    public DateTime Starts { get; set; }
+
+    [Parameter]
+    public TimeSpan Duration { get; set; }
+
+    /// <summary>Renders behind the blocks that carry content, spanning the column: the shape
+    /// for a stretch of time that qualifies the day rather than filling it.</summary>
+    [Parameter]
+    public bool Background { get; set; }
+
+    /// <summary>A hex color painting the block's leading edge and a faint fill — the
+    /// domain's own color for whatever the block represents (a place, a category), never a
+    /// vendor theme choice. A <see cref="Background"/> block wears it on its whole dashed edge
+    /// and a fainter wash instead, so it stays the thing behind the blocks that carry content.
+    /// Null renders the block with no color of its own.</summary>
+    [Parameter]
+    public string? Color { get; set; }
+
+    /// <summary>Time that belongs to somebody else — shown so the day can be read against it,
+    /// never acted on. It wears a dotted, dimmed edge so it can never be read as one of the
+    /// surface's own bookings, and pairs with no edit affordance ever — an
+    /// <see cref="OnClick"/> a ReadOnly block carries may only open something informational,
+    /// which is the caller's promise to keep, not this component's to enforce. It decides
+    /// nothing about width: how much of the column a block takes is <see cref="Lane"/>'s
+    /// answer, and where the time came from has no vote in it.</summary>
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    /// <summary>The share of the column this block takes, computed by
+    /// <see cref="NsTimeLanes.Assign"/> over every block the same column draws. The default —
+    /// no lane at all — is the whole width, which is what a block colliding with nothing gets
+    /// and what a grid whose consumer computes no layout keeps drawing.</summary>
+    [Parameter]
+    public NsTimeLane Lane { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    /// <summary>The same click as <see cref="OnClick"/>, told WHERE down the block it landed:
+    /// 0 at the block's top edge, 1 at its bottom. A block carries one or the other — this one
+    /// wins when both are set — and a caller wanting the position is a caller who can also use
+    /// the value 0, because that is what a click with no geometry answers: a keyboard's Enter or
+    /// Space, or a browser that could not measure the element. The fraction is the browser's
+    /// arithmetic, not this component's: how tall an hour is on this screen is the one thing C#
+    /// cannot know, the same trade <see cref="NsTimeGrid"/>'s own offsets already make. It is
+    /// deliberately coarse — the caller decides what a position means in its own domain.</summary>
+    [Parameter]
+    public EventCallback<double> OnClickAt { get; set; }
+
+    /// <summary>The accessible name for a clickable block, read instead of the visible content
+    /// a screen reader would otherwise recite unlabelled. Domain text, supplied by the caller —
+    /// this component names no domain of its own.</summary>
+    [Parameter]
+    public string? AriaLabel { get; set; }
+
+    /// <summary>What hovering the block says about it, domain text supplied by the caller.
+    /// It rides the native <c>title</c> attribute rather than a tooltip component: the block
+    /// is absolutely positioned inside its column, and a tooltip wrapper puts an element
+    /// between the column and the block, which loses the position the whole grid is drawn
+    /// from. Hover only informs — everything it says has to stay reachable by click, since a
+    /// touch device never hovers.</summary>
+    [Parameter]
+    public string? Tooltip { get; set; }
+
+    /// <summary>What the block says, as lines in the order they matter. The block draws only
+    /// the ones it has room to draw WHOLE — its height is the time, so a line that does not fit
+    /// is dropped rather than sliced — and it always draws the first. What a short block gives
+    /// up is therefore the trailing lines, last first, which makes the order here the caller's
+    /// declaration of what it is prepared to lose: anything a block might not draw belongs in
+    /// <see cref="Tooltip"/> and in whatever the click opens as well.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    bool IsClickable
+    {
+        get => OnClick.HasDelegate || OnClickAt.HasDelegate;
+    }
+
+    // Named, not inlined, because the gap between them is the invariant: a background block
+    // spans a stretch of free time behind the blocks that carry content, so it has to read as
+    // lighter than one at a glance — the same hue, painted much thinner. NsTimeBlockColorTests
+    // asserts the background stays strictly under the content wash, which a pair of numbers
+    // buried in a format string is exactly what nothing compares.
+    const int BackgroundWashPercent = 4;
+    const int ContentWashPercent = 18;
+
+    async Task Click(MouseEventArgs e)
+    {
+        if (!OnClickAt.HasDelegate)
+        {
+            await OnClick.InvokeAsync();
+            return;
+        }
+
+        await OnClickAt.InvokeAsync(await Fraction(e));
+    }
+
+    async Task<double> Fraction(MouseEventArgs e)
+    {
+        // Detail is the click count, and it is zero for exactly the activations that carry no
+        // coordinates: Enter and Space on the focused button, where ClientY reads 0 and would
+        // otherwise be measured as the very top of the block. Asking the browser about a click
+        // that never had a pointer is what would make the answer a lie rather than a default.
+        if (e.Detail <= 0)
+        {
+            return 0;
+        }
+
+        try
+        {
+            return await JS.InvokeAsync<double>("nsapp.fractionAt", _button, e.ClientY);
+        }
+        catch (JSException)
+        {
+            return 0;
+        }
+        catch (InvalidOperationException)
+        {
+            return 0;
+        }
+    }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-time-block")
+            .Add("ns-time-block-background", Background)
+            .Add("ns-time-block-readonly", ReadOnly)
+            .Add("cursor-pointer", IsClickable)
+            .ToString();
+    }
+
+    // Invariant, and it is not cosmetic: a culture that writes 1,5 for one and a half would
+    // put a comma inside calc(), which the browser drops as a parse error — leaving the block
+    // at the top of the column with no error anywhere to read.
+    string GetStyle()
+    {
+        var top = Scale!.Offset(Starts);
+        var height = Duration.TotalHours;
+
+        var style = string.Create(
+            CultureInfo.InvariantCulture,
+            $"top: calc(var(--ns-time-hour) * {top:0.#####}); height: calc(var(--ns-time-hour) * {height:0.#####})");
+
+        // The lane travels as two custom properties and the division stays in ns-mud.css, the
+        // same trade the offsets above already make: nothing here restates how wide a column
+        // is. A block sharing its hours with nobody writes neither, so the stylesheet's own
+        // fallback (one lane) is the whole width — the default costs no markup at all.
+        if (Lane.Count > 1 && Lane.Index >= 0 && Lane.Index < Lane.Count)
+        {
+            style = $"{style}; --ns-time-lane: {Lane.Index}; --ns-time-lanes: {Lane.Count}";
+        }
+
+        if (Color is null)
+        {
+            return style;
+        }
+
+        // A background block wears the color all round its dashed edge and a fainter wash:
+        // it has no leading accent to paint (the stylesheet replaces that border), and at the
+        // fill a content block uses it would stop reading as the thing behind them. The edge
+        // is softened too and not only the fill: a dashed outline at full strength carries
+        // enough of the hue to read as solid by itself, whatever the wash under it does.
+        if (Background)
+        {
+            return $"{style}; border-color: color-mix(in srgb, {Color} 55%, transparent); background-color: color-mix(in srgb, {Color} {BackgroundWashPercent}%, transparent)";
+        }
+
+        // border-inline-start, not border-left: the block's stylesheet rule is already
+        // logical (ns-mud.css), and a physical override here would desync under RTL.
+        return $"{style}; border-inline-start-color: {Color}; background-color: color-mix(in srgb, {Color} {ContentWashPercent}%, transparent)";
+    }
+}

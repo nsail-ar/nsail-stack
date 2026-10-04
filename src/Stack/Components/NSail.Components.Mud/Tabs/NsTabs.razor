@@ -1,0 +1,261 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using System.Globalization
+
+@* MudTabs defaults to unmounting an inactive panel's content: a field typed on one tab and
+   a switch to another would drop it from the DOM and out of EditContext, so an error on a
+   tab no longer selected would silently stop blocking submit. KeepPanelsAlive keeps every
+   panel mounted, and which one shows is drawn entirely by the vendor's stylesheet against a
+   class: .mud-tab-panel is display:none and .mud-tab-panel-active is display:contents, so the
+   hiding is a class the panel lacks and no attribute a rendered panel carries (measured,
+   cases) — validation and dirty state survive the switch. *@
+<MudTabs Class="@GetClasses()"
+         TabPanelsClass="@GetPanelsClasses()"
+         Elevation="0"
+         Rounded="false"
+         Border="false"
+         ApplyEffectsToContainer="true"
+         MinimumTabWidth="0"
+         KeepPanelsAlive="true"
+         Header="@GetHeader()"
+         HeaderPosition="@(Actions is null ? TabHeaderPosition.None : TabHeaderPosition.After)"
+         ActivePanelIndex="ActivePanelIndex"
+         ActivePanelIndexChanged="OnActivePanelIndexChanged">
+    @* Each NsTab registers itself here as it renders, in the order the panels are laid out,
+       so the strip can name a position — the query value is a tab's Name, and a Name only
+       means anything against the list it belongs to. *@
+    <CascadingValue Value="this" IsFixed="true">
+        @ChildContent
+    </CascadingValue>
+</MudTabs>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Acts drawn at the far end of the strip, after the last tab — the page's own acts
+    /// on the collections the tabs partition (Nueva Venta's Agregar: a card or a line, by the tab
+    /// that shows), never a toolbar of one tab's: the page decides which panel they belong to and
+    /// renders them only while it shows.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    /// <summary>Which panel shows, by position — @@bind-ActivePanelIndex. A page reads this
+    /// to condition chrome that belongs to it and not to the tabs (a footer whose act commits
+    /// only some of the panels), never the other way around: NsTabs names no meaning for an
+    /// index, the page does.</summary>
+    [Parameter]
+    public int ActivePanelIndex { get; set; }
+
+    [Parameter]
+    public EventCallback<int> ActivePanelIndexChanged { get; set; }
+
+    /// <summary>Fills its flex parent, so the strip stays put and only the panel scrolls.
+    /// False leaves the height to the content, for tabs sitting among other sections. Unset —
+    /// which is what nearly every page says — reads the answer from the surface hosting the
+    /// tabs (NsPanel's content always grows; NsCard's does only when the card does), so a page
+    /// never restates what the host it composes already declared.</summary>
+    [Parameter]
+    public bool? Grow { get; set; }
+
+    /// <summary>Binds the shown tab to this screen's query — arriving at ?tab=accounts opens on
+    /// that tab, and switching one writes it back (SetQuery: in place, never a history entry).
+    /// Opt-in per screen, and one screen has at most one bound tabs control: the key is the
+    /// fixed word "tab", so a second control would be writing over the first. Most tabs
+    /// deep-link into nothing and would only dirty the address, which is why the default is off;
+    /// the screens that turn it on are the ones something comes BACK to (My Profile, where an
+    /// identity provider's callback has to land on Cuentas). Hosted in a dialog it is inert —
+    /// a dialog is routed by nothing and carries no query to hold.</summary>
+    [Parameter]
+    public bool BindQuery { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [CascadingParameter]
+    ContentGrowth? Host { get; set; }
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    // One word for every screen in the app, deliberately: per-control keys (tab1, tabParties)
+    // would let a page grow a second addressable strip, and a screen whose facets are worth
+    // deep-linking has one strip of them.
+    const string QueryKey = "tab";
+
+    readonly List<NsTab> _tabs = [];
+
+    // The last query value the strip answered: the query moves it only when it CHANGES, never
+    // merely because it was read. A switch writes the address through NavigationManager, which
+    // in the browser reports the new address a JS round trip later — and a page bound to
+    // ActivePanelIndex re-renders on the switch itself, inside that window, where a level read
+    // finds the address being left and puts the strip back on it.
+    string? _seen;
+
+    bool Grows => Grow ?? Host?.Grow ?? true;
+
+    // The acts ride a box of their own (ns-tabs-actions, ns-mud.css) rather than being handed
+    // to the vendor bare: the header slot is a stretched flex item, so a button given straight
+    // to it is drawn as tall as the strip.
+    RenderFragment<MudTabs>? GetHeader()
+    {
+        if (Actions is null)
+        {
+            return null;
+        }
+
+        return _ =>
+            @<div class="ns-tabs-actions">
+                @Actions
+            </div>;
+    }
+
+    internal void Register(NsTab tab)
+    {
+        _tabs.Add(tab);
+
+        // Registration is the first moment a name means a position, and it happens WHILE the
+        // strip renders — which is the only window a deep link has on the way in. Answering it
+        // after the render (OnAfterRender) would answer it on the client only: prerendering
+        // never calls that hook, so the html a callback lands on would carry the first tab and
+        // the right one would arrive a beat later, as a flash.
+        ApplyQuery();
+    }
+
+    internal void Unregister(NsTab tab)
+    {
+        _tabs.Remove(tab);
+    }
+
+    async Task OnActivePanelIndexChanged(int index)
+    {
+        ActivePanelIndex = index;
+
+        WriteQuery(index);
+
+        await ActivePanelIndexChanged.InvokeAsync(index);
+    }
+
+    protected override void OnParametersSet()
+    {
+        ApplyQuery();
+    }
+
+    void ApplyQuery()
+    {
+        if (!BindQuery || Surface is null)
+        {
+            return;
+        }
+
+        var value = Surface.GetQuery<string>(QueryKey);
+
+        if (value is null || string.Equals(value, _seen, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        // Unanswered until a tab carries it: registration reads the query once per tab, and a
+        // deep link to the third tab means nothing while only the first has registered.
+        var index = IndexOf(value);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        _seen = value;
+
+        if (index == ActivePanelIndex)
+        {
+            return;
+        }
+
+        ActivePanelIndex = index;
+
+        _ = ActivePanelIndexChanged.InvokeAsync(index);
+
+        StateHasChanged();
+    }
+
+    void WriteQuery(int index)
+    {
+        if (!BindQuery || Surface is null)
+        {
+            return;
+        }
+
+        var value = ValueOf(index);
+        var current = Surface.GetQuery<string>(QueryKey);
+
+        // Activation is reported back by the vendor whoever caused it, so answering a deep link
+        // arrives here as a switch: writing then would navigate to the address just read.
+        if (string.Equals(current, value, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        // The address being left is answered already, so reading it again before the write
+        // lands is not an order to go back to it.
+        _seen = current;
+
+        Surface.SetQuery(QueryKey, value);
+    }
+
+    // A Title is localized and identifies nothing across two languages; a Name is the tab's own
+    // invariant word. Unnamed, a tab is still addressable by where it sits — which is what keeps
+    // the binding from demanding names of a screen that only wants the round trip.
+    string ValueOf(int index)
+    {
+        return index >= 0 && index < _tabs.Count && !string.IsNullOrWhiteSpace(_tabs[index].Name)
+            ? _tabs[index].Name!
+            : index.ToString(CultureInfo.InvariantCulture);
+    }
+
+    int IndexOf(string value)
+    {
+        for (var index = 0; index < _tabs.Count; index++)
+        {
+            if (string.Equals(_tabs[index].Name, value, StringComparison.OrdinalIgnoreCase))
+            {
+                return index;
+            }
+        }
+
+        // A hand-typed address is not an exception: a name nobody carries and a position past
+        // the last tab both leave the screen on the tab it would have opened on.
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var position)
+            && position >= 0
+            && position < _tabs.Count
+                ? position
+                : -1;
+    }
+
+    // Flat like NsCard on the flat background, and a flex column so the selected panel is
+    // what scrolls rather than the whole strip scrolling out of reach.
+    string GetClasses()
+    {
+        // min-h-0 pairs with the panel wrapper's own overflow and rides with flex-1: growing
+        // tabs shrink to a bounded host so the panel scrolls; non-growing, min-height:0 would
+        // be alone and only strip the content floor a shrinking parent needs to respect.
+        return new NsClassBuilder("ns-tabs d-flex flex-column")
+            .Add("flex-1 min-h-0", Grows)
+            .Add(Class)
+            .ToString();
+    }
+
+    // The panel wrapper's scroll is conditional for the same reason the root's flex-1 is, and
+    // it was not: an overflow box whose flex-basis is 0 inside a chain that never resolves to a
+    // definite height gets its height from a parent that has none, so it compresses its content
+    // and paints it outside the card instead of scrolling it.
+    string GetPanelsClasses()
+    {
+        return new NsClassBuilder("d-flex flex-column pt-4")
+            .Add("flex-fill min-h-0 overflow-y-auto", Grows)
+            .ToString();
+    }
+}

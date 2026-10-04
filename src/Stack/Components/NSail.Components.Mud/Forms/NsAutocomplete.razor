@@ -1,0 +1,597 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TItem
+@typeparam TValue
+@using Microsoft.AspNetCore.Components.Routing
+@inherits NsAsyncFieldBase<TValue>
+
+@inject NavigationManager Navigation
+
+@* The open list is floored at the field's width and bounded by its own results, never capped at
+   the field. MudBlazor 9.10.0 defaults RelativeWidth to DropdownWidth.Relative, whose popover
+   script writes max-width = the anchor's width inline on every open (measured, mudpopoverHelper
+   — and .mud-popover-relative-width is the one width case the vendor ships CSS for); in a line
+   editor the anchor is a table cell, so an option reading "CR-150 - Orgánico CR-39 1.50 (1,00)"
+   — 353px of text — came out three lines tall in 191px. Adaptive writes min-width instead and
+   leaves the width to the content, so a narrow anchor no longer decides how a result reads and a
+   wide one is unchanged: min-width holds the list at the field it drops from. What bounds it
+   above is the measure in ns-mud.css (.ns-lookup-list), never the cell. *@
+
+@* The adornment is a BUTTON — it opens the field's own list — so it owes a name in both
+   postures (ui/actions.md): one word for one gesture, whether the glyph on it is the lupa a
+   lazy lookup draws or the chevron a browsed one does. Unnamed it is anonymous to a screen
+   reader and bare to the pointer, and the vendor sets nothing of its own here. *@
+
+@* ShrinkLabel is declared off the VALUE for the reason NsSelect's is: the vendor floats the
+   label off the box's own text, and a bound value reads as text only once OnLoad has resolved
+   the row for it — so the label would rest inside the box for the whole round trip and then
+   travel over the name as it lands. *@
+<MudAutocomplete T="TItem"
+                 RelativeWidth="DropdownWidth.Adaptive"
+                 @ref="_autocomplete"
+                 Value="_selectedItem"
+                 ValueChanged="OnItemChanged"
+                 SearchFunc="Search"
+                 ToStringFunc="GetItemText"
+                 ItemTemplate="@ItemTemplate"
+                 Label="@GetLabel()"
+                 Placeholder="@Placeholder"
+                 ShrinkLabel="@HoldsValue"
+                 Required="IsRequired"
+                 Disabled="IsDisabled"
+                 ReadOnly="IsReadOnly"
+                 AutoFocus="AutoFocus"
+                 Immediate="Immediate"
+                 Clearable="Clearable"
+                 Variant="Variant.Outlined"
+                 Margin="Margin.Dense"
+                 Class="@GrowClass"
+                 AdornmentIcon="@(Lazy ? NsIcons.Search.Markup : NsIcons.DropDown.Markup)"
+                 AdornmentAriaLabel="@Strings.Translate("Common.ShowOptions")"
+                 MinCharacters="0"
+                 OpenOnFocus="true"
+                 ShowProgressIndicator="@IsBusy"
+                 ProgressIndicatorColor="Color.Primary"
+                 Error="@HasError()"
+                 ErrorText="@GetErrorText()"
+                 UserAttributes="InputAttributes"
+                 ListClass="ns-lookup-list"
+                 ItemDisabledFunc="@ItemDisabledFunc"
+                 NoItemsTemplate="@CreateContent"
+                 AfterItemsTemplate="@CreateContent" />
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+
+@code {
+
+    TItem? _selectedItem;
+
+    MudAutocomplete<TItem>? _autocomplete;
+
+    [Parameter]
+    public IEnumerable<TItem>? Items { get; set; }
+
+    [Parameter]
+    public EventCallback<SearchEventArgs<TItem>> OnSearch { get; set; }
+
+    /// <summary>Adds the clear (x) adornment once a value is chosen, raising ValueChanged with
+    /// default — the same contract NsSelect's carries, and the ONLY gesture that un-answers a
+    /// lookup: emptying the box is how a new term is typed, so the vendor coerces the text back
+    /// to the value it still holds on blur. For a field whose question is genuinely optional;
+    /// leave it off and a chosen value can only be replaced by another.</summary>
+    [Parameter]
+    public bool Clearable { get; set; }
+
+    /// <summary>Resolves the item for an already-bound value (edit forms load with the id
+    /// alone); raised when the value has no matching item in Items.</summary>
+    [Parameter]
+    public EventCallback<LoadEventArgs<TItem, TValue>> OnLoad { get; set; }
+
+    [Parameter]
+    public Func<TItem, TValue>? ItemValue { get; set; }
+
+    [Parameter]
+    public Func<TItem, string>? ItemText { get; set; }
+
+    /// <summary>Row body for an option in the open list, when a line of text is not enough
+    /// to tell two candidates apart. Only the list changes: the closed field still shows
+    /// what ItemText returns, which is also what the whole control falls back to when this
+    /// is not set.</summary>
+    [Parameter]
+    public RenderFragment<TItem>? ItemTemplate { get; set; }
+
+    /// <summary>Search-first, for tables too big to browse (parties, products): the field
+    /// shows a magnifier instead of the dropdown arrow and doesn't query until something is
+    /// typed. It still opens on focus — on an empty box that shows the create entry alone,
+    /// which is the only discoverability the field has. Off, it behaves like a select over
+    /// a short list.</summary>
+    [Parameter]
+    public bool Lazy { get; set; }
+
+    /// <summary>Where the dropdown's permanent last entry navigates, as the raw app route.
+    /// Set it and the entry renders in every open state — with results, with partial matches
+    /// and on empty; leave it null and there is none. The caller passes a route and not a
+    /// finished href: the entry carries this field's own surface cascade across the popover
+    /// portal, so its link resolves the address exactly once, at the anchor
+    /// (intentional-ui-cases.md). The label is composed here, so no entity carries that string
+    /// and no caller writes the link.</summary>
+    [Parameter]
+    public string? CreateRoute { get; set; }
+
+    /// <summary>Where the create entry opens — NsLink's own Target vocabulary, handed
+    /// straight to the entry's link and resolved there against the surface this field stands
+    /// on.</summary>
+    [Parameter]
+    public Surface? CreateTarget { get; set; }
+
+    /// <summary>The other create affordance: the text that matched nothing, offered as a row to
+    /// make without leaving the field. Raised with what was typed; the handler answers with the
+    /// item, and this field selects it. Nothing renders while the box is empty — there is no text
+    /// to add — and nothing renders when an option already reads exactly what was typed.</summary>
+    [Parameter]
+    public EventCallback<QuickAddEventArgs<TItem>> OnQuickAdd { get; set; }
+
+    /// <summary>The third entry, and the caller's own: an offer ABOUT the text in the box, for an
+    /// escape hatch whose answer needs a question no single send can ask — a scanned code being
+    /// taught which unit of which article it names. Rendered where the QuickAdd button is, so it
+    /// is an entry of the list rather than something under the field, and rendered whether the
+    /// list has rows or none, because what the offer is about is the text and not the emptiness.
+    /// The caller decides WHEN there is anything to offer: it already knows what its own search
+    /// answered, and a fragment that renders nothing leaves the list exactly as it was.
+    /// <para>Withheld, like the quick add and for the same reason, while the box is empty or while
+    /// the search for the text in it has not answered: this entry ACTS on that text, and an offer
+    /// outliving what it quotes is a write decided on a term nobody can still read.</para></summary>
+    [Parameter]
+    public RenderFragment? Offer { get; set; }
+
+    /// <summary>A row the vendor's own Enter and arrow-key selection must never pick straight
+    /// through — one whose ItemTemplate answers with a menu of its own rather than a plain name.
+    /// A mouse click already never reaches the vendor's pick for that row (the menu stops its
+    /// own click from bubbling there, which is what lets the caller ask instead of select), but
+    /// the vendor's keyboard selection never looks at the template at all: it would pick the raw
+    /// item whole, unanswered. Handed straight to the vendor's own ItemDisabledFunc, which is
+    /// exactly the list the vendor already excludes from arrow navigation and from Enter's
+    /// highlighted index — ns-mud.css restores this row's own mouse affordance and reading, which
+    /// the vendor's disabled styling would otherwise mute.</summary>
+    [Parameter]
+    public Func<TItem, bool>? ItemDisabledFunc { get; set; }
+
+    string _text = string.Empty;
+
+    IEnumerable<TItem> _results = [];
+
+    // The term _results answer for. The box's own text moves the moment a search starts, and
+    // the results only when it returns: between the two, _results belongs to an older term.
+    string? _answered;
+
+    TValue? _loadedValue;
+    TItem? _loadedItem;
+
+    /// <summary>The Runner the RESOLVE runs on, separate from the field's own because they are
+    /// two unrelated reads: the search answers "what can I pick", the resolve answers "what does
+    /// the value I am already holding read as". One Runner carrying both is two ways to lose —
+    /// a Run that starts while another is in flight throws, and every search opens by cancelling
+    /// whatever it finds running — so a value arriving from OUTSIDE a pick (a create page's
+    /// saved event, nsail#857) either faulted the render or had its own read eaten, leaving a
+    /// box that could never fill again. NsPage splits the same two for the same reason
+    /// (surfaces.md).</summary>
+    Runner Resolver => field ??= new(this);
+
+    bool IsBusy => Runner.IsRunning || Resolver.IsRunning;
+
+    // A field bound to a page-local value has no message property to derive a label from —
+    // the item type names the concept ("Directory.OrganizationRef" → "Organizaciones") and
+    // one template turns it into the prompt, so no entity carries a search string of its
+    // own. The concept keeps its own capital, which is what the label rule asks for.
+    protected override string? FallbackLabel(string key)
+    {
+        if (TryGetConcept(out var concept))
+        {
+            return string.Format(Strings.Translate("Common.SearchPrompt"), concept);
+        }
+
+        return base.FallbackLabel(key);
+    }
+
+    bool TryGetConcept(out string concept)
+    {
+        return Strings.TryTranslate(Metadata.KeyFor(typeof(TItem)), out concept!);
+    }
+
+    // One fragment feeding both vendor seams, because MudAutocomplete splits the states
+    // between them and never renders both: NoItemsTemplate answers for an empty result,
+    // AfterItemsTemplate for every non-empty one (last, below MoreItemsTemplate). Passing
+    // the same content to each is what makes the create entry permanent instead of a
+    // "nothing found" consolation prize.
+    //
+    // The entry is the list's last ITEM, so it has to measure like one — the vendor renders
+    // these two seams as bare padded divs rather than through its own list item, which left
+    // the create entry visibly smaller than every row above it (Leonardo, on the Paciente
+    // lookup: "se sigue viendo más chico.. debería ser igual o más grande"). ns-lookup-create
+    // is where the item's own geometry is restated; ListClass is the handle it is reached
+    // through, the popover being a portal this component's own tree does not contain.
+    //
+    // That same portal is why the fragment opens with a CascadingValue: it renders inside the
+    // popover, a sibling of the router, where the hosting page's own surface cascade does not
+    // reach — but a CascadingValue provides where it RENDERS, not where it was written, so the
+    // link below sees the surface this field stands on and resolves the route once, itself. A
+    // null surface provides null and NsLink falls back to the root surface, which is the main
+    // surface's own answer.
+    RenderFragment? CreateContent
+    {
+        get
+        {
+            var quick = QuickAddContent;
+            var offer = OfferContent;
+            string? label = null;
+
+            if (!string.IsNullOrEmpty(CreateRoute) && TryGetConcept(out var concept))
+            {
+                label = string.Format(Strings.Translate("Common.CreateNew"), concept);
+            }
+
+            if (label is null && quick is null && offer is null)
+            {
+                return null;
+            }
+
+            return
+                @<CascadingValue Value="Surface" IsFixed="true">
+                    @if (label is not null)
+                    {
+                        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ns-lookup-create">
+                            <NsIcon Icon="@NsIcons.Add" />
+                            @* The one open the app makes that is not a place: the window it opens
+                               exists to hand a value back to the form standing underneath, which
+                               the save then closes for the user. An entry of its own would put
+                               that finished window one Back away from the form it just fed — the
+                               resurrection a lookup create is capable of. Marked here, once, so no
+                               lookup and no future lookup has to remember it. *@
+                            <NsLink Href="@CreateRoute" Target="@CreateTarget" Label="@label" NoHistory />
+                        </NsStack>
+                    }
+                    @quick
+                    @* The offer is an ENTRY of the list, so the geometry an entry wears is restated
+                       here and not by the caller: what the kit brings is what the entry says. *@
+                    @if (offer is not null)
+                    {
+                        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ns-lookup-create">
+                            @offer
+                        </NsStack>
+                    }
+                </CascadingValue>;
+        }
+    }
+
+    // The caller's own entry, held to the same two conditions the quick add is: there has to be
+    // text in the box, and the search for THAT text has to have answered. The offer is about the
+    // term, so an offer that outlives it is an offer about nothing — and this is the entry that
+    // writes, so the term it no longer quotes is the one it would write. A Lazy field emptied
+    // never reaches the caller's OnSearch at all (the empty box sends nothing), so the caller
+    // cannot retire it on its own: what it computed for the last term it searched stands until
+    // this asks.
+    RenderFragment? OfferContent
+    {
+        get
+        {
+            if (Offer is null || string.IsNullOrWhiteSpace(_text) || _answered != _text)
+            {
+                return null;
+            }
+
+            return Offer;
+        }
+    }
+
+    // The escape hatch, and the one entry that carries data: it quotes what was typed, so the row
+    // it will make is legible before it exists. Nothing renders while the text matches an option
+    // exactly — offering to add what is already there is how twins are made, which is the problem
+    // this field exists to end — and nothing renders before the search for that text has
+    // answered, since until then no option can be said not to match. The same wait keeps the
+    // click off a Runner the search still holds.
+    RenderFragment? QuickAddContent
+    {
+        get
+        {
+            if (!OnQuickAdd.HasDelegate || string.IsNullOrWhiteSpace(_text) || _answered != _text || Matches(_text))
+            {
+                return null;
+            }
+
+            var label = string.Format(Strings.Translate("Common.QuickAdd"), _text.Trim());
+
+            return
+                @<NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ns-lookup-create">
+                    <NsIcon Icon="@NsIcons.Add" />
+                    <NsButton As="NsAs.Inline" Label="@label" OnClick="QuickAdd" />
+                </NsStack>;
+        }
+    }
+
+    bool Matches(string text)
+    {
+        return _results.Any(item => string.Equals(GetItemText(item), text.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
+    async Task QuickAdd()
+    {
+        var args = new QuickAddEventArgs<TItem> { Text = _text.Trim() };
+
+        await Runner.Raise(OnQuickAdd, args);
+
+        if (args.Item is null)
+        {
+            return;
+        }
+
+        // The item is taken through the same path a click on a real option takes, so the field
+        // shows it, the bound value is set and the vendor closes its own popover.
+        await OnItemChanged(args.Item);
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        // The entry navigates through NsLink, which owns its click all the way to Follow()
+        // and stops it from bubbling any further (its own history-vs-surface guard) — no
+        // ancestor of the entry, including this component, ever sees that click. Closing on
+        // mousedown instead was tried and measured wrong: MudAutocomplete unmounts the
+        // popover's content the instant Open turns false, which removes the very anchor the
+        // browser is mid-click on and can cost the click its target before Follow() runs at
+        // all. The click already lands: the vendor never learns it was a "selection" (the
+        // entry is an NsLink, not one of its own items), it does not close on its own, and
+        // Follow() takes the surface through NavigationManager regardless. That is the
+        // signal this reacts to instead of the click itself — whatever navigation the click
+        // just caused, including opening the create page, closes the popover once it is
+        // already open for the one interaction that matters (browsing this dropdown), no
+        // race against the DOM it is also editing.
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        if (_autocomplete is not { Open: true })
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () => await _autocomplete.CloseMenuAsync());
+    }
+
+    protected override void DisposeCore()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+
+        Resolver.Dispose();
+
+        base.DisposeCore();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (Value is null || EqualityComparer<TValue>.Default.Equals(Value, default!))
+        {
+            _selectedItem = default;
+            return;
+        }
+
+        if (_selectedItem is not null && EqualityComparer<TValue>.Default.Equals(GetItemValue(_selectedItem), Value))
+        {
+            return;
+        }
+
+        _selectedItem = Resolve(Value);
+
+        // Belt: a value that lands here from outside a pick — the create flow's own
+        // saved-event assignment, any other external ValueChanged — never went through
+        // OnItemChanged, the only path the vendor treats as a "selection" and closes its
+        // own popover for. LocationChanged above already kills the symptom for that flow
+        // (the aside's own navigation); this covers a value that reaches here without one.
+        if (_autocomplete is { Open: true })
+        {
+            _ = _autocomplete.CloseMenuAsync();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_selectedItem is not null
+            || !OnLoad.HasDelegate
+            || Value is null
+            || EqualityComparer<TValue>.Default.Equals(Value, default!)
+            || EqualityComparer<TValue>.Default.Equals(_loadedValue, Value))
+        {
+            return;
+        }
+
+        var value = Value;
+
+        _loadedValue = value;
+
+        var args = new LoadEventArgs<TItem, TValue> { Value = value };
+
+        await Resolver.Raise(OnLoad, args, RunOptions.Background | RunOptions.Replace);
+
+        // Only the ask for the value the field still carries may answer for it: a newer value
+        // arrived and its own ask is the one that counts.
+        if (!EqualityComparer<TValue>.Default.Equals(_loadedValue, value))
+        {
+            return;
+        }
+
+        // A cancelled ask learned nothing — the Runner swallows the cancellation and hands back
+        // empty args — so its silence must not be filed as this value's answer, and the mark
+        // that says "asked" comes off with it or the field could never ask again.
+        if (args.CancellationToken.IsCancellationRequested)
+        {
+            _loadedValue = default;
+
+            return;
+        }
+
+        _selectedItem = args.Item;
+        _loadedItem = args.Item;
+    }
+
+    TValue GetItemValue(TItem item)
+    {
+        if (ItemValue is not null)
+        {
+            return ItemValue(item);
+        }
+
+        return (TValue)(object)item!;
+    }
+
+    // MudAutocomplete also calls ToStringFunc for the "nothing selected" state — guard
+    // null before invoking the caller's lambda so ItemText never needs its own null check.
+    string GetItemText(TItem? item)
+    {
+        if (item is null)
+        {
+            return string.Empty;
+        }
+
+        return ItemText?.Invoke(item) ?? item.ToString() ?? string.Empty;
+    }
+
+    // Same vendor contract as NsSelect: MudAutocomplete keeps the item it was clicked with,
+    // so the picked item is rendered before the callback is awaited and the bound Value gets
+    // the last word after it — a refused change then really changes the parameter back.
+    async Task OnItemChanged(TItem? item)
+    {
+        _selectedItem = item;
+
+        StateHasChanged();
+
+        await SetValue(item is null ? default! : GetItemValue(item));
+
+        if (item is null || !EqualityComparer<TValue>.Default.Equals(GetItemValue(item), Value!))
+        {
+            _selectedItem = Resolve(Value);
+        }
+    }
+
+    // Items answers for a short list; a lazy field has none, so the item that OnLoad
+    // resolved for the bound value is kept and answers for it again after a refusal.
+    TItem? Resolve(TValue? value)
+    {
+        if (value is null || EqualityComparer<TValue>.Default.Equals(value, default!))
+        {
+            return default;
+        }
+
+        if (FindItem(value) is { } found)
+        {
+            return found;
+        }
+
+        if (_loadedItem is not null && EqualityComparer<TValue>.Default.Equals(_loadedValue, value))
+        {
+            return _loadedItem;
+        }
+
+        return default;
+    }
+
+    // MudBlazor's MinCharacters gates the popover, not just the query: below it the menu
+    // refuses to open at all, which would cost a Lazy field the create entry it has to show
+    // on focus. So the vendor is told 0 and the threshold lives here — the field opens on
+    // focus, and an empty box still sends nothing.
+    async Task<IEnumerable<TItem>> Search(string text, CancellationToken vendorToken)
+    {
+        var term = text ?? string.Empty;
+
+        _text = term;
+
+        if (Lazy && string.IsNullOrEmpty(text))
+        {
+            Answer(term, []);
+
+            return [];
+        }
+
+        if (OnSearch.HasDelegate)
+        {
+            Runner.Cancel();
+
+            var args = new SearchEventArgs<TItem> { Text = text };
+
+            await Runner.Raise(OnSearch, args, RunOptions.Background | RunOptions.Replace);
+
+            // A keystroke that opened this search can be outlived by a later one under real
+            // latency, the two answers landing in whichever order the network hands them back
+            // rather than the order they were asked in. The vendor writes its own list from
+            // whatever this call returns with no regard for that order, and its own catch
+            // writes an EMPTY list regardless of what a cancelled search throws or returns
+            // (nsail#1672): the row a person is looking at would flicker closed on an answer
+            // for a term nobody is reading anymore. Typing forward and back onto the SAME term
+            // leaves an outlived call whose OWN term still matches the box, so a term compare
+            // alone is not enough — the cancellation itself has to be checked too, the same
+            // two-belt guard Load already wears (:398).
+            if (term != _text || args.CancellationToken.IsCancellationRequested)
+            {
+                return _results;
+            }
+
+            Answer(term, args.Results);
+
+            return args.Results;
+        }
+
+        Answer(term, FilterItems(text));
+
+        return _results;
+    }
+
+    // The vendor redraws its own list off what Search returns, never this field, and the create
+    // entries are this field's fragments: without the redraw they would stay as they were drawn
+    // while the search was still out. Search already refuses to reach here for an outlived call
+    // — one superseded by a term the box has moved past, or by a cancellation (nsail#1672) —
+    // every other caller is synchronous, so term always names the current text.
+    void Answer(string term, IEnumerable<TItem> results)
+    {
+        _results = results;
+        _answered = term;
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    IEnumerable<TItem> FilterItems(string text)
+    {
+        if (Items is null)
+        {
+            return [];
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return Items;
+        }
+
+        return Items.Where(item =>
+            GetItemText(item).Contains(text, StringComparison.OrdinalIgnoreCase));
+    }
+
+    TItem? FindItem(TValue value)
+    {
+        if (Items is null || EqualityComparer<TValue>.Default.Equals(value, default!))
+        {
+            return default;
+        }
+
+        foreach (var item in Items)
+        {
+            if (EqualityComparer<TValue>.Default.Equals(GetItemValue(item), value))
+            {
+                return item;
+            }
+        }
+
+        return default;
+    }
+}

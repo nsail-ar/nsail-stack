@@ -1,0 +1,65 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Remove="Cache\**" />
+		<Compile Remove="Maps\**" />
+		<Compile Remove="**\Sources\*.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Remove="Cache\**" />
+		<Content Remove="Maps\**" />
+		<EmbeddedResource Remove="Cache\**" />
+		<EmbeddedResource Remove="Maps\**" />
+		<None Remove="Cache\**" />
+		<None Remove="Maps\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="**\Sources\*.cs" Exclude="**\bin\**;**\obj\**">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="coverlet.collector" Version="8.0.1">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.3.0" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+		<PackageReference Include="xunit" Version="2.9.3" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\..\src\Stack\Generation\NSail.SourceGeneration.Annotations\NSail.SourceGeneration.Annotations.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Generation\NSail.SourceGeneration.Testing\NSail.SourceGeneration.Testing.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.Http\NSail.Messaging.Http.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.WebApi\NSail.Messaging.WebApi.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Security\NSail.Security\NSail.Security.csproj" />
+		<ProjectReference Include="..\NSail.SourceGenerator.TestAssets\NSail.SourceGenerator.TestAssets.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Using Include="Xunit" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\..\..\src\Stack\Generation\NSail.SourceGenerator\NSail.SourceGenerator.csproj" />
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="NSail.BaseServices.WebApp.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.9" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Components\NSail.Components\NSail.Components.csproj" />
+		<ProjectReference Include="..\..\Components\NSail.Components.Mud\NSail.Components.Mud.csproj" />
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.WebApi\NSail.Messaging.WebApi.csproj" />
+		<ProjectReference Include="..\..\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
+		<ProjectReference Include="..\..\Data\NSail.Data\NSail.Data.csproj" />
+	</ItemGroup>
+
+</Project>
+

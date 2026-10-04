@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>NSail.Backup</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Data\NSail.Data\NSail.Data.csproj" />
+		<ProjectReference Include="..\..\Types\NSail.Types\NSail.Types.csproj" />
+	</ItemGroup>
+
+</Project>

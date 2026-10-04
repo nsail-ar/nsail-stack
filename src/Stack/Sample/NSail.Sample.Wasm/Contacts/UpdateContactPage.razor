@@ -1,0 +1,79 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/contacts/{Id:guid}/edit"
+
+@attribute [Authorize<UpdateContact>]
+@inherits NsPage
+
+<NsForm @key="Id" TModel="UpdateContact" OnLoad="Load" OnSubmit="OnSubmit">
+    <NsPanel>
+        <Header>
+            <NsTitleBar Title="@GetTitle()" />
+        </Header>
+        <Content>
+            <NsFormGrid>
+                <NsFormGridItem Grow>
+                    <NsTextField @bind-Value="context.Name" />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsSelect @bind-Value="context.Kind" Items="@(GetItems<ContactKind>(all: false))" />
+                </NsFormGridItem>
+                <NsFormGridItem Grow>
+                    <NsEmailField @bind-Value="context.Email" />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsPhoneField @bind-Value="context.Phone" />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsDateField TValue="DateOnly?" @bind-Value="context.BirthDate" />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsNumericField TValue="int" @bind-Value="context.Rating" />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsCheckBox TValue="bool" @bind-Value="context.IsFavorite" />
+                </NsFormGridItem>
+                <NsFormGridItem Full>
+                    <NsTextArea @bind-Value="context.Notes" />
+                </NsFormGridItem>
+            </NsFormGrid>
+        </Content>
+        <Footer>
+            <NsSubmit />
+        </Footer>
+    </NsPanel>
+</NsForm>
+
+@code {
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    async Task Load(LoadEventArgs<UpdateContact> args)
+    {
+        var contact = await Send(new GetContact { Id = Id }, args.CancellationToken);
+
+        args.Model = new UpdateContact
+        {
+            Id = contact.Id,
+            Version = contact.Version,
+            Name = contact.Name,
+            Kind = contact.Kind,
+            Email = contact.Email,
+            Phone = contact.Phone,
+            BirthDate = contact.BirthDate,
+            Rating = contact.Rating,
+            IsFavorite = contact.IsFavorite,
+            Notes = contact.Notes,
+        };
+    }
+
+    async Task OnSubmit(SubmitEventArgs<UpdateContact> args)
+    {
+        await Send(args.Model, args.CancellationToken);
+        await Publish(new ContactSaved { Id = args.Model.Id }, args.CancellationToken);
+
+        NotifySent<UpdateContact>();
+    }
+}

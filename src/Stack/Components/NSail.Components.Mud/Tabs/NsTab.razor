@@ -1,0 +1,109 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using Microsoft.AspNetCore.Components.Forms
+
+@implements IFieldTracker
+@implements IDisposable
+
+<MudTabPanel Text="@Title" BadgeDot="HasProblem" BadgeColor="Color.Error">
+    @* Every field rendered inside this tab tracks itself here (NsFieldBase.FieldTracker), so
+       HasProblem is read from the surrounding EditContext rather than configured by the
+       consumer — a tab never says which of its own fields might be wrong. *@
+    <CascadingValue Value="(IFieldTracker)this" IsFixed="true">
+        @ChildContent
+    </CascadingValue>
+</MudTabPanel>
+
+@code {
+
+    readonly HashSet<FieldIdentifier> _fields = [];
+    EditContext? _subscribed;
+
+    [CascadingParameter]
+    EditContext? EditContext { get; set; }
+
+    /// <summary>The tracker this tab is itself nested in — the form, normally. The tab shadows
+    /// the form's cascade for everything under it, so what it hears it passes on; otherwise the
+    /// form would count every field inside a tab as one it does not render.</summary>
+    [CascadingParameter]
+    IFieldTracker? Parent { get; set; }
+
+    [CascadingParameter]
+    NsTabs? Tabs { get; set; }
+
+    /// <summary>The tab's label. Resolved by the caller (Translate/GetTitle) — a tab binds
+    /// no expression and names no type, so there is nothing here to derive a key from.</summary>
+    [Parameter, EditorRequired]
+    public string? Title { get; set; }
+
+    /// <summary>This tab's identity in an address, invariant and stable — the value ?tab= carries
+    /// when the strip binds the query (NsTabs.BindQuery). It is not a label and never renders:
+    /// Title is translated, and a translated word identifies a different tab in every language.
+    /// Unnamed, the tab answers to its position instead.</summary>
+    [Parameter]
+    public string? Name { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    bool HasProblem => EditContext is not null
+        && _fields.Any(identifier => EditContext.GetValidationMessages(identifier).Any());
+
+    void IFieldTracker.Track(FieldIdentifier identifier)
+    {
+        _fields.Add(identifier);
+        Parent?.Track(identifier);
+    }
+
+    void IFieldTracker.Untrack(FieldIdentifier identifier)
+    {
+        _fields.Remove(identifier);
+        Parent?.Untrack(identifier);
+    }
+
+    protected override void OnInitialized()
+    {
+        Tabs?.Register(this);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_subscribed, EditContext))
+        {
+            return;
+        }
+
+        Unsubscribe();
+
+        if (EditContext is not null)
+        {
+            EditContext.OnValidationStateChanged += HandleValidationStateChanged;
+            _subscribed = EditContext;
+        }
+    }
+
+    void HandleValidationStateChanged(object? sender, ValidationStateChangedEventArgs e)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    void Unsubscribe()
+    {
+        if (_subscribed is null)
+        {
+            return;
+        }
+
+        _subscribed.OnValidationStateChanged -= HandleValidationStateChanged;
+        _subscribed = null;
+    }
+
+    void IDisposable.Dispose()
+    {
+        Unsubscribe();
+        Tabs?.Unregister(this);
+    }
+}

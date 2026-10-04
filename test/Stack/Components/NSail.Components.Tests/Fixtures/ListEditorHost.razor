@@ -1,0 +1,136 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Problems
+@using NSail.Testing.Models
+
+@* The shape a heterogeneous collection editor has (TendersEditor): a compact display
+   sentence carrying only what the item has, and an editor whose controls label themselves.
+   OnAddMode switches to the OTHER shape (ChannelsEditor): adds land through a dialog the
+   host owns, so neither ItemEditor nor NewItem is set and the bar's + goes through OnAdd
+   instead. *@
+<MudPopoverProvider />
+
+@if (OnAddMode)
+{
+    <NsListEditor TItem="TestModel" Items="_items" Title="@Title" ReadOnly="ReadOnly"
+                  OnAdd="AddViaDialog" OnRemove="Remove">
+        <ItemTemplate Context="item">
+            <span class="item-name">@item.Name</span>
+        </ItemTemplate>
+    </NsListEditor>
+}
+else
+{
+    <NsListEditor TItem="TestModel" Items="_items" Title="@Title" ReadOnly="ReadOnly"
+                  NewItem="NewItem" OnCommit="CommitCallback" OnRemove="RemoveCallback">
+        <Actions>
+            @if (Contributed)
+            {
+                <NsButton Label="Traer" Breakpoint="NsBreakpoint.Always" OnClick="Bring" />
+            }
+        </Actions>
+        <ItemTemplate Context="item">
+            <span class="item-name">@item.Name</span>
+            @if (item.Age > 0)
+            {
+                <span class="item-age">@item.Age</span>
+            }
+        </ItemTemplate>
+        <ItemEditor Context="item">
+            <NsTextField @bind-Value="item.Name" />
+            <NsNumericField TValue="int" @bind-Value="item.Age" />
+        </ItemEditor>
+        <Footer>
+            <span class="foot">@_items.Sum(item => item.Age)</span>
+        </Footer>
+    </NsListEditor>
+}
+
+@code {
+
+    readonly List<TestModel> _items = [new TestModel { Name = "Ana", Age = 3 }];
+
+    [Parameter]
+    public string? Title { get; set; } = "Pagos";
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    /// <summary>Refuses the commit the way a real handler does — through the args, never by
+    /// throwing — so the item has to stay open on its editor.</summary>
+    [Parameter]
+    public bool Refuse { get; set; }
+
+    /// <summary>Switches the fixture to the dialog-add shape: OnAdd instead of NewItem/
+    /// ItemEditor, the ChannelsEditor case XS1 adopts.</summary>
+    [Parameter]
+    public bool OnAddMode { get; set; }
+
+    /// <summary>A second way IN riding the bar beside the + — a caller's own pull through the
+    /// Actions slot, which cannot be the + because OnAdd is exclusive with in-place
+    /// editing.</summary>
+    [Parameter]
+    public bool Contributed { get; set; }
+
+    /// <summary>The shape a host arrives in with nothing wired past the two templates: no
+    /// OnCommit, no OnRemove. Adding and backing out of a row still have to work, because
+    /// neither of them is the host's to perform.</summary>
+    [Parameter]
+    public bool Unwired { get; set; }
+
+    public IReadOnlyList<TestModel> Rows => _items;
+
+    public int Commits { get; private set; }
+
+    public int OnAddInvocations { get; private set; }
+
+    public int BringInvocations { get; private set; }
+
+    EventCallback<RowEditEventArgs<TestModel>> CommitCallback => Unwired
+        ? default
+        : EventCallback.Factory.Create<RowEditEventArgs<TestModel>>(this, Commit);
+
+    EventCallback<RowEditEventArgs<TestModel>> RemoveCallback => Unwired
+        ? default
+        : EventCallback.Factory.Create<RowEditEventArgs<TestModel>>(this, Remove);
+
+    // Mints and returns, nothing else: putting the row in _items is the list's own act.
+    static TestModel NewItem()
+    {
+        return new TestModel { Name = "Nuevo" };
+    }
+
+    // Stands in for a dialog that saved and handed back a new row: the add lands in the
+    // collection directly, with no in-place editor ever opening.
+    void AddViaDialog()
+    {
+        OnAddInvocations++;
+        _items.Add(new TestModel { Name = "ViaDialog" });
+    }
+
+    void Bring()
+    {
+        BringInvocations++;
+        _items.Add(new TestModel { Name = "Traido" });
+    }
+
+    void Commit(RowEditEventArgs<TestModel> args)
+    {
+        Commits++;
+
+        if (Refuse)
+        {
+            args.Problem = InputProblem.InvalidModel<TestModel>().Required(m => m.Name);
+        }
+    }
+
+    void Remove(RowEditEventArgs<TestModel> args)
+    {
+        _items.Remove(args.Row);
+    }
+}

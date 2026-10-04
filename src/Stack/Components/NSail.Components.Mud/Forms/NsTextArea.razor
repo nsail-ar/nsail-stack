@@ -1,0 +1,41 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@inherits NsFieldBase<string>
+
+<MudTextField T="string"
+              Value="Value"
+              ValueChanged="SetValue"
+              For="For"
+              Label="@GetLabel()"
+              Placeholder="@Placeholder"
+              Required="IsRequired"
+              Disabled="IsDisabled"
+              ReadOnly="IsReadOnly"
+              AutoFocus="AutoFocus"
+              Immediate="Immediate"
+              Lines="Lines"
+              MaxLines="MaxLines ?? 0"
+              Sizing="@(MaxLines is null ? InputSizing.Fixed : InputSizing.Auto)"
+              Variant="Variant.Outlined"
+              Margin="Margin.Dense"
+              Error="@HasError()"
+              ErrorText="@GetErrorText()"
+              UserAttributes="InputAttributes" />
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+
+@code {
+
+    /// <summary>How many lines the field shows before scrolling — its fixed height with
+    /// <see cref="MaxLines"/> unset, or the floor it never shrinks under once set.</summary>
+    [Parameter]
+    public int Lines { get; set; } = 4;
+
+    /// <summary>The tallest the field grows to, in lines, before it scrolls instead of
+    /// growing further. Unset keeps the field fixed at <see cref="Lines"/> — the vendor's
+    /// own auto-grow sizing turns on only once a caller asks for a cap.</summary>
+    [Parameter]
+    public int? MaxLines { get; set; }
+
+}

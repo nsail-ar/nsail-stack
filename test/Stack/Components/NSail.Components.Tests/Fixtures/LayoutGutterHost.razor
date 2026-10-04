@@ -1,0 +1,29 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+
+@* The nav gutter an aside's cap leaves is whatever width this layout declared for its own
+   drawer, so the fact under test is what MudDrawerContainer writes on the layout root. The
+   probe inside the menu slot reaches the cascaded state, which is the only way from outside
+   to close a drawer NsMainLayout opens by itself. *@
+<MudPopoverProvider />
+
+<NsMainLayout>
+    <Drawer>
+        <LayoutStateProbe @ref="_probe" />
+    </Drawer>
+    <Content>
+        <div class="content-probe">page</div>
+    </Content>
+</NsMainLayout>
+
+@code {
+
+    LayoutStateProbe? _probe;
+
+    public void CloseNav()
+    {
+        _probe!.State!.DrawerIsOpen = false;
+    }
+}

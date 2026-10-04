@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Types\NSail.BclExtensions\NSail.BclExtensions.csproj" />
+		<ProjectReference Include="..\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
+	</ItemGroup>
+
+</Project>
+

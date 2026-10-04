@@ -1,0 +1,18 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@* Stand-in for a dialog-hosted form built on NsPanel's Content/Footer split (LocationForm's
+   own shape after 12fa53d8's sibling fix) — opened through DialogManager.Open<T>() the same
+   way LocationForm and the rest are, so the class chain this pins is the one
+   NsOpenDialog's ContentClass actually has to complete. *@
+
+<NsPanel>
+    <Content>
+        <div class="probe-content">Fields</div>
+    </Content>
+    <Footer>
+        <button class="probe-submit">Guardar</button>
+    </Footer>
+</NsPanel>

@@ -1,0 +1,27 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@inject StringManager Strings
+
+<NsPageFace Id="ns-page-not-found"
+            LogoUrl="@LogoUrl"
+            HomePage="@HomePage"
+            Message="@Strings.Translate("Common.PageNotFound")"
+            HomeClass="ns-page-not-found-home" />
+
+@code {
+
+    /// <summary>The app's own well-known logo route (same shape as NsSplash's own
+    /// parameter) — a plain string, no coupling, and no default: a Stack component names
+    /// no app-specific URL.</summary>
+    [Parameter]
+    public string? LogoUrl { get; set; }
+
+    /// <summary>The page mounted at the app's root, where the door back leads. A Type and
+    /// not a path: the URL comes from the route table, never written.</summary>
+    [Parameter]
+    public Type? HomePage { get; set; }
+}

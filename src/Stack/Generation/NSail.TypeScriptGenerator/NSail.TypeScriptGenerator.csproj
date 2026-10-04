@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<RootNamespace>NSail.TypeScriptGenerator</RootNamespace>
+		<!-- Runs against whatever framework the Sdk it reads was built for, so a machine with a
+		     newer runtime than the SDK pin still generates. -->
+		<RollForward>Major</RollForward>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="NSail.TypeScriptGenerator.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj" />
+		<ProjectReference Include="..\..\Metadata\NSail.Metadata\NSail.Metadata.csproj" />
+	</ItemGroup>
+
+</Project>

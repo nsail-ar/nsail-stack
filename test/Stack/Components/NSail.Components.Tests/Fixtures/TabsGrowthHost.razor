@@ -1,0 +1,35 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* ProfilePage's own composition, reduced to the seam: a card that does NOT grow (its page's
+   own stack owns the one scrollbar) hosting tabs that declare nothing. The stacked blocks
+   stand in for the Accounts tab's four cards — enough content that a panel wrapper declaring
+   itself an overflow box inside a chain with no definite height would cut them. *@
+<NsCard Grow="@CardGrows">
+    <Content>
+        <NsTabs>
+            <NsTab Title="First">
+                <div class="first-content"></div>
+            </NsTab>
+            <NsTab Title="Accounts">
+                @for (var index = 0; index < Blocks; index++)
+                {
+                    <div class="account-block"></div>
+                }
+            </NsTab>
+        </NsTabs>
+    </Content>
+</NsCard>
+
+@code {
+
+    [Parameter]
+    public bool CardGrows { get; set; }
+
+    [Parameter]
+    public int Blocks { get; set; } = 4;
+}

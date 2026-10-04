@@ -1,0 +1,59 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/contacts/new"
+
+@attribute [Authorize<CreateContact>]
+@inherits NsPage
+
+<NsForm TModel="CreateContact" Model="_model" OnSubmit="OnSubmit">
+    <NsPanel>
+        <Header>
+            <NsTitleBar Title="@GetTitle()" />
+        </Header>
+        <Content>
+            <NsFormGrid>
+                <NsFormGridItem Grow>
+                    <NsTextField @bind-Value="_model.Name" AutoFocus />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsSelect @bind-Value="_model.Kind" Items="@(GetItems<ContactKind>(all: false))" />
+                </NsFormGridItem>
+                <NsFormGridItem Grow>
+                    <NsEmailField @bind-Value="_model.Email" />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsPhoneField @bind-Value="_model.Phone" />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsDateField TValue="DateOnly?" @bind-Value="_model.BirthDate" />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsNumericField TValue="int" @bind-Value="_model.Rating" />
+                </NsFormGridItem>
+                <NsFormGridItem>
+                    <NsCheckBox TValue="bool" @bind-Value="_model.IsFavorite" />
+                </NsFormGridItem>
+                <NsFormGridItem Full>
+                    <NsTextArea @bind-Value="_model.Notes" />
+                </NsFormGridItem>
+            </NsFormGrid>
+        </Content>
+        <Footer>
+            <NsSubmit />
+        </Footer>
+    </NsPanel>
+</NsForm>
+
+@code {
+
+    CreateContact _model = new() { Id = Guid.NewGuid() };
+
+    async Task OnSubmit(SubmitEventArgs<CreateContact> args)
+    {
+        await Send(args.Model, args.CancellationToken);
+        await Publish(new ContactSaved { Id = args.Model.Id }, args.CancellationToken);
+
+        Navigate<UpdateContactPage>(new { id = args.Model.Id });
+    }
+}

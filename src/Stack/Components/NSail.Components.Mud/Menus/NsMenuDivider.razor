@@ -1,0 +1,10 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* The rule between two families of rows in one menu, for the list a caller cannot separate by
+   position the way a block is separated (NsMenuBlock): it stands between items, never at
+   either end. Presentational to the list — role="separator" and no tab stop — so a menu never
+   offers a row that does nothing. *@
+<div class="ns-menu-divider" role="separator"></div>

@@ -1,0 +1,59 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TItem
+
+@using NSail.Localization
+@using NSail.Metadata
+
+@inject StringManager Strings
+@inject MetadataProvider Metadata
+
+@if (_concept is not null)
+{
+    <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ns-field-missing">
+        <NsText Secondary Size="NsSize.Xs">@string.Format(Strings.Translate("Common.NoOptions"), _concept)</NsText>
+        @* The same open the dropdown's create entry makes (NsAutocomplete), so it stacks the
+           same way: the window this door opens exists to hand a value back to the field
+           standing underneath, which the save then closes for the user. An entry of its own
+           would put that finished window one Back away from the form it just fed. Every use
+           of this component is that act — there is no second kind — so it is marked here,
+           and no caller passes it. *@
+        <NsLink Href="@CreateRoute" Target="@Target" Size="NsSize.Xs" Icon="@NsIcons.Add" Label="@_label" NoHistory />
+    </NsStack>
+}
+
+@code {
+
+    string? _concept;
+    string? _label;
+
+    /// <summary>The door, as the raw app route — the same shape NsAutocomplete.CreateRoute
+    /// takes, resolved at the anchor so this component names no address of its own.</summary>
+    [Parameter]
+    public required string CreateRoute { get; set; }
+
+    /// <summary>Where the door opens: NsLink's own Target vocabulary, handed straight to the
+    /// link.</summary>
+    [Parameter]
+    public Surface? Target { get; set; }
+
+    // Both strings are the item type's, so no field, no screen and no kit writes either: the
+    // concept is the same key the empty picker already labels itself with, and the act is the
+    // same one the dropdown's create entry composes. A type whose concept is not translated
+    // renders nothing rather than a sentence with a hole in it — the door is a courtesy, and a
+    // courtesy nobody can read is noise.
+    protected override void OnParametersSet()
+    {
+        if (!Strings.TryTranslate(Metadata.KeyFor(typeof(TItem)), out var concept))
+        {
+            _concept = null;
+
+            return;
+        }
+
+        _concept = concept;
+        _label = string.Format(Strings.Translate("Common.CreateNew"), concept);
+    }
+}

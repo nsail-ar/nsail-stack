@@ -1,0 +1,45 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+@using NSail.Components
+
+@* Both pickers open their list into a portal, so the provider has to be in the tree for the
+   options a pick clicks to exist at all (SearchLookupHost's own note). *@
+<MudPopoverProvider />
+
+<NsForm TModel="RequiredFieldsModel" Model="Model" OnSubmit="HandleSubmit" @ref="_form">
+    <NsTextField @bind-Value="context.Name" />
+    <NsSelect TItem="SelectRef" TValue="Guid" @bind-Value="context.PatientId" Clearable="Clearable"
+              Items="Items" ItemValue="i => i.Id" ItemText="i => i.DisplayName" Required />
+    <NsAutocomplete TItem="SelectRef" TValue="Guid" @bind-Value="context.CategoryId"
+                    Items="Items" ItemValue="i => i.Id" ItemText="i => i.DisplayName" Required />
+</NsForm>
+
+@code {
+
+    public static readonly SelectRef Option = new(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Alpha");
+
+    static readonly SelectRef[] Items = [Option];
+
+    NsForm<RequiredFieldsModel>? _form;
+
+    [Parameter, EditorRequired]
+    public RequiredFieldsModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    // Off by default: the clear button is extra markup, and only the suite that empties an
+    // answered field on purpose wants it there.
+    [Parameter]
+    public bool Clearable { get; set; }
+
+    async Task HandleSubmit()
+    {
+        await Submitted.InvokeAsync();
+    }
+}

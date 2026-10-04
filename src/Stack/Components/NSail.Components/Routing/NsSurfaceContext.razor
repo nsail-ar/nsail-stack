@@ -1,0 +1,88 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject SurfaceHistory History
+@inject DialogManager DialogManager
+@inject StringManager Strings
+@implements IDisposable
+
+<CascadingValue Value="_surfaceContext" IsFixed="true">
+    @* HasChanges and not HasUnansweredChanges, unlike the internal half below: this is an
+       attribute the BROWSER reads off the last render, and no render happens when a window opens
+       or closes — the subtler answer would be a stale one. Closing the tab over a save in flight
+       is a different act from the save's own navigation, and being asked is its safe side. *@
+    <NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation"
+                    ConfirmExternalNavigation="_surfaceContext.HasChanges" />
+    @ChildContent?.Invoke(_surfaceContext)
+</CascadingValue>
+
+@code {
+
+    SurfaceContext _surfaceContext = default!;
+
+    [Parameter]
+    public Surface? Name { get; set; }
+
+    /// <summary>The hosted content, handed the surface this component created. A host whose
+    /// chrome is rendered outside this cascade (a dialog's title row lives in the vendor's own
+    /// tree) re-provides it around that chrome; everything nested normally just ignores it and
+    /// reads the cascade.</summary>
+    [Parameter]
+    public RenderFragment<SurfaceContext>? ChildContent { get; set; }
+
+    /// <summary>Overrides how this surface closes — a dialog closes its MudDialog instead
+    /// of navigating a query parameter. Routed surfaces (NsRouter) leave this null.</summary>
+    [Parameter]
+    public Action? Close { get; set; }
+
+    /// <summary>Provided by NsRouter for routed pages; a host outside that tree (NsOpenDialog
+    /// — MudDialogProvider is a sibling of the router, not a descendant) must re-provide
+    /// this cascade itself (DI has the same singleton, so there's nothing to reconcile).</summary>
+    [CascadingParameter]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        _surfaceContext = new SurfaceContext(Name, Navigation, RouteTable, JS, History, Close);
+        _surfaceContext.StateChanged += OnStateChanged;
+    }
+
+    void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    async Task OnBeforeInternalNavigation(LocationChangingContext context)
+    {
+        // HasUnansweredChanges and not HasChanges: a save in flight answers for its own reports,
+        // and the navigation being asked about here is the one its handler makes.
+        if (!_surfaceContext.HasUnansweredChanges || !_surfaceContext.Departs(context.TargetLocation))
+        {
+            return;
+        }
+
+        var confirmed = await DialogManager.Confirm(
+            Strings.Translate("Common.UnsavedChanges"),
+            Strings.Translate("Common.UnsavedChangesTitle"));
+
+        if (!confirmed)
+        {
+            context.PreventNavigation();
+
+            // A refusal is one of the two ends a pop-close can reach, and the only one that
+            // raises nothing: Blazor leaves the history position restored when a handler says
+            // no, so this surface is still standing and its X must still close it. Close()
+            // suppresses a second pop while the first is in flight, and this is where that
+            // flight ended.
+            _surfaceContext.EndPop();
+        }
+    }
+
+    public void Dispose()
+    {
+        _surfaceContext.StateChanged -= OnStateChanged;
+        _surfaceContext.Detach();
+    }
+}

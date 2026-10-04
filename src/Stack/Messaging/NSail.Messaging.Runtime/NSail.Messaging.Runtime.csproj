@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<LangVersion>latest</LangVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Metadata\NSail.Metadata\NSail.Metadata.csproj" />
+		<ProjectReference Include="..\..\Types\NSail.BclExtensions\NSail.BclExtensions.csproj" />
+		<ProjectReference Include="..\..\Types\NSail.Types\NSail.Types.csproj" />
+		<ProjectReference Include="..\NSail.Messaging\NSail.Messaging.csproj" />
+	</ItemGroup>
+
+</Project>
+

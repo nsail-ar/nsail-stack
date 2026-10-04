@@ -1,0 +1,20 @@
+#nullable enable
+
+using System;
+using Microsoft.Extensions.DependencyInjection;
+using NSail.Messaging;
+using NSail.Messaging.Runtime;
+using NSail.Messaging.Runtime.Sending;
+
+namespace {{ Namespace }}
+{
+    {{ ClassDeclaration }}
+    {
+        {{ MethodDeclaration }}
+        {
+            {{~ for m in Messages ~}}
+            {{ ServicesParameterName }}.AddScoped<ISender<{{ m.MessageType }}{{ if m.ReturnType != "void" }}, {{ m.ReturnType }}{{ end }}>, InProcessSender<{{ m.MessageType }}{{ if m.ReturnType != "void" }}, {{ m.ReturnType }}{{ end }}>>();
+            {{~ end ~}}
+        }
+    }
+}

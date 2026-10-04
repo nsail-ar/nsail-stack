@@ -1,0 +1,156 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@inherits NsActBase
+
+@* An anchored menu: a trigger that stays in place and a list that opens against it. Nested
+   inside another NsMenu it becomes that menu's submenu — the vendor reads the nesting, so a
+   caller writes no wiring for the second level. What it holds is items (NsMenuItem) and
+   blocks (NsMenuBlock); the menu itself has no opinion about their order, because which of
+   them opens a menu and which closes it is the screen's decision and not the Stack's.
+   Nothing renders until the trigger is used: the body is the vendor's popover content, so a
+   menu whose content has to be read for costs nothing on a page nobody opened it on. *@
+@* A trigger is withheld whole inside a form that refuses writes, face and all: what it opens
+   is a list of ways in, and a button that opens nothing is worse than no button. *@
+@if (Offers(Writes))
+{
+    <MudMenu @ref="_menu"
+             Class="@GetClasses()"
+             ListClass="ns-menu-list"
+             PopoverClass="ns-menu-popover"
+             Icon="@(Content is null ? Icon?.Markup : null)"
+             Label="@(Icon is null && Content is null ? Label : null)"
+             AriaLabel="@Label"
+             Size="@GetSize()"
+             Color="Color.Inherit"
+             ActivatorContent="@GetActivator()"
+             AnchorOrigin="@(Beside ? Origin.TopRight : null)"
+             Dense="true">
+        @* The body renders where the vendor's popover renders — a sibling of the router — so
+           the form's word never reaches a row on its own. This is the one component standing
+           on both sides of that portal, so it carries the two names across; a row inside asks
+           NsActBase for them exactly as an act outside a menu does. *@
+        <CascadingValue Value="ParentDisabled" Name="ParentDisabled">
+            <CascadingValue Value="ParentReadOnly" Name="ParentReadOnly">
+                @ChildContent
+            </CascadingValue>
+        </CascadingValue>
+    </MudMenu>
+}
+
+@code {
+
+    MudMenu? _menu;
+
+    /// <summary>The trigger's glyph. Unset with Content unset too leaves the trigger a plain
+    /// labelled button — the shape a nested NsMenu takes, where the label is the row.</summary>
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    /// <summary>Renders instead of the glyph on the trigger — a menu whose face IS its own
+    /// image (a person's avatar) rather than a catalog entry. A plain Blazor primitive, so the
+    /// Stack stays domain-free: the caller's own kit builds the fragment.</summary>
+    [Parameter]
+    public RenderFragment? Content { get; set; }
+
+    /// <summary>The trigger's accessible name, and its visible text when the menu carries
+    /// neither Icon nor Content — always set it.</summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    /// <summary>Opens at the trigger's trailing edge instead of under it — for a trigger that
+    /// IS a row, where under it is where the next row already stands (a lookup option opening
+    /// its own second level). A menu nested in another menu is placed this way by the vendor
+    /// and says nothing.</summary>
+    [Parameter]
+    public bool Beside { get; set; }
+
+    /// <summary>The menu's body: NsMenuItem rows, NsMenuBlock for what is read and not
+    /// clicked, and a nested NsMenu for a submenu.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Whether what this menu opens is a way IN to the form around it — true like
+    /// every act (ActionItem.Writes), so a menu inside an NsForm that refuses writes is
+    /// withheld without the screen that drew it saying anything. False is the menu whose rows
+    /// answer for themselves: the toolbar's overflow, whose items the same word already
+    /// filtered, and a contributed menu act that declared it changes nothing.</summary>
+    [Parameter]
+    public bool Writes { get; set; } = true;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    // Null unless the caller brought its own face, and that null is load-bearing twice over:
+    // the vendor renders its own icon button from Icon/Label when this is unset, and a NESTED
+    // menu whose activator is supplied loses the arrow that says it opens one.
+    RenderFragment<MenuContext>? GetActivator()
+    {
+        if (Content is null)
+        {
+            return null;
+        }
+
+        // The vendor's own activator wrapper (.mud-menu-activator) already carries the tab stop,
+        // role="button", aria-haspopup/aria-expanded/aria-controls and the keyboard toggle
+        // (Enter/Space) — but wires no click of its own for a custom face, so the face wires one.
+        // The MenuContext handed in goes unused: the toggle is ToggleAsync below, for the reason
+        // it carries. A plain surface, not another button: a <button> nested inside the vendor's
+        // role="button" wrapper is what drew the oval ripple over the chip and is unreachable by
+        // a real click.
+        //
+        // And no tabindex and no role of its own either, which is the same sentence from the
+        // other side: the wrapper above IS the button a reader meets, named by this aria-label
+        // through name-from-content, so a second role="button" here would leave two nested
+        // elements answering to one name — ambiguous to a strict locator and read twice by a
+        // screen reader. What the tab stop was missing is a BOX, and ns-mud.css gives the wrapper
+        // one (nsail#1304).
+        //
+        // The click stops here because a custom face is the one that can be handed a seat inside
+        // something else that is already clickable — an option row in a field's open list, where
+        // the same click reaching the row behind would pick it and close the list the menu was
+        // just opened from.
+        return _ =>
+            @<div class="ns-menu-activator" aria-label="@Label"
+                  @onclick="ToggleAsync" @onclick:stopPropagation="true">
+                @Content
+            </div>;
+    }
+
+    // A method of this component and never a lambda over the render's own context: Blazor keeps
+    // an element's event handler id across a render only while the old and new delegates compare
+    // equal, and a closure over a per-render value never does. The face of a menu seated inside
+    // a popover re-renders while it is being clicked, and an id minted by the render before the
+    // gesture dies with the subtree that held it.
+    Task ToggleAsync(MouseEventArgs args)
+    {
+        if (_menu is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        return _menu.ToggleMenuAsync(args);
+    }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-menu")
+            .Add(Class)
+            .ToString();
+    }
+
+    MudBlazor.Size GetSize()
+    {
+        return Size switch
+        {
+            NsSize.None or NsSize.Xs or NsSize.Sm => MudBlazor.Size.Small,
+            NsSize.Lg or NsSize.Xl or NsSize.Xxl => MudBlazor.Size.Large,
+            _ => MudBlazor.Size.Medium
+        };
+    }
+}

@@ -1,0 +1,94 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<MudLayout Class="min-h-0 h-100 v-100 d-flex">
+    <CascadingValue Value="_state">
+        @if (Header is not null)
+        {
+            @Header
+        }
+
+        @if (Drawer is not null)
+        {
+            @* The drawer owns the brand and runs the full viewport height (Leonardo, nsail#378);
+               the app bar frames only the content area beside it. MudBlazor's own selector does
+               that shrink: at the drawer's Responsive/md breakpoint, MudBlazor.min.css carries
+               ".mud-drawer-open-responsive-md-left.mud-drawer-left-clipped-never .mud-appbar"
+               with "margin-left: var(--mud-drawer-width-left); width: calc(100% -
+               var(--mud-drawer-width-left))" — exactly this drawer's variant, position and
+               ClipMode.Never, so nothing here restates it. *@
+            <MudDrawer @bind-Open="_state.DrawerIsOpen"
+                       Variant="DrawerVariant.Responsive"
+                       Anchor="Anchor.Start"
+                       Breakpoint="Breakpoint.Md"
+                       ClipMode="DrawerClipMode.Never"
+                       Elevation="0"
+                       Width="@NavWidth"
+                       Class="ns-nav-drawer">
+                @Drawer
+            </MudDrawer>
+        }
+
+        @* No overflow here on purpose: only what a page marks scrolls. An ambient scroller at
+           the shell edge cannot fix a page whose boxes were compressed further in — it only
+           drags their spilled ink into view, which is how a broken dashboard read as a
+           working one. Every surface names its own owner: NsTable's container, NsPanel's
+           content, NsCard's grown content, an NsStack with Scroll. *@
+        <MudMainContent Class="@GetContentClasses()">
+            @Content
+        </MudMainContent>
+
+        @if (Aside is not null)
+        {
+            @Aside
+        }
+    </CascadingValue>
+</MudLayout>
+
+@code {
+
+    // Starts open: the Responsive variant keeps it docked on wide viewports and
+    // closes it by itself below the breakpoint, which is the desired default.
+    NsLayoutState _state = new() { DrawerIsOpen = true };
+
+    const string NavWidth = "280px";
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        _state.Changed += StateHasChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        _state.HasHeader = Header is not null;
+    }
+
+    [Parameter]
+    public RenderFragment? Header { get; set; }
+
+    [Parameter]
+    public RenderFragment? Drawer { get; set; }
+
+    [Parameter]
+    public RenderFragment? Content { get; set; }
+
+    /// <summary>Slot for end-anchored drawers (e.g. the aside surface). Rendered as a direct MudLayout child so docked drawers push the content.</summary>
+    [Parameter]
+    public RenderFragment? Aside { get; set; }
+
+    // MudBlazor reserves --mud-appbar-height on .mud-main-content unconditionally, whether an
+    // appbar is on screen or not — a layout with no Header slot still pays for a bar it never
+    // draws. The class names that absence so ns-mud.css can zero the reservation only there.
+    string GetContentClasses()
+    {
+        return new NsClassBuilder("d-flex flex-column flex-grow-1 min-h-0")
+            .Add("ns-no-appbar", Header is null)
+            .ToString();
+    }
+}

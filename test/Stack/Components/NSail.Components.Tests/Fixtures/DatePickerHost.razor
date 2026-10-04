@@ -1,0 +1,27 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@* A date box with its calendar able to open: the popover provider the page layout carries, so a
+   test can pick a day the way a person does rather than type one. *@
+<MudPopoverProvider />
+
+<NsDateField TValue="DateOnly?" Value="Value" ValueChanged="OnChanged" />
+
+@code {
+
+    [Parameter]
+    public DateOnly? Value { get; set; }
+
+    public int Writes { get; private set; }
+
+    void OnChanged(DateOnly? value)
+    {
+        Value = value;
+        Writes++;
+    }
+}

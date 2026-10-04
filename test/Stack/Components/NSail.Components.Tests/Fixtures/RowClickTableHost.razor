@@ -1,0 +1,54 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+<MudPopoverProvider />
+
+@* RowClicked is forwarded STRAIGHT to OnRowClick, never through a method of this fixture's
+   own: a method would hand NsTable a delegate whether or not the test supplied one, and
+   whether there is a delegate is the whole claim these tests make. Queried picks the branch
+   the way a page does — by wiring OnQuery or not — so one host reaches all three. *@
+<NsTable TRow="TestModel" Rows="Page" OnQuery="QueryHandler" Mode="Mode" OnRowClick="RowClicked">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    [Parameter]
+    public NsTableMode Mode { get; set; } = NsTableMode.Scroll;
+
+    [Parameter]
+    public bool Queried { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<TestModel> RowClicked { get; set; }
+
+    // The rows are in hand from the first render in all three modes, the two queried ones
+    // included: a page OnQuery assigns while answering does not reach the table inside a
+    // render pass bUnit can await (ClientsRowLayoutHost's own note), and what a row wears is
+    // not a question about where the row came from. Query itself answers nothing — wiring it
+    // is what picks the branch.
+    DataPage<TestModel> Page { get; } = DataPage<TestModel>.From(
+    [
+        new TestModel { Name = "Ana", Age = 3 },
+        new TestModel { Name = "Beto", Age = 4 }
+    ]);
+
+    EventCallback<QueryEventArgs> QueryHandler => Queried
+        ? EventCallback.Factory.Create<QueryEventArgs>(this, Query)
+        : default;
+
+    Task Query(QueryEventArgs args)
+    {
+        return Task.CompletedTask;
+    }
+}

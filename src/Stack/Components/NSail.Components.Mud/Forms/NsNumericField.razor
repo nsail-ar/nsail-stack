@@ -1,0 +1,73 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+@using System.Globalization
+@using NSail.Localization
+
+@inject LanguageProvider Language
+
+<MudNumericField T="TValue"
+                 Value="Value"
+                 ValueChanged="SetValue"
+                 Label="@GetLabel()"
+                 Placeholder="@Placeholder"
+                 Required="IsRequired"
+                 Disabled="IsDisabled"
+                 ReadOnly="IsReadOnly"
+                 AutoFocus="AutoFocus"
+                 Immediate="Immediate"
+                 @attributes="StepAttribute"
+                 Format="@(Format ?? NsQuantityText.Format)"
+                 Culture="@FigureCulture"
+                 Variant="Variant.Outlined"
+                 Margin="Margin.Dense"
+                 Error="@HasError()"
+                 ErrorText="@GetErrorText()"
+                 UserAttributes="InputAttributes" />
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+
+@code {
+
+    bool _stepSet;
+    TValue? _step;
+
+    /// <summary>A domain's own reading of its measure, when the measure has one — a diopter's
+    /// signed two decimals, say. Unset writes the plain measure (<c>NsQuantityText.Format</c>),
+    /// which is what nearly every box wants. A caller passes a NAMED reading and never a literal
+    /// format string, so the box and whatever else prints that measure cannot drift; and the
+    /// reading it passes must print every decimal its column can hold, since the vendor parses
+    /// the text it wrote back into the binding when the field is left.</summary>
+    [Parameter]
+    public string? Format { get; set; }
+
+    /// <summary>The spin/keyboard increment (the vendor's own Step knob, never named in a
+    /// page). Unset keeps the vendor's default (1) — the sentinel is whether the parameter was
+    /// ever assigned, not a null check, since TValue may itself be a non-nullable numeric
+    /// type with no null to compare against.</summary>
+    [Parameter]
+    public TValue? Step
+    {
+        get => _step;
+        set
+        {
+            _stepSet = true;
+            _step = value;
+        }
+    }
+
+    Dictionary<string, object>? StepAttribute =>
+        _stepSet ? new Dictionary<string, object> { ["Step"] = _step! } : null;
+
+    // MudFormComponent's Culture defaults to CultureInfo.InvariantCulture, which reads the
+    // decimal comma a Spanish keyboard types as a THOUSANDS separator: "0,5" parses to 5 and
+    // "-0,25" to -25 (nsail#1620, the cristal's window). Same source as NsMoneyField's.
+    CultureInfo FigureCulture => RegionCulture.For(Language);
+
+    // Numeric is the mostrador family too (Story: "los campos se seleccionan al recibir
+    // foco") — a quantity typed over rather than edited digit by digit.
+    protected override bool SelectOnFocus => true;
+}

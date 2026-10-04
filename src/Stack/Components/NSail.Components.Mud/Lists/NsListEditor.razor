@@ -1,0 +1,266 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TItem where TItem : class
+@inherits NsCollectionBase
+@using NSail.Localization
+
+@inject StringManager Strings
+
+@if (Title is not null)
+{
+    <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween" Class="ns-collection-bar">
+        <NsText As="NsTextAs.Title">@Title</NsText>
+        <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center">
+            @if (!IsReadOnly)
+            {
+                @Actions
+            }
+            @if (Editable && NewItem is not null)
+            {
+                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
+            }
+            else if (ShowOnAdd)
+            {
+                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" OnClick="RaiseOnAdd" />
+            }
+        </NsStack>
+    </NsStack>
+}
+
+@if (Items.Count == 0)
+{
+    <NsText Secondary Class="ns-list-editor-empty">@Strings.Translate("Common.NoRecords")</NsText>
+}
+else
+{
+    <ul class="ns-list-editor">
+        @foreach (var item in Items)
+        {
+            <li class="ns-list-editor-item d-flex flex-wrap align-center gap-2" @key="item">
+                @if (IsEditing(item))
+                {
+                    <div class="d-flex flex-wrap align-center gap-2 flex-1 min-w-0">
+                        @ItemEditor?.Invoke(item)
+                    </div>
+                    <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center">
+                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
+                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
+                    </NsStack>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap align-center gap-2 flex-1 min-w-0">
+                        @ItemTemplate?.Invoke(item)
+                    </div>
+                    @if (Editable)
+                    {
+                        <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center">
+                            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
+                            @if (OnRemove.HasDelegate)
+                            {
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy" OnClick="@(() => Remove(item))" />
+                            }
+                        </NsStack>
+                    }
+                }
+            </li>
+        }
+    </ul>
+}
+
+@* The family's own horizontal inset (ns-mud.css, .ns-collection-foot) — a list item earns
+   its own via .ns-list-editor-item, but Footer is ordinary markup (a running total, the
+   Seña's own sum) with none of its own. *@
+@if (Footer is not null)
+{
+    <div class="ns-collection-foot">
+        @Footer
+    </div>
+}
+
+@code {
+
+    TItem? _editing;
+    bool _editingIsNew;
+
+    /// <summary>The collection shown, in its own order — the caller's own list, which the
+    /// caller keeps owning and submitting. The list writes into it only for the row it opened
+    /// itself: appending what NewItem returned, and taking that row back if it is cancelled.</summary>
+    [Parameter, EditorRequired]
+    public IList<TItem> Items { get; set; } = [];
+
+    /// <summary>Names the collection in a bar above it, with the add control at the bar's right
+    /// edge — the chrome a collection editor is born wearing. Unset draws no bar at all, which
+    /// also leaves the add control nowhere to live.</summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>Ways IN the bar carries beside the add control — a pull that fills the
+    /// collection from somewhere else, an import. Add stays the bar's own and always sits last,
+    /// at the edge, so a collection that grew a second door did not move the first one. Every
+    /// one of them is something that CHANGES the collection, so ReadOnly takes them with it and
+    /// no caller has to remember: a read-only list has no way in at all.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    /// <summary>One item as a compact sentence: only the fields that item actually carries,
+    /// each saying its own word. There are no columns to fill, so a value a row does not have
+    /// contributes nothing rather than an empty cell.</summary>
+    [Parameter]
+    public RenderFragment<TItem>? ItemTemplate { get; set; }
+
+    /// <summary>The controls shown while an item is edited in place — Ns* fields bound to the
+    /// item, each labelling itself. Supplying it is what turns editing on.</summary>
+    [Parameter]
+    public RenderFragment<TItem>? ItemEditor { get; set; }
+
+    /// <summary>Content pinned after the list — a total, a running difference.</summary>
+    [Parameter]
+    public RenderFragment? Footer { get; set; }
+
+    /// <summary>Makes a blank item and returns it, nothing more — the list appends it to Items
+    /// and opens it for editing. Supplying it is what puts the add control on the title
+    /// bar.</summary>
+    [Parameter]
+    public Func<TItem>? NewItem { get; set; }
+
+    /// <summary>The user confirmed the item being edited. Reject it by setting Cancel or
+    /// Problem — either keeps the item open; anything else closes the editor.</summary>
+    [Parameter]
+    public EventCallback<RowEditEventArgs<TItem>> OnCommit { get; set; }
+
+    /// <summary>The delete control asked for the item to go, so the caller is what takes it out
+    /// of the collection — without a handler that control does not render at all. Also raised
+    /// when a never-confirmed item is cancelled, which the list already took back out itself:
+    /// that one is a notification, for the caller that tracks its own changes.</summary>
+    [Parameter]
+    public EventCallback<RowEditEventArgs<TItem>> OnRemove { get; set; }
+
+    /// <summary>Shows the collection and nothing that changes it: no add control, no per-item
+    /// affordances, no way into the editor. The form around the list says the same thing on its
+    /// own (NsCollectionBase), so a list inside a read-only or disabled form is read-only
+    /// whatever this says.</summary>
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    /// <summary>The alternative to NewItem for an editor that adds THROUGH A DIALOG rather
+    /// than in place: with neither ItemEditor nor NewItem set, the bar's + renders and invokes
+    /// this instead of opening the built-in row editor. There is no row to open here, so the
+    /// caller's dialog is what appends to Items.</summary>
+    [Parameter]
+    public EventCallback OnAdd { get; set; }
+
+    // The list's own word and the form's, answered once: a way in is drawn only where both
+    // allow one, and no caller repeats the second half (NsCollectionBase).
+    bool IsReadOnly => ReadOnly || !ParentWritable;
+
+    bool Editable => ItemEditor is not null && !IsReadOnly;
+
+    bool ShowOnAdd => !IsReadOnly && OnAdd.HasDelegate && ItemEditor is null && NewItem is null;
+
+    // One item at a time: while an editor is open every other item's controls are inert, so
+    // there is no half-typed item to lose track of and no order to resolve between two.
+    bool IsBusy => _editing is not null;
+
+    // Reference identity, not equality: two items carrying the same values are still two
+    // items, and only the one the user opened may render its editor.
+    bool IsEditing(TItem item)
+    {
+        return Editable && _editing is not null && ReferenceEquals(_editing, item);
+    }
+
+    /// <summary>Opens a new row for editing, as the list's own add control does — for a host
+    /// that adds from its own chrome, the same door <see cref="NsTable{TItem}.Add"/> offers.
+    ///
+    /// The append is the list's, not the caller's: an editor renders only for a row this
+    /// component iterates, so a row minted outside Items opens nothing and leaves the add
+    /// control greyed with no way back out.</summary>
+    public void Add()
+    {
+        if (!Editable || NewItem is null)
+        {
+            return;
+        }
+
+        var item = NewItem();
+
+        Items.Add(item);
+
+        _editing = item;
+        _editingIsNew = true;
+    }
+
+    Task RaiseOnAdd()
+    {
+        return Run(() => OnAdd.InvokeAsync());
+    }
+
+    void Edit(TItem item)
+    {
+        _editing = item;
+        _editingIsNew = false;
+    }
+
+    async Task Commit(TItem item)
+    {
+        var args = new RowEditEventArgs<TItem>
+        {
+            Row = item,
+            IsNew = _editingIsNew
+        };
+
+        await Raise(OnCommit, args);
+
+        // Raise reports a Problem rather than throwing it back, so the outcome is read off
+        // the args: a rejected item must stay open where the user can still fix it.
+        if (args.Cancel || args.Problem is not null)
+        {
+            return;
+        }
+
+        Close();
+    }
+
+    async Task Cancel(TItem item)
+    {
+        // An item that was never confirmed exists only because the user asked for one; backing
+        // out of it leaves nothing to fall back to, so it goes — and the list is what puts it
+        // back out, because the list is what put it in. The caller still hears about it.
+        if (_editingIsNew)
+        {
+            Take(item);
+
+            await Raise(OnRemove, new RowEditEventArgs<TItem> { Row = item, IsNew = true });
+        }
+
+        Close();
+    }
+
+    Task Remove(TItem item)
+    {
+        return Raise(OnRemove, new RowEditEventArgs<TItem> { Row = item });
+    }
+
+    // Reference identity again, and not IList.Remove: a TItem free to define value equality
+    // would have the list drop whichever earlier row happens to look like this one, and the
+    // row that goes must be the one the user is looking at.
+    void Take(TItem item)
+    {
+        for (var index = 0; index < Items.Count; index++)
+        {
+            if (ReferenceEquals(Items[index], item))
+            {
+                Items.RemoveAt(index);
+                return;
+            }
+        }
+    }
+
+    void Close()
+    {
+        _editing = null;
+        _editingIsNew = false;
+    }
+}

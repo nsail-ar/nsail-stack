@@ -1,0 +1,25 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@inherits NsComponent
+
+@* A menu's body written where a kit writes one: a component of its own, rendered inside the
+   menu and therefore unmounted the moment a row is chosen. What it proves is that the command
+   still runs from there. *@
+<NsMenuItem Action="@(new ActionItem { Name = "Detached", OnClick = Act })" Label="Detached" />
+
+@code {
+
+    [Parameter]
+    public EventCallback OnRan { get; set; }
+
+    async Task Act()
+    {
+        // After the first await the component is long gone; the run has to survive it.
+        await Task.Yield();
+        await OnRan.InvokeAsync();
+    }
+}

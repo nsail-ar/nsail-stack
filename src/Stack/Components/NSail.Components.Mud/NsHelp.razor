@@ -1,0 +1,69 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using NSail.Localization
+
+@inject StringManager Strings
+
+@* The wrapper is what the trigger's key events bubble to: the bubble itself is a portal and
+   shares no subtree with the button that opened it, so Escape is caught here or nowhere. *@
+<span class="ns-help d-inline-flex align-center" @onkeydown="OnKeyDown">
+    <NsButton As="@NsAs.Inline" Breakpoint="NsBreakpoint.Never"
+              Icon="@NsIcons.Help"
+              Size="@NsSize.Sm"
+              Label="@Strings.Translate("Common.Help")"
+              Expanded="_open"
+              OnClick="Toggle" />
+
+    @* Rendered only while open, rather than left standing with the vendor's closed styling:
+       the paragraph this component exists to unload from the form must not be in the document
+       either — a prerender that ships it hidden has moved it out of sight and nothing else. *@
+    @if (_open)
+    {
+        <MudPopover Open="true"
+                    AnchorOrigin="@Origin.BottomLeft"
+                    TransformOrigin="@Origin.TopLeft"
+                    Class="ns-help-popover">
+            <div class="ns-help-text">@Strings.Translate(Key)</div>
+        </MudPopover>
+
+        @* Phones have no hover, so the help opens on click — and anything that opens on a
+           click owes the same click a way back out. The catcher is transparent and sits one
+           tier under the vendor's popover ceiling, the pairing NsDialog already makes. *@
+        <MudOverlay Visible="true"
+                    LockScroll="false"
+                    ZIndex="@(SurfaceContext.VendorZIndex - 1)"
+                    OnClick="Close" />
+    }
+</span>
+
+@code {
+
+    bool _open;
+
+    /// <summary>The localization key of the paragraph this ? carries. Global, because the
+    /// component cannot see the page whose prefix would scope it — the same full key a page
+    /// already writes when it translates a string another type owns.</summary>
+    [Parameter, EditorRequired]
+    public string Key { get; set; } = string.Empty;
+
+    void Toggle()
+    {
+        _open = !_open;
+    }
+
+    void Close()
+    {
+        _open = false;
+    }
+
+    void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            Close();
+        }
+    }
+}

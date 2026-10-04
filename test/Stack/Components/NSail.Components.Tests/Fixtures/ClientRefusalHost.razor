@@ -1,0 +1,46 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+@* CreateAppointmentPage's shape: a rule the SCREEN owns, weighed on a value that lives beside
+   the form's own model, so there is no send and no round trip to carry a refusal back. The
+   panel draws a footer, which is what claims the form's field-less refusals. *@
+<NsForm TModel="FormProblemModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsPanel>
+        <Content>
+            <NsTextField @bind-Value="context.Name" />
+        </Content>
+        <Footer>
+            <NsSubmit />
+        </Footer>
+    </NsPanel>
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public FormProblemModel Model { get; set; } = default!;
+
+    /// <summary>The screen's own rule, switched from the test rather than read off the model:
+    /// what matters here is that the handler decided it, not what it decided it from.</summary>
+    [Parameter]
+    public bool Refuses { get; set; }
+
+    public int Sent { get; private set; }
+
+    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    {
+        if (Refuses)
+        {
+            args.Problem = BusinessProblem.RuleViolation("Cadence", "La fecha de fin es anterior a la de inicio.");
+
+            return;
+        }
+
+        Sent++;
+    }
+}

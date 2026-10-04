@@ -1,0 +1,41 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* The shape NsOpenDialog mounts, with nothing standing in for anything: a host-managed
+   surface (Close set, no query key of its own) around a real NsForm that a real DOM event
+   dirties, and a real NsLink that leaves through SurfaceContext.Follow. Both halves have to
+   be real for the question to exist at all — the guard only speaks for a surface that is
+   holding a document, and the close only fires on the path a link takes. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Name="@Surfaces.Dialog" Close="Close" Context="surface">
+        @{ _surface = surface; }
+        <NsForm TModel="CheckBoxTrackingModel" Model="Model">
+            <NsCheckBox TValue="bool" @bind-Value="context.Flag" />
+        </NsForm>
+        <NsLink Href="@Href" Target="@Surfaces.Auto" Label="Open" />
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public CheckBoxTrackingModel Model { get; set; } = default!;
+
+    /// <summary>The host's own close, the one DialogManager.Open wires to MudDialog.Close.</summary>
+    [Parameter]
+    public Action? Close { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Href { get; set; } = default!;
+
+    public SurfaceContext? Surface => _surface;
+}

@@ -1,0 +1,57 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Icons
+
+@* A link rendered inside the same NsSurfaceContext NsRouter mounts for a routed page, so the
+   link resolves its href against a real surface and navigates through it — the seam that
+   decides whether the click lands as a new history entry or replaces the current one. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Name="Name" Close="Close" Context="surface">
+        <NsLink Href="@Href" Target="@Target" As="@As" Icon="@Icon" Breakpoint="@Breakpoint" Label="@Label" NoHistory="@NoHistory" />
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter]
+    public Surface? Name { get; set; }
+
+    /// <summary>Wires this host as a host-managed surface (a dialog) instead of a
+    /// query-addressable one — the same override NsOpenDialog passes its own SurfaceContext.</summary>
+    [Parameter]
+    public Action? Close { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Href { get; set; } = default!;
+
+    [Parameter]
+    public Surface? Target { get; set; }
+
+    /// <summary>The lookup's inline create, as a link parameter: the one open that replaces
+    /// instead of taking an entry of its own.</summary>
+    [Parameter]
+    public bool NoHistory { get; set; }
+
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Inline;
+
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    [Parameter]
+    public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Sm;
+
+    /// <summary>Null on the flat rung's icon-only face only: a labelled glyph renders its
+    /// label into a MudTooltip, which is a popover with no provider to attach to outside a
+    /// layout. The tooltip sits inside the chrome either way, so nothing about the link's own
+    /// wiring turns on it.</summary>
+    [Parameter]
+    public string? Label { get; set; } = "Open";
+}

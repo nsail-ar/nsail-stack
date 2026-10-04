@@ -1,0 +1,33 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@* One field carrying a Helper: the house block (Story "los hints salen del slot del
+   vendor") has to render under a real vendor input, not the chrome-only NsField, since the
+   bug it fixes was the vendor's own absolutely-positioned HelperText slot. *@
+<MudPopoverProvider />
+
+<NsForm TModel="FieldHelperModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsTextField @bind-Value="context.Name" Helper="@Helper" />
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public FieldHelperModel Model { get; set; } = default!;
+
+    [Parameter]
+    public string? Helper { get; set; }
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    async Task HandleSubmit()
+    {
+        await Submitted.InvokeAsync();
+    }
+}

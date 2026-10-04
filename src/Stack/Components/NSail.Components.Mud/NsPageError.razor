@@ -1,0 +1,54 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@inject StringManager Strings
+@inject NavigationManager Navigation
+
+@* The splash-faced 404's sibling: what NsErrorBoundary renders in place of a page that
+   broke while rendering, instead of Blazor's own raw exception text or a bare Problem
+   JSON. Same frame as NsPageNotFound (NsPageFace), because the user should not be able to
+   tell "the address does not exist" from "the address broke" except for the words -- and
+   this one gets a second door, since a broken render is not always fixed by leaving. *@
+<NsPageFace Id="ns-page-error"
+            LogoUrl="@LogoUrl"
+            HomePage="@HomePage"
+            Message="@Strings.Translate("Common.UnhandledError")"
+            Detail="@Reference"
+            HomeClass="ns-page-error-home">
+    <Actions>
+        @* An anchor to the address the reader is already at, never an OnClick: this face is
+           also rendered by a request that died before any circuit existed, where a handler
+           is a door that does not open. Under a circuit the anchor still reloads -- the
+           navigation notifies, and NsErrorBoundary recovers on exactly that signal. *@
+        <NsLink Href="@Navigation.Uri"
+                Label="@Strings.Translate("Common.Reload")"
+                As="NsAs.Default"
+                Class="ns-page-error-reload" />
+    </Actions>
+</NsPageFace>
+
+@code {
+
+    /// <summary>The app's own well-known logo route (same shape as NsPageNotFound's own
+    /// parameter) — a plain string, no coupling, and no default: a Stack component names
+    /// no app-specific URL.</summary>
+    [Parameter]
+    public string? LogoUrl { get; set; }
+
+    /// <summary>The page mounted at the app's root, where the door back leads. A Type and
+    /// not a path: the URL comes from the route table, never written.</summary>
+    [Parameter]
+    public Type? HomePage { get; set; }
+
+    /// <summary>What a report is traced by — the request's own trace id, shown so nobody is
+    /// asked to copy a payload out of a browser window. Null where nothing traced it.</summary>
+    [Parameter]
+    public string? Handle { get; set; }
+
+    string? Reference => Handle is null
+        ? null
+        : Strings.Translate("Common.ErrorReference", new Dictionary<string, string> { ["handle"] = Handle });
+}

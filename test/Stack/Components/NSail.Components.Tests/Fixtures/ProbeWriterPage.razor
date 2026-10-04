@@ -1,0 +1,24 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/rerender/writer"
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Web
+@using NSail.Components
+
+@inherits NsPage
+
+@* The aside-surface half: the shape UpdatePartyPage/CreateWorkOrderPage share — Send then
+   Publish after a submit, exactly the same Mediator instance every other page on the tree
+   resolves (one WASM root, one DI scope). *@
+<button class="probe-publish" @onclick="OnPublish">Publish</button>
+
+@code {
+
+    async Task OnPublish()
+    {
+        await Publish(new ProbeSaved());
+    }
+
+}

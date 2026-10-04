@@ -1,0 +1,20 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* What a menu says rather than offers: who you are at its top, the version at its foot. It
+   is not an item — no click, no tab stop — and it is presentational to the list it renders
+   inside, so a menu never offers an option that does nothing. The rule that separates it from
+   the items is drawn by position (ns-mud.css), not written here: a block that opens the menu
+   is ruled underneath and one that closes it is ruled above, so neither end needs a divider
+   the caller has to remember. *@
+<div class="ns-menu-block" role="presentation">
+    @ChildContent
+</div>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

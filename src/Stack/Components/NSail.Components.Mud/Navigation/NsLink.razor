@@ -1,0 +1,398 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using Microsoft.AspNetCore.Components.Routing
+@implements IDisposable
+
+@inject NavigationManager Navigation
+@inject RootSurface Root
+
+@* A link whose destination only redraws a surface over the page the user is already on is
+   ours to drive: Blazor's own link interception pushes every anchor it follows, and only one
+   of the three surface transitions is a push (SurfaceContext.Follow) — moving the page inside
+   an open surface replaces, and so does an open this link marked NoHistory. Preventing the
+   click's default is what stands that interception down — it skips a click already
+   defaultPrevented. Even where the answer agrees with Blazor's, the click has to come through
+   here: an open is what records itself as pushed, and the close that pops reads that.
+   It is done from a wrapper rather than on the anchor because two of the three chromes render
+   their anchor inside a vendor component that exposes no way to prevent anything, and a click
+   prevented anywhere on its way up is prevented for the whole event. The anchor keeps its href
+   either way, so the address stays copyable and deep-linkable; only how the click stacks
+   changes.
+   A link that leaves the page renders no wrapper at all — a bare anchor Blazor pushes, with
+   no handler to dispatch to the server on every ordinary click in the app.
+   The prevention itself is not written here: a markup `@onclick:preventDefault` is decided
+   when the element renders, and whether a click deserves preventing is a property of the
+   CLICK — ctrl+click and middle-click are the user asking the browser for the address, which
+   is why Blazor's own interceptor lets them through. The class this wrapper carries is the
+   hook a document listener answers on, per click, on those same terms (ns.js); Follow reads
+   the same flags below so the two ends cannot disagree.
+   Stopping propagation too (not just the default) is what keeps this link honest wherever it
+   renders: a grid row with its own OnRowClick (the counter door's Clientes grid) would
+   otherwise see the same click a beat after Follow already fired, and NavigationManager's
+   second call wins — the row's own destination silently replaces whatever the link just
+   opened. It is unconditional, modifier click included: a new tab opening is no reason for
+   the row underneath to navigate too. NsActionToolbar already carries this exact guard for
+   its own wrapper; a bare NsLink used straight in a row template needs it just as much, so it
+   belongs here instead of being rediscovered at every call site. *@
+@* Two of the three chromes below are vendor buttons, and MudBaseButton reads a cascade named
+   ParentDisabled for itself — the same name NsForm cascades. Unshadowed, a link under a form
+   that is merely SAVING goes dark for the length of the save by the vendor's rule, with nothing
+   NSail decided in it: a link submits nothing and can declare nothing, so a save it has no part
+   in is not its business (NsButton carries the same shadow for the same reason).
+   Shadowed to false so IsDisabled below is the whole of it — the link owes its caller one rule,
+   and the vendor is not a second opinion (principles.md, the vendor stops at the boundary). *@
+<CascadingValue Value="false" Name="ParentDisabled" IsFixed="true">
+    @if (_intercepts)
+    {
+        <span class="ns-link-intercept" @onclick="Follow" @onclick:stopPropagation="true">@Chrome</span>
+    }
+    else
+    {
+        @Chrome
+    }
+</CascadingValue>
+
+@code {
+
+    RenderFragment Chrome => @<text>
+@* The flat rung has no box: with a word it is a bare anchor (its own Icon riding beside the
+   word when there is one), with a glyph and no word it is the vendor's own icon button — the
+   very control a grid row's actions wear. Every other intention keeps the chromed button and
+   loses its label to ns-square, so a command and a link at one intention read as one button
+   (NsButton draws the same two faces).
+   The word-and-icon anchor never reads Breakpoint, unlike NsButton's own worded Inline face:
+   it sets no aria-label, so the word IS its whole accessible name, and hiding it below a
+   container width would leave the anchor nameless rather than iconed (nsail#1726 review,
+   actions.md). *@
+@if (As == NsAs.Inline && !Wordless)
+{
+    <a href="@ActiveHref" target="@BrowserTarget" class="@GetAnchorClasses()" data-ns-probe="@Probe">
+        @if (Icon is not null)
+        {
+            <NsIcon Icon="@Icon" Size="@Size" />
+        }
+        @Label
+    </a>
+}
+else if (As == NsAs.Inline)
+{
+    @if (Label is not null)
+    {
+        @* The tooltip is what a sighted pointer user sees; a screen reader needs the same
+           sentence as the element's own accessible name — MudTooltip's popover contributes
+           no name on its own, the gap NsButton's own icon chrome already closed. *@
+        <MudTooltip Text="@Label">
+            <MudIconButton Href="@ActiveHref"
+                           Target="@BrowserTarget"
+                           Icon="@(Icon?.Markup)"
+                           Size="@GetSize()"
+                           Color="Color.Inherit"
+                           Disabled="@IsDisabled"
+                           Class="@Class"
+                           aria-label="@Label"
+                           data-ns-probe="@Probe">
+                @Content
+            </MudIconButton>
+        </MudTooltip>
+    }
+    else
+    {
+        <MudIconButton Href="@ActiveHref"
+                       Target="@BrowserTarget"
+                       Icon="@(Icon?.Markup)"
+                       Size="@GetSize()"
+                       Color="Color.Inherit"
+                       Disabled="@IsDisabled"
+                       Class="@Class"
+                       data-ns-probe="@Probe">
+            @Content
+        </MudIconButton>
+    }
+}
+else
+{
+    @* aria-label restates the visible Label so the accessible name survives a container
+       rule collapsing the span to display:none (the emphasis-ladder footer, ns-mud.css) —
+       hidden content drops out of the accessible-name computation, the same reason a
+       RowEditor field with a blank visible Label still carries its own aria-label. A
+       literal unmatched attribute like data-ns-probe already above; Blazor merges both
+       into MudButton's own capture rather than needing an explicit dictionary here. *@
+    <MudButton Href="@ActiveHref"
+               Target="@BrowserTarget"
+               Variant="Variant.Filled"
+               Color="@(As == NsAs.Main ? Color.Primary : Color.Default)"
+               Size="@GetSize()"
+               StartIcon="@(Icon?.Markup)"
+               Disabled="@IsDisabled"
+               Class="@GetChromedClasses()"
+               aria-label="@Label"
+               data-ns-probe="@Probe">
+        <span class="@LabelClasses">@(Wordless ? null : Label)</span>
+    </MudButton>
+}
+    </text>;
+
+    string _href = string.Empty;
+    bool _intercepts;
+
+    [CascadingParameter]
+    SurfaceContext? Cascaded { get; set; }
+
+    // Resolution never asks whether a cascade arrived. A link that cannot see one still
+    // renders inside SOME surface — the page underneath, at worst — and the root surface
+    // answers for that one exactly as the cascade would, so a target is honoured wherever
+    // the link is rendered: inside a vendor portal (a dropdown, a menu, a dialog's own
+    // chrome) whose tree is a sibling of the router, or anywhere a host forgot to provide.
+    // Silently downgrading the address to the bare route instead would still be a working
+    // full-page navigation, and therefore a failure with nothing to see.
+    SurfaceContext Surface => Cascaded ?? Root.Surface;
+
+    /// <summary>A plain navigation link, no wiring beyond the parameters below — the typed
+    /// alternative for a destination page is NsPageLink, which derives this and Label.</summary>
+    [Parameter, EditorRequired]
+    public string Href { get; set; } = default!;
+
+    /// <summary>Where the link opens: one of the app's surfaces (Surfaces.Aside/Modal),
+    /// one of the reserved targets (Surfaces.Auto, Surfaces.Main), or the browser
+    /// (Surfaces.Blank).</summary>
+    [Parameter]
+    public Surface? Target { get; set; }
+
+    /// <summary>A place INSIDE the destination — the id of the heading a guide chapter is
+    /// being opened at. It rides the resolved href rather than Href itself, because a surface
+    /// carries its route as a query VALUE and an anchor written in there would be read as part
+    /// of the route: a fragment belongs to the document the browser lands on, whichever surface
+    /// draws it.</summary>
+    [Parameter]
+    public string? Fragment { get; set; }
+
+    /// <summary>Opens the surface without an entry of its own: Back skips it and closing
+    /// rewrites the address instead of popping. For an open the user did not navigate to —
+    /// a satellite that exists to feed a value back into a form still standing underneath,
+    /// which is the lookup's inline create and the empty picker's door. An ordinary link leaves
+    /// it alone: a window someone opened is a place, and Back closes it.</summary>
+    [Parameter]
+    public bool NoHistory { get; set; }
+
+    /// <summary>Intention only — Inline (default), Default, Main, Important. Whether the
+    /// label is drawn is Breakpoint's, not this one's.</summary>
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Inline;
+
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    /// <summary>Renders instead of the glyph on the Inline rank's icon-only face (a person's
+    /// avatar rather than a catalog entry) — the vendor icon button already supports
+    /// arbitrary content in place of its Icon string. That face only: the bare anchor draws
+    /// NsIcon from Icon directly and never reads Content, and neither do the chromed
+    /// branches.</summary>
+    [Parameter]
+    public RenderFragment? Content { get; set; }
+
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    /// <summary>The link's text where there is one to draw, and its tooltip and accessible
+    /// name always — set it either way.</summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>Greys the link out and drops its href — for a destination that isn't
+    /// reachable yet (a scoped route whose scope hasn't been picked).</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Container width from which the label shows next to the icon; below it the
+    /// link is its glyph alone. Always pins the label on, Never takes it away at every width
+    /// — the Label stays the name (tooltip and accessible name) and is not drawn. The one
+    /// thing that decides whether the text shows, so a rank never has to. No effect without
+    /// an Icon (or a Content standing in for one): there would be nothing left to
+    /// click.
+    /// <para>No effect either on the Inline rank's bare-anchor face once it carries both an
+    /// Icon and a Label (nsail#1726): that anchor sets no aria-label of its own, so the word
+    /// is its whole accessible name and collapsing it away would leave the anchor nameless
+    /// rather than iconed. It stays on screen at every width.</para></summary>
+    [Parameter]
+    public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Sm;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    /// <summary>One cascade carrying two answers OR'd together: the form was Disabled outright,
+    /// or a submit is running and every field under it is frozen for its length (NsButton reads
+    /// the same name for a command, and so does the vendor). Read here only where the two names
+    /// below do not reach — see ParentRefuses.</summary>
+    [CascadingParameter(Name = "ParentDisabled")]
+    bool ParentDisabled { get; set; }
+
+    /// <summary>The form's refusal on its own — NsForm cascades it beside the OR precisely so an
+    /// act can tell it from the freeze. A link drives no submit, so this is the only half of the
+    /// form's word it answers.</summary>
+    [CascadingParameter(Name = "FormDisabled")]
+    bool FormDisabled { get; set; }
+
+    /// <summary>Cascaded by NsForm while its own submit handler runs — read only to tell the
+    /// freeze apart from the refusal.</summary>
+    [CascadingParameter(Name = "FormRunning")]
+    bool FormRunning { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        UpdateHref();
+    }
+
+    protected override void OnParametersSet()
+    {
+        UpdateHref();
+    }
+
+    void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        UpdateHref();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // No word to draw at any width: either the breakpoint says Never, or no name was handed
+    // over to draw in the first place. Content counts as the glyph — a contributor whose
+    // action IS its own image passes one instead of an Icon (ActionItem.Content).
+    bool Wordless => (Icon is not null || Content is not null) && (Breakpoint == NsBreakpoint.Never || Label is null or "");
+
+    // A control with no label at any width has nothing to COLLAPSE, so it takes none of the
+    // breakpoint's hooks: ns-square carries its own whisper ungated (ns-mud.css), and both
+    // hooks at once would draw the bubble twice on the same hover.
+    string LabelClasses => Wordless ? "ns-button-label" : NsResponsive.LabelClasses(Icon, Breakpoint);
+
+    // The bare anchor is one text node by default; a caller that also gave it an Icon (the
+    // ticket header's Perfil, nsail#1726) needs the glyph laid out beside the word rather than
+    // wherever the browser's own inline flow drops it — ns-link-iconed is that row (ns-mud.css).
+    // Null rather than NsClassBuilder's own "" once there is nothing to add: Blazor omits an
+    // attribute whose value is null (Probe below relies on the same rule), so a plain anchor
+    // with no Class and no Icon renders no class attribute at all instead of an empty one.
+    string? GetAnchorClasses()
+    {
+        var classes = new NsClassBuilder(Class).Add("ns-link-iconed", Icon is not null).ToString();
+
+        return classes.Length == 0 ? null : classes;
+    }
+
+    // The vendor has no soft-accent variant, so Important is painted from a class over its
+    // filled one (ns-mud.css), the same one NsButton wears — a link and a command at the same
+    // emphasis must not read as two things. ns-square is that file's answer to an intention
+    // with no label, and it is written here for the same reason: one rule, two components.
+    string GetChromedClasses()
+    {
+        return new NsClassBuilder(Wordless ? null : NsResponsive.CollapseClass(Icon, Breakpoint))
+            .Add("ns-important", As == NsAs.Important)
+            .Add("ns-square", Wordless)
+            .Add(Class)
+            .ToString();
+    }
+
+    Size GetSize()
+    {
+        return Size switch
+        {
+            NsSize.None or NsSize.Xs or NsSize.Sm => MudBlazor.Size.Small,
+            NsSize.Lg or NsSize.Xl or NsSize.Xxl => MudBlazor.Size.Large,
+            _ => MudBlazor.Size.Medium
+        };
+    }
+
+    // A form's word is two words, and a link answers one of them. Disabled means it refuses
+    // writes, and the link greys with the command beside it — the emphasis ladder makes those
+    // two one button to the eye (GetChromedClasses), so one going quiet alone is a footer
+    // disagreeing with itself. That half is FormDisabled, the form's own word, so a refusal a
+    // running submit is standing on top of still counts. Merely SAVING is not that: the save
+    // refuses the acts that DRIVE it, which a link never does — it has no Submits to declare
+    // and nothing to re-enter.
+    // The second term is for the far side of a PORTAL: NsMenu carries the OR across the vendor's
+    // popover and NsDialogExit carries it into a dialog's title row, and neither of the other two
+    // names reaches either place — so there the OR is the only word there is, and FormRunning being
+    // false there is what makes reading it the right answer rather than a reconstruction.
+    bool ParentRefuses => FormDisabled || (ParentDisabled && !FormRunning);
+
+    // Asked by the two chromes that are vendor buttons; the worded face is a bare anchor with no
+    // grey to draw, so a form's refusal would reach it only as a silently dropped href — a link
+    // that stops working with nothing on screen saying so, which is worse than the one thing it
+    // has to offer. Its own Disabled still drops it (ActiveHref), because a destination that is
+    // not reachable yet has no address to hand the browser in the first place.
+    bool IsDisabled => Disabled || ParentRefuses;
+
+    // A disabled control keeps the chrome but must not navigate: MudBlazor renders an
+    // anchor whenever Href is set, and an anchor ignores the disabled attribute.
+    string? ActiveHref => Disabled ? null : _href;
+
+    string? BrowserTarget => Target?.IsBrowser == true ? Target.Value.Name : null;
+
+    string Anchored(string href)
+    {
+        return string.IsNullOrEmpty(Fragment) ? href : $"{href}#{Fragment}";
+    }
+
+    void UpdateHref()
+    {
+        // A destination that carries its own scheme (https:, mailto:, tel:, ...) is outside
+        // this app's routes and passes through unchanged; everything else is a route this
+        // surface resolves. The question is asked of SurfaceContext.IsExternal and never of
+        // Uri directly — the platform trap that cost this story four sessions is named there.
+        if (SurfaceContext.IsExternal(Href))
+        {
+            _href = Anchored(Href);
+            _intercepts = false;
+            return;
+        }
+
+        _href = Anchored(Surface.GetHref(Href, Target));
+
+        // Re-read on every location change (this component already subscribes) because the
+        // same link is a surface move or a departure depending on where the user is standing.
+        _intercepts = !Disabled
+            && BrowserTarget is null
+            && Surface.StaysInPlace(_href);
+    }
+
+    // A click carrying a modifier, or one made with anything but the primary button, is the
+    // user addressing the BROWSER — open in a new tab, in a new window, saved. Its default is
+    // left standing (ns.js) and following it in place as well would move the page behind the
+    // tab that just opened. The flags asked here are the ones Blazor's own link interception
+    // asks, so an intercepted link and an ordinary one answer a modifier the same way.
+    void Follow(MouseEventArgs args)
+    {
+        if (args.Button != 0 || args.CtrlKey || args.ShiftKey || args.AltKey || args.MetaKey)
+        {
+            return;
+        }
+
+        Surface.Follow(_href, Target, NoHistory);
+    }
+
+    // What this link resolved, written where it can be read from either side of the prerender
+    // boundary. The output alone cannot say it — a dropped target and a genuine departure both
+    // render a bare route — and the console cannot either, because whether the WASM runtime's
+    // console reaches a tooling pane is unproven, so an absent line proves nothing. A DOM
+    // attribute has no such doubt: whoever rendered the anchor left its own reading on it.
+    // "rt" separates the prerender pass from the interactive one, which is the whole question;
+    // an anchor carrying NO data-ns-probe at all was not rendered by this component.
+    // DEBUG only, and Blazor omits an attribute whose value is null, so RELEASE emits nothing.
+#if DEBUG
+    string? Probe => string.Join(';',
+        $"rt:{(OperatingSystem.IsBrowser() ? "wasm" : "server")}",
+        $"raw:{Href}",
+        $"target:{Target?.Name ?? "null"}",
+        $"cascade:{(Cascaded is null ? "null" : Cascaded.Name?.Name ?? "main")}",
+        $"surface:{Surface.Name?.Name ?? "main"}",
+        $"href:{_href}",
+        $"intercepts:{_intercepts}");
+#else
+    string? Probe => null;
+#endif
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

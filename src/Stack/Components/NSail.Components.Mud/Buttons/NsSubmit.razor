@@ -1,0 +1,154 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+@implements IDisposable
+
+@inject StringManager Strings
+
+@{
+    var icon = GetIcon();
+}
+
+<MudButton ButtonType="ButtonType.Submit"
+           Variant="Variant.Filled"
+           Color="@(As == NsAs.Filter ? Color.Default : Color.Primary)"
+           StartIcon="@(icon.Markup)"
+           Disabled="@GetDisabled()"
+           Class="@GetClasses(icon)">
+    <span class="@NsResponsive.LabelClasses(icon, Breakpoint)">
+        @if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            @Strings.Translate(As == NsAs.Filter ? "Common.Filter" : "Common.Submit")
+        }
+    </span>
+</MudButton>
+
+@code {
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    /// <summary>Cascaded by NsForm: false for Untracked forms (filters, sign-in), whose
+    /// submit never waits for changes.</summary>
+    [CascadingParameter(Name = "FormTracked")]
+    bool? FormTracked { get; set; }
+
+    /// <summary>Cascaded by NsForm while its own submit handler runs — the button cannot
+    /// track this itself, the form owns the run.</summary>
+    [CascadingParameter(Name = "FormRunning")]
+    bool FormRunning { get; set; }
+
+    /// <summary>Chrome only: default is the form's hero (filled Primary); Filter is the
+    /// quiet search-bar submit; Send keeps the hero's chrome but carries the paper-airplane
+    /// glyph, for a submit whose act is sending words rather than saving a document — write it
+    /// in full (<c>NsAs.Send</c>): a page's own <c>Send</c> (NsPartial) hides the bare
+    /// name.</summary>
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Submit;
+
+    /// <summary>Container width from which the label shows next to the icon; below it the
+    /// button collapses to the icon alone. Always (the default) pins the label on. Same
+    /// meaning as on NsButton, but the default is the opposite: a footer submit is the one
+    /// control that must never be a guess, and the surfaces it lives in are narrow enough
+    /// that any other default would collapse it always — a 480px aside never reaches the
+    /// 600px the sm container query asks for.
+    /// <para>Anything but Always is out until this button has a name it can restate: its word
+    /// is ChildContent, not a string, so it writes no aria-label — and that attribute is both
+    /// the hover bubble's text and the accessible name of a control whose label is hidden
+    /// (ui/actions.md). A collapsed submit would say nothing to either.</para></summary>
+    [Parameter]
+    public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Always;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Same word as NsForm's own knob, same idea: a transition (Entregar, Revisar,
+    /// any confirm-shaped door) is an act, not an edit — its hero has nothing to wait on, so
+    /// it stays enabled from arrival even inside a form that otherwise tracks changes.</summary>
+    [Parameter]
+    public bool Untracked { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    // The icon is the state: a tick to confirm (pairing with the cross NsClose sits next to
+    // in the same footer), the search that applies a filter, and the spinner while the
+    // form's own handler runs — which is also what the button collapses to when the label
+    // gives way, so a busy narrow button still says something.
+    Glyph GetIcon()
+    {
+        if (FormRunning)
+        {
+            return NsIcons.Progress;
+        }
+
+        return As switch
+        {
+            NsAs.Filter => NsIcons.Search,
+            NsAs.Send => NsIcons.Send,
+            _ => NsIcons.Check,
+        };
+    }
+
+    string GetClasses(Glyph icon)
+    {
+        return new NsClassBuilder(NsResponsive.CollapseClass(icon, Breakpoint))
+            .Add(Class)
+            .ToString();
+    }
+
+    protected override void OnInitialized()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged += OnSurfaceStateChanged;
+        }
+    }
+
+    // Nothing to save yet: a tracked form's submit stays greyed out until the surface
+    // reports changes. Untracked forms (FormTracked false) always submit.
+    bool GetDisabled()
+    {
+        if (Disabled)
+        {
+            return true;
+        }
+
+        // A tracked form is already covered — HandleSubmit clears the changes before it
+        // raises — but an untracked one (sign-in, filters) would otherwise submit again
+        // on every click while the first one is still in flight.
+        if (FormRunning)
+        {
+            return true;
+        }
+
+        if (!Untracked && FormTracked == true && Surface is not null)
+        {
+            return !Surface.HasChanges;
+        }
+
+        return false;
+    }
+
+    void OnSurfaceStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged -= OnSurfaceStateChanged;
+        }
+    }
+}

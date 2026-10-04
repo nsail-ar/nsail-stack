@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<PropertyGroup>
+		<RootNamespace>NSail.Components</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<SupportedStack Include="browser" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.9" />
+	</ItemGroup>
+
+</Project>
+

@@ -1,0 +1,28 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<NsText Size="@Size" Class="@GetClasses()">@ChildContent</NsText>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The state's own tone. Null is the neutral — a state that is neither an alert
+    /// nor an outcome — and paints the theme's dimmest ink, never nothing.</summary>
+    [Parameter]
+    public NsSeverity? Severity { get; set; }
+
+    /// <summary>Typographic scale, NsText's own — a state is worn at whatever scale its datum is
+    /// set in, a card's figure and a grid cell's word alike, and colouring the datum is the whole
+    /// point.</summary>
+    [Parameter]
+    public NsSize Size { get; set; } = NsSize.Md;
+
+    string GetClasses()
+    {
+        return $"ns-status-text {NsSeverityMapper.ToStatusClass(Severity)}";
+    }
+}

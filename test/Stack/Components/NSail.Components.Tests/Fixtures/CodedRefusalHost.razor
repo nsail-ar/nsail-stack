@@ -1,0 +1,31 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+<NsForm TModel="CodedRefusalModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsDateField TValue="DateOnly?" @bind-Value="context.Birth" Label="Birth" />
+    <NsDateField TValue="DateOnly?" @bind-Value="context.Any" Label="Any" />
+    <NsTextField @bind-Value="context.Coded" Label="Coded" />
+    <NsTextField @bind-Value="context.Scoped" Label="Scoped" />
+    <NsTextField @bind-Value="context.Sized" Label="Sized" />
+    <NsNumericField TValue="decimal?" @bind-Value="context.Price" Label="Price" />
+    <NsNumericField TValue="decimal?" @bind-Value="context.From" Label="From" />
+    <NsNumericField TValue="decimal?" @bind-Value="context.To" Label="To" />
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public CodedRefusalModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    async Task HandleSubmit()
+    {
+        await Submitted.InvokeAsync();
+    }
+}

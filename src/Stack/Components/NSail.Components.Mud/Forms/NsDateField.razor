@@ -1,0 +1,35 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+@using System.Globalization
+@using NSail.Localization
+
+@inject LanguageProvider Language
+
+@* Converter stands BEFORE Date on purpose: the vendor writes its box from the converter the
+   moment Date is assigned, and Blazor assigns parameters in the order they are written here,
+   so a converter named after the value it is meant to format arrives one render too late and
+   the first date a page hands in is drawn by the vendor's own (measured: an es-AR value
+   rendered "7/8/2026" against the "07/08/2026" the shape promises). *@
+<MudDatePicker Converter="_text"
+               Date="MudDate"
+               DateChanged="OnDateChanged"
+               TextChanged="OnTextChanged"
+               MaxDate="MudMaxDate"
+               Label="@GetLabel()"
+               Placeholder="@GetPlaceholder()"
+               Required="IsRequired"
+               Disabled="IsDisabled"
+               ReadOnly="IsReadOnly"
+               Editable="true"
+               Culture="@RegionCulture.For(Language)"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Error="@HasError()"
+               ErrorText="@GetErrorText()"
+               UserAttributes="InputAttributes" />
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />

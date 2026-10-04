@@ -1,0 +1,25 @@
+#nullable enable
+
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using NSail.Messaging;
+using NSail.Messaging.Runtime;
+using NSail.Messaging.Runtime.Sending;
+using NSail.Messaging.WebApi;
+
+namespace {{ Namespace }};
+
+{{ ClassDeclaration }}
+{
+    {{ MethodDeclaration }}
+    {
+        global::Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions
+            .TryAddSingleton<global::NSail.Metadata.MetadataProvider>({{ ServicesParameterName }});
+
+        {{~ for client in Messages ~}}
+        {{ ServicesParameterName }}.AddTransient<IEndpointEntry, {{ client.MessageType }}EndpointEntry>();
+        {{~ end ~}}
+    }
+}

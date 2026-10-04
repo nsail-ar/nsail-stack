@@ -1,0 +1,25 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+<MudCheckBox T="TValue"
+             Value="Value"
+             ValueChanged="SetValue"
+             For="For"
+             Label="@GetLabel()"
+             Required="IsRequired"
+             Disabled="IsDisabled"
+             ReadOnly="IsReadOnly"
+             Color="Color.Primary"
+             Error="@HasError()"
+             ErrorText="@GetErrorText()"
+             UserAttributes="InputAttributes" />
+@* The described node only, never the hint: a box and its label are one line and a hint under
+   them would be a second, which is a layout this shape has never spent. The node costs no
+   layout at all (.ns-field-described is clipped out of flow) and is what the reference the box
+   splats has to land on — a reference into a node that is not there announces strictly less
+   than the silence it replaces. *@
+<NsFieldHelper Message="@GetErrorText()" DescribedBy="@DescribedBy" />

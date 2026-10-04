@@ -1,0 +1,34 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+@* The FormProblemHost recipe with the shape nsail#1867 is about: a member the screen EDITS
+   through composed controls — here a list of words standing in for an attendee list — and
+   renders no field for. The anchor is what makes that member announced, and the expression is
+   written here, on the host, because a FieldIdentifier is built from the object the member hangs
+   off. *@
+<NsForm TModel="FormProblemModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsTextField @bind-Value="context.Name" />
+    <div class="nickname-editor">
+        <NsText>@context.Nickname</NsText>
+        <NsFieldRefusal TValue="string" For="() => Model.Nickname" />
+    </div>
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public FormProblemModel Model { get; set; } = default!;
+
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    {
+        args.Problem = Problem;
+    }
+}

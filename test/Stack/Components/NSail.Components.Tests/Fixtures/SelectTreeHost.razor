@@ -1,0 +1,41 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using NSail.Components.Tests.Fixtures
+
+@* The shape the three tree consumers in the repo use today — roots plus a Children
+   resolver, an ItemTemplate, Expanded driven by whether the page is filtering, and a
+   SelectedChanged. No checkbox parameter, no search parameter. *@
+<NsTree TItem="TreeNode"
+        Items="Roots"
+        Children="GetChildren"
+        Expanded="Expanded"
+        SelectedChanged="OnSelectedChanged">
+    <ItemTemplate Context="node">
+        <span class="node-name">@node.Name</span>
+    </ItemTemplate>
+</NsTree>
+
+@code {
+
+    [Parameter]
+    public IReadOnlyList<TreeNode> Roots { get; set; } = [];
+
+    [Parameter]
+    public bool Expanded { get; set; }
+
+    public TreeNode? Selected { get; private set; }
+
+    public int SelectedCount { get; private set; }
+
+    IReadOnlyList<TreeNode> GetChildren(TreeNode node)
+    {
+        return node.Children;
+    }
+
+    void OnSelectedChanged(TreeNode? node)
+    {
+        Selected = node;
+        SelectedCount++;
+    }
+}

@@ -1,0 +1,44 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using Microsoft.AspNetCore.Components.Web
+
+@* Escape is how every overlay in the world is dismissed, and a routed surface had no key
+   handling at all. The wrapper is focusable and takes focus once, because the click that
+   opened the surface left focus on the link that opened it — a handler on an element
+   nothing inside has focused never sees the key. Closing goes through Surface.Close(), so
+   the unsaved-changes guard answers exactly as it does for the X. *@
+<div class="@Class" tabindex="-1" @ref="_element" @onkeydown="OnKeyDown">
+    @ChildContent
+</div>
+
+@code {
+
+    ElementReference _element;
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Surface is { IsMain: false })
+        {
+            await _element.FocusAsync();
+        }
+    }
+
+    void OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape" && Surface is { IsMain: false })
+        {
+            Surface.Close();
+        }
+    }
+}

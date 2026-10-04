@@ -1,0 +1,64 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Web
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+@* An inline editor whose page adds from chrome of its own: the table's add control off, and the
+   host's button calling Add() — Nueva Venta's tab strip over Artículos, in miniature. *@
+<MudPopoverProvider />
+
+@{
+    RenderFragment<TestModel> editor = row =>
+        @<text>
+            <NsTd For="() => row.Name">
+                <NsTextField @bind-Value="row.Name" Label="" />
+            </NsTd>
+        </text>;
+}
+
+<button id="outside" @onclick="() => Table!.Add()">Outside</button>
+
+<NsTable @ref="Table" TRow="TestModel" Rows="Page" RowEditor="editor" NewRow="NewRow"
+         AddControl="AddControl" Title="@Title">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    readonly List<TestModel> _rows = [];
+
+    [Parameter]
+    public bool AddControl { get; set; } = true;
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    public NsTable<TestModel>? Table { get; private set; }
+
+    public int Count
+    {
+        get { return _rows.Count; }
+    }
+
+    DataPage<TestModel> Page => DataPage<TestModel>.From(_rows);
+
+    TestModel NewRow()
+    {
+        var row = new TestModel();
+
+        _rows.Add(row);
+
+        return row;
+    }
+}

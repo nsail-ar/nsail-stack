@@ -1,0 +1,86 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* The one place a Brand becomes the --mud-palette-* variables every surface reads its colour
+   from: the vendor stylesheet ships no :root defaults, so those variables are UNSET until this
+   mounts and anything drawn without it paints from nothing. Two callers -- NsSetup, above the
+   app, and a document rendered with no app around it (NsProblemDocument, the page a request
+   that died before render answers with). *@
+<MudThemeProvider Theme="@_theme" IsDarkMode="@_dark" />
+<style>@_variables</style>
+
+@code {
+
+    // Reached by a client the prerender never handed anything to, and by a request that died
+    // before anything could resolve a brand. It is deliberately colourless: any accent here is
+    // a guess about an organization nobody has asked about yet, and a wrong guess is what the
+    // eye reads as a flash when the real one arrives. MudBlazor's own default is worse --
+    // purple, and it would hold for the whole round-trip.
+    static readonly Brand Fallback = Neutral();
+
+    Brand? _painted;
+    MudTheme _theme = BrandMudTheme.From(Fallback);
+    bool _dark = Fallback.DefaultDark;
+    string _variables = Variables(Fallback, Fallback.DefaultDark);
+
+    /// <summary>The brand painted. Null is "nothing resolved one", which paints the neutral
+    /// grey rather than a guess — never a default <see cref="Brand"/>, which the eye reads as
+    /// the wrong organization's colour.</summary>
+    [Parameter]
+    public Brand? Brand { get; set; }
+
+    /// <summary>The reader's own dark-mode preference; null takes the brand's own default.</summary>
+    [Parameter]
+    public bool? Dark { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        var brand = Brand ?? Fallback;
+
+        // A fresh MudTheme is a fresh object for the provider to diff and 26 elevations to
+        // build, so the mapping runs when the brand itself moved and not on every re-render.
+        if (!ReferenceEquals(brand, _painted))
+        {
+            _painted = brand;
+            _theme = BrandMudTheme.From(brand);
+        }
+
+        _dark = Dark ?? brand.DefaultDark;
+        _variables = Variables(brand, _dark);
+    }
+
+    // The vendor emits the palette of the scheme that is lit and nothing else, so the one NSail
+    // variable a stylesheet cannot compute rides beside it, for that same scheme: the soft
+    // label's colour is a decision about the accent's own luminance, and color-mix has no way
+    // to see how bright a colour is. Everything else on that wash stays in ns-mud.css,
+    // where a wash mixed against transparent belongs.
+    static string Variables(Brand brand, bool dark)
+    {
+        var scheme = dark ? brand.Dark : brand.Light;
+
+        return $":root{{--ns-accent-ink:{scheme.TextOnAccentSoft};}}";
+    }
+
+    /// <summary>The colourless grey a surface wears when no brand is known — the last resort,
+    /// never a default a caller can mistake for an answer.</summary>
+    internal static Brand Neutral()
+    {
+        var brand = new Brand();
+
+        Shade(brand.Dark, "#8a8782", "#989591", "#777470", "#adaba8");
+        Shade(brand.Light, "#75726d", "#86837f", "#65625e", "#9e9c99");
+
+        return brand;
+    }
+
+    static void Shade(BrandTheme theme, string accent, string hover, string pressed, string focus)
+    {
+        theme.Accent = accent;
+        theme.AccentHover = hover;
+        theme.AccentPressed = pressed;
+        theme.AccentFocus = focus;
+        theme.TextOnAccent = "#ffffff";
+    }
+}

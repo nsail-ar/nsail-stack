@@ -1,0 +1,20 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/lookup/{Id:guid}/edit"
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@inherits NsPage
+
+@* Where a create page navigates in place once it has thinned its record out (create-thin-then-
+   enrich). Inside an overlay the close supersedes it and this never mounts. *@
+<p class="probe-edit">@Id</p>
+
+@code {
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+}

@@ -1,0 +1,27 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* An NsPanel hosted in the aside, the way every routed page rendered into Surfaces.Aside is
+   (NsDrawerHost's shape, with the panel as the body): what it exists to expose is the chain of
+   boxes between the drawer the vendor paints and the panel's scroll-shadow region. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Name="@Surfaces.Aside" Context="surface">
+        <NsDrawer>
+            <NsPanel>
+                <Content>
+                    <div class="probe-content">Fields</div>
+                </Content>
+            </NsPanel>
+        </NsDrawer>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+}

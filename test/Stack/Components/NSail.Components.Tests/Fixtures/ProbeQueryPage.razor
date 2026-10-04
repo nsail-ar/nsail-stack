@@ -1,0 +1,16 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/query"
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@inherits NsPage
+
+@* An ordinary routed page asking for its own query values. It asks the same way wherever it
+   is mounted: on the main surface that is the address bar's query, inside the aside it is the
+   query of the route ?aside= carries — which is the whole point, since the second one never
+   reaches the browser's query at all. *@
+<p class="probe-party">@(GetQuery<Guid?>("PartyId")?.ToString() ?? "none")</p>
+<p class="probe-roles">@(string.Join(",", GetQuery<Guid[]>("RoleIds") ?? []))</p>

@@ -1,0 +1,68 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* The reproduction's own composition, in the shape MainLayout writes it: an app bar in the
+   Header slot, the nav menu in Drawer, the modal surface inside Content, and the aside
+   surface in the Aside slot. Every layering fact the story is about is decided by these
+   four together, so no test of them can be written against a drawer alone. *@
+<CascadingValue Value="RouteTable">
+    <NsMainLayout Header="@(Header ? HeaderFragment : null)">
+        <Drawer>
+            <div class="probe-nav">nav</div>
+        </Drawer>
+        <Content>
+            <div class="probe-page">page</div>
+            @if (Modal)
+            {
+                <NsSurfaceContext Name="@Surfaces.Modal" Context="modal">
+                    @{ _modal = modal; }
+                    <NsDialog>
+                        <div class="probe-modal">modal</div>
+                    </NsDialog>
+                </NsSurfaceContext>
+            }
+        </Content>
+        <Aside>
+            @if (Aside)
+            {
+                <NsSurfaceContext Name="@Surfaces.Aside" Context="aside">
+                    @{ _aside = aside; }
+                    <NsDrawer Mode="NsDrawerMode.Docked">
+                        <div class="probe-aside">aside</div>
+                    </NsDrawer>
+                </NsSurfaceContext>
+            }
+        </Aside>
+    </NsMainLayout>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _aside;
+    SurfaceContext? _modal;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter]
+    public bool Header { get; set; } = true;
+
+    [Parameter]
+    public bool Aside { get; set; } = true;
+
+    [Parameter]
+    public bool Modal { get; set; } = true;
+
+    public SurfaceContext? AsideSurface => _aside;
+
+    public SurfaceContext? ModalSurface => _modal;
+
+    static RenderFragment HeaderFragment =>
+        @<NsAppBar>
+            <Title><span class="probe-title">title</span></Title>
+        </NsAppBar>;
+}

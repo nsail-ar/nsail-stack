@@ -1,0 +1,27 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* The RequiredFieldsHost recipe, with the two date shapes a page really binds: a real NsForm,
+   so the submit runs through the same EditContext.Validate() a Guardar does. *@
+<NsForm TModel="RefusedDateModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsDateField @bind-Value="context.Delivery" />
+    <NsDateTimeField @bind-Value="context.Start" />
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public RefusedDateModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    Task HandleSubmit()
+    {
+        return Submitted.InvokeAsync();
+    }
+}

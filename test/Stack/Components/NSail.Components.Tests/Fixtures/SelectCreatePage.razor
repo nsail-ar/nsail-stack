@@ -1,0 +1,40 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/lookup/create"
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@inherits NsPage
+
+@* The create half: the shape CreatePartyPage/CreateWorkshopPage share — a real NsForm whose
+   handler files the row, publishes after the save and then navigates in place to the new
+   record's edit route, with not one word about who opened it. A real form and not a bare
+   button because the overlay CLOSES on a successful submit: the publish has to happen while
+   this page's own route still carries the token, and the ordering that makes that true lives
+   in NsForm rather than here. *@
+<div class="probe-create">
+    <NsForm TModel="SubmitTrackingModel" Model="_model" OnSubmit="OnSubmit">
+        <NsSubmit />
+    </NsForm>
+</div>
+
+@code {
+
+    public static readonly Guid Row = Guid.Parse("8f6a0f1c-2c8d-4a4a-9e0a-1f0b6a2c7d31");
+
+    public const string RowName = "Nuevo";
+
+    readonly SubmitTrackingModel _model = new() { Name = RowName };
+
+    async Task OnSubmit(SubmitEventArgs<SubmitTrackingModel> args)
+    {
+        (Services.GetService(typeof(SelectStore)) as SelectStore)?.Add(new SelectRef(Row, _model.Name!));
+
+        await Publish(new SelectSaved { Id = Row }, args.CancellationToken);
+
+        Navigate<SelectUpdatePage>(new { id = Row });
+    }
+
+}

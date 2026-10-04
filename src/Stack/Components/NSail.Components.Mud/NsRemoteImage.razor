@@ -1,0 +1,167 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using System.Collections.Concurrent
+@using Microsoft.Extensions.DependencyInjection
+
+@inject IServiceProvider Services
+
+@if (Url is { } url && _kind != RemoteImageKind.Unavailable)
+{
+    <span class="@GetClasses()" style="@GetStyle()">
+        @if (_kind == RemoteImageKind.Svg && _markup is { } markup)
+        {
+            @((MarkupString)markup)
+        }
+        else
+        {
+            <img src="@url" alt="@Alt" />
+        }
+    </span>
+}
+
+@code {
+
+    // A URL identifies content the same way an AssetId does for NsImage, so one probe per
+    // URL serves every instance and every later render of it -- but a URL is not a proof of
+    // immutability the way an AssetId is (a replacement there is a new id). The one real
+    // caller today (Branding's logo route) documents its own short revalidation window
+    // server-side rather than eternal bytes, so a resource that flips content type after
+    // boot picks that up only on the next app start: the same trade the server already
+    // accepts, not solved a second time on the client.
+    static readonly ConcurrentDictionary<string, (RemoteImageKind Kind, string? Markup)> Contents = new();
+
+    enum RemoteImageKind
+    {
+        Raster,
+        Svg,
+        Unavailable
+    }
+
+    RemoteImageKind? _kind;
+    string? _markup;
+    string? _probed;
+
+    /// <summary>A well-known route this component fetches and decides by content type --
+    /// never an app- or kit-specific default, so Stack names no URL of its own. The route
+    /// must already serve sanitized SVG when it answers one: this component inlines the
+    /// response verbatim and has no sanitizer of its own to run it through (Stack cannot
+    /// depend on a Kit's), unlike NsImage, whose raw Assets route is unsanitized and so
+    /// sanitizes client-side.</summary>
+    [Parameter]
+    public string? Url { get; set; }
+
+    /// <summary>Rendered on the &lt;img&gt; branch only. The inlined SVG branch carries
+    /// whatever accessible name the served markup already baked in -- this component parses
+    /// nothing in that markup, sanitized or not, so it cannot stamp one on afterward.</summary>
+    [Parameter]
+    public string? Alt { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public int? Height { get; set; }
+
+    /// <summary>Chrome only, reusing NsAs rather than founding a second enum (an
+    /// NsImageAs.Primary would collide with NsAs.Main across the static imports):
+    /// Inline (default) inherits the surrounding colour, Primary maps to the .text-primary
+    /// utility. Meaningful only on the inlined-SVG branch (currentColor); a raster &lt;img&gt;
+    /// ignores it, same as CSS color always would.</summary>
+    [Parameter]
+    public NsAs As { get; set; } = NsAs.Inline;
+
+    protected override void OnParametersSet()
+    {
+        Build();
+    }
+
+    // The probe runs after the first render, never during it: prerendering has no transport
+    // to fetch with, and the <img> it emits meanwhile is the correct answer for every URL
+    // until the content type says otherwise.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Url is not { } url || _probed == url)
+        {
+            return;
+        }
+
+        // Asked from the service provider rather than injected: the prerendering host has no
+        // HTTP transport of its own -- it is the origin -- and a required injection would fail
+        // the whole page there, on a component whose <img> path never needed one.
+        if (Contents.ContainsKey(url) || Services.GetService<IHttpClientFactory>() is not { } clients)
+        {
+            _probed = url;
+
+            return;
+        }
+
+        _probed = url;
+
+        Contents[url] = await Probe(clients, url);
+
+        Build();
+
+        StateHasChanged();
+    }
+
+    static async Task<(RemoteImageKind Kind, string? Markup)> Probe(IHttpClientFactory clients, string url)
+    {
+        try
+        {
+            // Headers first, so a raster drops the response the moment its content type
+            // disqualifies it -- and the <img> already on screen reads the same URL out of
+            // the browser cache rather than the network.
+            using var response = await clients.CreateClient()
+                .GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return (RemoteImageKind.Unavailable, null);
+            }
+
+            if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "image/svg+xml", StringComparison.OrdinalIgnoreCase))
+            {
+                return (RemoteImageKind.Raster, null);
+            }
+
+            var markup = await response.Content.ReadAsStringAsync();
+
+            return string.IsNullOrWhiteSpace(markup)
+                ? (RemoteImageKind.Unavailable, null)
+                : (RemoteImageKind.Svg, markup);
+        }
+        catch (HttpRequestException)
+        {
+            return (RemoteImageKind.Unavailable, null);
+        }
+    }
+
+    void Build()
+    {
+        if (Url is not { } url || !Contents.TryGetValue(url, out var entry))
+        {
+            _kind = null;
+            _markup = null;
+
+            return;
+        }
+
+        _kind = entry.Kind;
+        _markup = entry.Markup;
+    }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-remote-image")
+            .Add("text-primary", As == NsAs.Main)
+            .Add(Class)
+            .ToString();
+    }
+
+    string? GetStyle()
+    {
+        return Height is { } height ? $"height:{height}px" : null;
+    }
+}

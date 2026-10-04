@@ -1,0 +1,44 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* The shape a routed page writes: the form wraps the panel and the panel's header is the page's
+   own title row, so the drawer's hamburger is drawn inside the form's own cascade
+   (DeliverWorkOrderPage, and every screen shaped like it). Untracked, so the only thing that can
+   grey anything here is the run. *@
+<CascadingValue Value="Surface" IsFixed="true">
+    <CascadingValue Value="LayoutState" IsFixed="true">
+        <NsForm TModel="SubmitTrackingModel" Model="Model" OnSubmit="HandleSubmit" Untracked>
+            <NsTitleBar Title="Personas" />
+            <NsSubmit Class="hero" />
+        </NsForm>
+    </CascadingValue>
+</CascadingValue>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public SurfaceContext Surface { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public NsLayoutState LayoutState { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public SubmitTrackingModel Model { get; set; } = default!;
+
+    /// <summary>What the submit waits on, so a test can look at the screen while the save is in
+    /// flight.</summary>
+    [Parameter]
+    public Task? Held { get; set; }
+
+    async Task HandleSubmit()
+    {
+        if (Held is { } held)
+        {
+            await held;
+        }
+    }
+}

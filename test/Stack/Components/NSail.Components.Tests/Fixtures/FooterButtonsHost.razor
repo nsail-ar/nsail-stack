@@ -1,0 +1,24 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Icons
+
+@* Calqued from WorkOrderPage's own footer: a secondary act with an icon (Collect), the
+   hero with none (the common shape across the document pages today), and a secondary act
+   with no icon at all (PurchaseOrderPage's Cancel/Issue/Receive) — the one combination the
+   emphasis-ladder collapse must leave alone, nothing to collapse TO.
+
+   SignOut is the second SHAPE of hero: the one act of its surface, destructive, so it wears
+   Danger instead of Primary and carries a glyph. It is the case the collapse rule has to
+   spare by emphasis rather than by colour. *@
+<NsPanel>
+    <Footer>
+        <NsButton Icon="@NsIcons.Payments" Label="Collect" />
+        <NsButton As="NsAs.Danger" Label="Cancel" />
+        <NsButton As="NsAs.Danger" Breakpoint="NsBreakpoint.Always" Icon="@NsIcons.Logout" Label="SignOut" />
+        <NsButton As="NsAs.Main" Label="Save" />
+    </Footer>
+</NsPanel>

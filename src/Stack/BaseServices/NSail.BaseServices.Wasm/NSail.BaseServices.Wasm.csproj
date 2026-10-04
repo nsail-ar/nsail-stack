@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<ItemGroup>
+		<SupportedStack Include="browser" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.9" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Folder Include="wwwroot\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Http\NSail.Messaging.Http.csproj" />
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.SignalR\NSail.Messaging.SignalR.csproj" />
+	</ItemGroup>
+
+</Project>
+

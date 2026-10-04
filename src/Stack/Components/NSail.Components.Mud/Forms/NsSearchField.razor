@@ -1,0 +1,42 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@inherits NsFieldBase<string>
+
+<MudTextField T="string"
+              Value="Value"
+              ValueChanged="SetValue"
+              For="For"
+              Label="@GetLabel()"
+              Placeholder="@GetPlaceholder()"
+              Required="IsRequired"
+              Disabled="IsDisabled"
+              ReadOnly="IsReadOnly"
+              AutoFocus="AutoFocus"
+              Immediate="true"
+              DebounceInterval="Debounce"
+              Class="@GrowClass"
+              Clearable="true"
+              Adornment="Adornment.Start"
+              AdornmentIcon="@Icons.Material.Filled.Search"
+              IconSize="Size.Small"
+              Variant="Variant.Outlined"
+              Margin="Margin.Dense"
+              Error="@HasError()"
+              ErrorText="@GetErrorText()"
+              UserAttributes="InputAttributes" />
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+
+@code {
+
+    /// <summary>Milliseconds to wait after the last keystroke before the value updates —
+    /// keeps a reactive filter from querying on every character. 0 updates immediately.</summary>
+    [Parameter]
+    public double Debounce { get; set; }
+
+    string? GetPlaceholder()
+    {
+        return Placeholder ?? Strings.Translate("Common.Search");
+    }
+}

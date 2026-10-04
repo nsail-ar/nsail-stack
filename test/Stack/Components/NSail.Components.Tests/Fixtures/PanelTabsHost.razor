@@ -1,0 +1,18 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* The composition every other NsTabs consumer uses: a panel, whose content always grows and
+   always owns its own scroll. *@
+<NsPanel>
+    <Content>
+        <NsTabs>
+            <NsTab Title="First">
+                <div class="first-content"></div>
+            </NsTab>
+        </NsTabs>
+    </Content>
+</NsPanel>

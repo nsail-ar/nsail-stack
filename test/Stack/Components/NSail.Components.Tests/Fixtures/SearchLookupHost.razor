@@ -1,0 +1,93 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+
+@* AccountSelect's own shape: a lookup whose options come from OnSearch rather than Items, in
+   both postures — Lazy (parties, products) and browsed (the chart of accounts). The popover
+   is a portal, so the provider has to be in the tree for the open list to exist at all. *@
+<MudPopoverProvider />
+
+<NsAutocomplete TItem="SelectRef" TValue="Guid"
+                Lazy="Lazy"
+                Grow="Grow"
+                OnSearch="Search" OnLoad="Load"
+                ItemValue="@(item => item.Id)"
+                ItemText="@(item => item.DisplayName)"
+                Label="Cuenta"
+                Value="Value"
+                ValueChanged="ValueChanged"
+                OnQuickAdd="OnQuickAdd"
+                Offer="Offer" />
+
+@code {
+
+    [Parameter]
+    public IReadOnlyList<SelectRef> Rows { get; set; } = [];
+
+    [Parameter]
+    public bool Lazy { get; set; }
+
+    /// <summary>What a lookup whose reading is long declares, and the one thing that tells a
+    /// product's cell apart from an alícuota's in a line editor.</summary>
+    [Parameter]
+    public bool Grow { get; set; }
+
+    /// <summary>Held open until the caller releases it, so a search can be left in flight while
+    /// the next keystroke starts another — the round trip a real lookup pays, which is the only
+    /// state where two of them overlap.</summary>
+    [Parameter]
+    public Func<string?, Task>? Gate { get; set; }
+
+    [Parameter]
+    public Guid Value { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> ValueChanged { get; set; }
+
+    /// <summary>The escape hatch, for the tests that ask when it may be offered; unset, the
+    /// field offers none, as every lookup without a quick add does.</summary>
+    [Parameter]
+    public EventCallback<QuickAddEventArgs<SelectRef>> OnQuickAdd { get; set; }
+
+    /// <summary>The caller's own entry, for the tests that ask when it may be drawn. A constant
+    /// fragment on purpose: WHEN a facade has something to offer is the facade's own answer, and
+    /// what this fixture is about is the rest of the sentence — the states the field withholds the
+    /// entry in whatever the facade says.</summary>
+    [Parameter]
+    public RenderFragment? Offer { get; set; }
+
+    /// <summary>Every term the field asked the server for, in order — what says whether a
+    /// search that showed the wrong rows ever reached the query at all.</summary>
+    public List<string?> Asked { get; } = [];
+
+    // The edit form's own arrival: the field is born holding an id and resolves the row for it
+    // before anybody types (AccountSelect.Load).
+    Task Load(LoadEventArgs<SelectRef, Guid> args)
+    {
+        args.Item = Rows.FirstOrDefault(row => row.Id == args.Value);
+
+        return Task.CompletedTask;
+    }
+
+    // The handler's own filter (AccountHandler.LookupAccounts): a blank term answers the
+    // browsable set, a term narrows it by Contains. The token is honored the way every kit's
+    // own OnSearch honors it — a superseded read costs no answer.
+    async Task Search(SearchEventArgs<SelectRef> args)
+    {
+        Asked.Add(args.Text);
+
+        if (Gate is not null)
+        {
+            await Gate(args.Text);
+        }
+
+        args.CancellationToken.ThrowIfCancellationRequested();
+
+        args.Results = string.IsNullOrWhiteSpace(args.Text)
+            ? Rows
+            : [.. Rows.Where(row => row.DisplayName.Contains(args.Text.Trim(), StringComparison.OrdinalIgnoreCase))];
+    }
+}

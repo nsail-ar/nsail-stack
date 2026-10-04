@@ -1,0 +1,86 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+@using MudBlazor
+
+@* The two live shapes, one host. SmtpSettingsPage: the form renders over an empty model and
+   the read replaces the instance afterwards. UpdatePartyPage: the submit handler saves and
+   then reloads, replacing the instance again. Both bind through the page field the way those
+   pages do (@bind-Value="_model.X"), not through the form's context. *@
+<MudPopoverProvider />
+
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Context="surface">
+        @{ _surface = surface; }
+        <NsForm TModel="RebaseModel" Model="_model" OnSubmit="HandleSubmit">
+            <NsTextField @bind-Value="_model.Host" />
+            <NsNumericField TValue="int" @bind-Value="_model.Port" />
+            <NsPasswordField @bind-Value="_model.Password" />
+            <NsCheckBox TValue="bool" @bind-Value="_model.UseSsl" />
+            <NsDateField TValue="DateOnly?" @bind-Value="_model.Since" />
+            <NsSubmit Class="tracked-submit" />
+        </NsForm>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+    RebaseModel _model = new();
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    /// <summary>The read that lands after the first render and replaces the instance the form
+    /// already took its baseline from.</summary>
+    [Parameter]
+    public bool LoadsAfterFirstRender { get; set; }
+
+    /// <summary>What the handler does after a save takes: reads the persisted state back into
+    /// a fresh instance (master/detail, the page stays open).</summary>
+    [Parameter]
+    public bool ReloadsOnSubmit { get; set; }
+
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    public int Submits { get; private set; }
+
+    public SurfaceContext? Surface => _surface;
+
+    public RebaseModel Model => _model;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !LoadsAfterFirstRender)
+        {
+            return;
+        }
+
+        await Task.Yield();
+
+        _model = RebaseModel.Stored();
+
+        StateHasChanged();
+    }
+
+    void HandleSubmit(SubmitEventArgs<RebaseModel> args)
+    {
+        Submits++;
+        args.Problem = Problem;
+
+        if (Problem is not null)
+        {
+            return;
+        }
+
+        if (ReloadsOnSubmit)
+        {
+            _model = RebaseModel.Stored();
+        }
+    }
+}

@@ -1,0 +1,169 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TItem
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+@* The binding expression stays with the field: handed down as the vendor's own For, this
+   control answers a value's ARRIVAL with EditContext.NotifyFieldChanged, and a form nobody
+   has touched reports unsaved changes. NsFieldBase reads For itself — the label, the tracker
+   registration, Required and the error text — and notifies only what a user actually edited
+   (ForProbeTests holds the line for every wrapper). *@
+
+@* ShrinkLabel is declared off the VALUE because the vendor floats the label off the field's
+   TEXT, and this control's text is RESOLVED out of Items (GetValueText below) — so a wrapper
+   that fills Items from a read holds the value for a render it cannot yet name, and a label at
+   rest is a label sitting where the value is about to be painted. *@
+<MudSelect T="TValue"
+           Value="_value"
+           ValueChanged="OnValueChanged"
+           Label="@GetLabel()"
+           Placeholder="@Placeholder"
+           ShrinkLabel="@HoldsValue"
+           ToStringFunc="GetValueText"
+           Required="IsRequired"
+           Disabled="IsDisabled"
+           ReadOnly="IsReadOnly"
+           AutoFocus="AutoFocus"
+           Immediate="Immediate"
+           Clearable="Clearable"
+           Variant="Variant.Outlined"
+           Margin="Margin.Dense"
+           Error="@HasError()"
+           ErrorText="@GetErrorText()"
+           UserAttributes="InputAttributes">
+    @if (Items is not null)
+    {
+        @foreach (var item in Items)
+        {
+            <MudSelectItem T="TValue" Value="@GetItemValue(item)">
+                @if (ItemTemplate is not null)
+                {
+                    @ItemTemplate(item)
+                }
+                else
+                {
+                    @GetItemText(item)
+                }
+            </MudSelectItem>
+        }
+    }
+</MudSelect>
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+
+@code {
+
+    TValue? _value;
+
+    [Parameter]
+    public IEnumerable<TItem>? Items { get; set; }
+
+    /// <summary>Adds the vendor's own clear (x) adornment once a value is chosen, resetting
+    /// to default (null for a nullable TValue) — for a genuinely optional field, distinct
+    /// from a filter's leading "All" item (GetItems(all: true)).</summary>
+    [Parameter]
+    public bool Clearable { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        _value = Value;
+    }
+
+    // MudSelect owns its selection the moment it is clicked, and a Value parameter that did
+    // not change from Blazor's viewpoint cannot tell it to go back — so the vendor is fed a
+    // mirror. The click renders the mirror at the clicked value before the callback is
+    // awaited (an owner may refuse it behind a dialog); when the refusal leaves Value alone,
+    // the mirror returns to it and the parameter really changes, which resyncs the vendor.
+    async Task OnValueChanged(TValue? value)
+    {
+        _value = value;
+
+        StateHasChanged();
+
+        await SetValue(value);
+
+        _value = Value;
+    }
+
+    [Parameter]
+    public Func<TItem, TValue>? ItemValue { get; set; }
+
+    // A field bound to a page-local value has no message property to derive a label
+    // from — the item type itself names the concept ("Directory.LocationTypeRef").
+    protected override string? FallbackLabel(string key)
+    {
+        if (Strings.TryTranslate(Metadata.KeyFor(typeof(TItem)), out var concept))
+        {
+            return concept;
+        }
+
+        return base.FallbackLabel(key);
+    }
+
+    [Parameter]
+    public Func<TItem, string>? ItemText { get; set; }
+
+    /// <summary>Row body for an option in the open list, when a line of text is not enough to
+    /// tell two candidates apart — the same contract <c>NsAutocomplete</c> carries. Only the list
+    /// changes: the closed field still shows what <c>ItemText</c> returns, so a figure the
+    /// operator CHOOSES on (a balance, a count) decorates the offer without the field going on
+    /// saying it from whenever it was picked.</summary>
+    [Parameter]
+    public RenderFragment<TItem>? ItemTemplate { get; set; }
+
+    TValue GetItemValue(TItem item)
+    {
+        if (ItemValue is not null)
+        {
+            return ItemValue(item);
+        }
+
+        if (item is IOption option)
+        {
+            return (TValue)option.Value!;
+        }
+
+        return (TValue)(object)item!;
+    }
+
+    // The vendor's converter is what names a value no item carries, and for an unchosen
+    // Guid that is the raw "00000000-…" sitting in the box the user reads. The displayed
+    // text is derived from Items instead: a value the list cannot name renders as nothing,
+    // which is what the placeholder is for.
+    string GetValueText(TValue? value)
+    {
+        if (Items is null)
+        {
+            return string.Empty;
+        }
+
+        foreach (var item in Items)
+        {
+            if (EqualityComparer<TValue>.Default.Equals(GetItemValue(item), value!))
+            {
+                return GetItemText(item);
+            }
+        }
+
+        return string.Empty;
+    }
+
+    string GetItemText(TItem item)
+    {
+        if (ItemText is not null)
+        {
+            return ItemText(item);
+        }
+
+        if (item is IOption option)
+        {
+            return option.Text;
+        }
+
+        return item?.ToString() ?? string.Empty;
+    }
+}

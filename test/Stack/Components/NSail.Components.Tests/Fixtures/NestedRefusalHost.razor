@@ -1,0 +1,36 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+<NsForm TModel="NestedRefusalModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsNumericField TValue="decimal?" @bind-Value="context.Opened.Measure" Label="Opened" />
+    <NsTextField @bind-Value="context.Opened.Note" Label="Opened note" />
+    <NsNumericField TValue="decimal?" @bind-Value="context.Loose.Measure" Label="Loose" />
+    <NsTextField @bind-Value="context.Loose.Note" Label="Loose note" />
+    <NsNumericField TValue="decimal?" @bind-Value="context.Own" Label="Own" />
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public NestedRefusalModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    /// <summary>What the server answered, put on the submit args the way a real page does — the
+    /// half that proves a refusal naming a path finds the input that path leads to.</summary>
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    async Task HandleSubmit(SubmitEventArgs<NestedRefusalModel> args)
+    {
+        args.Problem = Problem;
+
+        await Submitted.InvokeAsync();
+    }
+}

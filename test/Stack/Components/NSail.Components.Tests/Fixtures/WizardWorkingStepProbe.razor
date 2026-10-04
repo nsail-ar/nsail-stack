@@ -1,0 +1,45 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@implements IDisposable
+
+@inject WizardProbe Probe
+
+<div class="ns-probe-working">@Probe.Loads</div>
+
+@code {
+
+    [CascadingParameter]
+    public WizardContext? Wizard { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Probe.Loads++;
+        Probe.Changed += Apply;
+
+        Wizard?.Participate(OnNext);
+        Wizard?.SetCanAdvance(Probe.CanAdvance);
+    }
+
+    void Apply()
+    {
+        Wizard?.SetCanAdvance(Probe.CanAdvance);
+        StateHasChanged();
+    }
+
+    Task<bool> OnNext()
+    {
+        Probe.Submits++;
+
+        return Probe.Held is { } held ? held.Task : Task.FromResult(!Probe.Vetoes);
+    }
+
+    public void Dispose()
+    {
+        Probe.Changed -= Apply;
+    }
+}

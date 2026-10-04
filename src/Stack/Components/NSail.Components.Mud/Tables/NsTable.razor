@@ -1,0 +1,889 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TRow where TRow : class
+@inherits NsCollectionBase
+@using MudBlazor.Services
+@using NSail.Paging
+@using NSail.Localization
+
+@inject StringManager Strings
+@inject IScrollListenerFactory ScrollListeners
+@inject IBrowserViewportService Viewport
+@inject IServiceProvider Services
+
+@{
+    RenderFragment defaultEmpty = @<NsText Secondary>@Strings.Translate("Common.NoRecords")</NsText>;
+
+    RenderFragment noRecords = Empty ?? defaultEmpty;
+
+    RenderFragment headerCells =
+        @<text>
+            @if (Selectable)
+            {
+                <MudTh Class="ns-select">
+                    <MudCheckBox T="bool?" TriState="true" Value="PageState()" ValueChanged="_ => TogglePage()"
+                                 Dense="true" Size="Size.Small"
+                                 UserAttributes="@(new Dictionary<string, object> { ["aria-label"] = Strings.Translate("Common.SelectPage") })" />
+                </MudTh>
+            }
+            @HeaderContent?.Invoke(default!)
+            @if (Editable)
+            {
+                <NsTh />
+            }
+        </text>;
+
+    RenderFragment<TRow> rowCells = item =>
+        @<text>
+            @if (Selectable)
+            {
+                @* The tick is not a click on the row: a grid whose rows open something would
+                   otherwise open it on every tick. *@
+                <MudTd Class="ns-select">
+                    <span @onclick:stopPropagation="true">
+                        <MudCheckBox T="bool" Value="IsSelected(item)" ValueChanged="selected => Toggle(item, selected)"
+                                     Dense="true" Size="Size.Small"
+                                     UserAttributes="@(new Dictionary<string, object> { ["aria-label"] = Strings.Translate("Common.SelectRow") })" />
+                    </span>
+                </MudTd>
+            }
+            @if (IsEditing(item))
+            {
+                @* Fixed: the marker is a constant and the cells under it are the row's own. *@
+                <CascadingValue Value="TableRowEdit.Open" IsFixed="true">
+                    @RowEditor!(item)
+                </CascadingValue>
+                <NsTd>
+                    <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Justify="NsAlign.End">
+                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
+                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
+                    </NsStack>
+                </NsTd>
+            }
+            else
+            {
+                @RowTemplate?.Invoke(item)
+                @if (Editable)
+                {
+                    <NsTd>
+                        <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Justify="NsAlign.End">
+                            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
+                            @if (OnRowRemove.HasDelegate)
+                            {
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy" OnClick="@(() => Remove(item))" />
+                            }
+                        </NsStack>
+                    </NsTd>
+                }
+            }
+        </text>;
+}
+
+@* Fixed: the instance outlives every render, and a column's Breakpoint is markup — cells
+   would not re-read it anyway. *@
+<CascadingValue Value="_columns" IsFixed="true">
+
+@* The collection's own bar, and the only seat the add control has: a grid that offers a way in
+   names itself, so Agregar is at the top right on every screen and there is no second position
+   for it to drift to — the same place a list page's NUEVO takes. *@
+@if (Title is not null)
+{
+    <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween" Class="ns-collection-bar">
+        <NsText As="NsTextAs.Title">@Title</NsText>
+        @if (Editable && NewRow is not null && AddControl)
+        {
+            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
+        }
+    </NsStack>
+}
+
+@if (OnQuery.HasDelegate && Scrolls)
+{
+    <MudTable T="TRow"
+              Items="_scrolled"
+              Class="@GetClasses()"
+              RowClassFunc="@((row, _) => GetRowClasses(row))"
+              OnRowClick="RowClick"
+              Hover="true"
+              Breakpoint="Breakpoint.Sm"
+              Loading="@(IsRunning || !_hasLoaded)"
+              LoadingProgressColor="Color.Primary"
+              Dense="true">
+        <HeaderContent>
+            @headerCells
+        </HeaderContent>
+        <RowTemplate>
+            @rowCells(context)
+        </RowTemplate>
+        <NoRecordsContent>
+            @noRecords
+        </NoRecordsContent>
+    </MudTable>
+
+    @* The floor the scroll listener aims at, and the way past it for anyone who cannot reach
+       a floor: a first page shorter than the viewport never produces a scroll event, and a
+       keyboard has no scroll gesture at all. *@
+    @if (_hasLoaded && !_exhausted)
+    {
+        <NsStack Horizontal Justify="NsAlign.Center" Class="pa-2 ns-table-more">
+            <NsButton Label="@Strings.Translate("Common.LoadMore")" Disabled="_fetching" OnClick="FetchNext" />
+        </NsStack>
+    }
+}
+else if (OnQuery.HasDelegate)
+{
+    <MudTable T="TRow"
+              ServerData="LoadPage"
+              @ref="_table"
+              Class="@GetClasses()"
+              RowClassFunc="@((row, _) => GetRowClasses(row))"
+              OnRowClick="RowClick"
+              Hover="true"
+              Breakpoint="Breakpoint.Sm"
+              Loading="@(IsRunning || !_hasLoaded)"
+              LoadingProgressColor="Color.Primary"
+              Dense="true">
+        <HeaderContent>
+            @headerCells
+        </HeaderContent>
+        <RowTemplate>
+            @rowCells(context)
+        </RowTemplate>
+        <NoRecordsContent>
+            @noRecords
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+}
+else
+{
+    <MudTable T="TRow"
+              Items="Rows.Items"
+              Class="@GetClasses()"
+              RowClassFunc="@((row, _) => GetRowClasses(row))"
+              OnRowClick="RowClick"
+              Hover="true"
+              Breakpoint="Breakpoint.Sm"
+              Dense="true">
+        <HeaderContent>
+            @headerCells
+        </HeaderContent>
+        <RowTemplate>
+            @rowCells(context)
+        </RowTemplate>
+        <NoRecordsContent>
+            @noRecords
+        </NoRecordsContent>
+    </MudTable>
+}
+
+@* What a tick reaches is said out loud, and the one offer a page of ticks earns is made here:
+   the rows no page has shown yet are part of the list the user is looking at, and an act over
+   "all of them" must not quietly mean "the ones on screen". Below the rows and not above them:
+   a bar that arrived with the first tick would push every row down under the pointer that is
+   about to tick the second. *@
+@if (Selectable && !Selection!.IsEmpty)
+{
+    var total = Rows.TotalCount;
+
+    <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Class="ns-selection-bar px-2">
+        <NsText>@Counted("Common.Selected", Selection.Count(total))</NsText>
+        @if (!Selection.All && total > InHand.Count && PageState() == true)
+        {
+            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Always" Label="@Counted("Common.SelectAll", total)" OnClick="SelectAll" />
+        }
+        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Always" Label="@Strings.Translate("Common.ClearSelection")" OnClick="ClearSelection" />
+    </NsStack>
+}
+
+@* The family's own horizontal inset (ns-mud.css, .ns-collection-foot): a table's own cells
+   carry the vendor's padding, but Footer is ordinary markup with none of its own — without
+   the wrapper a document's totals sit flush against the card's border the moment the
+   collection's lateral pa-4 is gone. *@
+@if (Footer is not null)
+{
+    <div class="ns-collection-foot">
+        @Footer
+    </div>
+}
+
+</CascadingValue>
+
+@code {
+
+    // The page a scroll-mode table asks for. Page mode reads its own off the pager; scroll
+    // mode has no pager to read one from.
+    const int ScrollPageSize = 25;
+
+    MudTable<TRow>? _table;
+    readonly TableColumns _columns = new();
+    TRow? _editing;
+    bool _editingIsNew;
+
+    // Scroll mode's own state: the rows accumulated so far, where the next page starts, and
+    // whether the server has nothing left to give. The instance class is what pins the
+    // vendor's scroll listener to THIS table's container rather than the first one on screen.
+    readonly string _instance = $"ns-table-{Guid.NewGuid():N}";
+    readonly List<TRow> _scrolled = [];
+    readonly Guid _viewportSubscription = Guid.NewGuid();
+    IScrollListener? _listener;
+    IDeviceProvider? _devices;
+    Breakpoint? _breakpoint;
+    bool _askedDevice;
+    int _nextPage;
+    int _generation;
+    bool _started;
+    bool _listenerStarted;
+    bool _fetching;
+    bool _exhausted;
+
+    // A freshly mounted instance (every cold WASM hydration is one) starts at TotalItems 0
+    // before its own first query has even begun — MudTable would paint NoRecordsContent for
+    // that tick, a false "0 rows" indistinguishable from a genuinely empty result. Loading
+    // stays forced on until the first page actually arrives, so the honest state before any
+    // answer is "still asking", never "nothing here".
+    bool _hasLoaded;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public bool Grow { get; set; } = true;
+
+    /// <summary>Names the table in a bar rendered above it, with the add control at the bar's
+    /// right edge — the collection-editor chrome (Seña). Unset draws no bar at all, which also
+    /// leaves the add control nowhere to live: a grid wired to add rows and left unnamed is
+    /// refused by the Architecture suite rather than shipped with no way in.</summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>Content pinned after the table — a totals row, a running difference — rendered
+    /// whether or not Title is set.</summary>
+    [Parameter]
+    public RenderFragment? Footer { get; set; }
+
+    /// <summary>What the table says in place of the generic "no records" when the read came
+    /// back with nothing — the screen's own words for an empty register. Shown under the same
+    /// condition the default is: only once a read has answered.</summary>
+    [Parameter]
+    public RenderFragment? Empty { get; set; }
+
+    // The table lays itself out: fills the available space when its parent is a
+    // flex container (inert otherwise) and keeps the pager pinned at the bottom
+    // (see .ns-table rules in ns-mud.css).
+    //
+    // ns-table-editing says a row is open, and ns-mud.css asks it two things. In column mode it
+    // is the other half of "an edit input never hides": the editor's cells drop their hide
+    // classes, and a table still laid out as a table would then have more cells in that row than
+    // in its header, which lands the inputs under the wrong columns — so the WHOLE table stops
+    // hiding while a row is open, header and read rows with it, and the counts stay equal. Under
+    // md it is what stacks the table by CONTAINER instead (nsail#1614): no arithmetic seats an
+    // open row in a container that narrow, so it becomes the form a phone already reads, where
+    // there is no header and no count to match.
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-table d-flex flex-column min-h-0")
+            .Add("flex-grow-1", Grow)
+            .Add("ns-table-editing", _editing is not null)
+            .Add(_instance)
+            .Add(Class)
+            .ToString();
+    }
+
+    string GetRowClasses(TRow row)
+    {
+        return new NsClassBuilder(OnRowClick.HasDelegate ? "cursor-pointer" : null)
+            .Add(RowClass?.Invoke(row))
+            .ToString();
+    }
+
+    // Handed to MudTable only when the page wired a row click: the vendor marks every row
+    // mud-table-row-clickable — which is its cursor:pointer — from the mere presence of a
+    // delegate, so a method of this component's own would promise a door on every grid in
+    // the house. An empty callback is also the one shape MudTable reads as "no row click";
+    // null is not assignable to it.
+    EventCallback<TableRowClickEventArgs<TRow>> RowClick => OnRowClick.HasDelegate
+        ? EventCallback.Factory.Create<TableRowClickEventArgs<TRow>>(this, HandleRowClick)
+        : default;
+
+    /// <summary>Per-row CSS class beyond the table's own chrome — the attention semaphore
+    /// (theme severity utilities, never a custom color) paints a row from a condition its
+    /// own data settles, not from a stored state. Null or empty leaves the row neutral.</summary>
+    [Parameter]
+    public Func<TRow, string?>? RowClass { get; set; }
+
+    // The header context is a typing crutch invoked with default!: NsTh For expressions
+    // over it ("() => context.DisplayName") are inspected for keys, never executed.
+    [Parameter]
+    public RenderFragment<TRow>? HeaderContent { get; set; }
+
+    [Parameter]
+    public RenderFragment<TRow>? RowTemplate { get; set; }
+
+    /// <summary>Cells shown while a row is edited in place — Ns* fields bound to the row,
+    /// labelled and validated exactly as they would be on a form. Supplying it is what turns
+    /// inline editing on; a table that leaves it unset behaves as it always did. A read-only or
+    /// disabled form takes the offer back, editor and add control together, without the screen
+    /// that supplied it having to say so.
+    /// <para>Cover the same columns RowTemplate does: the confirm/cancel controls live in a
+    /// column the table owns and adds to the header and to every row itself, so the counts
+    /// cannot drift.</para></summary>
+    [Parameter]
+    public RenderFragment<TRow>? RowEditor { get; set; }
+
+    /// <summary>Makes a blank row, adds it to the collection behind Rows and returns it —
+    /// the table then opens it for editing. Supplying it is what puts the add control on the
+    /// <see cref="Title"/> bar, so a row is added without a dialog.</summary>
+    [Parameter]
+    public Func<TRow>? NewRow { get; set; }
+
+    /// <summary>Whether the table's bar draws its own add control. Off where the page already
+    /// adds from chrome of its own — a tab strip's Agregar over the collection — and calls
+    /// <see cref="Add"/>; NewRow still makes the row either way.</summary>
+    [Parameter]
+    public bool AddControl { get; set; } = true;
+
+    /// <summary>The user confirmed the row being edited. Reject it by setting Cancel or
+    /// Problem — either keeps the row open; anything else closes the editor.</summary>
+    [Parameter]
+    public EventCallback<RowEditEventArgs<TRow>> OnRowCommit { get; set; }
+
+    /// <summary>The row leaves the collection: the delete control, or cancelling a row that
+    /// was never confirmed. Without a handler the delete control does not render.</summary>
+    [Parameter]
+    public EventCallback<RowEditEventArgs<TRow>> OnRowRemove { get; set; }
+
+    [Parameter, EditorRequired]
+    public DataPage<TRow> Rows { get; set; } = DataPage<TRow>.Empty();
+
+    /// <summary>Server-side paging callback. Fires once on init and on every page/size change; without it the pager is hidden.</summary>
+    [Parameter]
+    public EventCallback<QueryEventArgs> OnQuery { get; set; }
+
+    /// <summary>How arriving pages are shown: Page replaces the rows on screen with the one
+    /// asked for, Scroll appends it below them, Auto (the default) scrolls on a phone and
+    /// pages on every other machine. The request the server sees is identical in all three.</summary>
+    [Parameter]
+    public NsTableMode Mode { get; set; } = NsTableMode.Auto;
+
+    [Parameter]
+    public EventCallback<TRow> OnRowClick { get; set; }
+
+    /// <summary>Turns row selection on: a tick at the head of every row, one in the header for
+    /// the rows in hand, and — once every row in hand is ticked and the list holds more — the
+    /// offer to reach every row the query answers (<see cref="Selection.All"/>). The table
+    /// mutates the instance it is handed and raises <see cref="SelectionChanged"/>; a new
+    /// search (Reload with first) empties it, since the rows it named belong to another
+    /// result set.</summary>
+    [Parameter]
+    public Selection? Selection { get; set; }
+
+    [Parameter]
+    public EventCallback<Selection> SelectionChanged { get; set; }
+
+    /// <summary>What tells two rows apart for <see cref="Selection"/>: a reloaded page brings
+    /// new instances of the same rows, so a tick is kept by key and never by reference.</summary>
+    [Parameter]
+    public Func<TRow, Guid>? RowKey { get; set; }
+
+    bool Selectable => Selection is not null && RowKey is not null;
+
+    IReadOnlyList<TRow> InHand => OnQuery.HasDelegate && Scrolls ? _scrolled : Rows.Items;
+
+    bool IsSelected(TRow row)
+    {
+        return Selection!.Contains(RowKey!(row));
+    }
+
+    // True when every row in hand is ticked, false when none is, null in between — the
+    // header's third state, which a click resolves to "all of them".
+    bool? PageState()
+    {
+        var rows = InHand;
+
+        if (rows.Count == 0)
+        {
+            return false;
+        }
+
+        var ticked = rows.Count(IsSelected);
+
+        if (ticked == rows.Count)
+        {
+            return true;
+        }
+
+        return ticked == 0 ? false : null;
+    }
+
+    Task TogglePage()
+    {
+        var selection = Selection!;
+        var keys = InHand.Select(RowKey!).ToList();
+
+        if (PageState() == true)
+        {
+            // Unticking the page while the whole list is selected leaves nothing: the rows
+            // off-screen were only ever selected as part of "all".
+            if (selection.All)
+            {
+                selection.Clear();
+            }
+            else
+            {
+                selection.Ids.RemoveAll(keys.Contains);
+            }
+        }
+        else
+        {
+            selection.Ids.AddRange(keys.Where(key => !selection.Ids.Contains(key)));
+        }
+
+        return SelectionChanged.InvokeAsync(selection);
+    }
+
+    Task Toggle(TRow row, bool selected)
+    {
+        var selection = Selection!;
+        var key = RowKey!(row);
+
+        // One row out of "all" is no longer all: what stays ticked is what the user can see
+        // ticked, the rows in hand minus this one.
+        if (selection.All)
+        {
+            selection.All = false;
+            selection.Ids = InHand.Select(RowKey!).Where(other => other != key).ToList();
+        }
+        else if (selected)
+        {
+            if (!selection.Ids.Contains(key))
+            {
+                selection.Ids.Add(key);
+            }
+        }
+        else
+        {
+            selection.Ids.Remove(key);
+        }
+
+        return SelectionChanged.InvokeAsync(selection);
+    }
+
+    Task SelectAll()
+    {
+        Selection!.All = true;
+        Selection.Ids.Clear();
+
+        return SelectionChanged.InvokeAsync(Selection);
+    }
+
+    Task ClearSelection()
+    {
+        Selection!.Clear();
+
+        return SelectionChanged.InvokeAsync(Selection);
+    }
+
+    string Counted(string key, int count)
+    {
+        return string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Translate(key, count), count);
+    }
+
+    // Auto asks the device, not the size: the answer rides in on the request, so it is already
+    // in hand on the first render and no browser has to be measured for it. A phone therefore
+    // never renders a pager at all, and a narrow desktop window still pages — the infinite
+    // scroll is a touch gesture, not a consequence of narrow columns.
+    bool Scrolls
+    {
+        get
+        {
+            return Mode switch
+            {
+                NsTableMode.Scroll => true,
+                NsTableMode.Auto => IsPhone,
+                _ => false
+            };
+        }
+    }
+
+    // Resolved, never injected: a host with no device seam registered — a component test, a
+    // surface that is not a Blazor Web App — must still render its markup rather than fail to
+    // construct it, and Page is what it gets, exactly like a desktop.
+    bool IsPhone
+    {
+        get
+        {
+            if (!_askedDevice)
+            {
+                _askedDevice = true;
+                _devices = Services.GetService(typeof(IDeviceProvider)) as IDeviceProvider;
+            }
+
+            return _devices?.IsPhone ?? false;
+        }
+    }
+
+    // Handing the table an editor is what offers inline editing, and the form around it is
+    // what may withdraw the offer: every control this table draws to change its rows — the
+    // add, the pencil, the delete, the open editor itself — goes with it (NsCollectionBase).
+    bool Editable => RowEditor is not null && ParentWritable;
+
+    // One row at a time: while an editor is open every other row's controls are inert, so
+    // there is no half-typed row to lose track of and no order to resolve between two.
+    bool IsBusy => _editing is not null;
+
+    // Reference identity, not equality: two rows carrying the same values are still two
+    // rows, and only the one the user opened may render its editor.
+    bool IsEditing(TRow item)
+    {
+        return Editable && _editing is not null && ReferenceEquals(_editing, item);
+    }
+
+    Task HandleRowClick(TableRowClickEventArgs<TRow> args)
+    {
+        if (args.Item is null || IsBusy)
+        {
+            return Task.CompletedTask;
+        }
+
+        return OnRowClick.InvokeAsync(args.Item);
+    }
+
+    /// <summary>Opens a new row for editing, as the table's own add control does — for a page
+    /// that adds from its own chrome (<see cref="AddControl"/> off). Inert while a row is open,
+    /// the same one-row-at-a-time rule the control keeps by being disabled.</summary>
+    public void Add()
+    {
+        if (!Editable || NewRow is null || IsBusy)
+        {
+            return;
+        }
+
+        _editing = NewRow();
+        _editingIsNew = true;
+
+        StateHasChanged();
+    }
+
+    void Edit(TRow item)
+    {
+        _editing = item;
+        _editingIsNew = false;
+    }
+
+    async Task Commit(TRow item)
+    {
+        var args = new RowEditEventArgs<TRow>
+        {
+            Row = item,
+            IsNew = _editingIsNew
+        };
+
+        await Raise(OnRowCommit, args);
+
+        // Raise reports a Problem rather than throwing it back, so the outcome is read off
+        // the args: a rejected row must stay open where the user can still fix it.
+        if (args.Cancel || args.Problem is not null)
+        {
+            return;
+        }
+
+        Close();
+    }
+
+    async Task Cancel(TRow item)
+    {
+        // A row that was never confirmed exists only because the user asked for one; backing
+        // out of it leaves nothing to fall back to, so it goes.
+        if (_editingIsNew)
+        {
+            await Raise(OnRowRemove, new RowEditEventArgs<TRow> { Row = item, IsNew = true });
+        }
+
+        Close();
+    }
+
+    Task Remove(TRow item)
+    {
+        return Raise(OnRowRemove, new RowEditEventArgs<TRow> { Row = item });
+    }
+
+    void Close()
+    {
+        _editing = null;
+        _editingIsNew = false;
+    }
+
+    /// <summary>MudBlazor drives paging through this: it owns the page and size, asks for a
+    /// page, and reads the total off what comes back. Passing Items instead would make it
+    /// count only the rows in hand and conclude there is a single page.</summary>
+    async Task<TableData<TRow>> LoadPage(TableState state, CancellationToken cancellationToken)
+    {
+        var args = new QueryEventArgs
+        {
+            PageIndex = state.Page,
+            PageSize = state.PageSize
+        };
+
+        // Replace: the page asked for last is the one the user is looking at. A search typed
+        // while the previous page is still arriving asks again at once, and a second run on a
+        // busy Runner throws — the vendor swallows that, so the search was simply lost and the
+        // grid kept showing rows the new filter excludes.
+        await Raise(OnQuery, args, RunOptions.Replace);
+
+        _hasLoaded = true;
+
+        // The page assigns Rows while handling the query, so the fresh value is read from
+        // the parameter right after — it is the same DataPage the caller just fetched.
+        return new TableData<TRow>
+        {
+            Items = Rows.Items,
+            TotalItems = Rows.TotalCount
+        };
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && Mode == NsTableMode.Auto)
+        {
+            await SubscribeToViewport();
+        }
+
+        if (!OnQuery.HasDelegate || !Scrolls)
+        {
+            return;
+        }
+
+        // Scroll mode has no ServerData for MudTable to pull the first page through, so the
+        // component asks for page 0 itself — on its first render, or on the render that turned
+        // scrolling on for a table whose Mode its page changed.
+        if (!_started)
+        {
+            _started = true;
+
+            // Replace, not None: a Mode changed after the first render reaches this line with
+            // the page branch's MudTable holding a ServerData query of its own on this
+            // component's Runner. A second Run while one is going throws "Runner is already
+            // running." straight out of OnAfterRenderAsync, into NsErrorBoundary, which wraps
+            // @Body — the whole screen, header and NUEVO link included. The page in flight is
+            // the one being superseded anyway: its answer belongs to a branch that no longer
+            // exists.
+            await Fetch(_generation, RunOptions.Replace);
+
+            return;
+        }
+
+        // The vendor's listener resolves its selector ONCE, when it is subscribed, and a table
+        // with no rows has no .mud-table-container to resolve to — a listener created before
+        // the first page landed binds to nothing and never fires again. Subscribing is also
+        // what starts it: IScrollListener has no Start, and the type that does is internal to
+        // MudBlazor.
+        //
+        // Nothing here asks the listener for the container's geometry:
+        // GetCurrentScrollDataAsync called from OnAfterRenderAsync freezes the circuit, so a
+        // first page too short to scroll is covered by the Cargar más control instead.
+        if (!_listenerStarted && _scrolled.Count > 0)
+        {
+            _listenerStarted = true;
+
+            StartScrollListener();
+        }
+    }
+
+    // Not called unguarded, and not retried: creating the listener and subscribing to it IS the
+    // vendor's JS listener starting, and the JS side resolves the selector once with
+    // querySelector — anything it throws (a container that is not there, a circuit whose JS is
+    // gone) comes back as a JSException on this path, and an exception out of
+    // OnAfterRenderAsync reaches NsErrorBoundary, which wraps the whole @Body: the grid would
+    // take the page's header and its NUEVO link down with it. A listener that never starts
+    // costs the scroll gesture and nothing else — Cargar más is already the way past exactly
+    // that.
+    void StartScrollListener()
+    {
+        try
+        {
+            _listener = ScrollListeners.Create($".{_instance} .mud-table-container");
+            _listener.OnScroll += HandleScroll;
+        }
+        catch
+        {
+            _listener = null;
+        }
+    }
+
+    // Same reason, same blast radius: SubscribeAsync is raw JS interop (ListenForResize, plus
+    // GetBrowserWindowSize for the immediate answer) and lets a JSException straight out. A
+    // viewport that cannot be measured costs the measurement and nothing else — no branch of
+    // this table depends on one arriving.
+    async Task SubscribeToViewport()
+    {
+        try
+        {
+            await Viewport.SubscribeAsync(
+                _viewportSubscription,
+                OnViewportChanged,
+                new ResizeOptions { NotifyOnBreakpointOnly = true },
+                fireImmediately: true);
+        }
+        catch
+        {
+            _breakpoint = null;
+        }
+    }
+
+    void OnViewportChanged(BrowserViewportEventArgs args)
+    {
+        // A width of zero is not a narrow window, it is nobody measuring: the service answers
+        // its immediate notification from whatever the JS side hands back, which off a browser
+        // (bUnit, prerender) is an empty size that classifies as the smallest breakpoint.
+        if (args.BrowserWindowSize is not { Width: > 0 })
+        {
+            return;
+        }
+
+        if (_breakpoint == args.Breakpoint)
+        {
+            return;
+        }
+
+        _breakpoint = args.Breakpoint;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    void HandleScroll(object? sender, ScrollEventArgs args)
+    {
+        if (_fetching || _exhausted)
+        {
+            return;
+        }
+
+        // A page-height of slack: the next page starts arriving before the reader hits the
+        // floor, which is what makes it read as one list rather than as a stall.
+        if (args.ScrollTop + args.ClientHeight < args.ScrollHeight - 200)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(FetchNext);
+    }
+
+    Task FetchNext()
+    {
+        // One append at a time: pages have to arrive in order to be appended in order.
+        if (_fetching || _exhausted)
+        {
+            return Task.CompletedTask;
+        }
+
+        return Fetch(_generation, RunOptions.None);
+    }
+
+    async Task Fetch(int generation, RunOptions options)
+    {
+        _fetching = true;
+
+        var args = new QueryEventArgs
+        {
+            PageIndex = _nextPage,
+            PageSize = ScrollPageSize
+        };
+
+        await Raise(OnQuery, args, options);
+
+        // A reload that landed while this page was in flight already owns the list, and this
+        // answer describes the result set it replaced — appending it would mix two searches.
+        if (generation != _generation)
+        {
+            return;
+        }
+
+        _scrolled.AddRange(Rows.Items);
+        _nextPage++;
+        _hasLoaded = true;
+
+        // Both conditions are needed: a total that lies, or a filter applied between two
+        // pages, would otherwise keep asking forever, and an empty answer is the only
+        // end-of-list signal a count cannot give.
+        _exhausted = Rows.Items.Count == 0 || _scrolled.Count >= Rows.TotalCount;
+        _fetching = false;
+
+        StateHasChanged();
+    }
+
+    /// <summary>Re-runs the query after something changed the data. Pass first: true when the
+    /// result set itself changed (a new search, a filter) — page 4 of the old results is not
+    /// page 4 of the new ones.</summary>
+    public async Task Reload(bool first = false)
+    {
+        if (first && Selectable && !Selection!.IsEmpty)
+        {
+            Selection.Clear();
+
+            await SelectionChanged.InvokeAsync(Selection);
+        }
+
+        await ReloadRows(first);
+    }
+
+    Task ReloadRows(bool first)
+    {
+        if (Scrolls)
+        {
+            // Nothing to navigate: the accumulated list IS the position, so a reload of any
+            // kind starts it over — no row from the previous result set survives.
+            //
+            // A page already in flight is SUPERSEDED, not waited for and not skipped: the
+            // guard that keeps two appends in order would otherwise swallow the reload
+            // outright, leaving the previous search's rows on screen. Replace cancels that
+            // run, and the generation makes its answer stale if it arrives anyway.
+            _generation++;
+            _scrolled.Clear();
+            _nextPage = 0;
+            _exhausted = false;
+            _fetching = false;
+
+            return Fetch(_generation, RunOptions.Replace);
+        }
+
+        if (_table is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        // MudTable's CurrentPage setter returns early when the page is unchanged, so
+        // NavigateTo(0) from the first page queries nothing — the reload has to be asked
+        // for. Where the page does change, NavigateTo already asks for it: one query either
+        // way.
+        if (first && _table.CurrentPage != 0)
+        {
+            _table.NavigateTo(0);
+            return Task.CompletedTask;
+        }
+
+        return _table.ReloadServerData();
+    }
+
+    // Both subscriptions are dropped without awaiting them: NsComponent's teardown is
+    // synchronous, and the JS side of a listener whose circuit is going away has nothing left
+    // to report to.
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            if (_listener is not null)
+            {
+                _listener.OnScroll -= HandleScroll;
+                _ = _listener.DisposeAsync();
+                _listener = null;
+            }
+
+            _ = Viewport.UnsubscribeAsync(_viewportSubscription);
+        }
+
+        base.Dispose(disposing);
+    }
+}

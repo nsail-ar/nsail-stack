@@ -1,0 +1,39 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@if (Menu is null)
+{
+    <div class="d-flex flex-column flex-grow-1 bg-background">
+        <div class="d-flex flex-grow-1 min-h-0 align-center justify-center">
+            @ChildContent
+        </div>
+    </div>
+}
+else
+{
+    <NsMainLayout>
+        <Drawer>
+            @Menu
+        </Drawer>
+        <Content>
+            @ChildContent
+        </Content>
+    </NsMainLayout>
+}
+
+@code {
+
+    /// <summary>The gutter beside the content — where MainLayout puts the nav menu, so whatever
+    /// goes here collapses below the drawer's breakpoint exactly like the nav does. A layout
+    /// with no Menu is the bare centered frame sign-in uses. This layout draws no app bar of its
+    /// own — the content names itself in its own title row, exactly like every MainLayout-hosted
+    /// page (NsPageHeader/NsTitleBar), which is what keeps the hamburger tied to the drawer's own
+    /// breakpoint instead of showing at every width.</summary>
+    [Parameter]
+    public RenderFragment? Menu { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

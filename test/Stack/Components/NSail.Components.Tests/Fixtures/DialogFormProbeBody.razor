@@ -1,0 +1,62 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+
+@* A dialog-hosted FORM, the shape of the eighteen (OpenTillForm, LocationForm, SetPasswordForm
+   and the rest): a real NsForm inside a real NsPanel, with the footer's own Cancelar beside the
+   submit — the two faces of the exit that have to agree. The submit waits on the gate the test
+   holds, so the save is still in flight while the header X is read, and the escape probe prints
+   what the dialog's own options say about Escape at this moment. *@
+
+<NsForm TModel="CheckBoxTrackingModel" Model="Model" Disabled="Disabled" Untracked OnSubmit="HandleSubmit">
+    <NsPanel>
+        <Content>
+            <div class="dialog-form-body">
+                <NsCheckBox TValue="bool" @bind-Value="context.Flag" />
+                <span class="probe-escape">@(Dialog?.Options.CloseOnEscapeKey?.ToString() ?? "unset")</span>
+            </div>
+        </Content>
+        <Footer>
+            <NsSubmit Class="probe-submit" />
+            <NsClose Class="probe-cancel" />
+        </Footer>
+    </NsPanel>
+</NsForm>
+
+@code {
+
+    [CascadingParameter]
+    IMudDialogInstance? Dialog { get; set; }
+
+    [Parameter, EditorRequired]
+    public CheckBoxTrackingModel Model { get; set; } = default!;
+
+    /// <summary>The form refuses writes — what a page hands its own NsForm.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Held by the test for as long as it wants the save in flight.</summary>
+    [Parameter]
+    public TaskCompletionSource? Gate { get; set; }
+
+    /// <summary>Ends the save refused, which leaves the dialog standing — the only way to read
+    /// what the exit looks like AFTER a save, since one that takes closes the surface.</summary>
+    [Parameter]
+    public bool Aborts { get; set; }
+
+    async Task HandleSubmit(SubmitEventArgs<CheckBoxTrackingModel> args)
+    {
+        if (Gate is not null)
+        {
+            await Gate.Task;
+        }
+
+        if (Aborts)
+        {
+            args.Abort();
+        }
+    }
+}

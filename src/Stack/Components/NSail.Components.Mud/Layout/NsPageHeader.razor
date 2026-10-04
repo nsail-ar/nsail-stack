@@ -1,0 +1,180 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@inject StringManager Strings
+
+<NsStack Gap="NsSize.Sm">
+
+    <NsTitleBar Title="@Title" Icon="@Icon">
+        @Caption
+        @if (!string.IsNullOrWhiteSpace(Guide))
+        {
+            <NsGuideLink Topic="@Guide" />
+        }
+    </NsTitleBar>
+
+    @if (Subtitle is not null)
+    {
+        <div>
+            @Subtitle
+        </div>
+    }
+
+    @if (_hasToolBar)
+    {
+        <NsToolBar Class="@(ReservesToggleGutter ? "ns-toolbar-align-toggle" : null)">
+            @* Its own width, whatever it is: the search zone below is the one thing in this row
+               that declares one, and a control that is not a search has no business inheriting
+               it. *@
+            @Lead
+
+            @if (Search is not null || SearchTextChanged.HasDelegate)
+            {
+                @* A comfortable width, not end to end. *@
+                <div class="ns-toolbar-search">
+                    @if (Search is not null)
+                    {
+                        @Search
+                    }
+                    else
+                    {
+                        <NsSearchField Value="@SearchText" ValueChanged="SearchTextChanged" Debounce="300" Grow />
+                    }
+                </div>
+            }
+
+            @* The filter toggle sits next to the search it refines; the spacer past it
+               holds the gap so the content actions stay at the right edge. *@
+            @if (Filter is not null && Search is null && !FilterAlwaysOpen)
+            {
+                <NsButton Icon="@NsIcons.Tune"
+                          Label="@FilterLabel"
+                          OnClick="ToggleFilter" />
+            }
+
+            <NsSpacer />
+
+            @Actions
+        </NsToolBar>
+    }
+
+    @if (Filter is not null && (FilterAlwaysOpen || FilterOpenValue))
+    {
+        @Filter
+    }
+
+</NsStack>
+
+@code {
+
+    bool _filterOpen;
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    /// <summary>The shell's drawer state, cascaded by NsMainLayout — the same cascade
+    /// NsTitleBar reads to decide whether its own row draws the hamburger.</summary>
+    [CascadingParameter]
+    public NsLayoutState? LayoutState { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>Overrides the icon NsTitleBar derives from the address the page was opened at
+    /// (see NsTitleBar.Icon).</summary>
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    /// <summary>Window-level actions (refresh, export) shown before the close icon in the
+    /// title row. Data actions go in Actions, filters in Filter.</summary>
+    [Parameter]
+    public RenderFragment? Caption { get; set; }
+
+    /// <summary>What the screen's subject is called besides its name — the address a thread
+    /// stands on, under the contact it is with. Its own row between the title and the toolbar,
+    /// because it reads as the second line of a heading and not as an act: Caption sits at the
+    /// title row's far edge, where the utilities are.</summary>
+    [Parameter]
+    public RenderFragment? Subtitle { get; set; }
+
+    /// <summary>Where in the guide this screen is explained — "{chapter}" or
+    /// "{chapter}#{section}". The header places the door itself, last in the title row, so
+    /// every screen's way into the guide sits in one place and no page positions it.</summary>
+    [Parameter]
+    public string? Guide { get; set; }
+
+    /// <summary>Actions on the content below (New, import) — the right of the toolbar.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    /// <summary>The collapsible advanced-filter panel — plain layout, the header never reads
+    /// its contents. Its mere presence adds the toggle to the toolbar.</summary>
+    [Parameter]
+    public RenderFragment? Filter { get; set; }
+
+    /// <summary>Takes over the search zone: the built-in search box and the filter toggle give
+    /// way to this content. For lists whose left side is a scope selector, not free text.</summary>
+    [Parameter]
+    public RenderFragment? Search { get; set; }
+
+    /// <summary>The toolbar's leading content, standing before the search zone and sizing
+    /// itself — a control over what the screen is SHOWING rather than over what it lists. Beside
+    /// Search and never instead of it, so a screen that wants both keeps both, and outside the
+    /// search box's own width. A control that governs the subject beside the acts on it rides
+    /// Actions, at the row's right edge, instead.</summary>
+    [Parameter]
+    public RenderFragment? Lead { get; set; }
+
+    /// <summary>Bind for a reactive text filter — the header renders the search box and
+    /// debounces it. Left unbound, no search box shows. Null it from outside to clear.</summary>
+    [Parameter]
+    public string? SearchText { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SearchTextChanged { get; set; }
+
+    /// <summary>How many advanced filters are currently set — the page computes it (only it
+    /// knows), shown as a badge so filters aren't invisibly applied with the panel closed.</summary>
+    [Parameter]
+    public int FilterCount { get; set; }
+
+    /// <summary>Optional two-way control of the panel. Unbound, the toggle drives an internal
+    /// flag. Bind it to open the page already expanded (arriving with preset filters).</summary>
+    [Parameter]
+    public bool? FilterOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> FilterOpenChanged { get; set; }
+
+    /// <summary>The screen's filters are required for the list to mean anything (a party
+    /// account with no party picked), so the panel pins open and the toggle never renders —
+    /// there is nothing to reveal or hide.</summary>
+    [Parameter]
+    public bool FilterAlwaysOpen { get; set; }
+
+    bool _hasToolBar => Lead is not null || Search is not null || SearchTextChanged.HasDelegate || Filter is not null || Actions is not null;
+
+    bool ReservesToggleGutter => NsTitleBar.ShowsToggle(Surface, LayoutState);
+
+    bool FilterOpenValue => FilterOpen ?? _filterOpen;
+
+    string FilterLabel => FilterCount > 0
+        ? string.Format(Strings.Translate("Common.FiltersCount"), FilterCount)
+        : Strings.Translate("Common.Filters");
+
+    Task ToggleFilter()
+    {
+        var next = !FilterOpenValue;
+
+        if (FilterOpenChanged.HasDelegate)
+        {
+            return FilterOpenChanged.InvokeAsync(next);
+        }
+
+        _filterOpen = next;
+        return Task.CompletedTask;
+    }
+}

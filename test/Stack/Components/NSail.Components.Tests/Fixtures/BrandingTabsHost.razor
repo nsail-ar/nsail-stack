@@ -1,0 +1,37 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Forms
+@using NSail.Components
+
+<NsForm TModel="BrandingTabsModel" Model="Model" OnSubmit="HandleSubmit" @ref="_form">
+    <NsTabs>
+        <NsTab Title="Claro">
+            <NsTextField @bind-Value="context.LightPrimary" />
+        </NsTab>
+        <NsTab Title="Oscuro">
+            <NsTextField @bind-Value="context.DarkPrimary" />
+        </NsTab>
+        <NsTab Title="Impresión">
+            <NsTextField @bind-Value="context.PrintLogoAssetId" />
+        </NsTab>
+    </NsTabs>
+</NsForm>
+
+@code {
+
+    NsForm<BrandingTabsModel>? _form;
+
+    [Parameter, EditorRequired]
+    public BrandingTabsModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    async Task HandleSubmit()
+    {
+        await Submitted.InvokeAsync();
+    }
+}

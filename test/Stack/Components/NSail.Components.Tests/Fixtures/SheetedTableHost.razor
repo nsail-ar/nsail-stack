@@ -1,0 +1,44 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+<MudPopoverProvider />
+
+@* The two sheets a table is ever placed inside, in the shape the tree places them: a lines
+   editor's NsPaper Outlined and a dashboard card's NsCard (ns-mud.css, ONE FRAME PER TABLE). *@
+<NsPaper Outlined>
+    <NsTable TRow="TestModel" Rows="Page" Grow="false">
+        <HeaderContent>
+            <NsTh For="() => context.Name" />
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <NsTd For="() => row.Name">@row.Name</NsTd>
+        </RowTemplate>
+    </NsTable>
+</NsPaper>
+
+<NsCard Grow="false">
+    <Content>
+        <NsTable TRow="TestModel" Rows="Page" Grow="false">
+            <HeaderContent>
+                <NsTh For="() => context.Name" />
+            </HeaderContent>
+            <RowTemplate Context="row">
+                <NsTd For="() => row.Name">@row.Name</NsTd>
+            </RowTemplate>
+        </NsTable>
+    </Content>
+</NsCard>
+
+@code {
+
+    DataPage<TestModel> Page { get; } = DataPage<TestModel>.From(
+    [
+        new TestModel { Name = "Ana", Age = 3 },
+        new TestModel { Name = "Beto", Age = 4 }
+    ]);
+}

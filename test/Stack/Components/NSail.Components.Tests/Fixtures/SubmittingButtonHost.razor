@@ -1,0 +1,79 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Icons
+
+@* The footer a page writes when the hero is not the only way to save: an act that drives the
+   same form from outside its chrome, an act that has nothing to do with the form, the hero
+   itself, both faces of the way out, and all three faces of a link that only goes somewhere —
+   Entregar's Cobrar/Facturar/Ver comprobante are the chromed one. The form is Untracked so the
+   only thing that can grey anything here is the run — the dirty gate is NsSubmitUntrackedTests'
+   subject, not this one's. The surface is named so it is not the main one, which is the only
+   surface NsClose draws on. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Name="@Surfaces.Aside" Context="surface">
+        <NsForm TModel="SubmitTrackingModel" Model="Model" OnSubmit="HandleSubmit" @ref="_form" Disabled="Disabled" Untracked>
+            <NsTextField @bind-Value="context.Name" />
+            <NsButton Submits Class="quote" Label="Quote" OnClick="Quote" />
+            <NsButton Class="beside" Label="Beside" OnClick="Beside" />
+            <NsSubmit Class="hero" />
+            <NsClose Class="cancel" />
+            <NsClose As="NsAs.Inline" Class="close-x" />
+            <NsLink As="NsAs.Default" Href="/elsewhere" Label="Chromed" Class="link-chromed" />
+            <NsLink Href="/elsewhere" Icon="@NsIcons.Search" Breakpoint="NsBreakpoint.Never" Label="Glyph" Class="link-glyph" />
+            <NsLink Href="/elsewhere" Label="Worded" Class="link-worded" />
+        </NsForm>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    NsForm<SubmitTrackingModel>? _form;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public SubmitTrackingModel Model { get; set; } = default!;
+
+    /// <summary>What the submit waits on, so a test can look at the screen while the save is in
+    /// flight.</summary>
+    [Parameter]
+    public Task? Held { get; set; }
+
+    /// <summary>The other half of the form's word: a form that refuses writes outright, which
+    /// every act under it answers whether or not it drives the save.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    public int Quotes { get; private set; }
+
+    public int Besides { get; private set; }
+
+    public int Submits { get; private set; }
+
+    async Task Quote()
+    {
+        Quotes++;
+
+        await (_form?.Submit() ?? Task.FromResult(false));
+    }
+
+    void Beside()
+    {
+        Besides++;
+    }
+
+    async Task HandleSubmit()
+    {
+        Submits++;
+
+        if (Held is { } held)
+        {
+            await held;
+        }
+    }
+}

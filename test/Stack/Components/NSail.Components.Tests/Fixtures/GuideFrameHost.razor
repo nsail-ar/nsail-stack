@@ -1,0 +1,27 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using NSail.Components
+
+@* The frame as MainLayout builds it: one surface cascading over both the drawer and the page,
+   and the drawer rendered BEFORE the content — which is the order that makes a page's
+   announcement arrive after the drawer already drew, and the reason the drawer listens. *@
+<CascadingValue Value="Surface" IsFixed="true">
+    <CascadingAuthenticationState>
+        <NsNavMenu />
+    </CascadingAuthenticationState>
+
+    <NsGuide Chapter="@Chapter" />
+</CascadingValue>
+
+@code {
+
+    [Parameter]
+    public SurfaceContext? Surface { get; set; }
+
+    [Parameter]
+    public string? Chapter { get; set; }
+}

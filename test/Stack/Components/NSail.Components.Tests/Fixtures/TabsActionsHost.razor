@@ -1,0 +1,22 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* Nueva Venta's own shape, reduced to the seam: a strip of tabs with the page's act drawn after
+   the last tab. *@
+<NsTabs Grow="false">
+    <Actions>
+        <button type="button" class="strip-act"></button>
+    </Actions>
+    <ChildContent>
+        <NsTab Title="First">
+            <div class="first-content"></div>
+        </NsTab>
+        <NsTab Title="Second">
+            <div class="second-content"></div>
+        </NsTab>
+    </ChildContent>
+</NsTabs>

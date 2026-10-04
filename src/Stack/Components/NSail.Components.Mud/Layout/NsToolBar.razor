@@ -1,0 +1,19 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* One row of tools above the grid — a flexible child (search Grow or NsSpacer) pushes the
+   rest to the right. Used inside NsPageHeader; not meant to stand alone in a page. *@
+<NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.End" Gap="NsSize.Sm" Class="@Class">
+    @ChildContent
+</NsStack>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+}

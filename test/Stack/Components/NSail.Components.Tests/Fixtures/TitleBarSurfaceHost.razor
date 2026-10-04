@@ -1,0 +1,32 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Icons
+
+@* NsTitleBar reads its surface from the cascade NsSurfaceContext provides to every routed
+   page. The surface is handed in already built so the test owns it and can Enter()/Exit()
+   the work the bar is supposed to reflect. No app bar here on purpose: this is the overlay's
+   composition, where the bar draws its own chrome and there is no frame to hand it to. *@
+<CascadingValue Value="Surface" IsFixed="true">
+    <NsTitleBar Title="@Title" Icon="@Icon">@Utilities</NsTitleBar>
+</CascadingValue>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public SurfaceContext Surface { get; set; } = default!;
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>Left unset for the page that has no menu entry of its own — the case where the
+    /// icon slot is empty until there is work to report.</summary>
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    [Parameter]
+    public RenderFragment? Utilities { get; set; }
+}

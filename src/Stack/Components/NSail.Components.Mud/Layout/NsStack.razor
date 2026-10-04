@@ -1,0 +1,102 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+<MudStack Row="Horizontal"
+          Spacing="@GetSpacing()"
+          AlignItems="@GetAlign()"
+          Justify="@GetJustify()"
+          Wrap="@(Wrap ? MudBlazor.Wrap.Wrap : MudBlazor.Wrap.NoWrap)"
+          Class="@GetClasses()">
+    @ChildContent
+</MudStack>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public bool Horizontal { get; set; }
+
+    [Parameter]
+    public bool Grow { get; set; }
+
+    [Parameter]
+    public bool Scroll { get; set; }
+
+    [Parameter]
+    public bool Wrap { get; set; }
+
+    [Parameter]
+    public NsSize Gap { get; set; } = NsSize.Md;
+
+    /// <summary>Room around the arranger, on the same scale its <c>Gap</c> uses: the way a
+    /// page asks for a block to breathe without writing a spacing class or a style.</summary>
+    [Parameter]
+    public NsSize Margin { get; set; } = NsSize.None;
+
+    [Parameter]
+    public NsAlign Align { get; set; } = NsAlign.Stretch;
+
+    [Parameter]
+    public NsAlign Justify { get; set; } = NsAlign.Start;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    // min-h-0 rides with overflow-y-auto and never alone: a flex item defaults to
+    // min-height:auto, which refuses to shrink below its content, so the box would keep
+    // growing and the scrollbar would never appear.
+    string GetClasses()
+    {
+        return new NsClassBuilder()
+            .Add("flex-grow-1", Grow)
+            .Add("min-h-0 overflow-y-auto", Scroll)
+            .Add($"ma-{Steps(Margin)}", Margin != NsSize.None)
+            .Add(Class)
+            .ToString();
+    }
+
+    int GetSpacing()
+    {
+        return Steps(Gap);
+    }
+
+    // Gap and Margin read off one scale so "Lg" is the same distance whichever of them asks
+    // for it; the numbers are MudBlazor's 4px spacing steps.
+    static int Steps(NsSize size)
+    {
+        return size switch
+        {
+            NsSize.None => 0,
+            NsSize.Xs => 1,
+            NsSize.Sm => 2,
+            NsSize.Md => 4,
+            NsSize.Lg => 6,
+            NsSize.Xl => 8,
+            NsSize.Xxl => 10,
+            _ => 4
+        };
+    }
+
+    AlignItems GetAlign() => Align switch
+    {
+        NsAlign.Start => AlignItems.Start,
+        NsAlign.Center => AlignItems.Center,
+        NsAlign.End => AlignItems.End,
+        NsAlign.Baseline => AlignItems.Baseline,
+        _ => AlignItems.Stretch
+    };
+
+    Justify GetJustify() => Justify switch
+    {
+        NsAlign.Center => MudBlazor.Justify.Center,
+        NsAlign.End => MudBlazor.Justify.FlexEnd,
+        NsAlign.SpaceBetween => MudBlazor.Justify.SpaceBetween,
+        NsAlign.SpaceAround => MudBlazor.Justify.SpaceAround,
+        NsAlign.SpaceEvenly => MudBlazor.Justify.SpaceEvenly,
+        _ => MudBlazor.Justify.FlexStart
+    };
+}

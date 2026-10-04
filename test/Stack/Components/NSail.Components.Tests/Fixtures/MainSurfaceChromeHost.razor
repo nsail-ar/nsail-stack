@@ -1,0 +1,50 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Icons
+
+@* The page's own title bar on the main surface. No shell mounts NsAppBar any more (nsail#561,
+   then nsail#702 for NsFullLayout's own bar) — the page names itself at every width and the
+   drawer's toggle rides its title row — so this fixture exercises the two components
+   independently rather than as one shell: NsAppBar for its announcement contract, NsTitleBar
+   for the title row it draws on the surface that reads it. The surface is handed in already
+   built so the test owns it and can Enter()/Exit() the work the chrome reflects; the layout
+   state likewise, so a test can read what the toggle did. *@
+<CascadingValue Value="Surface" IsFixed="true">
+    <CascadingValue Value="LayoutState" IsFixed="true">
+        <NsAppBar ShowDrawerButton="false" StandsInForDrawer Brand="@Brand" />
+        <NsTitleBar Title="@Title" Icon="@Icon">@Utilities</NsTitleBar>
+    </CascadingValue>
+</CascadingValue>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public SurfaceContext Surface { get; set; } = default!;
+
+    /// <summary>The shell's drawer state, which the title bar's hamburger toggles. Left null
+    /// for the cases where no shell is on screen and no toggle is drawn.</summary>
+    [Parameter]
+    public NsLayoutState? LayoutState { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>Left unset for the page that has no menu entry of its own — the case where the
+    /// icon slot is empty until there is work to report.</summary>
+    [Parameter]
+    public Glyph? Icon { get; set; }
+
+    /// <summary>The page's utility actions, the fragment that travels with the announcement.</summary>
+    [Parameter]
+    public RenderFragment? Utilities { get; set; }
+
+    /// <summary>What MainLayout hands the bar: the install's identity. Never drawn any more
+    /// (nsail#606) — kept only so NsAppBar's own Brand parameter still has a caller in this
+    /// fixture.</summary>
+    [Parameter]
+    public RenderFragment? Brand { get; set; }
+}

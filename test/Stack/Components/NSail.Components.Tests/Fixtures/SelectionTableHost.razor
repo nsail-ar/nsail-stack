@@ -1,0 +1,42 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+
+<MudPopoverProvider />
+
+@* The synchronous Rows path: the rows are in hand on the first render, and Total says how many
+   the query would answer past them — the case "select all N" exists for. *@
+<NsTable TRow="SelectableRow" Rows="Page" Selection="Selection" SelectionChanged="_ => Changes++" RowKey="row => row.Id">
+    <HeaderContent>
+        <NsTh>Name</NsTh>
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd DataLabel="Name">@row.Name</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public List<SelectableRow> Rows { get; set; } = [];
+
+    [Parameter]
+    public int Total { get; set; }
+
+    [Parameter, EditorRequired]
+    public Selection Selection { get; set; } = default!;
+
+    public int Changes { get; private set; }
+
+    DataPage<SelectableRow> Page => new()
+    {
+        Items = Rows,
+        PageSize = Rows.Count,
+        TotalCount = Math.Max(Total, Rows.Count),
+    };
+
+    public sealed record SelectableRow(Guid Id, string Name);
+}

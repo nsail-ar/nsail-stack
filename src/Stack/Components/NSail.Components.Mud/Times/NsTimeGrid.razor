@@ -1,0 +1,368 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using System.Globalization
+@using Microsoft.JSInterop
+@using NSail.Localization
+
+@implements IDisposable
+
+@inject IJSRuntime JS
+@inject StringManager Strings
+
+<div class="@GetClasses()" style="@GetStyle()">
+
+    @* Same container query that hides the aside columns, read the other way: the note
+       says out loud what the collapse otherwise leaves unspoken. Rendered whenever there is
+       more than one day to lose — CSS alone decides whether that is actually happening at
+       the width on screen, so the two never disagree (Emmanuel, 2026-08-04: six days gone
+       with nothing on the page to say so). *@
+    @if (_dates.Count > 1)
+    {
+        <div class="ns-time-grid-note">
+            <NsText Size="NsSize.Sm" Secondary>@HiddenDaysText()</NsText>
+        </div>
+    }
+
+    @* The component's own scrollport. The track below it is the whole day, always: a window
+       that CUT the content put an appointment at 21:00 — and the now line after DayEnd —
+       somewhere the user could not reach, with no scrollbar anywhere to say so. What the
+       window decides now is how much of the day stands open before anyone scrolls. *@
+    <div class="ns-time-grid-scroll ns-scroll-thin d-flex" @ref="_scroll">
+
+        <div class="ns-time-grid-gutter">
+            <div class="ns-time-grid-head"></div>
+            @foreach (var hour in Hours)
+            {
+                <div class="ns-time-grid-hour">
+                    <span class="ns-time-grid-mark">@hour.ToString("t")</span>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex flex-column flex-1 min-w-0">
+
+            <div class="ns-time-grid-head d-flex">
+                @foreach (var date in _dates)
+                {
+                    <div class="@GetColumnClasses(date)">
+                        <span class="ns-time-grid-mark">@date.ToString("ddd d")</span>
+                    </div>
+                }
+            </div>
+
+            <div class="d-flex flex-1">
+                @foreach (var date in _dates)
+                {
+                    <div class="@GetColumnClasses(date) ns-time-grid-column">
+                        @* The column's own wash, drawn before anything else in it: a day that
+                           qualifies as a whole is the column, never a block spanning it — a
+                           block would be handed a lane, would be swept into whatever the
+                           consumer frames its hours from, and would sit level with the
+                           background blocks it has to stay behind. *@
+                        @if (TintOf(date) is { } tint)
+                        {
+                            <div class="ns-time-grid-tint" style="@TintStyle(tint.Color)" title="@tint.Label">
+                                @* The day's own word, where the frame opens: the wash spans the
+                                   whole track and the window opens hours below its top, so a
+                                   label at 00:00 is a label nobody sees. *@
+                                @if (!string.IsNullOrWhiteSpace(tint.Label))
+                                {
+                                    <span class="ns-time-grid-tint-label" style="@LabelStyle()">@tint.Label</span>
+                                }
+                            </div>
+                        }
+                        @foreach (var _ in Hours)
+                        {
+                            <div class="ns-time-grid-hour"></div>
+                        }
+                        @* The clock's own mark: a line at Now, only in the column whose date it
+                           is — the day is all rendered, so there is no edge left for it to fall
+                           off. *@
+                        @if (NowOffset(date) is { } offset)
+                        {
+                            <div class="ns-time-grid-now" style="@NowStyle(offset)"></div>
+                        }
+                        <CascadingValue Value="@ScaleFor(date)">
+                            @ChildContent
+                        </CascadingValue>
+                    </div>
+                }
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+@code {
+
+    const int HoursInDay = 24;
+
+    static readonly TimeOnly[] Hours = [.. Enumerable.Range(0, HoursInDay).Select(hour => new TimeOnly(hour, 0))];
+
+    static readonly TimeSpan Minute = TimeSpan.FromMinutes(1);
+
+    List<DateOnly> _dates = [];
+    ElementReference _scroll;
+    System.Threading.Timer? _timer;
+    DateTime? _given;
+    DateTime? _clock;
+    int _window = HoursInDay;
+
+    /// <summary>First day the grid shows — one column per day through To.</summary>
+    [Parameter]
+    public DateOnly From { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+
+    /// <summary>Last day the grid shows, inclusive. Earlier than From leaves a single column.</summary>
+    [Parameter]
+    public DateOnly To { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+
+    /// <summary>The one column that survives a container too narrow for all of them; From
+    /// when unset. A day outside the range keeps the first column, so something always shows.</summary>
+    [Parameter]
+    public DateOnly? Day { get; set; }
+
+    /// <summary>The hour the grid opens at — the top of what stands visible before anyone
+    /// scrolls, and where a range holding no today scrolls itself to. It never removes an hour:
+    /// the track is the whole day either way.</summary>
+    [Parameter]
+    public TimeOnly DayStart { get; set; } = new(8, 0);
+
+    /// <summary>The hour the visible frame ends at. DayEnd minus DayStart is how tall the grid
+    /// stands; the rest of the day is a scroll away, never gone.</summary>
+    [Parameter]
+    public TimeOnly DayEnd { get; set; } = new(20, 0);
+
+    /// <summary>Container width from which every column shows; below it only Day does. None
+    /// keeps them all, however little room each one gets.</summary>
+    [Parameter]
+    public NsSize Breakpoint { get; set; } = NsSize.Md;
+
+    /// <summary>Compact hours — for a grid embedded in a card, where the surface around it
+    /// is the constraint rather than the page.</summary>
+    [Parameter]
+    public bool Dense { get; set; }
+
+    /// <summary>Fits the room the grid is given: the framed window becomes a ceiling rather
+    /// than a fixed height, so a screen with less room than the frame brings the grid down to
+    /// it and the day scrolls inside — what is drawn around the grid stays where it is instead
+    /// of scrolling with it. For the grid that IS a screen's content; a grid mounted among
+    /// other content leaves it off and stands at its frame.</summary>
+    [Parameter]
+    public bool Fits { get; set; }
+
+    /// <summary>The wall clock to draw the now line at, on the same clock the days are counted
+    /// in. Null draws none — the grid never asks a clock of its own to render with, so a
+    /// prerendered server and the client cannot disagree about where the line sits. Once the
+    /// component is live in a browser it advances that clock itself, every minute, so the line
+    /// does not freeze at the minute the page happened to be built.</summary>
+    [Parameter]
+    public DateTime? Now { get; set; }
+
+    /// <summary>The days that wear a wash of their own, each with the color it wears and the
+    /// word it says about itself — a whole column tinted behind everything drawn in it, edged
+    /// the way a background block is so it reads as a stretch of time and not as a different
+    /// ground. A date this names nothing for is untinted, and the grid never asks WHY a day is
+    /// tinted: the meaning is the caller's. It changes no hour the grid frames and takes no
+    /// click, so a day can qualify without moving or blocking anything.</summary>
+    [Parameter]
+    public IReadOnlyDictionary<DateOnly, NsTimeTint>? Tints { get; set; }
+
+    /// <summary>The blocks: NsTimeBlock elements carrying their own start and duration. The
+    /// content renders once per column and each block places itself in the one it falls on,
+    /// so a block outside the day range renders nowhere.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _dates = [];
+
+        for (var date = From; date <= To; date = date.AddDays(1))
+        {
+            _dates.Add(date);
+        }
+
+        if (_dates.Count == 0)
+        {
+            _dates.Add(From);
+        }
+
+        // A new clock from the consumer wins over whatever the timer had advanced to; the
+        // timer's own ticks are not parameters and never come through here.
+        if (Now != _given)
+        {
+            _given = Now;
+            _clock = Now;
+        }
+
+        // Whole hours, so the frame lands on a gridline. Capped at the day: a window wider
+        // than twenty-four hours would ask for a scrollport taller than anything to scroll.
+        var span = DayEnd.ToTimeSpan() - DayStart.ToTimeSpan();
+        var hours = span > TimeSpan.Zero ? (int)Math.Ceiling(span.TotalHours) : 1;
+
+        _window = Math.Clamp(hours, 1, HoursInDay);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // The one thing C# cannot answer: how tall an hour is on this screen. So the anchor
+        // travels as a fraction of the track and the browser does the arithmetic, the same
+        // trade NsTimeGrid's calc()-based offsets already make.
+        await JS.InvokeVoidAsync("nsapp.scrollToFraction", _scroll, Anchor(), Bias());
+
+        if (Now is not null)
+        {
+            _timer = new System.Threading.Timer(_ => InvokeAsync(Tick), null, Minute, Minute);
+        }
+    }
+
+    void Tick()
+    {
+        _clock = DateTime.Now;
+
+        StateHasChanged();
+    }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-time-grid")
+            .Add("ns-time-dense", Dense)
+            .Add("ns-time-fits", Fits)
+            .Add(_dates.Count > 1 ? NsResponsive.ColumnsClass(Breakpoint) : null)
+            .ToString();
+    }
+
+    // The visible frame in hours, spent by ns-mud.css against the same hour unit the rows are
+    // built from — so Dense shrinks the box and its content together instead of opening a
+    // scrollport taller than the card it sits in.
+    string GetStyle()
+    {
+        return string.Create(CultureInfo.InvariantCulture, $"--ns-time-window: {_window}");
+    }
+
+    // Centred on the clock when the range holds today; otherwise the framed start, at the top.
+    double Anchor()
+    {
+        return Today() is { } now
+            ? now.TimeOfDay.TotalHours / HoursInDay
+            : DayStart.ToTimeSpan().TotalHours / HoursInDay;
+    }
+
+    double Bias()
+    {
+        return Today() is not null ? 0.5 : 0;
+    }
+
+    // Where the grid opens is a client-only decision — it runs after the first render and
+    // changes not one byte of markup — so this may read a clock the render path is forbidden
+    // to touch. Which is what lets a week that holds today open on the hour it is, on a page
+    // that draws no now line because it was handed no Now.
+    DateTime? Today()
+    {
+        var now = _clock ?? DateTime.Now;
+
+        return _dates.Contains(DateOnly.FromDateTime(now)) ? now : null;
+    }
+
+    double? NowOffset(DateOnly date)
+    {
+        if (_clock is not { } now || DateOnly.FromDateTime(now) != date)
+        {
+            return null;
+        }
+
+        return now.TimeOfDay.TotalHours;
+    }
+
+    // Invariant for the same reason NsTimeBlock's style is: a culture writing 1,5 puts a
+    // comma inside calc(), which the browser drops as a parse error.
+    static string NowStyle(double offset)
+    {
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"top: calc(var(--ns-time-hour) * {offset:0.#####})");
+    }
+
+    // A wash and not a fill: the hour lines, the now line and every block keep reading through
+    // it, which is the whole difference between qualifying a day and hiding it. Named rather
+    // than buried in the format string so the one number that decides it is in one place.
+    const int TintWashPercent = 10;
+
+    // The edge is softened the way NsTimeBlock softens a background block's: a dashed outline
+    // at full strength carries enough of the hue to read as solid by itself.
+    const int TintEdgePercent = 55;
+
+    NsTimeTint? TintOf(DateOnly date)
+    {
+        return Tints is not null && Tints.TryGetValue(date, out var tint) ? tint : null;
+    }
+
+    // The label sits at the hour the frame opens, so it is on screen at rest. Invariant like
+    // every other style here.
+    string LabelStyle()
+    {
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"top: calc(var(--ns-time-hour) * {DayStart.ToTimeSpan().TotalHours:0.#####})");
+    }
+
+    // Invariant for the reason every other style here is: a culture is not allowed to write a
+    // separator the browser drops the whole declaration over.
+    static string TintStyle(string color)
+    {
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"background-color: color-mix(in srgb, {color} {TintWashPercent}%, transparent); border-color: color-mix(in srgb, {color} {TintEdgePercent}%, transparent)");
+    }
+
+    string GetColumnClasses(DateOnly date)
+    {
+        return new NsClassBuilder("flex-1 min-w-0")
+            .Add("ns-time-grid-aside", date != Focused())
+            .ToString();
+    }
+
+    DateOnly Focused()
+    {
+        return Day is { } day && _dates.Contains(day) ? day : _dates[0];
+    }
+
+    // Named tokens rather than a positional format: a translation may need to reorder the
+    // day and the count, and Fill only understands {name}. The key itself carries the count
+    // agreement (StringManager's ".Plural" convention), so a single hidden day reads as
+    // singular text rather than "1 days".
+    string HiddenDaysText()
+    {
+        var hidden = _dates.Count - 1;
+        var key = hidden == 1 ? "Common.TimeGridHiddenDay" : "Common.TimeGridHiddenDay.Plural";
+
+        return Strings.Translate(key, new Dictionary<string, string>
+        {
+            ["day"] = Focused().ToString("D", CultureInfo.CurrentCulture),
+            ["count"] = hidden.ToString(CultureInfo.InvariantCulture),
+        });
+    }
+
+    static TimeGridScale ScaleFor(DateOnly date)
+    {
+        return new TimeGridScale
+        {
+            Date = date
+        };
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        _timer = null;
+    }
+}

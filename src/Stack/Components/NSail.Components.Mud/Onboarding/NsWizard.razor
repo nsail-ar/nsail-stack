@@ -1,0 +1,148 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using NSail.Localization
+
+@inherits NsComponent
+
+@inject IEnumerable<IOnboardingContributor> Contributors
+@inject StringManager Strings
+
+@* Nothing mounts until the sequence is known: the landing step comes from asking every step
+   whether it is already done, and a wizard drawn before those answers is drawn on step one. *@
+@if (_wizard is { } wizard)
+{
+    <NsFullLayout>
+        <Menu>
+            <div class="ns-wizard-rail">
+                @for (var position = 0; position < wizard.Steps.Count; position++)
+                {
+                    var index = position;
+
+                    <div class="@GetStepClasses(wizard, index)">
+                        <span class="ns-wizard-rail-mark">
+                            @if (wizard.IsComplete(index))
+                            {
+                                <NsIcon Icon="@NsIcons.Check" Size="NsSize.Sm" />
+                            }
+                        </span>
+                        <span class="ns-wizard-rail-title">@GetTitle(wizard.Steps[index])</span>
+                    </div>
+                }
+            </div>
+        </Menu>
+        <ChildContent>
+            <CascadingValue Value="wizard" IsFixed="true">
+                @* OnboardingLayout mounts bare — no MainLayout above it to wrap @Body in the
+                   NsContainer every other screen gets — so this is that same one padding
+                   source, placed around the whole panel rather than just the step: the footer's
+                   Back/Next sit flush on the frame otherwise, the one thing NsPanel itself never
+                   supplies (intentional-ui.md). NsContainer holds exactly one child, NsPanel,
+                   which is what every MainLayout-hosted document page already looks like — the
+                   heading rides in NsPanel's own Header, the same NsPageHeader every document
+                   page names itself with, so the title sits flush with the panel below it
+                   instead of a frame the panel does not share a gutter with. *@
+                <NsContainer>
+                    <NsPanel>
+                        <Header>
+                            <NsPageHeader Title="@Heading" />
+                        </Header>
+                        <Content>
+                            @if (wizard.Current is { } step)
+                            {
+                                @* NsStack, not a bare DynamicComponent: the container above stacks
+                                   a step's top-level blocks but leaves no gap between them, and
+                                   this is what puts room between a lead line and its form. *@
+                                <NsStack>
+                                    <DynamicComponent @key="step.StepType" Type="step.StepType" />
+                                </NsStack>
+                            }
+                        </Content>
+                        <Footer>
+                            @* The step's hook is a form's Submit() it drew no button for, so
+                               the sequence wears the refusal a form's own footer wears: while
+                               one Next is in flight neither way out is offered, and the step
+                               stays put (WizardContext.IsAdvancing). Submits is not it — this
+                               footer stands outside the step's form and reaches no cascade of
+                               it. *@
+                            <NsButton Class="ns-wizard-back"
+                                      Label="@Strings.Translate("Common.Back")"
+                                      Disabled="@(wizard.IsFirst || wizard.IsAdvancing)"
+                                      OnClick="Back" />
+                            <NsButton Class="ns-wizard-next"
+                                      As="NsAs.Main"
+                                      Label="@Strings.Translate(wizard.IsLast ? "Common.Finish" : "Common.Next")"
+                                      Disabled="@(!wizard.CanAdvance || wizard.IsAdvancing)"
+                                      OnClick="Next" />
+                        </Footer>
+                    </NsPanel>
+                </NsContainer>
+            </CascadingValue>
+        </ChildContent>
+    </NsFullLayout>
+}
+
+@code {
+
+    WizardContext? _wizard;
+
+    /// <summary>The sequence's own name, rendered in the panel's own title row. The hosting
+    /// page derives it from its own title — nothing here invents wording.</summary>
+    [Parameter]
+    public string? Heading { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_wizard is not null)
+        {
+            return;
+        }
+
+        var steps = await OnboardingStep.Collect(Contributors);
+        var wizard = new WizardContext(steps, await OnboardingStep.FirstPending(steps));
+
+        wizard.Changed += OnChanged;
+
+        _wizard = wizard;
+    }
+
+    void OnChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    Task Next()
+    {
+        return _wizard is { } wizard ? wizard.Next() : Task.CompletedTask;
+    }
+
+    void Back()
+    {
+        _wizard?.Back();
+    }
+
+    string GetTitle(OnboardingStep step)
+    {
+        return Strings.Translate($"Onboarding.{step.Name}", step.Name);
+    }
+
+    static string GetStepClasses(WizardContext wizard, int index)
+    {
+        return new NsClassBuilder("ns-wizard-rail-step")
+            .Add("ns-wizard-rail-step-current", index == wizard.Index)
+            .Add("ns-wizard-rail-step-complete", wizard.IsComplete(index))
+            .ToString();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && _wizard is { } wizard)
+        {
+            wizard.Changed -= OnChanged;
+        }
+
+        base.Dispose(disposing);
+    }
+}

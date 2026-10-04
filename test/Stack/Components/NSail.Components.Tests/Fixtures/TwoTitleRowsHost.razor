@@ -1,0 +1,34 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* Two title rows on one main surface: the shape a screen takes when a panel below its subject
+   names itself too (PasswordPage, Contraseña above Segundo factor). The drawer's toggle is the
+   surface's and a screen offers it once, so the first row carries it and the second carries
+   none. The subject's row can be dropped, which is what a step that replaces its panel does and
+   what a navigation away from the screen does to every row at once. *@
+<CascadingValue Value="Surface" IsFixed="true">
+    <CascadingValue Value="LayoutState" IsFixed="true">
+        @if (Subject)
+        {
+            <NsTitleBar Title="Contraseña" />
+        }
+        <NsTitleBar Title="Segundo factor" />
+    </CascadingValue>
+</CascadingValue>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public SurfaceContext Surface { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public NsLayoutState LayoutState { get; set; } = default!;
+
+    /// <summary>Whether the screen's own row — the one that names the screen — is on it.</summary>
+    [Parameter]
+    public bool Subject { get; set; } = true;
+}

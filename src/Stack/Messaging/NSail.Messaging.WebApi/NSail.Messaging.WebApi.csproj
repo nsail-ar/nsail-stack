@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\Injection\NSail.Injection.Annotations\NSail.Injection.Annotations.csproj" />
+        <ProjectReference Include="..\..\Metadata\NSail.Metadata\NSail.Metadata.csproj" />
+        <ProjectReference Include="..\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
+    </ItemGroup>
+
+</Project>
+

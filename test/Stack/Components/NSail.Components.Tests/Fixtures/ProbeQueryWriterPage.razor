@@ -1,0 +1,32 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probe/query/write"
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Web
+@using NSail.Components
+
+@inherits NsPage
+
+@* The write half asked for the way a screen asks it: the page reads its own query where it
+   renders it and writes it back through the same door. Mounted on the main surface that trip
+   goes through the address bar; mounted in the aside it goes through the inner route inside
+   ?aside=, and the paragraph proves the value came back either way. *@
+<p class="probe-tab">@(GetQuery<string>("Tab") ?? "none")</p>
+<button class="probe-write" @onclick="OnWrite">Write</button>
+<button class="probe-clear" @onclick="OnClear">Clear</button>
+
+@code {
+
+    void OnWrite()
+    {
+        SetQuery("Tab", "contacts");
+    }
+
+    void OnClear()
+    {
+        SetQuery("Tab", null);
+    }
+
+}

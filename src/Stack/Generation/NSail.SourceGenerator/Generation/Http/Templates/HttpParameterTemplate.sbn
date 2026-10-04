@@ -1,0 +1,13 @@
+#nullable enable
+
+
+namespace {{ Namespace }}
+{
+	public class {{ ClassName }}
+	{
+		{{~ for property in Properties ~}}
+		{{ property.Declaration }}
+
+		{{~ end ~}}
+	}
+}

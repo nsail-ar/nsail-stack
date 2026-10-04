@@ -1,0 +1,73 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@typeparam TItem
+@typeparam TValue
+@inherits NsFieldBase<TValue>
+
+<NsField Label="@GetLabel()" Helper="@Helper" Disabled="IsDisabled" ErrorText="@GetErrorText()">
+    <MudRadioGroup T="TValue" Value="Value" ValueChanged="SetValue" ReadOnly="IsReadOnly" Disabled="IsDisabled">
+        @if (Items is not null)
+        {
+            @foreach (var item in Items)
+            {
+                <MudRadio T="TValue" Value="@GetItemValue(item)">@GetItemText(item)</MudRadio>
+            }
+        }
+    </MudRadioGroup>
+</NsField>
+
+@code {
+
+    [Parameter]
+    public IEnumerable<TItem>? Items { get; set; }
+
+    [Parameter]
+    public Func<TItem, TValue>? ItemValue { get; set; }
+
+    [Parameter]
+    public Func<TItem, string>? ItemText { get; set; }
+
+    // A field bound to a page-local value has no message property to derive a label
+    // from — the item type itself names the concept ("Directory.LocationTypeRef").
+    protected override string? FallbackLabel(string key)
+    {
+        if (Strings.TryTranslate(Metadata.KeyFor(typeof(TItem)), out var concept))
+        {
+            return concept;
+        }
+
+        return base.FallbackLabel(key);
+    }
+
+    TValue GetItemValue(TItem item)
+    {
+        if (ItemValue is not null)
+        {
+            return ItemValue(item);
+        }
+
+        if (item is IOption option)
+        {
+            return (TValue)option.Value!;
+        }
+
+        return (TValue)(object)item!;
+    }
+
+    string GetItemText(TItem item)
+    {
+        if (ItemText is not null)
+        {
+            return ItemText(item);
+        }
+
+        if (item is IOption option)
+        {
+            return option.Text;
+        }
+
+        return item?.ToString() ?? string.Empty;
+    }
+}
