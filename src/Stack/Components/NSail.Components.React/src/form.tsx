@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack
+// Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import { createContext, useCallback, useContext, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { memberOf, validate, validateField, type Field, type Issue, type MessageType, type Problem } from "@nsail/messaging";

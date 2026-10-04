@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack
+// Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import type { EnumType, Issue, Problem } from "@nsail/messaging";
 import mudBase from "../../NSail.Components.Mud/strings.json";

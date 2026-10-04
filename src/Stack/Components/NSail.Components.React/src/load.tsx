@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack
+// Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { BusinessError, requestFailed, type MessageType, type Problem } from "@nsail/messaging";

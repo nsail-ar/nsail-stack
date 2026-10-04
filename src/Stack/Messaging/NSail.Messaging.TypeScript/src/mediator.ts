@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack
+// Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import type { Field, MessageType } from "./descriptors";
 import { BusinessError, isProblem, requestFailed } from "./problems";

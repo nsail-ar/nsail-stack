@@ -7,8 +7,8 @@
 
 	<PropertyGroup>
 		<Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
-		<Authors>Leonardo Porro</Authors>
-		<Copyright>Copyright (c) 2026 Leonardo Porro</Copyright>
+		<Authors>Leonardo Porro;Emmanuel Arias</Authors>
+		<Copyright>Copyright (c) 2026 Leonardo Porro and Emmanuel Arias</Copyright>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/nsail-ar/nsail-stack</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/nsail-ar/nsail-stack</RepositoryUrl>

@@ -57,7 +57,7 @@ $MirroredFiles = @(
 
 $Header = @(
     'SPDX-License-Identifier: MIT',
-    'Copyright (c) 2026 Leonardo Porro. https://github.com/nsail-ar/nsail-stack'
+    'Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack'
 )
 
 function Invoke-Git {
@@ -144,19 +144,33 @@ $projects = Select-String -Path (Join-Path $scratch 'NSail.sln') -Pattern '^Proj
     Where-Object { $path = $_; $MirroredFolders | Where-Object { $path.StartsWith("$_/") } } |
     Sort-Object
 
-Push-Location $Target
-try {
-    & dotnet new sln --name NSail --format sln --force | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "dotnet new sln failed ($LASTEXITCODE)" }
-
-    & dotnet sln NSail.sln add @projects | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "dotnet sln add failed ($LASTEXITCODE)" }
-}
-finally {
-    Pop-Location
+# Regenerated only when the project list changed: dotnet sln add mints fresh GUIDs every time,
+# and a sync that rewrites the whole solution for nothing buries the real diff.
+$solution = Join-Path $Target 'NSail.sln'
+$current = if (Test-Path $solution) {
+    Select-String -Path $solution -Pattern '^Project\("\{[^}]+\}"\) = "[^"]+", "([^"]+\.csproj)"' |
+        ForEach-Object { $_.Matches[0].Groups[1].Value.Replace('\', '/') } |
+        Sort-Object
 }
 
-Write-Host "Solution: $($projects.Count) projects"
+if (($current -join "`n") -ne ($projects -join "`n")) {
+    Push-Location $Target
+    try {
+        & dotnet new sln --name NSail --format sln --force | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "dotnet new sln failed ($LASTEXITCODE)" }
+
+        & dotnet sln NSail.sln add @projects | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "dotnet sln add failed ($LASTEXITCODE)" }
+    }
+    finally {
+        Pop-Location
+    }
+
+    Write-Host "Solution regenerated: $($projects.Count) projects"
+}
+else {
+    Write-Host "Solution unchanged: $($projects.Count) projects"
+}
 
 Remove-Item $scratch -Recurse -Force
 
