@@ -102,7 +102,10 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
     // form clears its own and then validates, the row's messages still count, Validate() answers
     // false and the submit returns having drawn nothing — a Guardar that goes mute (nsail#1912).
     // Nothing is lost by lifting it: what still refuses re-posts in the same pass (every field's
-    // own problem, the annotations validator's), so the submit answers or runs, never neither.
+    // own problem, the annotations validator's), so the submit answers or runs, never neither. The
+    // one answer that cannot re-post itself is a refusal a page's OnCommit decided, which nobody
+    // re-raises — so the submit settles the rows still open BEFORE it validates, asking that rule
+    // again rather than replaying its verdict (NsForm.Settle, IFormRows).
     void LiftOnValidation(object? sender, ValidationRequestedEventArgs args)
     {
         Clear();

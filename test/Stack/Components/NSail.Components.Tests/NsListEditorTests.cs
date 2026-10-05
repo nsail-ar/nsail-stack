@@ -418,6 +418,13 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
         return cut.InvokeAsync(() => cut.FindAll($"button[aria-label='{name}']")[0].Click());
     }
 
+    // The row's own box, typed into and never left: the keystroke is what writes the binding, so
+    // what the box holds is already the row's value when the hero is pressed (ui/fields.md).
+    static Task Type(IRenderedComponent<ListEditorFormHost> cut, string text)
+    {
+        return cut.InvokeAsync(() => cut.Find("li.ns-list-editor-open input").Input(text));
+    }
+
     static Task Submit(IRenderedComponent<ListEditorFormHost> cut)
     {
         return cut.InvokeAsync(() => cut.Find("form").Submit());
@@ -436,11 +443,12 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
     }
 
     /// <summary>The row's refusal is posted on the FORM's context, so the document's own submit
-    /// is what re-answers it: "placed on submit, cleared on the next submit" (intentional-ui.md)
-    /// is one rule for every placement on the context. Left standing it counted as a validation
-    /// failure nobody could lift — Guardar ran no handler, drew nothing and said nothing.</summary>
+    /// lifts it — and the submit is what has to re-answer it, because nobody else re-raises the
+    /// page's OnCommit. So the submit settles the open row first: the row's own rule speaks again
+    /// on the values on screen, and the refusal is drawn under the field it names rather than the
+    /// bad row reaching the server and its answer landing at the form's foot (nsail#2014).</summary>
     [Fact]
-    public async Task ADocumentSubmitLiftsARowRefusalStandingOnItsContext()
+    public async Task ADocumentSubmitAsksAnOpenRowsRuleAgainAndIsRefusedByItsOwnWords()
     {
         var cut = Render<ListEditorFormHost>(ps => ps.Add(p => p.Refuse, true));
 
@@ -451,14 +459,42 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
 
         await Submit(cut);
 
-        Assert.Equal(1, cut.Instance.Submits);
-        Assert.Null(RowError(cut));
+        Assert.Equal(0, cut.Instance.Submits);
+        Assert.Equal("Obligatorio", RowError(cut));
+
+        // Under the field, and nowhere else: the row's answer is not a strip at the foot of the
+        // form, which is the placement the server's own refusal used to land in.
+        Assert.Empty(cut.FindAll(".ns-form-problem"));
     }
 
-    /// <summary>The other half of the same rule: lifting the row's answer is not letting the row
-    /// through quietly. What still refuses re-posts in the very pass that lifted it — the row's
-    /// own field here — so the submit either runs or draws its reason where the person is
-    /// looking. Mute is the one answer it cannot give.</summary>
+    /// <summary>The other half of the ruling: Guardar commits an open row nothing refuses, the
+    /// usual behavior of a pending inline edit on save — the editor closes and the document saves
+    /// in one tap. The row is in Items before any Confirmar, so the save was writing it either
+    /// way; what the handler is asked about is the value on screen, not a verdict from an earlier
+    /// press.</summary>
+    [Fact]
+    public async Task ADocumentSubmitCommitsAnOpenRowNothingRefuses()
+    {
+        var cut = Render<ListEditorFormHost>();
+
+        await Press(cut, "Agregar");
+        await Type(cut, "Caja chica");
+        await Submit(cut);
+
+        Assert.Equal("Caja chica", cut.Instance.Committed);
+        Assert.Equal(1, cut.Instance.Submits);
+        Assert.Equal(1, cut.Instance.Rows);
+
+        // The editor is gone: no commit pair on screen, and the row reads as its folded sentence.
+        Assert.Empty(cut.FindAll("button[aria-label='Confirmar']"));
+        Assert.Equal("Caja chica", cut.Find("span.item-name").TextContent);
+    }
+
+    /// <summary>The row whose own field declares itself required, which is the regime where the
+    /// field re-posts a "no" of its own on every validation pass: the submit still either runs or
+    /// draws its reason where the person is looking — the settle's, under the same field — and
+    /// never leaves the form refused with nothing on screen to explain it. Mute is the one answer
+    /// it cannot give.</summary>
     [Fact]
     public async Task ARowStillRefusedByItsOwnFieldRefusesTheSubmitOutLoud()
     {

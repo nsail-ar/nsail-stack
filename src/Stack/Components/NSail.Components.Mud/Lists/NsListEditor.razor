@@ -4,6 +4,7 @@
 @namespace NSail.Components
 @typeparam TItem where TItem : class
 @inherits NsCollectionBase
+@implements IFormRow
 @using Microsoft.AspNetCore.Components.Forms
 @using NSail.Localization
 
@@ -109,6 +110,7 @@ else
 
     TItem? _editing;
     bool _editingIsNew;
+    bool _claimed;
 
     RefusalPlacement? _placement;
     EditContext? _own;
@@ -121,6 +123,12 @@ else
 
     [CascadingParameter]
     IFieldTracker? Tracker { get; set; }
+
+    /// <summary>The document's own register of open rows: the form's submit settles this list
+    /// before it validates, so a row left open is confirmed or refuses with its own words
+    /// (IFormRows). A list mounted outside any form has nobody to settle it.</summary>
+    [CascadingParameter]
+    IFormRows? Rows { get; set; }
 
     /// <summary>The collection shown, in its own order — the caller's own list, which the
     /// caller keeps owning and submitting. The list writes into it only for the row it opened
@@ -219,6 +227,30 @@ else
     {
         Placement.Parent = Tracker;
         Placement.Bind(RowContext);
+
+        // Claimed whatever the list is showing right now: ReadOnly and Editable are parameters
+        // that can flip, and a list with no row open settles in one line — the condition the
+        // claim would carry is the one Settle already answers.
+        if (!_claimed && Rows is not null)
+        {
+            Rows.Claim(this);
+            _claimed = true;
+        }
+    }
+
+    /// <summary>The document's submit, closing the row this list has open: the row's own rule is
+    /// asked again on the values on screen — the keystroke already wrote them into the row, so
+    /// what the boxes hold is what the handler is asked about — so a row nothing refuses closes
+    /// and the save goes on in one tap, and a refused one stays open wearing its own answer under
+    /// the field that answer names (intentional-ui.md, Refusal placement).</summary>
+    async Task<bool> IFormRow.Settle()
+    {
+        if (_editing is not { } row)
+        {
+            return true;
+        }
+
+        return await Commit(row);
     }
 
     // The open row says so in its class, and only the open one: the actions of a FOLDED row
@@ -290,7 +322,10 @@ else
         await base.Report(args);
     }
 
-    async Task Commit(TItem item)
+    /// <summary>Confirms the row and answers whether it took, which is what the document's
+    /// submit reads to know it may go on (Settle). The press itself has no use for the answer:
+    /// the row is either closed or standing there with its reason drawn.</summary>
+    async Task<bool> Commit(TItem item)
     {
         // What the last press refused is lifted before this one runs: a message standing beside
         // a value the user has already corrected says the row is still refused when it is not.
@@ -308,10 +343,12 @@ else
         // the args: a rejected item must stay open where the user can still fix it.
         if (args.Cancel || args.Problem is not null)
         {
-            return;
+            return false;
         }
 
         Close();
+
+        return true;
     }
 
     async Task Cancel(TItem item)
@@ -373,6 +410,14 @@ else
         if (disposing)
         {
             _placement?.Bind(null);
+
+            // And the register lets go of the list for the same reason: a submit that settled a
+            // list no longer on screen would raise OnCommit for a row nobody can see.
+            if (_claimed && Rows is not null)
+            {
+                Rows.Release(this);
+                _claimed = false;
+            }
         }
 
         base.Dispose(disposing);
