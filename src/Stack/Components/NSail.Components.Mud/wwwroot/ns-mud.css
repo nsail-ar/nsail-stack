@@ -227,9 +227,9 @@
     text-decoration: underline;
 }
 
-/* The same bare anchor, once its caller also gave it an Icon (the ticket header's Perfil,
-   nsail#1726): MudIcon has no gap or shared baseline of its own to offer a plain text node,
-   so the anchor lays its own children out as a row once it carries one. */
+/* The same bare anchor, once its caller also hands it an Icon: MudIcon has no gap or shared
+   baseline of its own to offer a plain text node, so the anchor lays its own children out as a
+   row once it carries one. */
 .ns-link-iconed {
     display: inline-flex;
     align-items: center;
@@ -454,12 +454,12 @@
    a finger lands on, so the BOX grows to 48px. Padding alone carries it now: the glyph is
    already at 1.5rem above (and matches the card's own glyph, so nothing here shrinks it).
 
-   The grid's action column is the one scope left to correct here. Everywhere else an Ns icon
+   The grid's action column is the one ICON scope to correct here. Everywhere else an Ns icon
    action is MudBlazor's own medium — 12px of padding around that same 1.5rem glyph, 48px by
    construction — which is also what NsActionToolbar renders outside a table (Organization's
    cards among them), so restating either property for .ns-action-toolbar would only re-derive
    what the size already gives, and the font-size half of it used to shrink the app bar's
-   deliberately larger icons.
+   deliberately larger icons. The WORDED face is the block below.
 
    The slot grows with the button, or the reserve would stop matching what it reserves for:
    12 + 24 + 12 plus the 4px between two of them is 3.25rem, as 3 + 24 + 3 + 4 is 2.125rem. The
@@ -475,6 +475,33 @@
     .ns-table .ns-actions .mud-icon-button,
     .ns-table .ns-actions .ns-action-mark {
         padding: 12px;
+    }
+}
+
+/* THE TOUCH-TARGET FLOOR. A labelled chromed face is the vendor's medium button — 6/16 of
+   padding over .875rem text, about 36px — while the glyph beside it is 44px by construction
+   (.ns-square below, and the flat rung's own icon button: 12px around the Md step), so without
+   a floor a title bar's worded and wordless acts do not measure the same under a finger
+   (Leonardo: "los botones con y sin label tienen que tener el mismo tamaño"). 44px is not a
+   pick: it is the industry's
+   touch-target floor (Apple HIG 44pt, WCAG 2.5.5 Target Size), and 36px is a normal desktop
+   control — so the floor is stated once, here, and only where the pointer is coarse. A fine
+   pointer keeps the vendor's 36px, which is what every desktop measurement in the house reads.
+
+   min-height and not height: the squares and the collapsed faces already measure 44 and this
+   leaves them exactly as they are (a square whose box this grew would be a rectangle again),
+   and a face whose own content is taller than the floor — a two-line label — still gets its
+   height from the content.
+
+   Unscoped by container on purpose. A height that changes with what the face is drawn inside
+   would be the per-caller branch principles.md refuses: a title bar, a toolbar, a form's footer
+   and a composer all put the same button under the same finger. It reaches the worded face
+   wherever the house draws one — NsButton, NsLink, NsSubmit, NsClose, NsMenu's labelled trigger
+   — because .mud-button is that face and nothing else wears it; the flat worded anchor draws no
+   box at all (NsLink's Inline face) and is left alone, there being no target to grow. */
+@media (pointer: coarse) {
+    .mud-button {
+        min-height: 44px;
     }
 }
 
