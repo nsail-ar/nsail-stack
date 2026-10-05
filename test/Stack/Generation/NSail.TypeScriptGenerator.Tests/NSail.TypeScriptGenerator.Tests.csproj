@@ -5,6 +5,17 @@
 		<IsTestProject>true</IsTestProject>
 	</PropertyGroup>
 
+	<!-- The fixtures are an Sdk's sources, compiled by the test the way the tool compiles a real
+	     one, never by this project: a [Generated] holder has no body without the generator. -->
+	<ItemGroup>
+		<Compile Remove="Sources\**" />
+		<None Include="Sources\**" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="coverlet.collector" Version="8.0.1">
 			<PrivateAssets>all</PrivateAssets>
@@ -20,15 +31,15 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\..\src\Stack\Generation\NSail.TypeScriptGenerator\NSail.TypeScriptGenerator.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Generation\NSail.SourceGeneration.Annotations\NSail.SourceGeneration.Annotations.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging\NSail.Messaging.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Stack\Types\NSail.Types\NSail.Types.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<Using Include="Xunit" />
-		<Using Include="NSail.Messaging.Annotations" />
-		<Using Include="NSail.Messaging.Annotations.Method" Static="true" />
 	</ItemGroup>
 
 </Project>

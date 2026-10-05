@@ -1,0 +1,23 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@inject RenderPasses Passes
+
+@* A counter standing where the shell's own chrome stands — between a surface and the page it
+   hosts, and between the layout and the content beside the aside. It reads nothing and draws
+   nothing but its child, so every pass it takes is a redraw of a tree whose output cannot have
+   changed. *@
+@{ Passes.Drew(Name); }
+
+@ChildContent
+
+@code {
+
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

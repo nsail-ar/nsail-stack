@@ -22,4 +22,6 @@ public static class TargetIds
     public const int MassTransit_Producers = 42;
 
     public const int Policies_Handlers = 51;
+
+    public const int Mappers_Entities = 61;
 }

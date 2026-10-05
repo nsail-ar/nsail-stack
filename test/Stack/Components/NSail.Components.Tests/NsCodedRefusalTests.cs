@@ -13,14 +13,17 @@ using NSail.Metadata;
 
 namespace NSail.Components.Tests;
 
-/// <summary>Half of a refusal used to be untranslatable: the validator wrote house words for
-/// [Required] and [Compare] and passed every other attribute's own ErrorMessage through, so a
-/// rule outside the BCL's vocabulary reached a Spanish screen in whatever language it was
-/// written in. An attribute that names its own problem code (ICodedValidation) is now worded
-/// from the catalog by the SAME ladder MessageValidator's Issue takes on the wire —
-/// "Problems.{Code}.{field}", then "Problems.{Code}" — so the screen and the server refusal are
-/// one sentence in one file. The attribute under test is declared in this assembly on purpose:
-/// the seam carries a rule the Stack does not own, and the Stack supplies no domain for it.</summary>
+/// <summary>A refusal used to be untranslatable wherever the vocabulary ran out: the validator
+/// wrote house words for [Required], [Compare] and any ICodedValidation, and passed every other
+/// attribute's own ErrorMessage through — so a [MaxLength] or a [RegularExpression] reached a
+/// Spanish screen in the BCL's English, naming the member and quoting the pattern. Every
+/// attribute is now worded from the catalog by the SAME switch that mints the wire's Issue
+/// (MessageValidator.IssueFor), resolved by the SAME ladder — "Problems.{Code}.{field}", then
+/// "Problems.{Code}" — so the screen and the server refusal are one sentence in one file, and
+/// a rule outside the vocabulary gets the house's generic word rather than its own English.
+/// Coded is still what makes a field SAY its rule, which is what the last tests here hold.
+/// The coded attribute under test is declared in this assembly on purpose: the seam carries a
+/// rule the Stack does not own, and the Stack supplies no domain for it.</summary>
 public sealed class NsCodedRefusalTests : BunitContext, IAsyncLifetime
 {
     public NsCodedRefusalTests()
@@ -34,7 +37,12 @@ public sealed class NsCodedRefusalTests : BunitContext, IAsyncLifetime
             ["Problems.NotAbove"] = "No puede ser mayor que el límite superior",
             ["Problems.NotAbove.From"] = "Desde no puede ser mayor que Hasta",
             ["Problems.Sample"] = "No es una muestra",
-            ["Problems.Sample.Scoped"] = "Este campo no es una muestra"
+            ["Problems.Sample.Scoped"] = "Este campo no es una muestra",
+            ["Problems.MaxLength"] = "No más de {max} caracteres",
+            ["Problems.OutOfRange"] = "Entre {from} y {to}",
+            ["Problems.InvalidFormat"] = "Formato inválido",
+            ["Problems.InvalidFormat.Prefix"] = "Solo los dígitos, sin el 0",
+            ["Problems.Invalid"] = "Valor inválido"
         })]));
         Services.AddSingleton<LanguageProvider>();
         Services.AddSingleton<MetadataProvider>();
@@ -157,16 +165,80 @@ public sealed class NsCodedRefusalTests : BunitContext, IAsyncLifetime
         Assert.Equal("Este campo no es una muestra", Refusal(cut, "Scoped"));
     }
 
-    /// <summary>Non-vacuity: an attribute that names no code is untouched, so this is not
-    /// DataAnnotations localization at large arriving by the back door.</summary>
+    /// <summary>The bound the attribute refuses by rides into the sentence as the catalog's own
+    /// token, so the row is written once and says the number the declaration holds.</summary>
     [Fact]
-    public async Task AnUncodedAttributeKeepsItsOwnErrorMessage()
+    public async Task AMaxLengthIsRefusedInTheCatalogsWords_WithTheBoundFilledIn()
     {
         var cut = RenderHost(new CodedRefusalModel { Sized = "abcd" });
 
         await cut.InvokeAsync(() => cut.Find("form").Submit());
 
-        Assert.Equal("The field Sized must be a string or array type with a maximum length of '3'.", Refusal(cut, "Sized"));
+        Assert.Equal("No más de 3 caracteres", Refusal(cut, "Sized"));
+    }
+
+    [Fact]
+    public async Task ARangeIsRefusedInTheCatalogsWords_WithBothBoundsFilledIn()
+    {
+        var cut = RenderHost(new CodedRefusalModel { Count = 42 });
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.Equal("Entre 1 y 10", Refusal(cut, "Count"));
+    }
+
+    /// <summary>The leak this story was reported for: the pattern is the rule's machinery and
+    /// the member is the model's name, and neither is anything to show a person.</summary>
+    [Fact]
+    public async Task APatternIsRefusedInTheCatalogsWords_WithNeitherTheRegexNorTheMemberShown()
+    {
+        var cut = RenderHost(new CodedRefusalModel { Digits = "abc" });
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        var refusal = Refusal(cut, "Digits");
+
+        Assert.Equal("Formato inválido", refusal);
+        Assert.DoesNotContain("^[0-9]+$", refusal, StringComparison.Ordinal);
+        Assert.DoesNotContain("Digits", refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>Directory's Característica, in the Stack: a BCL code reaches the scoped rung
+    /// too, so one field says its own rule with no attribute minted for it.</summary>
+    [Fact]
+    public async Task ARowForTheFieldWinsOverTheGenericOneForABclCodeToo()
+    {
+        var cut = RenderHost(new CodedRefusalModel { Prefix = "0221" });
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.Equal("Solo los dígitos, sin el 0", Refusal(cut, "Prefix"));
+    }
+
+    /// <summary>Non-vacuity, the other way around now: a rule the vocabulary has no code for
+    /// gets the house's generic word, and what it may NOT reach the person as is the English
+    /// it was written in.</summary>
+    [Fact]
+    public async Task AnAttributeOutsideTheVocabularyGetsTheHousesGenericWord()
+    {
+        var cut = RenderHost(new CodedRefusalModel { Odd = "nope" });
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.Equal("Valor inválido", Refusal(cut, "Odd"));
+    }
+
+    /// <summary>What the widened ladder does NOT take away: a coded attribute still says its
+    /// own rule where the generic word is all the field would otherwise get.</summary>
+    [Fact]
+    public async Task ACodedAttributeStillSaysItsOwnRuleRatherThanTheGenericWord()
+    {
+        var cut = RenderHost(new CodedRefusalModel { Coded = "nope", Odd = "nope" });
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.Equal("No es una muestra", Refusal(cut, "Coded"));
+        Assert.Equal("Valor inválido", Refusal(cut, "Odd"));
     }
 
     /// <summary>The wire says the same thing about the same model: one attribute, one code, and
@@ -253,5 +325,20 @@ public sealed class NsCodedRefusalTests : BunitContext, IAsyncLifetime
         Assert.Equal(
             [("NotNegative", "Price"), ("NotAbove", "From")],
             problem.Issues!.Select(issue => (issue.Code, issue.Source)));
+    }
+
+    /// <summary>One vocabulary, not two that agree: the code and the field the screen drew its
+    /// sentence from are the ones the wire would send about the same value.</summary>
+    [Fact]
+    public void TheWireWordsAPatternWithTheCodeTheScreenJustDrewFrom()
+    {
+        var problem = MessageValidator.Validate(new CodedRefusalModel { Digits = "abc" });
+
+        Assert.NotNull(problem);
+
+        var issue = Assert.Single(problem.Issues!);
+
+        Assert.Equal("InvalidFormat", issue.Code);
+        Assert.Equal("Digits", issue.Source);
     }
 }

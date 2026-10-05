@@ -101,17 +101,63 @@
 
    The item is a flex row that WRAPS, which is the whole reason this is not a table: the
    fields an item carries differ from item to item, so a narrow container folds them onto a
-   second line instead of strangling a column that half the items would leave empty. Only the
-   list reset and the separator live here — the row's own flex is utility classes in the
-   markup, where the element and its layout are read together. */
+   second line instead of strangling a column that half the items would leave empty. The list
+   reset, the separator and the OPEN row's cross-axis alignment live here — everything else of
+   the row's flex is utility classes in the markup, where the element and its layout are read
+   together. */
 .ns-list-editor {
     list-style: none;
     margin: 0;
     padding: 0;
+    /* The width that decides whether a row's commit pair still fits beside its fields is the
+       list's OWN, so the list is the measuring reference rather than the panel around it (the
+       NsTimeGrid precedent below) — the degradation holds wherever a kit mounts the list, an
+       aside included. Safe for NsPanel's own reason: a block taking its width from the parent,
+       never from its content. Note for whatever is put INSIDE a row: an unnamed @container
+       query resolves to the nearest container whatever its name, so a button's own collapse
+       inside a row now measures this <ul> and not the panel — the panel's padding narrower. */
+    container-type: inline-size;
 }
 
 .ns-list-editor-item {
     padding-block: 4px;
+}
+
+/* The open row is the one row whose alignment answers to the width, so it is the one row that
+   does not wear MudBlazor's align-center: that utility is `align-items: center !important`, and
+   an !important no query can outrank would leave the degradation below a declaration that
+   cannot run. The reading is the same one the utility gave — a folded row keeps it, its
+   alignment never changing. */
+.ns-list-editor-open {
+    align-items: center;
+}
+
+/* Once the fields have stacked, the open row IS a little form, and its commit pair is the end
+   of it: the item becomes a column so Confirmar/Cancelar land after the last field instead of
+   floating at the height of whichever field the wrap left them beside. The row's own actions
+   read actions-last here, the way NsTable's row editor seats them in the last cell. Only the
+   OPEN row — a folded row's edit/delete are its trailing affordances at every width, and the
+   query is the house's own sm bound, the width where five fields have long since folded. */
+@container (max-width: 599.98px) {
+    .ns-list-editor-open {
+        /* Stretch is what gives the fields block and the refusal strip the row's whole width
+           once the row is a column; the commit pair opts back out just below. */
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ns-list-editor-open .ns-list-editor-acts {
+        align-self: flex-start;
+    }
+}
+
+/* The refused row's own strip: what the refusal named that the row renders no field for. A
+   whole line of its own at the foot of the item, so it reads as the answer to the row above it
+   and not as another field beside them — the row grows downward and nothing above it moves
+   (intentional-ui.md, Refusal placement). */
+.ns-list-editor-problem {
+    flex: 1 1 100%;
+    min-width: 0;
 }
 
 /* A handful of FACTS said as a list — Inicio's Notificaciones, one line per state. A real
@@ -173,9 +219,11 @@
 /* A plain NsLink (As="Inline") renders a bare anchor with no color or underline of its own —
    honest chrome for a link that reads as clickable text rather than a button pretending to be
    one (the Sesión dialog's Mi Perfil, stories.md). The house has no primary+underlined link
-   mode yet; this is the minimal class until a second caller earns one. */
+   mode yet; this is the minimal class until a second caller earns one. The accent AS INK and
+   not the accent, like every other text in the house that carries the brand's hue
+   (--ns-accent-ink below). */
 .ns-link-primary {
-    color: var(--mud-palette-primary);
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary));
     text-decoration: underline;
 }
 
@@ -882,6 +930,14 @@
     --ns-rail-hover: color-mix(in srgb, var(--mud-palette-drawer-text) 8%, transparent);
     --ns-rail-edge: color-mix(in srgb, var(--mud-palette-drawer-text) 12%, transparent);
 
+    /* The brand's own hue as INK on this band, for the one row that says where the reader is.
+       Derived against the CHROME and the wash above rather than against a card
+       (BrandTheme.AccentOnChrome): the band is a free pick and the content's surfaces are
+       fixed, so --ns-accent-ink is an answer about a card and would land on a chrome of any
+       luminance. Unresolved, the band's own ink — the brand is then unmarked rather than
+       unreadable. */
+    --ns-rail-accent: var(--ns-accent-on-chrome, var(--ns-rail-text));
+
     /* --ns-panel-surface is what NsPanel's scrollable Content paints itself with
        (.ns-scroll-shadow below), and the selector that carries the paint is the one that
        restates it: the nav menu's body, its Header and its Footer are one ground, and a
@@ -923,15 +979,27 @@
     background-color: var(--ns-rail-hover);
 }
 
-/* The active entry is the one place the brand's primary is worn at full strength: the rail
-   carries only a trace of it, so the trace cannot also be what marks where the user is.
-   Secondary/Tertiary were evaluated for this slot (nsail#561) and refused: where the user IS
-   is the brand's own business, and a second hue here would put two identities in the one
-   piece of chrome that never changes. Secondary and Tertiary stay what they are — accents for
-   DATA (states, badges), where a colour means a value and not a place. */
-.ns-nav-drawer .mud-nav-link.active {
+/* The active entry is the one place the brand's own hue marks the rail: the rail carries only a
+   trace of it, so the trace cannot also be what says where the user is. Secondary/Tertiary were
+   evaluated for this slot (nsail#561) and refused: where the user IS is the brand's own
+   business, and a second hue here would put two identities in the one piece of chrome that never
+   changes. Secondary and Tertiary stay what they are — accents for DATA (states, badges), where
+   a colour means a value and not a place.
+
+   The hue arrives as the band's own INK and not as the accent at full strength: the default
+   light chrome under the house orange read 2.14:1 in the browser, so the one word that says "you
+   are here" was the least readable word in the gutter (nsail#1940).
+
+   Six classes because the vendor's own rule carries five —
+   .mud-navmenu.mud-navmenu-default .mud-nav-link.active:not(.mud-nav-link-disabled), which paints
+   the accent AND a ground mixed from the content's action ink — and this rule, at three, was
+   losing to it outright: the wash named here never reached the screen either, which is only
+   visible to a layout engine (AccentInkTests, Optical E2E). Out-ranked rather than left to the
+   sheet order NsAssets happens to give, and the two classes added are the drawer's own, so
+   nothing here depends on which colour variant the vendor's menu is rendering. */
+.ns-nav-drawer.mud-drawer .mud-navmenu .mud-nav-link.active:not(.mud-nav-link-disabled) {
     background-color: var(--ns-rail-hover);
-    color: var(--mud-palette-primary);
+    color: var(--ns-rail-accent);
 }
 
 /* The line an entry asks for, and the only line the drawer draws: it is the item, not the
@@ -1192,13 +1260,15 @@
 /* A floating label is promoted to text-primary by MudBlazor, which puts the name of a
    field at the same weight as its value. The focus rule is restated because it has the
    same specificity and would otherwise lose to the rule above it; the error rule wins
-   on its own (MudBlazor marks it !important). */
+   on its own (MudBlazor marks it !important). The focused label is the accent as INK and not
+   the accent, for the reason --ns-accent-ink carries: the name of the field being typed in is
+   text on a card. */
 .mud-shrink ~ label.mud-input-label.mud-input-label-inputcontrol {
     color: var(--mud-palette-text-secondary);
 }
 
 .mud-input:focus-within ~ label.mud-input-label.mud-input-label-inputcontrol {
-    color: var(--mud-palette-primary);
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary));
 }
 
 /* The browser fills a saved credential by writing the input's value directly, without the
@@ -1603,26 +1673,43 @@
 
 /* The attention semaphore (intentional-ui): a grid row painted from a CONDITION its own
    data settles (an overdue promise, a ready order), never from a stored state and never a
-   custom color — theme severity only, the same "-hover" alpha tint NsTimeBlock's own
-   background already uses for a wash the text on top stays readable against. */
+   custom color — theme severity only, at the 6% NsTimeBlock's own background is tinted at too,
+   for a wash the text on top stays readable against. The fraction is BrandTone.RowWash and is
+   mixed here rather than taken from the vendor's --mud-palette-{severity}-hover alias, which
+   carries the same 6% today: the floor of every status word standing on this row is a function
+   of the number, so it is the house's and not a vendor constant that can move under it.
+
+   The second declaration is how the wash SURVIVES THE POINTER. Mud answers a hover by replacing
+   the row's background-color — five rules, all of them reading --mud-palette-table-hover, each
+   at a specificity a single class cannot outrank — so a hovered row used to lose its tone
+   entirely: the condition channel goes blank on the one row a person is reading, and the word on
+   top is left standing on the neutral tint instead of its own wash. Handing the vendor's own
+   variable a value per washed row wins without a selector fight (the .ns-status-text note below
+   is the same move: cascade instead of compete), and the answer to the pointer becomes the row's
+   tone DEEPENED — BrandTone.RowWashPointed — which keeps the channel and the reading both. */
 .ns-row-danger {
-    background-color: var(--mud-palette-error-hover);
+    background-color: color-mix(in srgb, var(--mud-palette-error) 6%, transparent);
+    --mud-palette-table-hover: color-mix(in srgb, var(--mud-palette-error) 10%, transparent);
 }
 
 .ns-row-warning {
-    background-color: var(--mud-palette-warning-hover);
+    background-color: color-mix(in srgb, var(--mud-palette-warning) 6%, transparent);
+    --mud-palette-table-hover: color-mix(in srgb, var(--mud-palette-warning) 10%, transparent);
 }
 
 .ns-row-success {
-    background-color: var(--mud-palette-success-hover);
+    background-color: color-mix(in srgb, var(--mud-palette-success) 6%, transparent);
+    --mud-palette-table-hover: color-mix(in srgb, var(--mud-palette-success) 10%, transparent);
 }
 
-/* The wash's other form, for a list that is not a grid: the same CONDITION carried as a 3px
+/* The wash's other form, for a list row that is FLUSH: the same CONDITION carried as a 3px
    mark at the row's start edge instead of a tint. A grid cell brings padding a wash can live
-   in; five stacked rows inside a card do not, and five tinted bands read as a tinted card —
-   which colour on the container, not on the datum, is exactly what nsail#842 refused. Paired
-   with one of the three classes above, whose background it trades for a border of that tone,
-   so the semaphore keeps one vocabulary and no screen owns a palette. */
+   in; a stacked row inside a card does not, and five full-bleed tinted bands read as a tinted
+   card — which colour on the container, not on the datum, is exactly what nsail#842 refused.
+   A list row that takes padding and a rounded edge of its own is not flush and keeps the tint
+   (PartyWorkOrdersCard; ui/styling.md). Paired with one of the three classes above, whose
+   background it trades for a border of that tone, so the semaphore keeps one vocabulary and no
+   screen owns a palette. */
 .ns-row-mark {
     padding-inline-start: 8px;
     border-inline-start: 3px solid transparent;
@@ -1688,25 +1775,55 @@
    work still moving, history — and the ink a refused control wears reads 2.6:1 in light and
    1.91:1 in dark, so "Encargado" came out as a control nobody may touch. The secondary ink is
    achromatic, so the neutral still reads quieter than a toned state beside it without borrowing
-   one of the four severities. */
+   one of the four severities.
+
+   Leaned a tenth into the ink (BrandTone.NeutralLean) for the same reason the four below are
+   leaned: the muted rank is tuned against a SURFACE, and a status word is read in a table row,
+   which tints under the pointer. The plain muted ink reads 4.26:1 light and 4.49:1 dark there,
+   under the body floor; the tenth puts it at 4.73:1 and 4.90:1 and leaves it a clear step under
+   the ink of the cells beside it (2.6:1 apart in light, where the plain rank was 2.9:1). */
 .ns-status-muted {
-    --ns-status-color: var(--mud-palette-text-secondary);
+    --ns-status-color: color-mix(in srgb, var(--mud-palette-text-secondary) 90%, var(--mud-palette-text-primary));
 }
 
+/* The four toned readings, each the severity LEANED INTO the scheme's own ink. A severity
+   constant is a FILL — it is chosen so near-black or white can be read on top of it
+   (BrandTheme's TextOn* pairs) — and a fill laid down as 16px of text on a card is a different
+   criterion it does not meet: the light scheme's Warning reads 3.32:1 and its Info 3.70:1 as a
+   word on a card, under AA's 4.5:1, and the dark scheme's Error reads 4.05:1 on a raised sheet.
+   The standard answer is a palette with a text step beside its solid one (Radix's 11 beside its
+   9, Material's on*Container), so this is that step and not a re-tuned severity: moving the
+   constants would repaint every alert, toast, chip and row wash to fix a word.
+
+   One lean for all four and for both schemes, because the ink it leans into flips with the
+   scheme — toward the scheme's dark ink in light, toward its light ink in dark — so a single
+   declaration per severity ends up darker in one and lighter in the other, which is exactly
+   what each scheme needs. --ns-accent-soft below is the same shape: derived in the stylesheet
+   from the palette, never a 21st stored colour. The fraction is the largest that still clears AA
+   at the worst ground a row gives a word — the card, the raised sheet, the severity's washed row
+   and that row under the pointer, and the PLAIN row under the pointer, which is the worst of
+   them and the one a grid with no wash of its own hands every status it prints
+   (BrandThemeContrastTests, which composes the same mixes): at 65% the floor is light Warning on
+   a pointed row at 4.59:1, and at 70% it falls to 4.26:1. Hue survives the lean — #c77700 leans
+   to #8f5b0d, still amber — which is what keeps the four apart from each other and from the
+   achromatic neutral above.
+
+   The dot takes the same token, as the channel's one vocabulary requires: a circle is a
+   graphical object owing 3:1, so a lean toward the ink only ever raises it. */
 .ns-status-info {
-    --ns-status-color: var(--mud-palette-info);
+    --ns-status-color: color-mix(in srgb, var(--mud-palette-info) 65%, var(--mud-palette-text-primary));
 }
 
 .ns-status-success {
-    --ns-status-color: var(--mud-palette-success);
+    --ns-status-color: color-mix(in srgb, var(--mud-palette-success) 65%, var(--mud-palette-text-primary));
 }
 
 .ns-status-warning {
-    --ns-status-color: var(--mud-palette-warning);
+    --ns-status-color: color-mix(in srgb, var(--mud-palette-warning) 65%, var(--mud-palette-text-primary));
 }
 
 .ns-status-error {
-    --ns-status-color: var(--mud-palette-error);
+    --ns-status-color: color-mix(in srgb, var(--mud-palette-error) 65%, var(--mud-palette-text-primary));
 }
 
 /* AccentSoft: the accent at a tenth of its strength, and NsAs.Important's fill. DERIVED
@@ -1716,11 +1833,15 @@
    so one value reads on the card, on the raised sheet and on the canvas alike; for the house
    accent #F68E1E it evaluates to rgba(246, 142, 30, 0.13), nsail#842's own number.
 
-   --ns-accent-ink, the label that stands on that wash, is NOT here and cannot be: the accent
-   is a free pick, and which ink reads on it is a question about the pick's own luminance,
-   which color-mix cannot ask (branding.md). BrandTone.SoftInk answers it and NsTheme emits
-   the answer as this variable, per lit scheme. The fallback below is the scheme's plain ink,
-   for the render that reaches a stylesheet before it reaches a theme. */
+   --ns-accent-ink, THE ACCENT AS INK, is NOT here and cannot be: the accent is a free pick,
+   and which ink reads on it is a question about the pick's own luminance, which color-mix
+   cannot ask (branding.md). BrandTone.AccentInk answers it and NsTheme emits the answer as this
+   variable, per lit scheme. It is the one value every place the accent has to be TEXT reads —
+   this label, a link, the active tab, the chapter the reader is on — because the accent itself
+   is made to be a GROUND: painted as text on a pale surface a free pick reads 2.3:1
+   (nsail#1940). Where that text stands on the CHROME instead, the drawer's own
+   --ns-rail-accent is the answer, derived against the band. The fallback at each site is the
+   scheme's plain ink, for the render that reaches a stylesheet before it reaches a theme. */
 :root {
     --ns-accent-soft: color-mix(in srgb, var(--mud-palette-primary) 13%, transparent);
     --ns-accent-soft-hover: color-mix(in srgb, var(--mud-palette-primary) 18%, transparent);
@@ -2735,9 +2856,11 @@
     color: var(--mud-palette-text-primary);
 }
 
+/* The step being walked. The wash marks the row and the accent AS INK carries the word
+   (--ns-accent-ink): the vendor's 6% hover is still a card to read text on. */
 .ns-wizard-rail-step-current {
     background-color: var(--mud-palette-primary-hover);
-    color: var(--mud-palette-primary);
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary));
 }
 
 /* NsPanel's own Footer wrapper is "d-flex justify-end gap-2" -- shared by every dialog and
@@ -2909,9 +3032,33 @@
     font-size: 0.875em;
 }
 
+/* The chapter — or the section — the reader is on. The wash marks the row and the accent AS INK
+   carries the word: on the surface beside the content that is --ns-accent-ink, measured against
+   a card (nsail#1940 — the accent itself read 1.87:1 there, on the one line that says where the
+   reader is). */
 .ns-guide-entry-current {
     background-color: var(--mud-palette-primary-hover);
-    color: var(--mud-palette-primary);
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary));
+}
+
+/* The same rail, in the drawer's gutter: one list rendered in two places (NsGuide), and the
+   ground under it is the CHROME there, not a card. So every rank in it is restated in the band's
+   own vocabulary, for the reason .ns-text-muted is — "every slot here reads the chrome or the
+   ink derived from it, and none reads the content's own" (ui/branding.md), because a chrome is
+   picked freely and the surfaces above are fixed. The mark on the open chapter is then the very
+   pair the nav entry below it wears, and the two things that say "you are here" in one gutter
+   read as one. */
+.ns-nav-drawer .ns-guide-entry {
+    color: var(--ns-rail-text-muted);
+}
+
+.ns-nav-drawer .ns-guide-chapter {
+    color: var(--ns-rail-text);
+}
+
+.ns-nav-drawer .ns-guide-entry-current {
+    background-color: var(--ns-rail-hover);
+    color: var(--ns-rail-accent);
 }
 
 /* The chapter's own scroll anchor: a heading landed on by an anchor sits under the panel's
@@ -3210,8 +3357,17 @@
    row partner. Centered on the CELL the switch's own class marks, not the grid's
    align-items: a row where every field is a switch, or an unrelated row entirely, keeps its
    flex-start untouched. Leonardo's "grow" hunch was the width parameter (NsFormGridItem.Grow)
-   -- unrelated to this cross-axis mismatch. */
-.ns-grid > *:has(> .ns-record-state) {
+   -- unrelated to this cross-axis mismatch.
+
+   NsCheckBox (nsail#2004) is the same shape and earns the same line: a boolean check draws no
+   label gutter and no outline either, so "Usar cotización manual" read high beside the
+   Cotización manual it gates. Two marks rather than one selector over the vendor's boolean
+   class, because each component says for itself that its control rides a row of fields -- a
+   check laid out somewhere other than a grid item is nobody's row partner and is left alone.
+   Both are DIRECT children: a check nested in an NsStack beside an NsHelp owns its line
+   already. */
+.ns-grid > *:has(> .ns-record-state),
+.ns-grid > *:has(> .ns-form-check) {
     align-self: center;
 }
 
@@ -3416,6 +3572,19 @@
     flex: none;
 }
 
+/* THE TAB THE READER IS ON. The vendor paints its label with the accent at full strength
+   (.mud-tab.mud-tab-active) over a tabbar it fills with --mud-palette-surface, which for a gold
+   brand is 2.33:1 — the one word on the strip that says where the reader is, and the hardest one
+   on it to read (nsail#1940). The accent AS INK instead (--ns-accent-ink), the same value every
+   other text in the house that carries the brand's hue reads. The slider under it keeps the
+   accent at full strength and is meant to: it is a GROUND, which is what the accent is for.
+
+   Scoped to .ns-tabs, which NsTabs writes on its own root, so the class out-ranks the vendor's
+   two rather than depending on which sheet the document loaded last. */
+.ns-tabs .mud-tab.mud-tab-active {
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary));
+}
+
 /* NsTabs' own act slot, drawn after the last tab (Actions → MudTabs' Header): the vendor seats
    the header in the toolbar's flex row, where a button handed over bare is stretched to the
    strip's whole height and reads as a second tab (Leonardo, nsail#1267: "queda feo asi ocupando
@@ -3485,6 +3654,29 @@
     transform: rotate(90deg);
 }
 
+/* THE OTHER DISCLOSURE: a line a form reveals a field UNDER, in the grid's own flow. For a field
+   that has to be read beside the one above it, where the sheet above would cover exactly what is
+   being pasted next to it — the toggle is an ordinary Inline NsButton the screen draws beside an
+   @if, and this is only its chevron. One glyph, two states like the strip's, pointing the way the
+   field will arrive: right while it is closed, down while it is open. The state is already on the
+   element — a disclosure trigger carries aria-expanded (NsButton.Expanded) — so nothing else has
+   to carry it. */
+.ns-disclosure .mud-button-icon-start {
+    transition: transform 150ms ease-in-out;
+}
+
+.ns-disclosure[aria-expanded="true"] .mud-button-icon-start {
+    transform: rotate(90deg);
+}
+
+/* The one place a button's face is a SENTENCE and not a verb: "Ya tengo una clave privada" is
+   something the person is telling the form, and the vendor's uppercase — right for Guardar, right
+   for Facturar — shouts a line that is read rather than pressed. Sentence case is also what the
+   guide chapter prints it as, and a label a manual quotes has to be quotable. */
+.ns-disclosure .ns-button-label {
+    text-transform: none;
+}
+
 /* A THREAD'S TWO SIDES (nsail#1475). A conversation reads as a chat or it does not read at all:
    who said a thing is told by the side it sits on and the tone it wears, before any name is
    read — which is what lets the name above the words be the branch and the contact rather than
@@ -3507,6 +3699,10 @@
     max-width: min(42rem, 85%);
     border-radius: var(--mud-default-borderradius);
     position: relative;
+    /* What one side said keeps its own line breaks, and a word it did not choose (an id,
+       a url, a run of json) breaks rather than push the bubble past its edge. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 /* The margin is the tail's ROOM, not decoration: the surface that holds a thread is the one

@@ -31,11 +31,11 @@
                 @* Mi Perfil's own Sexo select, verbatim (PartyIdentityEditor). *@
                 case "select-for-clearable":
                     <NsSelect TItem="SelectOption" TValue="Guid?" Value="context.Choice" ValueChanged="v => context.Choice = v"
-                              For="() => _model.Choice" Clearable="true" Immediate="true"
+                              For="() => _model.Choice" Clearable="true"
                               Items="Options" ItemValue="o => o.Id" ItemText="o => o.Name" />
                     break;
                 case "text-for":
-                    <NsTextField Value="context.Text" ValueChanged="v => context.Text = v" For="() => _model.Text" Immediate="true" />
+                    <NsTextField Value="context.Text" ValueChanged="v => context.Text = v" For="() => _model.Text" />
                     break;
                 case "text-bind":
                     <NsTextField @bind-Value="context.Text" />

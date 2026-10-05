@@ -1,22 +1,21 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using System.Collections;
-using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using NSail.Metadata;
+using Microsoft.CodeAnalysis;
 
 namespace NSail.TypeScriptGenerator;
 
 // Every type a message reaches, named once. TypeScript has no namespaces in this output, so two
 // types sharing a simple name are refused rather than one silently shadowing the other.
-sealed class TypeCatalog(MetadataProvider metadata)
+sealed class TypeCatalog(MetadataKeys metadata)
 {
-    readonly Dictionary<string, Type> _names = new(StringComparer.Ordinal);
+    const string JsonIgnore = "System.Text.Json.Serialization.JsonIgnoreAttribute";
+    const string JsonPropertyName = "System.Text.Json.Serialization.JsonPropertyNameAttribute";
+
+    readonly Dictionary<string, ITypeSymbol> _names = new(StringComparer.Ordinal);
     readonly List<ModelShape> _models = [];
     readonly List<EnumShape> _enums = [];
-    readonly NullabilityInfoContext _nullability = new();
 
     public IReadOnlyList<ModelShape> Models
     {
@@ -28,21 +27,50 @@ sealed class TypeCatalog(MetadataProvider metadata)
         get { return [.. _enums.OrderBy(e => e.Name, StringComparer.Ordinal)]; }
     }
 
-    public NullabilityInfo Nullability(PropertyInfo property)
+    // Declared order, the type's own members before the ones it inherits — the order a reader
+    // of the class meets them in.
+    public static IEnumerable<IPropertySymbol> Properties(INamedTypeSymbol type)
     {
-        return _nullability.Create(property);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        for (var current = type; current is not null && current.SpecialType != SpecialType.System_Object; current = current.BaseType)
+        {
+            foreach (var property in current.GetMembers().OfType<IPropertySymbol>())
+            {
+                if (property.IsStatic
+                    || property.IsIndexer
+                    || property.DeclaredAccessibility != Accessibility.Public
+                    || property.GetMethod is null
+                    || Ignored(property)
+                    || !seen.Add(property.Name))
+                {
+                    continue;
+                }
+
+                yield return property;
+            }
+        }
     }
 
-    public TsType Describe(Type type, NullabilityInfo? info)
+    public static string WireName(IPropertySymbol property)
     {
-        if (Nullable.GetUnderlyingType(type) is { } underlying)
+        var declared = property.GetAttributes()
+            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == JsonPropertyName)?
+            .ConstructorArguments.FirstOrDefault().Value as string;
+
+        return declared ?? JsonNamingPolicy.CamelCase.ConvertName(property.Name);
+    }
+
+    public TsType Describe(ITypeSymbol type)
+    {
+        if (type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } wrapper)
         {
-            return Describe(underlying, null) with { Nullable = true };
+            return Describe(wrapper.TypeArguments[0]) with { Nullable = true };
         }
 
-        var described = DescribeCore(type, info);
+        var described = DescribeCore(type);
 
-        if (!type.IsValueType && !type.IsGenericParameter && info?.ReadState == NullabilityState.Nullable)
+        if (type.IsReferenceType && type.NullableAnnotation == NullableAnnotation.Annotated)
         {
             return described with { Nullable = true };
         }
@@ -50,113 +78,110 @@ sealed class TypeCatalog(MetadataProvider metadata)
         return described;
     }
 
-    public static IEnumerable<PropertyInfo> Properties(Type type)
+    static bool Ignored(IPropertySymbol property)
     {
-        return type
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
-            .Where(p => p.GetCustomAttribute<JsonIgnoreAttribute>() is not { Condition: JsonIgnoreCondition.Always });
-    }
+        var ignore = property.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == JsonIgnore);
 
-    public static string WireName(PropertyInfo property)
-    {
-        return property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
-            ?? JsonNamingPolicy.CamelCase.ConvertName(property.Name);
-    }
-
-    TsType DescribeCore(Type type, NullabilityInfo? info)
-    {
-        if (type.IsGenericParameter)
+        if (ignore is null)
         {
-            return new TsType(type.Name, "unknown");
+            return false;
         }
 
-        if (type.IsEnum)
+        // [JsonIgnore] with no Condition means Always; any other condition still serializes.
+        var condition = ignore.NamedArguments.FirstOrDefault(a => a.Key == "Condition").Value;
+
+        return condition.Value is null or 1;
+    }
+
+    TsType DescribeCore(ITypeSymbol type)
+    {
+        if (type is ITypeParameterSymbol parameter)
         {
-            return new TsType(RegisterEnum(type), "enum", Enum: type.Name);
+            return new TsType(parameter.Name, "unknown");
         }
 
-        switch (Type.GetTypeCode(type))
+        if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumeration)
         {
-            case TypeCode.String:
-            case TypeCode.Char:
+            return new TsType(RegisterEnum(enumeration), "enum", Enum: enumeration.Name);
+        }
+
+        switch (type.SpecialType)
+        {
+            case SpecialType.System_String:
+            case SpecialType.System_Char:
                 return new TsType("string", "string");
-            case TypeCode.Boolean:
+            case SpecialType.System_Boolean:
                 return new TsType("boolean", "boolean");
-            case TypeCode.Byte:
-            case TypeCode.SByte:
-            case TypeCode.Int16:
-            case TypeCode.UInt16:
-            case TypeCode.Int32:
-            case TypeCode.UInt32:
-            case TypeCode.Int64:
-            case TypeCode.UInt64:
+            case SpecialType.System_Byte:
+            case SpecialType.System_SByte:
+            case SpecialType.System_Int16:
+            case SpecialType.System_UInt16:
+            case SpecialType.System_Int32:
+            case SpecialType.System_UInt32:
+            case SpecialType.System_Int64:
+            case SpecialType.System_UInt64:
                 return new TsType("number", "integer");
-            case TypeCode.Single:
-            case TypeCode.Double:
-            case TypeCode.Decimal:
+            case SpecialType.System_Single:
+            case SpecialType.System_Double:
+            case SpecialType.System_Decimal:
                 return new TsType("number", "number");
-            case TypeCode.DateTime:
+            case SpecialType.System_DateTime:
                 return new TsType("string", "datetime");
+            case SpecialType.System_Object:
+                return new TsType("unknown", "unknown");
         }
 
-        if (type == typeof(Guid))
+        switch (type.ToDisplayString())
         {
-            return new TsType("string", "guid");
+            case "System.Guid":
+                return new TsType("string", "guid");
+            case "System.DateTimeOffset":
+                return new TsType("string", "datetime");
+            case "System.DateOnly":
+                return new TsType("string", "date");
+            case "System.TimeOnly":
+                return new TsType("string", "time");
+            case "System.TimeSpan":
+                return new TsType("string", "duration");
         }
 
-        if (type == typeof(DateTimeOffset))
+        if (type is IArrayTypeSymbol array)
         {
-            return new TsType("string", "datetime");
-        }
+            // System.Text.Json writes a byte array as one base64 string, not as numbers.
+            if (array.ElementType.SpecialType == SpecialType.System_Byte)
+            {
+                return new TsType("string", "string");
+            }
 
-        if (type == typeof(DateOnly))
-        {
-            return new TsType("string", "date");
-        }
-
-        if (type == typeof(TimeOnly))
-        {
-            return new TsType("string", "time");
-        }
-
-        if (type == typeof(TimeSpan))
-        {
-            return new TsType("string", "duration");
-        }
-
-        // System.Text.Json writes a byte array as one base64 string, not as an array of numbers.
-        if (type == typeof(byte[]))
-        {
-            return new TsType("string", "string");
-        }
-
-        if (type == typeof(object))
-        {
-            return new TsType("unknown", "unknown");
-        }
-
-        if (Dictionary(type) is { } entry)
-        {
-            var value = Describe(entry.Value, info?.GenericTypeArguments.ElementAtOrDefault(1));
-
-            return new TsType($"Record<string, {value.Full}>", "map", Element: value);
-        }
-
-        if (Sequence(type) is { } item)
-        {
-            var elementInfo = type.IsArray ? info?.ElementType : info?.GenericTypeArguments.ElementAtOrDefault(0);
-            var element = Describe(item, elementInfo);
+            var element = Describe(array.ElementType);
 
             return new TsType($"{element.AsElement}[]", "array", Element: element);
         }
 
-        var name = RegisterModel(type);
-
-        if (type.IsGenericType)
+        if (type is not INamedTypeSymbol named)
         {
-            var arguments = type.GetGenericArguments()
-                .Select((argument, index) => Describe(argument, info?.GenericTypeArguments.ElementAtOrDefault(index)).Full);
+            return new TsType("unknown", "unknown");
+        }
+
+        if (Dictionary(named) is { } value)
+        {
+            var described = Describe(value);
+
+            return new TsType($"Record<string, {described.Full}>", "map", Element: described);
+        }
+
+        if (Sequence(named) is { } item)
+        {
+            var element = Describe(item);
+
+            return new TsType($"{element.AsElement}[]", "array", Element: element);
+        }
+
+        var name = RegisterModel(named);
+
+        if (named.IsGenericType)
+        {
+            var arguments = named.TypeArguments.Select(argument => Describe(argument).Full);
 
             return new TsType($"{name}<{string.Join(", ", arguments)}>", "object");
         }
@@ -164,113 +189,87 @@ sealed class TypeCatalog(MetadataProvider metadata)
         return new TsType(name, "object");
     }
 
-    static (Type Key, Type Value)? Dictionary(Type type)
+    static ITypeSymbol? Dictionary(INamedTypeSymbol type)
     {
-        foreach (var candidate in type.GetInterfaces().Prepend(type))
+        foreach (var candidate in type.AllInterfaces.Prepend(type))
         {
-            if (!candidate.IsGenericType)
+            var definition = candidate.OriginalDefinition.ToDisplayString();
+
+            if (definition is "System.Collections.Generic.IDictionary<TKey, TValue>" or "System.Collections.Generic.IReadOnlyDictionary<TKey, TValue>")
             {
-                continue;
-            }
-
-            var definition = candidate.GetGenericTypeDefinition();
-
-            if (definition == typeof(IDictionary<,>) || definition == typeof(IReadOnlyDictionary<,>))
-            {
-                var arguments = candidate.GetGenericArguments();
-
-                return (arguments[0], arguments[1]);
+                return candidate.TypeArguments[1];
             }
         }
 
         return null;
     }
 
-    static Type? Sequence(Type type)
+    static ITypeSymbol? Sequence(INamedTypeSymbol type)
     {
-        if (type.IsArray)
+        foreach (var candidate in type.AllInterfaces.Prepend(type))
         {
-            return type.GetElementType();
-        }
-
-        if (!typeof(IEnumerable).IsAssignableFrom(type) && !(type.IsInterface && type.IsGenericType))
-        {
-            return null;
-        }
-
-        foreach (var candidate in type.GetInterfaces().Prepend(type))
-        {
-            if (candidate.IsGenericType && candidate.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+            if (candidate.OriginalDefinition.SpecialType == SpecialType.System_Collections_Generic_IEnumerable_T)
             {
-                return candidate.GetGenericArguments()[0];
+                return candidate.TypeArguments[0];
             }
         }
 
         return null;
     }
 
-    string Claim(Type definition, string name)
+    bool Claim(ITypeSymbol definition, string name)
     {
         if (_names.TryGetValue(name, out var owner))
         {
-            if (owner != definition)
+            if (!SymbolEqualityComparer.Default.Equals(owner, definition))
             {
-                throw new SdkReadException($"'{definition.FullName}' and '{owner.FullName}' are both named '{name}'; the TypeScript output has one namespace.");
+                throw new SdkReadException($"'{definition.ToDisplayString()}' and '{owner.ToDisplayString()}' are both named '{name}'; the TypeScript output has one namespace.");
             }
 
-            return name;
+            return false;
         }
 
         _names.Add(name, definition);
 
-        return name;
+        return true;
     }
 
-    string RegisterEnum(Type type)
+    string RegisterEnum(INamedTypeSymbol type)
     {
-        if (_names.TryGetValue(type.Name, out var owner) && owner == type)
+        if (Claim(type, type.Name))
         {
-            return type.Name;
+            var values = type.GetMembers().OfType<IFieldSymbol>().Where(f => f.HasConstantValue).Select(f => f.Name).ToList();
+
+            _enums.Add(new EnumShape(type.Name, metadata.KeyFor(type), values));
         }
-
-        Claim(type, type.Name);
-
-        _enums.Add(new EnumShape(type.Name, metadata.KeyFor(type), Enum.GetNames(type)));
 
         return type.Name;
     }
 
-    string RegisterModel(Type type)
+    string RegisterModel(INamedTypeSymbol type)
     {
-        var definition = type.IsGenericType ? type.GetGenericTypeDefinition() : type;
-        var name = definition.IsGenericType ? definition.Name[..definition.Name.IndexOf('`', StringComparison.Ordinal)] : definition.Name;
-
-        if (_names.TryGetValue(name, out var owner) && owner == definition)
-        {
-            return name;
-        }
-
-        Claim(definition, name);
+        var definition = type.OriginalDefinition;
 
         // Claimed before its members are read, so a model that reaches itself (a tree node)
         // stops here instead of recursing.
+        if (!Claim(definition, definition.Name))
+        {
+            return definition.Name;
+        }
+
+        var generic = definition.IsGenericType;
+        var key = generic ? null : metadata.KeyFor(definition);
         var fields = new List<FieldShape>();
-        var key = definition.IsGenericTypeDefinition ? null : metadata.KeyFor(definition);
-        var typeParameters = definition.IsGenericTypeDefinition
-            ? definition.GetGenericArguments().Select(a => a.Name).ToArray()
-            : [];
 
-        var shape = new ModelShape(name, key, typeParameters, fields);
-
-        _models.Add(shape);
+        _models.Add(new ModelShape(definition.Name, key, [.. definition.TypeParameters.Select(p => p.Name)], fields));
 
         foreach (var property in Properties(definition))
         {
             var memberKey = key is null ? string.Empty : metadata.KeyFor(definition, property.Name);
 
-            fields.Add(new FieldShape(WireName(property), memberKey, Describe(property.PropertyType, Nullability(property))));
+            fields.Add(new FieldShape(WireName(property), memberKey, Describe(property.Type)));
         }
 
-        return name;
+        return definition.Name;
     }
 }

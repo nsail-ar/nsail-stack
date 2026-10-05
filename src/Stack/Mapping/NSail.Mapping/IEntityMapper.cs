@@ -3,9 +3,13 @@
 
 namespace NSail.Mapping;
 
-/// <summary>Copies a source onto a persisted target, so it is asynchronous and takes a
-/// tracker: reaching an entity that is not in memory is a load.</summary>
+/// <summary>Writes a source onto an entity, graph included. Generated per pair declared with
+/// <c>[MapFrom]</c> on the entity; the only reflection is the compiler's.
+///
+/// <para>A null <paramref name="target"/> is the root's own lookup: the context loads it by the
+/// source's key, and a source naming no row is a create.</para></summary>
 public interface IEntityMapper<in TSource, TTarget>
+    where TTarget : class
 {
-    Task<TTarget> Map(TSource source, TTarget target, TrackerContext context, CancellationToken cancellationToken);
+    Task<TTarget> Map(TSource source, TTarget? target, MapContext context, CancellationToken cancellationToken = default);
 }

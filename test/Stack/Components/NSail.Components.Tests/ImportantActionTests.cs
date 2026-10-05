@@ -5,6 +5,7 @@ using System.Globalization;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
+using NSail.Components.Tests.Fixtures;
 using NSail.Tones;
 
 namespace NSail.Components.Tests;
@@ -101,7 +102,7 @@ public sealed class ImportantActionTests : BunitContext
             .Add(x => x.Brand, new Brand())
             .Add(x => x.Dark, true));
 
-        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultDark().TextOnAccentSoft};", cut.Markup);
+        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultDark().AccentInk};", cut.Markup);
         Assert.DoesNotContain("--ns-accent-ink:", ReadStylesheet());
     }
 
@@ -115,26 +116,12 @@ public sealed class ImportantActionTests : BunitContext
             .Add(x => x.Brand, new Brand())
             .Add(x => x.Dark, false));
 
-        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultLight().TextOnAccentSoft};", cut.Markup);
-        Assert.NotEqual(BrandTheme.DefaultLight().TextOnAccentSoft, BrandTheme.DefaultDark().TextOnAccentSoft);
+        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultLight().AccentInk};", cut.Markup);
+        Assert.NotEqual(BrandTheme.DefaultLight().AccentInk, BrandTheme.DefaultDark().AccentInk);
     }
 
     static string ReadStylesheet()
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
-            {
-                return File.ReadAllText(Path.Combine(
-                    directory.FullName,
-                    "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException($"NSail.sln was not found above {AppContext.BaseDirectory}.");
+        return HouseStylesheet.Read();
     }
 }

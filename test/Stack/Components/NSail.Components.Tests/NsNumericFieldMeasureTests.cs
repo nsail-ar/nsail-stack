@@ -90,7 +90,7 @@ public sealed class NsNumericFieldMeasureTests : BunitContext, IAsyncLifetime
             .Add(p => p.Value, 0m)
             .Add(p => p.ValueChanged, v => held = v));
 
-        await cut.Find("input").ChangeAsync(new ChangeEventArgs { Value = "2,5" });
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "2,5" });
 
         Assert.Equal(2.5m, held);
     }
@@ -119,7 +119,7 @@ public sealed class NsNumericFieldMeasureTests : BunitContext, IAsyncLifetime
             .Add(p => p.Format, "+0.00;-0.00;0.00")
             .Add(p => p.ValueChanged, v => held = v));
 
-        await cut.Find("input").ChangeAsync(new ChangeEventArgs { Value = "+2,25" });
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "+2,25" });
 
         Assert.Equal(2.25m, held);
     }

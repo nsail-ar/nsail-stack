@@ -1,0 +1,48 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/pass"
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@inherits NsPage
+
+@inject RenderPasses Passes
+
+@* The page an aside opens over, in the shape every list has it: rows on screen and a
+   subscription to the event the save publishes, which is what makes the list behind an overlay
+   reload from inside the submit (ClientsPage, WorkOrdersPage). Its pass count is what a save
+   in the aside costs the screen underneath. *@
+@* Counted from the render tree itself and not from OnAfterRender: the last thing the submit
+   does is close the aside, and a page torn down by that close never reaches an after-render for
+   the passes it took on the way. *@
+@{ Passes.Drew(Name); }
+
+<p class="pass-list">@_reads</p>
+
+@foreach (var row in _rows)
+{
+    <div class="pass-row">@row</div>
+}
+
+@code {
+
+    const string Name = "list";
+
+    readonly string[] _rows = [.. Enumerable.Range(1, 12).Select(row => $"row {row}")];
+
+    int _reads = 1;
+
+    protected override void OnCreated()
+    {
+        Subscribe<ProbeSaved>((_, _) => Reload());
+    }
+
+    Task Reload()
+    {
+        _reads++;
+
+        return Task.CompletedTask;
+    }
+}

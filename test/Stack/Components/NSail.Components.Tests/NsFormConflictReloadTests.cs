@@ -55,7 +55,7 @@ public sealed class NsFormConflictReloadTests : BunitContext, IAsyncLifetime
 
         var fields = cut.FindComponents<MudTextField<string>>();
 
-        await cut.InvokeAsync(() => fields[0].Find("input").Change("lo que el usuario escribió"));
+        await cut.InvokeAsync(() => fields[0].Find("input").Input("lo que el usuario escribió"));
 
         await cut.InvokeAsync(() => cut.Find("form").Submit());
 

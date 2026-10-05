@@ -51,6 +51,13 @@
     [Parameter]
     public NsSize Size { get; set; } = NsSize.Md;
 
+    /// <summary>The form this act is drawn inside, where there is one — what makes its refusal
+    /// land on the screen instead of in a toast (see HandleClick). Null for an act on a page with
+    /// no form around it, and for one on the far side of a portal (a menu row), where no cascade
+    /// of the form's reaches: both keep the toast.</summary>
+    [CascadingParameter]
+    IFormProblems? Form { get; set; }
+
     // Holds the icon at NsIcons.Progress for as long as the call is in flight (nsail#1346):
     // this is the one seam every contributed action's OnClick renders through, so the fix
     // lands here rather than per contributor. No Runner: the handler already runs through
@@ -71,12 +78,23 @@
 
         _running = true;
 
+        // What makes a refused act a refusal ON the screen rather than a toast over it: the act
+        // runs on the PAGE's Runner — a probe, a state transition, anything NsPartial.GetAction
+        // wrapped — and this is where the press and the form around it are known at once, because
+        // standing in a form is a cascade. The claim lives on the surface for the length of the
+        // call and the form draws whatever comes back (SurfaceContext.BeginAct). Here rather than
+        // on NsButton underneath, because taking it is what takes the LAST refusal down and only
+        // a press of an act has earned that: a ? beside the act is an NsButton too and resolves
+        // nothing (NsHelp, ui/actions.md).
+        var claim = Form is null ? null : Surface?.BeginAct(Form);
+
         try
         {
             await Action.OnClick();
         }
         finally
         {
+            Surface?.EndAct(claim);
             _running = false;
         }
     }

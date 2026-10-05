@@ -12,7 +12,7 @@
 <NsSelect TItem="TItem" TValue="TValue"
           Items="Items" ItemValue="ItemValue" ItemText="ItemText" ItemTemplate="ItemTemplate"
           Label="@Label" Placeholder="@Placeholder" Required="Required"
-          Value="Value" />
+          Value="Value" ReadOnly="ReadOnly" />
 
 @code {
 
@@ -39,4 +39,7 @@
 
     [Parameter]
     public bool Required { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
 }

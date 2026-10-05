@@ -15,8 +15,10 @@ namespace NSail.Messaging.Runtime.UnitOfWork;
 // The ambient travels by AsyncLocal because that is the only channel a handler cannot forget to
 // pass: composing handlers send exactly as they did, and the cure lives once, here.
 //
-// It is deliberately not reachable from a handler: there is no ambient to inspect, no way to
-// suppress it and no escape hatch, until a real case asks for one.
+// It is deliberately not reachable from a handler: there is no ambient to inspect and no way to
+// suppress it. The one thing a handler may say about it is AfterCommit — work that must not race
+// the rows this operation has not committed yet, run strictly after the commit and never at all
+// after a rollback, which suppresses nothing.
 static class AmbientUnitOfWork
 {
     static readonly AsyncLocal<Unit?> Current = new();
@@ -57,6 +59,7 @@ static class AmbientUnitOfWork
         await using var scope = scopeFactory.CreateAsyncScope();
 
         var unit = new Unit(scope.ServiceProvider);
+        TResult result;
 
         try
         {
@@ -68,18 +71,23 @@ static class AmbientUnitOfWork
             // going to open anyway — the accepted cost of the ratified design.
             await unit.Begin(cancellationToken).ConfigureAwait(false);
 
-            var result = await Invoke(unit, 1, () => handle(scope.ServiceProvider, cancellationToken))
+            result = await Invoke(unit, 1, () => handle(scope.ServiceProvider, cancellationToken))
                 .ConfigureAwait(false);
 
             await unit.Commit(cancellationToken).ConfigureAwait(false);
-
-            return result;
         }
         catch
         {
             await unit.Rollback().ConfigureAwait(false);
             throw;
         }
+
+        // Outside the try, where nothing it does can reach Rollback: the stores have committed,
+        // so a failure past this point is a failure of work registered ABOUT a commit that
+        // stood, and undoing is no longer on the table. AfterCommit reports its own.
+        await scope.ServiceProvider.GetRequiredService<AfterCommit>().Drain().ConfigureAwait(false);
+
+        return result;
     }
 
     static async Task<TResult> Join<TResult>(

@@ -114,7 +114,7 @@ public sealed class NsFieldHelperTests : BunitContext, IAsyncLifetime
 
         model.Name = "Ok";
 
-        await cut.InvokeAsync(() => cut.Find("input").Change("Ok"));
+        await cut.InvokeAsync(() => cut.Find("input").Input("Ok"));
 
         Assert.Empty(cut.FindAll(".mud-input-control-helper-container"));
 

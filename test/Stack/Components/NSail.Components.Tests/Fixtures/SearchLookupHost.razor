@@ -20,7 +20,7 @@
                 Value="Value"
                 ValueChanged="ValueChanged"
                 OnQuickAdd="OnQuickAdd"
-                Offer="Offer" />
+                Offer="Offer" ReadOnly="ReadOnly" />
 
 @code {
 
@@ -29,6 +29,9 @@
 
     [Parameter]
     public bool Lazy { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
 
     /// <summary>What a lookup whose reading is long declares, and the one thing that tells a
     /// product's cell apart from an alícuota's in a line editor.</summary>

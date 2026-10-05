@@ -1,0 +1,87 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/pass/new"
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@inherits NsPage
+
+@inject RenderPasses Passes
+
+@* The save the story measures, in the shape every create screen has it: a tracked form over a
+   model the page holds, a collection editor beside the fields whose rows no EditContext sees,
+   the hero submit in the footer, and a handler that calls the server, publishes the saved event
+   and then navigates in place to what it just wrote — the navigation the close supersedes.
+   Opened in the aside, this is the click→settle window the waterfall measured. *@
+
+@* Counted from the render tree itself and not from OnAfterRender: the last thing the submit
+   does is close the aside, and a page torn down by that close never reaches an after-render for
+   the passes it took on the way. *@
+@{ Passes.Drew(Name); }
+
+<NsForm TModel="SubmitTrackingModel" Model="_model" OnSubmit="OnSave">
+    <NsTextField @bind-Value="context.Name" />
+    <DirtySourceProbe @ref="_probe" />
+    <NsSubmit />
+</NsForm>
+
+@code {
+
+    const string Name = "create";
+
+    readonly SubmitTrackingModel _model = new();
+
+    DirtySourceProbe? _probe;
+
+    public DirtySourceProbe? Probe => _probe;
+
+    // A pure observer of the surface this page is on: it draws nothing of its own, so where its
+    // records fall in the trace is what names the announcement each pass answered.
+    protected override void OnCreated()
+    {
+        if (Surface is not null)
+        {
+            Surface.StateChanged += Announced;
+        }
+    }
+
+    void Announced()
+    {
+        Passes.Reached("announced");
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && Surface is not null)
+        {
+            Surface.StateChanged -= Announced;
+        }
+
+        base.Dispose(disposing);
+    }
+
+    async Task OnSave()
+    {
+        // The two round trips the waterfall counted, reduced to the only thing about them this
+        // fact depends on: that they are AWAITED. A handler that completes synchronously lets
+        // every StateHasChanged the submit raises collapse into one batch, which is a count no
+        // browser ever takes — there the renderer flushes at each await, and that is where the
+        // three blocked stretches were measured.
+        await RoundTrip("posted");
+
+        await Publish(new ProbeSaved());
+
+        await RoundTrip("listed");
+
+        Navigate("pass/7");
+    }
+
+    async Task RoundTrip(string step)
+    {
+        await Task.Yield();
+
+        Passes.Reached(step);
+    }
+}

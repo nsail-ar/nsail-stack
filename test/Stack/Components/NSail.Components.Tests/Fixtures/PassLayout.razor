@@ -1,0 +1,45 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+@inherits LayoutComponentBase
+
+@using Microsoft.AspNetCore.Components
+@using NSail.Components
+
+@* Both products' MainLayout, slot for slot: the routed page inside the shell's content, the
+   modal surface beside it, and the aside surface in its own slot behind an NsDrawer. The drawer
+   is why this is not ProbeLayout — it is one of the readers of the aside's own surface, so a
+   count of what a save in the aside redraws is wrong without it.
+
+   The three counters stand where the shell's chrome stands: "shell" inside the content, under
+   everything a save in the aside can reach from outside its own surface, "host" between the
+   aside's own surface host and the drawer, and "aside" between the drawer and the page it hosts.
+   None of them reads anything, so a pass any of them takes is a tree redrawn for nothing — and
+   the two on the aside's side split the chrome's passes between the host above the drawer and
+   the drawer itself. *@
+<NsMainLayout>
+    <Content>
+        <NsContainer>
+            <PassProbe Name="shell">
+                @Body
+            </PassProbe>
+        </NsContainer>
+        <NsSurface Name="@Surfaces.Modal" Context="routeData">
+            <NsDialog>
+                <RouteView RouteData="@routeData" />
+            </NsDialog>
+        </NsSurface>
+    </Content>
+    <Aside>
+        <NsSurface Name="@Surfaces.Aside" Context="routeData">
+            <PassProbe Name="host">
+                <NsDrawer Mode="NsDrawerMode.Docked">
+                    <PassProbe Name="aside">
+                        <RouteView RouteData="@routeData" />
+                    </PassProbe>
+                </NsDrawer>
+            </PassProbe>
+        </NsSurface>
+    </Aside>
+</NsMainLayout>

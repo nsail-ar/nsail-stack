@@ -2,19 +2,20 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
-@inherits NsFieldBase<string>
+@inherits NsTextFieldBase<string>
 
 <MudTextField T="string"
               Value="Value"
               ValueChanged="SetValue"
-              For="For"
               Label="@GetLabel()"
               Placeholder="@Placeholder"
               Required="IsRequired"
               Disabled="IsDisabled"
               ReadOnly="IsReadOnly"
               AutoFocus="AutoFocus"
-              Immediate="Immediate"
+              Immediate="true"
+              OnBlur="Leaving"
+              OnKeyDown="Pressing"
               Lines="Lines"
               MaxLines="MaxLines ?? 0"
               Sizing="@(MaxLines is null ? InputSizing.Fixed : InputSizing.Auto)"
@@ -37,5 +38,9 @@
     /// own auto-grow sizing turns on only once a caller asks for a cap.</summary>
     [Parameter]
     public int? MaxLines { get; set; }
+
+    // Enter is a newline in a box that has lines, so it cannot also be the end of the entry:
+    // the leave is the only gesture that commits here.
+    protected override bool CommitsOnEnter => false;
 
 }

@@ -8,6 +8,7 @@ using NSail.Messaging.Runtime.Packs;
 using NSail.Messaging.Runtime.Pipelines;
 using NSail.Messaging.Runtime.Publishing;
 using NSail.Messaging.Runtime.Sending;
+using NSail.Messaging.Runtime.UnitOfWork;
 using NSail.Metadata;
 
 namespace NSail.Messaging.Runtime;
@@ -22,6 +23,12 @@ public static class Setup
 
         services.AddScoped<Mediator>();
         services.AddScoped<PackReplayer>();
+
+        // Scoped, which is what makes it the operation's rather than a handler's: the outermost
+        // send's scope is the one every nested send joins, so one list is registered to and one
+        // list is drained. TryAdd because AddUnitOfWork brings the same one — a store's host may
+        // compose that and a hand-registered context without ever reaching here.
+        services.TryAddScoped<AfterCommit>();
 
         // Singleton like IHttpContextAccessor and for the same reason: it holds nothing of its
         // own — the delivery it answers with lives on the async flow, so one instance serves

@@ -337,7 +337,7 @@ public sealed class UnsavedChangesGuardTests : BunitContext, IAsyncLifetime
             .Add(x => x.AdditionalAssemblies, [])
             .Add(x => x.DefaultLayout, typeof(ProbeLayout)));
 
-        await app.InvokeAsync(() => app.Find("input[type=text]").Change("typed by hand"));
+        await app.InvokeAsync(() => app.Find("input[type=text]").Input("typed by hand"));
 
         return app;
     }
@@ -430,7 +430,7 @@ public sealed class UnsavedChangesGuardTests : BunitContext, IAsyncLifetime
             .Add(x => x.Name, Surfaces.Aside)
             .Add(x => x.Model, new SubmitTrackingModel()));
 
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("typed by hand"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("typed by hand"));
 
         Assert.True(host.Instance.Surface!.HasChanges);
 

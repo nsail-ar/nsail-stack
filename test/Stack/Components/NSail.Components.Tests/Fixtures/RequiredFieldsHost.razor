@@ -13,8 +13,11 @@
 
 <NsForm TModel="RequiredFieldsModel" Model="Model" OnSubmit="HandleSubmit" @ref="_form">
     <NsTextField @bind-Value="context.Name" />
-    <NsSelect TItem="SelectRef" TValue="Guid" @bind-Value="context.PatientId" Clearable="Clearable"
-              Items="Items" ItemValue="i => i.Id" ItemText="i => i.DisplayName" Required />
+    @if (!Hidden)
+    {
+        <NsSelect TItem="SelectRef" TValue="Guid" @bind-Value="context.PatientId" Clearable="Clearable"
+                  Items="Items" ItemValue="i => i.Id" ItemText="i => i.DisplayName" Required />
+    }
     <NsAutocomplete TItem="SelectRef" TValue="Guid" @bind-Value="context.CategoryId"
                     Items="Items" ItemValue="i => i.Id" ItemText="i => i.DisplayName" Required />
 </NsForm>
@@ -37,6 +40,12 @@
     // answered field on purpose wants it there.
     [Parameter]
     public bool Clearable { get; set; }
+
+    // Takes the required select off the screen without rebuilding the form, which is the one
+    // gesture the leaked-store suite needs: the EditContext the field posted its refusal to is
+    // still the one the next submit validates.
+    [Parameter]
+    public bool Hidden { get; set; }
 
     async Task HandleSubmit()
     {

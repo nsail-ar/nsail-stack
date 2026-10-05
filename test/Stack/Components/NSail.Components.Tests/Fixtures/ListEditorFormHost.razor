@@ -1,0 +1,73 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Problems
+@using NSail.Testing.Models
+
+@* The collection editor mounted the way every screen mounts it — inside the form that submits
+   the document its rows belong to (TendersEditor in SettlementForm, SaleModifiersEditor in
+   Nueva Venta). The row's refusal is posted on the FORM's EditContext, so what the document's
+   own submit does with one still standing is this fixture's whole question. *@
+<MudPopoverProvider />
+
+<NsForm TModel="TestModel" Model="_document" OnSubmit="Save" Untracked>
+    @if (ListMounted)
+    {
+        <NsListEditor TItem="TestModel" Items="_items" Title="Pagos"
+                      NewItem="NewItem" OnCommit="Commit">
+            <ItemTemplate Context="item">
+                <span class="item-name">@item.Name</span>
+            </ItemTemplate>
+            <ItemEditor Context="item">
+                <NsTextField @bind-Value="item.Name" Label="" Required="RowFieldRequired" />
+            </ItemEditor>
+        </NsListEditor>
+    }
+</NsForm>
+
+@code {
+
+    readonly TestModel _document = new() { Name = "Caja" };
+
+    readonly List<TestModel> _items = [];
+
+    /// <summary>Whether the collection is on screen at all — a tab, a conditional panel, any
+    /// screen that stops rendering the list while the form around it stays.</summary>
+    [Parameter]
+    public bool ListMounted { get; set; } = true;
+
+    /// <summary>Refuses the row's commit the way a handler does, naming a member the row
+    /// renders a field for.</summary>
+    [Parameter]
+    public bool Refuse { get; set; }
+
+    /// <summary>Whether the row's own field declares itself required — the regime where the
+    /// field re-posts its own "no" on every validation pass, as opposed to a row refused only
+    /// by what the commit handler answered.</summary>
+    [Parameter]
+    public bool RowFieldRequired { get; set; }
+
+    public int Submits { get; private set; }
+
+    void Save(SubmitEventArgs<TestModel> args)
+    {
+        Submits++;
+    }
+
+    static TestModel NewItem()
+    {
+        return new TestModel();
+    }
+
+    void Commit(RowEditEventArgs<TestModel> args)
+    {
+        if (Refuse)
+        {
+            args.Problem = InputProblem.InvalidModel<TestModel>().Required(m => m.Name);
+        }
+    }
+}

@@ -217,6 +217,59 @@ public sealed class NsDateRefusalSubmitTests : BunitContext, IAsyncLifetime
         Assert.Equal(new DateOnly(2026, 8, 7), model.Delivery);
     }
 
+    /// <summary>The twin of every refusal above, untested until nsail#1937 asked whether a date
+    /// box loses what the text family lost: a date the box COULD read is the date the submit
+    /// saves, in the one act of leaving the box and pressing Guardar. These two and
+    /// <c>NsColorField</c> are the boxes in the house still committing on that leave — the
+    /// vendor's picker takes its typed text on change, and <c>MudPicker.ImmediateText</c> is the
+    /// keystroke seam NSail does NOT turn on: <c>DateText</c> reads "15/8/2" as the year 2002, so
+    /// a picker hearing every keystroke would commit a real wrong date and reformat the box over
+    /// what is being typed. These two are what makes that silence measurable rather than
+    /// assumed.</summary>
+    [Fact]
+    public async Task ADateTypedAndSavedInOneAct_SavesTheTypedDay()
+    {
+        var model = new RefusedDateModel
+        {
+            Delivery = new DateOnly(2026, 1, 3),
+            Start = new DateTime(2026, 8, 4, 15, 30, 0)
+        };
+        var submitted = false;
+
+        var cut = Render<RefusedDateHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Submitted, () => submitted = true));
+
+        await LeaveDeliveryDate(cut, "15/08/2026");
+        await Save(cut);
+
+        Assert.True(submitted);
+        Assert.Equal(new DateOnly(2026, 8, 15), model.Delivery);
+    }
+
+    /// <summary>The composite's date half owes the same answer, and owes it without touching the
+    /// hour already chosen.</summary>
+    [Fact]
+    public async Task AStartDateTypedAndSavedInOneAct_SavesTheTypedDayAtTheHourHeld()
+    {
+        var model = new RefusedDateModel
+        {
+            Delivery = new DateOnly(2026, 1, 3),
+            Start = new DateTime(2026, 8, 4, 15, 30, 0)
+        };
+        var submitted = false;
+
+        var cut = Render<RefusedDateHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Submitted, () => submitted = true));
+
+        await LeaveStartDate(cut, "15/08/2026");
+        await Save(cut);
+
+        Assert.True(submitted);
+        Assert.Equal(new DateTime(2026, 8, 15, 15, 30, 0), model.Start);
+    }
+
     /// <summary>And a form nobody refused anything in still saves — the guard above must not be
     /// a refusal every date field is born holding.</summary>
     [Fact]

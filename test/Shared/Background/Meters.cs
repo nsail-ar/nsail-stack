@@ -18,7 +18,7 @@ public sealed class Meters : IDisposable
     {
         _listener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == BackgroundJobMetrics.MeterName)
+            if (instrument.Meter.Name is BackgroundJobMetrics.MeterName or DeferredWorkMetrics.MeterName)
             {
                 listener.EnableMeasurementEvents(instrument);
             }
@@ -50,6 +50,18 @@ public sealed class Meters : IDisposable
         }
     }
 
+    /// <summary>The same sum for the deferred queue's own counter, keyed by the item's kind
+    /// instead of a job's name — the one number an alert about a vendor send reads.</summary>
+    public int Items(string kind, string outcome)
+    {
+        lock (_readings)
+        {
+            return (int)_readings
+                .Where(reading => reading.Instrument == DeferredWorkMetrics.Completed && reading.Kind == kind && reading.Outcome == outcome)
+                .Sum(reading => reading.Value);
+        }
+    }
+
     /// <summary>The last value a gauge answered for one job, or null when it has answered
     /// none — which is not the same as zero, and the difference is a job that has not ticked
     /// yet versus one that swept nobody.</summary>
@@ -72,6 +84,7 @@ public sealed class Meters : IDisposable
     void Record(Instrument instrument, double value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
     {
         string? job = null;
+        string? kind = null;
         string? outcome = null;
 
         foreach (var tag in tags)
@@ -79,6 +92,10 @@ public sealed class Meters : IDisposable
             if (tag.Key == BackgroundJobMetrics.JobTag)
             {
                 job = tag.Value as string;
+            }
+            else if (tag.Key == DeferredWorkMetrics.KindTag)
+            {
+                kind = tag.Value as string;
             }
             else if (tag.Key == BackgroundJobMetrics.OutcomeTag)
             {
@@ -88,9 +105,9 @@ public sealed class Meters : IDisposable
 
         lock (_readings)
         {
-            _readings.Add(new Reading(instrument.Name, job, outcome, value));
+            _readings.Add(new Reading(instrument.Name, job, kind, outcome, value));
         }
     }
 
-    sealed record Reading(string Instrument, string? Job, string? Outcome, double Value);
+    sealed record Reading(string Instrument, string? Job, string? Kind, string? Outcome, double Value);
 }

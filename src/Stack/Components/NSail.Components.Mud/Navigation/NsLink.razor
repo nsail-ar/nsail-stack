@@ -83,7 +83,7 @@ else if (As == NsAs.Inline)
         @* The tooltip is what a sighted pointer user sees; a screen reader needs the same
            sentence as the element's own accessible name — MudTooltip's popover contributes
            no name on its own, the gap NsButton's own icon chrome already closed. *@
-        <MudTooltip Text="@Label">
+        <MudTooltip Text="@Label" @bind-Visible="_whispering">
             <MudIconButton Href="@ActiveHref"
                            Target="@BrowserTarget"
                            Icon="@(Icon?.Markup)"
@@ -92,7 +92,8 @@ else if (As == NsAs.Inline)
                            Disabled="@IsDisabled"
                            Class="@Class"
                            aria-label="@Label"
-                           data-ns-probe="@Probe">
+                           data-ns-probe="@Probe"
+                           OnClick="Pressed">
                 @Content
             </MudIconButton>
         </MudTooltip>
@@ -136,6 +137,15 @@ else
 
     string _href = string.Empty;
     bool _intercepts;
+
+    // The vendor's tooltip opens on hover and on focus and closes on neither after a press: the
+    // pointer never left, and the click left the control holding focus. NsButton owns the same
+    // whisper for the same reason, and this is here because the two faces answer alike by rule
+    // (ui/actions.md, IconOnlyStateTests) — not because a screen was caught doing it. Every link
+    // measured either leaves the page or re-renders the row it sits in, and both remount the
+    // tooltip, which closes it by accident; one that does neither is the case this removes
+    // rather than waits for.
+    bool _whispering;
 
     [CascadingParameter]
     SurfaceContext? Cascaded { get; set; }
@@ -368,6 +378,13 @@ else
         }
 
         Surface.Follow(_href, Target, NoHistory);
+    }
+
+    // Beside the navigation and not instead of it: the vendor wires this onclick whether or not
+    // the control carries an href, so taking the bubble down costs the link nothing it does.
+    void Pressed()
+    {
+        _whispering = false;
     }
 
     // What this link resolved, written where it can be read from either side of the prerender

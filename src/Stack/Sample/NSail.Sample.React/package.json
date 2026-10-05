@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@nsail/components": "0.1.0",
-    "@nsail/messaging": "0.1.0",
+    "@nsail/stack": "0.1.0",
+    "@nsail/ui": "0.1.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router": "^8.4.0"

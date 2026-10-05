@@ -90,7 +90,7 @@ public sealed class NsMoneyFieldBoundsTests : BunitContext, IAsyncLifetime
             .Add(p => p.Max, 30000m)
             .Add(p => p.ValueChanged, v => held = v));
 
-        await cut.Find("input").ChangeAsync(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "40000" });
+        await cut.Find("input").InputAsync(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "40000" });
 
         Assert.Equal(30000m, held);
     }

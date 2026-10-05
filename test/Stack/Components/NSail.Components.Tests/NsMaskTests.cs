@@ -76,7 +76,6 @@ public sealed class NsMaskTests : BunitContext, IAsyncLifetime
 
         var cut = Render<NsTextField>(ps => ps
             .Add(p => p.Mask, TaxId)
-            .Add(p => p.Immediate, true)
             .Add(p => p.ValueChanged, EventCallback.Factory.Create<string?>(this, text => bound = text)));
 
         await cut.InvokeAsync(() => cut.Find("input").Input("20-12345678-9"));
@@ -97,6 +96,33 @@ public sealed class NsMaskTests : BunitContext, IAsyncLifetime
         Assert.Equal("20-12345678-9", cut.Find("input").GetAttribute("value"));
     }
 
+    /// <summary>nsail#1991: a CUIT is typed, and the sibling above hands the box its finished
+    /// text in one event, which is a paste (testing.md). Every keystroke has to arrive raw on
+    /// its own — the check digit is computed off what the model holds, so a number that is only
+    /// clean once the box is left refuses the first Guardar under a field visibly holding
+    /// it.</summary>
+    [Fact]
+    public async Task AMaskedField_HandsOverEveryKeystrokeAsItIsTyped()
+    {
+        var bound = new List<string?>();
+
+        var cut = Render<NsTextField>(ps => ps
+            .Add(p => p.Mask, TaxId)
+            .Add(p => p.ValueChanged, EventCallback.Factory.Create<string?>(this, text => bound.Add(text))));
+
+        var box = cut.Find("input");
+
+        // The whole box on each event and not the character that arrived, which is what a
+        // browser sends: the literals the mask drew are in the text and must not be in the model.
+        foreach (var typed in Typing.Prefixes("20-11111111-2"))
+        {
+            await cut.InvokeAsync(() => box.Input(typed));
+        }
+
+        Assert.Equal("20111111112", bound[^1]);
+        Assert.DoesNotContain(bound, text => text!.Contains('-', StringComparison.Ordinal));
+    }
+
     /// <summary>No mask, no change: every other text field in the app keeps behaving exactly
     /// as it did.</summary>
     [Fact]
@@ -106,7 +132,6 @@ public sealed class NsMaskTests : BunitContext, IAsyncLifetime
 
         var cut = Render<NsTextField>(ps => ps
             .Add(p => p.Value, "20-12345678-9")
-            .Add(p => p.Immediate, true)
             .Add(p => p.ValueChanged, EventCallback.Factory.Create<string?>(this, text => bound = text)));
 
         Assert.Equal("20-12345678-9", cut.Find("input").GetAttribute("value"));

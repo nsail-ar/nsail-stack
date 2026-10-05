@@ -59,5 +59,7 @@ sealed record FieldShape(string Name, string Key, TsType Type)
 
     public string? Pattern { get; init; }
 
-    public IReadOnlyList<string> Codes { get; init; } = [];
+    // Validation attributes only the server judges: a coded rule, or one this tool cannot
+    // construct.
+    public IReadOnlyList<string> ServerRules { get; init; } = [];
 }

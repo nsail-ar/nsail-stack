@@ -35,6 +35,12 @@ public enum MassTransit
     Producers = 42
 }
 
+public enum Mappers
+{
+    /// <summary>An IEntityMapper per [MapFrom] declared on an entity in scope, graph included: composition, aggregation, keys and the concurrency token.</summary>
+    Entities = 61,
+}
+
 public enum Policies
 {
     /// <summary>A PolicyHandler per message with [PolicyField]-marked fields, plus their DI factories.</summary>
@@ -66,6 +72,10 @@ public class GeneratedAttribute : Attribute
     }
 
     public GeneratedAttribute(Policies artifact)
+    {
+    }
+
+    public GeneratedAttribute(Mappers artifact)
     {
     }
 }

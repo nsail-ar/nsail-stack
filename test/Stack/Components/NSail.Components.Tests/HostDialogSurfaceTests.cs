@@ -120,7 +120,7 @@ public sealed class HostDialogSurfaceTests : BunitContext, IAsyncLifetime
     /// <summary>The same refusal for the length of a save: pressing the X mid-save closes a surface
     /// whose save is still running, which is the thing NsClose exists to refuse. The form's word
     /// travels up through the surface (SurfaceContext.FormRefuses) and back down into the title row
-    /// through NsDialogExit, whose subscription to StateChanged is what redraws the X at all.</summary>
+    /// through NsDialogExit, whose subscription to RefusalChanged is what redraws the X at all.</summary>
     [Fact]
     public void TheHeaderX_IsRefused_WhileTheHostedFormIsSaving()
     {

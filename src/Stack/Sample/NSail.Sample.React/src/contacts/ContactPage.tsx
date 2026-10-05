@@ -3,7 +3,8 @@
 
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import { NsButton, NsField, NsForm, NsLoad, NsPage, NsSaved, useForm, useLoad, useMediator, type Form } from "@nsail/components";
+import { useForm, useLoad, useMediator, type Form } from "@nsail/stack";
+import { NsButton, NsField, NsForm, NsLoad, NsPage, NsSaved } from "@nsail/ui";
 import { CreateContact, GetContact, UpdateContact, type ContactModel } from "../sdk";
 import { routes } from "../routes";
 

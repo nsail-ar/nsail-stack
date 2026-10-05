@@ -51,16 +51,18 @@
         _variables = Variables(brand, _dark);
     }
 
-    // The vendor emits the palette of the scheme that is lit and nothing else, so the one NSail
-    // variable a stylesheet cannot compute rides beside it, for that same scheme: the soft
-    // label's colour is a decision about the accent's own luminance, and color-mix has no way
-    // to see how bright a colour is. Everything else on that wash stays in ns-mud.css,
-    // where a wash mixed against transparent belongs.
+    // The vendor emits the palette of the scheme that is lit and nothing else, so the NSail
+    // variables a stylesheet cannot compute ride beside it, for that same scheme: the accent as
+    // INK is a decision about the accent's own luminance, and color-mix has no way to see how
+    // bright a colour is. Two of them, because the accent is read on two kinds of ground — the
+    // content's fixed surfaces, and the freely picked chrome the drawer wears — and one value
+    // over both would be a light chrome's ink chosen against a dark scheme's card. Everything
+    // else stays in ns-mud.css, where a wash mixed against transparent belongs.
     static string Variables(Brand brand, bool dark)
     {
         var scheme = dark ? brand.Dark : brand.Light;
 
-        return $":root{{--ns-accent-ink:{scheme.TextOnAccentSoft};}}";
+        return $":root{{--ns-accent-ink:{scheme.AccentInk};--ns-accent-on-chrome:{scheme.AccentOnChrome};}}";
     }
 
     /// <summary>The colourless grey a surface wears when no brand is known — the last resort,

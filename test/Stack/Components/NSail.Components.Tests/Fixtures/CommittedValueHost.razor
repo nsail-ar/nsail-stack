@@ -1,0 +1,68 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* The same eleven boxes TypedValueHost holds, each with a handler on OnCommit that records
+   what it was handed. The suite beside it drives one box at a time and asks the only two
+   questions the seam answers: a keystroke is not a commit, and the leave and the Enter are. *@
+<NsForm TModel="TypedValueModel" Model="Model" OnSubmit="HandleSubmit" Untracked>
+    <NsTextField @bind-Value="context.Name" OnCommit="@(text => Commit(nameof(NsTextField), text))" />
+    @* The masked box is a different vendor control underneath, not the same one wearing a
+       pattern, so whether the seam reaches it is a question of its own. *@
+    <NsTextField @bind-Value="context.Document" Mask="00.000.000"
+                 OnCommit="@(text => Commit(MaskedField, text))" />
+    <NsTextArea @bind-Value="context.Note" OnCommit="@(text => Commit(nameof(NsTextArea), text))" />
+    <NsEmailField @bind-Value="context.MailAddress" OnCommit="@(text => Commit(nameof(NsEmailField), text))" />
+    <NsPhoneField @bind-Value="context.Phone" OnCommit="@(text => Commit(nameof(NsPhoneField), text))" />
+    <NsUrlField @bind-Value="context.Site" OnCommit="@(text => Commit(nameof(NsUrlField), text))" />
+    <NsPasswordField @bind-Value="context.Secret" OnCommit="@(text => Commit(nameof(NsPasswordField), text))" />
+    <NsSearchField @bind-Value="context.Search" OnCommit="@(text => Commit(nameof(NsSearchField), text))" />
+    <NsNumericField TValue="decimal?" @bind-Value="context.Amount"
+                    OnCommit="@(figure => Commit(nameof(NsNumericField<decimal?>), figure))" />
+    <NsMoneyField TValue="decimal?" @bind-Value="context.Price"
+                  OnCommit="@(figure => Commit(nameof(NsMoneyField<decimal?>), figure))" />
+    <NsPercentField TValue="decimal?" @bind-Value="context.Share"
+                    OnCommit="@(figure => Commit(nameof(NsPercentField<decimal?>), figure))" />
+    <NsDurationField TValue="TimeSpan?" @bind-Value="context.Length"
+                     OnCommit="@(length => Commit(nameof(NsDurationField<TimeSpan?>), length))" />
+    <NsSubmit />
+</NsForm>
+
+@code {
+
+    public const string MaskedField = "NsTextField(masked)";
+
+    readonly List<(string Field, object? Value)> _committed = [];
+
+    [Parameter, EditorRequired]
+    public TypedValueModel Model { get; set; } = default!;
+
+    public IReadOnlyList<(string Field, object? Value)> Committed
+    {
+        get { return _committed; }
+    }
+
+    // A bound member moved by the screen rather than by the box — a sibling field deriving it, a
+    // reload writing into the document the form already holds. The model instance is the same
+    // one, so the form keeps its EditContext and the fields under it keep their instances: this
+    // is the only way a new Value reaches a box that has been typed into.
+    public Task Push(string name)
+    {
+        Model.Name = name;
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    void Commit(string field, object? value)
+    {
+        _committed.Add((field, value));
+    }
+
+    Task HandleSubmit(SubmitEventArgs<TypedValueModel> args)
+    {
+        return Task.CompletedTask;
+    }
+}

@@ -1,0 +1,38 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* Every text-shaped field in the house, each bound to its own member: the suite types into
+   one box at a time and submits without leaving it, so a field that commits late is named by
+   the member that arrived empty. *@
+<NsForm TModel="TypedValueModel" Model="Model" OnSubmit="HandleSubmit" Untracked>
+    <NsTextField @bind-Value="context.Name" Required />
+    <NsTextArea @bind-Value="context.Note" />
+    <NsEmailField @bind-Value="context.MailAddress" />
+    <NsPhoneField @bind-Value="context.Phone" />
+    <NsUrlField @bind-Value="context.Site" />
+    <NsPasswordField @bind-Value="context.Secret" />
+    <NsSearchField @bind-Value="context.Search" />
+    <NsNumericField TValue="decimal?" @bind-Value="context.Amount" />
+    <NsMoneyField TValue="decimal?" @bind-Value="context.Price" />
+    <NsPercentField TValue="decimal?" @bind-Value="context.Share" />
+    <NsDurationField TValue="TimeSpan?" @bind-Value="context.Length" />
+    <NsSubmit />
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public TypedValueModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<TypedValueModel> Submitted { get; set; }
+
+    async Task HandleSubmit(SubmitEventArgs<TypedValueModel> args)
+    {
+        await Submitted.InvokeAsync(args.Model);
+    }
+}

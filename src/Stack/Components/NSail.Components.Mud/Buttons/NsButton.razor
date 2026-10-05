@@ -17,7 +17,7 @@
 <CascadingValue Value="false" Name="ParentDisabled" IsFixed="true">
     @if (Wordless && As == NsAs.Inline)
     {
-        <MudTooltip Text="@Label">
+        <MudTooltip Text="@Label" @bind-Visible="_whispering">
             <MudIconButton Icon="@(Icon?.Markup)"
                            Size="@GetSize()"
                            Color="Color.Inherit"
@@ -120,6 +120,13 @@
 
     Dictionary<string, object>? _ariaAttributes;
 
+    // The vendor's tooltip opens on hover and on focus and closes on neither after a press: the
+    // pointer never left, and the click left the button holding focus. So the bubble naming the
+    // glyph stays painted over whatever the press just put on screen — a disclosure's own
+    // detail, the dialog it opened — which is why the whisper is owned here rather than left to
+    // the vendor's defaults. See HandleClick.
+    bool _whispering;
+
     // A form's word is two words. Disabled means it refuses writes, and a button drawn in it is
     // refused with the fields — read from FormDisabled, the form's own word, so a refusal a
     // running submit is standing on top of still counts. Merely SAVING is not that: the save
@@ -144,6 +151,11 @@
     // its "already running" throw, so the refusal is answered here rather than surfaced there.
     Task HandleClick()
     {
+        // Before the refusal below and not after it: a press that got this far is a press,
+        // whatever is done with it. The name is not lost, only the bubble — the pointer leaving
+        // and returning is the gesture that asks for it again.
+        _whispering = false;
+
         if (IsDisabled)
         {
             return Task.CompletedTask;

@@ -31,6 +31,9 @@
 
     bool _open = true;
 
+    string? _drawnWidth;
+    bool _drawnDocked;
+
     // Assume a wide viewport until measured (prerender / first render): a docked
     // drawer degrades gracefully, an overlay flash over the content would not.
     Breakpoint _breakpoint = Breakpoint.Lg;
@@ -126,17 +129,47 @@
         }
     }
 
-    void OnSurfaceStateChanged() => _ = InvokeAsync(() =>
+    // The only things this drawer's own render reads off the surface are the width its size
+    // translates to and whether it is docked: every other announcement would redraw the drawer,
+    // the container above it and the page inside it to emit the geometry already on screen, and
+    // one save in an overlay announces three times. The container refresh is narrower still,
+    // because that container is the LAYOUT — poking it reaches the nav, the bar and the page this
+    // surface is standing over. Compared against what was last drawn, so the viewport's own path
+    // (OnViewportChanged) cannot leave this reading a width nobody painted.
+    void OnSurfaceStateChanged()
     {
-        StateHasChanged();
+        var width = GetWidth();
+        var docked = IsDocked;
 
-        // A fixed drawer's width is painted by the container (--mud-drawer-width-*),
-        // and MudDrawer never notifies it of Width changes — refresh it here.
-        (Container as IMudStateHasChanged)?.StateHasChanged();
-    });
+        if (width == _drawnWidth && docked == _drawnDocked)
+        {
+            return;
+        }
+
+        var redocked = docked != _drawnDocked;
+
+        _ = InvokeAsync(() =>
+        {
+            StateHasChanged();
+
+            // The container paints both halves of a fixed drawer's geometry — the width as
+            // --mud-drawer-width-*, the dock as the mud-drawer-open-{variant}-end class it builds
+            // from the drawer's EffectiveVariant — and MudDrawer notifies it of only one: Width,
+            // MiniWidth, Height, ClipMode, Open and Breakpoint each carry a change handler that
+            // refreshes it, and Variant, which is what the dock picks, carries none. So the dock
+            // is the case that needs this and a width that moved is already the vendor's own.
+            if (redocked)
+            {
+                (Container as IMudStateHasChanged)?.StateHasChanged();
+            }
+        });
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        _drawnWidth = GetWidth();
+        _drawnDocked = IsDocked;
+
         if (firstRender)
         {
             await Viewport.SubscribeAsync(

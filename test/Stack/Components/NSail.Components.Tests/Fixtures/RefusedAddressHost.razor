@@ -1,0 +1,26 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* The RefusedDateHost recipe over the other field whose own input can be unreadable: a real
+   NsForm, so the submit runs through the same EditContext.Validate() a Guardar does. *@
+<NsForm TModel="RefusedAddressModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsUrlField @bind-Value="context.Link" />
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public RefusedAddressModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    Task HandleSubmit()
+    {
+        return Submitted.InvokeAsync();
+    }
+}

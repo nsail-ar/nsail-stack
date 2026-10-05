@@ -98,7 +98,7 @@ public sealed class NsFormBaselineTests : BunitContext, IAsyncLifetime
     {
         var host = RenderHost(p => p.Add(x => x.ReloadsOnSubmit, true));
 
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("typed by hand"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("typed by hand"));
 
         Assert.True(host.Instance.Surface!.HasChanges);
 
@@ -114,7 +114,7 @@ public sealed class NsFormBaselineTests : BunitContext, IAsyncLifetime
     {
         var host = RenderHost();
 
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("typed by hand"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("typed by hand"));
 
         await host.InvokeAsync(() => host.Find("form").Submit());
 
@@ -127,7 +127,7 @@ public sealed class NsFormBaselineTests : BunitContext, IAsyncLifetime
     {
         var host = RenderHost(p => p.Add(x => x.ReloadsOnSubmit, true));
 
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("typed by hand"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("typed by hand"));
         await host.InvokeAsync(() => host.Find("form").Submit());
 
         var navigation = Services.GetRequiredService<NavigationManager>();
@@ -147,7 +147,7 @@ public sealed class NsFormBaselineTests : BunitContext, IAsyncLifetime
 
         var host = RenderHost(p => p.Add(x => x.Problem, problem));
 
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("typed by hand"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("typed by hand"));
 
         await host.InvokeAsync(() => host.Find("form").Submit());
 
@@ -162,7 +162,7 @@ public sealed class NsFormBaselineTests : BunitContext, IAsyncLifetime
 
         var host = RenderHost(p => p.Add(x => x.Problem, problem));
 
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("typed by hand"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("typed by hand"));
         await host.InvokeAsync(() => host.Find("form").Submit());
 
         host.WaitForAssertion(() => Assert.True(host.Instance.Surface!.HasChanges));
@@ -183,7 +183,7 @@ public sealed class NsFormBaselineTests : BunitContext, IAsyncLifetime
 
         host.WaitForAssertion(() => Assert.Equal("smtp.stored.test", host.Instance.Model.Host));
 
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("smtp.typed.test"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("smtp.typed.test"));
 
         Assert.True(host.Instance.Surface!.HasChanges);
         Assert.False(SubmitIsDisabled(host));

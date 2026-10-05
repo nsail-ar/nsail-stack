@@ -19,6 +19,7 @@ public sealed class SurfaceContext
     readonly object _sync = new();
     readonly HashSet<object> _dirtySources = [];
     readonly List<SaveWindow> _windows = [];
+    readonly List<ActClaim> _acts = [];
     readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, object> _retired = new();
     readonly NavigationManager _navigation;
     readonly RouteTable _routeTable;
@@ -87,6 +88,14 @@ public sealed class SurfaceContext
     /// form's word is two words here for the same reason it is two cascades: an OR cannot be taken
     /// back apart once both halves are true.</summary>
     public bool FormRunning => _formRunning;
+
+    /// <summary>Raised when the two words above move. Its own event and not StateChanged, for the
+    /// reason IndexChanged is not AnnouncementChanged: the only reader is chrome outside the
+    /// form's cascade (NsDialogExit), a save starting and ending is already on StateChanged as
+    /// HasWork for everything that draws a spinner, and NsForm reports this from the after-render
+    /// of the pass that decided it — so an event the page and the submit also listened to would
+    /// make it a render that provokes a render, for a state change already announced.</summary>
+    public Action? RefusalChanged;
 
     // What a departure actually has to be asked about, which is not everything HasChanges counts:
     // a submit in flight answers for every report its own spend reaches, and the window that
@@ -954,7 +963,7 @@ public sealed class SurfaceContext
 
         if (raiseChanged)
         {
-            StateChanged?.Invoke();
+            RefusalChanged?.Invoke();
         }
     }
 
@@ -980,7 +989,7 @@ public sealed class SurfaceContext
 
         if (raiseChanged)
         {
-            StateChanged?.Invoke();
+            RefusalChanged?.Invoke();
         }
     }
 
@@ -1210,6 +1219,67 @@ public sealed class SurfaceContext
         {
             await handler(args);
         }
+    }
+
+    /// <summary>The form an act the page hosts is standing INSIDE, for the length of that act's
+    /// call. The cascade is what decides which form — an act drawn inside one is that form's
+    /// business and an act beside it is not — while the Runner that raises the act belongs to the
+    /// page, so its refusal arrives with no way back to the form the person pressed it in: the
+    /// surface is the one object both ends hold, the way it already is for the word a dialog's X
+    /// reads (SetRefusing). Held for the length of the call and nothing longer — the surface
+    /// outlives every form on it, and a claim left standing would hand a later screen's refusal to
+    /// a form nobody can see.</summary>
+    internal ActClaim BeginAct(IFormProblems form)
+    {
+        ArgumentNullException.ThrowIfNull(form);
+
+        // The last "no" this seam placed comes down here and not at the end of the act that
+        // replaced it: an act that is refused reports a Problem and one that works reports
+        // nothing, so silence is only ever legible backwards, at the next press.
+        form.Place(null);
+
+        var claim = new ActClaim(form);
+
+        lock (_sync)
+        {
+            _acts.Add(claim);
+        }
+
+        return claim;
+    }
+
+    internal void EndAct(ActClaim? claim)
+    {
+        if (claim is null)
+        {
+            return;
+        }
+
+        lock (_sync)
+        {
+            _acts.Remove(claim);
+        }
+    }
+
+    /// <summary>Which form answers for an act in flight: the last claim taken, the way a nested
+    /// cascade would answer. Two acts overlap on one surface only across two pages' Runners — one
+    /// page runs one act at a time — and the later press is the one the person is waiting on.</summary>
+    internal IFormProblems? HostedAct
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _acts.Count == 0 ? null : _acts[^1].Form;
+            }
+        }
+    }
+
+    // One hosted act's claim, identified by nothing but itself: the caller holds it from BeginAct
+    // to EndAct, which is what keeps a second act on the same surface from closing it.
+    internal sealed class ActClaim(IFormProblems form)
+    {
+        internal IFormProblems Form { get; } = form;
     }
 
     // One submit's window, identified by nothing but itself: the caller holds it from BeginSave to

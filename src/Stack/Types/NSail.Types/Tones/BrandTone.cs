@@ -6,15 +6,22 @@ using System.Globalization;
 namespace NSail.Tones;
 
 // The one tonal helper the brand has. Three entries and nothing else: the ink a Chrome is read
-// in, the states an Accent answers with, and the ink that stands on the Accent's soft wash. A
-// second implementation of any of them is what let the chrome and the surfaces drift apart.
+// in, the states an Accent answers with, and the Accent AS INK — the label, the link, the tab
+// that says "you are here". A second implementation of any of them is what let the chrome and
+// the surfaces drift apart.
 public static class BrandTone
 {
     /// <summary>The accent's share of the soft wash NsAs.Important is filled with — the
     /// stylesheet's <c>--ns-accent-soft</c>, which mixes against transparent so one value reads
-    /// on a card, a raised sheet and the canvas alike. It is named here because
-    /// <see cref="SoftInk"/> has to compose the same wash to measure against.</summary>
+    /// on a card, a raised sheet and the canvas alike. It is named here because whoever measures
+    /// <see cref="AccentInk"/> has to compose the same wash to read it against.</summary>
     public const double WashWeight = 0.13;
+
+    /// <summary>The chrome ink's share of the wash the drawer marks a row with — the
+    /// stylesheet's <c>--ns-rail-hover</c>, the ground under the entry the reader is on. Named
+    /// here beside its siblings for the reason <see cref="WashWeight"/> is: the accent's ink on
+    /// that band has to be read against the ground it actually stands on.</summary>
+    public const double RailWeight = 0.08;
 
     /// <summary>The scheme ink's share of the fill a REFUSED control is drawn on — the
     /// stylesheet's <c>--ns-inert-soft</c>, mixed against transparent for the same reason
@@ -23,6 +30,33 @@ public static class BrandTone
     /// vendor's own 12%, at which the one act nobody can press is the loudest grey on the
     /// screen.</summary>
     public const double InertWeight = 0.06;
+
+    /// <summary>The severity's share of the ink a STATE's word is painted in — the stylesheet's
+    /// <c>--ns-status-*</c>, mixed into the scheme's own TextPrimary so one fraction leans dark
+    /// in the light scheme and light in the dark one. Named here because
+    /// a severity constant is a FILL and reading it as 16px of text is a criterion it does not
+    /// meet on its own; whatever measures the word has to compose the same mix.</summary>
+    public const double ToneLean = 0.65;
+
+    /// <summary>The muted ink's share of the NEUTRAL state's word — the stylesheet's
+    /// <c>.ns-status-muted</c>, leaned the rest of the way into TextPrimary. The muted rank on
+    /// its own is tuned against a surface, and a status word is read in a table row, which tints
+    /// under the pointer; the tenth is what carries it over the body floor there while keeping
+    /// the word a visible step under the ink of the cells beside it.</summary>
+    public const double NeutralLean = 0.90;
+
+    /// <summary>The severity's share of the tint a washed grid ROW carries — the stylesheet's
+    /// <c>.ns-row-*</c>. Ours rather than the vendor's <c>--mud-palette-{severity}-hover</c>
+    /// alias it used to borrow: the floor of every status word standing on that row is a
+    /// function of this number, so a vendor bump may not move it in silence.</summary>
+    public const double RowWash = 0.06;
+
+    /// <summary>The same tint under the POINTER. The vendor answers a hover by REPLACING a row's
+    /// background with its own neutral tint, which on a washed row blanks the condition channel
+    /// on the one row being read; the stylesheet hands the vendor's own
+    /// <c>--mud-palette-table-hover</c> variable this value per washed row instead, so the wash
+    /// deepens in its own tone rather than being painted over.</summary>
+    public const double RowWashPointed = 0.10;
 
     // The ink, as a distance from the chrome: towards white over a dark chrome, towards black
     // over a light one. Mixed from the chrome and not picked, so the chrome's own warmth
@@ -90,23 +124,26 @@ public static class BrandTone
             luminance >= LightThreshold ? "#1a1a1a" : White);
     }
 
-    // The label on the accent's soft wash (NsAs.Important). The wash is mostly the surface — a
-    // tenth of the accent laid over it — so the label starts from the scheme's own ink and is
-    // leaned toward the accent for identity, as far as AA still holds over that wash and no
-    // further. A FIXED lean cannot honour "a free colour is never an illegible one": 55% of the
-    // house orange reads 4.53:1 on its own wash in light, and 55% of a pastel pick reads 3.3:1
-    // on its own. Leaning nowhere is the floor, and it is the scheme's plain ink on a surface
-    // it already clears — which is also what an unparseable accent falls back to, since Mix
-    // hands its own seed back rather than a colour it invented.
-    public static string SoftInk(string accent, string surface, string ink)
+    // The accent AS INK: the soft rung's label, a link, the active tab, the chapter the reader
+    // is on. The accent itself is made to be a GROUND — a fill, a glyph, a slider — and a free
+    // pick painted as text on a pale surface is what reads 2.3:1, so the ink starts from the
+    // scheme's own and is leaned toward the accent for identity, as far as AA still holds on
+    // EVERY ground the house paints it on and no further. A FIXED lean cannot honour "a free
+    // colour is never an illegible one": 55% of the house orange reads 4.53:1 on its own wash in
+    // light, and 55% of a pastel pick reads 3.3:1 on its own. Leaning nowhere is the floor, and
+    // it is the scheme's plain ink on a surface it already clears — which is also what an
+    // unparseable accent falls back to, since Mix hands its own seed back rather than a colour
+    // it invented.
+    // Every ground at once and not the worst one: which ground is worst is itself a function of
+    // the pick (a wash of a bright accent darkens a light surface and lightens a dark one), so a
+    // caller that ranked them would be deciding the same question this answers.
+    public static string AccentInk(string accent, string ink, params string[] grounds)
     {
-        var wash = Mix(surface, accent, WashWeight);
-
         for (var lean = FullLean; lean > 0; lean--)
         {
             var candidate = Mix(ink, accent, (double)lean / LeanSteps);
 
-            if (Contrast(wash, candidate) >= BodyContrast)
+            if (grounds.All(ground => Contrast(ground, candidate) >= BodyContrast))
             {
                 return candidate;
             }

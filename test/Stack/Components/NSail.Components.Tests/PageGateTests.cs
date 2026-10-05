@@ -135,4 +135,97 @@ public sealed class PageGateTests
     {
         Assert.True(await Build().Permits(typeof(OpenTestPage), User()));
     }
+
+    // nsail#1934. Every caller of this gate asks from inside a render and none of them can
+    // remember on its own: NsPageLink re-asks on every parameter set, and a parameter set is
+    // every render pass of whatever hosts it, so one pass over a full list of rows asks for
+    // the same handful of pages dozens of times. What that costs is not assertable on the CI
+    // box; how often the evaluator is ASKED is, and it is the same fact.
+    static (PageGate Gate, CountingAuthorization Asked) Counted()
+    {
+        var services = new ServiceCollection();
+
+        services.AddAuthorizationCore();
+        services.AddSingleton<IAuthorizationPolicyProvider, MessagePolicyProvider>();
+        services.AddSingleton<IAuthorizationHandler>(new GrantedMessages(typeof(OpenTestPage)));
+        services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
+        services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
+
+        var provider = services.BuildServiceProvider();
+        var asked = new CountingAuthorization(provider.GetRequiredService<IAuthorizationService>());
+
+        return (new PageGate(asked, provider.GetRequiredService<IAuthorizationPolicyProvider>()), asked);
+    }
+
+    [Fact]
+    public async Task AsksTheEvaluatorOncePerPageForOneSession()
+    {
+        var (gate, asked) = Counted();
+        var user = User("admin");
+
+        for (var call = 0; call < 20; call++)
+        {
+            Assert.True(await gate.Allows(typeof(AdminTestPage), user));
+        }
+
+        Assert.Equal(1, asked.Calls);
+    }
+
+    /// <summary>A verdict is a function of the page and the session, so neither of them collapses
+    /// into the other: a second page is its own question.</summary>
+    [Fact]
+    public async Task AsksAgainForAnotherPage()
+    {
+        var (gate, asked) = Counted();
+        var user = User("admin");
+
+        Assert.True(await gate.Allows(typeof(AdminTestPage), user));
+        Assert.True(await gate.Allows(typeof(AuthenticatedTestPage), user));
+
+        Assert.Equal(2, asked.Calls);
+    }
+
+    /// <summary>And the session is the one thing that earns a fresh ask — a sign-in, an
+    /// organization switch — which is the same bargain NavMenu makes with the tree it builds
+    /// out of these answers.</summary>
+    [Fact]
+    public async Task AsksAgainForAnotherSession()
+    {
+        var (gate, asked) = Counted();
+
+        Assert.True(await gate.Allows(typeof(AdminTestPage), User("admin")));
+        Assert.True(await gate.Allows(typeof(AdminTestPage), User("admin")));
+
+        Assert.Equal(2, asked.Calls);
+    }
+
+    /// <summary>And the session with nobody in it is one session: a link cascaded no state
+    /// stands in for the same anonymous principal every time rather than minting one per call,
+    /// which would be a remembered answer nothing ever reads again on every render pass.</summary>
+    [Fact]
+    public async Task AsksOnceForALinkCascadedNoSession()
+    {
+        var (gate, asked) = Counted();
+
+        for (var call = 0; call < 20; call++)
+        {
+            Assert.False(await gate.Allows(typeof(AuthenticatedTestPage), state: null));
+        }
+
+        Assert.Equal(1, asked.Calls);
+    }
+
+    [Fact]
+    public async Task AsksTheEvaluatorOncePerMessageForOneSession()
+    {
+        var (gate, asked) = Counted();
+        var user = User("admin");
+
+        for (var call = 0; call < 20; call++)
+        {
+            Assert.True(await gate.Permits(typeof(OpenTestPage), user));
+        }
+
+        Assert.Equal(1, asked.Calls);
+    }
 }
