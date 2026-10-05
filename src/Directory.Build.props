@@ -1,13 +1,15 @@
 <Project>
 
-	<!-- Owned by this repository, never mirrored: the monorepo's root props still apply, and
-	     every Stack project gets the package metadata on top. The version is not set here —
+	<!-- Layered over the root props: every Stack project gets the package metadata on top. The
+	     version is not set here —
 	     CI passes it (-p:Version), so a local pack is always an obvious 0.0.0-dev. -->
 	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
 
 	<PropertyGroup>
 		<Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
 		<Authors>Leonardo Porro;Emmanuel Arias</Authors>
+		<Description>$(MSBuildProjectName), part of NSail Stack: a .NET modular-monolith framework (messaging, data, security, Blazor and React clients).</Description>
+		<PackageTags>nsail;modular-monolith;blazor;source-generator;efcore</PackageTags>
 		<Copyright>Copyright (c) 2026 Leonardo Porro and Emmanuel Arias</Copyright>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/nsail-ar/nsail-stack</PackageProjectUrl>

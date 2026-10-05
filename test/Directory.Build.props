@@ -1,6 +1,6 @@
 <Project>
 
-	<!-- Owned by this repository, never mirrored: nothing under test/ is a package, including
+	<!-- Nothing under test/ is a package, including
 	     the helper projects that carry no test SDK of their own. -->
 	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..'))" />
 
