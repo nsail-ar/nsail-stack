@@ -161,11 +161,16 @@ public abstract class NsPartial : NsComponent
     /// whether it is worth announcing.</summary>
     protected void NotifySent(Type messageType)
     {
-        var text = Strings.TryTranslate(Metadata.KeyFor(messageType, "SentMessage"), out var scoped)
+        Notify(GetSentText(messageType), NsSeverity.Success);
+    }
+
+    /// <summary>The sentence NotifySent announces, without announcing it — for a surface that
+    /// says what a send did somewhere other than a toast.</summary>
+    protected string GetSentText(Type messageType)
+    {
+        return Strings.TryTranslate(Metadata.KeyFor(messageType, "SentMessage"), out var scoped)
             ? scoped
             : Strings.Translate("Common.Saved");
-
-        Notify(text, NsSeverity.Success);
     }
 
     /// <summary>Asks for confirmation with the message type's own text
