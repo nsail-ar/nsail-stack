@@ -12,9 +12,6 @@
 		<IsRoslynAnalyzerComponent>true</IsRoslynAnalyzerComponent>
 
 		<PackageId>NSail.Messaging.SourceGenerator</PackageId>
-		<Version>1.0.0</Version>
-		<Authors>NSail</Authors>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<!-- An analyzer ships under analyzers/dotnet/cs with no lib/, and every reference here
 		     is PrivateAssets=all: there is no dependency to declare, so declaring none keeps
 		     the nuspec honest instead of listing a framework the package has no folder for. -->
