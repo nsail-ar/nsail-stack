@@ -1,6 +1,7 @@
 name: CI
 
-# Build, test and pack on every pull request and every push to main. A push to main is a
+# Build, test and pack on every pull request and every push to main. A run on main (a push,
+# or a manual dispatch to retry one) is a
 # release: the packages go to nuget.org as <VERSION_PREFIX>.<run> and the commit is tagged
 # v<that version>, which is what a consumer pins. A pull request packs a -pr prerelease it
 # never publishes. To start a new minor or major line, change VERSION_PREFIX.
@@ -62,7 +63,7 @@ jobs:
 
       - name: Version
         run: |
-          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "VERSION=$VERSION_PREFIX.${{ github.run_number }}" >> "$GITHUB_ENV"
           else
             echo "VERSION=$VERSION_PREFIX.${{ github.run_number }}-pr.${{ github.event.pull_request.number || 'manual' }}" >> "$GITHUB_ENV"
@@ -107,14 +108,14 @@ jobs:
           retention-days: 14
 
       - name: NuGet login
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         id: nuget
         uses: NuGet/login@v1
         with:
           user: NSail
 
       - name: Publish
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: >-
           dotnet nuget push "artifacts/*.nupkg"
           --source https://api.nuget.org/v3/index.json
@@ -122,7 +123,7 @@ jobs:
           --skip-duplicate
 
       - name: Tag
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           git tag "v$VERSION"
           git push origin "v$VERSION"
