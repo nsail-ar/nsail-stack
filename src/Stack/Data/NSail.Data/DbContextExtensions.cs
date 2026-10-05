@@ -223,4 +223,14 @@ public static class DbContextExtensions
         await using var scope = host.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<TDbContext>().Database.MigrateAsync(cancellationToken);
     }
+
+    /// <summary>Has the context stamp the audit columns of every <see cref="IAudited"/> entity on
+    /// save, from the context's own <c>OnConfiguring</c>: the one place every way of building the
+    /// context (the host, the design-time factory a test fixture reuses) passes through.</summary>
+    public static DbContextOptionsBuilder UseAuditStamps(this DbContextOptionsBuilder options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        return options.AddInterceptors(AuditStamp.Instance);
+    }
 }
