@@ -17,6 +17,9 @@
 		     this module's DbContext, so the edge points this way: the alternative is the
 		     messaging runtime knowing about EF Core. -->
 		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
+		<!-- The mapper's graph semantics know no store; this module is the store that answers
+		     its hooks (StoreMapContext). -->
+		<ProjectReference Include="..\..\Mapping\NSail.Mapping\NSail.Mapping.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -97,6 +97,8 @@
 
     IDisposable? _recount;
 
+    string _counted = string.Empty;
+
     [CascadingParameter]
     public Task<AuthenticationState>? AuthenticationState { get; set; }
 
@@ -190,9 +192,7 @@
         // Awaiting the state is ordering as much as it is the user: the client fills its
         // Session and effective policies while this task completes, and the gate reads
         // those. Asked any earlier, every entry answers "denied".
-        var user = AuthenticationState is null
-            ? new ClaimsPrincipal(new ClaimsIdentity())
-            : (await AuthenticationState).User;
+        var user = await PageGate.UserOf(AuthenticationState);
 
         var merged = await Menu.GetItems(AuthenticationState);
 
@@ -217,9 +217,27 @@
     // seat — without anybody leaving the page. Neither is a clock of the drawer's own: the
     // drawer counts when it is told to, and what does the telling is whoever knows the work
     // moved.
+    //
+    // ApplyRoute runs on every location change and the recount does not: a surface opening or
+    // closing writes a query over the address the person is already standing at (an aside, a
+    // dialog, a tab, a filter) and is neither of the two moments above — nobody arrived
+    // anywhere, and whatever moved the work published NavMenuCountsChanged itself. The route
+    // still has to be reapplied, because a deep-link filter in the query is what tells two
+    // entries naming one page apart (FindActive). Counted on the aside's own close, this was a
+    // round trip per contributor plus a full redraw of the drawer inside the window of every
+    // save taken in an overlay (nsail#1934).
     void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         ApplyRoute();
+
+        var arrived = GetCurrentPath();
+
+        if (string.Equals(_counted, arrived, StringComparison.Ordinal))
+        {
+            _ = InvokeAsync(StateHasChanged);
+
+            return;
+        }
 
         _ = InvokeAsync(async () =>
         {
@@ -231,6 +249,7 @@
 
     async Task Recount()
     {
+        _counted = GetCurrentPath();
         _counts = await Menu.GetCounts();
     }
 

@@ -14,6 +14,10 @@
     <NsNumericField TValue="decimal?" @bind-Value="context.Price" Label="Price" />
     <NsNumericField TValue="decimal?" @bind-Value="context.From" Label="From" />
     <NsNumericField TValue="decimal?" @bind-Value="context.To" Label="To" />
+    <NsTextField @bind-Value="context.Digits" Label="Digits" />
+    <NsTextField @bind-Value="context.Prefix" Label="Prefix" />
+    <NsNumericField TValue="int?" @bind-Value="context.Count" Label="Count" />
+    <NsTextField @bind-Value="context.Odd" Label="Odd" />
 </NsForm>
 
 @code {

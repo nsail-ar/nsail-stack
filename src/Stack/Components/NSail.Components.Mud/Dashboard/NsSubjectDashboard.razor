@@ -5,7 +5,6 @@
 @typeparam TSubject
 
 @using Microsoft.AspNetCore.Components.Authorization
-@using System.Security.Claims
 
 @inject IEnumerable<IDashboardContributor<TSubject>> Contributors
 @inject PageGate Gate
@@ -45,9 +44,7 @@
             return;
         }
 
-        var user = AuthenticationState is null
-            ? new ClaimsPrincipal(new ClaimsIdentity())
-            : (await AuthenticationState).User;
+        var user = await PageGate.UserOf(AuthenticationState);
 
         var items = new List<DashboardItem>();
 

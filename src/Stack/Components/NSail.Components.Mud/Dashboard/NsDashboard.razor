@@ -81,9 +81,7 @@ else if (_items.Count > 0)
         // Awaiting the state is ordering as much as it is the user: the client fills its
         // Session and effective policies while this task completes, and the gate reads
         // those. Asked any earlier, every card answers "denied".
-        var user = AuthenticationState is null
-            ? new ClaimsPrincipal(new ClaimsIdentity())
-            : (await AuthenticationState).User;
+        var user = await PageGate.UserOf(AuthenticationState);
 
         // Resolved, never injected: a host with no security registered (a component test, a
         // surface without Iam) must still render, the same permissive default CanSend takes.

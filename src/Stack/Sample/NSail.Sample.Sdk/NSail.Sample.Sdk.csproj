@@ -24,4 +24,12 @@
 		</ProjectReference>
 	</ItemGroup>
 
+	<!-- The React client's contract: written from this Sdk on every build, beside the C# client
+	     its [Generated(Http.Clients)] holder declares. -->
+	<PropertyGroup>
+		<TypeScriptOutput>../NSail.Sample.React/src/sdk.ts</TypeScriptOutput>
+	</PropertyGroup>
+
+	<Import Project="..\..\Generation\NSail.TypeScriptGenerator\NSail.TypeScriptGenerator.targets" />
+
 </Project>

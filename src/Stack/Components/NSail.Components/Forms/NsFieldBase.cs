@@ -53,6 +53,13 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     [Parameter]
     public Expression<Func<TValue>>? ValueExpression { get; set; }
 
+    /// <summary>The bound member, for a field bound by Value plus ValueChanged — a shared
+    /// editor's, a row cell's — where there is no ValueExpression to read it off. It names the
+    /// member the label, the required mark and the refusal's own field identifier are derived
+    /// from, and it stops here: it is never handed to the vendor control, which reads the
+    /// member's ValidationAttributes off it and refuses them on every value change in the
+    /// attribute's own English — a second refusal moment NSail does not own, and the untranslated
+    /// text <see cref="NsDataAnnotationsValidator"/> exists to replace.</summary>
     [Parameter]
     public Expression<Func<TValue>>? For { get; set; }
 
@@ -89,9 +96,6 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
     [Parameter]
     public bool AutoFocus { get; set; }
-
-    [Parameter]
-    public bool Immediate { get; set; }
 
     /// <summary>Makes the field fill the free space of its flex parent (a toolbar's search
     /// box pushing the actions to the edge). Same word, same meaning as on NsTable/NsStack.</summary>
@@ -168,10 +172,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         var name = GetAccessibleName();
         var selectOnFocus = SelectOnFocus;
         var describedBy = DescribedBy;
+        var readOnly = IsReadOnly;
 
         // A separator neither an autofill token nor a label can contain, so no two different
         // sets share a signature and a change is never mistaken for none.
-        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{describedBy}";
+        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{describedBy}\n{readOnly}";
 
         if (_attributesFor == signature)
         {
@@ -180,7 +185,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         _attributesFor = signature;
 
-        if (autocomplete is null && name is null && !selectOnFocus && describedBy is null)
+        if (autocomplete is null && name is null && !selectOnFocus && describedBy is null && !readOnly)
         {
             _inputAttributes = Empty;
             return;
@@ -191,6 +196,17 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         if (autocomplete is not null)
         {
             attributes["autocomplete"] = autocomplete;
+        }
+
+        // The field's own word for "locked", which the vendor's `readonly` attribute cannot be
+        // read as: a select's input carries that unconditionally, because the chosen value is
+        // painted into a text box nobody types into. Written from here so the answer is the same
+        // one every field already derives (ReadOnly or the form's cascade), and read by ns.js's
+        // focusFirst to skip a locked first field the way it skips a disabled one — plus it is
+        // what a screen reader is owed anyway.
+        if (readOnly)
+        {
+            attributes["aria-readonly"] = "true";
         }
 
         if (name is not null)
@@ -370,7 +386,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     // ALREADY displaying; a user edit carries a different one, and that is the whole
     // difference between them. ValueChanged still runs either way, so two-way binding is
     // untouched: only the change notification is withheld.
-    protected async Task SetValue(TValue? value)
+    protected virtual async Task SetValue(TValue? value)
     {
         var edited = !EqualityComparer<TValue?>.Default.Equals(Value, value);
 
@@ -466,6 +482,14 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         _subscribedEditContext.OnValidationStateChanged -= HandleValidationStateChanged;
         _subscribedEditContext.OnValidationRequested -= HandleValidationRequested;
+        // Emptied before it is let go, because the EditContext keeps it: a store stays in the
+        // field state it posted to, and Validate() counts the messages of every store there. A
+        // field that leaves the screen refused — "Soy yo" ticked, a product's type swapped —
+        // would hold every later submit with nothing on screen to show for it. Cleared whole
+        // rather than by identifier: PostOwnProblems is the only writer, so the store carries
+        // this field's refusal and nothing else, and the identifier may already have been
+        // rebound by the time the old context is dropped.
+        _ownMessages?.Clear();
         _ownMessages = null;
         // Forgotten with the store it was posted to: a field rebound to a new form starts owing
         // that form its problem, and a remembered one would make the first post look like a repeat.

@@ -60,9 +60,26 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
         // down is not replayed, so they are told to ask.
         connection.Reconnected += _ => Connected();
 
+        // The automatic reconnect answers a line that dropped with an error, and only that: a
+        // server that closes it cleanly — a deploy stopping, a connection it aborted — ends in
+        // Closed and nothing comes back. While this feed is open, a closed line is started
+        // again the same way the first one was, catch-up included; only a refused session
+        // stays closed.
+        var token = _opened.Token;
+
+        connection.Closed += failure =>
+        {
+            if (!token.IsCancellationRequested && (failure is null || !Refused(failure)))
+            {
+                _ = Start(connection, token);
+            }
+
+            return Task.CompletedTask;
+        };
+
         _connection = connection;
 
-        _ = Start(connection, _opened.Token);
+        _ = Start(connection, token);
     }
 
     public override async Task Close()

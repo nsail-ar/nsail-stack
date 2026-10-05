@@ -3,8 +3,6 @@
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<RootNamespace>NSail.TypeScriptGenerator</RootNamespace>
-		<!-- Runs against whatever framework the Sdk it reads was built for, so a machine with a
-		     newer runtime than the SDK pin still generates. -->
 		<RollForward>Major</RollForward>
 	</PropertyGroup>
 
@@ -13,8 +11,18 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The C# generator's own model: which messages a client sends and where each member
+		     binds come from HttpModelFactory, so the TypeScript client and the C# one are two
+		     renderings of one reading. -->
+		<ProjectReference Include="..\NSail.SourceGenerator\NSail.SourceGenerator.csproj" />
 		<ProjectReference Include="..\..\Metadata\NSail.Metadata\NSail.Metadata.csproj" />
+		<!-- Loaded so a Stack validation attribute that subclasses a BCL one ([SearchTerm]) can be
+		     constructed and read like the BCL rule it is. -->
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -1,0 +1,33 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* Configuración > ARCA's own shape: a required name, a patterned CUIT, a mailbox and a
+   bounded figure, all on one tracked form so the suite can type into one box and read what
+   the form drew under the others. *@
+<NsForm TModel="DeclaredRefusalModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsTextField @bind-Value="context.Name" Label="Name" />
+    <NsTextField @bind-Value="context.Cuit" Label="Cuit" />
+    <NsEmailField @bind-Value="context.MailAddress" Label="MailAddress" />
+    <NsNumericField TValue="int" @bind-Value="context.PointOfSale" Label="PointOfSale" />
+    <NsTextField Value="@Model.NamedCuit" ValueChanged="@(value => Model.NamedCuit = value)"
+                 For="() => Model.NamedCuit" Label="NamedCuit" />
+    <NsSubmit />
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public DeclaredRefusalModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    async Task HandleSubmit()
+    {
+        await Submitted.InvokeAsync();
+    }
+}

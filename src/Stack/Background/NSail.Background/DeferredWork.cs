@@ -12,8 +12,8 @@ namespace NSail.Background;
 /// what it must, and the rest of what it was about to do is a network call to somebody else's
 /// server (a mail, a WhatsApp template) that the caller has no business waiting on. Enqueue
 /// hands the work to <see cref="DeferredWorkRunner"/> and returns immediately; the runner owns
-/// its own scope, its own tenant and a timeout, so a slow vendor costs a queue slot and never a
-/// request.
+/// its own scope, its own tenant, the install's language and a timeout, so a slow vendor costs a
+/// queue slot and never a request.
 ///
 /// <para>Not a message transport and not the <c>[Queue]</c> messaging.md reserves for a future
 /// durable dispatch (messaging.md, "a queue is a semantic contract"): this is in-memory, and a
@@ -57,7 +57,12 @@ public sealed class DeferredWork
     /// so never starts <see cref="DeferredWorkRunner"/>: without this a fixture asserting on a
     /// queued send would see nothing, forever. Exceptions are NOT caught here the way the real
     /// runner catches them — a fixture that queued work that throws should fail loudly, the same
-    /// as any other assertion, rather than pass on a silently swallowed bug.</summary>
+    /// as any other assertion, rather than pass on a silently swallowed bug.
+    ///
+    /// <para>The one thing this does NOT reproduce is the runner's culture: the item runs on the
+    /// caller's own flow and so in the caller's language, while the runner sets the install's
+    /// (nsail#1550). A fixture here proves the rendered body and never the language a deferred
+    /// send would have asked for — that is <c>DeferredWorkLanguageTests</c>' to prove.</para></summary>
     public async Task DrainAll(IServiceScopeFactory scopes, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(scopes);
@@ -66,16 +71,28 @@ public sealed class DeferredWork
         {
             await using var scope = scopes.CreateAsyncScope();
 
-            scope.ServiceProvider.GetRequiredService<SessionProvider>().Session = Session.System();
-
-            if (item.Tenant.IsResolved)
-            {
-                scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(item.Tenant);
-            }
+            item.Enter(scope.ServiceProvider);
 
             await item.Work(scope.ServiceProvider, cancellationToken);
         }
     }
 }
 
-sealed record DeferredWorkItem(string Kind, Tenant Tenant, Func<IServiceProvider, CancellationToken, Task> Work);
+sealed record DeferredWorkItem(string Kind, Tenant Tenant, Func<IServiceProvider, CancellationToken, Task> Work)
+{
+    // What an item's scope owes it before its work runs, in one place because it has two callers
+    // — the runner and the fixture drain — and a seed added to one of them only is how a fixture
+    // comes to prove a flow the app never takes.
+    internal void Enter(IServiceProvider services)
+    {
+        // A deferred item acts for nobody of its own, exactly as a request edge and
+        // BackgroundJobRunner both do: every id it needs it already carries as a value baked
+        // into its closure.
+        services.GetRequiredService<SessionProvider>().Session = Session.System();
+
+        if (Tenant.IsResolved)
+        {
+            services.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant);
+        }
+    }
+}

@@ -1,0 +1,116 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Problems
+@using NSail.Testing.Models
+
+<MudPopoverProvider />
+
+@* The house's paged-list recipe, verbatim (hosts.md, "A PAGED list keeps its OnQuery"): the
+   pager writes the question down, the region spends it, and the screen's other re-reads go
+   through the grid. Gate holds the FIRST read open, which is the window a filter gesture or a
+   *Saved event lands in — the one a browser cannot stage. *@
+<NsLoad @ref="_region" OnLoad="Load" OnProblem="OnCouldNotRead">
+    <NsTable TRow="TestModel" Rows="_rows" OnQuery="OnQuery" Mode="Mode" @ref="_table">
+        <HeaderContent>
+            <NsTh For="() => context.Name" />
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <NsTd For="() => row.Name">@row.Name</NsTd>
+        </RowTemplate>
+    </NsTable>
+</NsLoad>
+
+@code {
+
+    DataPage<TestModel> _rows = DataPage<TestModel>.Empty();
+    NsLoad? _region;
+    NsTable<TestModel>? _table;
+    bool _asked;
+    bool _grid;
+
+    /// <summary>Holds the first read open so a re-read can be dispatched into that window.</summary>
+    [Parameter, EditorRequired]
+    public TaskCompletionSource Gate { get; set; } = default!;
+
+    /// <summary>Left where the five screens leave it. Auto is the pager here — the device seam
+    /// is not registered, so it answers like a desktop — and Scroll is what Auto resolves to on
+    /// a phone, where the re-read arrives through Fetch instead of ReloadServerData.</summary>
+    [Parameter]
+    public NsTableMode Mode { get; set; } = NsTableMode.Auto;
+
+    /// <summary>What the first read answers with, or null for a read that succeeds.</summary>
+    [Parameter]
+    public Problem? Refusal { get; set; }
+
+    public int Reads { get; private set; }
+
+    public int Queries { get; private set; }
+
+    /// <summary>What the region told this host it could not read.</summary>
+    public int Refusals { get; private set; }
+
+    /// <summary>What the page is holding for the grid to draw. bUnit never flushes the page's
+    /// render inside the grid's own query, so the rows are counted here and not in the DOM —
+    /// whether they reached the screen is a browser's word (hosts.md).</summary>
+    public DataPage<TestModel> Rows => _rows;
+
+    /// <summary>The screen's own re-read door: a filter moved, a *Saved event arrived.</summary>
+    public Task Saved()
+    {
+        return Reload();
+    }
+
+    async Task OnQuery(QueryEventArgs args)
+    {
+        Queries++;
+        _asked = true;
+        _grid = true;
+
+        await (_region?.Reload() ?? Task.CompletedTask);
+    }
+
+    async Task Load(ReadEventArgs args)
+    {
+        if (!_asked)
+        {
+            return;
+        }
+
+        _asked = false;
+
+        var read = ++Reads;
+
+        if (read == 1)
+        {
+            await Gate.Task;
+
+            if (Refusal is not null)
+            {
+                throw new BusinessException(Refusal);
+            }
+        }
+
+        // What a Send honouring its token does when the region supersedes this read: it stops
+        // instead of writing an older answer over a newer one.
+        args.CancellationToken.ThrowIfCancellationRequested();
+
+        _rows = DataPage<TestModel>.From([new TestModel { Name = $"read {read}" }]);
+    }
+
+    Task Reload()
+    {
+        return _grid && _table is not null ? _table.Reload() : _region?.Reload() ?? Task.CompletedTask;
+    }
+
+    void OnCouldNotRead(ProblemEventArgs args)
+    {
+        Refusals++;
+        _grid = false;
+    }
+}

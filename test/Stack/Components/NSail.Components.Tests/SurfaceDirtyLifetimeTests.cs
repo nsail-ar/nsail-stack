@@ -99,7 +99,7 @@ public sealed class SurfaceDirtyLifetimeTests : BunitContext, IAsyncLifetime
     {
         var host = RenderHost();
 
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("typed by hand"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("typed by hand"));
 
         Assert.True(host.Instance.Surface!.HasChanges);
 

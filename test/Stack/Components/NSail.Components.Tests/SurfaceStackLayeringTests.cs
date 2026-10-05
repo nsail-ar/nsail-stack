@@ -179,4 +179,39 @@ public sealed class SurfaceStackLayeringTests : BunitContext, IAsyncLifetime
         Assert.Contains("mud-drawer-temporary", drawer.ClassList);
         Assert.Contains("z-index: calc(var(--mud-zindex-appbar) + 2)", drawer.GetAttribute("style") ?? string.Empty);
     }
+
+    [Fact]
+    public async Task AnAsideThatStopsDocking_refreshesTheLayoutThatPaintsTheRegionItLeaves()
+    {
+        var host = RenderStack(modal: false);
+
+        Assert.Contains("mud-drawer-open-persistent-right", host.Find(".mud-layout").ClassList);
+
+        await host.InvokeAsync(() => host.Instance.AsideSurface!.SetFloating(true));
+
+        // The layout is the drawer's container, and the class it pushes the content region aside
+        // with is built from the drawer's own variant — which the dock picks, and which is the one
+        // geometry parameter MudDrawer registers no change handler for (Width, MiniWidth, Height,
+        // ClipMode, Open and Breakpoint each refresh the container by themselves). So the drawer
+        // pokes the container when its dock moves and only then; a layout left wearing the docked
+        // class keeps a gutter open beside a sheet that is covering the page anyway.
+        Assert.Contains("mud-drawer-open-temporary-right", host.Find(".mud-layout").ClassList);
+        Assert.DoesNotContain("mud-drawer-open-persistent-right", host.Find(".mud-layout").ClassList);
+    }
+
+    [Fact]
+    public async Task AnAsideThatGrows_reachesTheSameLayoutWithoutTheDrawerAskingItTo()
+    {
+        var host = RenderStack(modal: false);
+
+        Assert.Contains("--mud-drawer-width-right:480px", host.Find(".mud-layout").GetAttribute("style"));
+
+        await host.InvokeAsync(() => host.Instance.AsideSurface!.SetSize(NsSize.Lg));
+
+        // The other half of the pair above, and why the drawer pokes for the dock alone: Width is
+        // a parameter MudDrawer does carry a change handler for, so the layout learns a surface
+        // grew from the vendor itself. A second poke here would be the same diff twice over a
+        // region the announcement did not move.
+        Assert.Contains("--mud-drawer-width-right:720px", host.Find(".mud-layout").GetAttribute("style"));
+    }
 }

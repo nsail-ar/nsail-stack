@@ -35,6 +35,24 @@ public static class MessageValidator
         return Walk(message, string.Empty, builder, null) ? builder.Build() : null;
     }
 
+    /// <summary>The Issue the wire carries for one attribute that refused one field. Public
+    /// because a screen draws the refusal itself before any send and must word it from THIS
+    /// vocabulary rather than a second copy of it (<c>RefusalWords</c>, NSail.Components):
+    /// one switch, so neither end can gain a code or an argument the other does not say.</summary>
+    public static Issue IssueFor(ValidationAttribute attribute, string field)
+    {
+        ArgumentNullException.ThrowIfNull(attribute);
+
+        // Through the builder and not around it: the code, the English the untranslated end
+        // falls back to and the arguments a catalog row interpolates are minted in one place,
+        // and a thrown-away Problem is cheaper than keeping a second copy of them in step.
+        var builder = new InputProblemBuilder<object>();
+
+        Add(builder, attribute, field);
+
+        return builder.Build().Issues![0];
+    }
+
     // One routine for the message and for every model it takes this walk into
     // (ValidatedAttribute): the same annotations, the same codes, the same IValidatableObject
     // pass, with the field named by its path so the form still finds the input to draw under.
@@ -127,6 +145,10 @@ public static class MessageValidator
 
             case RequiredAttribute:
                 builder.AddRequired(field);
+                break;
+
+            case CompareAttribute:
+                builder.AddInvalid("Mismatch", field, attribute.FormatErrorMessage(field));
                 break;
 
             case StringLengthAttribute length:

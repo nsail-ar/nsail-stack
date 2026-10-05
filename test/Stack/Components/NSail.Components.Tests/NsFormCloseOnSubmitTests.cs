@@ -380,7 +380,7 @@ public sealed class NsFormCloseOnSubmitTests : BunitContext, IAsyncLifetime
             .Add(x => x.Model, new SubmitTrackingModel())
             .Add(x => x.Sibling, true));
 
-        await host.InvokeAsync(() => host.FindAll("input[type=text]")[1].Change("Marisa"));
+        await host.InvokeAsync(() => host.FindAll("input[type=text]")[1].Input("Marisa"));
 
         Assert.True(host.Instance.Surface!.HasChanges);
 
@@ -479,7 +479,7 @@ public sealed class NsFormCloseOnSubmitTests : BunitContext, IAsyncLifetime
 
         var surface = host.Instance.Surface!;
 
-        await host.InvokeAsync(() => host.FindAll("input[type=text]")[1].Change("Marisa"));
+        await host.InvokeAsync(() => host.FindAll("input[type=text]")[1].Input("Marisa"));
 
         Assert.True(surface.HasChanges);
 
@@ -598,7 +598,7 @@ public sealed class NsFormCloseOnSubmitTests : BunitContext, IAsyncLifetime
     {
         var host = RenderInAside(p => p.Add(x => x.NavigatesTo, "directory/parties/7/edit"));
 
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("Marisa"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("Marisa"));
 
         Assert.True(host.Instance.Surface!.HasChanges);
 

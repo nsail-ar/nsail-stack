@@ -3,7 +3,8 @@
 
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
-import { NsButton, NsEnumSelect, NsLoad, NsPage, NsPager, NsSearch, NsTable, useConfirm, useLoad, useMediator, useStrings } from "@nsail/components";
+import { useLoad, useMediator, useStrings } from "@nsail/stack";
+import { NsButton, NsEnumSelect, NsLoad, NsPage, NsPager, NsSearch, NsTable, useConfirm } from "@nsail/ui";
 import { ContactRow, DeleteContact, ListContacts, type ContactKind } from "../sdk";
 import { routes } from "../routes";
 

@@ -223,6 +223,75 @@ public sealed class AmbientUnitOfWorkTests
         Assert.Equal(["interceptor"], ledger.Entries);
     }
 
+    // AfterCommit is the one thing a handler may say about the unit: work that must not race
+    // the rows the operation has not committed yet. The order is the whole contract — the
+    // invitation a CreateParty defers is read back on a connection of its own, which sees
+    // nothing until this commit (nsail#1988).
+    [Fact]
+    public async Task Work_a_handler_registers_runs_after_the_operation_commits()
+    {
+        var services = Build();
+
+        var log = services.GetRequiredService<Log>();
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<Mediator>().Send(new Noticing());
+        }
+
+        Assert.Equal(["begin", "commit", "after-commit"], log.Steps);
+    }
+
+    [Fact]
+    public async Task Work_registered_by_an_operation_that_is_undone_never_runs()
+    {
+        var services = Build();
+
+        var log = services.GetRequiredService<Log>();
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await Assert.ThrowsAsync<BusinessException>(
+                () => scope.ServiceProvider.GetRequiredService<Mediator>().Send(new Noticing { Refuse = true }));
+        }
+
+        Assert.Equal(["begin", "rollback"], log.Steps);
+    }
+
+    // The registration belongs to the OPERATION, not to the handler that made it: a nested
+    // send returning is not a commit, and the work waits for the one that is.
+    [Fact]
+    public async Task A_nested_sends_registration_waits_for_the_outermost_commit()
+    {
+        var services = Build();
+
+        var log = services.GetRequiredService<Log>();
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<Mediator>().Send(new Composing());
+        }
+
+        Assert.Equal(["begin", "after the nested send", "commit", "after-commit"], log.Steps);
+    }
+
+    // A commit that stood is not a failure to report: the save answers as a save, and the
+    // registration that threw costs neither the commit nor the registration behind it.
+    [Fact]
+    public async Task A_registration_that_throws_costs_neither_the_commit_nor_the_next_registration()
+    {
+        var services = Build();
+
+        var log = services.GetRequiredService<Log>();
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<Mediator>().Send(new Noticing { FailFirst = true });
+        }
+
+        Assert.Equal(["begin", "commit", "after-commit"], log.Steps);
+    }
+
     static ServiceProvider Build()
     {
         var services = new ServiceCollection();
@@ -242,6 +311,8 @@ public sealed class AmbientUnitOfWorkTests
         services.AddScoped<ISender<Watched>, InProcessSender<Watched>>();
         services.AddScoped<ISender<Counted, int>, InProcessSender<Counted, int>>();
         services.AddScoped<ISender<Remote>, RemoteSender>();
+        services.AddScoped<ISender<Noticing>, InProcessSender<Noticing>>();
+        services.AddScoped<ISender<Composing>, InProcessSender<Composing>>();
 
         services.AddScoped<IHandler<Outer>, OuterHandler>();
         services.AddScoped<IHandler<Inner>, InnerHandler>();
@@ -249,6 +320,8 @@ public sealed class AmbientUnitOfWorkTests
         services.AddScoped<IHandler<Forking>, ForkingHandler>();
         services.AddScoped<IHandler<Watched>, WatchedHandler>();
         services.AddScoped<IHandler<Counted, int>, CountedHandler>();
+        services.AddScoped<IHandler<Noticing>, NoticingHandler>();
+        services.AddScoped<IHandler<Composing>, ComposingHandler>();
 
         services.AddScoped<IInterceptor<Watched>, WatchingInterceptor>();
         services.AddScoped<IInterceptor<Counted, int>, CountingInterceptor>();
@@ -266,6 +339,15 @@ public sealed class AmbientUnitOfWorkTests
     sealed record Forking : IMessage;
 
     sealed record Remote : IMessage;
+
+    sealed record Noticing : IMessage
+    {
+        public bool Refuse { get; init; }
+
+        public bool FailFirst { get; init; }
+    }
+
+    sealed record Composing : IMessage;
 
     sealed record Watched : IMessage
     {
@@ -449,6 +531,57 @@ public sealed class AmbientUnitOfWorkTests
             await _mediator.Send(new Inner(), cancellationToken);
 
             throw new BusinessException(BusinessProblem.RuleViolation("Refused", "The step after the nested send says no."));
+        }
+    }
+
+    sealed class NoticingHandler : IHandler<Noticing>
+    {
+        readonly AfterCommit _afterCommit;
+        readonly Log _log;
+
+        public NoticingHandler(AfterCommit afterCommit, Log log)
+        {
+            _afterCommit = afterCommit;
+            _log = log;
+        }
+
+        public Task Handle(Noticing message, CancellationToken cancellationToken = default)
+        {
+            if (message.FailFirst)
+            {
+                _afterCommit.Register(() => throw new InvalidOperationException("A registration that throws is a bug, and the one behind it is not its victim."));
+            }
+
+            _afterCommit.Register(() =>
+            {
+                _log.Step("after-commit");
+
+                return Task.CompletedTask;
+            });
+
+            if (message.Refuse)
+                throw new BusinessException(BusinessProblem.RuleViolation("Refused", "The handler says no after registering the work."));
+
+            return Task.CompletedTask;
+        }
+    }
+
+    sealed class ComposingHandler : IHandler<Composing>
+    {
+        readonly Mediator _mediator;
+        readonly Log _log;
+
+        public ComposingHandler(Mediator mediator, Log log)
+        {
+            _mediator = mediator;
+            _log = log;
+        }
+
+        public async Task Handle(Composing message, CancellationToken cancellationToken = default)
+        {
+            await _mediator.Send(new Noticing(), cancellationToken);
+
+            _log.Step("after the nested send");
         }
     }
 

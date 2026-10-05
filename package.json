@@ -3,8 +3,8 @@
   "private": true,
   "description": "The TypeScript side of NSail: Stack packages and the React clients of the apps, one npm workspace.",
   "workspaces": [
-    "src/Stack/Messaging/NSail.Messaging.TypeScript",
-    "src/Stack/Components/NSail.Components.React",
+    "src/Stack/React/NSail.React.Stack",
+    "src/Stack/React/NSail.React.Ui",
     "src/Stack/Sample/NSail.Sample.React"
   ],
   "scripts": {

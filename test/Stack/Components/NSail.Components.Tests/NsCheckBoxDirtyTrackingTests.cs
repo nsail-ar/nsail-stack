@@ -91,7 +91,7 @@ public sealed class NsCheckBoxDirtyTrackingTests : BunitContext, IAsyncLifetime
             .Add(x => x.Submitted, m => submitted = m));
 
         await host.InvokeAsync(() => host.Find("input[type=checkbox]").Change(true));
-        await host.InvokeAsync(() => host.Find("input[type=text]").Change("placeholder-secret"));
+        await host.InvokeAsync(() => host.Find("input[type=text]").Input("placeholder-secret"));
         await host.InvokeAsync(() => host.Find("form").Submit());
 
         Assert.NotNull(submitted);

@@ -17,7 +17,7 @@ public class BrandToneTests
     const string LightSurface = "#fbfaf8";
     const string LightInk = "#262624";
 
-    // The lean the rung shipped with, and the top rung SoftInk starts from.
+    // The lean the rung shipped with, and the top rung AccentInk starts from.
     const double FullLean = 0.55;
 
     // nsail#731: the chrome is picked freely and the ink that reads on it is derived from its
@@ -114,25 +114,50 @@ public class BrandToneTests
             $"{accents.TextOn} on {accent}");
     }
 
-    // The third entry, and the one that answers to two colours instead of one: the label on the
-    // tonal rung stands on a wash of the accent over a surface, so it leans from the scheme's
-    // own ink toward the accent and stops where the reading stops clearing. Over the light
-    // scheme the house orange keeps the full lean it shipped with and a pastel cannot — which
-    // is the whole finding: a fixed blend reads one and not the other.
+    // The third entry, and the one that answers to two colours instead of one: the accent worn as
+    // INK leans from the scheme's own ink toward the accent and stops where the reading stops
+    // clearing. Over the light scheme the house orange keeps the full lean on a bare surface and
+    // a pastel cannot — which is the whole finding: a fixed blend reads one and not the other.
     [Theory]
     [InlineData("#F68E1E", true)]
     [InlineData("#2a3f84", true)]
     [InlineData("#f7c9d5", false)]
     [InlineData("#ffffff", false)]
     [InlineData("#f6ff00", false)]
-    public void TheSoftInkKeepsTheFullLeanOnlyWhileItReads(string accent, bool full)
+    public void TheAccentInkKeepsTheFullLeanOnlyWhileItReads(string accent, bool full)
     {
-        var ink = BrandTone.SoftInk(accent, LightSurface, LightInk);
+        var ink = BrandTone.AccentInk(accent, LightInk, LightSurface);
 
         Assert.Equal(full, ink == BrandTone.Mix(LightInk, accent, FullLean));
-        Assert.True(
-            Contrast(BrandTone.Mix(LightSurface, accent, BrandTone.WashWeight), ink) >= 4.5,
-            $"{ink} on the wash of {accent}");
+        Assert.True(Contrast(LightSurface, ink) >= 4.5, $"{ink} on {LightSurface}");
+    }
+
+    // Every ground at once, which is what the grounds the house paints this ink on come to: a
+    // wash of the accent over the surface is the other one, and the lean that clears a bare
+    // surface does not always clear it. The answer reads on BOTH or the entry has not done its
+    // job — nsail#1940, where one value had to serve a card, a tab strip and a washed row.
+    [Theory]
+    [InlineData("#F68E1E")]
+    [InlineData("#2a3f84")]
+    [InlineData("#f7c9d5")]
+    [InlineData("#ffffff")]
+    [InlineData("#000000")]
+    [InlineData("#f6ff00")]
+    public void TheAccentInkClearsEveryGroundItIsGiven(string accent)
+    {
+        var wash = BrandTone.Mix(LightSurface, accent, BrandTone.WashWeight);
+        var ink = BrandTone.AccentInk(accent, LightInk, LightSurface, wash);
+
+        Assert.True(Contrast(LightSurface, ink) >= 4.5, $"{ink} on {LightSurface}");
+        Assert.True(Contrast(wash, ink) >= 4.5, $"{ink} on the wash of {accent}");
+    }
+
+    // A ground the ink cannot clear at any lean leaves it leaning nowhere rather than leaning
+    // as far as it likes: the scheme's plain ink is what the caller already knew reads.
+    [Fact]
+    public void AGroundNoLeanClearsLeavesTheInkPlain()
+    {
+        Assert.Equal(LightInk, BrandTone.AccentInk("#F68E1E", LightInk, LightSurface, "#8e5a21"));
     }
 
     // Unrankable in, the scheme's own ink out: an accent nobody can measure is one nothing can
@@ -140,9 +165,9 @@ public class BrandToneTests
     [Theory]
     [InlineData("")]
     [InlineData("rebeccapurple")]
-    public void AnUnreadableAccentLeavesTheSoftInkPlain(string accent)
+    public void AnUnreadableAccentLeavesTheInkPlain(string accent)
     {
-        Assert.Equal(LightInk, BrandTone.SoftInk(accent, LightSurface, LightInk));
+        Assert.Equal(LightInk, BrandTone.AccentInk(accent, LightInk, LightSurface));
     }
 
     // The derivation is a function of its seed and nothing else: saving the same brand twice
@@ -153,8 +178,8 @@ public class BrandToneTests
         Assert.Equal(BrandTone.Ink("#2a8400"), BrandTone.Ink("#2a8400"));
         Assert.Equal(BrandTone.Accents("#2a8400"), BrandTone.Accents("#2a8400"));
         Assert.Equal(
-            BrandTone.SoftInk("#2a8400", LightSurface, LightInk),
-            BrandTone.SoftInk("#2a8400", LightSurface, LightInk));
+            BrandTone.AccentInk("#2a8400", LightInk, LightSurface),
+            BrandTone.AccentInk("#2a8400", LightInk, LightSurface));
     }
 
     // #rgb and #rrggbbaa are both shapes a colour field can hand over; alpha is read past

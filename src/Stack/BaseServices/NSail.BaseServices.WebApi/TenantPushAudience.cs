@@ -13,11 +13,12 @@ public sealed class TenantPushAudience : PushAudience
 {
     readonly TenancyProvider _tenancy;
 
-    // Resolved rather than required: a host with no store composes no tenancy seam, and its
-    // clients are the install's one audience, which is what Tenant.None is everywhere else.
-    public TenantPushAudience(IServiceProvider services)
+    // Optional because AddDataAccess is what registers the seam, and a host with no store
+    // composes none: its clients are the install's one audience, which is what Tenant.None is
+    // everywhere else.
+    public TenantPushAudience(TenancyProvider? tenancy = null)
     {
-        _tenancy = services.GetService<TenancyProvider>() ?? TenancyProvider.Install;
+        _tenancy = tenancy ?? TenancyProvider.Install;
     }
 
     public override string Current

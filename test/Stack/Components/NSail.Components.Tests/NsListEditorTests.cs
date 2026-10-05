@@ -3,6 +3,7 @@
 
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
@@ -30,6 +31,7 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
             ["Actions.Confirm"] = "Confirmar",
             ["Actions.Cancel"] = "Cancelar",
             ["Common.NoRecords"] = "Sin registros",
+            ["Problems.Required"] = "Obligatorio",
         })]));
         Services.AddSingleton<LanguageProvider>();
         Services.AddSingleton<MetadataProvider>();
@@ -307,5 +309,190 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
 
         Assert.Empty(cut.Find(".ns-collection-bar").QuerySelectorAll("button"));
         Assert.Contains("Ana", cut.Find(".item-name").TextContent);
+    }
+    // Asked of the input itself rather than counted in the markup: MudBlazor stamps
+    // .mud-input-error on several nested nodes of one errored field, so a count of them says
+    // nothing about which field was marked (NsFormProblemDisplayTests' own note).
+    static string? NameError(IRenderedComponent<ListEditorHost> cut)
+    {
+        var field = cut.FindComponents<MudTextField<string>>().Single();
+
+        return field.Instance.Error ? field.Instance.ErrorText : null;
+    }
+
+    /// <summary>The claim: a red "Obligatorio" landed in the corner and the Nombre field carried
+    /// no mark, so the person had to connect a message in a corner back to the row they had just
+    /// confirmed. The refusal names a member the open row renders a field for, so it is drawn
+    /// under that field — and the list says it drew it (args.Handled), which is what keeps it off
+    /// the snackbar the surface would otherwise raise.</summary>
+    [Fact]
+    public async Task ARefusalNamingAFieldOfTheRowDrawsUnderThatField()
+    {
+        var cut = Render<ListEditorHost>(ps => ps.Add(p => p.Refuse, true));
+
+        await Click(cut, "Agregar");
+        await Click(cut, "Confirmar");
+
+        Assert.Equal("Obligatorio", NameError(cut));
+        Assert.Empty(cut.FindAll(".ns-form-problem"));
+        Assert.Equal([true], cut.Instance.Reports);
+    }
+
+    /// <summary>A "no" the row renders no control for — a rule over the whole item — has nothing
+    /// to anchor to, so it draws ONCE at the foot of the open row, in the sender's own words,
+    /// and still never as a toast.</summary>
+    [Fact]
+    public async Task ARefusalNamingNoFieldOfTheRowDrawsOnceAtTheFootOfTheOpenRow()
+    {
+        var cut = Render<ListEditorHost>(ps => ps.Add(p => p.RefuseRule, true));
+
+        await Click(cut, "Agregar");
+        await Click(cut, "Confirmar");
+
+        var strip = Assert.Single(cut.FindAll("li.ns-list-editor-item .ns-list-editor-problem"));
+
+        Assert.Equal("Ya hay un pago de ese tipo", strip.TextContent.Trim());
+        Assert.Equal("alert", strip.GetAttribute("role"));
+        Assert.Null(NameError(cut));
+        Assert.Equal([true], cut.Instance.Reports);
+    }
+
+    /// <summary>The refused row is still the row being edited, so the answer lifts the moment it
+    /// is answered: a second Confirmar that takes closes the editor with nothing left standing
+    /// anywhere — neither under the field nor at the row's foot.</summary>
+    [Fact]
+    public async Task AnsweringTheRefusalClosesTheRowWithNothingLeftStanding()
+    {
+        var cut = Render<ListEditorHost>(ps => ps.Add(p => p.Refuse, true));
+
+        await Click(cut, "Agregar");
+        await Click(cut, "Confirmar");
+
+        Assert.Equal("Obligatorio", NameError(cut));
+
+        cut.Render(ps => ps.Add(p => p.Refuse, false));
+
+        await Click(cut, "Confirmar");
+
+        Assert.Empty(cut.FindAll("li.ns-list-editor-item input"));
+        Assert.Empty(cut.FindAll(".mud-input-helper-text"));
+        Assert.Empty(cut.FindAll(".ns-form-problem"));
+    }
+
+    /// <summary>The open row is the only one that reads actions-last once its fields have
+    /// stacked, so it is the only one that says so in its class: a folded row keeps its trailing
+    /// affordances at every width (ns-mud.css, .ns-list-editor-open).</summary>
+    [Fact]
+    public async Task OnlyTheOpenRowCarriesTheStackedEditorClass()
+    {
+        var cut = Render<ListEditorHost>();
+
+        Assert.Empty(cut.FindAll("li.ns-list-editor-open"));
+
+        await Click(cut, "Editar");
+
+        Assert.Single(cut.FindAll("li.ns-list-editor-open"));
+        Assert.Single(cut.FindAll("li.ns-list-editor-open .ns-list-editor-acts"));
+    }
+
+    /// <summary>Read the class, because the class is the whole mechanism: MudBlazor's
+    /// `align-center` is `align-items: center !important`, so an open row wearing it would pin
+    /// its alignment past any query — the stacked row's fields and its refusal strip would be
+    /// centred and shrink-to-fit instead of taking the row's width. bUnit lays out no box, so
+    /// what can be pinned here is the one thing the cascade turns on: the open row does not wear
+    /// the utility and a folded row still does (ns-mud.css, .ns-list-editor-open).</summary>
+    [Fact]
+    public async Task TheOpenRowWearsNoVendorAlignmentUtility()
+    {
+        var cut = Render<ListEditorHost>();
+
+        Assert.Single(cut.FindAll("li.ns-list-editor-item.align-center"));
+
+        await Click(cut, "Editar");
+
+        Assert.Empty(cut.FindAll("li.ns-list-editor-open.align-center"));
+    }
+
+    static Task Press(IRenderedComponent<ListEditorFormHost> cut, string name)
+    {
+        return cut.InvokeAsync(() => cut.FindAll($"button[aria-label='{name}']")[0].Click());
+    }
+
+    static Task Submit(IRenderedComponent<ListEditorFormHost> cut)
+    {
+        return cut.InvokeAsync(() => cut.Find("form").Submit());
+    }
+
+    static string? RowError(IRenderedComponent<ListEditorFormHost> cut)
+    {
+        var fields = cut.FindComponents<MudTextField<string>>();
+
+        if (fields.Count == 0)
+        {
+            return null;
+        }
+
+        return fields[0].Instance.Error ? fields[0].Instance.ErrorText : null;
+    }
+
+    /// <summary>The row's refusal is posted on the FORM's context, so the document's own submit
+    /// is what re-answers it: "placed on submit, cleared on the next submit" (intentional-ui.md)
+    /// is one rule for every placement on the context. Left standing it counted as a validation
+    /// failure nobody could lift — Guardar ran no handler, drew nothing and said nothing.</summary>
+    [Fact]
+    public async Task ADocumentSubmitLiftsARowRefusalStandingOnItsContext()
+    {
+        var cut = Render<ListEditorFormHost>(ps => ps.Add(p => p.Refuse, true));
+
+        await Press(cut, "Agregar");
+        await Press(cut, "Confirmar");
+
+        Assert.Equal("Obligatorio", RowError(cut));
+
+        await Submit(cut);
+
+        Assert.Equal(1, cut.Instance.Submits);
+        Assert.Null(RowError(cut));
+    }
+
+    /// <summary>The other half of the same rule: lifting the row's answer is not letting the row
+    /// through quietly. What still refuses re-posts in the very pass that lifted it — the row's
+    /// own field here — so the submit either runs or draws its reason where the person is
+    /// looking. Mute is the one answer it cannot give.</summary>
+    [Fact]
+    public async Task ARowStillRefusedByItsOwnFieldRefusesTheSubmitOutLoud()
+    {
+        var cut = Render<ListEditorFormHost>(ps => ps
+            .Add(p => p.Refuse, true)
+            .Add(p => p.RowFieldRequired, true));
+
+        await Press(cut, "Agregar");
+        await Press(cut, "Confirmar");
+
+        await Submit(cut);
+
+        Assert.Equal(0, cut.Instance.Submits);
+        Assert.Equal("Obligatorio", RowError(cut));
+    }
+
+    /// <summary>A store's messages outlive the component that posted them: a list that leaves
+    /// the screen with a row refused left the form holding a validation failure with no input on
+    /// screen to show it and nobody able to lift it — the document could never be saved again,
+    /// with nothing explaining why. The list's own end is where it lets go.</summary>
+    [Fact]
+    public async Task AListUnmountedWithARowRefusedLeavesNothingOnTheFormsContext()
+    {
+        var cut = Render<ListEditorFormHost>(ps => ps.Add(p => p.Refuse, true));
+
+        await Press(cut, "Agregar");
+        await Press(cut, "Confirmar");
+
+        Assert.Equal("Obligatorio", RowError(cut));
+
+        cut.Render(ps => ps.Add(p => p.ListMounted, false));
+
+        await Submit(cut);
+
+        Assert.Equal(1, cut.Instance.Submits);
     }
 }

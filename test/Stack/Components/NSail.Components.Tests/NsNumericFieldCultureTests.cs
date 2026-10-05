@@ -53,7 +53,7 @@ public sealed class NsNumericFieldCultureTests : BunitContext, IAsyncLifetime
             .Add(p => p.Value, (decimal?)null)
             .Add(p => p.ValueChanged, v => read = v));
 
-        await cut.InvokeAsync(() => cut.Find("input").Change(typed));
+        await cut.InvokeAsync(() => cut.Find("input").Input(typed));
 
         Assert.Equal((decimal)expected, read);
     }
@@ -79,7 +79,7 @@ public sealed class NsNumericFieldCultureTests : BunitContext, IAsyncLifetime
             .Add(p => p.Value, (decimal?)null)
             .Add(p => p.ValueChanged, v => read = v));
 
-        await cut.InvokeAsync(() => cut.Find("input").Change("12,5"));
+        await cut.InvokeAsync(() => cut.Find("input").Input("12,5"));
 
         Assert.Equal(12.5m, read);
     }
@@ -95,7 +95,7 @@ public sealed class NsNumericFieldCultureTests : BunitContext, IAsyncLifetime
             .Add(p => p.Value, (TimeSpan?)null)
             .Add(p => p.ValueChanged, v => read = v));
 
-        await cut.InvokeAsync(() => cut.Find("input").Change("1,5"));
+        await cut.InvokeAsync(() => cut.Find("input").Input("1,5"));
 
         Assert.Equal(TimeSpan.FromHours(1.5), read);
     }
@@ -113,7 +113,7 @@ public sealed class NsNumericFieldCultureTests : BunitContext, IAsyncLifetime
             .Add(p => p.Value, (decimal?)null)
             .Add(p => p.ValueChanged, v => read = v));
 
-        await cut.InvokeAsync(() => cut.Find("input").Change("0.5"));
+        await cut.InvokeAsync(() => cut.Find("input").Input("0.5"));
 
         Assert.Equal(0.5m, read);
         Assert.Equal("0.5", cut.Find("input").GetAttribute("value"));

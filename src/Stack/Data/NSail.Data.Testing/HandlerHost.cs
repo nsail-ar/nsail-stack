@@ -65,8 +65,10 @@ public sealed class HandlerHost : IAsyncDisposable
         services.TryAddScoped<OrgScopeProvider>();
 
         // The other half of what SetDefaultDbContext hands a host: the scope's context enlisted
-        // in the send's transaction, so a composed flow is as atomic here as it is in production.
+        // in the send's transaction, so a composed flow is as atomic here as it is in production,
+        // and the mapper handlers write and read their rows through.
         services.AddUnitOfWork();
+        services.TryAddScoped<EntityMapper>();
 
         compose(services);
 
@@ -78,26 +80,26 @@ public sealed class HandlerHost : IAsyncDisposable
         return new HandlerHost(database, services.BuildServiceProvider());
     }
 
-    public async Task<TResult> Send<TResult>(IMessage<TResult> message, Session session)
+    public async Task<TResult> Send<TResult>(IMessage<TResult> message, Session session, CancellationToken cancellationToken = default)
     {
         await using var scope = _services.CreateAsyncScope();
 
         scope.ServiceProvider.SetSession(session);
 
-        var result = await scope.ServiceProvider.GetRequiredService<Mediator>().Send(message);
+        var result = await scope.ServiceProvider.GetRequiredService<Mediator>().Send(message, cancellationToken);
 
         await DrainDeferredWork();
 
         return result;
     }
 
-    public async Task Send(IMessage message, Session session)
+    public async Task Send(IMessage message, Session session, CancellationToken cancellationToken = default)
     {
         await using var scope = _services.CreateAsyncScope();
 
         scope.ServiceProvider.SetSession(session);
 
-        await scope.ServiceProvider.GetRequiredService<Mediator>().Send(message);
+        await scope.ServiceProvider.GetRequiredService<Mediator>().Send(message, cancellationToken);
 
         await DrainDeferredWork();
     }
@@ -117,12 +119,21 @@ public sealed class HandlerHost : IAsyncDisposable
         await DrainDeferredWork();
     }
 
-    // A fixture composes DeferredWork only where a kit under test enqueues onto it
-    // (AddDeferredWork) — most do not, so this is a no-op there. Where one does, HandlerHost
-    // raises no IHost and DeferredWorkRunner never starts, so a Send whose handler fired a
-    // notice through the queue must drain it itself or a fixture asserting on that notice
-    // would see nothing, forever (WorkOrderNotices.Send is the first caller).
-    async Task DrainDeferredWork()
+    /// <summary>Runs whatever the queue is holding, which every <c>Send</c> above already does
+    /// for itself: a fixture composing <c>AddDeferredWork</c> raises no
+    /// <see cref="Microsoft.Extensions.Hosting.IHost"/>, so <c>DeferredWorkRunner</c> never
+    /// starts and a notice fired through the queue would be waited on forever
+    /// (<c>WorkOrderNotices.Send</c> is the first caller). Where no kit under test enqueues,
+    /// this is a no-op.
+    ///
+    /// <para>Public for the test whose subject is the DEFERRAL rather than the notice: a send
+    /// driven through <see cref="Use{TService, TResult}(Func{TService, Task{TResult}}, Session)"/>
+    /// leaves the queue standing, so what the channel has NOT seen by the time the operation
+    /// answered is assertable, and this is what then lets it go out.</para>
+    ///
+    /// <para>What it cannot reproduce is the culture the real runner sets: <c>DrainAll</c> says
+    /// why, and what proves that half instead.</para></summary>
+    public async Task DrainDeferredWork()
     {
         if (_services.GetService<DeferredWork>() is { } deferred)
         {

@@ -18,6 +18,9 @@ namespace NSail.Components.Tests;
 [Route("/counted/inbox")]
 public sealed class CountedInboxProbePage : ComponentBase;
 
+[Route("/counted/elsewhere")]
+public sealed class CountedElsewhereProbePage : ComponentBase;
+
 /// <summary>nsail#1479. The number beside a door used to be asked again only when somebody
 /// moved through the app, which is a refresh policy that cannot see work ARRIVING: a person
 /// sitting on one screen watched a stale number all afternoon. NavMenuCountsChanged is the
@@ -28,6 +31,11 @@ public sealed class NsNavMenuCountRefreshTests : BunitContext
     readonly CapturingMediator _mediator = new();
 
     readonly CountingNavCount _count = new("Inbox");
+
+    BunitNavigationManager Navigation
+    {
+        get { return (BunitNavigationManager)Services.GetRequiredService<NavigationManager>(); }
+    }
 
     IRenderedComponent<NsNavMenu> RenderMenu()
     {
@@ -83,6 +91,48 @@ public sealed class NsNavMenuCountRefreshTests : BunitContext
         await _mediator.Publish(new NavMenuCountsChanged());
 
         menu.WaitForAssertion(() => Assert.Equal(2, _count.Calls));
+    }
+
+    /// <summary>The drawer's other moment: somebody arrived somewhere, which is the moment they
+    /// look at the map again and the one a page's own reads are being paid for anyway.</summary>
+    [Fact]
+    public void AnArrivalSomewhereElseIsCountedAgain()
+    {
+        var menu = RenderMenu();
+
+        menu.WaitForAssertion(() => Assert.Equal(1, _count.Calls));
+
+        Navigation.NavigateTo("/counted/inbox");
+
+        menu.WaitForAssertion(() => Assert.Equal(2, _count.Calls));
+
+        Navigation.NavigateTo("/counted/elsewhere");
+
+        menu.WaitForAssertion(() => Assert.Equal(3, _count.Calls));
+    }
+
+    /// <summary>nsail#1934. A surface writes itself onto the address of the page the person is
+    /// already standing at, so an aside opening and closing is two location changes in which
+    /// nobody went anywhere — and the drawer was paying a round trip per contributor for each,
+    /// inside the window of every save taken in an overlay. What moved the work says so itself
+    /// (NavMenuCountsChanged), which is why dropping this costs no freshness.</summary>
+    [Fact]
+    public void ASurfaceOpeningOverTheSamePageIsNotAnArrival()
+    {
+        var menu = RenderMenu();
+
+        Navigation.NavigateTo("/counted/inbox");
+
+        menu.WaitForAssertion(() => Assert.Equal(2, _count.Calls));
+
+        Navigation.NavigateTo("/counted/inbox?aside=counted%2Fsomething%2Fnew");
+        Navigation.NavigateTo("/counted/inbox");
+
+        // The drawer still redraws — the active entry and its expansion are a function of the
+        // query too — so this is the ask being dropped and not the render.
+        menu.WaitForAssertion(() => Assert.NotNull(menu.Find(".ns-nav-count")));
+
+        Assert.Equal(2, _count.Calls);
     }
 
     /// <summary>A drawer that went away stops asking. The subscription is the component's, so a

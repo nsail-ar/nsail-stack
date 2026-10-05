@@ -8,16 +8,17 @@ using NSail.Localization;
 
 namespace NSail.Components;
 
-/// <summary>The BCL's DataAnnotationsValidator, minus one defect: [Required] and [Compare]
-/// are the validation failures the app itself already has words for (Problems.Required,
-/// Problems.Mismatch — "Obligatorio", "Los dos valores no coinciden"), and the vendor
-/// component renders its own English-only default text instead ("The X field is required."),
-/// regardless of the session's culture. An attribute that names its own problem code
-/// (ICodedValidation) is worded from the catalog by that code, which is the same ladder
-/// MessageValidator's Issue takes on the wire, so a screen and a server refusal read
-/// identically. Every remaining attribute (MaxLength, Range, ...) keeps its own ErrorMessage
-/// untouched — this is not DataAnnotations localization at large. The ladder itself is
-/// <see cref="RefusalWords"/>, which any other store that posts a result reads too.</summary>
+/// <summary>The BCL's DataAnnotationsValidator, minus one defect: the vendor component renders
+/// the attribute's own English-only default text ("The X field is required.", a quoted regex),
+/// regardless of the session's culture. Every attribute the app has words for — the whole BCL
+/// vocabulary the wire already codes, plus any ICodedValidation — is worded from the catalog by
+/// that code instead, through the same switch that mints MessageValidator's Issue, so a screen
+/// and a server refusal read identically. The ladder itself is <see cref="RefusalWords"/>,
+/// which any other store that posts a result reads too.
+///
+/// It also differs in WHEN it speaks: a field change revalidates that field only after the
+/// form has requested validation once, so a box committing on every keystroke draws no refusal
+/// mid-word and the one a submit raised still lifts and returns per field.</summary>
 public sealed class NsDataAnnotationsValidator : ComponentBase, IDisposable
 {
     [Inject]
@@ -28,6 +29,7 @@ public sealed class NsDataAnnotationsValidator : ComponentBase, IDisposable
 
     ValidationMessageStore? _messages;
     EditContext? _subscribed;
+    bool _asked;
 
     protected override void OnInitialized()
     {
@@ -78,15 +80,34 @@ public sealed class NsDataAnnotationsValidator : ComponentBase, IDisposable
         _subscribed.OnFieldChanged -= HandleFieldChanged;
         _messages = null;
         _subscribed = null;
+
+        // The new form has asked nothing yet, so a keystroke in it is as quiet as the first
+        // one in the form it replaced.
+        _asked = false;
     }
 
     void HandleValidationRequested(object? sender, ValidationRequestedEventArgs e)
     {
+        _asked = true;
+
         ValidateModel();
     }
 
+    // A box commits on every keystroke (fields.md, What the box holds is what the form submits),
+    // and the dirty flag that lights Guardar rides this same event — so the notification must
+    // keep arriving and only the refusal waits. Until the form has asked, a half-typed CUIT, a
+    // mailbox whose @domain has not closed and a figure box emptied to be retyped are all a
+    // value on its way, not a refusal: that one belongs to Save (intentional-ui.md, Refusal
+    // placement). Once the form HAS asked, the field tracks its own answer from here, which is
+    // what lifts a refusal as the value is corrected and puts it back when the box is emptied —
+    // the same gate the field's own half keeps (NsFieldBase).
     void HandleFieldChanged(object? sender, FieldChangedEventArgs e)
     {
+        if (!_asked)
+        {
+            return;
+        }
+
         ValidateField(e.FieldIdentifier);
     }
 

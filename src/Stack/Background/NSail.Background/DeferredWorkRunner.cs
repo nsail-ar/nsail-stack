@@ -2,11 +2,13 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Diagnostics.Metrics;
+using System.Globalization;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NSail.Data;
-using NSail.Security;
+using NSail.Configuration;
+using NSail.Localization;
 
 namespace NSail.Background;
 
@@ -28,12 +30,20 @@ sealed class DeferredWorkRunner : BackgroundService
     readonly IServiceScopeFactory _scopes;
     readonly DeferredWork _queue;
     readonly ILogger<DeferredWorkRunner> _logger;
+    readonly CultureInfo? _culture;
 
-    public DeferredWorkRunner(IServiceScopeFactory scopes, DeferredWork queue, ILogger<DeferredWorkRunner> logger)
+    // The configuration is optional for the harness that composes no host; a host always has
+    // one, and it is where the install's language lives.
+    public DeferredWorkRunner(
+        IServiceScopeFactory scopes,
+        DeferredWork queue,
+        ILogger<DeferredWorkRunner> logger,
+        IConfiguration? configuration = null)
     {
         _scopes = scopes;
         _queue = queue;
         _logger = logger;
+        _culture = configuration is null ? null : CultureInfo.GetCultureInfo(configuration.Load<LanguageOptions>().Default);
 
         _completed = _meter.CreateCounter<long>(DeferredWorkMetrics.Completed, description: "Deferred work items handled, by kind and outcome.");
     }
@@ -59,19 +69,25 @@ sealed class DeferredWorkRunner : BackgroundService
 
         budget.CancelAfter(Timeout);
 
+        // Exactly what the request edge does (UseRequestLanguage) and BackgroundJobRunner does
+        // per loop, from the other place that has no request: a deferred item runs in the
+        // install's default language. Without it the queue runs invariant, LanguageProvider
+        // seeds itself with "iv", and the WhatsApp channel refuses the send before the
+        // transport because no account holds the template in a language nobody has — the order
+        // confirmation that never reached a phone (nsail#1550), with the mail body rendered out
+        // of the base catalog beside it. Per item rather than once per loop: the item's own work
+        // may switch culture for whoever it writes to, and the next item is not its reader.
+        if (_culture is { } culture)
+        {
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+        }
+
         try
         {
             await using var scope = _scopes.CreateAsyncScope();
 
-            // Exactly what a request edge and BackgroundJobRunner both do: a deferred item acts
-            // for nobody of its own, and every id it needs it already carries as a value baked
-            // into its closure.
-            scope.ServiceProvider.GetRequiredService<SessionProvider>().Session = Session.System();
-
-            if (item.Tenant.IsResolved)
-            {
-                scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(item.Tenant);
-            }
+            item.Enter(scope.ServiceProvider);
 
             await item.Work(scope.ServiceProvider, budget.Token).ConfigureAwait(false);
 

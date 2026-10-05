@@ -35,38 +35,31 @@
 		</ProjectReference>
 	</ItemGroup>
 
-	<!-- The React client speaks to this host's Sdk through the TypeScript the generator writes from
-	     it, then is built into react/ beside this project. The client build needs the npm
-	     workspace installed at the repository root (npm install); without it the host still
-	     builds, and its React address answers a line saying the client is missing. -->
-	<ItemGroup>
-		<TypeScriptSdk Include="NSail.Sample.Sdk" />
-	</ItemGroup>
-
+	<!-- The React client, built into react/ beside this project once its Sdk has written sdk.ts.
+	     The client build needs the npm workspace installed at the repository root (npm install);
+	     without it the host still builds, and its React address answers a line saying the client
+	     is missing. -->
 	<PropertyGroup>
 		<ReactClientDirectory>$(MSBuildProjectDirectory)/../NSail.Sample.React</ReactClientDirectory>
-		<TypeScriptOutput>$(ReactClientDirectory)/src/sdk.ts</TypeScriptOutput>
 		<NpmWorkspaceRoot>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), package.json))</NpmWorkspaceRoot>
 	</PropertyGroup>
 
-	<Import Project="..\..\Generation\NSail.TypeScriptGenerator\NSail.TypeScriptGenerator.targets" />
-
 	<Target Name="BuildReactClient"
-	        AfterTargets="GenerateTypeScript"
+	        AfterTargets="Build"
 	        Condition="Exists('$(NpmWorkspaceRoot)/node_modules')"
-	        Inputs="$(TypeScriptOutput);@(ReactClientSource)"
+	        Inputs="@(ReactClientSource)"
 	        Outputs="$(MSBuildProjectDirectory)/react/index.html">
 		<Exec Command="npm run build --workspace=@nsail/sample-react" WorkingDirectory="$(NpmWorkspaceRoot)" />
 	</Target>
 
-	<Target Name="WarnReactClientMissing" AfterTargets="GenerateTypeScript" Condition="!Exists('$(NpmWorkspaceRoot)/node_modules')">
+	<Target Name="WarnReactClientMissing" AfterTargets="Build" Condition="!Exists('$(NpmWorkspaceRoot)/node_modules')">
 		<Message Importance="high" Text="NSail.Sample.Web: the React client was not built (run npm install at $(NpmWorkspaceRoot))." />
 	</Target>
 
 	<ItemGroup>
 		<ReactClientSource Include="$(ReactClientDirectory)/src/**;$(ReactClientDirectory)/index.html;$(ReactClientDirectory)/vite.config.ts" />
-		<ReactClientSource Include="$(MSBuildProjectDirectory)/../../Components/NSail.Components.React/src/**" />
-		<ReactClientSource Include="$(MSBuildProjectDirectory)/../../Messaging/NSail.Messaging.TypeScript/src/**" />
+		<ReactClientSource Include="$(MSBuildProjectDirectory)/../../React/NSail.React.Stack/src/**" />
+		<ReactClientSource Include="$(MSBuildProjectDirectory)/../../React/NSail.React.Ui/src/**" />
 	</ItemGroup>
 
 </Project>

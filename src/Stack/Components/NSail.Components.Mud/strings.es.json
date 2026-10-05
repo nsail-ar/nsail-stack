@@ -91,6 +91,8 @@
   "Problems.Required": "Obligatorio",
   "Problems.InvalidFormat": "Formato inválido",
   "Problems.UnreadableDate": "Esto no es una fecha — escribila como {shape}",
+  "Problems.UnreadableAddress": "Esto no es una dirección web — escribila completa, como https://ejemplo.com",
+  "Problems.UnreadableAddressDomain": "Esto no es una dirección web — revisá el dominio",
   "Problems.OutOfRange": "Fuera de rango",
   "Problems.MaxLength": "No más de {max} caracteres",
   "Problems.NotFuture": "No puede ser posterior a hoy",

@@ -1,0 +1,87 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Icons
+@using NSail.Problems
+
+@inherits NsPage
+
+@* The menu below opens into a popover, which is a portal: without a provider in the tree there
+   is no open row to press. *@
+<MudPopoverProvider />
+
+@* The settings screen's shape: a page act standing INSIDE the form it is about — Almacenamiento's
+   Probar in the row with its Guardar — run on the PAGE's own Runner, which is what used to leave
+   its refusal with nowhere to land but a toast. The act beside it is the same act outside every
+   form, where the toast is the only place a refusal can go. *@
+<NsForm TModel="FormProblemModel" Model="_model" OnSubmit="HandleSubmit">
+    <NsTextField @bind-Value="context.Name" />
+    <NsTextField @bind-Value="context.Alias" />
+    <NsAction Action="@GetAction(Probe, NsIcons.Sync, writes: false)" Breakpoint="NsBreakpoint.Always" Class="act-inside" />
+    @* The ? in the act's own row, which is Almacenamiento's shape: an NsButton underneath like
+       every other face, pressed to read a paragraph and resolving nothing. *@
+    <NsHelp Key="Probe.Help" />
+    @* A row on the far side of the vendor's popover — the documented bound. A bare handler and
+       never GetAction: the row supplies the run itself, because by the time it is chosen the menu
+       has closed and taken the offering component with it (NsMenuItem.Action). *@
+    <NsMenu Label="Más" Writes="false">
+        <NsMenuItem Action="@ProbeInMenu" Label="Probar en menú" />
+    </NsMenu>
+    <NsSubmit />
+</NsForm>
+
+<NsAction Action="@GetAction(ProbeOutside, NsIcons.Sync)" Breakpoint="NsBreakpoint.Always" Class="act-outside" />
+
+@code {
+
+    readonly FormProblemModel _model = new();
+
+    /// <summary>What the act is refused with, or null for one that works. Read on every press, so
+    /// a test can refuse the first and let the second through.</summary>
+    [Parameter]
+    public Problem? Refusal { get; set; }
+
+    /// <summary>What the form's OWN submit is refused with — the other seat for a refusal on this
+    /// screen, and the one a hosted act must never take down.</summary>
+    [Parameter]
+    public Problem? SaveRefusal { get; set; }
+
+    public int Probes { get; private set; }
+
+    public FormProblemModel Document => _model;
+
+    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    {
+        args.Problem = SaveRefusal;
+    }
+
+    // No Run of its own: GetAction already wraps the handler in the page's Runner, which is the
+    // whole reason the refusal arrives on the page's behalf.
+    Task Probe()
+    {
+        return Answer();
+    }
+
+    Task ProbeOutside()
+    {
+        return Answer();
+    }
+
+    ActionItem ProbeInMenu => new() { Name = "ProbeInMenu", OnClick = Answer, Writes = false };
+
+    Task Answer()
+    {
+        Probes++;
+
+        if (Refusal is not null)
+        {
+            throw new BusinessException(Refusal);
+        }
+
+        return Task.CompletedTask;
+    }
+}

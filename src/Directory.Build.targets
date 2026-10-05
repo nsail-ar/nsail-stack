@@ -1,6 +1,6 @@
 <Project>
 
-	<!-- Owned by this repository, never mirrored; the monorepo's root targets still apply. -->
+	<!-- Layered over the root targets. -->
 	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)..'))" />
 
 	<!-- A project that ships no assembly of its own (the source generator packs its dll under

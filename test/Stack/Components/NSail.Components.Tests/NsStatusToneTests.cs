@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
+using NSail.Tones;
 
 namespace NSail.Components.Tests;
 
@@ -110,22 +112,82 @@ public sealed class NsStatusToneTests : BunitContext
     /// <summary>The neutral is a live state at the MUTED rank, and the ink a refused control
     /// wears is the one thing it may not be: that ink is held under 3:1 on purpose
     /// (BrandThemeContrastTests), so a status word painted in it reads as a control nobody may
-    /// touch. What the token resolves to is measured there; that it is this token is read off
-    /// the stylesheet here, because bUnit paints nothing.</summary>
+    /// touch. The rank is leaned a tenth into the scheme's ink for the ground a row gives it
+    /// under the pointer — what the token resolves to is measured there; that it is this token is
+    /// read off the stylesheet here, because bUnit paints nothing.</summary>
     [Fact]
     public void TheNeutralIsTheMutedRankAndNotTheRefusedInk()
     {
         var css = ReadStylesheet();
 
         Assert.Contains(
-            """
+            $$"""
             .ns-status-muted {
-                --ns-status-color: var(--mud-palette-text-secondary);
+                --ns-status-color: color-mix(in srgb, var(--mud-palette-text-secondary) {{Percent(BrandTone.NeutralLean)}}%, var(--mud-palette-text-primary));
             }
             """,
             css);
 
         Assert.DoesNotContain("--ns-status-color: var(--mud-palette-text-disabled)", css);
+    }
+
+    /// <summary>nsail#1935: the row wash SURVIVES THE POINTER. Mud answers a hover by replacing
+    /// the row's background-color from five rules that no single class can outrank, so a washed
+    /// row used to lose its tone exactly when it was being read — the condition channel blank and
+    /// the word left on the vendor's neutral tint. The rule hands the vendor's own variable the
+    /// row's tone deepened instead, which is the cascade and not a specificity fight (the glyph
+    /// above is the one place a vendor selector is restated, and for the opposite reason: there
+    /// is no variable there). What the two mixes resolve to is graded in
+    /// BrandThemeContrastTests; that the row sets them both is read off the stylesheet here.</summary>
+    [Theory]
+    [InlineData("danger", "error")]
+    [InlineData("warning", "warning")]
+    [InlineData("success", "success")]
+    public void AWashedRowKeepsItsToneUnderThePointer(string row, string severity)
+    {
+        Assert.Contains(
+            $$"""
+            .ns-row-{{row}} {
+                background-color: color-mix(in srgb, var(--mud-palette-{{severity}}) {{Percent(BrandTone.RowWash)}}%, transparent);
+                --mud-palette-table-hover: color-mix(in srgb, var(--mud-palette-{{severity}}) {{Percent(BrandTone.RowWashPointed)}}%, transparent);
+            }
+            """,
+            ReadStylesheet());
+    }
+
+    /// <summary>nsail#1935: the other four are the severity LEANED INTO the scheme's own ink, not
+    /// the severity itself — a severity constant is a fill, and a fill set as a word on a card
+    /// cleared nothing in light (Warning 3.32:1, Info 3.70:1). One declaration serves both
+    /// schemes because the ink it leans into flips with the scheme. What the lean resolves to is
+    /// measured in BrandThemeContrastTests; that the classes carry it, and that none of them is
+    /// left pointing at the bare fill, is read off the stylesheet here.</summary>
+    [Theory]
+    [InlineData("info")]
+    [InlineData("success")]
+    [InlineData("warning")]
+    [InlineData("error")]
+    public void ATonedStatusLeansItsSeverityIntoTheSchemesInk(string severity)
+    {
+        var css = ReadStylesheet();
+
+        Assert.Contains(
+            $$"""
+            .ns-status-{{severity}} {
+                --ns-status-color: color-mix(in srgb, var(--mud-palette-{{severity}}) {{Percent(BrandTone.ToneLean)}}%, var(--mud-palette-text-primary));
+            }
+            """,
+            css);
+
+        Assert.DoesNotContain($"--ns-status-color: var(--mud-palette-{severity})", css);
+    }
+
+    // Every fraction in this file comes from BrandTone and none is ever typed: the stylesheet and
+    // the arithmetic that grades it have to be reading one number, or the proof drifts off the
+    // paint. Rounded rather than formatted to an integer, so a weight that is not a whole
+    // percent fails loudly here instead of matching a string nobody wrote.
+    static string Percent(double weight)
+    {
+        return Math.Round(weight * 100, 4).ToString(CultureInfo.InvariantCulture);
     }
 
     static string ReadStylesheet()

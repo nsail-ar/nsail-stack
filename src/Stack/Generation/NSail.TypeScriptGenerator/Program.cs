@@ -3,46 +3,32 @@
 
 using NSail.TypeScriptGenerator;
 
-// NSail.TypeScriptGenerator --assembly <Sdk.dll> [--assembly <Sdk.dll> ...] --out <file.ts>
-var assemblies = new List<string>();
-string? output = null;
-
-for (var i = 0; i < args.Length - 1; i++)
+// NSail.TypeScriptGenerator @<file>, one key=value per line: assembly, out, source, reference,
+// define — what NSail.TypeScriptGenerator.targets hands over from the Sdk's own compile.
+if (args.Length != 1 || !args[0].StartsWith('@'))
 {
-    switch (args[i])
-    {
-        case "--assembly":
-            assemblies.Add(args[++i]);
-            break;
-        case "--out":
-            output = args[++i];
-            break;
-    }
-}
-
-if (assemblies.Count == 0 || output is null)
-{
-    Console.Error.WriteLine("usage: NSail.TypeScriptGenerator --assembly <Sdk.dll> [--assembly <Sdk.dll> ...] --out <file.ts>");
+    Console.Error.WriteLine("usage: NSail.TypeScriptGenerator @<response file>");
 
     return 2;
 }
 
 try
 {
-    var loaded = assemblies.Select(SdkLoader.Load).ToList();
-    var model = SdkReader.Read(loaded);
+    var arguments = SdkArguments.Read(args[0][1..]);
+    var compilation = SdkCompilation.Create(arguments);
+    var model = SdkReader.Read(compilation);
     var text = TypeScriptWriter.Write(model);
 
-    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(output))!);
+    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(arguments.Output))!);
 
     // Unchanged text is not rewritten, so a dev server watching the file does not reload on a
     // build that changed nothing in the contract.
-    if (!File.Exists(output) || File.ReadAllText(output) != text)
+    if (!File.Exists(arguments.Output) || File.ReadAllText(arguments.Output) != text)
     {
-        File.WriteAllText(output, text);
+        File.WriteAllText(arguments.Output, text);
     }
 
-    Console.WriteLine($"NSail.TypeScriptGenerator: {model.Messages.Count} messages, {model.Models.Count} models, {model.Enums.Count} enums -> {output}");
+    Console.WriteLine($"NSail.TypeScriptGenerator: {model.Messages.Count} messages, {model.Models.Count} models, {model.Enums.Count} enums -> {arguments.Output}");
 
     return 0;
 }

@@ -11,12 +11,13 @@ React, talk to the same API. Start there.
 
 ## Status
 
-Pre-release. The packages publish to this repository's GitHub Packages feed as
-`0.1.0-ci.*` builds. nuget.org and npm come with the first public release.
+Pre-release (0.x). Every merge to `main` publishes every Stack project to
+[nuget.org](https://www.nuget.org/profiles/NSail) as the next `0.1.<n>` and tags the commit
+`v0.1.<n>` ([.github/workflows/ci.yml](.github/workflows/ci.yml)). The source generator
+ships as `NSail.Messaging.SourceGenerator`. npm packages come later.
 
-The Stack is developed inside a private monorepo. Until the cutover, this repository is
-a one-way mirror of it ([tools/sync.ps1](tools/sync.ps1)), so changes to `src/` and
-`test/` land in the monorepo first.
+This repository is the Stack's source of truth. Changes land here through pull requests;
+the products that consume it pin a published version.
 
 ## Build
 

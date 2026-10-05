@@ -9,9 +9,11 @@
    NsForm in it — so no cascade of that form reaches the header X: the word travels UP through the
    surface (NsForm reports, SurfaceContext.FormRefuses) and is re-provided here under the very name
    NsForm cascades, so NsClose reads one name on every surface and knows which none it is on.
-   Nothing here would redraw on its own — mutating the surface re-renders nothing — so the surface's
-   own StateChanged is the wire, the same one NsPage subscribes to. Escape is the same exit's second
-   face and goes back to the host (Saving), which is the only one holding the dialog instance. *@
+   Nothing here would redraw on its own — mutating the surface re-renders nothing — so the wire is
+   the surface's RefusalChanged, which carries exactly the two words below and nothing else: this is
+   the only reader of them, and a save in flight is already on StateChanged as HasWork for everything
+   that draws a spinner. Escape is the same exit's second face and goes back to the host (Saving),
+   which is the only one holding the dialog instance. *@
 <CascadingValue Value="Refuses" Name="ParentDisabled">
     @ChildContent
 </CascadingValue>
@@ -46,7 +48,7 @@
     {
         if (Surface is not null)
         {
-            Surface.StateChanged += OnSurfaceStateChanged;
+            Surface.RefusalChanged += OnRefusalChanged;
         }
     }
 
@@ -64,7 +66,7 @@
         await Saving.InvokeAsync(_reported);
     }
 
-    void OnSurfaceStateChanged()
+    void OnRefusalChanged()
     {
         _ = InvokeAsync(StateHasChanged);
     }
@@ -73,7 +75,7 @@
     {
         if (Surface is not null)
         {
-            Surface.StateChanged -= OnSurfaceStateChanged;
+            Surface.RefusalChanged -= OnRefusalChanged;
         }
     }
 }

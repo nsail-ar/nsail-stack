@@ -27,7 +27,8 @@
 else
 {
     <NsListEditor TItem="TestModel" Items="_items" Title="@Title" ReadOnly="ReadOnly"
-                  NewItem="NewItem" OnCommit="CommitCallback" OnRemove="RemoveCallback">
+                  NewItem="NewItem" OnCommit="CommitCallback" OnRemove="RemoveCallback"
+                  OnProblem="Reported">
         <Actions>
             @if (Contributed)
             {
@@ -62,9 +63,15 @@ else
     public bool ReadOnly { get; set; }
 
     /// <summary>Refuses the commit the way a real handler does — through the args, never by
-    /// throwing — so the item has to stay open on its editor.</summary>
+    /// throwing — so the item has to stay open on its editor. The issue names Name, which the
+    /// row's editor renders, so the refusal has a field to land under.</summary>
     [Parameter]
     public bool Refuse { get; set; }
+
+    /// <summary>Refuses with a rule instead of a field — a "no" the row renders no control for,
+    /// which has nothing to anchor to and belongs at the foot of the open row.</summary>
+    [Parameter]
+    public bool RefuseRule { get; set; }
 
     /// <summary>Switches the fixture to the dialog-add shape: OnAdd instead of NewItem/
     /// ItemEditor, the ChannelsEditor case XS1 adopts.</summary>
@@ -90,6 +97,11 @@ else
     public int OnAddInvocations { get; private set; }
 
     public int BringInvocations { get; private set; }
+
+    /// <summary>What the list reported and whether it had already drawn it: a refusal the host
+    /// answered itself arrives here HANDLED, which is what keeps it off the surface's snackbar
+    /// (NsComponent.Report).</summary>
+    public List<bool> Reports { get; } = [];
 
     EventCallback<RowEditEventArgs<TestModel>> CommitCallback => Unwired
         ? default
@@ -123,10 +135,22 @@ else
     {
         Commits++;
 
+        if (RefuseRule)
+        {
+            args.Problem = BusinessProblem.RuleViolation("NoTwoPayments", "Ya hay un pago de ese tipo");
+
+            return;
+        }
+
         if (Refuse)
         {
             args.Problem = InputProblem.InvalidModel<TestModel>().Required(m => m.Name);
         }
+    }
+
+    void Reported(ProblemEventArgs args)
+    {
+        Reports.Add(args.Handled);
     }
 
     void Remove(RowEditEventArgs<TestModel> args)

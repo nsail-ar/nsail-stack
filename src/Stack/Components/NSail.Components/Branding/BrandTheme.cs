@@ -31,16 +31,29 @@ public sealed class BrandTheme
     /// light on a deep one, so a yellow brand stays readable.</summary>
     public string TextOnAccent { get; set; } = "#1a1a1a";
 
-    /// <summary>The label on the accent's soft wash (NsAs.Important), which stands on that wash
-    /// of <see cref="Accent"/> over <see cref="Surface"/> rather than on the accent itself: the
-    /// scheme's own ink leaned toward the accent by as much as clears AA over that wash.
-    /// Derived at paint from a pick and two scheme constants, so it is stored nowhere and
+    /// <summary>The accent AS INK on the content's own surfaces — NsAs.Important's label, a
+    /// link, the active tab, the guide chapter the reader is on. The scheme's own ink leaned
+    /// toward <see cref="Accent"/> by as much as clears AA on every one of those grounds: the
+    /// accent itself is a ground and never text, which is what reads 2.3:1 on a pale surface.
+    /// Derived at paint from a pick and the scheme's constants, so it is stored nowhere and
     /// travels nowhere.</summary>
     // Off the wire too, and not only out of the column: the prerender hands this whole object
-    // to the client, which derives the same answer from the same three values. A copy on that
-    // payload is a second one that a client on an older build could disagree with.
+    // to the client, which derives the same answer from the same values. A copy on that payload
+    // is a second one that a client on an older build could disagree with.
     [JsonIgnore]
-    public string TextOnAccentSoft => BrandTone.SoftInk(Accent, Surface, TextPrimary);
+    public string AccentInk => BrandTone.AccentInk(Accent, TextPrimary, InkGrounds());
+
+    /// <summary>The accent as ink ON the chrome — the drawer entry the reader is on, and the
+    /// guide's open chapter in that same gutter. The band is picked freely while the content's
+    /// surfaces are fixed, so its accent ink is leaned from <see cref="TextOnChrome"/> and read
+    /// against the chrome, never borrowed from <see cref="AccentInk"/>: a light chrome can sit
+    /// under a dark scheme.</summary>
+    [JsonIgnore]
+    public string AccentOnChrome => BrandTone.AccentInk(
+        Accent,
+        TextOnChrome,
+        Chrome,
+        BrandTone.Mix(Chrome, TextOnChrome, BrandTone.RailWeight));
 
     // Surfaces and text
 
@@ -115,6 +128,30 @@ public sealed class BrandTheme
     public string TextOnSuccess { get; set; } = "#121212";
 
     public string TextOnInfo { get; set; } = "#121212";
+
+    // Every ground AccentInk lands on: the three rungs of the ladder, and the accent's own soft
+    // wash over each of them — --ns-accent-soft mixes against transparent, so NsAs.Important's
+    // label stands on the wash over whichever rung the button happens to sit on. The vendor's
+    // 6% hover (the ground under the active tab and the open chapter) needs no entry of its own:
+    // it lies between a bare rung and the tenth below it, and the ink is never between the two,
+    // so the pair bounds it.
+    // A ROW UNDER THE POINTER is not among them, unlike the status channel's grounds
+    // (BrandThemeContrastTests, nsail#1935): nothing in the house sets a word in this ink inside a
+    // grid row — a RowEditor cell's field asks for no visible label at all (ui/hosts.md), so there
+    // is no floating label to promote there. Adding it anyway would cost the default brand two
+    // more steps of its own hue on every tab in the app, to answer a screen that does not exist.
+    string[] InkGrounds()
+    {
+        return
+        [
+            Background,
+            Surface,
+            SurfaceRaised,
+            BrandTone.Mix(Background, Accent, BrandTone.WashWeight),
+            BrandTone.Mix(Surface, Accent, BrandTone.WashWeight),
+            BrandTone.Mix(SurfaceRaised, Accent, BrandTone.WashWeight),
+        ];
+    }
 
     public static BrandTheme DefaultDark()
     {

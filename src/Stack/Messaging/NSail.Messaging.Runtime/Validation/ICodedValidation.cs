@@ -5,9 +5,9 @@ namespace NSail.Messaging.Runtime.Validation;
 
 /// <summary>A validation attribute that names the problem code its refusal carries, so both
 /// ends word it from the string catalog — "Problems.{Code}.{field}", then "Problems.{Code}" —
-/// instead of the attribute's own ErrorMessage, which is written once in one language and
-/// reaches a screen untranslated. The code is the attribute's, the sentence is the catalog's,
-/// and the Stack supplies neither for a rule it does not own.</summary>
+/// with a sentence of its OWN where a rule outside the BCL vocabulary would otherwise get the
+/// generic "Invalid". The code is the attribute's, the sentence is the catalog's, and the Stack
+/// supplies neither for a rule it does not own.</summary>
 public interface ICodedValidation
 {
     string Code { get; }

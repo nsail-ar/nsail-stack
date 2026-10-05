@@ -153,6 +153,7 @@ public static class DbContextExtensions
     {
         services.AddScoped<DbContext, TDbContext>();
         services.AddUnitOfWork();
+        services.TryAddScoped<EntityMapper>();
 
         return services;
     }
@@ -164,6 +165,11 @@ public static class DbContextExtensions
     public static IServiceCollection AddUnitOfWork(this IServiceCollection services)
     {
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IUnitOfWork, DbContextUnitOfWork>());
+
+        // The seam a handler registers on-commit work through, beside the unit it waits for:
+        // AddMessaging TryAdds the same one, since a client host has a send and no store, and a
+        // host that has a store composes this and not always that (a hand-registered context).
+        services.TryAddScoped<AfterCommit>();
 
         // A host that owns a store is the only one that can lose a concurrency race, and the
         // only one whose pipeline has to answer for it. Registered here rather than beside the

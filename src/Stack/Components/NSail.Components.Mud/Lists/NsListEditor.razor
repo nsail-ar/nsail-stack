@@ -4,6 +4,7 @@
 @namespace NSail.Components
 @typeparam TItem where TItem : class
 @inherits NsCollectionBase
+@using Microsoft.AspNetCore.Components.Forms
 @using NSail.Localization
 
 @inject StringManager Strings
@@ -38,16 +39,40 @@ else
     <ul class="ns-list-editor">
         @foreach (var item in Items)
         {
-            <li class="ns-list-editor-item d-flex flex-wrap align-center gap-2" @key="item">
+            <li class="@ItemClasses(IsEditing(item))" @key="item">
                 @if (IsEditing(item))
                 {
-                    <div class="d-flex flex-wrap align-center gap-2 flex-1 min-w-0">
-                        @ItemEditor?.Invoke(item)
-                    </div>
-                    <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center">
-                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
-                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
-                    </NsStack>
+                    @* The open row answers its own refusal, so what its fields announce is
+                       announced HERE: this shadows the form's tracker and forwards to it
+                       (NsTab's own rule), and the context the messages are posted to is the
+                       form's where there is one — the row's fields already read that one — so
+                       nothing is wired by the screen either way. *@
+                    <CascadingValue TValue="EditContext" Value="RowContext" IsFixed="false">
+                        <CascadingValue Value="(IFieldTracker)Placement" IsFixed="true">
+                            <div class="d-flex flex-wrap align-center gap-2 flex-1 min-w-0">
+                                @ItemEditor?.Invoke(item)
+                            </div>
+                            <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Class="ns-list-editor-acts">
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
+                            </NsStack>
+                        </CascadingValue>
+                    </CascadingValue>
+                    @* What the refusal named that this row does not render — a rule, a member no
+                       control bound — as ONE strip on the open row's last line, which is where
+                       the row that caused it ends. It exists only while there is something to
+                       say, so a row nobody refused spends no height on the possibility. *@
+                    @if (Placement.Unplaced.Count > 0)
+                    {
+                        <div class="ns-form-problem ns-form-problem-shown ns-list-editor-problem" role="alert">
+                            <div class="ns-form-problem-text">
+                                @foreach (var text in Placement.Unplaced)
+                                {
+                                    <span>@text</span>
+                                }
+                            </div>
+                        </div>
+                    }
                 }
                 else
                 {
@@ -84,6 +109,18 @@ else
 
     TItem? _editing;
     bool _editingIsNew;
+
+    RefusalPlacement? _placement;
+    EditContext? _own;
+
+    /// <summary>The form the list stands inside, where it stands inside one: its context is
+    /// what the row's own fields already read, so a message posted there needs no second
+    /// cascade to reach them, and its tracker is what the open row forwards to.</summary>
+    [CascadingParameter]
+    EditContext? Form { get; set; }
+
+    [CascadingParameter]
+    IFieldTracker? Tracker { get; set; }
 
     /// <summary>The collection shown, in its own order — the caller's own list, which the
     /// caller keeps owning and submitting. The list writes into it only for the row it opened
@@ -152,6 +189,20 @@ else
     [Parameter]
     public EventCallback OnAdd { get; set; }
 
+    // Built on first use rather than in a field initializer: the words a refusal is said with
+    // come from an injected StringManager, which does not exist while a field does.
+    RefusalPlacement Placement => _placement ??= new RefusalPlacement(Strings);
+
+    // The context the open row's fields read their own refusal off. The form's own where the
+    // list stands inside a form, which is the case every screen is: the row's fields announce
+    // (row, "Name") there and read their message back from there already, so the refusal lands
+    // under the field without the row's editor being an EditForm of its own. One of the list's
+    // own where there is no form — a list mounted bare still places a row's refusal the same
+    // way — modelled on the LIST and not on the row: the row's own annotations are enforced by
+    // nobody here, and a context modelled on it would have its fields draw a required mark for
+    // a rule that refuses nothing (intentional-ui.md, the mark is derived from what refuses).
+    EditContext RowContext => Form ?? (_own ??= new EditContext(this));
+
     // The list's own word and the form's, answered once: a way in is drawn only where both
     // allow one, and no caller repeats the second half (NsCollectionBase).
     bool IsReadOnly => ReadOnly || !ParentWritable;
@@ -163,6 +214,25 @@ else
     // One item at a time: while an editor is open every other item's controls are inert, so
     // there is no half-typed item to lose track of and no order to resolve between two.
     bool IsBusy => _editing is not null;
+
+    protected override void OnParametersSet()
+    {
+        Placement.Parent = Tracker;
+        Placement.Bind(RowContext);
+    }
+
+    // The open row says so in its class, and only the open one: the actions of a FOLDED row
+    // read as its own trailing affordances at every width, while an editor's commit pair is
+    // the end of a form and goes after the last field once the fields have stacked
+    // (ns-mud.css, .ns-list-editor-open). The open row carries no align-center either — the
+    // vendor's utility is !important and would outrank the width the stacking answers to, so
+    // the open row's cross-axis alignment is the house's, in that same rule.
+    static string ItemClasses(bool editing)
+    {
+        return editing
+            ? "ns-list-editor-item ns-list-editor-open d-flex flex-wrap gap-2"
+            : "ns-list-editor-item d-flex flex-wrap align-center gap-2";
+    }
 
     // Reference identity, not equality: two items carrying the same values are still two
     // items, and only the one the user opened may render its editor.
@@ -203,8 +273,29 @@ else
         _editingIsNew = false;
     }
 
+    /// <summary>The open row answers its own refusal: an issue naming a field the row renders
+    /// draws under that field, everything else as one strip on the row's last line — never a
+    /// toast in a corner the user has to connect back to the row they just confirmed
+    /// (intentional-ui.md, Refusal placement). With no row open there is nothing on screen to
+    /// draw under, so the report goes on as it always did.</summary>
+    public override async Task Report(ProblemEventArgs args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        if (!args.Handled && _editing is { } row && Placement.Place(args.Problem, row))
+        {
+            args.Handled = true;
+        }
+
+        await base.Report(args);
+    }
+
     async Task Commit(TItem item)
     {
+        // What the last press refused is lifted before this one runs: a message standing beside
+        // a value the user has already corrected says the row is still refused when it is not.
+        Placement.Clear();
+
         var args = new RowEditEventArgs<TItem>
         {
             Row = item,
@@ -225,17 +316,22 @@ else
 
     async Task Cancel(TItem item)
     {
+        var isNew = _editingIsNew;
+
+        // The editor closes before the notification goes out, not after it: the row is off the
+        // screen either way, so a problem the handler reports has no open row to be drawn on and
+        // takes the road any report with no host to claim it takes.
+        Close();
+
         // An item that was never confirmed exists only because the user asked for one; backing
         // out of it leaves nothing to fall back to, so it goes — and the list is what puts it
         // back out, because the list is what put it in. The caller still hears about it.
-        if (_editingIsNew)
+        if (isNew)
         {
             Take(item);
 
             await Raise(OnRemove, new RowEditEventArgs<TItem> { Row = item, IsNew = true });
         }
-
-        Close();
     }
 
     Task Remove(TItem item)
@@ -260,7 +356,25 @@ else
 
     void Close()
     {
+        // The row leaving takes its refusal with it: the editor that was refused is gone, and a
+        // message left posted would draw under the next row opened on the same field.
+        Placement.Clear();
+
         _editing = null;
         _editingIsNew = false;
+    }
+
+    // The list's own end is where it lets go of the form's context, the same way the instance's
+    // end is where it spends its dirty report (NsComponent.Dispose): a refusal the list posted
+    // there is the FORM's problem after the list is gone — nothing can lift it and the form's
+    // own submit would refuse with nothing on screen to explain it.
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _placement?.Bind(null);
+        }
+
+        base.Dispose(disposing);
     }
 }

@@ -2,19 +2,20 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
-@inherits NsFieldBase<string>
+@inherits NsTextFieldBase<string>
 
 <MudTextField T="string"
               Value="Value"
               ValueChanged="SetValue"
-              For="For"
               Label="@GetLabel()"
               Placeholder="@Placeholder"
               Required="IsRequired"
               Disabled="IsDisabled"
               ReadOnly="IsReadOnly"
               AutoFocus="AutoFocus"
-              Immediate="Immediate"
+              Immediate="true"
+              OnBlur="Leaving"
+              OnKeyDown="Pressing"
               InputType="InputType.Telephone"
               Variant="Variant.Outlined"
               Margin="Margin.Dense"

@@ -9,10 +9,12 @@ using NSail.Problems;
 
 namespace NSail.Components;
 
-/// <summary>The sentence a validation result is drawn in: the app's own word where the rule is
-/// one the app has words for ([Required], [Compare], any <see cref="ICodedValidation"/>), the
-/// attribute's own <c>ErrorMessage</c> otherwise — the same ladder a server refusal's Issue
-/// takes, so a screen and the wire read one string out of one catalog.
+/// <summary>The sentence a validation result is drawn in: the app's own word, out of the
+/// catalog, for every rule the wire has a code for — which is the whole BCL vocabulary
+/// (<see cref="MessageValidator.IssueFor"/>) plus any <see cref="ICodedValidation"/> — so a
+/// screen and a server refusal about the same attribute are one string in one catalog. An
+/// attribute's own <c>ErrorMessage</c> is drawn only where no attribute is the one failing
+/// (an <c>IValidatableObject</c> result, a store's own posting).
 ///
 /// Public because the form's validator is not the only store that posts results: an editor
 /// holding a model of its own outside the EditContext's reach (a product type's tab) validates
@@ -27,66 +29,59 @@ public static class RefusalWords
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(result);
 
-        // An attribute that is genuinely the one failing — not merely present alongside some
-        // other failing attribute on the same property — gets the house key; everything else
-        // passes through unchanged. Required is asked first because a blank repeat is empty
-        // before it is different.
         var property = memberName.Length == 0 ? null : model.GetType().GetProperty(memberName);
 
-        if (property is null)
+        if (property is null || Failing(model, memberName, property) is not { } attribute)
         {
             return result.ErrorMessage ?? string.Empty;
         }
 
-        if (Failing<RequiredAttribute>(model, memberName, property))
-        {
-            return strings.Translate("Problems.Required");
-        }
+        // The same Issue the wire would carry, minted from the same attribute by the same
+        // switch: the sentence a screen draws under the field and the one a server refusal
+        // resolves to are one row in one catalog, filled from the same bound, so neither end
+        // can be translated or moved without the other. memberName rides as the Issue's
+        // source, which is the scoped rung ("Problems.{Code}.{Member}") a kit uses to say one
+        // field's rule in that field's own words.
+        var issue = MessageValidator.IssueFor(attribute, memberName);
 
-        if (Failing<CompareAttribute>(model, memberName, property))
-        {
-            return strings.Translate("Problems.Mismatch");
-        }
-
-        if (FailingCode(model, memberName, property) is { } coded)
-        {
-            return strings.Translate(new Issue(coded.Code, result.ErrorMessage ?? string.Empty, memberName, coded.Arguments));
-        }
-
-        return result.ErrorMessage ?? string.Empty;
+        // A refusal the screen raised itself has no sender to quote, so what an absent row
+        // falls back to is the KEY, the same visible fallback every other string takes
+        // (StringManager) — never the Issue's own English, which is the leak this ladder
+        // exists to stop and would read as a finished sentence nobody can translate.
+        return strings.Translate(new Issue(issue.Code, $"Problems.{issue.Code}", issue.Source, issue.Arguments));
     }
 
-    // The same Issue the wire would carry, minted from the same attribute: the sentence a
-    // screen draws under the field and the one a server refusal resolves to are one string in
-    // one catalog, filled from the same bound, so neither end can be translated or moved
-    // without the other.
-    static ICodedValidation? FailingCode(object model, string memberName, PropertyInfo property)
+    // The attribute that is genuinely the one failing — not merely present alongside some
+    // other failing attribute on the same property.
+    static ValidationAttribute? Failing(object model, string memberName, PropertyInfo property)
     {
+        // The whole model, not just the value: [Compare] and [NotAbove] read the other property
+        // off ObjectInstance, which a context built from the value alone would not carry.
         var context = new ValidationContext(model) { MemberName = memberName };
         var value = property.GetValue(model);
 
-        foreach (var attribute in property.GetCustomAttributes<ValidationAttribute>(inherit: true))
+        foreach (var attribute in property.GetCustomAttributes<ValidationAttribute>(inherit: true).OrderBy(Rank))
         {
-            if (attribute is ICodedValidation coded && attribute.GetValidationResult(value, context) != ValidationResult.Success)
+            if (attribute.GetValidationResult(value, context) != ValidationResult.Success)
             {
-                return coded;
+                return attribute;
             }
         }
 
         return null;
     }
 
-    static bool Failing<TAttribute>(object model, string memberName, PropertyInfo property) where TAttribute : ValidationAttribute
+    // Required is asked first because a blank repeat is empty before it is different, and a
+    // coded rule before an uncoded one because only the coded one says the rule itself; the
+    // sort is stable, so inside a rank the declaration's own order decides.
+    static int Rank(ValidationAttribute attribute)
     {
-        if (property.GetCustomAttribute<TAttribute>() is not { } attribute)
+        return attribute switch
         {
-            return false;
-        }
-
-        // The whole model, not just the value: [Compare] reads the other property off
-        // ObjectInstance, which a context built from the value alone would not carry.
-        var context = new ValidationContext(model) { MemberName = memberName };
-
-        return attribute.GetValidationResult(property.GetValue(model), context) != ValidationResult.Success;
+            RequiredAttribute => 0,
+            CompareAttribute => 1,
+            ICodedValidation => 2,
+            _ => 3
+        };
     }
 }

@@ -317,6 +317,47 @@ public sealed class NsFormProblemDisplayTests : BunitContext, IAsyncLifetime
         Assert.Empty(cut.FindAll(".nickname-editor .mud-input-helper-text"));
     }
 
+    /// <summary>nsail#1939: the anchor carries the CLIENT's refusal too. A composed editor's
+    /// member is where a rule the model declares has nowhere else to speak —
+    /// NsDataAnnotationsValidator posts it against the member's own identifier, and the anchor is
+    /// what announced it — so a screen mirroring a server rule on its message needs no round trip
+    /// to say the same sentence in the same place, and the handler never runs.</summary>
+    [Fact]
+    public async Task AClientRuleOnAnAnchoredMember_DrawsAtTheAnchor_WithNoSendAndNoProblemHandedIn()
+    {
+        // No Problem parameter at all: nothing is arranged to come back, because nothing goes.
+        var cut = Render<AnchoredMemberHost>(p => p
+            .Add(x => x.Model, new FormProblemModel { Score = -1 }));
+
+        Assert.Empty(cut.FindAll(".score-editor .mud-input-helper-text"));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        var refusal = Assert.Single(cut.FindAll(".score-editor .mud-input-helper-text"));
+
+        // This fixture's catalog is empty on purpose — what it pins is placement — so the
+        // sentence is the untranslated fallback, which is the KEY and never the attribute's
+        // English: a refusal the screen raised has no sender to quote. That the CODE is what
+        // words it from a catalog is pinned where a catalog exists (Scheduling's
+        // AppointmentRefusalRenderingTests, both languages).
+        Assert.Equal("Problems.NotNegative", refusal.TextContent);
+        Assert.Contains("mud-input-error", refusal.ClassList);
+        Assert.Equal(string.Empty, FootAlert(cut));
+    }
+
+    /// <summary>And a model the rule accepts leaves the anchor as empty as it found it, so the
+    /// member costs the surface no height until something refuses it.</summary>
+    [Fact]
+    public async Task AClientRuleTheModelSatisfies_LeavesTheAnchorEmpty()
+    {
+        var cut = Render<AnchoredMemberHost>(p => p
+            .Add(x => x.Model, new FormProblemModel { Score = 0 }));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.Empty(cut.FindAll(".score-editor .mud-input-helper-text"));
+    }
+
     /// <summary>A field inside a tab is rendered (NsTabs keeps every panel alive), so its
     /// issue anchors like any other — the tracker chain has to reach past the tab that owns
     /// the nearer cascade.</summary>

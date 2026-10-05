@@ -89,7 +89,7 @@ public sealed class NsNestedRefusalTests : BunitContext, IAsyncLifetime
     {
         return cut.InvokeAsync(() => Control(cut, label)
             .QuerySelector("input")!
-            .Change(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = text }));
+            .Input(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = text }));
     }
 
     static AngleSharp.Dom.IElement Control(IRenderedComponent<NestedRefusalHost> cut, string label)
@@ -139,14 +139,20 @@ public sealed class NsNestedRefusalTests : BunitContext, IAsyncLifetime
         Assert.True(submitted);
     }
 
-    /// <summary>The field speaks first: typing the value is enough, with no submit — the
-    /// per-field pass takes the same reach the whole-model one does.</summary>
+    /// <summary>The per-field pass takes the same reach the whole-model one does, and it takes
+    /// it from the submit onward: a keystroke on a form nobody asked draws nothing (nsail#1905),
+    /// and once the form HAS asked the opened model's field refuses and lifts on the value
+    /// alone, with no second submit.</summary>
     [Fact]
-    public async Task AnOpenedModelsFieldRefusesOnTheChange()
+    public async Task AnOpenedModelsFieldTracksItsValue_OnceTheFormHasAsked()
     {
         var cut = RenderHost(Valid());
 
         await Type(cut, "Opened", "45");
+
+        Assert.Null(Refusal(cut, "Opened"));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
 
         Assert.Equal("Va de -30.00 a 30.00", Refusal(cut, "Opened"));
 

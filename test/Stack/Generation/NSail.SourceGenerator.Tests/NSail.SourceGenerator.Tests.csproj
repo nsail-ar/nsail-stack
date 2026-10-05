@@ -48,6 +48,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\..\..\src\Stack\Generation\NSail.SourceGeneration.Annotations\NSail.SourceGeneration.Annotations.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Stack\Generation\NSail.SourceGeneration.Testing\NSail.SourceGeneration.Testing.csproj" />
+		<ProjectReference Include="..\..\..\..\src\Stack\Mapping\NSail.Mapping\NSail.Mapping.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.Http\NSail.Messaging.Http.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.WebApi\NSail.Messaging.WebApi.csproj" />
 		<ProjectReference Include="..\..\..\..\src\Stack\Security\NSail.Security\NSail.Security.csproj" />

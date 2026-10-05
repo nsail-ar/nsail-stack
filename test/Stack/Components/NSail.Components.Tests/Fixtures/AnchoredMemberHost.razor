@@ -17,6 +17,12 @@
         <NsText>@context.Nickname</NsText>
         <NsFieldRefusal TValue="string" For="() => Model.Nickname" />
     </div>
+    @* The same anchor over a member the MODEL has a rule about, which is what makes the refusal
+       the client's own: no send, no Problem handed in, and the words still land here. *@
+    <div class="score-editor">
+        <NsText>@context.Score</NsText>
+        <NsFieldRefusal TValue="int" For="() => Model.Score" />
+    </div>
 </NsForm>
 
 @code {

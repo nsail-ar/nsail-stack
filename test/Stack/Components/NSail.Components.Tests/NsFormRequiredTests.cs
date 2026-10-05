@@ -63,6 +63,24 @@ public sealed class NsFormRequiredTests : BunitContext, IAsyncLifetime
         Assert.NotEmpty(cut.FindComponent<NsTextField>().FindAll(".mud-input-error"));
     }
 
+    /// <summary>The native gate, lifted house-wide: a marked field hands the input the HTML
+    /// `required` attribute, and in a real form without `novalidate` Chromium's own constraint
+    /// validation stopped the press before Blazor saw it — its bubble, its English, outside all
+    /// three of the house's refusal placements. The form withdraws the browser's UI and keeps
+    /// the mark, which is what an assistive technology reads.</summary>
+    [Fact]
+    public void TheFormWithdrawsTheBrowsersOwnValidation_AndKeepsTheInputsRequiredMark()
+    {
+        var model = new RequiredFieldsModel { Name = null, PatientId = Guid.NewGuid(), CategoryId = Guid.NewGuid() };
+
+        var cut = Render<RequiredFieldsHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Submitted, () => { }));
+
+        Assert.True(cut.Find("form").HasAttribute("novalidate"));
+        Assert.True(cut.FindComponent<NsTextField>().Find("input").HasAttribute("required"));
+    }
+
     /// <summary>The row this fixes: Name carries a plain DataAnnotations [Required], and the
     /// vendor's DataAnnotationsValidator rendered its own English-only default text
     /// ("The Name field is required.") no matter the session's language. NsDataAnnotationsValidator

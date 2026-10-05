@@ -6,6 +6,9 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+		<!-- AfterCommit is the one thing here with something to say and nobody to say it to: its
+		     drain runs past the point where raising could still mean anything. -->
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
 	</ItemGroup>
 
 	<ItemGroup>

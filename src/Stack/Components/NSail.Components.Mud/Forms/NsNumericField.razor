@@ -3,7 +3,7 @@
 
 @namespace NSail.Components
 @typeparam TValue
-@inherits NsFieldBase<TValue>
+@inherits NsTextFieldBase<TValue>
 
 @using System.Globalization
 @using NSail.Localization
@@ -19,7 +19,9 @@
                  Disabled="IsDisabled"
                  ReadOnly="IsReadOnly"
                  AutoFocus="AutoFocus"
-                 Immediate="Immediate"
+                 Immediate="true"
+                 OnBlur="Leaving"
+                 OnKeyDown="Pressing"
                  @attributes="StepAttribute"
                  Format="@(Format ?? NsQuantityText.Format)"
                  Culture="@FigureCulture"

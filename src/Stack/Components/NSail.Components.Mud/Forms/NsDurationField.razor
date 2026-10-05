@@ -3,11 +3,17 @@
 
 @namespace NSail.Components
 @typeparam TValue
-@inherits NsFieldBase<TValue>
+@inherits NsTextFieldBase<TValue>
 
 @* A length of time, not a point in one. A clock picker cannot carry a day or more —
    TimeSpan.FromHours(24) reads back as 00:00 — so a span that can reach that far is asked
-   as a number of hours. NsTimeField stays the control for a time of day. *@
+   as a number of hours. NsTimeField stays the control for a time of day.
+
+   ShrinkLabel is not a caller's choice here: the unit adornment is permanent, so this field has
+   no empty state its label may rest in — "Ventana de cancelación" at rest in a 14rem box runs
+   8px past where the "h" is printed (Nueva Agenda, Nueva Oferta). The same shape
+   NsTextField.ShrinkLabel exists for, decided by the component because the suffix is the
+   component's. *@
 <MudNumericField T="double?"
                  Value="Hours"
                  ValueChanged="OnHoursChanged"
@@ -17,12 +23,15 @@
                  Disabled="IsDisabled"
                  ReadOnly="IsReadOnly"
                  AutoFocus="AutoFocus"
-                 Immediate="Immediate"
+                 Immediate="true"
+                 OnBlur="Leaving"
+                 OnKeyDown="Pressing"
                  Min="Minimum"
                  Format="0.##"
                  Culture="@FigureCulture"
                  Adornment="Adornment.End"
                  AdornmentText="@Unit"
+                 ShrinkLabel="true"
                  Variant="Variant.Outlined"
                  Margin="Margin.Dense"
                  Error="@HasError()"

@@ -21,7 +21,7 @@ static class TypeScriptWriter
         text.AppendLine("// Written on every build of the host: an edit here is lost; change the Sdk instead.");
         text.AppendLine("// </auto-generated>");
         text.AppendLine("/* eslint-disable */");
-        text.AppendLine("import { defineEnum, defineMessage, defineModel } from \"@nsail/messaging\";");
+        text.AppendLine("import { defineEnum, defineMessage, defineModel } from \"@nsail/stack\";");
 
         foreach (var shape in model.Enums)
         {
@@ -170,9 +170,9 @@ static class TypeScriptWriter
             parts.Add($"pattern: {Quote(pattern)}");
         }
 
-        if (field.Codes.Count > 0)
+        if (field.ServerRules.Count > 0)
         {
-            parts.Add($"codes: [{string.Join(", ", field.Codes.Select(Quote))}]");
+            parts.Add($"serverRules: [{string.Join(", ", field.ServerRules.Select(Quote))}]");
         }
 
         return $"{{ {string.Join(", ", parts)} }}";

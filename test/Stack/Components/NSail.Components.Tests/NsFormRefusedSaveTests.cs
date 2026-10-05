@@ -63,8 +63,8 @@ public sealed class NsFormRefusedSaveTests : BunitContext, IAsyncLifetime
 
         var inputs = cut.FindAll("input");
 
-        await cut.InvokeAsync(() => inputs[0].Change("Óptica Lúmina"));
-        await cut.InvokeAsync(() => inputs[1].Change("lumina"));
+        await cut.InvokeAsync(() => inputs[0].Input("Óptica Lúmina"));
+        await cut.InvokeAsync(() => inputs[1].Input("lumina"));
 
         return cut;
     }

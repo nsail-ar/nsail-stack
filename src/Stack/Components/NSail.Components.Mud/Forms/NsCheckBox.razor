@@ -8,7 +8,6 @@
 <MudCheckBox T="TValue"
              Value="Value"
              ValueChanged="SetValue"
-             For="For"
              Label="@GetLabel()"
              Required="IsRequired"
              Disabled="IsDisabled"
@@ -16,6 +15,7 @@
              Color="Color.Primary"
              Error="@HasError()"
              ErrorText="@GetErrorText()"
+             Class="ns-form-check"
              UserAttributes="InputAttributes" />
 @* The described node only, never the hint: a box and its label are one line and a hint under
    them would be a second, which is a layout this shape has never spent. The node costs no

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -62,6 +63,24 @@ public sealed class PushTests
         Assert.DoesNotContain(client.Heard, message => message is Whispered);
     }
 
+    // The push replays nothing it carried while the line was down, so the catch-up rests on one
+    // promise: every time the line comes back, the feed says so (PushConnected) and every
+    // listener re-reads. A drop the server forces must end in that event and a working line.
+    [Fact]
+    public async Task ALineTheServerDropsComesBackAndSaysSo()
+    {
+        await using var host = await PushHost.Start();
+        await using var client = await PushClient.Listen(host.Server, await host.SignIn());
+
+        await host.Drop();
+
+        await client.Connected(times: 2);
+
+        await host.Publish("after the drop");
+
+        Assert.Equal("after the drop", (await client.Next<Rang>()).Text);
+    }
+
     // The hub answers a signed-in session alone, and under api/ an anonymous connect is told so
     // rather than redirected to a sign-in page it cannot follow.
     [Fact]
@@ -107,6 +126,7 @@ sealed class PushClient : IAsyncDisposable
     readonly AsyncServiceScope _scope;
     readonly List<IDisposable> _subscriptions = [];
     readonly SemaphoreSlim _arrived = new(0);
+    readonly SemaphoreSlim _connected = new(0);
 
     PushClient(ServiceProvider services)
     {
@@ -153,11 +173,9 @@ sealed class PushClient : IAsyncDisposable
 
         var client = new PushClient(services.BuildServiceProvider());
 
-        var connected = new TaskCompletionSource();
-
         client._subscriptions.Add(client.Mediator.Subscribe<PushConnected>((_, _) =>
         {
-            connected.TrySetResult();
+            client._connected.Release();
 
             return Task.CompletedTask;
         }));
@@ -167,9 +185,25 @@ sealed class PushClient : IAsyncDisposable
 
         client._scope.ServiceProvider.GetRequiredService<PushFeed>().Open();
 
-        await connected.Task.WaitAsync(Patience);
+        await client.Connected(times: 1);
 
         return client;
+    }
+
+    int _connections;
+
+    /// <summary>Waits until the feed has said it is listening this many times in all.</summary>
+    public async Task Connected(int times)
+    {
+        while (_connections < times)
+        {
+            if (!await _connected.WaitAsync(Patience))
+            {
+                throw new TimeoutException($"The feed said it was listening {_connections} time(s), not {times}.");
+            }
+
+            _connections++;
+        }
     }
 
     public async Task<TMessage> Next<TMessage>()
@@ -221,10 +255,12 @@ sealed class PushHost : IAsyncDisposable
     public static readonly Uri Origin = new("https://localhost/");
 
     readonly WebApplication _app;
+    readonly Severance _severance;
 
-    PushHost(WebApplication app)
+    PushHost(WebApplication app, Severance severance)
     {
         _app = app;
+        _severance = severance;
     }
 
     public TestServer Server
@@ -240,6 +276,10 @@ sealed class PushHost : IAsyncDisposable
         builder.AddBaseWebApi();
 
         PushProbes.Register(builder.Services);
+
+        var severance = new Severance();
+
+        builder.Services.AddSignalR(options => options.AddFilter(severance));
 
         builder.Services
             .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -262,7 +302,15 @@ sealed class PushHost : IAsyncDisposable
 
         await app.StartAsync();
 
-        return new PushHost(app);
+        return new PushHost(app, severance);
+    }
+
+    /// <summary>The server cuts every open line, as a restart or a proxy timeout would.</summary>
+    public Task Drop()
+    {
+        _severance.Drop();
+
+        return Task.CompletedTask;
     }
 
     public async Task<string> SignIn()
@@ -341,5 +389,35 @@ static class PushProbes
 
             return Results.Ok();
         });
+    }
+}
+
+/// <summary>Holds every connection the hub accepted, so a test can cut them from the server's
+/// side — the one end a client cannot fake.</summary>
+sealed class Severance : Microsoft.AspNetCore.SignalR.IHubFilter
+{
+    readonly List<Microsoft.AspNetCore.SignalR.HubCallerContext> _open = [];
+
+    public async Task OnConnectedAsync(Microsoft.AspNetCore.SignalR.HubLifetimeContext context, Func<Microsoft.AspNetCore.SignalR.HubLifetimeContext, Task> next)
+    {
+        lock (_open)
+        {
+            _open.Add(context.Context);
+        }
+
+        await next(context);
+    }
+
+    public void Drop()
+    {
+        lock (_open)
+        {
+            foreach (var connection in _open)
+            {
+                connection.Abort();
+            }
+
+            _open.Clear();
+        }
     }
 }

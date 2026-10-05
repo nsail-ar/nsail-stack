@@ -112,6 +112,21 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void ACheckBoxItem_isADirectChildOfTheGrid_soItsCenteringSelectorMatches()
+    {
+        // nsail#2004: the same selector, the other boolean control --
+        // `.ns-grid > *:has(> .ns-form-check)`. NsCheckBox renders a second child (NsFieldHelper,
+        // which draws nothing while clean), so the mark has to ride the box itself and not the
+        // item; this pins that it does.
+        var cut = Render<NsFormGridItem>(p => p.AddChildContent<NsCheckBox<bool>>());
+
+        var item = cut.Find("div");
+
+        Assert.Contains("ns-form-field", item.ClassList);
+        Assert.Contains(item.Children, child => child.ClassList.Contains("ns-form-check"));
+    }
+
+    [Fact]
     public void TheGridIsAFlexWrapBand_andItsDefaultGapIsTheHouseDefault()
     {
         var cut = Render<NsFormGrid>();

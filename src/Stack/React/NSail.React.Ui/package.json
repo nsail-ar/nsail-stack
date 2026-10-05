@@ -1,0 +1,22 @@
+{
+  "name": "@nsail/ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Ns* components for a React client, drawn from the descriptors an Sdk generates.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ns.css": "./src/ns.css"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "dependencies": {
+    "@nsail/stack": "0.1.0"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}

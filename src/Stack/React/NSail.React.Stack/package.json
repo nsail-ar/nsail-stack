@@ -1,0 +1,17 @@
+{
+  "name": "@nsail/stack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NSail's vendor-free client half: sends messages from the descriptors an Sdk generates, speaks the catalog, and holds the hooks a page reads with.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=19"
+  }
+}

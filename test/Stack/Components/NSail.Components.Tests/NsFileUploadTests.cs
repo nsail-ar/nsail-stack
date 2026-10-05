@@ -138,7 +138,7 @@ public sealed class NsFileUploadTests : UploadBunitContext
     {
         Assert.Equal(
             [
-                "Accept", "AutoFocus", "Autocomplete", "Disabled", "For", "Grow", "Helper", "Immediate", "Label",
+                "Accept", "AutoFocus", "Autocomplete", "Disabled", "For", "Grow", "Helper", "Label",
                 "MaxSize", "Placeholder", "Preview", "ReadOnly", "Required", "Store", "Value",
                 "ValueChanged", "ValueExpression"
             ],

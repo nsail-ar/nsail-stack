@@ -1,13 +1,17 @@
 <Project>
 
-	<!-- Imported by a host that ships a TypeScript client. The host names the Sdk assemblies the
-	     client speaks to and the file to write; the contract is read from the host's own output,
-	     after it built, so the TypeScript can never describe an Sdk the host does not serve.
+	<!-- Imported by an Sdk that ships a TypeScript client, the twin of its [Generated(Http.Clients)]
+	     holder: after the Sdk compiles, its own sources and references are handed to the tool,
+	     which reads them with the C# generator's model and writes $(TypeScriptOutput).
 
-	     <TypeScriptSdk Include="NSail.Sample.Sdk" />
-	     <PropertyGroup><TypeScriptOutput>..\NSail.Sample.React\src\sdk.ts</TypeScriptOutput></PropertyGroup> -->
+	     <PropertyGroup><TypeScriptOutput>…/src/sdk.ts</TypeScriptOutput></PropertyGroup>
+	     <Import Project="…/NSail.TypeScriptGenerator/NSail.TypeScriptGenerator.targets" /> -->
 
-	<ItemGroup>
+	<PropertyGroup>
+		<_TypeScriptTool>$(MSBuildThisFileDirectory)bin/$(Configuration)/net10.0/NSail.TypeScriptGenerator.dll</_TypeScriptTool>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(TypeScriptOutput)' != ''">
 		<ProjectReference Include="$(MSBuildThisFileDirectory)NSail.TypeScriptGenerator.csproj">
 			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 			<Private>false</Private>
@@ -15,16 +19,24 @@
 	</ItemGroup>
 
 	<Target Name="GenerateTypeScript"
-	        AfterTargets="Build"
-	        Condition="'$(TypeScriptOutput)' != '' And '@(TypeScriptSdk)' != ''"
-	        Inputs="@(TypeScriptSdk->'$(TargetDir)%(Identity).dll')"
+	        AfterTargets="CoreCompile"
+	        Condition="'$(TypeScriptOutput)' != ''"
+	        Inputs="@(Compile);@(ReferencePath);$(MSBuildProjectFullPath);$(_TypeScriptTool)"
 	        Outputs="$(TypeScriptOutput)">
 		<PropertyGroup>
-			<_TypeScriptGenerator>$(MSBuildThisFileDirectory)bin/$(Configuration)/net10.0/NSail.TypeScriptGenerator.dll</_TypeScriptGenerator>
+			<_TypeScriptArguments>$(IntermediateOutputPath)typescript.rsp</_TypeScriptArguments>
 		</PropertyGroup>
-		<Exec Command="dotnet &quot;$(_TypeScriptGenerator)&quot; @(TypeScriptSdk->'--assembly &quot;$(TargetDir)%(Identity).dll&quot;', ' ') --out &quot;$(TypeScriptOutput)&quot;" />
-		<!-- The generator leaves an unchanged file untouched; touching it here keeps the target
-		     incremental all the same. -->
+		<ItemGroup>
+			<_TypeScriptDefine Include="$(DefineConstants)" />
+			<_TypeScriptLine Include="assembly=$(AssemblyName)" />
+			<_TypeScriptLine Include="out=$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/$(TypeScriptOutput)'))" />
+			<_TypeScriptLine Include="@(Compile->'source=%(FullPath)')" />
+			<_TypeScriptLine Include="@(ReferencePath->'reference=%(FullPath)')" />
+			<_TypeScriptLine Include="@(_TypeScriptDefine->'define=%(Identity)')" />
+		</ItemGroup>
+		<WriteLinesToFile File="$(_TypeScriptArguments)" Lines="@(_TypeScriptLine)" Overwrite="true" />
+		<Exec Command="dotnet &quot;$(_TypeScriptTool)&quot; &quot;@$(_TypeScriptArguments)&quot;" />
+		<!-- The tool leaves an unchanged file untouched; touching it keeps the target incremental. -->
 		<Touch Files="$(TypeScriptOutput)" />
 	</Target>
 

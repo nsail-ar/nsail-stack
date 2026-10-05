@@ -1,0 +1,36 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+@* A real surface around a real page, the pair NsRouter mounts for every routed screen: the
+   hand-over this fixture is about happens between the two (SurfaceContext.BeginAct,
+   NsPage.OnSurfaceProblem), so neither end may be a stand-in. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Context="surface">
+        @{ _surface = surface; }
+        <HostedActPage @ref="_page" Refusal="Refusal" SaveRefusal="SaveRefusal" />
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+    HostedActPage? _page;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter]
+    public Problem? Refusal { get; set; }
+
+    [Parameter]
+    public Problem? SaveRefusal { get; set; }
+
+    public SurfaceContext? Surface => _surface;
+
+    public HostedActPage? Page => _page;
+}

@@ -8,7 +8,6 @@
 
 @typeparam TModel where TModel : class
 @inherits NsComponent
-@implements IFieldTracker
 @implements IFormProblems
 @implements IFormDocument
 
@@ -36,17 +35,25 @@
 }
 else if (HasDocument)
 {
+    @* novalidate: the app owns every refusal. A field marked required hands the input the HTML
+       `required` attribute — which an assistive technology reads and must keep — and without
+       this the browser's own constraint validation stops the press before Blazor sees it,
+       answering in its own English, in its own bubble, outside all three of the house's
+       refusal placements (intentional-ui.md). The attribute withdraws the browser's UI, not
+       the input's mark. *@
     <EditForm EditContext="_editContext"
               OnSubmit="HandleSubmit"
               FormName="@FormName"
               id="@_formId"
+              novalidate
               class="ns-form d-contents">
         @* Without this, EditContext.Validate() has no subscriber to OnValidationRequested,
            so it always answers "valid" — every [Required]/[MaxLength] on the model was
            inert client-side and the API's Problem was the first the user ever heard of it
            (intentional-ui.md: the field speaks first). NsDataAnnotationsValidator instead of
-           the vendor's own: a [Required] failure needs the app's word (Problems.Required),
-           not the BCL's English-only default text. *@
+           the vendor's own: every failure needs the app's word out of the catalog
+           (Problems.Required, Problems.InvalidFormat, ...), not the BCL's English-only default
+           text naming the member and quoting the rule. *@
         <NsDataAnnotationsValidator />
         @* The fields freeze for the length of the submit: the handler is reading the model
            the user would be editing. IsRunning comes from this form's own Runner, so a
@@ -64,8 +71,10 @@ else if (HasDocument)
                         <CascadingValue Value="IsRunning" Name="FormRunning">
                             @* Every field under the form announces itself here, so the form knows
                                which members are actually on screen when a refusal arrives naming
-                               one. NsTab shadows this cascade and forwards to it. *@
-                            <CascadingValue Value="(IFieldTracker)this" IsFixed="true">
+                               one. NsTab shadows this cascade and forwards to it, and so does an
+                               NsListEditor's open row — both answer their own refusal with the
+                               same piece (RefusalPlacement). *@
+                            <CascadingValue Value="(IFieldTracker)Placement" IsFixed="true">
                                 <CascadingValue Value="(IFormProblems)this" IsFixed="true">
                                     @ChildContent(_model)
                                 </CascadingValue>
@@ -82,11 +91,11 @@ else if (HasDocument)
            nothing jumps. This fallback is only for a form no footer claimed (a bare card),
            and it draws only when there is something to say. The text is the sender's own,
            already localized — the Stack invents no wording here. *@
-        @if (_claims == 0 && _formProblems.Count > 0)
+        @if (_claims == 0 && Placement.Unplaced.Count > 0)
         {
             <div class="ns-form-problem ns-form-problem-shown" role="alert">
                 <div class="ns-form-problem-text">
-                    @foreach (var text in _formProblems)
+                    @foreach (var text in Placement.Unplaced)
                     {
                         <span>@text</span>
                     }
@@ -118,11 +127,14 @@ else if (HasDocument)
     bool IsCreate => FocusFirstField ?? (NameSaysCreate || (!Untracked && !OnLoad.HasDelegate));
 
     readonly string _formId = $"ns-form-{Guid.NewGuid():N}";
-    readonly HashSet<FieldIdentifier> _rendered = [];
-    readonly List<string> _formProblems = [];
+
+    RefusalPlacement? _placement;
+
+    // Built on first use rather than in a field initializer: the words a refusal is said with
+    // come from an injected StringManager, which does not exist while a field does.
+    RefusalPlacement Placement => _placement ??= new RefusalPlacement(Strings);
 
     EditContext? _editContext;
-    ValidationMessageStore? _messages;
     TModel? _model;
     TModel? _loaded;
     Problem? _loadProblem;
@@ -239,7 +251,9 @@ else if (HasDocument)
 
     // The word goes UP for the one control that cannot read the cascade: a dialog's header X is
     // drawn in the vendor's own tree, above the hosted component and this form (NsOpenDialog), so
-    // the surface is the one object both ends hold (SurfaceContext.FormRefuses, NsDialogExit). As
+    // the surface is the one object both ends hold (SurfaceContext.FormRefuses, on its own
+    // RefusalChanged and not StateChanged: this report comes out of a render, so an event the page
+    // and the submit also listened to would make it a render that provokes a render). As
     // two words, exactly as the cascades below go down as two names — what may be withheld for the
     // length of a save alone has to tell the freeze from the refusal. Reported from here rather
     // than eagerly at each edge, because what the X owes is exactly what this form has just
@@ -303,14 +317,7 @@ else if (HasDocument)
             return [Strings.Translate(problem)];
         }
 
-        return [.. problem.Issues.Select(issue => Describe(issue, problem))];
-    }
-
-    string Describe(Issue issue, Problem problem)
-    {
-        var message = Strings.Translate(issue);
-
-        return string.IsNullOrWhiteSpace(message) ? Strings.Translate(problem) : message;
+        return [.. problem.Issues.Select(issue => Placement.Describe(issue, problem))];
     }
 
     /// <summary>Submits from outside the form's own chrome and answers whether it took — what a
@@ -335,7 +342,7 @@ else if (HasDocument)
 
     async Task HandleSubmit()
     {
-        if (_editContext is null || _messages is null || _model is null)
+        if (_editContext is null || _model is null)
         {
             return;
         }
@@ -500,7 +507,7 @@ else if (HasDocument)
 
     int _claims;
 
-    IReadOnlyList<string> IFormProblems.Problems => _formProblems;
+    IReadOnlyList<string> IFormProblems.Problems => Placement.Unplaced;
 
     string? IFormProblems.ReloadAct => ReloadLabel();
 
@@ -535,14 +542,30 @@ else if (HasDocument)
         _claims--;
     }
 
-    void IFieldTracker.Track(FieldIdentifier identifier)
-    {
-        _rendered.Add(identifier);
-    }
+    // Whether the answer standing on screen RIGHT NOW came from an act this form hosts rather than
+    // from its own submit. The two are lifted at different moments: a submit lifts its own on the
+    // next one (ClearProblems), while a hosted act that WORKS reports nothing at all — so the only
+    // moment its last "no" can be taken down is the next press, and only a "no" this seam placed is
+    // that press's to take. Written by whatever last drew (Draw) and by the clear, never by the
+    // placing call: a flag a caller sets is a flag that outlives what it describes, and one left
+    // standing would hand the next act the submit's own refusal to erase.
+    bool _hosted;
 
-    void IFieldTracker.Untrack(FieldIdentifier identifier)
+    bool IFormProblems.Place(Problem? problem)
     {
-        _rendered.Remove(identifier);
+        if (problem is null && !_hosted)
+        {
+            return false;
+        }
+
+        var drew = Draw(problem, hosted: true);
+
+        // The form is not what ran the act, so nothing in its own lifecycle is about to redraw it:
+        // the page's Runner renders the PAGE, and a field's message is read off this form's own
+        // EditContext.
+        _ = InvokeAsync(StateHasChanged);
+
+        return drew;
     }
 
     /// <summary>A form the user is looking at answers its own refusals: an issue naming a field
@@ -580,12 +603,12 @@ else if (HasDocument)
         {
             _model = null;
             _editContext = null;
-            _messages = null;
+            Placement.Bind(null);
             Surface?.SetUnchanged(this);
             return;
         }
 
-        if (ReferenceEquals(_model, source) && _editContext is not null && _messages is not null)
+        if (ReferenceEquals(_model, source) && _editContext is not null)
         {
             return;
         }
@@ -596,13 +619,15 @@ else if (HasDocument)
         _focusPending = IsCreate && _model is null;
 
         _model = source;
-        _rendered.Clear();
-        _formProblems.Clear();
         _reloadable = false;
         Changed?.Invoke();
         _editContext = new EditContext(source);
         _editContext.OnFieldChanged += OnFieldChanged;
-        _messages = new ValidationMessageStore(_editContext);
+
+        // The new document renders its own fields, so what the old one announced is forgotten
+        // with it: a member left behind would carry a message under an input nobody can see.
+        Placement.Forget();
+        Placement.Bind(_editContext);
 
         Surface?.SetUnchanged(this);
     }
@@ -617,38 +642,20 @@ else if (HasDocument)
 
     void ClearProblems()
     {
-        _messages?.Clear();
-        _formProblems.Clear();
+        Placement.Clear();
         _reloadable = false;
-        _editContext?.NotifyValidationStateChanged();
+        _hosted = false;
         Changed?.Invoke();
     }
 
-    /// <summary>Draws the problem where the user can see it: each issue under the field it
-    /// names when this form renders that field, at form level otherwise — an issue naming a
-    /// member no field bound, an issue naming a rule, or a problem carrying no issue at all.
-    /// Returns whether it drew anything, which is what tells the caller nothing is left to
-    /// report elsewhere.</summary>
+    /// <summary>Draws the problem where the user can see it — each issue under the field it
+    /// names when this form renders that field, at form level otherwise (RefusalPlacement) —
+    /// and settles what a refusal means to the form around it. Returns whether it drew
+    /// anything, which is what tells the caller nothing is left to report elsewhere.</summary>
     bool ApplyProblem(Problem? problem)
     {
-        if (_editContext is null || _messages is null || _model is null)
+        if (!Draw(problem, hosted: false))
         {
-            return false;
-        }
-
-        _messages.Clear();
-        _formProblems.Clear();
-
-        // The values the user typed are never touched by a refusal — the model is theirs. What
-        // a conflict adds is one act: go and get the row that moved, which is the screen's own
-        // first read run again.
-        _reloadable = problem?.Code == BusinessProblem.ConflictCode;
-
-        if (problem is null)
-        {
-            _editContext.NotifyValidationStateChanged();
-            Changed?.Invoke();
-
             return false;
         }
 
@@ -657,79 +664,35 @@ else if (HasDocument)
             Surface?.SetDirty(this);
         }
 
-        // A refusal with nothing itemized still has to say something: the title is all it
-        // carries, and silence is the one answer this form is not allowed to give.
-        if (problem.Issues.Count == 0)
-        {
-            _formProblems.Add(Strings.Translate(problem));
-        }
-
-        foreach (var issue in problem.Issues)
-        {
-            var message = Describe(issue, problem);
-
-            // Being a real property is not enough — the counter sale's tenders were a real
-            // property of the message and the screen bound its own local list, so the refusal
-            // went under an input that never rendered and disappeared (6062c3fb). Only a field
-            // that announced itself to this form can carry a message.
-            var identifier = string.IsNullOrWhiteSpace(issue.Source)
-                ? null
-                : TryCreateFieldIdentifier(_model, issue.Source);
-
-            if (identifier is { } field && _rendered.Contains(field))
-            {
-                _messages.Add(field, message);
-            }
-            else
-            {
-                _formProblems.Add(message);
-            }
-        }
-
-        _editContext.NotifyValidationStateChanged();
-        Changed?.Invoke();
-
         _refused = true;
 
         return true;
     }
 
-    static FieldIdentifier? TryCreateFieldIdentifier(object model, string path)
+    /// <summary>The placement alone, and the one copy of it: the refusal of a submit and the one
+    /// of an act the form only hosts are drawn in the same places by the same rule, and what they
+    /// mean to the form around them is the difference — a hosted act neither edited the document
+    /// nor is the verdict a wizard step reads (Place, ApplyProblem). Whose the standing answer is
+    /// is settled here and nowhere else, so the two cannot disagree: whatever draws last owns what
+    /// is on screen, and a submit taking the seat ends the hosted act's claim to it.</summary>
+    bool Draw(Problem? problem, bool hosted)
     {
-        var current = model;
-        var parts = path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        if (parts.Length == 0)
+        if (_editContext is null || _model is null)
         {
-            return null;
+            return false;
         }
 
-        for (var i = 0; i < parts.Length - 1; i++)
-        {
-            var property = current.GetType().GetProperty(parts[i]);
+        // The values the user typed are never touched by a refusal — the model is theirs. What
+        // a conflict adds is one act: go and get the row that moved, which is the screen's own
+        // first read run again.
+        _reloadable = problem?.Code == BusinessProblem.ConflictCode;
 
-            if (property is null)
-            {
-                return null;
-            }
+        var drew = Placement.Place(problem, _model);
 
-            var value = property.GetValue(current);
+        _hosted = hosted && drew;
 
-            if (value is null)
-            {
-                return null;
-            }
+        Changed?.Invoke();
 
-            current = value;
-        }
-
-        // The last segment is checked too: an issue about a rule ("HasChildren") must not
-        // pass as a field, or its message would be attached to an input that never renders.
-        if (current.GetType().GetProperty(parts[^1]) is null)
-        {
-            return null;
-        }
-
-        return new FieldIdentifier(current, parts[^1]);
+        return drew;
     }
 }

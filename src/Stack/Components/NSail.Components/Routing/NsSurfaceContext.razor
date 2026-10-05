@@ -25,6 +25,8 @@
 
     SurfaceContext _surfaceContext = default!;
 
+    bool _guarding;
+
     [Parameter]
     public Surface? Name { get; set; }
 
@@ -52,7 +54,25 @@
         _surfaceContext.StateChanged += OnStateChanged;
     }
 
-    void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+    // The only thing this component's own render reads off the surface is HasChanges, for the
+    // lock above: every other announcement would redraw the whole hosted tree — chrome, page and
+    // fields — to emit output identical to the last pass, and one save in an overlay announces
+    // three times. "Mutating a surface redraws nothing by itself" (ui/surfaces.md, the announce
+    // seam) is the contract every reader of an announcement is written against, and this host is
+    // the one place that can make it untrue for all of them at once. What is remembered is the
+    // value the last pass was RAISED for — this host's render reads one bool and nothing else
+    // about it is deferred, so a skipped pass can only be one whose output would not move.
+    void OnStateChanged()
+    {
+        if (_guarding == _surfaceContext.HasChanges)
+        {
+            return;
+        }
+
+        _guarding = _surfaceContext.HasChanges;
+
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     async Task OnBeforeInternalNavigation(LocationChangingContext context)
     {

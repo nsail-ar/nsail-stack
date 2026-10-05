@@ -161,37 +161,64 @@
     // asked of `document` because a surface can hold more than one form (an aside over the main
     // page) and only the one that just opened owns this gesture. A hidden candidate -- a field
     // on a tab NsTabs has not switched to (`display:none`, never removed from the DOM) -- is
-    // skipped by its own offsetParent rather than focused invisibly, and a read-only one (Editar
-    // Persona's Tipo) the same way a disabled one already was.
+    // skipped by its own offsetParent rather than focused invisibly, and a field the screen
+    // LOCKED (Editar Persona's Tipo) the same way a disabled one already was.
+    //
+    // What says "locked" is aria-readonly, which NsFieldBase writes for every read-only field
+    // and nothing else writes -- NOT the plain `readonly` attribute, because a select's own
+    // input carries that unconditionally: the vendor paints the chosen value into a text input
+    // nobody types into, and a form whose first field is a select is exactly the shape the
+    // cursor was walking past (nsail#2000).
     function focusFirst(formId) {
         const root = document.getElementById(formId);
         if (!root)
             return;
 
         const candidates = root.querySelectorAll(
-            'input:not([type="hidden"]):not([disabled]):not([readonly]), select:not([disabled]), textarea:not([disabled])');
+            'input:not([type="hidden"]):not([disabled]):not([aria-readonly="true"]), select:not([disabled]), textarea:not([disabled]):not([aria-readonly="true"])');
 
         for (const candidate of candidates) {
             if (candidate.offsetParent === null)
                 continue;
 
-            // Only a MudAutocomplete's own input -- role="combobox", the same signal
-            // onDocumentKeyDown already reads above -- wires OpenOnFocus and reacts to THIS
-            // focus exactly like a click, opening its popover over the page (Vigía, nsail#1815
-            // round 2). stopImmediatePropagation on the listener above halts the WHOLE dispatch,
-            // capture through target, not just Blazor's own listener -- arming it for a plain
-            // field would cost that field its own `onfocus="this.select()"` (NsFieldBase) for a
-            // popover it never opens (Vigía, round 4). `.focus()` dispatches its events
-            // synchronously, so the flag set right before it is read and cleared by the listener
-            // above before this call returns; nothing is left armed for a focus that happens not
-            // to fire (the candidate was already the active element).
-            if (candidate.getAttribute("role") === "combobox")
-                suppressOpenFor = candidate;
+            place(candidate);
 
-            candidate.focus();
-            suppressOpenFor = null;
+            // A popup's own focus trap places the cursor on the non-interactive fallback div it
+            // wraps the dialog in, and it does that AFTER this call -- the field takes the cursor
+            // and loses it in the same tick, which is the overlay div the sweep reported for
+            // Conectar un Calendario (nsail#2000, traced in a browser: ours, then Blazor's
+            // FocusAsync for the trap). The vendor's DefaultFocus option does not withdraw that
+            // gesture -- measured, None behaves as Element does. The next frame is after the
+            // trap, so the cursor is taken back there, once, and only where something really
+            // moved it: on a page nothing does and this reads as a no-op.
+            requestAnimationFrame(function () {
+                if (document.activeElement !== candidate)
+                    place(candidate);
+            });
+
             return;
         }
+    }
+
+    // Only a MudAutocomplete's own input wires OpenOnFocus and reacts to THIS focus exactly like
+    // a click, opening its popover over the page (Vigía, nsail#1815 round 2).
+    // stopImmediatePropagation on the listener above halts the WHOLE dispatch, capture through
+    // target, not just Blazor's own listener -- arming it for a plain field would cost that field
+    // its own `onfocus="this.select()"` (NsFieldBase) for a popover it never opens (Vigía,
+    // round 4). `.focus()` dispatches its events synchronously, so the flag set right before it
+    // is read and cleared by the listener above before this call returns; nothing is left armed
+    // for a focus that happens not to fire (the candidate was already the active element).
+    //
+    // role="combobox" alone is not that shape -- a select publishes it too
+    // (NsComboboxExpandedMarkTests, which is why onDocumentKeyDown above reads it) and opens on a
+    // mousedown, not on a focus. aria-autocomplete is the word that tells the box that SEARCHES
+    // from the box that is merely chosen from: "list" against "none".
+    function place(candidate) {
+        if (candidate.getAttribute("aria-autocomplete") === "list")
+            suppressOpenFor = candidate;
+
+        candidate.focus();
+        suppressOpenFor = null;
     }
 
     // What this machine remembers: localStorage, so it survives the tab and belongs to the

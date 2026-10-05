@@ -1,0 +1,36 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Icons
+
+@* The flat rung with no word is the one face that whispers through the vendor's tooltip rather
+   than the stylesheet's bubble, and a tooltip is a popover: no provider, no render. *@
+<MudPopoverProvider />
+
+@if (Navigates)
+{
+    <NsLink As="NsAs.Inline"
+            Breakpoint="NsBreakpoint.Never"
+            Href="somewhere"
+            Icon="@NsIcons.Edit"
+            Label="Editar" />
+}
+else
+{
+    <NsButton As="NsAs.Inline"
+              Breakpoint="NsBreakpoint.Never"
+              Icon="@NsIcons.Edit"
+              Label="Editar" />
+}
+
+@code {
+
+    /// <summary>The link face rather than the button's. One rule, two controls: a command and a
+    /// link at one width must not part company (IconOnlyStateTests).</summary>
+    [Parameter]
+    public bool Navigates { get; set; }
+}

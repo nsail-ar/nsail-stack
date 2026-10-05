@@ -25,7 +25,7 @@ changes is the default page policy, which asks for anyone instead of a signed-in
 
 | Project | Role |
 |---|---|
-| `NSail.Sample.Sdk` | Messages: `ListContacts`, `GetContact`, `CreateContact`, `UpdateContact`, `DeleteContact`; `GetStrings` (the host's merged string catalog for one language, for the client that runs no .NET) |
+| `NSail.Sample.Sdk` | Writes `NSail.Sample.React/src/sdk.ts` on every build. Messages: `ListContacts`, `GetContact`, `CreateContact`, `UpdateContact`, `DeleteContact`; `GetStrings` (the host's merged string catalog for one language, for the client that runs no .NET) |
 | `NSail.Sample.Data` | `Contact` (`IVersioned`), `SampleDbContext`, migrations |
 | `NSail.Sample.Wasm` | The Blazor client: layout, menu, home and the three contact screens, the anonymous authentication state, and the app's `strings*.json` — the one catalog both clients read |
 | `NSail.Sample.Web` | The host: handlers, generated endpoints, enforcement, the Blazor app at `/` and the React build at `/react` (`MapReactClient`: its files, then `index.html` for every other address under it) |

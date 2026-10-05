@@ -133,6 +133,16 @@ else if (_loaded)
             // surface would raise one for a failure this region is already drawing.
             args.Handled = true;
 
+            // And a read that was already replaced is drawn by nobody, so it tells nobody
+            // either — the same guard Load applies to _problem, applied to the report that
+            // goes out ahead of it. A host told "could not read" about an answer the region
+            // threw away acts on a failure that is not on screen: the five paged lists lower
+            // the flag that says their grid is gone, and the grid is right there.
+            if (!ReferenceEquals(_region._read, this))
+            {
+                return Task.CompletedTask;
+            }
+
             return _region.Report(args);
         }
 

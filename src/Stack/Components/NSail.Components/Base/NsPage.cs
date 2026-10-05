@@ -219,6 +219,17 @@ public abstract class NsPage : NsPartial
         OnProblemReported(args);
         await OnProblemReportedAsync(args);
 
+        // An act the page runs while standing inside a form is refused ON that form: the act's own
+        // Runner is this page's, so without this the refusal of a Probar beside a Guardar fades as
+        // a toast while the field it names is on screen waiting to be marked (ui/forms.md, Placing
+        // a refusal). Asked here, last before the toast, so a page that answers its own problems
+        // still answers first — and a page with no form on it keeps the toast, which is the only
+        // place a refusal can go when there is nothing on screen to carry it.
+        if (!args.Handled && Surface?.HostedAct is { } form && form.Place(args.Problem))
+        {
+            args.Handled = true;
+        }
+
         if (!args.Handled && Problems is not null)
         {
             await Problems.Report(args);
