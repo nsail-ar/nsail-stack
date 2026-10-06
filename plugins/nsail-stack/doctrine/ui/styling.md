@@ -188,7 +188,9 @@ rectangle again, and a toolbar's search box is the thing on that row that gives 
 width (`.ns-toolbar-search`), not a content one, and once it is spent the row wraps rather than
 squeezing a worded button into two lines ([intentional-ui.md](../intentional-ui.md), the page
 name never gives way). The flat rung has no fill to shape, so its wordless face stays the bare
-glyph.
+glyph. **The one number a chromed face does carry is the touch floor** — 44px under a coarse
+pointer, which this box already measures and a worded one grows to ([actions.md](actions.md),
+*One height under a finger*).
 
 ---
 
@@ -336,8 +338,11 @@ Which channel a screen is in — state versus condition — is the core doc's
   the scheme's own ink at the same sixth, which is a tone and not a colour and so says nothing
   about the contact. Both mixed against transparent, for `--ns-accent-soft`'s own reason. A
   third class, `.ns-bubble-note`, stands on neither side: it stretches the row instead of
-  aligning to an edge, wears the warning wash since a note is for the staff and never for the
-  person it is about, and grows no tail — it did not travel a road.
+  aligning to an edge and grows no tail, because what it carries did not travel a road — it is
+  the thread's own, not either speaker's. The warning wash says a hand is owed, which is what
+  both of its uses are: a note the staff wrote on a ticket and nobody said out loud
+  (`TicketPage`), and the card the assistant draws for an action it will not carry out until
+  the person clicks (`AssistantPage`, assistant.md).
 - **A handful of facts said as a list is a real `<ul class="ns-bullets">`**, so they are
   announced as a list and not as one sentence that wrapped — the browser's own marker kept, its
   indent and margin corrected to the one the house's markdown lists wear, and the gap between

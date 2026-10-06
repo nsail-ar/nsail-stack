@@ -32,7 +32,10 @@ claude plugin install nsail-stack@nsail
 
 or, for one session from a checkout, `claude --plugin-dir <checkout>/plugins/nsail-stack`.
 The skills answer as `/nsail-stack:doctrine`, `/nsail-stack:new-message`,
-`/nsail-stack:new-mapping`, `/nsail-stack:new-icon` and `/nsail-stack:test-harness`.
+`/nsail-stack:new-mapping`, `/nsail-stack:new-icon`, `/nsail-stack:convert-to-nsload` and
+`/nsail-stack:test-harness`. The plugin rides the same tag as the packages, so a change to a
+page reaches a product when it bumps its pin; a merge that touches only pages publishes no
+version of its own (the release is the next code merge, or a manual run of CI).
 
 ## Build
 

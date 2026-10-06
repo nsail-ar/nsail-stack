@@ -15,11 +15,13 @@ changes its page here, in the same pull request as the code.
 ## The plugin
 
 `plugins/nsail-stack/` is what a product installs to read this doctrine and use the Stack's
-skills (`new-message`, `new-mapping`, `new-icon`, `test-harness`, `doctrine`);
-[.claude-plugin/marketplace.json](.claude-plugin/marketplace.json) lists it. A product pins it at
-the same `v*` tag as the packages it compiles against, so the pages it reads describe the code
-it runs. Pages and skills name kit and app files as examples: those live in the products, not
-here.
+skills (`doctrine`, `new-message`, `new-mapping`, `new-icon`, `convert-to-nsload`,
+`test-harness`); [.claude-plugin/marketplace.json](.claude-plugin/marketplace.json) lists it. A
+product pins it at the same `v*` tag as the packages it compiles against, so the pages it reads
+describe the code it runs — which is why a page changes in the pull request that changes the
+code, and why a merge that touches only pages publishes nothing on its own: the next release
+carries it. Pages and skills name kit and app files as examples: those live in the products, not
+here, and a page about the products' own entities (the org map) lives with them.
 
 ## Non-negotiables
 

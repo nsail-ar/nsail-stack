@@ -72,7 +72,7 @@ each job's (Background jobs, below).
 The wall's one exception is a marker on the entity's own file: `IInstallScoped` (`NSail.Data`,
 beside `IVersioned`). The pass skips a marked entity — no column, no filter, nothing to stamp —
 so one planted row answers every tenant, and a scope that resolved none reads it too. Which
-entities wear it: [org-map.md](org-map.md), Shared.
+entities wear it: org-map.md (the codebase's own map; in nsail, `plugins/nsail-kits/doctrine/org-map.md`), Shared.
 
 **An entity a tenant can WRITE is the tenant's**: the editor's existence is the classification.
 Under a per-tenant database the customer already edits such rows freely, so marking one
@@ -94,7 +94,7 @@ the next entity that tries the illegal direction fails CI. It is what puts `Acco
 ## The org is the other axis, and its map is a page of its own
 
 The tenant is a wall; the **org is a branch inside one**, and it filters far less. Which rows it
-filters is [org-map.md](org-map.md): every entity of every kit and app classified once —
+filters is org-map.md (the codebase's own map; in nsail, `plugins/nsail-kits/doctrine/org-map.md`): every entity of every kit and app classified once —
 org-scoped if it records something that happened AT a branch, tenant-level if the company owns
 or defines it, shared if nobody edits it (exactly the `IInstallScoped` set). The same page
 classifies every MESSAGE that reads or writes those entities (Messages — where each send

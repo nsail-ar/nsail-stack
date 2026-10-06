@@ -135,6 +135,15 @@ does the hero in both of its colours — the filled accent of a document's save 
 danger of a destructive one ([ui/actions.md](ui/actions.md), the label and the enum that owns
 it).
 
+**The one exception: a screen whose footer is a COMPOSER carries its one state act in the title
+row.** A thread answered from the bottom has no footer left to put a verb in — the foot is the
+box the reply is typed into, and a state act wedged above it reads as part of the message. So it
+rides the title row with the utilities, last of them, left of the guide's `?` (the ticket
+workspace's Resolver). **One act, not a row of them**: a second verb up there is a screen that
+owes itself a surface of its own for the transition, which is the rule above and not this
+carve-out. And **every act of such a header belongs in that row** — one left on a toolbar slot
+draws a second row under the title, which is the defect this answers.
+
 **A field nobody will type is not a field.** A value the user would have to look up elsewhere —
 an exchange rate, a tax index — never rides a document form: it lives in configuration, a
 service keeps it current, and the consuming screen reads it ambient. The test: "¿alguien va a
@@ -538,10 +547,22 @@ same two rules, measured from the host the user is actually looking at ([ui/host
 cases).
 
 **A refusal stands until the attempt that could replace it, and every attempt lifts the ones
-under it.** The row's next Confirmar lifts the row's, and the document's submit lifts the row's
-too: one validation pass re-answers the whole document, so what still refuses re-posts in that
-same pass. A row left refused never makes Guardar go mute — the submit runs or it draws its
-reason, and a collection that leaves the screen takes its refusal with it (cases).
+under it.** The row's next Confirmar lifts the row's, and the document's submit lifts every
+placement on its context, the row's included — but only a field and the annotations validator
+re-answer inside that pass; a "no" a page's `OnCommit` decided has nobody to re-raise it, so the
+submit settles the open row BEFORE it validates at all (next paragraph) rather than replaying a
+verdict. A row left refused never makes Guardar go mute — the submit runs or it draws its reason,
+and a collection that leaves the screen takes its refusal with it (cases).
+
+**A row left OPEN is settled by the submit before the document is validated at all.** Its values
+are already the document's — the list appended the row when it was added, not when it was
+confirmed — so Guardar asks the row's own rule again on what is on screen rather than replaying
+the answer it gave last time: a row nothing refuses is confirmed, so the editor closes and the
+document saves in one tap, and a refused one stays open wearing its own words under the field they
+name. The re-ask, not a re-post, is what the asymmetry demands: a field re-answers in the pass
+that lifted it and a page's `OnCommit` has nobody to re-raise it, so without the settle the pass
+lifts the row's "no" and the bad row reaches the server, whose answer lands at the form's foot in
+its own words a round trip later (cases).
 
 **Being *rendered*, not being a real property, is what anchors an issue**, and a screen that
 renders its members as fields needs no wiring for any of it ([ui/forms.md](ui/forms.md), cases).
@@ -592,6 +613,19 @@ exactly one action, and is for news no screen asked for — a release that lande
 open (messaging.md). `NsSetup` raises it, so it survives navigation and sits above every page.
 A message the user's own act produced still follows the three placements, and `Notify` stays a
 toast that fades and can be missed.
+
+**A toast sits at the bottom-center of the frame, and a `Notify` is not an object on screen.**
+Every edge holds a control the person reaches for next — the title bar's actions above, the
+drawer's session chip bottom-left, a panel footer's Guardar bottom-right — and the toast
+outranks both the aside and the modal, so wherever it lands it paints over them. The bottom
+edge centered is the one slot clear of all three at the frame's own width, and it is where
+Material puts a snackbar; **at a phone's width the box is nearly the whole frame and reaches a
+panel footer's Guardar anyway**, so the placement alone never carried the rule. What carries it
+is that a `Notify` takes no pointer events and offers no close icon: a click aimed at what the
+toast overlaps reaches that control and not the toast, at every width. It also no longer pauses
+on hover — a toast with nothing to read twice does not need to. Position is one setting for the
+whole app, so `Offer` sits there too, and it stays fully interactive: being unmissable is its
+job alone, and it is the one toast a narrow frame can still put between a finger and a Guardar.
 
 **One refusal earns an act, and only one.** A save refused because the row moved underneath
 (`Conflict` — data.md's optimistic concurrency) **keeps every value the user typed** and adds a
@@ -803,9 +837,11 @@ mechanism, and the action column that names itself by silence: [ui/hosts.md](ui/
   each size, the importance declaration *which* ([ui/hosts.md](ui/hosts.md)).
 - **One action cell per row, and that cell is ONE `NsActionToolbar`** — transition verbs and all,
   never a second cell for verbs, never a strip of hand-written icons around the presenter.
-- **The constant goes LAST and is always visible**: the lupa where the row has a ficha, the lápiz
-  where it does not, neither where it has neither — **a destructive verb is never promoted to
-  the fixed edge**.
+- **The constant goes LAST among the VERBS and is always visible, and the kebab closes the
+  row**: the lupa where the row has a ficha, the lápiz where it does not, neither where it has
+  neither — **a destructive verb is never promoted to the fixed edge**. The kebab is the one
+  box whose presence is conditional, so it is the one that moves rather than shoving the
+  constant sideways ([ui/actions.md](ui/actions.md)).
 - **Three verbs visible, the rest in the kebab** — the cap that makes contribution scale, so a
   kit contributing a rare action never widens a row ([ui/actions.md](ui/actions.md)).
 - **State paints its text; condition washes the row.** Two channels, apart by default: the

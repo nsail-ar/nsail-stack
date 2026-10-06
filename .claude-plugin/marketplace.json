@@ -1,5 +1,6 @@
 {
   "name": "nsail",
+  "description": "The NSail Stack's Claude Code plugin: the doctrine behind the NuGet packages, and the skills that build on it.",
   "owner": {
     "name": "NSail"
   },

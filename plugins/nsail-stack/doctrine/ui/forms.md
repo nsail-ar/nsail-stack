@@ -222,7 +222,11 @@ message. A second host with fields on screen when a refusal arrives — `NsListE
 places its own with it rather than writing the rule again ([hosts.md](hosts.md)). **A placement
 lifts what it has standing whenever the `EditContext` it posted to is validated**, and lets go of
 it when its own host leaves the screen: a store's messages outlive the store, and one posted on
-someone else's context is a validation failure that context's owner cannot reach.
+someone else's context is a validation failure that context's owner cannot reach. **What the lift
+would leave unanswered is settled before it**: a host holding a row open registers on the form
+(`IFormRows`), and the submit runs that row's own commit on the current values before it validates
+anything — a row nothing refuses closes and the save goes on, a refused one draws its reason and
+ends the submit there (intentional-ui.md, Refusal placement).
 
 - **Being a real property is not what anchors an issue — being *rendered* is.** A field announces
   the identifier it binds (`IFieldTracker`, cascaded by `NsForm`, forwarded by `NsTab`), and only

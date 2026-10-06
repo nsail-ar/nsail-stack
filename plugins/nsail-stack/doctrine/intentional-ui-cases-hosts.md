@@ -113,12 +113,44 @@ then `Validate()` — kept counting the row's, answered false and returned havin
 and drawn nothing. Nueva Venta's Completar went mute with a row open, which is the class preflight
 names (#1029). So the lift is keyed on the moment, not on the owner: a validation request is the
 "next submit" the rule already spoke of (intentional-ui.md), and every placement on that context
-lifts its own answer when one arrives. Nothing is let through quietly — what still refuses posts
-again in the same pass (each field's own problem, the annotations validator's), so the submit runs
-or it draws. The worse tail is the same mechanism: a list unmounting with a row refused would
-leave the form a failure with no input on screen to carry it and no owner able to clear it, so the
-host's own end is where it unbinds — the instance's end is where it spends what it left behind,
-the rule `NsComponent.Dispose` already follows for a dirty report.
+lifts its own answer when one arrives. Nothing is let through quietly: what still refuses inside
+that pass posts again — each field's own problem, and the annotations validator's — and the one
+rule that cannot, the open row's, is re-asked by the settle before the pass runs at all (below),
+so the submit runs or it draws. The worse tail is the same mechanism: a list unmounting with a row
+refused would leave the form a failure with no input on screen to carry it and no owner able to
+clear it, so the host's own end is where it unbinds — the instance's end is where it spends what
+it left behind, the rule `NsComponent.Dispose` already follows for a dirty report.
+
+**Why the submit SETTLES the open rows instead of re-posting what they said.** The lift above is
+keyed on the moment, and only two things answer that moment by themselves: a field, which re-posts
+its own problem, and the annotations validator. A refusal a page's `OnCommit` decided has nobody
+to re-raise it, so the pass lifted it and the row went to the server — on Ajustes de Venta the
+handler refused it there, naming a member the submitted message does not have, and the person
+watched "Obligatorio" move from under Nombre to the form's foot in the server's words a round trip
+later. Remembering the verdict and re-posting it cannot tell a refusal that still holds from one
+already corrected in the box, so the submit re-ASKS: the hosts holding a row open register on the
+form (`IFormRows`, the shape `IFormProblems` already has — claim on parameters, release on the
+host's own end), and `HandleSubmit` settles each of them. A settle is the row's own Confirmar run
+on the current values, so one answer covers every rule a row can carry — `TendersEditor`'s "lo
+recibido no alcanza" as much as an empty Nombre, neither of them a shape an annotation states —
+and committing the row that passes is not generosity: the row is in `Items` already, so closing
+the editor only makes the screen agree with what the save was writing anyway.
+
+Where it lands is the whole mechanism, between two lines of `HandleSubmit` that cannot move. It is
+**before `Validate()`**, because that pass lifts every placement on the context and would wipe the
+refusal the settle just drew — and because a row that closes should be closed while the pass runs.
+It is **before the dirty spend**, because a commit that takes reports the surface dirty from the
+page's own `OnCommit`, and a report filed after the spend leaves an aside open on a save that took
+(#1420). A host with no row open settles in one line and a document with none behaves exactly as
+it did. `NsTable`'s row editor places no refusal at all yet and is its own story (above); its new
+row is not in `Items` until the commit takes, so what a settle means there is that story's
+question.
+
+What the settle costs the surface is counted and not assumed, because the row's rule is raised on
+the LIST's `Runner` and that window does not nest inside the save's — `NsFormCloseOnSubmitTests`
+holds the number and which press each announcement belongs to. It is the cost a Confirmar already
+had, moved into the same press rather than added to the screen: #1987's own gate cannot take it,
+since that fixture mounts no collection editor.
 
 **Why the commit pair needs a container query.** The item is a flex row that WRAPS, so at a
 phone's width the five fields fold onto lines of their own while the actions stack — one flex

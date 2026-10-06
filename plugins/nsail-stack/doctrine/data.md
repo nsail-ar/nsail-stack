@@ -620,15 +620,23 @@ message carries the **whole** set of a composition, never a diff.
 **One message per act.** C# has no *undefined*, so `null` cannot mean "leave it alone", and the
 mapper has no patch type for it. The answer is the small specific message: `CreateX` and
 `UpdateX` are separate contracts with their own `[MapFrom]`, and an act that changes one field
-is its own message. What differs between a create and an update (a creation stamp, a constant
-the create sets) is the handler's step after the call, never a mapping profile.
+is its own message. What differs between a create and an update (a constant the create sets)
+is the handler's step after the call, never a mapping profile — the audit stamps are neither
+(below).
 
 A member whose write is a rule, not a copy — a consent that stamps when it was given, a
 channel whose verification a new address drops — is `[MapIgnore]`d and written by the handler
 around the mapper's run. `[MapIgnore]` holds in both directions.
 
-The handler keeps its guards, the stamps, the constants a create sets and every side effect;
-the order is guards, the mapper's call, what the mapper does not write, `SaveChanges`. How to
+The handler keeps its guards, the constants a create sets and every side effect; the audit
+columns of an entity that implements `IAudited` are not its: the save stamps them
+(`UseAuditStamps` in the context's `OnConfiguring`) — `CreatedAt` when the row is added,
+`UpdatedAt` when it is added or a save changes it, a row nothing changed untouched. A value the
+caller set before the add (an import, a seed) is kept; one assigned on a row that already exists
+is discarded, so a handler that writes either column of an `IAudited` entity writes nothing. An
+entity that is not yet `IAudited` is still stamped by its handler: converting that handler is
+when the entity takes the declaration, and its stamping lines go in the same change, never before.
+The order is guards, the mapper's call, what the mapper does not write, `SaveChanges`. How to
 declare and call it, and what not to convert: the `new-mapping` skill.
 
 Proof: `NSail.Mapping.Tests` (the graph rules without a store), `NSail.Data.Tests/Mapping`

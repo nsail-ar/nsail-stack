@@ -40,8 +40,10 @@ like is the intention's business:
   a grid row's actions, a title bar's utilities, the header X, `NsHelp` and `NsHint` wear.
 - **`NsLink` alone also draws a third `Inline` face no other primitive has**: a bare `<a>`
   carrying both an `Icon` and a word, the two laid out as one row (`ns-link-iconed`) rather
-  than a box — the ticket header's Perfil, among its other title-bar actions. It takes no
-  part in the icon-only state above; `Breakpoint` has no effect on it at all (below).
+  than a box. An `Inline` link handed an `Icon`, a `Label` and any `Breakpoint` but `Never`
+  draws it — that combination IS the face, which is the whole of what reaches it. It takes no
+  part in the icon-only state above; `Breakpoint` has no effect on it at all (below), and the
+  touch floor does not reach it either — it has no box to grow.
 - **Every intention with a fill is a SQUARE**, carrying its own fill and shadow — never a
   rectangle: the vendor's button carries a 64px floor and side padding for a label that is not
   coming. The geometry is [styling.md](styling.md)'s.
@@ -51,6 +53,29 @@ like is the intention's business:
   the scheme's neutral ink, the inert fill under the filled faces, no lift — and **nothing
   about it is the accent** ([styling.md](styling.md)). A page never asks for it by `As`; it
   hands over `Disabled`, or lets the form decide (`NsSubmit`).
+
+### One height under a finger
+
+**Where the pointer is coarse, every action face that draws a BOX is at least 44px high** —
+labelled or icon-only, in a title bar, a toolbar or a footer, whatever its `As`. So a worded
+act and the glyph beside it measure the same wherever a finger has to hit them, which is the
+complaint the rule answers: a phone's title row came out three different heights.
+
+- **44 is not a pick.** It is the touch-target floor the industry already settled — Apple HIG
+  44pt, WCAG 2.5.5 *Target Size* — and 36px is a normal desktop control. So **a fine pointer
+  keeps the 36px the vendor's medium button has**, and the floor is `@media (pointer: coarse)`
+  alone. Not a breakpoint: a phone in landscape is still a finger, and a touchscreen laptop
+  reports its mouse as the primary pointer.
+- **Stated once, for every container.** A height that changed with what the face is drawn
+  inside would be the per-caller branch [principles.md](../principles.md) refuses — one
+  declaration in `ns-mud.css`, reaching the worded face wherever the house draws one
+  (`NsButton`, `NsLink`, `NsSubmit`, `NsClose`, `NsMenu`'s labelled trigger).
+- **The icon-only square keeps its own box at every width and under either pointer**: it is
+  already 44px by construction (12px around the Md glyph), so the floor leaves it exactly as
+  it is. It is a `min-height` for that reason — a square whose box this grew would be the
+  rectangle again.
+- **The flat worded anchor is out.** It draws no box at all (the `ns-link-iconed` face above),
+  so there is no target to grow; the rule is worded *every intention that draws a box*.
 
 ## The six components
 

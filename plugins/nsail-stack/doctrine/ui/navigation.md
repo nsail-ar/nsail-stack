@@ -76,7 +76,7 @@ highlight. The app layout just places `<NsNavMenu />`.
 ## Mounting and arranging
 
 **The kit plants, the app arranges.** A kit is a tool, not a plugin
-(kits.md (nsail: `docs/agents/domain/kits.md`)): it publishes an arrangement, the app either mounts it
+(kits.md (nsail: `plugins/nsail-kits/doctrine/kits.md`)): it publishes an arrangement, the app either mounts it
 (`services.AddSchedulingMenu()`, `services.AddSchedulingDashboard()`) or leaves it unmounted —
 **and having mounted it, the app renames, reorders or hides what it took.** An override is a
 contribution carrying the same `Name` and only the fields it changes; `Merge` takes the last
