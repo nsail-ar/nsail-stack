@@ -5,7 +5,14 @@
 
 @* One row of tools above the grid — a flexible child (search Grow or NsSpacer) pushes the
    rest to the right. Used inside NsPageHeader; not meant to stand alone in a page. *@
-<NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.End" Gap="NsSize.Sm" Class="@Class">
+@* A TOOL NEVER GIVES UP ITS CONTENT WIDTH — the row WRAPS, the same answer the title row one
+   level up gives (NsTitleBar, nsail#1869). Without it a no-wrap row has only flex-shrink left
+   when the tools outgrow the width, and shrinking a button wraps the LABEL inside it with the
+   glyph parked between the two lines (Importar Feriados nacionales on a phone); with it an
+   action that no longer fits takes a line of its own, whole. The search zone is the one child
+   that declares a width it may give back (ns-toolbar-search's flex: 0 1 22rem), so it is still
+   what squeezes first and the wrap costs the row nothing where the tools already fit. *@
+<NsStack Horizontal Wrap Align="NsAlign.Center" Justify="NsAlign.End" Gap="NsSize.Sm" Class="@Class">
     @ChildContent
 </NsStack>
 
