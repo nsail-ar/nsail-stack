@@ -34,6 +34,11 @@ public class SampleDbContext : DbContext, ITenanted, IHasOrgScope
         get { return _orgs.Current; }
     }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseAuditStamps();
+    }
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         configurationBuilder.ApplyTenancy();
