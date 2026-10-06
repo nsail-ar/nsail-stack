@@ -12,11 +12,10 @@ using NSail.Metadata;
 
 namespace NSail.Components.Tests;
 
-/// <summary>The flat rung's word-and-icon face (the ticket header's Perfil beside the
-/// requester's name, nsail#1726): an Icon handed to an Inline link alongside a Label used to
-/// render the bare anchor with the word alone, silently dropping the glyph the caller asked
-/// for. This is the face itself, not the icon-only or word-only ones NsLinkDomProbeTests
-/// already covers.</summary>
+/// <summary>The flat rung's word-and-icon face: an Icon handed to an Inline link alongside a
+/// Label draws both, the glyph beside the word. This is the face itself, not the icon-only or
+/// word-only ones NsLinkDomProbeTests already covers. It is a primitive's contract and no
+/// screen owes it a caller, so the Stack is where it is proven.</summary>
 public sealed class NsLinkIconedAnchorTests : BunitContext
 {
     public NsLinkIconedAnchorTests()
@@ -35,9 +34,9 @@ public sealed class NsLinkIconedAnchorTests : BunitContext
     [Fact]
     public void AnIconedInlineLinkKeepsBothTheGlyphAndTheWord()
     {
-        // Breakpoint=Always mirrors TicketPage.razor's own call, not a claim that this face
-        // reads it: it never does (actions.md, "the one exception") — kept here so the test
-        // matches the real call site rather than inventing a breakpoint nobody passes.
+        // Breakpoint=Always is not a claim that this face reads it: it never does (actions.md,
+        // "the one exception"). It stands for the only way a caller reaches the face at all —
+        // anything but Never, with a Label — so the test asks for it the way a screen would.
         var anchor = Render<NsLink>(p => p
             .Add(x => x.Href, "directory/parties/1")
             .Add(x => x.Icon, NsIcons.Badge)

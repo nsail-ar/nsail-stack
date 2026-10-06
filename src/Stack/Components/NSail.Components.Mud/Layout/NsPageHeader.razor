@@ -89,7 +89,9 @@
     public Glyph? Icon { get; set; }
 
     /// <summary>Window-level actions (refresh, export) shown before the close icon in the
-    /// title row. Data actions go in Actions, filters in Filter.</summary>
+    /// title row. Data actions go in Actions, filters in Filter — except on a screen whose
+    /// footer is a composer, which has no footer row to carry an act and so brings every act
+    /// of its header here (intentional-ui.md).</summary>
     [Parameter]
     public RenderFragment? Caption { get; set; }
 

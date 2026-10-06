@@ -276,9 +276,9 @@ else
     // hooks at once would draw the bubble twice on the same hover.
     string LabelClasses => Wordless ? "ns-button-label" : NsResponsive.LabelClasses(Icon, Breakpoint);
 
-    // The bare anchor is one text node by default; a caller that also gave it an Icon (the
-    // ticket header's Perfil, nsail#1726) needs the glyph laid out beside the word rather than
-    // wherever the browser's own inline flow drops it — ns-link-iconed is that row (ns-mud.css).
+    // The bare anchor is one text node by default; a caller that also hands it an Icon needs the
+    // glyph laid out beside the word rather than wherever the browser's own inline flow drops
+    // it — ns-link-iconed is that row (ns-mud.css).
     // Null rather than NsClassBuilder's own "" once there is nothing to add: Blazor omits an
     // attribute whose value is null (Probe below relies on the same rule), so a plain anchor
     // with no Class and no Icon renders no class attribute at all instead of an empty one.
