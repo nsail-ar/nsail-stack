@@ -17,8 +17,9 @@ namespace NSail.Components.Tests;
 /// away from every width the drawer docks at, and nsail#561 took it away entirely: the page's own
 /// title bar is the one that draws the screen — glyph slot, name and utilities — at every width,
 /// it carries the hidden drawer's toggle, and the announcement still travels because the surface
-/// is what tells anything else what screen is on. Acts stay at the foot of the page; the X belongs to an overlay alone, which keeps
-/// its own chrome untouched because it has no frame to hand anything to.</summary>
+/// is what tells anything else what screen is on. Acts stay at the foot of the page; the X
+/// belongs to an overlay, drawn by the bar itself wherever no shell drew that surface's row
+/// (OverlayChromeTests is the routed hosts' half, where one did).</summary>
 public sealed class NsTitleBarAnnouncementTests : BunitContext, IAsyncLifetime
 {
     static readonly Glyph PageGlyph = NsIcons.Badge;
@@ -317,8 +318,12 @@ public sealed class NsTitleBarAnnouncementTests : BunitContext, IAsyncLifetime
         Assert.Contains("ns-record-state", field.Markup, StringComparison.Ordinal);
     }
 
+    /// <summary>An overlay no host drew a row for: the hosted dialog, whose chrome is the host's
+    /// own (NsOpenDialog's title row, NsDialogExit) and whose body is handed in rather than
+    /// routed, and any bar standing outside a shell. The bar draws its own row there and the
+    /// announcement goes unread — what the routed hosts do instead is OverlayChromeTests.</summary>
     [Fact]
-    public void AnOverlayKeepsItsOwnChromeAndAnnouncesNothing()
+    public void AnOverlayWhoseHostDrewNoRowKeepsItsOwnChrome()
     {
         var surface = Setup(Surfaces.Aside);
 

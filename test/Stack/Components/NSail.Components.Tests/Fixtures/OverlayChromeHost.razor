@@ -1,0 +1,55 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using MudBlazor
+
+@* A routed page in a real overlay, in the shape MainLayout writes it: NsSurfaceContext handed
+   the page type the host matched off the address (NsSurface does exactly this), and the host —
+   drawer for ?aside=, dialog for ?modal= — around the page. Both hosts, because the chrome is
+   decided by being on an overlay and not by which one. *@
+<MudPopoverProvider />
+
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Name="@(Modal ? Surfaces.Modal : Surfaces.Aside)"
+                      PageType="typeof(OverlayFormPage)"
+                      Context="surface">
+        @{ _surface = surface; }
+        @if (Modal)
+        {
+            <NsDialog>
+                <OverlayFormPage Title="@Title" Gate="Gate" Fails="Fails" />
+            </NsDialog>
+        }
+        else
+        {
+            <NsDrawer Mode="NsDrawerMode.Docked">
+                <OverlayFormPage Title="@Title" Gate="Gate" Fails="Fails" />
+            </NsDrawer>
+        }
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    SurfaceContext? _surface;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter]
+    public bool Modal { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public TaskCompletionSource? Gate { get; set; }
+
+    [Parameter]
+    public bool Fails { get; set; }
+
+    public SurfaceContext? Surface => _surface;
+}

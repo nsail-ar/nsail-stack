@@ -208,7 +208,12 @@ purpose.
 A title strip under a bar that also names the screen says where the user is a second time and
 pays a whole row for the repetition — so the shell draws no bar, and the page's own title bar
 is the one row that names it. The carrier is `SurfaceContext`, so the component decides by
-where it lives and no page was touched. **The announcement is its own event, and that is not
+where it lives and no page was touched. **An OVERLAY's row is the exception, and it is the same
+carrier**: the page's bar announces and draws nothing there, because that row is declared inside
+the page's `NsForm` and would have waited for its first read — which is a blank box with no way
+out for as long as the read takes, and no backdrop to click in a routed modal. The host draws it
+instead (`NsSurfaceChrome`), naming the surface off the routed type it was handed until the page
+announces its own word, and still no page was touched. **The announcement is its own event, and that is not
 decoration**: `SurfaceContext.StateChanged` re-renders the page, so a page whose render announced
 would announce from the render its own announcement caused — forever. `AnnouncementChanged` has
 exactly one kind of subscriber, the chrome, and the loop cannot close. The clear rides

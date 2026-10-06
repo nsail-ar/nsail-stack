@@ -1,0 +1,67 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+@using NSail.Problems
+
+@* The shape every edit screen carries into an overlay: the panel — title row, fields, submit —
+   nested INSIDE the form, which renders neither of its two branches until its first read
+   answers. The read is held by a gate the test releases, so the window a deep link into an
+   aside actually arrives in is a state the test can stand in and read the markup from.
+
+   Title is a parameter and not NsPartial.GetTitle() because this fixture is not an NsPage: the
+   test hands it the same word the key for this page's own type resolves, which is what 152 of
+   the 156 title bars in a product pass. *@
+<NsForm TModel="FormProblemModel" OnLoad="HandleLoad" OnSubmit="HandleSubmit">
+    <NsPanel>
+        <Header>
+            <NsTitleBar Title="@Title">
+                <button type="button" class="probe-utility">Imprimir</button>
+            </NsTitleBar>
+        </Header>
+        <Content>
+            <NsTextField @bind-Value="context.Name" />
+        </Content>
+        <Footer>
+            <NsSubmit />
+        </Footer>
+    </NsPanel>
+</NsForm>
+
+@code {
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>Holds the form's read open, the way a sender in flight does.</summary>
+    [Parameter]
+    public TaskCompletionSource? Gate { get; set; }
+
+    /// <summary>Whether the read refuses when it answers — the failed-read face, where the
+    /// refusal and its Retry stand in for the fields.</summary>
+    [Parameter]
+    public bool Fails { get; set; }
+
+    async Task HandleLoad(LoadEventArgs<FormProblemModel> args)
+    {
+        if (Gate is not null)
+        {
+            await Gate.Task;
+        }
+
+        if (Fails)
+        {
+            args.Problem = BusinessProblem.RuleViolation("Read", "La lectura no llegó.");
+
+            return;
+        }
+
+        args.Model = new FormProblemModel { Name = "guardado" };
+    }
+
+    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    {
+    }
+}

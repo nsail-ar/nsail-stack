@@ -12,7 +12,7 @@
        several templates never keeps parameters from the previous route. The query is left out
        of the key on purpose — it is filter or component state, and remounting on it would
        throw away the page a tab switch or a search is written from. *@
-    <NsSurfaceContext @key="_path" Name="@Name" Context="surface">
+    <NsSurfaceContext @key="_path" Name="@Name" PageType="_routeData.PageType" Context="surface">
         @ChildContent(_routeData)
     </NsSurfaceContext>
 }

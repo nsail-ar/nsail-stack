@@ -30,6 +30,12 @@
     [Parameter]
     public Surface? Name { get; set; }
 
+    /// <summary>The page the host matched this surface's address to. Handed over because the
+    /// match happens before the page renders, which is the whole window the surface's chrome has
+    /// to name itself in (SurfaceContext.PageType).</summary>
+    [Parameter]
+    public Type? PageType { get; set; }
+
     /// <summary>The hosted content, handed the surface this component created. A host whose
     /// chrome is rendered outside this cascade (a dialog's title row lives in the vendor's own
     /// tree) re-provides it around that chrome; everything nested normally just ignores it and
@@ -50,7 +56,7 @@
 
     protected override void OnInitialized()
     {
-        _surfaceContext = new SurfaceContext(Name, Navigation, RouteTable, JS, History, Close);
+        _surfaceContext = new SurfaceContext(Name, Navigation, RouteTable, JS, History, Close, PageType);
         _surfaceContext.StateChanged += OnStateChanged;
     }
 

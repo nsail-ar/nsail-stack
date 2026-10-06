@@ -1,0 +1,76 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using NSail.Localization
+@using NSail.Metadata
+@implements IDisposable
+
+@inject StringManager Strings
+@inject MetadataProvider Metadata
+
+@* An overlay's row is the SHELL's and stands from the first frame: the page inside is drawn by
+   an NsForm, which renders neither of its branches until its first read answers, so a row drawn
+   in there is a blank box with no way out for the length of that read (nsail#2053). Every piece
+   of it is the title bar's own — the glyph/spinner slot, the name, the page's utilities and the
+   X — handed what the page announced, or what its route derives until it does.
+
+   A component of its own and not markup in each host: this is the one box an announcement
+   redraws, and the hosts deliberately do not redraw on one (NsDrawer.OnSurfaceStateChanged —
+   poking the drawer reaches the container above it and the page inside it). *@
+@* A named surface only: the main surface's chrome IS the page's own row, and a host mounted
+   outside a surface altogether has no name to draw and nothing to close — both leave the page's
+   bar drawing its own row, which is what NsTitleBar's own claim reads (Hoisted). *@
+@if (Surface is { IsMain: false })
+{
+    <NsTitleBar Title="@GetName()" Icon="@Surface.Icon">
+        @Surface.Utilities
+    </NsTitleBar>
+}
+
+@code {
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Surface is not null)
+        {
+            Surface.AnnouncementChanged += OnAnnouncementChanged;
+        }
+    }
+
+    // The page's own word while it has one, and the name its route derives before it renders at
+    // all: a page's title bar passes the key its own type resolves (NsPartial.GetTitle), so the
+    // name drawn at once is the page's and nothing swaps under the reader. A page that refines
+    // it from what it read (SettlementPage) replaces it the moment it announces.
+    string? GetName()
+    {
+        if (Surface?.Title is { } announced)
+        {
+            return announced;
+        }
+
+        if (Surface?.PageType is { } page && Strings.TryTranslate(Metadata.KeyFor(page, "Title"), out var derived))
+        {
+            return derived;
+        }
+
+        return null;
+    }
+
+    void OnAnnouncementChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        if (Surface is not null)
+        {
+            Surface.AnnouncementChanged -= OnAnnouncementChanged;
+        }
+    }
+}

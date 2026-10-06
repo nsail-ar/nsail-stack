@@ -3499,6 +3499,15 @@
     }
 }
 
+/* A panel's header slot pays the panel's gap only while something is in it. Inside an overlay the
+   screen's title row is the SHELL's (NsSurfaceChrome), so the header a page declared renders
+   empty — and an empty box between the panel's top edge and its first field is a gap nothing on
+   screen accounts for. CSS and not a flag on the component: whether a slot renders anything is
+   known only once it has rendered. */
+.ns-panel-header:empty {
+    display: none;
+}
+
 .ns-scroll-shadow {
     background:
         linear-gradient(var(--ns-panel-surface), var(--ns-panel-surface)) local,

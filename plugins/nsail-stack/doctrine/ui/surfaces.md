@@ -186,25 +186,45 @@ On the main surface the page's title bar draws its own row and announces it. `Ns
 `NsPageHeader`, which composes it — decides by where it lives: on main (`Surface.IsMain`) it draws
 the hamburger (below the drawer's breakpoint), the glyph/spinner slot, the title and the
 utilities, with no X, and announces its title, its derived glyph and its utility-actions
-fragment to its surface (`SurfaceContext.Announce`); on an overlay it draws its own row with the
-X, and the announcement goes unread. **Pages are unchanged** — the component decides by where
-it lives. **An overlay keeps its own chrome**, and its X is the way out (cases).
+fragment to its surface (`SurfaceContext.Announce`). **Pages are unchanged** — the component
+decides by where it lives.
 
-**The hamburger is the surface's, so a screen shows it once however many title rows it draws.**
-The first row to ask holds the claim (`SurfaceContext.ClaimsToggle`) and a second row draws none;
-the holder hands it back when it goes (`ReleaseToggle` from `Dispose`), because the main surface
-outlives every page on it and a claim left standing would be a phone with no way to the drawer on
-every screen after. **A panel that is a section of the screen rather than its subject is named
-with a heading, not a second title row** — `<NsText As="Title">` in the panel's `Header`
-(`PasswordPage`'s Segundo factor, `PendingReceiptCard`): the title row carries the screen's own
-name, and a screen has one name.
+**An overlay's chrome is the SHELL's, and it stands from the first frame.** `NsDrawer` and
+`NsDialog` draw the row themselves (`NsSurfaceChrome`) and cascade `SurfaceChrome` around
+everything they host, so the page's own title bar announces there and draws nothing: a page's row
+is declared inside its `NsForm`, which renders neither of its branches until its first read
+answers, and a row that waited for the read left a deep link into an overlay a blank box with no
+way out for the length of it. **The name is derived before the page renders** — the host hands the
+routed type over (`NsSurface` → `SurfaceContext.PageType`) and the row resolves that type's own
+`{Area}.{Type}.Title`, which is the key a page's bar passes anyway (`NsPartial.GetTitle`), so
+nothing swaps under the reader; the announcement replaces it for a page that refines its name
+from what it read. **While the read runs the content area is empty and the row's one icon slot
+holds the spinner** (`Surface.HasWork`) — no skeleton and no fourth `NsLoad` state. A failed read
+draws its refusal and its Retry where the fields would have been, under that same row.
+
+A host whose chrome is its own draws no `SurfaceChrome`: the hosted dialog (`NsOpenDialog`,
+`NsDialogExit`) is not routed, nothing deep-links into it mid-read, and the page inside it keeps
+drawing its own row with its own X — which is what a bar standing outside a shell does too.
+
+**The surface's own row is the first one it rendered, and two things ride that claim**
+(`SurfaceContext.ClaimsRow`, handed back by `ReleaseRow` from `Dispose`): the hamburger, so a
+screen shows it once however many title rows it draws, and which row goes quiet where the shell
+drew the chrome — a panel that is a section of the screen keeps the row it declared. The claim is
+handed back because the main surface outlives every page on it and one left standing would be a
+phone with no way to the drawer on every screen after. **A panel that is a section of the screen
+rather than its subject is named with a heading, not a second title row** — `<NsText As="Title">`
+in the panel's `Header` (`PasswordPage`'s Segundo factor, `PendingReceiptCard`): the title row
+carries the screen's own name, and a screen has one name. **A panel's header slot pays the
+panel's gap only while something is in it** (`.ns-panel-header:empty`, ns-mud.css): the header a
+hoisted row left behind renders empty, and an empty box above the fields is geometry nothing
+accounts for.
 
 **Chrome that reads the announcement must subscribe to it.** The surface cascade is `IsFixed`
 and `Announce` raises `AnnouncementChanged` alone — never `StateChanged`, which is a separate
-event for a reason (cases). So a component whose markup reads `Surface.Title` — `NsAppBar` is the
-Stack's one, and no layout mounts it; the drawer's header shows the brand unconditionally and
-reads no announcement at all — hooks `AnnouncementChanged` in `OnInitialized` and unhooks it
-in `Dispose`. Without that hook nothing redraws it when the arriving page announces: it keeps
+event for a reason (cases). So a component whose markup reads `Surface.Title` — an overlay's own
+row (`NsSurfaceChrome`), and `NsAppBar` for a host that mounts one, which no layout does; the
+drawer's header shows the brand unconditionally and reads no announcement at all — hooks
+`AnnouncementChanged` in `OnInitialized` and unhooks it in `Dispose`. Without that hook nothing redraws it when the arriving page announces: it keeps
 drawing the departed page's name until something unrelated re-renders the layout, which on a
 docked desktop is nothing at all.
 
