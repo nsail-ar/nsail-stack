@@ -20,13 +20,13 @@
         @if (Modal)
         {
             <NsDialog>
-                <OverlayFormPage Title="@Title" Gate="Gate" Fails="Fails" />
+                <OverlayFormPage Title="@Title" Gate="Gate" Fails="Fails" Saving="Saving" />
             </NsDialog>
         }
         else
         {
             <NsDrawer Mode="NsDrawerMode.Docked">
-                <OverlayFormPage Title="@Title" Gate="Gate" Fails="Fails" />
+                <OverlayFormPage Title="@Title" Gate="Gate" Fails="Fails" Saving="Saving" />
             </NsDrawer>
         }
     </NsSurfaceContext>
@@ -50,6 +50,9 @@
 
     [Parameter]
     public bool Fails { get; set; }
+
+    [Parameter]
+    public TaskCompletionSource? Saving { get; set; }
 
     public SurfaceContext? Surface => _surface;
 }

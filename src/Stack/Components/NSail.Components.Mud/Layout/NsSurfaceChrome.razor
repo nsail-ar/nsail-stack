@@ -24,9 +24,17 @@
    bar drawing its own row, which is what NsTitleBar's own claim reads (Hoisted). *@
 @if (Surface is { IsMain: false })
 {
-    <NsTitleBar Title="@GetName()" Icon="@Surface.Icon">
-        @Surface.Utilities
-    </NsTitleBar>
+    @* The hosted form's own word, re-provided under the name NsForm cascades. This row is drawn
+       OUTSIDE that form — the whole point — so without it the X stays pressable over a save that
+       greyed the footer's Cancelar, one way out of a surface disagreeing with the other, and so
+       do the page's utilities beside it. The word travels up through the surface (NsForm reports,
+       SurfaceContext.FormRefuses) and comes back down here, which is what NsDialogExit does for
+       the hosted dialog — whose second face, the vendor's own Escape key, only that host holds. *@
+    <CascadingValue Value="Refuses" Name="ParentDisabled">
+        <NsTitleBar Title="@GetName()" Icon="@Surface.Icon">
+            @Surface.Utilities
+        </NsTitleBar>
+    </CascadingValue>
 }
 
 @code {
@@ -34,11 +42,14 @@
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
 
+    bool Refuses => Surface?.FormRefuses == true;
+
     protected override void OnInitialized()
     {
         if (Surface is not null)
         {
             Surface.AnnouncementChanged += OnAnnouncementChanged;
+            Surface.RefusalChanged += OnRefusalChanged;
         }
     }
 
@@ -66,11 +77,20 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
+    // Its own event and not StateChanged, for the reason SurfaceContext gives it one: the form
+    // reports this from the after-render of the pass that decided it, and the chrome outside that
+    // form is its only reader.
+    void OnRefusalChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
         if (Surface is not null)
         {
             Surface.AnnouncementChanged -= OnAnnouncementChanged;
+            Surface.RefusalChanged -= OnRefusalChanged;
         }
     }
 }

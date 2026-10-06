@@ -202,6 +202,13 @@ from what it read. **While the read runs the content area is empty and the row's
 holds the spinner** (`Surface.HasWork`) — no skeleton and no fourth `NsLoad` state. A failed read
 draws its refusal and its Retry where the fields would have been, under that same row.
 
+**The hosted form's word reaches that row, because the row stands outside its cascade.** What
+`NsForm` cascades as `ParentDisabled` travels up through the surface (`SurfaceContext.FormRefuses`)
+and is re-provided around the hoisted row under the same name, so the X and the utilities beside
+it grey with the footer's Cancelar for the length of a save — one way out of a surface agreeing
+with the other. It is `NsDialogExit`'s seam, whose second face (the vendor's own Escape key) only
+a dialog host holds.
+
 A host whose chrome is its own draws no `SurfaceChrome`: the hosted dialog (`NsOpenDialog`,
 `NsDialogExit`) is not routed, nothing deep-links into it mid-read, and the page inside it keeps
 drawing its own row with its own X — which is what a bar standing outside a shell does too.
