@@ -1,0 +1,11 @@
+{
+  "name": "nsail-stack",
+  "description": "The NSail Stack's doctrine and skills for building on it: messages and handlers, the entity mapper, icons, tests, and the architecture pages behind them.",
+  "author": {
+    "name": "Leonardo Porro and Emmanuel Arias"
+  },
+  "homepage": "https://github.com/nsail-ar/nsail-stack",
+  "repository": "https://github.com/nsail-ar/nsail-stack",
+  "license": "MIT",
+  "keywords": ["nsail", "dotnet", "blazor", "modular-monolith"]
+}
