@@ -19,6 +19,21 @@ ships as `NSail.Messaging.SourceGenerator`. npm packages come later.
 This repository is the Stack's source of truth. Changes land here through pull requests;
 the products that consume it pin a published version.
 
+## Claude Code plugin
+
+The Stack's doctrine and its skills ship as a Claude Code plugin in this repository
+(`plugins/nsail-stack`, listed by `.claude-plugin/marketplace.json`). A product pins it at the
+same tag as its packages:
+
+```bash
+claude plugin marketplace add nsail-ar/nsail-stack
+claude plugin install nsail-stack@nsail
+```
+
+or, for one session from a checkout, `claude --plugin-dir <checkout>/plugins/nsail-stack`.
+The skills answer as `/nsail-stack:doctrine`, `/nsail-stack:new-message`,
+`/nsail-stack:new-mapping`, `/nsail-stack:new-icon` and `/nsail-stack:test-harness`.
+
 ## Build
 
 ```bash

@@ -1,0 +1,13 @@
+{
+  "name": "nsail",
+  "owner": {
+    "name": "NSail"
+  },
+  "plugins": [
+    {
+      "name": "nsail-stack",
+      "source": "./plugins/nsail-stack",
+      "description": "The NSail Stack's doctrine and skills for building on it."
+    }
+  ]
+}
