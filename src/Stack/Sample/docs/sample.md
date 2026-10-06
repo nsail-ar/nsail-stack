@@ -32,7 +32,7 @@ changes is the default page policy, which asks for anyone instead of a signed-in
 | `NSail.Sample.React` | The React client (Vite): `src/sdk.ts` is generated, `src/routes.ts` is the route table, `src/contacts/` the two screens |
 
 How the TypeScript side is built — the generator, the `@nsail/*` packages, the npm
-workspace — is [react.md](../../../../docs/agents/framework/react.md).
+workspace — is [react.md](../../../../plugins/nsail-stack/doctrine/react.md).
 
 ## Running it
 
@@ -51,16 +51,16 @@ For hot reload of the React client, run the host as above and
 `npm run dev --workspace=@nsail/sample-react`: Vite serves it on its own port under `/react/`
 and proxies `/api` to the host's http port.
 
-## Slots
+## Ports
 
-The sample owns the **41xx** block.
+The sample owns the **41xx** block of NSail's port nomenclature.
 
-| Entry | Port | Database |
-|---|---|---|
-| Leonardo's run (`sample-web` in `.claude/launch.json`) | 4100 | `sample_main` |
-| Cap's probe | 4180 | `sample_architect` |
-| VS F5 / `--launch-profile https` | 4000 (https), 4001 (http) | `sample_main` |
-| Vite dev server | 4002 | — |
+| Entry | Port |
+|---|---|
+| `--launch-profile http` | 4001 |
+| `--launch-profile https` (VS F5) | 4000 (https), 4001 (http) |
+| Vite dev server | 4002 |
 
-The connection string is `Sample:ConnectionString` (`appsettings.json`); the first run
+The connection string is `Sample:ConnectionString` (`appsettings.json`: `localhost`, database
+`sample_main`, user `postgres`; Npgsql reads the password from `PGPASSWORD`). The first run
 creates the database.
