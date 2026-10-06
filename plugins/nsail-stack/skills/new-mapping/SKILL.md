@@ -37,9 +37,10 @@ compile time: no reflection, nothing saved until the handler's `SaveChanges`.
 ## What stays in the handler
 
 The mapper copies; it does not decide. Keep, in this order: **guards** (`Ensure*`, uniqueness,
-exists), then **the call**, then **what the mapper does not write** — the stamps
-(`CreatedAt`/`UpdatedAt`), the constants a Create sets (`IsEnabled = true`, `IsSystem = false`),
-anything `[MapIgnore]`d — then `SaveChanges`.
+exists), then **the call**, then **what the mapper does not write** — the constants a Create
+sets (`IsEnabled = true`, `IsSystem = false`), anything `[MapIgnore]`d — then `SaveChanges`. Never
+the stamps: an entity with `CreatedAt` and `UpdatedAt` implements `IAudited` and the save writes
+them (an entity not yet on `IAudited` gets it as part of converting its handler).
 
 - A guard that needs the row's old state (`channel.IsEnabled` before the merge) loads it first;
   the mapper's load returns the same tracked instance and merges onto it.
@@ -61,7 +62,8 @@ C# has no *undefined*, so `null` cannot mean "leave it". The house answer is Det
 one: small specific messages, one per act (`RetargetTenderMethod` carries one field), never a
 `Save` and never a patch type. Create and Update are separate messages with their own
 `[MapFrom]`, which is also the answer to Detached's *profiles*: what differs between them (a
-creation stamp, a constant) is the handler's step after the call.
+constant the create sets) is the handler's step after the call. The audit stamps are not: an
+`IAudited` entity's save writes them.
 
 ## What not to convert
 
