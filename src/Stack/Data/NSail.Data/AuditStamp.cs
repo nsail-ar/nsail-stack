@@ -8,8 +8,8 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace NSail.Data;
 
 // The audit columns sit where every save already passes, beside the tenant's stamp, rather than
-// in a handler: about a hundred handlers used to say the same two lines, and a rule each one has
-// to remember is one new handler away from being forgotten. A row nobody changed is not stamped:
+// in a handler: a rule each handler has to remember is one new handler away from being
+// forgotten. A row nobody changed is not stamped:
 // a merge that finds the same values leaves the entry Unchanged, and "updated" then says what
 // happened.
 sealed class AuditStamp : SaveChangesInterceptor
