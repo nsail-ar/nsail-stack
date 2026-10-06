@@ -481,10 +481,8 @@
 /* THE TOUCH-TARGET FLOOR. A labelled chromed face is the vendor's medium button — 6/16 of
    padding over .875rem text, about 36px — while the glyph beside it is 44px by construction
    (.ns-square below, and the flat rung's own icon button: 12px around the Md step), so without
-   a floor a title bar's worded and wordless acts do not measure the same under a finger
-   (Leonardo: "los botones con y sin label tienen que tener el mismo tamaño"). 44px is not a
-   pick: it is the industry's
-   touch-target floor (Apple HIG 44pt, WCAG 2.5.5 Target Size), and 36px is a normal desktop
+   a floor a title bar's worded and wordless acts do not measure the same under a finger, and
+   they have to. 44px is not a pick: it is the industry's touch-target floor (Apple HIG 44pt, WCAG 2.5.5 Target Size), and 36px is a normal desktop
    control — so the floor is stated once, here, and only where the pointer is coarse. A fine
    pointer keeps the vendor's 36px, which is what every desktop measurement in the house reads.
 
