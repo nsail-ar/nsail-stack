@@ -44,6 +44,10 @@
     [Parameter]
     public bool Fails { get; set; }
 
+    /// <summary>Holds the SUBMIT open, for what the chrome owes a save in flight.</summary>
+    [Parameter]
+    public TaskCompletionSource? Saving { get; set; }
+
     async Task HandleLoad(LoadEventArgs<FormProblemModel> args)
     {
         if (Gate is not null)
@@ -61,7 +65,11 @@
         args.Model = new FormProblemModel { Name = "guardado" };
     }
 
-    void HandleSubmit(SubmitEventArgs<FormProblemModel> args)
+    async Task HandleSubmit(SubmitEventArgs<FormProblemModel> args)
     {
+        if (Saving is not null)
+        {
+            await Saving.Task;
+        }
     }
 }

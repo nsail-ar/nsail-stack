@@ -77,14 +77,16 @@ public sealed class OverlayChromeTests : BunitContext, IAsyncLifetime
         RouteTable routes,
         TaskCompletionSource gate,
         bool modal = false,
-        bool fails = false)
+        bool fails = false,
+        TaskCompletionSource? saving = null)
     {
         return context.Render<OverlayChromeHost>(p => p
             .Add(x => x.RouteTable, routes)
             .Add(x => x.Modal, modal)
             .Add(x => x.Title, "Nuevo Turno")
             .Add(x => x.Gate, gate)
-            .Add(x => x.Fails, fails));
+            .Add(x => x.Fails, fails)
+            .Add(x => x.Saving, saving));
     }
 
     [Theory]
@@ -190,6 +192,39 @@ public sealed class OverlayChromeTests : BunitContext, IAsyncLifetime
         // Standing over it: the name and the way out.
         Assert.Contains("Nuevo Turno", cut.Markup, StringComparison.Ordinal);
         Assert.Single(cut.FindComponents<NsClose>());
+    }
+
+    /// <summary>The row is drawn outside the page's form, so the form's own word has to reach it:
+    /// an X that stayed pressable over a save that greyed the footer's Cancelar is one way out of
+    /// a surface disagreeing with the other. The word travels up through the surface and comes
+    /// back down as the name NsForm cascades (SurfaceContext.FormRefuses, NsDialogExit's seam).</summary>
+    [Fact]
+    public void TheHoistedXGreysWithTheFooterWhileTheSaveIsInFlight()
+    {
+        var routes = Setup();
+        var gate = new TaskCompletionSource();
+        var saving = new TaskCompletionSource();
+
+        var cut = Held(this, routes, gate, saving: saving);
+
+        gate.SetResult();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("input")));
+
+        var exit = cut.FindComponent<NsClose>().Find("button");
+
+        Assert.False(exit.HasAttribute("disabled"));
+
+        // Discarded on purpose: the submit's own Task only completes when `saving` is released
+        // below, so awaiting the dispatch here would deadlock — the WaitForAssertion is the wait
+        // that stands in for it.
+        _ = cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        cut.WaitForAssertion(() => Assert.True(cut.FindComponent<NsClose>().Find("button").HasAttribute("disabled")));
+
+        saving.SetResult();
+
+        cut.WaitForAssertion(() => Assert.False(cut.FindComponent<NsClose>().Find("button").HasAttribute("disabled")));
     }
 
     /// <summary>The page keeps its panel inside its form and its title row inside that panel — no
