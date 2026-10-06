@@ -104,8 +104,9 @@ Six components share the pivot — `NsButton`, `NsAction`, `NsLink`, `NsPageLink
     screen whose principal act is a glyph writes `Main` at `Never`; there is no `InlineMain`.
 
 **Every surface owes the user one way out that is not the save button, and it lives in the
-chrome.** The footer carries the submit and the acts beside it; leaving is the title bar's X,
-and in a dialog also Escape. `BackdropClick` stays off. **The one non-act that may ride the
+chrome — from the first frame, not from the first read.** The footer carries the submit and the
+acts beside it; leaving is the title bar's X, which on an overlay the shell draws itself, and in
+a dialog also Escape. `BackdropClick` stays off. **The one non-act that may ride the
 footer row is the document's own FIGURE** — what the acts are about, stated once on one line,
 with its working an `NsExpander` away that opens above the row, not in it (precedent: Nueva
 Venta's footer summary). Never a block of figures: the row still reads on one line on a phone,
@@ -413,9 +414,12 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
   a surface**. Most pages declare nothing ([ui/surfaces.md](ui/surfaces.md), cases).
 - **On the main surface the page's own title bar IS the chrome; the shell has no app bar at any
   width.** `NsTitleBar` draws the title, the glyph/spinner slot and the utility actions —
-  **wayfinding and utilities on top, acts at the foot**, completing the emphasis ladder — while
-  **overlays keep their own chrome and their X**, which the main surface never draws. **A title
-  belongs to the page, never to a frame**: nothing above the content names the screen. The way back to a hidden
+  **wayfinding and utilities on top, acts at the foot**, completing the emphasis ladder. **An
+  overlay's chrome is the shell's**, drawn by its host at once, with the X the main surface never
+  draws: the page's own bar announces there and draws nothing, so the row stands before the first
+  read answers instead of waiting inside the form for it ([ui/surfaces.md](ui/surfaces.md), the
+  announce seam). **A title belongs to the page, never to a frame**: nothing above the content
+  names a screen the page did not name itself. The way back to a hidden
   drawer is the one thing no page can own, so **the hamburger rides at the head of the title
   row, only below the drawer's own breakpoint — and once per screen**: the first title row on the
   surface claims it and a second draws none, so a panel that is a section of the screen is named

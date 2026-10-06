@@ -17,9 +17,14 @@
    the vanished bar owned that no page can own is the way to reach a hidden drawer, so the
    hamburger lives here, at the head of the title row and only at the widths the drawer is not
    docked at — and once per screen, however many title rows the screen draws: the surface hands
-   it to the first row that asks (SurfaceContext.ClaimsToggle), so a panel that is a section of
+   it to the first row that asks (SurfaceContext.ClaimsRow), so a panel that is a section of
    the screen rather than its subject gets no second hamburger. The X belongs to an overlay:
    there is nothing to close on the surface the app is already at. *@
+@* And where the SHELL draws this surface's row (NsSurfaceChrome, inside NsDrawer and NsDialog),
+   the screen's own row draws nothing at all and only announces: the chrome of an overlay has to
+   stand from the first frame, and this row is drawn inside the page's NsForm, which renders
+   neither of its branches until its first read answers (nsail#2053). What goes quiet is the
+   row that claimed the surface — a section's row is still the section's and still draws. *@
 @* THE PAGE NAME NEVER GIVES WAY (nsail#1869). The title and the utilities beside it are two
    boxes in one row, and when the row runs short the row WRAPS: the utilities take a line of
    their own — still at the trailing edge, which ms-auto holds for them once space-between has
@@ -28,7 +33,7 @@
    shrinks to nothing before a row ever considers wrapping, which hands the heading's word to
    the icon boxes beside it. Both faces below carry the rule, and the wrap costs the row
    nothing where both boxes already fit. *@
-@if (Announces)
+@if (OnMain)
 {
     <NsStack Horizontal Wrap Align="NsAlign.Center" Justify="NsAlign.SpaceBetween">
         <div class="d-flex align-center">
@@ -72,7 +77,7 @@
         </NsStack>
     </NsStack>
 }
-else
+else if (!Hoisted)
 {
     <NsStack Horizontal Wrap Align="NsAlign.Center" Justify="NsAlign.SpaceBetween">
         <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center">
@@ -112,9 +117,9 @@ else
     /// where the close icon would offer to close the surface from the middle of a form.
     /// On the main surface it draws the drawer's toggle where the close icon would be, since
     /// the shell has no bar of its own — the screen's first row draws it and a second row none —
-    /// and also announces the title and the actions to its
-    /// surface (SurfaceContext.Announce) — so the same bar serves a full page and an aside
-    /// without a flag.</summary>
+    /// and inside a host that draws this surface's chrome itself it draws nothing. Either way it
+    /// announces the title and the actions to its surface (SurfaceContext.Announce), which is
+    /// what lets the same bar serve a full page and an overlay without a flag.</summary>
     [Parameter]
     public string? Title { get; set; }
 
@@ -145,10 +150,25 @@ else
     [CascadingParameter]
     public NsLayoutState? LayoutState { get; set; }
 
+    /// <summary>Set by the host whose shell draws this surface's chrome itself — NsDrawer and
+    /// NsDialog, around everything they host. The row this bar would draw is already on screen
+    /// before the page rendered, so here the bar only announces.</summary>
+    [CascadingParameter(Name = "SurfaceChrome")]
+    bool ShellDrawsTheRow { get; set; }
+
     /// <summary>Whether this bar is on the main surface: it then draws the drawer's toggle
-    /// instead of a close icon and announces its content to the surface. An overlay draws its
-    /// own close, and so does a bar no surface cascade reached.</summary>
-    bool Announces => Surface?.IsMain == true;
+    /// instead of a close icon. An overlay draws its own close — unless the shell drew the row
+    /// for it — and so does a bar no surface cascade reached.</summary>
+    bool OnMain => Surface?.IsMain == true;
+
+    // This bar's row is the shell's: it draws nothing and hands the name, the glyph and the
+    // utilities over instead. Claimed, so a panel that draws a second title row keeps drawing
+    // it — the screen's name is what the shell hoists, not every row the screen has.
+    bool Hoisted => ShellDrawsTheRow && Surface is { IsMain: false } && Surface.ClaimsRow(this);
+
+    /// <summary>Whether this bar hands its content to its surface: the main surface's chrome
+    /// reader (NsAppBar, for a host that mounts one) and an overlay's row both read it there.</summary>
+    bool Announces => OnMain || Hoisted;
 
     // Whether this SURFACE draws a toggle at all — main surface, drawer cascade present.
     // NsPageHeader's toolbar row reserves the same gutter beneath this one's, so it calls
@@ -161,8 +181,8 @@ else
     }
 
     // Asked at render, never cached: the row that holds the claim can leave while the surface
-    // stays, and the taker is then whichever row renders next (SurfaceContext.ClaimsToggle).
-    bool OwnsToggle => ShowsToggle(Surface, LayoutState) && Surface!.ClaimsToggle(this);
+    // stays, and the taker is then whichever row renders next (SurfaceContext.ClaimsRow).
+    bool OwnsToggle => ShowsToggle(Surface, LayoutState) && Surface!.ClaimsRow(this);
 
     protected override void OnInitialized()
     {
@@ -234,7 +254,7 @@ else
         if (Surface is not null)
         {
             Surface.StateChanged -= OnSurfaceStateChanged;
-            Surface.ReleaseToggle(this);
+            Surface.ReleaseRow(this);
         }
     }
 }

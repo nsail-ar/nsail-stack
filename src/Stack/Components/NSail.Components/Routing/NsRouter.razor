@@ -14,7 +14,7 @@
 <Router AppAssembly="_appAssembly" AdditionalAssemblies="_additionalAssemblies" NotFoundPage="NotFoundPage">
     <Found Context="routeData">
         <CascadingValue Value="_routeTable" IsFixed="true">
-            <NsSurfaceContext Context="surface">
+            <NsSurfaceContext PageType="routeData.PageType" Context="surface">
                 @* The gate wraps the view and not the other way round: a redirect must happen
                    before AuthorizeRouteView constructs the destination's layout, which is what
                    makes "no MainLayout renders" true rather than merely invisible. *@

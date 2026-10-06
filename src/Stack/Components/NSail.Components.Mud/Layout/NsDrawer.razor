@@ -19,8 +19,15 @@
            Class="@GetClasses()"
            Style="@GetStyle()">
     <MudContainer Class="@($"d-flex flex-column h-full min-h-0 {PaddingClass}")">
-        <NsCloseOnEscape Class="d-flex flex-column flex-1 min-h-0">
-            @ChildContent
+        @* The row first and the page under it: this surface's chrome is the shell's, so it stands
+           whatever the page inside is doing — including its first read, during which the page
+           renders nothing at all (NsSurfaceChrome). gap-4 is the gap the panel's own header row
+           used to be separated by, now that the row left the panel. *@
+        <NsCloseOnEscape Class="d-flex flex-column flex-1 min-h-0 gap-4">
+            <NsSurfaceChrome />
+            <CascadingValue Value="true" Name="SurfaceChrome" IsFixed="true">
+                @ChildContent
+            </CascadingValue>
         </NsCloseOnEscape>
     </MudContainer>
 </MudDrawer>

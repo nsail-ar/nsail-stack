@@ -27,12 +27,13 @@ public sealed class SurfaceContext
     readonly SurfaceHistory _history;
     readonly Surface? _name;
     readonly Action? _close;
+    readonly Type? _pageType;
     string? _title;
     Glyph? _icon;
     RenderFragment? _utilities;
     RenderFragment? _index;
     object? _refusingSource;
-    object? _toggleSource;
+    object? _rowSource;
     int _workCount;
     volatile bool _hasWork;
     volatile bool _hasChanges;
@@ -48,7 +49,8 @@ public sealed class SurfaceContext
         RouteTable routeTable,
         IJSRuntime js,
         SurfaceHistory history,
-        Action? close = null)
+        Action? close = null,
+        Type? pageType = null)
     {
         _name = name;
         _navigation = navigation;
@@ -56,9 +58,16 @@ public sealed class SurfaceContext
         _js = js;
         _history = history;
         _close = close;
+        _pageType = pageType;
     }
 
     public Surface? Name => _name;
+
+    /// <summary>The page this surface is routed to, matched by the host before anything inside
+    /// it renders — so chrome drawn outside the page can name the surface off the page's own
+    /// title key while its first read is still running (NsSurfaceChrome). Null on a surface a
+    /// host opened programmatically with a component rather than a route.</summary>
+    public Type? PageType => _pageType;
 
     /// <summary>True on the main (full-page) surface, false inside a named one (aside,
     /// modal) — pages read it to adapt to the space they get, e.g. SetSize.</summary>
@@ -145,9 +154,9 @@ public sealed class SurfaceContext
 
     /// <summary>The page tells its surface what it is called and what utilities it offers.
     /// NsTitleBar announces on the main surface and still draws its own row there, since the
-    /// shell mounts no app bar; the reader is NsAppBar, for a host that mounts one. An overlay
-    /// keeps its own chrome, so nothing reads the announcement there; announcing anyway costs
-    /// nothing and keeps the component free of a per-surface branch.</summary>
+    /// shell mounts no app bar; the reader is NsAppBar, for a host that mounts one. Where the
+    /// shell draws this surface's chrome itself (an overlay), the announcement is what that row
+    /// reads for the page's own name and utilities, and the page's bar draws nothing.</summary>
     public void Announce(string? title, Glyph? icon, RenderFragment? utilities)
     {
         if (string.Equals(_title, title, StringComparison.Ordinal)
@@ -993,37 +1002,38 @@ public sealed class SurfaceContext
         }
     }
 
-    // ONE title row stands in for the vanished app bar, and it is the first one this surface
-    // rendered: the way back to a hidden drawer is the surface's and a screen offers it once, so a
-    // panel that draws a second title row gets no second hamburger (ui/surfaces.md, the announce
-    // seam). Asked from the row's render and not once at its creation, because the claim changes
-    // hands while the surface lives — a step that replaces its panel initializes the arriving row
-    // before it disposes the leaving one, so the only moment that can be trusted is the render
-    // after the release.
-    internal bool ClaimsToggle(object source)
+    // The surface's OWN row — the one that names the screen — is the first one it rendered, and a
+    // panel that draws a second title row is a section of that screen rather than a screen of its
+    // own. Two things ride the claim: the way back to a hidden drawer, which the surface offers
+    // once however many rows a screen draws, and which row goes quiet where the shell draws this
+    // surface's chrome itself (ui/surfaces.md, the announce seam). Asked from the row's render and
+    // not once at its creation, because the claim changes hands while the surface lives — a step
+    // that replaces its panel initializes the arriving row before it disposes the leaving one, so
+    // the only moment that can be trusted is the render after the release.
+    internal bool ClaimsRow(object source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
         lock (_sync)
         {
-            _toggleSource ??= source;
+            _rowSource ??= source;
 
-            return ReferenceEquals(_toggleSource, source);
+            return ReferenceEquals(_rowSource, source);
         }
     }
 
-    // A row's end hands the toggle back, so the next one on this surface can take it. The main
+    // A row's end hands the claim back, so the next one on this surface can take it. The main
     // surface outlives every page on it, so a claim left standing is a phone with no way to the
     // drawer on every screen reached after this one.
-    internal void ReleaseToggle(object source)
+    internal void ReleaseRow(object source)
     {
         var released = false;
 
         lock (_sync)
         {
-            if (ReferenceEquals(_toggleSource, source))
+            if (ReferenceEquals(_rowSource, source))
             {
-                _toggleSource = null;
+                _rowSource = null;
                 released = true;
             }
         }

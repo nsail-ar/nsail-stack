@@ -22,8 +22,14 @@
 
 <div class="fixed inset-0 d-flex align-center justify-center" style="@($"z-index: {GetZIndex()}")">
     <MudPaper Elevation="24" Class="ns-dialog d-flex flex-column" Style="@GetStyle()">
+        @* The row first and the page under it, for the reason NsDrawer carries: a routed modal's
+           chrome is the shell's and stands from the first frame — and with BackdropClick off by
+           doctrine, the X it draws is the only way out of a read still running. *@
         <NsCloseOnEscape Class="@GetContentClasses()">
-            @ChildContent
+            <NsSurfaceChrome />
+            <CascadingValue Value="true" Name="SurfaceChrome" IsFixed="true">
+                @ChildContent
+            </CascadingValue>
         </NsCloseOnEscape>
     </MudPaper>
 </div>
@@ -102,7 +108,7 @@
     // shrink to the room this frame actually has and own the scroll itself.
     string GetContentClasses()
     {
-        return new NsClassBuilder("ns-container d-flex flex-column flex-1 min-h-0")
+        return new NsClassBuilder("ns-container d-flex flex-column flex-1 min-h-0 gap-4")
             .Add(PaddingClass)
             .ToString();
     }

@@ -9,7 +9,12 @@
 
     @if (Header is not null)
     {
-        <div>
+        @* ns-panel-header (ns-mud.css): the slot pays the panel's own gap only while something is
+           in it. A header holding nothing but the screen's title row renders EMPTY inside an
+           overlay — the shell draws that row instead (NsSurfaceChrome) — and a box of pure gap
+           above the fields is geometry nothing accounts for. The rule is CSS because a slot that
+           renders nothing cannot be told from one that renders something until it has rendered. *@
+        <div class="ns-panel-header">
             @Header
         </div>
     }
