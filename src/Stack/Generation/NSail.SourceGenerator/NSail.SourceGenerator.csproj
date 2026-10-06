@@ -41,6 +41,11 @@
 
 	<ItemGroup>
 		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+		<!-- The compiler loads an analyzer's dependencies from the analyzer's own folder, and
+		     nothing resolves the embedded copy: without this file beside the generator, a
+		     compiler server that never loaded Scriban fails every template. The Roslyn
+		     assemblies are the compiler's own and never ship here. -->
+		<None Include="$(PkgScriban)\lib\netstandard2.0\Scriban.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 	</ItemGroup>
 
 	<PropertyGroup>
