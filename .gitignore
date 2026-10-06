@@ -29,3 +29,6 @@ appsettings.Development.json
 
 ## The sample's React build, written beside the host that serves it
 src/Stack/Sample/NSail.Sample.Web/react/
+
+## The data folder a host writes at run time (its Data Protection keyring among it)
+**/data/keyring/

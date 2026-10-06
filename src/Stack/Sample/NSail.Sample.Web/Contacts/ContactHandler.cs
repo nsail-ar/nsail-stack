@@ -112,8 +112,6 @@ public sealed class ContactHandler :
             throw new BusinessException(BusinessProblem.AlreadyExists(typeof(Contact), message.Id));
         }
 
-        var now = DateTime.UtcNow;
-
         _db.Add(new Contact
         {
             Id = message.Id,
@@ -125,8 +123,6 @@ public sealed class ContactHandler :
             Rating = message.Rating,
             IsFavorite = message.IsFavorite,
             Notes = message.Notes,
-            CreatedAt = now,
-            UpdatedAt = now,
         });
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -148,7 +144,6 @@ public sealed class ContactHandler :
         contact.Rating = message.Rating;
         contact.IsFavorite = message.IsFavorite;
         contact.Notes = message.Notes;
-        contact.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
     }

@@ -6,7 +6,7 @@ using NSail.Sample.Contacts;
 
 namespace NSail.Sample.Entities;
 
-public class Contact : IVersioned
+public class Contact : IVersioned, IAudited
 {
     public Guid Id { get; set; }
 
