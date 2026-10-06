@@ -603,6 +603,42 @@
         font-weight: 400;
     }
 
+    /* THE FOOT SURVIVES THE STACK, which is the whole reason a totals row may live in the table
+       at all: the vendor hides it outright here (.mud-sm-table .mud-table-root .mud-table-foot
+       { display: none }, 0-3-0) together with the head row it stacks the table by replacing — a
+       head whose words become each card's own labels, which a foot has no equivalent of. A
+       tfoot added and left alone would therefore VANISH at phone width, the exact state a strip
+       drawn outside the grid was filed against. Taken back at 0-4-0, and only the display: the
+       foot's row and cells are .mud-table-row and .mud-table-cell like the body's, so the card
+       shape, the data-label pseudo and the receding label above all reach them already.
+
+       table-footer-group and not revert: the element's own default is what the vendor overrode,
+       and naming it is what keeps this rule readable as "undo that one". */
+    .ns-table.mud-sm-table .mud-table-root .mud-table-foot {
+        display: table-footer-group;
+    }
+
+    /* A foot cell with nothing in it is a column with nothing to total — the tick and edit
+       columns the table seats itself, and every column a screen leaves empty to keep its own
+       cells in step with the header's. In COLUMN mode it must hold that column's place, so it
+       is a cell like any other; as a card line it would be a label naming a blank, which is a
+       line the card is better without (the action cell's empty pseudo, above, for the same
+       reason one level down). :empty is the condition itself rather than a class anyone has to
+       remember to write — a cell drawing nothing is a cell with no content. */
+    .ns-table.mud-sm-table .mud-table-foot .mud-table-cell:empty {
+        display: none;
+    }
+
+    /* The cell that names the foot's row — Totales — is the one with no field behind it, and
+       NsTd keeps the action cell's geometry off it (ns-foot-label, not ns-actions). What it
+       still needs is the vendor's empty leading pseudo gone: content: attr(data-label) over an
+       absent attribute is a zero-width box the cell's space-between then balances the word
+       against, so the row's own name would read packed to the card's right edge. One item left,
+       and space-between leaves it where a card line starts. */
+    .ns-table.mud-sm-table .ns-foot-label::before {
+        display: none;
+    }
+
     /* THE OPEN ROW IS A FORM, so its cells draw the label ABOVE the field (nsail#1492 —
        Leonardo, Nueva Orden de Compra on a phone). The vendor lays every stacked cell out as
        one flex ROW, label then value, and .mud-input-control is flex: 1 1 auto, so each field
