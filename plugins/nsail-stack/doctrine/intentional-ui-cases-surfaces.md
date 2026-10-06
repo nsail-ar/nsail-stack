@@ -63,8 +63,10 @@ same open. Marking the special case is more intuitive than putting history every
   wrappers pass `CreateRoute`/`CreateTarget` to one shared `NsAutocomplete`, and the empty
   picker's door is one shared `NsMissing`, so `NoHistory` costs two internal changes instead of
   a parameter every lookup must remember.
-- **Three transitions, not one switch.** Moving inside an open surface keeps replacing, or every
+- **Four transitions, not one switch.** Moving inside an open surface keeps replacing, or every
   intra-aside click would grow the back-stack; that is not a caller's choice, so it is not a flag.
+  The fragment move is the fourth and it reads the same way: it pushes only where it addresses no
+  surface, because inside one the move is still a move.
 - **Two designs were refused for detecting what opened.** Diffing the query keys of the two
   addresses reads a filter or a tab written by a link as a surface opening; filtering that diff
   by "the value matches a route" makes the answer depend on the route table, which a unit test's

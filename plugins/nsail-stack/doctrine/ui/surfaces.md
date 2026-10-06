@@ -63,7 +63,7 @@ Surface.Open<UpdatePartyPage>("aside", new { Id = id })
 ```
 
 **Every one of them lands in browser history through `SurfaceContext.Follow`, which is the only
-door.** Three transitions, and the caller influences one:
+door.** Four transitions, and the caller influences one:
 
 - **closed → open** (the name's key absent, now present) **pushes** — a surface is a place, so
   Back closes it — unless the opener passes `NoHistory`, which replaces. `NoHistory` is a
@@ -74,6 +74,13 @@ door.** Three transitions, and the caller influences one:
   flag changes it, or a back-stack would grow by one per click inside one open surface.
 - **open → closed** (`Close()`: the X, Escape, the backdrop, a successful save) **pops** the entry
   the matching open pushed, and **replaces** when it pushed none.
+- **a fragment move** (same path, no surface addressed — only `#slug` differs) **pushes**: a
+  section of a document is a place the reader came from, so Back returns them to the section
+  before it. The question is asked of the **destination**, not of the context — a fragment that
+  addresses an open surface is a move inside one place and replaces, like every other move in
+  there, which is what keeps one X enough to close it. Asking `IsMain` instead would push for a
+  link rendered on main that points at an already-open aside. Today the manual is the only
+  reader ([guide.md](guide.md), Anchors).
 
 **Which open pushed is `SurfaceHistory`'s** — a scoped service, registered beside `RootSurface` in
 `AddRouteTable` and handed to every `SurfaceContext`. It cannot be a field on the context: the
