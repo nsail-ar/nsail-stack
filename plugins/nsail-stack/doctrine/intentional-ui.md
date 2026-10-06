@@ -292,6 +292,12 @@ Contract, and the rule that a row's command must outlive the menu that closed it
   Back owes them (cases).
 - **Query is applied where it is read, in `OnParametersSet` — never copied into a field at
   initialization.**
+- **A fragment is the opposite of a query: it *pushes*.** A section of a document the reader
+  navigated to is a place they came from, so a same-path move that changes only the fragment
+  takes its own history entry and Back returns them to the section before it. The exception is
+  a fragment addressing an open surface — that is a move inside one place and replaces, by the
+  same rule that governs every other move in there (Targets rule 4). Today the manual is the
+  only reader ([ui/guide.md](ui/guide.md), Anchors).
 
 ### Targets
 

@@ -293,6 +293,42 @@ public sealed class NsGuideTests : BunitContext, IAsyncLifetime
         Assert.Null(surface.Index);
     }
 
+    // A section is a place the reader came from, so Back returns to the chapter's top and the
+    // same section clicked again has to scroll again. The anchor is still spent once per
+    // fragment, which is right — what would break the second click is remembering a fragment
+    // across its own absence, leaving it with nothing to chase.
+    [Fact]
+    public void ASectionLeftWithBackScrollsAgainWhenItIsClickedASecondTime()
+    {
+        Shelf(
+            new Dictionary<string, string> { [$"{Assets}/sales.md"] = "## Registrar una Venta" },
+            Chapter("Sales", "sales"));
+
+        var navigation = Services.GetRequiredService<NavigationManager>();
+
+        var cut = Open("sales");
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-guide-body h2")));
+
+        navigation.NavigateTo("/guide/sales#registrar-una-venta");
+
+        cut.WaitForAssertion(() => Assert.Single(Scrolls("registrar-una-venta")));
+
+        // Back out of the section: the fragment goes away and the chapter stays, which is the
+        // one transition that used to leave the section spent for good.
+        navigation.NavigateTo("/guide/sales");
+        navigation.NavigateTo("/guide/sales#registrar-una-venta");
+
+        cut.WaitForAssertion(() => Assert.Equal(2, Scrolls("registrar-una-venta").Count));
+    }
+
+    List<JSRuntimeInvocation> Scrolls(string section)
+    {
+        return JSInterop.Invocations["nsapp.scrollToId"]
+            .Where(invocation => Equals(invocation.Arguments.FirstOrDefault(), section))
+            .ToList();
+    }
+
     // An app that composed no module carrying a guide draws no chapter at all — the screen
     // is the composition's answer, never a catalog it filters.
     [Fact]

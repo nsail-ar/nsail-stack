@@ -284,6 +284,31 @@ public sealed class NsLinkHistoryTests : BunitContext
         Assert.Empty(link.FindAll("span.ns-link-intercept"));
     }
 
+    /// <summary>The guide's section link, through the door a reader uses: the same page plus a
+    /// heading's slug. Same path, so the link intercepts and nothing opens — and it is still a
+    /// place, because the section the reader was on is what Back owes them. This used to fall
+    /// into the same-path arm and replace, which is how Back left the manual altogether.</summary>
+    [Fact]
+    public async Task FollowingASectionLinkOnTheSamePage_PushesAHistoryEntry()
+    {
+        Navigation.NavigateTo("/optical/work-orders/new");
+
+        var link = Render<SurfaceLinkHost>(p => p
+            .Add(x => x.RouteTable, BuildRouteTable())
+            .Add(x => x.Href, "optical/work-orders/new")
+            .Add(x => x.Fragment, "medir-la-graduacion")
+            .Add(x => x.Label, "Medir la graduación"));
+
+        Assert.NotEmpty(link.FindAll("span.ns-link-intercept"));
+
+        await link.InvokeAsync(() => link.Find("a").Click());
+
+        var write = LastWrite;
+
+        Assert.EndsWith("#medir-la-graduacion", write.Uri, StringComparison.Ordinal);
+        Assert.False(write.Options.ReplaceHistoryEntry);
+    }
+
     /// <summary>A browser target is the one destination this app does not route at all, so the
     /// click belongs to the browser — a printed PDF opening in a new tab is not a surface move
     /// and must never have its default prevented.</summary>

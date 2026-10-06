@@ -7,9 +7,10 @@ using Microsoft.JSInterop;
 namespace NSail.Components.Tests;
 
 /// <summary>A surface is a place: opening one is a navigation the user made, so Back closes it
-/// and leaves the screen they opened it from standing (Leonardo, 2026-09-05/06). Three
+/// and leaves the screen they opened it from standing (Leonardo, 2026-09-05/06). Four
 /// transitions carry that, and every test below says which one it pins — closed→open pushes,
-/// open→open replaces, open→closed pops the entry its own open pushed.
+/// open→open replaces, open→closed pops the entry its own open pushed, and a move that changes
+/// only the fragment pushes when it addresses no overlay, and replaces when it addresses one.
 ///
 /// Leonardo's 2026-08-05 resurrection — "hago pa atrás y vuelvo a 'nueva receta'" — is still
 /// real and is not answered by refusing every surface an entry. It has one shape: the lookup's
@@ -302,6 +303,51 @@ public sealed class SurfaceHistoryTests
         // open pushed rather than spend it, and Back would reopen what was just finished.
         Assert.Equal("history.back", Assert.Single(js.Invocations));
         Assert.Empty(closing.Navigations);
+    }
+
+    /// <summary>The fourth transition, which the other three leave to the same-path arm: a write
+    /// that changes nothing but the fragment. A section of a document is a place the reader came
+    /// from — Back owes them the one they were reading before it — unlike a tab or a filter,
+    /// which is a view of where they already stand and replaces.</summary>
+    [Fact]
+    public void A_write_that_only_changes_the_fragment_pushes_on_the_main_surface()
+    {
+        var navigation = new FakeNavigation("https://app.test/guide/sales#cobrar");
+        var surface = Build(null, navigation);
+
+        surface.Follow("/guide/sales#registrar-una-venta");
+
+        Assert.False(Assert.Single(navigation.Navigations).Replace);
+    }
+
+    /// <summary>The same section link, drawn inside the guide's own aside and so resolved against
+    /// the aside's own context with no target of its own — a move within one place
+    /// (intentional-ui.md, Targets rule 4). Close spends exactly ONE entry, so pushing here would
+    /// cost the reader an X per section read instead of the one the surface is worth.</summary>
+    [Fact]
+    public void A_write_that_only_changes_the_fragment_replaces_inside_an_overlay()
+    {
+        var navigation = new FakeNavigation(
+            "https://app.test/optical/work-orders?aside=guide%2Fsales#cobrar");
+
+        var surface = Build("aside", navigation);
+
+        surface.Follow(surface.GetHref("guide/sales") + "#registrar-una-venta");
+
+        Assert.True(Assert.Single(navigation.Navigations).Replace);
+    }
+
+    /// <summary>The same section clicked twice is the place the reader is already standing at, so
+    /// the second click is not a second entry — it only re-scrolls.</summary>
+    [Fact]
+    public void A_write_that_changes_nothing_at_all_still_replaces()
+    {
+        var navigation = new FakeNavigation("https://app.test/guide/sales#cobrar");
+        var surface = Build(null, navigation);
+
+        surface.Follow("/guide/sales#cobrar");
+
+        Assert.True(Assert.Single(navigation.Navigations).Replace);
     }
 
     /// <summary>Open → closed, on the aside's own context and at the address the open wrote —

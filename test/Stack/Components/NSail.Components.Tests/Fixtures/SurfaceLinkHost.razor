@@ -11,7 +11,7 @@
    decides whether the click lands as a new history entry or replaces the current one. *@
 <CascadingValue Value="RouteTable">
     <NsSurfaceContext Name="Name" Close="Close" Context="surface">
-        <NsLink Href="@Href" Target="@Target" As="@As" Icon="@Icon" Breakpoint="@Breakpoint" Label="@Label" NoHistory="@NoHistory" />
+        <NsLink Href="@Href" Fragment="@Fragment" Target="@Target" As="@As" Icon="@Icon" Breakpoint="@Breakpoint" Label="@Label" NoHistory="@NoHistory" />
     </NsSurfaceContext>
 </CascadingValue>
 
@@ -33,6 +33,11 @@
 
     [Parameter]
     public Surface? Target { get; set; }
+
+    /// <summary>The guide's section link: a destination that is the same page the reader is on
+    /// plus a heading's slug, which is the one same-path move that is still a place.</summary>
+    [Parameter]
+    public string? Fragment { get; set; }
 
     /// <summary>The lookup's inline create, as a link parameter: the one open that replaces
     /// instead of taking an entry of its own.</summary>

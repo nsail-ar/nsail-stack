@@ -148,6 +148,15 @@ again whenever the fragment changes (`nsapp.scrollToId`).
 **A fragment rides the resolved href, not the route** — `NsLink Fragment`
 ([actions.md](actions.md)).
 
+**A section is a place, so Back returns to it.** On the guide's own screen a section link takes
+a history entry of its own — the fourth transition `SurfaceContext.Follow` names, a same-path
+move that changes only the fragment — so Back leaves the reader on the section they were
+reading before it instead of out of the manual. **Inside an overlay it replaces instead**: the
+guide's aside is one place and its X spends one entry (Targets rule 4,
+[../intentional-ui.md](../intentional-ui.md)), so the reader still closes it in one gesture
+however many sections they read. The scroll is spent once per fragment and forgotten when the
+fragment goes away, which is what lets the same section be clicked again after a Back.
+
 ## `NsGuideLink`
 
 **The door to the guide is a button, and it is not `NsHelp`.** `NsHelp` stays a field's
