@@ -120,7 +120,9 @@ public sealed class Whispered : IMessage
 /// and every pushed event it publishes recorded through an ordinary subscription.</summary>
 sealed class PushClient : IAsyncDisposable
 {
-    static readonly TimeSpan Patience = TimeSpan.FromSeconds(10);
+    // Past HubFeed's third retry (2s, then 10s after it): a slow host can miss the first two,
+    // and a patience shorter than the schedule fails a reconnect that was still on its way.
+    static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 
     readonly ServiceProvider _services;
     readonly AsyncServiceScope _scope;
