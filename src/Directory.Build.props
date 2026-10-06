@@ -12,6 +12,7 @@
 		<PackageTags>nsail;modular-monolith;blazor;source-generator;efcore</PackageTags>
 		<Copyright>Copyright (c) 2026 Leonardo Porro and Emmanuel Arias</Copyright>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageIcon>icon.png</PackageIcon>
 		<PackageProjectUrl>https://github.com/nsail-ar/nsail-stack</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/nsail-ar/nsail-stack</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
@@ -19,6 +20,10 @@
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="$(MSBuildThisFileDirectory)icon.png" Pack="true" PackagePath="\" Visible="false" />
+	</ItemGroup>
 
 	<!-- Every Stack project is a package, the ones on the Web SDK too (it defaults them to
 	     unpackable, as if every Web project were a host). The sample is code to read and run. -->
