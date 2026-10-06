@@ -15,7 +15,13 @@ public static class Setup
 {
     public static void AddComponentServices(this IServiceCollection services)
     {
-        services.AddMudServices();
+        // Bottom-center, against the vendor's top-right default: every other edge of the frame
+        // holds a control the person reaches for next — the title bar's actions above, the
+        // drawer's session chip bottom-left, a panel footer's Guardar bottom-right — and the
+        // toast outranks both overlays (ZIndex.Snackbar in BrandMudTheme), so wherever it lands
+        // it paints over them. PositionClass is a property of SnackbarConfiguration and not of
+        // a single toast: this is the one place it can be said, and Offer moves with Notify.
+        services.AddMudServices(mud => mud.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomCenter);
         services.AddRouteTable();
         services.AddScoped<DialogManager, MudDialogManager>();
 

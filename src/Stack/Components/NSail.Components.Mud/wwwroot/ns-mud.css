@@ -3777,3 +3777,16 @@
     left: -8px;
     clip-path: polygon(100% 0, 100% 100%, 0 0);
 }
+
+/* A toast that fades on its own must not stand between the person and the control it lands
+   on. The vendor already gives #mud-snackbar-container pointer-events:none and then takes it
+   back on .mud-snackbar itself, which is the box that swallowed the click. Scoped to Notify's
+   own SnackbarTypeClass (MudDialogManager.NotifyClass) and never to Offer, whose one button is
+   the whole point of it; the two-class selector is what outranks the vendor's one-class rule,
+   NsAssets loading MudBlazor.min.css first and this sheet second. Bottom-center still overlaps
+   a panel footer's Guardar and the drawer's session chip, so the placement alone would not do
+   it. The box no longer pauses its timer on hover either — the vendor wires that to
+   onpointerenter — which is what a toast with nothing to read twice is. */
+.mud-snackbar.ns-toast {
+    pointer-events: none;
+}
