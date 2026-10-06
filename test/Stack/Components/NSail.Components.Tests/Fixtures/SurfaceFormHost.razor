@@ -19,6 +19,22 @@
                state the EditContext never sees, so it reports the SURFACE rather than the form
                (LocationsEditor, EyesEditor, every *LinesEditor). *@
             <DirtySourceProbe @ref="_probe" />
+            @* The same editor with a row the person never confirmed: the submit settles it, and
+               the commit reports the surface exactly as the four live screens do
+               (SaleModifiersPage, SaleModifiersEditor, TendersEditor,
+               TenderMethodModalitiesEditor). *@
+            @if (OpenRow)
+            {
+                <NsListEditor TItem="SubmitTrackingModel" Items="_rows" Title="Rows"
+                              NewItem="NewRow" OnCommit="CommitRow" @ref="_list">
+                    <ItemTemplate Context="row">
+                        <span class="row-name">@row.Name</span>
+                    </ItemTemplate>
+                    <ItemEditor Context="row">
+                        <NsTextField @bind-Value="row.Name" />
+                    </ItemEditor>
+                </NsListEditor>
+            }
             <NsSubmit />
         </NsForm>
         @* The settings page's shape: a second tracked document on the same surface, saved by
@@ -38,8 +54,11 @@
 
     readonly SubmitTrackingModel _sibling = new();
 
+    readonly List<SubmitTrackingModel> _rows = [];
+
     SurfaceContext? _surface;
     DirtySourceProbe? _probe;
+    NsListEditor<SubmitTrackingModel>? _list;
     bool _reported;
     NsForm<SubmitTrackingModel>? _form;
     NsForm<SubmitTrackingModel>? _siblingForm;
@@ -65,6 +84,15 @@
     /// <summary>Renders a second tracked form beside the first, on the same surface.</summary>
     [Parameter]
     public bool Sibling { get; set; }
+
+    /// <summary>Renders a collection editor inside the form, for a fact about the row the submit
+    /// settles. <see cref="OpenARow"/> is what opens one.</summary>
+    [Parameter]
+    public bool OpenRow { get; set; }
+
+    /// <summary>The row's own rule says no, however many times it is asked.</summary>
+    [Parameter]
+    public bool RefusesTheRow { get; set; }
 
     /// <summary>That second form as a filter or an act instead of a document — the "Probar" a
     /// settings page draws beside its Guardar (SmtpSettingsPage, WhatsAppSettingsPage).</summary>
@@ -123,6 +151,36 @@
     public NsForm<SubmitTrackingModel>? Form => _form;
 
     public NsForm<SubmitTrackingModel>? SiblingForm => _siblingForm;
+
+    /// <summary>How many times the row's own rule was asked — once per Confirmar, once per
+    /// submit that found the row open.</summary>
+    public int Commits { get; private set; }
+
+    /// <summary>Opens a row the way the editor's own add control does, leaving it unconfirmed:
+    /// the add control's label depends on strings this suite does not load.</summary>
+    public void OpenARow()
+    {
+        _list?.Add();
+    }
+
+    static SubmitTrackingModel NewRow()
+    {
+        return new SubmitTrackingModel();
+    }
+
+    void CommitRow(RowEditEventArgs<SubmitTrackingModel> args)
+    {
+        Commits++;
+
+        if (RefusesTheRow)
+        {
+            args.Problem = InputProblem.InvalidModel<SubmitTrackingModel>().Required(m => m.Name);
+
+            return;
+        }
+
+        _surface?.SetDirty(this);
+    }
 
     protected override void OnAfterRender(bool firstRender)
     {

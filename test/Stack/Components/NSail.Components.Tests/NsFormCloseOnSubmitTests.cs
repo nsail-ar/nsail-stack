@@ -340,6 +340,100 @@ public sealed class NsFormCloseOnSubmitTests : BunitContext, IAsyncLifetime
         Assert.DoesNotContain("aside=", Navigation.Uri, StringComparison.Ordinal);
     }
 
+    /// <summary>The same class, from the row the submit now settles itself (nsail#2014): the
+    /// commit that takes reports the surface dirty — every one of the four live screens does —
+    /// so a settle landing after this submit's spend would leave the aside standing over a save
+    /// that took. The settle runs before the spend, and the aside closes.</summary>
+    [Fact]
+    public async Task ASubmitThatCommitsTheRowItFoundOpen_StillClosesTheSurface()
+    {
+        var host = RenderInAside(p => p
+            .Add(x => x.NavigatesTo, "directory/parties/7/edit")
+            .Add(x => x.OpenRow, true));
+
+        await host.InvokeAsync(() => host.Instance.OpenARow());
+
+        await host.InvokeAsync(() => host.Find("form").Submit());
+
+        Assert.Equal(1, host.Instance.Commits);
+        Assert.Empty(host.FindAll("li.ns-list-editor-open"));
+        Assert.DoesNotContain("aside=", Navigation.Uri, StringComparison.Ordinal);
+    }
+
+    /// <summary>And the refusal's own half: the row says no, so there is no save to close over —
+    /// the aside stays with the row open on the values the person can still fix.</summary>
+    [Fact]
+    public async Task ASubmitRefusedByTheRowItFoundOpen_LeavesTheSurfaceOpen()
+    {
+        var host = RenderInAside(p => p
+            .Add(x => x.NavigatesTo, "directory/parties/7/edit")
+            .Add(x => x.OpenRow, true)
+            .Add(x => x.RefusesTheRow, true));
+
+        await host.InvokeAsync(() => host.Instance.OpenARow());
+
+        await host.InvokeAsync(() => host.Find("form").Submit());
+
+        Assert.Single(host.FindAll("li.ns-list-editor-open"));
+        Assert.Contains("aside=", Navigation.Uri, StringComparison.Ordinal);
+    }
+
+    /// <summary>What the settle costs the surface, counted rather than assumed — and it is four
+    /// announcements, not the two the settle's own window suggests. A document with no row open
+    /// makes two, the save's work starting and ending. A settle adds those two again, because the
+    /// row's rule is raised on the LIST's own Runner and that runs before the save's window opens,
+    /// so the work counter crosses zero twice instead of nesting; and it adds two more that belong
+    /// to the commit TAKING — the page's OnCommit reports the surface dirty, which announces, and
+    /// the submit spends that report, which announces the surface clean again. The refusing half
+    /// below is the proof of that split: nothing is reported and nothing is spent, so only the
+    /// settle's own pair is left.
+    ///
+    /// None of the four is this seam's invention — they are the pair a Confirmar press already
+    /// costs plus the pair its dirty report already costs — and a document that saves one tap
+    /// earlier pays them once instead of across two presses. This is the gate on them multiplying,
+    /// which nsail#1987's own count cannot take: that fixture mounts no collection editor.</summary>
+    [Fact]
+    public async Task ASubmitThatSettlesARow_AnnouncesItsSurfaceFourTimesMoreThanOneWithNoRowOpen()
+    {
+        var bare = RenderInAside();
+        var announcements = 0;
+
+        bare.Instance.Surface!.StateChanged += () => announcements++;
+
+        await bare.InvokeAsync(() => bare.Find("form").Submit());
+
+        var withoutARow = announcements;
+
+        var committed = RenderInAside(p => p.Add(x => x.OpenRow, true));
+
+        await committed.InvokeAsync(() => committed.Instance.OpenARow());
+
+        announcements = 0;
+        committed.Instance.Surface!.StateChanged += () => announcements++;
+
+        await committed.InvokeAsync(() => committed.Find("form").Submit());
+
+        var settledAndSaved = announcements;
+
+        var refused = RenderInAside(p => p
+            .Add(x => x.OpenRow, true)
+            .Add(x => x.RefusesTheRow, true));
+
+        await refused.InvokeAsync(() => refused.Instance.OpenARow());
+
+        announcements = 0;
+        refused.Instance.Surface!.StateChanged += () => announcements++;
+
+        await refused.InvokeAsync(() => refused.Find("form").Submit());
+
+        Assert.Equal(2, withoutARow);
+        Assert.Equal(withoutARow + 4, settledAndSaved);
+
+        // The refusal ends the submit inside the settle, so the save's own pair is never spent:
+        // the list's Runner window is the whole cost of a Guardar the row says no to.
+        Assert.Equal(2, announcements);
+    }
+
     /// <summary>The other half of the same sentence: the marker is SPENT, not merely outvoted.
     /// A surface outlives the page rendered in it, so a report left standing asks the next
     /// screen about changes nobody made (CreateClearDirtyTests, Directory).</summary>

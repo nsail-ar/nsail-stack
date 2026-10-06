@@ -53,6 +53,15 @@
 
     public int Submits { get; private set; }
 
+    /// <summary>How many rows the collection holds — the caller's own list, which the row
+    /// editor appends to before any Confirmar.</summary>
+    public int Rows => _items.Count;
+
+    /// <summary>What the last commit was handed, so a settle the submit ran can be told from a
+    /// verdict replayed from an earlier press: the value on screen is the one that must reach
+    /// the handler.</summary>
+    public string? Committed { get; private set; }
+
     void Save(SubmitEventArgs<TestModel> args)
     {
         Submits++;
@@ -65,6 +74,8 @@
 
     void Commit(RowEditEventArgs<TestModel> args)
     {
+        Committed = args.Row.Name;
+
         if (Refuse)
         {
             args.Problem = InputProblem.InvalidModel<TestModel>().Required(m => m.Name);

@@ -10,6 +10,7 @@
 @inherits NsComponent
 @implements IFormProblems
 @implements IFormDocument
+@implements IFormRows
 
 @inject StringManager Strings
 @inject NavigationManager Navigation
@@ -76,7 +77,12 @@ else if (HasDocument)
                                same piece (RefusalPlacement). *@
                             <CascadingValue Value="(IFieldTracker)Placement" IsFixed="true">
                                 <CascadingValue Value="(IFormProblems)this" IsFixed="true">
-                                    @ChildContent(_model)
+                                    @* And a row left open announces itself too: the submit
+                                       settles it before it validates, because that row is
+                                       already part of the document being saved (IFormRows). *@
+                                    <CascadingValue Value="(IFormRows)this" IsFixed="true">
+                                        @ChildContent(_model)
+                                    </CascadingValue>
                                 </CascadingValue>
                             </CascadingValue>
                         </CascadingValue>
@@ -357,6 +363,19 @@ else if (HasDocument)
 
         ClearProblems();
 
+        // The rows left open are settled first, and a refusal from one ends the submit here: the
+        // row's values are already in the document, so its own rule answers for them instead of
+        // the server answering later in its own words at this form's foot (nsail#2014). It runs
+        // BEFORE Validate() for two reasons — a row nothing refuses closes, so the pass that
+        // follows validates the document the save is actually about; and the refusal a row just
+        // drew would be wiped by that pass, which lifts every placement on this context
+        // (RefusalPlacement). Before the spend below too, so a commit that takes reports the
+        // surface dirty in time for this submit to spend it and the popup still closes (#1420).
+        if (!await Settle())
+        {
+            return;
+        }
+
         if (!_editContext.Validate())
         {
             return;
@@ -540,6 +559,39 @@ else if (HasDocument)
     void IFormProblems.Release()
     {
         _claims--;
+    }
+
+    readonly List<IFormRow> _rows = [];
+
+    void IFormRows.Claim(IFormRow row)
+    {
+        _rows.Add(row);
+    }
+
+    void IFormRows.Release(IFormRow row)
+    {
+        _rows.Remove(row);
+    }
+
+    /// <summary>Closes the rows standing open in this document before it is validated, and
+    /// answers whether the save may go on (HandleSubmit).</summary>
+    async Task<bool> Settle()
+    {
+        var settled = true;
+
+        // Every one of them, not up to the first "no": one press re-answers the whole document,
+        // and each host draws its own refusal on the row that caused it, so a person with two
+        // rows open reads both answers rather than one per press. Over a snapshot: a commit
+        // provokes a render, and a host that leaves the screen in one releases itself from here.
+        foreach (var row in _rows.ToArray())
+        {
+            if (!await row.Settle())
+            {
+                settled = false;
+            }
+        }
+
+        return settled;
     }
 
     // Whether the answer standing on screen RIGHT NOW came from an act this form hosts rather than
