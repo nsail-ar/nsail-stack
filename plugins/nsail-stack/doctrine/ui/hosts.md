@@ -276,8 +276,12 @@ the issue names, as one strip on the row's last line for anything the row render
 never a toast (intentional-ui.md, Refusal placement). The row's fields announce themselves to the
 list the way they announce themselves to a form, so a screen wires none of it — a page sets
 `args.Problem` and nothing else. The next Confirmar lifts it, and so does the submit of the
-document the list stands in (intentional-ui.md). **Once the fields have stacked, the commit pair reads after the
-last of them**, the way `NsTable`'s row editor seats Confirmar/Cancelar in the last cell.
+document the list stands in — which **settles the row left open before it validates**: `OnCommit`
+runs again on the values on screen, so Guardar confirms a row nothing refuses (the editor closes,
+the document saves in one tap) and is refused by a bad one in the row's own words, under the field
+they name (intentional-ui.md). A page writes nothing for that either. **Once the fields have
+stacked, the commit pair reads after the last of them**, the way `NsTable`'s row editor seats
+Confirmar/Cancelar in the last cell.
 **`OnRemove` is the delete control's** — it renders only where there is a handler to take the
 item out — and is raised on a cancelled new row as a notification (cases), with no question in
 front of it (Inline editing, above). An item is a flex row that **wraps**. Reference:

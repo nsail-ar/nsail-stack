@@ -2,7 +2,7 @@
 
 How an NSail host ships a React client instead of (or beside) a Blazor one, and keeps the
 Stack's promise that the API is declared once. The example is the Stack's Sample
-([sample.md](../../../src/Stack/Sample/docs/sample.md)), whose host serves a Blazor and a React client over one API; this page is the mechanism.
+(sample.md (`src/Stack/Sample/docs/sample.md`, in the Stack's own repository)), whose host serves a Blazor and a React client over one API; this page is the mechanism.
 
 ---
 

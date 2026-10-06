@@ -82,6 +82,13 @@ jobs:
       - name: npm install
         run: npm ci
 
+      # The plugin is a deliverable of the same tag as the packages: a manifest that does not
+      # load would reach every product's builder silently.
+      - name: Validate the plugin
+        run: |
+          npx --yes @anthropic-ai/claude-code@latest plugin validate .claude-plugin/marketplace.json
+          npx --yes @anthropic-ai/claude-code@latest plugin validate plugins/nsail-stack
+
       - name: Restore
         run: dotnet restore NSail.sln
 

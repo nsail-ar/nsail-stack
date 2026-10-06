@@ -652,6 +652,11 @@ recognise a refusal by status number alone.
   message behind a policy is already bounded by who holds the grant; a ceiling there would
   only refuse a customer mid-work. The budget is per message, not shared, so a flood on one
   public door cannot close the others.
+- **An in-process `Send` spends nothing.** The middleware reads the attribute of the message
+  the *request* names, so a door that relays a message somebody else chose — the Assistant's
+  confirm (assistant.md) — would carry a metered one past its own ceiling. Such a door refuses
+  the metered messages instead of relaying them; the exclusion is read off the attribute, never
+  listed.
 - **Write the number for the worse reading of "one caller".** An install that does not set
   `ASPNETCORE_FORWARDEDHEADERS_ENABLED` sees the proxy's address for everybody, so the ceiling
   must hold for a whole shop; an install that turns the header on gets the per-person reading
