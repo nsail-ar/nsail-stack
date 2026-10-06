@@ -210,7 +210,17 @@
     {
         var section = Fragment();
 
-        if (Body is null || string.IsNullOrEmpty(section) || section == _shown)
+        if (string.IsNullOrEmpty(section))
+        {
+            // The address left the section behind — Back out of one, or the chapter's own link.
+            // Forgetting it here is what lets the SAME section be chased again on the next click:
+            // a spent fragment held across its own absence would answer that click with nothing,
+            // the only question asked below being whether this fragment is already honoured.
+            _shown = null;
+            return;
+        }
+
+        if (Body is null || section == _shown)
         {
             return;
         }

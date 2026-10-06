@@ -342,19 +342,32 @@ public sealed class SurfaceContext
         return string.Equals(current.AbsolutePath, target.AbsolutePath, StringComparison.Ordinal);
     }
 
+    // Asked only of a same-path move that opens no surface, where the fragment is the one thing
+    // left that can make the destination a different place than the one the user is standing at.
+    bool MovesFragment(string href)
+    {
+        var current = _navigation.ToAbsoluteUri(_navigation.Uri);
+        var target = _navigation.ToAbsoluteUri(href);
+
+        return !string.Equals(current.Fragment, target.Fragment, StringComparison.Ordinal);
+    }
+
     /// <summary>Navigates to an href this surface already resolved (GetHref), landing it in
     /// browser history the way its destination deserves. Components that hand a user a
     /// resolved href (a link, an action toolbar) navigate through this, passing the
     /// <paramref name="target"/> they resolved it against so the destination surface is named
     /// rather than guessed back out of the address.
     ///
-    /// Three transitions, and only the first is the caller's to influence. A surface whose key
+    /// Four transitions, and only the first is the caller's to influence. A surface whose key
     /// the address did not carry and now does was CLOSED and is being opened: that is a place,
     /// and it pushes unless <paramref name="noHistory"/> says the open is a satellite feeding
     /// a form still standing underneath (NsAutocomplete's inline create, NsMissing's door). A
     /// surface already open whose route changes is moving inside one place and always replaces
     /// — no flag changes that, or the back-stack would grow by one per click inside an open
-    /// aside. A path change is a different place and pushes, as any navigation does.</summary>
+    /// aside. A path change is a different place and pushes, as any navigation does. And a move
+    /// that changes only the FRAGMENT pushes on the main surface: a section of a document is a
+    /// place the reader came from, unlike a tab or a filter, so Back owes them the one they were
+    /// reading before this one.</summary>
     public void Follow(string href, Surface? target = null, bool noHistory = false)
     {
         ArgumentException.ThrowIfNullOrEmpty(href);
@@ -382,7 +395,16 @@ public sealed class SurfaceContext
 
         if (opened is null)
         {
-            _navigation.NavigateTo(href, InPlace);
+            // The fourth transition: same path, nothing opening, and the fragment moved. A
+            // section of a document is a place the reader came from — Back owes them the one they
+            // were reading before it — unlike a tab or a filter, which is a view of where they
+            // already stand. Asked of the DESTINATION rather than of this context: a fragment
+            // that addresses a named surface is a move inside one that is already open, which is
+            // one place (Targets rule 4), and Close spends exactly ONE entry — so pushing there
+            // would cost the reader an X per section read in the guide's own aside.
+            var place = Destination(target) is null && MovesFragment(href);
+
+            _navigation.NavigateTo(href, place ? s_stacked : InPlace);
             return;
         }
 
