@@ -9,6 +9,11 @@ namespace NSail.Components;
 
 public sealed class MudDialogManager(IDialogService dialogs, ISnackbar snackbar, StringManager strings) : DialogManager
 {
+    // The hook ns-mud.css hangs pointer-events:none on. SnackbarTypeClass is the only per-toast
+    // class the vendor concatenates onto the same box it marks pointer-events:auto, which is why
+    // the rule can reach Notify without reaching Offer.
+    public const string NotifyClass = "ns-toast";
+
     static readonly DialogOptions _openOptions = new()
     {
         CloseOnEscapeKey = true,
@@ -43,7 +48,12 @@ public sealed class MudDialogManager(IDialogService dialogs, ISnackbar snackbar,
         snackbar.Add(message, NsSeverityMapper.ToMud(severity), config =>
         {
             config.VisibleStateDuration = 5000;
-            config.ShowCloseIcon = true;
+
+            // Nothing to press: a five-second toast nobody dismisses, and a box that takes no
+            // pointer events has no reachable icon to offer anyway. Dropping it is what lets
+            // the click meant for the control underneath go through — see NotifyClass.
+            config.ShowCloseIcon = false;
+            config.SnackbarTypeClass = NotifyClass;
         });
     }
 
