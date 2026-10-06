@@ -55,6 +55,24 @@ and calls `Add()`; the bar, and the heading, stay.
   the first page is still in flight, which is the "a read that failed is not a read that came
   back empty" rule broken.
 
+- **A figure that belongs under a column goes in `FooterRow`, the table's own `tfoot`; a fact
+  with no column behind it goes in `Footer`, outside the grid.** `FooterRow` takes one `NsTd`
+  per column, each carrying the same `For` expression as the `NsTh` above it, so the figure is
+  placed, named and hidden by the column's own declaration — under its header in column mode, a
+  card line named by its own column once stacked, gone with the column at a width that drops it.
+  A labelled strip after the table has neither: its desktop alignment under the last columns is a
+  coincidence of two right alignments, and stacked there is no column left to align to at all, so
+  it reads as a band of bare numbers. Both slots render whether or not `Title` is set, and a
+  table that declares no footer row renders no `tfoot`.
+  - **The cell with no `For` and no `DataLabel` is the one that NAMES the row** — Totales. In a
+    body row that same silence is the action cell (below); in the foot there are no acts, so it
+    keeps a word's own geometry instead of a botonera's.
+  - **Leave an EMPTY `NsTd` where a column has nothing to total**: it holds the column's place in
+    column mode and draws no card line stacked. The tick column and the edit column are the
+    table's own and it seats them in the foot itself, so the counts cannot drift.
+  - **A lines editor's foot keeps its strip.** A discount, a surcharge, a running difference are
+    facts no column of the grid states, so a `tfoot` has nothing to align them to.
+
 ### Columns and widths
 
 **Which columns survive to which width.** Xl shows every column; md keeps the 2–4 important

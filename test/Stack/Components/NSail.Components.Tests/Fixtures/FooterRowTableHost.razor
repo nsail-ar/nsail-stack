@@ -1,0 +1,102 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+<MudPopoverProvider />
+
+@{
+    RenderFragment<TestModel> editor = row =>
+        @<text>
+            <NsTd For="() => row.Name">
+                <NsTextField @bind-Value="row.Name" Label="" />
+            </NsTd>
+            <NsTd For="() => row.Age">
+                <NsNumericField TValue="int" @bind-Value="row.Age" Label="" />
+            </NsTd>
+            <NsTd DataLabel="Doble">
+                <NsText>@(row.Age * 2)</NsText>
+            </NsTd>
+        </text>;
+
+    @* The three kinds of foot cell, in the order a book writes them: the one that NAMES the row
+       (no field behind it), a figure under a column that hides by breakpoint, and a column with
+       nothing to total. *@
+    RenderFragment<TestModel> footer = total =>
+        @<text>
+            <NsTd>Totales</NsTd>
+            <NsTd For="() => total.Age">@_rows.Sum(row => row.Age)</NsTd>
+            <NsTd DataLabel="Doble" />
+        </text>;
+}
+
+<NsTable TRow="TestModel" Rows="Page" Mode="Mode" OnQuery="Query"
+         Selection="Selectable ? _selection : null" RowKey="Selectable ? Key : null"
+         RowEditor="Editable ? editor : null" NewRow="Editable ? NewRow : null" Title="@(Editable ? "Renglones" : null)"
+         FooterRow="WithFooter ? footer : null">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+        <NsTh For="() => context.Age" Breakpoint="NsSize.Md" />
+        <NsTh>Doble</NsTh>
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd For="() => row.Age">@row.Age</NsTd>
+        <NsTd DataLabel="Doble">@(row.Age * 2)</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    readonly List<TestModel> _rows =
+    [
+        new TestModel { Name = "Ana", Age = 3 },
+        new TestModel { Name = "Beto", Age = 4 }
+    ];
+
+    readonly Selection _selection = new();
+
+    /// <summary>Which of NsTable's three branches renders: Page and Scroll both wire OnQuery,
+    /// and Queried off is the third — the rows in hand, with no query at all.</summary>
+    [Parameter]
+    public NsTableMode Mode { get; set; } = NsTableMode.Page;
+
+    [Parameter]
+    public bool Queried { get; set; } = true;
+
+    [Parameter]
+    public bool WithFooter { get; set; } = true;
+
+    [Parameter]
+    public bool Selectable { get; set; }
+
+    [Parameter]
+    public bool Editable { get; set; }
+
+    DataPage<TestModel> Page => DataPage<TestModel>.From(_rows);
+
+    EventCallback<QueryEventArgs> Query => Queried
+        ? EventCallback.Factory.Create<QueryEventArgs>(this, () => { })
+        : default;
+
+    // Deterministic and derived from the row, which is all Selection asks of a key: the fixture
+    // exists to turn the tick column on, not to exercise the ticks themselves.
+    static Guid Key(TestModel row)
+    {
+        return new Guid(row.Age, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    }
+
+    TestModel NewRow()
+    {
+        var row = new TestModel();
+
+        _rows.Add(row);
+
+        return row;
+    }
+}

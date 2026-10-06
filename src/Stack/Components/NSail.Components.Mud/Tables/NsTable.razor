@@ -79,6 +79,31 @@
                 }
             }
         </text>;
+
+    @* The table's own two columns are the table's to seat here as well: the vendor wraps this
+       fragment in a foot row that adds no cell of its own (CustomFooter off, nothing checkable
+       or expandable), so a tick column or an edit column left unaccounted for would shift every
+       figure one column off its header. Both placeholders are empty, which is also how they
+       draw no card line stacked (ns-mud.css, the foot's :empty rule). *@
+    RenderFragment footerCells =
+        @<text>
+            @if (Selectable)
+            {
+                <MudTd Class="ns-select" />
+            }
+            @* Fixed: the marker is a constant and the cells under it are the foot's own. *@
+            <CascadingValue Value="TableFoot.Row" IsFixed="true">
+                @FooterRow!(default!)
+            </CascadingValue>
+            @if (Editable)
+            {
+                <MudTd Class="ns-actions" />
+            }
+        </text>;
+
+    @* Null is what keeps the tfoot off a table that declared no footer row: the vendor renders
+       the element from the mere presence of this fragment. *@
+    RenderFragment? footerContent = FooterRow is null ? null : footerCells;
 }
 
 @* Fixed: the instance outlives every render, and a column's Breakpoint is markup — cells
@@ -110,7 +135,8 @@
               Breakpoint="Breakpoint.Sm"
               Loading="@(IsRunning || !_hasLoaded)"
               LoadingProgressColor="Color.Primary"
-              Dense="true">
+              Dense="true"
+              FooterContent="@footerContent">
         <HeaderContent>
             @headerCells
         </HeaderContent>
@@ -144,7 +170,8 @@ else if (OnQuery.HasDelegate)
               Breakpoint="Breakpoint.Sm"
               Loading="@(IsRunning || !_hasLoaded)"
               LoadingProgressColor="Color.Primary"
-              Dense="true">
+              Dense="true"
+              FooterContent="@footerContent">
         <HeaderContent>
             @headerCells
         </HeaderContent>
@@ -168,7 +195,8 @@ else
               OnRowClick="RowClick"
               Hover="true"
               Breakpoint="Breakpoint.Sm"
-              Dense="true">
+              Dense="true"
+              FooterContent="@footerContent">
         <HeaderContent>
             @headerCells
         </HeaderContent>
@@ -261,10 +289,23 @@ else
     [Parameter]
     public string? Title { get; set; }
 
-    /// <summary>Content pinned after the table — a totals row, a running difference — rendered
-    /// whether or not Title is set.</summary>
+    /// <summary>Content pinned after the table, outside the grid — a labelled strip, a running
+    /// difference, a submit — rendered whether or not Title is set. For figures that belong
+    /// UNDER their columns use <see cref="FooterRow"/> instead.</summary>
     [Parameter]
     public RenderFragment? Footer { get; set; }
+
+    /// <summary>The table's own footer row, rendered as a real <c>tfoot</c>: one NsTd per
+    /// column, each naming the column it totals (<c>For="() => context.Net"</c>, the same
+    /// expression the NsTh above it carries), so a figure sits under its own header and stacks
+    /// as a card line named by its own column on a phone. The cell with no For and no DataLabel
+    /// is the one that names the row — Totales.
+    /// <para>Cover the same columns HeaderContent does, leaving an EMPTY NsTd where a column
+    /// has nothing to total: the tick column and the edit column are the table's own and it
+    /// seats them here itself, so the counts cannot drift. The context is a typing crutch
+    /// invoked with default!, exactly as HeaderContent's is.</para></summary>
+    [Parameter]
+    public RenderFragment<TRow>? FooterRow { get; set; }
 
     /// <summary>What the table says in place of the generic "no records" when the read came
     /// back with nothing — the screen's own words for an empty register. Shown under the same

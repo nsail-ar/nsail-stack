@@ -29,6 +29,9 @@
     [CascadingParameter]
     TableRowEdit? RowEdit { get; set; }
 
+    [CascadingParameter]
+    TableFoot? Foot { get; set; }
+
     /// <summary>Field the cell shows ("() => row.Name"): drives the localized DataLabel
     /// (the per-cell header of the stacked mobile layout), same key as the NsTh header —
     /// which is also how the cell picks up that column's Breakpoint.
@@ -46,6 +49,11 @@
     // action cell — the only one with nothing to say about itself. A cell that labels itself
     // by hand (a computed Total) is a column like any other and keeps its natural width.
     //
+    // In the FOOT that same silence means the opposite thing: no row of the foot carries acts,
+    // and the one cell there with no field behind it is what names the row — Totales. It takes
+    // the action cell's geometry back (ns-mud.css: a shrink-to-fit width and a strip packed
+    // right are a botonera's, and the word would read as one) and keeps its own.
+    //
     // A read column may hide by breakpoint, an edit input never (ui/hosts.md): a cell of the
     // row open for editing drops the column's hide classes, so a phone still has every field
     // to type into while the rows being read keep hiding theirs.
@@ -56,10 +64,12 @@
     string GetClasses()
     {
         var breakpoint = RowEdit is null ? Columns?.BreakpointFor(_key) ?? NsSize.None : NsSize.None;
+        var unnamed = For is null && DataLabel is null;
 
         return new NsClassBuilder(NsResponsive.CellClasses(breakpoint))
             .Add("ns-cell-editing", RowEdit is not null)
-            .Add("ns-actions", For is null && DataLabel is null)
+            .Add("ns-actions", unnamed && Foot is null)
+            .Add("ns-foot-label", unnamed && Foot is not null)
             .ToString();
     }
 
