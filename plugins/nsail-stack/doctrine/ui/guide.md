@@ -149,8 +149,9 @@ again whenever the fragment changes (`nsapp.scrollToId`).
 ([actions.md](actions.md)).
 
 **A section is a place, so Back returns to it.** On the guide's own screen a section link takes
-a history entry of its own — the fourth transition `SurfaceContext.Follow` names, a same-path
-move that changes only the fragment — so Back leaves the reader on the section they were
+a history entry of its own — the fourth transition `SurfaceContext.Follow` names
+([surfaces.md](surfaces.md), Opening and matching), a same-path move that changes only the
+fragment — so Back leaves the reader on the section they were
 reading before it instead of out of the manual. **Inside an overlay it replaces instead**: the
 guide's aside is one place and its X spends one entry (Targets rule 4,
 [../intentional-ui.md](../intentional-ui.md)), so the reader still closes it in one gesture
