@@ -4,6 +4,7 @@
 using Bunit;
 using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
@@ -312,6 +313,61 @@ public sealed class UnsavedChangesGuardTests : BunitContext, IAsyncLifetime
         await host.InvokeAsync(() => Navigation.NavigateTo("/somewhere/else"));
 
         Assert.Equal(1, _dialogs.Confirms);
+    }
+
+    /// <summary>The other half of the guard: work nobody is waiting on — a fire-and-forget send
+    /// still on its way — is dropped by a tab close and by nothing smaller, so it arms the
+    /// browser's confirm and reaches neither the in-app prompt nor HasChanges. The attribute is
+    /// read off the last render, so the report has to provoke one.</summary>
+    [Fact]
+    public async Task APendingSendOnTheSurface_ArmsTheBrowsersConfirmAndAsksNothingOnTheWayOut()
+    {
+        var host = Render<CheckBoxTrackingHost>(p => p
+            .Add(x => x.RouteTable, BuildRouteTable())
+            .Add(x => x.Model, new CheckBoxTrackingModel()));
+
+        var surface = host.Instance.Surface!;
+        var sending = new object();
+
+        await host.InvokeAsync(() => surface.SetPending(sending));
+
+        Assert.True(surface.HasPending);
+        Assert.False(surface.HasChanges);
+        Assert.True(host.FindComponent<NavigationLock>().Instance.ConfirmExternalNavigation);
+
+        await host.InvokeAsync(() => Navigation.NavigateTo("/somewhere/else"));
+
+        Assert.Equal(0, _dialogs.Confirms);
+
+        await host.InvokeAsync(() => surface.ClearPending(sending));
+
+        Assert.False(surface.HasPending);
+        Assert.False(host.FindComponent<NavigationLock>().Instance.ConfirmExternalNavigation);
+    }
+
+    /// <summary>Counted by source, because a queue holds several at once and the guard stands
+    /// until the last one lands.</summary>
+    [Fact]
+    public async Task ClearingOneOfTwoPendingSends_LeavesTheBrowsersConfirmArmed()
+    {
+        var host = Render<CheckBoxTrackingHost>(p => p
+            .Add(x => x.RouteTable, BuildRouteTable())
+            .Add(x => x.Model, new CheckBoxTrackingModel()));
+
+        var surface = host.Instance.Surface!;
+        var first = new object();
+        var second = new object();
+
+        await host.InvokeAsync(() => surface.SetPending(first));
+        await host.InvokeAsync(() => surface.SetPending(second));
+        await host.InvokeAsync(() => surface.ClearPending(first));
+
+        Assert.True(surface.HasPending);
+        Assert.True(host.FindComponent<NavigationLock>().Instance.ConfirmExternalNavigation);
+
+        await host.InvokeAsync(() => surface.ClearPending(second));
+
+        Assert.False(host.FindComponent<NavigationLock>().Instance.ConfirmExternalNavigation);
     }
 
     BunitNavigationManager Navigation
