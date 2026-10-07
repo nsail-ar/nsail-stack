@@ -216,7 +216,7 @@ else
    about to tick the second. *@
 @if (Selectable && !Selection!.IsEmpty)
 {
-    var total = Rows.TotalCount;
+    var total = Shown.TotalCount;
 
     <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Class="ns-selection-bar px-2">
         <NsText>@Counted("Common.Selected", Selection.Count(total))</NsText>
@@ -263,11 +263,21 @@ else
     Breakpoint? _breakpoint;
     bool _askedDevice;
     int _nextPage;
-    int _generation;
     bool _started;
     bool _listenerStarted;
     bool _fetching;
     bool _exhausted;
+
+    // Which read is the current one, in both branches. Replacing a read only cancels it, and a
+    // handler is free to ignore its token — most do, since reloading an NsLoad region does not
+    // pass one on — so the generation the read was asked under, compared after the await, is
+    // what tells a superseded answer from the one the grid is waiting for.
+    int _generation;
+
+    // The answer the grid is showing in page mode, kept because the Rows parameter is not it:
+    // a superseded read's handler writes that one on its way out, after the read that replaced
+    // it already put its own rows on screen.
+    DataPage<TRow> _page = DataPage<TRow>.Empty();
 
     // A freshly mounted instance (every cold WASM hydration is one) starts at TotalItems 0
     // before its own first query has even begun — MudTable would paint NoRecordsContent for
@@ -433,7 +443,12 @@ else
 
     bool Selectable => Selection is not null && RowKey is not null;
 
-    IReadOnlyList<TRow> InHand => OnQuery.HasDelegate && Scrolls ? _scrolled : Rows.Items;
+    // What the reader is looking at, which in page mode is the winning read's answer and not
+    // the Rows parameter: a tick, its header's third state and the count over the selection bar
+    // all have to agree with the rows on screen.
+    DataPage<TRow> Shown => OnQuery.HasDelegate && !Scrolls ? _page : Rows;
+
+    IReadOnlyList<TRow> InHand => OnQuery.HasDelegate && Scrolls ? _scrolled : Shown.Items;
 
     bool IsSelected(TRow row)
     {
@@ -664,6 +679,8 @@ else
     /// count only the rows in hand and conclude there is a single page.</summary>
     async Task<TableData<TRow>> LoadPage(TableState state, CancellationToken cancellationToken)
     {
+        var generation = ++_generation;
+
         var args = new QueryEventArgs
         {
             PageIndex = state.Page,
@@ -676,14 +693,27 @@ else
         // grid kept showing rows the new filter excludes.
         await Raise(OnQuery, args, RunOptions.Replace);
 
-        _hasLoaded = true;
+        // The page asked for last is also the one whose answer wins. A read superseded while it
+        // was in flight still gets here — its handler ignored the cancellation, or honoured it
+        // and the Runner swallowed the refusal — and the vendor assigns whatever comes back
+        // with no check of its own, so the only way a superseded read changes nothing is to
+        // hand back what is already on screen: not its rows, not its total, and so not the page
+        // either, which the vendor bounds against that total right after the assign. Throwing
+        // instead is not available — nothing in MudTable catches, and the escape lands on
+        // NsErrorBoundary, which wraps the whole @Body, header and NUEVO link included.
+        if (generation == _generation)
+        {
+            _hasLoaded = true;
 
-        // The page assigns Rows while handling the query, so the fresh value is read from
-        // the parameter right after — it is the same DataPage the caller just fetched.
+            // The page assigns Rows while handling the query, so the fresh value is read from
+            // the parameter right after — it is the same DataPage the caller just fetched.
+            _page = Rows;
+        }
+
         return new TableData<TRow>
         {
-            Items = Rows.Items,
-            TotalItems = Rows.TotalCount
+            Items = _page.Items,
+            TotalItems = _page.TotalCount
         };
     }
 

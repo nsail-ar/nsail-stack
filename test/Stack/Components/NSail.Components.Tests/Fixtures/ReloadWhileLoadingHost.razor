@@ -8,8 +8,9 @@
 
 <MudPopoverProvider />
 
-@* Page mode, whose pages MudTable pulls through ServerData. The first query is held open by the
-   gate so a second one can arrive while it runs — a search typed while a page is still loading. *@
+@* Page mode, whose pages MudTable pulls through ServerData. The query named by Held is held open
+   by the gate so another can arrive while it runs — a search typed while a page is still
+   loading, or a reload the conversations watch asks for with nobody's hand in it. *@
 <NsTable TRow="TestModel" Rows="Page" OnQuery="Query" Mode="NsTableMode.Page" @ref="_table">
     <HeaderContent>
         <NsTh For="() => context.Name" />
@@ -26,16 +27,52 @@
     [Parameter, EditorRequired]
     public TaskCompletionSource Gate { get; set; } = default!;
 
+    /// <summary>Which query the gate holds open, counting from one.</summary>
+    [Parameter]
+    public int Held { get; set; } = 1;
+
     public int Queries { get; private set; }
 
     public NsTable<TestModel> Table => _table!;
 
+    /// <summary>Two pages apart in both their rows and their total, so a grid showing one of
+    /// them cannot be mistaken for a grid showing the other — and so the pager's own counter
+    /// says which answer it was bounded against.</summary>
+    public static DataPage<TestModel> Current { get; } = new()
+    {
+        Items = [.. Enumerable.Range(1, 10).Select(n => new TestModel { Name = $"Current {n}" })],
+        TotalCount = 30
+    };
+
+    public static DataPage<TestModel> Superseded { get; } = new()
+    {
+        Items = [new TestModel { Name = "Superseded 1" }],
+        TotalCount = 1
+    };
+
     DataPage<TestModel> Page { get; set; } = DataPage<TestModel>.Empty();
 
-    Task Query(QueryEventArgs args)
+    async Task Query(QueryEventArgs args)
     {
-        Queries++;
+        var query = ++Queries;
 
-        return Queries == 1 ? Gate.Task : Task.CompletedTask;
+        if (query != Held)
+        {
+            Page = Current;
+
+            // A real handler goes to the server and so yields, and the yield is what lets the
+            // renderer flow the page just written down to the Rows parameter before LoadPage
+            // reads it back off there.
+            await Task.Yield();
+
+            return;
+        }
+
+        await Gate.Task;
+
+        // The token the handler was given is ignored, the way every handler that reloads an
+        // NsLoad region ignores it: a read superseded while it was held writes its own answer
+        // over the shared field on its way out.
+        Page = Superseded;
     }
 }
