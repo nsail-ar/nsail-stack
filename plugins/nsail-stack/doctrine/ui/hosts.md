@@ -208,10 +208,17 @@ that owns the confirm.
   screen. A page still in flight is superseded (`RunOptions.Replace` plus a generation counter),
   never waited for — the append guard would otherwise swallow the reload and leave the old rows
   standing.
-- **In page mode the page asked for last is the one that answers.** Every query runs with
-  `RunOptions.Replace`: a search typed while the previous page is still arriving supersedes it —
-  a busy Runner would refuse it, the vendor swallow the refusal, and the grid keep rows the new
-  filter excludes.
+- **In page mode the page asked for last is the one that answers, and the one whose answer the
+  grid keeps.** Every query runs with `RunOptions.Replace`: a search typed while the previous
+  page is still arriving supersedes it — a busy Runner would refuse it, the vendor swallow the
+  refusal, and the grid keep rows the new filter excludes. Replacing only *cancels*, which
+  settles nothing on its own: a handler is free to ignore its token and most do, so the
+  superseded read runs on to its end and would otherwise be assigned by whichever read finished
+  last. Its generation, compared after the await, is what drops it — and what it hands back
+  instead is the answer already on screen, so a superseded read changes neither the rows nor the
+  total the pager bounds itself against, and so not the page either. It cannot refuse by
+  throwing: nothing in the vendor's grid catches, and the escape reaches `NsErrorBoundary`,
+  which wraps the whole screen.
 
 ### Selection
 
