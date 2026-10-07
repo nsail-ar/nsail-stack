@@ -3380,6 +3380,40 @@
     }
 }
 
+/* The same mirror at the OTHER end of the row (nsail#1820). An add row laid out beside the table
+   ends in its own act -- .ns-row-submit in a grid cell of the field family's own width -- where
+   the rows below it end in their last cell's padding, so the add row's last FIELD and the last
+   COLUMN under it part ways by exactly that act: the column a supplier's whole catalog is typed
+   into does not line up with itself (QA, 1366x768: the add row's price at 877, the rows' at
+   817). The leading gutter is mirrored on the ROW because the row is the side that draws less
+   there; here the table is, so the table is the side that reserves.
+
+   The last column is pinned to what the add row spends from the trailing edge inward: its last
+   field (.ns-money-slot's 10rem, the only width an add row's last field has), the grid's own
+   gap, the act CELL (.ns-grid > .ns-form-field's 14rem -- the cell, so the arithmetic is the
+   field family's width and not the act's own word in whichever language it is read in) and this
+   cell's own leading padding. A specified width belongs to the column in an auto-layout table
+   and takes no share of the surplus -- the same reason .ns-table .ns-select reads 1% rather than
+   the 56px it measures -- so the surplus all goes to the data column beside it, which is then
+   exactly the width the add row's own Grow takes. Both sides of the mirror then spend the row's
+   width the same way, which is what lines the fields up at every width instead of at the one
+   that happened to be measured.
+
+   Dropped below the window width NsTable stacks at, the boundary .ns-select-gutter is hidden at:
+   a stack of cards has no column left to mirror, and the reserve would be 25rem of padding
+   inside a phone's card. */
+.ns-table.ns-row-submit-gutter thead th:last-child,
+.ns-table.ns-row-submit-gutter tbody td:last-child {
+    width: calc(10rem + 1rem + 14rem + 1rem);
+}
+
+@media (max-width: 960px) {
+    .ns-table.ns-row-submit-gutter thead th:last-child,
+    .ns-table.ns-row-submit-gutter tbody td:last-child {
+        width: auto;
+    }
+}
+
 /* The article slot beside it, and the twin of that rule for the other half of the row: a field
    laid out by hand in a horizontal stack takes the same --ns-field-width the grid's own items
    read, so ns-field-narrow and ns-field-wide mean the same width wherever a field is placed.
