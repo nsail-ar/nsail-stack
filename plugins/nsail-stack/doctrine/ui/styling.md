@@ -149,9 +149,12 @@ marked *(cases)* has its story there.
   the screen clears what was typed rather than let an invisible value ride the next save.
 - **`.ns-footer-action-row`** (`ns-mud.css`) is the opt-in for a footer whose own group of acts
   does not fit beside a summary it carries: under the narrow-footer breakpoint it drops that
-  group to a line of its own rather than a shared label shortening or a mid-group wrap
-  (WorkOrderPage). Opt-in, so a footer that never wraps its own group (Nueva Venta's one-line
-  footer) is untouched.
+  group to a line of its own whether or not it would have fitted, so the figure keeps the first
+  line alone (WorkOrderPage). Opt-in, so a footer that never splits its own group (Nueva Venta's
+  one-line footer) is untouched. **The group also wraps inside itself, at every width**: a group
+  of worded acts can outgrow even a full-width line, and the alternative there is the squeeze
+  the footer's row wraps to avoid ([intentional-ui.md](../intentional-ui.md), important acts sit
+  at the bottom with text).
 - **`NsPaper` is the bare sheet a SECTION sits on** — `Outlined`, `Elevation`, `Class`, and no
   Header/Content/Footer anatomy: what a lines editor or a step's optional block rests on where a
   card would claim the surface. It composes its `Class` over its own base like every other
