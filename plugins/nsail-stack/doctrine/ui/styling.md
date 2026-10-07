@@ -51,9 +51,14 @@ marked *(cases)* has its story there.
     last field's 10rem, the grid's gap, the act cell's 14rem and the cell's own leading padding.
     A specified width is the column's own in an auto-layout table and takes none of the surplus,
     so the data column beside it ends up exactly the width the add row's `Grow` takes. Dropped
-    at the same stacking width, for the same reason. The add row's `Grow` keeps a 12rem floor a
-    table column has none of, so the two part ways again in the sliver of width where that floor
-    wraps the add row — above it they agree to the pixel.
+    at the same stacking width, for the same reason. The two agree at every width where the add
+    row is **one line**, and only there: its items claim a sum a table column has no floor for,
+    and once the window stops affording it the act wraps, which leaves the last field at the
+    row's own trailing edge instead of over the column. A four-item row (the gutter, a `Grow`
+    field at its 12rem floor, the price slot, the act cell) claims 664px of content and wraps
+    below ~976px of window; a fifth item — a unit picker, which an article that comes in more
+    than one raises — claims 904px and wraps below 1216px, and there the axis reads 240px out.
+    That band is the add row's own arithmetic to spend, not a reserve's to answer (nsail#2127).
     A **boolean control** is the same mismatch and takes the same answer: it draws neither the
     label gutter nor the outline its row partners draw, so `NsRecordState` and `NsCheckBox` mark
     their own control (`ns-record-state`, `ns-form-check`) and the grid centres that cell. The
