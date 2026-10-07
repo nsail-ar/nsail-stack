@@ -181,6 +181,16 @@ saving, the two answers are the same one.
   there. The `ClearDirty()` every editor exposes drops a report outside a save; after one there
   is nothing left to drop, and a page that calls it there is writing a line that does nothing.
 
+**Work nobody is waiting on reports to the other half of the guard, `SetPending`/`ClearPending`,
+and arms the browser's confirm alone** (`SurfaceContext.HasPending`). A fire-and-forget send is
+not a document being edited: the person emptied the box and walked off on purpose, so the in-app
+prompt asking them to abandon it would be the very wait the fire-and-forget removed — which is
+why this report stays out of `HasChanges` and out of `HasUnansweredChanges`, and why no save
+window answers for it. A tab close is the one departure that drops the work, so it is the one
+that asks. The report is counted by source and **its filer owns both halves**: it outlives every
+page on the surface, which is the point (a queue that survives leaving the screen), so nothing
+retires it on an unmount and a report never cleared guards every later screen forever.
+
 ---
 
 ## Closing

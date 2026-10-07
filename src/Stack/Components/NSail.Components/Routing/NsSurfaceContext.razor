@@ -15,9 +15,11 @@
     @* HasChanges and not HasUnansweredChanges, unlike the internal half below: this is an
        attribute the BROWSER reads off the last render, and no render happens when a window opens
        or closes — the subtler answer would be a stale one. Closing the tab over a save in flight
-       is a different act from the save's own navigation, and being asked is its safe side. *@
+       is a different act from the save's own navigation, and being asked is its safe side.
+       HasPending rides the OR and reaches nothing else: work nobody is waiting on is dropped by
+       a tab close and by nothing smaller, so it is the browser's question alone. *@
     <NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation"
-                    ConfirmExternalNavigation="_surfaceContext.HasChanges" />
+                    ConfirmExternalNavigation="Guards" />
     @ChildContent?.Invoke(_surfaceContext)
 </CascadingValue>
 
@@ -54,14 +56,16 @@
     [CascadingParameter]
     public RouteTable RouteTable { get; set; } = default!;
 
+    bool Guards => _surfaceContext.HasChanges || _surfaceContext.HasPending;
+
     protected override void OnInitialized()
     {
         _surfaceContext = new SurfaceContext(Name, Navigation, RouteTable, JS, History, Close, PageType);
         _surfaceContext.StateChanged += OnStateChanged;
     }
 
-    // The only thing this component's own render reads off the surface is HasChanges, for the
-    // lock above: every other announcement would redraw the whole hosted tree — chrome, page and
+    // The only thing this component's own render reads off the surface is the lock's own answer
+    // above: every other announcement would redraw the whole hosted tree — chrome, page and
     // fields — to emit output identical to the last pass, and one save in an overlay announces
     // three times. "Mutating a surface redraws nothing by itself" (ui/surfaces.md, the announce
     // seam) is the contract every reader of an announcement is written against, and this host is
@@ -70,12 +74,12 @@
     // about it is deferred, so a skipped pass can only be one whose output would not move.
     void OnStateChanged()
     {
-        if (_guarding == _surfaceContext.HasChanges)
+        if (_guarding == Guards)
         {
             return;
         }
 
-        _guarding = _surfaceContext.HasChanges;
+        _guarding = Guards;
 
         _ = InvokeAsync(StateHasChanged);
     }

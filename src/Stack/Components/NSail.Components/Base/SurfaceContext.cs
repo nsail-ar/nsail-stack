@@ -18,6 +18,7 @@ public sealed class SurfaceContext
 {
     readonly object _sync = new();
     readonly HashSet<object> _dirtySources = [];
+    readonly HashSet<object> _pendingSources = [];
     readonly List<SaveWindow> _windows = [];
     readonly List<ActClaim> _acts = [];
     readonly System.Runtime.CompilerServices.ConditionalWeakTable<object, object> _retired = new();
@@ -37,6 +38,7 @@ public sealed class SurfaceContext
     int _workCount;
     volatile bool _hasWork;
     volatile bool _hasChanges;
+    volatile bool _hasPending;
     volatile bool _formDisabled;
     volatile bool _formRunning;
     volatile bool _finishing;
@@ -82,6 +84,14 @@ public sealed class SurfaceContext
     public bool HasWork => _hasWork;
 
     public bool HasChanges => _hasChanges;
+
+    /// <summary>Work already handed over and not back yet, which the person is deliberately no
+    /// longer waiting on: a send that left the screen behind it. It arms the BROWSER's exit
+    /// confirm alone — closing or reloading the tab is the one departure that drops it — and is
+    /// outside <see cref="HasChanges"/> on purpose, so the in-app unsaved-changes prompt stays
+    /// silent and no submit's save window ever answers for it. Nothing reported here is a
+    /// document anybody is editing; whoever filed it already left.</summary>
+    public bool HasPending => _hasPending;
 
     /// <summary>What the form on this surface refuses — it was handed Disabled, or its own submit is
     /// in flight and every field under it is frozen for the length of it. The very value that form
@@ -1086,6 +1096,53 @@ public sealed class SurfaceContext
             if (_dirtySources.Remove(source) && _dirtySources.Count == 0)
             {
                 _hasChanges = false;
+                raiseChanged = true;
+            }
+        }
+
+        if (raiseChanged)
+        {
+            StateChanged?.Invoke();
+        }
+    }
+
+    /// <summary>Reports work this surface is carrying for somebody who is not waiting on it — see
+    /// <see cref="HasPending"/>. Counted by source, so the guard stands until the last one is
+    /// cleared; a source that reports twice reports once.</summary>
+    public void SetPending(object source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var raiseChanged = false;
+
+        lock (_sync)
+        {
+            if (_pendingSources.Add(source) && _pendingSources.Count == 1)
+            {
+                _hasPending = true;
+                raiseChanged = true;
+            }
+        }
+
+        if (raiseChanged)
+        {
+            StateChanged?.Invoke();
+        }
+    }
+
+    /// <summary>That report's end, whichever way the work finished. A report nobody clears
+    /// outlives every page on this surface, so its filer owns both halves.</summary>
+    public void ClearPending(object source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        var raiseChanged = false;
+
+        lock (_sync)
+        {
+            if (_pendingSources.Remove(source) && _pendingSources.Count == 0)
+            {
+                _hasPending = false;
                 raiseChanged = true;
             }
         }
