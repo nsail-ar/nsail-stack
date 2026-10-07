@@ -125,7 +125,13 @@ move money or state — facturar, cobrar, autorizar, anular — render in the fo
 TEXT buttons beside the hero, secondary emphasis; output utilities — imprimir, exportar, enviar
 por mail, compartir — and pure navigation are top icons. The test: if refusing the act would
 need an explanation, it belongs at the bottom with a word on it; if nobody would miss it until
-they needed a paper, it is a top icon (cases). **On a phone a footer act carrying an icon
+they needed a paper, it is a top icon (cases). **An act that keeps its word never gives up its
+content width: the footer row GROWS A LINE**, the same answer the title row and the toolbar row
+above it give — a row that cannot wrap has only shrink left, and a shrunk worded button breaks
+its own LABEL into two lines. The seated refusal is the one child of that row that gives
+([ui/styling.md](ui/styling.md)), and a footer that grouped its own acts wraps inside the group
+too, so a group that outgrows a full line takes another rather than squeeze. **On a phone a
+footer act carrying an icon
 collapses to that icon alone, and the hero keeps its text**: a footer row has no width for a
 line of worded buttons at that size, so a container query on `.ns-panel-footer` takes the label
 of every secondary act that has an icon to collapse to — outranking the `Breakpoint` the page
@@ -457,7 +463,9 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
     edge: a row that cannot wrap has only shrink left, and a shrunk worded button wraps its own
     LABEL instead, with the glyph parked between the two lines. The search box is still the one
     thing on that row that gives — it declares a comfort width, not a content one
-    ([ui/styling.md](ui/styling.md)) — and the row takes the line once that is spent.
+    ([ui/styling.md](ui/styling.md)) — and the row takes the line once that is spent. **A
+    document's footer row is the third of this family** and gives the same answer, with the
+    seated refusal as the child that gives (important acts sit at the bottom with text).
   - **The drawer owns the brand wherever it is on screen, and the session too**: a sticky chip
     at its foot — avatar, name, current organization — anchors the session menu. Sidebar is
     identity, the title row is context: the nav drawer runs the full viewport height, shows the brand

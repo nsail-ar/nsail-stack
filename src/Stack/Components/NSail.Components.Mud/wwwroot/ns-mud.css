@@ -1714,9 +1714,13 @@
 
 /* Seated in the footer row: flexible beside the right-anchored buttons, tighter padding
    because the row's own height already frames it. min-width 0 lets long text wrap instead
-   of pushing the buttons off the panel. */
+   of pushing the buttons off the panel, and a flex basis of ZERO rather than its sentence is
+   what keeps it from pushing one onto another line — the footer's row wraps (ns-panel-footer
+   below), and a wrap row breaks at a child's flex base size, so a notice measured by its text
+   would cost the acts the very row it is seated in. It still grows into every pixel left
+   beside them, which is the width it resolved to while the row could not wrap at all. */
 .ns-form-problem-inline {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
     margin-top: 0;
     padding: 6px 12px;
@@ -2754,6 +2758,31 @@
     }
 }
 
+/* A FOOTER ACT NEVER GIVES UP ITS CONTENT WIDTH — the row WRAPS, the same answer the title row
+   and the toolbar row above it give (NsTitleBar, NsToolBar). A row that cannot wrap has only
+   flex-shrink left when the acts outgrow the width, and a shrunk worded button breaks its own
+   LABEL into two lines with the glyph parked between them. Stated once here, outside the phone
+   container query below, because one declaration is the whole behaviour at every width.
+
+   The seated refusal is the one child that gives, the way .ns-toolbar-search's own flex is on
+   the toolbar row: its flex basis is zero rather than its sentence, so it takes the width left
+   over beside the acts and never the line. A flex row breaks at a child's flex BASE size, so a
+   notice sized by its text would be the thing that pushes an act onto another line — which is
+   the row the refusal is seated in it would be costing (.ns-form-problem-inline above).
+
+   A footer that grouped its own acts wraps INSIDE the group too: between the phone breakpoint
+   and a laptop a group of worded acts can outgrow even a full-width line, and the alternative
+   there is the squeeze this rule exists to remove. !important because the group is an NsStack
+   and MudBlazor's .flex-nowrap carries one, which nothing but another !important reaches over
+   (the .ns-select-gutter rule below says the same of .d-flex). */
+.ns-panel-footer {
+    flex-wrap: wrap;
+}
+
+.ns-panel-footer .ns-footer-action-row {
+    flex-wrap: wrap !important;
+}
+
 /* Emphasis-ladder footers (NsPanel's own Footer wrapper above, "d-flex justify-end gap-2
    ns-panel-footer" — shared by every document page in the house: WorkOrderPage, the
    transition pages' Cobrar/Facturar/Entregar, PurchaseOrderPage, the Accounting document
@@ -2819,24 +2848,22 @@
         --ns-whisper: block;
     }
 
-    /* A narrow footer has no leftover width beside its buttons: the seated refusal takes
-       its own line ABOVE them (order -1 keeps the buttons where the thumb expects them).
-       Container-measured like everything else here, so an aside on a wide desktop wraps
-       the same way a phone does. */
-    .ns-panel-footer {
-        flex-wrap: wrap;
-    }
-
+    /* A narrow footer has no leftover width beside its buttons at all, so the seated refusal
+       stops being the child that gives and takes its own line ABOVE them (order -1 keeps the
+       buttons where the thumb expects them). The wrap it rides on is the row's own, stated
+       unconditionally above; container-measured like everything else here, so an aside on a
+       wide desktop breaks the same way a phone does. */
     .ns-panel-footer .ns-form-problem-inline {
         flex-basis: 100%;
         order: -1;
     }
 
-    /* A footer whose own group of acts does not fit beside a summary it carries drops that
-       group to a line of its own rather than shortening a shared label or wrapping mid-group
+    /* A narrow footer's own group of acts takes a full line below the summary it carries
+       whether or not it would have fitted beside it, so the figure keeps the first line alone
        (WorkOrderPage, nsail#1385: Leonardo left the choice to the builder, "podría"). Opt-in —
-       only a footer that grouped its own acts under this class asks for the split, so
-       nsail#1267's one-line footer (Nueva Venta) is untouched. */
+       only a footer that grouped its own acts under this class asks for the unconditional
+       split, so nsail#1267's one-line footer (Nueva Venta) is untouched. Above this width the
+       row's own wrap is what moves the group down, and only once it no longer fits. */
     .ns-footer-action-row {
         flex-basis: 100%;
     }
