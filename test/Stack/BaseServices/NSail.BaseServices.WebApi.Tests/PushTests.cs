@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSail.Messaging;
 using NSail.Messaging.Annotations;
 using NSail.Messaging.Runtime;
@@ -92,9 +93,9 @@ public sealed class PushTests
         await using var host = await PushHost.Start();
         await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
 
-        await host.Drop();
+        var cut = await host.Drop();
 
-        await client.Connected(times: 2);
+        await client.Connected(times: 2, after: cut);
 
         await host.Publish("after the drop");
 
@@ -147,11 +148,13 @@ sealed class PushClient : IAsyncDisposable
     readonly List<IDisposable> _subscriptions = [];
     readonly SemaphoreSlim _arrived = new(0);
     readonly SemaphoreSlim _connected = new(0);
+    readonly PushTrail _trail;
 
-    PushClient(ServiceProvider services)
+    PushClient(ServiceProvider services, PushTrail trail)
     {
         _services = services;
         _scope = services.CreateAsyncScope();
+        _trail = trail;
     }
 
     public List<IMessage> Heard { get; } = [];
@@ -168,8 +171,17 @@ sealed class PushClient : IAsyncDisposable
         var services = new ServiceCollection();
 
         // The WebAssembly host composes logging before anything else; the feed says through
-        // it what a listener that failed would otherwise keep quiet.
-        services.AddLogging();
+        // it what a listener that failed would otherwise keep quiet. A provider the suite keeps
+        // is what a browser's console is: with none, a line that never came back takes down
+        // with it every word the feed and the vendor's client said about why (nsail#2082).
+        var trail = new PushTrail();
+
+        services.AddLogging(logging =>
+        {
+            logging.SetMinimumLevel(LogLevel.Debug);
+            logging.AddProvider(trail);
+        });
+
         services.AddMessaging();
 
         // What a kit's Push.Clients target emits, for Rang alone.
@@ -197,7 +209,7 @@ sealed class PushClient : IAsyncDisposable
             });
         }
 
-        var client = new PushClient(services.BuildServiceProvider());
+        var client = new PushClient(services.BuildServiceProvider(), trail);
 
         client._subscriptions.Add(client.Mediator.Subscribe<PushConnected>((_, _) =>
         {
@@ -218,14 +230,22 @@ sealed class PushClient : IAsyncDisposable
 
     int _connections;
 
-    /// <summary>Waits until the feed has said it is listening this many times in all.</summary>
-    public async Task Connected(int times)
+    /// <summary>Waits until the feed has said it is listening this many times in all. What the
+    /// server did just before is the caller's to pass: a wait that ends in nothing is read from
+    /// its own message or not at all, and the two halves of a drop are each other's
+    /// explanation.</summary>
+    public async Task Connected(int times, string? after = null)
     {
         while (_connections < times)
         {
             if (!await _connected.WaitAsync(Patience))
             {
-                throw new TimeoutException($"The feed said it was listening {_connections} time(s), not {times}.");
+                throw new TimeoutException(string.Join(
+                    Environment.NewLine,
+                    $"The feed said it was listening {_connections} time(s), not {times}, within {Patience.TotalSeconds:0}s.",
+                    after is null ? "The server was not asked to do anything." : $"The server: {after}",
+                    "The client:",
+                    _trail.ToString()));
             }
 
             _connections++;
@@ -390,12 +410,11 @@ sealed class PushHost : IAsyncDisposable
         return new PushHost(app, severance);
     }
 
-    /// <summary>The server cuts every open line, as a restart or a proxy timeout would.</summary>
-    public Task Drop()
+    /// <summary>The server cuts every open line, as a restart or a proxy timeout would, and says
+    /// what it cut.</summary>
+    public Task<string> Drop()
     {
-        _severance.Drop();
-
-        return Task.CompletedTask;
+        return Task.FromResult(_severance.Drop());
     }
 
     public async Task<string> SignIn()
@@ -513,10 +532,15 @@ sealed class Severance : IHubFilter
         });
     }
 
-    public void Drop()
+    public string Drop()
     {
+        int hubs;
+        int streams;
+
         lock (_hubs)
         {
+            hubs = _hubs.Count;
+
             foreach (var connection in _hubs)
             {
                 connection.Abort();
@@ -527,12 +551,79 @@ sealed class Severance : IHubFilter
 
         lock (_streams)
         {
+            streams = _streams.Count;
+
             foreach (var line in _streams)
             {
                 line.Abort();
             }
 
             _streams.Clear();
+        }
+
+        return $"cut {hubs} hub line(s) and {streams} event stream(s).";
+    }
+}
+
+/// <summary>What the client said while it ran, for a wait that ended in nothing to carry: the
+/// feed's own log and the vendor client's underneath it, which is where a reconnect that never
+/// started and one that was refused differ.</summary>
+sealed class PushTrail : ILoggerProvider
+{
+    readonly List<string> _said = [];
+
+    public ILogger CreateLogger(string categoryName)
+    {
+        return new Pen(this, categoryName);
+    }
+
+    public void Dispose()
+    {
+    }
+
+    public override string ToString()
+    {
+        lock (_said)
+        {
+            return _said.Count is 0 ? "  said nothing." : string.Join(Environment.NewLine, _said);
+        }
+    }
+
+    void Say(string line)
+    {
+        lock (_said)
+        {
+            _said.Add("  " + line);
+        }
+    }
+
+    sealed class Pen : ILogger
+    {
+        readonly PushTrail _trail;
+        readonly string _category;
+
+        public Pen(PushTrail trail, string category)
+        {
+            _trail = trail;
+            _category = category;
+        }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            var failure = exception is null ? string.Empty : $" — {exception.GetType().Name}: {exception.Message}";
+
+            _trail.Say($"{logLevel} {_category.Split('.')[^1]}: {formatter(state, exception)}{failure}");
         }
     }
 }
