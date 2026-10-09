@@ -322,7 +322,9 @@ same tenant**, published again through the client's own Mediator. A screen hears
   project's `services.AddPush(origin)` in its own `Program.cs` — `HubFeed`
   (`NSail.Messaging.SignalR`) or `SseFeed` (`NSail.Messaging.Sse`), which carries no vendor
   client into the download. `NSail.BaseServices.Wasm` references neither, because a transport
-  referenced there is one every client pays for whether it opens a feed or not. What the two
+  referenced there — declared or transitive — is one every client pays for whether it opens a
+  feed or not; `WasmDownloadClosureTests` is what keeps it out (baseservices.md, Wasm
+  bootstrap). What the two
   feeds owe equally is one rule and not one per transport: the closed-list dispatch and the
   logged listener failure (`PushDispatch`) and the retry ladder (`PushRetry`), both
   `NSail.Messaging.Runtime`. The push only ever flows server → browser, which is why SSE
