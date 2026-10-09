@@ -41,7 +41,7 @@ public sealed class PushTests
     public async Task APushedEventReachesTheSignedInClientsMediator(Transport transport)
     {
         await using var host = await PushHost.Start();
-        await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
+        await using var client = await host.Listen(transport);
 
         await host.Publish("the shop moved");
 
@@ -59,7 +59,7 @@ public sealed class PushTests
     public async Task ANameTheClientDidNotRegisterIsNeverPublished(Transport transport)
     {
         await using var host = await PushHost.Start();
-        await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
+        await using var client = await host.Listen(transport);
 
         await host.Whisper();
         await host.Publish("after the whisper");
@@ -91,7 +91,7 @@ public sealed class PushTests
     static async Task ALineTheServerDropsComesBack(Transport transport)
     {
         await using var host = await PushHost.Start();
-        await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
+        await using var client = await host.Listen(transport);
 
         var cut = await host.Drop();
 
@@ -371,6 +371,8 @@ sealed class PushHost : IAsyncDisposable
     readonly WebApplication _app;
     readonly Severance _severance;
 
+    int _listening;
+
     PushHost(WebApplication app, Severance severance)
     {
         _app = app;
@@ -419,6 +421,18 @@ sealed class PushHost : IAsyncDisposable
         await app.StartAsync();
 
         return new PushHost(app, severance);
+    }
+
+    /// <summary>A signed-in client listening over this transport, handed back once the SERVER
+    /// holds its line — never on the client's word alone, which is a line the server may not
+    /// have registered yet and so an audience a publish does not reach.</summary>
+    public async Task<PushClient> Listen(Transport transport)
+    {
+        var client = await PushClient.Listen(Server, transport, await SignIn());
+
+        await Held(lines: ++_listening);
+
+        return client;
     }
 
     /// <summary>The server cuts every line it is holding, as a restart or a proxy timeout would,
