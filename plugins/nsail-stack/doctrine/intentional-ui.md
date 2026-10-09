@@ -186,8 +186,11 @@ section glyph is never one of its cards'** — a section names the
 whole module, so a card wearing it says "Productos" where it meant "Stock Bajo"
 (`CardSectionGlyphTests`). What is shared is the **symbol, not the constant**: one Material
 Symbol pasted a second time under another name is the same picture, so a catalog entry declares
-which symbol it is and the rule is measured on that. Missing from the catalog, add it (the
-`new-icon` skill) rather than borrow a neighbour's (cases).
+which symbol it is and the rule is measured on that. And the pair can never be written in the
+first place: **one drawing, one entry** across every catalog in the tree — no entry pastes a
+symbol another declares, and no two entries hold one markup (`CatalogGlyphTests`), so the rules
+above are measured on pictures a reader meets rather than on bytes. Missing from the catalog,
+add it (the `new-icon` skill) rather than borrow a neighbour's (cases).
 
 ---
 
@@ -684,9 +687,11 @@ lines are placed: [ui/navigation.md](ui/navigation.md); the cards' host: [ui/hos
   the child, label and all, and a nav section's name is the domain's map — Compras must stay
   Compras, not become Órdenes de Compra. The main nav flattens by shape at the contributor
   instead, which keeps the name (cases).
-- **Icons are named through catalogs, never `Icons.Material.*` in kits or apps.** `NsIcons` is
-  the generic UI vocabulary; each app adds a domain catalog (`OpticalIcons.Prescription`).
-  **Grow both on demand** — the `new-icon` skill carries the procedure.
+- **Icons are named through catalogs, never `Icons.Material.*` in kits or apps.** Three kinds:
+  `NsIcons` is the generic UI vocabulary; a kit adds one for what it speaks and no product owns
+  — a shared domain concept (`ProductsIcons.LowStock`) or a vendor's own mark (`AppleIcons`);
+  an app adds one for its own domain (`OpticalIcons.Prescription`). **Grow all three on
+  demand**, one drawing to one entry — the `new-icon` skill carries the procedure.
 
 ---
 
