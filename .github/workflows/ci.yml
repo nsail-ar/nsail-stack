@@ -102,17 +102,41 @@ jobs:
           npm run typecheck
           npm test
 
-      # TEMPORARY, nsail-ar/nsail#2082: the two drop cases, ten times on a hosted runner, which
-      # is the one place the race shows. Removed before this branch merges; the story's PR
+      # TEMPORARY, nsail-ar/nsail#2082: the two drop cases ten times over, each round six
+      # concurrent test hosts — the load the race needs, and the one the solution's own test run
+      # puts on a four-core hosted runner. Removed before this branch merges; the story's PR
       # carries the output.
-      - name: The drop, ten times
+      - name: The drop, ten rounds of six
         run: |
-          for run in $(seq 1 10); do
-            echo "=== run $run"
-            dotnet test test/Stack/BaseServices/NSail.BaseServices.WebApi.Tests/NSail.BaseServices.WebApi.Tests.csproj \
-              --configuration Release --no-build \
-              --filter "FullyQualifiedName~ComesBackAndSaysSo" || echo "=== run $run RED"
+          project=test/Stack/BaseServices/NSail.BaseServices.WebApi.Tests/NSail.BaseServices.WebApi.Tests.csproj
+          reds=0
+
+          for round in $(seq 1 10); do
+            echo "=== round $round"
+
+            for host in 1 2 3 4 5 6; do
+              dotnet test "$project" --configuration Release --no-build \
+                --filter "FullyQualifiedName~ComesBackAndSaysSo" \
+                --results-directory "/tmp/drop/$round/$host" > "/tmp/drop-$round-$host.log" 2>&1 &
+            done
+
+            wait || true
+
+            for host in 1 2 3 4 5 6; do
+              log="/tmp/drop-$round-$host.log"
+
+              if grep -q "Failed!" "$log"; then
+                reds=$((reds + 1))
+                echo "--- round $round host $host RED"
+                sed -n '/Error Message/,/Stack Trace/p' "$log"
+              else
+                grep -h "Passed!" "$log" | sed "s/^/round $round host $host /" || true
+              fi
+            done
           done
+
+          echo "=== rounds red: $reds"
+          test "$reds" -eq 0
 
       - name: Test
         run: dotnet test NSail.sln --configuration Release --no-build
