@@ -74,9 +74,9 @@ public sealed class WasmDownloadClosureTests
 
             message.AppendLine();
             message.AppendLine(
-                $"Does EVERY Wasm client need it? If not, declare it on the host or kit that does " +
-                $"and compose it from that host's own Program.cs, the way a push transport is " +
-                $"(baseservices.md, Wasm bootstrap). If it is universal, add it here WITH the reason, " +
+                "Does EVERY Wasm client need it? If not, declare it on the host or kit that does " +
+                "and compose it from that host's own Program.cs, the way a push transport is " +
+                "(baseservices.md, Wasm bootstrap). If it is universal, add it here WITH the reason, " +
                 "and measure what it costs a download before you do.");
         }
 
