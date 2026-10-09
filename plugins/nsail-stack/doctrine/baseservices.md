@@ -382,6 +382,14 @@ whether it opens a feed or not. A host that listens references `NSail.Messaging.
 nothing and composes the closed `PushFeed` with `AddMessaging` (messaging.md, Pushed to
 clients).
 
+**Every Wasm client references `NSail.BaseServices.Wasm`, so what rides into a download is its
+reference CLOSURE, not only what it declares** — a transitive reference costs exactly what a
+declared one does. The closure is closed, and held closed by a test rather than by this page:
+`WasmDownloadClosureTests` (`NSail.BaseServices.Wasm.Tests`) names every project and package in
+it with the reason every Wasm client needs that one, and goes red the moment one more arrives.
+A reference only some clients need goes on the host or kit that needs it, composed from that
+host's own `Program.cs`; adding it here adds it to every client's download at once.
+
 ---
 
 ## HTTP clients configuration
