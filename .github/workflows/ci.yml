@@ -102,12 +102,20 @@ jobs:
           npm run typecheck
           npm test
 
+      # TEMPORARY, nsail-ar/nsail#2082: the two drop cases, ten times on a hosted runner, which
+      # is the one place the race shows. Removed before this branch merges; the story's PR
+      # carries the output.
+      - name: The drop, ten times
+        run: |
+          for run in $(seq 1 10); do
+            echo "=== run $run"
+            dotnet test test/Stack/BaseServices/NSail.BaseServices.WebApi.Tests/NSail.BaseServices.WebApi.Tests.csproj \
+              --configuration Release --no-build \
+              --filter "FullyQualifiedName~ComesBackAndSaysSo" || echo "=== run $run RED"
+          done
+
       - name: Test
-        # One test is held out while nsail-ar/nsail#2082 finds why a line the server cuts
-        # sometimes never comes back; it fails most runs here and would block every publish.
-        run: >-
-          dotnet test NSail.sln --configuration Release --no-build
-          --filter "FullyQualifiedName!=NSail.BaseServices.WebApi.Tests.PushTests.ALineTheServerDropsComesBackAndSaysSo"
+        run: dotnet test NSail.sln --configuration Release --no-build
 
       - name: Pack
         run: dotnet pack NSail.sln --configuration Release --no-build -p:Version=$VERSION --output artifacts
