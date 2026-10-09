@@ -2,16 +2,16 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
-using NSail.SourceGenerator.Generation.SignalR.Models;
+using NSail.SourceGenerator.Generation.Push.Models;
 
-namespace NSail.SourceGenerator.Generation.SignalR;
+namespace NSail.SourceGenerator.Generation.Push;
 
 [Generator]
-public class SignalRHubsSourceGenerator : IIncrementalGenerator
+public class PushPublishersSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var generatedMethods = context.FindGeneratedSymbols(outputType: TargetIds.SignalR_Hubs);
+        var generatedMethods = context.FindGeneratedSymbols(outputType: TargetIds.Push_Publishers);
 
         var models = generatedMethods
             .Combine(context.CompilationProvider)
@@ -21,6 +21,6 @@ public class SignalRHubsSourceGenerator : IIncrementalGenerator
                 return PushModelFactory.Create(methodSymbol, compilation);
             });
 
-        context.RegisterSourceOutput(models, PushModelRenderer.RenderHubs);
+        context.RegisterSourceOutput(models, PushModelRenderer.RenderPublishers);
     }
 }

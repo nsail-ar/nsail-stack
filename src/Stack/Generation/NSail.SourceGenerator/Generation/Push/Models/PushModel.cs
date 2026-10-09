@@ -3,7 +3,7 @@
 
 using Microsoft.CodeAnalysis;
 
-namespace NSail.SourceGenerator.Generation.SignalR.Models;
+namespace NSail.SourceGenerator.Generation.Push.Models;
 
 public class PushModel
 {

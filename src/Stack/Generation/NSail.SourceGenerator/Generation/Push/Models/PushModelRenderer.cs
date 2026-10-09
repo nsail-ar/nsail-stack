@@ -4,18 +4,18 @@
 using Microsoft.CodeAnalysis;
 using NSail.SourceGenerator.Templating;
 
-namespace NSail.SourceGenerator.Generation.SignalR.Models;
+namespace NSail.SourceGenerator.Generation.Push.Models;
 
 public static class PushModelRenderer
 {
-    public static void RenderHubs(SourceProductionContext spc, PushModel model)
+    public static void RenderPublishers(SourceProductionContext spc, PushModel model)
     {
-        Render(spc, model, "SignalRHubsSetup");
+        Render(spc, model, "PushPublishersSetup");
     }
 
     public static void RenderClients(SourceProductionContext spc, PushModel model)
     {
-        Render(spc, model, "SignalRClientsSetup");
+        Render(spc, model, "PushClientsSetup");
     }
 
     static void Render(SourceProductionContext spc, PushModel model, string templateName)

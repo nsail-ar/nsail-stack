@@ -6,7 +6,7 @@ using NSail.Serialization;
 
 namespace NSail.Messaging.Runtime.Publishing;
 
-/// <summary>One <c>[Pushed]</c> message a client composition knows, as the SignalR.Clients
+/// <summary>One <c>[Pushed]</c> message a client composition knows, as the Push.Clients
 /// target registers it. The feed publishes only what is registered here: the server's word
 /// picks which entry, never which type a string becomes.</summary>
 public abstract class PushedMessage
