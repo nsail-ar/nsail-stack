@@ -33,7 +33,7 @@ One suffix, one meaning. A form listed here is owned by its family across the wh
 | `*Accessor` | reads an ambient the framework wrote, and nothing else — the `IHttpContextAccessor` shape: injected, virtual so a test hands over a fixture, with no way for user code to write what it answers | `MessageContextAccessor` |
 | `*Settings` | settings POCO; storage key derives from the type | `ThemeSettings` |
 | `*EventArgs` | component event payload | `QueryEventArgs`, `ProblemEventArgs` |
-| `*Icons` | semantic icon catalog | `NsIcons`, `OpticalIcons` |
+| `*Icons` | semantic icon catalog — the Stack's generic vocabulary, a kit's for what it speaks and no product owns (a shared domain concept, or a vendor's own mark), an app's for its own domain; one drawing has one entry across all of them (the `new-icon` skill) | `NsIcons`, `ProductsIcons`, `OpticalIcons` |
 | `Glyph` | one entry of an icon catalog — the SVG markup a control draws | `NsIcons.Add` |
 | `Surface` | one of the app's browsing contexts, named — a surface, a reserved link target, or a browser target | `Surfaces.Aside` |
 | `*Job` | contributed unit of recurring background work — implements `IBackgroundJob`, registered with `AddBackgroundJob<T>()`; the runner runs it on its own `Interval` under `Session.System()`, once per tenant or once for the install as its `Tenancy` says | `HorizonJob` |
