@@ -97,6 +97,11 @@ public sealed class PushTests
 
         await client.Connected(times: 2, after: cut);
 
+        // The second line is the client's word, and the server registers it after the handshake
+        // the client returns on: a publish aimed at an audience the line has not joined yet
+        // reaches nobody.
+        await host.Held(lines: 2);
+
         await host.Publish("after the drop");
 
         Assert.Equal("after the drop", (await client.Next<Rang>()).Text);
@@ -149,12 +154,14 @@ sealed class PushClient : IAsyncDisposable
     readonly SemaphoreSlim _arrived = new(0);
     readonly SemaphoreSlim _connected = new(0);
     readonly PushTrail _trail;
+    readonly Transport _transport;
 
-    PushClient(ServiceProvider services, PushTrail trail)
+    PushClient(ServiceProvider services, PushTrail trail, Transport transport)
     {
         _services = services;
         _scope = services.CreateAsyncScope();
         _trail = trail;
+        _transport = transport;
     }
 
     public List<IMessage> Heard { get; } = [];
@@ -209,7 +216,7 @@ sealed class PushClient : IAsyncDisposable
             });
         }
 
-        var client = new PushClient(services.BuildServiceProvider(), trail);
+        var client = new PushClient(services.BuildServiceProvider(), trail, transport);
 
         client._subscriptions.Add(client.Mediator.Subscribe<PushConnected>((_, _) =>
         {
@@ -242,7 +249,7 @@ sealed class PushClient : IAsyncDisposable
             {
                 throw new TimeoutException(string.Join(
                     Environment.NewLine,
-                    $"The feed said it was listening {_connections} time(s), not {times}, within {Patience.TotalSeconds:0}s.",
+                    $"The {_transport} feed said it was listening {_connections} time(s), not {times}, within {Patience.TotalSeconds:0}s.",
                     after is null ? "The server was not asked to do anything." : $"The server: {after}",
                     "The client:",
                     _trail.ToString()));
@@ -267,7 +274,11 @@ sealed class PushClient : IAsyncDisposable
 
             if (!await _arrived.WaitAsync(Patience))
             {
-                throw new TimeoutException($"Nothing of {typeof(TMessage).Name} arrived.");
+                throw new TimeoutException(string.Join(
+                    Environment.NewLine,
+                    $"Nothing of {typeof(TMessage).Name} arrived over the {_transport} feed within {Patience.TotalSeconds:0}s.",
+                    "The client:",
+                    _trail.ToString()));
             }
         }
     }
@@ -410,11 +421,18 @@ sealed class PushHost : IAsyncDisposable
         return new PushHost(app, severance);
     }
 
-    /// <summary>The server cuts every open line, as a restart or a proxy timeout would, and says
-    /// what it cut.</summary>
+    /// <summary>The server cuts every line it is holding, as a restart or a proxy timeout would,
+    /// and says what it cut. It waits for one if it holds none yet.</summary>
     public Task<string> Drop()
     {
-        return Task.FromResult(_severance.Drop());
+        return _severance.Drop();
+    }
+
+    /// <summary>Waits until the server has accepted this many lines in all — a reconnect's line
+    /// is the next one, and a line it has not accepted yet is in no audience.</summary>
+    public Task Held(int lines)
+    {
+        return _severance.Held(lines);
     }
 
     public async Task<string> SignIn()
@@ -499,20 +517,40 @@ static class PushProbes
 /// <summary>Holds every line the server accepted, over either transport, so a test can cut them
 /// from the server's side — the one end a client cannot fake. A hub connection is taken by a
 /// filter; an event-stream line IS its request, so it is taken as the request goes past and cut
-/// through the one handle a request has on its own connection.</summary>
+/// through the one handle a request has on its own connection.
+///
+/// <para>The two ends do not agree on when a line exists, which is why nothing here is read
+/// off the client's word (nsail#2082): the handshake a <c>HubConnection</c> returns on goes out
+/// before the server runs the hub's <c>OnConnectedAsync</c>, so a client that says it is
+/// listening may be a line this holds nothing of — and cutting what it does not hold cuts
+/// nothing, which is a reconnect that never had anything to answer.</para></summary>
 sealed class Severance : IHubFilter
 {
+    // The server's registration may lag the client's word by a whole scheduling delay on a
+    // loaded runner, which is where the race was first seen; shorter than the client's patience
+    // so a line that never arrives is named here rather than as a reconnect that never came.
+    static readonly TimeSpan Patience = TimeSpan.FromSeconds(20);
+
     readonly List<HubCallerContext> _hubs = [];
     readonly List<IHttpRequestLifetimeFeature> _streams = [];
+    readonly SemaphoreSlim _accepted = new(0);
+
+    int _lines;
+    int _cut;
 
     public async Task OnConnectedAsync(HubLifetimeContext context, Func<HubLifetimeContext, Task> next)
     {
+        // After the hub's own OnConnectedAsync, never before it: a line counts as accepted once
+        // it has joined the audience a publish goes to, and the handshake the client counts as
+        // connected is already on its way by the time any of this runs.
+        await next(context);
+
         lock (_hubs)
         {
             _hubs.Add(context.Context);
         }
 
-        await next(context);
+        _accepted.Release();
     }
 
     public void Watch(WebApplication app)
@@ -522,17 +560,46 @@ sealed class Severance : IHubFilter
             if (context.Request.Path.StartsWithSegments("/" + PushFeed.SsePath)
                 && context.Features.Get<IHttpRequestLifetimeFeature>() is { } line)
             {
+                // Before next, not after it: the stream IS this request, and the request only
+                // returns when the line is over.
                 lock (_streams)
                 {
                     _streams.Add(line);
                 }
+
+                _accepted.Release();
             }
 
             await next(context);
         });
     }
 
-    public string Drop()
+    /// <summary>Waits until the server has accepted this many lines in all. The count only ever
+    /// grows, so the line a reconnect opens is the next one.</summary>
+    public async Task Held(int lines)
+    {
+        while (_lines < lines)
+        {
+            if (!await _accepted.WaitAsync(Patience))
+            {
+                throw new TimeoutException($"The server accepted {_lines} line(s), not {lines}, within {Patience.TotalSeconds:0}s.");
+            }
+
+            _lines++;
+        }
+    }
+
+    /// <summary>Cuts every line the server is holding, waiting first for one it has not cut
+    /// yet — a drop that cut nothing is not a drop, and it reads as a feed that never came
+    /// back.</summary>
+    public async Task<string> Drop()
+    {
+        await Held(_cut + 1);
+
+        return Cut();
+    }
+
+    string Cut()
     {
         int hubs;
         int streams;
@@ -560,6 +627,11 @@ sealed class Severance : IHubFilter
 
             _streams.Clear();
         }
+
+        // What a drop may wait for next is one line more than every line ever cut, counted here
+        // rather than off the waits: a line accepted and cut without a wait of its own is still
+        // a line this no longer holds.
+        _cut += hubs + streams;
 
         return $"cut {hubs} hub line(s) and {streams} event stream(s).";
     }
