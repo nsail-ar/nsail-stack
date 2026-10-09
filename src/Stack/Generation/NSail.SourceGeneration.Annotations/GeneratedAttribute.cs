@@ -20,12 +20,12 @@ public enum Http
     InProcess = 23,
 }
 
-public enum SignalR
+public enum Push
 {
-    /// <summary>A PushPublisher per [Pushed] message in scope, registered as one of its IPublishers (server side: a publish also reaches the tenant's open clients).</summary>
-    Hubs = 31,
+    /// <summary>A PushPublisher per [Pushed] message in scope, registered as one of its IPublishers (server side: a publish also reaches the tenant's open clients, over every transport the host serves).</summary>
+    Publishers = 31,
 
-    /// <summary>A PushedMessage per [Pushed] message in scope, the closed list a client's HubFeed publishes from (client side; counterpart of Hubs, as Http.Clients is of Http.Endpoints).</summary>
+    /// <summary>A PushedMessage per [Pushed] message in scope, the closed list a client's feed publishes from (client side; counterpart of Publishers, as Http.Clients is of Http.Endpoints).</summary>
     Clients = 32,
 }
 
@@ -63,7 +63,7 @@ public class GeneratedAttribute : Attribute
     {
     }
 
-    public GeneratedAttribute(SignalR artifact)
+    public GeneratedAttribute(Push artifact)
     {
     }
 

@@ -9,17 +9,17 @@ using NSail.Messaging.Runtime;
 using NSail.Messaging.WebApi.Push;
 using NSail.SourceGeneration.Annotations;
 using NSail.SourceGeneration.Testing;
-using NSail.SourceGenerator.Generation.SignalR;
+using NSail.SourceGenerator.Generation.Push;
 using System.Collections.Immutable;
 using System.Linq;
 
-namespace NSail.SourceGenerator.Tests.SignalR;
+namespace NSail.SourceGenerator.Tests.Push;
 
-/// <summary>nsail#1480: the push's two ends are generated from one walk, so what the hub sends
-/// is exactly what a client can name. Each test compiles what it generates against the real
+/// <summary>nsail#1480: the push's two ends are generated from one walk, so what the server
+/// sends is exactly what a client can name. Each test compiles what it generates against the real
 /// Stack types — a registration that named a missing publisher or entry would be an error
 /// here, not a push that silently never arrives.</summary>
-public class SignalRTests
+public class PushTests
 {
     const string Messages = """
         using Microsoft.Extensions.DependencyInjection;
@@ -40,13 +40,13 @@ public class SignalRTests
         """;
 
     [Fact]
-    public void TheHubRegistersAPublisherForEveryPushedMessageAndNothingElse()
+    public void TheServerRegistersAPublisherForEveryPushedMessageAndNothingElse()
     {
-        var generated = Generate(new SignalRHubsSourceGenerator(), """
-            public static partial class Hubs
+        var generated = Generate(new PushPublishersSourceGenerator(), """
+            public static partial class Publishers
             {
-                [Generated(SignalR.Hubs)]
-                public static partial void AddInboxHubs(this IServiceCollection services);
+                [Generated(Push.Publishers)]
+                public static partial void AddInboxPushPublishers(this IServiceCollection services);
             }
             """);
 
@@ -61,11 +61,11 @@ public class SignalRTests
     [Fact]
     public void TheClientRegistersAnEntryForTheSameSet()
     {
-        var generated = Generate(new SignalRClientsSourceGenerator(), """
+        var generated = Generate(new PushClientsSourceGenerator(), """
             public static partial class Clients
             {
-                [Generated(SignalR.Clients)]
-                public static partial void AddInboxSignalRClients(this IServiceCollection services);
+                [Generated(Push.Clients)]
+                public static partial void AddInboxPushClients(this IServiceCollection services);
             }
             """);
 
@@ -81,16 +81,16 @@ public class SignalRTests
     [Fact]
     public void PushedOnATypeThatIsNotAMessageIsABuildError()
     {
-        var diagnostics = Diagnose(new SignalRHubsSourceGenerator(), """
+        var diagnostics = Diagnose(new PushPublishersSourceGenerator(), """
             [Pushed]
             public class NotAMessage
             {
             }
 
-            public static partial class Hubs
+            public static partial class Publishers
             {
-                [Generated(SignalR.Hubs)]
-                public static partial void AddInboxHubs(this IServiceCollection services);
+                [Generated(Push.Publishers)]
+                public static partial void AddInboxPushPublishers(this IServiceCollection services);
             }
             """);
 
@@ -105,7 +105,7 @@ public class SignalRTests
     [Fact]
     public void PushedEventWithAPropertyIsABuildError()
     {
-        var diagnostics = Diagnose(new SignalRClientsSourceGenerator(), """
+        var diagnostics = Diagnose(new PushClientsSourceGenerator(), """
             [Pushed]
             public class InboxRowMoved : IMessage
             {
@@ -114,8 +114,8 @@ public class SignalRTests
 
             public static partial class Clients
             {
-                [Generated(SignalR.Clients)]
-                public static partial void AddInboxSignalRClients(this IServiceCollection services);
+                [Generated(Push.Clients)]
+                public static partial void AddInboxPushClients(this IServiceCollection services);
             }
             """);
 
@@ -162,6 +162,6 @@ public class SignalRTests
             .AddContainingAssembly<PushPublisher<IMessage>>()
             .AddContainingAssembly<Microsoft.AspNetCore.SignalR.Hub>()
             .AddContainingAssembly<Microsoft.AspNetCore.SignalR.IHubContext<PushHub>>()
-            .Build("SignalRTestAssembly");
+            .Build("PushTestAssembly");
     }
 }

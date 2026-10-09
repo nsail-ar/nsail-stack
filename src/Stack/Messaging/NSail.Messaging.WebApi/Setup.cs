@@ -33,17 +33,22 @@ public static class Setup
         }
     }
 
-    /// <summary>The server's end of the push: the hub its clients listen on and the audience a
-    /// publish reaches. Which messages are pushed is the SignalR.Hubs target's, per kit.</summary>
+    /// <summary>The server's end of the push: both transports its clients can listen over and
+    /// the audience a publish reaches. Which messages are pushed is the Push.Publishers
+    /// target's, per kit.</summary>
     public static void AddPush(this IServiceCollection services)
     {
         services.AddSignalR();
+        services.TryAddSingleton<PushStreams>();
         services.TryAddScoped<PushAudience>();
     }
 
+    /// <summary>Both roads, always: which one a seat listens over is its own composition's, so
+    /// the server serves either and a publish goes out on both.</summary>
     public static void MapPush(this WebApplication app)
     {
         app.MapHub<PushHub>("/" + PushFeed.Path);
+        app.MapGet("/" + PushFeed.SsePath, PushSse.Listen).RequireAuthorization();
     }
 
     public static void AddErrorHandler(this IServiceCollection services)

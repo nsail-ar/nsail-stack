@@ -13,9 +13,9 @@ public static class TargetIds
 
     public const int Http_InProcess = 23;
 
-    public const int SignalR_Hubs = 31;
+    public const int Push_Publishers = 31;
 
-    public const int SignalR_Clients = 32;
+    public const int Push_Clients = 32;
 
     public const int MassTransit_Consumers = 41;
 

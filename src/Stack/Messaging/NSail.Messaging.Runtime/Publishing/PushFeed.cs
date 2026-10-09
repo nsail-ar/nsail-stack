@@ -12,13 +12,20 @@ namespace NSail.Messaging.Runtime.Publishing;
 /// the server, which prerenders and is the end that publishes, among them.</para></summary>
 public class PushFeed
 {
-    /// <summary>Where the server listens, relative to the host's own origin. Under <c>api/</c>
-    /// so an unauthenticated connect is answered 401 rather than redirected to sign-in.</summary>
+    /// <summary>Where the server listens for a hub connection, relative to the host's own
+    /// origin. Under <c>api/</c> so an unauthenticated connect is answered 401 rather than
+    /// redirected to sign-in.</summary>
     public const string Path = "api/push";
+
+    /// <summary>Where the server listens for a Server-Sent Events line. Both paths are mapped
+    /// always and the client alone picks, by which transport its composition takes: the server
+    /// cannot know which one a given seat chose, so a publish reaches both.</summary>
+    public const string SsePath = Path + "/sse";
 
     /// <summary>The one method a client listens for: the event's type name and its body in the
     /// wire's own JSON, so the hub's protocol never has to know an NSail type. Held here because
-    /// both ends read it and the server's assembly is one a WebAssembly client cannot take.</summary>
+    /// both ends read it and the server's assembly is one a WebAssembly client cannot take.
+    /// An event-stream frame needs no method — the name is the frame's own event field.</summary>
     public const string Method = "Pushed";
 
     /// <summary>Starts listening, and keeps trying until it is closed. Idempotent, and it

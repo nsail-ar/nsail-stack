@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
@@ -17,7 +18,6 @@ using NSail.Messaging;
 using NSail.Messaging.Annotations;
 using NSail.Messaging.Runtime;
 using NSail.Messaging.Runtime.Publishing;
-using NSail.Messaging.SignalR;
 using NSail.Messaging.WebApi.Push;
 
 namespace NSail.BaseServices.WebApi.Tests;
@@ -25,19 +25,22 @@ namespace NSail.BaseServices.WebApi.Tests;
 /// <summary>nsail#1480: a server-side publish of a <c>[Pushed]</c> event reaches a signed-in
 /// client's own Mediator, where a screen hears it with the Subscribe it already uses.
 ///
-/// <para>Both ends are the shipped ones: <c>AddBaseWebApi</c>/<c>UseBaseWebApi</c> on the server,
-/// and on the client the <c>HubFeed</c> a browser runs, composed by <c>AddPush</c> with only
-/// the transport swapped for the in-memory server's. What the SignalR targets emit per message
-/// is registered here by hand, in the exact shape the generator's own tests pin. The tenant
-/// wall over the same push is <see cref="PushTenancyTests"/>, which needs the slot's
-/// Postgres.</para></summary>
+/// <para>Every fact runs over both transports (nsail#1850): the server maps both roads always
+/// and only the client's composition picks, so neither one may answer differently. Both ends
+/// are the shipped ones — <c>AddBaseWebApi</c>/<c>UseBaseWebApi</c> on the server, and on the
+/// client the feed a browser runs, composed by its own <c>AddPush</c> with only the handler
+/// swapped for the in-memory server's. What the push targets emit per message is registered
+/// here by hand, in the exact shape the generator's own tests pin. The tenant wall over the
+/// same push is <see cref="PushTenancyTests"/>, which needs the slot's Postgres.</para></summary>
 public sealed class PushTests
 {
-    [Fact]
-    public async Task APushedEventReachesTheSignedInClientsMediator()
+    [Theory]
+    [InlineData(Transport.Hub)]
+    [InlineData(Transport.Sse)]
+    public async Task APushedEventReachesTheSignedInClientsMediator(Transport transport)
     {
         await using var host = await PushHost.Start();
-        await using var client = await PushClient.Listen(host.Server, await host.SignIn());
+        await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
 
         await host.Publish("the shop moved");
 
@@ -49,11 +52,13 @@ public sealed class PushTests
     // The client publishes from the closed list its composition registered, whatever the server
     // sends: a name it does not know is dropped. Sent FIRST on the same line, so the known one
     // arriving alone is proof the other was heard and not published.
-    [Fact]
-    public async Task ANameTheClientDidNotRegisterIsNeverPublished()
+    [Theory]
+    [InlineData(Transport.Hub)]
+    [InlineData(Transport.Sse)]
+    public async Task ANameTheClientDidNotRegisterIsNeverPublished(Transport transport)
     {
         await using var host = await PushHost.Start();
-        await using var client = await PushClient.Listen(host.Server, await host.SignIn());
+        await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
 
         await host.Whisper();
         await host.Publish("after the whisper");
@@ -66,11 +71,26 @@ public sealed class PushTests
     // The push replays nothing it carried while the line was down, so the catch-up rests on one
     // promise: every time the line comes back, the feed says so (PushConnected) and every
     // listener re-reads. A drop the server forces must end in that event and a working line.
+    //
+    // A case per transport rather than a theory's two rows: CI holds the hub's out by its full
+    // name while nsail#2082 finds why a line it cuts sometimes never comes back, and a row's
+    // name carries its argument (.github/workflows/ci.yml).
     [Fact]
     public async Task ALineTheServerDropsComesBackAndSaysSo()
     {
+        await ALineTheServerDropsComesBack(Transport.Hub);
+    }
+
+    [Fact]
+    public async Task AnEventStreamTheServerDropsComesBackAndSaysSo()
+    {
+        await ALineTheServerDropsComesBack(Transport.Sse);
+    }
+
+    static async Task ALineTheServerDropsComesBack(Transport transport)
+    {
         await using var host = await PushHost.Start();
-        await using var client = await PushClient.Listen(host.Server, await host.SignIn());
+        await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
 
         await host.Drop();
 
@@ -81,28 +101,26 @@ public sealed class PushTests
         Assert.Equal("after the drop", (await client.Next<Rang>()).Text);
     }
 
-    // The hub answers a signed-in session alone, and under api/ an anonymous connect is told so
+    // The push answers a signed-in session alone, and under api/ an anonymous connect is told so
     // rather than redirected to a sign-in page it cannot follow.
-    [Fact]
-    public async Task AnAnonymousConnectIsRefused()
+    [Theory]
+    [InlineData(Transport.Hub)]
+    [InlineData(Transport.Sse)]
+    public async Task AnAnonymousConnectIsRefused(Transport transport)
     {
         await using var host = await PushHost.Start();
 
-        var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(PushHost.Origin, PushFeed.Path), options =>
-            {
-                options.HttpMessageHandlerFactory = _ => host.Server.CreateHandler();
-                options.Transports = HttpTransportType.LongPolling;
-            })
-            .Build();
-
-        await using (connection)
-        {
-            var refused = await Assert.ThrowsAsync<HttpRequestException>(() => connection.StartAsync());
-
-            Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, await PushRefusal.Of(host.Server, transport));
     }
+}
+
+/// <summary>Which road a client listens over — the only thing that differs between the two, and
+/// its own composition's to pick.</summary>
+public enum Transport
+{
+    Hub,
+
+    Sse,
 }
 
 [Pushed]
@@ -120,7 +138,7 @@ public sealed class Whispered : IMessage
 /// and every pushed event it publishes recorded through an ordinary subscription.</summary>
 sealed class PushClient : IAsyncDisposable
 {
-    // Past HubFeed's third retry (2s, then 10s after it): a slow host can miss the first two,
+    // Past the feed's third retry (2s, then 10s after it): a slow host can miss the first two,
     // and a patience shorter than the schedule fails a reconnect that was still on its way.
     static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 
@@ -145,7 +163,7 @@ sealed class PushClient : IAsyncDisposable
 
     /// <summary>Opens the feed and returns once it is listening — which the feed itself says,
     /// through the event every listener catches up on.</summary>
-    public static async Task<PushClient> Listen(TestServer server, string? ticket, string? tenant = null)
+    public static async Task<PushClient> Listen(TestServer server, Transport transport, string? ticket, string? tenant = null)
     {
         var services = new ServiceCollection();
 
@@ -154,24 +172,30 @@ sealed class PushClient : IAsyncDisposable
         services.AddLogging();
         services.AddMessaging();
 
-        // What a kit's SignalR.Clients target emits, for Rang alone.
+        // What a kit's Push.Clients target emits, for Rang alone.
         services.AddSingleton<PushedMessage>(new PushedMessage<Rang>());
 
-        services.AddPush(PushHost.Origin, options =>
+        // Each AddPush is its own transport project's, and this one assembly composes both: the
+        // call is named in full so nothing here turns on which using is in scope.
+        if (transport is Transport.Hub)
         {
-            options.HttpMessageHandlerFactory = _ => server.CreateHandler();
-            options.Transports = HttpTransportType.LongPolling;
-
-            if (ticket is not null)
+            Messaging.SignalR.Setup.AddPush(services, PushHost.Origin, options =>
             {
-                options.Headers["Cookie"] = ticket;
-            }
+                options.HttpMessageHandlerFactory = _ => server.CreateHandler();
+                options.Transports = HttpTransportType.LongPolling;
 
-            if (tenant is not null)
+                PushRefusal.Headers(options.Headers, ticket, tenant);
+            });
+        }
+        else
+        {
+            Messaging.Sse.Setup.AddPush(services, PushHost.Origin, options =>
             {
-                options.Headers[TenancyMiddleware.TenantHeader] = tenant;
-            }
-        });
+                options.HttpMessageHandlerFactory = server.CreateHandler;
+
+                PushRefusal.Headers(options.Headers, ticket, tenant);
+            });
+        }
 
         var client = new PushClient(services.BuildServiceProvider());
 
@@ -252,6 +276,63 @@ sealed class PushClient : IAsyncDisposable
     }
 }
 
+/// <summary>What the server answers a connect it will not have, over either transport: the hub
+/// throws the status out of its start, an event-stream request simply answers it.</summary>
+static class PushRefusal
+{
+    public static async Task<HttpStatusCode?> Of(TestServer server, Transport transport, string? ticket = null, string? tenant = null)
+    {
+        if (transport is Transport.Hub)
+        {
+            var connection = new HubConnectionBuilder()
+                .WithUrl(new Uri(PushHost.Origin, PushFeed.Path), options =>
+                {
+                    options.HttpMessageHandlerFactory = _ => server.CreateHandler();
+                    options.Transports = HttpTransportType.LongPolling;
+
+                    Headers(options.Headers, ticket, tenant);
+                })
+                .Build();
+
+            await using (connection)
+            {
+                var refused = await Assert.ThrowsAsync<HttpRequestException>(() => connection.StartAsync());
+
+                return refused.StatusCode;
+            }
+        }
+
+        using var client = server.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(PushHost.Origin, PushFeed.SsePath));
+
+        foreach (var header in Headers(new Dictionary<string, string>(StringComparer.Ordinal), ticket, tenant))
+        {
+            request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+        return response.StatusCode;
+    }
+
+    /// <summary>What a browser would have sent by itself: the session's cookie, and the tenant
+    /// the host it was served from stands for.</summary>
+    public static IDictionary<string, string> Headers(IDictionary<string, string> headers, string? ticket, string? tenant)
+    {
+        if (ticket is not null)
+        {
+            headers["Cookie"] = ticket;
+        }
+
+        if (tenant is not null)
+        {
+            headers[TenancyMiddleware.TenantHeader] = tenant;
+        }
+
+        return headers;
+    }
+}
+
 sealed class PushHost : IAsyncDisposable
 {
     public static readonly Uri Origin = new("https://localhost/");
@@ -298,6 +379,8 @@ sealed class PushHost : IAsyncDisposable
         var app = builder.Build();
 
         app.UseBaseWebApi();
+
+        severance.Watch(app);
 
         PushProbes.MapSignIn(app);
         PushProbes.MapPublishes(app);
@@ -356,8 +439,8 @@ sealed class PushHost : IAsyncDisposable
 /// the request's own Mediator.</summary>
 static class PushProbes
 {
-    // What a kit's SignalR.Hubs target emits — for both probes, so it is the client's list that
-    // decides what a browser publishes.
+    // What a kit's Push.Publishers target emits — for both probes, so it is the client's list
+    // that decides what a browser publishes.
     public static void Register(IServiceCollection services)
     {
         services.AddScoped<IPublisher<Rang>, PushPublisher<Rang>>();
@@ -394,32 +477,62 @@ static class PushProbes
     }
 }
 
-/// <summary>Holds every connection the hub accepted, so a test can cut them from the server's
-/// side — the one end a client cannot fake.</summary>
-sealed class Severance : Microsoft.AspNetCore.SignalR.IHubFilter
+/// <summary>Holds every line the server accepted, over either transport, so a test can cut them
+/// from the server's side — the one end a client cannot fake. A hub connection is taken by a
+/// filter; an event-stream line IS its request, so it is taken as the request goes past and cut
+/// through the one handle a request has on its own connection.</summary>
+sealed class Severance : IHubFilter
 {
-    readonly List<Microsoft.AspNetCore.SignalR.HubCallerContext> _open = [];
+    readonly List<HubCallerContext> _hubs = [];
+    readonly List<IHttpRequestLifetimeFeature> _streams = [];
 
-    public async Task OnConnectedAsync(Microsoft.AspNetCore.SignalR.HubLifetimeContext context, Func<Microsoft.AspNetCore.SignalR.HubLifetimeContext, Task> next)
+    public async Task OnConnectedAsync(HubLifetimeContext context, Func<HubLifetimeContext, Task> next)
     {
-        lock (_open)
+        lock (_hubs)
         {
-            _open.Add(context.Context);
+            _hubs.Add(context.Context);
         }
 
         await next(context);
     }
 
+    public void Watch(WebApplication app)
+    {
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/" + PushFeed.SsePath)
+                && context.Features.Get<IHttpRequestLifetimeFeature>() is { } line)
+            {
+                lock (_streams)
+                {
+                    _streams.Add(line);
+                }
+            }
+
+            await next(context);
+        });
+    }
+
     public void Drop()
     {
-        lock (_open)
+        lock (_hubs)
         {
-            foreach (var connection in _open)
+            foreach (var connection in _hubs)
             {
                 connection.Abort();
             }
 
-            _open.Clear();
+            _hubs.Clear();
+        }
+
+        lock (_streams)
+        {
+            foreach (var line in _streams)
+            {
+                line.Abort();
+            }
+
+            _streams.Clear();
         }
     }
 }

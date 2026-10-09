@@ -303,19 +303,30 @@ is a stale card, caught by someone looking at the screen.
 
 **A server-side publish of a `[Pushed]` event also reaches every open client signed in to the
 same tenant**, published again through the client's own Mediator. A screen hears it with the
-`Subscribe` it already uses; nothing in a page, a card or a kit's client code names SignalR.
+`Subscribe` it already uses; nothing in a page, a card or a kit's client code names a transport.
 
 - **The declaration rides the event** (`[Pushed]`, `NSail.Messaging.Annotations`), as `[Http]`
   and `[Throttled]` ride theirs. Nothing is registered per event, and nothing is pushed that
   did not say so.
-- **It is generated, per kit, at both ends** (generation.md, `SignalR.Hubs` /
-  `SignalR.Clients`). The server end registers a `PushPublisher<T>` as one more `IPublisher<T>`
-  beside the in-process one; it sends the message's name (`PushedMessage<T>.Key`, the full
-  type name — the one rule both ends read) and its body in `JsonOptions.Wire` to the group of
-  this scope's `PushAudience`. The client end registers a `PushedMessage<T>` per message, and
-  `HubFeed` (`NSail.Messaging.SignalR`, composed by `builder.AddPush()` in a Wasm host)
-  publishes only what that closed list names — the server's word picks an entry, never which
-  type a string becomes, and nothing is reflected at runtime.
+- **It is generated, per kit, at both ends** (generation.md, `Push.Publishers` /
+  `Push.Clients`), and neither end names a transport. The server end registers a
+  `PushPublisher<T>` as one more `IPublisher<T>` beside the in-process one; it sends the
+  message's name (`PushedMessage<T>.Key`, the full type name — the one rule both ends read) and
+  its body in `JsonOptions.Wire` to this scope's `PushAudience`, on every road at once. The
+  client end registers a `PushedMessage<T>` per message, and the feed publishes only what that
+  closed list names — the server's word picks an entry, never which type a string becomes, and
+  nothing is reflected at runtime.
+- **Two transports, and the client picks.** Both are mapped always, so the server cannot know
+  which one a seat chose: SignalR at `PushFeed.Path` and Server-Sent Events at
+  `PushFeed.SsePath`. A Wasm host picks by which transport project it references and calls that
+  project's `services.AddPush(origin)` in its own `Program.cs` — `HubFeed`
+  (`NSail.Messaging.SignalR`) or `SseFeed` (`NSail.Messaging.Sse`), which carries no vendor
+  client into the download. `NSail.BaseServices.Wasm` references neither, because a transport
+  referenced there is one every client pays for whether it opens a feed or not. What the two
+  feeds owe equally is one rule and not one per transport: the closed-list dispatch and the
+  logged listener failure (`PushDispatch`) and the retry ladder (`PushRetry`), both
+  `NSail.Messaging.Runtime`. The push only ever flows server → browser, which is why SSE
+  carries all of it.
 - **Not exclusive with anything.** Publish is broadcast: the event still reaches every
   server-side `IHandler` and subscription in-process, and the push is one more audience.
   `[Pushed]` says nothing about `Send`; a message that is sent is a command, not something
@@ -327,22 +338,27 @@ same tenant**, published again through the client's own Mediator. A screen hears
   Channels). The generator holds the rule: a `[Pushed]` event with a public property is
   `NSG003`, and `[Pushed]` on a type that is not an `IMessage` is `NSG002` — build errors,
   never a silent skip (generation.md, Diagnostics).
-- **The wall is the edge's.** `PushHub` (`NSail.Messaging.WebApi`, `[Authorize]`, mapped by
-  `UseBaseWebApi` at `PushFeed.Path`, under `api/` so an anonymous connect is a 401) joins each
-  connection to its scope's `PushAudience`, and a publish reaches the same one. The Stack's
+- **The wall is the edge's.** Both doors are `NSail.Messaging.WebApi`'s, mapped by
+  `UseBaseWebApi` under `api/` so an anonymous connect is a 401 and not a redirect to a
+  sign-in page a feed cannot follow: `PushHub` (`[Authorize]`) joins each connection to its
+  scope's `PushAudience`, and the event-stream endpoint (`RequireAuthorization`) holds its line
+  in the audience its own request resolved — a stream IS its request, so that answer stands for
+  as long as the line does. A publish reaches the same audience on both. The Stack's
   messaging knows no tenant, so the audience is a seam: the install's one by default, the
   tenant's under `AddBaseWebApi` (`TenantPushAudience`) — the tenant `TenancyMiddleware`
   resolved for the request, after `TenantClaimMiddleware` refused a ticket minted for another.
-  A client says nothing on the hub; it only listens.
+  A client says nothing on either door; it only listens.
 - **Nothing is replayed.** What was pushed before a line was up — before the first connect
-  or during a drop — is gone, and `HubFeed` publishes `PushConnected` every time the line comes
+  or during a drop — is gone, and the feed publishes `PushConnected` every time the line comes
   up. A listener that keeps a screen current through a pushed event asks again on it: the
-  catch-up is its own read. The feed retries forever on a fixed ladder — the first connect,
-  a drop, and a line the server closed cleanly (a deploy stopping, an aborted connection),
-  which SignalR's own reconnect leaves closed (`PushTests`, the drop) — except when the hub refuses the session (401/403: a cookie that expired, a
-  ticket for another tenant): then it stops, and the sign-in that follows reloads the app and
-  opens a feed of its own. A listener that throws on a pushed event or on `PushConnected` is
-  logged through `ILogger<HubFeed>`, never swallowed.
+  catch-up is its own read. The feed retries forever on a fixed ladder (`PushRetry`) — the first
+  connect, a drop, and a line the server closed cleanly (a deploy stopping, an aborted
+  connection), which SignalR's own reconnect leaves closed (`PushTests`, the drop) — except when
+  the server refuses the session (401/403: a cookie that expired, a ticket for another tenant):
+  then it stops, and the sign-in that follows reloads the app and opens a feed of its own. A
+  line that falls so far behind that its queue fills is dropped rather than held, for the same
+  reason: the reconnect is the catch-up. A listener that throws on a pushed event or on
+  `PushConnected` is logged, never swallowed.
 - **The chrome opens it.** `NsSetup` calls `PushFeed.Open()` for a signed-in session and
   `Close()` on sign-out, because it is the one root every page renders under, in the scope the
   screens subscribe in. A host with no transport composes the closed `PushFeed`
@@ -351,8 +367,9 @@ same tenant**, published again through the client's own Mediator. A screen hears
   same publish, so an event that tells clients to re-read is published after the event the
   re-read depends on returns (`DbChannelJournal.Moved`: Tickets' routing files the arrival,
   then the clients are told).
-- **One process.** Groups live in the process that holds the connections. A second replica of a
-  product host needs a SignalR backplane before it ships.
+- **One process.** A group and an open stream alike live in the process that holds the
+  connection. A second replica of a product host needs a backplane — SignalR's for the hub, and
+  for the streams something that carries a publish between processes — before it ships.
 
 ---
 

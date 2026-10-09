@@ -25,8 +25,10 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\..\..\src\Stack\BaseServices\NSail.BaseServices.WebApi\NSail.BaseServices.WebApi.csproj" />
-        <!-- The client end of the push, so a test listens through the feed a browser runs. -->
+        <!-- Both client ends of the push, so a test listens through either feed a browser runs
+             and neither transport can answer differently. -->
         <ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.SignalR\NSail.Messaging.SignalR.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.Sse\NSail.Messaging.Sse.csproj" />
     </ItemGroup>
 
     <ItemGroup>

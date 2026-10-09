@@ -14,7 +14,6 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Http\NSail.Messaging.Http.csproj" />
-		<ProjectReference Include="..\..\Messaging\NSail.Messaging.SignalR\NSail.Messaging.SignalR.csproj" />
 	</ItemGroup>
 
 </Project>

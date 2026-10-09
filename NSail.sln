@@ -57,6 +57,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSail.Messaging.Http", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSail.Messaging.SignalR", "src\Stack\Messaging\NSail.Messaging.SignalR\NSail.Messaging.SignalR.csproj", "{F867109C-D54C-461A-AC80-9424D36F63F0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSail.Messaging.Sse", "src\Stack\Messaging\NSail.Messaging.Sse\NSail.Messaging.Sse.csproj", "{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSail.BaseServices.WebApi", "src\Stack\BaseServices\NSail.BaseServices.WebApi\NSail.BaseServices.WebApi.csproj", "{11EDFA93-70EF-42FA-A029-36B00563D42F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSail.Messaging.Annotations", "src\Stack\Messaging\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj", "{60C46BF9-14F3-454A-8795-CA88D70FE090}"
@@ -927,6 +929,18 @@ Global
 		{281CCD27-BB30-471F-AA29-968B6D9FFE6F}.Release|x64.Build.0 = Release|Any CPU
 		{281CCD27-BB30-471F-AA29-968B6D9FFE6F}.Release|x86.ActiveCfg = Release|Any CPU
 		{281CCD27-BB30-471F-AA29-968B6D9FFE6F}.Release|x86.Build.0 = Release|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Debug|x64.Build.0 = Debug|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Debug|x86.Build.0 = Debug|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Release|Any CPU.Build.0 = Release|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Release|x64.ActiveCfg = Release|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Release|x64.Build.0 = Release|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Release|x86.ActiveCfg = Release|Any CPU
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -1027,5 +1041,6 @@ Global
 		{A2D81E1E-E32C-F19F-DCAA-C46E22B9736E} = {1CB27DF2-68EC-EA27-6BFE-C95CC7FFEFAD}
 		{7D54C809-F16B-4A21-85C4-2822AB271045} = {A2D81E1E-E32C-F19F-DCAA-C46E22B9736E}
 		{281CCD27-BB30-471F-AA29-968B6D9FFE6F} = {A2D81E1E-E32C-F19F-DCAA-C46E22B9736E}
+		{756AFCF1-FB4F-4FDE-BE82-968D1F4FE910} = {CDC24BBC-DBF2-4E58-6140-76DBCF20ACC8}
 	EndGlobalSection
 EndGlobal

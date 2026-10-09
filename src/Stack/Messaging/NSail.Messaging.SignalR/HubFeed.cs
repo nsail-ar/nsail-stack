@@ -14,33 +14,16 @@ namespace NSail.Messaging.SignalR;
 /// opens it rather than the host at boot.</summary>
 public sealed class HubFeed : PushFeed, IAsyncDisposable
 {
-    // After the first try, how long to wait before the next one; the last figure repeats for as
-    // long as the tab stays open. A server restarting is the common drop and comes back inside
-    // the first few, and a laptop that slept for an hour still reconnects on its own.
-    static readonly TimeSpan[] Delays =
-    [
-        TimeSpan.Zero,
-        TimeSpan.FromSeconds(2),
-        TimeSpan.FromSeconds(10),
-        TimeSpan.FromSeconds(30),
-    ];
-
-    readonly Mediator _mediator;
     readonly PushConnection _connect;
-    readonly ILogger<HubFeed> _logger;
-    readonly Dictionary<string, PushedMessage> _known;
+    readonly PushDispatch _dispatch;
 
     HubConnection? _connection;
     CancellationTokenSource? _opened;
 
-    // What the composition's SignalR.Clients targets registered, one per [Pushed] message of
-    // every kit this client mounts.
     public HubFeed(Mediator mediator, PushConnection connect, IEnumerable<PushedMessage> known, ILogger<HubFeed> logger)
     {
-        _mediator = mediator;
         _connect = connect;
-        _logger = logger;
-        _known = known.ToDictionary(pushed => pushed.Name, StringComparer.Ordinal);
+        _dispatch = new PushDispatch(mediator, known, logger);
     }
 
     public override void Open()
@@ -54,11 +37,11 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
 
         var connection = _connect.Build(new Retry());
 
-        connection.On<string, string>(PushFeed.Method, Receive);
+        connection.On<string, string>(PushFeed.Method, _dispatch.Receive);
 
         // The catch-up is the listeners' own read: whatever was published while the line was
         // down is not replayed, so they are told to ask.
-        connection.Reconnected += _ => Connected();
+        connection.Reconnected += _ => _dispatch.Connected();
 
         // The automatic reconnect answers a line that dropped with an error, and only that: a
         // server that closes it cleanly — a deploy stopping, a connection it aborted — ends in
@@ -130,7 +113,7 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
             {
                 // Nothing to say out loud: the screens still answer every read, and the next
                 // attempt is already scheduled.
-                await Wait(attempt, cancellationToken);
+                await PushRetry.Wait(attempt, cancellationToken);
 
                 continue;
             }
@@ -141,55 +124,9 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
 
             // The first connect is a catch-up too: a screen that read before the line came up
             // has missed whatever was pushed in between.
-            await Connected();
+            await _dispatch.Connected();
 
             return;
-        }
-    }
-
-    static async Task Wait(int attempt, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await Task.Delay(Delay(attempt), cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            // Closed while waiting: the loop reads the token and stops.
-        }
-    }
-
-    // What arrived, published here as if it had been raised on this side. A name this
-    // composition did not register is dropped: the server's word picks an entry from the closed
-    // list, never which type a string deserializes into.
-    async Task Receive(string name, string body)
-    {
-        if (!_known.TryGetValue(name, out var pushed))
-        {
-            return;
-        }
-
-        try
-        {
-            await pushed.Publish(_mediator, body, CancellationToken.None);
-        }
-        catch (Exception failure)
-        {
-            // The hub's handler would swallow it, and a listener that failed to re-read is
-            // exactly the stale screen the push exists to prevent: said, never silent.
-            _logger.LogError(failure, "A listener of the pushed event {Name} failed.", name);
-        }
-    }
-
-    async Task Connected()
-    {
-        try
-        {
-            await _mediator.Publish(new PushConnected());
-        }
-        catch (Exception failure)
-        {
-            _logger.LogError(failure, "A listener failed on the push connecting; its catch-up read did not happen.");
         }
     }
 
@@ -198,11 +135,6 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
     static bool Refused(Exception failure)
     {
         return failure is HttpRequestException { StatusCode: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden };
-    }
-
-    static TimeSpan Delay(int attempt)
-    {
-        return Delays[Math.Min(attempt, Delays.Length - 1)];
     }
 
     sealed class Retry : IRetryPolicy
@@ -214,7 +146,7 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
                 return null;
             }
 
-            return Delay((int)retryContext.PreviousRetryCount);
+            return PushRetry.Delay((int)retryContext.PreviousRetryCount);
         }
     }
 }

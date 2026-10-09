@@ -4,7 +4,7 @@
 using Microsoft.CodeAnalysis;
 using NSail.SourceGenerator.Roslyn;
 
-namespace NSail.SourceGenerator.Generation.SignalR.Models;
+namespace NSail.SourceGenerator.Generation.Push.Models;
 
 public static class PushModelFactory
 {

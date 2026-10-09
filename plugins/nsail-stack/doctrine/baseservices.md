@@ -40,7 +40,7 @@ app.Run();
 
 `AddBaseWebApi(builder)` registers: telemetry (`AddTelemetry`, first — see below), messaging
 runtime (`AddMessaging`), error handler middleware, authorization services, Swagger/OpenAPI,
-and the push's server end — SignalR, the hub, and the tenant as its audience
+and the push's server end — both transports, their two doors, and the tenant as its audience
 (`TenantPushAudience`; messaging.md, Pushed to clients).
 
 `UseBaseWebApi(app)` configures, in order:
@@ -367,13 +367,20 @@ The language is decided **once per page load, on the server**:
 
 ```csharp
 builder.AddHttpClients();              // the Wasm extension — builds the WasmUrlResolver from HostEnvironment
-builder.AddPush();                     // the server's push, on the same origin (HubFeed)
 builder.Services.AddComponentServices();
 builder.Services.AddMessaging();
+builder.Services.AddPush(new Uri(builder.HostEnvironment.BaseAddress));  // the transport this host references
 builder.Services.AddOpticalWasm();     // app-specific
 ```
 
 Client hosts need HTTP client configuration for remote `Send` via `ISender`.
+
+The push's transport is the host's own line, not a preset's: `NSail.BaseServices.Wasm`
+references no transport project, because one referenced there rides in every client's download
+whether it opens a feed or not. A host that listens references `NSail.Messaging.Sse` or
+`NSail.Messaging.SignalR` and calls that project's `AddPush`; a host that does not calls
+nothing and composes the closed `PushFeed` with `AddMessaging` (messaging.md, Pushed to
+clients).
 
 ---
 

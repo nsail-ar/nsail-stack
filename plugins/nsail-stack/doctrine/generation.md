@@ -6,7 +6,7 @@ pattern is stable.
 
 The developer writes message types, handler classes, and partial setup methods with
 `[Generated]`. The generator produces DI registration, minimal API endpoint mapping,
-HTTP client senders, the two ends of the SignalR push, and the entity mappers.
+HTTP client senders, the two ends of the push, and the entity mappers.
 
 ---
 
@@ -63,24 +63,27 @@ Defined in `NSail.SourceGeneration.Annotations`:
 | `[Generated(Http.Endpoints)]` | `Http.Endpoints` | `IEndpointEntry` implementations for `[Http]` messages |
 | `[Generated(Http.Clients)]` | `Http.Clients` | `HttpSender<TMessage>` subclasses registered as `ISender<TMessage[, TResult]>` |
 | `[Generated(Http.InProcess)]` | `Http.InProcess` | `ISender<TMessage[, TResult]> → InProcessSender<...>` for `[Http]` messages |
-| `[Generated(SignalR.Hubs)]` | `SignalR.Hubs` | `IPublisher<TMessage> → PushPublisher<TMessage>` for `[Pushed]` messages |
-| `[Generated(SignalR.Clients)]` | `SignalR.Clients` | a `PushedMessage<TMessage>` entry per `[Pushed]` message, the closed list a client's `HubFeed` publishes from |
+| `[Generated(Push.Publishers)]` | `Push.Publishers` | `IPublisher<TMessage> → PushPublisher<TMessage>` for `[Pushed]` messages |
+| `[Generated(Push.Clients)]` | `Push.Clients` | a `PushedMessage<TMessage>` entry per `[Pushed]` message, the closed list a client's feed publishes from |
 | `[Generated(Mappers.Entities)]` | `Mappers.Entities` | an `IEntityMapper<TSource, TEntity>` per `[MapFrom]` and an `IProjection<TEntity, TRow>` per `[MapTo]` in scope |
 
 Each transport groups its artifacts in one enum. For HTTP: `Clients` is the remote send side, `Endpoints` the receive side, and `InProcess` the local counterpart of `Clients` — same `[Http]` contract, dispatched directly to the handler in the host that exposes the endpoints.
 
 `Http.InProcess` is declared in the kit's WebApi setup (same assembly as the handlers) and called from `Add{Kit}WebApi()`. It makes `Mediator.Send` dispatch locally in the host that owns the handlers — required for server-side prerendering of components that send messages. There is no implicit sender fallback and `[Http]` is the gate — the sender-registration semantics live in [messaging.md](messaging.md) (In-process vs remote).
 
-For SignalR, the same pair over `[Pushed]` instead of `[Http]`, both from one walk so what the
-hub sends is exactly what a client can name: `Hubs` is the server side and `Clients` the
-client side. `SignalR.Clients` sits beside `Http.Clients` in the kit's Sdk `Clients.cs`
-(`Add{Kit}SignalRClients`, called from each app's `Browser.cs`); `SignalR.Hubs` sits beside
-`Http.Endpoints` in the WebApi `Endpoints.cs` (`Add{Kit}Hubs`, called from `Add{Kit}WebApi`)
-with `[Source(Assembly = "NSail.{Kit}.Sdk")]` — a pushed event is published from the WebApi
-but declared in the Sdk, and no handler there names it for the default scan to find. The
-generated `Add{Kit}Hubs` composes the push's own services first (`AddPush`: SignalR and the
-install's `PushAudience`), so a composition that mounts the kit alone — a handler harness —
-resolves every publisher it registers; a host that composed the push earlier keeps its own.
+For the push, the same pair over `[Pushed]` instead of `[Http]`, both from one walk so what the
+server sends is exactly what a client can name: `Publishers` is the server side and `Clients`
+the client side. One pair for every transport — nothing generated names one, because which
+transport a client listens over is its own composition's and the server serves them all
+(messaging.md, Pushed to clients). `Push.Clients` sits beside `Http.Clients` in the kit's Sdk
+`Clients.cs` (`Add{Kit}PushClients`, called from each app's `Browser.cs`); `Push.Publishers`
+sits beside `Http.Endpoints` in the WebApi `Endpoints.cs` (`Add{Kit}PushPublishers`, called from
+`Add{Kit}WebApi`) with `[Source(Assembly = "NSail.{Kit}.Sdk")]` — a pushed event is published
+from the WebApi but declared in the Sdk, and no handler there names it for the default scan to
+find. The generated `Add{Kit}PushPublishers` composes the push's own services first (`AddPush`:
+both transports' server halves and the install's `PushAudience`), so a composition that mounts
+the kit alone — a handler harness — resolves every publisher it registers; a host that composed
+the push earlier keeps its own.
 `PushMountTests` (`NSail.Architecture.Tests`) holds both roots of every product to the
 `[Pushed]` messages its host carries, so a forgotten holder fails the build instead of leaving
 a screen stale. Runtime semantics: [messaging.md](messaging.md) (Pushed to clients).
