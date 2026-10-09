@@ -170,6 +170,18 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   collections, bUnit screens and the browser suites all link it per project like
   `FakeSmtpTransport`, and `DrawnHandsetTests` holds it. A fixed literal written once and
   read in the diff is fine, a generated one is the drawer's.
+- **A client's word that it is listening is not the server's state, so a harness that cuts a
+  line waits for the server to be holding one** (`Severance.Held` / `Drop`, `PushTests.cs`).
+  The handshake a `HubConnection.StartAsync` returns on goes out before the server runs the
+  hub's `OnConnectedAsync` — where the connection joins the audience a publish goes to — and
+  nothing orders the two; an event stream's head is flushed before its own hold for the same
+  reason. A drop aimed at a line the server does not hold yet cuts nothing, and a feed with
+  nothing to answer is indistinguishable from one that never reconnects: half the hosted runs
+  of `PushTests`'s drop, each burning its full patience (nsail#2082). The cure is the wait, never
+  a longer patience. The load that lands it is concurrent test hosts, as it is for the bUnit
+  races below — ten isolated runs of the two cases pass on a hosted runner, six at once do not.
+  What a wait that ends in nothing may not do is keep why to itself: the drop says what it cut
+  and the client composes a logging provider, so the timeout carries both ends' story.
 
 ### Handler harnesses
 

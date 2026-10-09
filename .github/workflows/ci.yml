@@ -103,11 +103,7 @@ jobs:
           npm test
 
       - name: Test
-        # One test is held out while nsail-ar/nsail#2082 finds why a line the server cuts
-        # sometimes never comes back; it fails most runs here and would block every publish.
-        run: >-
-          dotnet test NSail.sln --configuration Release --no-build
-          --filter "FullyQualifiedName!=NSail.BaseServices.WebApi.Tests.PushTests.ALineTheServerDropsComesBackAndSaysSo"
+        run: dotnet test NSail.sln --configuration Release --no-build
 
       - name: Pack
         run: dotnet pack NSail.sln --configuration Release --no-build -p:Version=$VERSION --output artifacts

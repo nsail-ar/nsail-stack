@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,11 +38,15 @@ public sealed class TenancyHost : IAsyncDisposable
     static readonly string Server = ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres");
 
     readonly WebApplication _app;
+    readonly Severance _severance;
     readonly List<string> _provisioned = [];
 
-    TenancyHost(WebApplication app, string cell)
+    int _listening;
+
+    TenancyHost(WebApplication app, Severance severance, string cell)
     {
         _app = app;
+        _severance = severance;
         Cell = cell;
     }
 
@@ -139,12 +144,18 @@ public sealed class TenancyHost : IAsyncDisposable
 
         PushProbes.Register(builder.Services);
 
+        // The push's lines, so a listener here is waited for on the server's side as it is in
+        // PushTests: the handshake a client returns on precedes the audience it joins.
+        var severance = new Severance();
+
+        builder.Services.AddSignalR(options => options.AddFilter(severance));
+
         // What a kit holding a tenant's rows in memory registers, recording instead of holding.
         builder.Services.AddTenantCache<ForgottenTenants>();
 
         var app = builder.Build();
 
-        var host = new TenancyHost(app, cell);
+        var host = new TenancyHost(app, severance, cell);
 
         // Every mode but the one that connects per tenant runs on the install's own database,
         // and that database has to exist before the chain is applied to it. SingleDb is here
@@ -157,6 +168,8 @@ public sealed class TenancyHost : IAsyncDisposable
         await app.ApplyMigrations<TenantDbContext>();
 
         app.UseBaseWebApi();
+
+        severance.Watch(app);
 
         Map(app);
 
@@ -251,6 +264,17 @@ public sealed class TenancyHost : IAsyncDisposable
     /// <summary>Signs in through the pipeline and hands back the cookie itself, which is what
     /// makes a ticket carryable: the test client keeps no jar, so a credential only reaches a
     /// second request — or a second tenant's host — because somebody carried it there.</summary>
+    /// <summary>A signed-in client of this tenant listening over this transport, handed back
+    /// once the SERVER holds its line — see <see cref="Severance"/>.</summary>
+    internal async Task<PushClient> Listen(Transport transport, string tenant)
+    {
+        var client = await PushClient.Listen(Pipeline, transport, await SignIn(tenant), tenant);
+
+        await _severance.Held(lines: ++_listening);
+
+        return client;
+    }
+
     public async Task<string> SignIn(string? tenant, bool stamp = true)
     {
         using var response = await Client.SendAsync(Get($"/sign-in?stamp={stamp}", tenant));

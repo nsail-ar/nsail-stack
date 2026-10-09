@@ -34,8 +34,8 @@ public sealed class PushTenancyTests : IAsyncLifetime
     [InlineData(Transport.Sse)]
     public async Task APushedEventReachesItsOwnTenantAlone(Transport transport)
     {
-        await using var lumina = await PushClient.Listen(_host.Pipeline, transport, await _host.SignIn("lumina"), "lumina");
-        await using var vision = await PushClient.Listen(_host.Pipeline, transport, await _host.SignIn("vision"), "vision");
+        await using var lumina = await _host.Listen(transport, "lumina");
+        await using var vision = await _host.Listen(transport, "vision");
 
         await Publish("lumina", "for lumina");
         await Publish("vision", "for vision");

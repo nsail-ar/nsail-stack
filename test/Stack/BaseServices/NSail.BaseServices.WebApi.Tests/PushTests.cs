@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSail.Messaging;
 using NSail.Messaging.Annotations;
 using NSail.Messaging.Runtime;
@@ -40,7 +41,7 @@ public sealed class PushTests
     public async Task APushedEventReachesTheSignedInClientsMediator(Transport transport)
     {
         await using var host = await PushHost.Start();
-        await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
+        await using var client = await host.Listen(transport);
 
         await host.Publish("the shop moved");
 
@@ -58,7 +59,7 @@ public sealed class PushTests
     public async Task ANameTheClientDidNotRegisterIsNeverPublished(Transport transport)
     {
         await using var host = await PushHost.Start();
-        await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
+        await using var client = await host.Listen(transport);
 
         await host.Whisper();
         await host.Publish("after the whisper");
@@ -90,11 +91,16 @@ public sealed class PushTests
     static async Task ALineTheServerDropsComesBack(Transport transport)
     {
         await using var host = await PushHost.Start();
-        await using var client = await PushClient.Listen(host.Server, transport, await host.SignIn());
+        await using var client = await host.Listen(transport);
 
-        await host.Drop();
+        var cut = await host.Drop();
 
-        await client.Connected(times: 2);
+        await client.Connected(times: 2, after: cut);
+
+        // The second line is the client's word, and the server registers it after the handshake
+        // the client returns on: a publish aimed at an audience the line has not joined yet
+        // reaches nobody.
+        await host.Held(lines: 2);
 
         await host.Publish("after the drop");
 
@@ -147,11 +153,15 @@ sealed class PushClient : IAsyncDisposable
     readonly List<IDisposable> _subscriptions = [];
     readonly SemaphoreSlim _arrived = new(0);
     readonly SemaphoreSlim _connected = new(0);
+    readonly PushTrail _trail;
+    readonly Transport _transport;
 
-    PushClient(ServiceProvider services)
+    PushClient(ServiceProvider services, PushTrail trail, Transport transport)
     {
         _services = services;
         _scope = services.CreateAsyncScope();
+        _trail = trail;
+        _transport = transport;
     }
 
     public List<IMessage> Heard { get; } = [];
@@ -168,8 +178,17 @@ sealed class PushClient : IAsyncDisposable
         var services = new ServiceCollection();
 
         // The WebAssembly host composes logging before anything else; the feed says through
-        // it what a listener that failed would otherwise keep quiet.
-        services.AddLogging();
+        // it what a listener that failed would otherwise keep quiet. A provider the suite keeps
+        // is what a browser's console is: with none, a line that never came back took down with
+        // it every word the feed said about why (nsail#2082).
+        var trail = new PushTrail();
+
+        services.AddLogging(logging =>
+        {
+            logging.SetMinimumLevel(LogLevel.Debug);
+            logging.AddProvider(trail);
+        });
+
         services.AddMessaging();
 
         // What a kit's Push.Clients target emits, for Rang alone.
@@ -197,7 +216,7 @@ sealed class PushClient : IAsyncDisposable
             });
         }
 
-        var client = new PushClient(services.BuildServiceProvider());
+        var client = new PushClient(services.BuildServiceProvider(), trail, transport);
 
         client._subscriptions.Add(client.Mediator.Subscribe<PushConnected>((_, _) =>
         {
@@ -218,14 +237,22 @@ sealed class PushClient : IAsyncDisposable
 
     int _connections;
 
-    /// <summary>Waits until the feed has said it is listening this many times in all.</summary>
-    public async Task Connected(int times)
+    /// <summary>Waits until the feed has said it is listening this many times in all. What the
+    /// server did just before is the caller's to pass: a wait that ends in nothing is read from
+    /// its own message or not at all, and the two halves of a drop are each other's
+    /// explanation.</summary>
+    public async Task Connected(int times, string? after = null)
     {
         while (_connections < times)
         {
             if (!await _connected.WaitAsync(Patience))
             {
-                throw new TimeoutException($"The feed said it was listening {_connections} time(s), not {times}.");
+                throw new TimeoutException(string.Join(
+                    Environment.NewLine,
+                    $"The {_transport} feed said it was listening {_connections} time(s), not {times}, within {Patience.TotalSeconds:0}s.",
+                    after is null ? "The server was not asked to do anything." : $"The server: {after}",
+                    "The client:",
+                    _trail.ToString()));
             }
 
             _connections++;
@@ -247,7 +274,11 @@ sealed class PushClient : IAsyncDisposable
 
             if (!await _arrived.WaitAsync(Patience))
             {
-                throw new TimeoutException($"Nothing of {typeof(TMessage).Name} arrived.");
+                throw new TimeoutException(string.Join(
+                    Environment.NewLine,
+                    $"Nothing of {typeof(TMessage).Name} arrived over the {_transport} feed within {Patience.TotalSeconds:0}s.",
+                    "The client:",
+                    _trail.ToString()));
             }
         }
     }
@@ -340,6 +371,8 @@ sealed class PushHost : IAsyncDisposable
     readonly WebApplication _app;
     readonly Severance _severance;
 
+    int _listening;
+
     PushHost(WebApplication app, Severance severance)
     {
         _app = app;
@@ -390,12 +423,30 @@ sealed class PushHost : IAsyncDisposable
         return new PushHost(app, severance);
     }
 
-    /// <summary>The server cuts every open line, as a restart or a proxy timeout would.</summary>
-    public Task Drop()
+    /// <summary>A signed-in client listening over this transport, handed back once the SERVER
+    /// holds its line — never on the client's word alone, which is a line the server may not
+    /// have registered yet and so an audience a publish does not reach.</summary>
+    public async Task<PushClient> Listen(Transport transport)
     {
-        _severance.Drop();
+        var client = await PushClient.Listen(Server, transport, await SignIn());
 
-        return Task.CompletedTask;
+        await Held(lines: ++_listening);
+
+        return client;
+    }
+
+    /// <summary>The server cuts every line it is holding, as a restart or a proxy timeout would,
+    /// and says what it cut. It waits for one if it holds none yet.</summary>
+    public Task<string> Drop()
+    {
+        return _severance.Drop();
+    }
+
+    /// <summary>Waits until the server has accepted this many lines in all — a reconnect's line
+    /// is the next one, and a line it has not accepted yet is in no audience.</summary>
+    public Task Held(int lines)
+    {
+        return _severance.Held(lines);
     }
 
     public async Task<string> SignIn()
@@ -480,20 +531,40 @@ static class PushProbes
 /// <summary>Holds every line the server accepted, over either transport, so a test can cut them
 /// from the server's side — the one end a client cannot fake. A hub connection is taken by a
 /// filter; an event-stream line IS its request, so it is taken as the request goes past and cut
-/// through the one handle a request has on its own connection.</summary>
+/// through the one handle a request has on its own connection.
+///
+/// <para>The two ends do not agree on when a line exists, which is why nothing here is read
+/// off the client's word (nsail#2082): the handshake a <c>HubConnection</c> returns on goes out
+/// before the server runs the hub's <c>OnConnectedAsync</c>, so a client that says it is
+/// listening may be a line this holds nothing of — and cutting what it does not hold cuts
+/// nothing, which is a reconnect that never had anything to answer.</para></summary>
 sealed class Severance : IHubFilter
 {
+    // The server's registration may lag the client's word by a whole scheduling delay on a
+    // loaded runner, which is where the race was first seen; shorter than the client's patience
+    // so a line that never arrives is named here rather than as a reconnect that never came.
+    static readonly TimeSpan Patience = TimeSpan.FromSeconds(20);
+
     readonly List<HubCallerContext> _hubs = [];
     readonly List<IHttpRequestLifetimeFeature> _streams = [];
+    readonly SemaphoreSlim _accepted = new(0);
+
+    int _lines;
+    int _cut;
 
     public async Task OnConnectedAsync(HubLifetimeContext context, Func<HubLifetimeContext, Task> next)
     {
+        // After the hub's own OnConnectedAsync, never before it: a line counts as accepted once
+        // it has joined the audience a publish goes to, and the handshake the client counts as
+        // connected is already on its way by the time any of this runs.
+        await next(context);
+
         lock (_hubs)
         {
             _hubs.Add(context.Context);
         }
 
-        await next(context);
+        _accepted.Release();
     }
 
     public void Watch(WebApplication app)
@@ -503,20 +574,54 @@ sealed class Severance : IHubFilter
             if (context.Request.Path.StartsWithSegments("/" + PushFeed.SsePath)
                 && context.Features.Get<IHttpRequestLifetimeFeature>() is { } line)
             {
+                // Before next, not after it: the stream IS this request, and the request only
+                // returns when the line is over.
                 lock (_streams)
                 {
                     _streams.Add(line);
                 }
+
+                _accepted.Release();
             }
 
             await next(context);
         });
     }
 
-    public void Drop()
+    /// <summary>Waits until the server has accepted this many lines in all. The count only ever
+    /// grows, so the line a reconnect opens is the next one.</summary>
+    public async Task Held(int lines)
     {
+        while (_lines < lines)
+        {
+            if (!await _accepted.WaitAsync(Patience))
+            {
+                throw new TimeoutException($"The server accepted {_lines} line(s), not {lines}, within {Patience.TotalSeconds:0}s.");
+            }
+
+            _lines++;
+        }
+    }
+
+    /// <summary>Cuts every line the server is holding, waiting first for one it has not cut
+    /// yet — a drop that cut nothing is not a drop, and it reads as a feed that never came
+    /// back.</summary>
+    public async Task<string> Drop()
+    {
+        await Held(_cut + 1);
+
+        return Cut();
+    }
+
+    string Cut()
+    {
+        int hubs;
+        int streams;
+
         lock (_hubs)
         {
+            hubs = _hubs.Count;
+
             foreach (var connection in _hubs)
             {
                 connection.Abort();
@@ -527,12 +632,86 @@ sealed class Severance : IHubFilter
 
         lock (_streams)
         {
+            streams = _streams.Count;
+
             foreach (var line in _streams)
             {
                 line.Abort();
             }
 
             _streams.Clear();
+        }
+
+        // What a drop may wait for next is one line more than every line ever cut, counted here
+        // rather than off the waits: a line accepted and cut without a wait of its own is still
+        // a line this no longer holds.
+        _cut += hubs + streams;
+
+        return $"cut {hubs} hub line(s) and {streams} event stream(s).";
+    }
+}
+
+/// <summary>What the client said while it ran, for a wait that ended in nothing to carry — which
+/// is where a reconnect that never started, one still retrying and one the server refused differ.
+/// The feed's own log alone: the vendor's <c>HubConnection</c> takes its logging from a service
+/// collection of its own, and the only hand that could pass this one to it is
+/// <c>PushConnection</c>'s published shape.</summary>
+sealed class PushTrail : ILoggerProvider
+{
+    readonly List<string> _said = [];
+
+    public ILogger CreateLogger(string categoryName)
+    {
+        return new Pen(this, categoryName);
+    }
+
+    public void Dispose()
+    {
+    }
+
+    public override string ToString()
+    {
+        lock (_said)
+        {
+            return _said.Count is 0 ? "  said nothing." : string.Join(Environment.NewLine, _said);
+        }
+    }
+
+    void Say(string line)
+    {
+        lock (_said)
+        {
+            _said.Add("  " + line);
+        }
+    }
+
+    sealed class Pen : ILogger
+    {
+        readonly PushTrail _trail;
+        readonly string _category;
+
+        public Pen(PushTrail trail, string category)
+        {
+            _trail = trail;
+            _category = category;
+        }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            var failure = exception is null ? string.Empty : $" — {exception.GetType().Name}: {exception.Message}";
+
+            _trail.Say($"{logLevel} {_category.Split('.')[^1]}: {formatter(state, exception)}{failure}");
         }
     }
 }
