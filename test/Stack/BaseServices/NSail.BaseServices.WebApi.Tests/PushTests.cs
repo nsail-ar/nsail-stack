@@ -179,8 +179,8 @@ sealed class PushClient : IAsyncDisposable
 
         // The WebAssembly host composes logging before anything else; the feed says through
         // it what a listener that failed would otherwise keep quiet. A provider the suite keeps
-        // is what a browser's console is: with none, a line that never came back takes down
-        // with it every word the feed and the vendor's client said about why (nsail#2082).
+        // is what a browser's console is: with none, a line that never came back took down with
+        // it every word the feed said about why (nsail#2082).
         var trail = new PushTrail();
 
         services.AddLogging(logging =>
@@ -637,9 +637,11 @@ sealed class Severance : IHubFilter
     }
 }
 
-/// <summary>What the client said while it ran, for a wait that ended in nothing to carry: the
-/// feed's own log and the vendor client's underneath it, which is where a reconnect that never
-/// started and one that was refused differ.</summary>
+/// <summary>What the client said while it ran, for a wait that ended in nothing to carry — which
+/// is where a reconnect that never started, one still retrying and one the server refused differ.
+/// The feed's own log alone: the vendor's <c>HubConnection</c> takes its logging from a service
+/// collection of its own, and the only hand that could pass this one to it is
+/// <c>PushConnection</c>'s published shape.</summary>
 sealed class PushTrail : ILoggerProvider
 {
     readonly List<string> _said = [];
