@@ -1146,6 +1146,15 @@
     min-width: 0;
 }
 
+/* The span NsMenu reads Escape and Tab off, wrapped around the trigger and nothing else. It
+   carries no presentation and must not become one: display:contents takes it out of layout
+   entirely, so the trigger stays the flex or grid item its parent already sized — the same
+   reason .ns-link-intercept above is one — and propagation is untouched, which is what lets it
+   be used at all. */
+.ns-menu-keys {
+    display: contents;
+}
+
 /* NsMenu's custom-face activator (Content), the chip's actual clickable surface — a plain
    surface, not a button, so its hover takes the chip's own shape rather than the vendor's
    circular ripple. */

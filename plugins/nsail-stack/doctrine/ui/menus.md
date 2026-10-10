@@ -103,6 +103,28 @@ opens a list of withheld rows is a button that does nothing.
 
 ---
 
+## The list stays the trigger's, and Escape and Tab dismiss it
+
+- **The list stops at a measure, the same one a long lookup list stops at.** A list left to
+  grow outgrows the room under its trigger, and the vendor then turns the whole panel over to
+  the other side: sixteen rows came to 552px and were drawn from the top of the page down to a
+  trigger at its foot, which reads as a list belonging to nothing. Capped, a long list scrolls
+  under the trigger it was opened from. A caller that finds its list scrolling has an ordering
+  question to answer — which rows are worth the first screen — not a measure to raise.
+- **Escape and Tab dismiss the list of a menu the POINTER opened, and that is read off the
+  span around the trigger.** The vendor answers both keys on the list's own wrapper, inside the
+  popover, and hands the cursor to that wrapper only where the gesture that opened the menu was
+  itself a keystroke — so after a click the cursor is still on the trigger and neither key is
+  answered anywhere. The span (`ns-menu-keys`, `display: contents`, so it is not a box) is the
+  first ancestor on the bubble the house owns. Tab belongs there beside Escape because leaving
+  the trigger IS a dismissal: the next field takes the cursor, and a list still standing over it
+  answers for nothing. **Nothing is stopped** — the same Escape still reaches the surface
+  behind, exactly as it does today past an open lookup list ([surfaces.md](surfaces.md)).
+- **An outside click is already the vendor's**, through the overlay it draws for an open menu;
+  the house adds nothing there.
+
+---
+
 ## Nothing renders until the trigger is used
 
 A menu's body is the vendor's popover content, so **the body does not exist on a page nobody
