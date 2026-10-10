@@ -25,6 +25,7 @@
                  @attributes="BoundsAttributes"
                  Format="N2"
                  Culture="@MoneyCulture"
+                 Converter="_figures"
                  Adornment="@(Currency is { Length: > 0 } ? Adornment.End : Adornment.None)"
                  AdornmentText="@Currency"
                  Variant="Variant.Outlined"
@@ -35,6 +36,8 @@
 <NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
 
 @code {
+
+    readonly FigureConverter<TValue> _figures = new();
 
     bool _minSet;
     TValue? _min;

@@ -24,6 +24,7 @@
                  OnKeyDown="Pressing"
                  Format="P"
                  Culture="@FigureCulture"
+                 Converter="_figures"
                  Variant="Variant.Outlined"
                  Margin="Margin.Dense"
                  Error="@HasError()"
@@ -32,6 +33,8 @@
 <NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
 
 @code {
+
+    readonly FigureConverter<TValue> _figures = new();
 
     // Percent is the numeric family too (Story: "los campos se seleccionan al recibir
     // foco").

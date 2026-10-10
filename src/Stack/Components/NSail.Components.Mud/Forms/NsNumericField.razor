@@ -25,6 +25,7 @@
                  @attributes="StepAttribute"
                  Format="@(Format ?? NsQuantityText.Format)"
                  Culture="@FigureCulture"
+                 Converter="_figures"
                  Variant="Variant.Outlined"
                  Margin="Margin.Dense"
                  Error="@HasError()"
@@ -36,6 +37,8 @@
 
     bool _stepSet;
     TValue? _step;
+
+    readonly FigureConverter<TValue> _figures = new();
 
     /// <summary>A domain's own reading of its measure, when the measure has one — a diopter's
     /// signed two decimals, say. Unset writes the plain measure (<c>NsQuantityText.Format</c>),
