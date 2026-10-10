@@ -13,7 +13,7 @@ mechanism these rows are modelled on is [actions.md](actions.md).
 
 | Component | Is |
 |---|---|
-| `NsMenu` | the menu: a trigger (`Icon` or `Content`, named by `Label`, sized by `Size`) and a body |
+| `NsMenu` | the menu: a trigger (`Icon` or `Content`, named by `Label`, sized by `Size`, `Disabled` when its list has nothing to say yet) and a body |
 | `NsMenuItem` | a row — an `ActionItem`, so a row is a link or a command and nothing new is modelled |
 | `NsMenuBlock` | what the menu *says* rather than offers: an identity header, fine print at the foot |
 | `NsMenuDivider` | the rule between two families of rows, for a list whose separation position cannot draw — the toolbar's kebab emits it where `ActionItem.Group` changes ([actions.md](actions.md)) |
@@ -122,6 +122,11 @@ opens a list of withheld rows is a button that does nothing.
   behind, exactly as it does today past an open lookup list ([surfaces.md](surfaces.md)).
 - **An outside click is already the vendor's**, through the overlay it draws for an open menu;
   the house adds nothing there.
+- **`Disabled` is the menu offered and not yet answerable**, for a list with nothing to say YET
+  because the screen around it is half filled — a comparison of what each bench charges, before
+  a lens is on the job. The trigger stays, named and greyed, because withholding it takes the
+  knowledge that the comparison exists along with it. It is **not** the answer for a menu nobody
+  may use: that one is withheld whole, by `Writes` or by what its rows are authorized for.
 
 ---
 

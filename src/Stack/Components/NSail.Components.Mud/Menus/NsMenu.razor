@@ -37,6 +37,7 @@
                  ActivatorContent="@GetActivator()"
                  AnchorOrigin="@(Beside ? Origin.TopRight : null)"
                  MaxHeight="Measure"
+                 Disabled="Disabled"
                  Dense="true">
             @* The body renders where the vendor's popover renders — a sibling of the router — so
                the form's word never reaches a row on its own. This is the one component standing
@@ -92,6 +93,16 @@
     /// clicked, and a nested NsMenu for a submenu.</summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Offered and not yet answerable: the trigger stays on screen, named and greyed,
+    /// and opens nothing. For a menu whose list has nothing to say YET because the screen is
+    /// half filled — a comparison of what each bench charges, before a lens is on the job —
+    /// where withholding the trigger would take the knowledge that the comparison exists along
+    /// with it. It is the same word every other act in the house carries (NsButton, NsPageLink,
+    /// ActionItem.Disabled), and it is not the answer for a menu nobody may use at all: that one
+    /// is withheld whole, by Writes or by the authorization its rows carry.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
 
     /// <summary>Whether what this menu opens is a way IN to the form around it — true like
     /// every act (ActionItem.Writes), so a menu inside an NsForm that refuses writes is

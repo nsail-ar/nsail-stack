@@ -314,6 +314,24 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
         Assert.Null(face.GetAttribute("role"));
     }
 
+    /// <summary>A Disabled menu keeps its trigger — named, greyed, and opening nothing. It is
+    /// the shape of a list that has nothing to say YET, which is not the shape of one nobody may
+    /// use: that one is withheld whole (NsMenuWritabilityTests).</summary>
+    [Fact]
+    public async Task ADisabledMenuKeepsItsTriggerAndOpensNothing()
+    {
+        var cut = Render<MenuHost>(parameters => parameters.Add(host => host.Locked, true));
+
+        var trigger = cut.Find(".mud-menu button");
+
+        Assert.NotNull(trigger.GetAttribute("disabled"));
+        Assert.Equal("Session", trigger.GetAttribute("aria-label"));
+
+        await trigger.ClickAsync(new MouseEventArgs());
+
+        Assert.DoesNotContain("Alpha", cut.Markup, StringComparison.Ordinal);
+    }
+
     /// <summary>Escape and Tab dismiss the list of a menu opened by a CLICK, where the cursor
     /// never left the trigger and the vendor's own handler — read off the list's wrapper inside
     /// the popover — sees neither key. Both are answered on the span around the trigger, because
