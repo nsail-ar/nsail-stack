@@ -529,6 +529,12 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   to open it has no gesture: pressed, it focused the box and opened nothing. What the field is
   for is said by the word in it — the `Buscar {concept}` placeholder — which reads at every
   width where a glyph never did. The (x) is a different control and `Clearable` keeps it.
+- **That placeholder is the posture's own, composed by the field** (`NsAutocomplete`,
+  `GetPlaceholder`), so no lookup and no screen writes one to get it: `Lazy` with nothing given
+  carries the same prompt the fallback label composes (below), a caller's own `Placeholder` wins,
+  and a browsed field carries none — it has the chevron instead. It reads at rest because the
+  vendor floats the label off a placeholder, which is what makes the word an answer to the
+  dropped glyph rather than something the box says only once it has focus.
 
 - **A picker answers to the form's writability the way a field does, and reads it off
   `NsPickerBase`.** A `*Lookup` or a hand-rolled `*Select` is not an `NsFieldBase` — it
@@ -602,11 +608,13 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   here and never under the field. **A field nobody may write to asks nothing**: `ReadOnly` and
   `Disabled` govern the row's second level too, not only the box — the contract is the picker's,
   and moving the question into the list does not hand it to the list.
-- **The prompt is composed, never written per entity.** With no translated member key,
-  `NsAutocomplete` falls back to the item type's concept (`Metadata.KeyFor(typeof(TItem))` —
-  "Directory.PartyRef" → "Personas") formatted into the Stack template `Common.SearchPrompt`
-  ("Buscar {0}" → "Buscar Personas"). A specific member key still wins. There is no
-  `*.Search` key family and no suffix anywhere.
+- **The prompt is composed, never written per entity.** The item type's concept
+  (`Metadata.KeyFor(typeof(TItem))` — "Directory.PartyRef" → "Personas") formatted into the Stack
+  template `Common.SearchPrompt` ("Buscar {0}" → "Buscar Personas"). It is the LABEL where no
+  translated member key names the field, and the PLACEHOLDER of a `Lazy` box that was given none
+  (above) — one prompt, two places it can be the only word. A specific member key still wins, and
+  so does a `Placeholder` a caller wrote. There is no `*.Search` key family and no suffix
+  anywhere; a concept with no translation composes nothing (an untranslated key is not a prompt).
 
 ### The create entry
 

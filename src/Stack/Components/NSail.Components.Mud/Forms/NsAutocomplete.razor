@@ -27,7 +27,8 @@
    offers it cannot keep: pressing it focuses the box and opens nothing, which is a control
    that says a lookup can be browsed when the whole point of Lazy is that it cannot
    (nsail#2168). What the field is for is said by the word in the box — the "Buscar
-   {concept}" placeholder — and that reads at every width, which a glyph never did. *@
+   {concept}" placeholder, which GetPlaceholder composes — and that reads at every width,
+   which a glyph never did. *@
 
 @* ShrinkLabel is declared off the VALUE for the reason NsSelect's is: the vendor floats the
    label off the box's own text, and a bound value reads as text only once OnLoad has resolved
@@ -42,7 +43,7 @@
                  ToStringFunc="GetItemText"
                  ItemTemplate="@ItemTemplate"
                  Label="@GetLabel()"
-                 Placeholder="@Placeholder"
+                 Placeholder="@GetPlaceholder()"
                  ShrinkLabel="@HoldsValue"
                  Required="IsRequired"
                  Disabled="IsDisabled"
@@ -191,12 +192,42 @@
     // own. The concept keeps its own capital, which is what the label rule asks for.
     protected override string? FallbackLabel(string key)
     {
-        if (TryGetConcept(out var concept))
+        if (TryGetPrompt(out var prompt))
         {
-            return string.Format(Strings.Translate("Common.SearchPrompt"), concept);
+            return prompt;
         }
 
         return base.FallbackLabel(key);
+    }
+
+    // The word a LAZY box carries, where the adornment the posture dropped was the only other
+    // thing saying the field is searched rather than browsed. It is the same composed prompt,
+    // so a lookup still carries no search string of its own, and it reads at REST: the vendor
+    // floats the label off a placeholder, which is what keeps the word from waiting for focus
+    // the glyph never waited for. A caller's own Placeholder wins — blank included, the way a
+    // blank Label asks for no label — and a browsed field, which draws the chevron, gets none.
+    string? GetPlaceholder()
+    {
+        if (Placeholder is not null || !Lazy)
+        {
+            return Placeholder;
+        }
+
+        return TryGetPrompt(out var prompt) ? prompt : null;
+    }
+
+    bool TryGetPrompt(out string prompt)
+    {
+        if (!TryGetConcept(out var concept))
+        {
+            prompt = string.Empty;
+
+            return false;
+        }
+
+        prompt = string.Format(Strings.Translate("Common.SearchPrompt"), concept);
+
+        return true;
     }
 
     bool TryGetConcept(out string concept)
