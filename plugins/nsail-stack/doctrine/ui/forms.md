@@ -79,8 +79,13 @@ loses the event, because the swallow is never armed for it to begin with.
 that puts the cursor on its own non-interactive fallback div when it opens, and it does so AFTER
 the form's call — so a create form in a dialog took the cursor and lost it in the same tick, and
 the vendor's `DefaultFocus` option does not withdraw that gesture. `focusFirst` takes it back on
-the next animation frame, which is after the trap, and only where something actually moved it: on
-a page nothing does and the second pass is a no-op.
+the next animation frame, which is after the trap — **and takes it back only from the trap's own
+landing place, never from a control**: an `input`, a `select`, a `textarea`, a `button` or a link
+holding the cursor one frame later is a hand's own reach, and that frame is not the 16ms it reads
+as — measured against a real host it is 490-640ms wide, a person's whole reach for the box they
+are aiming at. Taking the cursor off that box hands the keystrokes that follow to the field it is
+taken back to, and a lookup opens its list on the TEXT, which the swallow above does not cover
+(nsail#2169). On a page nothing moves it and the second pass is a no-op.
 
 - **Whether a screen counts as "create" is derived, by two independent signals, either enough**
   — never a parameter a page sets, so the behavior lands on every create screen without a line

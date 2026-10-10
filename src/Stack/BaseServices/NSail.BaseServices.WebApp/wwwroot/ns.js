@@ -189,15 +189,33 @@
             // Conectar un Calendario (nsail#2000, traced in a browser: ours, then Blazor's
             // FocusAsync for the trap). The vendor's DefaultFocus option does not withdraw that
             // gesture -- measured, None behaves as Element does. The next frame is after the
-            // trap, so the cursor is taken back there, once, and only where something really
-            // moved it: on a page nothing does and this reads as a no-op.
+            // trap, so the cursor is taken back there, once -- but ONLY from the trap's own
+            // landing place, never from a control.
+            //
+            // That frame is not the 16ms it reads as: measured in Chromium against a real host,
+            // the aside's render leaves it 490-640ms wide, which is a person's whole reach for
+            // the box they are aiming at. Taking the cursor back off a box the hand had already
+            // reached handed the graduation being typed to the lookup it was taken back to --
+            // which opens its list on the TEXT, not on the focus the swallow above covers, so
+            // "Crear Medico..." stood over a form nobody had touched it in (nsail#2169).
             requestAnimationFrame(function () {
-                if (document.activeElement !== candidate)
+                if (!reached(document.activeElement))
                     place(candidate);
             });
 
             return;
         }
+    }
+
+    // Whether the cursor is somewhere a gesture could have put it. The focus trap's fallback div
+    // is not: it is a div with a tabindex and nothing a person can aim at, which is what makes it
+    // tellable from the box, the picker or the button a hand reaches for. Asked of the shapes a
+    // click can focus rather than of [tabindex] alone, because that is what the trap's own
+    // landing place carries too.
+    function reached(el) {
+        return el !== null
+            && typeof el.matches === "function"
+            && el.matches('input, select, textarea, button, a[href], [contenteditable="true"]');
     }
 
     // Only a MudAutocomplete's own input wires OpenOnFocus and reacts to THIS focus exactly like
