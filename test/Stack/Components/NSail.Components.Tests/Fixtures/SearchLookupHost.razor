@@ -20,6 +20,7 @@
                 Value="Value"
                 ValueChanged="ValueChanged"
                 OnQuickAdd="OnQuickAdd"
+                Clearable="Clearable"
                 Offer="Offer" ReadOnly="ReadOnly" />
 
 @code {
@@ -32,6 +33,12 @@
 
     [Parameter]
     public bool ReadOnly { get; set; }
+
+    /// <summary>The (x) a field whose question is optional offers, which rides the same end of
+    /// the box the adornment does — so a posture that draws no adornment has to be asked whether
+    /// it still draws this.</summary>
+    [Parameter]
+    public bool Clearable { get; set; }
 
     /// <summary>What a lookup whose reading is long declares, and the one thing that tells a
     /// product's cell apart from an alícuota's in a line editor.</summary>

@@ -19,10 +19,15 @@
    wide one is unchanged: min-width holds the list at the field it drops from. What bounds it
    above is the measure in ns-mud.css (.ns-lookup-list), never the cell. *@
 
-@* The adornment is a BUTTON — it opens the field's own list — so it owes a name in both
-   postures (ui/actions.md): one word for one gesture, whether the glyph on it is the lupa a
-   lazy lookup draws or the chevron a browsed one does. Unnamed it is anonymous to a screen
-   reader and bare to the pointer, and the vendor sets nothing of its own here. *@
+@* The adornment is a BUTTON — it opens the field's own list — so it owes a name
+   (ui/actions.md): one word for one gesture. Unnamed it is anonymous to a screen reader and
+   bare to the pointer, and the vendor sets nothing of its own here.
+
+   A LAZY field draws none. Its list is what a term answers, so the one gesture that button
+   offers it cannot keep: pressing it focuses the box and opens nothing, which is a control
+   that says a lookup can be browsed when the whole point of Lazy is that it cannot
+   (nsail#2168). What the field is for is said by the word in the box — the "Buscar
+   {concept}" placeholder — and that reads at every width, which a glyph never did. *@
 
 @* ShrinkLabel is declared off the VALUE for the reason NsSelect's is: the vendor floats the
    label off the box's own text, and a bound value reads as text only once OnLoad has resolved
@@ -47,7 +52,8 @@
                  Variant="Variant.Outlined"
                  Margin="Margin.Dense"
                  Class="@GrowClass"
-                 AdornmentIcon="@(Lazy ? NsIcons.Search.Markup : NsIcons.DropDown.Markup)"
+                 Adornment="@(Lazy ? Adornment.None : Adornment.End)"
+                 AdornmentIcon="@NsIcons.DropDown.Markup"
                  AdornmentAriaLabel="@Strings.Translate("Common.ShowOptions")"
                  MinCharacters="0"
                  OpenOnFocus="true"

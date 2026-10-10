@@ -285,8 +285,8 @@ dropdown already carries).
 
 On a fresh install Cobrar drew a Forma with no rows and nothing else, so the operator learned
 neither that a tender method exists nor where one is made. **The in-dropdown rule holds for a set
-that has rows** — the entry is the dropdown's last item, the field's edge stays the lupa's or the
-arrow's. For an EMPTY set the dropdown is a place nobody opens: the affordance is discoverable
+that has rows** — the entry is the dropdown's last item, and the field's edge carries no act of
+its own. For an EMPTY set the dropdown is a place nobody opens: the affordance is discoverable
 only by opening a control that visibly offers nothing.
 
 So `NsMissing<TItem>` draws the fact and the act **under** the field, in the under-field zone the
