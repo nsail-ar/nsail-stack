@@ -17,6 +17,7 @@
                 ItemValue="@(item => item.Id)"
                 ItemText="@(item => item.DisplayName)"
                 Label="Cuenta"
+                Placeholder="@Placeholder"
                 Value="Value"
                 ValueChanged="ValueChanged"
                 OnQuickAdd="OnQuickAdd"
@@ -30,6 +31,11 @@
 
     [Parameter]
     public bool Lazy { get; set; }
+
+    /// <summary>What a caller writes in the box when the concept's own prompt is not the word it
+    /// wants there — unset on every real lookup, which is the state the composition answers.</summary>
+    [Parameter]
+    public string? Placeholder { get; set; }
 
     [Parameter]
     public bool ReadOnly { get; set; }
