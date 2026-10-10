@@ -508,10 +508,13 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   so names the CLOSED box; `ItemTemplate` draws the option. A figure the operator chooses ON — a
   balance, a count — belongs on the option alone: a field that kept it would go on saying a
   number from whenever it was picked (`ProductVariantLookup`).
-- **The end adornment is a button and carries a name** (`AdornmentAriaLabel`, one word for both
-  postures — the lupa a `Lazy` lookup draws and the chevron a browsed one does open the same
-  list). It is icon-only at every width, so it takes the ungated whisper `ns-square` takes
-  ([actions.md](actions.md)).
+- **The end adornment is a button and carries a name** (`AdornmentAriaLabel`): the chevron that
+  opens a browsed lookup's list. It is icon-only at every width, so it takes the ungated whisper
+  `ns-square` takes ([actions.md](actions.md)).
+- **A `Lazy` lookup draws no adornment.** Its list is what a term answers, so a button offering
+  to open it has no gesture: pressed, it focused the box and opened nothing. What the field is
+  for is said by the word in it — the `Buscar {concept}` placeholder — which reads at every
+  width where a glyph never did. The (x) is a different control and `Clearable` keeps it.
 
 - **A picker answers to the form's writability the way a field does, and reads it off
   `NsPickerBase`.** A `*Lookup` or a hand-rolled `*Select` is not an `NsFieldBase` — it

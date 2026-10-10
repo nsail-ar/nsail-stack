@@ -200,7 +200,8 @@ add it (the `new-icon` skill) rather than borrow a neighbour's (cases).
   populated. **The empty, search-first combo (`Lazy`) is reserved for tables where unpaginated,
   unfiltered data is meaningless** — parties, products — and nothing else.
 - **Creation lives inside the dropdown, never beside the field**: one create entry, the
-  dropdown's permanent last item. The field's edge belongs to the lupa or the dropdown arrow.
+  dropdown's permanent last item. The field's edge belongs to the dropdown arrow, and to nothing
+  at all on a `Lazy` lookup, which draws no adornment ([ui/fields.md](ui/fields.md)).
   **The one exception is an empty set**, where the dropdown is a place nobody opens: the picker
   then draws `NsMissing` UNDER the field — the concept by name and a link to where one is made —
   in the under-field zone the hint and the refusal share, and only while there is genuinely

@@ -2027,7 +2027,7 @@
 }
 
 /* A LOOKUP'S ADORNMENT is the third rider of the ungated form, and the one that lives inside
-   a box: the lupa or the chevron at the end of an NsAutocomplete is a button that opens the
+   a box: the chevron at the end of a browsed NsAutocomplete is a button that opens the
    field's own list, and it is a glyph at every width — the vendor draws no word beside it and
    has no parameter that would. Scoped to .mud-autocomplete rather than to the vendor's
    adornment class, because a picker's and a password field's adornments are the vendor's own
