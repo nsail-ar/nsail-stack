@@ -140,6 +140,20 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   server thread's. A new field over a vendor input that parses text owes the same parameter;
   the box is plain `type="text"` with `inputmode="decimal"`, so no browser locale stands between
   what is typed and what the converter reads (measured, `NsNumericFieldCultureTests`).
+- **…and reads the one separator key the keyboard has.** A numeric keypad carries a single
+  separator and it is a DOT, whatever the reader's notation is, so under es-AR a graduation typed
+  "-2.25" reached the vendor's parser as −225: the dot read as a grouping, and the receta that
+  travelled to the taller ground a lens nobody prescribed (nsail#2165). All four boxes pass
+  `FigureConverter<T>`, which rewrites a dot to the notation's own decimal separator before the
+  vendor parses — so both keys reach the same figure and the box still writes the reader's comma
+  back. It rewrites only a dot that cannot ALREADY be read: nothing happens under a notation
+  whose decimal separator is the dot, a figure already carrying its decimal separator
+  ("48.600,25") is grouped and reads as it stands, and in a notation that groups WITH the dot a
+  group — three digits, the figure ending there — keeps the one reading it has, so an importe
+  typed "48.600" is still forty-eight thousand six hundred (measured, same class). The vendor's
+  `DefaultConverter` is sealed, so the converter wraps one; it is an `ICultureAwareConverter` for
+  the same reason that one is, which is what lets a Mud form component fill its `Culture` and
+  `Format` from the field's own two parameters — the notation is still said once, on the field.
 - **`NsMoneyField` takes `Min`/`Max`, and the bound is the caller's rule** — a screen that
   already knows the range (Autorizar's covered amount, bounded by the order's own total; a
   product's `Price`, floored at zero) says it on the field instead of only after the send. Both

@@ -118,4 +118,117 @@ public sealed class NsNumericFieldCultureTests : BunitContext, IAsyncLifetime
         Assert.Equal(0.5m, read);
         Assert.Equal("0.5", cut.Find("input").GetAttribute("value"));
     }
+
+    /// <summary>The keypad's own key, under the Spanish notation (nsail#2165): a graduación typed
+    /// "-2.25" on test.optical reached the parser as -225, because the dot read as a grouping —
+    /// and -225 dioptres rode to the taller. The dot is the separator key there is, so a figure
+    /// box reads it as one, and the box still writes the reader's comma back.</summary>
+    [Theory]
+    [InlineData("-2.25", -2.25)]
+    [InlineData("0.75", 0.75)]
+    [InlineData("-0.5", -0.5)]
+    [InlineData("1.6667", 1.6667)]
+    public async Task A_figure_typed_with_the_keypads_dot_arrives_as_the_fraction(string typed, double expected)
+    {
+        decimal? read = null;
+
+        var cut = Render<NsNumericField<decimal?>>(ps => ps
+            .Add(p => p.Value, (decimal?)null)
+            .Add(p => p.ValueChanged, v => read = v));
+
+        await cut.InvokeAsync(() => cut.Find("input").Input(typed));
+
+        Assert.Equal((decimal)expected, read);
+    }
+
+    // Both keys reach the same figure, which is the whole point: whichever the receta is typed
+    // with, the lens is ground to the same graduation. The box writes the comma back either
+    // way — that half is A_fraction_reads_back_with_the_decimal_comma above.
+    [Fact]
+    public async Task Both_separators_reach_the_same_figure()
+    {
+        foreach (var typed in new[] { "-2.25", "-2,25" })
+        {
+            decimal? read = null;
+
+            var cut = Render<NsNumericField<decimal?>>(ps => ps
+                .Add(p => p.Value, (decimal?)null)
+                .Add(p => p.ValueChanged, v => read = v));
+
+            await cut.InvokeAsync(() => cut.Find("input").Input(typed));
+
+            Assert.Equal(-2.25m, read);
+        }
+    }
+
+    // The whole figure-box family has the one keyboard, so it reads the one key: the percent
+    // box, the duration box, and the money box at the mostrador, where "1.5" was fifteen pesos.
+    [Fact]
+    public async Task The_sibling_figure_boxes_read_the_keypads_dot_too()
+    {
+        decimal? percent = null;
+        TimeSpan? hours = null;
+        decimal? amount = null;
+
+        var percentField = Render<NsPercentField<decimal?>>(ps => ps
+            .Add(p => p.Value, (decimal?)null)
+            .Add(p => p.ValueChanged, v => percent = v));
+
+        await percentField.InvokeAsync(() => percentField.Find("input").Input("12.5"));
+
+        var durationField = Render<NsDurationField<TimeSpan?>>(ps => ps
+            .Add(p => p.Value, (TimeSpan?)null)
+            .Add(p => p.ValueChanged, v => hours = v));
+
+        await durationField.InvokeAsync(() => durationField.Find("input").Input("1.5"));
+
+        var moneyField = Render<NsMoneyField<decimal?>>(ps => ps
+            .Add(p => p.Value, (decimal?)null)
+            .Add(p => p.ValueChanged, v => amount = v));
+
+        await moneyField.InvokeAsync(() => moneyField.Find("input").Input("1.5"));
+
+        Assert.Equal(12.5m, percent);
+        Assert.Equal(TimeSpan.FromHours(1.5), hours);
+        Assert.Equal(1.5m, amount);
+    }
+
+    // And the money box keeps the grouping it writes: an importe typed the way the field itself
+    // prints it is the same importe.
+    [Fact]
+    public async Task The_money_box_keeps_its_own_grouping()
+    {
+        decimal? amount = null;
+
+        var cut = Render<NsMoneyField<decimal?>>(ps => ps
+            .Add(p => p.Value, (decimal?)null)
+            .Add(p => p.ValueChanged, v => amount = v));
+
+        await cut.InvokeAsync(() => cut.Find("input").Input("48.600,25"));
+
+        Assert.Equal(48600.25m, amount);
+
+        await cut.InvokeAsync(() => cut.Find("input").Input("48.600"));
+
+        Assert.Equal(48600m, amount);
+    }
+
+    // The reading a dot still has under es-AR is not taken from it: a group is three digits and
+    // the figure ends there, which is what an operator typing a factura number or a price means.
+    [Theory]
+    [InlineData("48.600", 48600)]
+    [InlineData("1.234.567", 1234567)]
+    [InlineData("48.600,25", 48600.25)]
+    public async Task A_grouped_figure_still_reads_as_the_whole_number(string typed, double expected)
+    {
+        decimal? read = null;
+
+        var cut = Render<NsNumericField<decimal?>>(ps => ps
+            .Add(p => p.Value, (decimal?)null)
+            .Add(p => p.ValueChanged, v => read = v));
+
+        await cut.InvokeAsync(() => cut.Find("input").Input(typed));
+
+        Assert.Equal((decimal)expected, read);
+    }
 }

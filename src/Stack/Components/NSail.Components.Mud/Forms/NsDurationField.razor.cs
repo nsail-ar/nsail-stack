@@ -11,6 +11,8 @@ public partial class NsDurationField<TValue>
 {
     static readonly double? Minimum = 0;
 
+    readonly FigureConverter<double?> _figures = new();
+
     [Inject]
     LanguageProvider Language { get; init; } = default!;
 
