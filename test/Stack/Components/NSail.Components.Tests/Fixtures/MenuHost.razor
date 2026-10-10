@@ -8,7 +8,7 @@
    no open menu to assert anything about. *@
 <MudPopoverProvider />
 
-<NsMenu Icon="@NsIcons.More" Label="Session">
+<NsMenu Icon="@NsIcons.More" Label="Session" Disabled="Locked">
     <NsMenuBlock>
         <span class="probe-identity">Amina</span>
     </NsMenuBlock>
@@ -29,6 +29,11 @@
 
     [Parameter]
     public EventCallback OnSwitch { get; set; }
+
+    /// <summary>The trigger offered and not yet answerable — a menu whose list has nothing to
+    /// say until the screen around it is further filled.</summary>
+    [Parameter]
+    public bool Locked { get; set; }
 
     ActionItem Switch => new() { Name = "SelectOrganization", OnClick = () => OnSwitch.InvokeAsync() };
 

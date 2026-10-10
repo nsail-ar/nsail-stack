@@ -14,33 +14,52 @@
    menu whose content has to be read for costs nothing on a page nobody opened it on. *@
 @* A trigger is withheld whole inside a form that refuses writes, face and all: what it opens
    is a list of ways in, and a button that opens nothing is worse than no button. *@
+@* Escape and Tab, for the menu a POINTER opened: the vendor reads both off the list's own
+   wrapper inside the popover and hands the cursor to that wrapper only where the gesture that
+   opened the menu was itself a keystroke, so a menu opened by a click keeps the cursor on its
+   trigger — where every ancestor is the trigger's own and neither key is answered, and the
+   list stood over the screen through both. Read here because keydown BUBBLES and this is the
+   first ancestor the house owns. Nothing is stopped: the same Escape still reaches the surface
+   behind, exactly as it already does past an open list. display:contents (ns-mud.css), so no
+   menu's placement moves for the span. *@
 @if (Offers(Writes))
 {
-    <MudMenu @ref="_menu"
-             Class="@GetClasses()"
-             ListClass="ns-menu-list"
-             PopoverClass="ns-menu-popover"
-             Icon="@(Content is null ? Icon?.Markup : null)"
-             Label="@(Icon is null && Content is null ? Label : null)"
-             AriaLabel="@Label"
-             Size="@GetSize()"
-             Color="Color.Inherit"
-             ActivatorContent="@GetActivator()"
-             AnchorOrigin="@(Beside ? Origin.TopRight : null)"
-             Dense="true">
-        @* The body renders where the vendor's popover renders — a sibling of the router — so
-           the form's word never reaches a row on its own. This is the one component standing
-           on both sides of that portal, so it carries the two names across; a row inside asks
-           NsActBase for them exactly as an act outside a menu does. *@
-        <CascadingValue Value="ParentDisabled" Name="ParentDisabled">
-            <CascadingValue Value="ParentReadOnly" Name="ParentReadOnly">
-                @ChildContent
+    <span class="ns-menu-keys" @onkeydown="OnKeyDown">
+        <MudMenu @ref="_menu"
+                 Class="@GetClasses()"
+                 ListClass="ns-menu-list"
+                 PopoverClass="ns-menu-popover"
+                 Icon="@(Content is null ? Icon?.Markup : null)"
+                 Label="@(Icon is null && Content is null ? Label : null)"
+                 AriaLabel="@Label"
+                 Size="@GetSize()"
+                 Color="Color.Inherit"
+                 ActivatorContent="@GetActivator()"
+                 AnchorOrigin="@(Beside ? Origin.TopRight : null)"
+                 MaxHeight="Measure"
+                 Disabled="Disabled"
+                 Dense="true">
+            @* The body renders where the vendor's popover renders — a sibling of the router — so
+               the form's word never reaches a row on its own. This is the one component standing
+               on both sides of that portal, so it carries the two names across; a row inside asks
+               NsActBase for them exactly as an act outside a menu does. *@
+            <CascadingValue Value="ParentDisabled" Name="ParentDisabled">
+                <CascadingValue Value="ParentReadOnly" Name="ParentReadOnly">
+                    @ChildContent
+                </CascadingValue>
             </CascadingValue>
-        </CascadingValue>
-    </MudMenu>
+        </MudMenu>
+    </span>
 }
 
 @code {
+
+    // The measure a list stops growing at, in px, and the same one a long LOOKUP list already
+    // stops at (MudAutocomplete's own default): a menu of sixteen rows grew to 552px, outgrew
+    // the room left under its trigger and was turned over by the vendor's overflow behaviour
+    // into a 552px panel reaching the top of the page, which reads as a list belonging to
+    // nothing. Capped, it scrolls under the trigger it was opened from.
+    const int Measure = 300;
 
     MudMenu? _menu;
 
@@ -74,6 +93,16 @@
     /// clicked, and a nested NsMenu for a submenu.</summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Offered and not yet answerable: the trigger stays on screen, named and greyed,
+    /// and opens nothing. For a menu whose list has nothing to say YET because the screen is
+    /// half filled — a comparison of what each bench charges, before a lens is on the job —
+    /// where withholding the trigger would take the knowledge that the comparison exists along
+    /// with it. It is the same word every other act in the house carries (NsButton, NsPageLink,
+    /// ActionItem.Disabled), and it is not the answer for a menu nobody may use at all: that one
+    /// is withheld whole, by Writes or by the authorization its rows carry.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
 
     /// <summary>Whether what this menu opens is a way IN to the form around it — true like
     /// every act (ActionItem.Writes), so a menu inside an NsForm that refuses writes is
@@ -135,6 +164,21 @@
         }
 
         return _menu.ToggleMenuAsync(args);
+    }
+
+    // Tab belongs here beside Escape because leaving the trigger IS a dismissal: the next field
+    // takes the cursor and a list still standing over it answers for nothing. A key arriving
+    // while the menu is closed asks the vendor to close a closed menu, which it absorbs — the
+    // open state is the vendor's own and it publishes none this side can read, and a flag kept
+    // here would be a second answer to drift from it.
+    Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (_menu is null || args.Key is not ("Escape" or "Tab"))
+        {
+            return Task.CompletedTask;
+        }
+
+        return _menu.CloseMenuAsync();
     }
 
     string GetClasses()

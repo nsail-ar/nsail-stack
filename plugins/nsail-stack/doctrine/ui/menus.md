@@ -13,7 +13,7 @@ mechanism these rows are modelled on is [actions.md](actions.md).
 
 | Component | Is |
 |---|---|
-| `NsMenu` | the menu: a trigger (`Icon` or `Content`, named by `Label`, sized by `Size`) and a body |
+| `NsMenu` | the menu: a trigger (`Icon` or `Content`, named by `Label`, sized by `Size`, `Disabled` when its list has nothing to say yet) and a body |
 | `NsMenuItem` | a row — an `ActionItem`, so a row is a link or a command and nothing new is modelled |
 | `NsMenuBlock` | what the menu *says* rather than offers: an identity header, fine print at the foot |
 | `NsMenuDivider` | the rule between two families of rows, for a list whose separation position cannot draw — the toolbar's kebab emits it where `ActionItem.Group` changes ([actions.md](actions.md)) |
@@ -100,6 +100,33 @@ opens a list of withheld rows is a button that does nothing.
   trigger that IS a row: under it is where the next row already stands, and a body drawn there
   covers the very row it belongs to. A submenu the vendor recognizes as one is already placed
   this way and says nothing.
+
+---
+
+## The list stays the trigger's, and Escape and Tab dismiss it
+
+- **The list stops at a measure, the same one a long lookup list stops at.** A list left to
+  grow outgrows the room under its trigger, and the vendor then turns the whole panel over to
+  the other side: sixteen rows came to 552px and were drawn from the top of the page down to a
+  trigger at its foot, which reads as a list belonging to nothing. Capped, a long list scrolls
+  under the trigger it was opened from. A caller that finds its list scrolling has an ordering
+  question to answer — which rows are worth the first screen — not a measure to raise.
+- **Escape and Tab dismiss the list of a menu the POINTER opened, and that is read off the
+  span around the trigger.** The vendor answers both keys on the list's own wrapper, inside the
+  popover, and hands the cursor to that wrapper only where the gesture that opened the menu was
+  itself a keystroke — so after a click the cursor is still on the trigger and neither key is
+  answered anywhere. The span (`ns-menu-keys`, `display: contents`, so it is not a box) is the
+  first ancestor on the bubble the house owns. Tab belongs there beside Escape because leaving
+  the trigger IS a dismissal: the next field takes the cursor, and a list still standing over it
+  answers for nothing. **Nothing is stopped** — the same Escape still reaches the surface
+  behind, exactly as it does today past an open lookup list ([surfaces.md](surfaces.md)).
+- **An outside click is already the vendor's**, through the overlay it draws for an open menu;
+  the house adds nothing there.
+- **`Disabled` is the menu offered and not yet answerable**, for a list with nothing to say YET
+  because the screen around it is half filled — a comparison of what each bench charges, before
+  a lens is on the job. The trigger stays, named and greyed, because withholding it takes the
+  knowledge that the comparison exists along with it. It is **not** the answer for a menu nobody
+  may use: that one is withheld whole, by `Writes` or by what its rows are authorized for.
 
 ---
 
