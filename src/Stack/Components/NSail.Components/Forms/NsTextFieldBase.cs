@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
@@ -34,6 +35,38 @@ public abstract class NsTextFieldBase<TValue> : NsFieldBase<TValue>
     /// <summary>Whether Enter ends the entry. True for every box with one line; false where
     /// Enter is itself text, which is the textarea's newline.</summary>
     protected virtual bool CommitsOnEnter => true;
+
+    /// <summary>How many characters the box takes, as its own <c>maxlength</c> — the length the
+    /// bound member declares, so the box refuses the character the message would have refused,
+    /// and the vendor's own ceiling where it declares none. Derived and never a parameter
+    /// (ui/fields.md, *The required mark is derived, never written*): nothing asks a box for
+    /// less than the wire will take.
+    ///
+    /// Only the half of this family whose value IS its text has one. A figure box holds the
+    /// FORMATTED number, where a character count would measure the group separators rather than
+    /// the magnitude — what refuses a number is its range (messaging.md).</summary>
+    protected int MaxTypedLength
+    {
+        get { return (typeof(TValue) == typeof(string) ? DeclaredLength() : null) ?? Unbounded; }
+    }
+
+    // MudBaseInput<T>.MaxLength's own default: an int cannot say "no bound", so a box with
+    // nothing declared is handed what the vendor would have drawn by itself.
+    const int Unbounded = 524288;
+
+    /// <summary>The longest text the bound member will accept, off the annotation that refuses a
+    /// longer one — both of the two that do, since the wire words them as one refusal
+    /// (MessageValidator), and any subclass of either, which is how [SearchTerm] arrives. Null
+    /// where the member declares none: a field draws a bound it has and never invents one.</summary>
+    int? DeclaredLength()
+    {
+        var declared = Declared<MaxLengthAttribute>()?.Length
+            ?? Declared<StringLengthAttribute>()?.MaximumLength;
+
+        // MaxLengthAttribute takes -1 for "whatever the store allows", which is a database bound
+        // and not a count anybody can type against.
+        return declared > 0 ? declared : null;
+    }
 
     /// <summary>What the box holds since the entry began, which is not always what `Value`
     /// says: a box bound by `Value` alone — PolicyConstraintsEditor's reference id, which reads

@@ -339,9 +339,23 @@ its required fields and leaves the fourth bare.
   `Description`, a channel's `Value` — is enforced by neither end, so it is neither marked nor
   refused; a model a message opened is refused at both ends and marked like the message's own.
 - **The same reading answers for a bound, not only a mark.** `NsFieldBase.Declared<T>()` hands a
-  field whatever attribute its bound member declares, under that same scope; `NsDateField`'s
-  calendar ceiling is the one caller today. A field that draws anything from a declaration draws
-  it from the declaration that will refuse.
+  field whatever attribute its bound member declares, under that same scope: `NsDateField`'s
+  calendar ceiling comes off `[NotFuture]`, and a text box's `maxlength` off `[MaxLength]` or
+  `[StringLength]` — both, and any subclass of either (`[SearchTerm]`), since the wire words them
+  as one refusal (`MessageValidator`). A field that draws anything from a declaration draws it
+  from the declaration that will refuse.
+- **A bound the box draws refuses the next character, never the value on file.** `maxlength`
+  stops typing and pasting past the declared length and leaves what is already in the box
+  alone, so a value longer than the bound — a column that used to be wider, a record from an
+  import — still displays whole and still submits (`NsDeclaredLengthTests`). A derived bound
+  that truncated would destroy data on a screen nobody edited, which is why the date ceiling is
+  held to the same measurement.
+- **A length bounds the boxes whose value IS their text, and no others.** The seven string boxes
+  (`NsTextFieldBase.MaxTypedLength`); never the figure family, which holds a FORMATTED number a
+  character count would measure the group separators of — a number is refused by its range
+  (messaging.md). A masked box carries no cap at all: the vendor's mask input draws none, and the
+  declaration bounds the raw value while the box holds the formatted text, so a cap there would
+  stop the typing short of the value's own last character.
 - **Only an annotation that CAN refuse is derived from.** `RequiredAttribute` passes any non-null
   boxed value, so on a **non-nullable value type** — `[Required] int Number`, a `bool`, an enum, a
   `Guid` bound as `Guid` — it is already satisfied at the type's own default and refuses nothing at
