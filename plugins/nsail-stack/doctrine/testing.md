@@ -335,3 +335,18 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   CI-gated only, applied at the same four sites `NavigationBudget.Apply` is. One literal
   survives, the same shape as `OnboardingWalk.cs`'s exception: `Splash.Dismiss`'s 60s wait
   on a cold WASM boot.
+- **The address a gesture lands on is READ with a web-first assertion, never waited on as a
+  navigation event.** `WaitForURLAsync` tests the client's cached address once and otherwise
+  waits for the next navigation the driver reports, so an arrival landing between the act
+  returning and the waiter being installed is in NEITHER — the cached address is still the old
+  one, its event is already spent, and the wait sits out its whole ceiling on a page that
+  arrived long ago. The close gesture is where that window is widest: `SurfaceContext.Close`
+  pops through the browser's own back, with no render of the app's own in front of it.
+  `Expect(page).ToHaveURLAsync` re-reads the address on every poll, so no arrival can be
+  missed, and each suite reads through `Fixtures/Address.cs` — `Carries`, `EndsAt`, `Drops`,
+  over a pattern that matches a surface route's separators raw or percent-escaped, which is
+  the one thing a reading has to know. The ceiling is the suite's and not the rule's: where
+  the budget pair above is in place the reading rides `Fixtures/LocatorBudget.cs`, and a suite
+  without one names its own in the fixture. A navigation wait on an address is out for new and
+  touched code; the per-site ones still standing in both product suites convert as their path
+  is touched.
