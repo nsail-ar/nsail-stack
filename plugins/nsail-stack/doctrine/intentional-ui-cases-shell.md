@@ -167,12 +167,17 @@ cannot silence them again. **A pseudo-element's computed style is browser-only**
 hooks and the `aria-label` and nothing about which rule won, which is how a bubble nobody had
 ever seen kept a green suite.
 
-**It hangs DOWN, and only a footer's rises.** The bubble is painted outside the control, so the
-nearest scrolling ancestor — `NsPanel`'s content box — clips whichever side has no room: a card
-header's square sits at the TOP of that box and loses a bubble drawn above it (half a word, on
-the dashboard), a footer act sits on the surface's bottom edge and loses one drawn below. Down is
-the general case and the side `NsTooltip` is placed on anyway; `.ns-panel-footer` is the one
-exception, because it *is* the bottom edge.
+**It hangs DOWN, except where there is no room.** The bubble is painted outside the control, so
+the nearest scrolling ancestor — `NsPanel`'s content box — clips whichever side has no room: a
+card header's square sits at the TOP of that box and loses a bubble drawn above it, a control at
+a page's own bottom edge loses one drawn below *and* grows the page a scrollbar for as long as it
+shows (nsail#2197) — CSS alone cannot ask whether there is room, so it never asked. `ns.js`'s
+`placeWhisper` does, on the same hover and focus `--ns-whisper`'s own gates already answer: it
+measures the control against `window.innerHeight` (the bubble's own height is fixed — it never
+wraps — so the margin it checks for is read off the stylesheet, not guessed) and marks the loser
+with `data-ns-whisper-above`, an attribute ns-mud.css's own direction rule reads at the same
+selector plus one. Down is still the general case and the side `NsTooltip` is placed on anyway;
+a page's bottom edge is simply the one place a control answers "no room" every time it is asked.
 
 ## Container queries: the measured facts
 
