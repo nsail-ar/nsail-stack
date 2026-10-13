@@ -177,6 +177,30 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
             name => Assert.Equal(1, gates.Count(gate => gate.Hover.Contains(name, StringComparison.Ordinal))));
     }
 
+    /// <summary>nsail#2197: the bubble no longer hangs down unconditionally — ns.js measures
+    /// each trigger against the viewport on hover and focus and marks the one with no room
+    /// below, and this is the CSS half of that pair: a direction rule gated on the attribute
+    /// ns.js writes, at the SAME compound selector the base rule carries (plus one), which is
+    /// what lets it outrank the base rule's own two-attribute weight rather than losing the
+    /// cascade silently. Whether the attribute actually lands at the right moment is ns.js's own
+    /// question, unreachable from here — Optical's E2E is where "the page gains no scrollbar"
+    /// is answered for real.</summary>
+    [Fact]
+    public void ADynamicFlipRuleAnswersForNoRoomBelow_atTheSameWeightAsTheBaseRule()
+    {
+        var css = ReadStylesheet();
+
+        Assert.Contains("[data-ns-whisper-above]::after", css);
+        Assert.Contains("top: auto;\n    bottom: calc(100% + 4px);", css.Replace("\r\n", "\n"));
+
+        // The old escape hatch — a footer bubble flipped by selector alone, with no room asked
+        // about at all — is gone: every remaining "top: auto" is behind the dynamic attribute,
+        // never behind .ns-panel-footer on its own.
+        Assert.DoesNotContain(
+            "[aria-label]:not([aria-label=\"\"])::after {\n    top: auto;",
+            css.Replace("\r\n", "\n"));
+    }
+
     /// <summary>The container query a rule is written inside, read by scanning back from the
     /// rule's own text to the nearest @container that opened before it. Enough for this file's
     /// question — which threshold a gate sits at — and it fails loudly (an empty condition, or

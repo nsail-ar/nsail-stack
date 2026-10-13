@@ -132,6 +132,34 @@
 
     document.addEventListener("keydown", onDocumentKeyDown, true);
 
+    // THE WHISPER's own flip (ns-mud.css, "THE WHISPER"): the bubble is attr(aria-label),
+    // drawn by a ::after the CSS alone sets up, and CSS alone cannot ask whether there is room
+    // below it -- so that is the one question answered here, nothing else about the bubble.
+    // WHISPER_HEIGHT is read off its own fixed geometry (ns-mud.css: a 12px/1.4 line, 4px
+    // padding top and bottom, the 4px gap before it) with a few px to spare -- it never wraps
+    // (white-space: nowrap), so the number is exact rather than guessed. pointerenter does not
+    // bubble, so the capture phase is the only way one document listener reaches every trigger;
+    // focusin already bubbles and answers for the keyboard the same selectors' :focus-visible
+    // gate does. The selector list is ns-mud.css's own — kept in step by hand, the price of
+    // the two languages neither can read the other's.
+    const WHISPER_SELECTOR = '.ns-square[aria-label]:not([aria-label=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""]), .ns-collapse-sm[aria-label]:not([aria-label=""]), .ns-collapse-md[aria-label]:not([aria-label=""]), .ns-collapse-lg[aria-label]:not([aria-label=""]), .ns-collapse-xl[aria-label]:not([aria-label=""]), .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""])';
+    const WHISPER_HEIGHT = 32;
+
+    function placeWhisper(target) {
+        if (!target || typeof target.closest !== "function")
+            return;
+
+        const el = target.closest(WHISPER_SELECTOR);
+        if (!el)
+            return;
+
+        const fits = el.getBoundingClientRect().bottom + WHISPER_HEIGHT <= window.innerHeight;
+        el.toggleAttribute("data-ns-whisper-above", !fits);
+    }
+
+    document.addEventListener("pointerenter", e => placeWhisper(e.target), true);
+    document.addEventListener("focusin", e => placeWhisper(e.target));
+
     // The candidate `focusFirst` is about to call .focus() on, for the one capture-phase
     // listener below to recognise and swallow -- never read outside that listener.
     let suppressOpenFor = null;

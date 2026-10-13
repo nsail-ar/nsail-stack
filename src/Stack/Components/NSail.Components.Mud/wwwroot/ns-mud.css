@@ -2687,15 +2687,28 @@
     z-index: var(--mud-zindex-tooltip);
 }
 
-/* IT HANGS DOWN, and a footer's rises. An absolutely positioned bubble is clipped by the
-   nearest scrolling ancestor — NsPanel's own content box (overflow-y: auto) — and it is drawn
-   OUTSIDE the control, so the side it is drawn on decides whether it survives: a control at the
-   top of that box (a card header's square on the dashboard, a page header's collapsed act) loses
-   a bubble drawn above it, and a footer act has the surface's own bottom edge under it and loses
-   one drawn below. Down is the general case and the same side MudTooltip is placed on
-   (NsTooltip, Placement.Bottom), so the two read alike; the footer is the one place that says
-   otherwise, because it is the one place that IS the bottom edge. */
-.ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""])::after {
+/* IT HANGS DOWN, except where there is no room: an absolutely positioned bubble is clipped
+   by the nearest scrolling ancestor — NsPanel's own content box (overflow-y: auto) — and it
+   is drawn OUTSIDE the control, so the side it is drawn on decides whether it survives, and
+   whether it grows the PAGE's own scrollbar while it shows (nsail#2197). CSS alone cannot ask
+   "is there room below" — ns.js's placeWhisper does, on the same hover and focus that
+   --ns-whisper already gates on, and marks the loser with this attribute rather than a class:
+   a boolean the DOM already has a slot for, never a second name to keep in step with
+   --ns-whisper. Down is still the general case — the same side MudTooltip is placed on
+   (NsTooltip, Placement.Bottom) — so the two read alike wherever there IS room.
+
+   The selector below repeats the base rule's own, [data-ns-whisper-above] appended rather
+   than substituted: the two attribute selectors the base rule carries on [aria-label] already
+   outweigh a bare class-plus-one-attribute override, so dropping either here would lose the
+   cascade silently instead of failing loud. */
+.ns-square[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
+.ns-menu > .mud-icon-button[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
+.mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
+.ns-collapse-sm[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
+.ns-collapse-md[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
+.ns-collapse-lg[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
+.ns-collapse-xl[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
+.ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after {
     top: auto;
     bottom: calc(100% + 4px);
 }
