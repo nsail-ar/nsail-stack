@@ -55,9 +55,13 @@
                 <CascadingValue Value="TableRowEdit.Open" IsFixed="true">
                     @RowEditor!(item)
                 </CascadingValue>
+                @* ns-row-commit and ns-row-edit below are what Enter inside a cell presses: the
+                   key confirms the row and opens the one under it by running these very
+                   controls, so there is no second path a row is committed by (ns.js, the Enter
+                   policy). *@
                 <NsTd>
                     <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Justify="NsAlign.End">
-                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
+                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-commit" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
                         <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
                     </NsStack>
                 </NsTd>
@@ -69,7 +73,7 @@
                 {
                     <NsTd>
                         <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Justify="NsAlign.End">
-                            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
+                            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-edit" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
                             @if (OnRowRemove.HasDelegate)
                             {
                                 <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy" OnClick="@(() => Remove(item))" />
@@ -119,7 +123,7 @@
         <NsText As="NsTextAs.Title">@Title</NsText>
         @if (Editable && NewRow is not null && AddControl)
         {
-            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
+            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-cells-add" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
         }
     </NsStack>
 }
@@ -335,10 +339,16 @@ else
     // md it is what stacks the table by CONTAINER instead (nsail#1614): no arithmetic seats an
     // open row in a container that narrow, so it becomes the form a phone already reads, where
     // there is no header and no count to match.
+    //
+    // ns-cells says the rows of this grid are TYPED INTO, which is what gives Enter its meaning
+    // inside one: confirm the row and keep going down the column, never submit the document the
+    // grid is a field of (ns.js, the Enter policy). A grid offering no way into a row is read,
+    // not filled in, so its Enter is the document's.
     string GetClasses()
     {
         return new NsClassBuilder("ns-table d-flex flex-column min-h-0")
             .Add("flex-grow-1", Grow)
+            .Add("ns-cells", Editable)
             .Add("ns-table-editing", _editing is not null)
             .Add(_instance)
             .Add(Class)

@@ -1,0 +1,56 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Testing.Models
+
+@* The two shapes the Enter policy tells apart, as one form: a document being written (more than
+   one field, tracked) and a form that IS the question (one field, or untracked — a sign-in, a
+   filter bar). Both answers are read off this markup at the keystroke, so what the fixture seats
+   is exactly what ns.js asks. *@
+<MudPopoverProvider />
+
+<NsForm TModel="TestModel" Model="_document" OnSubmit="Save" Untracked="Untracked">
+    <NsTextField @bind-Value="context.Name" />
+    @if (Fields > 1)
+    {
+        <NsNumericField TValue="int" @bind-Value="context.Age" />
+    }
+    @if (Boxes)
+    {
+        <NsTextArea Value="context.Name" Label="Nota" />
+        <NsSelect TItem="string" TValue="string" Items="Options" Value="context.Name" Label="Opción" />
+    }
+</NsForm>
+
+@code {
+
+    static readonly string[] Options = ["Ana", "Bruno"];
+
+    readonly TestModel _document = new() { Name = "Caja" };
+
+    /// <summary>How many of the form's own fields are on screen: one is a question, two is a
+    /// document being filled in.</summary>
+    [Parameter]
+    public int Fields { get; set; } = 2;
+
+    /// <summary>Whether the form holds a document at all.</summary>
+    [Parameter]
+    public bool Untracked { get; set; }
+
+    /// <summary>Seats the other two shapes of box beside the typed ones — the area whose Enter is
+    /// text, the select whose value arrives from a pick — for the one claim that the count is of
+    /// FIELDS and not of text inputs.</summary>
+    [Parameter]
+    public bool Boxes { get; set; }
+
+    public int Submits { get; private set; }
+
+    void Save(SubmitEventArgs<TestModel> args)
+    {
+        Submits++;
+    }
+}

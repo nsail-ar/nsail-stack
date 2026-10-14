@@ -121,55 +121,242 @@
 
     document.addEventListener("click", onSkipClick);
 
-    // Enter over an open list belongs to the list: it picks what is highlighted, and the form
-    // the box stands in is not part of that gesture. The browser disagrees -- a text input
-    // inside a form implicitly submits it on Enter -- and the two answers ride the SAME
-    // keystroke: the submission is the keydown's default action, and the pick is made from the
-    // keyup (MudAutocomplete.OnInputKeyUpAsync; its keydown answers Tab and the arrows and
-    // nothing else). So the form was saved on the keystroke that was only choosing an article.
-    // Preventing a keydown's default does not suppress the keyup after it, so the pick is left
-    // exactly as it was and only the submission is taken away.
+    // THE ENTER POLICY, and the only code in the house that decides whether an Enter keystroke
+    // may submit a form: Enter commits what is being typed and does what the control in front
+    // of the person means, and a DOCUMENT is submitted by its own button or by Ctrl+Enter (the
+    // keyboard layer below) -- never by a stray Enter in the middle of it. No page and no kit
+    // carries a second answer, which is why nothing of this is written in markup:
+    // `@onkeydown:preventDefault` is decided when the element renders, and every read below is a
+    // property of the KEYSTROKE -- which list was open, which form the cursor was standing in --
+    // read off the DOM at the instant it is pressed. Capture for onDocumentClick's reason as
+    // well: first on the event's path, so no handler between the control and the document can
+    // cost this its answer by stopping propagation.
     //
-    // Written here and not in the markup for onDocumentClick's reason: `@onkeydown:preventDefault`
-    // is decided when the element renders, and whether an Enter deserves preventing is a property
-    // of the keystroke -- whether a list was open AT that instant. `aria-expanded` is that same
-    // answer read from the DOM at the moment it is asked, and it is the platform's own word for
-    // it rather than a mark the house would have to remember to stamp on every combobox it ever
-    // wraps. On a lookup the vendor writes it only while the list is open AND has options, which
-    // is exactly the keystroke that picks: on a closed, empty or already-settled box Enter is
-    // still the form's, and a plain field in a one-field form still submits on Enter the way it
-    // always did. NsSelect and NsMultiSelect stamp the same two words on their own input, so this
-    // names no component and needs no second condition to cover them.
-    //
-    // Scoped to the combobox ITSELF, never to whatever is expanded around it: an expander's
-    // chevron and a menu's face are buttons that carry the same attribute, and a button's Enter
-    // IS its activation -- preventing that would cost them the keyboard. Capture for the click's
-    // reason as well: first on the path, so no handler between the box and the document can cost
-    // this its answer by stopping propagation.
+    // Three Enters are the browser's own and are left alone: a text area's is a new line, a
+    // focused button's is its press, and a form that IS the question -- a sign-in, a filter bar,
+    // a box standing alone -- keeps the implicit submission, which is what the last read below
+    // measures by asking the form how many fields it renders.
     function onDocumentKeyDown(e) {
         if (e.defaultPrevented || e.key !== "Enter")
             return;
 
-        const target = e.target;
-
-        if (!target || typeof target.getAttribute !== "function")
+        // A modified Enter is not this policy's: Ctrl+Enter is the document's own submit and is
+        // answered by the control declaring it (the keyboard layer below).
+        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey)
             return;
 
-        if (target.getAttribute("role") === "combobox" && target.getAttribute("aria-expanded") === "true")
-            e.preventDefault();
+        const target = e.target;
 
-        // And the box that ANSWERS Enter itself: a mailbox taken into a chip list, a scanned
-        // code resolved into a line (NsTextFieldBase.TakesEnter, which stamps this). The
-        // keystroke already means "the entry is finished", and the form saving the whole
-        // document on the same one is the second meaning nobody asked for -- a counter passing
-        // ten boxes over a reader would close the sale on the first. Only the boxes that hang
-        // something on their commit carry the mark, so a plain field in a one-field form still
-        // submits on Enter.
-        if (target.getAttribute("data-ns-commits") === "true")
+        if (!target || typeof target.getAttribute !== "function" || typeof target.closest !== "function")
+            return;
+
+        // Enter over an open list belongs to the list: it picks what is highlighted, and the
+        // form the box stands in is not part of that gesture. The browser disagrees -- a text
+        // input inside a form implicitly submits it on Enter -- and the two answers ride the
+        // SAME keystroke: the submission is the keydown's default action, and the pick is made
+        // from the keyup (MudAutocomplete.OnInputKeyUpAsync; its keydown answers Tab and the
+        // arrows and nothing else). So the form was saved on the keystroke that was only
+        // choosing an article. Preventing a keydown's default does not suppress the keyup after
+        // it, so the pick is left exactly as it was and only the submission is taken away.
+        //
+        // `aria-expanded` is the platform's own word for "a list is open", read at the moment it
+        // is asked rather than a mark the house would have to stamp on every combobox it wraps.
+        // On a lookup the vendor writes it only while the list is open AND has options, which is
+        // exactly the keystroke that picks. NsSelect and NsMultiSelect stamp the same two words
+        // on their own input, so this names no component and needs no second condition.
+        //
+        // Scoped to the combobox ITSELF, never to whatever is expanded around it: an expander's
+        // chevron and a menu's face are buttons that carry the same attribute, and a button's
+        // Enter IS its activation -- preventing that would cost them the keyboard.
+        if (target.getAttribute("role") === "combobox" && target.getAttribute("aria-expanded") === "true") {
+            e.preventDefault();
+            return;
+        }
+
+        // A text area's Enter is the line it writes. It carries the field mark like every box,
+        // so it is answered before the two reads below ever see it, and Ctrl+Enter above is what
+        // submits the document from inside one.
+        if (target.tagName === "TEXTAREA")
+            return;
+
+        // A GRID's own Enter: the row is confirmed and the cursor keeps going down the column
+        // being typed in -- the next row opened for it where the host opens one row at a time,
+        // and a new row where there is none below, which is a counter writing a sale line after
+        // line without reaching for the mouse. Never the document: a grid is a FIELD of the
+        // document it stands in, and confirming a line is not saving a sale.
+        const grid = target.closest(".ns-cells");
+        const row = grid ? target.closest(CELL_ROW) : null;
+
+        if (row) {
+            e.preventDefault();
+            advanceCells(grid, target, row);
+            return;
+        }
+
+        // The box that ANSWERS Enter itself: a mailbox taken into a chip list, a scanned code
+        // resolved into a line (NsTextFieldBase.TakesEnter, which stamps this). The keystroke
+        // already means "the entry is finished", and the form saving the whole document on the
+        // same one is the second meaning nobody asked for -- a counter passing ten boxes over a
+        // reader would close the sale on the first.
+        if (target.getAttribute("data-ns-commits") === "true") {
+            e.preventDefault();
+            return;
+        }
+
+        // And a field of a DOCUMENT: Enter ends the entry and does nothing else -- no submit and
+        // no focus move, because Tab is what moves and Enter keeps one meaning per control. What
+        // tells a document from a question is the form's own word for it (NsForm, which stamps
+        // data-ns-tracked) together with how many fields it actually renders at this instant: a
+        // tracked form of ONE field is a question too -- a dialog collecting an amount, a page's
+        // single box -- and keeps the submission, which is where the industry's own split falls.
+        if (target.getAttribute("data-ns-field") !== "true")
+            return;
+
+        const form = target.closest('form[data-ns-tracked="true"]');
+
+        if (form && form.querySelectorAll('[data-ns-field="true"]').length > 1)
             e.preventDefault();
     }
 
     document.addEventListener("keydown", onDocumentKeyDown, true);
+
+    // The grid's move, which is the one half of the policy that is not a prevention: the press is
+    // literally the row's own control (.ns-row-commit, .ns-row-edit, .ns-cells-add, written by
+    // NsTable and NsListEditor), so the key runs the code the button runs and the host keeps
+    // deciding what a commit means and what a refused row does. What the key adds is the MOVE,
+    // which is a DOM gesture and belongs on this side for focusFirst's reason.
+    //
+    // A frame before the first press: this listener answers in the capture phase, before the
+    // keystroke has reached the box at all, and a click dispatched from here would be processed
+    // ahead of the box's own commit -- the row confirmed from a value the keystroke had not
+    // finished writing.
+    async function advanceCells(grid, from, row) {
+        const cell = from.closest("td");
+        const column = cell ? cell.cellIndex : -1;
+        const at = rowsOf(grid).indexOf(row);
+
+        if (at < 0)
+            return;
+
+        await frame();
+
+        const commit = rowAt(grid, at)?.querySelector(".ns-row-commit");
+
+        if (commit) {
+            commit.click();
+
+            // A row the host REFUSED stays open with its reason on it, and the cursor stays in
+            // it: the move is what the confirm earned, not what the keystroke asked for.
+            const closed = await until(() => !rowAt(grid, at)?.querySelector(".ns-row-commit"));
+
+            if (!closed)
+                return;
+        }
+
+        if (rowAt(grid, at + 1)) {
+            const pencil = rowAt(grid, at + 1).querySelector(".ns-row-edit");
+
+            // Where the host opens one row at a time, going down the column is opening the row
+            // below for editing -- the pencil's own code again. A grid whose every row is
+            // already a row of boxes has no pencil and nothing to open: the cursor just moves.
+            if (pencil && live(pencil)) {
+                pencil.click();
+                await until(() => cellField(grid, at + 1, column));
+            }
+
+            const field = cellField(grid, at + 1, column);
+
+            if (field)
+                place(field);
+
+            return;
+        }
+
+        const add = addControl(grid);
+
+        if (!add || !live(add))
+            return;
+
+        add.click();
+
+        const field = await until(() => cellField(grid, rowsOf(grid).length - 1, -1));
+
+        if (field)
+            place(field);
+    }
+
+    // The way in stands in the grid's own bar, above the rows and outside them -- the one seat
+    // Agregar has (ui/hosts.md) -- so it is a SIBLING of the rows and the search is made from
+    // their parent. A page that draws the add control itself, out of its own chrome, declares
+    // none of this: there the control adds to whichever collection the page is showing, and it
+    // is not this grid's to press.
+    function addControl(grid) {
+        return grid.querySelector(".ns-cells-add")
+            ?? grid.parentElement?.querySelector(".ns-cells-add")
+            ?? null;
+    }
+
+    function frame() {
+        return new Promise(resolve => requestAnimationFrame(resolve));
+    }
+
+    // What a press asked Blazor for is not in the DOM on the line after it -- the renderer
+    // answers on its own circuit. Half a second of frames, after which the move is simply not
+    // made: a keystroke never raises.
+    async function until(find, frames) {
+        for (let left = frames ?? 30; left > 0; left--) {
+            const found = find();
+
+            if (found)
+                return found;
+
+            await frame();
+        }
+
+        return null;
+    }
+
+    // A row of a grid, as either of the two hosts draws one (NsTable's body rows, NsListEditor's
+    // items). A control inside the grid but outside every row -- a toolbar's own search box --
+    // is not in this policy at all and keeps whatever Enter it had.
+    const CELL_ROW = "tbody > tr, .ns-list-editor-item";
+
+    // The rows in the order they are read. Read again on every step rather than held: each press
+    // above is a render, and a row element the renderer replaced is an element nothing can be
+    // focused inside.
+    function rowsOf(grid) {
+        return Array.from(grid.querySelectorAll(CELL_ROW));
+    }
+
+    function rowAt(grid, index) {
+        return index >= 0 ? rowsOf(grid)[index] ?? null : null;
+    }
+
+    // The box the cursor goes to: the one in that column where the column has one, and the
+    // row's first otherwise -- a list editor's row has no columns to count, and a column whose
+    // cell holds a derived total or a locked value has nothing to type into.
+    function cellField(grid, index, column) {
+        const row = rowAt(grid, index);
+
+        if (!row)
+            return null;
+
+        const cell = column >= 0 && row.cells ? row.cells[column] : null;
+
+        return typable(cell) ?? typable(row);
+    }
+
+    function typable(scope) {
+        if (!scope)
+            return null;
+
+        for (const candidate of scope.querySelectorAll(TYPABLE)) {
+            if (candidate.offsetParent !== null)
+                return candidate;
+        }
+
+        return null;
+    }
 
     // THE KEYBOARD LAYER. A chord is declared by the control that runs it (NsKeys, which writes
     // data-ns-keys) and this layer does one thing with it: find the control on screen declaring
@@ -370,15 +557,18 @@
     // input carries that unconditionally: the vendor paints the chosen value into a text input
     // nobody types into, and a form whose first field is a select is exactly the shape the
     // cursor was walking past (nsail#2000).
+    //
+    // One answer to "a box the cursor may be put in", shared with the grid's own move: both are
+    // placing a cursor in somebody's field, and two selectors would drift apart on the next
+    // reason to skip a box.
+    const TYPABLE = 'input:not([type="hidden"]):not([disabled]):not([aria-readonly="true"]), select:not([disabled]), textarea:not([disabled]):not([aria-readonly="true"])';
+
     function focusFirst(formId) {
         const root = document.getElementById(formId);
         if (!root)
             return;
 
-        const candidates = root.querySelectorAll(
-            'input:not([type="hidden"]):not([disabled]):not([aria-readonly="true"]), select:not([disabled]), textarea:not([disabled]):not([aria-readonly="true"])');
-
-        for (const candidate of candidates) {
+        for (const candidate of root.querySelectorAll(TYPABLE)) {
             if (candidate.offsetParent === null)
                 continue;
 
