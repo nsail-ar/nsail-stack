@@ -112,6 +112,22 @@ public sealed class NsEnterPolicyMarkTests : BunitContext, IAsyncLifetime
         Assert.NotNull(cut.Find(".ns-row-commit"));
     }
 
+    /// <summary>A row's own controls are not fields, and that is what keeps the policy off them:
+    /// both reads reach for a box being typed into, so the pencil, the Confirmar and the
+    /// Cancelar standing inside the very rows and the very form the policy answers for keep the
+    /// activation Enter gives a focused button.</summary>
+    [Fact]
+    public async Task ARowsOwnControls_AreNotFields()
+    {
+        var cut = Render<RowEditorHost>();
+
+        Assert.Null(cut.Find(".ns-row-edit").GetAttribute("data-ns-field"));
+
+        await cut.InvokeAsync(() => cut.FindComponent<NsTable<TestModel>>().Instance.Add());
+
+        Assert.Null(cut.Find(".ns-row-commit").GetAttribute("data-ns-field"));
+    }
+
     /// <summary>A grid nobody types into is READ, so its Enter is the document's and not the
     /// row's — the mark is the way in, never the table.</summary>
     [Fact]
