@@ -42,11 +42,17 @@ else if (HasDocument)
        answering in its own English, in its own bubble, outside all three of the house's
        refusal placements (intentional-ui.md). The attribute withdraws the browser's UI, not
        the input's mark. *@
+    @* data-ns-tracked: the form's own word for "this edits a document", read off the DOM at the
+       instant Enter is pressed (ns.js, the Enter policy) — a stray Enter in the middle of a
+       document must not save it, while a form that IS the question keeps the browser's implicit
+       submission. Written here rather than asked of the C# side because the policy answers for a
+       keystroke and not for a render, the way the open list's own aria-expanded is. *@
     <EditForm EditContext="_editContext"
               OnSubmit="HandleSubmit"
               FormName="@FormName"
               id="@_formId"
               novalidate
+              data-ns-tracked="@(Untracked ? "false" : "true")"
               class="ns-form d-contents">
         @* Without this, EditContext.Validate() has no subscriber to OnValidationRequested,
            so it always answers "valid" — every [Required]/[MaxLength] on the model was

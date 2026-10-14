@@ -21,7 +21,7 @@
             }
             @if (Editable && NewItem is not null)
             {
-                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
+                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-cells-add" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
             }
             else if (ShowOnAdd)
             {
@@ -37,7 +37,11 @@
 }
 else
 {
-    <ul class="ns-list-editor">
+    @* ns-cells says these rows are typed into, which is what Enter means inside one: the row is
+       confirmed and the cursor goes to the row below, by pressing the row's own controls (ns.js,
+       the Enter policy). A list offering no way into a row is read, so its Enter is the
+       document's. *@
+    <ul class="@(Editable ? "ns-list-editor ns-cells" : "ns-list-editor")">
         @foreach (var item in Items)
         {
             <li class="@ItemClasses(IsEditing(item))" @key="item">
@@ -54,7 +58,7 @@ else
                                 @ItemEditor?.Invoke(item)
                             </div>
                             <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Class="ns-list-editor-acts">
-                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-commit" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
                                 <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
                             </NsStack>
                         </CascadingValue>
@@ -83,7 +87,7 @@ else
                     @if (Editable)
                     {
                         <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center">
-                            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
+                            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-edit" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
                             @if (OnRemove.HasDelegate)
                             {
                                 <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy" OnClick="@(() => Remove(item))" />

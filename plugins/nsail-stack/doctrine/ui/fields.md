@@ -317,10 +317,11 @@ when the entry ENDS — Enter pressed, or the box left — carrying what the box
   `data-ns-commits` on its input and the keyboard layer prevents that default for it (`ns.js`,
   the same listener that answers an open combobox's Enter). The mark is read off the DOM at the
   keystroke rather than written in the markup, because which boxes answer Enter is a property
-  of the box and not of the render.
+  of the box and not of the render. It is one read of the one Enter policy, which is where what
+  Enter does everywhere else is written ([forms.md](forms.md), *Enter*).
 - **It is inert without a handler.** Every field in the house that only binds is untouched by
-  the seam: the leave and the Enter stay the vendor's own business there — the Enter above
-  included, so a plain field in a one-field form still submits on it.
+  the seam: the leave and the Enter stay the vendor's own business there — what that field's
+  Enter does is the FORM's question, answered by the policy and not by the box.
 - **It carries what the box holds, and an ended entry is not remembered.** The text typed is
   kept only because a box bound by `Value` alone — `PolicyConstraintsEditor`'s reference id,
   which reads the text only once it parses — never has the keystroke written back to it, so
@@ -610,8 +611,9 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   decided when the element renders, and whether an Enter deserves preventing is a property of the
   keystroke — whether a list was open at THAT instant. What it reads is the box's own combobox
   state, which the vendor marks expanded while the list is open and, on a lookup, **only while it
-  has options**: a closed, empty or already-settled box keeps Enter for the form, a field that is
-  not a combobox (a price cell, the till's Fondo inicial) still saves on Enter, and a button that
+  has options**: a closed, empty or already-settled box hands Enter back to the policy around it
+  ([forms.md](forms.md), *Enter* — where the till's Fondo inicial still saves and a document's
+  field does not), and a button that
   carries the same attribute — an expander's chevron, a menu's face — keeps its own activation,
   since the guard reads the element the keystroke landed on. The same rule covers `NsSelect` and
   `NsMultiSelect`: the vendor stamps both words on their own input too, so nothing in the guard

@@ -149,6 +149,13 @@ list is on that side of it, Ajustes de Venta is not. Both row hosts raise remova
 (`NsListEditor.OnRemove`, `NsTable.OnRowRemove`), so the screen that deletes per row is the one
 that owns the confirm.
 
+- **Enter in a row being typed into confirms it and the cursor goes down the column**, and on the
+  last row it adds one — the keyboard writing line after line, which is what a grid is for. The
+  key presses the row's OWN controls to do it (`ns-row-commit`, `ns-row-edit`, `ns-cells-add`,
+  which both hosts stamp, and `ns-cells` on the rows that offer a way in), so a row the host
+  refuses stays open with its reason and keeps the cursor, and no row is ever committed by a
+  second path. It never submits the document the grid stands in: the whole policy is one place
+  ([forms.md](forms.md), *Enter*).
 - **A `RowEditor` cell's field asks for no visible label (`Label=""`) and is still named.** A
   blank `Label` *hides* the label, it does not remove it: the field keeps the text it would have
   drawn as the input's `aria-label`, and that text is the column header's. Leaving `Label`

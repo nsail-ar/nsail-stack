@@ -198,6 +198,58 @@ retires it on an unmount and a report never cleared guards every later screen fo
 
 ---
 
+## Enter
+
+**Enter has one policy, and it is written in one place**: `ns.js`'s Enter listener is the only
+code in the house that decides whether an Enter keystroke may submit a form. No page, no kit and
+no component carries a `preventDefault` or a key handler of its own for it — a second answer
+would be a second policy, and the one failure this exists to stop is a keystroke saving a
+document nobody asked to save. The reads are made from the DOM at the instant the key is
+pressed, for the reason the open list's own guard is ([fields.md](fields.md)):
+`@onkeydown:preventDefault` is decided when the element renders, and whether an Enter deserves
+preventing is a property of the keystroke — which list was open, which form the cursor was
+standing in — and not of the markup.
+
+**Enter commits what is being typed and does what the control in front of the person means.**
+What it never does is save a document in the middle of being written:
+
+- **In a single-line field of a form that edits a document, Enter ends the entry and nothing
+  else** — no submit, no focus move. Tab is what moves between fields, and Enter keeps one
+  meaning per control. The document is submitted by its own button or by Ctrl+Enter, the chord
+  `NsSubmit` declares.
+- **Where the form IS the question, Enter still submits it**: a sign-in, a filter bar, a search
+  box, a form of one field. That is the industry's own split — a short form submits on Enter, a
+  document does not — and it is **derived, never a parameter a screen sets**: what tells the two
+  apart is the form's own word for holding a document (`NsForm` stamps `data-ns-tracked`, which
+  is `Untracked` read at the keystroke) together with how many fields it is rendering at that
+  instant (`NsFieldBase` stamps `data-ns-field` on every field's input, counted inside the form).
+  A tracked form of one box — a dialog collecting an amount — is a question too.
+- **In a grid cell or a list-editor row, Enter confirms the row and the cursor keeps going down
+  the column it was typing in**; on the last row it adds one, which is a counter writing a sale
+  line after line without reaching for the mouse. It never submits the document: a grid is a
+  FIELD of the document it stands in, and confirming a line is not saving a sale
+  ([hosts.md](hosts.md)).
+- **A text area's Enter is the line it writes, and Ctrl+Enter submits from inside one.** Enter
+  over an open list picks the highlighted option and Enter on a focused button activates that
+  button: both are the browser's own and the policy leaves them alone
+  ([fields.md](fields.md)).
+
+**A grid's move is the one half of the policy that is not a prevention, and it presses the row's
+own controls to make it** — the confirm, the pencil of the row below, the grid's Agregar
+(`ns-row-commit`, `ns-row-edit`, `ns-cells-add`, written by `NsTable` and `NsListEditor`). So the
+key runs exactly the code the click runs: the host keeps deciding what a commit means, a row it
+refuses stays open with its reason and keeps the cursor, and there is no second path a row is
+committed by. What the key adds is the MOVE, which is a DOM gesture and belongs on that side for
+*Focus on open*'s reason. A page that draws the add control out of its own chrome declares
+nothing: that control adds to whichever collection the page is showing, and it is not the grid's
+to press.
+
+The policy cannot be proved at the bUnit layer — AngleSharp performs no implicit form submission
+— so what the tests there hold is the marks it reads (`NsEnterPolicyMarkTests`), and the
+keystrokes themselves are walked in a browser.
+
+---
+
 ## Closing
 
 **The close is the form's, never wired per page**: `NsForm` closes its cascaded surface itself

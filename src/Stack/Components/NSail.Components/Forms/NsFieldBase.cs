@@ -133,9 +133,18 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         }
     }
 
-    Dictionary<string, object> _inputAttributes = Empty;
+    Dictionary<string, object> _inputAttributes = Bare;
 
-    static readonly Dictionary<string, object> Empty = [];
+    // What says "a field of this form renders here", which the Enter policy counts to tell a
+    // document from a question: a tracked form with more than one of these is being filled in,
+    // and a stray Enter inside it must not save it (ns.js). Counted off the DOM at the instant
+    // the key is pressed, because what is rendered THEN is the answer — a tab the form has not
+    // switched to, a row a host just opened — and no field announces it a second way.
+    const string FieldMark = "data-ns-field";
+
+    // Most fields have nothing else to stamp, so the plain case is one shared dictionary rather
+    // than one per field.
+    static readonly Dictionary<string, object> Bare = new() { [FieldMark] = "true" };
 
     string? _attributesFor;
 
@@ -202,11 +211,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         if (autocomplete is null && name is null && !selectOnFocus && !takesEnter && describedBy is null && !readOnly && chord is null)
         {
-            _inputAttributes = Empty;
+            _inputAttributes = Bare;
             return;
         }
 
-        var attributes = new Dictionary<string, object>();
+        var attributes = new Dictionary<string, object> { [FieldMark] = "true" };
 
         // The chord claims the INPUT and not the field's box: "/" means the cursor lands where
         // the typing goes, and the keyboard layer focuses whatever declared the key (ns.js).
