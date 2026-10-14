@@ -39,14 +39,6 @@
                    Class="@GetClasses()"
                    UserAttributes="_ariaAttributes">
             <span class="@LabelClasses">@(Wordless ? null : Label)</span>
-            @* Only beside a word. A glyph-only button still CLAIMS its chord — the attributes
-               below carry it either way, and that is what the keyboard layer and a screen
-               reader read — but its name is already a hover bubble, and a badge is the one
-               thing that cannot be whispered. *@
-            @if (Chord is { Length: > 0 } chord && !Wordless)
-            {
-                <NsKey Chord="@chord" />
-            }
         </MudButton>
     }
 </CascadingValue>

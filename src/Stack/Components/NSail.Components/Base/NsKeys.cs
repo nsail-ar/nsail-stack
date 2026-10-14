@@ -23,6 +23,14 @@ public static class NsKeys
     /// ns.js and written only by <see cref="Declare"/>.</summary>
     public const string Attribute = "data-ns-keys";
 
+    /// <summary>The attribute the BADGE is drawn from — the first chord alone, because a
+    /// reminder on the way past is one key and the reference is the sheet "?" opens. A second
+    /// attribute and not the plural one above for one reason: ns-mud.css draws it with
+    /// <c>content: attr()</c>, exactly as THE WHISPER draws a collapsed control's name, and CSS
+    /// cannot take the first word of a list. Derived from the same claim all the same, so the
+    /// key drawn is the key dispatched.</summary>
+    public const string Hint = "data-ns-key";
+
     /// <summary>Submits the form the focus is in — the chord every web application already
     /// taught, and the one a form's hero wears.</summary>
     public const string Submit = "Ctrl+Enter";
@@ -45,11 +53,11 @@ public static class NsKeys
 
     public const string Help = "?";
 
-    /// <summary>The attributes a control carries to claim the given chords: the house's own,
-    /// which the layer dispatches on, and <c>aria-keyshortcuts</c>, which is the platform's
-    /// word for the same claim and the only way a person who cannot see the badge is told the
-    /// key exists. One call writes both, so a control cannot publish one and forget the other,
-    /// and the two spellings are derived from one string rather than written twice.
+    /// <summary>Everything a control carries to claim the given chords, from the one string:
+    /// the house's attribute the layer dispatches on, <c>aria-keyshortcuts</c> — the platform's
+    /// word for the same claim, and the only way somebody who cannot see the badge is told the
+    /// key exists — and the badge's own. One call writes all three, so a control cannot publish
+    /// one and forget another, and no spelling of the chord is written twice.
     /// <para>Held by the control that calls this, never rebuilt per render: a fresh dictionary
     /// reads as a changed parameter and re-renders the vendor control for nothing
     /// (NsFieldBase's own note). Nulls are skipped, so a caller whose second chord is
@@ -68,6 +76,7 @@ public static class NsKeys
         return new Dictionary<string, object>
         {
             [Attribute] = string.Join(' ', claimed),
+            [Hint] = claimed[0],
             ["aria-keyshortcuts"] = string.Join(' ', claimed.Select(Spelled))
         };
     }
