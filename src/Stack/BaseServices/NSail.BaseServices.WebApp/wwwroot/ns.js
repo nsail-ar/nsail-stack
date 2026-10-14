@@ -92,6 +92,35 @@
 
     document.addEventListener("click", onDocumentClick, true);
 
+    // THE SKIP LINK lands the CURSOR on the content and not merely the scroll (nsail#2207).
+    // A fragment link does that by itself in a plain document -- the browser focuses the target
+    // when it can hold focus, which is what NsMainLayout's tabindex is for -- but not in this
+    // one: Blazor intercepts a same-page address and routes it itself, and its own handling
+    // scrolls without moving focus. So the gesture is completed here, where the element is,
+    // rather than through an interop call the layout would have to make for a link that already
+    // names its target.
+    //
+    // Bubble phase and after the fact: nothing about the navigation is being prevented, and a
+    // click the capture listener above stood down from is still this one's.
+    function onSkipClick(e) {
+        const target = e.target;
+
+        if (!target || typeof target.closest !== "function")
+            return;
+
+        const skip = target.closest(".ns-skip");
+
+        if (!skip)
+            return;
+
+        const content = document.getElementById((skip.getAttribute("href") || "").replace(/^#/, ""));
+
+        if (content)
+            content.focus();
+    }
+
+    document.addEventListener("click", onSkipClick);
+
     // Enter over an open list belongs to the list: it picks what is highlighted, and the form
     // the box stands in is not part of that gesture. The browser disagrees -- a text input
     // inside a form implicitly submits it on Enter -- and the two answers ride the SAME
