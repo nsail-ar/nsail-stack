@@ -3918,3 +3918,79 @@
 .mud-snackbar.ns-toast {
     pointer-events: none;
 }
+
+/* ===========================================================================================
+   THE KEYBOARD (nsail#2207). Three things the chords need from the stylesheet: the badge a
+   control draws its own chord with, the link that is only on screen while it has focus, and a
+   ring wherever the cursor can land. The chords themselves are declared on the controls and
+   dispatched in ns.js — nothing about which key does what is written here.
+   =========================================================================================== */
+
+/* THE KEY ON THE BUTTON: the chord, in the button's own row, quiet enough to be read past
+   rather than read. The width half of it is the label's own rule, written in the markup
+   (NsResponsive.ShownFromContainer) — a surface too narrow for the word has no room for a hint
+   beside it either. */
+.ns-key {
+    margin-left: 8px;
+    padding: 0 4px;
+    border: 1px solid currentcolor;
+    border-radius: 3px;
+    opacity: .6;
+    font-family: inherit;
+    font-size: .6875rem;
+    line-height: 1.5;
+    letter-spacing: 0;
+    text-transform: none;
+    white-space: nowrap;
+}
+
+/* Never where there is no key to press: a coarse pointer is a touch screen, and a badge naming
+   a chord that device cannot send is noise in the one place with the least room for it. Last
+   of the badge's rules on purpose — this and the d-c-* utility it overrides both carry one
+   class, so the order in this file is what decides and nothing needs !important. */
+@media (pointer: coarse) {
+    .ns-key {
+        display: none;
+    }
+}
+
+/* THE SKIP LINK is drawn over the chrome and not in the flow: a line of real height at the top
+   of every page is a line of chrome that only the keyboard ever needs. :focus and not
+   :focus-visible — the control is unreachable by any other means, so there is no pointer focus
+   to tell apart. The z-index clears the vendor's own drawer (1100-1300) without reaching the
+   dialog's: a modal has taken the screen, and the content behind it is not where Tab goes. */
+.ns-skip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1301;
+    padding: 8px 16px;
+    border-bottom-right-radius: var(--mud-default-borderradius);
+    background-color: var(--mud-palette-primary);
+    color: var(--mud-palette-primary-text);
+    font-size: .875rem;
+    text-decoration: none;
+    transform: translateY(-110%);
+}
+
+.ns-skip:focus {
+    transform: none;
+}
+
+/* A VISIBLE FOCUS RING wherever a Tab lands and the control does not already draw one. A text
+   box is excluded for exactly that reason: it answers focus with its own outlined border and
+   its label's colour, so a second ring around it would be noise on every click into a form.
+   Everything else — a button, a link, a row, a tab, a nav entry — had the vendor's ripple and
+   nothing a person could see standing still.
+
+   tabindex -1 is excluded because it is not a tab stop: it is the handle something else focuses
+   programmatically (the main content the skip link lands on, NsCloseOnEscape's wrapper when a
+   surface opens), and a ring around a whole surface is not what either meant. Scoped to the
+   shell's own regions rather than written against the document, so the two-class selector
+   outranks the vendor's own single-class focus rules (NsAssets loads MudBlazor.min.css first
+   and this sheet second). */
+:is(.mud-appbar, .mud-drawer, .mud-main-content, .mud-dialog, .mud-popover)
+:is(a, button, [role="button"], [role="tab"], [role="menuitem"], [role="option"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--mud-palette-primary);
+    outline-offset: 2px;
+}

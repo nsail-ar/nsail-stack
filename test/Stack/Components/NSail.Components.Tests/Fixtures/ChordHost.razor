@@ -1,0 +1,52 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* Every control that claims a chord, on one overlay surface: the form's hero, the quiet submit
+   of a filter beside it, both faces of the close and the page's search box. A NAMED surface,
+   because NsClose removes itself on the main one. *@
+<CascadingValue Value="RouteTable">
+    <NsSurfaceContext Name="Surfaces.Aside" Close="Nothing" Context="surface">
+        <NsForm TModel="SubmitTrackingModel" Model="Model" OnSubmit="HandleSubmit" Untracked="Untracked">
+            <NsTextField @bind-Value="context.Name" />
+            <NsSearchField Value="@_search" ValueChanged="SetSearch" />
+            <NsSubmit Class="hero" />
+            <NsSubmit As="NsAs.Filter" Class="filter" />
+            <NsClose As="NsAs.Inline" Class="exit" />
+            <NsClose Class="cancel" />
+        </NsForm>
+    </NsSurfaceContext>
+</CascadingValue>
+
+@code {
+
+    string _search = string.Empty;
+
+    [Parameter, EditorRequired]
+    public RouteTable RouteTable { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public SubmitTrackingModel Model { get; set; } = default!;
+
+    /// <summary>A form holding no document — a filter, a sign-in — which is what decides
+    /// whether the hero claims the desktop habit beside Ctrl+Enter.</summary>
+    [Parameter]
+    public bool Untracked { get; set; }
+
+    static void Nothing()
+    {
+    }
+
+    void SetSearch(string? value)
+    {
+        _search = value ?? string.Empty;
+    }
+
+    static Task HandleSubmit()
+    {
+        return Task.CompletedTask;
+    }
+}

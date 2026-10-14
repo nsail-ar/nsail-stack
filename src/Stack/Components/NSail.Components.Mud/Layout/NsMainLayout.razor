@@ -2,6 +2,16 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
+@using NSail.Localization
+
+@inject StringManager Strings
+
+@* The first tab stop of every screen, and the only control in the house that is not on screen
+   until it has focus (ns-mud.css): without it a person arriving by keyboard walks the whole app
+   map before reaching the page they opened. Before the chrome and outside the cascade, because
+   that is all "first" means — the bar, the drawer and the content come after it in the DOM, and
+   the DOM order is the only order Tab reads. *@
+<a class="ns-skip" href="#@ContentId">@Strings.Translate("Common.SkipToContent")</a>
 
 <MudLayout Class="min-h-0 h-100 v-100 d-flex">
     <CascadingValue Value="_state">
@@ -36,7 +46,9 @@
            drags their spilled ink into view, which is how a broken dashboard read as a
            working one. Every surface names its own owner: NsTable's container, NsPanel's
            content, NsCard's grown content, an NsStack with Scroll. *@
-        <MudMainContent Class="@GetContentClasses()">
+        @* tabindex -1 is what makes the skip link above land the CURSOR here and not only the
+           scroll: a fragment moves focus to its target only where the target can hold it. *@
+        <MudMainContent Class="@GetContentClasses()" id="@ContentId" tabindex="-1">
             @Content
         </MudMainContent>
 
@@ -54,6 +66,10 @@
     NsLayoutState _state = new() { DrawerIsOpen = true };
 
     const string NavWidth = "280px";
+
+    // One name for the link's address and the content's id, so the door and the room it opens
+    // onto cannot come apart.
+    const string ContentId = "ns-content";
 
     protected override void OnInitialized()
     {

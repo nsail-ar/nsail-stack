@@ -134,9 +134,13 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
 
         // Each gate is a hover/focus PAIR — the bubble answers a pointer and a keyboard alike —
         // so the focus line is what counts them and the hover line above it is what names them.
+        // What makes a rule a gate is what it turns ON, never the shape of its selector: the
+        // keyboard's own focus ring (nsail#2207) is a :focus-visible rule in this same file and
+        // has nothing to do with the whisper.
         var gates = Enumerable
-            .Range(1, lines.Count - 1)
-            .Where(i => lines[i].EndsWith(":focus-visible {", StringComparison.Ordinal))
+            .Range(1, lines.Count - 2)
+            .Where(i => lines[i].EndsWith(":focus-visible {", StringComparison.Ordinal)
+                && lines[i + 1].Contains("--ns-whisper", StringComparison.Ordinal))
             .Select(i => (Hover: lines[i - 1], Focus: lines[i]))
             .ToList();
 
