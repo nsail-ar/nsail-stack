@@ -37,14 +37,6 @@ static class NsResponsive
         return breakpoint == NsSize.None ? null : $"d-c-none d-c-{Suffix(breakpoint)}-table-cell";
     }
 
-    /// <summary>Classes for chrome that is gone until its CONTAINER reaches the given width —
-    /// the key badge on a control, which a narrow surface gives up before the control's own
-    /// label. Inline, because what rides this is a word beside another word.</summary>
-    public static string ShownFromContainer(NsSize width)
-    {
-        return $"d-c-none d-c-{Suffix(width)}-inline";
-    }
-
     /// <summary>Classes for chrome that answers to the WINDOW's width instead of its
     /// container's: gone below the given width, shown from it up. The one measurement that is
     /// not the surface's own, and it is narrow on purpose — the nav drawer docks or hides by

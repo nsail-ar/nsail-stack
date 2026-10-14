@@ -28,13 +28,6 @@
             @Strings.Translate(As == NsAs.Filter ? "Common.Filter" : "Common.Submit")
         }
     </span>
-    @* The chord rides the button it runs, so the key is read off the screen. Only the hero's:
-       a filter's submit is a quiet control over what a list shows rather than the act of the
-       form the cursor is in, and a screen holding both would offer the chord twice. *@
-    @if (As != NsAs.Filter)
-    {
-        <NsKey Chord="@NsKeys.Submit" />
-    }
 </MudButton>
 
 @code {
