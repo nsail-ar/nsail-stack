@@ -128,6 +128,16 @@
 
         if (target.getAttribute("role") === "combobox" && target.getAttribute("aria-expanded") === "true")
             e.preventDefault();
+
+        // And the box that ANSWERS Enter itself: a mailbox taken into a chip list, a scanned
+        // code resolved into a line (NsTextFieldBase.TakesEnter, which stamps this). The
+        // keystroke already means "the entry is finished", and the form saving the whole
+        // document on the same one is the second meaning nobody asked for -- a counter passing
+        // ten boxes over a reader would close the sale on the first. Only the boxes that hang
+        // something on their commit carry the mark, so a plain field in a one-field form still
+        // submits on Enter.
+        if (target.getAttribute("data-ns-commits") === "true")
+            e.preventDefault();
     }
 
     document.addEventListener("keydown", onDocumentKeyDown, true);

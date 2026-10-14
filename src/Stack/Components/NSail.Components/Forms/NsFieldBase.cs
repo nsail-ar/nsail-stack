@@ -166,6 +166,14 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     /// override it; wired here once so no field hand-rolls its own onfocus.</summary>
     protected virtual bool SelectOnFocus => false;
 
+    /// <summary>Whether Enter inside this field is the FIELD's own gesture — the entry ending
+    /// — rather than the form's. The browser's implicit submission does not know that: a text
+    /// input inside a form with a submit button saves the document on the very keystroke that
+    /// was only taking what was typed, so a box that answers Enter itself takes it away from
+    /// the form (ns.js, onDocumentKeyDown). Off by default: a plain field in a one-field form
+    /// still submits on Enter the way it always did.</summary>
+    protected virtual bool TakesEnter => false;
+
     /// <summary>The keyboard chord that lands the cursor in this field (NsKeys), for the one
     /// kind of box a key is spent on: a page's search answers "/". Null everywhere else —
     /// a chord per field is a keyboard nobody could learn.</summary>
@@ -176,13 +184,14 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         var autocomplete = Autocomplete is { Length: > 0 } hint ? hint : null;
         var name = GetAccessibleName();
         var selectOnFocus = SelectOnFocus;
+        var takesEnter = TakesEnter;
         var describedBy = DescribedBy;
         var readOnly = IsReadOnly;
         var chord = Chord;
 
         // A separator neither an autofill token nor a label can contain, so no two different
         // sets share a signature and a change is never mistaken for none.
-        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{describedBy}\n{readOnly}\n{chord}";
+        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{takesEnter}\n{describedBy}\n{readOnly}\n{chord}";
 
         if (_attributesFor == signature)
         {
@@ -191,7 +200,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         _attributesFor = signature;
 
-        if (autocomplete is null && name is null && !selectOnFocus && describedBy is null && !readOnly && chord is null)
+        if (autocomplete is null && name is null && !selectOnFocus && !takesEnter && describedBy is null && !readOnly && chord is null)
         {
             _inputAttributes = Empty;
             return;
@@ -238,6 +247,14 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         if (selectOnFocus)
         {
             attributes["onfocus"] = "this.select()";
+        }
+
+        // Read off the DOM by the keyboard layer at the moment Enter is pressed, the way the
+        // open combobox's own aria-expanded is: WHICH box this is cannot be decided when the
+        // element renders — the layer answers for the keystroke, not for the markup.
+        if (takesEnter)
+        {
+            attributes["data-ns-commits"] = "true";
         }
 
         _inputAttributes = attributes;
