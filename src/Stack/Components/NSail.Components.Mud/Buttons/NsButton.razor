@@ -39,6 +39,14 @@
                    Class="@GetClasses()"
                    UserAttributes="_ariaAttributes">
             <span class="@LabelClasses">@(Wordless ? null : Label)</span>
+            @* Only beside a word. A glyph-only button still CLAIMS its chord — the attributes
+               below carry it either way, and that is what the keyboard layer and a screen
+               reader read — but its name is already a hover bubble, and a badge is the one
+               thing that cannot be whispered. *@
+            @if (Chord is { Length: > 0 } chord && !Wordless)
+            {
+                <NsKey Chord="@chord" />
+            }
         </MudButton>
     }
 </CascadingValue>
@@ -92,6 +100,13 @@
     /// not the same claim.</summary>
     [Parameter]
     public bool? Expanded { get; set; }
+
+    /// <summary>The keyboard chord that presses this button (NsKeys): the button publishes it,
+    /// the keyboard layer in ns.js finds it by that claim, and the badge is drawn from the same
+    /// word — so the key, the hint and the act are one declaration. Null is a button with no
+    /// chord, which is almost all of them.</summary>
+    [Parameter]
+    public string? Chord { get; set; }
 
     [Parameter]
     public string? Class { get; set; }
@@ -189,7 +204,8 @@
         };
 
         if (_ariaAttributes?.GetValueOrDefault("aria-label") as string == Label
-            && _ariaAttributes?.GetValueOrDefault("aria-expanded") as string == expanded)
+            && _ariaAttributes?.GetValueOrDefault("aria-expanded") as string == expanded
+            && _ariaAttributes?.GetValueOrDefault(NsKeys.Attribute) as string == Chord)
         {
             return;
         }
@@ -205,6 +221,14 @@
         {
             attributes ??= new Dictionary<string, object>();
             attributes["aria-expanded"] = expanded;
+        }
+
+        // The claim rides the same collection: it is two attributes on this one element, and
+        // which chord a button answers changes exactly when a parameter does.
+        foreach (var (name, value) in NsKeys.Declare(Chord))
+        {
+            attributes ??= new Dictionary<string, object>();
+            attributes[name] = value;
         }
 
         _ariaAttributes = attributes;

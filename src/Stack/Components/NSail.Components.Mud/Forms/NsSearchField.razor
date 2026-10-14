@@ -37,6 +37,12 @@
     [Parameter]
     public double Debounce { get; set; }
 
+    // Every search box claims the key; WHICH one it lands in is the keyboard layer's answer and
+    // not a parameter here — the page's search over the app map's in the drawer behind it
+    // (ns.js, chordTarget). A box nobody can type in claims nothing, for the same reason a
+    // disabled button answers no chord.
+    protected override string? Chord => IsDisabled || IsReadOnly ? null : NsKeys.Search;
+
     string? GetPlaceholder()
     {
         return Placeholder ?? Strings.Translate("Common.Search");

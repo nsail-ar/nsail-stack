@@ -132,6 +132,140 @@
 
     document.addEventListener("keydown", onDocumentKeyDown, true);
 
+    // THE KEYBOARD LAYER. A chord is declared by the control that runs it (NsKeys, which writes
+    // data-ns-keys) and this layer does one thing with it: find the control on screen declaring
+    // the chord just pressed and activate it. So the key runs exactly the code the click runs,
+    // the badge on the button and the dispatch are one declaration, and a chord nothing on this
+    // screen declares does nothing at all -- a control that is hidden, disabled or simply not
+    // rendered takes its key with it, with no list of active shortcuts to keep in step.
+    //
+    // Written here and not in the markup for onDocumentClick's reason plus one of its own: the
+    // control that answers a chord is never the element the keystroke landed on, so there is no
+    // element whose own @onkeydown would ever see it. Capture for the same reason as the two
+    // listeners above -- first on the path, so no handler between the focus and the document can
+    // cost a chord its answer.
+    //
+    // Escape is NOT here: a routed overlay answers it itself (NsCloseOnEscape) and a hosted
+    // dialog through the vendor's own CloseOnEscapeKey, both already closing through the guard
+    // the X goes through. A close still DECLARES the chord, for the badge and for
+    // aria-keyshortcuts; one dispatcher asking it again would close the surface twice.
+    const CHORDS = [
+        { chord: "Ctrl+Enter", key: "enter", modified: true },
+        { chord: "Ctrl+S", key: "s", modified: true },
+        { chord: "/", key: "/", modified: false }
+    ];
+
+    // Which chord a keystroke is, or nothing. Cmd counts as Ctrl: the chord is written in the
+    // one spelling the badge draws, and a Mac's hand reaches for the key in its own place.
+    // Shift and Alt are never part of a chord the house claims, so a keystroke carrying one is
+    // somebody else's -- except where the key itself needs Shift to be typed at all ("?"),
+    // which `key` already accounts for because it is the CHARACTER and not the physical key.
+    function chordOf(e) {
+        const modified = e.ctrlKey || e.metaKey;
+
+        if (e.altKey || (modified && e.shiftKey))
+            return null;
+
+        const key = typeof e.key === "string" ? e.key.toLowerCase() : "";
+
+        for (const candidate of CHORDS) {
+            if (candidate.key === key && candidate.modified === modified)
+                return candidate.chord;
+        }
+
+        return null;
+    }
+
+    // WCAG 2.1.4: a chord with no modifier must not act while the person is typing, or "/" is a
+    // character they can never write. role=combobox covers the search box of a lookup, which is
+    // a text field the browser does not type-check as one.
+    function typing() {
+        const el = document.activeElement;
+
+        if (!el || typeof el.matches !== "function")
+            return false;
+
+        return el.matches('textarea, [contenteditable="true"], [role="combobox"], input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="file"])');
+    }
+
+    // A control is only a candidate while a hand could reach it: the chord does what the click
+    // does, so what the click cannot do the key must not either. offsetParent for focusFirst's
+    // reason -- a control on a tab NsTabs has not switched to is display:none and still in the
+    // DOM -- and aria-disabled beside the attribute because the vendor's own buttons mark a
+    // refusal both ways.
+    function live(el) {
+        return el.offsetParent !== null
+            && !el.disabled
+            && el.getAttribute("aria-disabled") !== "true";
+    }
+
+    function chordTarget(chord) {
+        const declared = Array.from(document.querySelectorAll("[data-ns-keys]"))
+            .filter(el => (el.getAttribute("data-ns-keys") || "").split(" ").includes(chord) && live(el));
+
+        // The form the cursor is standing in owns the chord, whatever else is on screen: a
+        // person pressing Ctrl+Enter inside an aside's form means that form's submit and not
+        // the one on the page behind it.
+        const focused = document.activeElement;
+        const form = focused && typeof focused.closest === "function" ? focused.closest("form") : null;
+        const inForm = form ? declared.filter(el => form.contains(el)) : [];
+
+        if (inForm.length > 0)
+            return inForm[inForm.length - 1];
+
+        // The app's MAP is not the page: the nav drawer carries a search box of its own, and
+        // "/" belongs to the search of the screen the person is reading.
+        const onPage = declared.filter(el => !el.closest(".ns-nav-drawer"));
+        const pool = onPage.length > 0 ? onPage : declared;
+
+        // Last in document order, which is the innermost surface open: an overlay is rendered
+        // after the page it stands over -- the aside's drawer and the dialog provider are both
+        // later siblings of the main content (NsMainLayout) -- so a chord the page also
+        // declares is answered by what is on top of it.
+        return pool.length > 0 ? pool[pool.length - 1] : null;
+    }
+
+    // A box is activated by being ready to type in, never by being clicked: "/" means land the
+    // cursor in the search, and the box selects its own content on focus (NsFieldBase).
+    function activate(el) {
+        if (el.matches("input, textarea")) {
+            el.focus();
+            return;
+        }
+
+        el.click();
+    }
+
+    function onChordKeyDown(e) {
+        if (e.defaultPrevented || e.isComposing)
+            return;
+
+        const chord = chordOf(e);
+
+        if (chord === null)
+            return;
+
+        // Ctrl+S opens the browser's own "save this page" dialog, and an app that answers the
+        // chord must never let that open behind its save -- nor on a screen with no form at
+        // all, where offering to file the HTML of a page is nobody's intention. Every other
+        // chord keeps its default until something actually answers it.
+        if (chord === "Ctrl+S")
+            e.preventDefault();
+
+        if (!CHORDS.find(c => c.chord === chord).modified && typing())
+            return;
+
+        const target = chordTarget(chord);
+
+        if (!target)
+            return;
+
+        e.preventDefault();
+        activate(target);
+    }
+
+    document.addEventListener("keydown", onChordKeyDown, true);
+
     // THE WHISPER's own flip (ns-mud.css, "THE WHISPER"): the bubble is attr(aria-label),
     // drawn by a ::after the CSS alone sets up, and CSS alone cannot ask whether there is room
     // below it -- so that is the one question answered here, nothing else about the bubble.

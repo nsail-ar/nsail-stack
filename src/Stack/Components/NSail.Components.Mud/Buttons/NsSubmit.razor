@@ -16,7 +16,8 @@
            Color="@(As == NsAs.Filter ? Color.Default : Color.Primary)"
            StartIcon="@(icon.Markup)"
            Disabled="@GetDisabled()"
-           Class="@GetClasses(icon)">
+           Class="@GetClasses(icon)"
+           UserAttributes="_keys">
     <span class="@NsResponsive.LabelClasses(icon, Breakpoint)">
         @if (ChildContent is not null)
         {
@@ -27,9 +28,22 @@
             @Strings.Translate(As == NsAs.Filter ? "Common.Filter" : "Common.Submit")
         }
     </span>
+    @* The chord rides the button it runs, so the key is read off the screen. Only the hero's:
+       a filter's submit is a quiet control over what a list shows rather than the act of the
+       form the cursor is in, and a screen holding both would offer the chord twice. *@
+    @if (As != NsAs.Filter)
+    {
+        <NsKey Chord="@NsKeys.Submit" />
+    }
 </MudButton>
 
 @code {
+
+    // What this button claims, rebuilt only when the claim changes: a fresh dictionary every
+    // render reads as a changed parameter on the vendor button (NsKeys.Declare).
+    Dictionary<string, object> _keys = [];
+
+    string? _claimed;
 
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
@@ -112,6 +126,27 @@
         {
             Surface.StateChanged += OnSurfaceStateChanged;
         }
+    }
+
+    // Ctrl+Enter on every hero and Ctrl+S beside it only where there is a document to save:
+    // the form that tracks changes is the one holding one, and a filter or a sign-in has
+    // nothing the desktop habit would mean. A filter's submit claims neither — the chord names
+    // the form's act, and that button is not it.
+    protected override void OnParametersSet()
+    {
+        Dictionary<string, object> chords = As == NsAs.Filter
+            ? []
+            : NsKeys.Declare(NsKeys.Submit, FormTracked == true ? NsKeys.Save : null);
+
+        var claimed = chords.Count == 0 ? null : (string)chords[NsKeys.Attribute];
+
+        if (_claimed == claimed)
+        {
+            return;
+        }
+
+        _claimed = claimed;
+        _keys = chords;
     }
 
     // Nothing to save yet: a tracked form's submit stays greyed out until the surface

@@ -166,6 +166,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     /// override it; wired here once so no field hand-rolls its own onfocus.</summary>
     protected virtual bool SelectOnFocus => false;
 
+    /// <summary>The keyboard chord that lands the cursor in this field (NsKeys), for the one
+    /// kind of box a key is spent on: a page's search answers "/". Null everywhere else —
+    /// a chord per field is a keyboard nobody could learn.</summary>
+    protected virtual string? Chord => null;
+
     void SetInputAttributes()
     {
         var autocomplete = Autocomplete is { Length: > 0 } hint ? hint : null;
@@ -173,10 +178,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         var selectOnFocus = SelectOnFocus;
         var describedBy = DescribedBy;
         var readOnly = IsReadOnly;
+        var chord = Chord;
 
         // A separator neither an autofill token nor a label can contain, so no two different
         // sets share a signature and a change is never mistaken for none.
-        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{describedBy}\n{readOnly}";
+        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{describedBy}\n{readOnly}\n{chord}";
 
         if (_attributesFor == signature)
         {
@@ -185,13 +191,20 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         _attributesFor = signature;
 
-        if (autocomplete is null && name is null && !selectOnFocus && describedBy is null && !readOnly)
+        if (autocomplete is null && name is null && !selectOnFocus && describedBy is null && !readOnly && chord is null)
         {
             _inputAttributes = Empty;
             return;
         }
 
         var attributes = new Dictionary<string, object>();
+
+        // The chord claims the INPUT and not the field's box: "/" means the cursor lands where
+        // the typing goes, and the keyboard layer focuses whatever declared the key (ns.js).
+        foreach (var (key, value) in NsKeys.Declare(chord))
+        {
+            attributes[key] = value;
+        }
 
         if (autocomplete is not null)
         {

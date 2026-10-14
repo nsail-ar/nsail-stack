@@ -18,6 +18,7 @@
                   Breakpoint="NsBreakpoint.Never"
                   Icon="@NsIcons.Close"
                   Label="@Strings.Translate("Common.Close")"
+                  Chord="@NsKeys.Close"
                   Disabled="@ParentDisabled"
                   OnClick="@(() => Surface.Close())"
                   Class="@Class" />
@@ -28,7 +29,8 @@
                    Color="Color.Default"
                    Disabled="@ParentDisabled"
                    OnClick="@(() => Surface.Close())"
-                   Class="@Class">
+                   Class="@Class"
+                   UserAttributes="_keys">
             @if (ChildContent is not null)
             {
                 @ChildContent
@@ -37,11 +39,20 @@
             {
                 @Strings.Translate("Common.Close")
             }
+            @* Esc is the surfaces' own key and not the layer's (NsKeys.Close), so this badge
+               is the whole of what the house SAYS about it — which is why the worded close
+               carries it and the X beside it does not: a glyph has no word for it to stand
+               next to. *@
+            <NsKey Chord="@NsKeys.Close" />
         </MudButton>
     }
 }
 
 @code {
+
+    // Built once per instance and never per render: a fresh dictionary reads as a changed
+    // parameter on the vendor button (NsKeys.Declare).
+    readonly Dictionary<string, object> _keys = NsKeys.Declare(NsKeys.Close);
 
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
