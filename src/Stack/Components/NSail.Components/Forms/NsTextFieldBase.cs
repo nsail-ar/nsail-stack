@@ -36,6 +36,16 @@ public abstract class NsTextFieldBase<TValue> : NsFieldBase<TValue>
     /// Enter is itself text, which is the textarea's newline.</summary>
     protected virtual bool CommitsOnEnter => true;
 
+    /// <summary>Enter ENDS the entry here, and a box somebody hung that on is answering the
+    /// keystroke itself: a mailbox taken into a chip list, a code resolved into a line. The
+    /// browser would save the whole document on the same Enter (implicit submission), so the
+    /// box takes it — and only a box that actually listens, since a field with nothing hanging
+    /// on its commit has no second meaning for the key to collide with.</summary>
+    protected override bool TakesEnter
+    {
+        get { return CommitsOnEnter && OnCommit.HasDelegate; }
+    }
+
     /// <summary>How many characters the box takes, as its own <c>maxlength</c> — the length the
     /// bound member declares, so the box refuses the character the message would have refused,
     /// and the vendor's own ceiling where it declares none. Derived and never a parameter

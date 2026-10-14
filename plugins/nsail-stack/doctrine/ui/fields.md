@@ -310,8 +310,17 @@ when the entry ENDS — Enter pressed, or the box left — carrying what the box
   not a mailbox, and taking one per keystroke is what spent the field's cap of three on `a`, `n`,
   `a@`. A new field of this shape owes the same reading, and owes the person a visible gesture —
   a chip appears — rather than a silent save.
+- **The Enter that ends the entry is not the form's.** A text input inside a form with a submit
+  button saves the whole document on Enter — the browser's implicit submission — so the very
+  keystroke that takes a mailbox into the list, or a scanned code into a line, would also press
+  Guardar. A box with something hanging on `OnCommit` takes the key: `TakesEnter` stamps
+  `data-ns-commits` on its input and the keyboard layer prevents that default for it (`ns.js`,
+  the same listener that answers an open combobox's Enter). The mark is read off the DOM at the
+  keystroke rather than written in the markup, because which boxes answer Enter is a property
+  of the box and not of the render.
 - **It is inert without a handler.** Every field in the house that only binds is untouched by
-  the seam: the leave and the Enter stay the vendor's own business there.
+  the seam: the leave and the Enter stay the vendor's own business there — the Enter above
+  included, so a plain field in a one-field form still submits on it.
 - **It carries what the box holds, and an ended entry is not remembered.** The text typed is
   kept only because a box bound by `Value` alone — `PolicyConstraintsEditor`'s reference id,
   which reads the text only once it parses — never has the keystroke written back to it, so
