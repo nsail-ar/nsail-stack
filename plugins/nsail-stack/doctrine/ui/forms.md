@@ -232,7 +232,11 @@ What it never does is save a document in the middle of being written:
 - **A text area's Enter is the line it writes, and Ctrl+Enter submits from inside one.** Enter
   over an open list picks the highlighted option and Enter on a focused button activates that
   button: both are the browser's own and the policy leaves them alone
-  ([fields.md](fields.md)).
+  ([fields.md](fields.md)). **The policy reaches for a box being typed into and for nothing
+  else** — what says so is the field mark itself — because a row's pencil, its Confirmar, a
+  menu's face and the submit stand inside the very grid rows and the very form the two reads
+  above answer for, and a button's Enter IS the keydown's default action: taking it would leave
+  them pressed by nobody.
 
 **A grid's move is the one half of the policy that is not a prevention, and it presses the row's
 own controls to make it** — the confirm, the pencil of the row below, the grid's Agregar

@@ -133,8 +133,10 @@
     // cost this its answer by stopping propagation.
     //
     // Three Enters are the browser's own and are left alone: a text area's is a new line, a
-    // focused button's is its press, and a form that IS the question -- a sign-in, a filter bar,
-    // a box standing alone -- keeps the implicit submission, which is what the last read below
+    // focused button's is its press -- the policy reaches for a box being typed into and for
+    // nothing else, so the controls standing in the same form are pressed by the platform the
+    // way they always were -- and a form that IS the question -- a sign-in, a filter bar, a box
+    // standing alone -- keeps the implicit submission, which is what the last read below
     // measures by asking the form how many fields it renders.
     function onDocumentKeyDown(e) {
         if (e.defaultPrevented || e.key !== "Enter")
@@ -173,9 +175,17 @@
             return;
         }
 
-        // A text area's Enter is the line it writes. It carries the field mark like every box,
-        // so it is answered before the two reads below ever see it, and Ctrl+Enter above is what
-        // submits the document from inside one.
+        // Everything below is about a box being TYPED INTO, which is what the field mark says
+        // (NsFieldBase writes it on every field's input). An Enter that landed anywhere else
+        // keeps whatever the platform gives it -- and on a focused BUTTON that is the button's
+        // own activation, which is the keydown's default action: a row's pencil, its Confirmar,
+        // a menu's face and the submit itself all stand inside the very form and the very grid
+        // rows the two reads below answer for, so without this they would be pressed by nobody.
+        if (target.getAttribute("data-ns-field") !== "true")
+            return;
+
+        // A text area's Enter is the line it writes, and Ctrl+Enter above is what submits the
+        // document from inside one.
         if (target.tagName === "TEXTAREA")
             return;
 
@@ -209,9 +219,6 @@
         // data-ns-tracked) together with how many fields it actually renders at this instant: a
         // tracked form of ONE field is a question too -- a dialog collecting an amount, a page's
         // single box -- and keeps the submission, which is where the industry's own split falls.
-        if (target.getAttribute("data-ns-field") !== "true")
-            return;
-
         const form = target.closest('form[data-ns-tracked="true"]');
 
         if (form && form.querySelectorAll('[data-ns-field="true"]').length > 1)
