@@ -87,7 +87,13 @@ else if (HasDocument)
                                        settles it before it validates, because that row is
                                        already part of the document being saved (IFormRows). *@
                                     <CascadingValue Value="(IFormRows)this" IsFixed="true">
-                                        @ChildContent(_model)
+                                        @* And the document itself, for the chrome that has to
+                                           tell a collection it HOLDS from a list that is merely
+                                           read: the first is a field of what the submit saves
+                                           and is never read out on its own (exporting.md). *@
+                                        <CascadingValue Value="(IFormDocument)this" IsFixed="true">
+                                            @ChildContent(_model)
+                                        </CascadingValue>
                                     </CascadingValue>
                                 </CascadingValue>
                             </CascadingValue>

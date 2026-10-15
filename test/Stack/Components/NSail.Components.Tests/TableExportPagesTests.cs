@@ -126,6 +126,28 @@ public class TableExportPagesTests
         Assert.Equal([10m], rows[0].Values);
     }
 
+    /// <summary>A list the client HOLDS is cut into the same pages by the same reader: a second
+    /// count of where a list ends would be a second place for the off-by-one to live.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(Size)]
+    [InlineData((2 * Size) + 350)]
+    public async Task Every_row_a_list_holds_in_hand_reaches_the_file(int count)
+    {
+        var held = Enumerable.Range(0, count).Select(Register.Row).ToList();
+
+        var rows = new List<ExportRow>();
+
+        await foreach (var row in TableExport.Held(held, Columns, CancellationToken.None))
+        {
+            rows.Add(row);
+        }
+
+        Assert.Equal(count, rows.Count);
+        Assert.Equal(held.Select(row => row.Name), rows.Select(row => row.Values[0]));
+    }
+
     static async Task<List<ExportRow>> Read(Register register, IReadOnlyList<TableColumn>? columns = null)
     {
         var rows = new List<ExportRow>();
@@ -186,14 +208,14 @@ public class TableExportPagesTests
 
             return Task.FromResult<DataPage<ExportRowModel>?>(new DataPage<ExportRowModel>
             {
-                Items = [.. Enumerable.Range(start, taken).Select(Make)],
+                Items = [.. Enumerable.Range(start, taken).Select(Row)],
                 PageIndex = index,
                 PageSize = size,
                 TotalCount = Total ?? count
             });
         }
 
-        static ExportRowModel Make(int index)
+        public static ExportRowModel Row(int index)
         {
             return new ExportRowModel
             {

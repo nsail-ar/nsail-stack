@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
@@ -41,8 +42,11 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
             [metadata.KeyFor(typeof(ExportRowModel), nameof(ExportRowModel.Share))] = "Parte",
             [metadata.KeyFor(typeof(ExportRowModel), nameof(ExportRowModel.On))] = "Fecha",
             [metadata.KeyFor(typeof(ExportRowModel), nameof(ExportRowModel.Kind))] = "Tipo",
+            [metadata.KeyFor(typeof(ExportRowModel), nameof(ExportRowModel.IsActive))] = "Activo",
             [metadata.KeyFor(ExportRowKind.Person)] = "Persona",
             [metadata.KeyFor(ExportRowKind.Shop)] = "Comercio",
+            ["Common.Yes"] = "Sí",
+            ["Common.No"] = "No",
         })]));
         Services.AddSingleton(new LanguageProvider { Current = "es" });
         Services.AddSingleton(metadata);
@@ -111,6 +115,60 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
 
         Assert.Empty(cut.FindAll(".ns-table-export"));
         Assert.Single(cut.FindAll(".ns-cells-add"));
+    }
+
+    /// <summary>A register the client HOLDS is a list too: its rows went past no page, so "all
+    /// pages" is every row in hand, and a reader asking for a spreadsheet does not know which kind
+    /// of list they are looking at.</summary>
+    [Fact]
+    public async Task A_register_the_client_holds_offers_Exportar_and_writes_every_row()
+    {
+        Writers(_excel);
+
+        await Held("Excel");
+
+        Assert.Equal(ExportHeldTableHost.Held, _excel.Rows.Count);
+        Assert.Equal("Row 0", _excel.Rows[0].Values[0]);
+        Assert.Equal($"Row {ExportHeldTableHost.Held - 1}", _excel.Rows[^1].Values[0]);
+    }
+
+    /// <summary>And the one thing a held list is not: a collection a DOCUMENT holds. Its rows are
+    /// a field of what the submit saves, so the document is what gets saved and there is nothing
+    /// to read out on its own.</summary>
+    [Fact]
+    public void A_collection_a_document_holds_offers_nothing()
+    {
+        Writers(_excel, _csv);
+
+        var cut = Render<ExportHeldTableHost>(parameters => parameters.Add(host => host.InDocument, true));
+
+        Assert.Empty(cut.FindAll(".ns-table-export"));
+    }
+
+    /// <summary>Nor is a collection with a way IN, document or not: a grid that can be added to or
+    /// taken from is being edited wherever it stands.</summary>
+    [Fact]
+    public void A_collection_with_a_way_in_offers_nothing()
+    {
+        Writers(_excel, _csv);
+
+        var cut = Render<ExportHeldTableHost>(parameters => parameters.Add(host => host.Editable, true));
+
+        Assert.Empty(cut.FindAll(".ns-table-export"));
+        Assert.Empty(cut.FindAll(".ns-collection-bar"));
+    }
+
+    /// <summary>A boolean reads as the word the cell prints, for the same reason an enum does:
+    /// True under a heading that says Activo is the CLR's word for it and nobody else's.</summary>
+    [Fact]
+    public async Task A_boolean_column_carries_the_word_the_cell_shows()
+    {
+        Writers(_csv);
+
+        await Held("CSV");
+
+        Assert.Equal("Sí", _csv.Rows[0].Values[2]);
+        Assert.Equal("No", _csv.Rows[1].Values[2]);
     }
 
     /// <summary>The bar draws for a grid that has something to put in it, named or not: there is
@@ -272,6 +330,23 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
     {
         var cut = parameters is null ? Render<ExportTableHost>() : Render<ExportTableHost>(parameters);
 
+        await Pick(cut, row);
+
+        return cut;
+    }
+
+    async Task<IRenderedComponent<ExportHeldTableHost>> Held(string row)
+    {
+        var cut = Render<ExportHeldTableHost>();
+
+        await Pick(cut, row);
+
+        return cut;
+    }
+
+    static async Task Pick<THost>(IRenderedComponent<THost> cut, string row)
+        where THost : IComponent
+    {
         await cut.Find(".ns-table-export button").ClickAsync(new MouseEventArgs());
 
         var entry = cut
@@ -280,8 +355,6 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
             .First(item => item.TextContent.Contains(row, StringComparison.Ordinal));
 
         await entry.ClickAsync(new MouseEventArgs());
-
-        return cut;
     }
 
 }

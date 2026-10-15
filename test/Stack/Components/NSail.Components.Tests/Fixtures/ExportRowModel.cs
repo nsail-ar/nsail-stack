@@ -10,10 +10,12 @@ public enum ExportRowKind
 }
 
 /// <summary>A row of several shapes, so a column's format has something to be derived from: text,
-/// a figure, a date, an enum, and the two a CLR type cannot tell apart (an amount and a share are
-/// both decimals).</summary>
+/// a figure, a date, an enum, a flag, and the two a CLR type cannot tell apart (an amount and a
+/// share are both decimals).</summary>
 public sealed class ExportRowModel
 {
+    public bool IsActive { get; set; }
+
     public string? Name { get; set; }
 
     public int Count { get; set; }

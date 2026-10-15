@@ -81,13 +81,27 @@ is never offered rather than offered and refused.
 
 ## What a list exports
 
-**A grid the SERVER pages offers Exportar, and no screen asks for it.** `NsTable` draws the menu in
-its own `.ns-collection-bar`, beside Agregar — the bar now draws for a grid that has a control to
+**A grid whose rows are READ offers Exportar, and no screen asks for it.** `NsTable` draws the menu
+in its own `.ns-collection-bar`, beside Agregar — the bar now draws for a grid that has a control to
 put in it even where nothing named the grid, because the pager row is the only alternative seat and
-it exists in one of the three paging modes. The offer is derived from `OnQuery.HasDelegate &&
-RowEditor is null`: a collection a form holds in memory is not a list (its rows are a field of the
-document being saved) and neither is a grid typed into. A screen that had to ask for Exportar is a
-screen that can forget to.
+it exists in one of the three paging modes. A screen that had to ask for Exportar is a screen that
+can forget to.
+
+**Both kinds of list are read out, and the reader cannot tell them apart anyway.** A grid the
+SERVER pages is a list by construction; a grid holding every row in hand is one too — the register
+a kit writes when the whole table fits in the client — and "all pages" is every row either way.
+What is NOT a list is a collection a **document** holds, whose rows are a field of what the submit
+saves, and a grid **typed into**, whose rows are the thing being written. So the offer is derived
+from `RowEditor is null` plus either `OnQuery.HasDelegate` or rows in hand that nothing writes:
+no document around the grid (`IFormDocument`, cascaded by `NsForm` and nothing else), no `NewRow`
+and no row callbacks. **The form is the test, not the paging**: a collection inside a document is
+the one thing in the house whose rows are not there to be read.
+
+**A list the client holds is cut into the same pages by the same reader** (`TableExport.Held`):
+there is no server to ask, and a second count of where a list ends would be a second place for the
+off-by-one to live. The slice is taken when Exportar is pressed, because the `Rows` parameter moves
+when the page that owns it renders and a file written out of a moving parameter would be two
+filters' rows under one heading.
 
 **The columns are the header's own declarations.** `NsTh` already carries a `For` expression and
 already resolves a heading from it; `TableColumns` keeps those in header order and `TableColumn`
@@ -101,6 +115,8 @@ read, so a row type's other members are none of an export's business.**
   is.**
 - **An enum reads as the word the cell shows.** A file saying "Supplier" where the screen said
   "Proveedor" is the list mistranslated.
+- **A boolean reads as Sí or No** (`Common.Yes`/`Common.No`), the same promise one step down:
+  `True` under a heading that says Activo is the CLR's word for it and nobody else's.
 - **A collection reads as its members, comma-separated** (a party's roles): no cell type holds a
   list, and left alone the file would print the type's name.
 - **A column with no `For` is not a column** — the action column has nothing to put in a file and
@@ -112,8 +128,8 @@ read, so a row type's other members are none of an export's business.**
 
 **Every page the filter answers is read, in pages of the export's own** (`TableExport.PageSize`,
 the largest any message accepts — the round trips are the cost and no page is held). Asked for
-through the screen's own `OnQuery`, so the message, its filter and its authorization are the
-list's and an export needs nothing of its own. **Where the list ends is the page in hand being
+through the screen's own `OnQuery` where there is one, so the message, its filter and its
+authorization are the list's and an export needs nothing of its own. **Where the list ends is the page in hand being
 shorter than the one asked for, never a total**: a total is a figure the server computed for a
 pager, and a filter applied between two pages makes it a lie.
 
