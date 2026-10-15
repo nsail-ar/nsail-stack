@@ -91,6 +91,32 @@ public sealed class NestedValidationTests
         public Rule Inner { get; set; } = new();
     }
 
+    sealed class Nested
+    {
+        [Range(-30, 30)]
+        public decimal Sphere { get; set; }
+    }
+
+    sealed class Row
+    {
+        [Required]
+        public string? Street { get; set; }
+
+        [Validated]
+        public Nested? Detail { get; set; }
+    }
+
+    sealed class UpdateContact
+    {
+        [Validated]
+        public List<Row> Addresses { get; set; } = [];
+    }
+
+    sealed class Loose
+    {
+        public List<Row> Addresses { get; set; } = [];
+    }
+
     [Fact]
     public void AMemberThatOpensItsModel_IsRefusedByThePathFromTheMessage()
     {
@@ -179,5 +205,63 @@ public sealed class NestedValidationTests
         var problem = MessageValidator.Validate(first);
 
         Assert.Equal(["Next.Number", "Number"], problem!.Issues.Select(issue => issue.Source));
+    }
+
+    [Fact]
+    public void ACollectionMember_WalksEachElement()
+    {
+        var problem = MessageValidator.Validate(new UpdateContact
+        {
+            Addresses = [new Row { Street = null }, new Row { Street = null }],
+        });
+
+        Assert.Equal(["Addresses[0].Street", "Addresses[1].Street"], problem!.Issues.Select(issue => issue.Source));
+    }
+
+    [Fact]
+    public void AnElementsViolation_IsNamedByItsIndexPath()
+    {
+        var problem = MessageValidator.Validate(new UpdateContact { Addresses = [new Row { Street = "ok" }, new Row { Street = null }] });
+
+        var issue = Assert.Single(problem!.Issues);
+
+        Assert.Equal("Required", issue.Code);
+        Assert.Equal("Addresses[1].Street", issue.Source);
+    }
+
+    // The recursion the attribute already does for a single nested model also happens inside an
+    // element: a [Validated] member of a row opens its own model the same way.
+    [Fact]
+    public void AValidatedMemberInsideAnElement_IsWalkedToo()
+    {
+        var problem = MessageValidator.Validate(new UpdateContact
+        {
+            Addresses = [new Row { Street = "ok", Detail = new Nested { Sphere = 45m } }],
+        });
+
+        var issue = Assert.Single(problem!.Issues);
+
+        Assert.Equal("OutOfRange", issue.Code);
+        Assert.Equal("Addresses[0].Detail.Sphere", issue.Source);
+    }
+
+    [Fact]
+    public void AnEmptyCollection_RefusesNothing()
+    {
+        Assert.Null(MessageValidator.Validate(new UpdateContact { Addresses = [] }));
+    }
+
+    [Fact]
+    public void ANullCollection_RefusesNothing()
+    {
+        Assert.Null(MessageValidator.Validate(new UpdateContact { Addresses = null! }));
+    }
+
+    // Opt-in like every other member: a collection nobody marked [Validated] behaves exactly as
+    // it did before this story, row and all.
+    [Fact]
+    public void ACollectionWithNoValidatedAttribute_IsNotWalked()
+    {
+        Assert.Null(MessageValidator.Validate(new Loose { Addresses = [new Row { Street = null }] }));
     }
 }

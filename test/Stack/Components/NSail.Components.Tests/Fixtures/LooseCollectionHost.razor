@@ -1,0 +1,46 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Testing.Models
+
+@* The collection member carries no [Validated]: AddressRow.Street still declares [Required],
+   but a row model nothing opened is enforced by neither end — the opt-in the single nested
+   model already has. *@
+<MudPopoverProvider />
+
+@{
+    RenderFragment<AddressRow> editor = item =>
+        @<text>
+            <NsTextField @bind-Value="item.Street" Label="" />
+        </text>;
+}
+
+<NsForm TModel="Model" Model="@TheModel" OnSubmit="HandleSubmit">
+    <NsListEditor TItem="AddressRow" Items="TheModel.Addresses" Title="Direcciones" ItemEditor="editor">
+        <ItemTemplate Context="item">
+            <span class="item-street">@item.Street</span>
+        </ItemTemplate>
+    </NsListEditor>
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public Model TheModel { get; set; } = default!;
+
+    public int Submits { get; private set; }
+
+    void HandleSubmit(SubmitEventArgs<Model> args)
+    {
+        Submits++;
+    }
+
+    public sealed class Model
+    {
+        public List<AddressRow> Addresses { get; set; } = [];
+    }
+}

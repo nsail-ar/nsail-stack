@@ -1,0 +1,51 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Problems
+@using NSail.Testing.Models
+
+@* NsTable's row carries no IFormRow of its own — unlike NsListEditor it is not settled before
+   the document validates, so an open row stands through the whole submit and a server answer
+   naming it finds a field still tracked on the form. *@
+<MudPopoverProvider />
+
+@{
+    RenderFragment<AddressRow> editor = row =>
+        @<text>
+            <NsTd For="() => row.Street">
+                <NsTextField @bind-Value="row.Street" Label="" />
+            </NsTd>
+        </text>;
+}
+
+<NsForm TModel="CollectionProblemModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsTable TRow="AddressRow" Rows="Rows" Title="Direcciones" RowEditor="editor">
+        <HeaderContent Context="header">
+            <NsTh For="() => header.Street" />
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <NsTd For="() => row.Street">@row.Street</NsTd>
+        </RowTemplate>
+    </NsTable>
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public CollectionProblemModel Model { get; set; } = default!;
+
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    DataPage<AddressRow> Rows => DataPage<AddressRow>.From(Model.Addresses);
+
+    void HandleSubmit(SubmitEventArgs<CollectionProblemModel> args)
+    {
+        args.Problem = Problem;
+    }
+}
