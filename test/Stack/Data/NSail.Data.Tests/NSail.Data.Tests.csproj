@@ -9,7 +9,8 @@
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
         <!-- The mapper's store semantics are tested offline, on SQLite in memory, as Detached's own
-             suite is: what is proven is EF's change tracking, not a database's dialect. -->
+             suite is: what is proven is EF's change tracking, not a database's dialect. The one
+             exception is the row version, which IS Postgres's (xmin), on a TestDatabase. -->
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
         <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
         <PackageReference Include="coverlet.collector" Version="10.0.1">
@@ -27,6 +28,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\..\..\src\Stack\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
         <ProjectReference Include="..\..\..\..\src\Stack\Data\NSail.Data\NSail.Data.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Data\NSail.Data.Testing\NSail.Data.Testing.csproj" />
         <ProjectReference Include="..\..\..\..\src\Stack\Generation\NSail.SourceGeneration.Annotations\NSail.SourceGeneration.Annotations.csproj" />
     </ItemGroup>
 
