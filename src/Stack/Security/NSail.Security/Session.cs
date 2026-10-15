@@ -45,12 +45,19 @@ public class Session
     /// rebuilt session).</summary>
     public string? Domain { get; set; }
 
-    /// <summary>The tenant this identity was minted for, as its slug — the one thing in a
-    /// session that the request cannot be asked for, because it is what the request is checked
+    /// <summary>The tenant this identity was minted for, as its slug — a thing in a session
+    /// the request cannot be asked for, because it is what the request is checked
     /// against: the credential says where it was issued and the install says where it arrived.
     /// Null off a tenant-resolving install, where there is no second place a credential could
     /// have come from.</summary>
     public string? Tenant { get; set; }
+
+    /// <summary>The generation of ticket this identity was minted under
+    /// (<see cref="SecurityOptions.TicketEpoch"/>) — checked against the install the way
+    /// <see cref="Tenant"/> is, and for the same reason: the credential says which generation
+    /// minted it and the install says which one it still honours. Zero off an install that has
+    /// never raised it, which is also what a ticket minted before the cut reads as.</summary>
+    public int TicketEpoch { get; set; }
 
     /// <summary>Every membership the actor held when this Session was built, wherever it
     /// stands, each with the organizations above it already walked — what the selector offers;

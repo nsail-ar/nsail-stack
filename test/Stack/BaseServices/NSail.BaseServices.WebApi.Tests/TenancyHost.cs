@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using System.Net.Http;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
@@ -35,6 +36,10 @@ public sealed class TenancyHost : IAsyncDisposable
     // reference to read one string would point the dependency arrow the wrong way. What the
     // pipeline is checked on is Session.Tenant, and the claim behind it is Iam's business.
     const string TenantClaimType = "tenant";
+
+    // Iam's other one, retyped for the same reason: what the pipeline is checked on is
+    // Session.TicketEpoch, and the claim behind it is the kit's business.
+    const string TicketEpochClaimType = "epoch";
 
     static readonly string Server = ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres");
 
@@ -72,9 +77,9 @@ public sealed class TenancyHost : IAsyncDisposable
     /// <summary>The host every tenancy suite runs against. <paramref name="bootstraps"/> adds
     /// what an app would register — the rows a tenant is born with — and is off by default so
     /// the suites that count rows are counting their own.</summary>
-    public static Task<TenancyHost> Start(TenancyMode mode, bool bootstraps = false, string? language = null)
+    public static Task<TenancyHost> Start(TenancyMode mode, bool bootstraps = false, string? language = null, int epoch = 0)
     {
-        return Start(mode, bootstraps ? typeof(WelcomeSeed) : null, cell: null, language);
+        return Start(mode, bootstraps ? typeof(WelcomeSeed) : null, cell: null, language, epoch);
     }
 
     /// <summary>The same install again, carrying whatever chain that build carries — a deploy,
@@ -88,7 +93,7 @@ public sealed class TenancyHost : IAsyncDisposable
         return Start(TenancyMode.SingleDb, seed, host.Cell);
     }
 
-    public static async Task<TenancyHost> Start(TenancyMode mode, Type? seed, string? cell, string? language = null)
+    public static async Task<TenancyHost> Start(TenancyMode mode, Type? seed, string? cell, string? language = null, int epoch = 0)
     {
         var owned = cell is null;
 
@@ -120,6 +125,17 @@ public sealed class TenancyHost : IAsyncDisposable
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Language:Default"] = language,
+            });
+        }
+
+        // The generation of ticket this install honours, stated the one way an install states
+        // it: through its own configuration, read by AddBaseWebApi. Zero is every other suite
+        // here, and it is what proves the cut costs an install that never raised it nothing.
+        if (epoch != 0)
+        {
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Security:TicketEpoch"] = epoch.ToString(CultureInfo.InvariantCulture),
             });
         }
 
@@ -288,9 +304,11 @@ public sealed class TenancyHost : IAsyncDisposable
         return client;
     }
 
-    public async Task<string> SignIn(string? tenant, bool stamp = true)
+    public async Task<string> SignIn(string? tenant, bool stamp = true, int? epoch = null)
     {
-        using var response = await Client.SendAsync(Get($"/sign-in?stamp={stamp}", tenant));
+        var generation = epoch is { } stated ? $"&epoch={stated}" : string.Empty;
+
+        using var response = await Client.SendAsync(Get($"/sign-in?stamp={stamp}{generation}", tenant));
 
         response.EnsureSuccessStatusCode();
 
@@ -385,13 +403,23 @@ public sealed class TenancyHost : IAsyncDisposable
         // A sign-in in miniature: the ticket carries the tenant the work that issued it was
         // running on — what PrincipalFactory stamps — and an install that resolved none carries
         // nothing. `stamp: false` is the ticket minted before the wall existed.
-        app.MapGet("/sign-in", async (HttpContext context, TenancyProvider tenancy, bool stamp) =>
+        //
+        // The generation comes from the install's own options for the same reason, so a plain
+        // sign-in here is the one a person makes after the cut. `epoch` overrides it, which is
+        // the only way to hold a ticket from before: zero mints no claim at all — the ticket
+        // from before the cut existed — and any other number is one generation behind or ahead.
+        app.MapGet("/sign-in", async (HttpContext context, TenancyProvider tenancy, SecurityOptions security, bool stamp, int? epoch) =>
         {
             var claims = new List<Claim>();
 
             if (stamp && tenancy.Current is { IsResolved: true, Slug: { } slug })
             {
                 claims.Add(new Claim(TenantClaimType, slug));
+            }
+
+            if ((epoch ?? security.TicketEpoch) is var stamped and not 0)
+            {
+                claims.Add(new Claim(TicketEpochClaimType, stamped.ToString(CultureInfo.InvariantCulture)));
             }
 
             await context.SignInAsync(
@@ -435,6 +463,12 @@ public sealed class TenancyHost : IAsyncDisposable
                 {
                     IsAuthenticated = true,
                     Tenant = user.FindFirst(TenantClaimType)?.Value,
+                    TicketEpoch = int.TryParse(
+                        user.FindFirst(TicketEpochClaimType)?.Value,
+                        CultureInfo.InvariantCulture,
+                        out var epoch)
+                        ? epoch
+                        : 0,
                 };
             }
 

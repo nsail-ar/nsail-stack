@@ -5,12 +5,14 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi;
 using NSail.Backup;
+using NSail.Configuration;
 using NSail.Data;
 using NSail.Messaging.Runtime;
 using NSail.Messaging.WebApi.Push;
 using NSail.Messaging.WebApi;
 using NSail.Localization;
 using NSail.Metadata;
+using NSail.Security;
 using NSail.Telemetry;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -39,7 +41,14 @@ public static class Setup
         builder.Services.AddScoped<TenancyMiddleware>();
         builder.Services.AddScoped<TenantStateMiddleware>();
         builder.Services.AddScoped<TenantClaimMiddleware>();
+        builder.Services.AddScoped<TicketEpochMiddleware>();
         builder.Services.AddScoped<CredentialMiddleware>();
+
+        // The install's own say over the credentials it mints, loaded here because this is where
+        // the configuration is in hand: AddSecurity's TryAdd leaves this one standing, and a
+        // composition that calls AddSecurity first leaves it last, so either order resolves the
+        // install's value and not the default.
+        builder.Services.AddSingleton(builder.Configuration.Load<SecurityOptions>());
 
         // Ahead of AddPush's own TryAdd: a push reaches the tenant it was published in, and a
         // connection joins the tenant the edge resolved for it.
@@ -146,6 +155,13 @@ public static class Setup
         {
             app.UseMiddleware<TenantClaimMiddleware>();
         }
+
+        // Beside the wall above and installed under every mode, because an install with one
+        // customer has sessions to void like any other — and ahead of the credential wall, which
+        // re-mints a ticket whose party moved and would stamp the generation this step is here to
+        // refuse. It costs no query and no session where the install never raised the number, so
+        // it stands in front of the throttle as the tenant wall does.
+        app.UseMiddleware<TicketEpochMiddleware>();
 
         // In front of the gate, because volume is not a permission question: a door open to
         // the whole internet is refused for asking too often before anybody spends a policy
