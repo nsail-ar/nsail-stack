@@ -349,12 +349,15 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
     {
         await cut.Find(".ns-table-export button").ClickAsync(new MouseEventArgs());
 
-        var entry = cut
+        // Found and pressed inside ONE dispatch: between a Find and a Click the open menu can
+        // re-render — the popover's own render lands on a continuation — and the handler the
+        // element carried is gone by the time the click reaches it (bUnit,
+        // UnknownEventHandlerIdException, which a loaded machine is what makes likely).
+        await cut.InvokeAsync(() => cut
             .Find(".ns-menu-list")
             .QuerySelectorAll(".ns-menu-item")
-            .First(item => item.TextContent.Contains(row, StringComparison.Ordinal));
-
-        await entry.ClickAsync(new MouseEventArgs());
+            .First(item => item.TextContent.Contains(row, StringComparison.Ordinal))
+            .ClickAsync(new MouseEventArgs()));
     }
 
 }
