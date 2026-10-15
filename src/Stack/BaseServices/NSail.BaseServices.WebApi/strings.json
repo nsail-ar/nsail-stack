@@ -1,4 +1,8 @@
 {
   "Tenancy.SuspendedTitle": "Account suspended",
-  "Tenancy.SuspendedMessage": "This account is suspended and cannot be used right now. Contact support to have it restored."
+  "Tenancy.SuspendedMessage": "This account is suspended and cannot be used right now. Contact support to have it restored.",
+  "Tenancy.PausedTitle": "Back shortly",
+  "Tenancy.PausedMessage": "We are working on the service and it is paused for a moment.",
+  "Tenancy.SuspendedUntil": "Expected back on {when} UTC.",
+  "Tenancy.SuspendedContact": "Reach us at {contact}."
 }

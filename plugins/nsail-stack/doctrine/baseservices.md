@@ -62,7 +62,9 @@ its own, the words of the one page this project draws without the app (the suspe
   tenant is resolved**, immediately behind the step above: a customer the install has suspended is
   as unreachable as one that does not exist, so it is refused ahead of a cookie, a session, a
   throttle counter, an endpoint and an asset. 503 and the suspended page to a browser, 503 and the
-  `Suspended` problem to a program. A tenant with no state row is active. See
+  `Suspended` problem to a program, worded by the row's reason and carrying its message. A tenant
+  with no state row is active; a pause can also be a window, and the clock it opens and closes on
+  is read here, on every request. See
   [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-and-its-plan).
 - Authentication + authorization middleware (schemes are registered by kits, e.g. Iam registers cookie auth in `AddIamWebApi`)
 - `TenantClaimMiddleware` — the identity half of the tenant wall, **only where a tenant is

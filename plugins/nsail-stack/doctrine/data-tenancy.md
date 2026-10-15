@@ -346,7 +346,7 @@ composed name Postgres would truncate at 63 bytes is refused for the same reason
 ## The install's own record of a tenant: its state and its plan
 
 Everything above is a tenant's own rows. **`TenantState` is the install's record ABOUT a
-tenant** — whether it is served at all, and which plan it is on — and that is the whole of why
+tenant** — whether it is served at all, why, until when, and which plan it is on — and that is the whole of why
 it is the Stack's and not a product's: the state of a customer is identical in every product,
 and answered twice it would be answered differently. It is the second and last table the Stack
 owns (`DbContextExtensions.ApplySetups`, beside the seed history, for the same reason: a
@@ -361,7 +361,21 @@ the contract and the Stack only reads:
 | `TenantId` | `uuid`, primary key | The tenant's `RowKey`: `TenantKey.For(slug)` where the wall is the tenant column, `Guid.Empty` where it is the connection or there are no tenants — exactly what the shadow column carries on every other table |
 | `Status` | `varchar(32)`, not null | `Active` or `Suspended`. Compared, never parsed |
 | `Plan` | `varchar(32)`, null | The plan's word, carried and not interpreted — **the Stack names no plan and knows none** |
+| `Reason` | `varchar(32)`, null | Why it is paused: `Maintenance` (a deploy, a big change, a maintenance stop), `Move` (between rings or servers), `Payment`. Compared, never parsed — it changes nothing about whether the tenant is served, only the words its page gets |
+| `SuspendedFrom` | `timestamptz`, null | When the pause opens. No `SuspendedFrom`, no window |
+| `SuspendedUntil` | `timestamptz`, null | When it closes, or null for a window with no end. It is also what the page says the service comes back at |
+| `Message` | `varchar(500)`, null | Plain text the tenant's people read under the generic words. The writer is trusted and the text is escaped anyway: the page is markup |
 
+- **A pause is either the switch or a window, and they are independent.** `Status = Suspended`
+  is the immediate, open-ended switch. A window is `now >= SuspendedFrom` and
+  (`SuspendedUntil` is null or `now < SuspendedUntil`) — a maintenance stop, a billing cut or a
+  move written ahead of time. Either one suspends; a row with neither is active, and so is a row
+  carrying only an end (an end with no beginning is what the switch wears to say when it comes
+  back, not a suspension of its own). **Nothing schedules anything**: the window is judged
+  against the clock in the gate on every request, so no job has to run at the minute it opens,
+  nothing flips `Status`, and the cut lands to the second. Which is also why the switch is not
+  lifted by a window that has closed — an operator who wants the pause to lift itself writes the
+  window and no switch.
 - **A tenant with no row is active**, and so is one whose `Status` this Stack does not know.
   Absence is the normal state of every customer nobody has had to act on, so the table is empty
   until something is suspended — and a typo in the writer's hand must not take a paying customer
@@ -374,11 +388,17 @@ the contract and the Stack only reads:
 - **Its migration is the product's, like every other table's.** The Stack authors no chain: the
   table enters a product on the migration that follows the pin carrying it, and
   `TenantStates` is created there exactly as `AppliedSeedSteps` was.
-- **Nothing is cached** (`TenantStates`, the scoped reader both callers use). The row is written
-  by a program outside the process, so a memo would serve a state the install has already
-  changed: a customer suspended for abuse would keep being served and a restored one would stay
-  dead for the length of the window. What it costs instead is one primary-key lookup per
-  request, beside the one the credential already buys.
+- **The row is memoed for minutes; the clock is not** (`TenantStateMemo`, the process-wide memo
+  behind `TenantStates`, for `Tenancy:StateCacheSeconds` — a few minutes, whose default and floor
+  are `TenancyOptions`'; zero is refused rather than read as "no memo").
+  A primary-key lookup on every request of every tenant bought almost nothing: what it read was
+  the same absent row. So the row is held per tenant, a missing one included, and whether a held
+  row's window is open is still asked of the clock on each request — the memo delays the *row*,
+  never the *cut*. **What it costs is stated and not hidden:** the row is written by a program
+  outside this process, so a suspension written now reaches a running install when its entry
+  expires, and so does a restoration. Suspending for abuse is therefore not instant; an install
+  that needs it closer shortens the setting, and whoever writes the row waits the window out
+  rather than watching for an effect that has not arrived.
 - **A suspended tenant's requests answer the suspended page** (`TenantStateMiddleware`,
   immediately behind `TenancyMiddleware`): 503 and the page to a browser, 503 and the `Suspended`
   problem to a program — the same `Accept` negotiation the error handler makes, asked through the
@@ -395,7 +415,17 @@ the contract and the Stack only reads:
   `NSail.BaseServices.WebApi`. The gate stands ahead of the step that resolves the reader's
   language, because a suspended tenant is refused before the pipeline does any work on its
   behalf — and the install's default is then the one answer that is not a guess, the same one the
-  background runner gives for the same reason.
+  background runner gives for the same reason. A `SuspendedUntil` it states is in UTC and says
+  so, for the same reason again: the gate resolves no reader, and a zone it guessed would be
+  worse than one it names.
+- **The page words itself by `Reason` and says nothing it was not given.** Work on the service
+  (`Maintenance`, `Move`) says so and promises a return; everything else — `Payment`, a word this
+  Stack does not know, no reason at all — gets the generic words, which are the only honest ones
+  for a pause the page cannot explain. Under them it draws, when there is one: when the service
+  comes back (only while that is still ahead), the row's `Message`, and the install's
+  `Tenancy:SupportContact`. The contact is the **install's**, because it is the operator and not
+  the tenant that lifts a pause; empty means no line, and a tenant that wants its own words puts
+  them in `Message`.
 
 ## The credential is stamped, and checked on every request
 
