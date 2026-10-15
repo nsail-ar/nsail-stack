@@ -72,7 +72,10 @@ each job's (Background jobs, below).
 The wall's one exception is a marker on the entity's own file: `IInstallScoped` (`NSail.Data`,
 beside `IVersioned`). The pass skips a marked entity — no column, no filter, nothing to stamp —
 so one planted row answers every tenant, and a scope that resolved none reads it too. Which
-entities wear it: org-map.md (the codebase's own map; in nsail, `plugins/nsail-kits/doctrine/org-map.md`), Shared.
+entities wear it: org-map.md (the codebase's own map; in nsail, `plugins/nsail-kits/doctrine/org-map.md`), Shared. The
+Stack's own `TenantState` wears it too, and is the one marked entity that names a tenant in a
+column of its own — it is the install's record ABOUT a customer rather than reference data (The
+install's own record, below).
 
 **An entity a tenant can WRITE is the tenant's**: the editor's existence is the classification.
 Under a per-tenant database the customer already edits such rows freely, so marking one
@@ -232,8 +235,8 @@ slug. So **provisioning a tenant is writing the Caddy block; nothing else exists
 
 - **The seed is a chain, and the tenant has a history of it.** `ITenantSeed` is an ordered list
   of named `TenantSeedStep`s and each touch runs the ones this tenant has not, so a step added
-  after a tenant existed still reaches it. `AppliedSeedStep` is that history and the Stack's only
-  table: one row per step per tenant, written in the SAME transaction as the step's rows, so a
+  after a tenant existed still reaches it. `AppliedSeedStep` is that history and one of the Stack's
+  two tables (`TenantState` is the other): one row per step per tenant, written in the SAME transaction as the step's rows, so a
   step that throws is not recorded and is tried again. It has rows only where rows are a
   tenant's; under `None` and `MultiDb` the install's EF chain is the truth and the table stays
   empty. **The memo is per process on purpose**: a deploy restarts the process, so a step that
@@ -340,6 +343,60 @@ alphanumerics and the hyphen, case folded, **anything else refused rather than r
 stripping a character folds two words onto one tenant, which is the leak, not the fix. A
 composed name Postgres would truncate at 63 bytes is refused for the same reason.
 
+## The install's own record of a tenant: its state and its plan
+
+Everything above is a tenant's own rows. **`TenantState` is the install's record ABOUT a
+tenant** — whether it is served at all, and which plan it is on — and that is the whole of why
+it is the Stack's and not a product's: the state of a customer is identical in every product,
+and answered twice it would be answered differently. It is the second and last table the Stack
+owns (`DbContextExtensions.ApplySetups`, beside the seed history, for the same reason: a
+product that forgot to compose it would serve a suspended customer).
+
+**The contract, because the writer is not this codebase.** Whoever operates the fleet writes
+the row — today by hand, next the Ops runner over the cell's own Postgres — so the columns are
+the contract and the Stack only reads:
+
+| Column | Type | Written as |
+|---|---|---|
+| `TenantId` | `uuid`, primary key | The tenant's `RowKey`: `TenantKey.For(slug)` where the wall is the tenant column, `Guid.Empty` where it is the connection or there are no tenants — exactly what the shadow column carries on every other table |
+| `Status` | `varchar(32)`, not null | `Active` or `Suspended`. Compared, never parsed |
+| `Plan` | `varchar(32)`, null | The plan's word, carried and not interpreted — **the Stack names no plan and knows none** |
+
+- **A tenant with no row is active**, and so is one whose `Status` this Stack does not know.
+  Absence is the normal state of every customer nobody has had to act on, so the table is empty
+  until something is suspended — and a typo in the writer's hand must not take a paying customer
+  down. The gate refuses what is positively suspended and nothing else.
+- **It is `IInstallScoped`, and the tenant it is about is a column of its own.** The row is not a
+  tenant's, nothing inside the app writes it, and no filter hides it — so one query reads the
+  whole cell's state where the cell shares a database, and `TenantStamp` skips it **by the
+  marker** rather than by the absence of a tenant column, which is the one entity where those
+  two answers differ.
+- **Its migration is the product's, like every other table's.** The Stack authors no chain: the
+  table enters a product on the migration that follows the pin carrying it, and
+  `TenantStates` is created there exactly as `AppliedSeedSteps` was.
+- **Nothing is cached** (`TenantStates`, the scoped reader both callers use). The row is written
+  by a program outside the process, so a memo would serve a state the install has already
+  changed: a customer suspended for abuse would keep being served and a restored one would stay
+  dead for the length of the window. What it costs instead is one primary-key lookup per
+  request, beside the one the credential already buys.
+- **A suspended tenant's requests answer the suspended page** (`TenantStateMiddleware`,
+  immediately behind `TenancyMiddleware`): 503 and the page to a browser, 503 and the `Suspended`
+  problem to a program — the same `Accept` negotiation the error handler makes, asked through the
+  one `RequestNegotiation.PrefersDocument`. 503 and not 403 because nothing is wrong with the
+  caller or their credential and nothing they can do changes the answer. The refusal stands ahead
+  of authentication, so a suspended tenant cannot mint a ticket either.
+- **The page carries its own styling and links nothing.** Every asset of an install is an
+  endpoint, and endpoints run behind every middleware — so a document that linked a stylesheet
+  would be refused its own stylesheet and arrive bare. That is the design and not its cost: a
+  suspended tenant reaches nothing of the app, not its bundle, not its brand, not a font, and
+  no part of that page can fail to render. It is why the page is `SuspendedDocument` and not a
+  sibling of `NsPageFace`.
+- **It speaks the install's default language**, from the Stack's own catalog in
+  `NSail.BaseServices.WebApi`. The gate stands ahead of the step that resolves the reader's
+  language, because a suspended tenant is refused before the pipeline does any work on its
+  behalf — and the install's default is then the one answer that is not a guess, the same one the
+  background runner gives for the same reason.
+
 ## The credential is stamped, and checked on every request
 
 The tenant wall — a connection or a column — keeps the work inside one tenant; what would
@@ -406,6 +463,11 @@ reads nothing and cannot write at all.
   connection.
 - **A tenant that fails costs its own pass.** The catch is per pass, not per tick; the log line
   names the tenant and the sweep continues with the next one.
+- **A suspended tenant is not swept at all.** The runner asks the install's record once the
+  tenant is entered and before the job is resolved, so nothing of the job runs (The install's own
+  record, above) — the request edge's answer, applied to the one kind of work that has no
+  request. It is not a failed pass and not a pass: a failure is the job's problem, a suspension
+  is the install's answer about the customer.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as
   `UseRequestLanguage` does on a request; `LanguageProvider` then seeds itself with "es" instead
@@ -431,10 +493,11 @@ reads nothing and cannot write at all.
   not `job`, which the Prometheus side of an OTLP gateway spends on the service):
   - `nsail.background.job.passes`, a counter also tagged `nsail.outcome` (`ok`/`failed`, the
     Mediator span's vocabulary) — **it fails**;
-  - `nsail.background.job.roster`, the passes the last tick swept: the roster for a per-tenant
-    job, **one** for install-wide work and for an install that resolves no tenant, **zero** for
-    the job that runs for nobody — so the two never look alike; nothing is reported before the
-    first tick;
+  - `nsail.background.job.roster`, the passes the last tick swept — reported after the sweep and
+    not before it, because the roster is no longer the answer: the tenants ENTERED for a
+    per-tenant job (the roster less whoever is suspended), **one** for install-wide work and for
+    an install that resolves no tenant, **zero** for the job that runs for nobody — so the two
+    never look alike; nothing is reported before the first tick;
   - `nsail.background.job.overdue`, time since the last completed pass **divided by the job's
     declared `Interval`** — dimensionless, so one alert rule at `> 3` covers an hourly job and a
     six-hourly one. It counts from boot until the first pass completes, so a job running for

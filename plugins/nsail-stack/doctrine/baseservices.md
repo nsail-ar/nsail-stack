@@ -41,7 +41,8 @@ app.Run();
 `AddBaseWebApi(builder)` registers: telemetry (`AddTelemetry`, first — see below), messaging
 runtime (`AddMessaging`), error handler middleware, authorization services, Swagger/OpenAPI,
 and the push's server end — both transports, their two doors, and the tenant as its audience
-(`TenantPushAudience`; messaging.md, Pushed to clients).
+(`TenantPushAudience`; messaging.md, Pushed to clients). It also contributes a string catalog of
+its own, the words of the one page this project draws without the app (the suspended page, below).
 
 `UseBaseWebApi(app)` configures, in order:
 
@@ -57,6 +58,12 @@ and the push's server end — both transports, their two doors, and the tenant a
   switch), so under `Tenancy:Mode=None` the pipeline has no tenancy step. Before authentication
   on purpose: under a per-tenant connection a slug that names no database answers 404 and
   nothing about it is reachable by signing in. See [data-tenancy.md](data-tenancy.md#caddy-assigns-the-tenant-postgres-is-the-registry).
+- `TenantStateMiddleware` — whether this install is serving this tenant at all, **only where a
+  tenant is resolved**, immediately behind the step above: a customer the install has suspended is
+  as unreachable as one that does not exist, so it is refused ahead of a cookie, a session, a
+  throttle counter, an endpoint and an asset. 503 and the suspended page to a browser, 503 and the
+  `Suspended` problem to a program. A tenant with no state row is active. See
+  [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-and-its-plan).
 - Authentication + authorization middleware (schemes are registered by kits, e.g. Iam registers cookie auth in `AddIamWebApi`)
 - `TenantClaimMiddleware` — the identity half of the tenant wall, **only where a tenant is
   resolved**, like the one above. After authentication, because the claim only exists once the ticket is read,

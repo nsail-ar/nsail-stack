@@ -30,7 +30,7 @@ NSail uses a structured error model for expected failures.
 | `BusinessProblem` | Factory helpers for common business errors |
 | `MessagingProblem` | Messaging-specific problems |
 | `NetworkProblem` | HTTP client failures |
-| `SecurityProblem`, `SystemProblem`, `ExternalProblem`, `InputProblem` | Ready factories per family — authorization, internal failures, external dependencies, input validation (`InputProblem.For<T>()` builds through `InputProblemBuilder`, implicitly convertible to `Problem` and to `Exception`) |
+| `SecurityProblem`, `SystemProblem`, `ExternalProblem`, `InputProblem`, `TenancyProblem` | Ready factories per family — authorization, internal failures, external dependencies, input validation (`InputProblem.For<T>()` builds through `InputProblemBuilder`, implicitly convertible to `Problem` and to `Exception`); `TenancyProblem.Suspended` is the 503 a tenant the install has suspended is answered (data-tenancy.md) |
 
 Handlers throw `BusinessException`, usually via implicit conversion from `Problem`:
 
