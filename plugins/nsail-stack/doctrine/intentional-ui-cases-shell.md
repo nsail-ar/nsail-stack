@@ -179,23 +179,31 @@ with `data-ns-whisper-above`, an attribute ns-mud.css's own direction rule reads
 selector plus one. Down is still the general case and the side `NsTooltip` is placed on anyway;
 a page's bottom edge is simply the one place a control answers "no room" every time it is asked.
 
-## The badge beside a button's word
+## The chord beside a button's word is its tooltip, never a drawn badge
 
-**A decoration drawn on the control itself is in that control's accessible NAME**, which is not
-the reading `textContent` is: the name computation folds `::before`/`::after` in where
-`textContent` leaves them out. So the chord badge, built as the whisper is built, named a hero
-worded "Guardar" "Guardar Ctrl+Enter" — and every role query asking for that word exactly stopped
-finding a button that was on screen (nsail#2259: ten browser walks, each timing out on a control
-the evidence screenshot shows). The whisper is spared only because it draws `attr(aria-label)` on
-a control that HAS an `aria-label`, and that attribute outranks any content; `NsSubmit` and the
-worded `NsClose` carry none, their word being `ChildContent`.
+A drawn badge tried the opposite construction once and the house ruled it out (nsail#2272,
+replacing the dev notes nsail#2207 shipped it under): **a decoration drawn on the control
+itself is in that control's accessible NAME**, which is not the reading `textContent` is — the
+name computation folds `::before`/`::after` in where `textContent` leaves them out. So the
+chord badge, built as a node of its own beside the word, named a hero worded "Guardar" "Guardar
+Ctrl+Enter" — and every role query asking for that word exactly stopped finding a button that
+was on screen (nsail#2259: ten browser walks, each timing out on a control the evidence
+screenshot shows).
 
-The badge therefore hangs off a node of its own (`NsKey`), and that node is **empty**, with the
-chord in an attribute the sheet draws with `attr()`: a node holding the chord as text is what
-joined the button's text content before, and the two readings have to be answered together or the
-fix just moves the defect. `aria-hidden` on it besides — the control already publishes the chord
-in `aria-keyshortcuts`, and a reader announcing both says the key twice. The control's own
-`::after` comes back free, so a collapsed control may now wear the whisper and the badge at once.
+The chord therefore rides THE WHISPER instead (`ns-chord`, above) — and not off `aria-label`
+itself: that attribute IS the accessible name, and the ruling's own words are "the accessible
+name of a button stays its word", so folding the key into it would be nsail#2259 again, one
+layer up, badge or no badge. `ns-chord`'s `::after` reads a SECOND attribute, `data-ns-chord`,
+`Word (Keys)` — the control's one pseudo-element stays the only bubble there is, `aria-label`
+keeps carrying the bare word, and whichever caller sets one sets the other, since a control
+with no visible text falls back to content for its name the instant `aria-label` is missing.
+This is not the double cartel the whisper's own gate exists to forbid: that rule is one string
+shown twice, and the key is a second fact the visible word never carried, which is why
+`ns-chord` whispers even where the word stays on screen — `NsSubmit`'s hero, the worded
+`NsClose`'s Cancelar, a chromed `NsButton` claiming a chord of its own. Their word is a string
+via `NsSubmit.Label`/`NsClose.Label` (`ChildContent` cannot give one back) or `NsButton.Label`
+directly; the claim in `aria-keyshortcuts` is unchanged, so a reader announcing the chord once
+is still exactly once.
 
 ## Container queries: the measured facts
 

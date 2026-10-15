@@ -8,7 +8,7 @@ namespace NSail.Components;
 /// layer in ns.js activates whatever on screen declares the chord that was pressed.
 ///
 /// <para>So there is no table of active shortcuts for anybody to keep in step with the
-/// screen: a key and the badge on the button are one declaration, the key runs exactly the
+/// screen: a key and the tooltip on the button are one declaration, the key runs exactly the
 /// code the click runs, and a control that is hidden, disabled or simply not rendered takes
 /// its chord with it.</para>
 ///
@@ -22,16 +22,6 @@ public static class NsKeys
     /// <summary>The attribute a control publishes its chords on, space separated. Read by
     /// ns.js and written only by <see cref="Declare"/>.</summary>
     public const string Attribute = "data-ns-keys";
-
-    /// <summary>The attribute the BADGE is drawn from — the first chord alone, because a
-    /// reminder on the way past is one key and the reference is the sheet "?" opens. A second
-    /// attribute and not the plural one above for one reason: ns-mud.css draws it with
-    /// <c>content: attr()</c> and CSS cannot take the first word of a list.
-    /// <para>Worn by the badge's own node (NsKey) and never by the control, which is why
-    /// <see cref="Declare"/> does not write it: generated content on a control joins that
-    /// control's accessible name, and the button's name is its word. Derived from the same claim
-    /// all the same, so the key drawn is the key dispatched.</para></summary>
-    public const string Hint = "data-ns-key";
 
     /// <summary>Submits the form the focus is in — the chord every web application already
     /// taught, and the one a form's hero wears.</summary>

@@ -509,7 +509,7 @@
     // focusin already bubbles and answers for the keyboard the same selectors' :focus-visible
     // gate does. The selector list is ns-mud.css's own — kept in step by hand, the price of
     // the two languages neither can read the other's.
-    const WHISPER_SELECTOR = '.ns-square[aria-label]:not([aria-label=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""]), .ns-collapse-sm[aria-label]:not([aria-label=""]), .ns-collapse-md[aria-label]:not([aria-label=""]), .ns-collapse-lg[aria-label]:not([aria-label=""]), .ns-collapse-xl[aria-label]:not([aria-label=""]), .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""])';
+    const WHISPER_SELECTOR = '.ns-square[aria-label]:not([aria-label=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""]), .ns-collapse-sm[aria-label]:not([aria-label=""]), .ns-collapse-md[aria-label]:not([aria-label=""]), .ns-collapse-lg[aria-label]:not([aria-label=""]), .ns-collapse-xl[aria-label]:not([aria-label=""]), .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""]), .ns-chord[data-ns-chord]:not([data-ns-chord=""])';
     const WHISPER_HEIGHT = 32;
 
     function placeWhisper(target) {

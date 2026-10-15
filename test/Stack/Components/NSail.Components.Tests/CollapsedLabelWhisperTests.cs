@@ -144,10 +144,10 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
             .Select(i => (Hover: lines[i - 1], Focus: lines[i]))
             .ToList();
 
-        // Eight: four Breakpoint gates, the emphasis-ladder footer's own, ns-square's, and the
-        // two a menu's icon face and a lookup's end adornment take for the same reason ns-square
-        // does (nsail#1865).
-        Assert.Equal(8, gates.Count);
+        // Nine: four Breakpoint gates, the emphasis-ladder footer's own, ns-square's, the two a
+        // menu's icon face and a lookup's end adornment take for the same reason ns-square does
+        // (nsail#1865), and ns-chord's own (nsail#2272).
+        Assert.Equal(9, gates.Count);
         Assert.All(gates, gate => Assert.EndsWith(":hover,", gate.Hover, StringComparison.Ordinal));
 
         // THE DEFECT THIS FILE MISSED FOR A MONTH (nsail#1417), now unrepresentable rather than
@@ -162,14 +162,16 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
             line => line.Contains("::after", StringComparison.Ordinal)
                 && (line.Contains(":hover", StringComparison.Ordinal) || line.Contains(":focus-visible", StringComparison.Ordinal)));
 
-        Assert.Equal(8, lines.Count(line => line == "--ns-whisper: block;"));
+        Assert.Equal(9, lines.Count(line => line == "--ns-whisper: block;"));
 
-        // Every gate that answers a COLLAPSE sits in the query that did the collapsing. The three
-        // ungated ones are the honest exception (nsail#925, nsail#1865): an icon-only control —
-        // a square at Never, a menu's icon face, a lookup's end adornment — has no width at which
-        // its label comes back, so gating its bubble on a container size would only be a fiction,
-        // and there is nothing to double-bill.
-        var ungated = new[] { "ns-square", "ns-menu", "mud-input-adornment-icon-button" };
+        // Every gate that answers a COLLAPSE sits in the query that did the collapsing. The four
+        // ungated ones are the honest exception (nsail#925, nsail#1865, nsail#2272): an icon-only
+        // control — a square at Never, a menu's icon face, a lookup's end adornment — has no
+        // width at which its label comes back, so gating its bubble on a container size would
+        // only be a fiction, and there is nothing to double-bill; ns-chord is ungated for a
+        // different reason (the control it marks answers a chord at every width, or it does
+        // not), not because its label never returns.
+        var ungated = new[] { "ns-square", "ns-menu", "mud-input-adornment-icon-button", "ns-chord" };
 
         foreach (var gate in gates.Where(gate => !ungated.Any(name => gate.Hover.Contains(name, StringComparison.Ordinal))))
         {

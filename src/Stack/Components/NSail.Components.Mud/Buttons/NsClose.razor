@@ -29,7 +29,7 @@
                    Color="Color.Default"
                    Disabled="@ParentDisabled"
                    OnClick="@(() => Surface.Close())"
-                   Class="@Class"
+                   Class="@GetClasses()"
                    UserAttributes="_keys">
             @if (ChildContent is not null)
             {
@@ -39,16 +39,19 @@
             {
                 @Strings.Translate("Common.Close")
             }
-            <NsKey Chord="@NsKeys.Close" />
         </MudButton>
     }
 }
 
 @code {
 
-    // Built once per instance and never per render: a fresh dictionary reads as a changed
-    // parameter on the vendor button (NsKeys.Declare).
-    readonly Dictionary<string, object> _keys = NsKeys.Declare(NsKeys.Close);
+    // Rebuilt only when the claim changes: a fresh dictionary every render reads as a changed
+    // parameter on the vendor button (NsKeys.Declare). Esc is always claimed, so the chord's
+    // own hint rides in beside it the one time the word is known as text — ChildContent null,
+    // the default "Cancelar"; Label passed beside a custom one.
+    Dictionary<string, object> _keys = NsKeys.Declare(NsKeys.Close);
+
+    string? _chordHint;
 
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
@@ -77,4 +80,58 @@
 
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The act's word as a string — set it beside a custom ChildContent so the Esc
+    /// tooltip can restate it; ChildContent itself cannot, being a RenderFragment rather than
+    /// text. Unused when ChildContent is null: the default word is Strings' own string
+    /// already.</summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    // The word the tooltip restates: Label where a custom ChildContent handed one over,
+    // Strings' own default where there is no ChildContent to restate at all. Null means the
+    // word is not known as text.
+    string? GetWord()
+    {
+        if (Label is { Length: > 0 })
+        {
+            return Label;
+        }
+
+        return ChildContent is null ? Strings.Translate("Common.Close") : null;
+    }
+
+    string GetClasses()
+    {
+        // The chord's own whisper (ns-mud.css, THE WHISPER): ungated, standing beside the
+        // "Cancelar" that stays on screen — never a second tooltip path.
+        return new NsClassBuilder(Class).Add("ns-chord", _chordHint is not null).ToString();
+    }
+
+    protected override void OnParametersSet()
+    {
+        var word = GetWord();
+        var chordHint = word is { Length: > 0 } ? $"{word} ({NsKeys.Close})" : null;
+
+        if (_chordHint == chordHint)
+        {
+            return;
+        }
+
+        _chordHint = chordHint;
+
+        // Generated content on a control joins its accessible name unless aria-label outranks
+        // it (nsail#2259, THE WHISPER) — this button carries none today, its word being
+        // on-screen text, so ns-chord's own ::after would join "Cancelar" into "Cancelar (Esc)"
+        // the moment it draws one. aria-label pinned to the bare word keeps the name the word;
+        // data-ns-chord, a different attribute the name computation never reads, carries the
+        // longer string the bubble shows.
+        _keys = chordHint is null
+            ? NsKeys.Declare(NsKeys.Close)
+            : new Dictionary<string, object>(NsKeys.Declare(NsKeys.Close))
+            {
+                ["aria-label"] = word!,
+                ["data-ns-chord"] = chordHint,
+            };
+    }
 }

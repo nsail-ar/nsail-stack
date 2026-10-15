@@ -17,7 +17,7 @@
 <CascadingValue Value="false" Name="ParentDisabled" IsFixed="true">
     @if (Wordless && As == NsAs.Inline)
     {
-        <MudTooltip Text="@Label" @bind-Visible="_whispering">
+        <MudTooltip Text="@LabelWithChord" @bind-Visible="_whispering">
             <MudIconButton Icon="@(Icon?.Markup)"
                            Size="@GetSize()"
                            Color="Color.Inherit"
@@ -39,12 +39,6 @@
                    Class="@GetClasses()"
                    UserAttributes="_ariaAttributes">
             <span class="@LabelClasses">@(Wordless ? null : Label)</span>
-            @* Never on the square: a glyph has no word for a hint to stand beside, and its name
-               is already a bubble (ns-mud.css, THE WHISPER). *@
-            @if (!Wordless)
-            {
-                <NsKey Chord="@Chord" />
-            }
         </MudButton>
     }
 </CascadingValue>
@@ -100,9 +94,9 @@
     public bool? Expanded { get; set; }
 
     /// <summary>The keyboard chord that presses this button (NsKeys): the button publishes it,
-    /// the keyboard layer in ns.js finds it by that claim, and the badge is drawn from the same
-    /// word — so the key, the hint and the act are one declaration. Null is a button with no
-    /// chord, which is almost all of them.</summary>
+    /// the keyboard layer in ns.js finds it by that claim, and the tooltip is built from the
+    /// same word — so the key shown and the key dispatched are one declaration. Null is a
+    /// button with no chord, which is almost all of them.</summary>
     [Parameter]
     public string? Chord { get; set; }
 
@@ -213,6 +207,16 @@
         if (Label is { Length: > 0 })
         {
             attributes = new Dictionary<string, object> { ["aria-label"] = Label };
+
+            // A SEPARATE attribute from aria-label above, on purpose: aria-label IS the
+            // accessible name, and the name stays the word (nsail#2272) — the chord joining it
+            // would be nsail#2259 again, one layer up. data-ns-chord is read by ns-mud.css's own
+            // ::after, never by the accessible-name computation, so the bubble can say more
+            // than the name does.
+            if (Chord is { Length: > 0 })
+            {
+                attributes["data-ns-chord"] = $"{Label} ({Chord})";
+            }
         }
 
         if (expanded is not null)
@@ -231,6 +235,11 @@
 
         _ariaAttributes = attributes;
     }
+
+    // The wordless Inline face's MudTooltip reads this directly — a floating popover of its
+    // own, never generated content on the control, so it cannot join the accessible name the
+    // way data-ns-chord above is kept from joining it.
+    string? LabelWithChord => Chord is { Length: > 0 } ? $"{Label} ({Chord})" : Label;
 
     // No word to draw at any width: either the breakpoint says Never, or no name was handed
     // over to draw in the first place. Both are the same state to everything downstream,
@@ -251,6 +260,10 @@
         return new NsClassBuilder(Wordless ? null : NsResponsive.CollapseClass(Icon, Breakpoint))
             .Add("ns-important", As == NsAs.Important)
             .Add("ns-square", Wordless)
+            // A visible word answering a chord whispers the key beside it on hover and focus
+            // (ns-mud.css, THE WHISPER) — ns-square already whispers unconditionally, so this
+            // is only for the word that stays on screen.
+            .Add("ns-chord", !Wordless && Chord is { Length: > 0 })
             .Add(Class)
             .ToString();
     }
