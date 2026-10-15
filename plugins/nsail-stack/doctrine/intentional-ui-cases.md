@@ -24,4 +24,4 @@ below. The catalog is split by area:
 | The wizard | `NsNext`/`NsBack` · A claim is a fixed point, not a veto | [shell](intentional-ui-cases-shell.md) |
 | Localization | Menu entries and titles are Title Case | [shell](intentional-ui-cases-shell.md) |
 | Branding and theming | The brand/theme handoff | [shell](intentional-ui-cases-shell.md) |
-| Layout and styling rules | Why `NsContainer` stacks by default · Why `NsSubmit`'s label defaults to pinned · Why collapsing is two classes · The bubble a collapsed control whispers · The badge beside a button's word · Container queries: the measured facts | [shell](intentional-ui-cases-shell.md) |
+| Layout and styling rules | Why `NsContainer` stacks by default · Why `NsSubmit`'s label defaults to pinned · Why collapsing is two classes · The bubble a collapsed control whispers · The chord beside a button's word is its tooltip, never a drawn badge · Container queries: the measured facts | [shell](intentional-ui-cases-shell.md) |
