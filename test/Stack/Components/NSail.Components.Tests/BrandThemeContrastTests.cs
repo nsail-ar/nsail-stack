@@ -39,11 +39,46 @@ public sealed class BrandThemeContrastTests
     // on its own, which is the floor below.
     const double LightStepCeiling = 1.11;
 
-    public static TheoryData<string, BrandTheme> Schemes => new()
+    // Each scheme as it ships, and worn under chromes a colour field cannot refuse: the ladder
+    // takes the chrome's hue (BrandTone.Tint), so a floor met on the default warm greys has to
+    // be met on a navy, a steel, a neon and a black band's greys too. The tint holds each rung's
+    // luminance, which is why one set of floors serves them all.
+    public static TheoryData<string, BrandTheme> Schemes()
+    {
+        var schemes = new TheoryData<string, BrandTheme>
+        {
+            { "dark", BrandTheme.DefaultDark() },
+            { "light", BrandTheme.DefaultLight() },
+        };
+
+        foreach (var chrome in new[] { "#0b1626", "#3b7091", "#1565c0", "#000000", "#ffffff", "#f6ff00", "#c62828", "#2e7d32", "#7b1fa2" })
+        {
+            schemes.Add($"dark {chrome}", Worn(BrandTheme.DefaultDark(), chrome));
+            schemes.Add($"light {chrome}", Worn(BrandTheme.DefaultLight(), chrome));
+        }
+
+        return schemes;
+    }
+
+    // As a save lays a pick down: the chrome and the two inks derived from it (BrandTone.Ink).
+    // The chrome's own ink is a separate promise, made for the house chrome only: over a
+    // mid-luminance pick neither ink clears the floor (ui/branding.md), which no ladder can fix.
+    public static TheoryData<string, BrandTheme> HouseSchemes => new()
     {
         { "dark", BrandTheme.DefaultDark() },
         { "light", BrandTheme.DefaultLight() },
     };
+
+    static BrandTheme Worn(BrandTheme theme, string chrome)
+    {
+        var ink = BrandTone.Ink(chrome);
+
+        theme.Chrome = chrome;
+        theme.TextOnChrome = ink.Primary;
+        theme.TextOnChromeSecondary = ink.Secondary;
+
+        return theme;
+    }
 
     // Every filled face there is: four severities in each scheme, each with the fill the vendor
     // paints and the ink the palette hands it. Read off the palette, so a slot left unset shows
@@ -54,7 +89,7 @@ public sealed class BrandThemeContrastTests
 
         foreach (var (scheme, theme) in new[] { ("dark", BrandTheme.DefaultDark()), ("light", BrandTheme.DefaultLight()) })
         {
-            var palette = Palette(scheme);
+            var palette = Palette(theme);
 
             faces.Add(scheme, "error", theme.Error, palette.ErrorContrastText.Value);
             faces.Add(scheme, "warning", theme.Warning, palette.WarningContrastText.Value);
@@ -158,7 +193,7 @@ public sealed class BrandThemeContrastTests
     [MemberData(nameof(Schemes))]
     public void TheNeutralStatusWordClearsTheBodyFloorOnTheCardItIsListedOn(string scheme, BrandTheme theme)
     {
-        var palette = Palette(scheme);
+        var palette = Palette(theme);
 
         foreach (var surface in new[] { theme.Surface, theme.SurfaceRaised })
         {
@@ -175,7 +210,7 @@ public sealed class BrandThemeContrastTests
     [MemberData(nameof(Schemes))]
     public void TheNeutralStatusWordIsTheMutedRankAndNeverASeverity(string scheme, BrandTheme theme)
     {
-        var palette = Palette(scheme);
+        var palette = Palette(theme);
 
         Assert.Equal(new MudColor(theme.TextSecondary).Value, palette.TextSecondary.Value);
 
@@ -244,7 +279,7 @@ public sealed class BrandThemeContrastTests
     // The two bands that are not the content's surface, each read in its own ink: the accent a
     // filled button wears, and the chrome the appbar and the drawer wear.
     [Theory]
-    [MemberData(nameof(Schemes))]
+    [MemberData(nameof(HouseSchemes))]
     public void TheAccentAndTheChromeAreReadInTheirOwnInk(string scheme, BrandTheme theme)
     {
         Clears(theme.TextOnAccent, theme.Accent, BodyFloor, scheme);
@@ -305,7 +340,7 @@ public sealed class BrandThemeContrastTests
     [Fact]
     public void TheHouseBrandsAccentInkIsPinned()
     {
-        Assert.Equal("#efb574", BrandTheme.DefaultDark().AccentInk);
+        Assert.Equal("#efb575", BrandTheme.DefaultDark().AccentInk);
         Assert.Equal("#8e5a21", BrandTheme.DefaultLight().AccentInk);
     }
 
@@ -333,7 +368,7 @@ public sealed class BrandThemeContrastTests
     // says "you are here" clears the body floor outright — on the bare band and on the wash the
     // drawer paints under that one row.
     [Theory]
-    [MemberData(nameof(Schemes))]
+    [MemberData(nameof(HouseSchemes))]
     public void TheAccentOnTheHouseChromeClearsTheBodyFloor(string scheme, BrandTheme theme)
     {
         Clears(theme.AccentOnChrome, theme.Chrome, BodyFloor, scheme);
@@ -442,11 +477,11 @@ public sealed class BrandThemeContrastTests
 
     // The scheme as the vendor receives it, which is where an unset slot becomes a colour
     // nobody chose: BrandTheme alone cannot say what is on the screen.
-    static Palette Palette(string scheme)
+    static Palette Palette(BrandTheme theme)
     {
-        var theme = BrandMudTheme.From(new Brand());
+        var mud = BrandMudTheme.From(new Brand { Dark = theme, Light = theme });
 
-        return scheme == "dark" ? theme.PaletteDark : theme.PaletteLight;
+        return theme.IsDark ? mud.PaletteDark : mud.PaletteLight;
     }
 
     static void Clears(string ink, string ground, double floor, string scheme)

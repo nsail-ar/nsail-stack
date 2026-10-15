@@ -5,10 +5,10 @@ using System.Globalization;
 
 namespace NSail.Tones;
 
-// The one tonal helper the brand has. Three entries and nothing else: the ink a Chrome is read
-// in, the states an Accent answers with, and the Accent AS INK — the label, the link, the tab
-// that says "you are here". A second implementation of any of them is what let the chrome and
-// the surfaces drift apart.
+// The one tonal helper the brand has. Four entries and nothing else: the ink a Chrome is read
+// in, the states an Accent answers with, the Accent AS INK — the label, the link, the tab that
+// says "you are here" — and the scheme's ladder worn in the Chrome's hue. A second
+// implementation of any of them is what let the chrome and the surfaces drift apart.
 public static class BrandTone
 {
     /// <summary>The accent's share of the soft wash NsAs.Important is filled with — the
@@ -57,6 +57,15 @@ public static class BrandTone
     /// <c>--mud-palette-table-hover</c> variable this value per washed row instead, so the wash
     /// deepens in its own tone rather than being painted over.</summary>
     public const double RowWashPointed = 0.10;
+
+    /// <summary>The most OKLCH chroma a SURFACE rung — canvas, card, raised sheet, line — borrows
+    /// from the chrome in <see cref="Tint"/>: enough for a steel-blue band to carry its blue into
+    /// the cards beside it, little enough that a vivid band tints them and never colours them.</summary>
+    public const double SurfaceTint = 0.03;
+
+    /// <summary>The same ceiling for the INK rungs. Lower than the surfaces': chroma reads louder
+    /// at the lightness text sits at, and an ink is read, not looked at.</summary>
+    public const double InkTint = 0.02;
 
     // The ink, as a distance from the chrome: towards white over a dark chrome, towards black
     // over a light one. Mixed from the chrome and not picked, so the chrome's own warmth
@@ -152,6 +161,69 @@ public static class BrandTone
         return ink;
     }
 
+    // A rung of the scheme's ladder worn in the chrome's hue. The rung is a MASK: it keeps its own
+    // relative luminance, the number every contrast floor in the house is written in, so a tint
+    // can never move a ratio; only the hue and the chroma are the chrome's, the chroma capped, so a
+    // grey or black chrome leaves neutral greys and a steel-blue one leaves steel-blue greys. The
+    // accent is never read here — an orange accent over blue surfaces is a pick, not a clash.
+    // Hue and chroma are taken in OKLCH, where an equal chroma looks equally coloured at every
+    // hue; the luminance is then solved for, since OKLCH's own lightness only approximates it.
+    public static string Tint(string rung, string chrome, double cap)
+    {
+        if (Parse(rung) is not { } mask || Parse(chrome) is not { } band)
+        {
+            return rung;
+        }
+
+        var target = Relative(mask);
+        var (_, a, b) = ToOklab(band);
+        var chroma = Math.Sqrt((a * a) + (b * b));
+        // Under this much chroma the hue is the conversion's own rounding, not a colour: a grey
+        // pick has none to lend.
+        var scale = chroma > 0.002 ? Math.Min(chroma, cap) / chroma : 0;
+
+        // Near white or black the gamut is narrow: a chroma sRGB cannot show is clipped channel
+        // by channel, which turns a pale steel into cyan. So the chroma backs off until the
+        // rung fits, and a neutral grey always does.
+        while (true)
+        {
+            var lightness = Solve(target, a * scale, b * scale);
+
+            if (scale < 0.01 || InGamut(lightness, a * scale, b * scale))
+            {
+                var tinted = FromOklab(lightness, a * scale, b * scale);
+
+                return string.Create(CultureInfo.InvariantCulture, $"#{tinted[0]:x2}{tinted[1]:x2}{tinted[2]:x2}");
+            }
+
+            scale *= 0.85;
+        }
+    }
+
+    // The OKLab lightness at which a hue and chroma reach a relative luminance. Luminance rises
+    // with lightness at a fixed hue and chroma, so the bisection converges; forty halvings are
+    // far below what a hex digit can tell apart.
+    static double Solve(double target, double a, double b)
+    {
+        double low = 0, high = 1;
+
+        for (var step = 0; step < 40; step++)
+        {
+            var middle = (low + high) / 2;
+
+            if (Relative(FromOklab(middle, a, b)) < target)
+            {
+                low = middle;
+            }
+            else
+            {
+                high = middle;
+            }
+        }
+
+        return (low + high) / 2;
+    }
+
     public static string Mix(string from, string to, double weight)
     {
         var start = Parse(from);
@@ -199,7 +271,64 @@ public static class BrandTone
             return 0;
         }
 
+        return Relative(channels);
+    }
+
+    static double Relative(byte[] channels)
+    {
         return (0.2126 * Linear(channels[0])) + (0.7152 * Linear(channels[1])) + (0.0722 * Linear(channels[2]));
+    }
+
+    // Björn Ottosson's OKLab, from and to 8-bit sRGB; out-of-gamut channels are clamped.
+    static (double L, double A, double B) ToOklab(byte[] channels)
+    {
+        var red = Linear(channels[0]);
+        var green = Linear(channels[1]);
+        var blue = Linear(channels[2]);
+
+        var l = Math.Cbrt((0.4122214708 * red) + (0.5363325363 * green) + (0.0514459929 * blue));
+        var m = Math.Cbrt((0.2119034982 * red) + (0.6806995451 * green) + (0.1073969566 * blue));
+        var s = Math.Cbrt((0.0883024619 * red) + (0.2817188376 * green) + (0.6299787005 * blue));
+
+        return (
+            (0.2104542553 * l) + (0.7936177850 * m) - (0.0040720468 * s),
+            (1.9779984951 * l) - (2.4285922050 * m) + (0.4505937099 * s),
+            (0.0259040371 * l) + (0.7827717662 * m) - (0.8086757660 * s));
+    }
+
+    static byte[] FromOklab(double lightness, double a, double b)
+    {
+        var (red, green, blue) = ToLinear(lightness, a, b);
+
+        return [Encode(red), Encode(green), Encode(blue)];
+    }
+
+    static bool InGamut(double lightness, double a, double b)
+    {
+        const double Slack = 0.001;
+        var (red, green, blue) = ToLinear(lightness, a, b);
+
+        return new[] { red, green, blue }.All(channel => channel is >= -Slack and <= 1 + Slack);
+    }
+
+    static (double Red, double Green, double Blue) ToLinear(double lightness, double a, double b)
+    {
+        var l = Math.Pow(lightness + (0.3963377774 * a) + (0.2158037573 * b), 3);
+        var m = Math.Pow(lightness - (0.1055613458 * a) - (0.0638541728 * b), 3);
+        var s = Math.Pow(lightness - (0.0894841775 * a) - (1.2914855480 * b), 3);
+
+        return (
+            (4.0767416621 * l) - (3.3077115913 * m) + (0.2309699292 * s),
+            (-1.2684380046 * l) + (2.6097574011 * m) - (0.3413193965 * s),
+            (-0.0041960863 * l) - (0.7034186147 * m) + (1.7076147010 * s));
+    }
+
+    static byte Encode(double linear)
+    {
+        var value = Math.Clamp(linear, 0, 1);
+        var gamma = value <= 0.0031308 ? value * 12.92 : (1.055 * Math.Pow(value, 1 / 2.4)) - 0.055;
+
+        return (byte)Math.Round(gamma * 255);
     }
 
     static double Linear(byte channel)
