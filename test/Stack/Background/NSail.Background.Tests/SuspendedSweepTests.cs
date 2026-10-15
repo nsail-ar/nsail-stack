@@ -101,9 +101,9 @@ public sealed class SuspendedSweepTests : IAsyncLifetime
         Assert.Equal(0, meters.Passes(nameof(SuspendableJob), BackgroundJobMetrics.Failed));
     }
 
-    // Nothing of the state is remembered: the row is written from outside this process, and a
-    // restored customer is swept on the next tick rather than on the next deploy. Two runners
-    // over one database is the shape a test has for "the row changed while we were running".
+    // The memo is one process's, so a restored customer is swept again by a runner that has not
+    // read it yet — and two runners over one database is the shape a test has for that, as it is
+    // for "the row changed while we were running".
     [Fact]
     public async Task A_reactivated_tenant_is_swept_again()
     {
@@ -136,7 +136,8 @@ public sealed class SuspendedSweepTests : IAsyncLifetime
         return Harness.Build(services =>
         {
             // Exactly what AddDataAccess registers for the wall that scopes rows, plus the one
-            // thing this suite is about: the reader of the install's record.
+            // thing this suite is about: the reader of the install's record, its memo and the
+            // clock the pause window is judged by.
             var tenancy = new TenancyOptions { Mode = TenancyMode.SingleDb, Tenants = "alfa,beta" };
 
             services.AddSingleton(tenancy);
@@ -145,6 +146,8 @@ public sealed class SuspendedSweepTests : IAsyncLifetime
             services.AddScoped<TenancyProvider>(provider => provider.GetRequiredService<ResolvedTenancyProvider>());
             services.AddScoped<DbContext>(provider => new StateDbContext(_options));
             services.AddScoped<TenantStates>();
+            services.AddSingleton<TenantStateMemo>();
+            services.AddSingleton(TimeProvider.System);
 
             services.AddSingleton(swept);
             services.AddSingleton(signal);

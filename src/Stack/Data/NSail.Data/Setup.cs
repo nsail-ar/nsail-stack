@@ -127,6 +127,12 @@ public static class Setup
             // by neither of the modes that resolve nothing: an install with one customer has no
             // state to read and nobody to refuse.
             services.AddScoped<TenantStates>();
+
+            // What keeps that reading off every request, and the clock its window is judged by.
+            // One memo for the process — it is this process's whole memory of the fleet's state —
+            // and the clock is TryAdd so a host or a suite can hand over its own.
+            services.TryAddSingleton<TenantStateMemo>();
+            services.TryAddSingleton(TimeProvider.System);
         }
 
         services.TryAddScoped<TenancyProvider>();

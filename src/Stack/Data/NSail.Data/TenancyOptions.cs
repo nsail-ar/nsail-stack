@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.ComponentModel.DataAnnotations;
+
 namespace NSail.Data;
 
 /// <summary>The <c>Tenancy:</c> section. <see cref="Mode"/> is what an install writes;
@@ -22,6 +24,22 @@ public class TenancyOptions
     /// proxy's whitelist is the roster and the rows cannot be asked. A mode that connects per
     /// tenant reads its databases instead and ignores this.</summary>
     public string? Tenants { get; set; }
+
+    /// <summary>How long this process holds what it read about a tenant
+    /// (<see cref="TenantStateMemo"/>). It is the one knob over the gate's cost, and the one
+    /// over how late a pause written from outside arrives: an install that suspends for abuse
+    /// shortens it, one that only schedules maintenance can leave it alone. Refused at zero
+    /// rather than read as "no memo" — a section with a stray key must not quietly put a
+    /// primary-key lookup back on every request.</summary>
+    [Range(1, 3600)]
+    public int StateCacheSeconds { get; set; } = 120;
+
+    /// <summary>Who a paused tenant is told to reach — the address or number whoever operates
+    /// this install answers on, because it is the operator and not the tenant that lifts a
+    /// pause. Shown as a line on the suspended page; empty means no line, which is the honest
+    /// answer for an install that has nobody to name. A tenant that wants its own words puts
+    /// them in <see cref="TenantState.Message"/>.</summary>
+    public string? SupportContact { get; set; }
 
     public TenancyScope Connection
     {

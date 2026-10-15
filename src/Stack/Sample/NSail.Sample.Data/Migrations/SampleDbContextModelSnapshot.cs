@@ -54,7 +54,17 @@ namespace NSail.Sample.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .UseCollation("case_insensitive");
+
                     b.Property<string>("Plan")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .UseCollation("case_insensitive");
+
+                    b.Property<string>("Reason")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .UseCollation("case_insensitive");
@@ -64,6 +74,12 @@ namespace NSail.Sample.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .UseCollation("case_insensitive");
+
+                    b.Property<DateTime?>("SuspendedFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("SuspendedUntil")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("TenantId");
 
