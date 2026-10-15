@@ -28,9 +28,8 @@ it inline (`AddressesEditor`, an `NsListEditor`) and saves it with the contact. 
 (`[Validated]` opens a nested model, not a collection's elements).
 
 It lives under `src/Stack` but is written the way a kit or an app is: it is the code a
-stranger copies first, so the consumer-side rules (no vendor types, no doc comments, every
-endpoint swept by the gate) are enforced over it too (`SourceTree.Sample` in
-`NSail.Architecture.Tests`).
+stranger copies first, so it keeps the consumer-side rules: no vendor types, no doc comments, every
+endpoint behind the gate. No test in this repository sweeps it yet; a review does.
 
 No Iam is composed: there is no sign-in. The gate is on all the same — the messages are open
 through one anonymous built-in policy (`Policies.cs`), registered on both sides: the
