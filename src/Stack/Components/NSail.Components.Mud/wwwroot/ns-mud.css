@@ -3926,26 +3926,26 @@
    dispatched in ns.js — nothing about which key does what is written here.
    =========================================================================================== */
 
-/* THE KEY ON THE BUTTON: the chord a control answers, drawn on the control itself so the
-   keyboard is learned from the screen and never from a manual. attr() off the control's own
-   claim (NsKeys writes it), which is THE WHISPER's construction and taken for its reason — a
-   badge is decoration, and a decoration that joins the button's text content would change what
-   every test and every selector reading that button by its word finds there.
-   One ::after per element is all CSS has, so a control may wear the whisper or the badge and
-   never both. The two glyph-only shapes are excluded for that reason and for their own: a glyph
-   has no word for a hint to stand beside, and its name is already a bubble. They are named
-   apart because they are two different elements — ns-square is the chromed button with its label
-   withdrawn, mud-icon-button the vendor's bare glyph NsButton draws at the flat rank.
+/* THE KEY ON THE BUTTON: the chord a control answers, drawn beside its word so the keyboard is
+   learned from the screen and never from a manual. attr() off the badge's own node (NsKey, which
+   renders it empty and aria-hidden and is the only element wearing this class), and NOT off the
+   control it stands in — that is THE WHISPER's construction and it cannot be shared here: a
+   control's own generated content joins its ACCESSIBLE NAME, which is not the same reading as
+   its text content, and a hero worded "Guardar" came out named "Guardar Ctrl+Enter" to a screen
+   reader and to every role query asking for that word exactly. On a node of its own the badge is
+   in neither reading, and the control's one ::after stays free for the whisper.
+   The glyph-only shapes draw no node at all (NsButton): a glyph has no word for a hint to stand
+   beside, and its name is already a bubble.
    Gone by default and back from the sm CONTAINER up, the label's own rule: a surface too narrow
    for the button's word has no room for a hint beside it either. */
-[data-ns-key]:not(.ns-square):not(.mud-icon-button)::after {
-    content: attr(data-ns-key);
+.ns-key {
     display: none;
     margin-left: 8px;
     padding: 0 4px;
     border: 1px solid currentcolor;
     border-radius: 3px;
     opacity: .6;
+    font-family: inherit;
     font-size: .6875rem;
     line-height: 1.5;
     letter-spacing: 0;
@@ -3953,8 +3953,12 @@
     white-space: nowrap;
 }
 
+.ns-key::after {
+    content: attr(data-ns-key);
+}
+
 @container (min-width: 600px) {
-    [data-ns-key]:not(.ns-square):not(.mud-icon-button)::after {
+    .ns-key {
         display: inline-block;
     }
 }
@@ -3964,7 +3968,7 @@
    the three on purpose — all three carry the same weight, so the order in this file is what
    decides and nothing needs !important. */
 @media (pointer: coarse) {
-    [data-ns-key]:not(.ns-square):not(.mud-icon-button)::after {
+    .ns-key {
         display: none;
     }
 }

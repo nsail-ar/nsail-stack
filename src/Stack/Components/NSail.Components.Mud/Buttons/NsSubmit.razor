@@ -28,6 +28,7 @@
             @Strings.Translate(As == NsAs.Filter ? "Common.Filter" : "Common.Submit")
         }
     </span>
+    <NsKey Chord="@_hint" />
 </MudButton>
 
 @code {
@@ -37,6 +38,8 @@
     Dictionary<string, object> _keys = [];
 
     string? _claimed;
+
+    string? _hint;
 
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
@@ -140,6 +143,11 @@
 
         _claimed = claimed;
         _keys = chords;
+
+        // Read off the claim itself rather than named a second time: the badge draws the first
+        // chord of what this button actually publishes, so the key drawn cannot come to differ
+        // from the key dispatched.
+        _hint = claimed?.Split(' ')[0];
     }
 
     // Nothing to save yet: a tracked form's submit stays greyed out until the surface

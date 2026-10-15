@@ -26,9 +26,11 @@ public static class NsKeys
     /// <summary>The attribute the BADGE is drawn from — the first chord alone, because a
     /// reminder on the way past is one key and the reference is the sheet "?" opens. A second
     /// attribute and not the plural one above for one reason: ns-mud.css draws it with
-    /// <c>content: attr()</c>, exactly as THE WHISPER draws a collapsed control's name, and CSS
-    /// cannot take the first word of a list. Derived from the same claim all the same, so the
-    /// key drawn is the key dispatched.</summary>
+    /// <c>content: attr()</c> and CSS cannot take the first word of a list.
+    /// <para>Worn by the badge's own node (NsKey) and never by the control, which is why
+    /// <see cref="Declare"/> does not write it: generated content on a control joins that
+    /// control's accessible name, and the button's name is its word. Derived from the same claim
+    /// all the same, so the key drawn is the key dispatched.</para></summary>
     public const string Hint = "data-ns-key";
 
     /// <summary>Submits the form the focus is in — the chord every web application already
@@ -53,11 +55,12 @@ public static class NsKeys
 
     public const string Help = "?";
 
-    /// <summary>Everything a control carries to claim the given chords, from the one string:
-    /// the house's attribute the layer dispatches on, <c>aria-keyshortcuts</c> — the platform's
+    /// <summary>Everything a control carries to claim the given chords, from the one string: the
+    /// house's attribute the layer dispatches on, and <c>aria-keyshortcuts</c> — the platform's
     /// word for the same claim, and the only way somebody who cannot see the badge is told the
-    /// key exists — and the badge's own. One call writes all three, so a control cannot publish
-    /// one and forget another, and no spelling of the chord is written twice.
+    /// key exists. One call writes both, so a control cannot publish one and forget the other,
+    /// and no spelling of the chord is written twice. The badge is <see cref="Hint"/>, worn by a
+    /// node of its own.
     /// <para>Held by the control that calls this, never rebuilt per render: a fresh dictionary
     /// reads as a changed parameter and re-renders the vendor control for nothing
     /// (NsFieldBase's own note). Nulls are skipped, so a caller whose second chord is
@@ -76,7 +79,6 @@ public static class NsKeys
         return new Dictionary<string, object>
         {
             [Attribute] = string.Join(' ', claimed),
-            [Hint] = claimed[0],
             ["aria-keyshortcuts"] = string.Join(' ', claimed.Select(Spelled))
         };
     }

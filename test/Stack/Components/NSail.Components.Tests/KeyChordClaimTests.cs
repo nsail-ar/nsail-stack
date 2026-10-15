@@ -62,6 +62,11 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         return host.Find(css).GetAttribute("aria-keyshortcuts");
     }
 
+    static string? Badge(IRenderedComponent<IComponent> host, string css)
+    {
+        return host.Find($"{css} .ns-key").GetAttribute(NsKeys.Hint);
+    }
+
     [Fact]
     public void AFormHoldingADocument_ClaimsBothChordsOnItsHero()
     {
@@ -122,17 +127,44 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
     }
 
     // The badge is what makes the keyboard learnable from the screen, and it is drawn from the
-    // claim's FIRST chord — a reminder on the way past is one key. Drawn by the stylesheet off
-    // this attribute (content: attr), which is THE WHISPER's construction: a badge is
-    // decoration, and a decoration joined to the button's text content would change what every
-    // reader of that button's word finds in it.
+    // claim's FIRST chord — a reminder on the way past is one key. Every worded face wears one:
+    // the hero, the footer's Cancelar and a chromed button claiming a chord of its own.
     [Fact]
-    public void TheHero_DrawsTheFirstChordItClaims()
+    public void EveryWordedFace_DrawsTheFirstChordItClaims()
     {
         var host = Mount();
 
-        Assert.Equal(NsKeys.Submit, host.Find("button.hero").GetAttribute(NsKeys.Hint));
-        Assert.Equal(NsKeys.Close, host.Find("button.cancel").GetAttribute(NsKeys.Hint));
+        Assert.Equal(NsKeys.Submit, Badge(host, "button.hero"));
+        Assert.Equal(NsKeys.Close, Badge(host, "button.cancel"));
+        Assert.Equal(NsKeys.Help, Badge(host, "button.sheet"));
+    }
+
+    // THE REGRESSION (nsail#2259): the badge is decoration and a button is read by its word, in
+    // two readings that are not the same. Its TEXT CONTENT, which every selector finding a
+    // control by that word reads — so the chord is in an attribute and the node is empty, drawn
+    // by the stylesheet with content: attr(). And its ACCESSIBLE NAME, which is what a screen
+    // reader announces and what a role query asks for exactly — that one folds in generated
+    // content, including a ::after on the control itself, so the badge hangs off a node of its
+    // own and that node is aria-hidden. A hero worded "Guardar" answers to "Guardar", nothing
+    // longer, on both.
+    [Fact]
+    public void TheBadge_IsInNeitherTheButtonsWordsNorItsName()
+    {
+        var host = Mount();
+
+        var hero = host.Find("button.hero");
+        var badge = host.Find("button.hero .ns-key");
+
+        // The word a caller handed over, whole and alone — read on the button that carries a
+        // Label, this harness composing no catalog for the hero's own key to resolve through.
+        Assert.Equal("Shortcuts", host.Find("button.sheet").TextContent.Trim());
+        Assert.Empty(badge.TextContent);
+        Assert.Equal("true", badge.GetAttribute("aria-hidden"));
+
+        // On the node and nowhere else: the control publishes what the layer dispatches on and
+        // what a reader announces, and draws nothing.
+        Assert.Null(hero.GetAttribute(NsKeys.Hint));
+        Assert.Equal("Ctrl+Enter Ctrl+S", hero.GetAttribute(NsKeys.Attribute));
     }
 
     // A narrow surface gives the hint up before the control's own word, and a touch screen
@@ -143,37 +175,44 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
     {
         var css = ReadStylesheet().Replace("\r\n", "\n", StringComparison.Ordinal);
 
-        var rule = $"[{NsKeys.Hint}]:not(.ns-square):not(.mud-icon-button)::after";
-
-        Assert.Contains($"{rule} {{\n    content: attr({NsKeys.Hint});\n    display: none;", css, StringComparison.Ordinal);
-        Assert.Contains($"@container (min-width: 600px) {{\n    {rule} {{\n        display: inline-block;", css, StringComparison.Ordinal);
+        Assert.Contains($".ns-key::after {{\n    content: attr({NsKeys.Hint});", css, StringComparison.Ordinal);
+        Assert.Contains(".ns-key {\n    display: none;", css, StringComparison.Ordinal);
 
         // The floor, and it has to come LAST: all three rules carry the same weight, so what
         // decides between them is the order in the file and nothing else. Said about these three
         // rules and not about the first query of each kind — the file holds several of both.
-        var coarse = $"@media (pointer: coarse) {{\n    {rule} {{\n        display: none;";
-        var room = $"@container (min-width: 600px) {{\n    {rule} {{\n        display: inline-block;";
+        var coarse = "@media (pointer: coarse) {\n    .ns-key {\n        display: none;";
+        var room = "@container (min-width: 600px) {\n    .ns-key {\n        display: inline-block;";
 
+        Assert.Contains(room, css, StringComparison.Ordinal);
         Assert.Contains(coarse, css, StringComparison.Ordinal);
         Assert.True(css.IndexOf(coarse, StringComparison.Ordinal) > css.IndexOf(room, StringComparison.Ordinal));
     }
 
-    // The X claims the chord like any other control — the layer and a screen reader read that —
-    // and draws no badge: a glyph has no word for a hint to stand beside, its name is already a
-    // hover bubble, and one ::after is all CSS has to give either of them.
-    [Fact]
-    public void AGlyphOnlyClose_ClaimsTheChordAndIsExcludedFromTheBadge()
+    // Both shapes with no word claim the chord like any other control — the layer and a screen
+    // reader read that — and draw no badge: a glyph has no word for a hint to stand beside, and
+    // its name is already a hover bubble (THE WHISPER, which is the ::after they do use).
+    [Theory]
+    [InlineData("button.exit")]
+    [InlineData("button.square")]
+    public void AGlyphOnlyControl_ClaimsTheChordAndDrawsNoBadge(string css)
     {
         var host = Mount();
 
-        var exit = host.Find("button.exit");
+        var glyph = host.Find(css);
 
-        Assert.Equal(NsKeys.Close, exit.GetAttribute(NsKeys.Attribute));
-        Assert.Contains("mud-icon-button", exit.ClassList);
-        Assert.Contains(
-            $"[{NsKeys.Hint}]:not(.ns-square):not(.mud-icon-button)::after",
-            ReadStylesheet(),
-            StringComparison.Ordinal);
+        Assert.Equal(NsKeys.Close, glyph.GetAttribute(NsKeys.Attribute));
+        Assert.Empty(glyph.QuerySelectorAll(".ns-key"));
+    }
+
+    // A filter's submit claims nothing, so it draws nothing: the badge is the claim's own
+    // reminder and there is no second place that decides whether to paint one.
+    [Fact]
+    public void AFiltersSubmit_DrawsNoBadge()
+    {
+        var host = Mount();
+
+        Assert.Empty(host.Find("button.filter").QuerySelectorAll(".ns-key"));
     }
 
     static string ReadStylesheet()
