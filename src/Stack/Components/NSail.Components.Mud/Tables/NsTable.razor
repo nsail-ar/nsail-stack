@@ -5,10 +5,14 @@
 @typeparam TRow where TRow : class
 @inherits NsCollectionBase
 @using MudBlazor.Services
+@using NSail.Exporting
 @using NSail.Paging
 @using NSail.Localization
+@using Microsoft.JSInterop
 
 @inject StringManager Strings
+@inject LanguageProvider Language
+@inject IJSRuntime JS
 @inject IScrollListenerFactory ScrollListeners
 @inject IBrowserViewportService Viewport
 @inject IServiceProvider Services
@@ -20,6 +24,11 @@
 
     RenderFragment headerCells =
         @<text>
+            @* The pass boundary for the column set, and the reason it can be one: this runs while
+               the header's render tree is being BUILT, and the NsTh components in it set their
+               parameters afterwards — so every declaration that follows belongs to this pass
+               (TableColumns). *@
+            @{ _columns.BeginPass(); }
             @if (Selectable)
             {
                 <MudTh Class="ns-select">
@@ -114,17 +123,39 @@
    would not re-read it anyway. *@
 <CascadingValue Value="_columns" IsFixed="true">
 
-@* The collection's own bar, and the only seat the add control has: a grid that offers a way in
-   names itself, so Agregar is at the top right on every screen and there is no second position
-   for it to drift to — the same place a list page's NUEVO takes. *@
-@if (Title is not null)
+@* The collection's own bar, and the only seat the controls over the WHOLE collection have: a
+   grid that offers a way in names itself, so Agregar is at the top right on every screen and
+   there is no second position for it to drift to — the same place a list page's NUEVO takes.
+   Exportar is the other one of those and sits beside it, which is why the bar now draws for a
+   grid that has something to put in it even where nothing named the grid: the pager row is the
+   alternative, and it exists in only one of the three modes. *@
+@if (Title is not null || Exportable)
 {
     <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween" Class="ns-collection-bar">
-        <NsText As="NsTextAs.Title">@Title</NsText>
-        @if (Editable && NewRow is not null && AddControl)
+        @if (Title is not null)
         {
-            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-cells-add" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
+            <NsText As="NsTextAs.Title">@Title</NsText>
         }
+        @* ms-auto and not the row's SpaceBetween alone: an unnamed bar has one child, and
+           space-between seats a single child at the START — the controls would read as the
+           grid's heading. *@
+        <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Class="ms-auto">
+            @if (Exportable)
+            {
+                @* Writes nothing, so a form that refuses writes keeps it: reading a list out is
+                   not a way in (NsActBase). *@
+                <NsMenu Label="@Strings.Translate("Actions.Export")" Writes="false" Disabled="_exporting" Class="ns-table-export">
+                    @foreach (var writer in Writers!.All)
+                    {
+                        <NsMenuItem Action="@ExportAction(writer)" />
+                    }
+                </NsMenu>
+            }
+            @if (Editable && NewRow is not null && AddControl)
+            {
+                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-cells-add" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
+            }
+        </NsStack>
     </NsStack>
 }
 
@@ -289,6 +320,14 @@ else
     // stays forced on until the first page actually arrives, so the honest state before any
     // answer is "still asking", never "nothing here".
     bool _hasLoaded;
+
+    // One export at a time, and the reason it is a field rather than the Runner's own IsRunning:
+    // the export spends several runs, one per page, and between two of them the Runner is idle.
+    bool _exporting;
+
+    ExportWriters? _writers;
+    bool _askedWriters;
+    CancellationTokenSource? _export;
 
     [Parameter]
     public string? Class { get; set; }
@@ -948,6 +987,140 @@ else
         return _table.ReloadServerData();
     }
 
+    // Resolved, never injected, exactly like the device seam above: a host with no export
+    // registered — a component test, a surface that was never given one — must still render its
+    // grid, and what it gets is a grid with no Exportar on it.
+    ExportWriters? Writers
+    {
+        get
+        {
+            if (!_askedWriters)
+            {
+                _askedWriters = true;
+                _writers = Services.GetService(typeof(ExportWriters)) as ExportWriters;
+            }
+
+            return _writers;
+        }
+    }
+
+    // What a LIST is, said once: a grid the SERVER pages, which is the only kind whose rows go
+    // past what is on screen and therefore the only kind "all pages" means anything for. A
+    // collection a form holds in memory is not one — its rows are a field of the document being
+    // edited, and the document is what gets saved, not exported — and neither is a grid typed
+    // into, whose own rows are the thing being written. Derived rather than a parameter: a
+    // screen that had to ask for Exportar is a screen that can forget to.
+    bool Exportable => OnQuery.HasDelegate && RowEditor is null && Writers is { IsEmpty: false };
+
+    ActionItem ExportAction(IExportWriter writer)
+    {
+        return new ActionItem
+        {
+            Name = $"Export{writer.Kind}",
+            Writes = false,
+            OnClick = () => Export(writer)
+        };
+    }
+
+    async Task Export(IExportWriter writer)
+    {
+        // One at a time, and the menu says so by being disabled: two exports read their pages out
+        // of the same Rows parameter, so a second one would interleave its pages into the first
+        // one's file.
+        if (_exporting || _columns.Declared.Count == 0)
+        {
+            return;
+        }
+
+        _exporting = true;
+        _export = new CancellationTokenSource();
+
+        var refused = false;
+
+        // Named by what the screen calls the list, which is its own Title or the name its page
+        // announced to the surface — never a string a caller passes, which would be the screen's
+        // name written down twice.
+        var name = Title ?? Surface?.Title ?? Strings.Translate("Actions.Export");
+
+        var book = ExportBook.Of(name, new ExportTable
+        {
+            Columns = [.. _columns.Declared.Select(column => new ExportColumn { Key = column.Key, Title = column.Title, Format = column.Format })],
+            Rows = TableExport.Rows<TRow>(Read, [.. _columns.Declared], _export.Token)
+        });
+
+        try
+        {
+            // The FILE is held, never the rows: a browser is handed a download as one blob, so the
+            // bytes the writer produced stay in hand — a megabyte or two for tens of thousands of
+            // rows — while the result set they came from is read a page at a time and dropped
+            // (NSail.Exporting).
+            using var file = new MemoryStream();
+
+            await writer.WriteAsync(book, file, RegionCulture.For(Language), _export.Token);
+
+            file.Position = 0;
+
+            // A stream reference, not bytes: the file crosses to JS once and never as base64
+            // (ns.js, download).
+            using var reference = new DotNetStreamReference(file, leaveOpen: true);
+
+            await JS.InvokeVoidAsync("nsapp.download", ExportWriters.FileName(book, writer), writer.ContentType, reference);
+        }
+        catch (ExportInterrupted) when (refused)
+        {
+            // The refusal is already on screen, placed by the Runner that raised the read. There
+            // is nothing to add, and half a file is not offered.
+        }
+        catch (OperationCanceledException)
+        {
+            // The component ended, or the export was called off. Either way there is no screen
+            // left to put a file or a refusal on.
+        }
+        catch (Exception ex)
+        {
+            await Report(new ProblemEventArgs(NSail.Problems.SystemProblem.Unhandled(), this, ex));
+        }
+        finally
+        {
+            _export.Dispose();
+            _export = null;
+            _exporting = false;
+
+            StateHasChanged();
+        }
+
+        // One page of the export, asked for the only way this component ever asks for rows: the
+        // screen's own OnQuery, so the message, its filter and its authorization are the list's
+        // and an export needs nothing of its own.
+        //
+        // Null is a read that did not land, which TableExport turns into "no file": a refusal the
+        // handler declared, or an answer that never reached this component. The answer travels as
+        // the Rows PARAMETER, which moves when the page that owns it renders — handling an event
+        // callback is what re-renders it, and the task InvokeAsync hands back does not complete
+        // until that render has landed (LoadPage below reads it the same way, once per gesture).
+        //
+        // Nothing on screen moves while this runs: a page-mode grid renders _page and a
+        // scroll-mode one _scrolled, and neither is written here.
+        async Task<DataPage<TRow>?> Read(int index, int size)
+        {
+            var before = Rows;
+
+            var args = new QueryEventArgs
+            {
+                PageIndex = index,
+                PageSize = size
+            };
+
+            // Replace, for the same reason LoadPage replaces: a page the pager asked for may still
+            // be in flight, and a second run on a busy Runner throws.
+            await Raise(OnQuery, args, RunOptions.Replace);
+
+            refused = args.Problem is not null;
+
+            return refused || ReferenceEquals(Rows, before) ? null : Rows;
+        }
+    }
+
     // Both subscriptions are dropped without awaiting them: NsComponent's teardown is
     // synchronous, and the JS side of a listener whose circuit is going away has nothing left
     // to report to.
@@ -963,6 +1136,10 @@ else
             }
 
             _ = Viewport.UnsubscribeAsync(_viewportSubscription);
+
+            // An export in flight has a screen to put its file on no longer, and its next page
+            // would be a round trip asked for by nobody.
+            _export?.Cancel();
         }
 
         base.Dispose(disposing);

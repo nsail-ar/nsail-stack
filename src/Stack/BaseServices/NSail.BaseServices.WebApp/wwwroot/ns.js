@@ -659,5 +659,29 @@
         }
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, focusFirst, recall, remember };
+    // A file the C# side produced, handed to the browser as a download. The stream reference
+    // arrives as an object with arrayBuffer(), so the bytes cross once and never as base64 --
+    // which for a spreadsheet of fifty thousand rows is a third of the payload saved and a
+    // string the size of the file not built.
+    //
+    // The anchor is in the document before it is clicked: a detached element's click is ignored
+    // outright by Firefox. And revokeObjectURL is deferred rather than immediate -- Safari reads
+    // the URL after the click returns, and revoking it in the same turn leaves the download
+    // named and empty.
+    async function download(name, type, data) {
+        const url = URL.createObjectURL(new Blob([await data.arrayBuffer()], { type }));
+        const anchor = document.createElement("a");
+
+        anchor.href = url;
+        anchor.download = name;
+        anchor.style.display = "none";
+
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+    }
+
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, focusFirst, recall, remember, download };
 })();

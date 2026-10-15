@@ -18,6 +18,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\BaseServices\NSail.BaseServices.Wasm\NSail.BaseServices.Wasm.csproj" />
 		<ProjectReference Include="..\..\Components\NSail.Components.Mud\NSail.Components.Mud.csproj" />
+		<ProjectReference Include="..\..\Exporting\NSail.Exporting.Excel\NSail.Exporting.Excel.csproj" />
 		<ProjectReference Include="..\NSail.Sample.Sdk\NSail.Sample.Sdk.csproj" />
 	</ItemGroup>
 

@@ -1,0 +1,122 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Exporting
+@using NSail.Paging
+@using NSail.Problems
+
+<MudPopoverProvider />
+
+@* A server-paged list, which is what offers Exportar: the handler answers the page it is asked
+   for out of a register far longer than any page of it. *@
+<NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="OnQuery" RowEditor="Editor" NewRow="Blank" Title="@Title">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+        <NsTh For="() => context.Count" />
+        <NsTh For="() => context.Total" Format="ExportFormat.Money" />
+        <NsTh For="() => context.Share" Format="ExportFormat.Percent" />
+        <NsTh For="() => context.On" />
+        @if (!DropKind)
+        {
+            <NsTh For="() => context.Kind" />
+        }
+        <NsTh />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd For="() => row.Count">@row.Count</NsTd>
+        <NsTd For="() => row.Total">@row.Total</NsTd>
+        <NsTd For="() => row.Share">@row.Share</NsTd>
+        <NsTd For="() => row.On">@row.On</NsTd>
+        @if (!DropKind)
+        {
+            <NsTd For="() => row.Kind">@row.Kind</NsTd>
+        }
+        <NsTd />
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    /// <summary>Longer than one export page would be if the grid asked for its own page size,
+    /// and not a multiple of it either — the last page has to be a short one.</summary>
+    public const int Register = 2_350;
+
+    DataPage<ExportRowModel> _rows = DataPage<ExportRowModel>.Empty();
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>Whether the table offers inline editing, which is what makes it not a list.</summary>
+    [Parameter]
+    public bool Editable { get; set; }
+
+    /// <summary>Stands for a column a list's own filter DROPS: the header stops declaring it, so
+    /// the export has to stop carrying it.</summary>
+    [Parameter]
+    public bool DropKind { get; set; }
+
+    /// <summary>What the read answers with instead of a page, from the page index given on.</summary>
+    [Parameter]
+    public int? RefuseFrom { get; set; }
+
+    public List<(int Index, int Size)> Asked { get; } = [];
+
+    RenderFragment<ExportRowModel>? Editor => Editable ? Row : null;
+
+    RenderFragment<ExportRowModel> Row => row => @<text><NsTd For="() => row.Name">@row.Name</NsTd></text>;
+
+    ExportRowModel Blank()
+    {
+        return new ExportRowModel();
+    }
+
+    async Task OnQuery(QueryEventArgs args)
+    {
+        Asked.Add((args.PageIndex, args.PageSize));
+
+        if (RefuseFrom is { } refused && args.PageIndex >= refused)
+        {
+            args.Problem = BusinessProblem.RuleViolation("NoRead", "La lectura no llegó.");
+
+            return;
+        }
+
+        var start = args.PageIndex * args.PageSize;
+        var count = Math.Clamp(Register - start, 0, args.PageSize);
+
+        _rows = new DataPage<ExportRowModel>
+        {
+            Items = [.. Enumerable.Range(start, count).Select(Make)],
+            PageIndex = args.PageIndex,
+            PageSize = args.PageSize,
+            TotalCount = Register
+        };
+
+        // The render the grid's own Rows parameter travels on. A real page gets it for free:
+        // handling an event callback re-renders the component that handled it inside
+        // StateHasChanged, before the task InvokeAsync hands back completes. bUnit's renderer
+        // processes its batch on a continuation instead (PagedRegionHost's note), so the fixture
+        // asks for the render and then yields to let it land. Not a wait: a yield is ordering,
+        // and a duration here would be this machine's clock (judgment.md 3).
+        await InvokeAsync(StateHasChanged);
+        await Task.Yield();
+    }
+
+    static ExportRowModel Make(int index)
+    {
+        return new ExportRowModel
+        {
+            Name = $"Row {index}",
+            Count = index,
+            Total = 10m + index,
+            Share = 0.25m,
+            On = new DateOnly(2026, 1, 1).AddDays(index % 300),
+            Kind = index % 2 == 0 ? ExportRowKind.Person : ExportRowKind.Shop
+        };
+    }
+}

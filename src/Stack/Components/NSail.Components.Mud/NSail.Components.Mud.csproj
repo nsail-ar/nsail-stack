@@ -16,6 +16,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\NSail.Components\NSail.Components.csproj" />
+		<ProjectReference Include="..\..\Exporting\NSail.Exporting\NSail.Exporting.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
