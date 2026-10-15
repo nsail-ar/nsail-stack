@@ -347,12 +347,12 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
     static async Task Pick<THost>(IRenderedComponent<THost> cut, string row)
         where THost : IComponent
     {
-        await cut.Find(".ns-table-export button").ClickAsync(new MouseEventArgs());
+        // Each control is found and pressed inside ONE dispatch: between a Find and a Click the
+        // host can re-render — the table's first read and the popover's own render land on
+        // continuations — and the handler the element carried is gone by the time the click
+        // reaches it (bUnit, UnknownEventHandlerIdException, which a loaded machine makes likely).
+        await cut.InvokeAsync(() => cut.Find(".ns-table-export button").ClickAsync(new MouseEventArgs()));
 
-        // Found and pressed inside ONE dispatch: between a Find and a Click the open menu can
-        // re-render — the popover's own render lands on a continuation — and the handler the
-        // element carried is gone by the time the click reaches it (bUnit,
-        // UnknownEventHandlerIdException, which a loaded machine is what makes likely).
         await cut.InvokeAsync(() => cut
             .Find(".ns-menu-list")
             .QuerySelectorAll(".ns-menu-item")
