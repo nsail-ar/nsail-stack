@@ -9,6 +9,7 @@ using NSail.Data;
 using NSail.Messaging.Runtime;
 using NSail.Messaging.WebApi.Push;
 using NSail.Messaging.WebApi;
+using NSail.Localization;
 using NSail.Metadata;
 using NSail.Telemetry;
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -36,6 +37,7 @@ public static class Setup
         builder.Services.AddSingleton<BuildVersionMiddleware>();
 
         builder.Services.AddScoped<TenancyMiddleware>();
+        builder.Services.AddScoped<TenantStateMiddleware>();
         builder.Services.AddScoped<TenantClaimMiddleware>();
         builder.Services.AddScoped<CredentialMiddleware>();
 
@@ -65,6 +67,10 @@ public static class Setup
         builder.Services.AddAuthorization();
 
         builder.Services.AddMetadata();
+
+        // The words of the suspended page (TenantStateMiddleware), which this project draws
+        // itself because the gate stands ahead of every asset the app would style it with.
+        builder.Services.AddStringsFromAssembly();
 
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(options =>
@@ -120,6 +126,12 @@ public static class Setup
         if (app.ResolvesTenants())
         {
             app.UseMiddleware<TenancyMiddleware>();
+
+            // Immediately behind it, because a tenant the install has suspended is as unreachable
+            // as one that does not exist: no cookie, no session, no throttle counter, no endpoint
+            // and no asset. Only where a tenant is resolved at all — an install with one customer
+            // has nobody to suspend.
+            app.UseMiddleware<TenantStateMiddleware>();
         }
 
         app.UseAuthentication();

@@ -13,7 +13,8 @@ namespace NSail.Data;
 
 public static class DbContextExtensions
 {
-    /// <summary>Applies every kit's model configuration, the Stack's own seed history, and then
+    /// <summary>Applies every kit's model configuration, the Stack's own two tables — the seed
+    /// history and the tenant state — and then
     /// the four rules the Stack sets over the whole model: the row version, the case-insensitive
     /// collation, the tenant column with the filter that rides it, and the org filter over what
     /// the map classifies as having happened at a branch. The context is a parameter because
@@ -33,6 +34,7 @@ public static class DbContextExtensions
         }
 
         ApplySeedHistory(modelBuilder);
+        ApplyTenantState(modelBuilder);
         ApplyRowVersion(modelBuilder);
         ApplyCaseInsensitiveText(modelBuilder);
         TenantColumn.Apply(modelBuilder.Model, context);
@@ -52,7 +54,7 @@ public static class DbContextExtensions
         configurationBuilder.Conventions.Remove(typeof(ForeignKeyIndexConvention));
     }
 
-    // The tenant's own migration history, and the only table the Stack owns. It is configured
+    // The tenant's own migration history, one of the two tables the Stack owns. It is configured
     // here rather than contributed as an IDbContextSetup because a product that forgot to
     // compose it would have a seed chain nothing records — every step re-running on every touch —
     // and the whole point of the pass over the model is that no composition can forget a rule.
@@ -71,6 +73,30 @@ public static class DbContextExtensions
 
             entity.HasIndex(row => row.Step)
                 .IsUnique();
+        });
+    }
+
+    // What the install records about its tenants, beside the history above and for the same
+    // reason: a product that forgot to compose it would serve a suspended customer. The tenant
+    // is the key and not a column the passes below put there — the row is install-scoped, so
+    // nothing stamps it and no filter hides it, and whoever operates the fleet writes it by that
+    // key from outside the app (data-tenancy.md, Tenant state).
+    static void ApplyTenantState(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<TenantState>(entity =>
+        {
+            entity.ToTable("TenantStates");
+            entity.HasKey(row => row.TenantId);
+
+            entity.Property(row => row.TenantId)
+                .ValueGeneratedNever();
+
+            entity.Property(row => row.Status)
+                .HasMaxLength(32)
+                .IsRequired();
+
+            entity.Property(row => row.Plan)
+                .HasMaxLength(32);
         });
     }
 

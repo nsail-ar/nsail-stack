@@ -31,14 +31,15 @@ Infrastructure only. No domain entities, no shared DbContext type.
 |---|---|
 | `IDbContextSetup` | Kit/app registers EF model configuration |
 | `Setup.AddDbContextSetup<T>` | Registers a kit's `IDbContextSetup` in DI |
-| `DbContextExtensions.ApplySetups` | Applies `IDbContextSetup` instances to a `ModelBuilder`, then the Stack's own seed history and the model-wide rules (row version, collation, tenant column, org filter) |
+| `DbContextExtensions.ApplySetups` | Applies `IDbContextSetup` instances to a `ModelBuilder`, then the Stack's own two tables (seed history, tenant state) and the model-wide rules (row version, collation, tenant column, org filter) |
 | `DbContextExtensions.ApplyTenancy` | What a product's context states in `ConfigureConventions` — see Tenancy |
 | `DbContextExtensions.SetDefaultDbContext<T>` | `AddScoped<DbContext, T>()` for handler injection |
 | `Setup.AddDataAccess<T>` | The tenancy seam plus the app's context — what a host calls instead of `AddDbContext` |
 | `TenancyOptions` / `TenancyProvider` / `Tenant` / `ITenanted` | The seam itself — see Tenancy |
 | `TenantRoster` | Who the install's tenants are, for work outside a request — data-tenancy.md, Background jobs |
 | `IInstallScoped` / `ITenantSeed` | What a tenant does NOT own, and what it is born with — data-tenancy.md |
-| `TenantSeedStep` / `AppliedSeedStep` | One named step of that seed, and the tenant's history of which it has run — the Stack's only table (data-tenancy.md, First touch bootstraps) |
+| `TenantSeedStep` / `AppliedSeedStep` | One named step of that seed, and the tenant's history of which it has run — one of the Stack's two tables (data-tenancy.md, First touch bootstraps) |
+| `TenantState` / `TenantStates` | What the install records ABOUT a tenant — its state and its plan, written from outside the app — and the scoped reader of it: the other Stack table (data-tenancy.md, The install's own record) |
 | `WellKnownRows` / `TenancyProvider.Row` | The ids code names by constant, and which scope's copy one means (data-tenancy.md, A frozen id) |
 
 Connection string: app `{App}Options` with `[Required] ConnectionString`, loaded via
@@ -95,6 +96,8 @@ The rest lives in [data-tenancy.md](data-tenancy.md), under these headings:
   `TenancyMiddleware`, `TenantSlug.Normalize`.
 - **The credential is stamped, and checked on every request** — the `tenant` claim,
   `TenantClaimMiddleware`, `AmbientTenant`, `TenantMigrator`.
+- **The install's own record of a tenant** — `TenantState`, `TenantStates`,
+  `TenantStateMiddleware`, the suspended page.
 - **Background jobs** — `IBackgroundJob.Tenancy`, one tenant per scope, `Tenancy:Tenants`,
   `BackgroundJobMetrics`.
 

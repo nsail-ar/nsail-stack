@@ -4,7 +4,8 @@
 namespace NSail.Data;
 
 /// <summary>One row per seed step a tenant has run (<see cref="TenantSeedStep"/>) — the tenant's
-/// own migration history, and the Stack's only table. It is written in the same transaction as
+/// own migration history, one of the Stack's two tables — <see cref="TenantState"/> is the
+/// other. It is written in the same transaction as
 /// the rows its step wrote, so a step that threw is not recorded and is tried again on the next
 /// touch.
 ///

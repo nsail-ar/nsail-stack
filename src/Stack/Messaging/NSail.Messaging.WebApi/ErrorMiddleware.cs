@@ -4,16 +4,12 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security;
 using System.Security.Authentication;
-using Microsoft.Net.Http.Headers;
 using NSail.Problems;
 
 namespace NSail.Messaging.WebApi;
 
 public sealed class ErrorMiddleware : IMiddleware
 {
-    static readonly MediaTypeHeaderValue s_document = new("text/html");
-    static readonly MediaTypeHeaderValue s_json = new("application/json");
-
     readonly ILogger<ErrorMiddleware> _logger;
 
     public ErrorMiddleware(ILogger<ErrorMiddleware> logger)
@@ -67,7 +63,7 @@ public sealed class ErrorMiddleware : IMiddleware
             context.Response.Clear();
             context.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
 
-            var document = PrefersDocument(context.Request)
+            var document = context.Request.PrefersDocument()
                 ? context.RequestServices.GetService<IProblemDocumentProvider>()
                 : null;
 
@@ -113,38 +109,6 @@ public sealed class ErrorMiddleware : IMiddleware
 
             return false;
         }
-    }
-
-    // Accept alone tells the two callers apart, the negotiation HTTP already has: a document
-    // navigation ranks text/html above everything, while the generated client, a fetch and curl
-    // ask with */* or with nothing at all. So the default wherever the preference is not
-    // explicit is the machine's answer, which is to change nothing.
-    static bool PrefersDocument(HttpRequest request)
-    {
-        if (!MediaTypeHeaderValue.TryParseList(request.Headers.Accept, out var accepted))
-        {
-            return false;
-        }
-
-        var document = -1d;
-        var json = -1d;
-
-        foreach (var media in accepted)
-        {
-            var quality = media.Quality ?? 1d;
-
-            if (s_document.IsSubsetOf(media))
-            {
-                document = Math.Max(document, quality);
-            }
-
-            if (s_json.IsSubsetOf(media))
-            {
-                json = Math.Max(json, quality);
-            }
-        }
-
-        return document > json;
     }
 
     // Null means unhandled, and the log level is read off that: a second list of exception types
