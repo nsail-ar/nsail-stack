@@ -88,6 +88,14 @@ await mediator.send(DeleteContact, { id: row.id });
 Labels, field names and refusals come from one string catalog keyed by the message, so the two
 clients and the server say the same words.
 
+## The guide
+
+[docs/](docs/README.md) explains the Stack for a person: a
+[getting-started walkthrough](docs/getting-started.md) that builds an app from nuget.org, and the
+ideas underneath — [messages](docs/messages.md), [sending](docs/sending.md) and the unit of work,
+[events](docs/events.md), [permissions](docs/permissions.md), [mapping](docs/mapping.md) and the
+[principles](docs/principles.md).
+
 ## Try it: the Sample
 
 [`src/Stack/Sample`](src/Stack/Sample/docs/sample.md) is a contacts app — one API, a Blazor
