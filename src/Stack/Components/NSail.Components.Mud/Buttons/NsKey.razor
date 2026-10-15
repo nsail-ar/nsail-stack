@@ -1,0 +1,45 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* The chord a control answers, drawn beside its word so the keyboard is learned from the screen
+   and never from a manual. A node of its own and an EMPTY one, the chord riding an attribute the
+   stylesheet draws with content: attr() — a badge is decoration, and this decoration has to stay
+   out of two different readings of the button it sits in. Out of its TEXT CONTENT, which a node
+   holding the chord as text joins, and which every selector finding a control by its word reads.
+   And out of its ACCESSIBLE NAME, which generated content on the control itself joins: the name
+   computation folds ::after in where textContent leaves it out, so a hero worded "Guardar" was
+   named "Guardar Ctrl+Enter" to a screen reader and to every role query asking for the word
+   exactly. Empty node plus attr() is the one construction neither reading picks up.
+   aria-hidden for the second of those: the control publishes the same claim where it is read
+   rather than seen (NsKeys writes aria-keyshortcuts), so a reader that also announced this would
+   say the key twice. *@
+@if (Chord is { Length: > 0 })
+{
+    <kbd class="ns-key" aria-hidden="true" @attributes="_badge"></kbd>
+}
+
+@code {
+
+    /// <summary>The one chord to draw. A control answering two draws its first — the badge is a
+    /// reminder on the way past, not the reference, and the reference is the sheet "?" opens.
+    /// Null or empty draws nothing at all, so a control whose chord is conditional renders this
+    /// without a guard of its own.</summary>
+    [Parameter]
+    public string? Chord { get; set; }
+
+    Dictionary<string, object>? _badge;
+
+    protected override void OnParametersSet()
+    {
+        if (_badge?.GetValueOrDefault(NsKeys.Hint) as string == Chord)
+        {
+            return;
+        }
+
+        _badge = Chord is { Length: > 0 }
+            ? new Dictionary<string, object> { [NsKeys.Hint] = Chord }
+            : null;
+    }
+}

@@ -39,6 +39,12 @@
                    Class="@GetClasses()"
                    UserAttributes="_ariaAttributes">
             <span class="@LabelClasses">@(Wordless ? null : Label)</span>
+            @* Never on the square: a glyph has no word for a hint to stand beside, and its name
+               is already a bubble (ns-mud.css, THE WHISPER). *@
+            @if (!Wordless)
+            {
+                <NsKey Chord="@Chord" />
+            }
         </MudButton>
     }
 </CascadingValue>

@@ -6,8 +6,8 @@
 @using NSail.Components
 
 @* Every control that claims a chord, on one overlay surface: the form's hero, the quiet submit
-   of a filter beside it, both faces of the close and the page's search box. A NAMED surface,
-   because NsClose removes itself on the main one. *@
+   of a filter beside it, both faces of the close, a chromed button claiming one of its own and
+   the page's search box. A NAMED surface, because NsClose removes itself on the main one. *@
 <CascadingValue Value="RouteTable">
     <NsSurfaceContext Name="Surfaces.Aside" Close="Nothing" Context="surface">
         <NsForm TModel="SubmitTrackingModel" Model="Model" OnSubmit="HandleSubmit" Untracked="Untracked">
@@ -17,6 +17,8 @@
             <NsSubmit As="NsAs.Filter" Class="filter" />
             <NsClose As="NsAs.Inline" Class="exit" />
             <NsClose Class="cancel" />
+            <NsButton Label="Shortcuts" Chord="@NsKeys.Help" Class="sheet" />
+            <NsButton Icon="@NsIcons.Close" Breakpoint="NsBreakpoint.Never" Label="Dismiss" Chord="@NsKeys.Close" Class="square" />
         </NsForm>
     </NsSurfaceContext>
 </CascadingValue>
