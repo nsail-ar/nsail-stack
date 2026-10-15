@@ -26,6 +26,10 @@ public sealed class ExportRowModel
 
     public DateOnly On { get; set; }
 
+    /// <summary>A moment the server stamped, in UTC, the way every timestamp in the tree
+    /// travels.</summary>
+    public DateTime At { get; set; }
+
     public ExportRowKind Kind { get; set; }
 
     public List<string> Roles { get; set; } = [];
