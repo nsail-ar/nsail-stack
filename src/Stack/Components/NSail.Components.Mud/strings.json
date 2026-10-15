@@ -31,6 +31,7 @@
   "Actions.Export": "Export",
   "Actions.ExportExcel": "Excel",
   "Actions.ExportCsv": "CSV",
+  "Actions.ExportPdf": "PDF",
   "Common.Auto": "Auto",
   "Common.All": "All",
   "Common.Close": "Close",
