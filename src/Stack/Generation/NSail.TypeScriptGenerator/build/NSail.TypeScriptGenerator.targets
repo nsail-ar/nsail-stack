@@ -1,0 +1,41 @@
+<Project>
+
+	<!-- The generation itself, one definition for both ways an Sdk reaches the tool: NuGet imports
+	     this file for a PackageReference to NSail.TypeScriptGenerator, and the tool runs from the
+	     package's tools/ folder; inside this repository ../NSail.TypeScriptGenerator.targets points
+	     _TypeScriptTool at the tool's own build output first, then imports this.
+
+	     An Sdk that ships a TypeScript client, the twin of its [Generated(Http.Clients)] holder,
+	     sets where the file goes; after it compiles, its own sources and references are handed to
+	     the tool, which reads them with the C# generator's model and writes $(TypeScriptOutput):
+
+	     <PropertyGroup><TypeScriptOutput>…/src/sdk.ts</TypeScriptOutput></PropertyGroup>
+	     <PackageReference Include="NSail.TypeScriptGenerator" Version="…" PrivateAssets="all" /> -->
+
+	<PropertyGroup>
+		<_TypeScriptTool Condition="'$(_TypeScriptTool)' == ''">$(MSBuildThisFileDirectory)../tools/net10.0/any/NSail.TypeScriptGenerator.dll</_TypeScriptTool>
+	</PropertyGroup>
+
+	<Target Name="GenerateTypeScript"
+	        AfterTargets="CoreCompile"
+	        Condition="'$(TypeScriptOutput)' != ''"
+	        Inputs="@(Compile);@(ReferencePath);$(MSBuildProjectFullPath);$(_TypeScriptTool)"
+	        Outputs="$(TypeScriptOutput)">
+		<PropertyGroup>
+			<_TypeScriptArguments>$(IntermediateOutputPath)typescript.rsp</_TypeScriptArguments>
+		</PropertyGroup>
+		<ItemGroup>
+			<_TypeScriptDefine Include="$(DefineConstants)" />
+			<_TypeScriptLine Include="assembly=$(AssemblyName)" />
+			<_TypeScriptLine Include="out=$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/$(TypeScriptOutput)'))" />
+			<_TypeScriptLine Include="@(Compile->'source=%(FullPath)')" />
+			<_TypeScriptLine Include="@(ReferencePath->'reference=%(FullPath)')" />
+			<_TypeScriptLine Include="@(_TypeScriptDefine->'define=%(Identity)')" />
+		</ItemGroup>
+		<WriteLinesToFile File="$(_TypeScriptArguments)" Lines="@(_TypeScriptLine)" Overwrite="true" />
+		<Exec Command="dotnet &quot;$(_TypeScriptTool)&quot; &quot;@$(_TypeScriptArguments)&quot;" />
+		<!-- The tool leaves an unchanged file untouched; touching it keeps the target incremental. -->
+		<Touch Files="$(TypeScriptOutput)" />
+	</Target>
+
+</Project>

@@ -1,8 +1,8 @@
 <Project>
 
-	<!-- Imported by an Sdk that ships a TypeScript client, the twin of its [Generated(Http.Clients)]
-	     holder: after the Sdk compiles, its own sources and references are handed to the tool,
-	     which reads them with the C# generator's model and writes $(TypeScriptOutput).
+	<!-- Imported by an Sdk inside this repository: the tool runs from its own build output, built
+	     first through the reference below. An Sdk outside it takes the package instead, whose
+	     build/ file is the one imported here.
 
 	     <PropertyGroup><TypeScriptOutput>…/src/sdk.ts</TypeScriptOutput></PropertyGroup>
 	     <Import Project="…/NSail.TypeScriptGenerator/NSail.TypeScriptGenerator.targets" /> -->
@@ -18,26 +18,6 @@
 		</ProjectReference>
 	</ItemGroup>
 
-	<Target Name="GenerateTypeScript"
-	        AfterTargets="CoreCompile"
-	        Condition="'$(TypeScriptOutput)' != ''"
-	        Inputs="@(Compile);@(ReferencePath);$(MSBuildProjectFullPath);$(_TypeScriptTool)"
-	        Outputs="$(TypeScriptOutput)">
-		<PropertyGroup>
-			<_TypeScriptArguments>$(IntermediateOutputPath)typescript.rsp</_TypeScriptArguments>
-		</PropertyGroup>
-		<ItemGroup>
-			<_TypeScriptDefine Include="$(DefineConstants)" />
-			<_TypeScriptLine Include="assembly=$(AssemblyName)" />
-			<_TypeScriptLine Include="out=$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/$(TypeScriptOutput)'))" />
-			<_TypeScriptLine Include="@(Compile->'source=%(FullPath)')" />
-			<_TypeScriptLine Include="@(ReferencePath->'reference=%(FullPath)')" />
-			<_TypeScriptLine Include="@(_TypeScriptDefine->'define=%(Identity)')" />
-		</ItemGroup>
-		<WriteLinesToFile File="$(_TypeScriptArguments)" Lines="@(_TypeScriptLine)" Overwrite="true" />
-		<Exec Command="dotnet &quot;$(_TypeScriptTool)&quot; &quot;@$(_TypeScriptArguments)&quot;" />
-		<!-- The tool leaves an unchanged file untouched; touching it keeps the target incremental. -->
-		<Touch Files="$(TypeScriptOutput)" />
-	</Target>
+	<Import Project="build/NSail.TypeScriptGenerator.targets" />
 
 </Project>

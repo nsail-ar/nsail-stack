@@ -6,6 +6,26 @@
 		<RollForward>Major</RollForward>
 	</PropertyGroup>
 
+	<!-- A build-time tool, packed as one: the published tool and every assembly it loads under
+	     tools/, the targets that run it under build/ (NuGet imports them for the consumer), and
+	     nothing a consumer compiles against — no lib/, no dependencies to flow. -->
+	<PropertyGroup>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+		<DevelopmentDependency>true</DevelopmentDependency>
+		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackTool</TargetsForTfmSpecificContentInPackage>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Update="build/NSail.TypeScriptGenerator.targets" Pack="true" PackagePath="build/NSail.TypeScriptGenerator.targets" />
+	</ItemGroup>
+
+	<Target Name="PackTool" DependsOnTargets="Publish">
+		<ItemGroup>
+			<TfmSpecificPackageFile Include="$(PublishDir)**/*" PackagePath="tools/$(TargetFramework)/any/%(RecursiveDir)" />
+		</ItemGroup>
+	</Target>
+
 	<ItemGroup>
 		<InternalsVisibleTo Include="NSail.TypeScriptGenerator.Tests" />
 	</ItemGroup>
