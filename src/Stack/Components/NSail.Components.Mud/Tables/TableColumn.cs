@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections;
 using System.Reflection;
 using NSail.Exporting;
 using NSail.Localization;
@@ -46,16 +47,32 @@ public sealed record TableColumn
             Title = title,
             Format = declared ?? FormatOf(property.PropertyType),
 
-            // An enum reads as its own word, the same one the cell shows: a file that said
-            // "Supplier" where the screen said "Proveedor" would be the list in another language
-            // than the person who asked for it.
-            Read = row =>
-            {
-                var value = property.GetValue(row);
-
-                return value is Enum word ? strings.Translate(word) : value;
-            }
+            Read = row => Value(property.GetValue(row), strings)
         };
+    }
+
+    /// <summary>What goes in the cell. Two kinds of value are not themselves:
+    /// <para>An ENUM reads as its own word, the one the cell shows — a file saying "Supplier"
+    /// where the screen said "Proveedor" is the list in another language than the person who asked
+    /// for it.</para>
+    /// <para>A COLLECTION reads as its members, comma-separated, because no cell type holds a list
+    /// and a column of them is the one the screen already joins by hand (a party's roles). Left
+    /// alone it would print the type's name.</para></summary>
+    public static object? Value(object? value, StringManager strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        if (value is Enum word)
+        {
+            return strings.Translate(word);
+        }
+
+        if (value is IEnumerable members and not string)
+        {
+            return string.Join(", ", members.Cast<object?>().Select(member => Value(member, strings)));
+        }
+
+        return value;
     }
 
     /// <summary>What a member's own type says its values are. Money and Percent are the two it

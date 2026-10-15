@@ -25,4 +25,6 @@ public sealed class ExportRowModel
     public DateOnly On { get; set; }
 
     public ExportRowKind Kind { get; set; }
+
+    public List<string> Roles { get; set; } = [];
 }

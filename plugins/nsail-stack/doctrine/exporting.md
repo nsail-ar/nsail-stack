@@ -101,6 +101,8 @@ read, so a row type's other members are none of an export's business.**
   is.**
 - **An enum reads as the word the cell shows.** A file saying "Supplier" where the screen said
   "Proveedor" is the list mistranslated.
+- **A collection reads as its members, comma-separated** (a party's roles): no cell type holds a
+  list, and left alone the file would print the type's name.
 - **A column with no `For` is not a column** — the action column has nothing to put in a file and
   nothing to key on either ([ui/hosts.md](ui/hosts.md)).
 - **The column set is rebuilt on every header render, never accumulated.** A column a list's own

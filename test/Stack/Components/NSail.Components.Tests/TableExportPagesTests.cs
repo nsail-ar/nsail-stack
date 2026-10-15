@@ -106,6 +106,16 @@ public class TableExportPagesTests
         Assert.Equal(["Row 1", 1, "Comercio"], rows[1].Values);
     }
 
+    /// <summary>No cell type holds a list, and a column of them is one the screen already joins
+    /// by hand (a party's roles). Left alone the file would print the type's name.</summary>
+    [Fact]
+    public async Task A_collection_column_reads_as_its_members()
+    {
+        var rows = await Read(new Register(1), Named(nameof(ExportRowModel.Roles)));
+
+        Assert.Equal("Cliente, Proveedor", rows[0].Values[0]);
+    }
+
     /// <summary>The columns are the header's, so a column the header stopped declaring — one a
     /// list's own filter dropped — is not in the file.</summary>
     [Fact]
@@ -192,7 +202,8 @@ public class TableExportPagesTests
                 Total = 10m + index,
                 Share = 0.25m,
                 On = new DateOnly(2026, 1, 1).AddDays(index % 300),
-                Kind = index % 2 == 0 ? ExportRowKind.Person : ExportRowKind.Shop
+                Kind = index % 2 == 0 ? ExportRowKind.Person : ExportRowKind.Shop,
+                Roles = ["Cliente", "Proveedor"]
             };
         }
     }
