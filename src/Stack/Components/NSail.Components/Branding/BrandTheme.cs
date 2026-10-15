@@ -7,10 +7,10 @@ using NSail.Tones;
 namespace NSail.Components;
 
 /// <summary>One color scheme of a <see cref="Brand"/> (light or dark), and THE palette: every
-/// surface, line, ink and status colour below is a constant of the scheme, so a stored brand
-/// carries only what a tenant actually picked (its accent, its chrome and its logos) and
-/// overlays it on top of <see cref="DefaultDark"/>/<see cref="DefaultLight"/>. Hex strings,
-/// serializable.</summary>
+/// status colour below is a constant of the scheme, and the surface and ink ladder is the
+/// scheme's own luminance worn in the chrome's hue, so a stored brand carries only what a tenant
+/// actually picked (its accent, its chrome and its logos) and overlays it on top of
+/// <see cref="DefaultDark"/>/<see cref="DefaultLight"/>. Hex strings, serializable.</summary>
 public sealed class BrandTheme
 {
     public string? Logo { get; set; }
@@ -44,9 +44,9 @@ public sealed class BrandTheme
     public string AccentInk => BrandTone.AccentInk(Accent, TextPrimary, InkGrounds());
 
     /// <summary>The accent as ink ON the chrome — the drawer entry the reader is on, and the
-    /// guide's open chapter in that same gutter. The band is picked freely while the content's
-    /// surfaces are fixed, so its accent ink is leaned from <see cref="TextOnChrome"/> and read
-    /// against the chrome, never borrowed from <see cref="AccentInk"/>: a light chrome can sit
+    /// guide's open chapter in that same gutter. The band is picked freely while the luminance
+    /// of the content's surfaces is fixed, so its accent ink is leaned from
+    /// <see cref="TextOnChrome"/> and read against the chrome, never borrowed from <see cref="AccentInk"/>: a light chrome can sit
     /// under a dark scheme.</summary>
     [JsonIgnore]
     public string AccentOnChrome => BrandTone.AccentInk(
@@ -58,7 +58,7 @@ public sealed class BrandTheme
     // Surfaces and text
 
     /// <summary>The colour the app bar and the drawer wear as one band — the second colour a
-    /// brand is picked in, free of the surfaces below it.</summary>
+    /// brand is picked in. The surfaces and inks below it wear its hue, never its luminance.</summary>
     public string Chrome { get; set; } = "#201f1b";
 
     /// <summary>Text and icons drawn on top of <see cref="Chrome"/>: dark on a light chrome,
@@ -68,23 +68,28 @@ public sealed class BrandTheme
     /// <summary>The quieter ink on <see cref="Chrome"/>: drawer icons and secondary marks.</summary>
     public string TextOnChromeSecondary { get; set; } = "#aaaaa8";
 
-    /// <summary>The canvas everything sits on. Fixed per scheme, never derived from a pick.</summary>
-    // In dark, elevation is LIGHT and not shadow — a black shadow on a black surface is
-    // invisible — so the ladder has to be spent on tone: the canvas sits far enough below the
-    // surface for a card to read as lifted without a border. Pure black is nobody's floor
-    // either (Material's is #121212): white type on absolute black hazes.
-    public string Background { get; set; } = "#161513";
+    /// <summary>Which ladder the scheme stands on. The only thing about the ladder that travels:
+    /// its rungs are derived from it and <see cref="Chrome"/>, at paint, wherever this object is.</summary>
+    public bool IsDark { get; set; } = true;
 
-    /// <summary>Content surfaces: panels, cards, tables. Fixed per scheme, so a dark theme can
-    /// never carry a white background.</summary>
-    public string Surface { get; set; } = "#232120";
+    /// <summary>The canvas everything sits on: the scheme's luminance, in the chrome's hue.</summary>
+    [JsonIgnore]
+    public string Background => Rung(Ladder.Background, BrandTone.SurfaceTint);
+
+    /// <summary>Content surfaces: panels, cards, tables. Their luminance is the scheme's, so a
+    /// dark theme can never carry a white background whatever the chrome.</summary>
+    [JsonIgnore]
+    public string Surface => Rung(Ladder.Surface, BrandTone.SurfaceTint);
 
     /// <summary>Surfaces that float over another one: dialogs, menus, autocomplete lists.</summary>
-    public string SurfaceRaised { get; set; } = "#2d2b27";
+    [JsonIgnore]
+    public string SurfaceRaised => Rung(Ladder.SurfaceRaised, BrandTone.SurfaceTint);
 
-    public string TextPrimary { get; set; } = "#e7e4dd";
+    [JsonIgnore]
+    public string TextPrimary => Rung(Ladder.TextPrimary, BrandTone.InkTint);
 
-    public string TextSecondary { get; set; } = "#9c9992";
+    [JsonIgnore]
+    public string TextSecondary => Rung(Ladder.TextSecondary, BrandTone.InkTint);
 
     /// <summary>The ink of a control that cannot be used yet — a disabled button's word, a
     /// disabled glyph, a greyed menu row. The ladder's third rung, a clear step under
@@ -95,10 +100,12 @@ public sealed class BrandTheme
     // a refused control is the one thing the brand may not claim, and an ink carrying the
     // tenant's colour puts a disabled button and an NsAs.Important one under two warm labels on
     // two muted fills — one picture.
-    public string TextDisabled { get; set; } = "#6b6864";
+    [JsonIgnore]
+    public string TextDisabled => Rung(Ladder.TextDisabled, BrandTone.InkTint);
 
     /// <summary>Borders, dividers and table lines.</summary>
-    public string Lines { get; set; } = "#312f2b";
+    [JsonIgnore]
+    public string Lines => Rung(Ladder.Lines, BrandTone.SurfaceTint);
 
     /// <summary>Row hover — the only tint a row wears, and the second thing after
     /// <see cref="Lines"/> that tells two rows apart. Translucent, so it tints whatever surface
@@ -153,27 +160,63 @@ public sealed class BrandTheme
         ];
     }
 
+    // The ladder as a MASK: each rung's relative luminance is the scheme's and fixed — the steps
+    // the contrast floors are measured on — while its hue and chroma are the chrome's, capped
+    // (BrandTone.Tint). Written as the hexes the default brand wore, so the numbers stay
+    // readable; only their luminance survives the tint.
+    // In dark, elevation is LIGHT and not shadow — a black shadow on a black surface is
+    // invisible — so the ladder is spent on tone: the canvas sits far enough below the surface
+    // for a card to read as lifted without a border. Pure black is nobody's floor either
+    // (Material's is #121212): white type on absolute black hazes.
+    static readonly LadderMask DarkLadder = new(
+        Background: "#161513",
+        Surface: "#232120",
+        SurfaceRaised: "#2d2b27",
+        TextPrimary: "#e7e4dd",
+        TextSecondary: "#9c9992",
+        TextDisabled: "#6b6864",
+        Lines: "#312f2b");
+
+    // Light separates surfaces with borders and shadows rather than tone — white on white has
+    // nowhere to go — so the canvas sinks below the surfaces instead.
+    static readonly LadderMask LightLadder = new(
+        Background: "#f1f0ee",
+        Surface: "#fbfaf8",
+        SurfaceRaised: "#fcfbf9",
+        TextPrimary: "#262624",
+        TextSecondary: "#6e6b66",
+        TextDisabled: "#9a9792",
+        Lines: "#e4e2de");
+
+    LadderMask Ladder => IsDark ? DarkLadder : LightLadder;
+
+    string Rung(string mask, double cap)
+    {
+        return BrandTone.Tint(mask, Chrome, cap);
+    }
+
+    sealed record LadderMask(
+        string Background,
+        string Surface,
+        string SurfaceRaised,
+        string TextPrimary,
+        string TextSecondary,
+        string TextDisabled,
+        string Lines);
+
     public static BrandTheme DefaultDark()
     {
         return new();
     }
 
-    // Light separates surfaces with borders and shadows rather than tone — white on
-    // white has nowhere to go — so the canvas sinks below the surfaces instead.
     public static BrandTheme DefaultLight()
     {
         return new()
         {
+            IsDark = false,
             Chrome = "#fcfbf9",
             TextOnChrome = "#262625",
             TextOnChromeSecondary = "#6a6969",
-            Background = "#f1f0ee",
-            Surface = "#fbfaf8",
-            SurfaceRaised = "#fcfbf9",
-            TextPrimary = "#262624",
-            TextSecondary = "#6e6b66",
-            TextDisabled = "#9a9792",
-            Lines = "#e4e2de",
             RowHover = "#00000014",
             Error = "#d32f2f",
             Warning = "#c77700",
