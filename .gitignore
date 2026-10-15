@@ -32,3 +32,6 @@ src/Stack/Sample/NSail.Sample.Web/react/
 
 ## The data folder a host writes at run time (its Data Protection keyring among it)
 **/data/keyring/
+
+## The React packages' build output, published to npm and never committed
+src/Stack/React/*/dist/

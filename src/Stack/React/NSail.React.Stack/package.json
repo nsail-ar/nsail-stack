@@ -1,13 +1,31 @@
 {
   "name": "@nsail/stack",
   "version": "0.1.0",
-  "private": true,
   "description": "NSail's vendor-free client half: sends messages from the descriptors an Sdk generates, speaks the catalog, and holds the hooks a page reads with.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nsail-ar/nsail-stack.git",
+    "directory": "src/Stack/React/NSail.React.Stack"
+  },
+  "homepage": "https://github.com/nsail-ar/nsail-stack#readme",
   "type": "module",
+  "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "@nsail/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
+    "build": "node build.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

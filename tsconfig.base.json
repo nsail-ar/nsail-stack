@@ -15,6 +15,7 @@
     "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "customConditions": ["@nsail/source"],
     "noEmit": true,
     "types": []
   }
