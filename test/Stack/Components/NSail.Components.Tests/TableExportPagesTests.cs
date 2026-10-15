@@ -18,6 +18,8 @@ public class TableExportPagesTests
 {
     const int Size = TableExport.PageSize;
 
+    static readonly DateTime Stamped = new(2026, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+
     static readonly IReadOnlyList<TableColumn> Columns = Named(nameof(ExportRowModel.Name), nameof(ExportRowModel.Count), nameof(ExportRowModel.Kind));
 
     [Theory]
@@ -126,6 +128,40 @@ public class TableExportPagesTests
         Assert.Equal([10m], rows[0].Values);
     }
 
+    /// <summary>A timestamp the server stamped reads in the reader's own clock, the way the cell
+    /// beside it prints one: a file three hours off the list it came from is nobody's reading.
+    /// </summary>
+    [Fact]
+    public async Task A_stamped_moment_reads_in_the_readers_clock()
+    {
+        var rows = await Read(new Register(1), Named(nameof(ExportRowModel.At)));
+
+        Assert.Equal(Stamped.ToLocalTime(), rows[0].Values[0]);
+        Assert.Equal(DateTimeKind.Local, Assert.IsType<DateTime>(rows[0].Values[0]).Kind);
+    }
+
+    /// <summary>A list the client HOLDS is cut into the same pages by the same reader: a second
+    /// count of where a list ends would be a second place for the off-by-one to live.</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(Size)]
+    [InlineData((2 * Size) + 350)]
+    public async Task Every_row_a_list_holds_in_hand_reaches_the_file(int count)
+    {
+        var held = Enumerable.Range(0, count).Select(Register.Row).ToList();
+
+        var rows = new List<ExportRow>();
+
+        await foreach (var row in TableExport.Held(held, Columns, CancellationToken.None))
+        {
+            rows.Add(row);
+        }
+
+        Assert.Equal(count, rows.Count);
+        Assert.Equal(held.Select(row => row.Name), rows.Select(row => row.Values[0]));
+    }
+
     static async Task<List<ExportRow>> Read(Register register, IReadOnlyList<TableColumn>? columns = null)
     {
         var rows = new List<ExportRow>();
@@ -186,14 +222,14 @@ public class TableExportPagesTests
 
             return Task.FromResult<DataPage<ExportRowModel>?>(new DataPage<ExportRowModel>
             {
-                Items = [.. Enumerable.Range(start, taken).Select(Make)],
+                Items = [.. Enumerable.Range(start, taken).Select(Row)],
                 PageIndex = index,
                 PageSize = size,
                 TotalCount = Total ?? count
             });
         }
 
-        static ExportRowModel Make(int index)
+        public static ExportRowModel Row(int index)
         {
             return new ExportRowModel
             {
@@ -202,6 +238,7 @@ public class TableExportPagesTests
                 Total = 10m + index,
                 Share = 0.25m,
                 On = new DateOnly(2026, 1, 1).AddDays(index % 300),
+                At = Stamped,
                 Kind = index % 2 == 0 ? ExportRowKind.Person : ExportRowKind.Shop,
                 Roles = ["Cliente", "Proveedor"]
             };

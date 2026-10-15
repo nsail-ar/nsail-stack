@@ -490,6 +490,12 @@ else
     [Parameter]
     public Func<TRow, Guid>? RowKey { get; set; }
 
+    // The document this grid stands inside, if any, read for ONE question: whether the rows it
+    // holds are a field of what a submit saves. A form is the only thing that cascades it, so a
+    // grid that finds nothing here is a grid on a page that is merely read (Exportable).
+    [CascadingParameter]
+    IFormDocument? Document { get; set; }
+
     bool Selectable => Selection is not null && RowKey is not null;
 
     // What the reader is looking at, which in page mode is the winning read's answer and not
@@ -1004,13 +1010,21 @@ else
         }
     }
 
-    // What a LIST is, said once: a grid the SERVER pages, which is the only kind whose rows go
-    // past what is on screen and therefore the only kind "all pages" means anything for. A
-    // collection a form holds in memory is not one — its rows are a field of the document being
-    // edited, and the document is what gets saved, not exported — and neither is a grid typed
-    // into, whose own rows are the thing being written. Derived rather than a parameter: a
-    // screen that had to ask for Exportar is a screen that can forget to.
-    bool Exportable => OnQuery.HasDelegate && RowEditor is null && Writers is { IsEmpty: false };
+    // What a LIST is, said once: a grid whose rows are READ. A grid the SERVER pages is one by
+    // construction, and so is a register whose every row arrived in one read — the kind a kit
+    // writes when the whole table fits in the client — because "all pages" is every row either
+    // way and a reader asking for a spreadsheet does not know which kind they are looking at.
+    // What is NOT a list is a collection a DOCUMENT holds (its rows are a field of what the
+    // submit saves, which is why the form itself is the test) and a grid typed into, whose own
+    // rows are the thing being written. Derived rather than a parameter: a screen that had to
+    // ask for Exportar is a screen that can forget to.
+    bool Exportable => Writers is { IsEmpty: false } && RowEditor is null && (OnQuery.HasDelegate || HoldsItsList);
+
+    // A grid with no paging callback: its rows are all in hand, so it is a list unless something
+    // writes them. The two write seams a grid can carry without a RowEditor are the bar's way in
+    // and the row controls — a collection that can be added to or taken from is being edited
+    // whoever renders the cells.
+    bool HoldsItsList => Document is null && NewRow is null && !OnRowCommit.HasDelegate && !OnRowRemove.HasDelegate;
 
     ActionItem ExportAction(IExportWriter writer)
     {
@@ -1042,10 +1056,21 @@ else
         // name written down twice.
         var name = Title ?? Surface?.Title ?? Strings.Translate("Actions.Export");
 
+        var columns = _columns.Declared.ToArray();
+
+        // Where the rows come from, which is the one thing the two kinds of list do not share: a
+        // server-paged one is read page by page through its own OnQuery, and one whose rows are
+        // already here is cut off the hand it holds — taken NOW, because the Rows parameter moves
+        // when the page that owns it renders and a file written out of a moving parameter would
+        // be two filters' rows under one heading.
+        var rows = OnQuery.HasDelegate
+            ? TableExport.Rows<TRow>(Read, columns, _export.Token)
+            : TableExport.Held(Rows.Items, columns, _export.Token);
+
         var book = ExportBook.Of(name, new ExportTable
         {
-            Columns = [.. _columns.Declared.Select(column => new ExportColumn { Key = column.Key, Title = column.Title, Format = column.Format })],
-            Rows = TableExport.Rows<TRow>(Read, [.. _columns.Declared], _export.Token)
+            Columns = [.. columns.Select(column => new ExportColumn { Key = column.Key, Title = column.Title, Format = column.Format })],
+            Rows = rows
         });
 
         try

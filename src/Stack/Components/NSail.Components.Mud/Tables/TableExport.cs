@@ -19,6 +19,33 @@ public static class TableExport
     /// accepts, because the round trips are the cost and no page is held (PagedMessage).</summary>
     public const int PageSize = PagedMessage.MaxPageSize;
 
+    /// <summary>The rows of a list the client already HOLDS — a register whose every row arrived
+    /// in one read, so there is no server to ask. The pages are cut off the rows in hand and read
+    /// by <see cref="Rows"/>: where a list ends and how a row becomes values stay in one place
+    /// rather than two, and the slice is taken once so a filter applied while the file is being
+    /// written cannot put two lists in it.</summary>
+    public static IAsyncEnumerable<ExportRow> Held<TRow>(
+        IReadOnlyList<TRow> rows,
+        IReadOnlyList<TableColumn> columns,
+        CancellationToken cancellationToken)
+        where TRow : class
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+
+        return Rows(Page, columns, cancellationToken);
+
+        Task<DataPage<TRow>?> Page(int index, int size)
+        {
+            return Task.FromResult<DataPage<TRow>?>(new DataPage<TRow>
+            {
+                Items = [.. rows.Skip(index * size).Take(size)],
+                PageIndex = index,
+                PageSize = size,
+                TotalCount = rows.Count
+            });
+        }
+    }
+
     /// <summary>The rows, lazily. <paramref name="read"/> answers a page or null for a read that
     /// did not land — a refusal, or an answer that never reached the caller — and null ends the
     /// export: half a list downloaded as a whole one is worse than no file. The caller tells the

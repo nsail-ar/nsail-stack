@@ -10,11 +10,10 @@ namespace NSail.Exporting.Tests;
 /// exports without the result set ever being in memory, and the rows are asked for ONCE — a
 /// second pass would ask a server for every page twice.
 /// <para>Nothing here is timed and nothing is compared against a byte count written down: both
-/// would be measuring this machine (judgment.md 3). "Bounded" is a claim about GROWTH, so the
-/// proof is three exports of the same rows at ten times the length each, with the managed heap
-/// SAMPLED while they run — a writer that buffers the sheet grows with the list and a writer that
-/// streams does not. The rows themselves are proved gone by weak reference, which needs no
-/// figure at all.</para></summary>
+/// would be measuring this machine (judgment.md 3). "Bounded" is measured against the one figure
+/// the same run can produce — what those rows cost HELD — with the managed heap SAMPLED while the
+/// export runs, because what a buffering writer costs is live only while it writes. The rows
+/// themselves are proved gone by weak reference, which needs no figure at all.</para></summary>
 public class StreamingTests
 {
     const int Rows = 50_000;
@@ -31,12 +30,20 @@ public class StreamingTests
         var whole = await Peak(writer, Rows);
         var result = Materialized();
 
-        // Ten times the rows, and the slack allowed is a QUARTER of what the same rows cost held
-        // — measured on this machine, in this run, which is what keeps the bound off a number
-        // written down (judgment.md 3). A writer that held the result set would be four times
-        // over the line; the earlier probe of the one that does (MiniExcel's FastMode) was.
+        // The whole export peaks under what its own rows cost HELD — measured on this machine, in
+        // this run, which is what keeps the bound off a number written down (judgment.md 3). A
+        // writer that buffered the sheet holds every cell of every row and is past that line
+        // before it holds anything of its own; the earlier probe of the one that does (MiniExcel's
+        // FastMode) was several times past it.
+        //
+        // Not stated as growth from the shorter run, which is what this asserted first and what
+        // read red on a loaded runner twice: the instrument is a sampler, and the long run gets
+        // ten times the samples of the short one, so it catches peaks the short one is never
+        // offered. The two figures are not comparable to a quarter of anything — the sampled band
+        // for one export of one length spanned 6.8 MB to 13.3 MB across two runs of the same
+        // commit. Both are reported, because a reader watching for drift wants to see them.
         Assert.True(
-            whole < brief + result / 4,
+            whole < result,
             $"{kind} peaked at {whole} bytes for {Rows} rows against {brief} for {Rows / 10}, with the result set itself costing {result}");
     }
 

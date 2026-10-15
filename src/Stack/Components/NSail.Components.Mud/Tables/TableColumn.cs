@@ -51,10 +51,17 @@ public sealed record TableColumn
         };
     }
 
-    /// <summary>What goes in the cell. Two kinds of value are not themselves:
+    /// <summary>What goes in the cell. Four kinds of value are not themselves:
     /// <para>An ENUM reads as its own word, the one the cell shows — a file saying "Supplier"
     /// where the screen said "Proveedor" is the list in another language than the person who asked
     /// for it.</para>
+    /// <para>A BOOLEAN reads as the Sí or No the cell prints, which is the same promise: True
+    /// under a heading that says Activo is the CLR's word for it and nobody else's.</para>
+    /// <para>A timestamp the server STAMPED reads in the reader's own clock, because that is
+    /// what the cell beside it shows: every screen in the house prints a UTC moment through
+    /// ToLocalTime, and a file three hours off the list it came from is nobody's reading. Only a
+    /// moment that says it is UTC — a DateTime of any other kind is already local or is a date
+    /// with no zone to it.</para>
     /// <para>A COLLECTION reads as its members, comma-separated, because no cell type holds a list
     /// and a column of them is the one the screen already joins by hand (a party's roles). Left
     /// alone it would print the type's name.</para></summary>
@@ -65,6 +72,16 @@ public sealed record TableColumn
         if (value is Enum word)
         {
             return strings.Translate(word);
+        }
+
+        if (value is bool flag)
+        {
+            return strings.Translate(flag ? "Common.Yes" : "Common.No");
+        }
+
+        if (value is DateTime { Kind: DateTimeKind.Utc } stamped)
+        {
+            return stamped.ToLocalTime();
         }
 
         if (value is IEnumerable members and not string)

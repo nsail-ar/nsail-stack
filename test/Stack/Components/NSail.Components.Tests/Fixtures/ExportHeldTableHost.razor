@@ -1,0 +1,89 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Exporting
+@using NSail.Paging
+
+@* The other kind of list: every row arrived in one read and the client holds all of them, which
+   is what a register small enough to fit does (a kit's CurrenciesPage). There is no OnQuery, so
+   there is no page to ask for — and the same grid inside a document is that document's own
+   collection and not a list at all.
+   <para>Few rows on purpose: how the rows in hand are cut into pages is TableExportPagesTests',
+   with no renderer in the way.</para> *@
+
+<MudPopoverProvider />
+
+@if (InDocument)
+{
+    <NsForm TModel="ExportRowModel" Model="_document" Untracked="true">
+        @Grid
+    </NsForm>
+}
+else
+{
+    @Grid
+}
+
+@code {
+
+    public const int Held = 7;
+
+    readonly ExportRowModel _document = new();
+
+    DataPage<ExportRowModel> _rows = DataPage<ExportRowModel>.Empty();
+
+    /// <summary>Whether the grid stands inside an NsForm, which is what makes the rows it holds a
+    /// field of a document rather than a list.</summary>
+    [Parameter]
+    public bool InDocument { get; set; }
+
+    /// <summary>Whether the collection offers a way IN — the bar's add control and the row's own
+    /// delete. A collection that can be added to or taken from is being edited wherever it
+    /// stands.</summary>
+    [Parameter]
+    public bool Editable { get; set; }
+
+    RenderFragment Grid =>
+        @<NsTable TRow="ExportRowModel" Rows="_rows" NewRow="Blank" OnRowRemove="Remove">
+            <HeaderContent>
+                <NsTh For="() => context.Name" />
+                <NsTh For="() => context.Total" Format="ExportFormat.Money" />
+                <NsTh For="() => context.IsActive" />
+                <NsTh />
+            </HeaderContent>
+            <RowTemplate Context="row">
+                <NsTd For="() => row.Name">@row.Name</NsTd>
+                <NsTd For="() => row.Total">@row.Total</NsTd>
+                <NsTd For="() => row.IsActive">@(row.IsActive ? "Sí" : "No")</NsTd>
+                <NsTd />
+            </RowTemplate>
+        </NsTable>;
+
+    Func<ExportRowModel>? Blank => Editable ? () => new ExportRowModel() : null;
+
+    EventCallback<RowEditEventArgs<ExportRowModel>> Remove =>
+        Editable ? EventCallback.Factory.Create<RowEditEventArgs<ExportRowModel>>(this, Nothing) : default;
+
+    protected override void OnInitialized()
+    {
+        _rows = DataPage<ExportRowModel>.From([.. Enumerable.Range(0, Held).Select(Make)]);
+    }
+
+    static void Nothing(RowEditEventArgs<ExportRowModel> args)
+    {
+    }
+
+    static ExportRowModel Make(int index)
+    {
+        return new ExportRowModel
+        {
+            Name = $"Row {index}",
+            Total = 10m + index,
+            IsActive = index % 2 == 0
+        };
+    }
+}
