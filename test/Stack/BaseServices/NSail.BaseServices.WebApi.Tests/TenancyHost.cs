@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -71,9 +72,9 @@ public sealed class TenancyHost : IAsyncDisposable
     /// <summary>The host every tenancy suite runs against. <paramref name="bootstraps"/> adds
     /// what an app would register — the rows a tenant is born with — and is off by default so
     /// the suites that count rows are counting their own.</summary>
-    public static Task<TenancyHost> Start(TenancyMode mode, bool bootstraps = false)
+    public static Task<TenancyHost> Start(TenancyMode mode, bool bootstraps = false, string? language = null)
     {
-        return Start(mode, bootstraps ? typeof(WelcomeSeed) : null, cell: null);
+        return Start(mode, bootstraps ? typeof(WelcomeSeed) : null, cell: null, language);
     }
 
     /// <summary>The same install again, carrying whatever chain that build carries — a deploy,
@@ -87,7 +88,7 @@ public sealed class TenancyHost : IAsyncDisposable
         return Start(TenancyMode.SingleDb, seed, host.Cell);
     }
 
-    public static async Task<TenancyHost> Start(TenancyMode mode, Type? seed, string? cell)
+    public static async Task<TenancyHost> Start(TenancyMode mode, Type? seed, string? cell, string? language = null)
     {
         var owned = cell is null;
 
@@ -110,6 +111,18 @@ public sealed class TenancyHost : IAsyncDisposable
         });
 
         builder.WebHost.UseTestServer();
+
+        // The install's own language, which is what the one page this pipeline draws itself
+        // speaks (TenantStateMiddleware): the gate stands ahead of the step that resolves the
+        // reader's, so a suite proving both languages states the install's.
+        if (language is not null)
+        {
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Language:Default"] = language,
+            });
+        }
+
         builder.AddBaseWebApi();
 
         // Cookies, because the subject is a ticket that outlives the request that minted it and

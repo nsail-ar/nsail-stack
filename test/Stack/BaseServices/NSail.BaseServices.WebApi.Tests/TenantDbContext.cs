@@ -190,6 +190,19 @@ public sealed class Notes : Migration
             columns: ["TenantId", "Step"],
             unique: true);
 
+        // The Stack's second table, and the second one this hand-authored chain has to state:
+        // what the install records about a tenant (TenantState). Install-scoped, so the tenant it
+        // is about is a column of its own and nothing stamps it.
+        migrationBuilder.CreateTable(
+            name: "TenantStates",
+            columns: table => new
+            {
+                TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                Status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                Plan = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
+            },
+            constraints: table => table.PrimaryKey("PK_TenantStates", state => state.TenantId));
+
         // No tenant column, deliberately: an install-scoped table has none, and the rows below
         // are the seed's — planted once, read by every tenant.
         migrationBuilder.CreateTable(
@@ -223,5 +236,6 @@ public sealed class Notes : Migration
         migrationBuilder.DropTable("Notes");
         migrationBuilder.DropTable("NoteKinds");
         migrationBuilder.DropTable("AppliedSeedSteps");
+        migrationBuilder.DropTable("TenantStates");
     }
 }

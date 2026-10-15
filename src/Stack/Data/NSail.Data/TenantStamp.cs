@@ -55,6 +55,16 @@ sealed class TenantStamp : SaveChangesInterceptor
                 continue;
             }
 
+            // The install's own rows are nobody's and nothing stamps them (IInstallScoped) — asked
+            // by the marker rather than by the column's absence, because one such entity names the
+            // tenant it is ABOUT in a column of its own: TenantState, the row whoever operates the
+            // fleet writes. Stamped from the scope, that row would be rewritten to whichever tenant
+            // happened to be reading it.
+            if (typeof(IInstallScoped).IsAssignableFrom(entry.Metadata.ClrType))
+            {
+                continue;
+            }
+
             // The read half answers "nothing" by comparing against NULL; the write half cannot,
             // because a row has to carry some value and every value here would be somebody's.
             // Stamping the install's key would hide the row from every tenant AND show it to
