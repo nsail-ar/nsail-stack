@@ -154,8 +154,6 @@ sealed class BackgroundJobRunner : BackgroundService
             return;
         }
 
-        _meter.Swept(jobType.Name, roster.Count);
-
         if (roster.Count == 0 && _emptyRosterSaid.TryAdd(jobType, 0))
         {
             // Said once rather than every tick: an install with no tenants is a standing
@@ -166,20 +164,35 @@ sealed class BackgroundJobRunner : BackgroundService
                 jobType.Name);
         }
 
+        var swept = 0;
+
         foreach (var tenant in roster)
         {
             // Sequential, and each pass is awaited whole: a tenant that fails must not cut the
             // sweep, and running them together would multiply one job's load on the database by
             // the size of the roster for no cadence anybody asked for.
-            await Run(jobType, tenant, stoppingToken).ConfigureAwait(false);
+            if (await Run(jobType, tenant, stoppingToken).ConfigureAwait(false))
+            {
+                swept++;
+            }
         }
+
+        // Reported after the sweep and not before it, because what the gauge is for is telling a
+        // job that ran from one that ran for nobody, and the roster is no longer the answer to
+        // that: a suspended tenant is on the roster and is not swept. An install whose every
+        // tenant is suspended reports zero, which is exactly what it is doing.
+        _meter.Swept(jobType.Name, swept);
     }
 
     // Its own async method, and that is load-bearing twice over: the tenant is entered on an
     // AsyncLocal, which an async method's execution context does not carry back to its caller,
     // so the next tenant on the sweep starts from none — and the catch is per pass, so one
     // tenant's failure costs that tenant's tick and nobody else's.
-    async Task Run(Type jobType, Tenant? tenant, CancellationToken stoppingToken)
+    //
+    // Answers whether the tenant was SWEPT, which a failed pass was and a suspended tenant was
+    // not: a failure is this job's problem and is counted, a suspension is the install's answer
+    // about the customer and is not a pass at all.
+    async Task<bool> Run(Type jobType, Tenant? tenant, CancellationToken stoppingToken)
     {
         try
         {
@@ -193,11 +206,23 @@ sealed class BackgroundJobRunner : BackgroundService
                 // request has ever asked for fails this pass, loudly, instead of having a
                 // migration applied by a clock.
                 scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(tenant);
+
+                // And what the request edge asks next (TenantStateMiddleware): a customer the
+                // install has suspended gets no work done on its rows either. Asked after Enter
+                // because the state is read in the tenant's own scope, and before the job is
+                // resolved so nothing of it runs.
+                if (scope.ServiceProvider.GetService<TenantStates>() is { } states
+                    && await states.IsSuspended(stoppingToken).ConfigureAwait(false))
+                {
+                    return false;
+                }
             }
 
             await ((IBackgroundJob)scope.ServiceProvider.GetRequiredService(jobType)).Run(stoppingToken).ConfigureAwait(false);
 
             _meter.Passed(jobType.Name, succeeded: true);
+
+            return true;
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -223,6 +248,8 @@ sealed class BackgroundJobRunner : BackgroundService
                     jobType.Name,
                     tenant.Slug);
             }
+
+            return true;
         }
     }
 

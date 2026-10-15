@@ -121,6 +121,12 @@ public static class Setup
         {
             services.AddScoped<ResolvedTenancyProvider>();
             services.AddScoped<TenancyProvider>(provider => provider.GetRequiredService<ResolvedTenancyProvider>());
+
+            // What the install says about the tenant this scope is in, for the edge that refuses
+            // a suspended one and the runner that does not sweep it. Registered by both walls and
+            // by neither of the modes that resolve nothing: an install with one customer has no
+            // state to read and nobody to refuse.
+            services.AddScoped<TenantStates>();
         }
 
         services.TryAddScoped<TenancyProvider>();

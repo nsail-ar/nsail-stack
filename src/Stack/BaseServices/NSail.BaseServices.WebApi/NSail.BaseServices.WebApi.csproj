@@ -8,9 +8,25 @@
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.1" />
 	</ItemGroup>
 
+	<!-- The words of the one page this project draws itself (SuspendedDocument). The LogicalName
+	     keeps a language-coded file out of MSBuild's satellite-assembly machinery, which would
+	     otherwise read "strings.es.json" as a Spanish resource of "strings.json". -->
+	<ItemGroup>
+		<EmbeddedResource Include="strings*.json" />
+		<EmbeddedResource Update="strings.*.json">
+			<DependentUpon>strings.json</DependentUpon>
+			<LogicalName>$(RootNamespace).%(Filename)%(Extension)</LogicalName>
+			<WithCulture>false</WithCulture>
+		</EmbeddedResource>
+	</ItemGroup>
+
 	<ItemGroup>
 		<ProjectReference Include="..\..\Backup\NSail.Backup\NSail.Backup.csproj" />
+		<!-- The install's own language, which the suspended page speaks: this gate stands ahead
+		     of the step that resolves the reader's. -->
+		<ProjectReference Include="..\..\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
 		<ProjectReference Include="..\..\Data\NSail.Data\NSail.Data.csproj" />
+		<ProjectReference Include="..\..\Localization\NSail.Localization\NSail.Localization.csproj" />
 		<!-- What a message declares about its own transport, which is what the throttle reads
 		     off the type the matched route already names. -->
 		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj" />
