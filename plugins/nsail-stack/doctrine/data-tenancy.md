@@ -493,11 +493,13 @@ reads nothing and cannot write at all.
   not `job`, which the Prometheus side of an OTLP gateway spends on the service):
   - `nsail.background.job.passes`, a counter also tagged `nsail.outcome` (`ok`/`failed`, the
     Mediator span's vocabulary) — **it fails**;
-  - `nsail.background.job.roster`, the passes the last tick swept — reported after the sweep and
-    not before it, because the roster is no longer the answer: the tenants ENTERED for a
+  - `nsail.background.job.roster`, the passes the last tick swept: the tenants ENTERED for a
     per-tenant job (the roster less whoever is suspended), **one** for install-wide work and for
     an install that resolves no tenant, **zero** for the job that runs for nobody — so the two
-    never look alike; nothing is reported before the first tick;
+    never look alike; nothing is reported before the first tick. Written twice per tick, the
+    roster as the sweep starts and the correction when it ends, because a pass cancelled by
+    shutdown takes its loop with it and a gauge that goes silent on a deploy is the one reading
+    an alert cannot interpret;
   - `nsail.background.job.overdue`, time since the last completed pass **divided by the job's
     declared `Interval`** — dimensionless, so one alert rule at `> 3` covers an hourly job and a
     six-hourly one. It counts from boot until the first pass completes, so a job running for

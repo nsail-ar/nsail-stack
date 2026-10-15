@@ -154,6 +154,12 @@ sealed class BackgroundJobRunner : BackgroundService
             return;
         }
 
+        // Said as the sweep starts, and said again below with what it actually entered. Twice on
+        // purpose: a sweep cut short by shutdown — a pass cancelled mid-flight takes the whole
+        // loop with it — would otherwise report no roster at all for that tick, and a gauge that
+        // goes silent on a deploy is the one reading an alert cannot interpret.
+        _meter.Swept(jobType.Name, roster.Count);
+
         if (roster.Count == 0 && _emptyRosterSaid.TryAdd(jobType, 0))
         {
             // Said once rather than every tick: an install with no tenants is a standing
@@ -177,9 +183,8 @@ sealed class BackgroundJobRunner : BackgroundService
             }
         }
 
-        // Reported after the sweep and not before it, because what the gauge is for is telling a
-        // job that ran from one that ran for nobody, and the roster is no longer the answer to
-        // that: a suspended tenant is on the roster and is not swept. An install whose every
+        // And the correction, because the roster is no longer the answer to what the gauge is
+        // for: a suspended tenant is on the roster and is not swept. An install whose every
         // tenant is suspended reports zero, which is exactly what it is doing.
         _meter.Swept(jobType.Name, swept);
     }
