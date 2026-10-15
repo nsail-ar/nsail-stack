@@ -1,0 +1,55 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@using NSail.Problems
+@using NSail.Sample.Contacts.Models
+
+@inherits NsPartial
+
+@* A composition edited inline: the parent form submits the whole list, so this editor saves
+   nothing itself and only marks the surface dirty. *@
+<NsListEditor TItem="ContactAddressModel" Items="Items" Title="@GetTitle()"
+              NewItem="NewAddress" OnCommit="Commit" OnRemove="OnRemove">
+    <ItemTemplate Context="row">
+        <NsText>@row.Street</NsText>
+        <NsText Secondary>@Translate(row.Kind)@(string.IsNullOrWhiteSpace(row.City) ? "" : $" · {row.City}")</NsText>
+    </ItemTemplate>
+    <ItemEditor Context="row">
+        <NsSelect TItem="Option<AddressKind?>" TValue="AddressKind" @bind-Value="row.Kind"
+                  Items="@(GetItems<AddressKind>(all: false))" />
+        <NsTextField @bind-Value="row.Street" />
+        <NsTextField @bind-Value="row.City" />
+    </ItemEditor>
+</NsListEditor>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public List<ContactAddressModel> Items { get; set; } = [];
+
+    static ContactAddressModel NewAddress()
+    {
+        return new ContactAddressModel { Id = Guid.NewGuid() };
+    }
+
+    void Commit(RowEditEventArgs<ContactAddressModel> args)
+    {
+        if (string.IsNullOrWhiteSpace(args.Row.Street))
+        {
+            args.Problem = InputProblem.InvalidModel<ContactAddressModel>().Required(m => m.Street);
+            return;
+        }
+
+        Surface?.SetDirty(this);
+    }
+
+    void OnRemove(RowEditEventArgs<ContactAddressModel> args)
+    {
+        Items.Remove(args.Row);
+
+        if (!args.IsNew)
+        {
+            Surface?.SetDirty(this);
+        }
+    }
+}

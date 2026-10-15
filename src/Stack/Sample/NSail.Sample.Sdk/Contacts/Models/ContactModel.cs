@@ -28,4 +28,6 @@ public class ContactModel
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    public List<ContactAddressModel> Addresses { get; set; } = [];
 }

@@ -10,6 +10,23 @@ The domain is deliberately plain — one `Contact` ABM — chosen to touch every
 draws (text, email, phone, enum, date, integer with a range, boolean, multiline) and every
 refusal path (client validation, server validation, not found, concurrency conflict).
 
+The handler copies nothing by hand: `Contact` declares its messages (`[MapFrom]` for
+`CreateContact` and `UpdateContact`, `[MapTo]` for `ContactRow` and `ContactModel`) and the
+generated `EntityMapper` writes and reads them (data.md, *Mapping*; the `new-mapping` skill). What
+stays in `ContactHandler` is the rule work: the create's already-exists guard and trimming the
+name. `UpdateContact` carries `Version` and the mapper holds the save to it, so a stale edit is a
+conflict with no `ExpectVersion` call. The token is the contact row's own: an edit that changes
+only addresses leaves `Version` and `UpdatedAt` where they were, and is never a conflict.
+
+A contact owns its addresses: `Contact.Addresses` is a `[Composition]` of `ContactAddress`, and
+`UpdateContact.Addresses` is the whole set, never a diff. An address with a known `Id` is merged
+in place, one with `Guid.Empty` or an unknown `Id` is created, and an address the message no
+longer carries is deleted — so a client that does not edit the list still sends it back as it
+read it (the React edit screen shows the list read-only and returns it untouched). Blazor edits
+it inline (`AddressesEditor`, an `NsListEditor`) and saves it with the contact. An address's
+`[Required]` street is refused by that editor; the server does not walk the list's rows
+(`[Validated]` opens a nested model, not a collection's elements).
+
 It lives under `src/Stack` but is written the way a kit or an app is: it is the code a
 stranger copies first, so the consumer-side rules (no vendor types, no doc comments, every
 endpoint swept by the gate) are enforced over it too (`SourceTree.Sample` in
@@ -26,8 +43,8 @@ changes is the default page policy, which asks for anyone instead of a signed-in
 | Project | Role |
 |---|---|
 | `NSail.Sample.Sdk` | Writes `NSail.Sample.React/src/sdk.ts` on every build. Messages: `ListContacts`, `GetContact`, `CreateContact`, `UpdateContact`, `DeleteContact`; `GetStrings` (the host's merged string catalog for one language, for the client that runs no .NET) |
-| `NSail.Sample.Data` | `Contact` (`IVersioned`), `SampleDbContext`, migrations |
-| `NSail.Sample.Wasm` | The Blazor client: layout, menu, home and the three contact screens, the anonymous authentication state, and the app's `strings*.json` — the one catalog both clients read |
+| `NSail.Sample.Data` | `Contact` (`IVersioned`) and its `ContactAddress` composition, their mappings (`Mappings.cs`, the `[Generated(Mappers.Entities)]` holder), `SampleDbContext`, migrations |
+| `NSail.Sample.Wasm` | The Blazor client: layout, menu, home, the three contact screens and the address editor, the anonymous authentication state, and the app's `strings*.json` — the one catalog both clients read |
 | `NSail.Sample.Web` | The host: handlers, generated endpoints, enforcement, the Blazor app at `/` and the React build at `/react` (`MapReactClient`: its files, then `index.html` for every other address under it) |
 | `NSail.Sample.React` | The React client (Vite): `src/sdk.ts` is generated, `src/routes.ts` is the route table, `src/contacts/` the two screens |
 
