@@ -70,6 +70,13 @@ its own, the words of the one page this project draws without the app (the suspe
   and before every endpoint, so a credential minted for another tenant is refused ahead of the
   page, the handler and the circuit alike. The refusal signs the ticket out and challenges, so
   the sign-in behind this same wall stays reachable. See [data-tenancy.md](data-tenancy.md#the-credential-is-stamped-and-checked-on-every-request).
+- `TicketEpochMiddleware` — the install's own cut across its sessions: a credential is honoured
+  only while it carries the generation `Security:TicketEpoch` names, so raising that number signs
+  out everyone holding an older ticket and nobody else on the box. Installed by **every** host
+  and under every tenancy mode, unlike the wall above it — an install with one customer has
+  sessions to void like any other. Zero, the default, mints no claim and refuses nothing. Ahead
+  of `CredentialMiddleware`, which re-mints a ticket whose party moved and would stamp the very
+  generation this step is here to refuse. See [permissions.md](permissions.md#session).
 - `ThrottleMiddleware` — the ceiling on a public door, in FRONT of the gate: volume is not a
   permission question, and a flood is refused before any policy evaluation. It reads
   `[Throttled(perMinute)]` off the message the matched route names, so an endpoint whose

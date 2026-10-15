@@ -11,11 +11,18 @@ namespace NSail.Security;
 public static class Setup
 {
     /// <summary>TryAdds the security services with their permissive defaults (anonymous
-    /// SessionProvider, optimistic RelationProvider and CredentialProvider) — a product without
-    /// Iam still runs.</summary>
+    /// SessionProvider, optimistic RelationProvider and CredentialProvider) and the
+    /// <c>Security:</c> section's — a product without Iam still runs.</summary>
     public static void AddSecurity(this IServiceCollection services)
     {
         services.AddMessageRegistry();
+
+        // The section's own defaults, for every host that binds no configuration — a fixture, a
+        // client, a composition that never heard of the section. TryAdd rather than Add because
+        // AddBaseWebApi registers the install's loaded one, and a host calling these two in
+        // either order must end up with the configured value.
+        services.TryAddSingleton<SecurityOptions>();
+
         services.TryAddScoped<SessionProvider>();
         services.TryAddScoped<RelationProvider>();
         services.TryAddScoped<CredentialProvider>();

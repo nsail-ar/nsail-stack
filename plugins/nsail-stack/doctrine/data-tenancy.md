@@ -415,6 +415,13 @@ every authenticated request:
 - **Changing tenant is re-authentication.** No switch endpoint, no claim refresh: a different
   tenant is a different sign-in, on a different host, against a different database. The
   organization selector is the other wall and is untouched.
+- **Changing the MODE is re-authentication for everybody, and the install has to say so.** A
+  flip rewrites which tenant every row belongs to — under `MultiDb` a seeded row is its own id,
+  under `SingleDb` the same row belongs to a tenant derived from its slug — while the ticket
+  minted before it keeps decrypting, because the key ring is the server's and no deploy touches
+  it. That session names rows the filter now hides and reads `NotFound` on a party that is
+  right there. Raising `Security:TicketEpoch` is what voids it, and nothing else can: see
+  [permissions.md](permissions.md#session).
 
 **The refusal takes the ticket with it.** The wall stands ahead of every endpoint, sign-in
 included, so a refusal that left the cookie standing would lock its holder out of the one act

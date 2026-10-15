@@ -516,6 +516,26 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   mismatch — signing the ticket out, then answering 401 as it would anyone with none. Null off
   a tenant-resolving install. Filled at the edge from the `tenant` claim, which sign-in stamps;
   the full law is in [data-tenancy.md](data-tenancy.md#the-credential-is-stamped-and-checked-on-every-request).
+- **`TicketEpoch`** is the generation of ticket this identity was minted under, checked the way
+  `Tenant` is and for the same reason: the credential says which generation minted it, the
+  install says which one it still honours (`Security:TicketEpoch`, `SecurityOptions`), and
+  `TicketEpochMiddleware` refuses anything else — signing the ticket out, then answering as it
+  would anyone with none, marked stale like the credential wall's own refusal.
+  **It is the install's only cut across its own sessions**, because the DataProtection key ring
+  is the SERVER's: every install on a box unprotects with the same keys, so deleting or revoking
+  one is not a per-install act at all — it signs out the whole box AND leaves every secret ever
+  sealed on it unreadable for good. Raising a number instead touches nothing that was sealed.
+  What it is owed to is a **tenancy-mode flip**, the one change that leaves every old ticket
+  decrypting perfectly and naming rows the row filter now hides: under `MultiDb` the seeded rows
+  are their own ids, under `SingleDb` the same rows belong to a tenant derived from its slug, so
+  a session that survives the flip answers `NotFound` on a party that is right there. **Zero is
+  "never raised"**: no claim is minted and nothing is refused, so the deploy that carries the cut
+  signs nobody out. From one upward the comparison is **equality** — the unstamped ticket
+  included, because deny by default reads an absence as an absence, and a number lowered back
+  after a mistake must void the sessions minted while it was wrong. Stamped at the edge like
+  `Tenant` (Iam's `PrincipalFactory`, the `epoch` claim); the gate is installed under every
+  tenancy mode, unlike the tenant wall's
+  ([baseservices.md](baseservices.md#webapi-bootstrap)).
 - **`IsProvisional`** says the actor's own Party was founded by an external sign-up out of a
   provider's claims alone (`Party.IsProvisional`, Directory's, because Directory's own list and
   lookups are what must not show it). It is **not an authorization input** — no policy names it
