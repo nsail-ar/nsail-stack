@@ -4,6 +4,7 @@
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using NSail.Mapping;
 using NSail.Problems;
 
@@ -16,6 +17,7 @@ namespace NSail.Data;
 public sealed class StoreMapContext : MapContext
 {
     readonly DbContext _db;
+    readonly List<object> _written = [];
 
     public StoreMapContext(DbContext db, MapParameters? parameters = null)
         : base(parameters)
@@ -106,11 +108,58 @@ public sealed class StoreMapContext : MapContext
         {
             _db.Add(entity);
         }
+
+        _written.Add(entity);
+    }
+
+    public override void Updated(object entity, object? key)
+    {
+        _written.Add(entity);
     }
 
     public override void Deleted(object entity, object? key)
     {
         _db.Remove(entity);
+        _written.Add(entity);
+    }
+
+    /// <summary>The root's concurrency token stands for the whole graph. Postgres moves a row's
+    /// version only when that row is written, so a run that changed only the parts writes the
+    /// root as well: the save checks the version the caller read, and moves it for the next
+    /// caller. A run that changed nothing writes nothing.</summary>
+    public void WriteRootWithParts(object root)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+
+        var entry = _db.Entry(root);
+
+        if (entry.State is not (EntityState.Unchanged or EntityState.Modified)
+            || !entry.Metadata.GetProperties().Any(p => p.IsConcurrencyToken)
+            || entry.Properties.Any(p => p.IsModified && Written(p.Metadata)))
+        {
+            return;
+        }
+
+        if (!_written.Any(part => !ReferenceEquals(part, root) && _db.Entry(part).State != EntityState.Unchanged))
+        {
+            return;
+        }
+
+        // A stale token alone marks the root modified, but the store generates it: EF sends no
+        // UPDATE for a row whose only change is a column it never writes, and with no UPDATE
+        // nothing checks the token. One column of the root's own, written back as it is, is
+        // the statement that carries the check.
+        var carrier = entry.Properties.FirstOrDefault(p => !p.Metadata.IsKey() && Written(p.Metadata));
+
+        if (carrier is not null)
+        {
+            carrier.IsModified = true;
+        }
+    }
+
+    static bool Written(IReadOnlyProperty property)
+    {
+        return property.GetAfterSaveBehavior() == PropertySaveBehavior.Save;
     }
 
     // The value the caller read the row at. The type's default is "no opinion", as

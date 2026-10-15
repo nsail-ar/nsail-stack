@@ -79,7 +79,8 @@ correlated count is not.
 A mapping is a copy, so a unit test over `HandlerHost` proves it — no browser. For each
 converted handler: create-then-get-then-update round trip; for a composition, the set rules
 (kept row, new row gets an id, dropped row gone, stamps kept); for an `IVersioned` entity, a
-stale version refused and a zero version not held; a missing row is `NotFound`. Precedents in
+stale version refused — an edit of the compositions alone included, since the root's token
+guards its parts (data.md, *Mapping*) — and a zero version not held; a missing row is `NotFound`. Precedents in
 `test/Kits/Accounting/NSail.Accounting.WebApi.Tests`: `CurrencyCrudTests`,
 `TenderMethodModalitiesTests`, `SalesChannelConcurrencyTests`. A build error is the generator
 speaking: `NSG004` an organization axis mapped by name alone, `NSG005` a `[Primitive]` of another
