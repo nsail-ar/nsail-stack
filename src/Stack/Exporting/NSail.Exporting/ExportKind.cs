@@ -10,5 +10,6 @@ namespace NSail.Exporting;
 public enum ExportKind
 {
     Excel,
-    Csv
+    Csv,
+    Pdf
 }
