@@ -81,6 +81,13 @@ survive (a work order's Estado is *where the order is*, core, not hideable), the
 hide. **The phone's 2–3 is a default, not a cap: 4–5 there is allowed with a justification** —
 the burden is naming why, not staying under three. The comfort curve itself is the core doc's.
 
+**Every column a header declares is also a column of the FILE the list exports, and the same
+`For` expression is the whole declaration** — its key, its heading, what its values are and how to
+read one off a row. `NsTh Format=` adds only what a CLR type cannot say (an amount and a share are
+both decimals), the action column is not a column either way, and a column this grid stops
+declaring leaves the file with it: [exporting.md](../exporting.md), which also has where Exportar
+sits on the bar and why a list is the only grid offered one.
+
 **`Breakpoint` on `NsTh`** (`NsSize`, default `None`) reads *"the column appears from this
 container width up"*. A six-column grid gives up its least important columns one at a time
 (Parties keeps `DisplayName` always, brings `TaxId` back at `sm`, `Kind` at `md`,

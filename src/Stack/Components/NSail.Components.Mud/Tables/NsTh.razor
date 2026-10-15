@@ -3,6 +3,7 @@
 
 @namespace NSail.Components
 @using System.Linq.Expressions
+@using NSail.Exporting
 @using NSail.Localization
 @using NSail.Metadata
 
@@ -42,6 +43,13 @@
     [Parameter]
     public NsSize Breakpoint { get; set; } = NsSize.None;
 
+    /// <summary>What this column's values are in an exported file, for the one thing the member's
+    /// own type cannot say: an amount and a share are both decimals. Unset is derived — a date
+    /// member is a date, a numeric one a number, everything else text — so a column says this
+    /// only when it means Money or Percent.</summary>
+    [Parameter]
+    public ExportFormat? Format { get; set; }
+
     // A header that names no field and shows no text is the action column: it is the one
     // column with nothing to key on, which is already why it never hides. Deriving it here
     // is what lets the column's width belong to the column instead of to every grid.
@@ -54,15 +62,25 @@
 
     protected override void OnParametersSet()
     {
-        _key = ForExpression.GetTarget(For) is { } target
-            ? Metadata.KeyFor(target.Type, target.Member)
-            : null;
+        var target = ForExpression.GetTarget(For);
+
+        _key = target is { } named ? Metadata.KeyFor(named.Type, named.Member) : null;
 
         _label = _key is null ? null : Strings.Translate(_key);
 
-        if (_key is not null)
+        if (_key is null || target is not { } field)
         {
-            Columns?.Declare(_key, Breakpoint);
+            return;
+        }
+
+        Columns?.Declare(_key, Breakpoint);
+
+        // The same expression, the same key and the same heading the column already resolved,
+        // handed on as what a file's column IS: a header that declares itself once is the whole
+        // reason an export needs nothing from the screen.
+        if (TableColumn.Of(field.Type, field.Member, _label ?? _key, _key, Format, Strings) is { } column)
+        {
+            Columns?.Declare(column);
         }
     }
 }
