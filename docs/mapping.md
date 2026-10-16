@@ -6,7 +6,8 @@ the entity and generated at compile time. The handler keeps only the rules.
 This is [Detached Mapper](https://github.com/leonardoporro/Detached-Mapper)'s model, by the same
 author, rebuilt as a Roslyn generator: the same graph semantics, no reflection, no runtime
 configuration, and a build error where Detached threw at runtime. Detached is no longer
-maintained; this is its successor.
+maintained; this is its successor. `NSail.Mapping` is AOT-compatible, and its build runs the trim
+and AOT analyzers to keep it so.
 
 ## The problem
 
