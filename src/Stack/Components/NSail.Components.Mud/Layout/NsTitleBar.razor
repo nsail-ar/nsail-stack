@@ -194,12 +194,27 @@ else if (!Hoisted)
 
     protected override async Task OnParametersSetAsync()
     {
+        // The name goes over FIRST, before the glyph is derived: deriving it reads the menu
+        // tree, which costs a round trip on the client, and the page's own name does not
+        // depend on it. Announced after that await, a surface answers its readers with
+        // nothing for as long as the read takes — and one of them names a file off it
+        // (NsTable's export), so a control the person reached in that window produced a file
+        // named after the act instead of after the list.
+        Announce();
+
         if (!_resolved && Icon is null)
         {
             _derivedIcon = await ResolveIcon();
             _resolved = true;
-        }
 
+            // Again, now that the glyph is known: an announcement that changed nothing is a
+            // no-op, so this costs a render only where the derivation found something.
+            Announce();
+        }
+    }
+
+    void Announce()
+    {
         if (Announces)
         {
             Surface!.Announce(Title, GetIcon(), ChildContent);
