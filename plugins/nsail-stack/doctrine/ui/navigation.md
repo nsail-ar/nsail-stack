@@ -198,6 +198,15 @@ module's by being mounted early.
   every `NsTitleBar` deriving its page's glyph; a faulted ask is not kept.
   `NavContributorAskTests` (Architecture) keeps it one seam. **Nothing else may inject
   `IEnumerable<INavMenuContributor>`.**
+- **On a full load the client asks none of it: the prerender's answers cross as persisted
+  state** (`NavMenuHandoff`), taken synchronously before the first build so the drawer carries
+  its entries in the client's FIRST render batch — the splash leaves over the map, not over an
+  empty gutter. What crosses is the arrangement ROWS and the counts, never the merged tree: an
+  entry carries a page `Type` and route parameters no wire shape holds, and resolving the rows
+  against the contributions is local work done again for free — under the client's own language,
+  which is where it belongs. A contributor that spends a round trip of its own hands over its
+  own answer the same way (the sign-in kits' availability); nothing in the Stack can do it for
+  them, because only the contributor knows what its ask decided.
 - **A number beside an entry is a second contribution, not a field on the tree.**
   `INavMenuCount` names an ENTRY — `Name`, the same merge key and the same localization key —
   and answers how many things are waiting behind it; `AddNavMenuCount<T>()` registers one, apart

@@ -169,8 +169,13 @@ notice — because help behind a click is help nobody found.
 **One arrival, one loading — never two.** Blazor's weight is paid ONCE, at the splash; pixels
 that have appeared are never torn down for a second loading state. Content→spinner→content is a
 defect anywhere, and so is a content-to-content flash of language, brand or gate. **Nothing the
-prerender resolved is asked for a second time** — the session, the brand, and a card's read,
-which goes through `NsPartial.Handoff` rather than `Send`. **Nothing paints a figure before the
+prerender resolved is asked for a second time** — the session, the brand, the navigation tree's
+arrangement and counts (`NavMenu`), a route gate's settled verdict, and a card's read, which
+goes through `NsPartial.Handoff` rather than `Send`. The language is not asked at all: the
+request pipeline resolved it before the first byte and `NsApp` hands it to the runtime as
+Blazor's own `applicationCulture`. **The test of a handoff is that adoption is SYNCHRONOUS** —
+an awaited round trip on that path costs precisely the render the handoff exists to save, so
+what crosses is what an ask ANSWERED and never what is derived from it. **Nothing paints a figure before the
 read answers**: a zero shown while a query is in flight is a false claim (cases). **The splash
 leaves when the screen answers, not when the runtime does**: `window.nsapp.appReady` is sent by
 `NsAppReady`, which `NsRouter` places inside the routed subtree and its NotFound branch, so the
