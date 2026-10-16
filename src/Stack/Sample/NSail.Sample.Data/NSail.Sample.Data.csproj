@@ -22,4 +22,12 @@
 		<ProjectReference Include="..\NSail.Sample.Sdk\NSail.Sample.Sdk.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<ProjectReference Include="..\..\Generation\NSail.SourceGenerator\NSail.SourceGenerator.csproj">
+			<OutputItemType>Analyzer</OutputItemType>
+			<PrivateAssets>all</PrivateAssets>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
+	</ItemGroup>
+
 </Project>

@@ -12,6 +12,8 @@ public static class Persistence
     public static IServiceCollection AddSampleData(this IServiceCollection services)
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDbContextSetup, DbContextSetup>());
+        services.AddSampleMappings();
+        services.TryAddScoped<EntityMapper>();
 
         return services;
     }

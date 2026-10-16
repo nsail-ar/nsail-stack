@@ -3,6 +3,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using NSail.Messaging;
+using NSail.Sample.Contacts.Models;
 
 namespace NSail.Sample.Contacts;
 
@@ -39,4 +40,6 @@ public class UpdateContact : IMessage
 
     [MaxLength(500)]
     public string? Notes { get; set; }
+
+    public List<ContactAddressModel> Addresses { get; set; } = [];
 }

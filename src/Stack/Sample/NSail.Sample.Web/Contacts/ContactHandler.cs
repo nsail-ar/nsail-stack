@@ -21,10 +21,12 @@ public sealed class ContactHandler :
     IHandler<DeleteContact>
 {
     readonly DbContext _db;
+    readonly EntityMapper _mapper;
 
-    public ContactHandler(DbContext db)
+    public ContactHandler(DbContext db, EntityMapper mapper)
     {
         _db = db;
+        _mapper = mapper;
     }
 
     public async Task<DataPage<ContactRow>> Handle(ListContacts message, CancellationToken cancellationToken = default)
@@ -53,23 +55,13 @@ public sealed class ContactHandler :
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
+        var page = query
             .OrderBy(c => c.Name)
             .ThenBy(c => c.Id)
             .Skip(pageIndex * pageSize)
-            .Take(pageSize)
-            .Select(c => new ContactRow
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Kind = c.Kind,
-                Email = c.Email,
-                Phone = c.Phone,
-                Rating = c.Rating,
-                IsFavorite = c.IsFavorite,
-                UpdatedAt = c.UpdatedAt,
-            })
-            .ToListAsync(cancellationToken);
+            .Take(pageSize);
+
+        var items = await _mapper.Project<Contact, ContactRow>(page).ToListAsync(cancellationToken);
 
         return new DataPage<ContactRow>
         {
@@ -84,23 +76,10 @@ public sealed class ContactHandler :
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var contact = await Find(message.Id, cancellationToken);
+        var query = _db.Set<Contact>().AsNoTracking().Where(c => c.Id == message.Id);
 
-        return new ContactModel
-        {
-            Id = contact.Id,
-            Version = contact.Version,
-            Name = contact.Name,
-            Kind = contact.Kind,
-            Email = contact.Email,
-            Phone = contact.Phone,
-            BirthDate = contact.BirthDate,
-            Rating = contact.Rating,
-            IsFavorite = contact.IsFavorite,
-            Notes = contact.Notes,
-            CreatedAt = contact.CreatedAt,
-            UpdatedAt = contact.UpdatedAt,
-        };
+        return await _mapper.Project<Contact, ContactModel>(query).FirstOrDefaultAsync(cancellationToken)
+            ?? throw new BusinessException(BusinessProblem.NotFound(typeof(Contact), message.Id));
     }
 
     public async Task Handle(CreateContact message, CancellationToken cancellationToken = default)
@@ -112,18 +91,9 @@ public sealed class ContactHandler :
             throw new BusinessException(BusinessProblem.AlreadyExists(typeof(Contact), message.Id));
         }
 
-        _db.Add(new Contact
-        {
-            Id = message.Id,
-            Name = message.Name.Trim(),
-            Kind = message.Kind,
-            Email = message.Email,
-            Phone = message.Phone,
-            BirthDate = message.BirthDate,
-            Rating = message.Rating,
-            IsFavorite = message.IsFavorite,
-            Notes = message.Notes,
-        });
+        var contact = await _mapper.Upsert<CreateContact, Contact>(message, cancellationToken);
+
+        contact.Name = contact.Name.Trim();
 
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -132,18 +102,9 @@ public sealed class ContactHandler :
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var contact = await Find(message.Id, cancellationToken);
+        var contact = await _mapper.Map<UpdateContact, Contact>(message, cancellationToken);
 
-        _db.ExpectVersion(contact, message.Version);
-
-        contact.Name = message.Name.Trim();
-        contact.Kind = message.Kind;
-        contact.Email = message.Email;
-        contact.Phone = message.Phone;
-        contact.BirthDate = message.BirthDate;
-        contact.Rating = message.Rating;
-        contact.IsFavorite = message.IsFavorite;
-        contact.Notes = message.Notes;
+        contact.Name = contact.Name.Trim();
 
         await _db.SaveChangesAsync(cancellationToken);
     }

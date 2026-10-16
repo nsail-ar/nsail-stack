@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
-import { useForm, useLoad, useMediator, type Form } from "@nsail/stack";
-import { NsButton, NsField, NsForm, NsLoad, NsPage, NsSaved } from "@nsail/ui";
-import { CreateContact, GetContact, UpdateContact, type ContactModel } from "../sdk";
+import { memberOf, useForm, useLoad, useMediator, useStrings, type Form } from "@nsail/stack";
+import { NsButton, NsField, NsForm, NsLoad, NsPage, NsSaved, NsTable } from "@nsail/ui";
+import { ContactAddressModel, CreateContact, GetContact, UpdateContact, type ContactModel } from "../sdk";
 import { routes } from "../routes";
 
 // One page, two messages: a new contact is CreateContact, an existing one UpdateContact — the
@@ -16,7 +16,7 @@ export function ContactPage() {
   return id ? <EditContact id={id} /> : <NewContact />;
 }
 
-function Fields<T extends CreateContact | UpdateContact>({ form }: { form: Form<T> }) {
+function Fields<T extends CreateContact | UpdateContact>({ form, children }: { form: Form<T>; children?: ReactNode }) {
   const navigate = useNavigate();
 
   return (
@@ -31,6 +31,7 @@ function Fields<T extends CreateContact | UpdateContact>({ form }: { form: Form<
       <div className="ns-field-wide">
         <NsField<T> name="notes" multiline />
       </div>
+      {children}
       <div className="ns-actions">
         <NsButton text="Common.Submit" type="submit" variant="primary" busy={form.submitting} />
         <NsButton text="Common.Back" onClick={() => navigate(routes.contacts.href())} />
@@ -84,6 +85,7 @@ function toUpdate(model: ContactModel): UpdateContact {
     rating: model.rating,
     isFavorite: model.isFavorite,
     notes: model.notes,
+    addresses: model.addresses,
   };
 }
 
@@ -105,8 +107,24 @@ function EditForm({ model, reload }: { model: ContactModel; reload: () => void }
   return (
     <div className="ns-card">
       <NsForm form={form} onSubmit={save} onReload={reload}>
-        <Fields form={form} />
+        <Fields form={form}>
+          <Addresses rows={model.addresses} />
+        </Fields>
       </NsForm>
+    </div>
+  );
+}
+
+// Read-only here: the Blazor client edits them. UpdateContact still carries the whole set back,
+// because a composition deletes the rows its message no longer names.
+function Addresses({ rows }: { rows: ContactAddressModel[] }) {
+  const strings = useStrings();
+  const field = UpdateContact.fields.addresses;
+
+  return (
+    <div className="ns-field ns-field-wide">
+      <label>{strings.translate(field.key, memberOf(field))}</label>
+      <NsTable model={ContactAddressModel} rows={rows} rowKey="id" columns={["kind", "street", "city"]} />
     </div>
   );
 }

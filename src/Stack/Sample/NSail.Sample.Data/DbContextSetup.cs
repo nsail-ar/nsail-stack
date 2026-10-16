@@ -21,5 +21,17 @@ public class DbContextSetup : IDbContextSetup
         builder.Property(x => x.Phone).HasMaxLength(50);
         builder.Property(x => x.Notes).HasMaxLength(500);
         builder.HasIndex(x => x.Name);
+        builder.HasMany(x => x.Addresses)
+            .WithOne(x => x.Contact)
+            .HasForeignKey(x => x.ContactId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        var address = modelBuilder.Entity<ContactAddress>();
+
+        address.ToTable("ContactAddresses");
+        address.HasKey(x => x.Id);
+        address.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+        address.Property(x => x.Street).HasMaxLength(200).IsRequired();
+        address.Property(x => x.City).HasMaxLength(100);
     }
 }
