@@ -112,6 +112,15 @@ packages live in `src/Stack/React/`, split where the vendor starts — the line
 | `@nsail/stack` | `src/Stack/React/NSail.React.Stack` | Vendor-free: the descriptors, `Mediator.send`, `Problem`, the client half of `MessageValidator`, `Strings`, and the hooks a page reads with (`useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`) |
 | `@nsail/ui` | `src/Stack/React/NSail.React.Ui` | The `Ns*` components and `ns.css` |
 
+**Two ways in, one source.** Each package's `exports` answers the `@nsail/source` condition with
+its `src/`, and everything else with `dist/`. This workspace asks for the condition
+(`customConditions` in `tsconfig.base.json`, `resolve.conditions` in a client's Vite config), so
+nothing here builds a package before using it; an app outside the repository gets `dist/` from
+npm. `npm run build` writes `dist/` — `@nsail/stack`'s `build.mjs` also copies the Stack's own
+catalog from `NSail.Components.Mud` into it, so the tarball needs nothing outside itself.
+`ci.yml` packs both on every run and publishes them on a merge to `main`, at the NuGet version,
+by npm's Trusted Publishing; the checkout's own `0.1.0` never reaches npm.
+
 A kit or app package imports both; nothing below `@nsail/ui` names a component.
 
 **`Mediator.send(message, request)`** builds the request exactly as `HttpSender` does
