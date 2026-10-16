@@ -111,6 +111,10 @@ public static class NsIcons
     public static readonly Glyph ChevronRight =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="M522-480 333-669l51-51 240 240-240 240-51-51 189-189Z"/></g>""");
 
+    /// <summary>Material Symbols <c>chevron_left</c>.</summary>
+    public static readonly Glyph ChevronLeft =
+        new("""<g transform="translate(0,24) scale(0.025)"><path d="M576-240 336-480l240-240 51 51-189 189 189 189-51 51Z"/></g>""");
+
     /// <summary>Material Symbols <c>check_box</c>.</summary>
     public static readonly Glyph CheckBoxOn =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="m429-336 238-237-51-51-187 186-85-84-51 51 136 135ZM216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h528q29.7 0 50.85 21.15Q816-773.7 816-744v528q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm0-72h528v-528H216v528Zm0-528v528-528Z"/></g>""");

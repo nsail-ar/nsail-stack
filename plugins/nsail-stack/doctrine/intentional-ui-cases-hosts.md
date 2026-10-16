@@ -12,9 +12,13 @@ the rules are [intentional-ui.md](intentional-ui.md) and the [`ui/` shelf](ui/RE
 
 Treating `DayStart`/`DayEnd` as a window removed hours: a 21:00 appointment, and the now line
 past `DayEnd`, simply stopped existing with no scrollbar to say so. Hence the always-whole-day
-track: the grid scrolls itself on arrival — centred on `Now` when the range holds its day, else to
-`DayStart` — through `nsapp.scrollToFraction`, because how tall an hour is on this screen is the
-one thing C# cannot answer. `Now` is still handed in (a prerender and its client must agree where
+track: the grid scrolls itself on arrival — centred on `Now` when the range holds its day **and
+the hour stands inside the framed hours**, else to `DayStart` — through
+`nsapp.scrollToFraction`, because how tall an hour is on this screen is the one thing C# cannot
+answer. The frame is half of that condition because an hour outside it is not an hour anyone
+works in: at 02:00 over a frame of 08:00–20:00 a centred anchor clamps the track at midnight and
+leaves the entire frame below the window, which is the opposite of what opening on the clock is
+for. `Now` is still handed in (a prerender and its client must agree where
 the line sits) and the live component advances it a minute at a time on a timer that dies in
 `Dispose`. The day names stick to the top of the scrollport, in the same layout box as their
 columns, so they cannot drift by a scrollbar's width.
