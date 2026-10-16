@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/nsail-lockup-dark.svg">
+    <img alt="NSail" src="docs/assets/nsail-lockup-light.svg" width="420">
+  </picture>
+</p>
+
 # NSail Stack
 
 [![NuGet](https://img.shields.io/nuget/vpre/NSail.Messaging.svg)](https://www.nuget.org/profiles/NSail)
