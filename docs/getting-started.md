@@ -1,7 +1,8 @@
 # Getting started
 
 A small project tracker — projects that own a list of tasks — built from the packages on
-nuget.org, with a Blazor WebAssembly client. It takes four projects and no hand-written wiring.
+nuget.org, with a Blazor WebAssembly client and, from npm, a React one over the same messages
+(step 9). It takes four projects and no hand-written wiring.
 
 You need the [.NET 10 SDK](https://dotnet.microsoft.com/download), PostgreSQL on `localhost`
 (user `postgres`; the password, if your server asks for one, in `PGPASSWORD`) and the EF Core
@@ -469,6 +470,11 @@ No field names a label: `NsTextField` bound to `CreateProject.Name` reads
 `NsTable` over `DataPage<ProjectRow>`; the tasks of a project are an `NsListEditor` over
 `context.Tasks` inside the update form, saved with it in one `UpdateProject`.
 
+Icons come from `NsIcons` (`NSail.Components`) — the generic vocabulary only: `Home`, `Add`,
+`Edit`, `Delete`, `Save`, `Tickets` and the like, no domain icons (there is no `Folder`).
+IntelliSense lists them; an app that needs its own declares a catalog of `Glyph`s the same way
+(the plugin's `new-icon` skill).
+
 The client's composition registers the brand, the routes and texts of its assembly, the menu,
 the generated HTTP senders, and the same permissions and policies as the host:
 
@@ -500,8 +506,61 @@ dotnet run --project src/Acme.Tasks.Web --launch-profile http
 The first run creates the database. From here, every new operation is the same three steps: a
 message in the Sdk, a handler on the host, a screen that sends it.
 
+## 9. A React client, over the same messages
+
+React is a second client, not a second API: it sends the same messages to the same endpoints,
+under the same policies, and reads the same `strings.json`. Three pieces:
+
+- **The contract, generated.** The Sdk references `NSail.TypeScriptGenerator`
+  (`PrivateAssets="all"`) and names where to write; every build of the Sdk rewrites that file
+  from the messages, so the client never hand-types a route or a model:
+
+  ```xml
+  <PropertyGroup>
+    <TypeScriptOutput>../Acme.Tasks.React/src/sdk.ts</TypeScriptOutput>
+  </PropertyGroup>
+  ```
+
+- **The packages.** `@nsail/stack` (the `Mediator` that sends a message) and `@nsail/ui`
+  (`NsApp`, the controls, `@nsail/ui/ns.css`), at the same version as the NuGet pin, plus `react`,
+  `react-dom` and `react-router`. A `package.json` at the solution root with the React project
+  as a workspace keeps one `npm install` for the whole solution.
+- **The host serves it.** Vite builds with `base: "/react/"` into a folder beside the host (not
+  `wwwroot`, which is Blazor's); the host serves that folder at `/react` and answers
+  `index.html` for any other address under it. In development `npm run dev` serves the same app
+  with hot reload and proxies `/api` to the running host.
+
+```tsx
+const mediator = new Mediator();
+
+createRoot(document.getElementById("root")!).render(
+  <NsApp mediator={mediator} language="es" strings={(lang) => mediator.send(GetStrings, { language: lang })}>
+    <RouterProvider router={router} />
+  </NsApp>,
+);
+```
+
+`GetStrings` is one more message in the Sdk whose handler answers the host's catalog, so both
+clients show the same texts. The full rule is the doctrine's [React](../plugins/nsail-stack/doctrine/react.md)
+page.
+
+## Taking a newer Stack
+
+Change `NSailStackVersion` and the `@nsail/*` versions to the same number — the NuGet and npm
+packages are released together and carry the same version.
+
+**A newer Stack can need a migration in your app.** The Stack owns a few tables (the tenancy
+bookkeeping: seed steps, tenant state) that live in your `DbContext` through `ApplyTenancy` and
+`ApplySetups`, and the Stack authors no migrations: your app does, like for every other table.
+When a version changes one of them, the host stops at startup with *pending model changes*;
+scaffold the migration and run again:
+
+```bash
+dotnet ef migrations add StackUpdate --project src/Acme.Tasks.Data --startup-project src/Acme.Tasks.Data
+```
+
 ## What next
 
-- The [Sample](../src/Stack/Sample/docs/sample.md) adds a React client over the same messages.
+- The [Sample](../src/Stack/Sample/docs/sample.md) is the same shape with both clients, over a contact list.
 - The [doctrine](../plugins/nsail-stack/doctrine) holds every rule; the Claude Code plugin hands it
   to an agent working on your app (see the repository [README](../README.md)).

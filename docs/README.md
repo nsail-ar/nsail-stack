@@ -22,7 +22,7 @@ explanation in front of it.
 
 ## Start here
 
-- [Getting started](getting-started.md) — a working app from the packages on nuget.org, step by step
+- [Getting started](getting-started.md) — a working app from the packages on nuget.org and npm, step by step
 
 ## How it works
 
