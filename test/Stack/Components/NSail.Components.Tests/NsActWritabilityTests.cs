@@ -139,4 +139,27 @@ public sealed class NsActWritabilityTests : BunitContext, IAsyncLifetime
         Assert.Contains("Renombrar", Acts(cut));
         Assert.Contains("Archivar", Acts(cut));
     }
+
+    // ui/actions.md: the toolbar's own Breakpoint, forwarded to the PageType link it draws
+    // (Ficha) — so a host wording its own verbs (a dialog's labelled home for a contributed
+    // act) writes Always rather than a kit reaching past the presenter for a worded anchor
+    // of its own. Unset (every test above) renders Ficha through the icon-only chrome
+    // instead — `a[aria-label='Ficha']` with no `ns-link-iconed` anchor in the toolbar at all.
+    [Fact]
+    public void UnsetBreakpointDrawsNoWordedAnchor()
+    {
+        var cut = Render<ActFormHost>();
+
+        Assert.Empty(cut.Find(".ns-action-toolbar").QuerySelectorAll("a.ns-link-iconed"));
+    }
+
+    [Fact]
+    public void AlwaysWordsFicha()
+    {
+        var cut = Render<ActFormHost>(p => p.Add(x => x.Breakpoint, NsBreakpoint.Always));
+
+        var ficha = cut.Find(".ns-action-toolbar a.ns-link-iconed");
+
+        Assert.Contains("Ficha", ficha.TextContent, StringComparison.Ordinal);
+    }
 }

@@ -19,7 +19,7 @@
 <NsForm TModel="TestModel" Model="_document" ReadOnly="ReadOnly" Disabled="Disabled" Untracked>
     <NsAction Action="@GetAction(Rename, NsIcons.Edit)" />
     <NsAction Action="@GetAction(Probe, NsIcons.Sync, writes: false)" />
-    <NsActionToolbar Leading="Verbs()" Constant="Ficha()" MaxVisible="1" />
+    <NsActionToolbar Leading="Verbs()" Constant="Ficha()" MaxVisible="1" Breakpoint="Breakpoint" />
 </NsForm>
 
 @code {
@@ -31,6 +31,9 @@
 
     [Parameter]
     public bool Disabled { get; set; }
+
+    [Parameter]
+    public NsBreakpoint? Breakpoint { get; set; }
 
     IReadOnlyList<ActionItem> Verbs()
     {

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
+using NSail.Icons;
 using NSail.Localization;
 using NSail.Metadata;
 
@@ -112,6 +113,39 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         var cut = Grid(1);
 
         Assert.Empty(cut.FindAll(".ns-action-toolbar .ns-status-text"));
+    }
+
+    // Unset stays the icon-only row the toolbar was built for — a glyphed command renders
+    // through NsAction's own Wordless branch (no .ns-button-label span at all); a host that
+    // words its own acts (a dialog's labelled home for a contributed act, ui/actions.md)
+    // writes Always and the command carries the word instead of a kit reaching past the
+    // presenter to draw one of its own. Commands() hands over no Icon, so this needs its own
+    // item — Wordless is never true for a glyphless act (NsButton), whatever the breakpoint.
+    static ActionItem Glyphed()
+    {
+        return new ActionItem { Name = "Act1", Icon = NsIcons.Edit, OnClick = () => Task.CompletedTask };
+    }
+
+    [Fact]
+    public void UnsetBreakpointLeavesTheCommandWordless()
+    {
+        var cut = Render<ActionColumnHost>();
+
+        cut.Render(p => p.Add(x => x.Actions, [Glyphed()]));
+
+        Assert.Empty(cut.Find(".ns-action-toolbar").QuerySelectorAll(".ns-button-label"));
+    }
+
+    [Fact]
+    public void AlwaysWordsTheCommand()
+    {
+        var cut = Render<ActionColumnHost>();
+
+        cut.Render(p => p
+            .Add(x => x.Actions, [Glyphed()])
+            .Add(x => x.Breakpoint, NsBreakpoint.Always));
+
+        Assert.Contains("Act1", cut.Find(".ns-action-toolbar .ns-button-label").TextContent, StringComparison.Ordinal);
     }
 
     static IReadOnlyList<string> Controls(IRenderedComponent<ActionColumnHost> cut)
