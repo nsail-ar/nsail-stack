@@ -204,30 +204,76 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
 
         for (var i = 0; i < parts.Length - 1; i++)
         {
-            var property = current.GetType().GetProperty(parts[i]);
-
-            if (property is null)
+            if (Step(current, parts[i]) is not { } next)
             {
                 return null;
             }
 
-            var value = property.GetValue(current);
-
-            if (value is null)
-            {
-                return null;
-            }
-
-            current = value;
+            current = next;
         }
 
         // The last segment is checked too: an issue about a rule ("HasChildren") must not
-        // pass as a field, or its message would be attached to an input that never renders.
-        if (current.GetType().GetProperty(parts[^1]) is null)
+        // pass as a field, or its message would be attached to an input that never renders. A
+        // collection element carries no property of its own by that name, so a path ending on
+        // one ("Addresses[1]", a rule about the row with no member) finds nothing here either —
+        // the row has no single field to draw under, so it falls to the host's foot like any
+        // other unplaced issue.
+        var (name, index) = SplitIndex(parts[^1]);
+
+        if (index is not null || current.GetType().GetProperty(name) is null)
         {
             return null;
         }
 
-        return new FieldIdentifier(current, parts[^1]);
+        return new FieldIdentifier(current, name);
+    }
+
+    // One segment of the path NsForm resolves: a plain member name, or one indexing into a
+    // [Validated] collection by the position MessageValidator named it at ("Addresses[1]").
+    static object? Step(object current, string part)
+    {
+        var (name, index) = SplitIndex(part);
+        var property = current.GetType().GetProperty(name);
+
+        if (property is null || property.GetValue(current) is not { } value)
+        {
+            return null;
+        }
+
+        if (index is null)
+        {
+            return value;
+        }
+
+        if (value is not System.Collections.IEnumerable elements)
+        {
+            return null;
+        }
+
+        var position = 0;
+
+        foreach (var element in elements)
+        {
+            if (position == index)
+            {
+                return element;
+            }
+
+            position++;
+        }
+
+        return null;
+    }
+
+    static (string Name, int? Index) SplitIndex(string part)
+    {
+        var open = part.IndexOf('[');
+
+        if (open < 0 || part[^1] != ']' || !int.TryParse(part[(open + 1)..^1], out var index))
+        {
+            return (part, null);
+        }
+
+        return (part[..open], index);
     }
 }

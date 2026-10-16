@@ -348,6 +348,26 @@ its required fields and leaves the fourth bare.
   reading (`ValidatedModels`). A `[Required]` on a **row** model nothing opened — a sale line's
   `Description`, a channel's `Value` — is enforced by neither end, so it is neither marked nor
   refused; a model a message opened is refused at both ends and marked like the message's own.
+  **A `[Validated]` collection opens every one of its elements the same way**: `ValidatedModels`
+  reaches each row rather than the list, so a field inside an `NsListEditor` or editable
+  `NsTable` row marks and refuses exactly as a message's own field does, with no second
+  `EditContext` of its own. The server's refusal names the row by its index
+  (`Addresses[1].Street`, messaging.md), which `NsForm`'s own field resolver reads by indexing
+  into the collection; the row has to be rendered to carry it — a closed row claims no field, so
+  its refusal falls to the host's foot like any other unplaced issue (*Placing a refusal*,
+  forms.md).
+  **`NsListEditor` asks the row's own bound before it is allowed to close, never after.**
+  `IFormRow.Settle` runs before the document's own `Validate()` (forms.md), so a row the ambient
+  validator would otherwise refuse has already unmounted by the time that pass runs — a value
+  blocked in silence, the one answer a refusal may never give (*What the box holds is what the
+  form submits*). So `NsListEditor.Commit` validates a `[Validated]`-opened row right then, the
+  same walk and the same wording `NsDataAnnotationsValidator` uses, and keeps the row open under
+  its own reason when it refuses — the same contract an `OnCommit`-decided refusal already
+  carries, extended to one a plain declaration decides. A row no member opened with `[Validated]`
+  takes none of this. An editable `NsTable` row needs no such asking: it carries no `IFormRow` of
+  its own, so nothing settles (or closes) it ahead of a submit — an open `NsTable` row stands
+  through the whole round trip, which is the one shape a SERVER-only rule (one `[Validated]`
+  reaches but no DataAnnotation mirrors) can still land on.
 - **The same reading answers for a bound, not only a mark.** `NsFieldBase.Declared<T>()` hands a
   field whatever attribute its bound member declares, under that same scope: `NsDateField`'s
   calendar ceiling comes off `[NotFuture]`, and a text box's `maxlength` off `[MaxLength]` or

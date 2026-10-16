@@ -595,9 +595,18 @@ business rules.
   find the input. Opt-in per member on purpose: a row model (a sale line, a channel) is
   enforced by neither end until something says so, and the screen keeps the same scope
   (`ui/fields.md`). Optical's `CreatePrescription.Right`/`Left` are the precedent.
+  **A `[Validated]` collection (`List<T>`, `IEnumerable<T>`, an array) is walked element by
+  element** rather than as one model — a `List<T>`'s own properties (`Count`, `Capacity`) are
+  not the member anybody meant — and each element's path names its position
+  (`Addresses[1].Street`), the same shape `NsForm` already resolves for a nested model's own
+  path. The walk recurses: an element carrying its own `[Validated]` member opens it exactly as
+  a message's own member would. A member the attribute does not mark is walked by nobody,
+  collection or not — the rows of a `[Composition]` a message does not open with `[Validated]`
+  are enforced by neither end, same as a lone nested model today.
 - **A number or a code declares its bound, or says on the record that it has none.**
   `DeclaredBoundTests` (`NSail.Architecture.Tests`) walks exactly `MessageValidator`'s reach —
-  every shipped `IMessage` plus any model opened with `[Validated]` — and fails the build when
+  every shipped `IMessage` plus any model opened with `[Validated]`, into a collection's
+  ELEMENT type rather than the collection itself — and fails the build when
   a numeric or `string` member declares nothing. A number wants a range (`[Range]` **or a
   subclass**, `[NotNegative]`, `[NotAbove]`; a floor alone counts). A string wants a length
   or a format. A string whose name reads as an identifier (`*Cae`, `*Code`, `*Cuit`, `*TaxId`
@@ -609,9 +618,10 @@ business rules.
   value the message does not carry and an `IValidator` owns it
   (`AuthorizeWorkOrder.CoveredAmount` runs from zero to the order's own total). Answering the
   gate is a decision, never a number picked to reach green (testing.md, ruling 11). Out of
-  scope, deliberately: dates, `TimeSpan`, `Guid`, `bool`, enums and collections — dates are
-  ~75 distinct decisions (a birth date is not a booking date) and are the widening testing.md
-  ruling 3's shrinking exemption list is for.
+  scope, deliberately: dates, `TimeSpan`, `Guid`, `bool`, enums and the collection MEMBER
+  itself (its own shape has no bound to declare — its opened element's members still answer
+  to the gate like any other) — dates are ~75 distinct decisions (a birth date is not a
+  booking date) and are the widening testing.md ruling 3's shrinking exemption list is for.
 - **A bound is declared once where it repeats.** `PagedMessage` (`NSail.Paging`) carries
   `PageIndex`/`PageSize` for the 37 list messages, and `[SearchTerm]`
   (`NSail.Messaging.Runtime.Validation`, a `MaxLength` subclass) caps a typed search term for

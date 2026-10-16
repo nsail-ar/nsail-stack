@@ -109,6 +109,27 @@ public static class MessageValidator
             // that nests nothing pays for none of this.
             walked ??= new HashSet<object>(ReferenceEqualityComparer.Instance) { model };
 
+            // A collection member is walked element by element, named by its index in the path
+            // shape NsForm already resolves ("Addresses[1].Street") — never as one model, which
+            // is what a List<T>'s own properties (Count, Capacity) would be read as. A string is
+            // an IEnumerable<char> and is never meant here.
+            if (value is System.Collections.IEnumerable elements and not string)
+            {
+                var index = 0;
+
+                foreach (var element in elements)
+                {
+                    if (element is not null && walked.Add(element))
+                    {
+                        failed |= Walk(element, $"{prefix}{property.Name}[{index}].", builder, walked);
+                    }
+
+                    index++;
+                }
+
+                continue;
+            }
+
             if (!walked.Add(value))
             {
                 continue;

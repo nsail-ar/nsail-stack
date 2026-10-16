@@ -1,0 +1,53 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Problems
+@using NSail.Testing.Models
+
+@* The index path MessageValidator names ("Addresses[1].Street") resolved against the whole
+   document: the open row's own field was tracked by the SAME FieldIdentifier instance this
+   fixture's model graph produces, so the placement needs nothing wired per screen. *@
+<MudPopoverProvider />
+
+<NsForm TModel="CollectionProblemModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsListEditor TItem="AddressRow" Items="Model.Addresses" Title="Direcciones"
+                  NewItem="NewItem" OnCommit="Commit">
+        <ItemTemplate Context="item">
+            <span class="item-street">@item.Street</span>
+        </ItemTemplate>
+        <ItemEditor Context="item">
+            <NsTextField @bind-Value="item.Street" Label="" />
+        </ItemEditor>
+    </NsListEditor>
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public CollectionProblemModel Model { get; set; } = default!;
+
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    public int Submits { get; private set; }
+
+    void HandleSubmit(SubmitEventArgs<CollectionProblemModel> args)
+    {
+        Submits++;
+
+        args.Problem = Problem;
+    }
+
+    static AddressRow NewItem()
+    {
+        return new AddressRow();
+    }
+
+    void Commit(RowEditEventArgs<AddressRow> args)
+    {
+    }
+}

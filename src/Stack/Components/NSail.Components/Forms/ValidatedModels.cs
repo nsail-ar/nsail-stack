@@ -67,6 +67,29 @@ static class ValidatedModels
             // a model that nests nothing pays for none of this.
             walked ??= new HashSet<object>(ReferenceEqualityComparer.Instance) { model };
 
+            // A collection member answers one model per element, the same reach MessageValidator
+            // takes on the wire — never the collection itself, which declares no member a field
+            // could ever be bound to.
+            if (value is System.Collections.IEnumerable elements and not string)
+            {
+                foreach (var element in elements)
+                {
+                    if (element is null || !walked.Add(element))
+                    {
+                        continue;
+                    }
+
+                    yield return element;
+
+                    foreach (var deeper in Nested(element, walked))
+                    {
+                        yield return deeper;
+                    }
+                }
+
+                continue;
+            }
+
             if (!walked.Add(value))
             {
                 continue;
