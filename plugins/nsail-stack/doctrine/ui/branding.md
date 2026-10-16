@@ -15,7 +15,8 @@ Branding is a vendor-agnostic, **serializable** object in `NSail.Components` (`B
 `Logo`, the accent and its states, the surface ladder, text, `Lines` and status colors, **hex
 strings only**. `IBrandProvider` (async) supplies the active brand, the async contract existing
 so a provider can resolve branding per organization. **Components never read Mud palette types
-from app code.** Default look: dark, a warm near-black surface with orange `#F68E1E`.
+from app code.** Default look: dark, a near-black surface in the house chrome's warm hue, with
+orange `#F68E1E`.
 
 **A brand is picked in exactly two colours — `Chrome` and `Accent`.** Everything else is either
 a scheme constant or derived.
@@ -27,11 +28,18 @@ a scheme constant or derived.
   on save so an old row still satisfies the `NOT NULL` it was written under.
 - **Chrome does not derive from the accent** — mixing a yellow accent into a dark surface reads
   brown. Nothing derives from the accent but the accent's own states.
+- **The surfaces wear the chrome's hue, never the accent's** — the two picks stay free of each
+  other, so an orange accent over steel-blue surfaces and the same orange over black ones are
+  both a brand. A grey or black chrome leaves neutral greys.
 
-**The palette is one fact in one place, and that place is `BrandTheme`.** The surface ladder, the
-ink — `TextDisabled`, the refused rung, with the two above it — `Lines`, `RowHover`, the
-four status colours and the ink each of them is read in when it is FILLED are **scheme
-constants**: they are not stored, they do not travel, and no editor offers one. The Sdk model carries the accent, its three states, `TextOnAccent`, `Chrome`
+**The palette is one fact in one place, and that place is `BrandTheme`.** `RowHover`, the four
+status colours and the ink each of them is read in when it is FILLED are **scheme constants**:
+they are not stored, they do not travel, and no editor offers one. **The surface and ink ladder
+is a mask** — `Background`, `Surface`, `SurfaceRaised`, `Lines` and the three inks
+(`TextDisabled`, the refused rung, with the two above it): each rung's luminance is a constant of
+the scheme, and its hue and a capped chroma are the chrome's (`BrandTone.Tint`). It is derived at
+paint from `IsDark` and `Chrome`, so it is stored nowhere and travels only as those two, and
+because the tint holds luminance, every contrast floor below is met on any chrome's greys. The Sdk model carries the accent, its three states, `TextOnAccent`, `Chrome`
 and the chrome's two inks; the Data entity carries `Primary`, `Chrome` and the two abandoned
 columns. `SessionBrandProvider` starts from `BrandTheme.DefaultDark()`/`DefaultLight()` and lays
 the row's picks over it — so **an install that saved a brand under an older palette shows the
@@ -74,7 +82,7 @@ comment in that file says why — it owes a CEILING, which the canvas's extra st
 ## `BrandTone`: what is derived
 
 What is derived is derived by `BrandTone` (`NSail.Tones`, in `NSail.Types`), *the* helper — one
-implementation with three entries, never two parallel ones:
+implementation with four entries, never two parallel ones:
 
 - `BrandTone.Accents(accent)` answers the states: hover, pressed, focus and `TextOnAccent` —
   dark text over a bright accent, light over a deep one, which is what keeps a yellow brand
@@ -87,6 +95,11 @@ implementation with three entries, never two parallel ones:
 - `BrandTone.AccentInk(accent, ink, grounds)` answers the accent worn as a WORD — the soft rung's
   label, a link, the active tab, the chapter a reader is on — on every ground that word is drawn
   on (below).
+- `BrandTone.Tint(rung, chrome, cap)` answers a rung of the ladder in the chrome's hue: the
+  rung's relative luminance is kept and solved for, the hue and chroma are taken in OKLCH (where
+  an equal chroma looks equally coloured at every hue), the chroma capped — `SurfaceTint` for the
+  surfaces, the lower `InkTint` for the inks — and backed off wherever sRGB cannot show it, so a
+  pale steel never clips to cyan.
 
 **It lives in the Stack because a paint has to reach it too**: a helper only the API edge can
 call leaves every later derivation a stored column or a CSS blend, and a CSS blend cannot see how
@@ -140,7 +153,7 @@ brand two more steps of its own hue on every tab in the app to answer a screen t
 exist.
 
 **On the chrome it is a second derivation, `BrandTheme.AccentOnChrome`.** The band is picked
-freely while the content's surfaces are fixed, so a card's answer would land on a chrome of any
+freely while only the luminance of the content's surfaces is fixed, so a card's answer would land on a chrome of any
 luminance; the drawer leans from `TextOnChrome` and reads against the chrome and the wash it marks
 a row with. `ns-mud.css` names it `--ns-rail-accent`, with the band's own ink as the fallback, and
 the entry a reader is on — nav and guide rail alike, one gutter, one pair — wears it.

@@ -39,7 +39,7 @@ Infrastructure only. No domain entities, no shared DbContext type.
 | `TenantRoster` | Who the install's tenants are, for work outside a request — data-tenancy.md, Background jobs |
 | `IInstallScoped` / `ITenantSeed` | What a tenant does NOT own, and what it is born with — data-tenancy.md |
 | `TenantSeedStep` / `AppliedSeedStep` | One named step of that seed, and the tenant's history of which it has run — one of the Stack's two tables (data-tenancy.md, First touch bootstraps) |
-| `TenantState` / `TenantStates` | What the install records ABOUT a tenant — its state and its plan, written from outside the app — and the scoped reader of it: the other Stack table (data-tenancy.md, The install's own record) |
+| `TenantState` / `TenantStates` / `TenantStateMemo` | What the install records ABOUT a tenant — whether it is served, why, until when, and which plan it is on, written from outside the app — the scoped reader of it, and what holds that reading for minutes: the other Stack table (data-tenancy.md, The install's own record) |
 | `WellKnownRows` / `TenancyProvider.Row` | The ids code names by constant, and which scope's copy one means (data-tenancy.md, A frozen id) |
 
 Connection string: app `{App}Options` with `[Required] ConnectionString`, loaded via
@@ -96,7 +96,7 @@ The rest lives in [data-tenancy.md](data-tenancy.md), under these headings:
   `TenancyMiddleware`, `TenantSlug.Normalize`.
 - **The credential is stamped, and checked on every request** — the `tenant` claim,
   `TenantClaimMiddleware`, `AmbientTenant`, `TenantMigrator`.
-- **The install's own record of a tenant** — `TenantState`, `TenantStates`,
+- **The install's own record of a tenant** — `TenantState`, `TenantStates`, `TenantStateMemo`,
   `TenantStateMiddleware`, the suspended page.
 - **Background jobs** — `IBackgroundJob.Tenancy`, one tenant per scope, `Tenancy:Tenants`,
   `BackgroundJobMetrics`.
@@ -607,6 +607,12 @@ The graph rules are Detached Mapper's:
   reaches it, never taken for missing. Depth costs heap, not stack.
 - **The concurrency token rides in**: an `IVersioned` entity's `Version` read from the
   message is the expected version, as `ExpectVersion` sets it (Optimistic concurrency).
+- **The root's token guards the whole graph.** Postgres moves `xmin` only when that row is
+  written, so a run that changed only compositions writes the root too (one of its own columns,
+  as it is — `StoreMapContext.WriteRootWithParts`): the save checks the version the caller read,
+  moves it for the next one, and an `IAudited` root's `UpdatedAt` says when its parts last
+  changed. A root with no token is not written for its parts; a run that changed nothing writes
+  nothing.
 - **`OrganizationId` is never written by name alone** (NSG004): `[MapFrom(typeof(M),
   "OrganizationId")]` on the member says it, `[MapIgnore]` leaves it to the handler. A
   projection reads it like any member — a read moves no row.
@@ -643,7 +649,8 @@ The order is guards, the mapper's call, what the mapper does not write, `SaveCha
 declare and call it, and what not to convert: the `new-mapping` skill.
 
 Proof: `NSail.Mapping.Tests` (the graph rules without a store), `NSail.Data.Tests/Mapping`
-(Detached's EF suite on SQLite in memory, projections included) and
+(Detached's EF suite on SQLite in memory, projections included; `AggregateTokenPostgresTests`
+on a real `xmin`) and
 `NSail.SourceGenerator.Tests/Mappers` (every refusal above).
 
 ---

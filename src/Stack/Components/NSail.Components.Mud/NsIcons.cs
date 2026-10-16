@@ -111,6 +111,10 @@ public static class NsIcons
     public static readonly Glyph ChevronRight =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="M522-480 333-669l51-51 240 240-240 240-51-51 189-189Z"/></g>""");
 
+    /// <summary>Material Symbols <c>chevron_left</c>.</summary>
+    public static readonly Glyph ChevronLeft =
+        new("""<g transform="translate(0,24) scale(0.025)"><path d="M576-240 336-480l240-240 51 51-189 189 189 189-51 51Z"/></g>""");
+
     /// <summary>Material Symbols <c>check_box</c>.</summary>
     public static readonly Glyph CheckBoxOn =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="m429-336 238-237-51-51-187 186-85-84-51 51 136 135ZM216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h528q29.7 0 50.85 21.15Q816-773.7 816-744v528q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm0-72h528v-528H216v528Zm0-528v528-528Z"/></g>""");
@@ -217,6 +221,11 @@ public static class NsIcons
     /// <summary>Material Symbols <c>undo</c>.</summary>
     public static readonly Glyph Undo =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="M288-192v-72h288q50 0 85-35t35-85q0-50-35-85t-85-35H330l93 93-51 51-180-180 180-180 51 51-93 93h246q80 0 136 56t56 136q0 80-56 136t-136 56H288Z"/></g>""");
+
+    /// <summary>Material Symbols <c>arrow_back</c> — the step a wizard or a panel takes back,
+    /// told apart from Undo's U-turn on a single act.</summary>
+    public static readonly Glyph Back =
+        new("""<g transform="translate(0,24) scale(0.025)"><path d="m330-444 201 201-51 51-288-288 288-288 51 51-201 201h438v72H330Z"/></g>""");
 
     /// <summary>Material Symbols <c>calendar_month</c>.</summary>
     public static readonly Glyph Calendar =

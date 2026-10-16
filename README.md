@@ -147,8 +147,10 @@ The published versions are this repository's `v*` tags.
 | Foundations | `NSail.Types`, `NSail.BclExtensions`, `NSail.Injection.Annotations` |
 | Testing | `NSail.Data.Testing`, `NSail.SourceGeneration.Testing` |
 
-The React packages (`@nsail/stack`, `@nsail/ui`) live in [`src/Stack/React`](src/Stack/React)
-and are consumed from source for now; they are not on npm yet.
+The React packages, [`@nsail/stack`](https://www.npmjs.com/package/@nsail/stack) and
+[`@nsail/ui`](https://www.npmjs.com/package/@nsail/ui), are on npm at the same version as the
+NuGet packages; pin them together. They ship ES modules for a bundler (Vite, webpack), with
+their types.
 
 ## The doctrine, and a Claude Code plugin
 

@@ -97,6 +97,14 @@ public static class DbContextExtensions
 
             entity.Property(row => row.Plan)
                 .HasMaxLength(32);
+
+            entity.Property(row => row.Reason)
+                .HasMaxLength(32);
+
+            // Long enough for a sentence and short enough that nobody writes a page into it:
+            // what it feeds is one paragraph of a document with no app behind it.
+            entity.Property(row => row.Message)
+                .HasMaxLength(500);
         });
     }
 

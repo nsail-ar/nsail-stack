@@ -28,7 +28,6 @@
             @Strings.Translate(As == NsAs.Filter ? "Common.Filter" : "Common.Submit")
         }
     </span>
-    <NsKey Chord="@_hint" />
 </MudButton>
 
 @code {
@@ -39,7 +38,7 @@
 
     string? _claimed;
 
-    string? _hint;
+    string? _chordHint;
 
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
@@ -69,14 +68,22 @@
     /// that any other default would collapse it always — a 480px aside never reaches the
     /// 600px the sm container query asks for.
     /// <para>Anything but Always is out until this button has a name it can restate: its word
-    /// is ChildContent, not a string, so it writes no aria-label — and that attribute is both
-    /// the hover bubble's text and the accessible name of a control whose label is hidden
-    /// (ui/actions.md). A collapsed submit would say nothing to either.</para></summary>
+    /// is ChildContent by default, a RenderFragment and not a string, so unless <see
+    /// cref="Label"/> gives the word as text, it writes no aria-label — the attribute the
+    /// collapsed control's accessible name reads once its own text goes display:none. A
+    /// collapsed submit would say nothing.</para></summary>
     [Parameter]
     public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Always;
 
     [Parameter]
     public bool Disabled { get; set; }
+
+    /// <summary>The act's word as a string — set it beside a custom ChildContent (Presupuestar,
+    /// Recibir) so the chord tooltip can restate it; ChildContent itself cannot, being a
+    /// RenderFragment rather than text. Unused when ChildContent is null: the default word is
+    /// Strings' own string already.</summary>
+    [Parameter]
+    public string? Label { get; set; }
 
     /// <summary>Same word as NsForm's own knob, same idea: a transition (Entregar, Revisar,
     /// any confirm-shaped door) is an act, not an edit — its hero has nothing to wait on, so
@@ -112,8 +119,26 @@
     string GetClasses(Glyph icon)
     {
         return new NsClassBuilder(NsResponsive.CollapseClass(icon, Breakpoint))
+            // The chord's own whisper (ns-mud.css, THE WHISPER): ungated, so it stands beside
+            // the label whether or not Breakpoint ever collapses it.
+            .Add("ns-chord", _chordHint is not null)
             .Add(Class)
             .ToString();
+    }
+
+    // The word the tooltip restates: Label where a custom ChildContent handed one over,
+    // Strings' own default where there is no ChildContent to restate at all. Null means the
+    // word is not known as text, which is Label's own doc comment.
+    string? GetWord()
+    {
+        if (Label is { Length: > 0 })
+        {
+            return Label;
+        }
+
+        return ChildContent is null
+            ? Strings.Translate(As == NsAs.Filter ? "Common.Filter" : "Common.Submit")
+            : null;
     }
 
     protected override void OnInitialized()
@@ -136,18 +161,30 @@
 
         var claimed = chords.Count == 0 ? null : (string)chords[NsKeys.Attribute];
 
-        if (_claimed == claimed)
+        // Read off the claim itself rather than named a second time: the tooltip reads the
+        // first chord of what this button actually publishes, so the key shown cannot come to
+        // differ from the key dispatched.
+        var hint = claimed?.Split(' ')[0];
+        var word = hint is null ? null : GetWord() is { Length: > 0 } known ? known : null;
+        var chordHint = word is null ? null : $"{word} ({hint})";
+
+        if (_claimed == claimed && _chordHint == chordHint)
         {
             return;
         }
 
         _claimed = claimed;
-        _keys = chords;
+        _chordHint = chordHint;
 
-        // Read off the claim itself rather than named a second time: the badge draws the first
-        // chord of what this button actually publishes, so the key drawn cannot come to differ
-        // from the key dispatched.
-        _hint = claimed?.Split(' ')[0];
+        // Generated content on a control joins its accessible name UNLESS aria-label is there
+        // to outrank it (nsail#2259, THE WHISPER) — this button carries none today, its word
+        // being on-screen text, so ns-chord's own ::after would join "Guardar" into "Guardar
+        // (Ctrl+Enter)" the moment it draws one. aria-label pinned to the bare word is what
+        // keeps the name the word while data-ns-chord, a different attribute the name
+        // computation never reads, carries the longer string the bubble shows.
+        _keys = chordHint is null
+            ? chords
+            : new Dictionary<string, object>(chords) { ["aria-label"] = word!, ["data-ns-chord"] = chordHint };
     }
 
     // Nothing to save yet: a tracked form's submit stays greyed out until the surface

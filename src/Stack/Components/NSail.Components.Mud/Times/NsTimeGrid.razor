@@ -126,8 +126,9 @@
     public DateOnly? Day { get; set; }
 
     /// <summary>The hour the grid opens at — the top of what stands visible before anyone
-    /// scrolls, and where a range holding no today scrolls itself to. It never removes an hour:
-    /// the track is the whole day either way.</summary>
+    /// scrolls, and where the grid scrolls itself to unless the clock stands inside the framed
+    /// hours, which it then centres on instead. It never removes an hour: the track is the whole
+    /// day either way.</summary>
     [Parameter]
     public TimeOnly DayStart { get; set; } = new(8, 0);
 
@@ -249,28 +250,38 @@
         return string.Create(CultureInfo.InvariantCulture, $"--ns-time-window: {_window}");
     }
 
-    // Centred on the clock when the range holds today; otherwise the framed start, at the top.
+    // Centred on the clock when the range holds today and the clock stands inside the framed
+    // hours; otherwise the framed start, at the top.
     double Anchor()
     {
-        return Today() is { } now
+        return Opening() is { } now
             ? now.TimeOfDay.TotalHours / HoursInDay
             : DayStart.ToTimeSpan().TotalHours / HoursInDay;
     }
 
     double Bias()
     {
-        return Today() is not null ? 0.5 : 0;
+        return Opening() is not null ? 0.5 : 0;
     }
 
     // Where the grid opens is a client-only decision — it runs after the first render and
     // changes not one byte of markup — so this may read a clock the render path is forbidden
     // to touch. Which is what lets a week that holds today open on the hour it is, on a page
-    // that draws no now line because it was handed no Now.
-    DateTime? Today()
+    // that draws no now line because it was handed no Now. An hour outside the frame answers
+    // nothing: centring on 02:00 over a frame of 08:00–20:00 clamps the track at midnight and
+    // leaves the framed hours below the window.
+    DateTime? Opening()
     {
         var now = _clock ?? DateTime.Now;
 
-        return _dates.Contains(DateOnly.FromDateTime(now)) ? now : null;
+        if (!_dates.Contains(DateOnly.FromDateTime(now)))
+        {
+            return null;
+        }
+
+        var time = now.TimeOfDay;
+
+        return time >= DayStart.ToTimeSpan() && time <= DayEnd.ToTimeSpan() ? now : null;
     }
 
     double? NowOffset(DateOnly date)

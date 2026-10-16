@@ -64,7 +64,7 @@ public static class BrandMudTheme
         // and carries it to the dialogs and popovers styled in ns-mud.css.
         palette.BackgroundGray = new MudColor(theme.SurfaceRaised);
 
-        // The band is the brand's own colour and the content's surfaces are fixed, so the ink
+        // The band is the brand's own colour and the content's luminance is fixed, so the ink
         // on the chrome is derived from the chrome and never borrowed from the content: a light
         // chrome under a dark scheme would otherwise draw the scheme's white text on it.
         palette.AppbarBackground = new MudColor(theme.Chrome);

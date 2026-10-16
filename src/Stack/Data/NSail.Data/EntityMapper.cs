@@ -88,7 +88,7 @@ public sealed class EntityMapper
         return query.Select(projection.Expression);
     }
 
-    Task<TEntity> Run<TSource, TEntity>(TSource source, MapParameters parameters, CancellationToken cancellationToken)
+    async Task<TEntity> Run<TSource, TEntity>(TSource source, MapParameters parameters, CancellationToken cancellationToken)
         where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -96,6 +96,11 @@ public sealed class EntityMapper
         var mapper = _services.GetService<IEntityMapper<TSource, TEntity>>()
             ?? throw new InvalidOperationException($"No mapper writes {typeof(TSource).Name} onto {typeof(TEntity).Name}. Declare [MapFrom(typeof({typeof(TSource).Name}))] on {typeof(TEntity).Name} and call the kit's [Generated(Mappers.Entities)] holder.");
 
-        return mapper.Map(source, null, new StoreMapContext(_db, parameters), cancellationToken);
+        var context = new StoreMapContext(_db, parameters);
+        var root = await mapper.Map(source, null, context, cancellationToken).ConfigureAwait(false);
+
+        context.WriteRootWithParts(root);
+
+        return root;
     }
 }

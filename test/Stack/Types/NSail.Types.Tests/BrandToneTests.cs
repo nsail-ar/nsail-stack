@@ -193,6 +193,58 @@ public class BrandToneTests
         Assert.Equal(BrandTone.Accents(equivalent).TextOn, BrandTone.Accents(seed).TextOn);
     }
 
+    // The ladder is a mask: a rung worn in any chrome's hue keeps its own luminance, so no ratio
+    // measured against the default greys can move. Within a hex digit — the tint lands on 8-bit
+    // channels — which is a ratio of 1.02 at worst, on the darkest rung.
+    [Theory]
+    [InlineData("#161513", "#0b1626")]
+    [InlineData("#232120", "#3b7091")]
+    [InlineData("#e7e4dd", "#1565c0")]
+    [InlineData("#f1f0ee", "#3b7091")]
+    [InlineData("#fbfaf8", "#f6ff00")]
+    [InlineData("#262624", "#c62828")]
+    public void ATintedRungKeepsItsLuminance(string rung, string chrome)
+    {
+        var tinted = BrandTone.Tint(rung, chrome, BrandTone.SurfaceTint);
+
+        Assert.InRange(Contrast(rung, tinted), 1, 1.02);
+    }
+
+    // A grey or black band leaves neutral greys: nothing to borrow, nothing borrowed.
+    [Theory]
+    [InlineData("#000000")]
+    [InlineData("#808080")]
+    [InlineData("#ffffff")]
+    public void AGreyChromeLeavesNeutralGreys(string chrome)
+    {
+        var channels = Channels(BrandTone.Tint("#232120", chrome, BrandTone.SurfaceTint));
+
+        Assert.True(channels[0] == channels[1] && channels[1] == channels[2], $"{chrome} tinted the rung");
+    }
+
+    // The hue is the chrome's: a blue band leans the rung blue and a red one red, and the
+    // accent has no say at all — it is not an argument.
+    [Theory]
+    [InlineData("#0b1626", 2)]
+    [InlineData("#c62828", 0)]
+    [InlineData("#2e7d32", 1)]
+    public void TheRungLeansTowardTheChromesHue(string chrome, int dominant)
+    {
+        var channels = Channels(BrandTone.Tint("#232120", chrome, BrandTone.SurfaceTint));
+
+        Assert.Equal(channels.Max(), channels[dominant]);
+    }
+
+    // Near white the gamut is narrow and a clipped chroma turns pale steel into cyan; the tint
+    // backs off instead, so a light canvas under a steel band stays a blue-grey, never #e9feff.
+    [Fact]
+    public void APaleRungStaysInsideTheGamut()
+    {
+        var channels = Channels(BrandTone.Tint("#fbfaf8", "#3b7091", BrandTone.SurfaceTint));
+
+        Assert.True(channels[0] < channels[2] && channels[1] < 255, string.Join(",", channels));
+    }
+
     // The order of the channels, which is what "same hue" comes to when only luminosity moves.
     static string Order(string color)
     {

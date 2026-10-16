@@ -76,10 +76,18 @@ public sealed class TenancyHost : IAsyncDisposable
 
     /// <summary>The host every tenancy suite runs against. <paramref name="bootstraps"/> adds
     /// what an app would register — the rows a tenant is born with — and is off by default so
-    /// the suites that count rows are counting their own.</summary>
-    public static Task<TenancyHost> Start(TenancyMode mode, bool bootstraps = false, string? language = null, int epoch = 0)
+    /// the suites that count rows are counting their own. <paramref name="clock"/> is the
+    /// install's own clock, which is what makes a pause window and the state memo reachable
+    /// without waiting; <paramref name="contact"/> is who its suspended page names.</summary>
+    public static Task<TenancyHost> Start(
+        TenancyMode mode,
+        bool bootstraps = false,
+        string? language = null,
+        int epoch = 0,
+        TimeProvider? clock = null,
+        string? contact = null)
     {
-        return Start(mode, bootstraps ? typeof(WelcomeSeed) : null, cell: null, language, epoch);
+        return Start(mode, bootstraps ? typeof(WelcomeSeed) : null, cell: null, language, epoch, clock, contact);
     }
 
     /// <summary>The same install again, carrying whatever chain that build carries — a deploy,
@@ -93,12 +101,26 @@ public sealed class TenancyHost : IAsyncDisposable
         return Start(TenancyMode.SingleDb, seed, host.Cell);
     }
 
-    public static async Task<TenancyHost> Start(TenancyMode mode, Type? seed, string? cell, string? language = null, int epoch = 0)
+    public static async Task<TenancyHost> Start(
+        TenancyMode mode,
+        Type? seed,
+        string? cell,
+        string? language = null,
+        int epoch = 0,
+        TimeProvider? clock = null,
+        string? contact = null)
     {
         var owned = cell is null;
 
         cell ??= "c" + Guid.NewGuid().ToString("N")[..12];
-        var tenancy = new TenancyOptions { Mode = mode, Product = Product, Cell = cell };
+
+        var tenancy = new TenancyOptions
+        {
+            Mode = mode,
+            Product = Product,
+            Cell = cell,
+            SupportContact = contact,
+        };
 
         // Under None the install names a database of its own, exactly as a single-tenant
         // install does today; under MultiDb only the server, user and password are read from
@@ -164,6 +186,15 @@ public sealed class TenancyHost : IAsyncDisposable
         // the pipeline needs here is something that turns this host's principal into one. That
         // the real adapter reads the real claim is Iam's to prove, and its tests do.
         builder.Services.AddScoped<SessionProvider, TicketSessionProvider>();
+
+        // Ahead of AddDataAccess, which registers the machine's clock with TryAdd: a host that
+        // states its own keeps it, which is the seam the state memo and the pause window are
+        // reached through.
+        if (clock is not null)
+        {
+            builder.Services.AddSingleton(clock);
+        }
+
         builder.Services.AddDataAccess<TenantDbContext>(install, tenancy);
 
         if (seed is not null)

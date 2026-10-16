@@ -72,6 +72,19 @@ types, keys, client-side rules). No host is started and no assembly is loaded.
 <Import Project="…/NSail.TypeScriptGenerator/NSail.TypeScriptGenerator.targets" />
 ```
 
+An Sdk outside this repository takes the same generation from the package, which is a
+build-time tool and nothing else: the published tool with every assembly it loads under
+`tools/`, the target under `build/` (NuGet imports it), no `lib/` and no dependencies.
+
+```xml
+<PropertyGroup><TypeScriptOutput>../Acme.React/src/sdk.ts</TypeScriptOutput></PropertyGroup>
+<PackageReference Include="NSail.TypeScriptGenerator" Version="…" PrivateAssets="all" />
+```
+
+One target serves both: `build/NSail.TypeScriptGenerator.targets` runs the tool from
+`$(_TypeScriptTool)`, which the in-repo `.targets` points at the project's own build output
+before importing it, and which otherwise defaults to the package's `tools/` folder.
+
 - **A compile that does not resolve is refused** (`NSTS001`, naming the first errors),
   never read as an Sdk with no messages — an empty client that builds is a failure nobody
   sees until a page calls nothing. The one error ignored is `CS8795`: a `[Generated]`
@@ -98,6 +111,15 @@ packages live in `src/Stack/React/`, split where the vendor starts — the line
 |---|---|---|
 | `@nsail/stack` | `src/Stack/React/NSail.React.Stack` | Vendor-free: the descriptors, `Mediator.send`, `Problem`, the client half of `MessageValidator`, `Strings`, and the hooks a page reads with (`useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`) |
 | `@nsail/ui` | `src/Stack/React/NSail.React.Ui` | The `Ns*` components and `ns.css` |
+
+**Two ways in, one source.** Each package's `exports` answers the `@nsail/source` condition with
+its `src/`, and everything else with `dist/`. This workspace asks for the condition
+(`customConditions` in `tsconfig.base.json`, `resolve.conditions` in a client's Vite config), so
+nothing here builds a package before using it; an app outside the repository gets `dist/` from
+npm. `npm run build` writes `dist/` — `@nsail/stack`'s `build.mjs` also copies the Stack's own
+catalog from `NSail.Components.Mud` into it, so the tarball needs nothing outside itself.
+`ci.yml` packs both on every run and publishes them on a merge to `main`, at the NuGet version,
+by npm's Trusted Publishing; the checkout's own `0.1.0` never reaches npm.
 
 A kit or app package imports both; nothing below `@nsail/ui` names a component.
 

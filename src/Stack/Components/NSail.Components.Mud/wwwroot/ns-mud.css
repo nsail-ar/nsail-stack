@@ -2056,6 +2056,27 @@
     --ns-whisper: block;
 }
 
+/* A CHORD is the fourth rider of the ungated form, and the odd one: it marks a control that
+   already draws its word (NsSubmit's hero, NsClose's Cancelar, a chromed NsButton of its own),
+   so the whisper beside it is not the double cartel the gates above exist to forbid — THAT
+   rule is one string shown twice, and the key is a different string the word never carried.
+   Ungated for the same reason ns-square is: a button either answers a chord or it does not, and
+   there is no width at which that stops being true. The text is attr(aria-label), same as
+   every other rider, built from Label and the chord together (NsButton.LabelWithChord) so the
+   bubble and the key dispatched read the same claim. */
+.ns-chord {
+    overflow: visible;
+}
+
+.ns-chord .mud-ripple-effect {
+    display: none;
+}
+
+.ns-chord:hover,
+.ns-chord:focus-visible {
+    --ns-whisper: block;
+}
+
 /* A node whose template is more than a name (NsTree stacks a fact and the row's actions
    under it) makes the row tall, and MudBlazor centres both the toggle and the row against
    that whole height. The row carries the same surface as a grid so the tree reads as one
@@ -2652,6 +2673,16 @@
    with gates of their own (above): none of those labels is coming back at any width, so there
    is nothing for the bubble to double-bill.
 
+   ns-chord (nsail#2272) is a DIFFERENT rider, reading a DIFFERENT attribute, and deliberately
+   so: unlike the others, its label never left the screen, so attr(aria-label) is not free to
+   carry the chord here — aria-label IS the accessible name, and the name has to stay the word
+   (nsail#2259's lesson one layer up: a decoration joining the name is the defect whether it is
+   a badge or an attribute). Its own rule, right after the one below, reads attr(data-ns-chord)
+   instead — a second attribute carrying "Word (Keys)" while aria-label keeps carrying "Word"
+   alone, which is also why ns-chord needs an aria-label THE OTHER RIDERS do not: without one a
+   control with no visible text relies on content for its name, and this rider's control always
+   has visible text, so its caller (NsButton, NsSubmit, NsClose) sets both or neither.
+
    THE SWITCH IS A CUSTOM PROPERTY, never a second display declaration (nsail#1417). The
    selectors below carry a guard the gates do not — [aria-label], so a control nobody named
    draws no empty box — and a guard is specificity: every gate below is one class-unit
@@ -2668,6 +2699,32 @@
 .ns-collapse-xl[aria-label]:not([aria-label=""])::after,
 .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""])::after {
     content: attr(aria-label);
+    display: var(--ns-whisper, none);
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    border-radius: var(--mud-default-borderradius);
+    background-color: var(--mud-palette-gray-darker);
+    color: var(--mud-palette-dark-text);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4em;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: var(--mud-zindex-tooltip);
+}
+
+/* ns-chord's own rule, same look, different attribute (above): attr(data-ns-chord) rather than
+   attr(aria-label), so the bubble can say "Word (Keys)" while the accessible name — read off
+   aria-label alone — stays "Word". The guard is [data-ns-chord] rather than [aria-label] for
+   the same reason the base rule's guard is on its own attribute: a control with no claim to
+   whisper draws no empty box. */
+.ns-chord[data-ns-chord]:not([data-ns-chord=""])::after {
+    content: attr(data-ns-chord);
     display: var(--ns-whisper, none);
     position: absolute;
     top: calc(100% + 4px);
@@ -2709,6 +2766,12 @@
 .ns-collapse-lg[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
 .ns-collapse-xl[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
 .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after {
+    top: auto;
+    bottom: calc(100% + 4px);
+}
+
+/* ns-chord's own flip, same reason, same [data-ns-chord] attribute as its base rule above. */
+.ns-chord[data-ns-chord]:not([data-ns-chord=""])[data-ns-whisper-above]::after {
     top: auto;
     bottom: calc(100% + 4px);
 }
@@ -3920,58 +3983,13 @@
 }
 
 /* ===========================================================================================
-   THE KEYBOARD (nsail#2207). Three things the chords need from the stylesheet: the badge a
-   control draws its own chord with, the link that is only on screen while it has focus, and a
-   ring wherever the cursor can land. The chords themselves are declared on the controls and
+   THE KEYBOARD (nsail#2207). Two things the chords need from the stylesheet: the link that is
+   only on screen while it has focus, and a ring wherever the cursor can land. The chord a
+   control answers is shown on its tooltip (THE WHISPER, ns-chord, above) rather than drawn
+   here — a hint beside the word and the word's own hover bubble turned out to be one
+   mechanism, not two (nsail#2272). The chords themselves are declared on the controls and
    dispatched in ns.js — nothing about which key does what is written here.
    =========================================================================================== */
-
-/* THE KEY ON THE BUTTON: the chord a control answers, drawn beside its word so the keyboard is
-   learned from the screen and never from a manual. attr() off the badge's own node (NsKey, which
-   renders it empty and aria-hidden and is the only element wearing this class), and NOT off the
-   control it stands in — that is THE WHISPER's construction and it cannot be shared here: a
-   control's own generated content joins its ACCESSIBLE NAME, which is not the same reading as
-   its text content, and a hero worded "Guardar" came out named "Guardar Ctrl+Enter" to a screen
-   reader and to every role query asking for that word exactly. On a node of its own the badge is
-   in neither reading, and the control's one ::after stays free for the whisper.
-   The glyph-only shapes draw no node at all (NsButton): a glyph has no word for a hint to stand
-   beside, and its name is already a bubble.
-   Gone by default and back from the sm CONTAINER up, the label's own rule: a surface too narrow
-   for the button's word has no room for a hint beside it either. */
-.ns-key {
-    display: none;
-    margin-left: 8px;
-    padding: 0 4px;
-    border: 1px solid currentcolor;
-    border-radius: 3px;
-    opacity: .6;
-    font-family: inherit;
-    font-size: .6875rem;
-    line-height: 1.5;
-    letter-spacing: 0;
-    text-transform: none;
-    white-space: nowrap;
-}
-
-.ns-key::after {
-    content: attr(data-ns-key);
-}
-
-@container (min-width: 600px) {
-    .ns-key {
-        display: inline-block;
-    }
-}
-
-/* Never where there is no key to press: a coarse pointer is a touch screen, and a badge naming
-   a chord that device cannot send is noise in the one place with the least room for it. Last of
-   the three on purpose — all three carry the same weight, so the order in this file is what
-   decides and nothing needs !important. */
-@media (pointer: coarse) {
-    .ns-key {
-        display: none;
-    }
-}
 
 /* THE SKIP LINK is drawn over the chrome and not in the flow: a line of real height at the top
    of every page is a line of chrome that only the keyboard ever needs. :focus and not

@@ -17,7 +17,11 @@ namespace NSail.BaseServices.WebApi;
 // from here.
 static class SuspendedDocument
 {
-    public static string For(string language, string title, string message)
+    /// <summary><paramref name="paragraphs"/> is the page's whole body, in order: the words the
+    /// pause is explained in, then whatever the row and the install added — when the service
+    /// comes back, the writer's own message, who to reach. The page decides none of that, which
+    /// is why it takes a list and not a reason.</summary>
+    public static string For(string language, string title, IEnumerable<string> paragraphs)
     {
         var builder = new StringBuilder();
 
@@ -34,21 +38,28 @@ static class SuspendedDocument
         builder.Append("background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12);text-align:center}");
         builder.Append("h1{margin:0 0 .75rem;font-size:1.5rem;font-weight:600}");
         builder.Append("p{margin:0;font-size:1rem;line-height:1.5;color:#515a6e}");
+        builder.Append("p+p{margin-top:.75rem}");
         builder.Append("@media (prefers-color-scheme:dark){");
         builder.Append("body{background:#14161a;color:#e8eaee}");
         builder.Append("main{background:#1e2127;box-shadow:none}");
         builder.Append("p{color:#a8aeba}}");
         builder.Append("</style></head><body><main>");
         builder.Append("<h1>").Append(Escaped(title)).Append("</h1>");
-        builder.Append("<p>").Append(Escaped(message)).Append("</p>");
+
+        foreach (var paragraph in paragraphs)
+        {
+            builder.Append("<p>").Append(Escaped(paragraph)).Append("</p>");
+        }
+
         builder.Append("</main></body></html>");
 
         return builder.ToString();
     }
 
-    // The words come from the install's own catalogs, so nothing here is a caller's input — and
-    // escaped anyway, because a translation is text and this is markup, and the day one of them
-    // carries an apostrophe-and-angle-bracket is not the day to find that out.
+    // Most of the words come from the install's own catalogs and its configuration, and the
+    // row's message comes from a writer the install trusts — escaped all the same, because text
+    // is text and this is markup, and a trusted hand carrying an angle bracket is still the day
+    // the page would break.
     static string Escaped(string text)
     {
         return WebUtility.HtmlEncode(text);

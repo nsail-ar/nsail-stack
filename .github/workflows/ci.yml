@@ -8,7 +8,8 @@ name: CI
 #
 # nuget.org is reached by Trusted Publishing: the NuGet/login step trades this run's OIDC
 # token for a short-lived key, against a policy on the NSail nuget.org account that names
-# this repository and this workflow file. No API key is stored anywhere.
+# this repository and this workflow file. npm is reached the same way, for @nsail/stack and
+# @nsail/ui at the same version. No API key or token is stored anywhere.
 #
 # GitHub-hosted runners, never the monorepo's self-hosted iron: this repository goes public,
 # and a fork's pull request on a self-hosted runner runs a stranger's code on our machine.
@@ -108,6 +109,18 @@ jobs:
       - name: Pack
         run: dotnet pack NSail.sln --configuration Release --no-build -p:Version=$VERSION --output artifacts
 
+      # The React packages ship at the NuGet version, and @nsail/ui names @nsail/stack at that
+      # same version: the checkout keeps 0.1.0, the workspace's own number, which only this run
+      # replaces.
+      - name: Pack npm
+        run: |
+          npm pkg set version=$VERSION --workspace=@nsail/stack --workspace=@nsail/ui
+          npm pkg set "dependencies.@nsail/stack=$VERSION" --workspace=@nsail/ui
+          npm run build --workspace=@nsail/stack
+          npm run build --workspace=@nsail/ui
+          mkdir -p artifacts/npm
+          npm pack --workspace=@nsail/stack --workspace=@nsail/ui --pack-destination artifacts/npm
+
       - uses: actions/upload-artifact@v5
         with:
           name: packages
@@ -134,3 +147,14 @@ jobs:
         run: |
           git tag "v$VERSION"
           git push origin "v$VERSION"
+
+      # npm's Trusted Publishing: the CLI trades this run's OIDC token with npmjs.com, against
+      # a trusted publisher each package names (this repository, this workflow file), and signs
+      # the provenance. It needs npm 11.5.1 or later. The tarballs are the ones packed above.
+      # After the tag, so npm refusing never leaves a NuGet release without its tag.
+      - name: Publish npm
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          npm install --global npm@^11.5.1
+          npm publish "artifacts/npm/nsail-stack-$VERSION.tgz" --access public --provenance
+          npm publish "artifacts/npm/nsail-ui-$VERSION.tgz" --access public --provenance

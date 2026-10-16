@@ -203,7 +203,7 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
 
         var cut = Render<ExportTableHost>();
 
-        await cut.Find(".ns-table-export button").ClickAsync(new MouseEventArgs());
+        await Open(cut);
 
         Assert.Equal(["Excel", "CSV"], cut.Find(".ns-menu-list").QuerySelectorAll(".ns-menu-item-label").Select(row => row.TextContent.Trim()));
     }
@@ -344,15 +344,22 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
         return cut;
     }
 
+    // Every press in this file is found and pressed inside ONE dispatch: between a Find and a
+    // Click the tree can re-render — the first read's own page lands on a continuation, and so
+    // does the open menu's popover — and the handler the element carried is gone by the time the
+    // click reaches it (bUnit, UnknownEventHandlerIdException, which a loaded machine is what
+    // makes likely).
+    static Task Open<THost>(IRenderedComponent<THost> cut)
+        where THost : IComponent
+    {
+        return cut.InvokeAsync(() => cut.Find(".ns-table-export button").ClickAsync(new MouseEventArgs()));
+    }
+
     static async Task Pick<THost>(IRenderedComponent<THost> cut, string row)
         where THost : IComponent
     {
-        await cut.Find(".ns-table-export button").ClickAsync(new MouseEventArgs());
+        await Open(cut);
 
-        // Found and pressed inside ONE dispatch: between a Find and a Click the open menu can
-        // re-render — the popover's own render lands on a continuation — and the handler the
-        // element carried is gone by the time the click reaches it (bUnit,
-        // UnknownEventHandlerIdException, which a loaded machine is what makes likely).
         await cut.InvokeAsync(() => cut
             .Find(".ns-menu-list")
             .QuerySelectorAll(".ns-menu-item")
