@@ -17,7 +17,15 @@
 
 <body>
     @Body
-    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="@Assets["_framework/blazor.web.js"]" autostart="false"></script>
+    @* The language this document was rendered in, handed to the runtime as the framework's own
+       applicationCulture: the client boots already speaking it instead of spending a round trip
+       re-deriving an answer the request pipeline gave before the first byte
+       (intentional-ui.md, "One arrival, one loading"). Started by hand only because an option
+       bag has to reach Blazor.start, which is what autostart="false" leaves room for. *@
+    <script>
+        Blazor.start({ webAssembly: { applicationCulture: '@System.Globalization.CultureInfo.CurrentUICulture.Name' } });
+    </script>
 </body>
 
 </html>

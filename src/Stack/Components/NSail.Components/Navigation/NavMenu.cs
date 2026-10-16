@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Web;
 using NSail.Localization;
+using NSail.Settings;
 
 namespace NSail.Components;
 
@@ -10,9 +13,17 @@ namespace NSail.Components;
 /// to everything that wants it: the drawer, and every title bar deriving its page's glyph.
 /// A contributor is a module's chance to ask its own server — the sign-in kits each spend an
 /// HTTP round trip on it — so who asks and how often is a decision, not an implementation
-/// detail of whichever component happened to want the tree.</summary>
-public sealed class NavMenu
+/// detail of whichever component happened to want the tree.
+///
+/// <para>What the prerender spent on the wire — the install's arrangement and the entries'
+/// counts — crosses to the client as persisted state instead of being asked a second time
+/// (intentional-ui.md, "One arrival, one loading"). The tree itself does not cross: merging it
+/// is pure CPU once the arrangement is in hand, and an entry carries a page Type and route
+/// parameters that no wire shape holds.</para></summary>
+public sealed class NavMenu : IDisposable
 {
+    const string HandoffKey = "NSail.NavMenu";
+
     readonly IEnumerable<INavMenuContributor> _contributors;
 
     readonly IEnumerable<INavMenuCount> _counts;
@@ -21,9 +32,19 @@ public sealed class NavMenu
 
     readonly LanguageProvider _language;
 
+    readonly PersistentComponentState? _handoff;
+
     Task<IReadOnlyList<NavMenuItem>>? _items;
 
     Task<AuthenticationState>? _session;
+
+    IReadOnlyList<NavMenuArrangement>? _arranged;
+
+    IReadOnlyDictionary<string, int>? _handedCounts;
+
+    bool _registered;
+
+    PersistingComponentStateSubscription _persisting;
 
     /// <summary>An app that stores no arrangement registers none and gets the menu its modules
     /// contributed, which is why the arrangements arrive as a collection and not as one
@@ -32,12 +53,14 @@ public sealed class NavMenu
         IEnumerable<INavMenuContributor> contributors,
         IEnumerable<INavMenuCount> counts,
         IEnumerable<INavMenuArrangement>? arrangements = null,
-        LanguageProvider? language = null)
+        LanguageProvider? language = null,
+        PersistentComponentState? handoff = null)
     {
         _contributors = contributors;
         _counts = counts;
         _arrangements = arrangements ?? [];
         _language = language ?? new LanguageProvider();
+        _handoff = handoff;
     }
 
     /// <summary>The tree, built once for the session it is asked against. The session is the
@@ -59,6 +82,17 @@ public sealed class NavMenu
 
         _session = session;
 
+        // A rebuild re-reads the arrangement: an install's rows are an authorized read, so the
+        // session that was denied them and the session that was granted them do not get one
+        // answer between them.
+        _arranged = null;
+
+        // Taken SYNCHRONOUSLY, before Build is entered: the whole value of the handoff is that
+        // the first build completes without a single await that has not already finished, so
+        // the drawer carries its entries in the client's first render batch rather than in the
+        // one after the splash has already come off over an empty map.
+        Adopt();
+
         return _items = Build();
     }
 
@@ -69,7 +103,27 @@ public sealed class NavMenu
     /// exactly that the last answer is spent. A contributor that cannot answer is left out
     /// rather than allowed to take the drawer down with it — a number is chrome, and the map
     /// is not.</summary>
-    public async Task<IReadOnlyDictionary<string, int>> GetCounts()
+    public Task<IReadOnlyDictionary<string, int>> GetCounts()
+    {
+        // The arrival's numbers, resolved by the prerender and handed over. TAKEN rather than
+        // read: this is the one ask of the session the handoff answers, and every later one —
+        // a navigation, a NavMenuCountsChanged — is somebody saying the last answer is spent.
+        if (_handedCounts is { } handed)
+        {
+            _handedCounts = null;
+
+            return Task.FromResult(handed);
+        }
+
+        return Ask();
+    }
+
+    public void Dispose()
+    {
+        _persisting.Dispose();
+    }
+
+    async Task<IReadOnlyDictionary<string, int>> Ask()
     {
         var counts = new Dictionary<string, int>(StringComparer.Ordinal);
 
@@ -93,6 +147,52 @@ public sealed class NavMenu
         return counts;
     }
 
+    void Adopt()
+    {
+        if (_handoff is null)
+        {
+            return;
+        }
+
+        if (_handoff.TryTakeFromJson<NavMenuHandoff>(HandoffKey, out var handed) && handed is not null)
+        {
+            _arranged = handed.Arrangements;
+            _handedCounts = handed.Counts;
+
+            return;
+        }
+
+        // Nothing was handed over, so this side is the one that asks — and therefore the one
+        // with an answer worth persisting. The render mode is named because the callback
+        // belongs to a service rather than a component, and .NET refuses to guess for one; it
+        // is WebAssembly and only WebAssembly because that is the only client that starts a
+        // second time in a second process.
+        // Once, not per build: a sign-in or an organization switch re-enters here, and a
+        // callback registered again each time is a subscription leak.
+        if (!_registered)
+        {
+            _registered = true;
+            _persisting = _handoff.RegisterOnPersisting(Persist, RenderMode.InteractiveWebAssembly);
+        }
+    }
+
+    async Task Persist()
+    {
+        if (_handoff is null || _arranged is not { } arranged)
+        {
+            return;
+        }
+
+        // The counts are asked at persist time rather than carried out of the render: in the
+        // prerendering scope this is an in-process send with the session already in hand, and
+        // it is a number — the later it is read the truer it is.
+        _handoff.PersistAsJson(HandoffKey, new NavMenuHandoff
+        {
+            Arrangements = arranged,
+            Counts = await Ask()
+        });
+    }
+
     async Task<IReadOnlyList<NavMenuItem>> Build()
     {
         var items = new List<NavMenuItem>();
@@ -108,10 +208,8 @@ public sealed class NavMenu
         // arrangement is read against everything said before it — the contributions, and any
         // arrangement ahead of it in the cascade — so a row can only arrange a door that is
         // really there, and the last word belongs to whoever sits last.
-        foreach (var arranger in _arrangements)
+        foreach (var arrangement in await Arranged())
         {
-            var arrangement = await arranger.GetArrangement();
-
             if (arrangement.Entries.Count == 0)
             {
                 continue;
@@ -121,5 +219,34 @@ public sealed class NavMenu
         }
 
         return NavMenuItem.Merge(items);
+    }
+
+    // What each arranger stored, in cascade order — handed over where the prerender already
+    // paid for it, and remembered either way so the persist callback writes the arrangement
+    // this tree was actually built from. The rows and not the tree, because resolving them
+    // against the contributions is local work and the LANGUAGE it resolves under is the
+    // client's own.
+    Task<IReadOnlyList<NavMenuArrangement>> Arranged()
+    {
+        if (_arranged is { } arranged)
+        {
+            return Task.FromResult(arranged);
+        }
+
+        return Read();
+    }
+
+    async Task<IReadOnlyList<NavMenuArrangement>> Read()
+    {
+        var arranged = new List<NavMenuArrangement>();
+
+        foreach (var arranger in _arrangements)
+        {
+            arranged.Add(await arranger.GetArrangement());
+        }
+
+        _arranged = arranged;
+
+        return arranged;
     }
 }
