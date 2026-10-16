@@ -34,7 +34,7 @@
             else if (item.PageType is not null && !item.Disabled)
             {
                 <NsLink As="@NsAs.Inline"
-                        Breakpoint="NsBreakpoint.Never"
+                        Breakpoint="@(Breakpoint ?? NsBreakpoint.Never)"
                         Icon="@item.Icon"
                         Content="@item.Content"
                         Size="@(Size ?? NsSize.Md)"
@@ -47,7 +47,7 @@
                 @* The same size as the link branch above: one toolbar mixing a command and a
                    link would otherwise render two different icon boxes, and a slot that is not
                    one width is not a slot. *@
-                <NsAction Action="@item" Size="@(Size ?? NsSize.Md)" />
+                <NsAction Action="@item" Breakpoint="@(Breakpoint ?? NsBreakpoint.Never)" Size="@(Size ?? NsSize.Md)" />
             }
         </text>;
 
@@ -180,6 +180,13 @@
     /// (ns-mud.css), which is what lets one size serve a row and a page header alike.</summary>
     [Parameter]
     public NsSize? Size { get; set; }
+
+    /// <summary>Overrides the label breakpoint for every action this toolbar renders. Unset is
+    /// Never — the icon-only row this toolbar was built for — so a host wording its own verbs
+    /// (a dialog's labelled home for a contributed act, ui/actions.md) writes Always rather than
+    /// a kit reaching past the presenter to draw a worded link of its own.</summary>
+    [Parameter]
+    public NsBreakpoint? Breakpoint { get; set; }
 
     /// <summary>What the action column reserves: the cap, the overflow beside it, and the
     /// constant when the row carries one — the whole cell, honestly, now that the whole cell

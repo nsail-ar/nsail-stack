@@ -23,7 +23,7 @@
         <NsTd For="() => row.Name">@row.Name</NsTd>
         <NsTd DataLabel="Total">@row.Age</NsTd>
         <NsTd>
-            <NsActionToolbar Actions="Actions" Resolving="Resolving" Leading="Leading" Constant="Constant" MaxVisible="MaxVisible" />
+            <NsActionToolbar Actions="Actions" Resolving="Resolving" Leading="Leading" Constant="Constant" MaxVisible="MaxVisible" Breakpoint="Breakpoint" />
         </NsTd>
     </RowTemplate>
 </NsTable>
@@ -44,6 +44,9 @@
 
     [Parameter]
     public bool Resolving { get; set; }
+
+    [Parameter]
+    public NsBreakpoint? Breakpoint { get; set; }
 
     DataPage<TestModel> Page { get; } = DataPage<TestModel>.From([new TestModel { Name = "Ana", Age = 3 }]);
 }
