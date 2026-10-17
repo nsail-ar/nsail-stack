@@ -32,12 +32,19 @@ public sealed class BrandThemeContrastTests
     const double HoverWeight = 0.06;
 
     // The light scheme's page-vs-card step, held from ABOVE as well as from below. The readings
-    // today are 1.09:1 for Surface and 1.10:1 for SurfaceRaised over Background, and the ceiling
-    // sits just over the higher one: light separates by border and shadow, so any re-tune that
-    // hardens the step into a tonal separation of its own has to move this number in the open
-    // instead of drifting past an eye. Light only — dark's step is 1.14:1 and is MEANT to read
-    // on its own, which is the floor below.
+    // today are 1.01:1 for Surface and 1.02:1 for SurfaceRaised over Background, and the ceiling
+    // sits well over both: light separates by border and shadow, so any re-tune that hardens the
+    // step into a tonal separation of its own has to move this number in the open instead of
+    // drifting past an eye. Light only — dark's step is 1.14:1 and is MEANT to read on its own,
+    // which is the floor below.
     const double LightStepCeiling = 1.11;
+
+    // The most OKLCH chroma the light canvas may carry under a chrome a colour field cannot
+    // refuse — nsail#2335, where the house's own SurfaceTint read on a canvas mask that still had
+    // gamut to spare (unlike the near-white card masks, which already back their own chroma off)
+    // and turned `#3b7091` into a sky-blue page. Loose enough that a genuinely steel chrome still
+    // tints the canvas a hair, tight enough that it never reads as a coloured page again.
+    const double LightCanvasChromaCeiling = 0.01;
 
     // Each scheme as it ships, and worn under chromes a colour field cannot refuse: the ladder
     // takes the chrome's hue (BrandTone.Tint), so a floor met on the default warm greys has to
@@ -412,6 +419,20 @@ public sealed class BrandThemeContrastTests
             $"{Reading("light raised card", light.SurfaceRaised, light.Background)} > {LightStepCeiling}");
     }
 
+    // nsail#2335: `BrandTone.Tint` only caps a rung's chroma, never its luminance — a mask with
+    // gamut to spare rides that cap at full strength regardless of how pale it reads. The light
+    // canvas's mask is tuned as close to white as the cards' own, so it backs its chroma off the
+    // same way; this is what keeps it there under a steel chrome a colour field cannot refuse.
+    [Fact]
+    public void TheLightCanvasStaysAchromaticUnderAVividChrome()
+    {
+        var light = Worn(BrandTheme.DefaultLight(), "#3b7091");
+
+        Assert.True(
+            Chroma(light.Background) <= LightCanvasChromaCeiling,
+            $"the light canvas {light.Background} carries {Chroma(light.Background):0.0000} OKLCH chroma > {LightCanvasChromaCeiling}");
+    }
+
     // What the eye is given, not what the rule says. Every ground the accent's ink lands on: the
     // three rungs bare, each of them under the accent's own soft wash — --ns-accent-soft is mixed
     // against transparent, so NsAs.Important's label stands on the wash over whichever rung the
@@ -517,6 +538,27 @@ public sealed class BrandThemeContrastTests
         var blue = Channel(digits[4..6]);
 
         return (0.2126 * red) + (0.7152 * green) + (0.0722 * blue);
+    }
+
+    // OKLCH chroma, read off the rung rather than borrowed from BrandTone.Tint's own OKLab
+    // conversion: the derivation sets the chroma, so it cannot be the one thing that grades it.
+    // Björn Ottosson's OKLab, from linear sRGB.
+    static double Chroma(string color)
+    {
+        var digits = color.AsSpan().TrimStart('#');
+
+        var red = Channel(digits[..2]);
+        var green = Channel(digits[2..4]);
+        var blue = Channel(digits[4..6]);
+
+        var l = Math.Cbrt((0.4122214708 * red) + (0.5363325363 * green) + (0.0514459929 * blue));
+        var m = Math.Cbrt((0.2119034982 * red) + (0.6806995451 * green) + (0.1073969566 * blue));
+        var s = Math.Cbrt((0.0883024619 * red) + (0.2817188376 * green) + (0.6299787005 * blue));
+
+        var a = (1.9779984951 * l) - (2.4285922050 * m) + (0.4505937099 * s);
+        var b = (0.0259040371 * l) + (0.7827717662 * m) - (0.8086757660 * s);
+
+        return Math.Sqrt((a * a) + (b * b));
     }
 
     static double Channel(ReadOnlySpan<char> pair)

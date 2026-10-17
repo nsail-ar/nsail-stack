@@ -68,6 +68,13 @@ the constants would repaint every filled face above to fix a word.
 without a border. In light the ladder inverts — white has nowhere left to rise — so the canvas
 sinks below the surfaces and border-plus-shadow does the separating.
 
+**`SurfaceTint` caps a rung's chroma, never its lightness** — `BrandTone.Tint` solves for the
+mask's own relative luminance regardless of `cap`, so a rung only reads as near-white when its
+OWN mask sits that close to white, backing its chroma off through the same narrow sRGB gamut the
+light `Surface`/`SurfaceRaised` masks already sit in. A rung whose mask has gamut to spare rides
+the cap at full strength instead, which under a vivid chrome is the difference between a tinted
+canvas and a coloured page.
+
 **The body floor is held on every rung of that ladder, the canvas included.** `Background` is a
 ground text is set on and not only what the cards stand on: `NsPanel` paints nothing of its own
 ([styling.md](styling.md)), so every word inside a chromeless panel — a screen's muted figure, an
