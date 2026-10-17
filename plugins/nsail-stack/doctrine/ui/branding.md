@@ -68,6 +68,17 @@ the constants would repaint every filled face above to fix a word.
 without a border. In light the ladder inverts — white has nowhere left to rise — so the canvas
 sinks below the surfaces and border-plus-shadow does the separating.
 
+**Main and aside are the same two rungs, and the step between them is the whole of the
+difference.** The main surface's ground is the canvas (`Background`, what `NsPanel` paints
+nothing over); the aside's is `Surface` (`ns-mud.css`: "the aside IS the content surface") — the
+very step just described, never a tone of its own. A component tuned on the canvas therefore
+reads the same standing in the aside, in both schemes, with elevation (the dark ring, the light
+shadow) carrying the rest of the difference. **The condition that holds it: no component paints
+its own ground.** A field, a tab strip and a table standing alone inherit whatever they stand on
+(`ONE FRAME PER TABLE`, [styling.md](styling.md)); `NsCard` and `NsPaper` are the components that
+DO paint one, which is why they belong to a section that earns separation from its siblings —
+never to a plain group of fields with nothing beside it to be told apart from.
+
 **`SurfaceTint` caps a rung's chroma, never its lightness** — `BrandTone.Tint` solves for the
 mask's own relative luminance regardless of `cap`, so a rung only reads as near-white when its
 OWN mask sits that close to white, backing its chroma off through the same narrow sRGB gamut the
