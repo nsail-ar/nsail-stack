@@ -17,6 +17,7 @@
     <MudTextField T="string"
                   Value="Value"
                   ValueChanged="SetValue"
+                  TextChanged="@GetTextChanged()"
                   Label="@GetLabel()"
                   Placeholder="@GetPlaceholder()"
                   Required="IsRequired"
@@ -99,5 +100,15 @@
     string? GetPlaceholder()
     {
         return Placeholder ?? Strings.Translate("Common.Search");
+    }
+
+    // Wired only for a box answering OnEnterCommit: the undebounced track it needs costs every
+    // OTHER caller nothing, since an unset TextChanged is the vendor's own untouched path — the
+    // one nsail-stack#80 found a tree's own clearing relies on.
+    EventCallback<string?> GetTextChanged()
+    {
+        return OnEnterCommit.HasDelegate
+            ? EventCallback.Factory.Create<string?>(this, HoldTyped)
+            : default;
     }
 }

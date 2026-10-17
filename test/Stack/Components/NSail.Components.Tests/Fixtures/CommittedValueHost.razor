@@ -19,7 +19,8 @@
     <NsPhoneField @bind-Value="context.Phone" OnCommit="@(text => Commit(nameof(NsPhoneField), text))" />
     <NsUrlField @bind-Value="context.Site" OnCommit="@(text => Commit(nameof(NsUrlField), text))" />
     <NsPasswordField @bind-Value="context.Secret" OnCommit="@(text => Commit(nameof(NsPasswordField), text))" />
-    <NsSearchField @bind-Value="context.Search" OnCommit="@(text => Commit(nameof(NsSearchField), text))" />
+    <NsSearchField @bind-Value="context.Search" OnCommit="@(text => Commit(nameof(NsSearchField), text))"
+                   OnEnterCommit="@(text => _enterCommitted.Add(text))" />
     <NsNumericField TValue="decimal?" @bind-Value="context.Amount"
                     OnCommit="@(figure => Commit(nameof(NsNumericField<decimal?>), figure))" />
     <NsMoneyField TValue="decimal?" @bind-Value="context.Price"
@@ -37,12 +38,19 @@
 
     readonly List<(string Field, object? Value)> _committed = [];
 
+    readonly List<string?> _enterCommitted = [];
+
     [Parameter, EditorRequired]
     public TypedValueModel Model { get; set; } = default!;
 
     public IReadOnlyList<(string Field, object? Value)> Committed
     {
         get { return _committed; }
+    }
+
+    public IReadOnlyList<string?> EnterCommitted
+    {
+        get { return _enterCommitted; }
     }
 
     // A bound member moved by the screen rather than by the box — a sibling field deriving it, a

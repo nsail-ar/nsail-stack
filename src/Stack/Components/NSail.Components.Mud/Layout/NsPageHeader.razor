@@ -41,7 +41,7 @@
                     }
                     else
                     {
-                        <NsSearchField Value="@SearchText" ValueChanged="SearchTextChanged" Debounce="300" Grow AutoFocus="ArrivalFocus" />
+                        <NsSearchField Value="@SearchText" ValueChanged="SearchTextChanged" OnEnterCommit="SearchCommitted" Debounce="300" Grow AutoFocus="ArrivalFocus" />
                     }
                 </div>
             }
@@ -137,6 +137,12 @@
 
     [Parameter]
     public EventCallback<string?> SearchTextChanged { get; set; }
+
+    /// <summary>The search was committed with Enter specifically — withheld on a blur, and on
+    /// every debounced keystroke `SearchTextChanged` already answers. For a page that only acts
+    /// on a deliberate commit (a scanner's own key), never on typing passing through.</summary>
+    [Parameter]
+    public EventCallback<string?> SearchCommitted { get; set; }
 
     /// <summary>Whether the built-in search box is where a navigation's arrival hands the
     /// cursor (ui/focus.md) — on by default, because a list's first act is almost always
