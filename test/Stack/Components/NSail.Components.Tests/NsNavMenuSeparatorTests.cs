@@ -38,11 +38,26 @@ public sealed class SeparatorSectionArchiveProbePage : ComponentBase;
 /// which is why nothing collapses a run of them on its own, and why NsNavMenu's render, not
 /// Merge, is what applies "a rule between nothing and nothing" (the search-filter case above)
 /// to a permission's empty band and to a level's own edges (nsail#1052).</summary>
-public sealed class NsNavMenuSeparatorTests : BunitContext
+public sealed class NsNavMenuSeparatorTests : BunitContext, IAsyncLifetime
 {
+    // The drawer draws a tooltip now (the "?" door), and the vendor's popover service behind one
+    // is IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    Task IAsyncLifetime.InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await DisposeAsync();
+    }
+
     BunitAuthorizationContext Setup(params NavMenuItem[] items)
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
+        // renders it composes one.
+        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();

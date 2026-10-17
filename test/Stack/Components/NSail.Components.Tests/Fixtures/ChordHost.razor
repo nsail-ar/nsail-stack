@@ -6,8 +6,9 @@
 @using NSail.Components
 
 @* Every control that claims a chord, on one overlay surface: the form's hero, the quiet submit
-   of a filter beside it, both faces of the close, a chromed button claiming one of its own and
-   the page's search box. A NAMED surface, because NsClose removes itself on the main one. *@
+   of a filter beside it, both faces of the close, a chromed button claiming one of its own, the
+   page's search box, the app map's box in the drawer and a door claiming the edit key. A NAMED
+   surface, because NsClose removes itself on the main one. *@
 <CascadingValue Value="RouteTable">
     <NsSurfaceContext Name="Surfaces.Aside" Close="Nothing" Context="surface">
         <NsForm TModel="SubmitTrackingModel" Model="Model" OnSubmit="HandleSubmit" Untracked="Untracked">
@@ -19,13 +20,22 @@
             <NsClose Class="cancel" />
             <NsButton Label="Shortcuts" Chord="@NsKeys.Help" Class="sheet" />
             <NsButton Icon="@NsIcons.Close" Breakpoint="NsBreakpoint.Never" Label="Dismiss" Chord="@NsKeys.Close" Class="square" />
+            <NsLink Href="/chords/edit" Label="Editar" Icon="@NsIcons.Edit" Chord="@NsKeys.Edit" Class="door" />
+            <NsLink Href="/chords/edit" Label="Editar" Icon="@NsIcons.Edit" Breakpoint="NsBreakpoint.Never" Chord="@NsKeys.Edit" Class="glyphdoor" />
+            <NsLink Href="/chords/elsewhere" Label="Ir" Class="plain" />
         </NsForm>
+        @* The app's own map, which stands in the drawer and not in the page's form: its box is
+           the one Ctrl+K lands in. *@
+        <div class="ns-nav-drawer">
+            <NsSearchField Value="@_map" ValueChanged="SetMap" Map />
+        </div>
     </NsSurfaceContext>
 </CascadingValue>
 
 @code {
 
     string _search = string.Empty;
+    string _map = string.Empty;
 
     [Parameter, EditorRequired]
     public RouteTable RouteTable { get; set; } = default!;
@@ -45,6 +55,11 @@
     void SetSearch(string? value)
     {
         _search = value ?? string.Empty;
+    }
+
+    void SetMap(string? value)
+    {
+        _map = value ?? string.Empty;
     }
 
     static Task HandleSubmit()

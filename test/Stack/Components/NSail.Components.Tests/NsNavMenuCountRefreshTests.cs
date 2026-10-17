@@ -26,8 +26,20 @@ public sealed class CountedElsewhereProbePage : ComponentBase;
 /// sitting on one screen watched a stale number all afternoon. NavMenuCountsChanged is the
 /// Stack's generic word for "the numbers moved, ask again" — generic because the drawer may
 /// not learn what any module counts, so the only thing it can be told is to ask.</summary>
-public sealed class NsNavMenuCountRefreshTests : BunitContext
+public sealed class NsNavMenuCountRefreshTests : BunitContext, IAsyncLifetime
 {
+    // The drawer draws a tooltip now (the "?" door), and the vendor's popover service behind one
+    // is IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    Task IAsyncLifetime.InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await DisposeAsync();
+    }
+
     readonly CapturingMediator _mediator = new();
 
     readonly CountingNavCount _count = new("Inbox");
@@ -40,6 +52,9 @@ public sealed class NsNavMenuCountRefreshTests : BunitContext
     IRenderedComponent<NsNavMenu> RenderMenu()
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
+        // renders it composes one.
+        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();

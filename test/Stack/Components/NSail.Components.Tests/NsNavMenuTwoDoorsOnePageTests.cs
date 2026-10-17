@@ -28,8 +28,20 @@ public sealed class TwoDoorsMeasuresProbePage : ComponentBase;
 /// is employee and customer at once. The route and the query tie, so the two tie-breaks the drawer
 /// had both answered "the first in the tree" and the counter's section opened over the door the
 /// person actually touched.</summary>
-public sealed class NsNavMenuTwoDoorsOnePageTests : BunitContext
+public sealed class NsNavMenuTwoDoorsOnePageTests : BunitContext, IAsyncLifetime
 {
+    // The drawer draws a tooltip now (the "?" door), and the vendor's popover service behind one
+    // is IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    Task IAsyncLifetime.InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await DisposeAsync();
+    }
+
     const string Route = "/two-doors/appointments";
 
     BunitNavigationManager Navigation
@@ -43,6 +55,9 @@ public sealed class NsNavMenuTwoDoorsOnePageTests : BunitContext
     IRenderedComponent<NsNavMenu> RenderMenu(int accountWeight = 51)
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
+        // renders it composes one.
+        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();

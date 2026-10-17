@@ -28,11 +28,26 @@ public sealed class ReceiptsProbePage : ComponentBase;
 /// place recepciones and proveedores are going to be born in. The collapse keeps the case that
 /// bore it (a settings group is a list of screens, so a fold around one screen is ceremony) and
 /// loses the main nav, which is what these render.</summary>
-public sealed class NsNavMenuGroupScopeTests : BunitContext
+public sealed class NsNavMenuGroupScopeTests : BunitContext, IAsyncLifetime
 {
+    // The drawer draws a tooltip now (the "?" door), and the vendor's popover service behind one
+    // is IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    Task IAsyncLifetime.InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await DisposeAsync();
+    }
+
     void Setup(params NavMenuItem[] items)
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
+        // renders it composes one.
+        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();
