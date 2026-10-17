@@ -22,6 +22,26 @@
 
     RenderFragment noRecords = Empty ?? defaultEmpty;
 
+    // Built once per render whether or not it draws here: a page header elsewhere on this
+    // surface may be the one putting it on screen (ShowExportInline, Surface.Export), and
+    // either way the trigger and its options are the same markup — one declaration, not two
+    // copies that could drift. Announced unconditionally: a surface with no header reading it
+    // is simply nobody reading it (exporting.md).
+    RenderFragment? exportTrigger = Exportable
+        ? @<MudTooltip Text="@Strings.Translate("Actions.Export")">
+              @* Writes nothing, so a form that refuses writes keeps it: reading a list out is
+                 not a way in (NsActBase). *@
+              <NsMenu Icon="@NsIcons.Download" Label="@Strings.Translate("Actions.Export")" Writes="false" Disabled="_exporting" Class="ns-table-export">
+                  @foreach (var writer in Writers!.All)
+                  {
+                      <NsMenuItem Action="@ExportAction(writer)" />
+                  }
+              </NsMenu>
+          </MudTooltip>
+        : null;
+
+    Surface?.AnnounceExport(exportTrigger);
+
     RenderFragment headerCells =
         @<text>
             @* The pass boundary for the column set, and the reason it can be one: this runs while
@@ -130,10 +150,12 @@
 @* The collection's own bar, and the only seat the controls over the WHOLE collection have: a
    grid that offers a way in names itself, so Agregar is at the top right on every screen and
    there is no second position for it to drift to — the same place a list page's NUEVO takes.
-   Exportar is the other one of those and sits beside it, which is why the bar now draws for a
-   grid that has something to put in it even where nothing named the grid: the pager row is the
-   alternative, and it exists in only one of the three modes. *@
-@if (Title is not null || Exportable)
+   Exportar used to be the other one of those; now a list page's header draws it instead, ahead
+   of Nuevo (exporting.md) — this bar still carries it where there is no header to hand it to
+   (an embedded grid, a dialog), which is why the bar still draws for a grid that has something
+   of its own to put in it even where nothing named the grid: the pager row is the alternative
+   seat, and it exists in only one of the three modes. *@
+@if (Title is not null || ShowExportInline)
 {
     <NsStack Horizontal Align="NsAlign.Center" Justify="NsAlign.SpaceBetween" Class="ns-collection-bar">
         @if (Title is not null)
@@ -144,16 +166,9 @@
            space-between seats a single child at the START — the controls would read as the
            grid's heading. *@
         <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Class="ms-auto">
-            @if (Exportable)
+            @if (ShowExportInline)
             {
-                @* Writes nothing, so a form that refuses writes keeps it: reading a list out is
-                   not a way in (NsActBase). *@
-                <NsMenu Label="@Strings.Translate("Actions.Export")" Writes="false" Disabled="_exporting" Class="ns-table-export">
-                    @foreach (var writer in Writers!.All)
-                    {
-                        <NsMenuItem Action="@ExportAction(writer)" />
-                    }
-                </NsMenu>
+                @exportTrigger
             }
             @if (Editable && NewRow is not null && AddControl)
             {
@@ -1024,6 +1039,11 @@ else
     // ask for Exportar is a screen that can forget to.
     bool Exportable => Writers is { IsEmpty: false } && RowEditor is null && (OnQuery.HasDelegate || HoldsItsList);
 
+    // A page header stood on this surface claims drawing Export in its own action line
+    // (SurfaceContext.ClaimsExport); this bar keeps drawing it only where none did — an embedded
+    // grid, a dialog — so the trigger never appears twice.
+    bool ShowExportInline => Exportable && !(Surface?.HasExportHeader ?? false);
+
     // A grid with no paging callback: its rows are all in hand, so it is a list unless something
     // writes them. The two write seams a grid can carry without a RowEditor are the bar's way in
     // and the row controls — a collection that can be added to or taken from is being edited
@@ -1035,6 +1055,7 @@ else
         return new ActionItem
         {
             Name = $"Export{writer.Kind}",
+            Icon = writer.Icon,
             Writes = false,
             OnClick = () => Export(writer)
         };

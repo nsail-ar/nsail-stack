@@ -33,8 +33,10 @@ public sealed class SurfaceContext
     Glyph? _icon;
     RenderFragment? _utilities;
     RenderFragment? _index;
+    RenderFragment? _export;
     object? _refusingSource;
     object? _rowSource;
+    object? _exportSource;
     int _workCount;
     volatile bool _hasWork;
     volatile bool _hasChanges;
@@ -210,6 +212,65 @@ public sealed class SurfaceContext
         IndexChanged?.Invoke();
     }
 
+    /// <summary>A reading grid's own export trigger, handed up the other way across the same
+    /// boundary <see cref="Title"/> already crosses (a table reads the page's own name; this is
+    /// the page's header asking the table for its control instead of drawing one of its own).
+    /// Null where nothing on this surface exports, or where the exporting grid's own fragment is
+    /// stale — not deduplicated by reference like <see cref="Announce"/>'s fields, because the
+    /// grid rebuilds the fragment on every render of its own and a disabled trigger while an
+    /// export is running has to reach a header that never re-renders on its own.</summary>
+    public RenderFragment? Export => _export;
+
+    /// <summary>Raised whenever the exporting grid re-announces — on every one of its own
+    /// renders while it has something to export, never only when the fragment's shape
+    /// changed.</summary>
+    public Action? ExportChanged;
+
+    /// <summary>The exporting grid's own call, once per render, whenever <c>Exportable</c>
+    /// holds.</summary>
+    public void AnnounceExport(RenderFragment? export)
+    {
+        if (_export is null && export is null)
+        {
+            return;
+        }
+
+        _export = export;
+
+        ExportChanged?.Invoke();
+    }
+
+    /// <summary>Whether a page header stands on this surface to draw <see cref="Export"/> in its
+    /// own action line. An embedded grid or a dialog's has none, and keeps drawing its own
+    /// trigger in the collection bar instead of handing it to a header with nowhere to put
+    /// it.</summary>
+    internal bool HasExportHeader => _exportSource is not null;
+
+    // First header on the surface wins, the same shape as ClaimsRow — asked from the header's own
+    // render, because what claims it can change while the surface lives.
+    internal bool ClaimsExport(object source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        lock (_sync)
+        {
+            _exportSource ??= source;
+
+            return ReferenceEquals(_exportSource, source);
+        }
+    }
+
+    internal void ReleaseExport(object source)
+    {
+        lock (_sync)
+        {
+            if (ReferenceEquals(_exportSource, source))
+            {
+                _exportSource = null;
+            }
+        }
+    }
+
     /// <summary>Content size requested by the rendered page, along the host's own axis: a
     /// side drawer reads it as width, the main container as max-width.</summary>
     public NsSize Size { get; private set; } = NsSize.Md;
@@ -300,6 +361,7 @@ public sealed class SurfaceContext
         // standing in the chrome.
         Announce(null, null, null);
         AnnounceIndex(null);
+        AnnounceExport(null);
 
         if (Size == NsSize.Md && !Floating)
         {
