@@ -203,7 +203,65 @@ shown twice, and the key is a second fact the visible word never carried, which 
 `NsClose`'s Cancelar, a chromed `NsButton` claiming a chord of its own. Their word is a string
 via `NsSubmit.Label`/`NsClose.Label` (`ChildContent` cannot give one back) or `NsButton.Label`
 directly; the claim in `aria-keyshortcuts` is unchanged, so a reader announcing the chord once
-is still exactly once.
+is still exactly once. `NsLink` and `NsPageLink` carry the same `Chord` for the door a screen
+offers (F2 on a record's Editar), and the worded ANCHOR takes an `aria-label` only there: an
+anchor's name folds generated content exactly as a button's does, so a bubble it draws is a
+name to outrank — one that draws none has nothing to outrank and keeps carrying no second copy
+of its own text.
+
+**A search box is the one control that draws its key.** It has no word to hover, so there is no
+bubble to carry one: `NsSearchField` paints the first key it claims inside the box at the
+trailing edge (`.ns-search-key`, `aria-hidden`, and only while the box is empty), which is also
+the convention every application that spends a chord on a search box follows. Never in the
+PLACEHOLDER — a placeholder is an input's name FALLBACK, so a key written there lands in the
+accessible name, nsail#2259 one layer up, and it moves a string every browser walk reaches the
+box by.
+
+## Ctrl+K is the drawer's own search, and "?" the door beside it
+
+Both chords are the FRAME's and not a page's (nsail#2207): a screen that draws no header of its
+own still answers them, and a phone, where the drawer is closed, answers neither — the box and
+the door are both inside it, and a chord no live control declares does nothing.
+
+- **Ctrl+K lands in the menu's search** (`NsSearchField.Map`, planted by `NsNavMenu`), and there
+  is no second palette: the menu is the one list of where a session may go, permission gate
+  included, so a palette built from the route table would be a second source to keep in step
+  with it. Enter in that box opens the first entry still shown, which is literally that entry's
+  own link (`.ns-nav-entry`, `ns.js`). What the box reaches is therefore what the menu lists — a
+  screen reached FROM another one is reached by going there first.
+- **"?" opens a sheet of the claims on screen** (`NsKeySheet`, hosted through
+  `DialogManager.Open`, so Escape and the X close it through the guard everything else goes
+  through). Its lines are read off the DOM at the instant the door is pressed (`nsapp.chords`) —
+  each line the declaring control's own word, already in the install's language — and the three
+  groups are derived from WHERE that control stands: inside `.ns-cells` it is the grid's, inside
+  a `form` the form's, otherwise the frame's. So no control declares its group, none can declare
+  the wrong one, and there is still no table of shortcuts for anybody to keep in step with a
+  screen.
+
+## F2 and F3 are the only function keys taken
+
+They are the desktop convention the same hands come from (Excel, Explorer), and they do what no
+character chord can: answer from inside a box being typed in. WCAG 2.1.4 is about a chord
+somebody could be in the middle of TYPING — which is "/" and "?" and nothing else — so the gate
+in `ns.js` keys on whether the chord IS a character (`character` in `CHORDS`) rather than on
+whether it carries a modifier. F1, F5, F6, F11 and F12 stay the browser's.
+
+F3 joins "/" on a page's search and is the key that box DRAWS, "/" being the silent alias that
+answers only while nobody is typing. F2 is claimed by the Stack's own row pencil — one
+declaration covering every grid in the house — and the row that answers is the row the keystroke
+was made in (`chordTarget` asks the grid row before the form around it): every row publishes the
+same key, so anything else would press the last row's.
+
+## The grid's arrows move the cursor; Left and Right are the caret's
+
+Beside the Enter policy and for its reason — which row the cursor is on is a property of the
+keystroke, read off the DOM when it is pressed. Up and Down make the same move Enter makes
+without its commit: going to look at the row above is not confirming the one below it. Left and
+Right are not in the policy at all, because inside a cell being typed in they belong to the
+caret (the ARIA grid pattern hands the arrows to the control in edit mode) and Tab is what
+crosses cells. Delete presses the row's own Delete (`.ns-row-delete`), with whatever confirmation
+that button already asks for, and only while the cursor is NOT in a box — there the key is the
+character the hand meant.
 
 ## Container queries: the measured facts
 
