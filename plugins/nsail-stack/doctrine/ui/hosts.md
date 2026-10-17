@@ -163,7 +163,7 @@ that owns the confirm.
   refuses stays open with its reason and keeps the cursor, and no row is ever committed by a
   second path. It never submits the document the grid stands in: the whole policy is one place
   ([forms.md](forms.md), *Enter*).
-- **Up and Down make that move without the commit, Left and Right stay the caret's, F2 opens the
+- **Up and Down make that same move either way, Left and Right stay the caret's, F2 opens the
   row the cursor is on and Delete removes it** — the row's own controls again (`ns-row-edit`,
   `ns-row-delete`), so the confirm the row already asks for is the confirm the key gets. The
   reasons are in [cases: shell](../intentional-ui-cases-shell.md), *The grid's arrows move the

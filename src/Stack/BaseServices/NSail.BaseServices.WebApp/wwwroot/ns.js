@@ -199,7 +199,10 @@
         if (target.closest(".ns-nav-find")) {
             e.preventDefault();
 
-            const entry = Array.from(document.querySelectorAll(".ns-nav-entry")).find(live);
+            // The LINK inside the marked entry: the vendor hangs a class handed to its nav link
+            // on the row's wrapper and not on the anchor, and a wrapper is not a thing a click
+            // navigates.
+            const entry = Array.from(document.querySelectorAll(".ns-nav-entry a[href]")).find(live);
 
             if (entry)
                 entry.click();
@@ -217,7 +220,7 @@
 
         if (row) {
             e.preventDefault();
-            advanceCells(grid, target, row);
+            advanceCells(grid, target, row, 1, true);
             return;
         }
 
@@ -255,7 +258,10 @@
     // keystroke has reached the box at all, and a click dispatched from here would be processed
     // ahead of the box's own commit -- the row confirmed from a value the keystroke had not
     // finished writing.
-    async function advanceCells(grid, from, row) {
+    // `step` is which way the cursor goes and `adding` whether running out of rows means making
+    // one: Enter walks DOWN and writes the next line where there is none, and the arrows walk
+    // either way and stop at the ends -- a grid is not a ring.
+    async function advanceCells(grid, from, row, step, adding) {
         const cell = from.closest("td");
         const column = cell ? cell.cellIndex : -1;
         const at = rowsOf(grid).indexOf(row);
@@ -267,6 +273,10 @@
 
         const commit = rowAt(grid, at)?.querySelector(".ns-row-commit");
 
+        // Leaving an open row is CLOSING it, and the only thing that may close it is the row's
+        // own Confirmar: a host that opens one row at a time greys every other row's pencil
+        // while one is open, so a move that skipped this would have nothing to move onto -- and
+        // a second mechanism for closing a row is exactly what this does not have.
         if (commit) {
             commit.click();
 
@@ -278,10 +288,13 @@
                 return;
         }
 
-        if (rowAt(grid, at + 1)) {
-            await placeInRow(grid, at + 1, column);
+        if (rowAt(grid, at + step)) {
+            await placeInRow(grid, at + step, column);
             return;
         }
+
+        if (!adding)
+            return;
 
         const add = addControl(grid);
 
@@ -300,10 +313,11 @@
     // which row the cursor is on is a property of the KEYSTROKE, read off the DOM at the instant
     // it is pressed, and the press is literally that row's own control.
     //
-    // Up and Down are the same MOVE Enter makes, without the commit: going to look at the row
-    // above is not confirming the one below it. Left and Right are not here at all -- inside a
-    // cell being typed in they are the caret's, which is what the ARIA grid pattern hands the
-    // control in edit mode, and Tab is what crosses cells.
+    // Up and Down are the MOVE Enter makes, either way and stopping at the ends: a grid is not a
+    // ring, so the row above the first and the row below the last are nowhere, and only Enter
+    // writes a line that is not there yet. Left and Right are not here at all -- inside a cell
+    // being typed in they are the caret's, which is what the ARIA grid pattern hands the control
+    // in edit mode, and Tab is what crosses cells.
     //
     // Delete presses the row's own Delete, with whatever confirmation that button already
     // carries, and only while the cursor is NOT in a box: there the key is the character the
@@ -352,17 +366,17 @@
         if (target.getAttribute("role") === "combobox" && target.getAttribute("aria-expanded") === "true")
             return;
 
-        const at = rowsOf(grid).indexOf(row);
-        const to = at + (e.key === "ArrowDown" ? 1 : -1);
-
-        if (at < 0 || !rowAt(grid, to))
-            return;
-
+        // The keystroke is taken OUTRIGHT, propagation and all, which the two listeners above
+        // never need to do: a number box steps its own value on these two keys and it does that
+        // from its own handler rather than as the keydown's default action, so preventing the
+        // default alone left the row it was leaving incremented by one. Capture plus this is
+        // what keeps the key from reaching the box at all. A spinner's arrows are still on the
+        // box for a pointer; inside a grid the keys are the grid's.
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
 
-        const cell = target.closest("td");
-
-        placeInRow(grid, to, cell ? cell.cellIndex : -1);
+        advanceCells(grid, target, row, e.key === "ArrowDown" ? 1 : -1, false);
     }
 
     document.addEventListener("keydown", onCellsKeyDown, true);

@@ -255,13 +255,16 @@ same key, so anything else would press the last row's.
 ## The grid's arrows move the cursor; Left and Right are the caret's
 
 Beside the Enter policy and for its reason — which row the cursor is on is a property of the
-keystroke, read off the DOM when it is pressed. Up and Down make the same move Enter makes
-without its commit: going to look at the row above is not confirming the one below it. Left and
-Right are not in the policy at all, because inside a cell being typed in they belong to the
-caret (the ARIA grid pattern hands the arrows to the control in edit mode) and Tab is what
-crosses cells. Delete presses the row's own Delete (`.ns-row-delete`), with whatever confirmation
-that button already asks for, and only while the cursor is NOT in a box — there the key is the
-character the hand meant.
+keystroke, read off the DOM when it is pressed. Up and Down make the move Enter makes, either way
+and stopping at the ends: a grid is not a ring, so only Enter writes the line that is not there
+yet. **Leaving an open row is closing it, and the row's own Confirmar is what may** — a host that
+opens one row at a time greys every other pencil while one is open, so a move that skipped the
+commit would have nothing to move onto, and closing a row by any second mechanism is exactly
+what this does not do. Left and Right are not in the policy at all, because inside a cell being
+typed in they belong to the caret (the ARIA grid pattern hands the arrows to the control in edit
+mode) and Tab is what crosses cells. Delete presses the row's own Delete (`.ns-row-delete`), with
+whatever confirmation that button already asks for, and only while the cursor is NOT in a box —
+there the key is the character the hand meant.
 
 ## Container queries: the measured facts
 
