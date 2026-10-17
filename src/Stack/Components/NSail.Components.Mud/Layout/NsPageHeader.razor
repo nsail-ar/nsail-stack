@@ -41,7 +41,7 @@
                     }
                     else
                     {
-                        <NsSearchField Value="@SearchText" ValueChanged="SearchTextChanged" Debounce="300" Grow />
+                        <NsSearchField Value="@SearchText" ValueChanged="SearchTextChanged" Debounce="300" Grow AutoFocus="ArrivalFocus" />
                     }
                 </div>
             }
@@ -137,6 +137,13 @@
 
     [Parameter]
     public EventCallback<string?> SearchTextChanged { get; set; }
+
+    /// <summary>Whether the built-in search box is where a navigation's arrival hands the
+    /// cursor (ui/focus.md) — on by default, because a list's first act is almost always
+    /// searching it. Off for a screen whose first act is something else, or whose list reads
+    /// too slowly for a box to search nothing in while it does.</summary>
+    [Parameter]
+    public bool ArrivalFocus { get; set; } = true;
 
     /// <summary>How many advanced filters are currently set — the page computes it (only it
     /// knows), shown as a badge so filters aren't invisibly applied with the panel closed.</summary>

@@ -22,6 +22,12 @@ public abstract class NsPickerBase : NsPartial
     [Parameter]
     public bool Disabled { get; set; }
 
+    /// <summary>Forwarded to the real field this picker composes — a picker standing where a
+    /// list's scope selector goes (NsPageHeader's own Search fragment) is that screen's first
+    /// act exactly as a free-text search box is, and carries the same marker (ui/focus.md).</summary>
+    [Parameter]
+    public bool AutoFocus { get; set; }
+
     [CascadingParameter(Name = "ParentDisabled")]
     bool ParentDisabled { get; set; }
 

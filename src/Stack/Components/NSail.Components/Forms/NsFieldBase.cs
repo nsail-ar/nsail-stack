@@ -142,6 +142,14 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     // switched to, a row a host just opened — and no field announces it a second way.
     const string FieldMark = "data-ns-field";
 
+    // What the router's own arrival pass (NsArrivalFocus, ns.js) looks for on the element it
+    // lands the cursor on: AutoFocus is the one parameter a screen already writes for "the
+    // cursor starts here", and this is what carries that intent past a single first render — a
+    // marker in the DOM survives a navigation the router defers past the page's own first
+    // paint (a list still loading), where the vendor's own AutoFocus (fired once, then) cannot
+    // reach it.
+    const string ArrivalFocusMark = "data-ns-arrival-focus";
+
     // Most fields have nothing else to stamp, so the plain case is one shared dictionary rather
     // than one per field.
     static readonly Dictionary<string, object> Bare = new() { [FieldMark] = "true" };
@@ -199,10 +207,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         var readOnly = IsReadOnly;
         var chords = Chords;
         var claimed = string.Join(' ', chords.Where(chord => chord is { Length: > 0 }));
+        var autoFocus = AutoFocus;
 
         // A separator neither an autofill token nor a label can contain, so no two different
         // sets share a signature and a change is never mistaken for none.
-        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{takesEnter}\n{describedBy}\n{readOnly}\n{claimed}";
+        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{takesEnter}\n{describedBy}\n{readOnly}\n{claimed}\n{autoFocus}";
 
         if (_attributesFor == signature)
         {
@@ -211,13 +220,18 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         _attributesFor = signature;
 
-        if (autocomplete is null && name is null && !selectOnFocus && !takesEnter && describedBy is null && !readOnly && claimed.Length == 0)
+        if (autocomplete is null && name is null && !selectOnFocus && !takesEnter && describedBy is null && !readOnly && claimed.Length == 0 && !autoFocus)
         {
             _inputAttributes = Bare;
             return;
         }
 
         var attributes = new Dictionary<string, object> { [FieldMark] = "true" };
+
+        if (autoFocus)
+        {
+            attributes[ArrivalFocusMark] = "true";
+        }
 
         // The chords claim the INPUT and not the field's box: "/" means the cursor lands where
         // the typing goes, and the keyboard layer focuses whatever declared the key (ns.js).
