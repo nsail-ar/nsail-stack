@@ -81,11 +81,24 @@ is never offered rather than offered and refused.
 
 ## What a list exports
 
-**A grid whose rows are READ offers Exportar, and no screen asks for it.** `NsTable` draws the menu
-in its own `.ns-collection-bar`, beside Agregar — the bar now draws for a grid that has a control to
-put in it even where nothing named the grid, because the pager row is the only alternative seat and
-it exists in one of the three paging modes. A screen that had to ask for Exportar is a screen that
-can forget to.
+**A grid whose rows are READ offers Exportar, and no screen asks for it.** A screen that had to ask
+for Exportar is a screen that can forget to.
+
+**The trigger is an icon, never text, and it rides the page's header — ahead of Nuevo, never
+below it.** `NsTable` hands its export fragment up to its `SurfaceContext` (`AnnounceExport`, the
+same crossing `Title` already makes the other way: a table reads the page's own name, a header
+reads the table's own control) and `NsPageHeader` draws it in its toolbar, before `Actions`. A
+page header claims the slot once it mounts (`SurfaceContext.ClaimsExport`), so `NsTable`'s own
+`.ns-collection-bar` — where Exportar used to sit, beside Agregar — only draws it where nothing
+claimed it: an embedded grid, a dialog, anything with no page header on its surface. The bar still
+draws for a grid that has a control of its own to put there even where nothing named the grid,
+because the pager row is the only alternative seat and it exists in one of the three paging modes.
+The icon is `NsIcons.Download` and the word `Exportar` is its tooltip and accessible name, never
+visible text, at any width — the menu carries no breakpoint of its own to lose it at.
+
+**Each option's icon is the writer's own** (`IExportWriter.Icon`), never a mapping chrome keeps: a
+writer a host adds brings its glyph with it, the same way it brings its `Kind`, `Extension` and
+`ContentType`.
 
 **Both kinds of list are read out, and the reader cannot tell them apart anyway.** A grid the
 SERVER pages is a list by construction; a grid holding every row in hand is one too — the register

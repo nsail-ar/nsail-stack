@@ -1,0 +1,61 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Exporting
+@using NSail.Icons
+@using NSail.Paging
+
+@* The list page shape: a header with Nuevo and, where the grid below is a list, Exportar
+   handed up ahead of it (exporting.md) — the grid never draws its own copy once a header is
+   standing to take it. ShowHeader off is the other shape, an embedded grid with no header on
+   its surface (a dialog), which is what keeps the collection bar's own Exportar. *@
+
+<MudPopoverProvider />
+
+<CascadingValue Value="Surface" IsFixed="true">
+    @if (ShowHeader)
+    {
+        <NsPageHeader Title="Personas" Icon="@NsIcons.Directory">
+            <Actions>
+                <NsButton Label="Nuevo" />
+            </Actions>
+        </NsPageHeader>
+    }
+
+    <NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="OnQuery">
+        <HeaderContent>
+            <NsTh For="() => context.Name" />
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <NsTd For="() => row.Name">@row.Name</NsTd>
+        </RowTemplate>
+    </NsTable>
+</CascadingValue>
+
+@code {
+
+    DataPage<ExportRowModel> _rows = DataPage<ExportRowModel>.Empty();
+
+    [Parameter, EditorRequired]
+    public SurfaceContext Surface { get; set; } = default!;
+
+    [Parameter]
+    public bool ShowHeader { get; set; } = true;
+
+    Task OnQuery(QueryEventArgs args)
+    {
+        _rows = new DataPage<ExportRowModel>
+        {
+            Items = [new ExportRowModel { Name = "Row 0" }],
+            PageIndex = 0,
+            PageSize = args.PageSize,
+            TotalCount = 1
+        };
+
+        return Task.CompletedTask;
+    }
+}

@@ -3,6 +3,8 @@
 
 using System.Globalization;
 
+using NSail.Icons;
+
 namespace NSail.Exporting;
 
 /// <summary>Turns an <see cref="ExportBook"/> into one file. A writer knows nothing about what it
@@ -18,6 +20,10 @@ namespace NSail.Exporting;
 public interface IExportWriter
 {
     ExportKind Kind { get; }
+
+    /// <summary>The format's own glyph on the menu's option — a writer a host adds brings it,
+    /// so the icon answers for the kind and chrome never names one.</summary>
+    Glyph Icon { get; }
 
     /// <summary>Without the dot.</summary>
     string Extension { get; }
