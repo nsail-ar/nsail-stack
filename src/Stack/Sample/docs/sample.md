@@ -24,8 +24,10 @@ in place, one with `Guid.Empty` or an unknown `Id` is created, and an address th
 longer carries is deleted — so a client that does not edit the list still sends it back as it
 read it (the React edit screen shows the list read-only and returns it untouched). Blazor edits
 it inline (`AddressesEditor`, an `NsListEditor`) and saves it with the contact. An address's
-`[Required]` street is refused by that editor; the server does not walk the list's rows
-(`[Validated]` opens a nested model, not a collection's elements).
+`[Required]` street is refused by both ends off `ContactAddressModel`'s own annotation:
+`UpdateContact.Addresses` carries `[Validated]`, so the wire walks the rows element by element
+and names the offender by its index (`Addresses[0].Street`), and the editor writes no copy of
+the rule — the row the index names stays open under it.
 
 It lives under `src/Stack` but is written the way a kit or an app is: it is the code a
 stranger copies first, so it keeps the consumer-side rules: no vendor types, no doc comments, every
