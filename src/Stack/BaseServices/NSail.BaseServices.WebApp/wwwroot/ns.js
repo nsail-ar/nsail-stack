@@ -602,6 +602,17 @@
             return;
         }
 
+        // A SUBMIT is pressed through its form, naming itself the submitter, which is what a
+        // click on it means. Not by the click itself: a click dispatched from script runs the
+        // button's own handler to completion inside the dispatch -- renderer batch included --
+        // so a hero that greys itself out while the form runs (NsSubmit, FormRunning) is
+        // already disabled when the click's activation behaviour would have submitted, and the
+        // browser skips it. The chord then pressed a button that did nothing, silently.
+        if (el.form && el.type === "submit") {
+            el.form.requestSubmit(el);
+            return;
+        }
+
         el.click();
     }
 
