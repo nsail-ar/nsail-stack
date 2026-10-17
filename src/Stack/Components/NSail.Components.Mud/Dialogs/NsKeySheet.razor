@@ -1,0 +1,60 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@inject StringManager Strings
+
+@* The sheet "?" opens, hosted as an ordinary dialog (DialogManager.Open), so Escape and the X
+   close it through the same guard everything else does and this component owns no key of its
+   own.
+   What it lists is handed to it, read off the DOM by whoever opened it: the claims that were on
+   screen at that instant. So there is no table of shortcuts here either — a chord reaches this
+   sheet by being claimable on the screen behind it, and a control that is hidden, disabled or
+   simply not rendered is absent from both the sheet and the keyboard. *@
+<div class="ns-sheet">
+    @Group(Strings.Translate("Common.ShortcutsNavigation"), Claimed.Navigation)
+    @Group(Strings.Translate("Common.ShortcutsForms"), Claimed.Forms)
+    @Group(Strings.Translate("Common.ShortcutsGrids"), Claimed.Grids)
+</div>
+
+@code {
+
+    /// <summary>What was claimed on screen when the sheet was opened (ns.js, <c>nsapp.chords</c>).
+    /// Handed in rather than read here: the screen this names is the one BEHIND the dialog, and
+    /// a component that reads the DOM after it is drawn would be reading itself too.</summary>
+    [Parameter, EditorRequired]
+    public NsChordsOnScreen Claimed { get; set; } = new();
+
+    // A group with nothing claimed in it draws nothing: the sheet is what works on THIS screen,
+    // and a heading over an empty band is a promise the screen does not keep.
+    RenderFragment? Group(string title, IReadOnlyList<NsChordClaim> claims)
+    {
+        if (claims.Count == 0)
+        {
+            return null;
+        }
+
+        return @<section class="ns-sheet-group">
+            <h3 class="ns-sheet-title">@title</h3>
+            <dl class="ns-sheet-list">
+                @foreach (var claim in claims)
+                {
+                    <div class="ns-sheet-row">
+                        <dt class="ns-sheet-act">@claim.Act</dt>
+                        @* A key per node, which is what kbd is for — and this is the one place a
+                           key is DRAWN at all: on a control it is the hover bubble and never a
+                           badge (nsail#2272), because the control already says its own word. *@
+                        <dd class="ns-sheet-keys">
+                            @foreach (var key in claim.Keys.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <kbd>@key</kbd>
+                            }
+                        </dd>
+                    </div>
+                }
+            </dl>
+        </section>;
+    }
+}

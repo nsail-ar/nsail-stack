@@ -3983,12 +3983,14 @@
 }
 
 /* ===========================================================================================
-   THE KEYBOARD (nsail#2207). Two things the chords need from the stylesheet: the link that is
-   only on screen while it has focus, and a ring wherever the cursor can land. The chord a
-   control answers is shown on its tooltip (THE WHISPER, ns-chord, above) rather than drawn
-   here — a hint beside the word and the word's own hover bubble turned out to be one
-   mechanism, not two (nsail#2272). The chords themselves are declared on the controls and
-   dispatched in ns.js — nothing about which key does what is written here.
+   THE KEYBOARD (nsail#2207): the link that is only on screen while it has focus, a ring
+   wherever the cursor can land, the key a search box shows inside itself, and the sheet "?"
+   opens. The chord a control with a WORD answers is shown on its tooltip (THE WHISPER,
+   ns-chord, above) and never drawn beside the word — a hint and the word's own hover bubble
+   turned out to be one mechanism, not two (nsail#2272); a box has no word to hover and no
+   bubble to carry one, which is the whole reason it is the one control that paints its key.
+   The chords themselves are declared on the controls and dispatched in ns.js — nothing about
+   which key does what is written here.
    =========================================================================================== */
 
 /* THE SKIP LINK is drawn over the chrome and not in the flow: a line of real height at the top
@@ -4030,4 +4032,94 @@
 :is(a, button, [role="button"], [role="tab"], [role="menuitem"], [role="option"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
     outline: 2px solid var(--mud-palette-primary);
     outline-offset: 2px;
+}
+
+/* THE KEY A SEARCH BOX ANSWERS, drawn inside the box at its trailing edge (NsSearchField) —
+   the one place in the house a chord is painted on the control itself, because a box has no
+   word to hover and no bubble to carry it. The wrapper is the field's own box, so the mark is
+   positioned against the input and not against whatever row the field stands in.
+   Untouchable by the pointer: the hit area belongs to the input underneath, and a reminder is
+   not a button. It is also drawn only while the box is empty (NsSearchField), which is what
+   keeps it clear of the vendor's own clear glyph in the same corner. */
+.ns-search-box {
+    position: relative;
+}
+
+.ns-search-key {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    padding: 1px 5px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
+    color: var(--mud-palette-text-disabled);
+    font-size: .6875rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* A field whose label sits above the box (a page's search with a Label) puts the box lower in
+   the wrapper than the wrapper's own middle, so the mark is centred on the INPUT's row rather
+   than on the whole field. Measured from the bottom instead, which is the edge the two shapes
+   share: the helper line is outside this wrapper (NsSearchField renders it as a sibling). */
+.ns-search-box:has(> .mud-input-control > .mud-input-label:not(.mud-input-label-inputcontrol)) .ns-search-key {
+    top: auto;
+    bottom: 10px;
+    transform: none;
+}
+
+/* THE "?" SHEET (NsKeySheet), hosted as an ordinary dialog: the keys that are claimed on the
+   screen behind it, grouped by where the claiming control stands. The one place a key is DRAWN
+   as a key — kbd, which is what the element is for — because here the key is the subject and
+   not a reminder riding something else's word. */
+.ns-sheet-group + .ns-sheet-group {
+    margin-top: 20px;
+}
+
+.ns-sheet-title {
+    margin: 0 0 8px;
+    color: var(--mud-palette-text-secondary);
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.ns-sheet-list {
+    margin: 0;
+}
+
+.ns-sheet-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 4px 0;
+}
+
+.ns-sheet-row + .ns-sheet-row {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.ns-sheet-act {
+    min-width: 0;
+}
+
+.ns-sheet-keys {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 4px;
+    margin: 0;
+}
+
+.ns-sheet-keys kbd {
+    padding: 2px 6px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
+    background-color: var(--mud-palette-background-gray);
+    font-family: inherit;
+    font-size: .75rem;
+    white-space: nowrap;
 }

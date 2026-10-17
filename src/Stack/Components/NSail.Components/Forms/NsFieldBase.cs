@@ -183,10 +183,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     /// still submits on Enter the way it always did.</summary>
     protected virtual bool TakesEnter => false;
 
-    /// <summary>The keyboard chord that lands the cursor in this field (NsKeys), for the one
-    /// kind of box a key is spent on: a page's search answers "/". Null everywhere else —
-    /// a chord per field is a keyboard nobody could learn.</summary>
-    protected virtual string? Chord => null;
+    /// <summary>The keyboard chords that land the cursor in this field (NsKeys), for the one
+    /// kind of box a key is spent on: a page's search answers "/" and F3, the drawer's map
+    /// answers Ctrl+K. Empty everywhere else — a chord per field is a keyboard nobody could
+    /// learn. Held by the field rather than built per render, for InputAttributes' reason.</summary>
+    protected virtual string?[] Chords => [];
 
     void SetInputAttributes()
     {
@@ -196,11 +197,12 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         var takesEnter = TakesEnter;
         var describedBy = DescribedBy;
         var readOnly = IsReadOnly;
-        var chord = Chord;
+        var chords = Chords;
+        var claimed = string.Join(' ', chords.Where(chord => chord is { Length: > 0 }));
 
         // A separator neither an autofill token nor a label can contain, so no two different
         // sets share a signature and a change is never mistaken for none.
-        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{takesEnter}\n{describedBy}\n{readOnly}\n{chord}";
+        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{takesEnter}\n{describedBy}\n{readOnly}\n{claimed}";
 
         if (_attributesFor == signature)
         {
@@ -209,7 +211,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         _attributesFor = signature;
 
-        if (autocomplete is null && name is null && !selectOnFocus && !takesEnter && describedBy is null && !readOnly && chord is null)
+        if (autocomplete is null && name is null && !selectOnFocus && !takesEnter && describedBy is null && !readOnly && claimed.Length == 0)
         {
             _inputAttributes = Bare;
             return;
@@ -217,9 +219,9 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         var attributes = new Dictionary<string, object> { [FieldMark] = "true" };
 
-        // The chord claims the INPUT and not the field's box: "/" means the cursor lands where
+        // The chords claim the INPUT and not the field's box: "/" means the cursor lands where
         // the typing goes, and the keyboard layer focuses whatever declared the key (ns.js).
-        foreach (var (key, value) in NsKeys.Declare(chord))
+        foreach (var (key, value) in NsKeys.Declare(chords))
         {
             attributes[key] = value;
         }

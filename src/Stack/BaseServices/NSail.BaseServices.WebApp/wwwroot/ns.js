@@ -189,6 +189,27 @@
         if (target.tagName === "TEXTAREA")
             return;
 
+        // THE MAP's Enter: the box in the drawer filters the app's own entries (NsNavMenu), and
+        // Enter opens the first one still shown -- the palette standard, and literally that
+        // entry's own link, so the key goes where the click would. The entries are read at the
+        // instant it is pressed, so what "the first one" means is whatever the filter left; an
+        // entry no hand could reach is not one, which is also what makes this nothing on a
+        // phone with the drawer closed. Prevented either way: the box stands in no form, and a
+        // filtered map with no match is not a page to reload.
+        if (target.closest(".ns-nav-find")) {
+            e.preventDefault();
+
+            // The LINK inside the marked entry: the vendor hangs a class handed to its nav link
+            // on the row's wrapper and not on the anchor, and a wrapper is not a thing a click
+            // navigates.
+            const entry = Array.from(document.querySelectorAll(".ns-nav-entry a[href]")).find(live);
+
+            if (entry)
+                entry.click();
+
+            return;
+        }
+
         // A GRID's own Enter: the row is confirmed and the cursor keeps going down the column
         // being typed in -- the next row opened for it where the host opens one row at a time,
         // and a new row where there is none below, which is a counter writing a sale line after
@@ -199,7 +220,7 @@
 
         if (row) {
             e.preventDefault();
-            advanceCells(grid, target, row);
+            advanceCells(grid, target, row, 1, true);
             return;
         }
 
@@ -237,7 +258,10 @@
     // keystroke has reached the box at all, and a click dispatched from here would be processed
     // ahead of the box's own commit -- the row confirmed from a value the keystroke had not
     // finished writing.
-    async function advanceCells(grid, from, row) {
+    // `step` is which way the cursor goes and `adding` whether running out of rows means making
+    // one: Enter walks DOWN and writes the next line where there is none, and the arrows walk
+    // either way and stop at the ends -- a grid is not a ring.
+    async function advanceCells(grid, from, row, step, adding) {
         const cell = from.closest("td");
         const column = cell ? cell.cellIndex : -1;
         const at = rowsOf(grid).indexOf(row);
@@ -249,6 +273,10 @@
 
         const commit = rowAt(grid, at)?.querySelector(".ns-row-commit");
 
+        // Leaving an open row is CLOSING it, and the only thing that may close it is the row's
+        // own Confirmar: a host that opens one row at a time greys every other row's pencil
+        // while one is open, so a move that skipped this would have nothing to move onto -- and
+        // a second mechanism for closing a row is exactly what this does not have.
         if (commit) {
             commit.click();
 
@@ -260,24 +288,13 @@
                 return;
         }
 
-        if (rowAt(grid, at + 1)) {
-            const pencil = rowAt(grid, at + 1).querySelector(".ns-row-edit");
-
-            // Where the host opens one row at a time, going down the column is opening the row
-            // below for editing -- the pencil's own code again. A grid whose every row is
-            // already a row of boxes has no pencil and nothing to open: the cursor just moves.
-            if (pencil && live(pencil)) {
-                pencil.click();
-                await until(() => cellField(grid, at + 1, column));
-            }
-
-            const field = cellField(grid, at + 1, column);
-
-            if (field)
-                place(field);
-
+        if (rowAt(grid, at + step)) {
+            await placeInRow(grid, at + step, column);
             return;
         }
+
+        if (!adding)
+            return;
 
         const add = addControl(grid);
 
@@ -287,6 +304,96 @@
         add.click();
 
         const field = await until(() => cellField(grid, rowsOf(grid).length - 1, -1));
+
+        if (field)
+            place(field);
+    }
+
+    // THE GRID's own arrows and its Delete, beside the Enter policy above and for its reason:
+    // which row the cursor is on is a property of the KEYSTROKE, read off the DOM at the instant
+    // it is pressed, and the press is literally that row's own control.
+    //
+    // Up and Down are the MOVE Enter makes, either way and stopping at the ends: a grid is not a
+    // ring, so the row above the first and the row below the last are nowhere, and only Enter
+    // writes a line that is not there yet. Left and Right are not here at all -- inside a cell
+    // being typed in they are the caret's, which is what the ARIA grid pattern hands the control
+    // in edit mode, and Tab is what crosses cells.
+    //
+    // Delete presses the row's own Delete, with whatever confirmation that button already
+    // carries, and only while the cursor is NOT in a box: there the key is the character the
+    // hand meant, the same WCAG 2.1.4 ground "/" stands on.
+    function onCellsKeyDown(e) {
+        if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey)
+            return;
+
+        if (e.key !== "ArrowUp" && e.key !== "ArrowDown" && e.key !== "Delete")
+            return;
+
+        const target = e.target;
+
+        if (!target || typeof target.closest !== "function" || typeof target.getAttribute !== "function")
+            return;
+
+        const grid = target.closest(".ns-cells");
+        const row = grid ? target.closest(CELL_ROW) : null;
+
+        if (!row)
+            return;
+
+        const field = target.getAttribute("data-ns-field") === "true";
+
+        if (e.key === "Delete") {
+            if (field || typing())
+                return;
+
+            const remove = row.querySelector(".ns-row-delete");
+
+            if (!remove || !live(remove))
+                return;
+
+            e.preventDefault();
+            remove.click();
+            return;
+        }
+
+        // The arrows move the cursor between BOXES, so they are the move only where there is a
+        // cursor to move: a focused button inside the row keeps the platform's own arrow, and a
+        // text area's arrows are its lines. An open list owns them outright -- they walk its
+        // options, which is onDocumentKeyDown's own aria-expanded read.
+        if (!field || target.tagName === "TEXTAREA")
+            return;
+
+        if (target.getAttribute("role") === "combobox" && target.getAttribute("aria-expanded") === "true")
+            return;
+
+        // The keystroke is taken OUTRIGHT, propagation and all, which the two listeners above
+        // never need to do: a number box steps its own value on these two keys and it does that
+        // from its own handler rather than as the keydown's default action, so preventing the
+        // default alone left the row it was leaving incremented by one. Capture plus this is
+        // what keeps the key from reaching the box at all. A spinner's arrows are still on the
+        // box for a pointer; inside a grid the keys are the grid's.
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        advanceCells(grid, target, row, e.key === "ArrowDown" ? 1 : -1, false);
+    }
+
+    document.addEventListener("keydown", onCellsKeyDown, true);
+
+    // The cursor's own step onto another row, down the column being typed in. Where the host
+    // opens one row at a time that step IS opening the row for editing -- the pencil's own code
+    // again, so the host keeps deciding what opening a row means. A grid whose every row is
+    // already a row of boxes has no pencil and nothing to open: the cursor just moves.
+    async function placeInRow(grid, index, column) {
+        const pencil = rowAt(grid, index)?.querySelector(".ns-row-edit");
+
+        if (pencil && live(pencil)) {
+            pencil.click();
+            await until(() => cellField(grid, index, column));
+        }
+
+        const field = cellField(grid, index, column);
 
         if (field)
             place(field);
@@ -382,10 +489,19 @@
     // dialog through the vendor's own CloseOnEscapeKey, both already closing through the guard
     // the X goes through. A close still DECLARES the chord, for the badge and for
     // aria-keyshortcuts; one dispatcher asking it again would close the surface twice.
+    //
+    // `character` is the WCAG 2.1.4 question and not the modifier one: a chord typed as a
+    // character must not act while somebody is writing one, which is "/" and "?" -- while F2
+    // and F3 write nothing, so they answer from inside a box too, which is the whole reason the
+    // desktop spends them on edit and find.
     const CHORDS = [
-        { chord: "Ctrl+Enter", key: "enter", modified: true },
-        { chord: "Ctrl+S", key: "s", modified: true },
-        { chord: "/", key: "/", modified: false }
+        { chord: "Ctrl+Enter", key: "enter", modified: true, character: false },
+        { chord: "Ctrl+S", key: "s", modified: true, character: false },
+        { chord: "Ctrl+K", key: "k", modified: true, character: false },
+        { chord: "/", key: "/", modified: false, character: true },
+        { chord: "?", key: "?", modified: false, character: true },
+        { chord: "F2", key: "f2", modified: false, character: false },
+        { chord: "F3", key: "f3", modified: false, character: false }
     ];
 
     // Which chord a keystroke is, or nothing. Cmd counts as Ctrl: the chord is written in the
@@ -409,8 +525,8 @@
         return null;
     }
 
-    // WCAG 2.1.4: a chord with no modifier must not act while the person is typing, or "/" is a
-    // character they can never write. role=combobox covers the search box of a lookup, which is
+    // WCAG 2.1.4: a chord that IS a character must not act while the person is typing, or "/"
+    // and "?" are characters they can never write. role=combobox covers the search box of a lookup, which is
     // a text field the browser does not type-check as one.
     function typing() {
         const el = document.activeElement;
@@ -436,11 +552,23 @@
         const declared = Array.from(document.querySelectorAll("[data-ns-keys]"))
             .filter(el => (el.getAttribute("data-ns-keys") || "").split(" ").includes(chord) && live(el));
 
+        const focused = document.activeElement;
+        const closest = focused && typeof focused.closest === "function" ? selector => focused.closest(selector) : () => null;
+
+        // The grid ROW the cursor is on owns the chord before the form around it: every row
+        // declares the same F2 on its own pencil, so the one that answers has to be the row the
+        // hand is on and not whichever happens to be last on the page. First inside the row
+        // because a row nests no surface -- its own Editar is the one in front of the person.
+        const row = closest(CELL_ROW);
+        const inRow = row ? declared.filter(el => row.contains(el)) : [];
+
+        if (inRow.length > 0)
+            return inRow[0];
+
         // The form the cursor is standing in owns the chord, whatever else is on screen: a
         // person pressing Ctrl+Enter inside an aside's form means that form's submit and not
         // the one on the page behind it.
-        const focused = document.activeElement;
-        const form = focused && typeof focused.closest === "function" ? focused.closest("form") : null;
+        const form = closest("form");
         const inForm = form ? declared.filter(el => form.contains(el)) : [];
 
         if (inForm.length > 0)
@@ -485,7 +613,7 @@
         if (chord === "Ctrl+S")
             e.preventDefault();
 
-        if (!CHORDS.find(c => c.chord === chord).modified && typing())
+        if (CHORDS.find(c => c.chord === chord).character && typing())
             return;
 
         const target = chordTarget(chord);
@@ -498,6 +626,64 @@
     }
 
     document.addEventListener("keydown", onChordKeyDown, true);
+
+    // THE "?" SHEET's one source: the claims that are on screen at the instant it is asked,
+    // which is the same set the dispatcher above would answer from -- so there is no list of
+    // shortcuts for anybody to keep in step with a screen, here either. Each line is the
+    // declaring control's OWN word, already drawn in the install's language, and the group is
+    // where that control stands rather than anything it declares.
+    //
+    // Shaped as the three groups and not as a flat list with a label on each: the sheet's
+    // headings are the house's and in its order, and a fourth group is not a thing this can
+    // hand back. Deduplicated by the pair, because every row of a grid claims the same F2 and a
+    // sheet saying so twenty times says nothing.
+    function chords() {
+        const groups = { navigation: [], forms: [], grids: [] };
+
+        for (const el of document.querySelectorAll("[data-ns-keys]")) {
+            if (!live(el))
+                continue;
+
+            const keys = el.getAttribute("data-ns-keys") || "";
+            const act = actOf(el);
+
+            if (keys.length === 0 || act.length === 0)
+                continue;
+
+            // A grid stands INSIDE a form, so the narrower seat is asked first.
+            const group = el.closest(".ns-cells") ? groups.grids
+                : el.closest("form") ? groups.forms
+                : groups.navigation;
+
+            if (!group.some(line => line.keys === keys && line.act === act))
+                group.push({ keys, act });
+        }
+
+        return groups;
+    }
+
+    // The control's own word for what it does. data-ns-chord is the bubble's "Word (Chord)" and
+    // the word is what stands in front of the key; aria-label is the name every glyph-only
+    // control carries anyway. A BOX has no word of its own and is named by its label -- the one
+    // the person reads beside it, which is the placeholder where there is no label.
+    function actOf(el) {
+        const whispered = el.getAttribute("data-ns-chord");
+        const named = el.getAttribute("aria-label");
+
+        if (whispered) {
+            const cut = whispered.lastIndexOf(" (");
+
+            return (cut > 0 ? whispered.slice(0, cut) : whispered).trim();
+        }
+
+        if (named)
+            return named.trim();
+
+        if (el.matches("input, textarea"))
+            return (el.labels?.[0]?.textContent || el.getAttribute("placeholder") || "").trim();
+
+        return (el.textContent || "").trim();
+    }
 
     // THE WHISPER's own flip (ns-mud.css, "THE WHISPER"): the bubble is attr(aria-label),
     // drawn by a ::after the CSS alone sets up, and CSS alone cannot ask whether there is room
@@ -683,5 +869,5 @@
         setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, focusFirst, recall, remember, download };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, focusFirst, chords, recall, remember, download };
 })();

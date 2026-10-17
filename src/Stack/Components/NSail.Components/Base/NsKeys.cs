@@ -14,9 +14,12 @@ namespace NSail.Components;
 ///
 /// <para>Which keys these are is the industry's answer and not a house choice — Ctrl+Enter,
 /// Ctrl+S, Esc, "/", Ctrl+K and "?" are what GitHub, Gmail, Slack, Linear and Jira converge
-/// on. Function keys are the desktop-POS convention and the browser owns several of them, so
-/// none is used; no single-letter chord acts without a modifier except "/" and "?", and those
-/// only while the focus is not in a text field (WCAG 2.1.4).</para></summary>
+/// on, and F2 (edit) and F3 (search) are the desktop convention the same hands come from
+/// (Excel, Explorer). Those two are the only function keys taken: F1, F5, F6, F11 and F12
+/// stay the browser's. No single-letter chord acts without a modifier except "/" and "?", and
+/// those only while the focus is not in a text field (WCAG 2.1.4) — a function key is not a
+/// character anybody can be in the middle of typing, so it answers from inside a box
+/// too.</para></summary>
 public static class NsKeys
 {
     /// <summary>The attribute a control publishes its chords on, space separated. Read by
@@ -38,11 +41,26 @@ public static class NsKeys
     /// here is read by the badge and by assistive technology, never dispatched.</summary>
     public const string Close = "Esc";
 
-    /// <summary>Lands the cursor in the page's search box.</summary>
+    /// <summary>Lands the cursor in the page's search box. Offered beside <see cref="Find"/>,
+    /// which is the same act on the key the desktop spends on it.</summary>
     public const string Search = "/";
 
+    /// <summary>Lands the cursor in the page's search box from anywhere, a box being typed in
+    /// included — the desktop's own "find", and the one a page can offer while somebody is
+    /// mid-entry because it writes no character.</summary>
+    public const string Find = "F3";
+
+    /// <summary>Presses the Editar the screen offers — a record's ficha door, or the pencil of
+    /// the grid row the cursor is on, which is the same declaration on every row.</summary>
+    public const string Edit = "F2";
+
+    /// <summary>Lands the cursor in the drawer's menu search, which is this app's "go anywhere":
+    /// the map is the frame's and not a page's, so the chord is answered by the box in the
+    /// drawer and there is no second palette listing what the menu already lists.</summary>
     public const string Palette = "Ctrl+K";
 
+    /// <summary>Opens the sheet of the chords claimed on screen as it stands, beside the box
+    /// above. Both are the frame's, so a phone with the drawer closed keeps neither.</summary>
     public const string Help = "?";
 
     /// <summary>Everything a control carries to claim the given chords, from the one string: the

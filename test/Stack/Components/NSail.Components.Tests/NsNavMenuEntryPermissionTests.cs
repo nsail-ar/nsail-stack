@@ -40,11 +40,26 @@ public sealed class PermittedCounterProbePage : ComponentBase;
 /// answers the same for both — and a group is never asked about itself at all, so it survived
 /// whichever child passed. An entry may therefore name a permission of its own, ANDed with the
 /// page's and never instead of it.</summary>
-public sealed class NsNavMenuEntryPermissionTests : BunitContext
+public sealed class NsNavMenuEntryPermissionTests : BunitContext, IAsyncLifetime
 {
+    // The drawer draws a tooltip now (the "?" door), and the vendor's popover service behind one
+    // is IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    Task IAsyncLifetime.InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await DisposeAsync();
+    }
+
     IRenderedComponent<NsNavMenu> RenderMenu()
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
+        // renders it composes one.
+        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();

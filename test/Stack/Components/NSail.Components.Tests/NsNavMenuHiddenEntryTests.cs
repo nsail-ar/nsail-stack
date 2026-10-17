@@ -26,11 +26,26 @@ public sealed class HiddenDroppedProbePage : ComponentBase;
 /// permission gate ever being asked about the leaves under it. The tree keeps them — that is
 /// what leaves NavMenuItem.Find able to answer, so a page reached some other way still has a
 /// glyph on its own title bar.</summary>
-public sealed class NsNavMenuHiddenEntryTests : BunitContext
+public sealed class NsNavMenuHiddenEntryTests : BunitContext, IAsyncLifetime
 {
+    // The drawer draws a tooltip now (the "?" door), and the vendor's popover service behind one
+    // is IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    Task IAsyncLifetime.InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await DisposeAsync();
+    }
+
     IRenderedComponent<NsNavMenu> RenderMenu()
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
+        // renders it composes one.
+        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();

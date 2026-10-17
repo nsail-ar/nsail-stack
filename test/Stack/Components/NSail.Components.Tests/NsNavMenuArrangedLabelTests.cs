@@ -27,11 +27,26 @@ public sealed class ArrangedDeniedProbePage : ComponentBase;
 /// NavMenu.{Name} string as it always was; a row the shop renamed is drawn with what the shop
 /// typed, and the search over the drawer reads the same word — one answer for the label, so a
 /// renamed door can still be found by the name the reader can see.</summary>
-public sealed class NsNavMenuArrangedLabelTests : BunitContext
+public sealed class NsNavMenuArrangedLabelTests : BunitContext, IAsyncLifetime
 {
+    // The drawer draws a tooltip now (the "?" door), and the vendor's popover service behind one
+    // is IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    Task IAsyncLifetime.InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await DisposeAsync();
+    }
+
     IRenderedComponent<NsNavMenu> RenderMenu()
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
+        // renders it composes one.
+        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog(
             [new TwoLanguageStrings("NavMenu.Scheduling", "Scheduling", "Agenda")]));

@@ -111,7 +111,8 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
 
         Assert.Equal("Control+Enter Control+S", Announced(host, "button.hero"));
         Assert.Equal("Escape", Announced(host, "button.cancel"));
-        Assert.Equal("Slash", Announced(host, "input[data-ns-keys]"));
+        Assert.Equal("F3 Slash", Announced(host, PageBox));
+        Assert.Equal("Control+K", Announced(host, MapBox));
     }
 
     [Fact]
@@ -123,13 +124,82 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         Assert.Equal(NsKeys.Close, Claim(host, "button.cancel"));
     }
 
+    // The page's box and the app MAP's box are two different boxes answering two different
+    // intentions — find something on this screen, go anywhere — so neither can be reached by
+    // the other's key. F3 stands first because it is the key the box draws: "/" answers only
+    // while nobody is typing, so it is no reminder to somebody who already is.
     [Fact]
-    public void ThePagesSearchBox_ClaimsTheSlash()
+    public void ThePagesSearchBox_ClaimsTheFindKeyAndTheSlash()
     {
         var host = Mount();
 
-        Assert.Equal(NsKeys.Search, Claim(host, "input[data-ns-keys]"));
+        Assert.Equal($"{NsKeys.Find} {NsKeys.Search}", Claim(host, PageBox));
     }
+
+    [Fact]
+    public void TheAppMapsBox_ClaimsTheGoAnywhereChordAlone()
+    {
+        var host = Mount();
+
+        Assert.Equal(NsKeys.Palette, Claim(host, MapBox));
+    }
+
+    // The key is DRAWN inside a search box, which is the one control that paints one: it has no
+    // word to hover and therefore no bubble to carry it. Not in the placeholder — a placeholder
+    // is an input's name fallback, so a key written there would land in the accessible name
+    // (nsail#2259's shape one layer up) — and not part of the input at all, which is what
+    // aria-hidden says.
+    [Theory]
+    [InlineData(".ns-nav-drawer .ns-search-box", "Ctrl+K")]
+    [InlineData(".ns-search-box", "F3")]
+    public void ASearchBox_DrawsTheFirstKeyItClaimsBesideTheText(string box, string key)
+    {
+        var host = Mount();
+
+        var mark = host.Find($"{box} .ns-search-key");
+
+        Assert.Equal(key, mark.TextContent.Trim());
+        Assert.Equal("true", mark.GetAttribute("aria-hidden"));
+        Assert.DoesNotContain(key, host.Find($"{box} input").GetAttribute("placeholder") ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    // The door a screen offers onto a record takes the edit key the desktop spends on it, on
+    // both faces a link has — and the bubble says the word and the key, exactly as a button's
+    // does. The worded anchor carries aria-label only here: the whisper's generated content
+    // joins an anchor's accessible name the way it joins a button's, and the name has to outrank
+    // it (nsail#2272).
+    [Fact]
+    public void AScreensEditDoor_ClaimsTheEditKeyAndWhispersItWithoutJoiningItsName()
+    {
+        var host = Mount();
+
+        Assert.Equal(NsKeys.Edit, Claim(host, "a.door"));
+        Assert.Equal("Editar (F2)", ChordHint(host, "a.door"));
+        Assert.Equal("Editar", AriaLabel(host, "a.door"));
+        Assert.Equal("Editar", host.Find("a.door").TextContent.Trim());
+
+        // The glyph-only face claims the same key and says its word in the vendor's tooltip,
+        // which is a popover and no part of any name.
+        Assert.Equal(NsKeys.Edit, Claim(host, ".glyphdoor"));
+    }
+
+    // A link with no chord publishes nothing and says nothing about one — there is no second
+    // place deciding whether to paint a bubble, here either.
+    [Fact]
+    public void ALinkWithNoChord_ClaimsNothingAndCarriesNoName()
+    {
+        var host = Mount();
+
+        Assert.Null(Claim(host, "a.plain"));
+        Assert.Null(Announced(host, "a.plain"));
+        Assert.Null(ChordHint(host, "a.plain"));
+        Assert.Null(AriaLabel(host, "a.plain"));
+    }
+
+    // The page's box and the map's, told apart by where they stand: the map's is the one inside
+    // the drawer, which is also how the keyboard layer tells them apart (ns.js, chordTarget).
+    const string MapBox = ".ns-nav-drawer input[data-ns-keys]";
+    const string PageBox = "form input[data-ns-keys]";
 
     // The ruling on nsail#2207 (2026-10-14): the chord is the control's TOOLTIP, never a drawn
     // badge. The tooltip's text rides data-ns-chord (THE WHISPER's own ns-chord rule), built
@@ -201,8 +271,10 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         Assert.Null(ChordHint(host, "button.filter"));
     }
 
-    // No control draws the chord as its own node any more (nsail#2272): the sheet this suite
-    // reads is the one place that could still carry the badge back by accident.
+    // No control with a WORD draws its chord as a node any more (nsail#2272): a word and a badge
+    // beside it were one mechanism read twice, and the stylesheet is where the badge could come
+    // back by accident. The search box's own mark is the exception the rule names — a box has no
+    // word to hover — and it is its own rule, not the retired one.
     [Fact]
     public void TheStylesheet_CarriesNoBadgeRuleAndRidesTheWhisperInstead()
     {
@@ -210,9 +282,60 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
 
         Assert.DoesNotContain(".ns-key", css, StringComparison.Ordinal);
         Assert.Contains(".ns-chord", css, StringComparison.Ordinal);
+        Assert.Contains(".ns-search-key", css, StringComparison.Ordinal);
+    }
+
+    // THE FAILURE THIS SUITE WAS MISSING: a chord can be declared as a constant, published by a
+    // control and announced to a screen reader while NOTHING dispatches it — which is what
+    // Palette and Help were for two releases, a key the house promised and the keyboard did not
+    // answer. The claim's other half is the layer's own table, so it is read here rather than
+    // left to a browser suite nobody runs on a constant's rename.
+    [Fact]
+    public void TheKeyboardLayer_DispatchesEveryChordTheHouseDeclares()
+    {
+        var layer = ReadKeyboardLayer();
+
+        foreach (var chord in new[] { NsKeys.Submit, NsKeys.Save, NsKeys.Palette, NsKeys.Search, NsKeys.Help, NsKeys.Find, NsKeys.Edit })
+        {
+            Assert.Contains($"chord: \"{chord}\"", layer, StringComparison.Ordinal);
+        }
+
+        // Escape is the one claim that is declared and never dispatched: the surfaces answer it
+        // themselves, through the guard the X goes through, and a second dispatcher would close
+        // them twice.
+        Assert.DoesNotContain($"chord: \"{NsKeys.Close}\"", layer, StringComparison.Ordinal);
+    }
+
+    // WCAG 2.1.4 is about a chord somebody could be in the middle of TYPING, which is the two
+    // written as characters and nothing else: a function key writes none, so holding F3 back
+    // while the cursor is in a box would cost it the half of its job the desktop spends it on.
+    [Fact]
+    public void OnlyTheChordsThatAreCharacters_AreHeldBackWhileSomebodyIsTyping()
+    {
+        var layer = ReadKeyboardLayer();
+
+        foreach (var chord in new[] { NsKeys.Search, NsKeys.Help })
+        {
+            Assert.Contains($"chord: \"{chord}\", key: \"{chord}\", modified: false, character: true", layer, StringComparison.Ordinal);
+        }
+
+        foreach (var chord in new[] { NsKeys.Find, NsKeys.Edit })
+        {
+            Assert.Contains($"chord: \"{chord}\", key: \"{chord.ToLowerInvariant()}\", modified: false, character: false", layer, StringComparison.Ordinal);
+        }
     }
 
     static string ReadStylesheet()
+    {
+        return ReadSource("src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css");
+    }
+
+    static string ReadKeyboardLayer()
+    {
+        return ReadSource("src/Stack/BaseServices/NSail.BaseServices.WebApp/wwwroot/ns.js");
+    }
+
+    static string ReadSource(string path)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
 
@@ -220,14 +343,12 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         {
             if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
             {
-                return File.ReadAllText(Path.Combine(
-                    directory.FullName,
-                    "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
+                return File.ReadAllText(Path.Combine(directory.FullName, path));
             }
 
             directory = directory.Parent;
         }
 
-        throw new InvalidOperationException("ns-mud.css not found above the test assembly.");
+        throw new InvalidOperationException($"{path} not found above the test assembly.");
     }
 }
