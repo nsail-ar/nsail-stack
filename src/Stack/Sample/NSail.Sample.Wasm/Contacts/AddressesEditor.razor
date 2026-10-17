@@ -1,13 +1,14 @@
 @* SPDX-License-Identifier: MIT
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
-@using NSail.Problems
 @using NSail.Sample.Contacts.Models
 
 @inherits NsPartial
 
 @* A composition edited inline: the parent form submits the whole list, so this editor saves
-   nothing itself and only marks the surface dirty. *@
+   nothing itself and only marks the surface dirty. The row's [Required] street is refused by
+   both ends off ContactAddressModel's own annotation, UpdateContact.Addresses opening the list
+   with [Validated], so no rule is written here. *@
 <NsListEditor TItem="ContactAddressModel" Items="Items" Title="@GetTitle()"
               NewItem="NewAddress" OnCommit="Commit" OnRemove="OnRemove">
     <ItemTemplate Context="row">
@@ -34,12 +35,6 @@
 
     void Commit(RowEditEventArgs<ContactAddressModel> args)
     {
-        if (string.IsNullOrWhiteSpace(args.Row.Street))
-        {
-            args.Problem = InputProblem.InvalidModel<ContactAddressModel>().Required(m => m.Street);
-            return;
-        }
-
         Surface?.SetDirty(this);
     }
 
