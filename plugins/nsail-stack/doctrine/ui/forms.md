@@ -56,6 +56,10 @@ the route, the session or a parameter stays the page's, however much it reads be
 
 ## Focus on open
 
+This is the form's own rule, for what happens when ONE OPENS — a dialog, a drawer, a routed
+create page. What a plain navigation's own arrival hands the cursor to (a list's search, a
+read-only page's `h1`) is a different mechanism entirely: [focus.md](focus.md).
+
 **A create screen's document, the moment it appears, hands the cursor to its first rendered
 field** — so typing can start at once instead of a click into the page first. A hidden candidate
 (a field on a tab `NsTabs` has not switched to) and a field the screen LOCKED are skipped. The

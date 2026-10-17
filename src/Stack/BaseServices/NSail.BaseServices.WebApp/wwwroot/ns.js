@@ -842,6 +842,86 @@
         suppressOpenFor = null;
     }
 
+    // What the router (NsArrivalFocus) hands the cursor to on a navigation's arrival: the first
+    // element on screen carrying the marker a field's own AutoFocus writes (NsFieldBase), and
+    // only the page's h1 where there is none -- never a comma selector, because querySelector
+    // answers the first match in DOCUMENT ORDER and the header's h1 always comes before
+    // whatever a screen marks, so the marker would lose the one selector list that tried both.
+    //
+    // A marker rendered after this very call -- a list still reading, a tab's panel -- is not
+    // yet a lost cause: this waits for it (a MutationObserver, bounded by a timeout that falls
+    // back to h1), rather than reading the DOM once and giving up, which is what left the
+    // vendor's own first-render-only AutoFocus unable to reach it in the first place.
+    const ARRIVAL_MARK = '[data-ns-arrival-focus]:not([disabled]):not([aria-readonly="true"])';
+    const ARRIVAL_FALLBACK_WAIT_MS = 1000;
+
+    let arrivalGeneration = 0;
+    let arrivalObserver = null;
+
+    function arrivalFocus(fallbackSelector) {
+        const generation = ++arrivalGeneration;
+
+        disconnectArrival();
+
+        // A touch screen's keyboard rises the instant a text box takes focus, over the very
+        // list the cursor was handed to see -- a device with a physical keyboard, or a pointer
+        // that only hovers over one (a mouse, a trackpad), never pays that cost.
+        if (window.matchMedia("(pointer: coarse)").matches)
+            return;
+
+        const marker = findArrivalMarker();
+        if (marker) {
+            marker.focus();
+            return;
+        }
+
+        let settled = false;
+        const timer = setTimeout(function () {
+            settle(document.querySelector(fallbackSelector));
+        }, ARRIVAL_FALLBACK_WAIT_MS);
+
+        arrivalObserver = new MutationObserver(function () {
+            const late = findArrivalMarker();
+            if (late)
+                settle(late);
+        });
+        arrivalObserver.observe(document.body, { childList: true, subtree: true });
+
+        // The guard a later arrival needs is generation, not merely "has this settled" -- a
+        // second navigation landing inside the wait window must never let this one's fallback
+        // steal the cursor from whatever the newer arrival already placed it on.
+        function settle(el) {
+            if (settled || generation !== arrivalGeneration)
+                return;
+
+            settled = true;
+            clearTimeout(timer);
+            disconnectArrival();
+
+            // Between the marker not being there yet and it (or the fallback) finally landing,
+            // a person may have reached for something themselves -- the one window this call
+            // must never win against, unlike its own first, synchronous try above.
+            if (el && !reached(document.activeElement))
+                el.focus();
+        }
+    }
+
+    function findArrivalMarker() {
+        for (const candidate of document.querySelectorAll(ARRIVAL_MARK)) {
+            if (candidate.offsetParent !== null)
+                return candidate;
+        }
+
+        return null;
+    }
+
+    function disconnectArrival() {
+        if (arrivalObserver) {
+            arrivalObserver.disconnect();
+            arrivalObserver = null;
+        }
+    }
+
     // What this machine remembers: localStorage, so it survives the tab and belongs to the
     // browser profile rather than to whoever is signed in. The values are already-serialized
     // strings -- the C# side owns the shape, this side owns nothing but the store.
@@ -888,5 +968,5 @@
         setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, focusFirst, chords, recall, remember, download };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, focusFirst, arrivalFocus, chords, recall, remember, download };
 })();

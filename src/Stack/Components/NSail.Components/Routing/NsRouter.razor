@@ -24,7 +24,7 @@
                             <NsNotAuthorized SignInPage="@SignInPage" />
                         </NotAuthorized>
                     </AuthorizeRouteView>
-                    <FocusOnNavigate RouteData="routeData" Selector="@FocusSelector" />
+                    <NsArrivalFocus RouteData="routeData" FallbackSelector="@FocusSelector" />
                     <NsAppReady />
                 </NsRouteGate>
             </NsSurfaceContext>
