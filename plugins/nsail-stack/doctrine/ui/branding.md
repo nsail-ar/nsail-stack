@@ -63,10 +63,15 @@ step beside them rather than a move of them**: set as text on a card, light `War
 instead — `--ns-status-*`, `BrandTone.ToneLean`, the rule in [styling.md](styling.md). Re-tuning
 the constants would repaint every filled face above to fix a word.
 
-**In dark, elevation is light and not shadow**, so the ladder is spent on tone: `Background`
-`#161513` sits a real step under `Surface` `#232120`, and a card reads as lifted off the canvas
-without a border. In light the ladder inverts — white has nowhere left to rise — so the canvas
-sinks below the surfaces and border-plus-shadow does the separating.
+**`Background` sits a gentle, perceptible step under `Surface` in BOTH schemes — never a tonal
+gulf, and never nothing.** Dark reads `#161513` against `#1c1a18` (1.05:1); light reads `#faf9f8`
+against the white `Surface`/`SurfaceRaised` sit at (also 1.05:1) — white being as far as a light
+rung can rise, which is why light spends its whole step on `Background` rather than on the
+surfaces. Elevation carries the rest in both: dark's ring (`BuildElevations`) is the lit top edge
+a black shadow cannot cast on a near-black surface, light's falls away over a pale surface and
+leaves the shadow to do the work. A step any bigger reads as a hard edge of tone — two different
+pages rather than one lifted off the other — which is what put a header card on Nueva Venta
+(nsail#1815) to patch a gulf the ladder itself should never have opened.
 
 **Main and aside are the same two rungs, and the step between them is the whole of the
 difference.** The main surface's ground is the canvas (`Background`, what `NsPanel` paints

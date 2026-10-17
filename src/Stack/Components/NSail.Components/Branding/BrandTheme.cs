@@ -164,29 +164,29 @@ public sealed class BrandTheme
     // the contrast floors are measured on — while its hue and chroma are the chrome's, capped
     // (BrandTone.Tint). Written as the hexes the default brand wore, so the numbers stay
     // readable; only their luminance survives the tint.
-    // In dark, elevation is LIGHT and not shadow — a black shadow on a black surface is
-    // invisible — so the ladder is spent on tone: the canvas sits far enough below the surface
-    // for a card to read as lifted without a border. Pure black is nobody's floor either
-    // (Material's is #121212): white type on absolute black hazes.
+    // Main and aside stand on Background and Surface respectively (ui/branding.md's
+    // inherit-the-ground rule), so the step between the two rungs is what tells them apart: close
+    // enough that a component reads the same on either, far enough to clear at a glance, with
+    // elevation (the ring in dark, the shadow in light) carrying the rest. Pure black is
+    // nobody's floor either (Material's is #121212): white type on absolute black hazes.
     static readonly LadderMask DarkLadder = new(
         Background: "#161513",
-        Surface: "#232120",
-        SurfaceRaised: "#2d2b27",
+        Surface: "#1c1a18",
+        SurfaceRaised: "#201f1c",
         TextPrimary: "#e7e4dd",
         TextSecondary: "#9c9992",
-        TextDisabled: "#6b6864",
+        TextDisabled: "#65635f",
         Lines: "#312f2b");
 
-    // Light separates surfaces with borders and shadows rather than tone — white on white has
-    // nowhere to go — so the canvas sinks below the surfaces instead. The mask sits as close to
-    // white as the cards': near white the sRGB gamut is narrow, which is what backs a rung's
-    // chroma off on its own (BrandTone.Tint) — a mask with gamut to spare instead rides the cap
-    // at full strength under a vivid chrome, which is what reads as a coloured page rather than
-    // a canvas.
+    // Light has no room to sink the surfaces further up than white, so the step is spent on
+    // Background instead: the mask stays close enough to white to keep backing its own chroma off
+    // through the same narrow sRGB gamut (BrandTone.Tint) that a mask with more gamut to spare
+    // would ride to a coloured page under a vivid chrome — Surface and SurfaceRaised sit AT white,
+    // which the ceiling below holds there.
     static readonly LadderMask LightLadder = new(
         Background: "#faf9f8",
-        Surface: "#fbfaf8",
-        SurfaceRaised: "#fcfbf9",
+        Surface: "#ffffff",
+        SurfaceRaised: "#ffffff",
         TextPrimary: "#262624",
         TextSecondary: "#6e6b66",
         TextDisabled: "#9a9792",
