@@ -3421,6 +3421,20 @@
     --ns-field-width: 20rem;
 }
 
+/* nsail#2140/nsail#2336: a document's own subject field (Paciente, Proveedor, Cliente) reads at
+   ns-field-wide's 20rem from the tablet floor up, where it shares the header row with Fecha and
+   whatever else stands beside it; alone on a phone's single-field row it is the row's only
+   occupant, so it fills it the way Grow once did there, without Grow's own cost at a desktop
+   width (it took every pixel the row had). Scoped to the header row itself (set beside
+   ns-field-wide on the razor side, like ns-job-card-line below) rather than every ns-field-wide
+   call site: a sentence-length label (nsail#1019's own account select) wants its 20rem kept at
+   every width, never stretched to fill a lonely phone row that was never crowded. */
+@container (max-width: 399.98px) {
+    .ns-document-header > .ns-field-wide {
+        --ns-field-width: 100%;
+    }
+}
+
 /* nsail#1906: a BLOCK of money figures read together -- Cerrar Caja's Fondo inicial, Efectivo
    esperado, Efectivo contado and Diferencia -- where the 14rem default seats three on the line
    and leaves the fourth alone on a row of its own. 10rem is the width .ns-money-slot already
