@@ -178,9 +178,13 @@ public sealed class BrandTheme
         Lines: "#312f2b");
 
     // Light separates surfaces with borders and shadows rather than tone — white on white has
-    // nowhere to go — so the canvas sinks below the surfaces instead.
+    // nowhere to go — so the canvas sinks below the surfaces instead. The mask sits as close to
+    // white as the cards': near white the sRGB gamut is narrow, which is what backs a rung's
+    // chroma off on its own (BrandTone.Tint) — a mask with gamut to spare instead rides the cap
+    // at full strength under a vivid chrome, which is what reads as a coloured page rather than
+    // a canvas.
     static readonly LadderMask LightLadder = new(
-        Background: "#f1f0ee",
+        Background: "#faf9f8",
         Surface: "#fbfaf8",
         SurfaceRaised: "#fcfbf9",
         TextPrimary: "#262624",
