@@ -542,10 +542,18 @@
     // reason -- a control on a tab NsTabs has not switched to is display:none and still in the
     // DOM -- and aria-disabled beside the attribute because the vendor's own buttons mark a
     // refusal both ways.
+    //
+    // A CLOSED DRAWER is the one surface none of those three answer for: it is not taken out of
+    // the document and not hidden, it is slid off the side of the screen, so the map's own
+    // search box behind a closed nav drawer would otherwise take the cursor where nobody can
+    // see it and a filtered menu nobody can read would navigate on Enter. The vendor's own word
+    // for the state, named here for WHISPER_SELECTOR's reason -- the price of the two languages
+    // is that this one is kept in step by hand.
     function live(el) {
         return el.offsetParent !== null
             && !el.disabled
-            && el.getAttribute("aria-disabled") !== "true";
+            && el.getAttribute("aria-disabled") !== "true"
+            && el.closest(".mud-drawer--closed") === null;
     }
 
     function chordTarget(chord) {
