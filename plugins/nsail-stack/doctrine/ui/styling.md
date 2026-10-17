@@ -97,6 +97,14 @@ marked *(cases)* has its story there.
     keeps its own frame**, which is what makes a list page's grid read as a card: `NsPanel`
     paints nothing of its own (`--ns-panel-surface` is the canvas), so the table's sheet is the
     only one there.
+  - **A plain group of fields is not a card.** `NsCard` and `NsPaper` paint a ground of their
+    own — [branding.md](branding.md)'s inherit-the-ground condition, the one that keeps main and
+    aside two close tones — so the sheet belongs to a section that earns separation FROM its
+    siblings, never to a document's leading fields wrapped for a background alone: a header of
+    Party and Fecha standing in its own `NsCard` ahead of the lines below frames the fields twice
+    the moment the page opens in the aside, whose own ground already carries that lift. The
+    fields sit directly in the page's `NsFormGrid`, and whatever says the document's subject —
+    their own order and width — says it without a sheet under them.
   - **A card's ink is `TextPrimary` and its title's glyph steps down to the muted rank** —
     `.ns-card-header .mud-card-header-content .mud-icon-root` → `TextSecondary`: the word is the
     heading and the glyph names what the card is about behind it, so a home full of headings has
