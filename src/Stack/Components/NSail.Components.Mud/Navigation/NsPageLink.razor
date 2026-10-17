@@ -20,6 +20,7 @@
             Icon="@Icon"
             Label="@_label"
             Size="@Size"
+            Chord="@Chord"
             Disabled="@Disabled"
             Breakpoint="@Breakpoint"
             Class="@ProbedClass" />
@@ -58,6 +59,11 @@
     /// <summary>Overrides the derived label (TPage's own "{Area}.{Page}.Title").</summary>
     [Parameter]
     public string? Label { get; set; }
+
+    /// <summary>The keyboard chord that opens this page (NsKeys) — F2 on a record's Editar door.
+    /// See NsLink.Chord.</summary>
+    [Parameter]
+    public string? Chord { get; set; }
 
     /// <summary>Greys the link out and drops its href — for a scoped route whose scope
     /// hasn't been picked yet (its token would resolve to an empty segment).</summary>

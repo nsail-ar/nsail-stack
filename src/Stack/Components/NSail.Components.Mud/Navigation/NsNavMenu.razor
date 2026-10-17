@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Components.Routing
 @using NSail.Localization
 @using NSail.Messaging.Runtime
+@using Microsoft.JSInterop
 @using System.Security.Claims
 
 @implements IDisposable
@@ -17,6 +18,8 @@
 @inject NavigationManager Navigation
 @inject PageGate Gate
 @inject Mediator Mediator
+@inject DialogManager Dialogs
+@inject IJSRuntime Js
 
 @* The drawer is a surface like any other, so it wears the house's panel anatomy rather than
    a flat pile the host scrolls whole: the search field stays put in the Header, the entries
@@ -34,8 +37,22 @@
                 @Brand
             </div>
         }
-        <div class="pa-2">
-            <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Grow />
+        @* The app's "go anywhere" is this box and not a palette beside it: what Ctrl+K can
+           reach is the menu, which is the one list of where a session may go, and a second
+           source would be a second thing to keep in step with it. The chord rides the box
+           itself (NsSearchField's Map), and the "?" door stands next to it because both keys
+           are the FRAME's — a screen that draws no header of its own still has them, and a
+           phone, where the drawer is closed, has neither.
+           ns-nav-find is also the hook the Enter policy answers on: Enter in this box opens the
+           first entry still shown (ns.js). *@
+        <div class="pa-2 d-flex align-center gap-1 ns-nav-find">
+            <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Grow Map />
+            <NsButton As="NsAs.Inline"
+                      Breakpoint="NsBreakpoint.Never"
+                      Icon="@NsIcons.Keyboard"
+                      Label="@Strings.Translate("Common.Shortcuts")"
+                      Chord="@NsKeys.Help"
+                      OnClick="ShowKeys" />
         </div>
     </Header>
     <Content>
@@ -261,6 +278,18 @@
     void SetSearch(string? value)
     {
         _search = value ?? string.Empty;
+    }
+
+    // What the sheet lists is read off the DOM BEFORE it opens, so it is the screen as it stands
+    // and not the screen with the sheet on top of it: a dialog does not unmount the page behind
+    // it, and the sheet's own chrome claims a chord of its own.
+    async Task ShowKeys()
+    {
+        var claimed = await Js.InvokeAsync<NsChordsOnScreen>("nsapp.chords");
+
+        await Dialogs.Open<NsKeySheet>(
+            Strings.Translate("Common.Shortcuts"),
+            new Dictionary<string, object?> { [nameof(NsKeySheet.Claimed)] = claimed });
     }
 
     IEnumerable<NavMenuItem> Visible(IEnumerable<NavMenuItem> items)
@@ -635,7 +664,9 @@
                    leaves naming one page apart: it decides only whether a class is added,
                    and the class it adds is the styling one only for the same active leaf
                    the expansion uses. *@
-                <MudNavLink Href="@Routes.GetUrl(item.PageType, item.Parameters)" Icon="@(item.Icon?.Markup)" Match="NavLinkMatch.Prefix" ActiveClass="@ActiveClass(item)">
+                @* ns-nav-entry marks the ENTRIES, which is what the box above opens the first of
+                   on Enter: a group's own row goes nowhere, so it is not one. *@
+                <MudNavLink Href="@Routes.GetUrl(item.PageType, item.Parameters)" Icon="@(item.Icon?.Markup)" Match="NavLinkMatch.Prefix" ActiveClass="@ActiveClass(item)" Class="ns-nav-entry">
                     @GetName(item)
                     @* The number rides INSIDE the link's own label, not beside it: the whole
                        row is one target, and a badge outside it would be a second thing to

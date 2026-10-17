@@ -82,10 +82,14 @@
                 {
                     <NsTd>
                         <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Justify="NsAlign.End">
-                            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-edit" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
+                            @* The row's two controls carry the hooks the grid's keys press (ns.js): F2 opens
+                               the row the cursor is on, Delete removes it through whatever confirmation
+                               that button already asks for. The chord is declared on every row, and
+                               which row answers is the row the keystroke was made in. *@
+                            <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-edit" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Chord="@NsKeys.Edit" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
                             @if (OnRowRemove.HasDelegate)
                             {
-                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy" OnClick="@(() => Remove(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-delete" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy" OnClick="@(() => Remove(item))" />
                             }
                         </NsStack>
                     </NsTd>

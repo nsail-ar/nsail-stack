@@ -68,7 +68,12 @@
    actions.md). *@
 @if (As == NsAs.Inline && !Wordless)
 {
-    <a href="@ActiveHref" target="@BrowserTarget" class="@GetAnchorClasses()" data-ns-probe="@Probe">
+    @* The chord's bubble is generated content ON the anchor, and an anchor folds that into its
+       ACCESSIBLE NAME exactly as a button does (nsail#2259) — so a keyed anchor carries an
+       aria-label after all, restating its own word to outrank the ::after. One with no chord
+       carries none, for the reason above: there is nothing to outrank, and a name that merely
+       repeats the text would be the second copy to keep true. *@
+    <a href="@ActiveHref" target="@BrowserTarget" class="@GetAnchorClasses()" aria-label="@KeyedName" data-ns-chord="@ChordHint" data-ns-probe="@Probe" data-ns-keys="@ClaimedKeys" aria-keyshortcuts="@AnnouncedKeys">
         @if (Icon is not null)
         {
             <NsIcon Icon="@Icon" Size="@Size" />
@@ -83,7 +88,7 @@ else if (As == NsAs.Inline)
         @* The tooltip is what a sighted pointer user sees; a screen reader needs the same
            sentence as the element's own accessible name — MudTooltip's popover contributes
            no name on its own, the gap NsButton's own icon chrome already closed. *@
-        <MudTooltip Text="@Label" @bind-Visible="_whispering">
+        <MudTooltip Text="@LabelWithChord" @bind-Visible="_whispering">
             <MudIconButton Href="@ActiveHref"
                            Target="@BrowserTarget"
                            Icon="@(Icon?.Markup)"
@@ -93,6 +98,8 @@ else if (As == NsAs.Inline)
                            Class="@Class"
                            aria-label="@Label"
                            data-ns-probe="@Probe"
+                           data-ns-keys="@ClaimedKeys"
+                           aria-keyshortcuts="@AnnouncedKeys"
                            OnClick="Pressed">
                 @Content
             </MudIconButton>
@@ -129,7 +136,10 @@ else
                Disabled="@IsDisabled"
                Class="@GetChromedClasses()"
                aria-label="@Label"
-               data-ns-probe="@Probe">
+               data-ns-chord="@ChordHint"
+               data-ns-probe="@Probe"
+               data-ns-keys="@ClaimedKeys"
+               aria-keyshortcuts="@AnnouncedKeys">
         <span class="@LabelClasses">@(Wordless ? null : Label)</span>
     </MudButton>
 }
@@ -215,6 +225,14 @@ else
     [Parameter]
     public bool Disabled { get; set; }
 
+    /// <summary>The keyboard chord that follows this link (NsKeys): the link publishes it, the
+    /// keyboard layer in ns.js finds it by that claim, and the bubble is built from the same
+    /// word — so the key shown and the key dispatched are one declaration. For the door a screen
+    /// offers rather than a destination in a list: F2 on a record's Editar. Null is a link with
+    /// no chord, which is nearly all of them.</summary>
+    [Parameter]
+    public string? Chord { get; set; }
+
     /// <summary>Container width from which the label shows next to the icon; below it the
     /// link is its glyph alone. Always pins the label on, Never takes it away at every width
     /// — the Label stays the name (tooltip and accessible name) and is not drawn. The one
@@ -266,6 +284,26 @@ else
         _ = InvokeAsync(StateHasChanged);
     }
 
+    // The claim, as its two attributes, off the one string — never spelled a second time here
+    // (NsKeys.Declare, which is also what tells aria-keyshortcuts' grammar from the bubble's).
+    // Null where no chord is claimed, and Blazor omits an attribute whose value is null.
+    string? ClaimedKeys => Chord is { Length: > 0 } ? Chord : null;
+
+    string? AnnouncedKeys => NsKeys.Declare(ClaimedKeys).GetValueOrDefault("aria-keyshortcuts") as string;
+
+    // A SEPARATE attribute from aria-label, on purpose: aria-label IS the accessible name, and
+    // the name stays the word (nsail#2272) — the key joining it would be nsail#2259 again.
+    // data-ns-chord is read by ns-mud.css's own ::after and by nothing that computes a name.
+    string? ChordHint => Chord is { Length: > 0 } && Label is { Length: > 0 } ? $"{Label} ({Chord})" : null;
+
+    // The icon-only face's MudTooltip reads this directly — a floating popover of its own, never
+    // generated content on the control, so it cannot join the accessible name.
+    string? LabelWithChord => Chord is { Length: > 0 } ? $"{Label} ({Chord})" : Label;
+
+    // The worded anchor's name, which it carries only once there is a bubble to outrank: see
+    // the comment on the anchor itself.
+    string? KeyedName => ChordHint is null ? null : Label;
+
     // No word to draw at any width: either the breakpoint says Never, or no name was handed
     // over to draw in the first place. Content counts as the glyph — a contributor whose
     // action IS its own image passes one instead of an Icon (ActionItem.Content).
@@ -284,7 +322,10 @@ else
     // with no Class and no Icon renders no class attribute at all instead of an empty one.
     string? GetAnchorClasses()
     {
-        var classes = new NsClassBuilder(Class).Add("ns-link-iconed", Icon is not null).ToString();
+        var classes = new NsClassBuilder(Class)
+            .Add("ns-link-iconed", Icon is not null)
+            .Add("ns-chord", Chord is { Length: > 0 })
+            .ToString();
 
         return classes.Length == 0 ? null : classes;
     }
@@ -298,6 +339,9 @@ else
         return new NsClassBuilder(Wordless ? null : NsResponsive.CollapseClass(Icon, Breakpoint))
             .Add("ns-important", As == NsAs.Important)
             .Add("ns-square", Wordless)
+            // NsButton carries the same rule for the same reason: a visible word answering a
+            // chord whispers the key beside it, and ns-square already whispers ungated.
+            .Add("ns-chord", !Wordless && Chord is { Length: > 0 })
             .Add(Class)
             .ToString();
     }

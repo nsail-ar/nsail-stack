@@ -4,30 +4,47 @@
 @namespace NSail.Components
 @inherits NsTextFieldBase<string>
 
-<MudTextField T="string"
-              Value="Value"
-              ValueChanged="SetValue"
-              Label="@GetLabel()"
-              Placeholder="@GetPlaceholder()"
-              Required="IsRequired"
-              Disabled="IsDisabled"
-              ReadOnly="IsReadOnly"
-              AutoFocus="AutoFocus"
-              Immediate="true"
-              MaxLength="@MaxTypedLength"
-              OnBlur="Leaving"
-              OnKeyDown="Pressing"
-              DebounceInterval="Debounce"
-              Class="@GrowClass"
-              Clearable="true"
-              Adornment="Adornment.Start"
-              AdornmentIcon="@Icons.Material.Filled.Search"
-              IconSize="Size.Small"
-              Variant="Variant.Outlined"
-              Margin="Margin.Dense"
-              Error="@HasError()"
-              ErrorText="@GetErrorText()"
-              UserAttributes="InputAttributes" />
+@* The key the box answers is drawn INSIDE it, the convention every application that spends a
+   chord on a search box uses — and as a mark of its own, never folded into the placeholder: a
+   placeholder is an input's name FALLBACK, so a key written there would land in the accessible
+   name, which is nsail#2259 one layer up. The claim itself is already on the input, where
+   assistive technology reads it as aria-keyshortcuts (NsKeys), so this node is decoration and
+   says so.
+   The wrapper is a plain block div carrying whatever width class the field itself carried, so
+   the field keeps the box it always had — it is here only to be the mark's positioned
+   ancestor. *@
+<div class="@GetBoxClasses()">
+    <MudTextField T="string"
+                  Value="Value"
+                  ValueChanged="SetValue"
+                  Label="@GetLabel()"
+                  Placeholder="@GetPlaceholder()"
+                  Required="IsRequired"
+                  Disabled="IsDisabled"
+                  ReadOnly="IsReadOnly"
+                  AutoFocus="AutoFocus"
+                  Immediate="true"
+                  MaxLength="@MaxTypedLength"
+                  OnBlur="Leaving"
+                  OnKeyDown="Pressing"
+                  DebounceInterval="Debounce"
+                  Clearable="true"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  IconSize="Size.Small"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Error="@HasError()"
+                  ErrorText="@GetErrorText()"
+                  UserAttributes="InputAttributes" />
+    @* Only while the box is empty: that is the one moment the key is a reminder rather than
+       clutter over what somebody is reading, and the moment the vendor's own clear button is
+       not standing in the same corner. *@
+    @if (Hint is { Length: > 0 } hint && string.IsNullOrEmpty(Value))
+    {
+        <span class="ns-search-key" aria-hidden="true">@hint</span>
+    }
+</div>
 <NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
 
 @code {
@@ -37,11 +54,47 @@
     [Parameter]
     public double Debounce { get; set; }
 
-    // Every search box claims the key; WHICH one it lands in is the keyboard layer's answer and
-    // not a parameter here — the page's search over the app map's in the drawer behind it
-    // (ns.js, chordTarget). A box nobody can type in claims nothing, for the same reason a
-    // disabled button answers no chord.
-    protected override string? Chord => IsDisabled || IsReadOnly ? null : NsKeys.Search;
+    /// <summary>Whether this box searches the app's MAP — the drawer's own search over the menu
+    /// entries — which is what makes it the box Ctrl+K lands in. Off everywhere else: "go
+    /// anywhere" is the frame's one box and never a screen's, so a page's search answers the
+    /// keys for finding something ON the page and no chord beyond them.</summary>
+    [Parameter]
+    public bool Map { get; set; }
+
+    // Held rather than rebuilt per render, for InputAttributes' reason. A page's search answers
+    // both keys the industry taught for the same act, and the map's box answers the one chord
+    // that means "go anywhere". F3 stands first because it is the key the box SHOWS: "/" is the
+    // silent alias — it answers only while nobody is typing, so it is no reminder to somebody
+    // who already is.
+    static readonly string?[] _pageKeys = [NsKeys.Find, NsKeys.Search];
+    static readonly string?[] _mapKeys = [NsKeys.Palette];
+
+    // A box nobody can type in claims nothing, for the same reason a disabled button answers no
+    // chord. Beyond that, WHICH search a key lands in is the keyboard layer's answer: two pages'
+    // boxes are never on screen at once, and the map's is excluded from the page's keys there
+    // (ns.js, chordTarget).
+    protected override string?[] Chords
+    {
+        get
+        {
+            if (IsDisabled || IsReadOnly)
+            {
+                return [];
+            }
+
+            return Map ? _mapKeys : _pageKeys;
+        }
+    }
+
+    // The first key claimed, which is the one the mark draws: a reminder on the way past is one
+    // key, and reading it off the claim is what keeps the mark and the dispatch from ever naming
+    // two different ones.
+    string? Hint => Chords.FirstOrDefault(chord => chord is { Length: > 0 });
+
+    string GetBoxClasses()
+    {
+        return new NsClassBuilder("ns-search-box").Add(GrowClass).ToString();
+    }
 
     string? GetPlaceholder()
     {
