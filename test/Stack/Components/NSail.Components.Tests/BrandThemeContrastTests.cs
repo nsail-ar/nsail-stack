@@ -31,13 +31,14 @@ public sealed class BrandThemeContrastTests
     // the one place it has to appear is the test that checks the claim.
     const double HoverWeight = 0.06;
 
-    // The light scheme's page-vs-card step, held from ABOVE as well as from below. The readings
-    // today are 1.01:1 for Surface and 1.02:1 for SurfaceRaised over Background, and the ceiling
-    // sits well over both: light separates by border and shadow, so any re-tune that hardens the
-    // step into a tonal separation of its own has to move this number in the open instead of
-    // drifting past an eye. Light only — dark's step is 1.14:1 and is MEANT to read on its own,
-    // which is the floor below.
-    const double LightStepCeiling = 1.11;
+    // Main-vs-aside's step, held from ABOVE in both schemes and from BELOW in dark (the floor
+    // below): a tone close enough that a component tuned on Background reads the same on Surface,
+    // never a tonal gulf elevation alone should be carrying. The readings today are 1.05:1 in
+    // light (Background vs the white Surface/SurfaceRaised sit at) and 1.05:1 in dark (Background
+    // vs Surface) — the same scale in both — with dark's raised rung a touch further at 1.11:1.
+    // Light owes no floor of its own: white is as far as Surface can rise, so there is nowhere
+    // left for the step to collapse to.
+    const double LightStepCeiling = 1.08;
 
     // The most OKLCH chroma the light canvas may carry under a chrome a colour field cannot
     // refuse — nsail#2335, where the house's own SurfaceTint read on a canvas mask that still had
@@ -382,10 +383,14 @@ public sealed class BrandThemeContrastTests
         Clears(theme.AccentOnChrome, RailWash(theme), BodyFloor, scheme);
     }
 
-    // The light scheme separates by border and shadow rather than by tone, and the dark one by
-    // tone: white has nowhere left to rise, black has. So the canvas sinking BELOW the surfaces
-    // is what both schemes owe, and only the dark one owes a step big enough to read on its
-    // own — 1.04:1 before this story was no step at all.
+    // The canvas sinking BELOW the surfaces is what both schemes owe, and both now owe a step
+    // big enough to read on its own — close to the same reading, so a component tuned on the
+    // canvas reads the same standing on a surface in either scheme (ui/branding.md's
+    // inherit-the-ground rule). GentleStepFloor is BELOW the ceiling the next test holds light
+    // to: the two together are the "perceptible but not destructive" band this story opened to
+    // land in, light included, where it used to be no step at all.
+    const double GentleStepFloor = 1.03;
+
     [Fact]
     public void TheCanvasSinksBelowTheSurfacesInBothSchemes()
     {
@@ -397,18 +402,24 @@ public sealed class BrandThemeContrastTests
         Assert.True(Luminance(light.Background) < Luminance(light.Surface));
 
         Assert.True(
-            Ratio(dark.Surface, dark.Background) >= 1.1,
+            Ratio(dark.Surface, dark.Background) >= GentleStepFloor,
             Reading("dark card", dark.Surface, dark.Background));
     }
 
-    // The order above says the canvas is under the surfaces; this says how far under, in the
-    // scheme where the separating is done by border and shadow. A step a reader reads as a hard
-    // edge of tone is the clash this answers, and "gentle" is a number a run keeps rather than a
-    // screenshot somebody once approved.
+    // The order above says the canvas is under the surfaces; this says how far under, on BOTH
+    // sides of the band — gentle enough that neither scheme reads as a hard edge of tone or as
+    // two different pages, and "gentle" is a number a run keeps rather than a screenshot
+    // somebody once approved. Dark's Surface sits in the same band as light's; its raised rung
+    // is allowed a touch further (a dialog floats OVER a surface, not beside one).
     [Fact]
-    public void TheLightCanvasToCardStepStaysGentle()
+    public void TheCanvasToSurfaceStepStaysGentleInBothSchemes()
     {
+        var dark = BrandTheme.DefaultDark();
         var light = BrandTheme.DefaultLight();
+
+        Assert.True(
+            Ratio(dark.Surface, dark.Background) <= LightStepCeiling,
+            $"{Reading("dark card", dark.Surface, dark.Background)} > {LightStepCeiling}");
 
         Assert.True(
             Ratio(light.Surface, light.Background) <= LightStepCeiling,
