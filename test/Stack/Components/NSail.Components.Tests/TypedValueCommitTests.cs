@@ -169,6 +169,34 @@ public sealed class TypedValueCommitTests : BunitContext, IAsyncLifetime
         ], cut.Instance.Committed);
     }
 
+    /// <summary>`OnEnterCommit` is `OnCommit` narrowed to the one gesture a deliberate Enter
+    /// is — never a blur, which already commits through `OnCommit` alone.</summary>
+    [Fact]
+    public async Task PressingEnter_FiresOnEnterCommitToo()
+    {
+        var cut = Render<CommittedValueHost>(p => p.Add(x => x.Model, new TypedValueModel()));
+
+        await cut.InvokeAsync(() => Box<NsSearchField>(cut).Input("7791234567890"));
+        await cut.InvokeAsync(() => Box<NsSearchField>(cut).KeyDown(Key.Enter));
+
+        Assert.Equal([(nameof(NsSearchField), (object?)"7791234567890")], cut.Instance.Committed);
+        Assert.Equal(["7791234567890"], cut.Instance.EnterCommitted);
+    }
+
+    /// <summary>The box merely losing the cursor is not the gesture `OnEnterCommit` answers
+    /// for, even though the same text still commits through `OnCommit`.</summary>
+    [Fact]
+    public async Task LeavingTheBox_CommitsWithoutFiringOnEnterCommit()
+    {
+        var cut = Render<CommittedValueHost>(p => p.Add(x => x.Model, new TypedValueModel()));
+
+        await cut.InvokeAsync(() => Box<NsSearchField>(cut).Input("buscado"));
+        await cut.InvokeAsync(() => Box<NsSearchField>(cut).Blur());
+
+        Assert.Equal([(nameof(NsSearchField), (object?)"buscado")], cut.Instance.Committed);
+        Assert.Empty(cut.Instance.EnterCommitted);
+    }
+
     /// <summary>A box nobody hung a handler on is untouched by the seam: the leave and the
     /// Enter are the vendor's own business there, which is what keeps the two hundred fields
     /// the house already draws out of this story.</summary>

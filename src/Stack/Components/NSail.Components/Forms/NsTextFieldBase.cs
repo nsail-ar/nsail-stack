@@ -32,9 +32,27 @@ public abstract class NsTextFieldBase<TValue> : NsFieldBase<TValue>
     [Parameter]
     public EventCallback<TValue?> OnCommit { get; set; }
 
+    /// <summary>The person pressed Enter specifically — the same value `OnCommit` carries, at
+    /// the same moment, withheld on a leave. For a gesture only a deliberate Enter should fire
+    /// (a reader's own key): a search that only acts on a committed value still fires on the
+    /// debounced `ValueChanged` for everything reactive, and the box merely losing the cursor
+    /// is not that gesture either.</summary>
+    [Parameter]
+    public EventCallback<TValue?> OnEnterCommit { get; set; }
+
     /// <summary>Whether Enter ends the entry. True for every box with one line; false where
     /// Enter is itself text, which is the textarea's newline.</summary>
     protected virtual bool CommitsOnEnter => true;
+
+    /// <summary>What the box holds right now, for a box that debounces its own `ValueChanged`
+    /// (NsSearchField's `Debounce`) and so cannot answer a commit through it — `ValueChanged`
+    /// still carries the keystroke BEFORE the one Enter is ending, for a span Enter can land
+    /// inside. The debounced box calls this from its own undebounced text event instead.</summary>
+    protected void HoldTyped(TValue? value)
+    {
+        _typed = true;
+        _held = value;
+    }
 
     /// <summary>Enter ENDS the entry here, and a box somebody hung that on is answering the
     /// keystroke itself: a mailbox taken into a chip list, a code resolved into a line. The
@@ -43,7 +61,7 @@ public abstract class NsTextFieldBase<TValue> : NsFieldBase<TValue>
     /// on its commit has no second meaning for the key to collide with.</summary>
     protected override bool TakesEnter
     {
-        get { return CommitsOnEnter && OnCommit.HasDelegate; }
+        get { return CommitsOnEnter && (OnCommit.HasDelegate || OnEnterCommit.HasDelegate); }
     }
 
     /// <summary>How many characters the box takes, as its own <c>maxlength</c> — the length the
@@ -92,15 +110,15 @@ public abstract class NsTextFieldBase<TValue> : NsFieldBase<TValue>
 
     protected Task Leaving(FocusEventArgs args)
     {
-        return Commit();
+        return Commit(byEnter: false);
     }
 
     protected Task Pressing(KeyboardEventArgs args)
     {
-        return CommitsOnEnter && args.Key is "Enter" or "NumpadEnter" ? Commit() : Task.CompletedTask;
+        return CommitsOnEnter && args.Key is "Enter" or "NumpadEnter" ? Commit(byEnter: true) : Task.CompletedTask;
     }
 
-    Task Commit()
+    async Task Commit(bool byEnter)
     {
         var committed = _typed ? _held : Value;
 
@@ -113,6 +131,14 @@ public abstract class NsTextFieldBase<TValue> : NsFieldBase<TValue>
         _typed = false;
         _held = default;
 
-        return OnCommit.HasDelegate ? OnCommit.InvokeAsync(committed) : Task.CompletedTask;
+        if (OnCommit.HasDelegate)
+        {
+            await OnCommit.InvokeAsync(committed);
+        }
+
+        if (byEnter && OnEnterCommit.HasDelegate)
+        {
+            await OnEnterCommit.InvokeAsync(committed);
+        }
     }
 }
