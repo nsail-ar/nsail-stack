@@ -1,6 +1,6 @@
 ---
 name: new-mapping
-description: Write or convert a handler so the generated entity mapper copies the data — [MapFrom] a Create/Update message onto an entity graph, [MapTo] a Row/Model/Ref as a projection, EntityMapper.Map/Upsert/Project, compositions and aggregations. Use when a handler would assign `entity.X = message.X` by hand, build `new Entity { ... }` from a message, merge a child collection by key, or `.Select(e => new XRow { ... })`; when adding a Create/Update/List/Get/Lookup to a kit; or when a build says NSG004 to NSG009.
+description: Write or convert a handler so the generated entity mapper copies the data — [MapFrom] a Create/Update message onto an entity graph, [MapTo] a Row/Model/Ref as a projection, EntityMapper.Map/Upsert/Project, compositions and aggregations. Use when a handler would assign `entity.X = message.X` by hand, build `new Entity { ... }` from a message, merge a child collection by key, or `.Select(e => new XRow { ... })`; when adding a Create/Update/List/Get/Lookup to a kit; or when a build says NSG004 to NSG013.
 ---
 
 # New mapping
@@ -25,6 +25,12 @@ compile time: no reflection, nothing saved until the handler's `SaveChanges`.
      `[MapFrom(typeof(XChildModel))]` on the child entity
    - `[MapIgnore]` on a member the handler writes by rule; `[MapFrom(typeof(M), "OrganizationId")]`
      on the member to say it out loud (NSG004 refuses it by name alone)
+   - **where the names differ, the entity says so**: `[MapFrom(typeof(M), "Title")]` on the member
+     written from `M.Title`, `[MapTo(typeof(T), "Heading")]` on the member read as `T.Heading`.
+     A message member no entity member writes is NSG011, a row member no entity member fills is
+     NSG012 — both warnings for data lost in silence, and a drop that is on purpose is declared
+     on the entity's own declaration: `[MapFrom(typeof(M), Ignore = [nameof(M.X)])]`,
+     `[MapTo(typeof(T), Ignore = [nameof(T.X)])]`
 3. **The call, in the handler.**
 
 | Handler act | Call |
@@ -86,4 +92,5 @@ guards its parts (data.md, *Mapping*) — and a zero version not held; a missing
 speaking: `NSG004` an organization axis mapped by name alone, `NSG005` a `[Primitive]` of another
 type, `NSG006` a member with no conversion, `NSG007` no parameterless constructor, `NSG008`
 a `[MapFrom]` that names a non-class, `NSG009` a projection that cannot carry a derived type,
-`NSG010` an open generic.
+`NSG010` an open generic, `NSG013` an `Ignore` naming a member that does not exist. `NSG011` and
+`NSG012` are warnings, not errors: the build is green and the data is gone.
