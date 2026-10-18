@@ -13,7 +13,7 @@
 
 @* A server-paged list, which is what offers Exportar: the handler answers the page it is asked
    for out of a register far longer than any page of it. *@
-<NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="OnQuery" RowEditor="Editor" NewRow="Blank" Title="@Title">
+<NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="OnQuery" RowEditor="Editor" NewRow="Blank" Title="@Title" Exportable="Exportable">
     <HeaderContent>
         <NsTh For="() => context.Name" />
         <NsTh For="() => context.Count" />
@@ -50,6 +50,11 @@
 
     [Parameter]
     public string? Title { get; set; }
+
+    /// <summary>The business/machinery opt-out, passed straight through: default true so a host
+    /// that never sets it keeps every other test's behavior.</summary>
+    [Parameter]
+    public bool Exportable { get; set; } = true;
 
     /// <summary>Whether the table offers inline editing, which is what makes it not a list.</summary>
     [Parameter]

@@ -87,6 +87,16 @@ put in it even where nothing named the grid, because the pager row is the only a
 it exists in one of the three paging modes. A screen that had to ask for Exportar is a screen that
 can forget to.
 
+**Whose ROWS a grid shows is a second question the derivation above does not ask, and some grids
+answer it NO.** A list offers Exportar when its rows are the business's own records — what a
+person takes to a spreadsheet to work with (articles, stock, sales, purchases, prices, patients,
+sessions, ledgers, debtors). It does not where the rows are the app's OWN machinery (export
+requests, background jobs, sign-ins, notifications, its own logs), or a short vocabulary set up
+once (colors, kinds, the few taxes) that nobody works with in a spreadsheet. The derived default
+stands either way — a business list must not forget it — so the exclusion is an explicit opt-out,
+`Exportable="false"`, never a reason to touch the derivation itself: a grid that opts out still
+offers Agregar and still lays out its pager the same way, it only drops the one menu.
+
 **Both kinds of list are read out, and the reader cannot tell them apart anyway.** A grid the
 SERVER pages is a list by construction; a grid holding every row in hand is one too — the register
 a kit writes when the whole table fits in the client — and "all pages" is every row either way.
