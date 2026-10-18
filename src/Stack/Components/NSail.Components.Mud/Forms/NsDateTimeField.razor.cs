@@ -7,6 +7,7 @@ public partial class NsDateTimeField<TValue>
 {
     bool _hasPending;
     DateTime? _pending;
+    DateTime? _displaced;
 
     // One instance for the field's whole life, for the reason NsDateField's own copy carries:
     // the vendor compares Converter by reference, and a fresh one per render throws away the
@@ -75,14 +76,36 @@ public partial class NsDateTimeField<TValue>
         return DateText.Refusal(_text.Refused, RegionCulture.For(Language), Strings);
     }
 
+    // The optimistic date is a bet on the round trip, and it is dropped the moment the bet is
+    // settled EITHER WAY: the value coming back as the date picked (it landed), or coming back
+    // as anything else at all — a date the page itself moved to, which is a decision that
+    // outranks what the box is holding. Compared against the value the pick displaced rather
+    // than against the pick, because only "still the old value" means the round trip is still
+    // in flight; everything else means the page has spoken. A read of _pending alone cannot
+    // tell those apart, and the box kept a day the page had already moved off (nsail#2315:
+    // pressing "next open day" repainted the free times and left the closed day in the box).
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
 
-        if (_hasPending && ConvertToDateTime(Value)?.Date == _pending)
+        if (_hasPending && ConvertToDateTime(Value)?.Date != _displaced)
         {
             _hasPending = false;
         }
+    }
+
+    // What the box is showing right now, kept once per bet: a second pick while one is still
+    // in flight is still waiting on the same round trip, so the first pick's displaced value
+    // is the one that settles both.
+    void TakePending(DateTime? date)
+    {
+        if (!_hasPending)
+        {
+            _displaced = ConvertToDateTime(Value)?.Date;
+        }
+
+        _pending = date;
+        _hasPending = true;
     }
 
     // The picked DATE with the time already held. The picker hands its date back at
@@ -95,8 +118,7 @@ public partial class NsDateTimeField<TValue>
     // date, in range, that nobody asked for.
     async Task OnDateChanged(DateTime? value)
     {
-        _pending = value?.Date;
-        _hasPending = true;
+        TakePending(value?.Date);
 
         if (_text.Refused is null)
         {
@@ -113,8 +135,7 @@ public partial class NsDateTimeField<TValue>
     {
         if (DateText.TryParse(text, RegionCulture.For(Language), out var read))
         {
-            _pending = read.Date;
-            _hasPending = true;
+            TakePending(read.Date);
         }
 
         NotifyOwnProblemChanged();

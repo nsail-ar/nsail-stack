@@ -222,6 +222,46 @@ public sealed class NsDateFieldTests : BunitContext, IAsyncLifetime
         Assert.Equal("07/08/2026", cut.Find("input").GetAttribute("value"));
     }
 
+    /// <summary>The optimistic date this field keeps over a render that has not carried the
+    /// round trip yet — the guard the comment on MudDate names, pinned here so the pair below
+    /// cannot be read as one rule.</summary>
+    [Fact]
+    public async Task ARenderBeforeTheValueRoundTrips_KeepsTheDateLeftInTheBox()
+    {
+        Compose("es");
+
+        var cut = Render<NsDateField<DateOnly?>>(ps => ps
+            .Add(p => p.Value, new DateOnly(2026, 8, 4)));
+
+        await Leave(cut, "07/08/2026");
+
+        // The page never pushed the new value back down, and a re-render happens anyway.
+        cut.Render();
+
+        Assert.Equal("07/08/2026", cut.Find("input").GetAttribute("value"));
+    }
+
+    /// <summary>And its other half: a re-render carrying a DIFFERENT value is the page having
+    /// moved the date itself, which outranks what the box is optimistically holding. The two
+    /// are told apart by what the pick displaced — still the old value means the round trip is
+    /// in flight, anything else means the page has spoken (nsail#2315, measured on the
+    /// composite sibling that carries this same pair).</summary>
+    [Fact]
+    public async Task AValueThePageMovedToItself_ReplacesTheDateLeftInTheBox()
+    {
+        Compose("es");
+
+        var cut = Render<NsDateField<DateOnly?>>(ps => ps
+            .Add(p => p.Value, new DateOnly(2026, 8, 4)));
+
+        await Leave(cut, "07/08/2026");
+
+        cut.Render(ps => ps
+            .Add(p => p.Value, new DateOnly(2026, 8, 10)));
+
+        Assert.Equal("10/08/2026", cut.Find("input").GetAttribute("value"));
+    }
+
     /// <summary>The other half of AC 1: text the field cannot read is refused in words, in the
     /// language of the screen, naming the shape it does read — and it is LEFT IN THE BOX, so
     /// the person can see what they are being asked to fix. The value the page handed in is
