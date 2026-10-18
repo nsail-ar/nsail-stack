@@ -264,7 +264,8 @@ public class MapperDiagnosticsTests
         Assert.Equal("NSG006", Assert.Single(diagnostics).Id);
     }
 
-    // A row with no member in common is still a row: an empty initializer, nothing refused.
+    // A row with no member in common is still a row: an empty initializer that compiles, and a
+    // warning for the member it reaches the caller with empty.
     [Fact]
     public void A_projection_with_nothing_to_read_compiles()
     {
@@ -275,7 +276,244 @@ public class MapperDiagnosticsTests
             public class Entity1 { public int Id { get; set; } }
             """);
 
+        Assert.Equal("NSG012", Assert.Single(diagnostics).Id);
+    }
+
+    // ---- What is lost in silence ------------------------------------------------------------
+
+    [Fact]
+    public void A_source_member_the_entity_writes_nowhere_warns()
+    {
+        var diagnostics = Generate("""
+            public class UpdateProject { public int Id { get; set; } public string Name { get; set; } public string Title { get; set; } }
+
+            [Entity, MapFrom(typeof(UpdateProject))]
+            public class Project { public int Id { get; set; } public string Name { get; set; } }
+            """);
+
+        var warning = Assert.Single(diagnostics);
+
+        Assert.Equal("NSG011", warning.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+        Assert.Contains("UpdateProject.Title", warning.GetMessage());
+        Assert.Contains("Project", warning.GetMessage());
+    }
+
+    [Fact]
+    public void A_source_member_renamed_onto_an_entity_member_is_written()
+    {
+        var diagnostics = Generate("""
+            public class UpdateProject { public int Id { get; set; } public string Title { get; set; } }
+
+            [Entity, MapFrom(typeof(UpdateProject))]
+            public class Project
+            {
+                public int Id { get; set; }
+
+                [MapFrom(typeof(UpdateProject), "Title")]
+                public string Name { get; set; }
+            }
+            """);
+
         Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void A_source_member_the_entity_declares_dropped_is_not_reported()
+    {
+        var diagnostics = Generate("""
+            public class SignUp { public int Id { get; set; } public string Password { get; set; } }
+
+            [Entity, MapFrom(typeof(SignUp), Ignore = [nameof(SignUp.Password)])]
+            public class User { public int Id { get; set; } }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    // [MapIgnore] already says the entity's member is the handler's to write, and with it the
+    // source member it would have been paired with.
+    [Fact]
+    public void A_source_member_paired_with_a_MapIgnore_member_is_not_reported()
+    {
+        var diagnostics = Generate("""
+            public class SignUp { public int Id { get; set; } public string Password { get; set; } }
+
+            [Entity, MapFrom(typeof(SignUp))]
+            public class User { public int Id { get; set; } [MapIgnore] public string Password { get; set; } }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    // The entity's own columns a message does not carry are the normal shape of a partial
+    // message: nothing is lost, so nothing is said.
+    [Fact]
+    public void An_entity_column_a_partial_message_does_not_carry_is_not_reported()
+    {
+        var diagnostics = Generate("""
+            public class RenameProject { public int Id { get; set; } public string Name { get; set; } }
+
+            [Entity, MapFrom(typeof(RenameProject))]
+            public class Project
+            {
+                public int Id { get; set; }
+                public string Name { get; set; }
+                public System.Guid OrganizationId { get; set; }
+                public System.DateTime CreatedAt { get; set; }
+                public int CategoryId { get; set; }
+            }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    // A composition is read as a graph: the member is paired, and the child's own members are the
+    // child mapper's question.
+    [Fact]
+    public void A_composition_read_as_a_graph_is_written()
+    {
+        var diagnostics = Generate("""
+            public class TaskDto { public int Id { get; set; } public string Name { get; set; } }
+            public class UpdateProject { public int Id { get; set; } public System.Collections.Generic.List<TaskDto> Tasks { get; set; } }
+
+            [Entity]
+            public class TaskItem { public int Id { get; set; } public string Name { get; set; } }
+
+            [Entity, MapFrom(typeof(UpdateProject))]
+            public class Project
+            {
+                public int Id { get; set; }
+
+                [Composition]
+                public System.Collections.Generic.List<TaskItem> Tasks { get; set; }
+            }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    // A route token addresses the row and the version token is read as the expected version:
+    // neither is data a column takes.
+    [Fact]
+    public void A_route_member_and_the_version_token_are_not_reported()
+    {
+        var diagnostics = Generate("""
+            public interface IVersioned { uint Version { get; set; } }
+
+            public class ArchiveProject
+            {
+                [NSail.Messaging.Annotations.AsRoute] public int ProjectId { get; set; }
+
+                public int Id { get; set; }
+                public uint Version { get; set; }
+            }
+
+            [Entity, MapFrom(typeof(ArchiveProject))]
+            public class Project : IVersioned { public int Id { get; set; } public uint Version { get; set; } }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void A_target_member_nothing_fills_warns()
+    {
+        var diagnostics = Generate("""
+            public class ProjectRow { public int Id { get; set; } public string Name { get; set; } public decimal Total { get; set; } }
+
+            [Entity, MapTo(typeof(ProjectRow))]
+            public class Project { public int Id { get; set; } public string Name { get; set; } }
+            """);
+
+        var warning = Assert.Single(diagnostics);
+
+        Assert.Equal("NSG012", warning.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, warning.Severity);
+        Assert.Contains("ProjectRow.Total", warning.GetMessage());
+    }
+
+    [Fact]
+    public void A_target_member_renamed_from_an_entity_member_is_filled()
+    {
+        var diagnostics = Generate("""
+            public class ProjectRow { public int Id { get; set; } public string Title { get; set; } }
+
+            [Entity, MapTo(typeof(ProjectRow))]
+            public class Project
+            {
+                public int Id { get; set; }
+
+                [MapTo(typeof(ProjectRow), "Title")]
+                public string Name { get; set; }
+            }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void A_target_member_the_entity_declares_empty_is_not_reported()
+    {
+        var diagnostics = Generate("""
+            public class ProjectRow { public int Id { get; set; } public decimal Total { get; set; } }
+
+            [Entity, MapTo(typeof(ProjectRow), Ignore = [nameof(ProjectRow.Total)])]
+            public class Project { public int Id { get; set; } }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    // The entity's columns a row does not show are what a row is: only the other direction is a
+    // member reaching the caller empty.
+    [Fact]
+    public void An_entity_member_the_row_does_not_show_is_not_reported()
+    {
+        var diagnostics = Generate("""
+            public class ProjectRef { public int Id { get; set; } public string Name { get; set; } }
+
+            [Entity, MapTo(typeof(ProjectRef))]
+            public class Project
+            {
+                public int Id { get; set; }
+                public string Name { get; set; }
+                public string Notes { get; set; }
+                public System.DateTime CreatedAt { get; set; }
+            }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void An_Ignore_naming_a_member_that_does_not_exist_is_refused()
+    {
+        var diagnostics = Generate("""
+            public class SignUp { public int Id { get; set; } public string Password { get; set; } }
+
+            [Entity, MapFrom(typeof(SignUp), Ignore = ["Secret"])]
+            public class User { public int Id { get; set; } [MapIgnore] public string Password { get; set; } }
+            """);
+
+        var error = Assert.Single(diagnostics);
+
+        Assert.Equal("NSG013", error.Id);
+        Assert.Equal(DiagnosticSeverity.Error, error.Severity);
+        Assert.Contains("Secret", error.GetMessage());
+    }
+
+    [Fact]
+    public void An_Ignore_on_a_MapTo_naming_a_member_that_does_not_exist_is_refused()
+    {
+        var diagnostics = Generate("""
+            public class ProjectRow { public int Id { get; set; } }
+
+            [Entity, MapTo(typeof(ProjectRow), Ignore = ["Total"])]
+            public class Project { public int Id { get; set; } }
+            """);
+
+        Assert.Equal("NSG013", Assert.Single(diagnostics).Id);
     }
 
     static IReadOnlyList<Diagnostic> Generate(string types)
@@ -297,6 +535,7 @@ public class MapperDiagnosticsTests
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<MapFromAttribute>()
             .AddContainingAssembly<MapContext>()
+            .AddContainingAssembly<NSail.Messaging.Annotations.AsRouteAttribute>()
             .Build("MapperDiagnosticsAssembly");
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new MappersSourceGenerator());

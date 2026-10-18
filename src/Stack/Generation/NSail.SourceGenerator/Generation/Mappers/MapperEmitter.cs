@@ -54,6 +54,10 @@ sealed partial class MapperEmitter
     readonly Dictionary<string, string> _complex = new();
     readonly Dictionary<string, IReadOnlyList<string>> _includes = new();
     readonly HashSet<string> _including = new();
+    readonly Dictionary<string, HashSet<string>> _read = new();
+    readonly List<(INamedTypeSymbol Source, HashSet<string> Members)> _reading = new();
+
+    HashSet<string>? _filled;
 
     HashSet<ITypeSymbol>? _modelled;
 
@@ -101,13 +105,14 @@ sealed partial class MapperEmitter
                 }
 
                 Root(source, target);
+                Dropped(declaration, source, target);
             }
 
             foreach (var declaration in target.GetAttributes(MapToName))
             {
                 if (declaration.ConstructorArguments.Length == 1 && declaration.ConstructorArguments[0].Value is INamedTypeSymbol projected)
                 {
-                    Projection(target, projected);
+                    Projection(target, projected, declaration);
                 }
             }
         }
@@ -188,6 +193,8 @@ sealed partial class MapperEmitter
         // same pair again, and must find it instead of starting another.
         _pairs[id] = field;
 
+        Reading(id, source);
+
         var derived = Discriminated(source, target, out var discriminator);
 
         if (derived.Count == 0)
@@ -200,6 +207,11 @@ sealed partial class MapperEmitter
         var keys = Keys(target);
         var sourceKeys = keys.Select(key => SourceMember(source, key, out _)).ToList();
         var sourceHasKey = sourceKeys.All(member => member is not null);
+
+        foreach (var key in sourceKeys)
+        {
+            Consume(source, key);
+        }
 
         var text = new StringBuilder();
 
@@ -306,6 +318,8 @@ sealed partial class MapperEmitter
         text.AppendLine();
 
         _members.Append(text);
+
+        Finished();
 
         return field;
     }
@@ -517,11 +531,15 @@ sealed partial class MapperEmitter
 
         _complex[id] = method;
 
+        Reading(id, source);
+
         var derived = Discriminated(source, target, out var discriminator);
 
         if (derived.Count > 0)
         {
             _members.Append(Dispatch(source, target, method, discriminator!, derived));
+
+            Finished();
 
             return method;
         }
@@ -560,6 +578,8 @@ sealed partial class MapperEmitter
 
         _members.Append(text);
 
+        Finished();
+
         return method;
     }
 
@@ -582,6 +602,8 @@ sealed partial class MapperEmitter
         var property = Properties(target, readable: true).FirstOrDefault(p => p.Name == member);
 
         discriminator = property is null ? null : SourceMember(source, property, out _);
+
+        Consume(source, discriminator);
 
         if (discriminator is null)
         {
@@ -656,8 +678,15 @@ sealed partial class MapperEmitter
 
         foreach (var member in Properties(target))
         {
-            if (keys.Any(key => SymbolEqualityComparer.Default.Equals(key, member)) || member.HasAttribute(MapIgnoreName))
+            if (keys.Any(key => SymbolEqualityComparer.Default.Equals(key, member)))
             {
+                continue;
+            }
+
+            // [MapIgnore] is itself the declaration that the source's member is dropped here.
+            if (member.HasAttribute(MapIgnoreName))
+            {
+                Consume(source, SourceMember(source, member, out _));
                 continue;
             }
 
@@ -689,6 +718,8 @@ sealed partial class MapperEmitter
         {
             return ForeignKey(source, target, member) ?? ReverseForeignKey(source, member);
         }
+
+        Consume(source, from);
 
         if (member.Name == OrganizationAxis && !explicitly)
         {
@@ -810,6 +841,8 @@ sealed partial class MapperEmitter
             return null;
         }
 
+        Consume(source, foreignKey);
+
         var converted = Convert($"source.{Id(foreignKey.Name)}", foreignKey.Type, keys[0].Type);
 
         if (converted is null)
@@ -835,7 +868,14 @@ sealed partial class MapperEmitter
         var name = ForeignKeyName(Singular(member.Name), keys[0].Name) + "s";
         var foreignKeys = Properties(source, readable: true).FirstOrDefault(p => p.Name == name);
 
-        return foreignKeys is not null && Element(foreignKeys.Type, out var item) && IsScalar(item) ? foreignKeys : null;
+        if (foreignKeys is null || !Element(foreignKeys.Type, out var item) || !IsScalar(item))
+        {
+            return null;
+        }
+
+        Consume(source, foreignKeys);
+
+        return foreignKeys;
     }
 
     string? ForeignKeyCollection(INamedTypeSymbol source, IPropertySymbol member, INamedTypeSymbol entity)
@@ -904,6 +944,8 @@ sealed partial class MapperEmitter
             {
                 continue;
             }
+
+            Consume(source, navigation);
 
             var converted = Convert($"source.{Id(navigation.Name)}.{Id(keys[0].Name)}", keys[0].Type, member.Type);
 
@@ -1423,6 +1465,11 @@ sealed partial class MapperEmitter
     void Report(DiagnosticDescriptor descriptor, ISymbol symbol, params object[] arguments)
     {
         Diagnostics.Add(Diagnostic.Create(descriptor, symbol.Locations.FirstOrDefault(), arguments));
+    }
+
+    void Report(DiagnosticDescriptor descriptor, Location? location, params object[] arguments)
+    {
+        Diagnostics.Add(Diagnostic.Create(descriptor, location, arguments));
     }
 
     // A member named by a keyword (@class, @event) is written as the source spells it.

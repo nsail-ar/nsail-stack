@@ -15,7 +15,7 @@ sealed partial class MapperEmitter
 {
     const string Linq = "global::System.Linq.Enumerable";
 
-    void Projection(INamedTypeSymbol source, INamedTypeSymbol target)
+    void Projection(INamedTypeSymbol source, INamedTypeSymbol target, AttributeData declaration)
     {
         var name = $"Projection{_next++}";
         var s = Name(source);
@@ -23,7 +23,12 @@ sealed partial class MapperEmitter
 
         Constructible(target);
 
+        var filled = _filled = new HashSet<string>();
         var body = Project("source", source, target, new List<(ITypeSymbol, ITypeSymbol)>());
+
+        _filled = null;
+
+        Empty(declaration, source, target, filled);
 
         _members.AppendLine($"        // {source.Name} read as {target.Name}");
         _members.AppendLine($"        internal sealed class {name} : {Runtime}.IProjection<{s}, {t}>");
@@ -60,6 +65,11 @@ sealed partial class MapperEmitter
 
     string Initializer(string value, INamedTypeSymbol source, INamedTypeSymbol target, List<(ITypeSymbol, ITypeSymbol)> stack)
     {
+        // The declared row and, for a discriminated one, each of its derived types: all of them
+        // fill the members the [MapTo] is answerable for. Deeper in, the members belong to a
+        // nested row, whose own declaration asks the question.
+        var root = stack.Count == 0 ? _filled : null;
+
         stack.Add((source, target));
 
         var members = new List<string>();
@@ -77,6 +87,12 @@ sealed partial class MapperEmitter
             if (read is not null)
             {
                 members.Add($"{Id(member.Name)} = {read}");
+            }
+
+            // Paired and refused — NSG006, a cycle, a [MapIgnore] — is still answered for.
+            if (root is not null && (read is not null || ProjectedMember(source, target, member) is not null))
+            {
+                root.Add(member.Name);
             }
         }
 
