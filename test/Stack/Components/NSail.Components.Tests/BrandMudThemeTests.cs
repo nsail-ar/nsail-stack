@@ -67,4 +67,38 @@ public sealed class BrandMudThemeTests
         Assert.NotEqual(theme.PaletteDark.TextPrimary.Value, theme.PaletteDark.DrawerText.Value);
         Assert.NotEqual(theme.PaletteDark.TextSecondary.Value, theme.PaletteDark.DrawerIcon.Value);
     }
+
+    // nsail#2361: a brand that picks nothing keeps the house typeface -- Typography.H6 stays
+    // at the vendor's own unset FontFamily, which inherits the body's rather than naming one.
+    [Fact]
+    public void NoTypeface_leaves_heading_FontFamily_unset()
+    {
+        var theme = BrandMudTheme.From(new Brand());
+
+        Assert.Null(theme.Typography.H6.FontFamily);
+        Assert.Null(theme.Typography.H1.FontFamily);
+    }
+
+    // The pick paints the titles -- NsText's own "Title" treatment is Typo.h6, and the brand
+    // name renders through it too (BrandingBar) -- and nothing below the heading ranks: Body1
+    // (tables, fields, figures) stays the vendor's own default.
+    [Fact]
+    public void Typeface_sets_heading_FontFamily_and_leaves_body_alone()
+    {
+        var brand = new Brand { Typeface = "lora" };
+
+        var theme = BrandMudTheme.From(brand);
+
+        Assert.Equal(Typefaces.Find("lora")!.FontFamily, theme.Typography.H6.FontFamily);
+        Assert.Equal(Typefaces.Find("lora")!.FontFamily, theme.Typography.H1.FontFamily);
+        Assert.NotEqual(Typefaces.Find("lora")!.FontFamily, theme.Typography.Body1.FontFamily);
+    }
+
+    [Fact]
+    public void UnknownTypefaceKey_falls_back_to_the_house_typeface()
+    {
+        var theme = BrandMudTheme.From(new Brand { Typeface = "does-not-exist" });
+
+        Assert.Null(theme.Typography.H6.FontFamily);
+    }
 }
