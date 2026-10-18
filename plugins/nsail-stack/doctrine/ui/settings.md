@@ -84,11 +84,22 @@ browser's own `localStorage`. Whoever signs in at that counter gets the counter'
   a browser that refuses to store. The caller's fallback is then exactly what it would have
   done with no memory at all, so a remembered value can only ever improve a prefill.
   Nothing secret rides here: what is stored is authorized by the server on every read.
-- **Recall on an interactive render, never in `OnInitializedAsync`**: JS interop cannot run
-  while the page prerenders (both apps are `InteractiveWebAssembly`, which is also why
-  `ProtectedLocalStorage` — Server-container only — is not the mechanism). And not the first
-  render either when the control loads its own options: that render can land before the
-  lookup answers. Reference: `PointOfSaleSelect.OnAfterRenderAsync`.
+- **Recall on the interactive run, and before the field it fills has drawn.** JS interop cannot
+  run while the page prerenders (both apps are `InteractiveWebAssembly`, which is also why
+  `ProtectedLocalStorage` — Server-container only — is not the mechanism), so a recall answers
+  the default there and only a seam the interactive render runs **again** ever reads the value.
+  Two seams are legitimate, and which one is decided by whether the caller can hold its own
+  render until the read answers:
+  - A control that cannot recalls on an interactive render — and **not the first** one when it
+    loads its own options, which can land before the lookup answers. Reference:
+    `PointOfSaleSelect.OnAfterRenderAsync`.
+  - A form's load half recalls there: it draws no field until it answers, and it awaits its
+    lookups as tasks instead of reading the lists they fill. This is the only seam that works
+    when the load has sends of its own to await — the after-render hook's one chance can land
+    inside the window that read holds the form's single Runner, with `Document` still null and
+    `Load()` a second `Raise` that throws, and a render of `NsForm` alone re-renders the page's
+    fragment but not the page, so no second chance follows. Reference, in a product:
+    `CreateAppointmentPage.ApplyRemembered`.
 - **The write is the user's pick, not the form's save and not the prefill.** A machine that
   has not chosen keeps falling back; it must not adopt a default it was never told to use.
 - Riders named and deliberately unbuilt: list filters, form drafts, `StoreSelect`.

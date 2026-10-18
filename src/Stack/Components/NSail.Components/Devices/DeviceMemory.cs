@@ -17,8 +17,9 @@ namespace NSail.Components;
 /// caller falls back to exactly what it would have done with no memory at all. Nothing here
 /// is a secret: an id stored on a machine is still authorized on every read by the server.
 ///
-/// JS interop cannot run while a page prerenders, so a component recalls on its first
-/// interactive render, never in OnInitializedAsync.</summary>
+/// JS interop cannot run while a page prerenders, so a recall answers the default there and
+/// belongs to a seam the interactive render runs again: a component's first interactive render,
+/// or a form's load half, which draws no field until the read answers.</summary>
 public sealed class DeviceMemory
 {
     readonly IJSRuntime _js;
