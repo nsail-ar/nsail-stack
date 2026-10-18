@@ -108,6 +108,46 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
         Assert.Equal(new DateTime(2026, 8, 7), cut.FindComponent<MudDatePicker>().Instance.Date);
     }
 
+    /// <summary>The other half of the guard above, and in direct tension with it: a re-render
+    /// carrying a DIFFERENT value is the page having moved the date itself, which outranks the
+    /// box's optimistic one. Held apart by what the pick displaced — still the old value means
+    /// the round trip is in flight, anything else means the page has spoken. Without it the box
+    /// kept the day the page had already left (nsail#2315: the "next open day" button repainted
+    /// the free times and left the closed day written in Comienza).</summary>
+    [Fact]
+    public async Task AValueThePageMovedToItself_ReplacesTheOptimisticDate()
+    {
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 4, 15, 30, 0)));
+
+        await cut.InvokeAsync(() => cut.FindComponent<MudDatePicker>().Instance.DateChanged
+            .InvokeAsync(new DateTime(2026, 8, 7, 0, 0, 0)));
+
+        cut.Render(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 10, 15, 30, 0)));
+
+        Assert.Equal(new DateTime(2026, 8, 10), cut.FindComponent<MudDatePicker>().Instance.Date);
+    }
+
+    /// <summary>The same move reached the way the screen's own defect was: text LEFT in the box
+    /// rather than a day picked off the calendar. Both gestures take the optimistic date, so
+    /// both have to let the page's own decision through.</summary>
+    [Fact]
+    public async Task AValueThePageMovedToItself_ReplacesADateLeftInTheBox()
+    {
+        ComposeCulture("en");
+
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 4, 15, 30, 0)));
+
+        await LeaveDate(cut, "08/07/2026");
+
+        cut.Render(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 10, 15, 30, 0)));
+
+        Assert.Equal(new DateTime(2026, 8, 10), cut.FindComponent<MudDatePicker>().Instance.Date);
+    }
+
     // Calqued from NsDateFieldTests: the date half reads through the same seam, so it earns
     // the same proof. Overrides the constructor's neutral LanguageProvider/StringCatalog with a
     // culture-specific pair — the last registration of a singleton type wins on resolve, the
