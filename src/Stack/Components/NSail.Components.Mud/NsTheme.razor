@@ -61,8 +61,28 @@
     static string Variables(Brand brand, bool dark)
     {
         var scheme = dark ? brand.Dark : brand.Light;
+        var variables = $":root{{--ns-accent-ink:{scheme.AccentInk};--ns-accent-on-chrome:{scheme.AccentOnChrome};}}";
 
-        return $":root{{--ns-accent-ink:{scheme.AccentInk};--ns-accent-on-chrome:{scheme.AccentOnChrome};}}";
+        return variables + FontFace(brand.Typeface);
+    }
+
+    // The one place a Brand's typeface becomes loadable: BrandMudTheme already put its name on
+    // Typography.H1-H6, and the browser still needs to be told where that family's bytes are.
+    // Typefaces.AssetPath is the one convention both this and a PDF embedder read the file at,
+    // so a pick travels as a key and never a URL.
+    static string FontFace(string? typefaceKey)
+    {
+        var typeface = Typefaces.Find(typefaceKey);
+
+        if (typeface is null)
+        {
+            return string.Empty;
+        }
+
+        var family = typeface.FontFamily[0];
+        var url = Typefaces.AssetPath(typeface.Key);
+
+        return $"@font-face{{font-family:'{family}';src:url('{url}') format('truetype');font-display:swap;}}";
     }
 
     /// <summary>The colourless grey a surface wears when no brand is known — the last resort,

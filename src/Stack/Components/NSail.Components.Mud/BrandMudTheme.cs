@@ -23,6 +23,7 @@ public static class BrandMudTheme
             {
                 Elevation = BuildElevations(),
             },
+            Typography = BuildTypography(Typefaces.Find(brand.Typeface)),
             // MudBlazor's own overlays never joined SurfaceContext's escalation chain: its
             // defaults (Dialog 1400, Popover 1200, ...) were picked with no idea an aside
             // sits at 1400 or a modal at 1500, so a vendor Confirm opened from either could
@@ -138,5 +139,29 @@ public static class BrandMudTheme
         }
 
         return elevations;
+    }
+
+    /// <summary>Left at the vendor's own default (an unset <c>FontFamily</c> inherits the
+    /// body's) when nothing is picked — <c>Typography.Default</c>, every table, field and
+    /// figure, stays untouched either way. A pick reaches only the heading ranks: NsText's own
+    /// "Title" treatment is <see cref="Typo.h6"/>, and the brand name itself renders through
+    /// it (BrandingBar), so one family on H1-H6 is both the titles and the name.</summary>
+    static Typography BuildTypography(Typeface? typeface)
+    {
+        var typography = new Typography();
+
+        if (typeface is null)
+        {
+            return typography;
+        }
+
+        typography.H1.FontFamily = typeface.FontFamily;
+        typography.H2.FontFamily = typeface.FontFamily;
+        typography.H3.FontFamily = typeface.FontFamily;
+        typography.H4.FontFamily = typeface.FontFamily;
+        typography.H5.FontFamily = typeface.FontFamily;
+        typography.H6.FontFamily = typeface.FontFamily;
+
+        return typography;
     }
 }
