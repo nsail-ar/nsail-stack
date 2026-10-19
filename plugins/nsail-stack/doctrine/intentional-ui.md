@@ -693,11 +693,13 @@ lines are placed: [ui/navigation.md](ui/navigation.md); the cards' host: [ui/hos
   the child, label and all, and a nav section's name is the domain's map — Compras must stay
   Compras, not become Órdenes de Compra. The main nav flattens by shape at the contributor
   instead, which keeps the name (cases).
-- **Icons are named through catalogs, never `Icons.Material.*` in kits or apps.** Three kinds:
+- **Icons are named through catalogs, never `Icons.Material.*` in kits or apps.** Four kinds:
   `NsIcons` is the generic UI vocabulary; a kit adds one for what it speaks and no product owns
   — a shared domain concept (`ProductsIcons.LowStock`) or a vendor's own mark (`AppleIcons`);
-  an app adds one for its own domain (`OpticalIcons.Prescription`). **Grow all three on
-  demand**, one drawing to one entry — the `new-icon` skill carries the procedure.
+  an app adds one for its own domain (`OpticalIcons.Prescription`); a Stack project below
+  `NSail.Components.Mud` adds its own where the layering keeps it from reaching `NsIcons`
+  (`ExportingIcons` in `NSail.Exporting`). **Grow all four on demand**, one drawing to one
+  entry — the `new-icon` skill carries the procedure.
 
 ---
 
