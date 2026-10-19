@@ -101,4 +101,31 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Generated code names its types; an open generic has no type to name.");
+
+    public static readonly DiagnosticDescriptor SourceMemberNotMapped = new(
+        id: "NSG011",
+        title: "A source member is written nowhere",
+        messageFormat: "'{0}.{1}' is written to no member of '{2}': the caller sends it and every save drops it. Name the entity's member for it with [MapFrom(typeof({0}), \"{1}\")], or declare the drop with Ignore = [nameof({0}.{1})] on the [MapFrom].",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "The data arrives and is lost in silence, which no test of the handler can see.");
+
+    public static readonly DiagnosticDescriptor TargetMemberNotFilled = new(
+        id: "NSG012",
+        title: "A target member is filled by nothing",
+        messageFormat: "'{0}.{1}' is read from no member of '{2}': every row reaches the caller with it empty. Name the entity's member for it with [MapTo(typeof({0}), \"{1}\")], or declare the gap with Ignore = [nameof({0}.{1})] on the [MapTo].",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        description: "A row member nothing fills is a default the screen shows as data.");
+
+    public static readonly DiagnosticDescriptor IgnoredMemberNotFound = new(
+        id: "NSG013",
+        title: "Ignore names a member that does not exist",
+        messageFormat: "'{0}' declares Ignore = \"{1}\", but '{2}' has no public member named '{1}'",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A name that matches nothing silences nothing, and goes on silencing nothing after the member it meant is renamed.");
 }

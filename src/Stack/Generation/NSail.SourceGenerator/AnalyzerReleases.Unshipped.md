@@ -15,3 +15,6 @@ NSG007 | NSail.Generation | Error | A mapped type has no parameterless construct
 NSG008 | NSail.Generation | Error | [MapFrom] names a type that is not a class.
 NSG009 | NSail.Generation | Error | A projection cannot carry one of its source's derived types.
 NSG010 | NSail.Generation | Error | [MapFrom] or [MapTo] is declared on an open generic type.
+NSG011 | NSail.Generation | Warning | A [MapFrom] source member is written to no member of the entity.
+NSG012 | NSail.Generation | Warning | A [MapTo] target member is read from no member of the entity.
+NSG013 | NSail.Generation | Error | An Ignore entry names a member the type does not declare.

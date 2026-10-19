@@ -259,9 +259,10 @@ builds a relative URI, so that state can never reach the network and must not be
 ## Diagnostics
 
 A generator that cannot honour what the code declares reports a build error rather than
-generating something else. Ids are `NSG` + three digits, allocated sequentially in
-`GeneratorDiagnostics` and tracked in `AnalyzerReleases.Unshipped.md`; an id is never
-reused, so a suppression keeps meaning the same thing.
+generating something else; what it can honour, and loses data doing, is a warning. Ids are
+`NSG` + three digits, allocated sequentially in `GeneratorDiagnostics` and tracked in
+`AnalyzerReleases.Unshipped.md`; an id is never reused, so a suppression keeps meaning the
+same thing.
 
 | Id | Severity | Meaning |
 |---|---|---|
@@ -275,10 +276,17 @@ reused, so a suppression keeps meaning the same thing.
 | `NSG008` | Error | `[MapFrom]` names a type that is not a class. |
 | `NSG009` | Error | A projection cannot carry one of its source's derived types: the row's base declares another discriminator, or no derived type for that value. |
 | `NSG010` | Error | `[MapFrom]` or `[MapTo]` sits on an open generic type — generated code names one closed type. |
+| `NSG011` | Warning | A `[MapFrom]` source member is written to no member of the entity — the caller sends it and every save drops it (data.md, Mapping). |
+| `NSG012` | Warning | A settable `[MapTo]` target member is read from no member of the entity — every row reaches the caller with it empty. |
+| `NSG013` | Error | An `Ignore` entry on a `[MapFrom]` or `[MapTo]` names a member the type does not declare, so it silences nothing. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only
 surface as a 404 at runtime.
+
+`NSG011` and `NSG012` are warnings: the mapping works, it just loses the data, and a partial
+message or a narrow row is often exactly what was meant. An app that wants them refused raises
+them in its own `.editorconfig` or `WarningsAsErrors`.
 
 ---
 
