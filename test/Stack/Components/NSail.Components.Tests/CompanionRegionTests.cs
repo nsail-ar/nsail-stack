@@ -6,6 +6,8 @@ using Bunit.TestDoubles;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
+using MudBlazor;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
@@ -193,6 +195,95 @@ public sealed class CompanionRegionTests : BunitContext, IAsyncLifetime
         app.WaitForAssertion(() => Assert.Equal("false", _storage.Items[Key]));
     }
 
+    /// <summary>Vigía, PR #93 vuelta 2, finding 1: the recall's own open must never steal focus
+    /// from a page arrival focus already settled — only a door's own act earns that. Docked
+    /// (Md and up), the content stays on screen beside the region, so a silent recall leaves
+    /// focus where arrival focus put it.</summary>
+    [Fact]
+    public void ARecallThatOpensItAboveTheDrawerBreakpointDoesNotTakeFocus()
+    {
+        _storage.Write(Key, "true");
+        Services.AddScoped<IBrowserViewportService>(_ => new FixedBreakpointViewportService(Breakpoint.Lg));
+
+        var app = RenderApp();
+
+        app.WaitForAssertion(() => Assert.Single(app.FindAll(".ns-companion")));
+        Assert.False(app.FindComponent<NsCloseOnEscape>().Instance.Focuses);
+    }
+
+    /// <summary>The other half of the same finding: below the drawer's breakpoint the region IS
+    /// the screen, so the same silent recall owes it focus — there is nothing on screen for a
+    /// person to have reached for instead.</summary>
+    [Fact]
+    public void ARecallThatOpensItBelowTheDrawerBreakpointStillTakesFocus()
+    {
+        _storage.Write(Key, "true");
+        Services.AddScoped<IBrowserViewportService>(_ => new FixedBreakpointViewportService(Breakpoint.Sm));
+
+        var app = RenderApp();
+
+        app.WaitForAssertion(() => Assert.Single(app.FindAll(".ns-companion")));
+        Assert.True(app.FindComponent<NsCloseOnEscape>().Instance.Focuses);
+    }
+
+    /// <summary>A door's own Toggle/Open always takes focus, docked or not — it is what the
+    /// recall-only exception above carves itself out of.</summary>
+    [Fact]
+    public async Task ADoorsOwnOpenAlwaysTakesFocus()
+    {
+        Services.AddScoped<IBrowserViewportService>(_ => new FixedBreakpointViewportService(Breakpoint.Lg));
+
+        var app = RenderApp();
+
+        await app.InvokeAsync(Region.Open);
+
+        Assert.True(app.FindComponent<NsCloseOnEscape>().Instance.Focuses);
+    }
+
+    /// <summary>Vigía, PR #93 vuelta 2, finding 2a: a door's text handover while the recall is
+    /// still in flight must survive it — the recall's own (textless) Open() used to run anyway
+    /// once it resolved, open on an already-open region being the one case Set() does not
+    /// early-out of, and wiping what the person had just typed.</summary>
+    [Fact]
+    public async Task ADoorsTextHandoverWhileAnOlderOpenRecallIsInFlightSurvivesIt()
+    {
+        _storage.Write(Key, "true");
+
+        var deferred = new DeferredRecallStorage(_storage);
+        Services.AddScoped(_ => new DeviceMemory(deferred));
+
+        var app = RenderApp();
+
+        await app.InvokeAsync(() => Region.Open("lentes de contacto"));
+
+        deferred.Gate.SetResult();
+
+        app.WaitForAssertion(() => Assert.Equal("lentes de contacto", Region.Text));
+    }
+
+    /// <summary>Vigía, PR #93 vuelta 2, finding 2b: a door acting while the recall is in flight
+    /// also owns what gets remembered from then on — the recall used to overwrite _remembered
+    /// with the stale value it read before the door's own write, leaving the next Close() believe
+    /// nothing moved and skip writing "false" to storage.</summary>
+    [Fact]
+    public async Task ADoorsOpenWhileAnOlderRecallIsInFlightKeepsWhatGetsRemembered()
+    {
+        var deferred = new DeferredRecallStorage(_storage);
+        Services.AddScoped(_ => new DeviceMemory(deferred));
+
+        var app = RenderApp();
+
+        await app.InvokeAsync(Region.Open);
+
+        deferred.Gate.SetResult();
+
+        app.WaitForAssertion(() => Assert.Equal("true", _storage.Items[Key]));
+
+        await app.InvokeAsync(Region.Close);
+
+        app.WaitForAssertion(() => Assert.Equal("false", _storage.Items[Key]));
+    }
+
     /// <summary>A browser that cannot be read answers "closed", which is the region's own
     /// default: a machine with no memory behaves exactly like one that was never written to.</summary>
     [Fact]
@@ -297,5 +388,33 @@ public sealed class CompanionRegionTests : BunitContext, IAsyncLifetime
             ".ns-companion.ns-no-appbar {\n    padding-top: 0;",
             css,
             StringComparison.Ordinal);
+    }
+
+    /// <summary>Opens the race the recall's real interop round trip leaves for a door to land
+    /// in: nsapp.recall reads storage AT ONCE, same as the real browser's GET already answered
+    /// over the wire, but only RETURNS once the test's own gate releases it — a door's write
+    /// in between is one this call's own answer was already decided before.</summary>
+    sealed class DeferredRecallStorage(FakeDeviceStorage inner) : IJSRuntime
+    {
+        public TaskCompletionSource Gate { get; } = new();
+
+        public async ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+        {
+            if (identifier != "nsapp.recall")
+            {
+                return await inner.InvokeAsync<TValue>(identifier, args);
+            }
+
+            var read = await inner.InvokeAsync<TValue>(identifier, args);
+
+            await Gate.Task;
+
+            return read;
+        }
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+        {
+            return InvokeAsync<TValue>(identifier, args);
+        }
     }
 }
