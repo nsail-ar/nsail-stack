@@ -25,6 +25,7 @@ One suffix, one meaning. A form listed here is owned by its family across the wh
 | `Cards` | dashboard-card contributor class — `IDashboardContributor<TSubject>`, same bare-name rule as `Actions`; lives in the contributing feature folder, or at the Shared root when the cards belong to the project as a whole. The subject-less app dashboard's contributor stays `Dashboard` | `Customers.Cards` |
 | `Onboarding` | onboarding-step contributor — `IOnboardingContributor`, at the Shared project root beside `Menu.cs` | `Onboarding` |
 | `Guide` | guide-chapter contributor — `IGuideContributor`, at the Shared project root beside `Menu.cs`, same bare-noun rule as `Onboarding` | `Guide` |
+| `Skills` | Assistant-skill contributor — `ISkillContributor`, at the Shared project root beside `Menu.cs`, same bare-noun rule as `Guide`. A skill is written for the model, not a person, and its body is read from an embedded resource, never fetched — the one contribution family a guide chapter's own rules (localized title, HTTP body) do not reach | `Skills` |
 | `I*Source` | feeds a manager; sources merge in registration order | `IStringSource` |
 | `IValidator<TMessage>` / `*Validator` | a save-time condition a module imposes on a message it does not own — returns the `Problem` that refuses the send, null to allow. The send pipeline runs them innermost: after every interceptor, before the handler (messaging.md) | `ProductTypeValidator : IValidator<UpdateProduct>` |
 | `*Manager` | imperative instance service | `DialogManager`, `StringManager`, `SettingsManager` |
@@ -112,8 +113,8 @@ a wrong-assembly resolve impossible rather than quiet.
 
 ### Contributor classes are named by the contribution alone
 
-`Actions`, `Cards`, `Menu`, `Onboarding` — never by the target. The namespace already names
-the feature, and the contributor interface names the target
+`Actions`, `Cards`, `Menu`, `Onboarding`, `Skills` — never by the target. The namespace
+already names the feature, and the contributor interface names the target
 (`IActionContributor<PartyRowOutlet>` says "party rows" better than a prefix could).
 `Prescriptions.Actions` and `Appointments.Actions` coexist; `PartyActions` repeats what the
 interface declares, and `PrescriptionPartyActions` also stutters against the namespace. A

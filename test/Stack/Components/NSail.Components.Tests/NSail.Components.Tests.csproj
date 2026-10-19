@@ -29,4 +29,8 @@
         <Using Include="Xunit" />
     </ItemGroup>
 
+    <ItemGroup>
+        <EmbeddedResource Include="Fixtures\sample-skill.md" />
+    </ItemGroup>
+
 </Project>

@@ -155,7 +155,7 @@ Prescriptions/Actions.cs        # NSail.Optical.Prescriptions
 Filing it by target would invert the dependency the pattern exists to avoid — Party would
 accumulate a file naming every feature that decorates it. The project root is for what
 belongs to no feature: icons, routes, the setup — and the contributions the *project as a
-whole* makes (`Menu.cs`, a root `Cards.cs`, `Onboarding.cs`). How the class is named
+whole* makes (`Menu.cs`, a root `Cards.cs`, `Onboarding.cs`, `Skills.cs`). How the class is named
 (`Actions`, `Cards`, `Contributed`): [naming.md](naming.md#contributor-classes-are-named-by-the-contribution-alone).
 
 ---
