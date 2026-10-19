@@ -10,9 +10,13 @@
 @* The chrome NsPageNotFound and NsPageError share -- calqued off NsSplash's own face (see
    NsPageNotFound's own note): the logo, a short message and a door back home. The two
    callers differ only in the words and in whether a second escape hatch rides beside the
-   door (NsPageError's Reload) -- never in the frame itself, so the frame lives once, here. *@
+   door (NsPageError's Reload) -- never in the frame itself, so the frame lives once, here.
+   ns-brand-column is NsSplash's own column width, shared by class rather than repeated here
+   so a wide lockup draws at the same size on both faces regardless of viewport -- without
+   an absolute ceiling of its own this frame's width is the viewport, and NsRemoteImage's
+   max-width:100% only bites once the container is already narrower than the mark. *@
 <div id="@Id" class="fixed inset-0 z-max d-flex flex-column align-center justify-center pa-6 bg-background">
-    <NsStack Align="NsAlign.Center" Gap="NsSize.Md">
+    <NsStack Align="NsAlign.Center" Gap="NsSize.Md" Class="ns-brand-column">
         @if (LogoUrl is not null)
         {
             <NsRemoteImage Url="@LogoUrl" Alt="" Height="160" As="NsAs.Main" />
