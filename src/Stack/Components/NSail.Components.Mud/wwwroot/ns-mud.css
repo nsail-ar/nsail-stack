@@ -2956,16 +2956,22 @@
 
 /* NsRemoteImage's own box: the <img> and the inlined <svg> are two different elements
    with two different natural sizing rules, so the wrapper is what Height actually
-   constrains -- both children fill it and keep their own aspect ratio. */
+   constrains -- both children fill it and keep their own aspect ratio. max-width:100% on
+   the wrapper AND its children (the same height-as-measure, width-as-ceiling pair
+   NsSplash's own <img> carries) is what stops a wide lockup from drawing past its
+   container at a fixed height -- without it a 4:1 mark at Height=160 draws 640px wide
+   and a 390px phone crops it, position:fixed leaving no scroll to rescue it. */
 .ns-remote-image {
     display: inline-flex;
     align-items: center;
+    max-width: 100%;
 }
 
 .ns-remote-image > svg,
 .ns-remote-image > img {
     height: 100%;
     width: auto;
+    max-width: 100%;
 }
 
 /* NsSplash's live percentage: Blazor's own boot script writes --blazor-load-percentage-text
