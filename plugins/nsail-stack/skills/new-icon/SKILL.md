@@ -1,12 +1,12 @@
 ---
 name: new-icon
-description: Add an icon to an NSail icon catalog (NsIcons, a kit's like ProductsIcons, or an app's like OpticalIcons) from a Material Symbols path. Use when a screen, menu entry, button or field needs a glyph no catalog carries yet, instead of reaching for Icons.Material.*, or when a pasted icon renders as nothing or a dot. Covers the 20px asset, the 960-grid viewBox transform, catalog choice, one drawing per entry and icon sizing.
+description: Add an icon to an NSail icon catalog (NsIcons, a kit's like ProductsIcons, an app's like OpticalIcons, or a Stack library's own like ExportingIcons) from a Material Symbols path. Use when a screen, menu entry, button or field needs a glyph no catalog carries yet, instead of reaching for Icons.Material.*, or when a pasted icon renders as nothing or a dot. Covers the 20px asset, the 960-grid viewBox transform, catalog choice, one drawing per entry and icon sizing.
 ---
 
 # Adding an icon
 
 Icons are named through catalogs, never `Icons.Material.*` in kits or apps
-(intentional-ui.md). Three kinds of catalog exist and all of them grow on demand:
+(intentional-ui.md). Four kinds of catalog exist and all of them grow on demand:
 
 - **`NsIcons`** (`NSail.Components.Mud`) — the generic UI vocabulary: `Search`, `Add`,
   `Directory`, `People`, … An icon belongs here when it means a UI gesture, or a concept the
@@ -21,6 +21,12 @@ Icons are named through catalogs, never `Icons.Material.*` in kits or apps
 - **`{App}Icons`** (the app's Shared project) — the domain vocabulary of one product:
   `OpticalIcons.Prescription`. An icon belongs here when only that product speaks the
   concept.
+- **`{StackLib}Icons`** (a Stack project below `NSail.Components.Mud`, like `ExportingIcons`
+  in `NSail.Exporting`) — a concept that project's own vocabulary owns and that `NsIcons`
+  cannot carry because the dependency runs the other way (`NSail.Components.Mud` already
+  references the library, so it can never be referenced back). An icon belongs here only
+  where that layering forces it; where a product can reach `NsIcons` or its own catalog
+  instead, it does, so a concept never has two homes to choose between.
 
 **One drawing, one entry**, across every catalog in the tree: an entry pasting a symbol
 another entry already declares, or holding markup another entry already holds, fails a

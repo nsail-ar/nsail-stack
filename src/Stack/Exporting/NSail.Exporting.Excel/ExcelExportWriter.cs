@@ -6,6 +6,7 @@ using MiniExcelLibs;
 using MiniExcelLibs.Attributes;
 using MiniExcelLibs.OpenXml;
 using NSail.Exporting;
+using NSail.Icons;
 
 namespace NSail.Exporting.Excel;
 
@@ -20,6 +21,8 @@ namespace NSail.Exporting.Excel;
 public sealed class ExcelExportWriter : IExportWriter
 {
     public ExportKind Kind => ExportKind.Excel;
+
+    public Glyph Icon => ExportingIcons.TableChart;
 
     public string Extension => "xlsx";
 

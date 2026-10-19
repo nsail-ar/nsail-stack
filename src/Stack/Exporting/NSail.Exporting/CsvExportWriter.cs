@@ -4,6 +4,8 @@
 using System.Globalization;
 using System.Text;
 
+using NSail.Icons;
+
 namespace NSail.Exporting;
 
 /// <summary>The book as text, for the spreadsheet of whoever does not have one: UTF-8 with a
@@ -15,6 +17,8 @@ namespace NSail.Exporting;
 public sealed class CsvExportWriter : IExportWriter
 {
     public ExportKind Kind => ExportKind.Csv;
+
+    public Glyph Icon => ExportingIcons.Csv;
 
     public string Extension => "csv";
 

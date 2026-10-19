@@ -86,7 +86,7 @@ the burden is naming why, not staying under three. The comfort curve itself is t
 read one off a row. `NsTh Format=` adds only what a CLR type cannot say (an amount and a share are
 both decimals), the action column is not a column either way, and a column this grid stops
 declaring leaves the file with it: [exporting.md](../exporting.md), which also has where Exportar
-sits on the bar and why a list is the only grid offered one.
+rides the page's header and why a list is the only grid offered one.
 
 **`Breakpoint` on `NsTh`** (`NsSize`, default `None`) reads *"the column appears from this
 container width up"*. A six-column grid gives up its least important columns one at a time

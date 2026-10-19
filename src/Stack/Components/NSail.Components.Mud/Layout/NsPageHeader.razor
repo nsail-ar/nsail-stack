@@ -3,6 +3,7 @@
 
 @namespace NSail.Components
 @using NSail.Localization
+@implements IDisposable
 
 @inject StringManager Strings
 
@@ -57,6 +58,16 @@
 
             <NsSpacer />
 
+            @* Handed up by the one table a list page draws (NSail.Exporting doctrine): the
+               header draws it ahead of Actions so Exportar never competes with Nuevo for the
+               row's room, and a page with nothing to export draws nothing in its place. Asked
+               from the render and not cached, like ClaimsRow: what claims it can change while
+               the surface lives, and a cached answer would flap or stick past its own page. *@
+            @if (Surface?.ClaimsExport(this) == true && Surface.Export is { } export)
+            {
+                @export
+            }
+
             @Actions
         </NsToolBar>
     }
@@ -74,6 +85,31 @@
 
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Surface is not null)
+        {
+            Surface.ExportChanged += OnExportChanged;
+        }
+    }
+
+    void OnExportChanged()
+    {
+        // The grid's own render, not this header's, is what changed — Export is a delegate over
+        // the grid's fields, so re-rendering here is the only way this row picks up a trigger
+        // that just turned Disabled while an export runs.
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        if (Surface is not null)
+        {
+            Surface.ExportChanged -= OnExportChanged;
+            Surface.ReleaseExport(this);
+        }
+    }
 
     /// <summary>The shell's drawer state, cascaded by NsMainLayout — the same cascade
     /// NsTitleBar reads to decide whether its own row draws the hamburger.</summary>
@@ -170,7 +206,7 @@
     [Parameter]
     public bool FilterAlwaysOpen { get; set; }
 
-    bool _hasToolBar => Lead is not null || Search is not null || SearchTextChanged.HasDelegate || Filter is not null || Actions is not null;
+    bool _hasToolBar => Lead is not null || Search is not null || SearchTextChanged.HasDelegate || Filter is not null || Actions is not null || (Surface?.ClaimsExport(this) == true && Surface.Export is not null);
 
     bool ReservesToggleGutter => NsTitleBar.ShowsToggle(Surface, LayoutState);
 

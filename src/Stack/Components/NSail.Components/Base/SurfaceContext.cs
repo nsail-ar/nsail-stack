@@ -33,8 +33,11 @@ public sealed class SurfaceContext
     Glyph? _icon;
     RenderFragment? _utilities;
     RenderFragment? _index;
+    RenderFragment? _export;
     object? _refusingSource;
     object? _rowSource;
+    object? _exportSource;
+    object? _exportAnnouncer;
     int _workCount;
     volatile bool _hasWork;
     volatile bool _hasChanges;
@@ -210,6 +213,90 @@ public sealed class SurfaceContext
         IndexChanged?.Invoke();
     }
 
+    /// <summary>A reading grid's own export trigger, handed up the other way across the same
+    /// boundary <see cref="Title"/> already crosses (a table reads the page's own name; this is
+    /// the page's header asking the table for its control instead of drawing one of its own).
+    /// Null where nothing on this surface exports, or where the exporting grid's own fragment is
+    /// stale — not deduplicated by reference like <see cref="Announce"/>'s fields, because the
+    /// grid rebuilds the fragment on every render of its own and a disabled trigger while an
+    /// export is running has to reach a header that never re-renders on its own.</summary>
+    public RenderFragment? Export => _export;
+
+    /// <summary>Raised whenever the announcing grid re-announces — on every one of its own
+    /// renders while it has something to export, never only when the fragment's shape
+    /// changed.</summary>
+    public Action? ExportChanged;
+
+    /// <summary>The exporting grid's own call, once per render, whenever it is a candidate for
+    /// the surface's one export slot — the same shape <see cref="ClaimsRow"/> stands for, but on
+    /// the announcing side rather than the claiming one. First grid to announce a non-null
+    /// export wins the slot and keeps it until it either announces null itself (it stopped being
+    /// exportable) or releases it the same way (its teardown); an announcement from a DIFFERENT
+    /// source — a second grid on the same surface, exportable or not — is simply not read while
+    /// the slot is held, so neither a sibling grid's every-render null nor its own export can
+    /// evict the grid the header is actually drawing.</summary>
+    public void AnnounceExport(object source, RenderFragment? export)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        lock (_sync)
+        {
+            if (export is null)
+            {
+                if (!ReferenceEquals(_exportAnnouncer, source))
+                {
+                    return;
+                }
+
+                _exportAnnouncer = null;
+                _export = null;
+            }
+            else
+            {
+                if (_exportAnnouncer is not null && !ReferenceEquals(_exportAnnouncer, source))
+                {
+                    return;
+                }
+
+                _exportAnnouncer = source;
+                _export = export;
+            }
+        }
+
+        ExportChanged?.Invoke();
+    }
+
+    /// <summary>Whether a page header stands on this surface to draw <see cref="Export"/> in its
+    /// own action line. An embedded grid or a dialog's has none, and keeps drawing its own
+    /// trigger in the collection bar instead of handing it to a header with nowhere to put
+    /// it.</summary>
+    internal bool HasExportHeader => _exportSource is not null;
+
+    // First header on the surface wins, the same shape as ClaimsRow — asked from the header's own
+    // render, because what claims it can change while the surface lives.
+    internal bool ClaimsExport(object source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        lock (_sync)
+        {
+            _exportSource ??= source;
+
+            return ReferenceEquals(_exportSource, source);
+        }
+    }
+
+    internal void ReleaseExport(object source)
+    {
+        lock (_sync)
+        {
+            if (ReferenceEquals(_exportSource, source))
+            {
+                _exportSource = null;
+            }
+        }
+    }
+
     /// <summary>Content size requested by the rendered page, along the host's own axis: a
     /// side drawer reads it as width, the main container as max-width.</summary>
     public NsSize Size { get; private set; } = NsSize.Md;
@@ -300,6 +387,16 @@ public sealed class SurfaceContext
         // standing in the chrome.
         Announce(null, null, null);
         AnnounceIndex(null);
+
+        // A direct clear and not AnnounceExport(this, null): this is the surface's own reset
+        // between two pages, not one grid releasing a slot it may not even hold, and the
+        // arriving page's first grid is a different instance that could never pass the
+        // ownership check this method applies everywhere else.
+        lock (_sync)
+        {
+            _exportAnnouncer = null;
+            _export = null;
+        }
 
         if (Size == NsSize.Md && !Floating)
         {

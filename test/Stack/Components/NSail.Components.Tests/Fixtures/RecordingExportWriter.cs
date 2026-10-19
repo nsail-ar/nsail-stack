@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using NSail.Exporting;
+using NSail.Icons;
 
 namespace NSail.Components.Tests.Fixtures;
 
@@ -11,6 +12,9 @@ namespace NSail.Components.Tests.Fixtures;
 public sealed class RecordingExportWriter(ExportKind kind) : IExportWriter
 {
     public ExportKind Kind { get; } = kind;
+
+    // Distinct per kind and nothing a real catalog also draws: a test marker, not a glyph.
+    public Glyph Icon { get; } = new($"""<g data-test-export-icon="{kind}"></g>""");
 
     public string Extension => Kind == ExportKind.Excel ? "xlsx" : "csv";
 
