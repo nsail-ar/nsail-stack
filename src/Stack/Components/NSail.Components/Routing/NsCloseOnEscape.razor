@@ -33,11 +33,19 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
+    /// <summary>Whether taking focus on mount is this wrapper's to do — true for a routed
+    /// surface, which a door's click always opened, and left false only by the companion
+    /// region, whose own open can equally be a silent recall. <see cref="Owns"/> still claims
+    /// Escape regardless, for whenever a click inside hands this element the focus the recall
+    /// did not take.</summary>
+    [Parameter]
+    public bool Focuses { get; set; } = true;
+
     bool Owns => Closes.HasDelegate || Surface is { IsMain: false };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && Owns)
+        if (firstRender && Owns && Focuses)
         {
             await _element.FocusAsync();
         }

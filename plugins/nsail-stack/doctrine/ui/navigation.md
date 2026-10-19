@@ -85,7 +85,9 @@ ends, and these two, which are where an app reaches past the map:
   the map being the one list of those.
 - **`NoMatch` is the one entry drawn where the search filtered the map to nothing**, handed the
   text that found it — the app's way on with a question the drawer could not answer. Absent, a
-  filter that matches nothing keeps the empty list.
+  filter that matches nothing keeps the empty list. What is handed over is a question and never
+  just a non-empty box: whitespace alone draws no row, because that row is a DOOR and what is
+  behind it (`Companion.Open(text)`, an app's own "ask this") has nothing to be asked.
 
 **Enter presses that entry exactly as it presses the first one otherwise.** The key is one policy
 in one place (`ns.js`) and it reads the DOM at the instant it is pressed: the first live

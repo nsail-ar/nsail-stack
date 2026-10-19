@@ -9,7 +9,8 @@ namespace NSail.Components;
 /// only way to drive it.
 ///
 /// <para>State alone: what is drawn is <c>NsMainLayout</c>'s Companion slot, and remembering the
-/// answer per browser is that layout's too. A reader redraws on <see cref="Changed"/>.</para></summary>
+/// answer per browser belongs to <c>NsCompanion</c>, the component that draws it. A reader
+/// redraws on <see cref="Changed"/>.</para></summary>
 public sealed class Companion
 {
     public bool IsOpen { get; private set; }

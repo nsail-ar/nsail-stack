@@ -2,6 +2,8 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
+@using MudBlazor
+@using MudBlazor.Services
 @using NSail.Localization
 
 @implements IDisposable
@@ -9,6 +11,7 @@
 @inject StringManager Strings
 @inject Companion Region
 @inject DeviceMemory Memory
+@inject IBrowserViewportService Viewport
 
 @* The frame's fourth region, drawn: an agent that accompanies while the person works. A
    component of its own and not markup in NsMainLayout, because the services below are the
@@ -16,7 +19,7 @@
    and is asked for neither. The layout is its only composer. *@
 @if (Region.IsOpen)
 {
-    <NsCloseOnEscape Class="@GetClasses()" Closes="Region.Close">
+    <NsCloseOnEscape Class="@GetClasses()" Closes="Region.Close" Focuses="@_focuses">
         @* Below the drawer's breakpoint the region IS the screen, so it owes a way back: the X is
            drawn there and nowhere else — docked, the page beside it was never covered and the
            door that opened the region is still on screen to close it. *@
@@ -35,6 +38,19 @@
 @code {
 
     bool? _remembered;
+
+    // Whether the NEXT mount of NsCloseOnEscape should take focus: true for a door's own
+    // Toggle/Open, false for the one render a silent recall drives (OnAfterRenderAsync below).
+    bool _focuses = true;
+
+    // Set the moment anything acts on the region before the recall below resolves — a door
+    // pressed while that read is in flight has already decided the region's state, and the
+    // recall has nothing left to contribute.
+    bool _actedBeforeRecall;
+
+    // True only for the span of the recall's own call to Region.Open() below — OnChanged fires
+    // synchronously inside it, and must not mistake its own cause for a door acting afterward.
+    bool _recalling;
 
     // The browser's own key for the one answer this region remembers. Shared on purpose, like
     // every DeviceMemory key: one frame, one companion, one answer.
@@ -62,6 +78,13 @@
     // page's own act), so the redraw is marshalled rather than called where the state moved.
     void OnChanged()
     {
+        _actedBeforeRecall = true;
+
+        if (!_recalling)
+        {
+            _focuses = true;
+        }
+
         _ = InvokeAsync(async () =>
         {
             StateHasChanged();
@@ -87,8 +110,10 @@
 
     // JS interop cannot run while a page prerenders, so the answer is recalled on the first
     // interactive render. A key never written, a browser that refuses storage or a value that no
-    // longer parses all answer false (DeviceMemory), which is the region's own default — and the
-    // recall only ever OPENS: a door pressed while it was in flight has already been obeyed.
+    // longer parses all answer false (DeviceMemory), which is the region's own default. A door
+    // pressed while either read below is in flight has already decided the region's state —
+    // _actedBeforeRecall is checked again after each await, so this never overwrites a text
+    // handover or an answer Remember() already wrote with what was merely read before it.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
@@ -98,12 +123,35 @@
 
         var open = await Memory.Recall<bool>(Key);
 
+        if (_actedBeforeRecall)
+        {
+            return;
+        }
+
         _remembered = open;
 
-        if (open)
+        if (!open)
         {
-            Region.Open();
+            return;
         }
+
+        // Below the drawer's own breakpoint the region IS the screen, so taking focus costs
+        // nothing a person could reach anyway — docked beside the content (NsDrawer's own
+        // Md..Xxl), a recall-driven open is silent and the content's own arrival focus is what
+        // the cursor belongs to instead.
+        var focuses = await Viewport.GetCurrentBreakpointAsync() < Breakpoint.Md;
+
+        if (_actedBeforeRecall)
+        {
+            return;
+        }
+
+        _focuses = focuses;
+        _recalling = true;
+
+        Region.Open();
+
+        _recalling = false;
     }
 
     // ns-no-appbar for the same reason the main content carries it: the bar's height is reserved

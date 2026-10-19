@@ -1184,9 +1184,14 @@
 /* From the drawer's own breakpoint up there is no app bar at all (nsail#517): the drawer is
    docked and carries the brand and the session, and every screen names itself in its own title
    bar. The bar's own width gate is what this reads — the same class NsResponsive wrote on it —
-   so the space it reserved cannot outlive the bar that reserved it. */
+   so the space it reserved cannot outlive the bar that reserved it.
+
+   Every region that reserves the bar's height is named here, not only the content: the companion
+   stands BESIDE the content, so a reservation one of them drops and the other keeps is the agent
+   sitting a bar's height below the page it accompanies. */
 @media (min-width: 960px) {
-    .mud-appbar.d-md-none ~ .mud-main-content {
+    .mud-appbar.d-md-none ~ .mud-main-content,
+    .mud-appbar.d-md-none ~ .ns-companion {
         padding-top: 0;
     }
 }
@@ -1224,7 +1229,9 @@
 
 /* .ns-no-appbar for the same reason the content carries it: the bar's height is reserved by a
    variable, not by the bar, so a layout that mounts no Header would start this region below a gap
-   nothing draws. */
+   nothing draws. A layout that DOES mount one draws it only below md, and the reservation is
+   dropped from md up by the bar's own width gate above — the two together are why no width is
+   left where this padding stands and no bar does. */
 .ns-companion.ns-no-appbar {
     padding-top: 0;
 }
