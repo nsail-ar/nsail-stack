@@ -110,7 +110,8 @@ jobs:
             exit 0
           fi
           ISSUE=""
-          case "$BRANCH" in stack/nsail-*) ISSUE="${BRANCH#stack/nsail-}" ;; esac
+          case "$BRANCH" in stack/nsail-*) ISSUE="${BRANCH#stack/nsail-}" ;; story/nsail-*) ISSUE="${BRANCH#story/nsail-}" ;; esac
+          ISSUE=$(printf "%s" "${ISSUE:-}" | grep -oE "^[0-9]+" || true)
           # Earlier reads with findings, oldest first; the last one's sha is where a narrow
           # read starts.
           MARKS='(.body // "") | scan("vigia:findings:([0-9a-f]+)") | "\($t) \(.[0])"'
