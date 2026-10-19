@@ -1,0 +1,24 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+@inherits LayoutComponentBase
+
+@using Microsoft.AspNetCore.Components
+@using NSail.Components
+
+@* ProbeLayout with the fourth region filled: the routed page in the content, the aside beside
+   it, and an agent standing in the companion slot while the page under it changes. *@
+<NsMainLayout>
+    <Content>
+        @Body
+    </Content>
+    <Aside>
+        <NsSurface Name="@Surfaces.Aside" Context="routeData">
+            <RouteView RouteData="@routeData" />
+        </NsSurface>
+    </Aside>
+    <Companion>
+        <CompanionProbe />
+    </Companion>
+</NsMainLayout>

@@ -23,22 +23,40 @@
     [Parameter]
     public string? Class { get; set; }
 
+    /// <summary>What Escape closes where it is not the surface this wrapper stands in — the
+    /// layout's companion region, which has no route and so no <c>Surface.Close()</c> to reach.
+    /// Named, never derived: the surface around such a region is the MAIN one, and Escape on a
+    /// page is not "leave the app".</summary>
+    [Parameter]
+    public EventCallback Closes { get; set; }
+
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
+    bool Owns => Closes.HasDelegate || Surface is { IsMain: false };
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && Surface is { IsMain: false })
+        if (firstRender && Owns)
         {
             await _element.FocusAsync();
         }
     }
 
-    void OnKeyDown(KeyboardEventArgs args)
+    async Task OnKeyDown(KeyboardEventArgs args)
     {
-        if (args.Key == "Escape" && Surface is { IsMain: false })
+        if (args.Key != "Escape" || !Owns)
         {
-            Surface.Close();
+            return;
         }
+
+        if (Closes.HasDelegate)
+        {
+            await Closes.InvokeAsync();
+
+            return;
+        }
+
+        Surface!.Close();
     }
 }

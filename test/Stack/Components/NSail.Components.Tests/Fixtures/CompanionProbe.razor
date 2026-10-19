@@ -1,0 +1,28 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Web
+@using NSail.Components
+
+@inject Companion Region
+
+@* What an agent in the companion region is, as far as the frame is concerned: a component with
+   state of its own that no navigation on main may cost it, and the words a door handed over on
+   the way in. *@
+<div class="probe-companion">
+    <button class="probe-said" @onclick="Say">said</button>
+    <span class="probe-count">@_said</span>
+    <span class="probe-text">@Region.Text</span>
+</div>
+
+@code {
+
+    int _said;
+
+    void Say()
+    {
+        _said++;
+    }
+}

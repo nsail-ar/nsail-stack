@@ -52,6 +52,18 @@
             @Content
         </MudMainContent>
 
+        @* The frame's fourth region: an agent that accompanies while the person works. Docked on
+           the right edge and IN FLOW after the content, which is what narrows the page instead of
+           covering it (ns-mud.css); the aside is a fixed overlay and keeps opening over the
+           content, to this region's left. Everything the region needs of the app's services is
+           NsCompanion's, so a layout that declares no agent asks for none of them. *@
+        @if (Companion is not null)
+        {
+            <NsCompanion>
+                @Companion
+            </NsCompanion>
+        }
+
         @if (Aside is not null)
         {
             @Aside
@@ -97,6 +109,13 @@
     /// <summary>Slot for end-anchored drawers (e.g. the aside surface). Rendered as a direct MudLayout child so docked drawers push the content.</summary>
     [Parameter]
     public RenderFragment? Aside { get; set; }
+
+    /// <summary>Slot for an agent that accompanies the person while they work — on screen
+    /// whatever page the content shows, and never a place: it has no route, and <see
+    /// cref="NSail.Components.Companion"/> is the only way to open or close it. A page goes to
+    /// Aside or to Main.</summary>
+    [Parameter]
+    public RenderFragment? Companion { get; set; }
 
     // MudBlazor reserves --mud-appbar-height on .mud-main-content unconditionally, whether an
     // appbar is on screen or not — a layout with no Header slot still pays for a bar it never

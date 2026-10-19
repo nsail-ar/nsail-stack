@@ -299,6 +299,30 @@ it**, dying when one is made.
 Contract, and the rule that a row's command must outlive the menu that closed it:
 [ui/menus.md](ui/menus.md).
 
+### A companion is not a surface
+
+**`NsMainLayout.Companion` is the frame's fourth region** — beside `Drawer`, `Content` and
+`Aside` — **for an agent that ACCOMPANIES the person while they work**: it stays on screen
+whatever page the content shows, and a navigation on main neither closes it nor rebuilds what it
+holds. The industry's own name for it is the companion pane.
+
+- **A page is never what goes in it.** Something a person goes TO is a place, and a place is
+  `Surfaces.Main` or an aside by the residence rule below. The companion is the one region whose
+  content is not addressed at all.
+- **It is not in the URL**: no route, no `?name=`, no size token, and no link may target it. Open
+  or closed is the layout's own answer, remembered per browser (`DeviceMemory`) so a person who
+  works with it open finds it open — a browser that cannot be read answers *closed*.
+- **The `Companion` service is the only way to drive it** — `Open()`, `Close()`, `Toggle()`, and
+  `Open(text)` for a door that carries words in for the content to start from. Whatever fills the
+  region and whatever door opens it both inject that one service, and nothing reads or writes the
+  answer any other way.
+- **Docked on the right edge it NARROWS the content instead of covering it**, and the aside goes
+  on opening over the page, to the companion's left. Below the drawer's own breakpoint it fills
+  the screen, with an X and Escape back to the page.
+- **The door is the app's, and it goes on the drawer's header row** (`NsNavMenu.Tools`), beside
+  the search box and the frame's "?"; the drawer's no-match entry (`NsNavMenu.NoMatch`) is the
+  other way in, carrying what was typed — [ui/navigation.md](ui/navigation.md).
+
 ### Addresses
 
 - **URLs are typed, never strings.** `RouteTable` (DI, `AddRouteTable`) resolves a page's URL

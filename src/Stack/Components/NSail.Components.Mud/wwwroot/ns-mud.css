@@ -1198,6 +1198,78 @@
     padding-top: 0;
 }
 
+/* THE COMPANION: the frame's fourth region (NsMainLayout's Companion slot), where an agent
+   accompanies the person while they work. In FLOW after the main content and never positioned,
+   which is the whole difference between this region and the aside: the content is the row's
+   flex:1 1 auto, so a fixed strip at the end of it NARROWS the page instead of covering it.
+
+   The width is declared on the layout root and not on this box, because the aside's own cap has
+   to read it (below) and a sibling cannot see a custom property declared in here.
+
+   It clips rather than scrolls, for .ns-dialog's reason: only what the content marks scrolls, and
+   an ambient scroller at the region's edge would drag spilled ink into view instead of fixing the
+   box that overflowed. */
+.mud-layout:has(.ns-companion) {
+    --ns-companion-width: 380px;
+}
+
+.ns-companion {
+    flex: 0 0 var(--ns-companion-width);
+    width: var(--ns-companion-width);
+    overflow: hidden;
+    padding-top: var(--mud-appbar-height);
+    background-color: var(--mud-palette-surface);
+    border-left: 1px solid var(--mud-palette-divider);
+}
+
+/* .ns-no-appbar for the same reason the content carries it: the bar's height is reserved by a
+   variable, not by the bar, so a layout that mounts no Header would start this region below a gap
+   nothing draws. */
+.ns-companion.ns-no-appbar {
+    padding-top: 0;
+}
+
+/* The page's own min-width gets out of the way while a region stands beside it: a flex item's
+   min-width is its content's by default, so one wide table would push the page out from under the
+   companion rather than scrolling inside the box that marked itself as the scroller. */
+.mud-layout:has(.ns-companion) > .mud-main-content {
+    min-width: 0;
+}
+
+/* The aside opens to the companion's LEFT. It is a fixed overlay pinned to right:0, so a region
+   in flow cannot push it — the offset is stated, and the cap above subtracts the strip the aside
+   may no longer reach into. Four classes deep because the vendor's own right:0 carries four for
+   each variant the aside wears (.mud-drawer.mud-drawer-persistent.mud-drawer-pos-right.mud-drawer--open
+   docked, .mud-drawer-temporary the same), and a tie is won by whichever stylesheet loads last.
+
+   From the nav's docking breakpoint up only: below it this region IS the screen and the aside is a
+   sheet over the page, with nothing of the companion left beside it to stay clear of. */
+@media (min-width: 960px) {
+    .mud-layout:has(.ns-companion) .ns-drawer.mud-drawer.mud-drawer-pos-right.mud-drawer--open {
+        right: var(--ns-companion-width);
+    }
+
+    .mud-layout:has(.ns-companion) .ns-drawer.mud-drawer {
+        max-width: calc(100vw - var(--mud-drawer-width-left, 0px) - var(--ns-companion-width));
+    }
+}
+
+/* Below the drawer's own breakpoint the region fills the screen: a 380px strip beside a phone's
+   page is neither one thing nor the other. Fixed and above the frame, because the door that opens
+   it is inside the nav SHEET there and the region has to cover what it was opened from. A modal
+   still outranks it — the vendor's dialog tier is above the app bar's — which is what keeps a
+   question asked from inside the region answerable. */
+@media (max-width: 959.98px) {
+    .ns-companion {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        padding-top: 0;
+        border-left: 0;
+        z-index: calc(var(--mud-zindex-appbar) + 3);
+    }
+}
+
 /* MudBlazor paints every paper with Surface, so a menu opening over a card lands on
    the exact tone it floats above. These take the raised step of the brand's ladder
    (see BrandMudTheme: the brand's SurfaceRaised travels in BackgroundGray).

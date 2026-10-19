@@ -47,6 +47,13 @@
            first entry still shown (ns.js). *@
         <div class="pa-2 d-flex align-center gap-1 ns-nav-find">
             <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Grow Map />
+            @* Where an app places a door of its own beside the frame's two keys — the companion
+               region's (NsMainLayout). Empty draws nothing: what is left is the box and what the
+               frame itself owns. *@
+            @if (Tools is not null)
+            {
+                @Tools
+            }
             <NsButton As="NsAs.Inline"
                       Breakpoint="NsBreakpoint.Never"
                       Icon="@NsIcons.Keyboard"
@@ -72,9 +79,23 @@
         }
 
         <MudNavMenu>
-            @foreach (var item in Shown(_items))
+            @* What the typing found, and where it found nothing the app's own way on with it: a
+               filter that matched no door is the moment a question has nowhere else to go
+               (ui/navigation.md). Drawn as the ONE entry, so there is nothing above it to press
+               first — ns-nav-nomatch is the hook that makes Enter in the box reach it exactly as
+               it reaches the first entry (ns.js). An app that offers none keeps the empty list. *@
+            @if (NoMatch is not null && _search.Length > 0 && !Shown(_items).Any())
             {
-                @Render(item)
+                <div class="ns-nav-nomatch">
+                    @NoMatch(_search)
+                </div>
+            }
+            else
+            {
+                @foreach (var item in Shown(_items))
+                {
+                    @Render(item)
+                }
             }
         </MudNavMenu>
     </Content>
@@ -132,6 +153,17 @@
     /// drawer, and the trigger of whatever menu the app anchors on it.</summary>
     [Parameter]
     public RenderFragment? Session { get; set; }
+
+    /// <summary>The app's own doors on the drawer's header row, beside the search box and the
+    /// frame's "?" — a companion's, nothing else today. Empty draws nothing.</summary>
+    [Parameter]
+    public RenderFragment? Tools { get; set; }
+
+    /// <summary>The one entry drawn where the search filtered the map to nothing, given the text
+    /// that was typed: the app's way on with a question the drawer could not answer. Absent keeps
+    /// the empty list.</summary>
+    [Parameter]
+    public RenderFragment<string>? NoMatch { get; set; }
 
     // The install's own word wins where it wrote one, and it is not a catalog entry: a shop's
     // noun for a door is stored beside the arrangement that placed the door, so nothing has to

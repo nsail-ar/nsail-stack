@@ -227,8 +227,10 @@ the door are both inside it, and a chord no live control declares does nothing.
   is no second palette: the menu is the one list of where a session may go, permission gate
   included, so a palette built from the route table would be a second source to keep in step
   with it. Enter in that box opens the first entry still shown, which is literally that entry's
-  own link (`.ns-nav-entry`, `ns.js`). What the box reaches is therefore what the menu lists — a
-  screen reached FROM another one is reached by going there first.
+  own link (`.ns-nav-entry`, `ns.js`) — or, where the filter left no entry, the one row the app
+  offers in its place (`NsNavMenu.NoMatch`, `.ns-nav-nomatch`; ui/navigation.md). What the box
+  reaches is therefore what the menu lists — a screen reached FROM another one is reached by going
+  there first — plus, for a question it lists no answer to, whatever the app put at the end of it.
 - **"?" opens a sheet of the claims on screen** (`NsKeySheet`, hosted through
   `DialogManager.Open`, so Escape and the X close it through the guard everything else goes
   through). Its lines are read off the DOM at the instant the door is pressed (`nsapp.chords`) —

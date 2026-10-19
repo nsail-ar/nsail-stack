@@ -39,6 +39,10 @@ public static class Setup
         services.TryAddScoped<IDeviceProvider, DeviceProvider>();
         services.TryAddScoped<PageGate>();
         services.TryAddScoped<NavMenu>();
+
+        // The layout's companion region: scoped, because the region belongs to the one frame a
+        // person is looking at, and its content and whatever door opens it both inject this.
+        services.TryAddScoped<Companion>();
         services.AddStringsFromAssembly();
         services.AddSettings();
 

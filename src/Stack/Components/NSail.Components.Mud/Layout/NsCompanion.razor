@@ -1,0 +1,126 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@implements IDisposable
+
+@inject StringManager Strings
+@inject Companion Region
+@inject DeviceMemory Memory
+
+@* The frame's fourth region, drawn: an agent that accompanies while the person works. A
+   component of its own and not markup in NsMainLayout, because the services below are the
+   region's and not the layout's — a layout that declares no Companion slot renders none of this
+   and is asked for neither. The layout is its only composer. *@
+@if (Region.IsOpen)
+{
+    <NsCloseOnEscape Class="@GetClasses()" Closes="Region.Close">
+        @* Below the drawer's breakpoint the region IS the screen, so it owes a way back: the X is
+           drawn there and nowhere else — docked, the page beside it was never covered and the
+           door that opened the region is still on screen to close it. *@
+        <div class="@GetExitClasses()">
+            <NsButton As="NsAs.Inline"
+                      Breakpoint="NsBreakpoint.Never"
+                      Icon="@NsIcons.Close"
+                      Label="@Strings.Translate("Common.Close")"
+                      OnClick="Region.Close" />
+        </div>
+
+        @ChildContent
+    </NsCloseOnEscape>
+}
+
+@code {
+
+    bool? _remembered;
+
+    // The browser's own key for the one answer this region remembers. Shared on purpose, like
+    // every DeviceMemory key: one frame, one companion, one answer.
+    const string Key = "ns.companion.open";
+
+    [CascadingParameter]
+    NsLayoutState? LayoutState { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Region.Changed += OnChanged;
+    }
+
+    // The service is scoped and outlives this component — a sign-out swaps the layout under the
+    // same session — so the hook is handed back.
+    public void Dispose()
+    {
+        Region.Changed -= OnChanged;
+    }
+
+    // Whoever opened the region is a door somewhere else on screen (the drawer's Tools slot, a
+    // page's own act), so the redraw is marshalled rather than called where the state moved.
+    void OnChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            StateHasChanged();
+
+            await Remember();
+        });
+    }
+
+    // Per browser and never per user, which is what DeviceMemory is: whoever sits at that counter
+    // gets the counter's answer. Written only when the answer actually moved — a door handing over
+    // a second question leaves the region exactly as open as it was.
+    async Task Remember()
+    {
+        if (_remembered == Region.IsOpen)
+        {
+            return;
+        }
+
+        _remembered = Region.IsOpen;
+
+        await Memory.Remember(Key, Region.IsOpen);
+    }
+
+    // JS interop cannot run while a page prerenders, so the answer is recalled on the first
+    // interactive render. A key never written, a browser that refuses storage or a value that no
+    // longer parses all answer false (DeviceMemory), which is the region's own default — and the
+    // recall only ever OPENS: a door pressed while it was in flight has already been obeyed.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var open = await Memory.Recall<bool>(Key);
+
+        _remembered = open;
+
+        if (open)
+        {
+            Region.Open();
+        }
+    }
+
+    // ns-no-appbar for the same reason the main content carries it: the bar's height is reserved
+    // by a variable, not by the bar, so a layout that mounts no Header would start this region
+    // below a gap nothing draws. A bar is assumed where there is no layout to ask (NsDrawer's own
+    // default), the geometry of a region that clips being the forgiving one.
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-companion d-flex flex-column min-h-0")
+            .Add("ns-no-appbar", LayoutState?.HasHeader == false)
+            .ToString();
+    }
+
+    // The way out of a region that is the whole screen, and only there: measured by the WINDOW,
+    // the same edge the nav drawer docks or hides on (NsResponsive).
+    string GetExitClasses()
+    {
+        return $"ns-companion-exit justify-end pa-1 {NsResponsive.ShownBelowWindow(NsSize.Md)}";
+    }
+}

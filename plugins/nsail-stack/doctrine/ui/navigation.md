@@ -73,6 +73,28 @@ highlight. The app layout just places `<NsNavMenu />`.
 
 ---
 
+## The app's own slots
+
+`NsNavMenu` draws the map; four slots are the app's — `Brand` and `Session` at the drawer's two
+ends, and these two, which are where an app reaches past the map:
+
+- **`Tools` is the header row beside the search box and the "?" door**, for a door of the app's
+  own that belongs to the FRAME rather than to a page — the companion region's is the one there
+  is ([intentional-ui.md](../intentional-ui.md), *A companion is not a surface*). Empty draws
+  nothing. It is not where a destination goes: something a session may navigate to is an entry,
+  the map being the one list of those.
+- **`NoMatch` is the one entry drawn where the search filtered the map to nothing**, handed the
+  text that found it — the app's way on with a question the drawer could not answer. Absent, a
+  filter that matches nothing keeps the empty list.
+
+**Enter presses that entry exactly as it presses the first one otherwise.** The key is one policy
+in one place (`ns.js`) and it reads the DOM at the instant it is pressed: the first live
+`.ns-nav-entry` link, or the no-match row's own control where there is no entry at all — a
+`button` as readily as a link, taking a question somewhere not being navigation. The two are never
+both on screen, that row existing only while zero entries do.
+
+---
+
 ## Mounting and arranging
 
 **The kit plants, the app arranges.** A kit is a tool, not a plugin
