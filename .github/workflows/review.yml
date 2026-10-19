@@ -63,6 +63,12 @@ jobs:
         run: |
           [ -n "$OAUTH" ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN is not set on this repository"; exit 1; }
           [ -n "$PAT" ] || { echo "::error::NSAIL_CREW_PAT is not set on this repository"; exit 1; }
+          # What a pasted token most often gets wrong is its shape: line breaks or spaces from
+          # a wrapped terminal, text around it. Said by name here rather than as a 401 later.
+          SHAPE=$(printf '%s' "$OAUTH" | tr -d 'A-Za-z0-9_-' | wc -c)
+          echo "CLAUDE_CODE_OAUTH_TOKEN: ${#OAUTH} chars, starts '${OAUTH:0:10}', ends '${OAUTH: -2}', $SHAPE chars outside [A-Za-z0-9_-]"
+          case "$OAUTH" in sk-ant-oat*) ;; *) echo "::error::CLAUDE_CODE_OAUTH_TOKEN does not start with sk-ant-oat: it is not a setup-token value"; exit 1 ;; esac
+          [ "$SHAPE" -eq 0 ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN holds $SHAPE characters that are not part of a token (spaces, line breaks): paste the bare value"; exit 1; }
 
       - name: Read the PR
         id: pr
