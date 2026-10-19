@@ -202,7 +202,14 @@
             // The LINK inside the marked entry: the vendor hangs a class handed to its nav link
             // on the row's wrapper and not on the anchor, and a wrapper is not a thing a click
             // navigates.
-            const entry = Array.from(document.querySelectorAll(".ns-nav-entry a[href]")).find(live);
+            //
+            // Where the filter left no entry at all the one row drawn is the app's own way on
+            // with what was typed (NsNavMenu's NoMatch), and it is pressed by the same key: its
+            // control is a BUTTON as often as a link -- taking a question somewhere is not
+            // navigating -- so both shapes are named. Never both lists at once: the row exists
+            // only while zero entries do, so document order is still "the first one shown".
+            const entry = Array.from(document.querySelectorAll(
+                ".ns-nav-entry a[href], .ns-nav-nomatch button, .ns-nav-nomatch a[href]")).find(live);
 
             if (entry)
                 entry.click();
