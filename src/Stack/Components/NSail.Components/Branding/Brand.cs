@@ -11,6 +11,11 @@ public sealed class Brand
 {
     public string Name { get; set; } = "NSail";
 
+    /// <summary><see cref="Typefaces"/>' key, or null for the house typeface. Scheme-
+    /// independent, like <see cref="Name"/>: one family for both schemes, never a pick per
+    /// scheme.</summary>
+    public string? Typeface { get; set; }
+
     public bool DefaultDark { get; set; } = true;
 
     public BrandTheme Light { get; set; } = BrandTheme.DefaultLight();

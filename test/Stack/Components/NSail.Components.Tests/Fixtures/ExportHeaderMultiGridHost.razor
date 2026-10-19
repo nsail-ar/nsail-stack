@@ -1,0 +1,118 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Exporting
+@using NSail.Icons
+@using NSail.Paging
+
+@* More than one NsTable on the same surface — the shape AnnounceExport's ownership exists for.
+   ShowPrimary is the page's own, unnamed list; ShowDocument is a second, unnamed grid that is
+   NOT a list (a document's own collection, Document cascaded by NsForm) and so never carries an
+   export of its own; ShowRelated is a second grid with its own Title (a panel, exportable or
+   not); ShowSecondList is a second UNNAMED list-shaped grid, the one case two candidates for the
+   header's slot actually compete. *@
+
+<MudPopoverProvider />
+
+<CascadingValue Value="Surface" IsFixed="true">
+    <NsPageHeader Title="Personas" Icon="@NsIcons.Directory">
+        <Actions>
+            <NsButton Label="Nuevo" />
+        </Actions>
+    </NsPageHeader>
+
+    @if (ShowPrimary)
+    {
+        <NsTable TRow="ExportRowModel" Rows="_primary" OnQuery="OnQuery">
+            <HeaderContent>
+                <NsTh For="() => context.Name" />
+            </HeaderContent>
+            <RowTemplate Context="row">
+                <NsTd For="() => row.Name">@row.Name</NsTd>
+            </RowTemplate>
+        </NsTable>
+    }
+
+    @if (ShowDocument)
+    {
+        <NsForm TModel="ExportRowModel" Model="_document" Untracked="true" Context="document">
+            <NsTable TRow="ExportRowModel" Rows="_documentRows">
+                <HeaderContent>
+                    <NsTh For="() => context.Name" />
+                </HeaderContent>
+                <RowTemplate Context="row">
+                    <NsTd For="() => row.Name">@row.Name</NsTd>
+                </RowTemplate>
+            </NsTable>
+        </NsForm>
+    }
+
+    @if (ShowRelated)
+    {
+        <NsTable TRow="ExportRowModel" Rows="_related" Title="Relacionados" Exportable="RelatedExportable">
+            <HeaderContent>
+                <NsTh For="() => context.Name" />
+            </HeaderContent>
+            <RowTemplate Context="row">
+                <NsTd For="() => row.Name">@row.Name</NsTd>
+            </RowTemplate>
+        </NsTable>
+    }
+
+    @if (ShowSecondList)
+    {
+        <NsTable TRow="ExportRowModel" Rows="_secondList">
+            <HeaderContent>
+                <NsTh For="() => context.Name" />
+            </HeaderContent>
+            <RowTemplate Context="row">
+                <NsTd For="() => row.Name">@row.Name</NsTd>
+            </RowTemplate>
+        </NsTable>
+    }
+</CascadingValue>
+
+@code {
+
+    readonly ExportRowModel _document = new();
+
+    DataPage<ExportRowModel> _primary = DataPage<ExportRowModel>.Empty();
+    DataPage<ExportRowModel> _documentRows = DataPage<ExportRowModel>.From([new ExportRowModel { Name = "Doc row" }]);
+    DataPage<ExportRowModel> _related = DataPage<ExportRowModel>.From([new ExportRowModel { Name = "Related row" }]);
+    DataPage<ExportRowModel> _secondList = DataPage<ExportRowModel>.From([new ExportRowModel { Name = "Second row" }]);
+
+    [Parameter, EditorRequired]
+    public SurfaceContext Surface { get; set; } = default!;
+
+    [Parameter]
+    public bool ShowPrimary { get; set; } = true;
+
+    [Parameter]
+    public bool ShowDocument { get; set; }
+
+    [Parameter]
+    public bool ShowRelated { get; set; }
+
+    [Parameter]
+    public bool RelatedExportable { get; set; } = true;
+
+    [Parameter]
+    public bool ShowSecondList { get; set; }
+
+    Task OnQuery(QueryEventArgs args)
+    {
+        _primary = new DataPage<ExportRowModel>
+        {
+            Items = [new ExportRowModel { Name = "Primary row" }],
+            PageIndex = 0,
+            PageSize = args.PageSize,
+            TotalCount = 1
+        };
+
+        return Task.CompletedTask;
+    }
+}

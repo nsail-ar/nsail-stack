@@ -60,17 +60,22 @@ sealed class FigureConverter<T> : IReversibleConverter<T?, string?>, ICultureAwa
             return text;
         }
 
-        var dot = text.IndexOf('.', StringComparison.Ordinal);
+        var dot = text.LastIndexOf('.');
 
-        if (dot < 0 || text.IndexOf('.', dot + 1) >= 0)
+        if (dot < 0)
         {
             return text;
         }
 
         // A notation that groups with the dot keeps the one reading a dot still has in it: a
-        // group is three digits and the figure ends there ("48.600"), which is what an operator
-        // typing a price means and is already what the parser answers. Everything else — two
-        // decimals, one, four — is a separator key pressed for a decimal point.
+        // group is three digits and the figure ends there ("48.600", "1.234.567"), which is
+        // what an operator typing a factura number or a price means and is already what the
+        // parser answers. The LAST dot is the one that decides it — a keypad with no comma
+        // still writes every earlier group correctly, and only runs out of its one key at the
+        // decimal point, so a trailing group of any other length — two decimals, one, nine — is
+        // that key pressed for a decimal point, however many grouping dots came before it
+        // (nsail#2392: "1.040.456.062096373" read every dot as a thousand and the tope landed
+        // in the quadrillions).
         if (format.NumberGroupSeparator == "." && IsGrouping(text, dot))
         {
             return text;

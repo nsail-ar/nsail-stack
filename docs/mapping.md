@@ -94,6 +94,47 @@ documents, state machines and ledgers, and projections that compute (a count, a 
 stay in the handler. A flat `Select(e => new Row { Id = e.Id, Name = e.Name })` is a mapping; a
 `Select` with a correlated count is not.
 
+## Names that differ, data you drop
+
+Members pair by name. Where the two names differ, the **entity** says so — the message and the
+row live in the Sdk, which cannot see the Data project:
+
+```csharp
+[MapFrom(typeof(UpdateProject))]
+[MapTo(typeof(ProjectRow))]
+public class Project
+{
+    [MapFrom(typeof(UpdateProject), "Title")]   // UpdateProject.Title writes Name
+    [MapTo(typeof(ProjectRow), "Heading")]      // Name is read as ProjectRow.Heading
+    public string Name { get; set; } = string.Empty;
+
+    [MapIgnore]                                 // never written by a mapper, either way
+    public string Secret { get; set; } = string.Empty;
+}
+```
+
+What pairs with nothing is a warning, because it is data lost in silence:
+
+| | Fires when | Silence it with |
+|---|---|---|
+| `NSG011` | a member of the `[MapFrom]` message is written to no member of the entity — the caller sends it and every save drops it | the rename above, `[MapIgnore]` on the entity member that takes it, or `Ignore = [nameof(UpdateProject.X)]` on the `[MapFrom]` |
+| `NSG012` | a settable member of the `[MapTo]` row is read from no member of the entity — every row reaches the caller with it empty | the rename above, or `Ignore = [nameof(ProjectRow.X)]` on the `[MapTo]` |
+
+```csharp
+[MapFrom(typeof(SignUp), Ignore = [nameof(SignUp.Password)])]   // the handler hashes it
+[MapTo(typeof(ProjectRow), Ignore = [nameof(ProjectRow.Total)])] // the handler computes it
+```
+
+An `Ignore` that names no member of that type is an error (`NSG013`): it silences nothing, and
+goes on silencing nothing after the member it meant is renamed.
+
+**Only those two directions.** An entity column the message does not carry (its id, its audit
+stamps, its tenant, a foreign key, the version token) is the normal shape of a partial message,
+and an entity member the row does not show is what a row is. Neither is reported.
+
+Both are warnings, not errors: the code compiles and runs, it just loses the data. An app that
+wants them refused raises them in its `.editorconfig` or `WarningsAsErrors`.
+
 ## The compiler as reviewer
 
 A mapping that cannot work does not build: a member with no conversion (`NSG006`), a target with

@@ -26,4 +26,9 @@ public sealed class MapFromAttribute : Attribute
     public Type Source { get; }
 
     public string? Member { get; }
+
+    /// <summary>On the type: the source's members this entity deliberately does not store, so the
+    /// generator stops warning that they are dropped. Named from the entity because the source's
+    /// own assembly cannot see this one.</summary>
+    public string[]? Ignore { get; set; }
 }

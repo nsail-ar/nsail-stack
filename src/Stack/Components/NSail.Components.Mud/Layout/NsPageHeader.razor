@@ -60,8 +60,10 @@
 
             @* Handed up by the one table a list page draws (NSail.Exporting doctrine): the
                header draws it ahead of Actions so Exportar never competes with Nuevo for the
-               row's room, and a page with nothing to export draws nothing in its place. *@
-            @if (Surface?.Export is { } export)
+               row's room, and a page with nothing to export draws nothing in its place. Asked
+               from the render and not cached, like ClaimsRow: what claims it can change while
+               the surface lives, and a cached answer would flap or stick past its own page. *@
+            @if (Surface?.ClaimsExport(this) == true && Surface.Export is { } export)
             {
                 @export
             }
@@ -86,11 +88,6 @@
 
     protected override void OnInitialized()
     {
-        // Claimed once, on mount, not re-asked per render: the grid below reads it to decide
-        // whether its own collection bar still draws Exportar, and that read must not flap while
-        // this header and the grid are both standing.
-        Surface?.ClaimsExport(this);
-
         if (Surface is not null)
         {
             Surface.ExportChanged += OnExportChanged;
@@ -209,7 +206,7 @@
     [Parameter]
     public bool FilterAlwaysOpen { get; set; }
 
-    bool _hasToolBar => Lead is not null || Search is not null || SearchTextChanged.HasDelegate || Filter is not null || Actions is not null || Surface?.Export is not null;
+    bool _hasToolBar => Lead is not null || Search is not null || SearchTextChanged.HasDelegate || Filter is not null || Actions is not null || (Surface?.ClaimsExport(this) == true && Surface.Export is not null);
 
     bool ReservesToggleGutter => NsTitleBar.ShowsToggle(Surface, LayoutState);
 

@@ -37,6 +37,7 @@ public sealed class SurfaceContext
     object? _refusingSource;
     object? _rowSource;
     object? _exportSource;
+    object? _exportAnnouncer;
     int _workCount;
     volatile bool _hasWork;
     volatile bool _hasChanges;
@@ -221,21 +222,46 @@ public sealed class SurfaceContext
     /// export is running has to reach a header that never re-renders on its own.</summary>
     public RenderFragment? Export => _export;
 
-    /// <summary>Raised whenever the exporting grid re-announces — on every one of its own
+    /// <summary>Raised whenever the announcing grid re-announces — on every one of its own
     /// renders while it has something to export, never only when the fragment's shape
     /// changed.</summary>
     public Action? ExportChanged;
 
-    /// <summary>The exporting grid's own call, once per render, whenever <c>Exportable</c>
-    /// holds.</summary>
-    public void AnnounceExport(RenderFragment? export)
+    /// <summary>The exporting grid's own call, once per render, whenever it is a candidate for
+    /// the surface's one export slot — the same shape <see cref="ClaimsRow"/> stands for, but on
+    /// the announcing side rather than the claiming one. First grid to announce a non-null
+    /// export wins the slot and keeps it until it either announces null itself (it stopped being
+    /// exportable) or releases it the same way (its teardown); an announcement from a DIFFERENT
+    /// source — a second grid on the same surface, exportable or not — is simply not read while
+    /// the slot is held, so neither a sibling grid's every-render null nor its own export can
+    /// evict the grid the header is actually drawing.</summary>
+    public void AnnounceExport(object source, RenderFragment? export)
     {
-        if (_export is null && export is null)
-        {
-            return;
-        }
+        ArgumentNullException.ThrowIfNull(source);
 
-        _export = export;
+        lock (_sync)
+        {
+            if (export is null)
+            {
+                if (!ReferenceEquals(_exportAnnouncer, source))
+                {
+                    return;
+                }
+
+                _exportAnnouncer = null;
+                _export = null;
+            }
+            else
+            {
+                if (_exportAnnouncer is not null && !ReferenceEquals(_exportAnnouncer, source))
+                {
+                    return;
+                }
+
+                _exportAnnouncer = source;
+                _export = export;
+            }
+        }
 
         ExportChanged?.Invoke();
     }
@@ -361,7 +387,16 @@ public sealed class SurfaceContext
         // standing in the chrome.
         Announce(null, null, null);
         AnnounceIndex(null);
-        AnnounceExport(null);
+
+        // A direct clear and not AnnounceExport(this, null): this is the surface's own reset
+        // between two pages, not one grid releasing a slot it may not even hold, and the
+        // arriving page's first grid is a different instance that could never pass the
+        // ownership check this method applies everywhere else.
+        lock (_sync)
+        {
+            _exportAnnouncer = null;
+            _export = null;
+        }
 
         if (Size == NsSize.Md && !Floating)
         {

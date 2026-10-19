@@ -35,7 +35,7 @@ public sealed class MapRequired
     }
 
     [MapFrom(typeof(SaleDto))]
-    [MapTo(typeof(SaleRow))]
+    [MapTo(typeof(SaleRow), Ignore = [nameof(SaleRow.Code)])]
     public sealed class Sale
     {
         public int Id { get; set; }

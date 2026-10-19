@@ -26,4 +26,8 @@ public sealed class MapToAttribute : Attribute
     public Type Target { get; }
 
     public string? Member { get; }
+
+    /// <summary>On the type: the target's members this entity deliberately leaves empty, so the
+    /// generator stops warning that nothing fills them.</summary>
+    public string[]? Ignore { get; set; }
 }

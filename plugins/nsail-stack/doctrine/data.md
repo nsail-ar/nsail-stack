@@ -616,6 +616,17 @@ The graph rules are Detached Mapper's:
 - **`OrganizationId` is never written by name alone** (NSG004): `[MapFrom(typeof(M),
   "OrganizationId")]` on the member says it, `[MapIgnore]` leaves it to the handler. A
   projection reads it like any member — a read moves no row.
+- **What pairs with nothing is said out loud**: a member of the `[MapFrom]` message that no
+  member of the entity writes is NSG011, and a settable member of the `[MapTo]` row that no
+  member of the entity fills is NSG012 — the first is data the caller sends and every save
+  drops, the second a default the screen shows as data. Never the opposite directions: an entity
+  column a partial message does not carry, and an entity member a row does not show, are the
+  normal shape of both. The answer is the member-level rename (`[MapFrom(typeof(M), "X")]`,
+  `[MapTo(typeof(T), "X")]`), `[MapIgnore]` on the entity's member, or the drop declared on the
+  entity's declaration — `Ignore = [nameof(M.X)]`, `Ignore = [nameof(T.X)]`, since the Sdk that
+  holds M and T never sees the Data project. An `Ignore` naming a member that does not exist is
+  NSG013. Both are warnings, so an app refuses them through its own `.editorconfig` or
+  `WarningsAsErrors`.
 - **A row may be init-only** (`{ get; init; }`, a record): a projection builds it with an
   initializer. A `[MapFrom]` target merges in place, so its members need a setter.
 - **An entity is what the model declares**: a `DbSet<T>`, a `ModelBuilder.Entity<T>()`, an

@@ -85,20 +85,37 @@ is never offered rather than offered and refused.
 for Exportar is a screen that can forget to.
 
 **The trigger is an icon, never text, and it rides the page's header — ahead of Nuevo, never
-below it.** `NsTable` hands its export fragment up to its `SurfaceContext` (`AnnounceExport`, the
-same crossing `Title` already makes the other way: a table reads the page's own name, a header
-reads the table's own control) and `NsPageHeader` draws it in its toolbar, before `Actions`. A
-page header claims the slot once it mounts (`SurfaceContext.ClaimsExport`), so `NsTable`'s own
-`.ns-collection-bar` — where Exportar used to sit, beside Agregar — only draws it where nothing
-claimed it: an embedded grid, a dialog, anything with no page header on its surface. The bar still
-draws for a grid that has a control of its own to put there even where nothing named the grid,
-because the pager row is the only alternative seat and it exists in one of the three paging modes.
-The icon is `NsIcons.Download` and the word `Exportar` is its tooltip and accessible name, never
-visible text, at any width — the menu carries no breakpoint of its own to lose it at.
+below it — for the page's own, UNNAMED list only.** A grid with its own `Title` is a panel of a
+bigger page and keeps its export beside that name, in its own `.ns-collection-bar`, no matter
+what else stands on the surface; an unnamed grid is a candidate for being the page's own list, so
+it hands its fragment up to its `SurfaceContext` instead (`AnnounceExport`, the same crossing
+`Title` already makes the other way: a table reads the page's own name, a header reads the
+table's own control), and `NsPageHeader` draws it in its toolbar, before `Actions`, where it
+claims the slot (`SurfaceContext.ClaimsExport`, asked from its own render, first header wins). An
+unnamed grid whose surface has no header to claim the slot — an embedded grid, a dialog — keeps
+drawing its own, same as a named one. First unnamed, exportable grid to announce on a surface
+wins the slot the same way (`SurfaceContext.AnnounceExport`): a second grid's render, exportable
+or not, is simply not read while another grid holds it, and a grid's own teardown hands the slot
+back. The bar still draws for a grid that has a control of its own to put there even where
+nothing named the grid, because the pager row is the only alternative seat and it exists in one
+of the three paging modes. The icon is `NsIcons.Download` and the word `Exportar` is its tooltip
+and accessible name, never visible text, at any width — `NsMenu`'s own `Icon`+`Label` already
+whisper both through the house's ungated aria-label bubble, so nothing wraps it in a second,
+vendor tooltip.
 
-**Each option's icon is the writer's own** (`IExportWriter.Icon`), never a mapping chrome keeps: a
-writer a host adds brings its glyph with it, the same way it brings its `Kind`, `Extension` and
-`ContentType`.
+**Each option's icon is the writer's own** (`IExportWriter.Icon`), named through its own catalog
+entry — `ExportingIcons` (`NSail.Exporting`) — never pasted inline: a writer a host adds brings
+its glyph the same way, naming an entry of its own catalog rather than a mapping chrome keeps.
+
+**Whose ROWS a grid shows is a second question the derivation above does not ask, and some grids
+answer it NO.** A list offers Exportar when its rows are the business's own records — what a
+person takes to a spreadsheet to work with (articles, stock, sales, purchases, prices, patients,
+sessions, ledgers, debtors). It does not where the rows are the app's OWN machinery (export
+requests, background jobs, sign-ins, notifications, its own logs), or a short vocabulary set up
+once (colors, kinds, the few taxes) that nobody works with in a spreadsheet. The derived default
+stands either way — a business list must not forget it — so the exclusion is an explicit opt-out,
+`Exportable="false"`, never a reason to touch the derivation itself: a grid that opts out still
+offers Agregar and still lays out its pager the same way, it only drops the one menu.
 
 **Both kinds of list are read out, and the reader cannot tell them apart anyway.** A grid the
 SERVER pages is a list by construction; a grid holding every row in hand is one too — the register

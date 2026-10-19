@@ -11,12 +11,25 @@ The rule a page lives by — **change the `Brand`, never the vendor theme** — 
 ## The model
 
 Branding is a vendor-agnostic, **serializable** object in `NSail.Components` (`Branding/`):
-`Brand` — `Name`, `DefaultDark`, two `BrandTheme`s (`Light`/`Dark`); `BrandTheme` — per-scheme
-`Logo`, the accent and its states, the surface ladder, text, `Lines` and status colors, **hex
-strings only**. `IBrandProvider` (async) supplies the active brand, the async contract existing
-so a provider can resolve branding per organization. **Components never read Mud palette types
-from app code.** Default look: dark, a near-black surface in the house chrome's warm hue, with
-orange `#F68E1E`.
+`Brand` — `Name`, `Typeface`, `DefaultDark`, two `BrandTheme`s (`Light`/`Dark`); `BrandTheme` —
+per-scheme `Logo`, the accent and its states, the surface ladder, text, `Lines` and status
+colors, **hex strings only**. `IBrandProvider` (async) supplies the active brand, the async
+contract existing so a provider can resolve branding per organization. **Components never read
+Mud palette types from app code.** Default look: dark, a near-black surface in the house
+chrome's warm hue, with orange `#F68E1E`.
+
+**`Typeface` is a key into `Typefaces`' catalog, never a scheme pick** — one family for both
+light and dark, like `Name`, so it sits on `Brand` and not on `BrandTheme`. `Typefaces` is a
+curated, self-hosted list of OFL families (`NSail.Components.Mud/wwwroot/fonts/{Key}.ttf`,
+its license beside it as `{Key}-OFL.txt`), reachable at the one convention every reader uses —
+`Typefaces.AssetPath(key)`, a web-root-relative path — rather than a per-tenant URL a kit would
+have to resolve and store. `BrandMudTheme` sets it on `Typography.H1`-`H6`'s `FontFamily` only
+when a key resolves, which is also the whole of the scope: the vendor's own unset `FontFamily`
+inherits the body's, so a brand that picks nothing keeps the house typeface with no branch of
+its own. **Only the heading ranks carry it — never `Body1`, `Body2`, `Caption` or `Subtitle`** —
+because the brand name itself renders through `NsText`'s `As="Title"`, which is `Typo.h6`: one
+family on H1-H6 is both the titles and the name, and nothing below them. `NsTheme` emits the
+`@font-face` the browser loads it from, keyed the same way.
 
 **A brand is picked in exactly two colours — `Chrome` and `Accent`.** Everything else is either
 a scheme constant or derived.

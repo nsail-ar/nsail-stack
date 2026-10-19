@@ -124,7 +124,11 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
 
         Assert.Equal(Export, button.GetAttribute("aria-label"));
         Assert.DoesNotContain(Export, button.TextContent, StringComparison.Ordinal);
-        Assert.Contains(Export, cut.FindComponent<MudBlazor.MudTooltip>().Markup, StringComparison.Ordinal);
+
+        // No second, vendor tooltip: NsMenu's own aria-label already whispers the word through
+        // the house's ungated CSS bubble (CollapsedLabelWhisperTests), and a MudTooltip beside it
+        // would double-bill the name and stay painted over the menu its own press just opened.
+        Assert.Empty(cut.FindComponents<MudBlazor.MudTooltip>());
     }
 
     [Fact]
@@ -142,6 +146,93 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
 
         Assert.Contains(_excel.Icon.Markup, list.InnerHtml, StringComparison.Ordinal);
         Assert.Contains(_csv.Icon.Markup, list.InnerHtml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ADocumentCollectionOnTheSameSurfaceNeverEvictsThePrimaryListsExportar()
+    {
+        var surface = Setup();
+
+        var cut = Render<ExportHeaderMultiGridHost>(p => p
+            .Add(x => x.Surface, surface)
+            .Add(x => x.ShowPrimary, true)
+            .Add(x => x.ShowDocument, true));
+
+        var header = cut.FindComponent<NsPageHeader>();
+
+        // The document's own collection renders null on every one of its renders (its rows are
+        // not a list at all, Document cascaded), and that must not be read as "nothing exports
+        // here anymore" over a different grid's announcement.
+        Assert.Single(header.FindAll(".ns-table-export"));
+    }
+
+    [Fact]
+    public void ASecondUnnamedListDoesNotStealTheFirstsClaim()
+    {
+        var surface = Setup();
+
+        var cut = Render<ExportHeaderMultiGridHost>(p => p
+            .Add(x => x.Surface, surface)
+            .Add(x => x.ShowPrimary, true)
+            .Add(x => x.ShowSecondList, true));
+
+        var header = cut.FindComponent<NsPageHeader>();
+        var tables = cut.FindComponents<NsTable<ExportRowModel>>();
+
+        // Exactly one trigger on the whole surface: the first unnamed, exportable grid keeps the
+        // slot, and the second does not get a copy of its own either — a header stands and
+        // neither grid carries a Title to fall back on.
+        Assert.Single(cut.FindAll(".ns-table-export"));
+        Assert.Single(header.FindAll(".ns-table-export"));
+
+        foreach (var table in tables)
+        {
+            Assert.Empty(table.FindAll(".ns-table-export"));
+        }
+    }
+
+    [Fact]
+    public void ANamedRelatedGridKeepsItsOwnExportarEvenWithAHeaderPresent()
+    {
+        var surface = Setup();
+
+        var cut = Render<ExportHeaderMultiGridHost>(p => p
+            .Add(x => x.Surface, surface)
+            .Add(x => x.ShowPrimary, true)
+            .Add(x => x.ShowRelated, true));
+
+        var header = cut.FindComponent<NsPageHeader>();
+
+        // Two triggers: the page's own, in the header, and the named panel's own, in its own
+        // bar beside "Relacionados" — a Title names a grid as a panel of a bigger page, which
+        // never hands its export to a header it does not own.
+        Assert.Equal(2, cut.FindAll(".ns-table-export").Count);
+        Assert.Single(header.FindAll(".ns-table-export"));
+
+        var related = cut.FindComponents<NsTable<ExportRowModel>>()
+            .Single(t => t.Instance.Title == "Relacionados");
+
+        Assert.Single(related.FindAll(".ns-table-export"));
+        Assert.Contains("Relacionados", related.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DisposingTheExportingGridRetractsTheHeadersExportar()
+    {
+        var surface = Setup();
+
+        var cut = Render<ExportHeaderMultiGridHost>(p => p
+            .Add(x => x.Surface, surface)
+            .Add(x => x.ShowPrimary, true));
+
+        Assert.Single(cut.FindComponent<NsPageHeader>().FindAll(".ns-table-export"));
+
+        cut.Render(p => p.Add(x => x.ShowPrimary, false));
+
+        // The grid that held the slot is gone, so the header draws nothing in its place — not
+        // Exportar pointed at a disposed grid, and not a toolbar row kept open for an empty slot.
+        Assert.Null(surface.Export);
+        Assert.Empty(cut.FindComponent<NsPageHeader>().FindAll(".ns-table-export"));
     }
 
     // AngleSharp re-serializes the void <path/> this house's Glyphs carry as <path></path>: the

@@ -117,6 +117,35 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
         Assert.Single(cut.FindAll(".ns-cells-add"));
     }
 
+    /// <summary>The business/machinery opt-out (exporting.md): a list that IS a list by every
+    /// other measure still drops the menu when the screen says its rows are not worth it, and
+    /// takes the bar's whole seat with it when nothing else needs one.</summary>
+    [Fact]
+    public void An_opted_out_list_offers_nothing_and_draws_no_bar()
+    {
+        Writers(_excel, _csv);
+
+        var cut = Render<ExportTableHost>(parameters => parameters.Add(host => host.Exportable, false));
+
+        Assert.Empty(cut.FindAll(".ns-table-export"));
+        Assert.Empty(cut.FindAll(".ns-collection-bar"));
+    }
+
+    /// <summary>The opt-out takes only the menu: a named list keeps its heading and the bar that
+    /// carries it.</summary>
+    [Fact]
+    public void An_opted_out_named_list_keeps_its_heading_and_loses_only_Exportar()
+    {
+        Writers(_excel, _csv);
+
+        var cut = Render<ExportTableHost>(parameters => parameters
+            .Add(host => host.Exportable, false)
+            .Add(host => host.Title, "Pedidos"));
+
+        Assert.Empty(cut.FindAll(".ns-table-export"));
+        Assert.Contains("Pedidos", cut.Find(".ns-collection-bar").TextContent, StringComparison.Ordinal);
+    }
+
     /// <summary>A register the client HOLDS is a list too: its rows went past no page, so "all
     /// pages" is every row in hand, and a reader asking for a spreadsheet does not know which kind
     /// of list they are looking at.</summary>
