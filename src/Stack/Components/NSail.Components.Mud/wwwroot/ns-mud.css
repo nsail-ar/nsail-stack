@@ -2956,16 +2956,33 @@
 
 /* NsRemoteImage's own box: the <img> and the inlined <svg> are two different elements
    with two different natural sizing rules, so the wrapper is what Height actually
-   constrains -- both children fill it and keep their own aspect ratio. */
+   constrains -- both children fill it and keep their own aspect ratio. max-width:100% on
+   the wrapper AND its children (the same height-as-measure, width-as-ceiling pair
+   NsSplash's own <img> carries) is what stops a wide lockup from drawing past its
+   container at a fixed height -- without it a wide mark at NsPageFace's own Height draws
+   past its container, and a phone crops it with no scroll to rescue it (position:fixed).
+   A relative ceiling alone still lets a desktop container draw the mark larger than
+   .ns-brand-column's absolute one below, which is why NsPageFace wraps this box in that
+   class rather than leaning on max-width:100% by itself. */
 .ns-remote-image {
     display: inline-flex;
     align-items: center;
+    max-width: 100%;
 }
 
 .ns-remote-image > svg,
 .ns-remote-image > img {
     height: 100%;
     width: auto;
+    max-width: 100%;
+}
+
+/* The one absolute width ceiling NsSplash and NsPageFace both draw their mark against --
+   named once here so the two faces size a wide lockup equally at any viewport instead of
+   each carrying its own copy of the number. */
+.ns-brand-column {
+    max-width: 320px;
+    width: 100%;
 }
 
 /* NsSplash's live percentage: Blazor's own boot script writes --blazor-load-percentage-text

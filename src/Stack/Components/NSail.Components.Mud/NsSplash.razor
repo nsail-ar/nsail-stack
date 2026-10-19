@@ -8,7 +8,7 @@
 
 <div id="ns-splash" class="fixed inset-0 z-max d-flex flex-column align-center justify-center pa-6 bg-background">
 
-    <div class="d-flex flex-column align-center gap-4" style="max-width:320px; width:100%;">
+    <div class="d-flex flex-column align-center gap-4 ns-brand-column">
 
         @* The mark -- logo above, company name below, both permanent (the WhatsApp-desktop
            shape) -- and the bar share one fit-content box so the bar's own width tracks
@@ -29,8 +29,8 @@
             @if (LogoUrl is not null)
             {
                 <div id="ns-splash-logo" data-logo="@LogoUrl"
-                     style="height:72px; color:var(--mud-palette-primary, #8a8782);">
-                    <img src="@LogoUrl" alt="" style="height:72px; max-width:100%;"
+                     style="height:160px; color:var(--mud-palette-primary, #8a8782);">
+                    <img src="@LogoUrl" alt="" style="height:160px; max-width:100%;"
                          onerror="this.style.display='none'; this.parentElement.dataset.failed='1';" />
                 </div>
             }
@@ -91,7 +91,9 @@
         // An <img> is its own document and cannot inherit the colour around it, so an SVG
         // logo drawn with currentColor renders black. Inlining is the only way it takes the
         // primary the container carries -- and only an SVG is inlined, so a raster logo keeps
-        // its own baked colours through the <img> that is already here.
+        // its own baked colours through the <img> that is already here. Sized the same as the
+        // <img> fallback above (height, then max-width as the ceiling) or the two paths draw
+        // the mark at two different sizes depending on which one answers.
         fetch(host.dataset.logo, { credentials: "same-origin" })
             .then(response => {
                 const type = (response.headers.get("content-type") || "").split(";")[0].trim();
@@ -107,8 +109,9 @@
                 const root = host.firstElementChild;
 
                 if (root) {
-                    root.style.height = "72px";
+                    root.style.height = "160px";
                     root.style.width = "auto";
+                    root.style.maxWidth = "100%";
                 }
             })
             .catch(() => { });
