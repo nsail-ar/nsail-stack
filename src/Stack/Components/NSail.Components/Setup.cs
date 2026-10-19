@@ -136,6 +136,15 @@ public static class Setup
         services.AddScoped<IGuideContributor, TContributor>();
     }
 
+    /// <summary>Registers a module's playbooks for the Assistant, the same shape AddGuide
+    /// registers chapters — no reader to add beside it, because a skill's body is read from
+    /// the contributor's own assembly (EmbeddedSkillBody), never fetched.</summary>
+    public static void AddSkills<TContributor>(this IServiceCollection services)
+        where TContributor : class, ISkillContributor
+    {
+        services.AddScoped<ISkillContributor, TContributor>();
+    }
+
     /// <summary>Where this app's guide lives, so every door to it — the guide button on a
     /// page header, a chapter link in the index — resolves an address instead of writing one.
     /// The screen is the product's, so only the product can say it.</summary>
