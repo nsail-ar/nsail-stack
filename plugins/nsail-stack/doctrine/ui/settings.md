@@ -80,8 +80,9 @@ browser's own `localStorage`. Whoever signs in at that counter gets the counter'
 - **Keys are the caller's**, explicit and never derived from the control: the point of sale
   rides one key (`"point-of-sale"`, held by `PointOfSaleSelect`) so every screen that asks
   offers the same drawer. A per-screen filter picks a per-screen key, and the FRAME has one key
-  of its own: whether the companion region stands open (`NsMainLayout`, recalled on its first
-  interactive render — that layout fills no field and awaits nothing else there).
+  of its own: whether the companion region stands open (`NsCompanion`, the region's own
+  component, recalled on its first interactive render — it fills no field and awaits nothing
+  else there).
 - **Every read failure answers the default, silently** — never written, no longer parses,
   a browser that refuses to store. The caller's fallback is then exactly what it would have
   done with no memory at all, so a remembered value can only ever improve a prefill.

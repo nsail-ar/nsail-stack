@@ -79,20 +79,25 @@
         }
 
         <MudNavMenu>
+            @* One pass over the map, read by both branches below: what the gate and the typing
+               left is the list AND the answer to whether anything was found. *@
+            @{
+                var shown = Shown(_items).ToList();
+            }
             @* What the typing found, and where it found nothing the app's own way on with it: a
                filter that matched no door is the moment a question has nowhere else to go
                (ui/navigation.md). Drawn as the ONE entry, so there is nothing above it to press
                first — ns-nav-nomatch is the hook that makes Enter in the box reach it exactly as
                it reaches the first entry (ns.js). An app that offers none keeps the empty list. *@
-            @if (NoMatch is not null && _search.Length > 0 && !Shown(_items).Any())
+            @if (NoMatch is not null && Question() is { } question && shown.Count == 0)
             {
                 <div class="ns-nav-nomatch">
-                    @NoMatch(_search)
+                    @NoMatch(question)
                 </div>
             }
             else
             {
-                @foreach (var item in Shown(_items))
+                @foreach (var item in shown)
                 {
                     @Render(item)
                 }
@@ -310,6 +315,16 @@
     void SetSearch(string? value)
     {
         _search = value ?? string.Empty;
+    }
+
+    // What the no-match row may be handed: the text as it was typed, and null where there is no
+    // question in it. Whitespace is not one — two spaces match no label, so the row would be
+    // drawn for them, and that row IS a door (Companion.Open refuses a blank, and an app's own
+    // "ask this" has nothing to ask). The box keeps what was typed either way: trimming it here
+    // would fight the person's next keystroke.
+    string? Question()
+    {
+        return string.IsNullOrWhiteSpace(_search) ? null : _search;
     }
 
     // What the sheet lists is read off the DOM BEFORE it opens, so it is the screen as it stands

@@ -164,6 +164,51 @@ public sealed class NsNavMenuSeamsTests : BunitContext, IAsyncLifetime
             TimeSpan.FromSeconds(10));
     }
 
+    /// <summary>Whitespace is not a question, and a box holding only whitespace is not a filter
+    /// that found nothing: two consecutive spaces are a literal no label carries, so the row
+    /// would otherwise be the one entry drawn for them. It is a DOOR — Companion.Open refuses a
+    /// blank, and an app's own "ask this" would have nothing to ask — so what is drawn there is
+    /// the empty list.</summary>
+    [Fact]
+    public async Task WhitespaceAloneIsNoQuestionAndDrawsNoRow()
+    {
+        var menu = RenderWithNoMatch();
+
+        await Type(menu, "  ");
+
+        menu.WaitForAssertion(
+            () =>
+            {
+                Assert.Empty(menu.FindAll(".ns-nav-entry"));
+                Assert.Empty(menu.FindAll(".ns-nav-nomatch"));
+            },
+            TimeSpan.FromSeconds(10));
+    }
+
+    /// <summary>The other half of the same agreement: whatever text the row IS drawn with is a
+    /// text the door behind it opens on, padding included and as typed — the box keeps what was
+    /// typed, so trimming is nobody's job between the two.</summary>
+    [Fact]
+    public async Task TheTextTheRowIsDrawnWithIsOneTheCompanionOpensOn()
+    {
+        var menu = RenderWithNoMatch();
+
+        await Type(menu, " cuanto sale un multifocal ");
+
+        var carried = string.Empty;
+
+        menu.WaitForAssertion(
+            () => carried = menu.Find(".ns-nav-nomatch button").TextContent,
+            TimeSpan.FromSeconds(10));
+
+        var region = new Companion();
+
+        region.Open(carried);
+
+        Assert.True(region.IsOpen);
+        Assert.Equal(" cuanto sale un multifocal ", region.Text);
+    }
+
     IRenderedComponent<NsNavMenu> RenderWithNoMatch()
     {
         return Render<NsNavMenu>(p => p

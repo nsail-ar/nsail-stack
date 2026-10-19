@@ -276,4 +276,26 @@ public sealed class CompanionRegionTests : BunitContext, IAsyncLifetime
             css,
             StringComparison.Ordinal);
     }
+
+    /// <summary>The region starts level with the page it accompanies, which means it reserves the
+    /// app bar's height in exactly the widths the content does and no other. Two ways a bar is
+    /// absent and both drop the reservation from BOTH boxes: a layout that mounts no Header
+    /// (ns-no-appbar, at every width) and one that mounts a bar withdrawing itself from md up
+    /// (the bar's own width gate) — the second is the one a region beside the content can be
+    /// left out of, and a 64px step between the agent and the page is how that reads.</summary>
+    [Fact]
+    public void ItReservesTheAppBarsHeightOnlyWhereTheContentDoes()
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Contains(
+            "@media (min-width: 960px) {\n    .mud-appbar.d-md-none ~ .mud-main-content,\n    .mud-appbar.d-md-none ~ .ns-companion {\n        padding-top: 0;",
+            css,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            ".ns-companion.ns-no-appbar {\n    padding-top: 0;",
+            css,
+            StringComparison.Ordinal);
+    }
 }
