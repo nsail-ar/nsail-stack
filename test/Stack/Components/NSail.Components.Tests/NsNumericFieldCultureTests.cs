@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
@@ -230,5 +231,26 @@ public sealed class NsNumericFieldCultureTests : BunitContext, IAsyncLifetime
         await cut.InvokeAsync(() => cut.Find("input").Input(typed));
 
         Assert.Equal((decimal)expected, read);
+    }
+
+    /// <summary>nsail#2392: a keypad with no comma writes every grouping dot correctly and
+    /// only runs out of its one key at the decimal point, so the figure's LAST dot is the one
+    /// that decides whether it groups or divides — not merely whether a second one exists.
+    /// Reading every dot as a thousand once two or more appeared sent an Assistant token
+    /// ceiling typed "1.040.456,062096373" to the vendor as 1040456062096373.</summary>
+    [Theory]
+    [InlineData("1.040.456.062096373", "1040456.062096373")]
+    [InlineData("1.234.5", "1234.5")]
+    public async Task A_figure_with_grouping_dots_and_the_keypads_dot_still_divides_at_the_last_one(string typed, string expected)
+    {
+        decimal? read = null;
+
+        var cut = Render<NsNumericField<decimal?>>(ps => ps
+            .Add(p => p.Value, (decimal?)null)
+            .Add(p => p.ValueChanged, v => read = v));
+
+        await cut.InvokeAsync(() => cut.Find("input").Input(typed));
+
+        Assert.Equal(decimal.Parse(expected, CultureInfo.InvariantCulture), read);
     }
 }
