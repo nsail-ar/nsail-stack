@@ -113,8 +113,8 @@ a wrong-assembly resolve impossible rather than quiet.
 
 ### Contributor classes are named by the contribution alone
 
-`Actions`, `Cards`, `Menu`, `Onboarding`, `Skills` — never by the target. The namespace already names
-the feature, and the contributor interface names the target
+`Actions`, `Cards`, `Menu`, `Onboarding`, `Skills` — never by the target. The namespace
+already names the feature, and the contributor interface names the target
 (`IActionContributor<PartyRowOutlet>` says "party rows" better than a prefix could).
 `Prescriptions.Actions` and `Appointments.Actions` coexist; `PartyActions` repeats what the
 interface declares, and `PrescriptionPartyActions` also stutters against the namespace. A

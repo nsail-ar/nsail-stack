@@ -26,6 +26,7 @@ read your row. Every page is a file of this plugin, under `${CLAUDE_PLUGIN_ROOT}
 | A test, a harness, a `*.Tests` project | `${CLAUDE_PLUGIN_ROOT}/doctrine/testing.md` (the `test-harness` skill walks it) |
 | A React client, an `@nsail/*` package, `sdk.ts` | `${CLAUDE_PLUGIN_ROOT}/doctrine/react.md` |
 | A glyph a screen needs that no catalog carries | the `new-icon` skill |
+| A kit's playbook for the Assistant, `ISkillContributor`, `Skills.cs` | `${CLAUDE_PLUGIN_ROOT}/doctrine/ui/skills.md` |
 | Deciding whether to write the code at all | `${CLAUDE_PLUGIN_ROOT}/doctrine/lesscode.md` |
 
 The pages name files of the codebase they were written against: `src/Stack/...` and

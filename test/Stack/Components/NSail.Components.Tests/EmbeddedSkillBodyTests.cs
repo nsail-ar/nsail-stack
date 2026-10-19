@@ -12,7 +12,7 @@ public sealed class EmbeddedSkillBodyTests
     {
         var body = await EmbeddedSkillBody.Read(typeof(EmbeddedSkillBodyTests).Assembly, "sample-skill");
 
-        Assert.Equal("Steps for the sample skill.\n", body);
+        Assert.Equal("Steps for the sample skill.\n", body.Replace("\r\n", "\n", StringComparison.Ordinal));
     }
 
     [Fact]

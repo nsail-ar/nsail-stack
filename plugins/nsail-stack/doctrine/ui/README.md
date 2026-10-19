@@ -19,6 +19,7 @@ placing.
 | [wizard.md](wizard.md) | `NsWizard`, `WizardContext`, `IRouteGate`, `NsFullLayout` |
 | [settings.md](settings.md) | `SettingsManager`, `ISettingsContributor`, `SettingsItem`/`SettingsMenu`, `DeviceMemory` |
 | [guide.md](guide.md) | `IGuideContributor`, `GuideItem`, `GuideReader`, `GuideRoute`, `NsGuide`, `NsGuideLink`, `Markdown.ToHtml` as a chapter's renderer |
+| [skills.md](skills.md) | `ISkillContributor`, `SkillItem`, `EmbeddedSkillBody`, `SkillItem.Verify` |
 | [branding.md](branding.md) | `Brand`, `BrandTheme`, `IBrandProvider` |
 | [localization.md](localization.md) | `StringManager`, `IStringSource`, the derived keys, culture negotiation |
 

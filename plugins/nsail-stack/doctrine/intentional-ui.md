@@ -14,7 +14,8 @@ hold what building a screen does not need:
   [fields](ui/fields.md), [actions](ui/actions.md), [forms](ui/forms.md), [hosts](ui/hosts.md),
   [styling](ui/styling.md), [navigation](ui/navigation.md), [menus](ui/menus.md),
   [wizard](ui/wizard.md), [settings](ui/settings.md), [guide](ui/guide.md),
-  [branding](ui/branding.md), [localization](ui/localization.md), [surfaces](ui/surfaces.md).
+  [skills](ui/skills.md), [branding](ui/branding.md), [localization](ui/localization.md),
+  [surfaces](ui/surfaces.md).
   Read one when you place the thing it describes, not before.
 
 ---

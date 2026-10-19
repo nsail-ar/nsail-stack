@@ -31,15 +31,21 @@ public sealed class SkillItem
 
     public Task<string> GetBody()
     {
-        return _contributor!.GetBody(Name);
+        if (_contributor is null)
+        {
+            throw new InvalidOperationException(
+                $"Skill '{Name}' did not come from SkillItem.Collect, so no contributor can answer its body.");
+        }
+
+        return _contributor.GetBody(Name);
     }
 
     /// <summary>Every contributor's skills in one list, ordered by Weight ascending. A later
     /// contributor naming a Name already seen REPLACES the earlier one whole — Tools, Description
     /// and Weight all come from the winner, none of it merged field by field the way the menu's
     /// items are, so an app overriding a kit's skill does not inherit a Tool list it never named.
-    /// The replaced skill keeps its first-appearance slot, which is what lets Weight order stay
-    /// stable across an override.</summary>
+    /// The replaced skill keeps its first-appearance slot — the override's own Weight still
+    /// moves it, the slot only breaks a tie among skills that land on the same Weight.</summary>
     public static async Task<IReadOnlyList<SkillItem>> Collect(IEnumerable<ISkillContributor> contributors)
     {
         ArgumentNullException.ThrowIfNull(contributors);

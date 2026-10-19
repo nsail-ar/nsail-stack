@@ -80,13 +80,16 @@ public sealed class SkillItemTests
     }
 
     // An override keeps its first-appearance SLOT even though its content is the later
-    // contributor's — the same reading GuideItemTests pins for chapters.
+    // contributor's. The override here lands on the SAME weight as the skill beside it, so the
+    // two are tied: OrderBy's stable sort alone would read the input order it was just given —
+    // ["sell", "record-expense"] — and only the slot kept from first appearance puts
+    // "record-expense" back ahead of "sell".
     [Fact]
     public async Task AnOverrideKeepsItsFirstAppearanceSlot()
     {
         var skills = await SkillItem.Collect([
-            Contributor(Skill("record-expense", weight: 10), Skill("sell", weight: 20)),
-            Contributor(Skill("record-expense", weight: 15))]);
+            Contributor(Skill("record-expense", weight: 10), Skill("sell", weight: 10)),
+            Contributor(Skill("record-expense", weight: 10))]);
 
         Assert.Equal(["record-expense", "sell"], skills.Select(skill => skill.Name));
     }
