@@ -81,8 +81,9 @@ browser's own `localStorage`. Whoever signs in at that counter gets the counter'
   rides one key (`"point-of-sale"`, held by `PointOfSaleSelect`) so every screen that asks
   offers the same drawer. A per-screen filter picks a per-screen key, and the FRAME has one key
   of its own: whether the companion region stands open (`NsCompanion`, the region's own
-  component, recalled on its first interactive render — it fills no field and awaits nothing
-  else there).
+  component, recalled on its first interactive render — it fills no field, but does await a
+  second thing, the viewport's breakpoint, before deciding whether its own open takes focus;
+  see the rule below for what that second await owes).
 - **Every read failure answers the default, silently** — never written, no longer parses,
   a browser that refuses to store. The caller's fallback is then exactly what it would have
   done with no memory at all, so a remembered value can only ever improve a prefill.
@@ -103,6 +104,12 @@ browser's own `localStorage`. Whoever signs in at that counter gets the counter'
     `Load()` a second `Raise` that throws, and a render of `NsForm` alone re-renders the page's
     fragment but not the page, so no second chance follows. Reference, in a product:
     `CreateAppointmentPage.ApplyRemembered`.
+- **A recall that awaits anything past the read has to ask again whether someone else already
+  moved.** The window a door can act in is open for every await the recall's own path makes,
+  not just the first: a seam that reads the value and then awaits something else before acting
+  on it (`NsCompanion`'s own viewport check) has to re-check, after that second await too,
+  whether a door already decided the answer — otherwise the recall's own write or side effect
+  lands on top of what the door just did. One await, one re-check each.
 - **The write is the user's pick, not the form's save and not the prefill.** A machine that
   has not chosen keeps falling back; it must not adopt a default it was never told to use.
 - Riders named and deliberately unbuilt: list filters, form drafts, `StoreSelect`.

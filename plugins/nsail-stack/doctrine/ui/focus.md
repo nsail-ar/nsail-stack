@@ -56,10 +56,14 @@ cover:
 - **A dialog or a drawer keeps the form's own rule**: the first field of what just opened, and
   the vendor's focus trap hands the cursor back to whatever opened it the moment it closes — no
   line written for either end.
+- **The companion region recalled open on load is not a door opening.** Above the drawer's own
+  breakpoint the page stands beside it, so this page's own arrival focus is left to settle;
+  below it the region IS the screen, and takes focus the way a drawer that opened for a reason
+  does. A door's own `Toggle`/`Open` always takes it, docked or not. Reference: `NsCompanion`.
 - **A read-only page, a dashboard** — nothing declares the marker, so the router's fallback
   (`h1`) is the arrival focus, same as every page got before this.
 
-The per-screen table — which of these five a screen actually is, and which needed a line
+The per-screen table — which of these six a screen actually is, and which needed a line
 changed — is the walk in the story's own PR, not repeated here: a table copied into a doc rots
 the day a screen is added, and this page states the rule it was walked against.
 
