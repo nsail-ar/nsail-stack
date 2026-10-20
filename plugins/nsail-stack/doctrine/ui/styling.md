@@ -227,8 +227,9 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   `Inline` (default) inherits the surrounding colour, `Main` maps to `.text-primary`. Tinting
   an image is that parameter, never a class or a `style=` — including on the row *around* the
   image, which would tint every sibling with it.
-- `NsTooltip` takes `Text` and wraps what it explains — **detail on demand, never the only
-  place a fact lives**. A phone has no hover, so what rides here is the long form of something
+- `NsTooltip` takes `Text` and wraps what it explains, declaring the whisper on a box of its own
+  (cases: shell, *The bubble a control whispers*) — **detail on demand, never the only place a
+  fact lives**. A phone has no hover, so what rides here is the long form of something
   already rendered, and **a fact the eye needs in order to choose is drawn, never hovered**: the
   product picker's option is the article alone, and the store hangs under it at the muted rank,
   on a line of its own, only where more than one source of that article survives — what tells

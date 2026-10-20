@@ -575,8 +575,9 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   balance, a count — belongs on the option alone: a field that kept it would go on saying a
   number from whenever it was picked (`ProductVariantLookup`).
 - **The end adornment is a button and carries a name** (`AdornmentAriaLabel`): the chevron that
-  opens a browsed lookup's list. It is icon-only at every width, so it takes the ungated whisper
-  `ns-square` takes ([actions.md](actions.md)).
+  opens a browsed lookup's list. It is icon-only at every width and the vendor draws it, so it is
+  one of the two faces the whisper reaches by selector and names off `aria-label`
+  ([actions.md](actions.md)).
 - **A `Lazy` lookup draws no adornment.** Its list is what a term answers, so a button offering
   to open it has no gesture: pressed, it focused the box and opened nothing. What the field is
   for is said by the word in it — the `Buscar {concept}` placeholder — which reads at every

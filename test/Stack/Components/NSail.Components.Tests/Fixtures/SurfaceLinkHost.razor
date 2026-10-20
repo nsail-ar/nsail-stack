@@ -53,10 +53,8 @@
     [Parameter]
     public NsBreakpoint Breakpoint { get; set; } = NsBreakpoint.Sm;
 
-    /// <summary>Null on the flat rung's icon-only face only: a labelled glyph renders its
-    /// label into a MudTooltip, which is a popover with no provider to attach to outside a
-    /// layout. The tooltip sits inside the chrome either way, so nothing about the link's own
-    /// wiring turns on it.</summary>
+    /// <summary>The word the link draws, and the name its icon-only face whispers instead.
+    /// Nothing about the link's own wiring turns on it.</summary>
     [Parameter]
     public string? Label { get; set; } = "Open";
 }

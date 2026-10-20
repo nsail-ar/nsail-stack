@@ -128,9 +128,9 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
         Assert.Equal(Export, button.GetAttribute("aria-label"));
         Assert.DoesNotContain(Export, button.TextContent, StringComparison.Ordinal);
 
-        // No second, vendor tooltip: NsMenu's own aria-label already whispers the word through
-        // the house's ungated CSS bubble (CollapsedLabelWhisperTests), and a MudTooltip beside it
-        // would double-bill the name and stay painted over the menu its own press just opened.
+        // No vendor tooltip: NsMenu's own aria-label already whispers the word through the
+        // house's one bubble (CollapsedLabelWhisperTests), and a MudTooltip beside it would be a
+        // second mechanism with its own answers about timing, clipping and scroll.
         Assert.Empty(cut.FindComponents<MudBlazor.MudTooltip>());
     }
 

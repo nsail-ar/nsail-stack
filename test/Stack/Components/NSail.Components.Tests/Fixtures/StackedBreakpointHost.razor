@@ -1,14 +1,9 @@
 @* SPDX-License-Identifier: MIT
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
-@using MudBlazor
 @using NSail.Components
 @using NSail.Paging
 @using NSail.Testing.Models
-
-@* Icon buttons carry a MudTooltip, which is a popover: without a provider in the tree
-   MudBlazor throws before the grid renders at all. *@
-<MudPopoverProvider />
 
 @* A grid shaped like WorkOrdersPage's saldos: one column that never declares (Name), one
    that only earns its place from Lg up (Age), and the action column, which names nothing

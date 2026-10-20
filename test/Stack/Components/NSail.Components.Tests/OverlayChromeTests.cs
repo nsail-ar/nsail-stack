@@ -20,8 +20,8 @@ namespace NSail.Components.Tests;
 /// the page's bar announces and draws nothing.</summary>
 public sealed class OverlayChromeTests : BunitContext, IAsyncLifetime
 {
-    // The X is a MudTooltip, which pulls MudBlazor's popover service into the container, and that
-    // one only implements IAsyncDisposable — a synchronous teardown throws on it by design.
+    // AddMudServices registers the vendor's popover service, and that one only implements
+    // IAsyncDisposable — a synchronous teardown throws on it by design.
     public Task InitializeAsync()
     {
         return Task.CompletedTask;

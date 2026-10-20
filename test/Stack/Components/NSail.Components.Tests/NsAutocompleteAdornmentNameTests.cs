@@ -58,9 +58,10 @@ public sealed class NsAutocompleteAdornmentNameTests : BunitContext, IAsyncLifet
 
     const string ShowOptions = "Show options";
 
-    // The selector ns-mud.css keys the adornment's ungated whisper on, written once here so a
-    // vendor upgrade that moves the button out of that shape reddens CI rather than taking the
-    // bubble away in silence.
+    // The selector ns.js keys the adornment's whisper on — one of the two faces the vendor draws
+    // and nothing of ours can put an attribute on — written once here so a vendor upgrade that
+    // moves the button out of that shape reddens CI rather than taking the bubble away in
+    // silence.
     const string Adornment = ".mud-autocomplete .mud-input-adornment-icon-button";
 
     // The vendor's own clear control, which is not the adornment and does not travel with it.

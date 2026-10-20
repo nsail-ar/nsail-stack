@@ -25,10 +25,9 @@
     // Built once per render whether or not it draws here: a page header elsewhere on this
     // surface may be the one putting it on screen (ShowExportInline, Surface.Export), and
     // either way the trigger and its options are the same markup — one declaration, not two
-    // copies that could drift. NsMenu already whispers its own Label through the house's
-    // ungated aria-label bubble (CollapsedLabelWhisperTests), so nothing wraps it: a second,
-    // vendor tooltip on the same word would double-bill the name and stay painted over the
-    // menu its own press just opened.
+    // copies that could drift. NsMenu already whispers its own Label through the house's one
+    // bubble (CollapsedLabelWhisperTests), so nothing wraps it: a tooltip of its own on the same
+    // word would be a second mechanism with its own answers about timing, clipping and scroll.
     RenderFragment? exportTrigger = Exportable && CanExport
         ? @<NsMenu Icon="@NsIcons.Download" Label="@Strings.Translate("Actions.Export")" Writes="false" Disabled="_exporting" Class="ns-table-export">
               @* Writes nothing, so a form that refuses writes keeps it: reading a list out is

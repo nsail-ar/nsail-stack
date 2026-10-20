@@ -37,8 +37,8 @@ public sealed class IconOnlyStateTests : BunitContext, IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    // The flat rung's glyph pairs itself with a MudTooltip, which pulls in the vendor's popover
-    // service — and that one is IAsyncDisposable only, so the synchronous teardown throws.
+    // AddMudServices registers the vendor's popover service, and that one is IAsyncDisposable
+    // only, so the synchronous teardown throws.
     async Task IAsyncLifetime.DisposeAsync()
     {
         await DisposeAsync();
@@ -315,11 +315,7 @@ public sealed class IconOnlyStateTests : BunitContext, IAsyncLifetime
             .Add(x => x.As, rank)
             .Add(x => x.Breakpoint, breakpoint)
             .Add(x => x.Icon, NsIcons.Edit)
-            // The flat rung's glyph pairs itself with a MudTooltip when it has a label, and a
-            // tooltip is a popover the vendor will not render without a provider this harness
-            // has none of. The label is dropped for that one case only; the class under test
-            // is written from the breakpoint either way.
-            .Add(x => x.Label, rank == NsAs.Inline ? null : "Editar"));
+            .Add(x => x.Label, "Editar"));
     }
 
     static IEnumerable<PropertyInfo> Parameters(Type control)

@@ -262,17 +262,15 @@ breakpoint anyway. There is no second knob.
 - **`NsSubmit` takes the same parameter with the opposite default (`Always`)** — a drawer
   form's save button must never be a guess. **`NsAction`'s default is `Never`** — a row's
   actions are glyphs.
-- **A collapsed control whispers its own name on hover**, a CSS bubble gated by the *same*
-  container query that hid the label. **A square at `Never` whispers at every width**: its
-  label is not coming back, so there is nothing for the bubble to double-bill — and **a menu's
-  icon face and a lookup's end adornment ride that ungated form too**, the row kebab included.
-  **The flat rung's wordless face is the one that whispers through the vendor's tooltip
-  instead** — `NsButton`'s and `NsLink`'s alike — and **a press takes that bubble down**: it
-  opens on focus as well as hover, so a press that leaves the control where it found it would
-  otherwise leave the name painted over whatever it just revealed. Most presses remount the
-  tooltip and hide this (a link that leaves, a row action that re-renders its row); the ones
-  that do not are why the exit is the component's and not the vendor's. The next hover brings
-  it back.
+- **A control whose name is not on screen whispers it after ~2.5 s of steady hover or keyboard
+  focus** — one bubble in the browser's top layer, `ns.js`'s, for every face in the house
+  (cases, The bubble a control whispers). There is no second tooltip path: a vendor tooltip is
+  not written in the Stack's components at all. **Whether it opens is derived, never declared**:
+  the bubble stays shut where the control's own rendered text already says what it would say, so
+  a collapsed button, a square at `Never`, a menu's icon face, a lookup's end adornment and a
+  footer act the emphasis ladder un-worded all whisper by the one rule, and a button with its
+  word on screen whispers only the part the word does not carry (its chord). **It closes on
+  leave, press, key and scroll**, which is what keeps a name off whatever a press just revealed.
 - **A glyph that is a button is named, wherever it sits.** Not only a control the house draws:
   a vendor part the Stack configures counts too, so `NsAutocomplete` hands its end adornment a
   name (`AdornmentAriaLabel`) the way `NsActionToolbar` hands the kebab one. The test is the
@@ -286,10 +284,11 @@ breakpoint anyway. There is no second knob.
   `Icon` beside it (an `NsLink`'s glyph, an `NsMenu`'s `Content`) — which is a face the markup
   cannot tell from a worded one — and an `ActionItem` built by hand, whose `Name` is a literal
   the caller chose rather than a handler's identifier.
-- **The bubble's text is the control's own `aria-label`**, which `NsButton` and `NsLink` set
-  from `Label` on every chromed `As`. A control that restates no name carries none, so it is a
-  bare glyph to the pointer and anonymous to a screen reader: **`NsSubmit` names itself with
-  its CONTENT and must stay at `Always`** until it is given a name it can restate.
+- **The bubble's text is `data-ns-whisper`**, which `NsButton` and `NsLink` write from `Label`
+  (and the chord where there is one) on every `As`, beside the `aria-label` that stays the bare
+  name. A control handed no `Label` declares neither, so it is a bare glyph to the pointer and
+  anonymous to a screen reader: **`NsSubmit` names itself with its CONTENT and must stay at
+  `Always`** until it is given a name it can restate.
 - The honest cost: hover is a pointer's, so on touch a collapsed button is still a bare glyph
   — **it suits universally-read icons, not obscure domain actions** (cases).
 
