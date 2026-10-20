@@ -38,6 +38,12 @@ public sealed class NavMenuEntry
 
     public object? Parameters { get; init; }
 
+    /// <summary>An external destination this entry opens instead of a page — always in a new
+    /// window, since there is no surface in this app for the router to hand it to. A row
+    /// declares one or the other; PageType wins where it names both, the same silent
+    /// first-non-null the merge gives every other row of this Name.</summary>
+    public string? Url { get; init; }
+
     /// <summary>The message a session must be able to send for the row to be drawn, ANDed with
     /// the destination page's own gate. A row carrying only this is how an app tightens a door a
     /// kit planted — the drawer's half of a permission, never the route's (permissions.md).</summary>
@@ -181,6 +187,7 @@ public sealed class NavMenuEntry
             Icon = entry.Icon,
             PageType = entry.PageType,
             Parameters = entry.Parameters,
+            Url = entry.Url,
             Permission = entry.Permission,
             Weight = entry.Order,
             // Shown is the row's answer only when it is NO: an arrangement says what it

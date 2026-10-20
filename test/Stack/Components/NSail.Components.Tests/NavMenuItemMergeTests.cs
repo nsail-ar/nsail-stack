@@ -25,6 +25,40 @@ public sealed class NavMenuItemMergeTests
     }
 
     [Fact]
+    public void KeepsALeafNamingAnExternalUrlUnchanged()
+    {
+        var items = new List<NavMenuItem>
+        {
+            new() { Name = "Observability", Icon = new Glyph("open-in-new"), Url = "https://telemetry.nsail.ar" }
+        };
+
+        var merged = NavMenuItem.Merge(items);
+
+        var item = Assert.Single(merged);
+        Assert.Equal("https://telemetry.nsail.ar", item.Url);
+        Assert.Null(item.PageType);
+    }
+
+    // PageType and Url are what the entry IS, the same reason PageType itself takes the first
+    // non-null rather than the last: an app override naming only Weight or Icon must not blank
+    // the destination a kit already planted.
+    [Fact]
+    public void AnOverrideNamingNoUrlLeavesTheFirstOneStanding()
+    {
+        var items = new List<NavMenuItem>
+        {
+            new() { Name = "Observability", Url = "https://telemetry.nsail.ar" },
+            new() { Name = "Observability", Weight = 2 }
+        };
+
+        var merged = NavMenuItem.Merge(items);
+
+        var item = Assert.Single(merged);
+        Assert.Equal("https://telemetry.nsail.ar", item.Url);
+        Assert.Equal(2, item.Weight);
+    }
+
+    [Fact]
     public void MergesTopLevelGroupsSharingAName()
     {
         var items = new List<NavMenuItem>

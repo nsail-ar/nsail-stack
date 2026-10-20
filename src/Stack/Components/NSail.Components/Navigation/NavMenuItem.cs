@@ -5,8 +5,10 @@ using NSail.Icons;
 
 namespace NSail.Components;
 
-/// <summary>Flat navigation entry: a leaf names its destination page, a group has Items.
-/// The URL is resolved from PageType through the RouteTable, never written.</summary>
+/// <summary>Flat navigation entry: a leaf names its destination page, a group has Items. An
+/// internal destination's URL is resolved from PageType through the RouteTable, never written;
+/// Url is the one written address, for a leaf whose destination the route table does not
+/// hold.</summary>
 public sealed class NavMenuItem
 {
     public required string Name { get; init; }
@@ -17,6 +19,14 @@ public sealed class NavMenuItem
 
     /// <summary>Route parameters as an anonymous object, for a page whose template has tokens.</summary>
     public object? Parameters { get; init; }
+
+    /// <summary>An external destination this leaf opens instead of a page — always in a new
+    /// window, since there is no surface here for the router to hand it to. A contributor names
+    /// one or the other: PageType wins where a leaf carries both, silently, the same as every
+    /// other first-non-null field (Merge). An entry naming only this carries no Parameters, is
+    /// never tracked as the active route and is never asked of the PageGate, which has no page
+    /// to ask it about.</summary>
+    public string? Url { get; init; }
 
     public IReadOnlyList<NavMenuItem> Items { get; init; } = [];
 
@@ -72,7 +82,7 @@ public sealed class NavMenuItem
     /// A kit plants its menu and the app arranges it: Weight, Icon, Parent, Visible and
     /// Permission take the LAST non-null value contributed, so a contributor registered after the kits emits
     /// the same Name carrying only the fields it wants to change and leaves the rest as the
-    /// kit put them. PageType and Parameters go the other way — the first non-null wins —
+    /// kit put them. PageType, Parameters and Url go the other way — the first non-null wins —
     /// because they are what the entry IS, not where it sits. Parent moves the entry under
     /// the named group, where it merges with whatever already answers to its Name; Visible
     /// false takes it and its branch out of the drawer without taking it out of the tree.
@@ -203,6 +213,7 @@ public sealed class NavMenuItem
                 Icon = group.Select(item => item.Icon).LastOrDefault(icon => icon is not null),
                 PageType = group.Select(item => item.PageType).FirstOrDefault(pageType => pageType is not null),
                 Parameters = group.Select(item => item.Parameters).FirstOrDefault(parameters => parameters is not null),
+                Url = group.Select(item => item.Url).FirstOrDefault(url => url is not null),
                 Parent = group.Select(item => item.Parent).LastOrDefault(parent => parent is not null),
                 Weight = group.Select(item => item.Weight).LastOrDefault(weight => weight is not null),
                 Visible = group.Select(item => item.Visible).LastOrDefault(visible => visible is not null),
@@ -291,6 +302,7 @@ public sealed class NavMenuItem
             Icon = item.Icon,
             PageType = item.PageType,
             Parameters = item.Parameters,
+            Url = item.Url,
             Parent = item.Parent,
             Weight = item.Weight,
             Visible = item.Visible,
@@ -308,6 +320,7 @@ public sealed class NavMenuItem
             Icon = item.Icon,
             PageType = item.PageType,
             Parameters = item.Parameters,
+            Url = item.Url,
             Weight = item.Weight,
             Visible = item.Visible,
             Label = item.Label,
@@ -344,6 +357,7 @@ public sealed class NavMenuItem
             Icon = only.Icon,
             PageType = only.PageType,
             Parameters = only.Parameters,
+            Url = only.Url,
             Parent = item.Parent,
             Weight = item.Weight,
             Visible = only.Visible,
