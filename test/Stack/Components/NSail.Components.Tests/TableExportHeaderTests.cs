@@ -17,7 +17,10 @@ namespace NSail.Components.Tests;
 /// (nsail#2344). It is now an icon-only trigger, with icons on its options, handed up to a list
 /// page's header — the other way across the boundary NsTable already reads Surface.Title
 /// through — so the header draws it ahead of Nuevo and the grid's own bar stays silent; an
-/// embedded grid with no header on its surface keeps drawing its own, exactly as before.</summary>
+/// embedded grid with no header on its surface keeps drawing its own, exactly as before. The
+/// slot changes hands with a word to both sides — taking it and handing it back are announced
+/// the way a grid's own fragment is — so neither the header nor the grid waits for an unrelated
+/// render to find out where Exportar belongs.</summary>
 public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
 {
     const string Export = "Exportar";
@@ -233,6 +236,128 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
         // Exportar pointed at a disposed grid, and not a toolbar row kept open for an empty slot.
         Assert.Null(surface.Export);
         Assert.Empty(cut.FindComponent<NsPageHeader>().FindAll(".ns-table-export"));
+    }
+
+    [Fact]
+    public async Task AGridDrawsItsOwnExportarTheMomentTheSlotIsHandedBack()
+    {
+        var surface = Setup();
+
+        // A header standing on this surface outside the rendered tree. Releasing through the
+        // fixture's own live header would measure nothing: the release wakes it and it claims
+        // again from the render that release prompts, which is the exchange
+        // WalkingToTheNextListPageLeavesExportarInTheArrivingHeader covers. What is asked here
+        // is the grid's own half — a slot that goes free under a grid already on screen.
+        var elsewhere = new object();
+        surface.ClaimsExport(elsewhere);
+
+        var cut = Render<ExportHeaderHost>(p => p
+            .Add(x => x.Surface, surface)
+            .Add(x => x.ShowHeader, false));
+
+        var table = cut.FindComponent<NsTable<ExportRowModel>>();
+
+        Assert.Empty(cut.FindAll(".ns-table-export"));
+
+        await cut.InvokeAsync(() => surface.ReleaseExport(elsewhere));
+
+        // Back in the collection bar, once. Nothing above the grid was touched to get there —
+        // the release is the whole gesture — which on a real page is the whole point: nothing
+        // above it was going to render either.
+        Assert.Single(table.FindAll(".ns-table-export"));
+
+        await cut.InvokeAsync(() => surface.ClaimsExport(elsewhere));
+
+        // And the other way: a header takes the slot and the grid drops its copy, so the trigger
+        // is never on screen twice whichever way the slot moved.
+        Assert.Empty(cut.FindAll(".ns-table-export"));
+    }
+
+    [Fact]
+    public async Task AnAnnouncementThatLeavesTheSlotWhereItIsDoesNotRedrawTheGrid()
+    {
+        var surface = Setup();
+
+        var cut = Render<ExportHeaderHost>(p => p.Add(x => x.Surface, surface));
+
+        var table = cut.FindComponent<NsTable<ExportRowModel>>();
+        var drawn = table.RenderCount;
+
+        await cut.InvokeAsync(() => surface.AnnounceExport(table.Instance, null));
+
+        // ExportChanged carries every grid's every announcing render, this grid's own included,
+        // and the only thing this grid's render reads off the surface is who holds the slot
+        // (ui/surfaces.md, the announce seam). Redrawing for the rest would rebuild the rows to
+        // emit what is already on screen — and for its own announcement, made from its render
+        // body, it would not stop.
+        Assert.Equal(drawn, table.RenderCount);
+    }
+
+    [Fact]
+    public async Task AGridThatDoesNotCompeteForTheSeatIsNotRedrawnWhenTheSlotMoves()
+    {
+        var surface = Setup();
+
+        // The holder stands outside this tree, the way the leaving header of a page walk is no
+        // longer in it: a live header beside the grids answers the release first and re-claims
+        // from the render its own handler makes, so the grids are never asked anything.
+        var elsewhere = new object();
+        surface.ClaimsExport(elsewhere);
+
+        var cut = Render<ExportHeaderMultiGridHost>(p => p
+            .Add(x => x.Surface, surface)
+            .Add(x => x.ShowHeader, false)
+            .Add(x => x.ShowPrimary, true)
+            .Add(x => x.ShowRelated, true)
+            .Add(x => x.ShowDocument, true));
+
+        var tables = cut.FindComponents<NsTable<ExportRowModel>>();
+        var primary = tables.Single(t => t.Instance.Title is null && t.Instance.OnQuery.HasDelegate);
+        var related = tables.Single(t => t.Instance.Title == "Relacionados");
+        var document = tables.Single(t => t.Instance.Title is null && t.Markup.Contains("Doc row", StringComparison.Ordinal));
+
+        var primaryDrawn = primary.RenderCount;
+        var relatedDrawn = related.RenderCount;
+        var documentDrawn = document.RenderCount;
+
+        await cut.InvokeAsync(() => surface.ReleaseExport(elsewhere));
+
+        // The page's own list is whose seat moved, and it redraws: its trigger is back in its
+        // own collection bar.
+        Assert.True(primary.RenderCount > primaryDrawn);
+        Assert.Single(primary.FindAll(".ns-table-export"));
+
+        // The other half of the same gate: a panel's grid keeps its own trigger whatever the
+        // surface does, and a document's collection draws none either way, so neither reads the
+        // slot and a slot that moves has nothing to say to them. Both are subscribed — Title and
+        // Exportable can change while the surface lives — and both must sit still: rebuilding
+        // their rows to emit the same markup is what the announce seam's rule forbids.
+        Assert.Equal(relatedDrawn, related.RenderCount);
+        Assert.Equal(documentDrawn, document.RenderCount);
+    }
+
+    [Fact]
+    public void AHeaderSwapLeavesTheArrivingHeaderHoldingTheSlotAndTheGridSilent()
+    {
+        var surface = Setup();
+
+        var cut = Render<ExportHeaderSwapHost>(p => p.Add(x => x.Surface, surface));
+
+        Assert.Single(cut.FindComponent<NsPageHeader>().FindAll(".ns-table-export"));
+
+        cut.Render(p => p.Add(x => x.Arrived, true));
+
+        // The arriving header is initialized and rendered before the leaving one is disposed, so
+        // it finds the slot still held and claims nothing on that first render: the leaving
+        // header's release is what hands it over. The composed end state, not the gap — the
+        // grid's own re-announcement reaches the arriving header too, so this exchange has
+        // another way to heal; what reds without the release's word is the pair of cases above.
+        var header = cut.FindComponent<NsPageHeader>();
+
+        Assert.Contains("Artículos", header.Markup, StringComparison.Ordinal);
+        Assert.Single(cut.FindAll(".ns-table-export"));
+        Assert.Single(header.FindAll(".ns-table-export"));
+        Assert.Empty(cut.FindComponent<NsTable<ExportRowModel>>().FindAll(".ns-table-export"));
     }
 
     // AngleSharp re-serializes the void <path/> this house's Glyphs carry as <path></path>: the

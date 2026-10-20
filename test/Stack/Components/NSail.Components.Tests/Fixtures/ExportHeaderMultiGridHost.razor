@@ -14,16 +14,20 @@
    NOT a list (a document's own collection, Document cascaded by NsForm) and so never carries an
    export of its own; ShowRelated is a second grid with its own Title (a panel, exportable or
    not); ShowSecondList is a second UNNAMED list-shaped grid, the one case two candidates for the
-   header's slot actually compete. *@
+   header's slot actually compete. ShowHeader off leaves the grids alone on the surface, for the
+   shape where whoever holds the slot is not standing in this tree. *@
 
 <MudPopoverProvider />
 
 <CascadingValue Value="Surface" IsFixed="true">
-    <NsPageHeader Title="Personas" Icon="@NsIcons.Directory">
-        <Actions>
-            <NsButton Label="Nuevo" />
-        </Actions>
-    </NsPageHeader>
+    @if (ShowHeader)
+    {
+        <NsPageHeader Title="Personas" Icon="@NsIcons.Directory">
+            <Actions>
+                <NsButton Label="Nuevo" />
+            </Actions>
+        </NsPageHeader>
+    }
 
     @if (ShowPrimary)
     {
@@ -87,6 +91,9 @@
 
     [Parameter, EditorRequired]
     public SurfaceContext Surface { get; set; } = default!;
+
+    [Parameter]
+    public bool ShowHeader { get; set; } = true;
 
     [Parameter]
     public bool ShowPrimary { get; set; } = true;

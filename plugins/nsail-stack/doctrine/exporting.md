@@ -103,6 +103,14 @@ and accessible name, never visible text, at any width — `NsMenu`'s own `Icon`+
 whisper both through the house's ungated aria-label bubble, so nothing wraps it in a second,
 vendor tooltip.
 
+**The slot changes hands out loud, both ways.** A header's own teardown hands the claim back
+(`SurfaceContext.ReleaseExport`) and a free slot taken says so too, both on the event the grid's
+own announcement already rides (`ExportChanged`): the grid draws its trigger in its collection
+bar again the moment no header holds the seat, and drops it the moment one does, instead of
+waiting for a render nothing on the page has a reason to make. Why the word is owed at all, and
+how much either side may redraw for it, is the announce seam's — [ui/surfaces.md](ui/surfaces.md),
+where this claim is named beside the row's.
+
 **Each option's icon is the writer's own** (`IExportWriter.Icon`), named through its own catalog
 entry — `ExportingIcons` (`NSail.Exporting`) — never pasted inline: a writer a host adds brings
 its glyph the same way, naming an entry of its own catalog rather than a mapping chrome keeps.
