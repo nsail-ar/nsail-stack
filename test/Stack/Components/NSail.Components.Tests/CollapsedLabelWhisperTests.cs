@@ -22,7 +22,7 @@ namespace NSail.Components.Tests;
 /// 2.5 s?), so it is read off the shipped ns.js and ns-mud.css below, the way
 /// FooterButtonCollapseTests reads the emphasis ladder. Whether the browser paints it where it
 /// should is the product's own browser suite.</para></summary>
-public sealed class CollapsedLabelWhisperTests : BunitContext
+public sealed class CollapsedLabelWhisperTests : BunitContext, IAsyncLifetime
 {
     public CollapsedLabelWhisperTests()
     {
@@ -125,6 +125,22 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
         Assert.Equal("Editar", glyph.GetAttribute("data-ns-whisper"));
     }
 
+    /// <summary>The one caller whose bubble is not a name: a chip's note is a longer form of what
+    /// the chip says, and it rides the chip's OWN element rather than a wrapper — which is only
+    /// true if the vendor splats an unmatched attribute onto its root, the whole reason this is
+    /// read rather than assumed. A chip handed no note declares nothing.</summary>
+    [Theory]
+    [InlineData("Vencido el 3/4", "Vencido el 3/4")]
+    [InlineData(null, null)]
+    public void AChipDeclaresItsNoteOnTheChipItself(string? tooltip, string? expected)
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(x => x.Text, "Vencido")
+            .Add(x => x.Tooltip, tooltip));
+
+        Assert.Equal(expected, cut.Find(".mud-chip").GetAttribute("data-ns-whisper"));
+    }
+
     /// <summary>ONE MECHANISM, and this is the only reader that can say so: the vendor's tooltip
     /// is gone from the shared pieces altogether. Two tooltip paths is how the house came to have
     /// one bubble that flipped, closed on a press and opened at once, and another that did none
@@ -207,6 +223,19 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
         // down with it, by the browser's own light-dismiss stack.
         Assert.Contains("popover = \"manual\"", script);
         Assert.Contains("showPopover()", script);
+    }
+
+    public Task InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    // AddMudServices registers MudBlazor's key interceptor beside the rest, and that one only
+    // implements IAsyncDisposable — bUnit's synchronous teardown throws on it by design
+    // (IconOnlyStateTests carries the same pair).
+    public new async Task DisposeAsync()
+    {
+        await ((IAsyncDisposable)this).DisposeAsync();
     }
 
     static int Occurrences(string text, string value)
