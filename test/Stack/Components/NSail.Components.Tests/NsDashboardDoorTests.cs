@@ -184,7 +184,7 @@ public sealed class NsDashboardDoorTests : BunitContext, IAsyncLifetime
     // The card's own translated title, not the destination page's -- the door stands in the
     // header row of a card that already carries its own title, so the name it whispers is the
     // one the reader is looking at. Icon-only, so the name is carried as the accessible one
-    // rather than drawn: it is what the ns-square whisper prints (ns-mud.css).
+    // rather than drawn: it is what the bubble says over the door (ns.js, THE WHISPER).
     [Fact]
     public void TheDoorsAccessibleNameIsTheCardsOwnTranslatedTitle()
     {

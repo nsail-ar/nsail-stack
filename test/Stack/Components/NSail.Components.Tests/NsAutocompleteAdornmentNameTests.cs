@@ -21,10 +21,10 @@ namespace NSail.Components.Tests;
 /// The (x) is a different control and the posture keeps it, which is what this suite asks of
 /// the vendor rather than of its documentation.
 ///
-/// The hover half of the named button is a CSS bubble and rides in a browser
-/// (CollapsedButtonWhisperTests), but the selector that bubble is keyed on is DOM, and it is
-/// pinned here: the face is the vendor's icon button inside .mud-autocomplete, and exactly one
-/// node in a browsed field is it.</summary>
+/// The hover half of the named button is the house's one bubble, placed by ns.js in the top
+/// layer (CollapsedLabelWhisperTests reads the mechanism, a browser paints it), but the selector
+/// it is keyed on is DOM, and it is pinned here: the face is the vendor's icon button inside
+/// .mud-autocomplete, and exactly one node in a browsed field is it.</summary>
 public sealed class NsAutocompleteAdornmentNameTests : BunitContext, IAsyncLifetime
 {
     public NsAutocompleteAdornmentNameTests()
@@ -58,9 +58,10 @@ public sealed class NsAutocompleteAdornmentNameTests : BunitContext, IAsyncLifet
 
     const string ShowOptions = "Show options";
 
-    // The selector ns-mud.css keys the adornment's ungated whisper on, written once here so a
-    // vendor upgrade that moves the button out of that shape reddens CI rather than taking the
-    // bubble away in silence.
+    // The selector ns.js keys the adornment's whisper on — one of the two faces the vendor draws
+    // and nothing of ours can put an attribute on — written once here so a vendor upgrade that
+    // moves the button out of that shape reddens CI rather than taking the bubble away in
+    // silence.
     const string Adornment = ".mud-autocomplete .mud-input-adornment-icon-button";
 
     // The vendor's own clear control, which is not the adornment and does not travel with it.

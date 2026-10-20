@@ -24,9 +24,9 @@ public sealed class NsTitleBarAnnouncementTests : BunitContext, IAsyncLifetime
 {
     static readonly Glyph PageGlyph = NsIcons.Badge;
 
-    // The overlay's X is a MudTooltip, which pulls MudBlazor's popover service into the
-    // container, and that one only implements IAsyncDisposable — a synchronous teardown
-    // throws on it by design. Async teardown sidesteps it instead of working around it.
+    // AddMudServices registers the vendor's popover service, and that one only implements
+    // IAsyncDisposable — a synchronous teardown throws on it by design. Async teardown
+    // sidesteps it instead of working around it.
     public Task InitializeAsync()
     {
         return Task.CompletedTask;

@@ -145,39 +145,55 @@ the same `Breakpoint`, computed together in `NsResponsive`, so they cannot drift
 to a real `MudIconButton` when narrow is not available: choosing the component happens in C#,
 which sees only the viewport, never the container width this mechanism exists to respect.
 
-## The bubble a collapsed control whispers
+## The bubble a control whispers
 
-Its text is `attr(aria-label)` — the same string the hidden span carries, so the two cannot
-drift — gated by the *same* container query that hid the label, which makes the double cartel
-unrepresentable rather than merely avoided. A vendor tooltip cannot do this: it portals out of
-the container and cannot be gated on the container's width. A Turno dialog at ~960px rendering
-its verbs as bare glyphs forever is why every portaled surface declares its own `ns-container`:
-a container query with no `container-type` ancestor matches nothing, and the mobile-first
-`d-c-none` half wins at every width.
+**One element, in the browser's top layer, placed from `ns.js`.** The whisper is the house's only
+tooltip: a single `div.ns-whisper` created once, shown as a `popover="manual"`, positioned from
+the trigger's own `getBoundingClientRect()`. It is not generated content on the control and it is
+not a vendor tooltip, because the three rules it has to keep are each a fact only the document can
+state and none of them survives being drawn inside the control it names:
 
-**The switch is a custom property, and that is specificity, measured.** The bubble's own rule
-carries a guard the gates cannot — `[aria-label]:not([aria-label=""])`, so a control nobody named
-draws no empty padded box — and a guard is weight: it makes the definition one class-unit heavier
-than every `:hover` gate, so `display: block` on a gate loses to the definition's own
-`display: none` and the bubble paints nowhere, at any width. The gates therefore name no
-`display`: they set `--ns-whisper: block` on the CONTROL and the pseudo-element inherits it. Two
-rules that never name the same property cannot race, so the next guard added to the definition
-cannot silence them again. **A pseudo-element's computed style is browser-only** —
-`getComputedStyle(el, '::after')`, with the pointer on the control: a render test sees the class
-hooks and the `aria-label` and nothing about which rule won, which is how a bubble nobody had
-ever seen kept a green suite.
+- **Never clipped, never under what is beside it.** Content drawn outside a control's box is
+  clipped by the nearest scrolling ancestor (`NsPanel`'s content box) and painted in the control's
+  own stacking context, which is under the panel next to it. A card header's square lost a bubble
+  drawn above it; the counter's `Facturar (Ctrl+Enter)` was cut off at the bottom edge of its
+  panel (nsail#2540). The top layer is above every dialog, drawer and vendor popover with no
+  `z-index` to outrank theirs.
+- **Never moves a scroll.** An absolutely positioned child extends its scroll box's scrollable
+  area for as long as it shows — which is the page gaining a scrollbar on hover (nsail#2197). A
+  top-layer element is in no scroll box at all.
+- **Only after a steady dwell.** `WHISPER_DELAY` in `ns.js` is 2.5 s and is the whole of the
+  bubble's timing, for every control in the house: a name that opens on the way past is noise.
+  It closes on leave, press, key, scroll and resize, and the keyboard takes the same dwell —
+  `:focus-visible` is what tells a keyboard's focus from the one a press leaves behind, so a
+  button still focused after its own click does not re-open its name over what the click opened.
 
-**It hangs DOWN, except where there is no room.** The bubble is painted outside the control, so
-the nearest scrolling ancestor — `NsPanel`'s content box — clips whichever side has no room: a
-card header's square sits at the TOP of that box and loses a bubble drawn above it, a control at
-a page's own bottom edge loses one drawn below *and* grows the page a scrollbar for as long as it
-shows (nsail#2197) — CSS alone cannot ask whether there is room, so it never asked. `ns.js`'s
-`placeWhisper` does, on the same hover and focus `--ns-whisper`'s own gates already answer: it
-measures the control against `window.innerHeight` (the bubble's own height is fixed — it never
-wraps — so the margin it checks for is read off the stylesheet, not guessed) and marks the loser
-with `data-ns-whisper-above`, an attribute ns-mud.css's own direction rule reads at the same
-selector plus one. Down is still the general case and the side `NsTooltip` is placed on anyway;
-a page's bottom edge is simply the one place a control answers "no room" every time it is asked.
+**The text is declared, the opening is derived.** `data-ns-whisper` carries the bubble's whole
+text — the name, and the key where there is one (`NsButton`, `NsLink`, `NsSubmit`, `NsClose`,
+`NsChip`, `NsTooltip`); the two faces the VENDOR draws and nothing of ours can put an attribute on
+— a menu's icon face, a lookup's end adornment — are read off `aria-label` by their own two
+selectors. Whether the bubble opens is then one question asked of the RENDERED control: `ns.js`
+compares the text against the control's `innerText`, case-folded, and stays shut where the word is
+already on screen. **That is what makes the double cartel unrepresentable**, and it costs no gate:
+a label a container query hid, one the footer's emphasis ladder hid and one that was never written
+are all the same empty `innerText`, so no breakpoint is restated in CSS and nothing is kept in step
+by hand between the two languages. A control the caller pinned with `Breakpoint="Always"` declares
+the same text as one that collapses — the markup says what there WOULD be to say, and nothing
+about when.
+
+**A refused control whispers too**, and the stylesheet owes it one line: the vendor drops hit
+testing on a disabled button and on a disabled chip (`pointer-events: none`), so the pointer never
+meets the control at all and the trigger lookup walks up past it — which leaves the one face with
+nothing BUT the bubble to say what it is (a row's grey pencil, the X under a frozen form) silent.
+`[data-ns-whisper]:disabled` takes that back. It is safe because the refusal is the ATTRIBUTE's,
+not the CSS's: a disabled control receives hover and never a press, a focus or a click. The one
+response that would have outlived both is the vendor's ripple, a document-level `pointerdown` over
+whatever carries its class, so **a refused face declares no ripple**.
+
+What is left to `ns-mud.css` is the look, once (`.ns-whisper`), read from the vendor tooltip's own
+variables so the bubble is the tooltip the house always had to the eye. A render test sees the
+declaration and no more: whether the browser paints it where it should is a browser's question,
+and it is the product's own browser suite that answers it.
 
 ## The chord beside a button's word is its tooltip, never a drawn badge
 
@@ -190,24 +206,21 @@ Ctrl+Enter" — and every role query asking for that word exactly stopped findin
 was on screen (nsail#2259: ten browser walks, each timing out on a control the evidence
 screenshot shows).
 
-The chord therefore rides THE WHISPER instead (`ns-chord`, above) — and not off `aria-label`
-itself: that attribute IS the accessible name, and the ruling's own words are "the accessible
-name of a button stays its word", so folding the key into it would be nsail#2259 again, one
-layer up, badge or no badge. `ns-chord`'s `::after` reads a SECOND attribute, `data-ns-chord`,
-`Word (Keys)` — the control's one pseudo-element stays the only bubble there is, `aria-label`
-keeps carrying the bare word, and whichever caller sets one sets the other, since a control
-with no visible text falls back to content for its name the instant `aria-label` is missing.
-This is not the double cartel the whisper's own gate exists to forbid: that rule is one string
-shown twice, and the key is a second fact the visible word never carried, which is why
-`ns-chord` whispers even where the word stays on screen — `NsSubmit`'s hero, the worded
-`NsClose`'s Cancelar, a chromed `NsButton` claiming a chord of its own. Their word is a string
-via `NsSubmit.Label`/`NsClose.Label` (`ChildContent` cannot give one back) or `NsButton.Label`
-directly; the claim in `aria-keyshortcuts` is unchanged, so a reader announcing the chord once
-is still exactly once. `NsLink` and `NsPageLink` carry the same `Chord` for the door a screen
-offers (F2 on a record's Editar), and the worded ANCHOR takes an `aria-label` only there: an
-anchor's name folds generated content exactly as a button's does, so a bubble it draws is a
-name to outrank — one that draws none has nothing to outrank and keeps carrying no second copy
-of its own text.
+The chord therefore rides THE WHISPER instead (above) — and not off `aria-label` itself: that
+attribute IS the accessible name, and the ruling's own words are "the accessible name of a button
+stays its word", so folding the key into it would be nsail#2259 again, one layer up, badge or no
+badge. `data-ns-whisper` carries `Word (Keys)` while `aria-label` keeps carrying the bare word,
+and the bubble is drawn nowhere near the control, so there is nothing on the element for a name
+computation to fold in at all. This is not the double cartel either: that rule is one string shown
+twice, and the key is a second fact the visible word never carried — which is why a chorded
+control whispers where the word stays on screen (`NsSubmit`'s hero, the worded `NsClose`'s
+Cancelar, a chromed `NsButton` claiming a chord of its own) and a chordless one with its word on
+screen says nothing. Their word is a string via `NsSubmit.Label`/`NsClose.Label` (`ChildContent`
+cannot give one back) or `NsButton.Label` directly; the claim in `aria-keyshortcuts` is unchanged,
+so a reader announcing the chord once is still exactly once. `NsLink` and `NsPageLink` carry the
+same `Chord` for the door a screen offers (F2 on a record's Editar), and the worded ANCHOR carries
+no `aria-label` at all: its word is its whole name, with no generated content of its own to
+outrank.
 
 **A search box is the one control that draws its key.** It has no word to hover, so there is no
 bubble to carry one: `NsSearchField` paints the first key it claims inside the box at the

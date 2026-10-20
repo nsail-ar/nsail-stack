@@ -688,16 +688,22 @@
         return groups;
     }
 
-    // The control's own word for what it does. data-ns-chord is the bubble's "Word (Chord)" and
-    // the word is what stands in front of the key; aria-label is the name every glyph-only
+    // The control's own word for what it does. data-ns-whisper is the bubble's "Word (Chord)"
+    // and the word is what stands in front of the key; aria-label is the name every glyph-only
     // control carries anyway. A BOX has no word of its own and is named by its label -- the one
     // the person reads beside it, which is the placeholder where there is no label.
     function actOf(el) {
-        const whispered = el.getAttribute("data-ns-chord");
+        const whispered = el.getAttribute("data-ns-whisper");
         const named = el.getAttribute("aria-label");
 
         if (whispered) {
-            const cut = whispered.lastIndexOf(" (");
+            // The key is cut off the end, and only where there is a key to cut: the same
+            // attribute is now written whether or not the control claims a chord, and a Label
+            // that ends in brackets of its own is a word, not a badge. A control that DECLARED
+            // the chord is the only one whose trailing "(...)" the house appended.
+            const cut = el.hasAttribute("data-ns-keys") && whispered.endsWith(")")
+                ? whispered.lastIndexOf(" (")
+                : -1;
 
             return (cut > 0 ? whispered.slice(0, cut) : whispered).trim();
         }
@@ -711,34 +717,191 @@
         return (el.textContent || "").trim();
     }
 
-    // THE WHISPER's own flip (ns-mud.css, "THE WHISPER"): the bubble is attr(aria-label),
-    // drawn by a ::after the CSS alone sets up, and CSS alone cannot ask whether there is room
-    // below it -- so that is the one question answered here, nothing else about the bubble.
-    // WHISPER_HEIGHT is read off its own fixed geometry (ns-mud.css: a 12px/1.4 line, 4px
-    // padding top and bottom, the 4px gap before it) with a few px to spare -- it never wraps
-    // (white-space: nowrap), so the number is exact rather than guessed. pointerenter does not
-    // bubble, so the capture phase is the only way one document listener reaches every trigger;
-    // focusin already bubbles and answers for the keyboard the same selectors' :focus-visible
-    // gate does. The selector list is ns-mud.css's own — kept in step by hand, the price of
-    // the two languages neither can read the other's.
-    const WHISPER_SELECTOR = '.ns-square[aria-label]:not([aria-label=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""]), .ns-collapse-sm[aria-label]:not([aria-label=""]), .ns-collapse-md[aria-label]:not([aria-label=""]), .ns-collapse-lg[aria-label]:not([aria-label=""]), .ns-collapse-xl[aria-label]:not([aria-label=""]), .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""]), .ns-chord[data-ns-chord]:not([data-ns-chord=""])';
-    const WHISPER_HEIGHT = 32;
+    // THE WHISPER (ns-mud.css, ".ns-whisper"): the long form of something already on screen,
+    // or the whole name of a control that draws none. One element in the browser's TOP LAYER,
+    // placed from here, because all three of the bubble's rules are facts only the document can
+    // state and none of them can be kept by drawing it inside the control it names: a bubble
+    // inside the control is clipped by the nearest scrolling ancestor (NsPanel's own content
+    // box), it extends that ancestor's scrollable area for as long as it shows (nsail#2197),
+    // and it paints in the control's stacking context, which is under the panel beside it
+    // (nsail#2540). The top layer answers all three at once -- nothing clips it, it is in no
+    // scroll box to grow, and it is over every dialog and drawer without naming a z-index that
+    // has to outrank theirs.
+    //
+    // THE DELAY IS THE WHOLE OF THE BUBBLE'S TIMING, here and nowhere else: a name that opens
+    // on the way past is noise, so it opens only after a steady dwell and closes the instant
+    // anything else happens. pointerenter does not bubble, so the capture phase is the only way
+    // one document listener reaches every trigger; focusin bubbles and answers for the keyboard,
+    // with :focus-visible telling a keyboard's focus from the one a press left behind.
+    const WHISPER_DELAY = 2500;
+    const WHISPER_GAP = 4;
 
-    function placeWhisper(target) {
+    // Which controls may whisper: the ones that declared the text to say (NsButton, NsLink,
+    // NsSubmit, NsClose, NsChip, NsTooltip), plus the two faces the VENDOR draws, where nothing
+    // of ours can put an attribute and the accessible name is the whole of what there is to say
+    // anyway -- a menu's icon face and a lookup's end adornment.
+    const WHISPER_SELECTOR = '[data-ns-whisper]:not([data-ns-whisper=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])';
+
+    let whisperBubble = null;
+    let whisperTarget = null;
+    let whisperTimer = 0;
+
+    function whisperText(el) {
+        return (el.getAttribute("data-ns-whisper") || el.getAttribute("aria-label") || "").trim();
+    }
+
+    // THE DOUBLE CARTEL IS DERIVED, never gated: a bubble repeating a word the control already
+    // draws is the one thing the whisper must never be, and whether that word is on screen is a
+    // question about the RENDERED control. innerText answers it for a label a container query
+    // hid, one the footer's emphasis ladder hid, and one that was never written, with no
+    // breakpoint restated anywhere and nothing to keep in step. Case-folded because a vendor
+    // button uppercases its own label in CSS and innerText reports what is painted.
+    function whisperAdds(el, text) {
+        const shown = (el.innerText || "").replace(/\s+/g, " ").trim();
+
+        return shown.toLocaleLowerCase() !== text.toLocaleLowerCase();
+    }
+
+    // "manual", never "auto": an auto popover joins the browser's own light-dismiss stack, and
+    // opening one closes every auto popover that is not its ancestor -- a bubble naming a button
+    // inside an open menu would take the menu down with it.
+    //
+    // isConnected and not merely "have I built one": the box is appended to the BODY, and a body
+    // the router replaced wholesale takes it with it. showPopover on a detached element throws,
+    // so the question is asked every time rather than once at startup.
+    function whisperBox() {
+        if (whisperBubble && whisperBubble.isConnected)
+            return whisperBubble;
+
+        whisperBubble = null;
+
+        whisperBubble = document.createElement("div");
+        whisperBubble.className = "ns-whisper";
+        whisperBubble.setAttribute("role", "presentation");
+
+        if ("popover" in whisperBubble)
+            whisperBubble.popover = "manual";
+
+        document.body.appendChild(whisperBubble);
+
+        return whisperBubble;
+    }
+
+    function openWhisper(el) {
+        const text = whisperText(el);
+
+        if (!el.isConnected || text.length === 0 || !whisperAdds(el, text))
+            return;
+
+        const box = whisperBox();
+
+        box.textContent = text;
+        box.classList.add("ns-whisper-open");
+
+        if (typeof box.showPopover === "function" && !box.classList.contains("ns-whisper-shown")) {
+            box.showPopover();
+            box.classList.add("ns-whisper-shown");
+        }
+
+        placeWhisper(el, box);
+    }
+
+    // Down is the general case and the flip is for the control with no room under it -- a flip
+    // and never a squeeze: the bubble is measured where it already stands, so nothing is grown
+    // to make it fit. Both axes are clamped to the viewport afterwards, which is what answers
+    // for a control at the very edge of the window.
+    function placeWhisper(el, box) {
+        const anchor = el.getBoundingClientRect();
+        const bubble = box.getBoundingClientRect();
+        const below = anchor.bottom + WHISPER_GAP;
+        const top = below + bubble.height > window.innerHeight - WHISPER_GAP
+            ? anchor.top - WHISPER_GAP - bubble.height
+            : below;
+        const left = anchor.left + (anchor.width - bubble.width) / 2;
+
+        box.style.top = `${clamp(top, WHISPER_GAP, window.innerHeight - bubble.height - WHISPER_GAP)}px`;
+        box.style.left = `${clamp(left, WHISPER_GAP, window.innerWidth - bubble.width - WHISPER_GAP)}px`;
+    }
+
+    function clamp(value, low, high) {
+        return Math.max(low, Math.min(value, Math.max(low, high)));
+    }
+
+    function closeWhisper() {
+        clearTimeout(whisperTimer);
+        whisperTimer = 0;
+        whisperTarget = null;
+
+        if (!whisperBubble)
+            return;
+
+        whisperBubble.classList.remove("ns-whisper-open");
+
+        if (whisperBubble.classList.contains("ns-whisper-shown")) {
+            whisperBubble.classList.remove("ns-whisper-shown");
+
+            if (whisperBubble.isConnected) {
+                whisperBubble.hidePopover();
+            }
+        }
+    }
+
+    function armWhisper(target, keyboard) {
         if (!target || typeof target.closest !== "function")
             return;
 
         const el = target.closest(WHISPER_SELECTOR);
-        if (!el)
+
+        if (el === whisperTarget)
             return;
 
-        const fits = el.getBoundingClientRect().bottom + WHISPER_HEIGHT <= window.innerHeight;
-        el.toggleAttribute("data-ns-whisper-above", !fits);
+        // A bubble never outlives the trigger the pointer left: arriving anywhere that whispers
+        // nothing is the second witness to that, beside the leave above, and it is the one that
+        // does not depend on a node Blazor replaced still being there to fire one.
+        if (!el) {
+            closeWhisper();
+
+            return;
+        }
+
+        // A Tab run through a toolbar passes over a dozen controls and none of them is the one
+        // being read, which is the same thing a pointer crossing the row says -- so the keyboard
+        // takes the same dwell. A control still holding focus after its own click is not asking
+        // for its name, which is what :focus-visible is read for, and it is asked of the element
+        // that TOOK the focus rather than of the trigger: a trigger may CONTAIN the focusable
+        // one (NsTooltip's host span, a chip whose close button is what Tab reaches), and a
+        // wrapper is never itself :focus-visible.
+        if (keyboard && !target.matches(":focus-visible"))
+            return;
+
+        closeWhisper();
+        whisperTarget = el;
+        whisperTimer = setTimeout(() => openWhisper(el), WHISPER_DELAY);
     }
 
-    document.addEventListener("pointerenter", e => placeWhisper(e.target), true);
-    document.addEventListener("focusin", e => placeWhisper(e.target));
+    document.addEventListener("pointerenter", e => armWhisper(e.target, false), true);
+    document.addEventListener("focusin", e => armWhisper(e.target, true));
 
+    // The pointer leaving the trigger, read in the capture phase for the same reason the enter
+    // is: pointerleave does not bubble, and it fires on every ancestor the pointer left as well
+    // as on the trigger itself, so the one that matters is recognised rather than assumed.
+    document.addEventListener("pointerleave", e => {
+        if (whisperTarget && e.target instanceof Node && e.target.contains(whisperTarget))
+            closeWhisper();
+    }, true);
+
+    // Every other exit, and these are all of them: a press (what was pressed is opening, and the
+    // name of what pressed it is not what anyone is reading), a key, a scroll ANYWHERE -- the
+    // bubble is placed against a rectangle that just moved, and a tooltip that follows a scroll
+    // is a tooltip nobody asked for a second time -- and the window losing the pointer or
+    // changing size.
+    for (const exit of ["pointerdown", "pointercancel", "click", "keydown", "wheel"])
+        document.addEventListener(exit, closeWhisper, true);
+
+    document.addEventListener("scroll", closeWhisper, { capture: true, passive: true });
+    document.addEventListener("focusout", closeWhisper, true);
+    window.addEventListener("blur", closeWhisper);
+    window.addEventListener("resize", closeWhisper);
     // The candidate `focusFirst` is about to call .focus() on, for the one capture-phase
     // listener below to recognise and swallow -- never read outside that listener.
     let suppressOpenFor = null;

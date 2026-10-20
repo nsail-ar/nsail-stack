@@ -44,8 +44,8 @@ public sealed class NsGuideLinkTests : BunitContext, IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    // MudTooltip is a popover host, and bUnit's synchronous teardown cannot dispose the
-    // MudBlazor service behind it.
+    // AddMudServices registers the vendor's popover service, and bUnit's synchronous teardown
+    // cannot dispose it.
     async Task IAsyncLifetime.DisposeAsync()
     {
         await DisposeAsync();

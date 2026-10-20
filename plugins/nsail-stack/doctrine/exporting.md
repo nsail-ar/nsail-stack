@@ -100,8 +100,7 @@ back. The bar still draws for a grid that has a control of its own to put there 
 nothing named the grid, because the pager row is the only alternative seat and it exists in one
 of the three paging modes. The icon is `NsIcons.Download` and the word `Exportar` is its tooltip
 and accessible name, never visible text, at any width — `NsMenu`'s own `Icon`+`Label` already
-whisper both through the house's ungated aria-label bubble, so nothing wraps it in a second,
-vendor tooltip.
+whisper both through the house's one bubble, so nothing wraps it in a tooltip of its own.
 
 **The slot changes hands out loud, both ways.** A header's own teardown hands the claim back
 (`SurfaceContext.ReleaseExport`) and a free slot taken says so too, both on the event the grid's

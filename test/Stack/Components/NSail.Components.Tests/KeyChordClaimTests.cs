@@ -67,9 +67,9 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         return host.Find(css).GetAttribute("aria-label");
     }
 
-    static string? ChordHint(IRenderedComponent<IComponent> host, string css)
+    static string? Whispered(IRenderedComponent<IComponent> host, string css)
     {
-        return host.Find(css).GetAttribute("data-ns-chord");
+        return host.Find(css).GetAttribute("data-ns-whisper");
     }
 
     [Fact]
@@ -165,22 +165,23 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
 
     // The door a screen offers onto a record takes the edit key the desktop spends on it, on
     // both faces a link has — and the bubble says the word and the key, exactly as a button's
-    // does. The worded anchor carries aria-label only here: the whisper's generated content
-    // joins an anchor's accessible name the way it joins a button's, and the name has to outrank
-    // it (nsail#2272).
+    // does. The worded anchor carries NO aria-label: its word is its whole accessible name, and
+    // the bubble naming the key is drawn nowhere near it (nsail#2540) — there is nothing on this
+    // element for a name computation to fold in, which is what nsail#2272 had to outrank.
     [Fact]
     public void AScreensEditDoor_ClaimsTheEditKeyAndWhispersItWithoutJoiningItsName()
     {
         var host = Mount();
 
         Assert.Equal(NsKeys.Edit, Claim(host, "a.door"));
-        Assert.Equal("Editar (F2)", ChordHint(host, "a.door"));
-        Assert.Equal("Editar", AriaLabel(host, "a.door"));
+        Assert.Equal("Editar (F2)", Whispered(host, "a.door"));
+        Assert.Null(AriaLabel(host, "a.door"));
         Assert.Equal("Editar", host.Find("a.door").TextContent.Trim());
 
-        // The glyph-only face claims the same key and says its word in the vendor's tooltip,
-        // which is a popover and no part of any name.
+        // The glyph-only face claims the same key and says its word in the same bubble, which
+        // is one element in the top layer and no part of any name.
         Assert.Equal(NsKeys.Edit, Claim(host, ".glyphdoor"));
+        Assert.Equal("Editar (F2)", Whispered(host, ".glyphdoor"));
     }
 
     // A link with no chord publishes nothing and says nothing about one — there is no second
@@ -192,8 +193,12 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
 
         Assert.Null(Claim(host, "a.plain"));
         Assert.Null(Announced(host, "a.plain"));
-        Assert.Null(ChordHint(host, "a.plain"));
         Assert.Null(AriaLabel(host, "a.plain"));
+
+        // The bubble's text is the plain word, and a word already on screen is a bubble that
+        // never opens: whether it does is one question about the rendered control, asked where
+        // the control is rendered (ns.js, whisperAdds) and nowhere here.
+        Assert.Equal("Ir", Whispered(host, "a.plain"));
     }
 
     // The page's box and the map's, told apart by where they stand: the map's is the one inside
@@ -202,26 +207,25 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
     const string PageBox = "form input[data-ns-keys]";
 
     // The ruling on nsail#2207 (2026-10-14): the chord is the control's TOOLTIP, never a drawn
-    // badge. The tooltip's text rides data-ns-chord (THE WHISPER's own ns-chord rule), built
-    // from the word and the claim's FIRST chord — a reminder on the way past is one key. Every
-    // worded face wears one: the hero, the footer's Cancelar and a chromed button claiming a
-    // chord of its own.
+    // badge. The tooltip's text rides data-ns-whisper, built from the word and the claim's FIRST
+    // chord — a reminder on the way past is one key. Every worded face wears one: the hero, the
+    // footer's Cancelar and a chromed button claiming a chord of its own.
     [Fact]
     public void EveryWordedFace_WhispersItsWordAndTheFirstChordItClaims()
     {
         var host = Mount();
 
-        Assert.Equal("Common.Submit (Ctrl+Enter)", ChordHint(host, "button.hero"));
-        Assert.Equal("Common.Close (Esc)", ChordHint(host, "button.cancel"));
-        Assert.Equal("Shortcuts (?)", ChordHint(host, "button.sheet"));
+        Assert.Equal("Common.Submit (Ctrl+Enter)", Whispered(host, "button.hero"));
+        Assert.Equal("Common.Close (Esc)", Whispered(host, "button.cancel"));
+        Assert.Equal("Shortcuts (?)", Whispered(host, "button.sheet"));
     }
 
     // THE REGRESSION THE BADGE CAUSED (nsail#2259), unrepresentable rather than merely fixed: a
     // decoration drawn ON the control joins its ACCESSIBLE NAME, which folds in generated
     // content a ::after on the control itself would add, UNLESS aria-label is there to outrank
-    // it — so a hero worded "Guardar" answered to "Guardar Ctrl+Enter" once. ns-chord's own
-    // ::after reads a SEPARATE attribute (data-ns-chord above), never aria-label, and every
-    // caller that sets one sets the other: the name stays the word, the bubble says more.
+    // it — so a hero worded "Guardar" answered to "Guardar Ctrl+Enter" once. The bubble is drawn
+    // on no control at all now (nsail#2540) and its text rides a SEPARATE attribute
+    // (data-ns-whisper above) that no name computation reads: the name stays the word.
     [Fact]
     public void TheWhisperedChord_NeverJoinsTheButtonsNameOrItsWords()
     {
@@ -233,8 +237,9 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         Assert.Equal("Shortcuts", host.Find("button.sheet").TextContent.Trim());
         Assert.Equal("Common.Submit", host.Find("button.hero").TextContent.Trim());
 
-        // The accessible name — aria-label, where the whisper's ::after could otherwise fold
-        // its generated content in — is the bare word on every one of them, never the chord.
+        // The accessible name — aria-label, which these faces carry because a container rule
+        // may take the visible word away — is the bare word on every one of them, never the
+        // chord.
         Assert.Equal("Shortcuts", AriaLabel(host, "button.sheet"));
         Assert.Equal("Common.Submit", AriaLabel(host, "button.hero"));
         Assert.Equal("Common.Close", AriaLabel(host, "button.cancel"));
@@ -245,8 +250,8 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
     }
 
     // Both shapes with no word claim the chord like any other control — the layer and a screen
-    // reader read that — and their whisper is the glyph's own hover bubble (THE WHISPER's
-    // ns-square gate), never a second node.
+    // reader read that — and their whisper is the one bubble in the top layer (THE WHISPER),
+    // never a node of their own.
     [Theory]
     [InlineData("button.exit")]
     [InlineData("button.square")]
@@ -268,7 +273,7 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         var host = Mount();
 
         Assert.Null(AriaLabel(host, "button.filter"));
-        Assert.Null(ChordHint(host, "button.filter"));
+        Assert.Null(Whispered(host, "button.filter"));
     }
 
     // No control with a WORD draws its chord as a node any more (nsail#2272): a word and a badge
@@ -281,7 +286,7 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         var css = ReadStylesheet();
 
         Assert.DoesNotContain(".ns-key", css, StringComparison.Ordinal);
-        Assert.Contains(".ns-chord", css, StringComparison.Ordinal);
+        Assert.Contains(".ns-whisper", css, StringComparison.Ordinal);
         Assert.Contains(".ns-search-key", css, StringComparison.Ordinal);
     }
 

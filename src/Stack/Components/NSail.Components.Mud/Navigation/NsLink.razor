@@ -68,12 +68,11 @@
    actions.md). *@
 @if (As == NsAs.Inline && !Wordless)
 {
-    @* The chord's bubble is generated content ON the anchor, and an anchor folds that into its
-       ACCESSIBLE NAME exactly as a button does (nsail#2259) — so a keyed anchor carries an
-       aria-label after all, restating its own word to outrank the ::after. One with no chord
-       carries none, for the reason above: there is nothing to outrank, and a name that merely
-       repeats the text would be the second copy to keep true. *@
-    <a href="@ActiveHref" target="@BrowserTarget" class="@GetAnchorClasses()" aria-label="@KeyedName" data-ns-chord="@ChordHint" data-ns-probe="@Probe" data-ns-keys="@ClaimedKeys" aria-keyshortcuts="@AnnouncedKeys">
+    @* No aria-label on this face, keyed or not: the word IS the accessible name (the reason
+       above), and the bubble that names the chord is drawn nowhere near the anchor — ns.js puts
+       it in the top layer, where nothing it says can join a name computed from this element's
+       own content (nsail#2259 is what that rules out). *@
+    <a href="@ActiveHref" target="@BrowserTarget" class="@GetAnchorClasses()" data-ns-whisper="@LabelWithChord" data-ns-probe="@Probe" data-ns-keys="@ClaimedKeys" aria-keyshortcuts="@AnnouncedKeys">
         @if (Icon is not null)
         {
             <NsIcon Icon="@Icon" Size="@Size" />
@@ -85,25 +84,27 @@ else if (As == NsAs.Inline)
 {
     @if (Label is not null)
     {
-        @* The tooltip is what a sighted pointer user sees; a screen reader needs the same
-           sentence as the element's own accessible name — MudTooltip's popover contributes
+        @* The bubble is what a sighted pointer user sees; a screen reader needs the same
+           sentence as the element's own accessible name — the whisper's own element contributes
            no name on its own, the gap NsButton's own icon chrome already closed. *@
-        <MudTooltip Text="@LabelWithChord" @bind-Visible="_whispering">
-            <MudIconButton Href="@ActiveHref"
-                           Target="@BrowserTarget"
-                           Icon="@(Icon?.Markup)"
-                           Size="@GetSize()"
-                           Color="Color.Inherit"
-                           Disabled="@IsDisabled"
-                           Class="@Class"
-                           aria-label="@Label"
-                           data-ns-probe="@Probe"
-                           data-ns-keys="@ClaimedKeys"
-                           aria-keyshortcuts="@AnnouncedKeys"
-                           OnClick="Pressed">
-                @Content
-            </MudIconButton>
-        </MudTooltip>
+        @* Ripple: a refused face answers a press with nothing, and these are the faces the
+           stylesheet hands hit testing back to — the ones that declare the bubble (the note in
+           NsButton). *@
+        <MudIconButton Href="@ActiveHref"
+                       Target="@BrowserTarget"
+                       Icon="@(Icon?.Markup)"
+                       Size="@GetSize()"
+                       Color="Color.Inherit"
+                       Disabled="@IsDisabled"
+                       Ripple="@(!IsDisabled)"
+                       Class="@Class"
+                       aria-label="@Label"
+                       data-ns-whisper="@LabelWithChord"
+                       data-ns-probe="@Probe"
+                       data-ns-keys="@ClaimedKeys"
+                       aria-keyshortcuts="@AnnouncedKeys">
+            @Content
+        </MudIconButton>
     }
     else
     {
@@ -134,9 +135,10 @@ else
                Size="@GetSize()"
                StartIcon="@(Icon?.Markup)"
                Disabled="@IsDisabled"
+               Ripple="@(!IsDisabled)"
                Class="@GetChromedClasses()"
                aria-label="@Label"
-               data-ns-chord="@ChordHint"
+               data-ns-whisper="@LabelWithChord"
                data-ns-probe="@Probe"
                data-ns-keys="@ClaimedKeys"
                aria-keyshortcuts="@AnnouncedKeys">
@@ -147,15 +149,6 @@ else
 
     string _href = string.Empty;
     bool _intercepts;
-
-    // The vendor's tooltip opens on hover and on focus and closes on neither after a press: the
-    // pointer never left, and the click left the control holding focus. NsButton owns the same
-    // whisper for the same reason, and this is here because the two faces answer alike by rule
-    // (ui/actions.md, IconOnlyStateTests) — not because a screen was caught doing it. Every link
-    // measured either leaves the page or re-renders the row it sits in, and both remount the
-    // tooltip, which closes it by accident; one that does neither is the case this removes
-    // rather than waits for.
-    bool _whispering;
 
     [CascadingParameter]
     SurfaceContext? Cascaded { get; set; }
@@ -291,18 +284,10 @@ else
 
     string? AnnouncedKeys => NsKeys.Declare(ClaimedKeys).GetValueOrDefault("aria-keyshortcuts") as string;
 
-    // A SEPARATE attribute from aria-label, on purpose: aria-label IS the accessible name, and
-    // the name stays the word (nsail#2272) — the key joining it would be nsail#2259 again.
-    // data-ns-chord is read by ns-mud.css's own ::after and by nothing that computes a name.
-    string? ChordHint => Chord is { Length: > 0 } && Label is { Length: > 0 } ? $"{Label} ({Chord})" : null;
-
-    // The icon-only face's MudTooltip reads this directly — a floating popover of its own, never
-    // generated content on the control, so it cannot join the accessible name.
+    // The bubble's text, on all three faces: a SEPARATE attribute from aria-label, on purpose —
+    // aria-label IS the accessible name and the name stays the word (nsail#2272), while this
+    // is read by ns.js and by nothing that computes a name.
     string? LabelWithChord => Chord is { Length: > 0 } ? $"{Label} ({Chord})" : Label;
-
-    // The worded anchor's name, which it carries only once there is a bubble to outrank: see
-    // the comment on the anchor itself.
-    string? KeyedName => ChordHint is null ? null : Label;
 
     // No word to draw at any width: either the breakpoint says Never, or no name was handed
     // over to draw in the first place. Content counts as the glyph — a contributor whose
@@ -310,8 +295,7 @@ else
     bool Wordless => (Icon is not null || Content is not null) && (Breakpoint == NsBreakpoint.Never || Label is null or "");
 
     // A control with no label at any width has nothing to COLLAPSE, so it takes none of the
-    // breakpoint's hooks: ns-square carries its own whisper ungated (ns-mud.css), and both
-    // hooks at once would draw the bubble twice on the same hover.
+    // breakpoint's hooks — there is no width at which a word of its own comes back.
     string LabelClasses => Wordless ? "ns-button-label" : NsResponsive.LabelClasses(Icon, Breakpoint);
 
     // The bare anchor is one text node by default; a caller that also hands it an Icon needs the
@@ -324,7 +308,6 @@ else
     {
         var classes = new NsClassBuilder(Class)
             .Add("ns-link-iconed", Icon is not null)
-            .Add("ns-chord", Chord is { Length: > 0 })
             .ToString();
 
         return classes.Length == 0 ? null : classes;
@@ -339,9 +322,6 @@ else
         return new NsClassBuilder(Wordless ? null : NsResponsive.CollapseClass(Icon, Breakpoint))
             .Add("ns-important", As == NsAs.Important)
             .Add("ns-square", Wordless)
-            // NsButton carries the same rule for the same reason: a visible word answering a
-            // chord whispers the key beside it, and ns-square already whispers ungated.
-            .Add("ns-chord", !Wordless && Chord is { Length: > 0 })
             .Add(Class)
             .ToString();
     }
@@ -422,13 +402,6 @@ else
         }
 
         Surface.Follow(_href, Target, NoHistory);
-    }
-
-    // Beside the navigation and not instead of it: the vendor wires this onclick whether or not
-    // the control carries an href, so taking the bubble down costs the link nothing it does.
-    void Pressed()
-    {
-        _whispering = false;
     }
 
     // What this link resolved, written where it can be read from either side of the prerender

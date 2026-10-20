@@ -4,21 +4,25 @@
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
+using NSail.Components.Tests.Fixtures;
 using NSail.Icons;
 
 namespace NSail.Components.Tests;
 
-/// <summary>Emmanuel, 2026-08-11: a button collapsed to its icon should say its name on
-/// hover. The mechanism is a CSS bubble (ns-mud.css) whose text is attr(aria-label) and whose
-/// gate is the SAME container query that hid the label — so it can never double-bill a label
-/// that is on screen, and it can never disagree with the word it replaces.
-/// <para>bUnit lays nothing out and runs no container query, so what a render can prove here
-/// is only the DOM shape the rule reads: the collapse hook and the aria-label the bubble takes
-/// its text from. The rest is read off the shipped stylesheet — which thresholds the gates
-/// live at, and that nothing turns the bubble on outside them — the same way
-/// FooterButtonCollapseTests reads the emphasis ladder. Whether the browser paints it is the
-/// Architect's probe, not this file's.</para></summary>
-public sealed class CollapsedLabelWhisperTests : BunitContext
+/// <summary>A button collapsed to its icon says its name on hover.
+/// THE WHISPER is that bubble, and since nsail#2540 it is the house's only one: one element in
+/// the browser's top layer, placed by ns.js from the trigger's rectangle after a steady dwell.
+/// Nothing is drawn inside the control it names, which is what makes "never clipped, never
+/// moves a scroll, never under the panel beside it" true of the mechanism rather than of each
+/// caller.
+/// <para>What a render can prove here is the DECLARATION: data-ns-whisper, the bubble's whole
+/// text, and the aria-label a control carries because a container rule may take its visible word
+/// away. What it cannot prove is that the bubble opens — that is a question about the RENDERED
+/// control (is this word already on screen?) and about time (has the pointer been still for
+/// 2.5 s?), so it is read off the shipped ns.js and ns-mud.css below, the way
+/// FooterButtonCollapseTests reads the emphasis ladder. Whether the browser paints it where it
+/// should is the product's own browser suite.</para></summary>
+public sealed class CollapsedLabelWhisperTests : BunitContext, IAsyncLifetime
 {
     public CollapsedLabelWhisperTests()
     {
@@ -32,7 +36,7 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
     }
 
     [Fact]
-    public void ACollapsingButtonCarriesBothHooksTheWhisperReads()
+    public void ACollapsingButtonCarriesTheHookAndBothStringsTheWhisperReads()
     {
         var cut = Render<NsButton>(p => p
             .Add(x => x.Label, "Confirmar")
@@ -40,14 +44,14 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
 
         var button = cut.Find("button");
 
-        // The gate: ns-collapse-sm is what the max-width container query selects, and it is
+        // The collapse: ns-collapse-sm is what the max-width container query selects, and it is
         // emitted by the same NsResponsive call that put d-c-none on the label span.
         Assert.Contains("ns-collapse-sm", button.ClassList);
         Assert.Contains("d-c-none", button.QuerySelector(".ns-button-label")!.ClassList);
 
-        // The text: the bubble's content is attr(aria-label), so this attribute is not merely
-        // the accessible name any more — it is the visible word the collapsed control shows.
-        // One string, written once, which is why the two cannot drift.
+        // The bubble's text, and the accessible name that survives the span going display:none.
+        // Both written from Label, so neither can drift from the word it replaces.
+        Assert.Equal("Confirmar", button.GetAttribute("data-ns-whisper"));
         Assert.Equal("Confirmar", button.GetAttribute("aria-label"));
     }
 
@@ -65,14 +69,19 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
         var link = cut.Find("a");
 
         Assert.Contains("ns-collapse-sm", link.ClassList);
+        Assert.Equal("Reprogramar", link.GetAttribute("data-ns-whisper"));
         Assert.Equal("Reprogramar", link.GetAttribute("aria-label"));
     }
 
+    /// <summary>THE DOUBLE CARTEL IS NOT A MARKUP QUESTION any more, and this is where that
+    /// shows: a button the caller pinned with Breakpoint="Always" declares the same text as the
+    /// one above, because whether a bubble repeating a visible word opens is answered where the
+    /// word either is or is not on screen — ns.js, off the rendered control. The markup's only
+    /// job is to say what there WOULD be to say, so there is no gate here to drift from a
+    /// container query.</summary>
     [Fact]
-    public void APinnedButtonCarriesNoCollapseHook_soItNeverWhispers()
+    public void APinnedButtonDeclaresTheSameText_andCarriesNoCollapseHook()
     {
-        // Breakpoint="Always" is the caller pinning the label on: the label never goes, so a
-        // bubble beside it would be the double cartel the design forbids. No hook, no rule.
         var cut = Render<NsButton>(p => p
             .Add(x => x.Label, "Guardar")
             .Add(x => x.Icon, NsIcons.Save)
@@ -82,151 +91,251 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
 
         Assert.DoesNotContain(button.ClassList, css => css.StartsWith("ns-collapse-"));
         Assert.DoesNotContain("d-c-none", button.QuerySelector(".ns-button-label")!.ClassList);
+        Assert.Equal("Guardar", button.GetAttribute("data-ns-whisper"));
     }
 
     [Fact]
-    public void AButtonWithNoLabelCarriesNoAriaLabel_soNoEmptyBubbleIsDrawn()
+    public void AButtonWithNoLabelDeclaresNothingToSay()
     {
-        // attr(aria-label) on a control with none would generate an empty padded box. The
-        // stylesheet's own [aria-label]:not([aria-label=""]) guard answers for that, and this
-        // is the markup half of it: no label, no attribute.
+        // No name was handed over, so there is neither a bubble's text nor an accessible name to
+        // write: the whisper has nothing to open for, and the absent attribute is how it knows.
         var cut = Render<NsButton>(p => p.Add(x => x.Icon, NsIcons.Check));
 
-        Assert.False(cut.Find("button").HasAttribute("aria-label"));
+        var button = cut.Find("button");
+
+        Assert.False(button.HasAttribute("data-ns-whisper"));
+        Assert.False(button.HasAttribute("aria-label"));
     }
 
-    /// <summary>The half only the stylesheet can answer for: the bubble is off by default and
-    /// each breakpoint's gate sits in the SAME container query that hides that breakpoint's
-    /// label — the max-width side of the pair whose min-width side turns d-c-{bp}-inline back
-    /// on. Two rules written from one fact, so a threshold moved on one side and not the other
-    /// is a red test rather than a button that whispers over its own visible word.</summary>
+    /// <summary>The wordless flat rung — a grid row's actions, a title bar's utilities, the
+    /// header X — on both faces, which must not part company at any width (IconOnlyStateTests).
+    /// Its Label is its accessible name AND the bubble's text: handed none, each renders the
+    /// vendor's bare glyph with neither, which is what the patient portal's download links were
+    /// (nsail#2010).</summary>
     [Theory]
-    [InlineData("ns-collapse-sm", "max-width: 599.98px", "d-c-sm-inline", "min-width: 600px")]
-    [InlineData("ns-collapse-md", "max-width: 959.98px", "d-c-md-inline", "min-width: 960px")]
-    [InlineData("ns-collapse-lg", "max-width: 1279.98px", "d-c-lg-inline", "min-width: 1280px")]
-    [InlineData("ns-collapse-xl", "max-width: 1919.98px", "d-c-xl-inline", "min-width: 1920px")]
-    public void EachWhisperGateSharesItsBreakpointWithTheLabelItReplaces(
-        string hook,
-        string gateQuery,
-        string labelUtility,
-        string labelQuery)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TheWordlessRungCarriesItsLabelAsItsNameAndAsTheBubblesText(bool navigates)
     {
-        var css = ReadStylesheet();
+        var cut = Render<WhisperHost>(p => p.Add(x => x.Navigates, navigates));
 
-        Assert.Equal(gateQuery, EnclosingContainerQuery(css, $".{hook}:hover,"));
-        Assert.Equal(labelQuery, EnclosingContainerQuery(css, $".{labelUtility} {{"));
+        var glyph = cut.Find(".mud-icon-button");
+
+        Assert.Equal("Editar", glyph.GetAttribute("aria-label"));
+        Assert.Equal("Editar", glyph.GetAttribute("data-ns-whisper"));
     }
 
+    /// <summary>The one caller whose bubble is not a name: a chip's note is a longer form of what
+    /// the chip says, and it rides the chip's OWN element rather than a wrapper — which is only
+    /// true if the vendor splats an unmatched attribute onto its root, the whole reason this is
+    /// read rather than assumed. A chip handed no note declares nothing.</summary>
+    [Theory]
+    [InlineData("Vencido el 3/4", "Vencido el 3/4")]
+    [InlineData(null, null)]
+    public void AChipDeclaresItsNoteOnTheChipItself(string? tooltip, string? expected)
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(x => x.Text, "Vencido")
+            .Add(x => x.Tooltip, tooltip));
+
+        Assert.Equal(expected, cut.Find(".mud-chip").GetAttribute("data-ns-whisper"));
+    }
+
+    /// <summary>A REFUSED CONTROL STILL SAYS ITS NAME — the grey pencil of a row that may not be
+    /// edited, the X under a frozen form — and that is the face with nothing BUT the bubble to say
+    /// what it is. The vendor drops hit testing on a disabled control
+    /// (<c>.mud-button-root:disabled</c>, <c>.mud-chip.mud-disabled</c>), so the pointer never
+    /// meets it and the trigger lookup walks up past it; the stylesheet hands that back to
+    /// whatever declares a bubble and the attribute keeps the refusal — a disabled control takes
+    /// hover and no press, measured in Chromium. What a render proves is the declaration, on both
+    /// shapes a refused face has: a glyph with no word of its own, and a chip's note.</summary>
     [Fact]
-    public void TheBubbleIsOffUntilAGateTurnsItOn_andEveryCollapseGateIsAMaxWidthQuery()
+    public void ARefusedControlStillDeclaresWhatTheBubbleWouldSay()
+    {
+        var glyph = Render<NsButton>(p => p
+            .Add(x => x.Label, "Anular")
+            .Add(x => x.Icon, NsIcons.Close)
+            .Add(x => x.As, NsAs.Inline)
+            .Add(x => x.Breakpoint, NsBreakpoint.Never)
+            .Add(x => x.Disabled, true))
+            .Find("button");
+
+        Assert.True(glyph.HasAttribute("disabled"));
+        Assert.Equal("Anular", glyph.GetAttribute("data-ns-whisper"));
+
+        var chip = Render<NsChip>(p => p
+            .Add(x => x.Text, "Convenio")
+            .Add(x => x.Tooltip, "Cobertura vencida")
+            .Add(x => x.Disabled, true))
+            .Find(".mud-chip");
+
+        Assert.Contains("mud-disabled", chip.ClassList);
+        Assert.Equal("Cobertura vencida", chip.GetAttribute("data-ns-whisper"));
+    }
+
+    /// <summary>The stylesheet's half of that, which no render can show: the one rule that undoes
+    /// the concession, keyed on the bubble's own declaration and on nothing about which component
+    /// drew the control.</summary>
+    [Fact]
+    public void TheStylesheetGivesARefusedTriggerItsHitTestingBack()
     {
         var css = ReadStylesheet();
 
-        // The one place the text comes from, and the one place the bubble is defined: off
-        // outside every query. A control whose label is visible matches this rule and nothing
-        // else, which is what makes the double cartel unrepresentable rather than merely
-        // avoided.
-        Assert.Contains("content: attr(aria-label);", css);
-        Assert.Contains("[aria-label]:not([aria-label=\"\"])::after", css);
-        Assert.Contains("display: var(--ns-whisper, none);", css);
+        Assert.Contains("[data-ns-whisper]:disabled,", css);
+        Assert.Contains("[data-ns-whisper].mud-disabled {\n    pointer-events: auto;", css.ReplaceLineEndings("\n"));
+    }
 
-        var lines = css.Split('\n').Select(line => line.TrimEnd('\r').Trim()).ToList();
+    /// <summary>And the press stays unanswered: the vendor's ripple is a document-level
+    /// pointerdown over whatever carries <c>mud-ripple</c>, so it is the one response to a press
+    /// that outlives both the attribute the browser refuses the press by and the CSS the rule
+    /// above undid. A refused face declares no ripple and a live one does, which is what makes
+    /// this the refusal's answer rather than a look.</summary>
+    [Theory]
+    [InlineData(NsAs.Default)]
+    [InlineData(NsAs.Inline)]
+    public void ARefusedFaceHasNoRippleAndALiveOneDoes(NsAs intention)
+    {
+        var refused = Render<NsButton>(p => p
+            .Add(x => x.Label, "Facturar")
+            .Add(x => x.Icon, NsIcons.Check)
+            .Add(x => x.As, intention)
+            .Add(x => x.Breakpoint, NsBreakpoint.Never)
+            .Add(x => x.Disabled, true))
+            .Find("button");
 
-        // Each gate is a hover/focus PAIR — the bubble answers a pointer and a keyboard alike —
-        // so the focus line is what counts them and the hover line above it is what names them.
-        // What makes a rule a gate is what it turns ON, never the shape of its selector: the
-        // keyboard's own focus ring (nsail#2207) is a :focus-visible rule in this same file and
-        // has nothing to do with the whisper.
-        var gates = Enumerable
-            .Range(1, lines.Count - 2)
-            .Where(i => lines[i].EndsWith(":focus-visible {", StringComparison.Ordinal)
-                && lines[i + 1].Contains("--ns-whisper", StringComparison.Ordinal))
-            .Select(i => (Hover: lines[i - 1], Focus: lines[i]))
+        Assert.DoesNotContain("mud-ripple", refused.ClassList);
+
+        var live = Render<NsButton>(p => p
+            .Add(x => x.Label, "Facturar")
+            .Add(x => x.Icon, NsIcons.Check)
+            .Add(x => x.As, intention)
+            .Add(x => x.Breakpoint, NsBreakpoint.Never))
+            .Find("button");
+
+        Assert.Contains("mud-ripple", live.ClassList);
+    }
+
+    /// <summary>ONE MECHANISM, and this is the only reader that can say so: the vendor's tooltip
+    /// is gone from the shared pieces altogether. Two tooltip paths is how the house came to have
+    /// one bubble that flipped, closed on a press and opened at once, and another that did none
+    /// of the three (nsail#2540) — so a MudTooltip reappearing anywhere in the Mud components is
+    /// a second set of answers, not a convenience.</summary>
+    [Fact]
+    public void NoVendorTooltipSurvivesInTheSharedPieces()
+    {
+        var components = new DirectoryInfo(Path.Combine(RepoRoot(), "src/Stack/Components"));
+
+        var offenders = components
+            .EnumerateFiles("*.razor", SearchOption.AllDirectories)
+            .Where(file => File.ReadAllText(file.FullName).Contains("<MudTooltip", StringComparison.Ordinal))
+            .Select(file => file.Name)
             .ToList();
 
-        // Nine: four Breakpoint gates, the emphasis-ladder footer's own, ns-square's, the two a
-        // menu's icon face and a lookup's end adornment take for the same reason ns-square does
-        // (nsail#1865), and ns-chord's own (nsail#2272).
-        Assert.Equal(9, gates.Count);
-        Assert.All(gates, gate => Assert.EndsWith(":hover,", gate.Hover, StringComparison.Ordinal));
-
-        // THE DEFECT THIS FILE MISSED FOR A MONTH (nsail#1417), now unrepresentable rather than
-        // merely fixed: the definition carries a guard the gates cannot — [aria-label], so an
-        // unnamed control draws no empty box — and a guard is specificity, which left every gate
-        // one class-unit too light to outrank the rule it was turning on. So the two no longer
-        // name the same property at all: the bubble's own rule owns display, a gate owns the
-        // switch, and a line naming ::after on a :hover selector is a gate that went back to
-        // racing a cascade it must lose.
-        Assert.DoesNotContain(
-            lines,
-            line => line.Contains("::after", StringComparison.Ordinal)
-                && (line.Contains(":hover", StringComparison.Ordinal) || line.Contains(":focus-visible", StringComparison.Ordinal)));
-
-        Assert.Equal(9, lines.Count(line => line == "--ns-whisper: block;"));
-
-        // Every gate that answers a COLLAPSE sits in the query that did the collapsing. The four
-        // ungated ones are the honest exception (nsail#925, nsail#1865, nsail#2272): an icon-only
-        // control — a square at Never, a menu's icon face, a lookup's end adornment — has no
-        // width at which its label comes back, so gating its bubble on a container size would
-        // only be a fiction, and there is nothing to double-bill; ns-chord is ungated for a
-        // different reason (the control it marks answers a chord at every width, or it does
-        // not), not because its label never returns.
-        var ungated = new[] { "ns-square", "ns-menu", "mud-input-adornment-icon-button", "ns-chord" };
-
-        foreach (var gate in gates.Where(gate => !ungated.Any(name => gate.Hover.Contains(name, StringComparison.Ordinal))))
-        {
-            Assert.StartsWith("max-width:", EnclosingContainerQuery(css, gate.Hover));
-        }
-
-        Assert.All(
-            ungated,
-            name => Assert.Equal(1, gates.Count(gate => gate.Hover.Contains(name, StringComparison.Ordinal))));
+        Assert.Empty(offenders);
     }
 
-    /// <summary>nsail#2197: the bubble no longer hangs down unconditionally — ns.js measures
-    /// each trigger against the viewport on hover and focus and marks the one with no room
-    /// below, and this is the CSS half of that pair: a direction rule gated on the attribute
-    /// ns.js writes, at the SAME compound selector the base rule carries (plus one), which is
-    /// what lets it outrank the base rule's own two-attribute weight rather than losing the
-    /// cascade silently. Whether the attribute actually lands at the right moment is ns.js's own
-    /// question, unreachable from here — Optical's E2E is where "the page gains no scrollbar"
-    /// is answered for real.</summary>
+    /// <summary>The stylesheet's whole part in the bubble: what it LOOKS like, once, and the box
+    /// it is drawn in — never which control gets one and never which side it hangs on. Both of
+    /// those were CSS's before nsail#2540, and cost nine gates, two ::after definitions and two
+    /// flip rules kept in step by hand with ns.js's own selector list.</summary>
     [Fact]
-    public void ADynamicFlipRuleAnswersForNoRoomBelow_atTheSameWeightAsTheBaseRule()
+    public void TheStylesheetDrawsOneBubbleAndDecidesNothingAboutIt()
     {
         var css = ReadStylesheet();
 
-        Assert.Contains("[data-ns-whisper-above]::after", css);
-        Assert.Contains("top: auto;\n    bottom: calc(100% + 4px);", css.Replace("\r\n", "\n"));
+        Assert.Contains(".ns-whisper {", css);
+        Assert.Contains("z-index: var(--mud-zindex-tooltip);", css);
 
-        // The old escape hatch — a footer bubble flipped by selector alone, with no room asked
-        // about at all — is gone: every remaining "top: auto" is behind the dynamic attribute,
-        // never behind .ns-panel-footer on its own.
-        Assert.DoesNotContain(
-            "[aria-label]:not([aria-label=\"\"])::after {\n    top: auto;",
-            css.Replace("\r\n", "\n"));
+        // Fixed, so it is in no scroll box to grow and nothing clips it where the top layer is
+        // unavailable; placed from ns.js, so the stylesheet states no coordinates at all.
+        Assert.Contains("position: fixed;", css);
+        Assert.DoesNotContain("top: calc(100%", css);
+
+        // Nothing is generated ON a control to name it, which is what was clipped, what grew the
+        // scroll, and what joined an anchor's own accessible name (nsail#2259).
+        Assert.DoesNotContain("content: attr(aria-label);", css);
+        Assert.DoesNotContain("content: attr(data-ns-whisper);", css);
+        Assert.DoesNotContain("data-ns-whisper-above", css);
+        Assert.DoesNotContain("--ns-whisper:", css);
+
+        // And the concession the old bubble charged every collapsed control is refunded: the
+        // ripple was turned off and the box stopped clipping only so generated content could
+        // escape it. There is nothing to escape now.
+        Assert.DoesNotContain(".mud-ripple-effect", css);
     }
 
-    /// <summary>The container query a rule is written inside, read by scanning back from the
-    /// rule's own text to the nearest @container that opened before it. Enough for this file's
-    /// question — which threshold a gate sits at — and it fails loudly (an empty condition, or
-    /// a missing rule) rather than passing on a stylesheet that no longer carries the rule.</summary>
-    static string EnclosingContainerQuery(string css, string rule)
+    /// <summary>ns.js owns when, where and whether — one delay for every control in the house
+    /// (the story's "one value in one place"), one derived answer to the double cartel, and every
+    /// exit the bubble has. Read as text because the alternative is a browser, and a browser
+    /// cannot tell a constant that moved from a constant that was renamed.</summary>
+    [Fact]
+    public void TheScriptCarriesTheOneDelay_theDerivedGate_andEveryExit()
     {
-        var index = css.IndexOf(rule, StringComparison.Ordinal);
+        var script = ReadScript();
 
-        Assert.True(index >= 0, $"ns-mud.css no longer carries the rule '{rule}'.");
+        Assert.Contains("const WHISPER_DELAY = 2500;", script);
 
-        var open = css.LastIndexOf("@container (", index, StringComparison.Ordinal);
+        // The dwell is the only timing there is: the bubble is armed on two gestures and opened
+        // by one timer, so there is no second number anywhere to disagree with it.
+        Assert.Equal(2, Occurrences(script, "WHISPER_DELAY"));
+        Assert.Contains("setTimeout(() => openWhisper(el), WHISPER_DELAY)", script);
 
-        Assert.True(open >= 0, $"'{rule}' is not written inside any container query.");
+        // Derived, not gated: the control's own rendered text is the whole of the question.
+        Assert.Contains("el.innerText", script);
 
-        var start = open + "@container (".Length;
+        // Leave, press, key, scroll and resize — and the keyboard takes the same dwell as the
+        // pointer, :focus-visible being what tells its focus from the one a press leaves behind.
+        foreach (var exit in new[] { "pointerleave", "pointerdown", "click", "keydown", "scroll", "resize" })
+        {
+            Assert.Contains(exit, script);
+        }
 
-        return css[start..css.IndexOf(')', start)];
+        Assert.Contains("closeWhisper", script);
+
+        // Asked of the element that TOOK the focus and not of the trigger, which is what answers
+        // for a trigger that CONTAINS its focusable control (NsTooltip's host span, a chip whose
+        // close button is what Tab reaches): a wrapper is never itself :focus-visible.
+        Assert.Contains("keyboard && !target.matches(\":focus-visible\")", script);
+
+        // The top layer, and the manual flavour of it: an auto popover would take an open menu
+        // down with it, by the browser's own light-dismiss stack.
+        Assert.Contains("popover = \"manual\"", script);
+        Assert.Contains("showPopover()", script);
+    }
+
+    public Task InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    // AddMudServices registers MudBlazor's key interceptor beside the rest, and that one only
+    // implements IAsyncDisposable — bUnit's synchronous teardown throws on it by design
+    // (IconOnlyStateTests carries the same pair).
+    public new async Task DisposeAsync()
+    {
+        await ((IAsyncDisposable)this).DisposeAsync();
+    }
+
+    static int Occurrences(string text, string value)
+    {
+        return text.Split(value).Length - 1;
     }
 
     static string ReadStylesheet()
+    {
+        return File.ReadAllText(Path.Combine(
+            RepoRoot(),
+            "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
+    }
+
+    static string ReadScript()
+    {
+        return File.ReadAllText(Path.Combine(
+            RepoRoot(),
+            "src/Stack/BaseServices/NSail.BaseServices.WebApp/wwwroot/ns.js"));
+    }
+
+    static string RepoRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
 
@@ -234,9 +343,7 @@ public sealed class CollapsedLabelWhisperTests : BunitContext
         {
             if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
             {
-                return File.ReadAllText(Path.Combine(
-                    directory.FullName,
-                    "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
+                return directory.FullName;
             }
 
             directory = directory.Parent;

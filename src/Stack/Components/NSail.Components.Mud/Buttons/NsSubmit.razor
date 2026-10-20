@@ -11,11 +11,13 @@
     var icon = GetIcon();
 }
 
+@* Ripple: a refused face answers a press with nothing (the note in NsButton). *@
 <MudButton ButtonType="ButtonType.Submit"
            Variant="Variant.Filled"
            Color="@(As == NsAs.Filter ? Color.Default : Color.Primary)"
            StartIcon="@(icon.Markup)"
            Disabled="@GetDisabled()"
+           Ripple="@(!GetDisabled())"
            Class="@GetClasses(icon)"
            UserAttributes="_keys">
     <span class="@NsResponsive.LabelClasses(icon, Breakpoint)">
@@ -119,9 +121,6 @@
     string GetClasses(Glyph icon)
     {
         return new NsClassBuilder(NsResponsive.CollapseClass(icon, Breakpoint))
-            // The chord's own whisper (ns-mud.css, THE WHISPER): ungated, so it stands beside
-            // the label whether or not Breakpoint ever collapses it.
-            .Add("ns-chord", _chordHint is not null)
             .Add(Class)
             .ToString();
     }
@@ -176,15 +175,14 @@
         _claimed = claimed;
         _chordHint = chordHint;
 
-        // Generated content on a control joins its accessible name UNLESS aria-label is there
-        // to outrank it (nsail#2259, THE WHISPER) — this button carries none today, its word
-        // being on-screen text, so ns-chord's own ::after would join "Guardar" into "Guardar
-        // (Ctrl+Enter)" the moment it draws one. aria-label pinned to the bare word is what
-        // keeps the name the word while data-ns-chord, a different attribute the name
-        // computation never reads, carries the longer string the bubble shows.
+        // aria-label pinned to the bare word is what keeps the accessible name the word
+        // (nsail#2259): the key is a decoration, and a decoration joining the name is the defect
+        // whether it is drawn beside it or written into it. data-ns-whisper is a different
+        // attribute the name computation never reads, and it carries the longer string the
+        // bubble shows (THE WHISPER, ns-mud.css).
         _keys = chordHint is null
             ? chords
-            : new Dictionary<string, object>(chords) { ["aria-label"] = word!, ["data-ns-chord"] = chordHint };
+            : new Dictionary<string, object>(chords) { ["aria-label"] = word!, ["data-ns-whisper"] = chordHint };
     }
 
     // Nothing to save yet: a tracked form's submit stays greyed out until the surface

@@ -6,8 +6,8 @@
 @using NSail.Paging
 @using NSail.Testing.Models
 
-@* Icon buttons carry a MudTooltip, which is a popover: without a provider in the tree
-   MudBlazor throws before the grid renders at all. *@
+@* The row's kebab is an NsMenu, and a menu's list is a popover: without a provider in the
+   tree MudBlazor throws before the grid renders at all. *@
 <MudPopoverProvider />
 
 @* A grid shaped like the real ones: a keyed column, a computed column that labels its own

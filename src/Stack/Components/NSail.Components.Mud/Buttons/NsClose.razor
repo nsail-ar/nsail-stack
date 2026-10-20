@@ -25,11 +25,13 @@
     }
     else
     {
+        @* Ripple: a refused face answers a press with nothing (the note in NsButton). *@
         <MudButton Variant="Variant.Text"
                    Color="Color.Default"
                    Disabled="@ParentDisabled"
+                   Ripple="@(!ParentDisabled)"
                    OnClick="@(() => Surface.Close())"
-                   Class="@GetClasses()"
+                   Class="@Class"
                    UserAttributes="_keys">
             @if (ChildContent is not null)
             {
@@ -101,13 +103,6 @@
         return ChildContent is null ? Strings.Translate("Common.Close") : null;
     }
 
-    string GetClasses()
-    {
-        // The chord's own whisper (ns-mud.css, THE WHISPER): ungated, standing beside the
-        // "Cancelar" that stays on screen — never a second tooltip path.
-        return new NsClassBuilder(Class).Add("ns-chord", _chordHint is not null).ToString();
-    }
-
     protected override void OnParametersSet()
     {
         var word = GetWord();
@@ -120,18 +115,17 @@
 
         _chordHint = chordHint;
 
-        // Generated content on a control joins its accessible name unless aria-label outranks
-        // it (nsail#2259, THE WHISPER) — this button carries none today, its word being
-        // on-screen text, so ns-chord's own ::after would join "Cancelar" into "Cancelar (Esc)"
-        // the moment it draws one. aria-label pinned to the bare word keeps the name the word;
-        // data-ns-chord, a different attribute the name computation never reads, carries the
-        // longer string the bubble shows.
+        // aria-label pinned to the bare word keeps the accessible name the word (nsail#2259):
+        // the key is a decoration, and a decoration joining the name is the defect whether it
+        // is drawn beside it or written into it. data-ns-whisper is a different attribute the
+        // name computation never reads, and it carries the longer string the bubble shows
+        // (THE WHISPER, ns-mud.css).
         _keys = chordHint is null
             ? NsKeys.Declare(NsKeys.Close)
             : new Dictionary<string, object>(NsKeys.Declare(NsKeys.Close))
             {
                 ["aria-label"] = word!,
-                ["data-ns-chord"] = chordHint,
+                ["data-ns-whisper"] = chordHint,
             };
     }
 }
