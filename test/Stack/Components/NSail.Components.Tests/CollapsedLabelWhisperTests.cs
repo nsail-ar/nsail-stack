@@ -9,7 +9,7 @@ using NSail.Icons;
 
 namespace NSail.Components.Tests;
 
-/// <summary>Emmanuel, 2026-08-11: a button collapsed to its icon should say its name on hover.
+/// <summary>A button collapsed to its icon says its name on hover.
 /// THE WHISPER is that bubble, and since nsail#2540 it is the house's only one: one element in
 /// the browser's top layer, placed by ns.js from the trigger's rectangle after a steady dwell.
 /// Nothing is drawn inside the control it names, which is what makes "never clipped, never
@@ -141,6 +141,80 @@ public sealed class CollapsedLabelWhisperTests : BunitContext, IAsyncLifetime
         Assert.Equal(expected, cut.Find(".mud-chip").GetAttribute("data-ns-whisper"));
     }
 
+    /// <summary>A REFUSED CONTROL STILL SAYS ITS NAME — the grey pencil of a row that may not be
+    /// edited, the X under a frozen form — and that is the face with nothing BUT the bubble to say
+    /// what it is. The vendor drops hit testing on a disabled control
+    /// (<c>.mud-button-root:disabled</c>, <c>.mud-chip.mud-disabled</c>), so the pointer never
+    /// meets it and the trigger lookup walks up past it; the stylesheet hands that back to
+    /// whatever declares a bubble and the attribute keeps the refusal — a disabled control takes
+    /// hover and no press, measured in Chromium. What a render proves is the declaration, on both
+    /// shapes a refused face has: a glyph with no word of its own, and a chip's note.</summary>
+    [Fact]
+    public void ARefusedControlStillDeclaresWhatTheBubbleWouldSay()
+    {
+        var glyph = Render<NsButton>(p => p
+            .Add(x => x.Label, "Anular")
+            .Add(x => x.Icon, NsIcons.Close)
+            .Add(x => x.As, NsAs.Inline)
+            .Add(x => x.Breakpoint, NsBreakpoint.Never)
+            .Add(x => x.Disabled, true))
+            .Find("button");
+
+        Assert.True(glyph.HasAttribute("disabled"));
+        Assert.Equal("Anular", glyph.GetAttribute("data-ns-whisper"));
+
+        var chip = Render<NsChip>(p => p
+            .Add(x => x.Text, "Convenio")
+            .Add(x => x.Tooltip, "Cobertura vencida")
+            .Add(x => x.Disabled, true))
+            .Find(".mud-chip");
+
+        Assert.Contains("mud-disabled", chip.ClassList);
+        Assert.Equal("Cobertura vencida", chip.GetAttribute("data-ns-whisper"));
+    }
+
+    /// <summary>The stylesheet's half of that, which no render can show: the one rule that undoes
+    /// the concession, keyed on the bubble's own declaration and on nothing about which component
+    /// drew the control.</summary>
+    [Fact]
+    public void TheStylesheetGivesARefusedTriggerItsHitTestingBack()
+    {
+        var css = ReadStylesheet();
+
+        Assert.Contains("[data-ns-whisper]:disabled,", css);
+        Assert.Contains("[data-ns-whisper].mud-disabled {\n    pointer-events: auto;", css.ReplaceLineEndings("\n"));
+    }
+
+    /// <summary>And the press stays unanswered: the vendor's ripple is a document-level
+    /// pointerdown over whatever carries <c>mud-ripple</c>, so it is the one response to a press
+    /// that outlives both the attribute the browser refuses the press by and the CSS the rule
+    /// above undid. A refused face declares no ripple and a live one does, which is what makes
+    /// this the refusal's answer rather than a look.</summary>
+    [Theory]
+    [InlineData(NsAs.Default)]
+    [InlineData(NsAs.Inline)]
+    public void ARefusedFaceHasNoRippleAndALiveOneDoes(NsAs intention)
+    {
+        var refused = Render<NsButton>(p => p
+            .Add(x => x.Label, "Facturar")
+            .Add(x => x.Icon, NsIcons.Check)
+            .Add(x => x.As, intention)
+            .Add(x => x.Breakpoint, NsBreakpoint.Never)
+            .Add(x => x.Disabled, true))
+            .Find("button");
+
+        Assert.DoesNotContain("mud-ripple", refused.ClassList);
+
+        var live = Render<NsButton>(p => p
+            .Add(x => x.Label, "Facturar")
+            .Add(x => x.Icon, NsIcons.Check)
+            .Add(x => x.As, intention)
+            .Add(x => x.Breakpoint, NsBreakpoint.Never))
+            .Find("button");
+
+        Assert.Contains("mud-ripple", live.ClassList);
+    }
+
     /// <summary>ONE MECHANISM, and this is the only reader that can say so: the vendor's tooltip
     /// is gone from the shared pieces altogether. Two tooltip paths is how the house came to have
     /// one bubble that flipped, closed on a press and opened at once, and another that did none
@@ -217,7 +291,11 @@ public sealed class CollapsedLabelWhisperTests : BunitContext, IAsyncLifetime
         }
 
         Assert.Contains("closeWhisper", script);
-        Assert.Contains(":focus-visible", script);
+
+        // Asked of the element that TOOK the focus and not of the trigger, which is what answers
+        // for a trigger that CONTAINS its focusable control (NsTooltip's host span, a chip whose
+        // close button is what Tab reaches): a wrapper is never itself :focus-visible.
+        Assert.Contains("keyboard && !target.matches(\":focus-visible\")", script);
 
         // The top layer, and the manual flavour of it: an auto popover would take an open menu
         // down with it, by the browser's own light-dismiss stack.

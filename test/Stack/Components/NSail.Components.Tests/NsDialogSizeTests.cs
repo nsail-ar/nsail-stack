@@ -105,8 +105,8 @@ public sealed class NsDialogSizeTests : BunitContext, IAsyncLifetime
         // flattens a table inside a card), and RuleContaining finds the FIRST occurrence.
         var block = RuleContaining(css, "height: 100dvh;", ".ns-dialog {", out var start);
 
-        // Same 599.98px MudBlazor sm threshold the dashboard grid and the whisper's collapse
-        // gates already use (CollapsedLabelWhisperTests, NsDashboardCardStretchTests) — a
+        // Same 599.98px MudBlazor sm threshold the dashboard grid and the button collapse
+        // already use (IconOnlyStateTests, NsDashboardCardStretchTests) — a
         // dialog degrades to full screen there like every other surface does below its own
         // mobile breakpoint (surfaces.md). Finding the nearest such query above the block is
         // not enough to prove containment: the file carries three more of them earlier, so a

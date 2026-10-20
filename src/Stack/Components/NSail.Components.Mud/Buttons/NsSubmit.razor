@@ -11,11 +11,13 @@
     var icon = GetIcon();
 }
 
+@* Ripple: a refused face answers a press with nothing (the note in NsButton). *@
 <MudButton ButtonType="ButtonType.Submit"
            Variant="Variant.Filled"
            Color="@(As == NsAs.Filter ? Color.Default : Color.Primary)"
            StartIcon="@(icon.Markup)"
            Disabled="@GetDisabled()"
+           Ripple="@(!GetDisabled())"
            Class="@GetClasses(icon)"
            UserAttributes="_keys">
     <span class="@NsResponsive.LabelClasses(icon, Breakpoint)">

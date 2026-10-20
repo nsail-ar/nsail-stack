@@ -177,9 +177,8 @@ public sealed class IconOnlyStateTests : BunitContext, IAsyncLifetime
     }
 
     /// <summary>Never collapses unconditionally: no container query is written at all, because
-    /// there is no width at which the label comes back. The whisper would otherwise be gated
-    /// twice — once ungated by ns-square and once by the query — and draw two bubbles on one
-    /// hover.</summary>
+    /// there is no width at which the label comes back — a query that can never match is a width
+    /// this state would have to be kept in step with for nothing.</summary>
     [Fact]
     public void AtNever_TheCollapseIsUnconditionalAndCarriesNoContainerQuery()
     {

@@ -21,10 +21,10 @@ namespace NSail.Components.Tests;
 /// The (x) is a different control and the posture keeps it, which is what this suite asks of
 /// the vendor rather than of its documentation.
 ///
-/// The hover half of the named button is a CSS bubble and rides in a browser
-/// (CollapsedButtonWhisperTests), but the selector that bubble is keyed on is DOM, and it is
-/// pinned here: the face is the vendor's icon button inside .mud-autocomplete, and exactly one
-/// node in a browsed field is it.</summary>
+/// The hover half of the named button is the house's one bubble, placed by ns.js in the top
+/// layer (CollapsedLabelWhisperTests reads the mechanism, a browser paints it), but the selector
+/// it is keyed on is DOM, and it is pinned here: the face is the vendor's icon button inside
+/// .mud-autocomplete, and exactly one node in a browsed field is it.</summary>
 public sealed class NsAutocompleteAdornmentNameTests : BunitContext, IAsyncLifetime
 {
     public NsAutocompleteAdornmentNameTests()

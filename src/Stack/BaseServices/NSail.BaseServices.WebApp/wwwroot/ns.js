@@ -697,7 +697,13 @@
         const named = el.getAttribute("aria-label");
 
         if (whispered) {
-            const cut = whispered.lastIndexOf(" (");
+            // The key is cut off the end, and only where there is a key to cut: the same
+            // attribute is now written whether or not the control claims a chord, and a Label
+            // that ends in brackets of its own is a word, not a badge. A control that DECLARED
+            // the chord is the only one whose trailing "(...)" the house appended.
+            const cut = el.hasAttribute("data-ns-keys") && whispered.endsWith(")")
+                ? whispered.lastIndexOf(" (")
+                : -1;
 
             return (cut > 0 ? whispered.slice(0, cut) : whispered).trim();
         }
@@ -846,14 +852,26 @@
 
         const el = target.closest(WHISPER_SELECTOR);
 
-        if (!el || el === whisperTarget)
+        if (el === whisperTarget)
             return;
+
+        // A bubble never outlives the trigger the pointer left: arriving anywhere that whispers
+        // nothing is the second witness to that, beside the leave above, and it is the one that
+        // does not depend on a node Blazor replaced still being there to fire one.
+        if (!el) {
+            closeWhisper();
+
+            return;
+        }
 
         // A Tab run through a toolbar passes over a dozen controls and none of them is the one
         // being read, which is the same thing a pointer crossing the row says -- so the keyboard
         // takes the same dwell. A control still holding focus after its own click is not asking
-        // for its name, which is what :focus-visible is read for.
-        if (keyboard && !el.matches(":focus-visible"))
+        // for its name, which is what :focus-visible is read for, and it is asked of the element
+        // that TOOK the focus rather than of the trigger: a trigger may CONTAIN the focusable
+        // one (NsTooltip's host span, a chip whose close button is what Tab reaches), and a
+        // wrapper is never itself :focus-visible.
+        if (keyboard && !target.matches(":focus-visible"))
             return;
 
         closeWhisper();

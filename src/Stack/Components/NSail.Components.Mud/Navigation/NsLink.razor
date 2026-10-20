@@ -87,12 +87,16 @@ else if (As == NsAs.Inline)
         @* The bubble is what a sighted pointer user sees; a screen reader needs the same
            sentence as the element's own accessible name — the whisper's own element contributes
            no name on its own, the gap NsButton's own icon chrome already closed. *@
+        @* Ripple: a refused face answers a press with nothing, and these are the faces the
+           stylesheet hands hit testing back to — the ones that declare the bubble (the note in
+           NsButton). *@
         <MudIconButton Href="@ActiveHref"
                        Target="@BrowserTarget"
                        Icon="@(Icon?.Markup)"
                        Size="@GetSize()"
                        Color="Color.Inherit"
                        Disabled="@IsDisabled"
+                       Ripple="@(!IsDisabled)"
                        Class="@Class"
                        aria-label="@Label"
                        data-ns-whisper="@LabelWithChord"
@@ -131,6 +135,7 @@ else
                Size="@GetSize()"
                StartIcon="@(Icon?.Markup)"
                Disabled="@IsDisabled"
+               Ripple="@(!IsDisabled)"
                Class="@GetChromedClasses()"
                aria-label="@Label"
                data-ns-whisper="@LabelWithChord"

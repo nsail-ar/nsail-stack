@@ -271,6 +271,12 @@ breakpoint anyway. There is no second knob.
   footer act the emphasis ladder un-worded all whisper by the one rule, and a button with its
   word on screen whispers only the part the word does not carry (its chord). **It closes on
   leave, press, key and scroll**, which is what keeps a name off whatever a press just revealed.
+  **A refused control whispers too** — the grey pencil of a row that may not be edited, the X
+  under a frozen form: that is the face with nothing BUT the bubble to say what it is. The
+  vendor drops hit testing on a disabled control, so the stylesheet hands it back to whatever
+  declares a bubble and the refusal stays the `disabled` attribute's — which is the one the
+  browser enforces: hover reaches a refused control, a press never does. A refused face
+  therefore declares no ripple, the vendor's one answer to a press that would outlive both.
 - **A glyph that is a button is named, wherever it sits.** Not only a control the house draws:
   a vendor part the Stack configures counts too, so `NsAutocomplete` hands its end adornment a
   name (`AdornmentAriaLabel`) the way `NsActionToolbar` hands the kebab one. The test is the

@@ -25,9 +25,11 @@
     }
     else
     {
+        @* Ripple: a refused face answers a press with nothing (the note in NsButton). *@
         <MudButton Variant="Variant.Text"
                    Color="Color.Default"
                    Disabled="@ParentDisabled"
+                   Ripple="@(!ParentDisabled)"
                    OnClick="@(() => Surface.Close())"
                    Class="@Class"
                    UserAttributes="_keys">

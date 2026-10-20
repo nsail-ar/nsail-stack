@@ -17,10 +17,16 @@
 <CascadingValue Value="false" Name="ParentDisabled" IsFixed="true">
     @if (Wordless && As == NsAs.Inline)
     {
+        @* No ripple on a refused face, and this is the one place that has to say so: the
+           stylesheet gives a refused control its hit testing back so the bubble can name it
+           (ns-mud.css, A REFUSED CONTROL STILL SAYS ITS NAME), and the vendor's ripple is a
+           document-level pointerdown over whatever carries its class — the one response to a
+           press that would survive the attribute the browser refuses the press by. *@
         <MudIconButton Icon="@(Icon?.Markup)"
                        Size="@GetSize()"
                        Color="Color.Inherit"
                        Disabled="@IsDisabled"
+                       Ripple="@(!IsDisabled)"
                        OnClick="@(_ => HandleClick())"
                        Class="@Class"
                        UserAttributes="_ariaAttributes" />
@@ -33,6 +39,7 @@
                    Size="@GetSize()"
                    StartIcon="@(Icon?.Markup)"
                    Disabled="@IsDisabled"
+                   Ripple="@(!IsDisabled)"
                    OnClick="@(_ => HandleClick())"
                    Class="@GetClasses()"
                    UserAttributes="_ariaAttributes">

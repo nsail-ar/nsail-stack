@@ -181,6 +181,15 @@ by hand between the two languages. A control the caller pinned with `Breakpoint=
 the same text as one that collapses — the markup says what there WOULD be to say, and nothing
 about when.
 
+**A refused control whispers too**, and the stylesheet owes it one line: the vendor drops hit
+testing on a disabled button and on a disabled chip (`pointer-events: none`), so the pointer never
+meets the control at all and the trigger lookup walks up past it — which leaves the one face with
+nothing BUT the bubble to say what it is (a row's grey pencil, the X under a frozen form) silent.
+`[data-ns-whisper]:disabled` takes that back. It is safe because the refusal is the ATTRIBUTE's,
+not the CSS's: a disabled control receives hover and never a press, a focus or a click. The one
+response that would have outlived both is the vendor's ripple, a document-level `pointerdown` over
+whatever carries its class, so **a refused face declares no ripple**.
+
 What is left to `ns-mud.css` is the look, once (`.ns-whisper`), read from the vendor tooltip's own
 variables so the bubble is the tooltip the house always had to the eye. A render test sees the
 declaration and no more: whether the browser paints it where it should is a browser's question,

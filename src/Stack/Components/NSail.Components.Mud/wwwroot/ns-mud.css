@@ -2709,6 +2709,23 @@
     display: inline-block;
 }
 
+/* A REFUSED CONTROL STILL SAYS ITS NAME, which takes undoing one vendor concession: MudBlazor
+   drops hit testing on a disabled button and on a disabled chip (.mud-button-root:disabled,
+   .mud-chip.mud-disabled), so the pointer never meets the control at all — the hit lands on
+   the row above it and ns.js's own trigger lookup walks UP, past nothing. A wordless refusal
+   is exactly the control with nothing but the bubble to say what it is: the grey pencil of a
+   row that may not be edited, the X under a frozen form.
+
+   Safe to undo because the refusal is the ATTRIBUTE's and never this line's — measured in
+   Chromium on this markup: with hit testing back, a disabled control receives pointerenter
+   and pointerleave and NOT mousedown, mouseup, click or focus, and neither its hover nor its
+   active paint moves. The press the vendor was covering is the ripple, which reads the class
+   it is given: a refused face declares none (NsButton, NsLink, NsSubmit, NsClose). */
+[data-ns-whisper]:disabled,
+[data-ns-whisper].mud-disabled {
+    pointer-events: auto;
+}
+
 /* A FOOTER ACT NEVER GIVES UP ITS CONTENT WIDTH — the row WRAPS, the same answer the title row
    and the toolbar row above it give (NsTitleBar, NsToolBar). A row that cannot wrap has only
    flex-shrink left when the acts outgrow the width, and a shrunk worded button breaks its own
@@ -3545,7 +3562,7 @@
     overflow: hidden;
 }
 
-/* Below MudBlazor's own sm breakpoint (the same 599.98px CollapsedLabelWhisperTests and the
+/* Below MudBlazor's own sm breakpoint (the same 599.98px the button collapse and the
    dashboard grid above already use) a dialog is full screen and the Size steps stop
    mattering, same as every other surface's own mobile degradation (surfaces.md, the aside
    below its docking breakpoint). Square corners: a rounded box that exactly fills the
