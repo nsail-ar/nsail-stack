@@ -759,9 +759,15 @@
     // "manual", never "auto": an auto popover joins the browser's own light-dismiss stack, and
     // opening one closes every auto popover that is not its ancestor -- a bubble naming a button
     // inside an open menu would take the menu down with it.
+    //
+    // isConnected and not merely "have I built one": the box is appended to the BODY, and a body
+    // the router replaced wholesale takes it with it. showPopover on a detached element throws,
+    // so the question is asked every time rather than once at startup.
     function whisperBox() {
-        if (whisperBubble)
+        if (whisperBubble && whisperBubble.isConnected)
             return whisperBubble;
+
+        whisperBubble = null;
 
         whisperBubble = document.createElement("div");
         whisperBubble.className = "ns-whisper";
@@ -827,7 +833,10 @@
 
         if (whisperBubble.classList.contains("ns-whisper-shown")) {
             whisperBubble.classList.remove("ns-whisper-shown");
-            whisperBubble.hidePopover();
+
+            if (whisperBubble.isConnected) {
+                whisperBubble.hidePopover();
+            }
         }
     }
 
