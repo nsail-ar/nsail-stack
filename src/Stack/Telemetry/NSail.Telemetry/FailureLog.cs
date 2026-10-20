@@ -5,8 +5,9 @@ namespace NSail.Telemetry;
 
 /// <summary>Reads back out of the store the install's telemetry lands in the operations that
 /// did not succeed. What it can answer with is what <see cref="MessageSpan"/> writes — an
-/// operation name, a code, an exception's type and a trace id — so there is no value a
-/// message carried for it to return and nothing for a caller to scrub. An install whose
+/// operation name, a refusal's code and the rule it named, an exception's type and a trace
+/// id — so there is no value a message carried for it to return and nothing for a caller to
+/// scrub. An install whose
 /// store was handed no read credential registers no implementation at all, which is why
 /// every caller resolves it as optional and says so in its own words.</summary>
 public interface IFailureLog

@@ -92,29 +92,60 @@ public sealed class OpenObserveFailureLog : IFailureLog
         return tag.Replace('.', '_');
     }
 
-    // A traces stream is counted in microseconds, both in the bounds a search is given and in
-    // the column it answers with.
+    // A traces stream is counted in microseconds, which is what the bounds a search is given
+    // are written in.
     static long Microseconds(DateTimeOffset moment)
     {
         return moment.ToUnixTimeMilliseconds() * 1000;
     }
 
-    static DateTimeOffset At(long microseconds)
+    // What the stream answers WITH is not assumed, though, because the unit is the one thing
+    // about this store no build can check and getting it wrong is worse than crashing: a list
+    // whose order and whose whole bound are by WHEN would carry invented dates — every failure
+    // around 1970 if the column turned out to be milliseconds, and an exception out of
+    // FromUnixTime* if it turned out to be the nanoseconds OTLP itself counts in. So it is
+    // derived per row: the four candidate units sit three orders of magnitude apart, so any
+    // instant this door can be asked about falls inside the window in exactly one of them. A
+    // value in none is a time this reader cannot read, and its row is dropped like a row that
+    // carried no time at all.
+    static readonly long[] _units = [1_000_000_000, 1_000_000, 1_000, 1];
+
+    // 2001-09-09 to 2096-10-02, in seconds. Wide enough that no install's clock argues with
+    // it, narrow enough that the four bands stay disjoint.
+    const long Earliest = 1_000_000_000;
+
+    const long Latest = 4_000_000_000;
+
+    static DateTimeOffset? At(long stamp)
     {
-        return DateTimeOffset.FromUnixTimeMilliseconds(microseconds / 1000);
+        foreach (var unit in _units)
+        {
+            var seconds = stamp / unit;
+
+            if (seconds < Earliest || seconds > Latest)
+            {
+                continue;
+            }
+
+            // Never a multiplication that could overflow: a value whose seconds are in the
+            // window is at most Latest, so the one unit that multiplies stays well inside.
+            return DateTimeOffset.FromUnixTimeMilliseconds(unit >= 1_000 ? stamp / (unit / 1_000) : stamp * 1_000);
+        }
+
+        return null;
     }
 
-    // A hit with no readable timestamp is dropped rather than dated: At(0) is 1970 and would
-    // file the failure as the oldest entry in a list whose whole order is by when.
+    // A hit with no readable timestamp is dropped rather than dated: a made-up date would file
+    // the failure as the oldest entry in a list whose whole order is by when.
     static LoggedFailure? Failure(Dictionary<string, JsonElement> hit)
     {
-        if (Number(hit, TimeColumn) is not { } microseconds)
+        if (Number(hit, TimeColumn) is not { } stamp || At(stamp) is not { } at)
         {
             return null;
         }
 
         return new LoggedFailure(
-            At(microseconds),
+            at,
             Text(hit, NameColumn) ?? string.Empty,
             Text(hit, Column(MessageSpan.ProblemTag)),
             Text(hit, Column(MessageSpan.RuleTag)),

@@ -172,10 +172,34 @@ public sealed class FailureLogTests
     // is not a number. TryGetInt64 throws rather than answering false for either, and a hit
     // with no readable timestamp has no place in a list ordered by when: it is dropped, not
     // dated 1970.
+    // The stream's unit is the one thing about this store no build can check, so it is derived
+    // per row rather than assumed: the same instant written in seconds, milliseconds,
+    // microseconds or nanoseconds reads as the same instant. Nanoseconds is OTLP's own unit
+    // and used to be an ArgumentOutOfRangeException out of this reader; milliseconds and
+    // seconds used to be a failure dated 1970, which is worse, because order and the bound
+    // are both by when.
+    [Theory]
+    [InlineData(1_760_000_000L)]
+    [InlineData(1_760_000_000_000L)]
+    [InlineData(1_760_000_000_000_000L)]
+    [InlineData(1_760_000_000_000_000_000L)]
+    public async Task The_streams_time_unit_is_derived_and_not_assumed(long stamp)
+    {
+        var body = $"{{\"hits\":[{{\"start_time\":{stamp},\"span_name\":\"Sales.Boxes.CloseBox\"}}]}}";
+
+        using var store = new Store(HttpStatusCode.OK, body);
+
+        var failure = Assert.Single(await Read(store, new FailureLogQuery(Guid.NewGuid(), DateTimeOffset.UtcNow.AddHours(-24), 20)));
+
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1_760_000_000), failure.At);
+    }
+
     [Theory]
     [InlineData("\"1760000000000000\"")]
     [InlineData("null")]
     [InlineData("{}")]
+    [InlineData("0")]
+    [InlineData("9223372036854775807")]
     public async Task A_hit_with_no_readable_time_is_dropped(string time)
     {
         var body = $"{{\"hits\":[{{\"start_time\":{time},\"span_name\":\"Sales.Boxes.CloseBox\"}}]}}";

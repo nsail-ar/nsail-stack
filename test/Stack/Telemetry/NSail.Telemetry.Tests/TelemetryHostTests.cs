@@ -39,7 +39,7 @@ public sealed class TelemetryHostTests
     // one says it cannot answer. Registered instead, its SearchUri() would throw
     // ArgumentException on a missing endpoint, which is not a sentence anybody can read.
     [Fact]
-    public void A_host_with_no_read_credential_resolves_no_failure_log()
+    public void A_host_with_neither_read_endpoint_nor_read_credential_resolves_no_failure_log()
     {
         using var app = Harness.Host(credentialed: true);
 

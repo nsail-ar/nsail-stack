@@ -86,6 +86,39 @@ public sealed class TelemetryOptionsTests
         Assert.Equal("optical_lumina_test", new TelemetryOptions { Tenant = "optical_lumina_test" }.TenantOrHost());
     }
 
+    // Both halves, each on its own: an install may be handed an address with no credential for
+    // it, or a credential for an address it was never told.
+    [Theory]
+    [InlineData(null, null, false)]
+    [InlineData("https://store.invalid", null, false)]
+    [InlineData(null, "Basic cmVhZDpvbmx5", false)]
+    [InlineData("https://store.invalid", "Basic cmVhZDpvbmx5", true)]
+    public void The_spans_are_searchable_only_with_both_an_address_and_a_credential(
+        string? endpoint,
+        string? credential,
+        bool searchable)
+    {
+        var options = new TelemetryOptions { SearchEndpoint = endpoint, SearchAuthorization = credential };
+
+        Assert.Equal(searchable, options.CanSearch);
+    }
+
+    // Defaulted, because an install that renamed neither its organization nor its stream says
+    // nothing — and the signal is NAMED, because the store's own default is the logs and this
+    // host exports both.
+    [Fact]
+    public void A_search_names_the_organization_the_stream_and_the_signal()
+    {
+        var options = new TelemetryOptions { SearchEndpoint = "https://store.invalid/" };
+
+        Assert.Equal(new Uri("https://store.invalid/api/default/_search?type=traces"), options.SearchUri());
+
+        options.SearchOrganization = "lumina";
+        options.SearchStreamType = "logs";
+
+        Assert.Equal(new Uri("https://store.invalid/api/lumina/_search?type=logs"), options.SearchUri());
+    }
+
     static TelemetryOptions Load(Dictionary<string, string?> values)
     {
         return new ConfigurationBuilder().AddInMemoryCollection(values).Build().Load<TelemetryOptions>();
