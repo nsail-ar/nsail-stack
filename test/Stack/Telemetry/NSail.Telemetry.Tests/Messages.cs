@@ -15,6 +15,8 @@ public sealed record ArchivePatient(Guid Id) : IMessage;
 
 public sealed record RefusedPatient : IMessage;
 
+public sealed record CrashedPatient : IMessage;
+
 public sealed class CreatePatientHandler : IHandler<CreatePatient, Guid>
 {
     public Func<Task>? Nested { get; set; }
@@ -39,6 +41,14 @@ public sealed class ArchivePatientHandler : IHandler<ArchivePatient>
         OnHandle?.Invoke();
 
         return Task.CompletedTask;
+    }
+}
+
+public sealed class CrashedPatientHandler : IHandler<CrashedPatient>
+{
+    public Task Handle(CrashedPatient message, CancellationToken cancellationToken)
+    {
+        throw new InvalidOperationException("Juan Perez has no record");
     }
 }
 

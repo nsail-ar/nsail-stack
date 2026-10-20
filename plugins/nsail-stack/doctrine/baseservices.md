@@ -166,7 +166,8 @@ interceptors, so a publish is a span for free.
     "Endpoint": "COLLECTOR_BASE_URL",
     "InstanceId": "INSTANCE_ID",
     "Tenant": "INSTALL_SLUG",
-    "SamplingRatio": 1
+    "SamplingRatio": 1,
+    "SearchEndpoint": "STORE_BASE_URL"
   }
 }
 ```
@@ -193,6 +194,9 @@ The live values are the operations ledger's (nsail-ops `providers/grafana.md`).
   registered, so the `ActivitySource` has no listener and costs a `HasListeners` check. A
   dev machine and CI are silent by having no variable, never by a branch. The Mediator
   interceptor is registered either way — the pipeline's shape does not move with config.
+- **`SearchEndpoint`** and **`NSAIL_OBSERVE_READ`** are the read side, below. They are not
+  the two above: ingest is a gateway and a search is an API, and an install is routinely
+  allowed to post where it may not query.
 
 **Resource attributes are the backend's filters, so they are not free to invent**:
 `service.name` (the product, derived from the host assembly — `NSail.Optical.Web` binds
@@ -201,9 +205,11 @@ Area `Optical`), `service.namespace` = `nsail`, `deployment.environment`, `nsail
 
 **No personal data reaches telemetry — ids, timings and codes only.** This is shape, not
 discipline. NSail's own span never reads a message's members: it carries `nsail.outcome`
-(`ok`/`refused`/`failed`) and, on a refusal, `nsail.problem` — the Problem's **Code**, never
-its Title, and no `RecordException` and no status description, either of which could quote
-the value that caused the refusal. For code NSail did not write, `Scrubber` is a span
+(`ok`/`refused`/`failed`), `nsail.user` (who asked), and, to say how it ended,
+`nsail.problem` on a refusal — the Problem's **Code**, never its Title — or `nsail.failure`
+on a crash, the exception's type. No `RecordException` and no status description, either of
+which could quote the value that caused the refusal, and no exception message, which opens
+every rendered stack. For code NSail did not write, `Scrubber` is a span
 processor that drops `url.query`, `db.statement`, `db.query.text` and every
 `db.query.parameter.*`, and cuts the query string off `url.full`. A processor rather than
 vendor options on purpose: an instrumentation option can be removed or renamed by the next
@@ -234,6 +240,32 @@ runner's three failure modes are logged for the console and counted for Grafana,
 are written against the counts. Cardinality bound: a metric attribute is a series per
 distinct value, so a job name, an outcome and a tenant slug are fine; a person, an item or an
 exception message never are.
+
+**`nsail.user` is a span attribute and never a metric's**, and that is the whole of the
+no-person-id rule: a metric attribute is one series per distinct value, so a person's id
+multiplies the backend's cardinality without bound, while a span is a row that already
+exists and carries one more opaque id. What it buys is the only thing it is for — the
+question "why did *my* last action fail" has no answer that is only the asker's unless the
+store can be searched by who asked.
+
+**The spans can be read back, and `IFailureLog` is the whole of it.** One method, one query
+shape: one person's own failures, since a moment, at most N, newest first. What it answers
+with is what the span carries — the operation's name, a code or an exception's type, the
+`traceId` and when — so a caller has nothing to scrub and no way to be handed a value a
+message carried. `OpenObserveFailureLog` is the one implementation and the only place the
+store's vendor is named: its columns are the span's own tags with the dots flattened,
+derived from the tag constants rather than written again, so renaming a tag cannot leave the
+query reading a column nobody writes.
+
+- **The user is not optional in the query.** A door that could ask for everybody's failures
+  is a different read under a different permission; leaving the filter out of the seam is
+  what keeps that door from being opened by accident.
+- **Registered only where `TelemetryOptions.CanSearch`** — a `SearchEndpoint` and a
+  `NSAIL_OBSERVE_READ` credential, independent of the exporter's. An install with neither
+  has no `IFailureLog` at all, so **every caller resolves it as optional** and says in its
+  own words that it cannot answer. A store that then refuses, times out or answers something
+  that is not a search result is one `FailureLogException`, whose message is never the
+  store's own: there is nothing different a caller could do about any of them.
 
 ### Install verbs: backup and restore
 

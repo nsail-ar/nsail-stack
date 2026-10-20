@@ -3,12 +3,14 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NSail.Background;
 using NSail.Configuration;
 using NSail.Messaging.Runtime.Pipelines;
 using NSail.Metadata;
+using NSail.Security;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
@@ -37,7 +39,8 @@ public static class Setup
     /// logs carry the trace's own traceId. The Mediator span is registered whatever the
     /// configuration says — an ActivitySource nobody listens to allocates nothing — and the
     /// exporter is registered only once a credential exists, so an install with none
-    /// collects nothing and sends nothing.</summary>
+    /// collects nothing and sends nothing. Reading the spans BACK is its own credential and
+    /// its own registration (<see cref="IFailureLog"/>).</summary>
     public static void AddTelemetry(this WebApplicationBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -45,11 +48,26 @@ public static class Setup
         var options = builder.Configuration.Load<TelemetryOptions>();
 
         options.Authorization = Environment.GetEnvironmentVariable(TelemetryOptions.AuthorizationVariable);
+        options.SearchAuthorization = Environment.GetEnvironmentVariable(TelemetryOptions.SearchVariable);
 
         builder.Services.AddMetadata();
         builder.Services.AddSingleton(options);
+
+        // The span names the acting user, so the interceptor reads the ambient Session. TryAdd
+        // and not Add because this runs before AddSecurity and before the install's own
+        // provider, either of which has to win over this default.
+        builder.Services.TryAddScoped<SessionProvider>();
+
         builder.Services.AddScoped(typeof(IInterceptor<>), typeof(TelemetryInterceptor<>));
         builder.Services.AddScoped(typeof(IInterceptor<,>), typeof(TelemetryInterceptor<,>));
+
+        // The reader hangs off its own credential, not the exporter's: an install may post
+        // telemetry to a store it is not allowed to query back, and a door that would have
+        // read it finds no IFailureLog and says so in its own words.
+        if (options.CanSearch)
+        {
+            builder.Services.AddHttpClient<IFailureLog, OpenObserveFailureLog>();
+        }
 
         if (!options.IsInForce)
         {

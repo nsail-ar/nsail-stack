@@ -6,6 +6,7 @@ using NSail.Consulting.Patients;
 using NSail.Messaging;
 using NSail.Metadata;
 using NSail.Problems;
+using NSail.Security;
 
 namespace NSail.Telemetry.Tests;
 
@@ -80,15 +81,77 @@ public sealed class MessageSpanTests
         Assert.Equal(RefusedPatientHandler.Code, span.GetTagItem(MessageSpan.ProblemTag));
     }
 
+    [Fact]
+    public async Task A_crash_is_the_exceptions_type_and_no_code()
+    {
+        using var recorder = new SpanRecorder();
+        using var app = Harness.Host(credentialed: false);
+
+        await using var scope = app.Services.CreateAsyncScope();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            Harness.Mediator(scope.ServiceProvider).Send(new CrashedPatient()));
+
+        var span = Assert.Single(recorder.Stopped);
+
+        Assert.Equal(MessageSpan.Failed, span.GetTagItem(MessageSpan.OutcomeTag));
+        Assert.Equal(typeof(InvalidOperationException).FullName, span.GetTagItem(MessageSpan.FailureTag));
+        Assert.Null(span.GetTagItem(MessageSpan.ProblemTag));
+    }
+
+    // The tag the failure log is searched by: without it, "why did MY last action fail" has
+    // no answer that is only the asker's.
+    [Fact]
+    public async Task A_send_names_the_acting_user()
+    {
+        var user = Guid.NewGuid();
+
+        using var recorder = new SpanRecorder();
+        using var app = Harness.Host(credentialed: false, services =>
+        {
+            services.AddSingleton<IHandler<CreatePatient, Guid>>(new CreatePatientHandler());
+        });
+
+        await using var scope = app.Services.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<SessionProvider>().Session = new Session
+        {
+            IsAuthenticated = true,
+            UserId = user,
+        };
+
+        await Harness.Mediator(scope.ServiceProvider).Send(new CreatePatient("Juan Perez", "20123456789", "no notes"));
+
+        Assert.Equal(user, Assert.Single(recorder.Stopped).GetTagItem(MessageSpan.UserTag));
+    }
+
+    // Absent and not empty: a search for one person's own operations must not match the ones
+    // that were nobody's.
+    [Fact]
+    public async Task An_anonymous_send_names_nobody()
+    {
+        using var recorder = new SpanRecorder();
+        using var app = Harness.Host(credentialed: false, services =>
+        {
+            services.AddSingleton<IHandler<CreatePatient, Guid>>(new CreatePatientHandler());
+        });
+
+        await using var scope = app.Services.CreateAsyncScope();
+
+        await Harness.Mediator(scope.ServiceProvider).Send(new CreatePatient("Juan Perez", "20123456789", "no notes"));
+
+        Assert.Null(Assert.Single(recorder.Stopped).GetTagItem(MessageSpan.UserTag));
+    }
+
     // With nobody listening — every host that was handed no credential — the seam costs one
     // HasListeners check and does not even render the name.
     [Fact]
     public void Nothing_is_opened_when_nothing_listens()
     {
-        Assert.Null(MessageSpan.Start(new MetadataProvider(), typeof(CreatePatient)));
+        Assert.Null(MessageSpan.Start(new MetadataProvider(), typeof(CreatePatient), null));
 
         using var recorder = new SpanRecorder();
-        using var opened = MessageSpan.Start(new MetadataProvider(), typeof(CreatePatient));
+        using var opened = MessageSpan.Start(new MetadataProvider(), typeof(CreatePatient), null);
 
         Assert.NotNull(opened);
     }

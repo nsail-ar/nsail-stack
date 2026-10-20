@@ -23,6 +23,9 @@
 		<ProjectReference Include="..\..\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
 		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
 		<ProjectReference Include="..\..\Metadata\NSail.Metadata\NSail.Metadata.csproj" />
+		<!-- The span names the acting user, which only the ambient Session knows. The arrow
+		     points this way because the gate does not run on every host and the span does. -->
+		<ProjectReference Include="..\..\Security\NSail.Security\NSail.Security.csproj" />
 	</ItemGroup>
 
 </Project>
