@@ -166,7 +166,8 @@ interceptors, so a publish is a span for free.
     "Endpoint": "COLLECTOR_BASE_URL",
     "InstanceId": "INSTANCE_ID",
     "Tenant": "INSTALL_SLUG",
-    "SamplingRatio": 1
+    "SamplingRatio": 1,
+    "SearchEndpoint": "STORE_BASE_URL"
   }
 }
 ```
@@ -193,6 +194,12 @@ The live values are the operations ledger's (nsail-ops `providers/grafana.md`).
   registered, so the `ActivitySource` has no listener and costs a `HasListeners` check. A
   dev machine and CI are silent by having no variable, never by a branch. The Mediator
   interceptor is registered either way — the pipeline's shape does not move with config.
+- **`SearchEndpoint`**, **`SearchOrganization`**, **`SearchStream`**, **`SearchStreamType`**
+  and **`NSAIL_OBSERVE_READ`** are the read side, below. The endpoint is not `Endpoint`:
+  ingest is a gateway and a search is an API, and an install is routinely allowed to post
+  where it may not query. The other three are the store's own words for where the spans
+  landed and which signal they are — defaulted (`default`, `default`, `traces`), and set only
+  by an install that renamed one.
 
 **Resource attributes are the backend's filters, so they are not free to invent**:
 `service.name` (the product, derived from the host assembly — `NSail.Optical.Web` binds
@@ -201,9 +208,17 @@ Area `Optical`), `service.namespace` = `nsail`, `deployment.environment`, `nsail
 
 **No personal data reaches telemetry — ids, timings and codes only.** This is shape, not
 discipline. NSail's own span never reads a message's members: it carries `nsail.outcome`
-(`ok`/`refused`/`failed`) and, on a refusal, `nsail.problem` — the Problem's **Code**, never
-its Title, and no `RecordException` and no status description, either of which could quote
-the value that caused the refusal. For code NSail did not write, `Scrubber` is a span
+(`ok`/`refused`/`failed`), `nsail.user` (who asked), and, to say how it ended,
+`nsail.problem` on a refusal — the Problem's **Code**, never its Title — plus `nsail.rule`,
+the key that refusal's own sentence lives at, or `nsail.failure` on a crash, the exception's
+type. **`nsail.rule` exists because the code cannot tell two rules apart**: every rule of the
+house refuses under the one Problem code `RuleViolation` and names itself on the issue, so the
+tag carries the first issue's code narrowed by its source — `StringManager`'s own two keys for
+a refusal, joined, so a reader looks the sentence up without knowing how it was split. Both
+halves are written by the source (a rule's name, a field's, an entity's); the issue's
+**message**, the one part free to quote the value that caused the refusal, stays out — and so
+does the exception's, which opens every rendered stack. No `RecordException` and no status
+description either. For code NSail did not write, `Scrubber` is a span
 processor that drops `url.query`, `db.statement`, `db.query.text` and every
 `db.query.parameter.*`, and cuts the query string off `url.full`. A processor rather than
 vendor options on purpose: an instrumentation option can be removed or renamed by the next
@@ -234,6 +249,51 @@ runner's three failure modes are logged for the console and counted for Grafana,
 are written against the counts. Cardinality bound: a metric attribute is a series per
 distinct value, so a job name, an outcome and a tenant slug are fine; a person, an item or an
 exception message never are.
+
+**`nsail.user` is a span attribute and never a metric's**, and that is the whole of the
+no-person-id rule: a metric attribute is one series per distinct value, so a person's id
+multiplies the backend's cardinality without bound, while a span is a row that already
+exists and carries one more opaque id. What it buys is the only thing it is for — the
+question "why did *my* last action fail" has no answer that is only the asker's unless the
+store can be searched by who asked.
+
+**The spans can be read back, and `IFailureLog` is the whole of it.** One method, one query
+shape: one person's own failures, since a moment, at most N, newest first. What it answers
+with is what the span carries — the operation's name, the refusal's code and the rule it
+named, or the exception's type, plus the `traceId` and when — so a caller has nothing to
+scrub and no way to be handed a value a message carried. `OpenObserveFailureLog` is the one
+implementation and the only place the store's vendor is named: its columns are the span's own
+tags with the dots flattened, derived from the tag constants rather than written again, so
+renaming a tag cannot leave the query reading a column nobody writes.
+
+- **The user is not optional in the query.** A door that could ask for everybody's failures
+  is a different read under a different permission; leaving the filter out of the seam is
+  what keeps that door from being opened by accident. **Which** user, though, is the
+  caller's own business: the seam takes a `Guid` and cannot check whose it is, so a door that
+  answers one person about themselves pins it to the acting Session and the seam's shape only
+  stops it from being forgotten.
+- **Registered only where `TelemetryOptions.CanSearch`** — a `SearchEndpoint` and a
+  `NSAIL_OBSERVE_READ` credential, independent of the exporter's. An install with neither
+  has no `IFailureLog` at all, so **every caller resolves it as optional** and says in its
+  own words that it cannot answer. A store that then refuses, times out, answers something
+  that is not a search result, or answers rows of which this reader can read **none**, is one
+  `FailureLogException`, whose message is never the store's own: there is nothing different a
+  caller could do about any of them. One unreadable row among readable ones is dropped instead
+  — a single row the store wrote oddly is not an outage — but a response that brought rows and
+  yielded none is, because the empty list it would otherwise answer with reads as "you have no
+  recent failures" for as long as nobody looks. That is also why the body is read as text and
+  deserialized rather than through `ReadFromJsonAsync`, which validates the media type first
+  and raises a different exception for a store answering `200 text/html`.
+- **The row's time unit is derived, not assumed.** Which unit the stream counts in is the one
+  thing about a store no build can check, and assuming it is worse than crashing: a list whose
+  order and whose whole bound are by *when* would carry invented dates. The four candidates sit
+  three orders of magnitude apart, so any instant this door can be asked about falls inside the
+  window in exactly one of them; a value in none is a row this reader cannot read, and it is
+  dropped — or, if it was the whole response, raised (above).
+- **The search names its signal.** The store's own default is the logs, and a host that
+  exports both has a stream of that name under each, so `SearchStreamType` (`traces`) rides
+  the query — a missing parameter would read the wrong stream and answer zero rows, which is
+  worse than an error because it reads as "you have no recent failures".
 
 ### Install verbs: backup and restore
 

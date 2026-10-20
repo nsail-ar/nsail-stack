@@ -6,7 +6,8 @@ using NSail.Metadata;
 
 namespace NSail.Telemetry;
 
-/// <summary>Where telemetry goes and how much of it goes there, bound from the "Telemetry"
+/// <summary>Where telemetry goes, how much of it goes there and where it can be read back
+/// from, bound from the "Telemetry"
 /// section. Endpoint, tenant and sampling are ordinary configuration and travel in
 /// appsettings — one collector serves every product and environment, and those are told
 /// apart by the resource attributes, not by a URL. The credential does not travel with
@@ -19,7 +20,31 @@ public sealed class TelemetryOptions
 {
     public const string AuthorizationVariable = "NSAIL_OTLP_AUTH";
 
+    /// <summary>The store's READ credential, pre-composed like the write one and separate
+    /// from it: what ingests telemetry is not what may query it back, and an install is
+    /// routinely handed one and not the other.</summary>
+    public const string SearchVariable = "NSAIL_OBSERVE_READ";
+
     public string? Endpoint { get; set; }
+
+    /// <summary>The store's own base URL, where the spans can be read BACK — a different
+    /// address from <see cref="Endpoint"/>, which is wherever the install posts OTLP, and a
+    /// different shape: ingest is a gateway and a search is an API. Absent on an install
+    /// whose telemetry nothing reads back.</summary>
+    public string? SearchEndpoint { get; set; }
+
+    /// <summary>The store's organization and stream, which are its own words for where the
+    /// spans landed and not NSail's: an install that renamed either says so here instead of
+    /// being hardcoded into a query.</summary>
+    public string SearchOrganization { get; set; } = "default";
+
+    public string SearchStream { get; set; } = "default";
+
+    /// <summary>Which of the install's signals is being searched. Stated rather than left to
+    /// the store's own default, which is the logs: this host exports logs AND traces, so a
+    /// stream named "default" exists in both and the name alone does not say which one a
+    /// search means. The failures are spans, so traces.</summary>
+    public string SearchStreamType { get; set; } = "traces";
 
     /// <summary>The collector's own account number, carried so a human debugging the
     /// section can read it. Nothing sends it: the backend identifies the install by the
@@ -40,11 +65,26 @@ public sealed class TelemetryOptions
     /// cannot win and cannot be persisted by accident.</summary>
     public string? Authorization { get; set; }
 
+    /// <summary>Read from <see cref="SearchVariable"/> the way <see cref="Authorization"/>
+    /// is read from its own, and for the same reason.</summary>
+    public string? SearchAuthorization { get; set; }
+
     public bool IsInForce
     {
         get
         {
             return !string.IsNullOrWhiteSpace(Endpoint) && !string.IsNullOrWhiteSpace(Authorization);
+        }
+    }
+
+    /// <summary>Whether the spans can be read back. Independent of <see cref="IsInForce"/>:
+    /// a cell that exports to a store it may not query registers no reader, and the door
+    /// that would have used one says it cannot answer instead of answering wrongly.</summary>
+    public bool CanSearch
+    {
+        get
+        {
+            return !string.IsNullOrWhiteSpace(SearchEndpoint) && !string.IsNullOrWhiteSpace(SearchAuthorization);
         }
     }
 
@@ -80,5 +120,14 @@ public sealed class TelemetryOptions
         ArgumentException.ThrowIfNullOrWhiteSpace(Endpoint);
 
         return new Uri($"{Endpoint.TrimEnd('/')}/v1/{signal}");
+    }
+
+    /// <summary>Where a search is posted: the store's own API under the install's
+    /// organization, naming the signal it is a search of.</summary>
+    public Uri SearchUri()
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(SearchEndpoint);
+
+        return new Uri($"{SearchEndpoint.TrimEnd('/')}/api/{SearchOrganization}/_search?type={SearchStreamType}");
     }
 }

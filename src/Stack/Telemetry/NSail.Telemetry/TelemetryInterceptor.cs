@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.Extensions.DependencyInjection;
 using NSail.Messaging;
 using NSail.Messaging.Runtime.Pipelines;
 using NSail.Metadata;
+using NSail.Security;
 
 namespace NSail.Telemetry;
 
@@ -12,22 +14,31 @@ namespace NSail.Telemetry;
 /// child. Registered by AddTelemetry, which runs before any kit's AddSecurityEnforcement,
 /// so it wraps the gate too and a refusal is a recorded outcome rather than a hole.
 /// It does not wrap the unit of work: interceptors are built from the scope IAmbientSender
-/// opens, so the transaction's COMMIT closes after the span does.</summary>
+/// opens, so the transaction's COMMIT closes after the span does. The acting Session is read
+/// here because this is the link that runs for every send on every host: the gate's own is
+/// registered only where enforcement is. It is RESOLVED and never registered — telemetry does
+/// not get a say in who provides the session, and a host that composed no security at all has
+/// nobody to name (TicketEpochMiddleware reads it the same way).</summary>
 public sealed class TelemetryInterceptor<TMessage> : IInterceptor<TMessage>
     where TMessage : IMessage
 {
     readonly MetadataProvider _metadata;
 
-    public TelemetryInterceptor(MetadataProvider metadata)
+    readonly SessionProvider? _sessions;
+
+    public TelemetryInterceptor(MetadataProvider metadata, IServiceProvider services)
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         _metadata = metadata;
+        _sessions = services.GetService<SessionProvider>();
     }
 
     public async Task Invoke(TMessage message, PipelineDelegate<TMessage> next, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(next);
 
-        using var activity = MessageSpan.Start(_metadata, typeof(TMessage));
+        using var activity = MessageSpan.Start(_metadata, typeof(TMessage), _sessions?.Session.UserId);
 
         try
         {
@@ -48,16 +59,21 @@ public sealed class TelemetryInterceptor<TMessage, TResult> : IInterceptor<TMess
 {
     readonly MetadataProvider _metadata;
 
-    public TelemetryInterceptor(MetadataProvider metadata)
+    readonly SessionProvider? _sessions;
+
+    public TelemetryInterceptor(MetadataProvider metadata, IServiceProvider services)
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         _metadata = metadata;
+        _sessions = services.GetService<SessionProvider>();
     }
 
     public async Task<TResult> Invoke(TMessage message, PipelineDelegate<TMessage, TResult> next, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(next);
 
-        using var activity = MessageSpan.Start(_metadata, typeof(TMessage));
+        using var activity = MessageSpan.Start(_metadata, typeof(TMessage), _sessions?.Session.UserId);
         TResult result;
 
         try

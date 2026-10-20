@@ -115,5 +115,9 @@ public static class Harness
         services.AddScoped<ISender<ArchivePatient>, InProcessSender<ArchivePatient>>();
         services.AddScoped<ISender<RefusedPatient>, InProcessSender<RefusedPatient>>();
         services.AddSingleton<IHandler<RefusedPatient>, RefusedPatientHandler>();
+        services.AddScoped<ISender<RuledPatient>, InProcessSender<RuledPatient>>();
+        services.AddSingleton<IHandler<RuledPatient>, RuledPatientHandler>();
+        services.AddScoped<ISender<CrashedPatient>, InProcessSender<CrashedPatient>>();
+        services.AddSingleton<IHandler<CrashedPatient>, CrashedPatientHandler>();
     }
 }

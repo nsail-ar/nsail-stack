@@ -37,7 +37,8 @@ public static class Setup
     /// logs carry the trace's own traceId. The Mediator span is registered whatever the
     /// configuration says — an ActivitySource nobody listens to allocates nothing — and the
     /// exporter is registered only once a credential exists, so an install with none
-    /// collects nothing and sends nothing.</summary>
+    /// collects nothing and sends nothing. Reading the spans BACK is its own credential and
+    /// its own registration (<see cref="IFailureLog"/>).</summary>
     public static void AddTelemetry(this WebApplicationBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -45,11 +46,21 @@ public static class Setup
         var options = builder.Configuration.Load<TelemetryOptions>();
 
         options.Authorization = Environment.GetEnvironmentVariable(TelemetryOptions.AuthorizationVariable);
+        options.SearchAuthorization = Environment.GetEnvironmentVariable(TelemetryOptions.SearchVariable);
 
         builder.Services.AddMetadata();
         builder.Services.AddSingleton(options);
+
         builder.Services.AddScoped(typeof(IInterceptor<>), typeof(TelemetryInterceptor<>));
         builder.Services.AddScoped(typeof(IInterceptor<,>), typeof(TelemetryInterceptor<,>));
+
+        // The reader hangs off its own credential, not the exporter's: an install may post
+        // telemetry to a store it is not allowed to query back, and a door that would have
+        // read it finds no IFailureLog and says so in its own words.
+        if (options.CanSearch)
+        {
+            builder.Services.AddHttpClient<IFailureLog, OpenObserveFailureLog>();
+        }
 
         if (!options.IsInForce)
         {

@@ -15,6 +15,10 @@ public sealed record ArchivePatient(Guid Id) : IMessage;
 
 public sealed record RefusedPatient : IMessage;
 
+public sealed record CrashedPatient : IMessage;
+
+public sealed record RuledPatient : IMessage;
+
 public sealed class CreatePatientHandler : IHandler<CreatePatient, Guid>
 {
     public Func<Task>? Nested { get; set; }
@@ -42,6 +46,14 @@ public sealed class ArchivePatientHandler : IHandler<ArchivePatient>
     }
 }
 
+public sealed class CrashedPatientHandler : IHandler<CrashedPatient>
+{
+    public Task Handle(CrashedPatient message, CancellationToken cancellationToken)
+    {
+        throw new InvalidOperationException("Juan Perez has no record");
+    }
+}
+
 public sealed class RefusedPatientHandler : IHandler<RefusedPatient>
 {
     public const string Code = "PatientRefused";
@@ -49,5 +61,18 @@ public sealed class RefusedPatientHandler : IHandler<RefusedPatient>
     public Task Handle(RefusedPatient message, CancellationToken cancellationToken)
     {
         throw new BusinessException(new Problem(Code, "Juan Perez may not be archived", []));
+    }
+}
+
+// The shape every rule of the house refuses in: one Problem code for the whole family and the
+// rule's own name on the issue, which is what the span has to carry for a reader to tell two
+// rules apart.
+public sealed class RuledPatientHandler : IHandler<RuledPatient>
+{
+    public const string Rule = "PatientIsArchived";
+
+    public Task Handle(RuledPatient message, CancellationToken cancellationToken)
+    {
+        throw new BusinessException(BusinessProblem.RuleViolation(Rule, "Juan Perez is archived"));
     }
 }
