@@ -276,9 +276,12 @@ renaming a tag cannot leave the query reading a column nobody writes.
   `NSAIL_OBSERVE_READ` credential, independent of the exporter's. An install with neither
   has no `IFailureLog` at all, so **every caller resolves it as optional** and says in its
   own words that it cannot answer. A store that then refuses, times out, answers something
-  that is not a search result, or answers a row this reader cannot read, is one
+  that is not a search result, or answers rows of which this reader can read **none**, is one
   `FailureLogException`, whose message is never the store's own: there is nothing different a
-  caller could do about any of them. That is also why the body is read as text and
+  caller could do about any of them. One unreadable row among readable ones is dropped instead
+  — a single row the store wrote oddly is not an outage — but a response that brought rows and
+  yielded none is, because the empty list it would otherwise answer with reads as "you have no
+  recent failures" for as long as nobody looks. That is also why the body is read as text and
   deserialized rather than through `ReadFromJsonAsync`, which validates the media type first
   and raises a different exception for a store answering `200 text/html`.
 - **The row's time unit is derived, not assumed.** Which unit the stream counts in is the one
@@ -286,7 +289,7 @@ renaming a tag cannot leave the query reading a column nobody writes.
   order and whose whole bound are by *when* would carry invented dates. The four candidates sit
   three orders of magnitude apart, so any instant this door can be asked about falls inside the
   window in exactly one of them; a value in none is a row this reader cannot read, and it is
-  dropped.
+  dropped — or, if it was the whole response, raised (above).
 - **The search names its signal.** The store's own default is the logs, and a host that
   exports both has a stream of that name under each, so `SearchStreamType` (`traces`) rides
   the query — a missing parameter would read the wrong stream and answer zero rows, which is

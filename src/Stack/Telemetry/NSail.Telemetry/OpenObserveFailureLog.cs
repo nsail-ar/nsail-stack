@@ -12,8 +12,10 @@ namespace NSail.Telemetry;
 /// API. The vendor stops here: what it answers is <see cref="LoggedFailure"/>, so a kit or a
 /// screen that reads a person's own failures names no store and would not have to change if
 /// the install moved to another one. Every way the store can let the caller down — refusing,
-/// not answering, answering something else — is one <see cref="FailureLogException"/>,
-/// because there is nothing a caller could do differently about any of them.</summary>
+/// not answering, answering something else, answering only rows this reader cannot read — is
+/// one <see cref="FailureLogException"/>, because there is nothing a caller could do
+/// differently about any of them. A single unreadable row among readable ones is dropped
+/// instead: one row the store wrote oddly is not an outage.</summary>
 public sealed class OpenObserveFailureLog : IFailureLog
 {
     // The store's own columns for a traces stream, which are its names and not OpenTelemetry's.
@@ -81,7 +83,20 @@ public sealed class OpenObserveFailureLog : IFailureLog
             throw new FailureLogException("The failure log answered something that is not a search result.", exception);
         }
 
-        return (answer?.Hits ?? []).Select(Failure).OfType<LoggedFailure>().ToList();
+        var hits = answer?.Hits ?? [];
+        var failures = hits.Select(Failure).OfType<LoggedFailure>().ToList();
+
+        // One unreadable row among readable ones is dropped: a single row the store wrote
+        // oddly is not an outage. A response that brought rows and yielded NONE is — the
+        // column, or its unit, is not what this reader takes it for — and the empty list it
+        // would otherwise answer with reads as "you have no recent failures", for as long as
+        // nobody looks.
+        if (hits.Count > 0 && failures.Count == 0)
+        {
+            throw new FailureLogException("The failure log answered rows this reader could not read.");
+        }
+
+        return failures;
     }
 
     /// <summary>The store's column for a span tag: its own name with the dots flattened,
@@ -108,17 +123,18 @@ public sealed class OpenObserveFailureLog : IFailureLog
     // instant this door can be asked about falls inside the window in exactly one of them. A
     // value in none is a time this reader cannot read, and its row is dropped like a row that
     // carried no time at all.
-    static readonly long[] _units = [1_000_000_000, 1_000_000, 1_000, 1];
+    // The four candidate units, largest first, and the window a stamp divided by one of them
+    // has to land in: 2001-09-09 to 2096-10-02, in seconds. Wide enough that no install's
+    // clock argues with it, narrow enough that the four bands stay disjoint.
+    static readonly long[] Units = [1_000_000_000, 1_000_000, 1_000, 1];
 
-    // 2001-09-09 to 2096-10-02, in seconds. Wide enough that no install's clock argues with
-    // it, narrow enough that the four bands stay disjoint.
     const long Earliest = 1_000_000_000;
 
     const long Latest = 4_000_000_000;
 
     static DateTimeOffset? At(long stamp)
     {
-        foreach (var unit in _units)
+        foreach (var unit in Units)
         {
             var seconds = stamp / unit;
 

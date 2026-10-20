@@ -194,17 +194,53 @@ public sealed class FailureLogTests
         Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1_760_000_000), failure.At);
     }
 
+    // A column the stream's schema has and this row left empty, or filled with something that
+    // is not a number, or in no unit this reader knows. TryGetInt64 throws rather than
+    // answering false for the first two, and a hit with no readable time has no place in a
+    // list ordered by when — so it is dropped, beside the rows that could be read. One odd row
+    // the store wrote is not an outage.
     [Theory]
     [InlineData("\"1760000000000000\"")]
     [InlineData("null")]
     [InlineData("{}")]
     [InlineData("0")]
     [InlineData("9223372036854775807")]
-    public async Task A_hit_with_no_readable_time_is_dropped(string time)
+    public async Task A_hit_with_no_readable_time_is_dropped_beside_the_ones_that_read(string time)
     {
-        var body = $"{{\"hits\":[{{\"start_time\":{time},\"span_name\":\"Sales.Boxes.CloseBox\"}}]}}";
+        var body = $"{{\"hits\":["
+            + $"{{\"start_time\":{time},\"span_name\":\"Sales.Boxes.CloseBox\"}},"
+            + "{\"start_time\":1760000000000000,\"span_name\":\"Sales.Boxes.ListBoxes\"}]}";
 
         using var store = new Store(HttpStatusCode.OK, body);
+
+        var failure = Assert.Single(await Read(store, new FailureLogQuery(Guid.NewGuid(), DateTimeOffset.UtcNow.AddHours(-24), 20)));
+
+        Assert.Equal("Sales.Boxes.ListBoxes", failure.Operation);
+    }
+
+    // But a response that brought rows and yielded NONE is the systematic case — the column,
+    // or its unit, is not what this reader takes it for — and an empty list there would read as
+    // "you have no recent failures" for as long as nobody looked. It is the same outage as a
+    // store that will not answer at all.
+    [Fact]
+    public async Task A_response_whose_every_row_is_unreadable_is_one_failure_too()
+    {
+        var body = "{\"hits\":["
+            + "{\"start_time\":\"1760000000000000\",\"span_name\":\"Sales.Boxes.CloseBox\"},"
+            + "{\"start_time\":null,\"span_name\":\"Sales.Boxes.ListBoxes\"}]}";
+
+        using var store = new Store(HttpStatusCode.OK, body);
+
+        await Assert.ThrowsAsync<FailureLogException>(() =>
+            Read(store, new FailureLogQuery(Guid.NewGuid(), DateTimeOffset.UtcNow.AddHours(-24), 20)));
+    }
+
+    // And no rows at all is no failure: a person with nothing to answer for reads an empty
+    // list, which is the one time that answer is the true one.
+    [Fact]
+    public async Task No_rows_at_all_is_not_a_failure()
+    {
+        using var store = new Store(HttpStatusCode.OK, "{\"hits\":[]}");
 
         Assert.Empty(await Read(store, new FailureLogQuery(Guid.NewGuid(), DateTimeOffset.UtcNow.AddHours(-24), 20)));
     }
