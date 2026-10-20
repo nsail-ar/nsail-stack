@@ -44,8 +44,9 @@ highlight. The app layout just places `<NsNavMenu />`.
   (cases).
 - **The gate is the destination page's own authorize attributes** (cases). A page with no gate
   stays visible — the floor is "signed in"; stacked attributes all apply; a group goes when
-  every one of its children went, bottom-up, and a leaf naming no page counts as gone. The menu
-  is rebuilt on every change of the cascaded authentication state; asked before the session
+  every one of its children went, bottom-up, and a leaf naming neither a `PageType` nor a `Url`
+  counts as gone (below, "A leaf naming a `Url` instead of a page"). The menu is rebuilt on
+  every change of the cascaded authentication state; asked before the session
   resolves, every entry answers "denied". **`PageGate` remembers each verdict for the session
   that earned it**, because every caller asks from inside a render and none can remember on its
   own — a gated link re-asks on every parameter set, so one pass over a full list of rows asks
