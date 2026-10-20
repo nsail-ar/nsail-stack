@@ -113,11 +113,11 @@ public sealed class FooterButtonCollapseTests : BunitContext, IAsyncLifetime
     /// <summary>The only assertion here that can actually go red for this defect: bUnit runs no
     /// container query, so the DOM above proves the hooks and nothing about which of them the
     /// stylesheet spares. The rule's own selector is read from the shipped ns-mud.css instead —
-    /// EVERY line of the ladder (the label, the icon margin, and the whisper the collapsed
-    /// button now says on hover) must exclude BOTH hero colours, or the sign-out loses its word
-    /// again the next time somebody edits one line and not the other. The count is the same
-    /// tripwire it always was, one line per rule: it goes red when a line joins or leaves the
-    /// block, which is when somebody has to re-read this list.</summary>
+    /// EVERY line of the ladder (the label, the icon margin and the square it becomes) must
+    /// exclude BOTH hero colours, or the sign-out loses its word again the next time somebody
+    /// edits one line and not the other. The count is the same tripwire it always was, one line
+    /// per rule: it goes red when a line joins or leaves the block, which is when somebody has
+    /// to re-read this list.</summary>
     [Fact]
     public void TheEmphasisLadderSparesBothHeroColours()
     {
@@ -130,12 +130,12 @@ public sealed class FooterButtonCollapseTests : BunitContext, IAsyncLifetime
             .Where(line => line.Contains(".ns-panel-footer .mud-button-filled"))
             .ToList();
 
-        // Two for the collapse itself (label, icon margin), one for the square a collapsed
-        // filled rank becomes (nsail#925), one for the bubble's own definition in the shared
-        // whisper rule, one for the side it is drawn on here — a footer IS the bottom edge of
-        // its surface, so its bubble is the only one that rises (nsail#1417) — and four for its
-        // gate (overflow, the ripple it trades for it, and the hover/focus pair).
-        Assert.Equal(9, rules.Count);
+        // Two for the collapse itself (label, icon margin) and one for the square a collapsed
+        // filled rank becomes (nsail#925). The bubble costs this ladder no rule at all: a footer
+        // act that gave up its word whispers because its word is not on screen, and that is read
+        // off the rendered control by ns.js (THE WHISPER) rather than gated per selector here —
+        // so there is no line left to keep in step with the three above.
+        Assert.Equal(3, rules.Count);
 
         foreach (var rule in rules)
         {
