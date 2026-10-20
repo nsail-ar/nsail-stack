@@ -17,15 +17,13 @@
 <CascadingValue Value="false" Name="ParentDisabled" IsFixed="true">
     @if (Wordless && As == NsAs.Inline)
     {
-        <MudTooltip Text="@LabelWithChord" @bind-Visible="_whispering">
-            <MudIconButton Icon="@(Icon?.Markup)"
-                           Size="@GetSize()"
-                           Color="Color.Inherit"
-                           Disabled="@IsDisabled"
-                           OnClick="@(_ => HandleClick())"
-                           Class="@Class"
-                           UserAttributes="_ariaAttributes" />
-        </MudTooltip>
+        <MudIconButton Icon="@(Icon?.Markup)"
+                       Size="@GetSize()"
+                       Color="Color.Inherit"
+                       Disabled="@IsDisabled"
+                       OnClick="@(_ => HandleClick())"
+                       Class="@Class"
+                       UserAttributes="_ariaAttributes" />
     }
     else
     {
@@ -127,13 +125,6 @@
 
     Dictionary<string, object>? _ariaAttributes;
 
-    // The vendor's tooltip opens on hover and on focus and closes on neither after a press: the
-    // pointer never left, and the click left the button holding focus. So the bubble naming the
-    // glyph stays painted over whatever the press just put on screen — a disclosure's own
-    // detail, the dialog it opened — which is why the whisper is owned here rather than left to
-    // the vendor's defaults. See HandleClick.
-    bool _whispering;
-
     // A form's word is two words. Disabled means it refuses writes, and a button drawn in it is
     // refused with the fields — read from FormDisabled, the form's own word, so a refusal a
     // running submit is standing on top of still counts. Merely SAVING is not that: the save
@@ -158,11 +149,6 @@
     // its "already running" throw, so the refusal is answered here rather than surfaced there.
     Task HandleClick()
     {
-        // Before the refusal below and not after it: a press that got this far is a press,
-        // whatever is done with it. The name is not lost, only the bubble — the pointer leaving
-        // and returning is the gesture that asks for it again.
-        _whispering = false;
-
         if (IsDisabled)
         {
             return Task.CompletedTask;
@@ -171,17 +157,17 @@
         return OnClick.InvokeAsync();
     }
 
-    // The tooltip paints a hover popover; it does not NAME the button under it, and an icon
-    // button carries no text of its own — so without this the control is anonymous to a screen
-    // reader and unreachable by a semantic selector, which is exactly what Label's own summary
-    // already promises it is not. Set on the chromed branch too, not just the glyph: a container
-    // rule elsewhere (the emphasis-ladder footer, ns-mud.css) may collapse the visible label to
-    // display:none on its own terms, and display:none content drops out of the accessible-name
-    // computation — the label span alone is not enough once that can happen, the same way a
-    // RowEditor field with a blank visible Label still carries its aria-label. Rebuilt only when
-    // one of the values in it actually changes: a fresh dictionary every render reads as a
-    // changed parameter to the vendor's button (NsFieldBase.InputAttributes carries the same
-    // concern).
+    // The whisper paints a bubble of its own in the top layer; it does not NAME the button under
+    // it, and an icon button carries no text of its own — so without aria-label the control is
+    // anonymous to a screen reader and unreachable by a semantic selector, which is exactly what
+    // Label's own summary already promises it is not. Set on the chromed branch too, not just
+    // the glyph: a container rule elsewhere (the emphasis-ladder footer, ns-mud.css) may collapse
+    // the visible label to display:none on its own terms, and display:none content drops out of
+    // the accessible-name computation — the label span alone is not enough once that can happen,
+    // the same way a RowEditor field with a blank visible Label still carries its aria-label.
+    // Rebuilt only when one of the values in it actually changes: a fresh dictionary every render
+    // reads as a changed parameter to the vendor's button (NsFieldBase.InputAttributes carries
+    // the same concern).
     protected override void OnParametersSet()
     {
         // Spelled out as text rather than handed over as the bool it is: Blazor renders a bool
@@ -206,17 +192,18 @@
 
         if (Label is { Length: > 0 })
         {
-            attributes = new Dictionary<string, object> { ["aria-label"] = Label };
-
-            // A SEPARATE attribute from aria-label above, on purpose: aria-label IS the
-            // accessible name, and the name stays the word (nsail#2272) — the chord joining it
-            // would be nsail#2259 again, one layer up. data-ns-chord is read by ns-mud.css's own
-            // ::after, never by the accessible-name computation, so the bubble can say more
-            // than the name does.
-            if (Chord is { Length: > 0 })
+            attributes = new Dictionary<string, object>
             {
-                attributes["data-ns-chord"] = $"{Label} ({Chord})";
-            }
+                ["aria-label"] = Label,
+                // A SEPARATE attribute from aria-label above, on purpose: aria-label IS the
+                // accessible name, and the name stays the word (nsail#2272) — the chord joining
+                // it would be nsail#2259 again, one layer up. data-ns-whisper is read by ns.js,
+                // never by the accessible-name computation, so the bubble can say more than the
+                // name does. Written whether or not there is a chord to add: it is the bubble's
+                // whole text, and whether the bubble opens at all is one question about the
+                // rendered control that ns.js asks and nothing here can answer.
+                ["data-ns-whisper"] = LabelWithChord!
+            };
         }
 
         if (expanded is not null)
@@ -236,9 +223,8 @@
         _ariaAttributes = attributes;
     }
 
-    // The wordless Inline face's MudTooltip reads this directly — a floating popover of its
-    // own, never generated content on the control, so it cannot join the accessible name the
-    // way data-ns-chord above is kept from joining it.
+    // The bubble's text, and the key dispatched is read off the same declaration (NsKeys), so
+    // the two cannot come to disagree about which chord this button answers.
     string? LabelWithChord => Chord is { Length: > 0 } ? $"{Label} ({Chord})" : Label;
 
     // No word to draw at any width: either the breakpoint says Never, or no name was handed
@@ -247,8 +233,7 @@
     bool Wordless => Icon is not null && (Breakpoint == NsBreakpoint.Never || Label is null or "");
 
     // A control with no label at any width has nothing to COLLAPSE, so it takes none of the
-    // breakpoint's hooks: ns-square carries its own whisper ungated (ns-mud.css), and both
-    // hooks at once would draw the bubble twice on the same hover.
+    // breakpoint's hooks — there is no width at which a word of its own comes back.
     string LabelClasses => Wordless ? "ns-button-label" : NsResponsive.LabelClasses(Icon, Breakpoint);
 
     // The vendor has no soft-accent variant, so Important is painted from a class over its
@@ -260,10 +245,6 @@
         return new NsClassBuilder(Wordless ? null : NsResponsive.CollapseClass(Icon, Breakpoint))
             .Add("ns-important", As == NsAs.Important)
             .Add("ns-square", Wordless)
-            // A visible word answering a chord whispers the key beside it on hover and focus
-            // (ns-mud.css, THE WHISPER) — ns-square already whispers unconditionally, so this
-            // is only for the word that stays on screen.
-            .Add("ns-chord", !Wordless && Chord is { Length: > 0 })
             .Add(Class)
             .ToString();
     }

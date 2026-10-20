@@ -6,9 +6,11 @@
 @* Detail on demand: what the element already says, said in full. It is never the only place
    a fact lives — a reader on a touch screen has no hover — so what rides here is the long
    form of something already on screen, never something only this can tell. *@
-<MudTooltip Text="@Text" Placement="Placement.Bottom" Arrow>
-    @ChildContent
-</MudTooltip>
+@* The declaration and nothing else: the bubble is one element in the browser's top layer,
+   placed by ns.js after a steady dwell (ns-mud.css, THE WHISPER), so what rides here is the
+   text and the box to measure it against. inline-block rather than display:contents — a box
+   with no geometry of its own has no rectangle to hang the bubble under. *@
+<span class="ns-whisper-host" data-ns-whisper="@Text">@ChildContent</span>
 
 @code {
 

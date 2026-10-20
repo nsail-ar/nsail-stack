@@ -2076,86 +2076,6 @@
     margin-inline: 0;
 }
 
-/* The whisper, ungated. A collapsed control shares its bubble with a container query (see
-   THE WHISPER below) because there is a width at which its label is back; a control at Never
-   has no such width, so its gate is the state itself and nothing else. Same two concessions
-   the collapsed one makes: the ripple's overflow:hidden would clip a bubble drawn outside the
-   box, so the box stops clipping and the expanding disc goes with it. */
-.ns-square {
-    overflow: visible;
-}
-
-.ns-square .mud-ripple-effect {
-    display: none;
-}
-
-.ns-square:hover,
-.ns-square:focus-visible {
-    --ns-whisper: block;
-}
-
-/* A MENU'S FACE takes the same ungated bubble, and takes it by its own selector: the face is
-   the vendor's icon button one node INSIDE the root NsMenu classes, so nothing the component
-   puts on ns-menu can reach it. Icon-only at every width — the vendor draws this shape only
-   when the menu was given a glyph, and the labelled face is a mud-button with its word on
-   screen — so there is no width at which the label comes back and no container query to gate
-   on, exactly the ns-square case. The row kebab is the caller this is for (ui/menus.md: the
-   face carries a word of its own). */
-.ns-menu > .mud-icon-button {
-    overflow: visible;
-}
-
-.ns-menu > .mud-icon-button .mud-ripple-effect {
-    display: none;
-}
-
-.ns-menu > .mud-icon-button:hover,
-.ns-menu > .mud-icon-button:focus-visible {
-    --ns-whisper: block;
-}
-
-/* A LOOKUP'S ADORNMENT is the third rider of the ungated form, and the one that lives inside
-   a box: the chevron at the end of a browsed NsAutocomplete is a button that opens the
-   field's own list, and it is a glyph at every width — the vendor draws no word beside it and
-   has no parameter that would. Scoped to .mud-autocomplete rather than to the vendor's
-   adornment class, because a picker's and a password field's adornments are the vendor's own
-   controls with the vendor's own words and nothing here has measured them. The bubble hangs
-   below the field like every other, which is why it goes on the BUTTON and not on the input:
-   the input's own box is where the outline and the label live. */
-.mud-autocomplete .mud-input-adornment-icon-button {
-    overflow: visible;
-}
-
-.mud-autocomplete .mud-input-adornment-icon-button .mud-ripple-effect {
-    display: none;
-}
-
-.mud-autocomplete .mud-input-adornment-icon-button:hover,
-.mud-autocomplete .mud-input-adornment-icon-button:focus-visible {
-    --ns-whisper: block;
-}
-
-/* A CHORD is the fourth rider of the ungated form, and the odd one: it marks a control that
-   already draws its word (NsSubmit's hero, NsClose's Cancelar, a chromed NsButton of its own),
-   so the whisper beside it is not the double cartel the gates above exist to forbid — THAT
-   rule is one string shown twice, and the key is a different string the word never carried.
-   Ungated for the same reason ns-square is: a button either answers a chord or it does not, and
-   there is no width at which that stops being true. The text is attr(aria-label), same as
-   every other rider, built from Label and the chord together (NsButton.LabelWithChord) so the
-   bubble and the key dispatched read the same claim. */
-.ns-chord {
-    overflow: visible;
-}
-
-.ns-chord .mud-ripple-effect {
-    display: none;
-}
-
-.ns-chord:hover,
-.ns-chord:focus-visible {
-    --ns-whisper: block;
-}
-
 /* A node whose template is more than a name (NsTree stacks a fact and the row's actions
    under it) makes the row tall, and MudBlazor centres both the toggle and the row against
    that whole height. The row carries the same surface as a grid so the tree reads as one
@@ -2732,57 +2652,35 @@
     }
 }
 
-/* THE WHISPER (Emmanuel, 2026-08-11): a button that gave up its word says it on hover.
-   A collapsed control is a glyph with no text anywhere on screen, and the doctrine's own
-   honest cost ("a collapsed button has no hover tooltip") is what this pays off — for the
-   pointer, at least; a touch device still has no hover and still relies on the glyph.
+/* THE WHISPER: a control says in full what it only half says on screen — the name of a button
+   that gave up its word to the container, the name of a glyph that never had one, the key a
+   worded button answers. A touch device has no hover and still relies on the glyph, so nothing
+   rides here that is only here (NsTooltip's own note).
 
-   The text is attr(aria-label), which is the SAME string the hidden span carries
-   (NsButton/NsLink set it from Label on every chromed As) — nothing is written twice, so
-   the bubble cannot come to disagree with the label it replaces. And the gate is the SAME
-   container query that hid that label: the bubble is off by default and only the queries
-   below turn it on, so a control whose label is visible can never wear both. That
-   is why this is CSS and not a MudTooltip on the chromed branch: a vendor tooltip portals
-   out of the container and could not be gated on the container's width at all, so it would
-   double-bill the visible label at every width above the breakpoint.
+   ONE ELEMENT, IN THE TOP LAYER, PLACED FROM ns.js, and it has to be: a bubble drawn inside the
+   control it names is clipped by the nearest scrolling ancestor (NsPanel's content box), grows
+   that ancestor's scrollable area for as long as it shows, and paints in the control's own
+   stacking context, which is under the panel beside it. CSS cannot ask where there is room, and
+   generated content cannot leave the box it is generated in — so the bubble is a div of ns.js's
+   own, shown as a manual popover: the top layer is above every dialog, drawer and vendor
+   popover without naming a z-index, and it is in no scroll box to grow. The z-index below is
+   the fallback for a browser with no top layer, where a body-level fixed box still outranks
+   every panel on the page.
 
-   The look is the vendor tooltip's own, read from its variables rather than invented, so
-   the whisper and the MudTooltip on the flat rung's glyph beside it are one tooltip to the
-   eye. ns-square, a menu's icon face and a lookup's end adornment ride the same definition
-   with gates of their own (above): none of those labels is coming back at any width, so there
-   is nothing for the bubble to double-bill.
-
-   ns-chord (nsail#2272) is a DIFFERENT rider, reading a DIFFERENT attribute, and deliberately
-   so: unlike the others, its label never left the screen, so attr(aria-label) is not free to
-   carry the chord here — aria-label IS the accessible name, and the name has to stay the word
-   (nsail#2259's lesson one layer up: a decoration joining the name is the defect whether it is
-   a badge or an attribute). Its own rule, right after the one below, reads attr(data-ns-chord)
-   instead — a second attribute carrying "Word (Keys)" while aria-label keeps carrying "Word"
-   alone, which is also why ns-chord needs an aria-label THE OTHER RIDERS do not: without one a
-   control with no visible text relies on content for its name, and this rider's control always
-   has visible text, so its caller (NsButton, NsSubmit, NsClose) sets both or neither.
-
-   THE SWITCH IS A CUSTOM PROPERTY, never a second display declaration (nsail#1417). The
-   selectors below carry a guard the gates do not — [aria-label], so a control nobody named
-   draws no empty box — and a guard is specificity: every gate below is one class-unit
-   lighter than the rule it would have to outrank, so "display: block" on a gate loses to
-   this rule's own "display: none" and the bubble stays off at every width. The gates set
-   --ns-whisper on the CONTROL instead and the pseudo-element inherits it, so no two rules
-   ever race for the same property and a guard added here can never silence them again. */
-.ns-square[aria-label]:not([aria-label=""])::after,
-.ns-menu > .mud-icon-button[aria-label]:not([aria-label=""])::after,
-.mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])::after,
-.ns-collapse-sm[aria-label]:not([aria-label=""])::after,
-.ns-collapse-md[aria-label]:not([aria-label=""])::after,
-.ns-collapse-lg[aria-label]:not([aria-label=""])::after,
-.ns-collapse-xl[aria-label]:not([aria-label=""])::after,
-.ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""])::after {
-    content: attr(aria-label);
-    display: var(--ns-whisper, none);
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 50%;
-    transform: translateX(-50%);
+   WHAT IT SAYS AND WHEN are ns.js's, both derived rather than declared: the text is
+   data-ns-whisper (the full name, the key included) or the plain accessible name, and it opens
+   only where that text is not already the control's own rendered text — so the double cartel is
+   unrepresentable rather than gated at each breakpoint, and no container query is restated in
+   two languages. The look is the vendor tooltip's own, read from its variables rather than
+   invented. */
+.ns-whisper {
+    display: none;
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    border: 0;
+    width: max-content;
+    max-width: min(20rem, calc(100vw - 8px));
     padding: 4px 8px;
     border-radius: var(--mud-default-borderradius);
     background-color: var(--mud-palette-gray-darker);
@@ -2792,134 +2690,23 @@
     line-height: 1.4em;
     letter-spacing: normal;
     text-transform: none;
-    white-space: nowrap;
+    overflow: visible;
     pointer-events: none;
     z-index: var(--mud-zindex-tooltip);
 }
 
-/* ns-chord's own rule, same look, different attribute (above): attr(data-ns-chord) rather than
-   attr(aria-label), so the bubble can say "Word (Keys)" while the accessible name — read off
-   aria-label alone — stays "Word". The guard is [data-ns-chord] rather than [aria-label] for
-   the same reason the base rule's guard is on its own attribute: a control with no claim to
-   whisper draws no empty box. */
-.ns-chord[data-ns-chord]:not([data-ns-chord=""])::after {
-    content: attr(data-ns-chord);
-    display: var(--ns-whisper, none);
-    position: absolute;
-    top: calc(100% + 4px);
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 4px 8px;
-    border-radius: var(--mud-default-borderradius);
-    background-color: var(--mud-palette-gray-darker);
-    color: var(--mud-palette-dark-text);
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.4em;
-    letter-spacing: normal;
-    text-transform: none;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: var(--mud-zindex-tooltip);
+/* The open state is a class and not the popover's own :popover-open, so the one definition
+   answers for a browser that has no popover at all — there the box is never shown and never
+   hidden, and this is the whole of its display. */
+.ns-whisper.ns-whisper-open {
+    display: block;
 }
 
-/* IT HANGS DOWN, except where there is no room: an absolutely positioned bubble is clipped
-   by the nearest scrolling ancestor — NsPanel's own content box (overflow-y: auto) — and it
-   is drawn OUTSIDE the control, so the side it is drawn on decides whether it survives, and
-   whether it grows the PAGE's own scrollbar while it shows (nsail#2197). CSS alone cannot ask
-   "is there room below" — ns.js's placeWhisper does, on the same hover and focus that
-   --ns-whisper already gates on, and marks the loser with this attribute rather than a class:
-   a boolean the DOM already has a slot for, never a second name to keep in step with
-   --ns-whisper. Down is still the general case — the same side MudTooltip is placed on
-   (NsTooltip, Placement.Bottom) — so the two read alike wherever there IS room.
-
-   The selector below repeats the base rule's own, [data-ns-whisper-above] appended rather
-   than substituted: the two attribute selectors the base rule carries on [aria-label] already
-   outweigh a bare class-plus-one-attribute override, so dropping either here would lose the
-   cascade silently instead of failing loud. */
-.ns-square[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
-.ns-menu > .mud-icon-button[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
-.mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
-.ns-collapse-sm[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
-.ns-collapse-md[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
-.ns-collapse-lg[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
-.ns-collapse-xl[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after,
-.ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error)[aria-label]:not([aria-label=""])[data-ns-whisper-above]::after {
-    top: auto;
-    bottom: calc(100% + 4px);
-}
-
-/* ns-chord's own flip, same reason, same [data-ns-chord] attribute as its base rule above. */
-.ns-chord[data-ns-chord]:not([data-ns-chord=""])[data-ns-whisper-above]::after {
-    top: auto;
-    bottom: calc(100% + 4px);
-}
-
-/* Two things the collapsed state has to give the bubble, and one it has to give up.
-   MudBlazor's own button root carries .mud-ripple, whose overflow:hidden would clip
-   anything drawn outside the box — so the box stops clipping while it is collapsed, and
-   the ripple EFFECT (the expanding circle that overflow:hidden was containing) is the
-   thing that goes instead: it would otherwise paint a disc outside the button on every
-   click. The hover/active background MudBlazor paints is untouched, so the press still
-   answers. */
-@container (max-width: 599.98px) {
-    .ns-collapse-sm {
-        overflow: visible;
-    }
-
-    .ns-collapse-sm .mud-ripple-effect {
-        display: none;
-    }
-
-    .ns-collapse-sm:hover,
-    .ns-collapse-sm:focus-visible {
-        --ns-whisper: block;
-    }
-}
-
-@container (max-width: 959.98px) {
-    .ns-collapse-md {
-        overflow: visible;
-    }
-
-    .ns-collapse-md .mud-ripple-effect {
-        display: none;
-    }
-
-    .ns-collapse-md:hover,
-    .ns-collapse-md:focus-visible {
-        --ns-whisper: block;
-    }
-}
-
-@container (max-width: 1279.98px) {
-    .ns-collapse-lg {
-        overflow: visible;
-    }
-
-    .ns-collapse-lg .mud-ripple-effect {
-        display: none;
-    }
-
-    .ns-collapse-lg:hover,
-    .ns-collapse-lg:focus-visible {
-        --ns-whisper: block;
-    }
-}
-
-@container (max-width: 1919.98px) {
-    .ns-collapse-xl {
-        overflow: visible;
-    }
-
-    .ns-collapse-xl .mud-ripple-effect {
-        display: none;
-    }
-
-    .ns-collapse-xl:hover,
-    .ns-collapse-xl:focus-visible {
-        --ns-whisper: block;
-    }
+/* NsTooltip's own wrapper, the one caller that names something other than a control: it wraps
+   whatever a screen handed it, and a wrapper with no box of its own has no rectangle for the
+   bubble to be placed against. */
+.ns-whisper-host {
+    display: inline-block;
 }
 
 /* A FOOTER ACT NEVER GIVES UP ITS CONTENT WIDTH — the row WRAPS, the same answer the title row
@@ -2993,23 +2780,6 @@
     .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error) {
         min-width: 0;
         padding: 12px;
-    }
-
-    /* The whisper's own gate for this half of the ladder (the block above the collapse
-       utilities): a footer button the page pinned with Breakpoint="Always" carries no
-       ns-collapse-* hook at all — this rule is the only thing that took its word, so it is
-       the only thing that can give it back on hover. Same three moves as there. */
-    .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error) {
-        overflow: visible;
-    }
-
-    .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error) .mud-ripple-effect {
-        display: none;
-    }
-
-    .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error):hover,
-    .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error):focus-visible {
-        --ns-whisper: block;
     }
 
     /* A narrow footer has no leftover width beside its buttons at all, so the seated refusal
@@ -4095,10 +3865,11 @@
 /* ===========================================================================================
    THE KEYBOARD (nsail#2207): the link that is only on screen while it has focus, a ring
    wherever the cursor can land, the key a search box shows inside itself, and the sheet "?"
-   opens. The chord a control with a WORD answers is shown on its tooltip (THE WHISPER,
-   ns-chord, above) and never drawn beside the word — a hint and the word's own hover bubble
-   turned out to be one mechanism, not two (nsail#2272); a box has no word to hover and no
-   bubble to carry one, which is the whole reason it is the one control that paints its key.
+   opens. The chord a control with a WORD answers is shown on its tooltip (THE WHISPER above,
+   whose text is the name and the key together) and never drawn beside the word — a hint and
+   the word's own hover bubble turned out to be one mechanism, not two (nsail#2272); a box has
+   no word to hover and no bubble to carry one, which is the whole reason it is the one control
+   that paints its key.
    The chords themselves are declared on the controls and dispatched in ns.js — nothing about
    which key does what is written here.
    =========================================================================================== */

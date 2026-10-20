@@ -5,16 +5,18 @@
 
 @using NSail.Icons
 
-<MudTooltip Text="@Tooltip" Disabled="@(string.IsNullOrEmpty(Tooltip))">
-    @if (OnClose is null)
-    {
-        <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)">@Text</MudChip>
-    }
-    else
-    {
-        <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" OnClose="Close">@Text</MudChip>
-    }
-</MudTooltip>
+@* The note rides the chip itself rather than a wrapper of its own: the whisper is one element
+   in the top layer (ns-mud.css, THE WHISPER), so what declares it needs no box around it, and
+   a chip in a flex row keeps the row's own geometry. A note that only repeats the chip's text
+   is never shown — that is ns.js's own rule and nothing here gates on it. *@
+@if (OnClose is null)
+{
+    <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" data-ns-whisper="@Tooltip">@Text</MudChip>
+}
+else
+{
+    <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" OnClose="Close" data-ns-whisper="@Tooltip">@Text</MudChip>
+}
 
 @code {
 
