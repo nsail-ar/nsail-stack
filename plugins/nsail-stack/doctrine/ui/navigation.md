@@ -23,8 +23,11 @@ messages; where the app's own drawer and its own home open is the app's word, ki
 never all-or-nothing.
 
 `NavMenuItem` (`NSail.Components/Navigation/`) is a flat model — `Name`, `Icon` (a `Glyph`),
-`PageType` (+ optional `Parameters`) for leaves, `Items` for groups, plus the four fields an
-override carries — `Weight`, `Parent`, `Visible`, `Permission`; **no Razor**. A kit implements
+`PageType` (+ optional `Parameters`) **or** `Url` for leaves, `Items` for groups, plus the four
+fields an override carries — `Weight`, `Parent`, `Visible`, `Permission`; **no Razor**. `Url` is
+the leaf whose destination is outside the app entirely — nothing the route table resolves, so it
+carries no `Parameters` and is never tracked as the active route (below, "A leaf naming a `Url`
+instead of a page"). A kit implements
 `INavMenuContributor` (async, re-asked whenever the authentication state changes) and registers
 it in `Add<Kit>Menu()`. `NavMenu` (same folder, scoped) asks the mounted contributors and merges
 in registration order; `NsNavMenu` renders that tree and prefix matching drives the active
@@ -160,7 +163,7 @@ new door reddens CI instead of surfacing in a release.
   `DashboardMountTests` (Architecture) run both roots over a real `ServiceCollection` and compare
   the registrations.
 - **An app's own arrangement is declared as DATA, not composed.** `NavMenuEntry` is the flat row
-  — `Name`, `Parent` (a Name), `Order`, `Shown`, plus `Icon` / `PageType` / `Parameters` — and
+  — `Name`, `Parent` (a Name), `Order`, `Shown`, plus `Icon` / `PageType` / `Parameters` / `Url` — and
   `NavMenuEntry.Resolve` hands the merge one item per row, carrying its `Parent`, because
   **`Merge` is what nests it**: a row can only override a kit's entry of the same `Name` if the
   two arrive at one level. `Order` becomes `Weight` and `Shown = false` becomes `Visible = false`
@@ -174,8 +177,10 @@ contributes, the app arranges, the install arranges** — each over the one befo
 install's rows are read from storage, so a shop reorders, renames or hides a door with no
 release. `NavMenuArrangement` (`NSail.Settings`, `[SystemSettings]`, [settings.md](settings.md))
 is the stored shape: `Name`, `Parent`, `Order`, `Shown`, `Icon` and `Labels` (the shop's own word
-per language), and **no `PageType`** — an install arranges the doors its modules planted and
-cannot invent one that opens nowhere. `INavMenuArrangement` (`NSail.Components`) is the seam,
+per language), and **no `PageType` and no `Url`** — an install arranges the doors its modules
+planted and cannot invent one that opens nowhere, on the route table or outside it: `Url` is
+configuration, never a row a shop's own editor could write, so `NavMenuArrangementEntry` has no
+field for it and the merged leaf keeps whatever its module contributed. `INavMenuArrangement` (`NSail.Components`) is the seam,
 registered with `AddNavMenuArrangement<T>()`; the settings kit registers the one that reads the
 stored row (`MediatorNavMenuArrangement`), so an app that composes no storage has an empty
 cascade and nothing to remember. **`NavMenu` applies it after every contributor by
@@ -271,8 +276,11 @@ module's by being mounted early.
   `NsNavMenu` renders a group the moment `Items` is non-empty — the route is silently dropped,
   and `Hide` gates the item by its children alone. A contributor naming its leaf into another
   kit's group is the supported case; naming it at a first-level entry that already has a route
-  is the defect. **`PageType` and `Parameters` are the one pair that stays first-non-null**: they
-  are what the entry IS, not where it sits, so an override that names no page keeps the kit's.
+  is the defect. **`PageType`, `Parameters` and `Url` are the three that stay first-non-null**:
+  they are what the entry IS, not where it sits, so an override that names no page and no `Url`
+  keeps the kit's. The two destinations are not mutually exclusive on a merged entry — a
+  contribution naming both leaves `PageType` to win silently, the leaf a plain route — so a kit
+  offering `Url` writes no `PageType` beside it.
   The key is per level and not global on purpose — *Calendario* the agenda and *Calendario* under
   Mi Cuenta > Preferencias are two doors, and only a `Parent` naming one of them explicitly
   crosses a level.
@@ -299,9 +307,9 @@ app unable to remove the one it did not ask for.
   of them would fold into one and a line would vanish; they pass through by identity and take
   their place among the merged entries by `Weight`.
 - **Nothing gates a separator** — `Merge` keeps every line it was given — but the render below
-  still refuses to draw one with nothing on a side of it. `Hide` reads a null `PageType` as
-  denied for a leaf, and a separator is not a leaf; it also cannot be what keeps a group alive.
-  `Leaves()` and `NavMenuItem.Find` ignore it for free, both keying on `PageType`.
+  still refuses to draw one with nothing on a side of it. `Hide` reads a leaf naming neither a
+  `PageType` nor a `Url` as denied, and a separator is not a leaf; it also cannot be what keeps a
+  group alive. `Leaves()` and `NavMenuItem.Find` ignore it for free, both keying on `PageType`.
 - **A separator goes while the drawer's search box is filtering.** A filtered drawer is a list
   of matches and not the map, so the two families the line stood between are gone; keeping it
   draws a rule between nothing and nothing.
@@ -311,3 +319,25 @@ app unable to remove the one it did not ask for.
   merge is not.
 - **A separator carrying a name is a section header** — Material has both, and it is the same
   primitive with a second job. Not built; the shape leaves room for it.
+
+## A leaf naming a `Url` instead of a page
+
+**Some destinations are outside the app entirely**, and the route table has nothing to resolve
+for one — `PageType` is how the menu names a door *in* the app, and `Url` is the seam for a door
+*out* of it (nsail#2497, Ops' Observabilidad onto OpenObserve). The two are not a choice of
+syntax for one idea: a page is reached, a `Url` is opened, always in a new window, because
+leaving no surface behind means leaving the app.
+
+- **`Hide` asks only `Permission` of a `Url` leaf.** There is no page for the `PageGate` to
+  allow or deny, so the leaf draws whenever its own `Permission` (if it names one) is granted —
+  the same coarse, page-level gate every other leaf answers, minus the half a `Url` has nothing
+  to stand for.
+- **It is never the active route.** `Leaves()`, `FindActive` and `GlyphFor` key on `PageType`
+  alone, so a `Url` leaf never claims the drawer's highlight and never stands in for a title
+  bar's glyph — there is no address for either to match.
+- **It carries no count.** `ns-nav-count` rides only the `PageType` branch; an `INavMenuCount`
+  registered against a `Url` leaf's `Name` is never drawn, with nothing on either side needing
+  to know.
+- **The render always forces a new window** (`Target="_blank"`, the one case `NsNavMenu` sets it
+  without being told): a kit offering a `Url` writes no `Target` of its own, and nothing in the
+  model carries one — the destination being external already decided it.

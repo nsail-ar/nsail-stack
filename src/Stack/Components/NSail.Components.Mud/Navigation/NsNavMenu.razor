@@ -736,8 +736,8 @@
                 @* No ActiveClass and no Match: an external destination is never the active
                    route, so there is nothing here for the vendor's prefix match to decide.
                    Target forced to a new window — leaving no surface behind means leaving the
-                   app, which this door never does (the story's own rule). *@
-                <MudNavLink Href="@item.Url" Target="_blank" Icon="@(item.Icon?.Markup)" Class="ns-nav-entry">
+                   app. *@
+                <MudNavLink Href="@item.Url" Target="@Surfaces.Blank.Name" Icon="@(item.Icon?.Markup)" Class="ns-nav-entry">
                     @GetName(item)
                 </MudNavLink>
             }

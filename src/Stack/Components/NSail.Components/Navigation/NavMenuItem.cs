@@ -5,8 +5,10 @@ using NSail.Icons;
 
 namespace NSail.Components;
 
-/// <summary>Flat navigation entry: a leaf names its destination page, a group has Items.
-/// The URL is resolved from PageType through the RouteTable, never written.</summary>
+/// <summary>Flat navigation entry: a leaf names its destination page, a group has Items. An
+/// internal destination's URL is resolved from PageType through the RouteTable, never written;
+/// Url is the one written address, for a leaf whose destination the route table does not
+/// hold.</summary>
 public sealed class NavMenuItem
 {
     public required string Name { get; init; }
@@ -19,9 +21,11 @@ public sealed class NavMenuItem
     public object? Parameters { get; init; }
 
     /// <summary>An external destination this leaf opens instead of a page — always in a new
-    /// window, since there is no surface here for the router to hand it to. Mutually exclusive
-    /// with PageType, and carries no Parameters: an entry naming this is never tracked as the
-    /// active route and never asked of the PageGate, which has no page to ask it about.</summary>
+    /// window, since there is no surface here for the router to hand it to. A contributor names
+    /// one or the other: PageType wins where a leaf carries both, silently, the same as every
+    /// other first-non-null field (Merge). An entry naming only this carries no Parameters, is
+    /// never tracked as the active route and is never asked of the PageGate, which has no page
+    /// to ask it about.</summary>
     public string? Url { get; init; }
 
     public IReadOnlyList<NavMenuItem> Items { get; init; } = [];

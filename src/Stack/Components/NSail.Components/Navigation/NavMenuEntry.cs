@@ -39,8 +39,9 @@ public sealed class NavMenuEntry
     public object? Parameters { get; init; }
 
     /// <summary>An external destination this entry opens instead of a page — always in a new
-    /// window, since there is no surface in this app for the router to hand it to. Mutually
-    /// exclusive with PageType: an entry IS one or the other.</summary>
+    /// window, since there is no surface in this app for the router to hand it to. A row
+    /// declares one or the other; PageType wins where it names both, the same silent
+    /// first-non-null the merge gives every other row of this Name.</summary>
     public string? Url { get; init; }
 
     /// <summary>The message a session must be able to send for the row to be drawn, ANDed with
