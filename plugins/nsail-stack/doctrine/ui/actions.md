@@ -111,11 +111,18 @@ the method group it is handed ([localization.md](localization.md)).
 
 ### An unknown parameter makes the control disappear
 
-**`NsSubmit` and `NsClose` word themselves through `ChildContent`, never a `Label`** —
-`<NsSubmit>@Translate("Actions.Close")</NsSubmit>`. Only `NsButton`/`NsLink` take `Label`, and
-that split is the trap: the two footer components sit beside each other in every form, so the
-wrong one is the natural typo. **An unknown parameter on an `Ns*` component is not a
-compile error and it is not a crash — it is the control disappearing.** The Razor compiler
+**`NsSubmit` and `NsClose` draw their word through `ChildContent`; their `Label` is that same
+word as a string, and draws nothing** —
+`<NsSubmit Label="@Translate("Actions.Open")">@Translate("Actions.Open")</NsSubmit>`. A
+`RenderFragment` gives no text back, so `Label` is the only thing the `aria-label` and the chord
+tooltip can restate the act with; set it wherever a custom `ChildContent` words the button, and
+leave it off where there is none — the default word is `Strings`' own string already
+([cases: shell](../intentional-ui-cases-shell.md), *The chord beside a button's word*). On
+`NsButton`/`NsLink`, `Label` IS the word. **An unknown parameter on an `Ns*` component is not a
+compile error and it is not a crash — it is the control disappearing** — and the natural typo is
+whatever the neighbour in the same footer declares and this one does not: `<NsSubmit Icon="…"/>`,
+where a submit's glyph is its own state (the tick, the filter's search, the spinner the form is
+running) and only `NsButton` takes one. The Razor compiler
 emits any attribute it does not recognize (the component might capture unmatched values; none
 of ours does, `UnmatchedParameterTests`), and at render time Blazor normalizes the
 `SetParametersAsync` throw into a faulted Task and routes it to the nearest `IErrorBoundary`
