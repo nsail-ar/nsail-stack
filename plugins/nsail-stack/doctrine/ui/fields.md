@@ -301,6 +301,14 @@ when the entry ENDS — Enter pressed, or the box left — carrying what the box
   ([principles.md](../principles.md), *Remove the possibility* — the same reading that deleted
   `Immediate`).
 - **Enter is not an ending in `NsTextArea`**, where it is itself text (`CommitsOnEnter`).
+- **`OnEnterCommit` is the Enter alone** — the same value `OnCommit` carries at the same moment,
+  withheld on the leave, for an act only a deliberate key should fire: a reader's burst ending on
+  Enter opens the record its term names, where a box merely losing the cursor must open nothing.
+  A debounced box cannot answer that through `ValueChanged`, which is still carrying the
+  keystroke BEFORE the one Enter ends — a span the Enter lands inside — so `NsSearchField` tracks
+  its text undebounced for this seam alone (`HoldTyped`) and leaves every other caller on the
+  vendor's untouched path. A list reaches it as `NsPageHeader.SearchCommitted`
+  ([surfaces.md](surfaces.md)).
 - **A field that TAKES the text takes it at the end of the entry, and the submit is not that
   end.** The heading above is about a box whose value IS the form's — a chip list's entry box is
   not: what it holds becomes a chip, and until it does, the submit saves without it. So

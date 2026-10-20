@@ -271,6 +271,17 @@ header in the tree carries such a control today). A page that names `Search` for
 nobody searches with reads false at the call site and is sized by a box it is not; a field laid
 out by hand in any of these slots takes `ns-field-slot` ([styling.md](styling.md)).
 
+**A list binds `SearchText` for the box and `SearchCommitted` for its Enter, and owns no key
+state of its own.** `SearchText`/`SearchTextChanged` is the reactive filter — the header renders
+the box and debounces it — and `SearchCommitted` carries the term a deliberate Enter ended, that
+key only: never a blur, and never the keystrokes the debounce already answers
+(`NsSearchField.OnEnterCommit`, [fields.md](fields.md)). It is what a page that ACTS on a
+committed term hangs on — a reader's burst opening the one record its number names — and it
+exists because the alternatives both cost something the page may not spend: `Search` takes over
+the zone and the filter toggle goes with it (the toggle draws only while `Search` is null), and a
+keydown hung on a wrapper around the header hears every Enter in it, the filter's and `Nuevo`'s
+included, which no flag on the page can tell from the box's own.
+
 ---
 
 ## The form seam
