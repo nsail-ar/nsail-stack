@@ -223,8 +223,10 @@ public sealed class SurfaceContext
     public RenderFragment? Export => _export;
 
     /// <summary>Raised whenever the announcing grid re-announces — on every one of its own
-    /// renders while it has something to export, never only when the fragment's shape
-    /// changed.</summary>
+    /// renders while it has something to export, never only when the fragment's shape changed —
+    /// and whenever the slot the trigger is drawn in changes hands, which is the only thing the
+    /// announcing side can be told by. A reader of either half redraws for the part of it its
+    /// own render reads and no other (ui/surfaces.md, the announce seam).</summary>
     public Action? ExportChanged;
 
     /// <summary>The exporting grid's own call, once per render, whenever it is a candidate for
@@ -273,27 +275,56 @@ public sealed class SurfaceContext
     internal bool HasExportHeader => _exportSource is not null;
 
     // First header on the surface wins, the same shape as ClaimsRow — asked from the header's own
-    // render, because what claims it can change while the surface lives.
+    // render, because what claims it can change while the surface lives. Taking a FREE slot is
+    // announced, for the same reason handing it back is: the grid reading HasExportHeader draws
+    // its own trigger while the slot is free, and nothing else would tell it to stop.
     internal bool ClaimsExport(object source)
     {
         ArgumentNullException.ThrowIfNull(source);
 
+        var taken = false;
+        bool holds;
+
         lock (_sync)
         {
-            _exportSource ??= source;
+            if (_exportSource is null)
+            {
+                _exportSource = source;
+                taken = true;
+            }
 
-            return ReferenceEquals(_exportSource, source);
+            holds = ReferenceEquals(_exportSource, source);
         }
+
+        if (taken)
+        {
+            ExportChanged?.Invoke();
+        }
+
+        return holds;
     }
 
+    // A header's end hands the claim back, so the next one on this surface can take it — and
+    // says so, the way ReleaseRow does: the main surface outlives every page on it, and the
+    // arriving header is initialized BEFORE the leaving one is disposed, so a silent release
+    // leaves a slot nobody holds and nobody draws, until something unrelated re-renders the two
+    // sides that read it (exporting.md).
     internal void ReleaseExport(object source)
     {
+        var released = false;
+
         lock (_sync)
         {
             if (ReferenceEquals(_exportSource, source))
             {
                 _exportSource = null;
+                released = true;
             }
+        }
+
+        if (released)
+        {
+            ExportChanged?.Invoke();
         }
     }
 

@@ -233,6 +233,15 @@ panel's gap only while something is in it** (`.ns-panel-header:empty`, ns-mud.cs
 hoisted row left behind renders empty, and an empty box above the fields is geometry nothing
 accounts for.
 
+**A second claim rides the same surface, for the seat a list's Exportar is drawn in**
+(`SurfaceContext.ClaimsExport`, handed back by `ReleaseExport` from `Dispose`): first header
+wins, asked from its own render, and the rule for what goes in that seat — which grid hands its
+trigger up and which keeps its own — is [exporting.md](../exporting.md). It is handed back for
+the row claim's reason and it is handed back **out loud**: a surface that outlives its pages
+initializes the arriving header before it disposes the leaving one, so the render after the
+release is the only moment either side of the seat can be told the slot moved, and taking a free
+slot says so for the same reason. Both halves ride `ExportChanged`.
+
 **Chrome that reads the announcement must subscribe to it.** The surface cascade is `IsFixed`
 and `Announce` raises `AnnouncementChanged` alone — never `StateChanged`, which is a separate
 event for a reason (cases). So a component whose markup reads `Surface.Title` — an overlay's own
@@ -240,7 +249,9 @@ row (`NsSurfaceChrome`), and `NsAppBar` for a host that mounts one, which no lay
 drawer's header shows the brand unconditionally and reads no announcement at all — hooks
 `AnnouncementChanged` in `OnInitialized` and unhooks it in `Dispose`. Without that hook nothing redraws it when the arriving page announces: it keeps
 drawing the departed page's name until something unrelated re-renders the layout, which on a
-docked desktop is nothing at all.
+docked desktop is nothing at all. **Both sides of the export seat are such chrome** and both hook
+`ExportChanged`: `NsPageHeader` for the trigger it draws, `NsTable` for the one question its own
+bar asks of the surface (whether a header holds the seat).
 
 **And it redraws only for the part of the state its own render reads.** A surface announces
 several times for one gesture — a save in an overlay announces three — and a host that redraws for
@@ -249,7 +260,9 @@ screen. So `NsSurfaceContext` redraws for `HasChanges` alone, the only thing its
 (the `NavigationLock`), and `NsDrawer` for the width its size translates to and whether it docks —
 its container refresh narrower still, for the dock alone, which is the half of that geometry the
 vendor does not announce by itself: that container is the LAYOUT, and poking it reaches the nav,
-the bar and the page the overlay is standing over. The gate is the COUNT and never a
+the bar and the page the overlay is standing over. `NsTable` compares against what its last pass
+drew, and must: it raises `ExportChanged` itself, from its own render body, so a redraw for the
+whole event is a loop rather than merely a waste. The gate is the COUNT and never a
 duration: `SubmitRenderPassTests`, in the shipped composition, for the reason in
 judgment.md (nsail: `docs/agents/judgment.md`) 3 — the CI box swings several-fold on identical work.
 
@@ -267,7 +280,10 @@ shrinks) — free text, or the scope selector a list is read through. `Lead` is 
 what the screen is **showing** rather than over what it lists, and it stands before the search
 zone at its own width, so a screen that wants both keeps both. A control that governs the subject
 *beside the acts on it* is neither: it rides `Actions`, at the row's right edge with them (no
-header in the tree carries such a control today). A page that names `Search` for something
+header in the tree carries such a control today). **The right side has one more seat, and no
+page fills it by hand**: the export trigger a list hands up, between the spacer and `Actions` so
+Exportar never competes with Nuevo for the row's room ([exporting.md](../exporting.md)). A page
+that names `Search` for something
 nobody searches with reads false at the call site and is sized by a box it is not; a field laid
 out by hand in any of these slots takes `ns-field-slot` ([styling.md](styling.md)).
 

@@ -42,7 +42,11 @@
 
     // Only a grid with no Title of its own competes for the header's slot: a Title names this
     // grid as a panel of a bigger page (ShowExportInline), and a panel's export stays beside
-    // its own name rather than racing a sibling grid for one shared announcement.
+    // its own name rather than racing a sibling grid for one shared announcement. The slot's
+    // holder is read before the announcement and not after: announcing calls back into this
+    // grid's own ExportChanged handler, which answers by comparing against this field.
+    _drawnExportHeader = Surface?.HasExportHeader ?? false;
+
     Surface?.AnnounceExport(this, Title is null ? exportTrigger : null);
 
     RenderFragment headerCells =
@@ -350,6 +354,11 @@ else
     ExportWriters? _writers;
     bool _askedWriters;
     CancellationTokenSource? _export;
+
+    // Whether a header held the export slot on the pass that drew this grid's bar. Read once at
+    // the top of that pass and not again, so the seat the bar drew and the answer
+    // OnExportChanged compares against are the same answer.
+    bool _drawnExportHeader;
 
     [Parameter]
     public string? Class { get; set; }
@@ -1053,13 +1062,37 @@ else
     // matter what else stands on the surface; an unnamed grid is a candidate for being the
     // PAGE's own list, so it only keeps its inline copy where no page header claimed the slot
     // (SurfaceContext.ClaimsExport) — the trigger never appears twice.
-    bool ShowExportInline => Exportable && CanExport && (Title is not null || !(Surface?.HasExportHeader ?? false));
+    bool ShowExportInline => Exportable && CanExport && (Title is not null || !_drawnExportHeader);
 
     // A grid with no paging callback: its rows are all in hand, so it is a list unless something
     // writes them. The two write seams a grid can carry without a RowEditor are the bar's way in
     // and the row controls — a collection that can be added to or taken from is being edited
     // whoever renders the cells.
     bool HoldsItsList => Document is null && NewRow is null && !OnRowCommit.HasDelegate && !OnRowRemove.HasDelegate;
+
+    protected override void OnInitialized()
+    {
+        if (Surface is not null)
+        {
+            Surface.ExportChanged += OnExportChanged;
+        }
+    }
+
+    // The only thing this grid's own render reads off the surface is whether a header holds the
+    // export slot, and the event carries far more than that: every grid on the surface raises it
+    // from every one of its own renders, this grid included, so redrawing for all of them would
+    // rebuild the rows to emit what is on screen — and for the announcement this grid makes from
+    // its own render body, it would be a loop. Compared against what the last pass drew
+    // (_drawnExportHeader), which is the question the collection bar's seat asks.
+    void OnExportChanged()
+    {
+        if ((Surface?.HasExportHeader ?? false) == _drawnExportHeader)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     ActionItem ExportAction(IExportWriter writer)
     {
@@ -1182,7 +1215,7 @@ else
         }
     }
 
-    // Both subscriptions are dropped without awaiting them: NsComponent's teardown is
+    // The two JS-side subscriptions are dropped without awaiting them: NsComponent's teardown is
     // synchronous, and the JS side of a listener whose circuit is going away has nothing left
     // to report to.
     protected override void Dispose(bool disposing)
@@ -1202,10 +1235,18 @@ else
             // would be a round trip asked for by nobody.
             _export?.Cancel();
 
-            // A header holding this grid's trigger past its own teardown would offer Exportar
-            // over a page that just said it could not read, or over a grid an @if turned off —
-            // a no-op where some other grid already holds the slot.
-            Surface?.AnnounceExport(this, null);
+            if (Surface is not null)
+            {
+                // Unhooked before the announcement below, which raises the event this grid is
+                // subscribed to: a slot that moves while this instance is going away is nothing
+                // it has left to draw.
+                Surface.ExportChanged -= OnExportChanged;
+
+                // A header holding this grid's trigger past its own teardown would offer Exportar
+                // over a page that just said it could not read, or over a grid an @if turned off —
+                // a no-op where some other grid already holds the slot.
+                Surface.AnnounceExport(this, null);
+            }
         }
 
         base.Dispose(disposing);

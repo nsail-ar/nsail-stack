@@ -1,0 +1,56 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Icons
+@using NSail.Paging
+
+@* The export slot changing hands between two headers on one surface — the navigation shape, on
+   the surface that outlives its pages. Two branches and not one header with a changing Title,
+   because what this measures is the exchange between two INSTANCES: a header that is only
+   re-parameterized never releases anything. The grid below stands through the exchange, which
+   is the half that has to stay silent. *@
+
+<MudPopoverProvider />
+
+<CascadingValue Value="Surface" IsFixed="true">
+    @if (Arrived)
+    {
+        <NsPageHeader Title="Artículos" Icon="@NsIcons.Directory">
+            <Actions>
+                <NsButton Label="Nuevo" />
+            </Actions>
+        </NsPageHeader>
+    }
+    else
+    {
+        <NsPageHeader Title="Personas" Icon="@NsIcons.Directory">
+            <Actions>
+                <NsButton Label="Nuevo" />
+            </Actions>
+        </NsPageHeader>
+    }
+
+    <NsTable TRow="ExportRowModel" Rows="_rows">
+        <HeaderContent>
+            <NsTh For="() => context.Name" />
+        </HeaderContent>
+        <RowTemplate Context="row">
+            <NsTd For="() => row.Name">@row.Name</NsTd>
+        </RowTemplate>
+    </NsTable>
+</CascadingValue>
+
+@code {
+
+    readonly DataPage<ExportRowModel> _rows = DataPage<ExportRowModel>.From([new ExportRowModel { Name = "Row 0" }]);
+
+    [Parameter, EditorRequired]
+    public SurfaceContext Surface { get; set; } = default!;
+
+    [Parameter]
+    public bool Arrived { get; set; }
+}

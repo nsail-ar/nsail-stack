@@ -714,4 +714,48 @@ public sealed class SurfaceContextTests
 
         Assert.Equal("Pérez & Cía", surface.GetQuery<string>("Search"));
     }
+
+    [Fact]
+    public void ClaimsExport_notifies_the_first_time_the_slot_is_taken()
+    {
+        var surface = Build();
+        var header = new object();
+        var second = new object();
+        var raised = 0;
+        surface.ExportChanged += () => raised++;
+
+        Assert.True(surface.ClaimsExport(header));
+        Assert.True(surface.ClaimsExport(header));
+        Assert.False(surface.ClaimsExport(second));
+
+        // Asked from every render of every header on the surface: the word is the slot changing
+        // hands, not a header asking again whether it still holds it.
+        Assert.True(surface.HasExportHeader);
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    public void ReleaseExport_notifies_once_and_only_for_the_holder()
+    {
+        var surface = Build();
+        var header = new object();
+        var other = new object();
+        surface.ClaimsExport(header);
+
+        var raised = 0;
+        surface.ExportChanged += () => raised++;
+
+        surface.ReleaseExport(other);
+
+        // A header that never held the slot hands nothing back: the holder is still holding it,
+        // and a grid told otherwise would draw a second Exportar.
+        Assert.True(surface.HasExportHeader);
+        Assert.Equal(0, raised);
+
+        surface.ReleaseExport(header);
+        surface.ReleaseExport(header);
+
+        Assert.False(surface.HasExportHeader);
+        Assert.Equal(1, raised);
+    }
 }
