@@ -85,8 +85,8 @@ complaint the rule answers: a phone's title row came out three different heights
 | `NsAction` | wraps `NsButton` with an `ActionItem` (`@GetAction(Delete, row, NsIcons.Delete)`): click, icon and label (`"Actions.{Method}"`) in one call. **Withholds itself inside a form that refuses writes** unless the item declares it writes nothing. **Holds `NsIcons.Progress` in the item's own glyph slot for as long as `OnClick` is in flight**, greyed out, and returns to whatever the item's own face is once the call ends — the row's re-render decides what that is, never this component | same as `NsButton`, default `Inline` at `Never` — an act that wants its word writes `Breakpoint="NsBreakpoint.Always"` |
 | `NsLink` | plain navigation link (a real `<a>`) — `Href`/`Target`/`Fragment`/`Icon`/`Label`/`Breakpoint`; greyed by a disabled form, never by one that is merely saving (below) | `Inline` (default), `Default`, `Main`, `Important` |
 | `NsPageLink` | wraps `NsLink` for a destination page (`TPage=`/`Parameters=`): `Href` from the route table, `Label` from the page's own `Title` | same as `NsLink` |
-| `NsSubmit` | submits the form (`type=submit`, native Enter — except over an open lookup or select, where Enter picks the option and the form never sees it, [fields.md](fields.md)); greys out until the cascaded `FormTracked` reports changes (an `Untracked` form never gates) | hero (the accent), label pinned (`Breakpoint` `Always`); `Filter` = quiet search-bar look; `Send` = same hero chrome, paper-airplane glyph, for a submit that sends words rather than saves a document |
-| `NsClose` | closes the hosted surface (`Surface.Close()`), self-wired; renders nothing on the default surface; refused by a form that is disabled or saving — both faces alike on every surface, the dialog's header X included, which reads the same name from outside the form's cascade (below) | `Default` (default) = the footer's worded button; `Inline` = the header X, drawn by `NsButton` like every other glyph |
+| `NsSubmit` | submits the form (`type=submit`, native Enter — except over an open lookup or select, where Enter picks the option and the form never sees it, [fields.md](fields.md)); greys out until the cascaded `FormTracked` reports changes (an `Untracked` form never gates); words itself through `ChildContent`, `Label` restating that word as a string (below) | hero (the accent), label pinned (`Breakpoint` `Always`); `Filter` = quiet search-bar look; `Send` = same hero chrome, paper-airplane glyph, for a submit that sends words rather than saves a document |
+| `NsClose` | closes the hosted surface (`Surface.Close()`), self-wired; renders nothing on the default surface; refused by a form that is disabled or saving — both faces alike on every surface, the dialog's header X included, which reads the same name from outside the form's cascade (below); words itself the same way, `ChildContent` drawn and `Label` restating it | `Default` (default) = the footer's worded button; `Inline` = the header X, drawn by `NsButton` like every other glyph |
 
 **The primitives (`NsButton`, `NsLink`) stay pure chrome; derivation lives in a wrapping
 component (`NsAction`, `NsPageLink`), never as extra parameters on the primitive.**
@@ -119,17 +119,18 @@ tooltip can restate the act with; set it wherever a custom `ChildContent` words 
 leave it off where there is none — the default word is `Strings`' own string already
 ([cases: shell](../intentional-ui-cases-shell.md), *The chord beside a button's word*). On
 `NsButton`/`NsLink`, `Label` IS the word. **An unknown parameter on an `Ns*` component is not a
-compile error and it is not a crash — it is the control disappearing** — and the natural typo is
-whatever the neighbour in the same footer declares and this one does not: `<NsSubmit Icon="…"/>`,
-where a submit's glyph is its own state (the tick, the filter's search, the spinner the form is
-running) and only `NsButton` takes one. The Razor compiler
-emits any attribute it does not recognize (the component might capture unmatched values; none
-of ours does, `UnmatchedParameterTests`), and at render time Blazor normalizes the
-`SetParametersAsync` throw into a faulted Task and routes it to the nearest `IErrorBoundary`
-**without aborting the batch**. The rest of the tree ships. Inside a dialog — portaled as a
-sibling of the router, so outside `MainLayout`'s `NsErrorBoundary` — nothing catches it at all
-and the only report is an unhandled circuit error: a dialog renders complete and interactive
-with a footer missing its submit.
+compile error and it is not a crash — it is the control disappearing** — and the natural typo
+is a parameter a button or link beside it declares and this one does not:
+`<NsSubmit Icon="…"/>`, where a submit's glyph is its own state (the tick, the filter's search,
+the spinner the form is running) and so `NsSubmit` and `NsClose` declare no `Icon`, while
+`NsButton`, `NsLink` and `NsPageLink` each do. The Razor compiler emits any attribute it does
+not recognize (the component might capture unmatched values; none of ours does,
+`UnmatchedParameterTests`), and at render time Blazor normalizes the `SetParametersAsync` throw
+into a faulted Task and routes it to the nearest `IErrorBoundary` **without aborting the
+batch**. The rest of the tree ships. Inside a dialog — portaled as a sibling of the router, so
+outside `MainLayout`'s `NsErrorBoundary` — nothing catches it at all and the only report is an
+unhandled circuit error: a dialog renders complete and interactive with a footer missing its
+submit.
 
 What holds the line is `DialogRenderTests` — every component handed to `DialogManager.Open<T>`
 is rendered in that surface, and a form that draws no submit fails by name. Dialog-hosted forms
