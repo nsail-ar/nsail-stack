@@ -3,14 +3,12 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NSail.Background;
 using NSail.Configuration;
 using NSail.Messaging.Runtime.Pipelines;
 using NSail.Metadata;
-using NSail.Security;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
@@ -52,11 +50,6 @@ public static class Setup
 
         builder.Services.AddMetadata();
         builder.Services.AddSingleton(options);
-
-        // The span names the acting user, so the interceptor reads the ambient Session. TryAdd
-        // and not Add because this runs before AddSecurity and before the install's own
-        // provider, either of which has to win over this default.
-        builder.Services.TryAddScoped<SessionProvider>();
 
         builder.Services.AddScoped(typeof(IInterceptor<>), typeof(TelemetryInterceptor<>));
         builder.Services.AddScoped(typeof(IInterceptor<,>), typeof(TelemetryInterceptor<,>));

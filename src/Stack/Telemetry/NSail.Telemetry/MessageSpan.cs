@@ -69,7 +69,10 @@ public static class MessageSpan
 
         if (userId is { } user)
         {
-            activity?.SetTag(UserTag, user);
+            // As the string the exporter would have converted it into anyway, so the tag's
+            // value is a type the OpenTelemetry specification admits and is literally what a
+            // search for this user matches on.
+            activity?.SetTag(UserTag, user.ToString());
         }
 
         return activity;

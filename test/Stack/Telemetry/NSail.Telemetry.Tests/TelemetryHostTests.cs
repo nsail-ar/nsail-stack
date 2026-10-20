@@ -34,6 +34,19 @@ public sealed class TelemetryHostTests
         Assert.NotNull(app.Services.GetService<TracerProvider>());
     }
 
+    // The read side hangs off its own credential, and this is the branch AC4's structural half
+    // stands on: an install handed none resolves NO reader, so the door that would have used
+    // one says it cannot answer. Registered instead, its SearchUri() would throw
+    // ArgumentException on a missing endpoint, which is not a sentence anybody can read.
+    [Fact]
+    public void A_host_with_no_read_credential_resolves_no_failure_log()
+    {
+        using var app = Harness.Host(credentialed: true);
+
+        Assert.False(app.Services.GetRequiredService<TelemetryOptions>().CanSearch);
+        Assert.Null(app.Services.GetService<IFailureLog>());
+    }
+
     // The span is registered either way: an ActivitySource nobody listens to costs nothing,
     // and a pipeline that changed shape with the configuration would be the environment
     // branch baseservices.md forbids, wearing a different hat.

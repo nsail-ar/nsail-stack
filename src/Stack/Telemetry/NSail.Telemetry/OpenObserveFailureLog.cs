@@ -63,20 +63,25 @@ public sealed class OpenObserveFailureLog : IFailureLog
             throw new FailureLogException($"The failure log answered {(int)response.StatusCode}.");
         }
 
+        // Read as text and deserialized here rather than through ReadFromJsonAsync, which
+        // validates the media type first and throws NotSupportedException for anything that is
+        // not application/json: a store behind an authentication portal answers 200 text/html,
+        // and that has to be the one exception this seam raises like every other way the store
+        // lets a caller down. JsonSerializer can only fail with JsonException.
+        var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
         Answer? answer;
 
         try
         {
-            answer = await response.Content
-                .ReadFromJsonAsync<Answer>(JsonOptions.Wire, cancellationToken)
-                .ConfigureAwait(false);
+            answer = JsonSerializer.Deserialize<Answer>(body, JsonOptions.Wire);
         }
         catch (JsonException exception)
         {
             throw new FailureLogException("The failure log answered something that is not a search result.", exception);
         }
 
-        return (answer?.Hits ?? []).Select(Failure).ToList();
+        return (answer?.Hits ?? []).Select(Failure).OfType<LoggedFailure>().ToList();
     }
 
     /// <summary>The store's column for a span tag: its own name with the dots flattened,
@@ -99,10 +104,17 @@ public sealed class OpenObserveFailureLog : IFailureLog
         return DateTimeOffset.FromUnixTimeMilliseconds(microseconds / 1000);
     }
 
-    static LoggedFailure Failure(Dictionary<string, JsonElement> hit)
+    // A hit with no readable timestamp is dropped rather than dated: At(0) is 1970 and would
+    // file the failure as the oldest entry in a list whose whole order is by when.
+    static LoggedFailure? Failure(Dictionary<string, JsonElement> hit)
     {
+        if (Number(hit, TimeColumn) is not { } microseconds)
+        {
+            return null;
+        }
+
         return new LoggedFailure(
-            At(Number(hit, TimeColumn)),
+            At(microseconds),
             Text(hit, NameColumn) ?? string.Empty,
             Text(hit, Column(MessageSpan.ProblemTag)),
             Text(hit, Column(MessageSpan.RuleTag)),
@@ -120,19 +132,22 @@ public sealed class OpenObserveFailureLog : IFailureLog
         return value.GetString();
     }
 
-    static long Number(Dictionary<string, JsonElement> hit, string column)
+    // The ValueKind is checked for the same reason Text checks it, and with more at stake:
+    // TryGetInt64 does not answer false for an element that is not a number, it throws.
+    static long? Number(Dictionary<string, JsonElement> hit, string column)
     {
-        if (!hit.TryGetValue(column, out var value) || !value.TryGetInt64(out var number))
+        if (!hit.TryGetValue(column, out var value) || value.ValueKind != JsonValueKind.Number)
         {
-            return 0;
+            return null;
         }
 
-        return number;
+        return value.TryGetInt64(out var number) ? number : null;
     }
 
-    /// <summary>The caller's own failures, newest first. Every value interpolated is either a
-    /// constant of this Stack or a Guid — no string anybody typed reaches this SQL, which is
-    /// what makes composing it rather than binding it safe.</summary>
+    /// <summary>The caller's own failures, newest first. What is interpolated is a constant of
+    /// this Stack, a Guid, or the install's own configured stream name — nothing a user of the
+    /// application can reach, which is what makes composing this rather than binding it
+    /// safe.</summary>
     string Sql(FailureLogQuery query)
     {
         return $"SELECT {TimeColumn}, {NameColumn}, {TraceColumn}, "

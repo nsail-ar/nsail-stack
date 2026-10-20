@@ -40,6 +40,12 @@ public sealed class TelemetryOptions
 
     public string SearchStream { get; set; } = "default";
 
+    /// <summary>Which of the install's signals is being searched. Stated rather than left to
+    /// the store's own default, which is the logs: this host exports logs AND traces, so a
+    /// stream named "default" exists in both and the name alone does not say which one a
+    /// search means. The failures are spans, so traces.</summary>
+    public string SearchStreamType { get; set; } = "traces";
+
     /// <summary>The collector's own account number, carried so a human debugging the
     /// section can read it. Nothing sends it: the backend identifies the install by the
     /// resource attributes and authenticates it by the header.</summary>
@@ -117,11 +123,11 @@ public sealed class TelemetryOptions
     }
 
     /// <summary>Where a search is posted: the store's own API under the install's
-    /// organization.</summary>
+    /// organization, naming the signal it is a search of.</summary>
     public Uri SearchUri()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(SearchEndpoint);
 
-        return new Uri($"{SearchEndpoint.TrimEnd('/')}/api/{SearchOrganization}/_search");
+        return new Uri($"{SearchEndpoint.TrimEnd('/')}/api/{SearchOrganization}/_search?type={SearchStreamType}");
     }
 }

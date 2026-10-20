@@ -194,9 +194,12 @@ The live values are the operations ledger's (nsail-ops `providers/grafana.md`).
   registered, so the `ActivitySource` has no listener and costs a `HasListeners` check. A
   dev machine and CI are silent by having no variable, never by a branch. The Mediator
   interceptor is registered either way — the pipeline's shape does not move with config.
-- **`SearchEndpoint`** and **`NSAIL_OBSERVE_READ`** are the read side, below. They are not
-  the two above: ingest is a gateway and a search is an API, and an install is routinely
-  allowed to post where it may not query.
+- **`SearchEndpoint`**, **`SearchOrganization`**, **`SearchStream`**, **`SearchStreamType`**
+  and **`NSAIL_OBSERVE_READ`** are the read side, below. The endpoint is not `Endpoint`:
+  ingest is a gateway and a search is an API, and an install is routinely allowed to post
+  where it may not query. The other three are the store's own words for where the spans
+  landed and which signal they are — defaulted (`default`, `default`, `traces`), and set only
+  by an install that renamed one.
 
 **Resource attributes are the backend's filters, so they are not free to invent**:
 `service.name` (the product, derived from the host assembly — `NSail.Optical.Web` binds
@@ -213,9 +216,9 @@ house refuses under the one Problem code `RuleViolation` and names itself on the
 tag carries the first issue's code narrowed by its source — `StringManager`'s own two keys for
 a refusal, joined, so a reader looks the sentence up without knowing how it was split. Both
 halves are written by the source (a rule's name, a field's, an entity's); the issue's
-**message**, the one part free to quote the value that caused the refusal, stays out. No `RecordException` and no status description, either of
-which could quote the value that caused the refusal, and no exception message, which opens
-every rendered stack. For code NSail did not write, `Scrubber` is a span
+**message**, the one part free to quote the value that caused the refusal, stays out — and so
+does the exception's, which opens every rendered stack. No `RecordException` and no status
+description either. For code NSail did not write, `Scrubber` is a span
 processor that drops `url.query`, `db.statement`, `db.query.text` and every
 `db.query.parameter.*`, and cuts the query string off `url.full`. A processor rather than
 vendor options on purpose: an instrumentation option can be removed or renamed by the next
@@ -256,22 +259,32 @@ store can be searched by who asked.
 
 **The spans can be read back, and `IFailureLog` is the whole of it.** One method, one query
 shape: one person's own failures, since a moment, at most N, newest first. What it answers
-with is what the span carries — the operation's name, a code or an exception's type, the
-`traceId` and when — so a caller has nothing to scrub and no way to be handed a value a
-message carried. `OpenObserveFailureLog` is the one implementation and the only place the
-store's vendor is named: its columns are the span's own tags with the dots flattened,
-derived from the tag constants rather than written again, so renaming a tag cannot leave the
-query reading a column nobody writes.
+with is what the span carries — the operation's name, the refusal's code and the rule it
+named, or the exception's type, plus the `traceId` and when — so a caller has nothing to
+scrub and no way to be handed a value a message carried. `OpenObserveFailureLog` is the one
+implementation and the only place the store's vendor is named: its columns are the span's own
+tags with the dots flattened, derived from the tag constants rather than written again, so
+renaming a tag cannot leave the query reading a column nobody writes.
 
 - **The user is not optional in the query.** A door that could ask for everybody's failures
   is a different read under a different permission; leaving the filter out of the seam is
-  what keeps that door from being opened by accident.
+  what keeps that door from being opened by accident. **Which** user, though, is the
+  caller's own business: the seam takes a `Guid` and cannot check whose it is, so a door that
+  answers one person about themselves pins it to the acting Session and the seam's shape only
+  stops it from being forgotten.
 - **Registered only where `TelemetryOptions.CanSearch`** — a `SearchEndpoint` and a
   `NSAIL_OBSERVE_READ` credential, independent of the exporter's. An install with neither
   has no `IFailureLog` at all, so **every caller resolves it as optional** and says in its
-  own words that it cannot answer. A store that then refuses, times out or answers something
-  that is not a search result is one `FailureLogException`, whose message is never the
-  store's own: there is nothing different a caller could do about any of them.
+  own words that it cannot answer. A store that then refuses, times out, answers something
+  that is not a search result, or answers a row this reader cannot read, is one
+  `FailureLogException`, whose message is never the store's own: there is nothing different a
+  caller could do about any of them. That is also why the body is read as text and
+  deserialized rather than through `ReadFromJsonAsync`, which validates the media type first
+  and raises a different exception for a store answering `200 text/html`.
+- **The search names its signal.** The store's own default is the logs, and a host that
+  exports both has a stream of that name under each, so `SearchStreamType` (`traces`) rides
+  the query — a missing parameter would read the wrong stream and answer zero rows, which is
+  worse than an error because it reads as "you have no recent failures".
 
 ### Install verbs: backup and restore
 

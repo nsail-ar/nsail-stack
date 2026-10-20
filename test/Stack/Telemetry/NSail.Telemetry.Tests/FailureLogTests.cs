@@ -14,10 +14,13 @@ public sealed class Store : HttpMessageHandler
     readonly HttpStatusCode _status;
     readonly string _body;
 
-    public Store(HttpStatusCode status, string body)
+    readonly string _type;
+
+    public Store(HttpStatusCode status, string body, string type = "application/json")
     {
         _status = status;
         _body = body;
+        _type = type;
     }
 
     public string? Sent { get; private set; }
@@ -36,7 +39,7 @@ public sealed class Store : HttpMessageHandler
 
         return new HttpResponseMessage(_status)
         {
-            Content = new StringContent(_body, Encoding.UTF8, "application/json"),
+            Content = new StringContent(_body, Encoding.UTF8, _type),
         };
     }
 }
@@ -67,7 +70,9 @@ public sealed class FailureLogTests
         Assert.Contains("FROM \"default\"", sql, StringComparison.Ordinal);
 
         Assert.Equal(20, query.GetProperty("size").GetInt32());
-        Assert.Equal(new Uri($"{Endpoint}/api/default/_search"), store.Address);
+        // The signal is named and not left to the store's default, which is the logs: this
+        // install exports both and a stream named "default" exists in each.
+        Assert.Equal(new Uri($"{Endpoint}/api/default/_search?type=traces"), store.Address);
         Assert.Equal(Credential, store.Credential);
     }
 
@@ -147,13 +152,37 @@ public sealed class FailureLogTests
         Assert.DoesNotContain("read@nsail", thrown.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task A_store_that_answers_something_else_is_one_failure_too()
+    // Both ways a 2xx can carry something that is not a search result: a body that lies about
+    // its own type, and one that declares the type it really is — a store behind an
+    // authentication portal answering 200 text/html. The second is why the body is read as text
+    // and deserialized here: ReadFromJsonAsync validates the media type first and throws
+    // NotSupportedException, which is not the one exception this seam raises.
+    [Theory]
+    [InlineData("application/json")]
+    [InlineData("text/html")]
+    public async Task A_store_that_answers_something_else_is_one_failure_too(string type)
     {
-        using var store = new Store(HttpStatusCode.OK, "<html>bad gateway</html>");
+        using var store = new Store(HttpStatusCode.OK, "<html>bad gateway</html>", type);
 
         await Assert.ThrowsAsync<FailureLogException>(() =>
             Read(store, new FailureLogQuery(Guid.NewGuid(), DateTimeOffset.UtcNow.AddHours(-24), 20)));
+    }
+
+    // A column the stream's schema has and this row left empty, or filled with something that
+    // is not a number. TryGetInt64 throws rather than answering false for either, and a hit
+    // with no readable timestamp has no place in a list ordered by when: it is dropped, not
+    // dated 1970.
+    [Theory]
+    [InlineData("\"1760000000000000\"")]
+    [InlineData("null")]
+    [InlineData("{}")]
+    public async Task A_hit_with_no_readable_time_is_dropped(string time)
+    {
+        var body = $"{{\"hits\":[{{\"start_time\":{time},\"span_name\":\"Sales.Boxes.CloseBox\"}}]}}";
+
+        using var store = new Store(HttpStatusCode.OK, body);
+
+        Assert.Empty(await Read(store, new FailureLogQuery(Guid.NewGuid(), DateTimeOffset.UtcNow.AddHours(-24), 20)));
     }
 
     static JsonElement Query(Store store)

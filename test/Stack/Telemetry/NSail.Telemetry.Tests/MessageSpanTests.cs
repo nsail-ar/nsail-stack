@@ -134,8 +134,13 @@ public sealed class MessageSpanTests
         var user = Guid.NewGuid();
 
         using var recorder = new SpanRecorder();
+
+        // The session's provider is the composition's, never telemetry's: AddTelemetry
+        // registers none and the interceptor resolves whatever is there, which on a real host
+        // is whatever Iam composed.
         using var app = Harness.Host(credentialed: false, services =>
         {
+            services.AddScoped<SessionProvider>();
             services.AddSingleton<IHandler<CreatePatient, Guid>>(new CreatePatientHandler());
         });
 
@@ -149,17 +154,27 @@ public sealed class MessageSpanTests
 
         await Harness.Mediator(scope.ServiceProvider).Send(new CreatePatient("Juan Perez", "20123456789", "no notes"));
 
-        Assert.Equal(user, Assert.Single(recorder.Stopped).GetTagItem(MessageSpan.UserTag));
+        // The string and not the Guid: it is the one form the specification admits for an
+        // attribute, and it is literally what a search for this user's failures matches on.
+        Assert.Equal(user.ToString(), Assert.Single(recorder.Stopped).GetTagItem(MessageSpan.UserTag));
     }
 
     // Absent and not empty: a search for one person's own operations must not match the ones
-    // that were nobody's.
-    [Fact]
-    public async Task An_anonymous_send_names_nobody()
+    // that were nobody's. Both ways there is nobody — a session with no user id, and a host
+    // that composed no session provider at all, which is what AddBaseWebApi alone leaves.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_send_with_nobody_acting_names_nobody(bool composed)
     {
         using var recorder = new SpanRecorder();
         using var app = Harness.Host(credentialed: false, services =>
         {
+            if (composed)
+            {
+                services.AddScoped<SessionProvider>();
+            }
+
             services.AddSingleton<IHandler<CreatePatient, Guid>>(new CreatePatientHandler());
         });
 
