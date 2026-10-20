@@ -3,9 +3,11 @@
 
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSail.Components;
+using NSail.Icons;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
 using NSail.Metadata;
@@ -44,24 +46,26 @@ public sealed class NsPageHeaderSearchCommittedTests : BunitContext, IAsyncLifet
     }
 
     // The race the story names: a reader's burst lands the Enter inside the header's own
-    // debounce window, before SearchTextChanged would ever have carried the code.
+    // debounce window, before SearchTextChanged would ever have carried the code. Counted and
+    // not merely captured: a page that opens a record on the committed term opens it once, so
+    // one keystroke owes exactly one commit.
     [Fact]
-    public async Task EnterInTheSearchBox_FiresSearchCommitted()
+    public async Task EnterInTheSearchBox_FiresSearchCommittedOnceWithTheTypedTerm()
     {
-        string? committed = null;
+        var committed = new List<string?>();
 
         var cut = Render<NsPageHeader>(parameters => parameters
             .Add(header => header.Title, "Catálogo")
             .Add(header => header.SearchText, (string?)null)
             .Add(header => header.SearchTextChanged, EventCallback.Factory.Create<string?>(this, _ => { }))
-            .Add(header => header.SearchCommitted, EventCallback.Factory.Create<string?>(this, text => committed = text)));
+            .Add(header => header.SearchCommitted, EventCallback.Factory.Create<string?>(this, text => committed.Add(text))));
 
         var input = cut.Find(".ns-toolbar-search input");
 
         await cut.InvokeAsync(() => input.Input("7791234567890"));
         await cut.InvokeAsync(() => input.KeyDown("Enter"));
 
-        Assert.Equal("7791234567890", committed);
+        Assert.Equal("7791234567890", Assert.Single(committed));
     }
 
     [Fact]
@@ -81,5 +85,29 @@ public sealed class NsPageHeaderSearchCommittedTests : BunitContext, IAsyncLifet
         await cut.InvokeAsync(() => input.Blur());
 
         Assert.False(fired);
+    }
+
+    // What the parameter exists for: reaching the keystroke through the Search fragment costs
+    // the filter toggle beside the box (NsPageHeader draws it only while Search is null), which
+    // is the trade a page hanging on SearchCommitted does not make — box and toggle both stand.
+    [Fact]
+    public void AHeaderThatTakesSearchCommitted_KeepsTheBoxAndTheFilterToggle()
+    {
+        var cut = Render<NsPageHeader>(parameters => parameters
+            .Add(header => header.Title, "Catálogo")
+            .Add(header => header.SearchText, (string?)null)
+            .Add(header => header.SearchTextChanged, EventCallback.Factory.Create<string?>(this, _ => { }))
+            .Add(header => header.SearchCommitted, EventCallback.Factory.Create<string?>(this, _ => { }))
+            .Add(header => header.Filter, Probe));
+
+        Assert.Single(cut.FindAll(".ns-toolbar-search input"));
+        Assert.Single(cut.FindComponents<NsButton>(), button => button.Instance.Icon == NsIcons.Tune);
+    }
+
+    static void Probe(RenderTreeBuilder builder)
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "probe-filter");
+        builder.CloseElement();
     }
 }
