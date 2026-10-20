@@ -673,9 +673,15 @@
                 }
             }
         }
+        else if (item.PageType is not null)
+        {
+            hidden = !await Gate.Allows(item.PageType, user);
+        }
         else
         {
-            hidden = item.PageType is null || !await Gate.Allows(item.PageType, user);
+            // An external destination names no page for the Gate to ask about, and Permission
+            // already stood in front of it above: carrying a Url is itself the answer.
+            hidden = item.Url is null;
         }
 
         if (hidden)
@@ -723,6 +729,16 @@
                     {
                         <span class="ns-nav-count">@count</span>
                     }
+                </MudNavLink>
+            }
+            else if (item.Url is not null)
+            {
+                @* No ActiveClass and no Match: an external destination is never the active
+                   route, so there is nothing here for the vendor's prefix match to decide.
+                   Target forced to a new window — leaving no surface behind means leaving the
+                   app, which this door never does (the story's own rule). *@
+                <MudNavLink Href="@item.Url" Target="_blank" Icon="@(item.Icon?.Markup)" Class="ns-nav-entry">
+                    @GetName(item)
                 </MudNavLink>
             }
         };

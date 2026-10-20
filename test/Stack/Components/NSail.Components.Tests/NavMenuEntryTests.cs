@@ -84,6 +84,20 @@ public sealed class NavMenuEntryTests
     }
 
     [Fact]
+    public void ADeclaredRowCarriesItsUrlThrough()
+    {
+        IReadOnlyList<NavMenuEntry> arrangement =
+        [
+            new() { Name = "Observability", Order = 50, Url = "https://telemetry.nsail.ar" }
+        ];
+
+        var item = Assert.Single(NavMenuEntry.Resolve(arrangement));
+
+        Assert.Equal("https://telemetry.nsail.ar", item.Url);
+        Assert.Null(item.PageType);
+    }
+
+    [Fact]
     public void ASeparatorResolvesToOne()
     {
         IReadOnlyList<NavMenuEntry> arrangement =
