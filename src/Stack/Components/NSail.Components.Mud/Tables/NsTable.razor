@@ -1064,6 +1064,11 @@ else
     // (SurfaceContext.ClaimsExport) — the trigger never appears twice.
     bool ShowExportInline => Exportable && CanExport && (Title is not null || !_drawnExportHeader);
 
+    // The one grid whose bar ASKS who holds the seat, and so the only one a slot that moves has
+    // anything to say to: a Title'd grid keeps its own trigger whatever the surface does, and a
+    // grid with nothing to export draws neither.
+    bool CompetesForExportSeat => Exportable && CanExport && Title is null;
+
     // A grid with no paging callback: its rows are all in hand, so it is a list unless something
     // writes them. The two write seams a grid can carry without a RowEditor are the bar's way in
     // and the row controls — a collection that can be added to or taken from is being edited
@@ -1082,10 +1087,17 @@ else
     // export slot, and the event carries far more than that: every grid on the surface raises it
     // from every one of its own renders, this grid included, so redrawing for all of them would
     // rebuild the rows to emit what is on screen — and for the announcement this grid makes from
-    // its own render body, it would be a loop. Compared against what the last pass drew
-    // (_drawnExportHeader), which is the question the collection bar's seat asks.
+    // its own render body, it would be a loop. Two gates, because the event has two halves: a
+    // grid that does not compete for the seat reads nothing the slot can change, and one that
+    // does already drew the answer (_drawnExportHeader). A parameter that moves either gate is
+    // a render of this grid's own, which is where that answer is taken again.
     void OnExportChanged()
     {
+        if (!CompetesForExportSeat)
+        {
+            return;
+        }
+
         if ((Surface?.HasExportHeader ?? false) == _drawnExportHeader)
         {
             return;

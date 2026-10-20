@@ -283,9 +283,9 @@ zone at its own width, so a screen that wants both keeps both. A control that go
 header in the tree carries such a control today). **The right side has one more seat, and no
 page fills it by hand**: the export trigger a list hands up, between the spacer and `Actions` so
 Exportar never competes with Nuevo for the row's room ([exporting.md](../exporting.md)). A page
-that names `Search` for something
-nobody searches with reads false at the call site and is sized by a box it is not; a field laid
-out by hand in any of these slots takes `ns-field-slot` ([styling.md](styling.md)).
+that names `Search` for something nobody searches with reads false at the call site and is sized
+by a box it is not; a field laid out by hand in any of these slots takes `ns-field-slot`
+([styling.md](styling.md)).
 
 **A list binds `SearchText` for the box and `SearchCommitted` for its Enter, and owns no key
 state of its own.** `SearchText`/`SearchTextChanged` is the reactive filter — the header renders

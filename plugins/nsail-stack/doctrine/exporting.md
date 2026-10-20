@@ -107,12 +107,9 @@ vendor tooltip.
 (`SurfaceContext.ReleaseExport`) and a free slot taken says so too, both on the event the grid's
 own announcement already rides (`ExportChanged`): the grid draws its trigger in its collection
 bar again the moment no header holds the seat, and drops it the moment one does, instead of
-waiting for a render nothing on the page has a reason to make. A surface outlives the pages on
-it and initializes the arriving header before it disposes the leaving one, so the render after
-the release is the only moment that can be trusted — the same thing the row claim says in
-[ui/surfaces.md](ui/surfaces.md), where the two claims are named together. Each side redraws for
-its own half of the event and no more: `NsTable` raises it from its own render body, so a grid
-that redrew for all of it would not stop.
+waiting for a render nothing on the page has a reason to make. Why the word is owed at all, and
+how much either side may redraw for it, is the announce seam's — [ui/surfaces.md](ui/surfaces.md),
+where this claim is named beside the row's.
 
 **Each option's icon is the writer's own** (`IExportWriter.Icon`), named through its own catalog
 entry — `ExportingIcons` (`NSail.Exporting`) — never pasted inline: a writer a host adds brings

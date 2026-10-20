@@ -294,6 +294,49 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public async Task AGridThatDoesNotCompeteForTheSeatIsNotRedrawnWhenTheSlotMoves()
+    {
+        var surface = Setup();
+
+        // The holder stands outside this tree, the way the leaving header of a page walk is no
+        // longer in it: a live header beside the grids answers the release first and re-claims
+        // from the render its own handler makes, so the grids are never asked anything.
+        var elsewhere = new object();
+        surface.ClaimsExport(elsewhere);
+
+        var cut = Render<ExportHeaderMultiGridHost>(p => p
+            .Add(x => x.Surface, surface)
+            .Add(x => x.ShowHeader, false)
+            .Add(x => x.ShowPrimary, true)
+            .Add(x => x.ShowRelated, true)
+            .Add(x => x.ShowDocument, true));
+
+        var tables = cut.FindComponents<NsTable<ExportRowModel>>();
+        var primary = tables.Single(t => t.Instance.Title is null && t.Instance.OnQuery.HasDelegate);
+        var related = tables.Single(t => t.Instance.Title == "Relacionados");
+        var document = tables.Single(t => t.Instance.Title is null && t.Markup.Contains("Doc row", StringComparison.Ordinal));
+
+        var primaryDrawn = primary.RenderCount;
+        var relatedDrawn = related.RenderCount;
+        var documentDrawn = document.RenderCount;
+
+        await cut.InvokeAsync(() => surface.ReleaseExport(elsewhere));
+
+        // The page's own list is whose seat moved, and it redraws: its trigger is back in its
+        // own collection bar.
+        Assert.True(primary.RenderCount > primaryDrawn);
+        Assert.Single(primary.FindAll(".ns-table-export"));
+
+        // The other half of the same gate: a panel's grid keeps its own trigger whatever the
+        // surface does, and a document's collection draws none either way, so neither reads the
+        // slot and a slot that moves has nothing to say to them. Both are subscribed — Title and
+        // Exportable can change while the surface lives — and both must sit still: rebuilding
+        // their rows to emit the same markup is what the announce seam's rule forbids.
+        Assert.Equal(relatedDrawn, related.RenderCount);
+        Assert.Equal(documentDrawn, document.RenderCount);
+    }
+
+    [Fact]
     public void AHeaderSwapLeavesTheArrivingHeaderHoldingTheSlotAndTheGridSilent()
     {
         var surface = Setup();
@@ -306,9 +349,9 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
 
         // The arriving header is initialized and rendered before the leaving one is disposed, so
         // it finds the slot still held and claims nothing on that first render: the leaving
-        // header's release is what hands it over. Without that word the surface arrives at the
-        // next page with no Exportar at all — the slot free, the header not asking again, and
-        // the grid, which read the slot while it was still held, not asking either.
+        // header's release is what hands it over. The composed end state, not the gap — the
+        // grid's own re-announcement reaches the arriving header too, so this exchange has
+        // another way to heal; what reds without the release's word is the pair of cases above.
         var header = cut.FindComponent<NsPageHeader>();
 
         Assert.Contains("Artículos", header.Markup, StringComparison.Ordinal);
