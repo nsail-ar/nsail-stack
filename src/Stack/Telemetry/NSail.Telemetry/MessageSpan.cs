@@ -28,6 +28,15 @@ public static class MessageSpan
     /// (<see cref="IFailureLog"/>), and without it that question has no answer.</summary>
     public const string UserTag = "nsail.user";
 
+    /// <summary>Which rule refused, as the KEY its own sentence lives at — the first issue's
+    /// code, narrowed by its source where it has one, which are StringManager's own two keys
+    /// for a refusal joined into one tag. <see cref="ProblemTag"/> cannot answer this: every
+    /// rule of the house refuses under the one Problem code "RuleViolation" and names itself on
+    /// the issue, so the code alone cannot tell two rules apart. Both halves are written by the
+    /// source — a rule's name, a field's, an entity's; the issue's MESSAGE, the one part free
+    /// to quote the value that caused the refusal, stays out.</summary>
+    public const string RuleTag = "nsail.rule";
+
     /// <summary>The exception's type on a crash — the counterpart of
     /// <see cref="ProblemTag"/>, which carries a refusal's code. A type's full name is
     /// written by the source, like a code is, and unlike the exception's message it cannot
@@ -87,6 +96,11 @@ public static class MessageSpan
         if (refusal is not null)
         {
             activity.SetTag(ProblemTag, refusal.Code);
+
+            if (RuleOf(refusal) is { } rule)
+            {
+                activity.SetTag(RuleTag, rule);
+            }
         }
         else
         {
@@ -96,6 +110,18 @@ public static class MessageSpan
         // Status without a description, and no RecordException: an exception message is the
         // one part of a refusal free to quote the value that caused it.
         activity.SetStatus(ActivityStatusCode.Error);
+    }
+
+    static string? RuleOf(BusinessException refusal)
+    {
+        if (refusal.Issues.Count == 0)
+        {
+            return null;
+        }
+
+        var issue = refusal.Issues[0];
+
+        return string.IsNullOrWhiteSpace(issue.Source) ? issue.Code : $"{issue.Code}.{issue.Source}";
     }
 
     /// <summary>"{Area}.{Feature}.{Object}" — the same rendering the security gate names a

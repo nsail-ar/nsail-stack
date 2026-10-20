@@ -4,6 +4,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Consulting.Patients;
 using NSail.Messaging;
+using NSail.Messaging.Runtime;
 using NSail.Metadata;
 using NSail.Problems;
 using NSail.Security;
@@ -81,6 +82,31 @@ public sealed class MessageSpanTests
         Assert.Equal(RefusedPatientHandler.Code, span.GetTagItem(MessageSpan.ProblemTag));
     }
 
+    // Every rule of the house refuses under the one Problem code "RuleViolation" and names
+    // itself on the issue, so the code alone cannot tell two rules apart: what a reader needs
+    // is the key the rule's own sentence lives at.
+    [Fact]
+    public async Task A_rule_names_itself_as_the_key_its_sentence_lives_at()
+    {
+        using var recorder = new SpanRecorder();
+        using var app = Harness.Host(credentialed: false);
+
+        await using var scope = app.Services.CreateAsyncScope();
+
+        await Assert.ThrowsAsync<BusinessException>(() =>
+            Harness.Mediator(scope.ServiceProvider).Send(new RuledPatient()));
+
+        var span = Assert.Single(recorder.Stopped);
+
+        Assert.Equal(MessageSpan.Refused, span.GetTagItem(MessageSpan.OutcomeTag));
+        Assert.Equal("RuleViolation", span.GetTagItem(MessageSpan.ProblemTag));
+        Assert.Equal($"RuleViolation.{RuledPatientHandler.Rule}", span.GetTagItem(MessageSpan.RuleTag));
+
+        // The issue's message is the one part of a refusal free to quote the value that caused
+        // it, so no tag carries it.
+        Assert.DoesNotContain("Juan Perez", span.TagObjects.Select(tag => tag.Value?.ToString() ?? string.Empty));
+    }
+
     [Fact]
     public async Task A_crash_is_the_exceptions_type_and_no_code()
     {
@@ -97,6 +123,7 @@ public sealed class MessageSpanTests
         Assert.Equal(MessageSpan.Failed, span.GetTagItem(MessageSpan.OutcomeTag));
         Assert.Equal(typeof(InvalidOperationException).FullName, span.GetTagItem(MessageSpan.FailureTag));
         Assert.Null(span.GetTagItem(MessageSpan.ProblemTag));
+        Assert.Null(span.GetTagItem(MessageSpan.RuleTag));
     }
 
     // The tag the failure log is searched by: without it, "why did MY last action fail" has
@@ -141,6 +168,24 @@ public sealed class MessageSpanTests
         await Harness.Mediator(scope.ServiceProvider).Send(new CreatePatient("Juan Perez", "20123456789", "no notes"));
 
         Assert.Null(Assert.Single(recorder.Stopped).GetTagItem(MessageSpan.UserTag));
+    }
+
+    // Whoever reads a failure back resolves the span's name through the message registry, which
+    // is also what a policy grants, so the two renderings have to stay one. They are written
+    // twice because MessageSpan holds a MetadataProvider and not a registry — a registry is the
+    // whole composition — and this is what keeps them from drifting.
+    [Fact]
+    public void The_span_name_is_what_the_registry_calls_the_message()
+    {
+        Type[] messages = [typeof(CreatePatient), typeof(ArchivePatient), typeof(RefusedPatient)];
+
+        var metadata = new MetadataProvider();
+        var registry = new MessageRegistry(metadata, messages);
+
+        foreach (var message in messages)
+        {
+            Assert.Equal(registry.KeyFor(message), MessageSpan.NameFor(metadata, message));
+        }
     }
 
     // With nobody listening — every host that was handed no credential — the seam costs one

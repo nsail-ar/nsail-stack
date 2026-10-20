@@ -206,8 +206,14 @@ Area `Optical`), `service.namespace` = `nsail`, `deployment.environment`, `nsail
 **No personal data reaches telemetry — ids, timings and codes only.** This is shape, not
 discipline. NSail's own span never reads a message's members: it carries `nsail.outcome`
 (`ok`/`refused`/`failed`), `nsail.user` (who asked), and, to say how it ended,
-`nsail.problem` on a refusal — the Problem's **Code**, never its Title — or `nsail.failure`
-on a crash, the exception's type. No `RecordException` and no status description, either of
+`nsail.problem` on a refusal — the Problem's **Code**, never its Title — plus `nsail.rule`,
+the key that refusal's own sentence lives at, or `nsail.failure` on a crash, the exception's
+type. **`nsail.rule` exists because the code cannot tell two rules apart**: every rule of the
+house refuses under the one Problem code `RuleViolation` and names itself on the issue, so the
+tag carries the first issue's code narrowed by its source — `StringManager`'s own two keys for
+a refusal, joined, so a reader looks the sentence up without knowing how it was split. Both
+halves are written by the source (a rule's name, a field's, an entity's); the issue's
+**message**, the one part free to quote the value that caused the refusal, stays out. No `RecordException` and no status description, either of
 which could quote the value that caused the refusal, and no exception message, which opens
 every rendered stack. For code NSail did not write, `Scrubber` is a span
 processor that drops `url.query`, `db.statement`, `db.query.text` and every

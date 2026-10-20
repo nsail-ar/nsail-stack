@@ -21,12 +21,14 @@ public sealed record FailureLogQuery(Guid UserId, DateTimeOffset Since, int Max)
 
 /// <summary>One operation that ended badly. <see cref="ProblemCode"/> is a refusal — a rule
 /// answered — and <see cref="FailureType"/> is a crash; a failure is one or the other, and
-/// neither is prose: the code is read into the rule's own sentence by whoever shows it, and
-/// the type is a type's name.</summary>
+/// neither is prose: the type is a type's name, and the code is the family of refusal, with
+/// <see cref="Rule"/> naming which rule inside it and keying the sentence the rule itself
+/// says (<see cref="MessageSpan.RuleTag"/>).</summary>
 public sealed record LoggedFailure(
     DateTimeOffset At,
     string Operation,
     string? ProblemCode,
+    string? Rule,
     string? FailureType,
     string? TraceId);
 

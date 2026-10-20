@@ -105,6 +105,7 @@ public sealed class OpenObserveFailureLog : IFailureLog
             At(Number(hit, TimeColumn)),
             Text(hit, NameColumn) ?? string.Empty,
             Text(hit, Column(MessageSpan.ProblemTag)),
+            Text(hit, Column(MessageSpan.RuleTag)),
             Text(hit, Column(MessageSpan.FailureTag)),
             Text(hit, TraceColumn));
     }
@@ -135,7 +136,7 @@ public sealed class OpenObserveFailureLog : IFailureLog
     string Sql(FailureLogQuery query)
     {
         return $"SELECT {TimeColumn}, {NameColumn}, {TraceColumn}, "
-            + $"{Column(MessageSpan.ProblemTag)}, {Column(MessageSpan.FailureTag)} "
+            + $"{Column(MessageSpan.ProblemTag)}, {Column(MessageSpan.RuleTag)}, {Column(MessageSpan.FailureTag)} "
             + $"FROM \"{Options.SearchStream}\" "
             + $"WHERE {Column(MessageSpan.UserTag)} = '{query.UserId}' "
             + $"AND {Column(MessageSpan.OutcomeTag)} IN ('{MessageSpan.Refused}', '{MessageSpan.Failed}') "

@@ -61,6 +61,7 @@ public sealed class FailureLogTests
         var sql = query.GetProperty("sql").GetString() ?? string.Empty;
 
         Assert.Contains($"nsail_user = '{user}'", sql, StringComparison.Ordinal);
+        Assert.Contains("nsail_rule", sql, StringComparison.Ordinal);
         Assert.Contains("nsail_outcome IN ('refused', 'failed')", sql, StringComparison.Ordinal);
         Assert.Contains("ORDER BY start_time DESC", sql, StringComparison.Ordinal);
         Assert.Contains("FROM \"default\"", sql, StringComparison.Ordinal);
@@ -100,7 +101,8 @@ public sealed class FailureLogTests
                     start_time = at.ToUnixTimeMilliseconds() * 1000,
                     span_name = "Sales.Boxes.CloseBox",
                     trace_id = "9f8e7d",
-                    nsail_problem = "BoxAlreadyClosed",
+                    nsail_problem = "RuleViolation",
+                    nsail_rule = "RuleViolation.BoxAlreadyClosed",
                 },
                 new
                 {
@@ -121,7 +123,8 @@ public sealed class FailureLogTests
         var refusal = failures[0];
 
         Assert.Equal("Sales.Boxes.CloseBox", refusal.Operation);
-        Assert.Equal("BoxAlreadyClosed", refusal.ProblemCode);
+        Assert.Equal("RuleViolation", refusal.ProblemCode);
+        Assert.Equal("RuleViolation.BoxAlreadyClosed", refusal.Rule);
         Assert.Null(refusal.FailureType);
         Assert.Equal("9f8e7d", refusal.TraceId);
         Assert.Equal(at.ToUnixTimeMilliseconds(), refusal.At.ToUnixTimeMilliseconds());
@@ -130,6 +133,7 @@ public sealed class FailureLogTests
 
         Assert.Equal("System.InvalidOperationException", crash.FailureType);
         Assert.Null(crash.ProblemCode);
+        Assert.Null(crash.Rule);
     }
 
     [Fact]
