@@ -58,6 +58,7 @@
                  AdornmentAriaLabel="@Strings.Translate("Common.ShowOptions")"
                  MinCharacters="0"
                  OpenOnFocus="true"
+                 OpenChanged="OnOpenChanged"
                  ShowProgressIndicator="@IsBusy"
                  ProgressIndicatorColor="Color.Primary"
                  Error="@HasError()"
@@ -173,6 +174,18 @@
 
     TValue? _loadedValue;
     TItem? _loadedItem;
+
+    // How many searches are out. Two overlap whenever a keystroke lands before the answer to
+    // the one before it, so the count and not a flag is what says whether any is still unheard.
+    int _searchesOut;
+
+    // A pick made while a search was still out: the vendor runs that open to completion AFTER
+    // the selection has already closed the list, and raises it again on the very row just
+    // chosen — a list nobody asked for, standing over the answer, which nothing afterwards
+    // closes. Only a search that was ALREADY out can do that; one that starts later is this
+    // field being asked for its list again, so the mark is taken at the pick and dropped the
+    // moment another search begins.
+    bool _reopenIsStale;
 
     /// <summary>The Runner the RESOLVE runs on, separate from the field's own because they are
     /// two unrelated reads: the search answers "what can I pick", the resolve answers "what does
@@ -396,6 +409,22 @@
         _ = InvokeAsync(async () => await _autocomplete.CloseMenuAsync());
     }
 
+    // The third belt, for the one reopen the two above cannot see: the vendor's own, raised
+    // from an open that was already under way when the pick closed the list. It is closed here
+    // rather than at the pick because the open has not happened yet then — the vendor raises it
+    // only once the search it is waiting on answers, which is after the selection has finished.
+    async Task OnOpenChanged(bool open)
+    {
+        if (!open || !_reopenIsStale || _autocomplete is null)
+        {
+            return;
+        }
+
+        _reopenIsStale = false;
+
+        await _autocomplete.CloseMenuAsync();
+    }
+
     protected override void DisposeCore()
     {
         Navigation.LocationChanged -= OnLocationChanged;
@@ -500,6 +529,8 @@
     // the last word after it — a refused change then really changes the parameter back.
     async Task OnItemChanged(TItem? item)
     {
+        _reopenIsStale = _searchesOut > 0;
+
         _selectedItem = item;
 
         StateHasChanged();
@@ -539,6 +570,23 @@
     // on focus. So the vendor is told 0 and the threshold lives here — the field opens on
     // focus, and an empty box still sends nothing.
     async Task<IEnumerable<TItem>> Search(string text, CancellationToken vendorToken)
+    {
+        // A search beginning now is this field being asked for its list, so whatever a pick
+        // before it left marked is no longer a reopen nobody asked for.
+        _reopenIsStale = false;
+        _searchesOut++;
+
+        try
+        {
+            return await Ask(text);
+        }
+        finally
+        {
+            _searchesOut--;
+        }
+    }
+
+    async Task<IEnumerable<TItem>> Ask(string text)
     {
         var term = text ?? string.Empty;
 
