@@ -613,6 +613,14 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   typed FORWARD AND BACK ONTO AGAIN while that same-termed call was still out cancelled — so a
   search answers with the field's last good read, never its own, once EITHER the term no longer
   matches the box or its own cancellation fired.
+- **A pick leaves no list behind it, however slow the search under it was.** The vendor closes
+  its popover inside the selection, but an OPEN already under way — the keystroke before the
+  pick, whose search is still out — runs to completion after that selection is over and raises
+  the list again on the very row just chosen, with nothing left to close it: the answer read
+  through the list it came from, and no way out but a click elsewhere. So a pick made while a
+  search was out is marked and the open the vendor raises for it is closed. Only a search
+  ALREADY out can do this; one that begins after the pick drops the mark, because that one is
+  the field being asked for its list again and the list it opens is wanted.
 - **The open list is sized by its RESULTS** — floored at the field it drops from, bounded by a
   measure, never capped at the box the field stands in. The vendor caps its popover at the
   anchor's own width by default, and in a line editor the anchor is a table cell, so one word at
