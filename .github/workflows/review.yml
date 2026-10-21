@@ -271,6 +271,6 @@ jobs:
           gh issue comment "$N" -R "$Q" --body "Mergeado en nsail-stack: PR #$PR — $TITLE
 
           — Vigía (QA)"
-          gh issue edit "$N" -R "$Q" --remove-label claimed --remove-label review 2>/dev/null || true
+          gh issue edit "$N" -R "$Q" --remove-label claimed --remove-label review --remove-label stalled 2>/dev/null || true
           gh workflow run unblock.yml -R "$Q" -f closed="$N" || echo "::warning::unblock dispatch failed for nsail#$N — the closed-event backstop still catches it"
           echo "nsail#$N landed via nsail-stack PR #$PR"
