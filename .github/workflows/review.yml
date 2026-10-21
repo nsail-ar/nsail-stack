@@ -247,6 +247,26 @@ jobs:
             stall "PR #$PR de nsail-stack quedó limpia pero no se pudo mergear — \`stalled\`: una mano mira por qué."
             exit 1
           fi
+          # A story that lands as several PRs is on main only when none is left open: the
+          # Stack half merging is not the product half merging, and Merged lifts dependents
+          # and hands the story to a release and to QA. An unreadable list goes to Merged,
+          # loudly, as nsail's voyage.sh land does.
+          REST=$( set -o pipefail; { gh pr list -R "$Q" --head "story/nsail-$N" --state open --json number,title,headRefName &&
+                    gh pr list -R "$Q" --search "$N in:title OR head:story/nsail-$N" --state open --json number,title,headRefName; } \
+            | jq -s -r --arg n "$N" 'add | map(select((.title | test("^nsail#" + $n + ": ")) or (.headRefName | test("^story/nsail-" + $n + "($|-)")))) | unique_by(.number) | map("#" + (.number | tostring)) | join(", ")') \
+            || { echo "::warning::nsail#$N — the story's open PRs were unreadable after the merge; it goes to Merged, a half still open on it needs a hand"; REST=""; }
+          if [ -n "$REST" ]; then
+            gh issue comment "$N" -R "$Q" --body "Mergeado en nsail-stack: PR #$PR — $TITLE
+
+          Queda(n) abierta(s) de esta story en nsail: $REST. Vuelve a **Ready** en vez de Merged: la story anda sobre main sólo cuando no queda ninguna, y de esa última cuelgan el stage y el despertar de las que dependen. El próximo lane rebasa la mitad que falta y la manda al gate.
+
+          — Vigía (QA)"
+            gh issue edit "$N" -R "$Q" --remove-label claimed --remove-label review 2>/dev/null || true
+            stage "$N" Ready
+            gh workflow run dev.yml -R "$Q" -f issue="$N" || echo "::warning::dev.yml dispatch failed for nsail#$N — the nightly floor catches it"
+            echo "nsail#$N — nsail-stack PR #$PR merged, $REST still open: back to Ready, not Merged"
+            exit 0
+          fi
           stage "$N" Merged
           gh issue comment "$N" -R "$Q" --body "Mergeado en nsail-stack: PR #$PR — $TITLE
 
