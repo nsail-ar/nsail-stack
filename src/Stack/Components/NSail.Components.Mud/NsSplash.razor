@@ -28,9 +28,14 @@
         <div class="d-flex flex-column align-center gap-4" style="width:fit-content; min-width:200px; max-width:100%;">
             @if (LogoUrl is not null)
             {
+                @* object-fit for the same reason .ns-remote-image's own <img> carries it: the
+                   height is a box the mark is fitted into, and without it a width ceiling
+                   clips the width alone and draws a wide lockup at twice its own proportion.
+                   The band keeps its 160px whatever answers, so the inlined SVG below and the
+                   <img> it replaces measure the same. *@
                 <div id="ns-splash-logo" data-logo="@LogoUrl"
                      style="height:160px; color:var(--mud-palette-primary, #8a8782);">
-                    <img src="@LogoUrl" alt="" style="height:160px; max-width:100%;"
+                    <img src="@LogoUrl" alt="" style="height:160px; max-width:100%; object-fit:contain;"
                          onerror="this.style.display='none'; this.parentElement.dataset.failed='1';" />
                 </div>
             }
@@ -93,7 +98,8 @@
         // primary the container carries -- and only an SVG is inlined, so a raster logo keeps
         // its own baked colours through the <img> that is already here. Sized the same as the
         // <img> fallback above (height, then max-width as the ceiling) or the two paths draw
-        // the mark at two different sizes depending on which one answers.
+        // the mark at two different sizes depending on which one answers -- the drawing needs
+        // no object-fit to go with it, preserveAspectRatio is already that.
         fetch(host.dataset.logo, { credentials: "same-origin" })
             .then(response => {
                 const type = (response.headers.get("content-type") || "").split(";")[0].trim();
