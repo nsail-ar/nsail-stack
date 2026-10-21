@@ -193,9 +193,11 @@ turns on, the delete `OnRemove` renders, and any open row editor. It does not re
 hand-draws in its own `ItemTemplate` or header — that markup is the kit's. `LocationsEditor` and
 `AttendeesEditor` are that shape: each hands `NsListEditor` an `ItemTemplate` only and draws its
 own Add/Edit/Delete as `NsAction`s outside the host's chrome (`AttendeesEditor`'s add is a
-`PartyLookup`, a picker over a field, and closes on the field's own read). `ChannelsEditor` is the
-same shape with no host at all. How a kit-drawn act reads the cascade is answered by the act
-itself (next section).
+`PartyLookup`, a picker over a field, and closes on the field's own read). `ChannelsEditor` is
+the other shape: it hands `NsListEditor` an `ItemEditor` too, so its `+`, its pencil and its
+delete ARE the host's chrome and the host read reaches all three — what stays the kit's there is
+the one act it draws inside the `ItemTemplate`, its `Contact`. How a kit-drawn act reads the
+cascade is answered by the act itself (next section).
 
 Extracting the pair `NsFieldBase` and `NsPickerBase` already duplicate is not available: the
 three chains meet only at `ComponentBase` (`NsFieldBase` does not descend from `NsComponent`), so
