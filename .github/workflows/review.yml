@@ -232,7 +232,7 @@ jobs:
             gh issue edit "$N" -R "$Q" --remove-label review 2>/dev/null || true
             gh issue comment "$N" -R "$Q" --body "Hallazgos de Vigía en https://github.com/$R/pull/$PR (vuelta $ROUNDS): la story vuelve a la cola. — Vigía (QA)"
             stage "$N" Ready
-            gh workflow run dev.yml -R "$Q" -f issue="$N" || echo "::warning::dev.yml dispatch failed for nsail#$N — the nightly floor catches it"
+            gh workflow run scheduler.yml -R "$Q" || echo "::warning::the nsail scheduler wake failed for nsail#$N — its */30 floor comes"
             echo "nsail#$N — findings on PR #$PR, round $ROUNDS back to the queue"
             exit 0
           fi
@@ -263,7 +263,7 @@ jobs:
           — Vigía (QA)"
             gh issue edit "$N" -R "$Q" --remove-label claimed --remove-label review 2>/dev/null || true
             stage "$N" Ready
-            gh workflow run dev.yml -R "$Q" -f issue="$N" || echo "::warning::dev.yml dispatch failed for nsail#$N — the nightly floor catches it"
+            gh workflow run scheduler.yml -R "$Q" || echo "::warning::the nsail scheduler wake failed for nsail#$N — its */30 floor comes"
             echo "nsail#$N — nsail-stack PR #$PR merged, $REST still open: back to Ready, not Merged"
             exit 0
           fi
