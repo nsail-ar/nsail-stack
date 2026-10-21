@@ -2822,24 +2822,38 @@
 
 /* NsRemoteImage's own box: the <img> and the inlined <svg> are two different elements
    with two different natural sizing rules, so the wrapper is what Height actually
-   constrains -- both children fill it and keep their own aspect ratio. max-width:100% on
-   the wrapper AND its children (the same height-as-measure, width-as-ceiling pair
-   NsSplash's own <img> carries) is what stops a wide lockup from drawing past its
-   container at a fixed height -- without it a wide mark at NsPageFace's own Height draws
-   past its container, and a phone crops it with no scroll to rescue it (position:fixed).
-   A relative ceiling alone still lets a desktop container draw the mark larger than
-   .ns-brand-column's absolute one below, which is why NsPageFace wraps this box in that
-   class rather than leaning on max-width:100% by itself. */
+   constrains, and max-width:100% on the wrapper AND its children is what stops a wide
+   lockup from drawing past its container -- without it a wide mark at NsPageFace's own
+   Height draws past it, and a phone crops it with no scroll to rescue it
+   (position:fixed). A relative ceiling alone still lets a desktop container draw the mark
+   larger than .ns-brand-column's absolute one below, which is why NsPageFace wraps this
+   box in that class rather than leaning on max-width:100% by itself. */
 .ns-remote-image {
     display: inline-flex;
     align-items: center;
     max-width: 100%;
 }
 
-.ns-remote-image > svg,
-.ns-remote-image > img {
+/* The inlined SVG fills the height asked for: it has no pixels to lose at any size, and
+   its own preserveAspectRatio fits the drawing inside whatever box it is handed, so a
+   width ceiling that bites letterboxes it instead of stretching it. */
+.ns-remote-image > svg {
     height: 100%;
     width: auto;
+    max-width: 100%;
+}
+
+/* A raster cannot take that same pair, and this is the shape it takes instead: a definite
+   height with an automatic width resolves the width from the file's own ratio and
+   max-width then clips it WITHOUT the height following, which draws a 4:1 lockup at
+   NsPageFace's Height inside .ns-brand-column as 320x160 -- the mark at twice its own
+   proportion. Two ceilings and no definite side is the one shape where the browser
+   shrinks both together, so a mark too wide for the box gives up height rather than its
+   proportion, and one smaller than the box is drawn at its own pixels instead of blown up
+   past them. The wrapper still holds the height the caller asked for and centres the mark
+   in it. */
+.ns-remote-image > img {
+    max-height: 100%;
     max-width: 100%;
 }
 

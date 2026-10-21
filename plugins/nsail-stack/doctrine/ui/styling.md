@@ -227,6 +227,11 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   `Inline` (default) inherits the surrounding colour, `Main` maps to `.text-primary`. Tinting
   an image is that parameter, never a class or a `style=` — including on the row *around* the
   image, which would tint every sibling with it.
+- **`NsRemoteImage.Height` is a box the mark is fitted into, never stretched to** (`ns-mud.css`;
+  `NsSplash`'s own mark is sized the same way): the inlined SVG fills that height, a file of
+  pixels takes the height and the width as two ceilings and keeps its own proportion under
+  both. A mark too wide for its container gives up height, not proportion; one smaller than
+  the box is drawn at its own pixels rather than blown up past them.
 - `NsTooltip` takes `Text` and wraps what it explains, declaring the whisper on a box of its own
   (cases: shell, *The bubble a control whispers*) — **detail on demand, never the only place a
   fact lives**. A phone has no hover, so what rides here is the long form of something
