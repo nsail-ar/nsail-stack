@@ -61,6 +61,11 @@
     [Parameter]
     public string? Class { get; set; }
 
+    /// <summary>The height of the box the mark is drawn into, in pixels — never a height it
+    /// is stretched to: whichever of the two branches answers, the mark keeps its own
+    /// proportion inside that box, and a width ceiling that bites takes the whole mark down
+    /// with it rather than clipping one side (ns-mud.css). Without one, the box is the mark's
+    /// own size.</summary>
     [Parameter]
     public int? Height { get; set; }
 
