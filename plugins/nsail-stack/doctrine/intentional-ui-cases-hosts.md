@@ -195,9 +195,13 @@ hand-draws in its own `ItemTemplate` or header — that markup is the kit's. `Lo
 own Add/Edit/Delete as `NsAction`s outside the host's chrome (`AttendeesEditor`'s add is a
 `PartyLookup`, a picker over a field, and closes on the field's own read). `ChannelsEditor` is
 the other shape: it hands `NsListEditor` an `ItemEditor` too, so its `+`, its pencil and its
-delete ARE the host's chrome and the host read reaches all three — what stays the kit's there is
-the one act it draws inside the `ItemTemplate`, its `Contact`. How a kit-drawn act reads the
-cascade is answered by the act itself (next section).
+delete ARE the host's chrome and the host read reaches all three. What stays the kit's there is
+the two acts it draws inside the `ItemTemplate` — its `Verify` and its `Contact` — and only one
+of them declares anything: `Contact` says it changes nothing the form holds, and `Verify` is a
+way IN that the `Writes = true` default withholds without being told. That pair is the whole
+census for that editor, and it is the shape of the audit anywhere: what a kit draws in its own
+template is what has to answer for itself. How a kit-drawn act reads the cascade is answered by
+the act itself (next section).
 
 Extracting the pair `NsFieldBase` and `NsPickerBase` already duplicate is not available: the
 three chains meet only at `ComponentBase` (`NsFieldBase` does not descend from `NsComponent`), so

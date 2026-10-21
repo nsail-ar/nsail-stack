@@ -247,9 +247,9 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
         Assert.Contains("Sin registros", cut.Find(".ns-list-editor-empty").TextContent);
     }
 
-    /// <summary>ChannelsEditor's shape: no ItemEditor, no NewItem, so the bar's + comes from
-    /// OnAdd instead — and invoking it never opens the built-in row editor, because there is
-    /// none to open.</summary>
+    /// <summary>The shape that adds through a dialog the caller owns: no ItemEditor, no
+    /// NewItem, so the bar's + comes from OnAdd instead — and invoking it never opens the
+    /// built-in row editor, because there is none to open.</summary>
     [Fact]
     public async Task OnAddMode_TheBarAddInvokesOnAdd_AndOpensNoInPlaceEditor()
     {
