@@ -8,11 +8,10 @@
 @using NSail.Problems
 @using NSail.Testing.Models
 
-@* The shape a heterogeneous collection editor has (TendersEditor): a compact display
-   sentence carrying only what the item has, and an editor whose controls label themselves.
-   OnAddMode switches to the OTHER shape (ChannelsEditor): adds land through a dialog the
-   host owns, so neither ItemEditor nor NewItem is set and the bar's + goes through OnAdd
-   instead. *@
+@* The shape an editor that types into its rows has: a compact display sentence carrying only
+   what the item has, and an editor whose controls label themselves. OnAddMode switches to the
+   OTHER shape: adds land through a dialog the caller owns, so neither ItemEditor nor NewItem
+   is set and the bar's + goes through OnAdd instead. *@
 <MudPopoverProvider />
 
 @if (OnAddMode)
@@ -74,7 +73,8 @@ else
     public bool RefuseRule { get; set; }
 
     /// <summary>Switches the fixture to the dialog-add shape: OnAdd instead of NewItem/
-    /// ItemEditor, the ChannelsEditor case XS1 adopts.</summary>
+    /// ItemEditor, for a collection whose new item is asked for somewhere other than a
+    /// row.</summary>
     [Parameter]
     public bool OnAddMode { get; set; }
 
