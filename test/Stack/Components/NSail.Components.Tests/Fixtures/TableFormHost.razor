@@ -1,0 +1,135 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Problems
+@using NSail.Testing.Models
+
+@* The grid mounted the way every document's lines are mounted — inside the form that submits
+   them (SaleLinesEditor in Nueva Venta, VoucherLinesEditor in a comprobante) — with a factory
+   that appends before returning, which is what every NewRow in the house does. So the row the
+   add control opens is already part of what the save would write, and what the document's own
+   submit does with one still open is this fixture's whole question. *@
+<MudPopoverProvider />
+
+@{
+    RenderFragment<TestModel> editor = row =>
+        @<text>
+            <NsTd For="() => row.Name">
+                <NsTextField @bind-Value="row.Name" Label="" Required="RowFieldRequired" />
+            </NsTd>
+        </text>;
+}
+
+<NsForm TModel="TestModel" Model="_document" OnSubmit="Save" Context="document" Untracked>
+    @if (TableMounted)
+    {
+        <NsTable TRow="TestModel" Rows="Page" Title="Líneas" RowEditor="editor"
+                 NewRow="NewRow" NewRowEmpty="Blank" OnRowCommit="Commit" OnRowRemove="RemoveRow">
+            <HeaderContent>
+                <NsTh For="() => context.Name" />
+            </HeaderContent>
+            <RowTemplate Context="row">
+                <NsTd For="() => row.Name">@row.Name</NsTd>
+            </RowTemplate>
+        </NsTable>
+    }
+</NsForm>
+
+@code {
+
+    readonly TestModel _document = new() { Name = "Venta" };
+
+    readonly List<TestModel> _rows = [];
+
+    /// <summary>Whether the grid is on screen at all — a tab, a conditional panel, any screen
+    /// that stops rendering its lines while the form around them stays.</summary>
+    [Parameter]
+    public bool TableMounted { get; set; } = true;
+
+    /// <summary>Refuses the row's commit the way a handler does, naming a member the row
+    /// renders a field for.</summary>
+    [Parameter]
+    public bool Refuse { get; set; }
+
+    /// <summary>Refuses it with a rule naming no member at all — the shape that has no field to
+    /// draw under and takes the row's own strip instead.</summary>
+    [Parameter]
+    public bool RefuseByRule { get; set; }
+
+    /// <summary>Whether the row's own field declares itself required — the regime where the
+    /// field re-posts its own "no" on every validation pass, as opposed to a row refused only
+    /// by what the commit handler answered.</summary>
+    [Parameter]
+    public bool RowFieldRequired { get; set; }
+
+    /// <summary>Whether the screen answers what "nobody typed into" means at all: unset, the
+    /// grid keeps the Stack's default and every open row is committed or refused.</summary>
+    [Parameter]
+    public bool AnswersEmpty { get; set; } = true;
+
+    public int Submits { get; private set; }
+
+    /// <summary>How many rows the collection holds — the factory appends before returning, so a
+    /// row is in it from the moment the add control is pressed.</summary>
+    public int Rows => _rows.Count;
+
+    /// <summary>What the last commit was handed, so a settle the submit ran can be told from a
+    /// verdict replayed from an earlier press: the value on screen is the one that must reach
+    /// the handler.</summary>
+    public string? Committed { get; private set; }
+
+    public int Commits { get; private set; }
+
+    DataPage<TestModel> Page => DataPage<TestModel>.From(_rows);
+
+    Func<TestModel, bool>? Blank => AnswersEmpty ? Empty : null;
+
+    void Save(SubmitEventArgs<TestModel> args)
+    {
+        Submits++;
+    }
+
+    // The register's own word for a line nobody typed into, which is all the Stack ever asks
+    // for: a sale line is empty until an article is named on it.
+    static bool Empty(TestModel row)
+    {
+        return string.IsNullOrWhiteSpace(row.Name);
+    }
+
+    TestModel NewRow()
+    {
+        var row = new TestModel();
+
+        _rows.Add(row);
+
+        return row;
+    }
+
+    void Commit(RowEditEventArgs<TestModel> args)
+    {
+        Commits++;
+        Committed = args.Row.Name;
+
+        if (RefuseByRule)
+        {
+            args.Problem = BusinessProblem.RuleViolation("ClosedTill", "La caja del turno ya fue cerrada.");
+
+            return;
+        }
+
+        if (Refuse)
+        {
+            args.Problem = InputProblem.InvalidModel<TestModel>().Required(m => m.Name);
+        }
+    }
+
+    void RemoveRow(RowEditEventArgs<TestModel> args)
+    {
+        _rows.Remove(args.Row);
+    }
+}

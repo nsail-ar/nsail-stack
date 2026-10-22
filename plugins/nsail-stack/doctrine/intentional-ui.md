@@ -582,12 +582,12 @@ over a popup:
 - **at the foot** — everything else, as ONE strip, seated in the row the form's actions occupy
   where a panel footer claims it, after the content otherwise.
 
-**The foot is the host's, not the page's: a row editor places its own refusal.** An
-`NsListEditor` row refused on Confirmar draws under the field of the ROW the issue names, and
-anything the row renders no field for as one strip on the open row's last line — never at the
-form's foot, and never a toast the user has to connect back to the row they just confirmed. The
-same two rules, measured from the host the user is actually looking at ([ui/hosts.md](ui/hosts.md),
-cases).
+**The foot is the host's, not the page's: a row editor places its own refusal.** A row refused on
+Confirmar — an `NsListEditor` item, an editable `NsTable` row — draws under the field of the ROW
+the issue names, and anything the row renders no field for as one strip where that row ends: the
+item's last line, or a row of its own directly under the grid row. Never at the form's foot, and
+never a toast the user has to connect back to the row they just confirmed. The same two rules,
+measured from the host the user is actually looking at ([ui/hosts.md](ui/hosts.md), cases).
 
 **A refusal stands until the attempt that could replace it, and every attempt lifts the ones
 under it.** The row's next Confirmar lifts the row's, and the document's submit lifts every
@@ -598,7 +598,7 @@ verdict. A row left refused never makes Guardar go mute — the submit runs or i
 and a collection that leaves the screen takes its refusal with it (cases).
 
 **A row left OPEN is settled by the submit before the document is validated at all.** Its values
-are already the document's — the list appended the row when it was added, not when it was
+are already the document's — the host appended the row when it was added, not when it was
 confirmed — so Guardar asks the row's own rule again on what is on screen rather than replaying
 the answer it gave last time: a row nothing refuses is confirmed, so the editor closes and the
 document saves in one tap, and a refused one stays open wearing its own words under the field they
@@ -606,6 +606,13 @@ name. The re-ask, not a re-post, is what the asymmetry demands: a field re-answe
 that lifted it and a page's `OnCommit` has nobody to re-raise it, so without the settle the pass
 lifts the row's "no" and the bad row reaches the server, whose answer lands at the form's foot in
 its own words a round trip later (cases).
+
+**The one row a submit may DROP is a new one the screen says nobody typed into**, and the screen
+is who says it (`NsTable.NewRowEmpty`, ui/hosts.md): a row minted by the keystroke that asked for
+the next line is not a line, so the submit takes it back out and saves what was typed. Every
+other open row is committed or refused by name — a row somebody did type into is never dropped in
+silence, and what "empty" means is the register's own word, never something derived from the row's
+type (cases).
 
 **Being *rendered*, not being a real property, is what anchors an issue**, and a screen that
 renders its members as fields needs no wiring for any of it ([ui/forms.md](ui/forms.md), cases).

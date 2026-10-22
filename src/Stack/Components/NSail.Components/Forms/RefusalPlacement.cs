@@ -76,11 +76,21 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
         Parent?.Untrack(identifier);
     }
 
-    /// <summary>Forgets every field announced so far, for a host whose document was replaced:
+    /// <summary>Forgets every field announced so far: for a host whose document was replaced —
     /// the new one renders its own set, and a member left over from the old one would carry a
-    /// message under an input nobody can see.</summary>
+    /// message under an input nobody can see — and for a row host closing the row it held open,
+    /// whose boxes are still on screen until the next render lands. What was passed on goes with
+    /// it, or the host ABOVE places its own answer under an input that is leaving: the submit
+    /// settles the row, the server then refuses that very row by name, and the message would be
+    /// posted under a box that unmounts a tick later, leaving nothing on screen to carry
+    /// it.</summary>
     public void Forget()
     {
+        foreach (var identifier in _rendered)
+        {
+            Parent?.Untrack(identifier);
+        }
+
         _rendered.Clear();
     }
 

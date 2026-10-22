@@ -1,0 +1,41 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Problems
+@using NSail.Testing.Models
+
+@* A collection whose elements each render a field of their own, which is where an indexed path
+   ("Addresses[1].Street") still has a field to draw under when the server answers: a screen
+   that lays its rows out as fields rather than through a row editor (EyesEditor's two eyes, a
+   document's fixed lines). A ROW EDITOR's open row is not that case — the submit settles it
+   before anything is sent, so by the time an answer arrives there is no open row left. *@
+<MudPopoverProvider />
+
+<NsForm TModel="CollectionProblemModel" Model="Model" OnSubmit="HandleSubmit">
+    @foreach (var address in Model.Addresses)
+    {
+        <NsTextField @bind-Value="address.Street" Label="" />
+    }
+</NsForm>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public CollectionProblemModel Model { get; set; } = default!;
+
+    [Parameter]
+    public Problem? Problem { get; set; }
+
+    public int Submits { get; private set; }
+
+    void HandleSubmit(SubmitEventArgs<CollectionProblemModel> args)
+    {
+        Submits++;
+
+        args.Problem = Problem;
+    }
+}

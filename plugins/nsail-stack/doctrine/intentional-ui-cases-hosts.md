@@ -107,8 +107,12 @@ modelled on the row would make `ValidatedModels.Covers` true for it, and every `
 row model nothing validates would start drawing a required mark for a rule that refuses nothing
 (intentional-ui.md: the mark is derived from what refuses).
 
-`NsTable`'s row editor has the identical hole over eleven kit screens; the piece lives in
-`NSail.Components` so that story writes a placement, not a second rule.
+`NsTable`'s row editor had the identical hole over thirteen kit screens, and closed it by reusing
+the piece rather than writing a second rule: the same `RefusalPlacement`, bound to the same
+context, cascaded over the `RowEditor` fragment. Only the STRIP's seat differs, because a table
+cell is one column wide and the answer is the whole row's: the unplaced issues take a row of
+their own under the open row (the vendor's nested-row slot, `.ns-table-problem`), where the list
+puts them on the item's last line.
 
 **Why a validation pass lifts every placement on the context, and why a host lets go of one when
 it leaves.** Posting the row's refusal on the form's context put it where nothing could lift it:
@@ -146,9 +150,21 @@ refusal the settle just drew — and because a row that closes should be closed 
 It is **before the dirty spend**, because a commit that takes reports the surface dirty from the
 page's own `OnCommit`, and a report filed after the spend leaves an aside open on a save that took
 (#1420). A host with no row open settles in one line and a document with none behaves exactly as
-it did. `NsTable`'s row editor places no refusal at all yet and is its own story (above); its new
-row is not in `Items` until the commit takes, so what a settle means there is that story's
-question.
+it did.
+
+**Why a submit may take a new row back out, and why the screen is asked whether it may.** The
+table settles its open row the same way (#2245) — its factory appends before returning too, so
+nothing about "the row is already the document's" is the list's alone. What the counter sale added
+is a row nobody meant: Enter on the last row ADDS one, so the keyboard's own last keystroke leaves
+a blank line and the chord that follows sent it — `SaleHandler` refused the whole sale naming a
+member `CreateSale` does not carry, drawn at the form's unplaced foot. Committing that row is a
+refusal of the sale and keeping it open is a Guardar that does nothing, so the only answer left is
+to take it out; the guide could previously only tell the cashier to do it by hand. **What counts
+as "nobody typed into" is asked of the screen** (`NewRowEmpty`) because the Stack cannot tell: a
+sale line mints a quantity of one and the model carries no "touched" bit, so a type-derived answer
+would drop a line somebody meant or keep one nobody did. A screen that answers nothing keeps the
+old behaviour exactly — committed or refused — which is what the other twelve editable grids do,
+until one of them asks the question for itself.
 
 What the settle costs the surface is counted and not assumed, because the row's rule is raised on
 the LIST's `Runner` and that window does not nest inside the save's — `NsFormCloseOnSubmitTests`

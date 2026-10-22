@@ -528,6 +528,21 @@
     display: table-cell;
 }
 
+/* THE OPEN ROW'S REFUSAL STRIP, on a row of its own directly under the row it answers for
+   (NsTable, problemRow): what that refusal named that the row renders no field for. The answer
+   belongs to the whole row and a cell is one column wide, so the strip crosses every column
+   rather than being squeezed into the editor's last one.
+
+   Its cell carries no vendor class on purpose — none of the table's own cell chrome belongs
+   here, neither the dense padding nor the stacked label pseudo, and in both stacked regimes a
+   plain cell among flex ones is already a line of the card. What is left is the strip's own
+   inset: none above, the error block bringing its own margin, and the row above keeping the
+   line it already draws. */
+.ns-table-problem > td {
+    border: none;
+    padding: 0 16px 8px;
+}
+
 /* The stacked layout, where a row is a card and every cell a line of its own (MudTable's
    Breakpoint.Sm, which is .mud-sm-table under the vendor's own max-width: 960px — matched
    here rather than translated, since the stacking this corrects is that query's own doing).
