@@ -26,7 +26,7 @@ public sealed class NoneTenancyTests : IAsyncLifetime
     [Fact]
     public async Task TheInstallsOwnDatabaseIsMigratedAtStartupAsBefore()
     {
-        Assert.Equal(["20260824000000_Notes"], await _host.AppliedMigrations(null));
+        Assert.Equal(["20260824000000_Notes", "20260824000001_Journals"], await _host.AppliedMigrations(null));
     }
 
     // A header nobody reads is a header that changes nothing: same database, same answer, and

@@ -63,10 +63,27 @@ sealed class NoteSetup : IDbContextSetup
             kind.HasKey(entity => entity.Id);
             kind.Property(entity => entity.Name).IsRequired();
         });
+
+        modelBuilder.Entity<Journal>(journal =>
+        {
+            journal.ToTable("Journals");
+            journal.HasKey(entity => entity.Id);
+            journal.Property(entity => entity.Text).IsRequired();
+        });
     }
 }
 
 public sealed class Note
+{
+    public Guid Id { get; set; }
+
+    public string Text { get; set; } = string.Empty;
+}
+
+// A tenant-scoped table the CHAIN writes a row into, which is what every product's chain does
+// (SeedCore) and what a forced policy can refuse: the row is the install's own, nobody's tenant,
+// and the connection the chain runs on has to say so or the install never comes up.
+public sealed class Journal
 {
     public Guid Id { get; set; }
 
@@ -231,6 +248,11 @@ public sealed class Notes : Migration
             columns: ["Id", "Name"],
             columnTypes: ["uuid", "text"],
             values: [new Guid("d0000000-0000-0000-0000-000000000002"), "warning"]);
+
+        // The second wall, written where every product writes it: in the chain. Not TenantStates
+        // — it is install-scoped and names the tenant it is ABOUT — and not NoteKinds, which is
+        // the install's reference data and has no tenant column at all.
+        migrationBuilder.AddTenantPolicies("Notes", "AppliedSeedSteps");
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
@@ -241,5 +263,43 @@ public sealed class Notes : Migration
         migrationBuilder.DropTable("NoteKinds");
         migrationBuilder.DropTable("AppliedSeedSteps");
         migrationBuilder.DropTable("TenantStates");
+    }
+}
+
+// The migration after the wall, and the shape every product's next one has: a tenant-scoped
+// table created, walled in the same migration, and written into by the chain itself. The row is
+// the install's, which is the one thing a policy has to let the chain do.
+[DbContext(typeof(TenantDbContext))]
+[Migration("20260824000001_Journals")]
+public sealed class Journals : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(migrationBuilder);
+
+        migrationBuilder.CreateTable(
+            name: "Journals",
+            columns: table => new
+            {
+                Id = table.Column<Guid>(type: "uuid", nullable: false),
+                TenantId = table.Column<Guid>(type: "uuid", nullable: false, defaultValue: Guid.Empty),
+                Text = table.Column<string>(type: "text", nullable: false),
+            },
+            constraints: table => table.PrimaryKey("PK_Journals", journal => journal.Id));
+
+        migrationBuilder.AddTenantPolicies("Journals");
+
+        migrationBuilder.InsertData(
+            table: "Journals",
+            columns: ["Id", "Text"],
+            columnTypes: ["uuid", "text"],
+            values: [new Guid("e0000000-0000-0000-0000-000000000001"), "opened by the chain"]);
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(migrationBuilder);
+
+        migrationBuilder.DropTable("Journals");
     }
 }

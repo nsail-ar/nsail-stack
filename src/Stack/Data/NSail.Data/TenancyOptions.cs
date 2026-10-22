@@ -41,6 +41,14 @@ public class TenancyOptions
     /// them in <see cref="TenantState.Message"/>.</summary>
     public string? SupportContact { get; set; }
 
+    /// <summary>Whether this install refuses to start when its Postgres role can bypass the
+    /// tenant policies (<see cref="TenantPolicies"/>). Off by default, because provisioning a
+    /// role that cannot bypass is an operator pass on a live box and a release must not take a
+    /// cell down for work it has not been given yet: the install starts, warns, and reports the
+    /// wall as off. A cell that HAS done the pass states this where it states
+    /// <see cref="Mode"/>, and gets the hard guarantee instead of a log line.</summary>
+    public bool RequireRowSecurity { get; set; }
+
     public TenancyScope Connection
     {
         get

@@ -16,8 +16,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using NSail.Data;
+using NSail.Data.Testing;
 using NSail.Security;
 
 namespace NSail.BaseServices.WebApi.Tests;
@@ -46,13 +48,17 @@ public sealed class TenancyHost : IAsyncDisposable
     readonly WebApplication _app;
     readonly Severance _severance;
     readonly List<string> _provisioned = [];
+    readonly string? _owner;
+    readonly bool _ownsOwner;
 
     int _listening;
 
-    TenancyHost(WebApplication app, Severance severance, string cell)
+    TenancyHost(WebApplication app, Severance severance, string cell, string? owner, bool ownsOwner)
     {
         _app = app;
         _severance = severance;
+        _owner = owner;
+        _ownsOwner = ownsOwner;
         Cell = cell;
     }
 
@@ -78,16 +84,32 @@ public sealed class TenancyHost : IAsyncDisposable
     /// what an app would register — the rows a tenant is born with — and is off by default so
     /// the suites that count rows are counting their own. <paramref name="clock"/> is the
     /// install's own clock, which is what makes a pause window and the state memo reachable
-    /// without waiting; <paramref name="contact"/> is who its suspended page names.</summary>
+    /// without waiting; <paramref name="contact"/> is who its suspended page names;
+    /// <paramref name="logs"/> is what the install said on its way up.</summary>
     public static Task<TenancyHost> Start(
         TenancyMode mode,
         bool bootstraps = false,
         string? language = null,
         int epoch = 0,
         TimeProvider? clock = null,
-        string? contact = null)
+        string? contact = null,
+        bool requireWall = false,
+        bool bypassable = false,
+        bool provisions = true,
+        ILoggerProvider? logs = null)
     {
-        return Start(mode, bootstraps ? typeof(WelcomeSeed) : null, cell: null, language, epoch, clock, contact);
+        return Start(
+            mode,
+            bootstraps ? typeof(WelcomeSeed) : null,
+            cell: null,
+            language,
+            epoch,
+            clock,
+            contact,
+            requireWall,
+            bypassable,
+            provisions,
+            logs);
     }
 
     /// <summary>The same install again, carrying whatever chain that build carries — a deploy,
@@ -108,7 +130,11 @@ public sealed class TenancyHost : IAsyncDisposable
         string? language = null,
         int epoch = 0,
         TimeProvider? clock = null,
-        string? contact = null)
+        string? contact = null,
+        bool requireWall = false,
+        bool bypassable = false,
+        bool provisions = true,
+        ILoggerProvider? logs = null)
     {
         var owned = cell is null;
 
@@ -120,12 +146,28 @@ public sealed class TenancyHost : IAsyncDisposable
             Product = Product,
             Cell = cell,
             SupportContact = contact,
+            RequireRowSecurity = requireWall,
         };
+
+        // The app connects as a role that is NEITHER a superuser NOR BYPASSRLS, because a
+        // forced policy is no wall against either and every other suite in the house connects
+        // as postgres: the behaviour the row policies have is measured here or nowhere. The
+        // role OWNS its databases, which is what lets it run the chain — and FORCE ROW LEVEL
+        // SECURITY is what subjects an owner to its own tables' policies. Derived from the
+        // cell so a redeploy onto the same databases reaches the same role without carrying
+        // it, and dropped by whoever minted the cell.
+        var owner = bypassable ? null : Role(cell);
+
+        if (owner is not null && owned)
+        {
+            await Execute(
+                $"CREATE ROLE \"{owner}\" LOGIN PASSWORD '{owner}' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE");
+        }
 
         // Under None the install names a database of its own, exactly as a single-tenant
         // install does today; under MultiDb only the server, user and password are read from
         // it, and the database it names is never opened.
-        var install = ConnectionStrings.Complete($"Host=localhost;Username=postgres;Database={Product}_{cell}");
+        var install = Connection($"{Product}_{cell}", owner);
 
         // Development, because that is what turns on the container's own build-time validation
         // — WebApplicationBuilder keys ValidateOnBuild to the environment and exposes no other
@@ -138,6 +180,14 @@ public sealed class TenancyHost : IAsyncDisposable
         });
 
         builder.WebHost.UseTestServer();
+
+        // A provider rather than a fake ILogger<T>: what the wall says on its way up is logged
+        // on a logger typed on an internal class, so naming it from here would need the module
+        // to open itself up for a test.
+        if (logs is not null)
+        {
+            builder.Logging.AddProvider(logs);
+        }
 
         // The install's own language, which is what the one page this pipeline draws itself
         // speaks (TenantStateMiddleware): the gate stands ahead of the step that resolves the
@@ -215,25 +265,48 @@ public sealed class TenancyHost : IAsyncDisposable
 
         var app = builder.Build();
 
-        var host = new TenancyHost(app, severance, cell);
+        var host = new TenancyHost(app, severance, cell, owner, owner is not null && owned);
 
-        // Every mode but the one that connects per tenant runs on the install's own database,
-        // and that database has to exist before the chain is applied to it. SingleDb is here
-        // for exactly that reason: many tenants, one database, and it is the install's.
-        if (mode != TenancyMode.MultiDb && owned)
+        // A refusal on the way up is one of the things measured here
+        // (Tenancy:RequireRowSecurity), and by then the cell has been minted: without this the
+        // databases and the role it created would outlive the run.
+        try
         {
-            await host.Provision(null);
+            // Every mode but the one that connects per tenant runs on the install's own
+            // database, and that database has to exist before the chain is applied to it.
+            // SingleDb is here for exactly that reason: many tenants, one database, and it is
+            // the install's.
+            if (mode != TenancyMode.MultiDb && owned)
+            {
+                if (provisions)
+                {
+                    await host.Provision(null);
+                }
+                else
+                {
+                    // Claimed and not created: what the startup pass does with a database that
+                    // is not there yet is itself a subject, and the run still has to drop
+                    // whatever EF made.
+                    host.Claim(null);
+                }
+            }
+
+            await app.ApplyMigrations<TenantDbContext>();
+
+            app.UseBaseWebApi();
+
+            severance.Watch(app);
+
+            Map(app);
+
+            await app.StartAsync();
         }
+        catch
+        {
+            await host.DisposeAsync();
 
-        await app.ApplyMigrations<TenantDbContext>();
-
-        app.UseBaseWebApi();
-
-        severance.Watch(app);
-
-        Map(app);
-
-        await app.StartAsync();
+            throw;
+        }
 
         host.Client = app.GetTestClient();
         host.Client.BaseAddress = new Uri("https://demo.nsail.ar/");
@@ -246,15 +319,71 @@ public sealed class TenancyHost : IAsyncDisposable
         return slug is null ? $"{Product}_{Cell}" : $"{Product}_{Cell}_{slug}";
     }
 
-    /// <summary>What the provisioning side does and all it does: create the database. No
-    /// schema — the chain is the first request's to apply.</summary>
+    /// <summary>What the provisioning side does and all it does: create the database, owned by
+    /// the role the app connects as. No schema — the chain is the first request's to apply, and
+    /// the role that applies it is the role that owns what it creates.</summary>
     public async Task Provision(string? slug)
     {
         var database = DatabaseOf(slug);
 
-        await Execute($"CREATE DATABASE \"{database}\"");
+        var owner = _owner is null ? string.Empty : $" OWNER \"{_owner}\"";
+
+        await Execute($"CREATE DATABASE \"{database}\"{owner}");
 
         _provisioned.Add(database);
+    }
+
+    /// <summary>Records a database this run is responsible for dropping without creating
+    /// it.</summary>
+    public void Claim(string? slug)
+    {
+        _provisioned.Add(DatabaseOf(slug));
+    }
+
+    /// <summary>The app's own connection string — its role, its install database — which is the
+    /// one connection in a run the row policies apply to, and the one the chain runs on.</summary>
+    public string InstallConnection
+    {
+        get { return Connection($"{Product}_{Cell}", _owner); }
+    }
+
+    /// <summary>Whether the app's own role could step over the row policies — what the install
+    /// asks itself at startup, asked here of the same role over the same connection.</summary>
+    public async Task<bool> RoleCanBypass()
+    {
+        await using var connection = new NpgsqlConnection(InstallConnection);
+
+        await connection.OpenAsync();
+
+        await using var query = new NpgsqlCommand(
+            "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user",
+            connection);
+
+        return await query.ExecuteScalarAsync() is true;
+    }
+
+    static string Role(string cell)
+    {
+        return $"r_{cell}";
+    }
+
+    // Built off the admin string rather than written out, so the host and port a containerized
+    // run repoints (PGHOST, PGPORT) reach the app's own connection too: ConnectionStrings.Complete
+    // leaves a string that already carries a password untouched, and the role's does.
+    static string Connection(string database, string? role)
+    {
+        // Capped for the reason TestDatabase caps its own: every host here keys a pool of its
+        // own, and a suite that raises several of them at once would otherwise be able to reach
+        // the one shared server's connection ceiling by itself.
+        var builder = new NpgsqlConnectionStringBuilder(Server) { Database = database, MaxPoolSize = 10 };
+
+        if (role is not null)
+        {
+            builder.Username = role;
+            builder.Password = role;
+        }
+
+        return builder.ConnectionString;
     }
 
     public async Task<bool> Exists(string? slug)
@@ -357,6 +486,11 @@ public sealed class TenancyHost : IAsyncDisposable
         {
             await Execute($"DROP DATABASE IF EXISTS \"{database}\" WITH (FORCE)");
         }
+
+        if (_ownsOwner)
+        {
+            await Execute($"DROP ROLE IF EXISTS \"{_owner}\"");
+        }
     }
 
     static void Map(WebApplication app)
@@ -418,6 +552,45 @@ public sealed class TenancyHost : IAsyncDisposable
         });
 
         app.MapGet("/guarded", () => Results.Ok()).RequireAuthorization();
+
+        // The query that BYPASSES the first wall, which is the whole subject of the second one:
+        // raw SQL carries no query filter, so what comes back is what Postgres decided to show
+        // this connection. IgnoreQueryFilters is refused everywhere in the house, and this is
+        // the stronger form of the same attempt anyway — the filter is not merely skipped, it
+        // was never compiled in.
+        app.MapGet("/notes/unfiltered", async (DbContext db) =>
+        {
+            return Results.Json(await db.Database
+                .SqlQueryRaw<string>("SELECT \"Text\" AS \"Value\" FROM \"Notes\" ORDER BY \"Text\"")
+                .ToListAsync());
+        });
+
+        // And the write that bypasses the stamp: a row naming the tenant it would like to belong
+        // to, in SQL, where no interceptor stands between the caller and the table.
+        app.MapPost("/notes/unfiltered", async (string text, Guid tenant, DbContext db) =>
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "INSERT INTO \"Notes\" (\"Id\", \"TenantId\", \"Text\") VALUES (gen_random_uuid(), {0}, {1})",
+                tenant,
+                text);
+
+            return Results.Ok();
+        });
+
+        // What the chain itself wrote, read the same unfiltered way: a data migration's INSERT
+        // into a tenant-scoped table, which is the install's own row and nobody's tenant.
+        app.MapGet("/journals/unfiltered", async (DbContext db) =>
+        {
+            return Results.Json(await db.Database
+                .SqlQueryRaw<string>("SELECT \"Text\" AS \"Value\" FROM \"Journals\" ORDER BY \"Text\"")
+                .ToListAsync());
+        });
+
+        // The sweep a product's own suite runs over its chain, run here over this one.
+        app.MapGet("/unwalled", async (DbContext db) =>
+        {
+            return Results.Json(await TenantPolicyAudit.Unwalled(db));
+        });
 
         // The push's own publishes (PushTenancyTests), made through the request's Mediator like
         // any handler's, so the audience is whichever tenant the edge resolved.

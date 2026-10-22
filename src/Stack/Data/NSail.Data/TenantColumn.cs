@@ -45,6 +45,8 @@ static class TenantColumn
         {
             if (!HasATableOfItsOwn(entity))
             {
+                RefuseASecondTable(entity);
+
                 continue;
             }
 
@@ -86,6 +88,58 @@ static class TenantColumn
     static bool HasATableOfItsOwn(IMutableEntityType entity)
     {
         return !entity.IsOwned() && entity.BaseType is null;
+    }
+
+    // And where that premise is false, the model is refused. A type the pass above skips because
+    // it shares somebody's row, mapped to a table of its OWN — an owned navigation told ToTable,
+    // an owned collection, a derived type given its own table — is a second table holding every
+    // tenant's rows behind neither wall, and neither wall can be hung on it: EF refuses a query
+    // filter anywhere but the root, and the policy the chain would write needs a column that is
+    // not there. The sweep cannot catch it either — it reads the model for tables that owe a
+    // policy, and this one owes none — so the refusal is here, where the shape is visible.
+    //
+    // Unless the row it shares is the INSTALL's. A table hanging off an install-scoped root
+    // holds the same rows for every tenant, which is what the marker means and not a defect:
+    // the remedy this refusal offers — an entity of its own — would give exactly the table that
+    // is already there, with no column, no filter and no policy, because the pass skips an
+    // install-scoped entity by the marker. The marker is asked, never the column (TenantStamp).
+    static void RefuseASecondTable(IMutableEntityType entity)
+    {
+        var shared = Above(entity);
+
+        if (shared is null || entity.GetTableName() is not { } table || table == shared.GetTableName())
+        {
+            return;
+        }
+
+        if (SharesTheInstallsOwnRows(entity))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            $"{entity.DisplayName()} shares {shared.DisplayName()}'s row — it carries no tenant column, no query filter and no row policy — and is mapped to a table of its own, \"{table}\", which would hold every tenant's rows behind neither wall. Map it to its owner's table, or make it an entity of its own.");
+    }
+
+    // Asked of the ROOT of the chain the type hangs off, not of the type beside it: an owned
+    // collection two levels under an install-scoped entity reaches it through owned types that
+    // carry no marker of their own, and a TPT leaf reaches it through its base.
+    static bool SharesTheInstallsOwnRows(IMutableEntityType entity)
+    {
+        var root = entity;
+
+        for (var above = Above(root); above is not null; above = Above(root))
+        {
+            root = above;
+        }
+
+        return typeof(IInstallScoped).IsAssignableFrom(root.ClrType);
+    }
+
+    // Whose row a type shares: its base's in a hierarchy, its owner's in an aggregate.
+    static IMutableEntityType? Above(IMutableEntityType entity)
+    {
+        return entity.BaseType ?? entity.FindOwnership()?.PrincipalEntityType;
     }
 
     static LambdaExpression Filter(Type clrType, ITenanted context)

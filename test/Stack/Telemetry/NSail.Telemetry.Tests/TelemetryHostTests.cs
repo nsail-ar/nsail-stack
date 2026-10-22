@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Consulting.Patients;
+using NSail.Data;
 using NSail.Messaging.Runtime.Pipelines;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
 namespace NSail.Telemetry.Tests;
@@ -66,5 +69,23 @@ public sealed class TelemetryHostTests
         Assert.Contains(
             scope.ServiceProvider.GetServices<IInterceptor<CreatePatient, Guid>>(),
             interceptor => interceptor is TelemetryInterceptor<CreatePatient, Guid>);
+    }
+
+    // A module this one cannot reference names its meter at the composition that has both, and
+    // that name is the whole of the subscription — nothing else in the pipeline would say it had
+    // been dropped. Measured on an instrument, which reports whether a listener took its meter,
+    // and on a meter nobody names, so that "subscribed" is not read off "everything is".
+    [Fact]
+    public void A_meter_named_at_the_composition_is_subscribed_and_one_nobody_names_is_not()
+    {
+        using var app = Harness.Host(credentialed: true);
+
+        Assert.NotNull(app.Services.GetService<MeterProvider>());
+
+        using var data = new Meter(TenantPolicies.MeterName);
+        using var unnamed = new Meter("NSail.Telemetry.Tests.Unnamed");
+
+        Assert.True(data.CreateCounter<long>("probe").Enabled);
+        Assert.False(unnamed.CreateCounter<long>("probe").Enabled);
     }
 }

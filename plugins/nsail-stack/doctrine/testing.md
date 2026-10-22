@@ -197,6 +197,12 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
 - `RetryingLazy` keeps a faulted sweep from poisoning an assembly; a whole assembly
   failing instantly on connects is the shared Postgres under cross-slot load — rerun
   serial before suspecting code.
+- **One suite connects as a role the row policies apply to**, and it is the Stack's own tenancy
+  suite: a superuser bypasses every forced policy, so the second wall's behaviour is measured
+  there or nowhere (data-tenancy.md, The second wall). It mints its own role per cell and owns
+  its own databases with it; every other suite in the house keeps its `postgres` connection,
+  because re-pointing `TestDatabase` would change how every kit suite connects for no proof
+  gained.
 - **One form sweep needs a real database.** `Architecture.Tests` reads the tree and the
   composed models offline, except `MigrationScriptTests`: it applies each app's migration
   script (what `dotnet ef migrations script` writes) to an ephemeral empty database

@@ -154,7 +154,7 @@ public sealed class MultiDbTenancyTests : IAsyncLifetime
         Assert.Empty(await _host.AppliedMigrations("aurora"));
 
         Assert.Equal(_host.DatabaseOf("aurora"), (await Where("aurora")).Connection);
-        Assert.Equal(["20260824000000_Notes"], await _host.AppliedMigrations("aurora"));
+        Assert.Equal(["20260824000000_Notes", "20260824000001_Journals"], await _host.AppliedMigrations("aurora"));
     }
 
     // Two first requests at once: one migrates, the other waits on the advisory lock and finds
@@ -169,7 +169,7 @@ public sealed class MultiDbTenancyTests : IAsyncLifetime
             Send(_host.Get("/where", "boreal")));
 
         Assert.All(touches, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
-        Assert.Equal(["20260824000000_Notes"], await _host.AppliedMigrations("boreal"));
+        Assert.Equal(["20260824000000_Notes", "20260824000001_Journals"], await _host.AppliedMigrations("boreal"));
 
         foreach (var touch in touches)
         {

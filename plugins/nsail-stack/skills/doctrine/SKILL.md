@@ -15,7 +15,7 @@ read your row. Every page is a file of this plugin, under `${CLAUDE_PLUGIN_ROOT}
 | A `.razor`, an `Ns*` component, `ns-mud.css`, a screen | `${CLAUDE_PLUGIN_ROOT}/doctrine/intentional-ui.md` — the rules; it routes to `${CLAUDE_PLUGIN_ROOT}/doctrine/ui/README.md` for a component's own contract (a screen that still reads outside `NsLoad`: the `convert-to-nsload` skill) |
 | A message, a handler, an endpoint, an HTTP client | `${CLAUDE_PLUGIN_ROOT}/doctrine/messaging.md` + `${CLAUDE_PLUGIN_ROOT}/doctrine/generation.md` (the `new-message` skill walks it) |
 | An entity, `DbContextSetup`, a migration, a seed, the mapper | `${CLAUDE_PLUGIN_ROOT}/doctrine/data.md` (the `new-mapping` skill walks the mapper) |
-| Tenancy, the org filter, tenant ids, background jobs | `${CLAUDE_PLUGIN_ROOT}/doctrine/data-tenancy.md` |
+| Tenancy, the row policies, the org filter, tenant ids, background jobs | `${CLAUDE_PLUGIN_ROOT}/doctrine/data-tenancy.md` |
 | Classifying an entity or a message against the org axis | the codebase's own org map — the law is `${CLAUDE_PLUGIN_ROOT}/doctrine/data-tenancy.md` (The org is the other axis); the map of a codebase's entities and messages lives with them (in nsail, the `nsail-kits` plugin's `org-map.md`) |
 | A new type, project, namespace or folder | `${CLAUDE_PLUGIN_ROOT}/doctrine/structure.md` + `${CLAUDE_PLUGIN_ROOT}/doctrine/naming.md` |
 | Authorization, policies, `Session` | `${CLAUDE_PLUGIN_ROOT}/doctrine/permissions.md` |

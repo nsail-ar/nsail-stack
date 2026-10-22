@@ -4,6 +4,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Npgsql;
 
 namespace NSail.Data;
 
@@ -115,6 +116,41 @@ public static class Setup
             // And the roster of the wall that has no registry to read: whoever the install
             // declared, refused here if one of them cannot be a slug.
             services.AddSingleton(new TenantRoster(tenancy));
+
+            // The setting the row policies compare against is written once per connection open
+            // (TenantSession), so the two tuning switches that make a connection outlive the
+            // scope that wrote it are the leak those policies exist to close, and both are
+            // refused at startup rather than written down as things to remember: multiplexing
+            // hands one physical connection to several scopes in turn, and No Reset On Close
+            // returns a connection to the pool without the DISCARD ALL that clears the setting.
+            var npgsql = new NpgsqlConnectionStringBuilder(connectionString);
+
+            if (npgsql.Multiplexing)
+            {
+                throw new InvalidOperationException(
+                    $"Tenancy:Mode is {tenancy.Mode}, whose wall is the tenant column, and the connection string turns Npgsql multiplexing on. The tenant reaches Postgres as a session setting written per connection, so a connection shared between scopes would carry one tenant's answer into another's queries.");
+            }
+
+            if (npgsql.NoResetOnClose)
+            {
+                throw new InvalidOperationException(
+                    $"Tenancy:Mode is {tenancy.Mode}, whose wall is the tenant column, and the connection string turns Npgsql's No Reset On Close on. The tenant reaches Postgres as a session setting written per connection open, so a pooled connection returned without its reset would still name one tenant when the next scope — a job or a startup pass, which write none — takes it.");
+            }
+
+            // Whether the second wall actually stands, asked once at startup. Only where the
+            // column is the wall: the policies are in every mode's chain, but under the other
+            // modes the connection is the wall and a role that could bypass them changes
+            // nothing. Here it is the difference between a second wall and DDL.
+            services.AddHostedService<TenantWall>();
+        }
+        else if (tenancy.RequireRowSecurity)
+        {
+            // And the switch is only answerable there, so a cell that turned it on without
+            // moving Tenancy:Mode is refused rather than served silence: the wall it asks for
+            // is the tenant column, nothing asks the role under the other modes, and the
+            // install would start with neither the refusal nor the warning the switch is for.
+            throw new InvalidOperationException(
+                $"Tenancy:RequireRowSecurity is on and Tenancy:Mode is {tenancy.Mode}, whose wall is the connection and not the tenant column. The switch asks the Postgres role about the row policies, which only wall anything under SingleDb — state the mode beside it, or clear it.");
         }
 
         if (tenancy.Connection == TenancyScope.Tenant || tenancy.Rows == TenancyScope.Tenant)
@@ -144,14 +180,19 @@ public static class Setup
         services.AddDbContextFactory<TDbContext>(
             (provider, options) =>
             {
+                var scoped = provider.GetRequiredService<TenancyProvider>();
+
                 options.UseNpgsql(
-                    provider.GetRequiredService<TenancyProvider>().ResolveConnection(connectionString),
+                    scoped.ResolveConnection(connectionString),
                     npgsql => npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name));
 
                 // Every save the process makes goes through one interceptor rather than through
                 // a rule each handler keeps: the tenant a row is written under is read from the
-                // context, which is the same answer the query filter reads it back with.
-                options.AddInterceptors(new TenantStamp());
+                // context, which is the same answer the query filter reads it back with. And
+                // every connection it opens carries the same answer as a session setting, which
+                // is what the row policies in the chain compare against — registered by every
+                // mode, because the policies are in every mode's chain (TenantSession).
+                options.AddInterceptors(new TenantStamp(), new TenantSession(scoped));
             },
             ServiceLifetime.Scoped);
 

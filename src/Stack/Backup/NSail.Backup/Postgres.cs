@@ -13,6 +13,22 @@ public static class Postgres
 {
     public const string DumpEntryName = "database.dump";
 
+    // pg_dump copies with row_security off, and Postgres refuses a statement run that way by a
+    // role the policy APPLIES to — which is what FORCE ROW LEVEL SECURITY does to the owner of a
+    // walled table (data-tenancy.md, The second wall). So the dump needs a role that can bypass,
+    // and the cell that has repointed its app at one that cannot owes the backup a credential of
+    // its own. Asked before the process starts, because pg_dump's own answer is an exit code and
+    // the name of one table. --enable-row-security is not the way out: it would dump the subset
+    // the connection is shown, and a console process resolves no tenant.
+    const string Unreadable = """
+        SELECT EXISTS (
+                SELECT 1
+                FROM pg_class c
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = current_schema() AND c.relkind = 'r' AND c.relforcerowsecurity)
+            AND NOT (SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user)
+        """;
+
     public static async Task<string> ServerVersion(string connectionString, CancellationToken cancelToken = default)
     {
         await using var connection = new NpgsqlConnection(connectionString);
@@ -27,6 +43,8 @@ public static class Postgres
     public static async Task Dump(string connectionString, string dumpFilePath, CancellationToken cancelToken = default)
     {
         var target = new NpgsqlConnectionStringBuilder(connectionString);
+
+        await RefuseAWalledRole(connectionString, cancelToken);
 
         var arguments = new[]
         {
@@ -68,6 +86,25 @@ public static class Postgres
         };
 
         await Run("pg_restore", arguments, target.Password, cancelToken);
+    }
+
+    // Only the dump: pg_restore writes an archive's data before it creates its policies, so a
+    // role the policies apply to restores one without stepping over anything.
+    static async Task RefuseAWalledRole(string connectionString, CancellationToken cancelToken)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+
+        await connection.OpenAsync(cancelToken);
+
+        await using var command = new NpgsqlCommand(Unreadable, connection);
+
+        if (await command.ExecuteScalarAsync(cancelToken) is not true)
+        {
+            return;
+        }
+
+        throw new BackupFailure(
+            "This database's tenant tables force row-level security and this role is subject to them, so pg_dump — which reads with row_security off — is refused on the first of them. Take the backup as a role that is a superuser or carries BYPASSRLS.");
     }
 
     static async Task Reset(string connectionString, CancellationToken cancelToken)

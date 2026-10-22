@@ -32,7 +32,7 @@ public sealed class SingleDbTenancyTests : IAsyncLifetime
     [Fact]
     public async Task TheInstallsOwnDatabaseIsMigratedAtStartup()
     {
-        Assert.Equal(["20260824000000_Notes"], await _host.AppliedMigrations(null));
+        Assert.Equal(["20260824000000_Notes", "20260824000001_Journals"], await _host.AppliedMigrations(null));
     }
 
     // The whole mode in one test, and the one that would catch the filter being compiled with
