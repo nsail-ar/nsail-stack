@@ -1081,13 +1081,13 @@
         // first keep what it took (settle below).
         const present = marked ? findArrivalMarker() : document.querySelector(fallbackSelector);
         if (present) {
-            present.focus();
+            land(present, marked);
             return;
         }
 
         let settled = false;
         const timer = setTimeout(function () {
-            settle(document.querySelector(fallbackSelector));
+            settle(document.querySelector(fallbackSelector), false);
         }, ARRIVAL_FALLBACK_WAIT_MS);
 
         // Nothing to watch for where the marker is not wanted: what is left to wait for is the
@@ -1096,7 +1096,7 @@
             arrivalObserver = new MutationObserver(function () {
                 const late = findArrivalMarker();
                 if (late)
-                    settle(late);
+                    settle(late, true);
             });
             arrivalObserver.observe(document.body, { childList: true, subtree: true });
         }
@@ -1104,7 +1104,7 @@
         // The guard a later arrival needs is generation, not merely "has this settled" -- a
         // second navigation landing inside the wait window must never let this one's fallback
         // steal the cursor from whatever the newer arrival already placed it on.
-        function settle(el) {
+        function settle(el, isMarker) {
             if (settled || generation !== arrivalGeneration)
                 return;
 
@@ -1116,7 +1116,7 @@
             // a person may have reached for something themselves -- the one window this call
             // must never win against, unlike its own first, synchronous try above.
             if (el && !taken())
-                el.focus();
+                land(el, isMarker);
         }
 
         // Asked as "has the cursor MOVED since we landed", not as reached()'s list of shapes a
@@ -1135,6 +1135,20 @@
                 && now !== document.body
                 && now !== document.documentElement;
         }
+    }
+
+    // The marker is brought INTO VIEW the way any focus does: it is the box the person is about
+    // to type in, and a list's search can sit below the fold on a short window. The screen's own
+    // name is the opposite -- it draws no ring (ns-mud.css excludes tabindex -1), so scrolling to
+    // it reveals nothing at all, and it stands at the top of the document, which is itself the
+    // scroller (NsMainLayout gives the content no overflow of its own). Its pass can also land a
+    // full second after the arrival (ARRIVAL_FALLBACK_WAIT_MS), and taken() does not see a wheel:
+    // whatever the view moved to in that second -- the guide scrolling to the section a cold
+    // /guide/{chapter}#{slug} names, a notch down a dashboard taller than the window -- is a
+    // person's or a screen's own doing, and a scrolling focus would take it back to the top
+    // (Vigía, nsail#2338 round 3).
+    function land(el, isMarker) {
+        el.focus({ preventScroll: !isMarker });
     }
 
     function findArrivalMarker() {

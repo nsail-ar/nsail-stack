@@ -4051,7 +4051,9 @@
 
    tabindex -1 is excluded because it is not a tab stop: it is the handle something else focuses
    programmatically (the main content the skip link lands on, NsCloseOnEscape's wrapper when a
-   surface opens), and a ring around a whole surface is not what either meant. Scoped to the
+   surface opens, the screen's own name a navigation's arrival lands on), and none of the three
+   asked for a ring: two of them are a whole surface, and the third is read aloud rather than
+   aimed at. Scoped to the
    shell's own regions rather than written against the document, so the two-class selector
    outranks the vendor's own single-class focus rules (NsAssets loads MudBlazor.min.css first
    and this sheet second). */

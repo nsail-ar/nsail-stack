@@ -39,6 +39,13 @@ pays for the main region it lands in (`NsMainLayout`). It is no tab stop, so `ns
 no ring around it, and the rank is the element alone: the title row's type scale is unchanged
 (`MudText.HtmlTag` separates the two).
 
+**The heading takes the cursor without moving the view** (`preventScroll`, `ns.js`): it draws no
+ring, so a scroll to it shows nothing, and it stands at the top of the document — so a focus that
+scrolled would undo whatever the view moved to since the arrival, a guide chapter's own jump to
+the section a cold `/guide/{chapter}#{slug}` names included (guide.md, *Anchors*), or a notch of
+wheel down a dashboard taller than the window. The marker is the other way round: it is a box
+about to be typed in, so it is brought into view like any other focus.
+
 The actual focus happens in `ns.js` (`arrivalFocus`), for three reasons a comma selector cannot
 cover:
 

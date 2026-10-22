@@ -8,9 +8,7 @@ namespace NSail.Components;
 public enum NsTextAs
 {
     Body,
-
     Title,
-
     Subtitle,
 
     /// <summary>The SCREEN's own name: the same treatment as Title, drawn as a top-level
