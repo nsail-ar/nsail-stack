@@ -225,11 +225,7 @@ sealed partial class MapperEmitter
         text.AppendLine($"            public override object SourceKey({s} source)");
         text.AppendLine("            {");
 
-        if (sourceHasKey && keys.Count == 1)
-        {
-            text.Append(SingleSourceKeyBody(source, target, sourceKeys[0]!, keys[0]));
-        }
-        else if (sourceHasKey)
+        if (sourceHasKey)
         {
             var parts = new List<string>();
 
@@ -253,6 +249,25 @@ sealed partial class MapperEmitter
             text.AppendLine("                return null;");
         }
 
+        text.AppendLine("            }");
+        text.AppendLine();
+
+        // Read only by MapRoot: SourceKey alone collapses a default-valued key to null the
+        // same way as a key with no value at all, because the rest of the graph (Compose,
+        // Aggregate and their *Many forms) depends on that collapse to merge or clear past a
+        // default key. A single key member answers whether this call's own instance carries a
+        // value at all — true always for a required member, true for an optional one only when
+        // it actually has a value — so MapRoot can refuse a present default instead of creating
+        // past it, without the other branches ever seeing that it changed.
+        text.AppendLine($"            public override bool SourceHasKey({s} source)");
+        text.AppendLine("            {");
+        text.AppendLine(sourceHasKey && keys.Count == 1 ? SourceHasKeyBody(sourceKeys[0]!) : "                return false;");
+        text.AppendLine("            }");
+        text.AppendLine();
+
+        text.AppendLine("            public override object DefaultKey");
+        text.AppendLine("            {");
+        text.AppendLine($"                get {{ return default({KeyType(keys)})!; }}");
         text.AppendLine("            }");
         text.AppendLine();
 
@@ -434,46 +449,21 @@ sealed partial class MapperEmitter
         return text.ToString();
     }
 
-    // A single key member, converted on its own: a required value type names a row at any
-    // value, default included — the one gap `MapRoot` must refuse rather than create past. An
-    // optional member (Guid?, a nullable reference) still answers null for "no row" by its own
-    // type, the established "a nullable key is a create" contract; a value it does carry,
-    // default included, names a row exactly like a required member's.
-    string SingleSourceKeyBody(INamedTypeSymbol source, INamedTypeSymbol target, IPropertySymbol sourceKey, IPropertySymbol targetKey)
+    // Does this call's own source carry a value for its single key member at all — never what
+    // that value is. A required member always does, default included; an optional one (Guid?,
+    // a nullable reference) only when it actually has a value, default included there too.
+    string SourceHasKeyBody(IPropertySymbol sourceKey)
     {
-        var text = new StringBuilder();
         var memberType = sourceKey.Type;
         var underlying = Underlying(memberType);
         var expr = $"source.{Id(sourceKey.Name)}";
 
-        string Converted(string value, ITypeSymbol from)
-        {
-            var converted = Convert(value, from, targetKey.Type);
-
-            if (converted is not null)
-            {
-                return converted;
-            }
-
-            Report(GeneratorDiagnostics.MappedMemberNotConvertible, targetKey, target.Name, targetKey.Name, targetKey.Type.ToDisplayString(), source.Name, sourceKey.Name, sourceKey.Type.ToDisplayString());
-
-            return $"default({Name(targetKey.Type)})";
-        }
-
         if (!SymbolEqualityComparer.Default.Equals(underlying, memberType))
         {
-            text.AppendLine($"                return {expr}.HasValue ? (object)({Converted($"{expr}.Value", underlying)}) : null;");
-        }
-        else if (memberType.IsReferenceType)
-        {
-            text.AppendLine($"                return {expr} is null ? null : (object)({Converted(expr, memberType)});");
-        }
-        else
-        {
-            text.AppendLine($"                return (object)({Converted(expr, memberType)});");
+            return $"                return {expr}.HasValue;";
         }
 
-        return text.ToString();
+        return memberType.IsReferenceType ? $"                return {expr} is not null;" : "                return true;";
     }
 
     string KeyType(List<IPropertySymbol> keys)

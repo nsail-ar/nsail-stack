@@ -9,8 +9,9 @@ using NSail.Problems;
 
 namespace NSail.Data.Tests.Mapping;
 
-// Ported from Detached.Mappers.EntityFramework.Tests/Keys/*.cs: a source that names no key,
-// or a nullable one, is a create.
+// Ported from Detached.Mappers.EntityFramework.Tests/Keys/*.cs: a source that names no key —
+// no key member, or a nullable one actually unset — is a create; a nullable one that does
+// carry a value, default included, refuses exactly like a required member's.
 public sealed class KeyTests
 {
     [Fact]
