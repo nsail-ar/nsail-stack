@@ -303,6 +303,41 @@
     border-bottom: 1px solid var(--mud-palette-table-lines);
 }
 
+/* A heading that orders the list is a real control — a button, so a keyboard reaches it and a
+   screen reader names it — and it still has to read as a heading: the vendor's button brings a
+   64px floor, a box of padding, its own type scale and a centred word, which would make one
+   column's heading taller and wider than its neighbours' and move the word off the column it
+   names. Every one of those is handed back to the cell's own text, so the only visible
+   difference between a pressable heading and a plain one is the arrow. The hover tone is the
+   vendor's and stays: it is what says the word can be pressed at all. */
+.ns-table .mud-table-head .ns-th-order.mud-button-root {
+    min-width: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: none;
+}
+
+/* The arrow goes AFTER the word, which is where every data table puts it and the only place it
+   can go: a glyph in front would push the heading off the left edge its own cells line up on,
+   and move it sideways the moment the column is pressed. The button draws its icon first, so the
+   row is turned around rather than the markup — the name a screen reader is handed is the Label
+   either way. */
+.ns-table .mud-table-head .ns-th-order .mud-button-label {
+    flex-direction: row-reverse;
+}
+
+/* The arrow is a mark beside a word, not an icon with a label on it: smaller than the glyph the
+   action column asks for, and tight enough against the word to read as part of it. */
+.ns-table .mud-table-head .ns-th-order .mud-icon-root {
+    font-size: 1.125rem;
+}
+
+.ns-table .mud-table-head .ns-th-order .mud-button-icon-start {
+    margin: 0 0 0 0.125rem;
+}
+
 /* MudChip carries a vendor margin: 4px on every side, meant for a chip sitting loose among
    siblings — inside a table cell there are no siblings to space from, so the 4px becomes 8px
    of unearned row height stacked on the pill's own 32px, still the tallest thing in a row

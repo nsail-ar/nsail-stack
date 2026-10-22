@@ -296,7 +296,7 @@ else if (OnQuery.HasDelegate)
 else
 {
     <MudTable T="TRow"
-              Items="Rows.Items"
+              Items="HeldRows"
               Class="@GetClasses()"
               RowClassFunc="@((row, _) => GetRowClasses(row))"
               OnRowClick="RowClick"
@@ -1258,16 +1258,56 @@ else
     // whoever renders the cells.
     bool HoldsItsList => Document is null && NewRow is null && !OnRowCommit.HasDelegate && !OnRowRemove.HasDelegate;
 
+    // Which grid a pressable heading is offered on, and it is the in-memory half of CanExport:
+    // this grid holds every row of its list and does nothing but read them. A server-paged or a
+    // scrolling one holds a slice, and ordering a slice reads as ordering the list; a grid typed
+    // into is writing its rows rather than listing them (ui/hosts.md).
+    bool OrdersInHand => !OnQuery.HasDelegate && RowEditor is null && HoldsItsList;
+
+    // The rows the reader is looking at: the hand this grid holds, in the order a pressed heading
+    // put it in. The FILE is written from this and not from the Rows parameter — a file in
+    // another order than the list it came from is the same defect as one three hours off it
+    // (exporting.md). With no heading pressed it is that parameter itself, reference and all,
+    // which is the order the list's own handler settled.
+    IReadOnlyList<TRow> HeldRows
+    {
+        get
+        {
+            if (_columns.Ordered is not { } column)
+            {
+                return Rows.Items;
+            }
+
+            return TableOrder.Sort(Rows.Items, column, _columns.Descending, RegionCulture.For(Language));
+        }
+    }
+
     protected override void OnInitialized()
     {
+        _columns.OrderChanged += OnOrderChanged;
+
         if (Surface is not null)
         {
             Surface.ExportChanged += OnExportChanged;
         }
     }
 
+    // A press lands on the heading's own control, and handling it re-renders that heading alone:
+    // the rows are this component's to draw, so the order is this component's to redraw in.
+    // Straight StateHasChanged and not InvokeAsync: the press is already on the renderer's
+    // dispatcher, and the redraw belongs to the batch it is in.
+    void OnOrderChanged()
+    {
+        StateHasChanged();
+    }
+
     protected override void OnParametersSet()
     {
+        // Said by the table, because the table is what knows whether it holds the whole list, and
+        // read by every heading under it: a column that declares itself sortable where nothing
+        // can be ordered draws no control instead of one that would lie.
+        _columns.Orders = OrdersInHand;
+
         Placement.Parent = Tracker;
         Placement.Bind(RowContext);
 
@@ -1339,12 +1379,13 @@ else
 
         // Where the rows come from, which is the one thing the two kinds of list do not share: a
         // server-paged one is read page by page through its own OnQuery, and one whose rows are
-        // already here is cut off the hand it holds — taken NOW, because the Rows parameter moves
-        // when the page that owns it renders and a file written out of a moving parameter would
-        // be two filters' rows under one heading.
+        // already here is cut off the hand it holds, in the order the hand is being READ in
+        // (HeldRows) — taken NOW, because the Rows parameter moves when the page that owns it
+        // renders and a file written out of a moving parameter would be two filters' rows under
+        // one heading.
         var rows = OnQuery.HasDelegate
             ? TableExport.Rows<TRow>(Read, columns, _export.Token)
-            : TableExport.Held(Rows.Items, columns, _export.Token);
+            : TableExport.Held(HeldRows, columns, _export.Token);
 
         var book = ExportBook.Of(name, new ExportTable
         {

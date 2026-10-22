@@ -9,9 +9,12 @@ namespace NSail.Components;
 /// declared once, in the header, and its cells follow.
 /// <para>Read during render, so it assumes the header renders before the body (it does: thead
 /// precedes tbody in the tree) and that a column's breakpoint is markup, not state.</para>
-/// <para>The ordered half is what an export is built from, and it is rebuilt on every header
+/// <para>The declared half is what an export is built from, and it is rebuilt on every header
 /// render rather than accumulated: a column a list's own filter DROPS stops being declared, and a
 /// set that only ever grew would put it in the file with nothing under it (ui/hosts.md).</para>
+/// <para>It is also where the ORDER a pressed heading put the list in lives: the heading is what
+/// takes the press and the table is what draws the rows, and this is the one thing the two
+/// already share.</para>
 /// </summary>
 public sealed class TableColumns
 {
@@ -56,4 +59,34 @@ public sealed class TableColumns
     /// field, and none of the ones that do not — the action column has nothing to put in a file
     /// and nothing to key on either (ui/hosts.md).</summary>
     public IReadOnlyList<TableColumn> Declared => _declared;
+
+    /// <summary>Whether this table orders its rows at all, said by the table itself: only a grid
+    /// holding every row it lists can, so a sortable heading in a server-paged or scrolling one
+    /// draws no control (ui/hosts.md).</summary>
+    public bool Orders { get; set; }
+
+    /// <summary>The column the reader pressed, null while the list stands in the order it
+    /// arrived in. The column itself and not its key: the press hands over the declaration it
+    /// was made on, so nothing has to find it again in a set the next header render rebuilds.
+    /// </summary>
+    public TableColumn? Ordered { get; private set; }
+
+    public bool Descending { get; private set; }
+
+    /// <summary>Raised by a press, for the table to redraw its rows in: the heading pressed is a
+    /// control of its own and a render of it alone would reorder nothing.</summary>
+    public event Action? OrderChanged;
+
+    /// <summary>A heading was pressed: ascending the first time, descending the second, and back
+    /// to ascending — and another column takes the order over at ascending, one column at a
+    /// time (ui/hosts.md).</summary>
+    public void Press(TableColumn column)
+    {
+        ArgumentNullException.ThrowIfNull(column);
+
+        Descending = Ordered?.Key == column.Key && !Descending;
+        Ordered = column;
+
+        OrderChanged?.Invoke();
+    }
 }
