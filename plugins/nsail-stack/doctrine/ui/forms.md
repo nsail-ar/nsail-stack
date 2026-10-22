@@ -114,14 +114,18 @@ taken back to, and a lookup opens its list on the TEXT, which the swallow above 
 
 **A confirmation opens on the act it offers; one that DESTROYS opens on the way out.** A yes/no
 dialog has nothing to type into, so what the cursor lands on is what a bare Enter presses — and
-that is the whole difference between the two: an ordinary confirmation is focused on its own Yes,
+that is the first difference between the two: an ordinary confirmation is focused on its own Yes,
 so the key takes the act (and without that the cursor sits on a non-interactive fallback and Enter
 does nothing at all), while a dialog guarding a destructive act is focused on its No, so a reflex
 Enter can only decline. **Which acts destroy is derived and no screen says it**: the message's own
 verb (`Delete`, naming.md's closed verb set, read by `NsPartial.ConfirmSend` — the door nearly
 every confirmation in a product goes through) and the house's own exit guard, whose Yes throws
 away unsaved work. A destructive act that is not a send asks through `ConfirmDestruction` and
-writes no word of its own either. The house draws the question itself (`NsConfirmDialog`, in place
+writes no word of its own either. **The second difference is the fill: a destructive question's
+Yes wears `NsAs.Danger`'s error fill** ([actions.md](actions.md), an act is Danger because it
+destroys), so the one derivation answers both, and the two answers say different things — the
+cursor says where a bare Enter lands, the fill says what pressing that face costs. The house draws
+the question itself (`NsConfirmDialog`, in place
 of the vendor's message box, which takes its buttons as texts and always lands on the
 affirmative), and the cursor is placed by **telling the dialog's own focus trap which child to
 land on**, never by racing it — the opposite end of the field case above, and possible there only

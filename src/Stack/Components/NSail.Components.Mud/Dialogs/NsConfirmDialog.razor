@@ -13,8 +13,8 @@
    where a reflex Enter throws away the document (ui/forms.md, Enter).
 
    Everything else is the message box's own shape, so the question reads and is pressed the same:
-   the title the opener passed (rendered by the dialog itself), the message, and No then the
-   primary Yes.
+   the title the opener passed (rendered by the dialog itself), the message, and No then the Yes
+   that carries the act's own rank.
 
    The cursor is the TRAP's to place and is told where rather than raced: it focuses after any
    gesture this component could make, and taking it back on the next frame is how a FIELD inside a
@@ -28,7 +28,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Refuse">@Strings.Translate("Common.No")</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Accept">@Strings.Translate("Common.Yes")</MudButton>
+        <MudButton Color="@AcceptColor" Variant="@AcceptVariant" OnClick="Accept">@Strings.Translate("Common.Yes")</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -40,9 +40,10 @@
     [Parameter, EditorRequired]
     public string Message { get; set; } = string.Empty;
 
-    /// <summary>Whether the act behind the question destroys something, which is the whole of
-    /// what this dialog does differently (DialogManager.ConfirmDestruction). Derived from the act
-    /// itself and never asked of a screen.</summary>
+    /// <summary>Whether the act behind the question destroys something, which is everything this
+    /// dialog does differently — where the cursor opens and what the affirmative face wears
+    /// (DialogManager.ConfirmDestruction). Derived from the act itself and never asked of a
+    /// screen.</summary>
     [Parameter]
     public bool Destroys { get; set; }
 
@@ -52,6 +53,21 @@
     DefaultFocus Opening
     {
         get { return Destroys ? DefaultFocus.FirstChild : DefaultFocus.LastChild; }
+    }
+
+    // The affirmative face's rank: a destructive act is NsAs.Danger, which is error fill — an act
+    // is Danger because it DESTROYS something (ui/actions.md) — and an ordinary one keeps the
+    // accent a confirmation has always answered with. The vendor's words are NsButton's own
+    // mapping of that ladder; the component cannot host an NsButton, whose label is drawn by a
+    // container query and a portaled dialog is in no ns-container of ours (NsOpenDialog).
+    Color AcceptColor
+    {
+        get { return Destroys ? Color.Error : Color.Primary; }
+    }
+
+    Variant AcceptVariant
+    {
+        get { return Destroys ? Variant.Filled : Variant.Text; }
     }
 
     void Accept()

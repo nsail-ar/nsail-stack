@@ -77,6 +77,12 @@ public sealed class NsConfirmFocusTests : BunitContext, IAsyncLifetime
         return host.FindAll(".mud-dialog-actions button").Select(face => face.TextContent.Trim());
     }
 
+    // The act's own face, which the order pinned below makes the second one.
+    static MudButton Act(IRenderedComponent<DialogHostFixture> host)
+    {
+        return host.FindComponents<MudButton>().Last().Instance;
+    }
+
     /// <summary>The two faces, in the order the house has always drawn them — the way out first,
     /// the act second — which is what makes "the first child" and "the last child" the two
     /// answers below mean something.</summary>
@@ -103,6 +109,30 @@ public sealed class NsConfirmFocusTests : BunitContext, IAsyncLifetime
     public void ADestructiveConfirmation_OpensOnTheWayOut()
     {
         Assert.Equal(DefaultFocus.FirstChild, Opening(Ask(destroys: true)));
+    }
+
+    /// <summary>The act of a destructive question wears what it does: Danger's error fill
+    /// (ui/actions.md), so the face says the cost before it is pressed and not only after. The
+    /// cursor and the fill are the same derivation answering two questions.</summary>
+    [Fact]
+    public void ADestructiveConfirmation_WearsTheDestructiveRankOnItsAct()
+    {
+        var act = Act(Ask(destroys: true));
+
+        Assert.Equal(Color.Error, act.Color);
+        Assert.Equal(Variant.Filled, act.Variant);
+    }
+
+    /// <summary>And an ordinary one keeps the accent a confirmation has always answered with:
+    /// nothing but a destructive act reaches the error fill, so the fill stays readable as
+    /// destruction.</summary>
+    [Fact]
+    public void AnOrdinaryConfirmation_KeepsTheAccentOnItsAct()
+    {
+        var act = Act(Ask(destroys: false));
+
+        Assert.Equal(Color.Primary, act.Color);
+        Assert.Equal(Variant.Text, act.Variant);
     }
 
     /// <summary>The question itself is untouched by the door it came through: the title the
