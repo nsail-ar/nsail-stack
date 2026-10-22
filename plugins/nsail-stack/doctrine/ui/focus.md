@@ -21,6 +21,22 @@ parameter every `NsFieldBase` field already carries — is one source of it: `tr
 it already writes `data-ns-field` for the Enter policy. Nothing else needs to spell the
 attribute by hand.
 
+## The fallback is a heading something has to draw
+
+A selector finds nothing unless something renders it, and no screen component drew an `<h1>` of
+its own: the fallback is **the screen's own title row** (`NsTitleBar`, through
+`NsText As="PageName"`), and it is the ONE row that is the screen's subject — the row that
+claimed the surface, the same claim the hidden drawer's toggle rides
+(`SurfaceContext.ClaimsRow`). A section's row, a table's title and an overlay's row stay
+`Title`, because a page carries one top-level heading and several would name the screen several
+times.
+
+The heading also carries `tabindex="-1"`: `focus()` moves the cursor only onto something that
+can hold it, so a bare `<h1>` leaves the call a no-op — the same price the shell's skip link
+pays for the main region it lands in (`NsMainLayout`). It is no tab stop, so `ns-mud.css` draws
+no ring around it, and the rank is the element alone: the title row's type scale is unchanged
+(`MudText.HtmlTag` separates the two).
+
 The actual focus happens in `ns.js` (`arrivalFocus`), for three reasons a comma selector cannot
 cover:
 
@@ -64,8 +80,11 @@ cover:
   breakpoint the page stands beside it, so this page's own arrival focus is left to settle;
   below it the region IS the screen, and takes focus the way a drawer that opened for a reason
   does. A door's own `Toggle`/`Open` always takes it, docked or not. Reference: `NsCompanion`.
-- **A read-only page, a dashboard** — nothing declares the marker, so the router's fallback
-  (`h1`) is the arrival focus, same as every page got before this.
+- **A read-only page, a dashboard** — nothing declares the marker, so the router's fallback is
+  the arrival focus: the screen's own name, the `h1` its title row draws. A screen with no field
+  to mark still announces itself to a screen reader, which is the whole point of the fallback;
+  a screen that renders no title row of its own gets no arrival focus at all, and is the one
+  shape to fix at the row rather than here.
 
 The per-screen table — which of these six a screen actually is, and which needed a line
 changed — is the walk in the story's own PR, not repeated here: a table copied into a doc rots
@@ -75,9 +94,11 @@ the day a screen is added, and this page states the rule it was walked against.
 
 A coarse pointer's own keyboard rises the instant a text box takes focus, over the very list
 the cursor was just handed to see — a cost a device with a physical keyboard, or a pointer that
-only hovers (a mouse, a trackpad), never pays. `arrivalFocus` skips outright wherever
+only hovers (a mouse, a trackpad), never pays. That cost belongs to the BOX, so wherever
 `(pointer: coarse)` matches (the same query `ns-mud.css` already gates touch-sized targets on)
-— **the router's own pass never fires on a touch screen**, marker or fallback alike.
+`arrivalFocus` skips **the marker's pass alone**: the fallback still fires and the screen's own
+name takes the cursor, because a heading raises no keyboard and a person reading a phone with a
+screen reader is owed the name of the page they just landed on.
 
 This is the arrival marker's rule alone. A create form's first-field focus (forms.md) is a
 different mechanism — `NsForm.focusFirst`, not `arrivalFocus` — and is not part of this story:

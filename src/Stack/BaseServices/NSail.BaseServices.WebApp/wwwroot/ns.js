@@ -1041,14 +1041,16 @@
 
     // What the router (NsArrivalFocus) hands the cursor to on a navigation's arrival: the first
     // element on screen carrying the marker a field's own AutoFocus writes (NsFieldBase), and
-    // only the page's h1 where there is none -- never a comma selector, because querySelector
-    // answers the first match in DOCUMENT ORDER and the header's h1 always comes before
-    // whatever a screen marks, so the marker would lose the one selector list that tried both.
+    // only the screen's own name where there is none -- the h1 its title row draws (NsTitleBar),
+    // which carries tabindex -1 precisely so this call can land on it. Never a comma selector,
+    // because querySelector answers the first match in DOCUMENT ORDER and the screen's name
+    // always comes before whatever a screen marks, so the marker would lose the one selector
+    // list that tried both.
     //
     // A marker rendered after this very call -- a list still reading, a tab's panel -- is not
     // yet a lost cause: this waits for it (a MutationObserver, bounded by a timeout that falls
-    // back to h1), rather than reading the DOM once and giving up, which is what left the
-    // vendor's own first-render-only AutoFocus unable to reach it in the first place.
+    // back to the screen's name), rather than reading the DOM once and giving up, which is what
+    // left the vendor's own first-render-only AutoFocus unable to reach it in the first place.
     const ARRIVAL_MARK = '[data-ns-arrival-focus]:not([disabled]):not([aria-readonly="true"])';
     const ARRIVAL_FALLBACK_WAIT_MS = 1000;
 
@@ -1060,15 +1062,20 @@
 
         disconnectArrival();
 
-        // A touch screen's keyboard rises the instant a text box takes focus, over the very
+        // A touch screen's keyboard rises the instant a TEXT BOX takes focus, over the very
         // list the cursor was handed to see -- a device with a physical keyboard, or a pointer
-        // that only hovers over one (a mouse, a trackpad), never pays that cost.
-        if (window.matchMedia("(pointer: coarse)").matches)
-            return;
+        // that only hovers over one (a mouse, a trackpad), never pays that cost. The cost is
+        // the box's, not the arrival's: a heading raises no keyboard, so a coarse pointer skips
+        // the marker's pass alone and the screen's name still takes the cursor, which is how a
+        // screen reader on a phone hears the page it just landed on (ui/focus.md, Touch).
+        const marked = !window.matchMedia("(pointer: coarse)").matches;
 
-        const marker = findArrivalMarker();
-        if (marker) {
-            marker.focus();
+        // The first, synchronous try always wins, exactly as the vendor's own unconditional
+        // focus did; only from the moment this call starts WAITING does a hand that got there
+        // first keep what it took (settle below).
+        const present = marked ? findArrivalMarker() : document.querySelector(fallbackSelector);
+        if (present) {
+            present.focus();
             return;
         }
 
@@ -1077,12 +1084,16 @@
             settle(document.querySelector(fallbackSelector));
         }, ARRIVAL_FALLBACK_WAIT_MS);
 
-        arrivalObserver = new MutationObserver(function () {
-            const late = findArrivalMarker();
-            if (late)
-                settle(late);
-        });
-        arrivalObserver.observe(document.body, { childList: true, subtree: true });
+        // Nothing to watch for where the marker is not wanted: what is left to wait for is the
+        // screen's own name, and the timeout above is the one that asks for it.
+        if (marked) {
+            arrivalObserver = new MutationObserver(function () {
+                const late = findArrivalMarker();
+                if (late)
+                    settle(late);
+            });
+            arrivalObserver.observe(document.body, { childList: true, subtree: true });
+        }
 
         // The guard a later arrival needs is generation, not merely "has this settled" -- a
         // second navigation landing inside the wait window must never let this one's fallback

@@ -7,10 +7,10 @@
 
 @* Draws nothing. Blazor's own FocusOnNavigate calls a plain selector the instant a navigation
    lands — a comma list ("[data-ns-arrival-focus], h1") is not that selector, because
-   querySelector answers the first match in DOCUMENT ORDER and the header's h1 always comes
-   before whatever a screen marks. ns.js (arrivalFocus) checks the marker on its own first and
-   reaches for the fallback only when there is none — waiting for it, since a list's own search
-   can still be behind a read in flight the instant this fires. *@
+   querySelector answers the first match in DOCUMENT ORDER and the screen's own name always
+   comes before whatever a screen marks. ns.js (arrivalFocus) checks the marker on its own first
+   and reaches for the fallback only when there is none — waiting for it, since a list's own
+   search can still be behind a read in flight the instant this fires. *@
 
 @code {
 
@@ -21,7 +21,8 @@
     public RouteData? RouteData { get; set; }
 
     /// <summary>What the router focuses when the arriving page carries no marker — a read-only
-    /// page, a dashboard. "h1" so a screen reader still hears the page's title.</summary>
+    /// page, a dashboard. "h1" so a screen reader still hears the page's title: the screen's own
+    /// title row draws that heading, focusable (NsTitleBar, ui/focus.md).</summary>
     [Parameter]
     public string FallbackSelector { get; set; } = "h1";
 
