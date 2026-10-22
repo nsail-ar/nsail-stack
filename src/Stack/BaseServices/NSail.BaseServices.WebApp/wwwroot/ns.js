@@ -185,9 +185,32 @@
             return;
 
         // A text area's Enter is the line it writes, and Ctrl+Enter above is what submits the
-        // document from inside one.
-        if (target.tagName === "TEXTAREA")
+        // document from inside one -- except in a COMPOSER (NsSendMessage), where the words
+        // being typed ARE the message and nothing else is being written: there Enter sends and
+        // Shift+Enter writes the line, which is what every chat on earth has taught the hand.
+        // The modified keystroke never reaches here, so the Shift half is the policy standing
+        // down and leaving the browser its own newline.
+        if (target.tagName === "TEXTAREA") {
+            const composer = target.closest(".ns-send");
+
+            // A candidate being composed (an accent held, a CJK pick) ends on an Enter that
+            // belongs to the word: the person is still writing, and the message is not sent
+            // under them. Read per keystroke, because composing is a state of the keystroke.
+            if (!composer || e.isComposing)
+                return;
+
+            // The key presses the composer's own send, so a blank box and a send already in
+            // flight refuse it for the single reason they grey that face out (NsSendMessage's
+            // blank rule, NsSubmit's FormRunning) -- no second rule here to come apart from it.
+            const send = composer.querySelector('button[type="submit"]');
+
+            if (!send || !live(send))
+                return;
+
+            e.preventDefault();
+            activate(send);
             return;
+        }
 
         // THE MAP's Enter: the box in the drawer filters the app's own entries (NsNavMenu), and
         // Enter opens the first one still shown -- the palette standard, and literally that

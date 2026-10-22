@@ -1,0 +1,40 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Testing.Models
+
+@* A composer the way a screen seats one: the form holds the message being written, the box is
+   bound to its member and whatever the screen puts beside the send face rides in the slot. *@
+<MudPopoverProvider />
+
+<NsForm TModel="TestModel" Model="_message" OnSubmit="Send" Untracked>
+    <NsSendMessage @bind-Text="context.Name">
+        <button type="button" class="beside">Camino</button>
+    </NsSendMessage>
+</NsForm>
+
+@code {
+
+    readonly TestModel _message = new();
+
+    /// <summary>Held open until the test lets it finish, which is the window the face is greyed
+    /// out for: a send in flight is the second way Enter must do nothing.</summary>
+    [Parameter]
+    public TaskCompletionSource? Holding { get; set; }
+
+    public List<string?> Sent { get; } = [];
+
+    async Task Send(SubmitEventArgs<TestModel> args)
+    {
+        Sent.Add(args.Model.Name);
+
+        if (Holding is not null)
+        {
+            await Holding.Task;
+        }
+    }
+}

@@ -27,7 +27,7 @@
         }
         else
         {
-            @Strings.Translate(As == NsAs.Filter ? "Common.Filter" : "Common.Submit")
+            @DefaultWord()
         }
     </span>
 </MudButton>
@@ -135,9 +135,20 @@
             return Label;
         }
 
-        return ChildContent is null
-            ? Strings.Translate(As == NsAs.Filter ? "Common.Filter" : "Common.Submit")
-            : null;
+        return ChildContent is null ? DefaultWord() : null;
+    }
+
+    // The act's own word per face, so a send says Enviar without every caller writing it: a
+    // word written per screen is a word that comes to differ per screen, and the glyph is
+    // already chosen here (GetIcon).
+    string DefaultWord()
+    {
+        return Strings.Translate(As switch
+        {
+            NsAs.Filter => "Common.Filter",
+            NsAs.Send => "Common.Send",
+            _ => "Common.Submit",
+        });
     }
 
     protected override void OnInitialized()

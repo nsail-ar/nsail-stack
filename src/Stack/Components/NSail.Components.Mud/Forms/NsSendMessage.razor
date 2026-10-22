@@ -1,0 +1,94 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using System.Linq.Expressions
+
+@* The composer: a box whose words ARE the message and the face that sends them. One control
+   rather than a box and a button each screen arranges, because the three rules a composer has
+   — Enter sends, a blank box never sends, a send in flight never sends twice — are read off
+   what is rendered here, so a second composer cannot answer the key differently from the
+   first.
+   `ns-send` is what the Enter policy finds from the keystroke's own target (ns.js): a textarea
+   inside one of these is the one textarea in the house whose Enter is not a line. *@
+<NsStack Gap="NsSize.Sm" Grow="Grow" Class="ns-send">
+    <NsTextArea Value="Text"
+                ValueChanged="SetText"
+                ValueExpression="TextExpression"
+                Label="@Label"
+                Placeholder="@Placeholder"
+                Required="Required"
+                Disabled="Disabled"
+                AutoFocus="AutoFocus"
+                Lines="Lines"
+                MaxLines="MaxLines" />
+    <NsStack Horizontal Gap="NsSize.Sm" Justify="NsAlign.End" Align="NsAlign.Center">
+        @ChildContent
+        <NsSubmit As="NsAs.Send" Disabled="@IsBlank()" Untracked />
+    </NsStack>
+</NsStack>
+
+@code {
+
+    /// <summary>The words typed, bound to the member the message carries — `@bind-Text` on the
+    /// form's own model, so what the box holds is what the submit sends (ui/fields.md). Emptying
+    /// it after a send is the screen's, not this control's: the model the form holds is the
+    /// screen's own, and both ways of clearing it — a fresh model or the member set back — are
+    /// the same gesture on it.</summary>
+    [Parameter]
+    public string? Text { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> TextChanged { get; set; }
+
+    [Parameter]
+    public Expression<Func<string>>? TextExpression { get; set; }
+
+    /// <summary>Whatever stands beside the send face in the same row — a road to pick, a link
+    /// out to the channel the answer leaves by. The face is always last: the act's place is one
+    /// across every screen that sends.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public bool AutoFocus { get; set; }
+
+    /// <summary>Same two words NsTextArea reads them by: the height the box opens at, and the
+    /// height it stops growing past.</summary>
+    [Parameter]
+    public int Lines { get; set; } = 3;
+
+    [Parameter]
+    public int? MaxLines { get; set; } = 8;
+
+    /// <summary>Whether the composer takes the free height of the region it sits in — a
+    /// conversation's footer in a panel.</summary>
+    [Parameter]
+    public bool Grow { get; set; }
+
+    // The ONE blank rule, and both the key and the click read it here: the face greys out and
+    // ns.js refuses the keystroke for a face no hand could press, so there is no second
+    // reading of "there is nothing to send" to drift from this one.
+    bool IsBlank()
+    {
+        return string.IsNullOrWhiteSpace(Text);
+    }
+
+    Task SetText(string? text)
+    {
+        return TextChanged.InvokeAsync(text);
+    }
+
+}
