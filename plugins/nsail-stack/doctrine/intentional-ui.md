@@ -143,8 +143,8 @@ danger of a destructive one ([ui/actions.md](ui/actions.md), the label and the e
 it).
 
 **The one exception: a screen whose footer is a COMPOSER carries its one state act in the title
-row.** A thread answered from the bottom has no footer left to put a verb in — the foot is the
-box the reply is typed into, and a state act wedged above it reads as part of the message. So it
+row.** A thread answered from the bottom has no footer left to put a verb in — the foot is
+`NsSendMessage` ([ui/forms.md](ui/forms.md), *The composer*), the box the reply is typed into, and a state act wedged above it reads as part of the message. So it
 rides the title row with the utilities, last of them, left of the guide's `?` (the ticket
 workspace's Resolver). **One act, not a row of them**: a second verb up there is a screen that
 owes itself a surface of its own for the transition, which is the rule above and not this

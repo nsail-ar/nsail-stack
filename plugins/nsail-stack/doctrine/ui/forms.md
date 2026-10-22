@@ -245,9 +245,9 @@ What it never does is save a document in the middle of being written:
   Enter is never a line, because the words being typed ARE the message and there is no document
   around them to save by accident. What says so is the composer around the box (`NsSendMessage`
   writes `ns-send`, read from the keystroke's own target upwards), and the key presses that
-  composer's own send face: so a blank box and a send in flight refuse the keystroke for the
-  single reason they grey the face out, and it **does nothing at all** there rather than leaving
-  a blank line nobody asked for. The Shift half is the policy standing down and leaving the
+  composer's own send face — and it presses no face a hand could not press, so a blank box and a
+  send in flight answer the key with **nothing at all** rather than with a blank line nobody
+  asked for. The Shift half is the policy standing down and leaving the
   browser its newline; a keystroke still composing a candidate (an accent, a CJK pick) belongs to
   the word and is left alone the same way.
 
@@ -292,7 +292,10 @@ it, so what the submit sends is what the box holds — a fresh model, or the mem
 the screen's gesture on its own document ([fields.md](fields.md), *What the box holds is what the
 form submits*). What a screen puts BESIDE the face — a road to pick, a link out to the channel
 the answer leaves by — rides the control's slot and stands before it: the act's place is one
-across every screen that sends.
+across every screen that sends. **A state act is not one of those**: a screen whose footer is a
+composer carries its one transition in the title row, not beside the send
+([intentional-ui.md](../intentional-ui.md), *The one exception*) — a verb wedged into this row
+reads as part of the message.
 
 ---
 

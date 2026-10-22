@@ -175,4 +175,19 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
         Assert.Equal("hola", cut.Find("textarea").TextContent);
         Assert.False(cut.Find("button[type=\"submit\"]").HasAttribute("disabled"));
     }
+
+    /// <summary>A composer a screen switched off does not send BY ANY GESTURE: the greyed box
+    /// beside a live face would let a click take the draft out past the very screen that said
+    /// no — the keyboard never gets there (a disabled box takes no keystroke), which is exactly
+    /// why the face has to answer for the state too.</summary>
+    [Fact]
+    public async Task ADisabledComposerGreysTheFaceAndNotOnlyTheBox()
+    {
+        var cut = Render<SendMessageHost>(p => p.Add(x => x.Disabled, true));
+
+        await cut.InvokeAsync(() => cut.Find("textarea").Input("hola"));
+
+        Assert.True(cut.Find("textarea").HasAttribute("disabled"));
+        Assert.True(cut.Find(".ns-send button[type=\"submit\"]").HasAttribute("disabled"));
+    }
 }

@@ -24,7 +24,7 @@
                 MaxLines="MaxLines" />
     <NsStack Horizontal Gap="NsSize.Sm" Justify="NsAlign.End" Align="NsAlign.Center">
         @ChildContent
-        <NsSubmit As="NsAs.Send" Disabled="@IsBlank()" Untracked />
+        <NsSubmit As="NsAs.Send" Disabled="@(Disabled || IsBlank())" Untracked />
     </NsStack>
 </NsStack>
 
@@ -59,6 +59,10 @@
     [Parameter]
     public bool Required { get; set; }
 
+    /// <summary>A composer that cannot send right now — a thread that closed, a screen that
+    /// froze its own footer. It greys the box AND the face: "this composer does not send" is one
+    /// state, and a greyed box beside a live face is a message leaving under a hand that was
+    /// told it could not.</summary>
     [Parameter]
     public bool Disabled { get; set; }
 
@@ -74,7 +78,9 @@
     public int? MaxLines { get; set; } = 8;
 
     /// <summary>Whether the composer takes the free height of the region it sits in — a
-    /// conversation's footer in a panel.</summary>
+    /// conversation's footer in a panel. The BOX keeps the height `Lines` and `MaxLines` give
+    /// it: what grows is the room around it, so a short message does not open a box the size of
+    /// the footer.</summary>
     [Parameter]
     public bool Grow { get; set; }
 
