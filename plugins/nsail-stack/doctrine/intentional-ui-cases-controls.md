@@ -176,6 +176,64 @@ instead. Two more measured facts, both load-bearing for the permanent create ent
 **only** when it returned none, and never both — one fragment passed to both is what makes the
 entry permanent rather than duplicated.
 
+## Why a pick WITHHOLDS `OpenOnFocus` instead of closing the list its refocus raises
+
+Measured against MudBlazor 9.10.0: a click on an option runs `ListItemOnClickAsync`, which arms a
+one-shot mark of its own and focuses the box BEFORE it selects; `OnInputFocusedAsync` spends that
+mark and returns without opening. The mark is cleared on the FIRST LINE of
+`OnInputBlurredAsync` — and the box's blur belongs to the same gesture, raised at the option's
+mousedown, so the two handlers sit in one queue and whichever resumes last decides whether the
+vendor's own guard survives its own gesture. Traced in Chromium on Nuevo Asiento, the refocus
+opened in every run measured: 110 ms before the close on an idle box, 230 ms with the lookup's
+answers held 1.2 s, 640 ms held 4 s, 1.8 s under 10× CPU throttling — and on a runner at a
+1-minute load of 17 the close landed FIRST, leaving the list standing over the form with its one
+row `aria-selected` and `data-ticks` stamped at the instant of the pick.
+
+**Closing that open instead was rejected**: it cannot be told from the open a press on the box
+raises. `Strict` defaults to `true`, so the refocus searches for the TEXT the pick just wrote —
+the same term, the same single row — as a press on the box would, and a belt that closes "the
+first open after a pick" eats the gesture after an ENTER pick, where the cursor never leaves and
+no refocus is ever coming. `OnInputActivatedAsync` reads `OpenOnFocus` only on the focus path;
+the press, the chevron and the debounce after a keystroke each pass `true` of their own. That is
+what makes withholding the parameter exact: no other way of opening a list reads it.
+
+**What spends the mark is the box being used again, and it takes two signals because one gesture
+answers for no search.** A search drops it — the press, the chevron and the typed term each ask
+for one — and so does any key the input takes (`OnKeyDown`, raised at the end of
+`OnInputKeyDownAsync`): the Tab or Shift+Tab that carries the cursor out of a field somebody has
+finished with, whose return focus would otherwise be the one refused. The key is also the whole
+answer after an ENTER pick, where the cursor never left and no refocus was ever coming — the
+vendor picks on the key UP (`OnInputKeyUpAsync`), so the keydown that caused the pick lands before
+the mark is taken and the next key to arrive is the person's. The field's OWN Enter pick is the one
+that does not, since it resolves inside that keydown (`OnBoxKeyDown`, [fields.md](ui/fields.md), *A
+SEARCH-FIRST box answers its own Enter*): the key spends the mark before the resolve, or the pick it
+makes would lose the mark it has just taken. **Not the blur**: that is the event the vendor loses its
+own mark to, and a mark spent on it would be lost the same way.
+
+**The mark is held, not spent per focus**, so what is left is bounded and measured: a pick made
+with the mouse, left with the mouse and come back to with Shift+Tab refuses that focus — and
+refuses it again every time that same walk repeats, since no key and no search came in between —
+and the press, the chevron or a typed term it is followed by opens the list.
+
+## Why a pick the FIELD makes closes the list itself
+
+Measured against MudBlazor 9.10.0: the vendor closes its popover inside `ListItemOnClickAsync`, so
+every pick the VENDOR makes arrives with its list already down. The two picks the FIELD makes — the
+single answer a search-first Enter takes, and the quick add's row — reach the vendor as a `Value`
+change and nothing else, and a `Value` it already holds is where `OnParametersSet`'s own close belt
+returns early. So each leaves its own list standing (`NsAutocompletePickClosesTests`, measured with
+the close removed): one popover holding the one row just taken, still there a half-second after an
+Enter pick, and one holding nothing but the quick add's own entry after that row is pressed. The
+field closes the menu at both.
+
+**That close is also what answers the search the keystroke beat.** `CloseMenuAsync` disposes the
+debounce timer, which is what `SelectOptionAsync` does for the vendor's own picks: without it, a
+burst whose answer lands inside the interval is asked a SECOND time by the vendor a tenth of a
+second later — measured, the same term twice and one popover holding the one row just taken, which
+is how a Value-change pick differs from a selection the vendor made. No mark can answer that one:
+the open comes from a search that BEGINS after the pick, and the first thing a search does is drop
+the marks a pick left.
+
 ## Why the open list is floored at the field and capped at a measure
 
 **The popover.** Measured in Chromium at 1600px on an OT: `RelativeWidth` defaults to

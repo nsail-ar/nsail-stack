@@ -58,7 +58,7 @@
                  AdornmentIcon="@NsIcons.DropDown.Markup"
                  AdornmentAriaLabel="@Strings.Translate("Common.ShowOptions")"
                  MinCharacters="0"
-                 OpenOnFocus="true"
+                 OpenOnFocus="@(!_refocusIsStale)"
                  OpenChanged="OnOpenChanged"
                  OnKeyDown="OnBoxKeyDown"
                  TextChanged="OnBoxText"
@@ -114,8 +114,9 @@
     /// <summary>Search-first, for tables too big to browse (parties, products): the field
     /// shows a magnifier instead of the dropdown arrow and doesn't query until something is
     /// typed. It still opens on focus — on an empty box that shows the create entry alone,
-    /// which is the only discoverability the field has. Off, it behaves like a select over
-    /// a short list.</summary>
+    /// which is the only discoverability the field has; the one focus it does not answer is the
+    /// one a pick of its own handed back, and the next key or search gives even that one back.
+    /// Off, it behaves like a select over a short list.</summary>
     [Parameter]
     public bool Lazy { get; set; }
 
@@ -195,20 +196,38 @@
     // vendor redraws its own list from.
     TaskCompletionSource? _settling;
 
-    // A pick made while a search was still out: the vendor runs that open to completion AFTER
-    // the selection has already closed the list, and raises it again on the very row just
-    // chosen — a list nobody asked for, standing over the answer, which nothing afterwards
-    // closes. Only a search that was ALREADY out can do that; one that starts later is this
-    // field being asked for its list again, so the mark is taken at the pick and dropped the
-    // moment another search begins.
+    // A pick, and the open of a search the pick did not wait for: the vendor runs an open that
+    // was already under way to completion AFTER the selection has closed the list, and raises it
+    // again on the very row just chosen — a list nobody asked for, standing over the answer,
+    // which nothing afterwards closes. Taken at every pick, because the open it answers for
+    // lands by its own clock: the search behind it may still be out at the pick, or answered
+    // with only its landing left.
+    //
+    // Read when an open LANDS, which is what bounds it without a gesture to spend it on: every
+    // other way of opening a list asks the vendor for a search first — a press on the box, the
+    // chevron, a typed term — and that search drops the mark (Search), so the only open left
+    // that can read it is one whose search began BEFORE the pick, which is the one nobody asked
+    // for. MinCharacters is 0 and no progress template is set, so OpenMenuAsync never opens
+    // without calling SearchFunc first.
     bool _reopenIsStale;
 
-    // Set while THIS field is answering an Enter of its own: the vendor's debounced search for
-    // the text that key ended is still on its way, and it will open a list over whatever the
-    // keystroke resolved — the same stale reopen a pick made under a live search leaves, from
-    // the other side of the debounce (nothing is out yet, so _searchesOut cannot see it). The
-    // span ends at the pick it was taken for, which is where the mark above reads it.
-    bool _entered;
+    // The other half of the same promise, and the one the vendor cannot keep for itself: a pick
+    // made with the mouse ends with the vendor handing the cursor back to the box it was made
+    // from (its own list item click calls FocusAsync), and OpenOnFocus answers that focus
+    // exactly like a click — a list raised over the answer just chosen, which nothing
+    // afterwards closes. The vendor marks that focus to swallow it, but its mark is cleared by
+    // the box's own blur, which THE SAME GESTURE raised at the option's mousedown: both
+    // handlers are queued, and the one that resumes last wins, which is why an idle box got
+    // away with it and a loaded one did not. So the open is refused at its source instead,
+    // where no blur can reach the decision — and the cursor is never moved to get the list
+    // down, which would cost the box the keystrokes that follow (forms.md, Focus on open).
+    //
+    // It is taken for the focus a pick hands back, and what spends it is the box being used
+    // again: a search (a press, the chevron, a typed term) or any key the box takes — never a
+    // blur, which is the very event the vendor loses its own mark to. Held until one of those, so
+    // a field a person walked away from refuses the focus they come back with, every time that
+    // walk repeats.
+    bool _refocusIsStale;
 
     /// <summary>The Runner the RESOLVE runs on, separate from the field's own because they are
     /// two unrelated reads: the search answers "what can I pick", the resolve answers "what does
@@ -397,9 +416,27 @@
             return;
         }
 
-        // The item is taken through the same path a click on a real option takes, so the field
-        // shows it, the bound value is set and the vendor closes its own popover.
-        await OnItemChanged(args.Item);
+        // The item is taken the way the one a keystroke resolves is: the field shows it, the bound
+        // value is set, and the list it was made in — this entry sits INSIDE the open list — is
+        // closed by the field, since the vendor saw no selection of its own (measured without the
+        // close: the popover still standing, holding the entry just pressed, over the form).
+        await Take(args.Item);
+    }
+
+    // A pick the FIELD makes, which the vendor only ever learns as a Value change: the list it was
+    // made from is nobody's to close but this field's. OnParametersSet's belt cannot do it — a
+    // value the field is already holding is where it returns early — and the vendor's own close
+    // runs inside its own selection, which this never is.
+    async Task Take(TItem item)
+    {
+        await OnItemChanged(item);
+
+        if (_autocomplete is null)
+        {
+            return;
+        }
+
+        await _autocomplete.CloseMenuAsync();
     }
 
     protected override void OnInitialized()
@@ -490,8 +527,22 @@
     // Only where the list is not already this text's own answer: a hand typing at its own speed
     // leaves the vendor a settled list, and that Enter is the vendor's — it picks what the list
     // is highlighting, which for a single answer is that answer, with no arrow-down.
+    //
+    // ANY key the box takes also spends the refocus mark, which is what a search cannot reach: a
+    // key is the person using the field again, and the pick they made is over. It is the Tab or
+    // Shift+Tab that carries the cursor out — so the focus they come back with is answered — and
+    // it is the whole answer after an Enter pick, where the cursor never left and no refocus was
+    // ever coming: the vendor picks on the key UP (OnInputKeyUpAsync), so a keydown that caused a
+    // pick of the vendor's own lands BEFORE that pick takes the mark, and the next key to arrive
+    // is the person's. Not the blur: that one belongs to the gesture that made the pick, raised at
+    // the option's mousedown, and a mark spent on it is the vendor's own mark, lost the same way.
     async Task OnBoxKeyDown(KeyboardEventArgs args)
     {
+        // Before the resolve below and before any key filter: the pick this key itself may make
+        // marks the refocus it hands back, and a mark spent after that pick is the pick's own —
+        // gone the instant it was taken, with the list it was holding down left open.
+        _refocusIsStale = false;
+
         if (args.Key is not ("Enter" or "NumpadEnter") || _autocomplete is null)
         {
             return;
@@ -515,9 +566,18 @@
             return;
         }
 
-        _entered = true;
-
-        await OnItemChanged(rows[0]);
+        // Take, and not OnItemChanged: the list the answer this key read opened on the way landed
+        // while the keystroke was waiting for that answer, so it is already up by the time the
+        // pick is made and the vendor closes nothing for it (measured: 1 popover, 1 item, still
+        // there a half-second later).
+        //
+        // That close is also what answers for the search that never came. Where the key beat the
+        // vendor's interval nothing is open yet, and what the vendor still holds is the debounced
+        // search for the text this key just resolved — whose own answer would open a list over the
+        // row it took (measured without the close: asked twice, 1 popover, 1 item). CloseMenuAsync
+        // disposes that timer, as the vendor's own selection path does, so there is no second open
+        // for a mark to be read on.
+        await Take(rows[0]);
     }
 
     // What the box's text answers, from a search that is already out wherever there is one: the
@@ -569,6 +629,9 @@
     // from an open that was already under way when the pick closed the list. It is closed here
     // rather than at the pick because the open has not happened yet then — the vendor raises it
     // only once the search it is waiting on answers, which is after the selection has finished.
+    // The pick's own refocus never reaches this: it is refused where it is decided, by the
+    // OpenOnFocus the field withholds while _refocusIsStale stands, so there is no open to
+    // close and no list to flicker.
     async Task OnOpenChanged(bool open)
     {
         if (!open || !_reopenIsStale || _autocomplete is null)
@@ -685,11 +748,16 @@
     // the last word after it — a refused change then really changes the parameter back.
     async Task OnItemChanged(TItem? item)
     {
-        // The Enter's own span ends at the pick it was taken for: what it had to say is said in
-        // the mark below, and left standing it would make every later pick of this field's life
-        // read as one made under a list nobody asked for.
-        _reopenIsStale = _searchesOut > 0 || _entered;
-        _entered = false;
+        // Every pick can be landed on by an open of its own, whichever side of the pick the
+        // search under it is: what reaches the vendor is a Value change, and an open already
+        // under way knows nothing of a selection.
+        _reopenIsStale = item is not null;
+
+        // Only a pick hands a cursor back. The (x) raises this with no item at all — the vendor
+        // withdraws its own focus features for the whole clearing chain, so there is no open to
+        // refuse — and an empty box that could not open on focus would lose the create entry,
+        // which is the only discoverability a Lazy field has.
+        _refocusIsStale = item is not null;
 
         _selectedItem = item;
 
@@ -732,8 +800,13 @@
     async Task<IEnumerable<TItem>> Search(string text, CancellationToken vendorToken)
     {
         // A search beginning now is this field being asked for its list, so whatever a pick
-        // before it left marked is no longer a reopen nobody asked for.
+        // before it left marked is no longer a reopen nobody asked for. It answers for the
+        // refocus too: a press on the box, the chevron and a typed term each ask the vendor for
+        // a search of their own, while the refocus the pick hands back opens on nothing but the
+        // focus. A key the box takes spends that mark as well (OnBoxKeyDown), for the gestures
+        // that ask for no search at all.
         _reopenIsStale = false;
+        _refocusIsStale = false;
         _searchesOut++;
 
         try

@@ -184,10 +184,18 @@ public sealed class NsAutocompleteReaderEnterTests : BunitContext, IAsyncLifetim
 
     /// <summary>The burst at its earliest, and the state the live reader is actually in: the code
     /// and the Enter arrive inside a fraction of the vendor's own debounce, so the key lands
-    /// before any search was ASKED — the field's own is then the first one the box makes.</summary>
+    /// before any search was ASKED — the field's own is then the first one the box makes. The
+    /// interval is wound by hand here, so what makes the key early is a step this case takes and
+    /// not how fast the box it runs on happens to be: left to the real clock, a loaded runner let
+    /// the interval elapse before the keystroke was dispatched and the burst under test was no
+    /// longer a burst (preflight.md, 8).</summary>
     [Fact]
     public async Task AnEnterBeforeTheVendorsDebounceAsksTheSearchItself()
     {
+        var clock = new HandWoundClock();
+
+        Services.AddSingleton<TimeProvider>(clock);
+
         var cut = Render<SearchLookupHost>(p => p
             .Add(x => x.Rows, Shelf)
             .Add(x => x.Lazy, true)
@@ -197,17 +205,15 @@ public sealed class NsAutocompleteReaderEnterTests : BunitContext, IAsyncLifetim
 
         await input.FocusAsync(new FocusEventArgs());
 
-        // Not awaited, and nothing waited for in between: the vendor's own search is still
-        // behind its interval when the key is pressed.
-        _ = input.InputAsync(new ChangeEventArgs { Value = "7798123456789" });
+        await input.InputAsync(new ChangeEventArgs { Value = "7798123456789" });
 
         await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
 
         Assert.Equal(Scanned, _picked);
 
-        // A Lazy box asks nothing for an empty one, so the first term it ever asked for is the
-        // one this keystroke resolved.
-        Assert.Equal("7798123456789", cut.Instance.Asked[0]);
+        // The clock never moved, so the vendor's own search cannot have been asked: the one term
+        // ever asked is the one this keystroke resolved itself.
+        Assert.Equal(["7798123456789"], cut.Instance.Asked);
     }
 
     /// <summary>The other half of "one answer is taken": the search is the one the picker already
