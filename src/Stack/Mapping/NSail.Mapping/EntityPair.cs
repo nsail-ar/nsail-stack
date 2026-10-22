@@ -12,8 +12,22 @@ public abstract class EntityPair<TSource, TTarget> : EntityType<TTarget>
     where TTarget : class
 {
     /// <summary>The source's key converted to the target's key type, or null when the source
-    /// names no row (no key member, or the key's default value).</summary>
+    /// names no row (no key member, or the key's default value). Compose and Aggregate (and
+    /// their *Many forms) depend on that collapse to merge, clear or attach past a default key
+    /// — SourceHasKey is the one place a default is told apart from a true absence, and only
+    /// MapRoot asks it.</summary>
     public abstract object? SourceKey(TSource source);
+
+    /// <summary>Whether this call's own source carries a value for the key at all — true for a
+    /// required member regardless of its value, true for an optional one (Guid?, a nullable
+    /// reference) only when it actually has a value, default included either way. Always false
+    /// for a composite key: MapRoot is the only reader, and the gap stays open there (none of a
+    /// composite key's writers in this tree need it closed).</summary>
+    public abstract bool SourceHasKey(TSource source);
+
+    /// <summary>The key type's own default, boxed: the id MapRoot reports for a refusal when
+    /// SourceHasKey is true and SourceKey answered null.</summary>
+    public abstract object DefaultKey { get; }
 
     /// <summary>A new entity carrying the source's key, when it has one.</summary>
     public abstract TTarget Create(TSource source);
@@ -38,11 +52,13 @@ public abstract class EntityPair<TSource, TTarget> : EntityType<TTarget>
         if (target is null && key is not null)
         {
             target = await context.Load(Match(key), Includes, cancellationToken).ConfigureAwait(false);
+        }
 
-            if (target is null && context.Stores && context.Parameters.MissingRootBehavior == MissingRootBehavior.Throw)
-            {
-                throw context.Missing(typeof(TTarget), key);
-            }
+        // SourceHasKey adds the one case SourceKey's own null cannot carry here: a key at its
+        // default, which the rest of the graph still reads as "no value" (SourceKey, above).
+        if (target is null && (key is not null || SourceHasKey(source)) && context.Stores && context.Parameters.MissingRootBehavior == MissingRootBehavior.Throw)
+        {
+            throw context.Missing(typeof(TTarget), key ?? DefaultKey);
         }
 
         if (target is null)

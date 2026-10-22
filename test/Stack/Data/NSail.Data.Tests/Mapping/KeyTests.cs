@@ -5,11 +5,13 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using NSail.Mapping.Annotations;
+using NSail.Problems;
 
 namespace NSail.Data.Tests.Mapping;
 
-// Ported from Detached.Mappers.EntityFramework.Tests/Keys/*.cs: a source that names no key,
-// or a nullable one, is a create.
+// Ported from Detached.Mappers.EntityFramework.Tests/Keys/*.cs: a source that names no key —
+// no key member, or a nullable one actually unset — is a create; a nullable one that does
+// carry a value, default included, refuses exactly like a required member's.
 public sealed class KeyTests
 {
     [Fact]
@@ -57,6 +59,65 @@ public sealed class KeyTests
         var customer = await store.Mapper.Map<CustomerDto, Customer>(new CustomerDto { Id = null, Name = "new customer" });
 
         Assert.Equal("new customer", customer.Name);
+    }
+
+    // A nullable key member naming a real id that is not there is still NotFound — the type
+    // being Guid? decides what null means, never whether a value in hand gets checked.
+    [Fact]
+    public async Task map_dto_nullable_key_realid_notfound()
+    {
+        await using var store = await MapperStore<NullableKeyContext>.Create();
+
+        var id = Guid.NewGuid();
+
+        var refused = await Assert.ThrowsAsync<BusinessException>(
+            () => store.Mapper.Map<CustomerDto, Customer>(new CustomerDto { Id = id, Name = "ghost" }));
+
+        Assert.Equal(BusinessProblem.NotFoundCode, refused.Code);
+        Assert.Equal(id.ToString(), refused.Issues.Single().Arguments!["id"]);
+        Assert.Empty(store.Db.Customers);
+    }
+
+    // A nullable key member carrying its own type's default is a value, not an absence: the
+    // caller distinguished "no id" (null) from "id Guid.Empty" already, and Map must too.
+    [Fact]
+    public async Task map_dto_nullable_key_default_notfound()
+    {
+        await using var store = await MapperStore<NullableKeyContext>.Create();
+
+        var refused = await Assert.ThrowsAsync<BusinessException>(
+            () => store.Mapper.Map<CustomerDto, Customer>(new CustomerDto { Id = Guid.Empty, Name = "ghost" }));
+
+        Assert.Equal(BusinessProblem.NotFoundCode, refused.Code);
+        Assert.Equal(Guid.Empty.ToString(), refused.Issues.Single().Arguments!["id"]);
+        Assert.Empty(store.Db.Customers);
+    }
+
+    // A composite root key naming a real row not there is still NotFound — SourceHasKey's open
+    // gap is the composite key's own default (below), never a complete one that names nothing.
+    [Fact]
+    public async Task map_entity_composite_key_notfound()
+    {
+        await using var store = await MapperStore<CompositeKeyContext>.Create();
+
+        await Assert.ThrowsAsync<BusinessException>(
+            () => store.Mapper.Map<SlotDto, Slot>(new SlotDto { Row = 1, Column = 2, Label = "ghost" }));
+    }
+
+    // The gap this story leaves open: none of its 22 updates has a composite root key, so a
+    // composite key at its own default still creates past Map, same as main.
+    [Fact]
+    public async Task map_entity_composite_key_default_creates()
+    {
+        await using var store = await MapperStore<CompositeKeyContext>.Create();
+
+        await store.Mapper.Map<SlotDto, Slot>(new SlotDto { Row = 0, Column = 0, Label = "new" });
+
+        await store.Db.SaveChangesAsync();
+
+        await using var read = store.Fresh();
+
+        Assert.Equal("new", Assert.Single(read.Slots).Label);
     }
 
     public class NoKeyUserDto
@@ -138,5 +199,36 @@ public sealed class KeyTests
     public class NullableKeyContext(DbContextOptions<NullableKeyContext> options) : DbContext(options)
     {
         public DbSet<Customer> Customers { get; set; } = null!;
+    }
+
+    [MapFrom(typeof(SlotDto))]
+    public class Slot
+    {
+        [Key]
+        public int Row { get; set; }
+
+        [Key]
+        public int Column { get; set; }
+
+        public string? Label { get; set; }
+    }
+
+    public class SlotDto
+    {
+        public int Row { get; set; }
+
+        public int Column { get; set; }
+
+        public string? Label { get; set; }
+    }
+
+    public class CompositeKeyContext(DbContextOptions<CompositeKeyContext> options) : DbContext(options)
+    {
+        public DbSet<Slot> Slots { get; set; } = null!;
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Slot>().HasKey(s => new { s.Row, s.Column });
+        }
     }
 }

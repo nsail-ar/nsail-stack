@@ -68,6 +68,37 @@ public sealed class DtoToEntityTests
         Assert.Equal(BusinessProblem.NotFoundCode, refused.Code);
     }
 
+    // A key at its default names no row either — the one Guid.Empty / 0 sends as plainly as a
+    // real id would, and Map must refuse it the same way, never take it for "no key" and mint a
+    // row past the create's own duplicate guard.
+    [Fact]
+    public async Task map_dto_to_entity_default_key_notfound()
+    {
+        await using var store = await MapperStore<EntityTestDbContext>.Create();
+
+        var refused = await Assert.ThrowsAsync<BusinessException>(() => store.Mapper.Map<UserDto, User>(new UserDto { Id = 0, Name = "ghost" }));
+
+        Assert.Equal(BusinessProblem.NotFoundCode, refused.Code);
+        Assert.Equal("0", refused.Issues.Single().Arguments!["id"]);
+        Assert.Empty(store.Db.Users);
+    }
+
+    // Upsert still creates past a default key with no row behind it — a different cause
+    // (Upsert creates by contract) and a different fix, left alone here.
+    [Fact]
+    public async Task map_dto_to_entity_default_key_upserts()
+    {
+        await using var store = await MapperStore<EntityTestDbContext>.Create();
+
+        await store.Mapper.Upsert<UserDto, User>(new UserDto { Id = 0, Name = "new" });
+
+        await store.Db.SaveChangesAsync();
+
+        await using var read = store.Fresh();
+
+        Assert.Equal("new", Assert.Single(read.Users).Name);
+    }
+
     // A reference to a row the store does not have is refused, never created on the way.
     [Fact]
     public async Task a_reference_to_a_missing_row_is_not_found()
