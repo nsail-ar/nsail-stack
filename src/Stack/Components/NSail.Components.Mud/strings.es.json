@@ -76,6 +76,12 @@
 
   "Components.NsPasswordField.Stored": "Guardado. Vacío para conservarlo.",
 
+  "Components.NsSince.Moments": "hace instantes",
+  "Components.NsSince.Minutes": "hace {0} min",
+  "Components.NsSince.Hours": "hace {0} h",
+  "Components.NsSince.Days": "hace {0} día",
+  "Components.NsSince.Days.Plural": "hace {0} días",
+
   "Components.PasswordStrength.Weak": "Débil",
   "Components.PasswordStrength.Medium": "Media",
   "Components.PasswordStrength.Strong": "Fuerte",
