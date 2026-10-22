@@ -359,8 +359,8 @@ public sealed class SurfaceContext
     /// bar and nothing docked ever may.</summary>
     public int ZIndex => BaseZIndex + (StepZIndex * StackLevel);
 
-    /// <summary>The tier MudBlazor's own overlays render at — Confirm/Alert
-    /// (IDialogService.ShowMessageBoxAsync), the component host behind DialogManager.Open
+    /// <summary>The tier MudBlazor's own overlays render at — Confirm (NsConfirmDialog) and
+    /// Alert (IDialogService.ShowMessageBoxAsync), the component host behind DialogManager.Open
     /// (NsOpenDialog, itself a Surfaces.Dialog instance), a select's popover, a snackbar.
     /// One step beyond the Chain's last entry — the same "outside the Chain, nothing
     /// escalates past it" tier a product's own surface takes (Escalated()) — so a vendor

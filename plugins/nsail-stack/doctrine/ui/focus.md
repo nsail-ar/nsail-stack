@@ -2,7 +2,8 @@
 
 What happens to the keyboard focus the instant a navigation lands — as opposed to what happens
 to it when a form opens (forms.md, *Focus on open*) or a dialog/drawer does (same page, same
-rule: the first field of what just opened, and back to what opened it when it closes).
+rule: the first field of what just opened — or a button, when the question has nothing to type
+into — and back to what opened it when it closes).
 
 ## The marker, not a selector list
 
