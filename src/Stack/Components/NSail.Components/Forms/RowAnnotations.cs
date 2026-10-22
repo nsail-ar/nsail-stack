@@ -26,6 +26,7 @@ static class RowAnnotations
         ArgumentNullException.ThrowIfNull(row);
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(messages);
+        ArgumentNullException.ThrowIfNull(strings);
 
         if (!ValidatedModels.Covers(document, row))
         {
