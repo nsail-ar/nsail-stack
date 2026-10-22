@@ -48,17 +48,28 @@ marked *(cases)* has its story there.
     **`.ns-row-submit-gutter` is the mirror at the other end**, and goes on the `NsTable`: the
     add row ends in that act where the rows below it end in a cell's padding, so the table's
     **last column** is pinned to what the add row spends from the trailing edge inward — the
-    last field's 10rem, the grid's gap, the act cell's 14rem and the cell's own leading padding.
-    A specified width is the column's own in an auto-layout table and takes none of the surplus,
-    so the data column beside it ends up exactly the width the add row's `Grow` takes. Dropped
-    at the same stacking width, for the same reason. The two agree at every width where the add
-    row is **one line**, and only there: its items claim a sum a table column has no floor for,
-    and once the window stops affording it the act wraps, which leaves the last field at the
-    row's own trailing edge instead of over the column. A four-item row (the gutter, a `Grow`
-    field at its 12rem floor, the price slot, the act cell) claims 664px of content and wraps
-    below ~976px of window; a fifth item — a unit picker, which an article that comes in more
-    than one raises — claims 904px and wraps below 1216px, and there the axis reads 240px out.
-    That band is the add row's own arithmetic to spend, not a reserve's to answer (nsail#2127).
+    last field's 10rem, the grid's gap, the act cell's `--ns-add-row-act` and the cell's own
+    leading padding. A specified width is the column's own in an auto-layout table and takes
+    none of the surplus, so the data column beside it ends up exactly the width the add row's
+    `Grow` takes. Dropped at the same stacking width, for the same reason. The two agree at
+    every width where the add row is **one line**, and only there: the grid wraps before
+    anything in it shrinks, so once the window stops affording what the items declare, the act
+    drops to a second line and leaves the last field at the row's own trailing edge instead of
+    over the column. No reserve can answer that — the wrap is the row's own arithmetic — so
+    **the row declares what its items are worth** rather than taking the field family's
+    defaults, which were never sized for five of them on one line: `--ns-add-row-field` for a
+    bounded one, `--ns-add-row-grow` as the open-ended one's basis (which for `Grow` is also
+    its min-width, and so is the wrap floor itself — the open-ended field is the row's honest
+    absorber, since every pixel past the floor is already its) and `--ns-add-row-act` for the
+    act's **cell**, the one term the reserve reads too and the one that is not free to be as
+    narrow as its content reads: a field's min-width is `min-content`, so a cell declared under
+    the act's own word grows back to it and takes the mirror with it. The floor the sum has to
+    clear is the width `NsTable` stops drawing columns at, since below it both halves are
+    dropped anyway — 961px of window, 649px of content once the shell takes its 312px. Five
+    items (the gutter, the `Grow` basis, a unit picker, the price slot, the act cell) then claim
+    632px of it and four claim 504px, so the band has a floor and not an exception. Keyed off
+    `.ns-row-submit` rather than a class of the row's own, so no row can be given the act
+    without the floor that affords it.
     A **boolean control** is the same mismatch and takes the same answer: it draws neither the
     label gutter nor the outline its row partners draw, so `NsRecordState` and `NsCheckBox` mark
     their own control (`ns-record-state`, `ns-form-check`) and the grid centres that cell. The

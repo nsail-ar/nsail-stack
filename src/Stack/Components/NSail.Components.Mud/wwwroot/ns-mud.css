@@ -3402,6 +3402,51 @@
     }
 }
 
+/* THE ADD ROW'S OWN FLOOR (nsail#2127). .ns-grid wraps before anything in it shrinks, so the
+   items of a row laid out beside a table declare a sum the line either seats or breaks: once the
+   window stops affording it the act drops to a second line, which leaves the last FIELD at the
+   row's trailing edge instead of over the column reserved for it below, and the price axis the
+   sheet exists for reads a whole act out. No reserve can answer that -- the wrap is the row's own
+   arithmetic -- so the row declares what its items are worth rather than taking the field
+   family's defaults, which were never sized for five of them on one line.
+
+   The floor is the window NsTable stops drawing columns at, since below it both halves of the
+   mirror are dropped anyway: 961px, which leaves this grid 649px of content (the shell spends
+   312px of it, the same figure Optical's OpeningEntriesRowWidthTests probes its container at).
+
+   --ns-add-row-field is a BOUNDED item's width: a unit, which the sheet's own rows print under
+   the article's name rather than in a column of its own, so what it holds is two or three
+   characters and a shrunk label. --ns-add-row-grow is the OPEN-ENDED item's basis, which for Grow
+   is also its min-width and so IS the wrap floor: the article field is the row's honest absorber,
+   since every pixel past the floor is already its. --ns-add-row-act is the act's CELL, read by
+   the reserve as well, and the one term of the three that is not free to be as narrow as its
+   content reads -- a field's min-width is min-content, so a cell declared under the act's own
+   word grows back to it and takes the mirror with it. 9rem is that word (Agregar draws 129px)
+   with room for a longer one in another language, since the act is worded at every width
+   (ui/actions.md) and an icon-only face is not the room to spend.
+
+   The five items then claim 2.5rem + 7rem + 7rem + 10rem + 9rem + four 1rem gaps = 632px, 17px
+   inside the floor, and .ns-money-slot's 10rem -- read by three screens outside this one -- is
+   left alone.
+
+   Keyed off .ns-row-submit rather than a class of the row's own: the act is what makes the row
+   five items wide, so the mark that already says "this submit shares a line with labeled fields"
+   is the condition, and no row can be given the act without the floor that affords it. */
+:root {
+    --ns-add-row-field: 7rem;
+    --ns-add-row-grow: 7rem;
+    --ns-add-row-act: 9rem;
+}
+
+.ns-grid:has(> * > .ns-row-submit) {
+    --ns-field-width: var(--ns-add-row-field);
+    --ns-field-grow-basis: var(--ns-add-row-grow);
+}
+
+.ns-grid > *:has(> .ns-row-submit) {
+    --ns-field-width: var(--ns-add-row-act);
+}
+
 /* The same mirror at the OTHER end of the row (nsail#1820). An add row laid out beside the table
    ends in its own act -- .ns-row-submit in a grid cell of the field family's own width -- where
    the rows below it end in their last cell's padding, so the add row's last FIELD and the last
@@ -3412,9 +3457,9 @@
 
    The last column is pinned to what the add row spends from the trailing edge inward: its last
    field (.ns-money-slot's 10rem, the only width an add row's last field has), the grid's own
-   gap, the act CELL (.ns-grid > .ns-form-field's 14rem -- the cell, so the arithmetic is the
-   field family's width and not the act's own word in whichever language it is read in) and this
-   cell's own leading padding. A specified width belongs to the column in an auto-layout table
+   gap, the act CELL (--ns-add-row-act, the one declaration both sides read, so the row's floor
+   and the column reserved for it cannot be moved apart) and this cell's own leading padding.
+   A specified width belongs to the column in an auto-layout table
    and takes no share of the surplus -- the same reason .ns-table .ns-select reads 1% rather than
    the 56px it measures -- so the surplus all goes to the data column beside it, which is then
    exactly the width the add row's own Grow takes. Both sides of the mirror then spend the row's
@@ -3426,7 +3471,7 @@
    inside a phone's card. */
 .ns-table.ns-row-submit-gutter thead th:last-child,
 .ns-table.ns-row-submit-gutter tbody td:last-child {
-    width: calc(10rem + 1rem + 14rem + 1rem);
+    width: calc(10rem + 1rem + var(--ns-add-row-act) + 1rem);
 }
 
 @media (max-width: 960px) {
