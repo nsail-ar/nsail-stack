@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.EntityFrameworkCore;
@@ -204,6 +204,32 @@ public class TenancySeamTests
         Assert.Equal(ServiceLifetime.Scoped, descriptor.Lifetime);
         Assert.NotNull(descriptor.ImplementationFactory);
         Assert.Null(descriptor.ImplementationType);
+    }
+
+    // The tenant reaches Postgres as a setting written once per connection open, so a connection
+    // shared between scopes in turn would carry one tenant's answer into another's queries. The
+    // seam refuses the composition rather than documenting the constraint.
+    [Theory]
+    [InlineData(TenancyMode.SingleDb, true)]
+    [InlineData(TenancyMode.None, false)]
+    [InlineData(TenancyMode.MultiDb, false)]
+    public void MultiplexingIsRefusedWhereTheRowsAreATenants(TenancyMode mode, bool refused)
+    {
+        var tenancy = new TenancyOptions { Mode = mode, Product = "sample", Cell = "cell" };
+
+        var compose = () => new ServiceCollection()
+            .AddDataAccess<SeamDbContext>($"{Install};Multiplexing=true", tenancy);
+
+        if (!refused)
+        {
+            compose();
+
+            return;
+        }
+
+        var refusal = Assert.Throws<InvalidOperationException>(() => compose());
+
+        Assert.Contains("multiplexing", refusal.Message, StringComparison.Ordinal);
     }
 
     // MultiDb passes the Rows switch AddDataAccess guards, and a scope that reached a context

@@ -67,6 +67,59 @@ rows. The write cannot answer that way (every value it could stamp is somebody's
 (`ResolvedTenancyProvider.Enter`), and **which** tenants it enters is the runner's answer, not
 each job's (Background jobs, below).
 
+## The second wall: a policy Postgres enforces, under a connection that says whose rows it is on
+
+The filter above is one wall, and a forgotten one is a leak. **Every tenant-scoped table also
+carries a Postgres row-level security policy comparing its tenant column against a setting the
+connection carries** (`TenantPolicies`), so the same forgotten filter is a query that returns
+nothing instead of another customer's rows — and a write that named somebody else's tenant is
+refused rather than stored.
+
+- **The policies are in the chain in every mode**, and the connection carries `Guid.Empty`
+  wherever the wall is not the column. DDL that appeared only under `SingleDb` would be a second
+  snapshot and a second chain, drifting; this is the same rule as *the model is identical in
+  every mode*, applied to the schema. Under `None` and `MultiDb` every row carries `Guid.Empty`,
+  the connection says `Guid.Empty`, and the policy matches everything.
+- **Which tables: the tenant-scoped set, asked by the marker and never by the column.**
+  `TenantPolicies.Tables` reads a built model for the entities the tenant pass put the column
+  on, minus `IInstallScoped` — so `TenantStates`, which names the tenant it is ABOUT in a column
+  of its own, owes no policy, exactly as `TenantStamp` skips it by the marker.
+- **The DDL lives in each product's own migration chain** (`migrationBuilder.AddTenantPolicies`),
+  never in a startup pass: a chain is what CI applies to an empty database, so schema written
+  outside it is schema no test ever sees. The tables are NAMED there, because a migration's own
+  `TargetModel` is the snapshot's and its entity types carry no CLR type to ask the marker of.
+- **One database role, with `FORCE ROW LEVEL SECURITY`.** A table's owner bypasses its policies
+  unless the table forces them, and the app role owns the tables because it runs the chain; a
+  second, non-owner role would owe a grant pass on every table every migration adds.
+- **The tenant reaches the connection as a session setting written on connection open**
+  (`TenantSession`), from `TenancyProvider.RowKey` and from nothing else — **left unwritten
+  where the wall IS the column and nothing resolved**, so the policy compares against NULL and
+  no row equals it. That is *an unresolved scope reads nothing*, said by Postgres, which is what
+  makes it true of a query that forgot the filter. Npgsql resets a pooled connection's state on
+  return and `Enter` refuses a second tenant on one scope, so the setting outlives neither its
+  connection nor its scope — Npgsql multiplexing stays off, and has to.
+- **The chain is the install's own work and its connection says so.** `ApplyMigrations` writes
+  the install's key onto the connection it opens and runs the whole chain on it: a startup scope
+  resolves no tenant, and a data migration's INSERT into a tenant-scoped table would otherwise
+  be refused by the very policy it just created. A background job keeps the other answer, which
+  is why the two are not one rule: the job must read nothing, the chain must write the install's
+  rows.
+- **The wall only stands where the app's role cannot step over it.** A superuser and a
+  `BYPASSRLS` role are let through whatever a table says, and the defect is silent — every query
+  answers exactly as it did before. So the install asks once at startup (`TenantWall`) and, by
+  default, **starts, warns and reports it** as the gauge `nsail.tenancy.wall`: provisioning the
+  role is an operator pass on a live box, and a release carrying the policies must take no cell
+  down for work nobody has been given yet. A cell that HAS done the pass says so where it states
+  `Tenancy:Mode`, and **refuses to start** instead.
+- **The laws are tested, not remembered.** `TenantPolicyAudit.Unwalled` reads a migrated
+  database back against the model and names every tenant-scoped table whose policy is missing,
+  not enabled or not forced — the database-side twin of `TenantAxisTests`, and what keeps each
+  chain's hand-written list true when a later migration adds a table. The behaviour itself is
+  measured by the Stack's own tenancy suite, which is the one suite in the house that connects
+  as a role the policies apply to; every other keeps its `postgres` connection, because
+  re-pointing the shared test database would change how every suite connects for no proof
+  gained.
+
 ## The install's own rows, and the one law that decides which they are
 
 The wall's one exception is a marker on the entity's own file: `IInstallScoped` (`NSail.Data`,

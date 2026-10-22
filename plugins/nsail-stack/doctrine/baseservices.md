@@ -149,6 +149,12 @@ reference points this way because the reverse would put the OTLP exporter packag
 every kit that ships a job. The three instruments and why they are metrics rather than log
 lines: data-tenancy.md, *Background jobs*.
 
+**A module the telemetry one cannot reference names its meter at the composition.**
+`AddTelemetry` takes the extra meter names and `AddBaseWebApi` passes the data module's
+(`TenantPolicies.MeterName`, the tenant wall's one gauge): a reference from telemetry to data
+would put EF Core behind every host that exports a span, and a client host has no store. Still
+the declaring constant, never a literal.
+
 **The Mediator span is an interceptor**, registered open-generic like `SecurityInterceptor`
 and *before* it, so it is the outermost link of `SendPipeline`'s chain and a refusal falls
 inside the span. Its name is `{Area}.{Feature}.{Object}` — the permissions rendering, not

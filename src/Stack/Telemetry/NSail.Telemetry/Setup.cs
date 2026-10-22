@@ -38,10 +38,15 @@ public static class Setup
     /// configuration says — an ActivitySource nobody listens to allocates nothing — and the
     /// exporter is registered only once a credential exists, so an install with none
     /// collects nothing and sends nothing. Reading the spans BACK is its own credential and
-    /// its own registration (<see cref="IFailureLog"/>).</summary>
-    public static void AddTelemetry(this WebApplicationBuilder builder)
+    /// its own registration (<see cref="IFailureLog"/>).
+    ///
+    /// <para><paramref name="meters"/> are meters of modules this one does not reference,
+    /// named by the constant that declares them: a module whose arrow cannot point here says
+    /// its meter's name at the composition that has both (NSail.Data's tenant wall).</para></summary>
+    public static void AddTelemetry(this WebApplicationBuilder builder, params string[] meters)
     {
         ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(meters);
 
         var options = builder.Configuration.Load<TelemetryOptions>();
 
@@ -112,6 +117,8 @@ public static class Setup
                 // seam: the line that names the job would arrive with the job cut out of it,
                 // and an alert has to name what broke.
                 metrics.AddMeter(BackgroundJobMetrics.MeterName);
+
+                metrics.AddMeter(meters);
 
                 metrics.AddOtlpExporter(exporter => Export(exporter, options, "metrics"));
             });

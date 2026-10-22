@@ -2,7 +2,9 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -255,7 +257,36 @@ public static class DbContextExtensions
         }
 
         await using var scope = host.Services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<TDbContext>().Database.MigrateAsync(cancellationToken);
+
+        var db = scope.ServiceProvider.GetRequiredService<TDbContext>().Database;
+
+        // MigrateAsync creates the database when it is not there, which is what a fresh slot and
+        // a fresh cell lean on; the connection below cannot be opened before it exists, so the
+        // same creator the migrator would have used is asked first and the rest is unchanged.
+        var creator = db.GetService<IRelationalDatabaseCreator>();
+
+        if (!await creator.ExistsAsync(cancellationToken))
+        {
+            await creator.CreateAsync(cancellationToken);
+        }
+
+        // The chain is the INSTALL's own work and its seed writes the install's own rows, so the
+        // connection says so. A startup scope resolves no tenant, and where the rows are a
+        // tenant's that leaves the session setting unwritten — the right answer for a background
+        // job and the wrong one here: the forced row policies would refuse the seed's INSERTs and
+        // the install would never come up (TenantPolicies). The connection is opened explicitly
+        // so the setting outlives the statement that wrote it and the whole chain runs on it.
+        await db.OpenConnectionAsync(cancellationToken);
+
+        try
+        {
+            await TenantSession.Enter(db.GetDbConnection(), Tenant.None.RowKey, cancellationToken);
+            await db.MigrateAsync(cancellationToken);
+        }
+        finally
+        {
+            await db.CloseConnectionAsync();
+        }
     }
 
     /// <summary>Has the context stamp the audit columns of every <see cref="IAudited"/> entity on

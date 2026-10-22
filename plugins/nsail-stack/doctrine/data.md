@@ -84,6 +84,9 @@ The rest lives in [data-tenancy.md](data-tenancy.md), under these headings:
 - **The tenant is a column EF puts on every entity** — `SingleDb`'s shadow `TenantId`, filter,
   stamp and tenant-leading indexes; the primary key does not move; `IgnoreQueryFilters` is
   refused; an unresolved scope reads nothing.
+- **The second wall: a policy Postgres enforces** — `TenantPolicies`, `TenantSession`,
+  `migrationBuilder.AddTenantPolicies`, `FORCE ROW LEVEL SECURITY`, `Tenancy:RequireRowSecurity`,
+  `TenantPolicyAudit`.
 - **The install's own rows, and the one law that decides which they are** — `IInstallScoped`;
   an entity a tenant can WRITE is the tenant's; the directional FK law.
 - **The org is the other axis** and **The org filter: a subtree WHERE no handler writes** —
@@ -367,6 +370,11 @@ Apply pending migrations at host startup, after `Build()` and before serving req
 var app = builder.Build();
 await app.ApplyMigrations<OpticalDbContext>();
 ```
+
+**A migration that adds a tenant-scoped table walls it in the same migration**, with
+`migrationBuilder.AddTenantPolicies("TheTable")` — the second wall is schema and the chain is
+where schema lives (data-tenancy.md, The second wall). A table added and not walled reds in the
+sweep over the migrated database, which prints the call.
 
 **Migrations are normal and append-only.** A schema change adds a new migration; nothing is
 folded, no database is dropped. Every slot's next `ApplyMigrations` moves its own database

@@ -25,7 +25,12 @@ public static class Setup
         // First, so the Mediator span is the outermost interceptor: a kit's
         // AddSecurityEnforcement registers after this, and SendPipeline chains in
         // registration order, so a refusal falls inside the span instead of before it.
-        builder.AddTelemetry();
+        //
+        // The second wall's instrument is named from here and not from inside AddTelemetry: an
+        // arrow from the telemetry module to the data module would put the OTLP exporter behind
+        // every host with a store and EF Core behind every host that exports a span. This
+        // composition has both modules already.
+        builder.AddTelemetry(TenantPolicies.MeterName);
 
         builder.Services.AddMessaging();
         builder.Services.AddMessagingJson();
