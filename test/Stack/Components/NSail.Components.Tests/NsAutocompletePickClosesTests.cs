@@ -25,10 +25,13 @@ namespace NSail.Components.Tests;
 /// The window is the round trip, so it is wide exactly where a lookup is slowest, and it is why
 /// a search is held open here rather than hurried: the order is the subject, not the clock. The
 /// field marks a pick made while a search was out and closes the list the vendor opens for it,
-/// and it withholds OpenOnFocus until it is asked again so the refocus opens nothing at all. A
-/// search begun AFTER the pick drops both marks, because that one is the field being asked for
-/// its list again and the list it opens is wanted — by a typed term or by a bare press on the
-/// box, which asks for the same term the refused refocus would have.</summary>
+/// and it withholds OpenOnFocus for the one focus the pick hands back so that one opens nothing
+/// at all. Both marks cover a single gesture and the cases below are what spends them: a search
+/// begun AFTER the pick — a typed term, or a bare press on the box, which asks for the same term
+/// the refused refocus would have — and, where no search is coming, the next key the box takes,
+/// which is how a field left by the keyboard answers the focus it is come back with. The (x)
+/// takes no mark at all: it hands no cursor back, and an empty box that could not open on focus
+/// would have no list left to show.</summary>
 public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
 {
     public NsAutocompletePickClosesTests()
@@ -77,10 +80,11 @@ public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
 
     Guid _value;
 
-    IRenderedComponent<SearchLookupHost> Mount()
+    IRenderedComponent<SearchLookupHost> Mount(bool clearable)
     {
         return Render<SearchLookupHost>(p => p
             .Add(x => x.Rows, Chart)
+            .Add(x => x.Clearable, clearable)
             .Add(x => x.Gate, term => Gate(term).Task)
             .Bind(x => x.Value, _value, value => _value = value, () => _value));
     }
@@ -99,9 +103,9 @@ public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
 
     // The list standing on screen when the pick is made: the answer to the search BEFORE the
     // one left out, which is what a person clicks while the next one is still travelling.
-    async Task<IRenderedComponent<SearchLookupHost>> OpenedOnTheWholeChart()
+    async Task<IRenderedComponent<SearchLookupHost>> OpenedOnTheWholeChart(bool clearable = false)
     {
-        var cut = Mount();
+        var cut = Mount(clearable);
 
         var focus = cut.Find("input").FocusAsync(new FocusEventArgs());
 
@@ -214,6 +218,62 @@ public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
         Gate(Caja.DisplayName).TrySetResult();
 
         await pressed;
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>The half no search can answer for, and the one a mark that waits for one would
+    /// cost a person: the field is left by the keyboard and come back to. The pick's own
+    /// refocus is acted out first, because that is the browser's own order — the vendor hands
+    /// the cursor back before anybody can do anything else — and the Tab that follows is the
+    /// gesture, with the focusout as what it causes. The focus that comes back is the person's,
+    /// and it opens.</summary>
+    [Fact]
+    public async Task AKeyTakenAfterAPickGivesTheBoxBackTheFocusItOpensOn()
+    {
+        var cut = await OpenedOnTheWholeChart();
+
+        await Pick(cut, Caja.DisplayName);
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+
+        Gate(Caja.DisplayName).TrySetResult();
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+
+        await cut.Find("input").KeyDownAsync(new KeyboardEventArgs { Key = "Tab", ShiftKey = true });
+        await cut.Find("input").BlurAsync(new FocusEventArgs());
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>The (x) is not a pick: it hands no cursor back — the vendor withdraws its own
+    /// focus features for the whole clearing chain — and the box it leaves is the one state
+    /// where the focus open is all the field has, since an empty box's list is the create entry
+    /// alone (NsLookupCreateEntryTests). So the mark a pick takes is not taken here.</summary>
+    [Fact]
+    public async Task TheBoxClearedAfterAPickStillOpensOnItsNextFocus()
+    {
+        var cut = await OpenedOnTheWholeChart(clearable: true);
+
+        await Pick(cut, Caja.DisplayName);
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+
+        // The browser's own order for the gesture this is about: the pick hands the cursor back,
+        // and the hand that then reaches the (x) takes it out of the box again.
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").BlurAsync(new FocusEventArgs());
+
+        await cut.Find("button.mud-input-clear-button").ClickAsync(new MouseEventArgs());
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll(".mud-list-item").Count), TimeSpan.FromSeconds(5));
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
     }

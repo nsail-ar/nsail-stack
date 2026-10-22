@@ -195,8 +195,20 @@ the same term, the same single row — as a press on the box would, and a belt t
 first open after a pick" eats the gesture after an ENTER pick, where the cursor never leaves and
 no refocus is ever coming. `OnInputActivatedAsync` reads `OpenOnFocus` only on the focus path;
 the press, the chevron and the debounce after a keystroke each pass `true` of their own. That is
-what makes withholding the parameter exact: it refuses the focus's open and nothing else's, and
-the mark comes off on the next search, which every one of those gestures asks for.
+what makes withholding the parameter exact: no other way of opening a list reads it.
+
+**What spends the mark is the box being used again, and it takes two signals because one gesture
+answers for no search.** A search drops it — the press, the chevron and the typed term each ask
+for one — and so does any key the input takes (`OnKeyDown`, raised at the end of
+`OnInputKeyDownAsync`): the Tab or Shift+Tab that carries the cursor out of a field somebody has
+finished with, whose return focus would otherwise be the one refused. The key is also the whole
+answer after an ENTER pick, where the cursor never left and no refocus was ever coming — the
+vendor picks on the key UP (`OnInputKeyUpAsync`), so the keydown that caused the pick lands before
+the mark is taken and the next key to arrive is the person's. **Not the blur**: that is the event
+the vendor loses its own mark to, and a mark spent on it would be lost the same way. What is left
+is bounded and measured: a pick made with the mouse, left with the mouse and come back to with
+Shift+Tab refuses that one focus, and the press, the chevron or a typed term it is followed by
+opens the list.
 
 ## Why the open list is floored at the field and capped at a measure
 

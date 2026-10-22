@@ -615,24 +615,29 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   typed FORWARD AND BACK ONTO AGAIN while that same-termed call was still out cancelled — so a
   search answers with the field's last good read, never its own, once EITHER the term no longer
   matches the box or its own cancellation fired.
-- **A pick leaves no list behind it, however slow the search under it was and however the close
-  and the box's own refocus are ordered.** Two opens follow a pick and neither one is an ask.
-  The first is a search ALREADY OUT when the pick landed — the keystroke before it, whose
-  answer the vendor runs to completion after the selection is over, raising the list again on
-  the very row just chosen with nothing left to close it: the answer read through the list it
-  came from, and no way out but a click elsewhere. The second is the pick's own hand-back of
-  the cursor: a pick made with the mouse ends with the vendor focusing the box it was made
-  from, and `OpenOnFocus` answers that focus exactly like a click. The vendor marks that focus
-  to swallow it itself, and loses the mark to the box's own blur — raised by THE SAME GESTURE,
-  at the option's mousedown — because the two handlers are queued together and the one that
-  resumes last decides, which is why an idle box got away with it and a loaded one did not.
-  So the field marks both, and answers each where it can: the already-out search's reopen is
-  CLOSED when it lands, and the refocus's open is refused at the source — the field withholds
-  `OpenOnFocus` until it is asked again, never a blur or a moved cursor to get the list down
-  ([forms.md](forms.md), *Focus on open*: a focus that is not a gesture is answered by
-  swallowing the open). What drops either mark is the next SEARCH, because every other way a
-  list opens asks the vendor for one first — a press on the box, the chevron, a typed term —
-  and the list those open is wanted, while the refocus opens on nothing but the focus.
+- **A pick leaves no list behind it, however slow the search under it was.** The vendor closes
+  its popover inside the selection, but an OPEN already under way — the keystroke before the
+  pick, whose search is still out — runs to completion after that selection is over and raises
+  the list again on the very row just chosen, with nothing left to close it: the answer read
+  through the list it came from, and no way out but a click elsewhere. So a pick made while a
+  search was out is marked and the open the vendor raises for it is closed. Only a search
+  ALREADY out can do this; one that begins after the pick drops the mark, because that one is
+  the field being asked for its list again and the list it opens is wanted.
+- **And no list either, however the close and the box's own refocus are ordered.** A pick made
+  with the mouse ends with the vendor focusing the box it was made from, and `OpenOnFocus`
+  answers that focus exactly like a click — the same list over the same answer, raised by the
+  pick's own hand-back of the cursor. The vendor marks that focus to swallow it itself and loses
+  the mark to the box's own blur, raised by THE SAME GESTURE at the option's mousedown: the two
+  handlers are queued together and the one that resumes last decides, which is why an idle box
+  got away with it and a loaded one did not. So the open is refused at the source instead — the
+  field withholds `OpenOnFocus` for that one focus, never a blur or a moved cursor to get the
+  list down ([forms.md](forms.md), *Focus on open*: a focus that is not a gesture is answered by
+  swallowing the open). **The mark covers one focus, and the field being used again spends it**:
+  the next SEARCH, which every other way of opening a list asks for first — a press on the box,
+  the chevron, a typed term — or the next KEY the box takes, which is the Tab that carries the
+  cursor out of a field somebody is done with and the whole answer after an ENTER pick, where
+  the cursor never left and no refocus was ever coming. Only a pick takes the mark: the (x)
+  hands no cursor back, and the empty box it leaves would have no list left to show.
 - **The open list is sized by its RESULTS** — floored at the field it drops from, bounded by a
   measure, never capped at the box the field stands in. The vendor caps its popover at the
   anchor's own width by default, and in a line editor the anchor is a table cell, so one word at

@@ -58,6 +58,7 @@
                  AdornmentAriaLabel="@Strings.Translate("Common.ShowOptions")"
                  MinCharacters="0"
                  OpenOnFocus="@(!_refocusIsStale)"
+                 OnKeyDown="OnBoxKeyDown"
                  OpenChanged="OnOpenChanged"
                  ShowProgressIndicator="@IsBusy"
                  ProgressIndicatorColor="Color.Primary"
@@ -112,7 +113,8 @@
     /// shows a magnifier instead of the dropdown arrow and doesn't query until something is
     /// typed. It still opens on focus — on an empty box that shows the create entry alone,
     /// which is the only discoverability the field has; the one focus it does not answer is the
-    /// one a pick of its own handed back. Off, it behaves like a select over a short list.</summary>
+    /// one a pick of its own handed back, and the next key or search gives even that one back.
+    /// Off, it behaves like a select over a short list.</summary>
     [Parameter]
     public bool Lazy { get; set; }
 
@@ -196,9 +198,12 @@
     // handlers are queued, and the one that resumes last wins, which is why an idle box got
     // away with it and a loaded one did not. So the open is refused at its source instead,
     // where no blur can reach the decision — and the cursor is never moved to get the list
-    // down, which would cost the box the keystrokes that follow (forms.md, Focus on open). The
-    // mark comes off the moment the field is asked for its list again, which is every other way
-    // one opens: a press on the box, the chevron, a typed term.
+    // down, which would cost the box the keystrokes that follow (forms.md, Focus on open).
+    //
+    // It covers ONE focus, the pick's own, and what spends it is the box being used again: a
+    // search (a press, the chevron, a typed term) or any key the box takes — never a blur,
+    // which is the very event the vendor loses its own mark to. Held until one of those, and a
+    // field a person walked away from would refuse the focus they come back with.
     bool _refocusIsStale;
 
     /// <summary>The Runner the RESOLVE runs on, separate from the field's own because they are
@@ -442,6 +447,19 @@
         await _autocomplete.CloseMenuAsync();
     }
 
+    // What spends the refocus mark where a search cannot: a key the box takes is the person
+    // using the field again, and the pick they made is over. It is the Tab or Shift+Tab that
+    // carries the cursor out — so the focus they come back with is answered — and it is the
+    // whole answer after an ENTER pick, where the cursor never left and no refocus was ever
+    // coming: the vendor picks on the key UP (OnInputKeyUpAsync), so the keydown that caused
+    // the pick lands before the mark is taken and the next key to arrive is theirs. Not the
+    // blur: that one belongs to the gesture that made the pick, raised at the option's
+    // mousedown, and a mark spent on it is the vendor's own mark, lost the same way.
+    void OnBoxKeyDown()
+    {
+        _refocusIsStale = false;
+    }
+
     protected override void DisposeCore()
     {
         Navigation.LocationChanged -= OnLocationChanged;
@@ -547,7 +565,12 @@
     async Task OnItemChanged(TItem? item)
     {
         _reopenIsStale = _searchesOut > 0;
-        _refocusIsStale = true;
+
+        // Only a pick hands a cursor back. The (x) raises this with no item at all — the vendor
+        // withdraws its own focus features for the whole clearing chain, so there is no open to
+        // refuse — and an empty box that could not open on focus would lose the create entry,
+        // which is the only discoverability a Lazy field has.
+        _refocusIsStale = item is not null;
 
         _selectedItem = item;
 
@@ -591,10 +614,10 @@
     {
         // A search beginning now is this field being asked for its list, so whatever a pick
         // before it left marked is no longer a reopen nobody asked for. It answers for the
-        // refocus too, and it is the ONLY thing that drops that mark: every other way the list
-        // opens asks the vendor for a search first — a press on the box, the chevron, a typed
-        // term — while the refocus the pick hands back opens on nothing but the focus, so the
-        // mark can only be spent by a gesture.
+        // refocus too: a press on the box, the chevron and a typed term each ask the vendor for
+        // a search of their own, while the refocus the pick hands back opens on nothing but the
+        // focus. A key the box takes spends that mark as well (OnBoxKeyDown), for the gestures
+        // that ask for no search at all.
         _reopenIsStale = false;
         _refocusIsStale = false;
         _searchesOut++;
