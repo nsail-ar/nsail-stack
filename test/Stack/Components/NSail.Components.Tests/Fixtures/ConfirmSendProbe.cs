@@ -21,3 +21,10 @@ public sealed class DeleteProbeThing : IMessage
 {
     public Guid Id { get; set; }
 }
+
+/// <summary>The same probe for a send that WRITES: the verb is the only difference, which is
+/// what the destructive question is derived from.</summary>
+public sealed class UpdateProbeThing : IMessage
+{
+    public Guid Id { get; set; }
+}

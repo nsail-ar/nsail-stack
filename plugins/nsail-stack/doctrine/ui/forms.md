@@ -112,6 +112,23 @@ taken back to, and a lookup opens its list on the TEXT, which the swallow above 
   inside a browse screen, `Create`-named) turns it off outright rather than fight the re-focus on
   every visit.
 
+**A confirmation opens on the act it offers; one that DESTROYS opens on the way out.** A yes/no
+dialog has nothing to type into, so what the cursor lands on is what a bare Enter presses — and
+that is the whole difference between the two: an ordinary confirmation is focused on its own Yes,
+so the key takes the act (and without that the cursor sits on a non-interactive fallback and Enter
+does nothing at all), while a dialog guarding a destructive act is focused on its No, so a reflex
+Enter can only decline. **Which acts destroy is derived and no screen says it**: the message's own
+verb (`Delete`, naming.md's closed verb set, read by `NsPartial.ConfirmSend` — the door nearly
+every confirmation in a product goes through) and the house's own exit guard, whose Yes throws
+away unsaved work. A destructive act that is not a send asks through `ConfirmDestruction` and
+writes no word of its own either. The house draws the question itself (`NsConfirmDialog`, in place
+of the vendor's message box, which takes its buttons as texts and always lands on the
+affirmative), and the cursor is placed by **telling the dialog's own focus trap which child to
+land on**, never by racing it — the opposite end of the field case above, and possible there only
+because a BUTTON is a child the trap can be pointed at. What that case measured as not reaching
+the trap is the per-dialog `DefaultFocus` *option*: the vendor's dialog reads its own parameter
+and the provider's global, never the options the opener passed.
+
 ---
 
 ## Tracking and the exit guard
@@ -241,6 +258,10 @@ What it never does is save a document in the middle of being written:
   menu's face and the submit stand inside the very grid rows and the very form the two reads
   above answer for, and a button's Enter IS the keydown's default action: taking it would leave
   them pressed by nobody.
+- **In a confirm dialog the key presses the button holding the cursor, which is why WHICH button
+  holds it is the dialog's own answer**: the policy takes nothing away there, so the one thing
+  standing between a reflex Enter and a destroyed document is where the question opened (*Focus on
+  open*, above).
 - **In a COMPOSER, Enter sends and Shift+Enter writes the line** — the one textarea whose plain
   Enter is never a line, because the words being typed ARE the message and there is no document
   around them to save by accident. What says so is the composer around the box (`NsSendMessage`

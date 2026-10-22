@@ -2,7 +2,8 @@
 
 What happens to the keyboard focus the instant a navigation lands — as opposed to what happens
 to it when a form opens (forms.md, *Focus on open*) or a dialog/drawer does (same page, same
-rule: the first field of what just opened, and back to what opened it when it closes).
+rule: the first field of what just opened — or a button, when the question has nothing to type
+into — and back to what opened it when it closes).
 
 ## The marker, not a selector list
 
@@ -55,7 +56,10 @@ cover:
   it already works today and stays exactly as it is.
 - **A dialog or a drawer keeps the form's own rule**: the first field of what just opened, and
   the vendor's focus trap hands the cursor back to whatever opened it the moment it closes — no
-  line written for either end.
+  line written for either end. **A dialog with nothing to type into — a yes/no question — opens
+  on a BUTTON instead**, and which one is the question's own answer, because it is what a bare
+  Enter presses: the act it offers, or the way out when the act destroys something (forms.md,
+  *Focus on open*).
 - **The companion region recalled open on load is not a door opening.** Above the drawer's own
   breakpoint the page stands beside it, so this page's own arrival focus is left to settle;
   below it the region IS the screen, and takes focus the way a drawer that opened for a reason

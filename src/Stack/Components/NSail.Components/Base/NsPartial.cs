@@ -135,6 +135,14 @@ public abstract class NsPartial : NsComponent
         return Dialogs.Confirm(message, title);
     }
 
+    /// <summary>The confirmation for an act that DESTROYS something, which opens with the cursor
+    /// on the way out (DialogManager.ConfirmDestruction) — for a destructive act that is not a
+    /// send and so has no message to be derived from.</summary>
+    protected Task<bool> ConfirmDestruction(string message, string? title = null)
+    {
+        return Dialogs.ConfirmDestruction(message, title);
+    }
+
     protected Task Alert(string message, string? title = null)
     {
         return Dialogs.Alert(message, title);
@@ -177,6 +185,11 @@ public abstract class NsPartial : NsComponent
     /// ("{Area}.{Message}.ConfirmMessage", "Common.ConfirmSend" when absent) and sends it
     /// when accepted; returns whether it was sent.
     ///
+    /// Whether the question is the destructive one — which opens with the cursor on the way out
+    /// rather than on the act (DialogManager.ConfirmDestruction) — is derived from the message's
+    /// own verb and asked of no screen, so the next Delete carries it without a line written for
+    /// it. The same derivation as every other word here: the send is what names them.
+    ///
     /// A send the server refuses with the InUse code answers with the message type's own text
     /// too ("{Area}.{Message}.InUseMessage", "Common.InUse" when absent) — the same derivation
     /// NotifySent and the confirmation itself use, so the handler names a code and the client
@@ -193,7 +206,11 @@ public abstract class NsPartial : NsComponent
             ? scoped
             : Strings.Translate("Common.ConfirmSend");
 
-        if (!await Confirm(text))
+        var asked = Destroys(message.GetType())
+            ? await ConfirmDestruction(text)
+            : await Confirm(text);
+
+        if (!asked)
         {
             return false;
         }
@@ -210,6 +227,15 @@ public abstract class NsPartial : NsComponent
         }
 
         return true;
+    }
+
+    // Which acts destroy, read off the one word a message is already required to open with:
+    // Delete is the closed verb set's own name for it (naming.md), the same way NsForm reads
+    // Create to tell a newborn document from an edited one. Nothing else in that set destroys —
+    // an Update rewrites, and a send outside the set (RegisterClient, OpenTicket) mints.
+    static bool Destroys(Type message)
+    {
+        return message.Name.StartsWith("Delete", StringComparison.Ordinal);
     }
 
     string GetInUseText(Type message)
