@@ -1041,14 +1041,16 @@
 
     // What the router (NsArrivalFocus) hands the cursor to on a navigation's arrival: the first
     // element on screen carrying the marker a field's own AutoFocus writes (NsFieldBase), and
-    // only the page's h1 where there is none -- never a comma selector, because querySelector
-    // answers the first match in DOCUMENT ORDER and the header's h1 always comes before
-    // whatever a screen marks, so the marker would lose the one selector list that tried both.
+    // only the screen's own name where there is none -- the h1 its title row draws (NsTitleBar),
+    // which carries tabindex -1 precisely so this call can land on it. Never a comma selector,
+    // because querySelector answers the first match in DOCUMENT ORDER and the screen's name
+    // always comes before whatever a screen marks, so the marker would lose the one selector
+    // list that tried both.
     //
     // A marker rendered after this very call -- a list still reading, a tab's panel -- is not
     // yet a lost cause: this waits for it (a MutationObserver, bounded by a timeout that falls
-    // back to h1), rather than reading the DOM once and giving up, which is what left the
-    // vendor's own first-render-only AutoFocus unable to reach it in the first place.
+    // back to the screen's name), rather than reading the DOM once and giving up, which is what
+    // left the vendor's own first-render-only AutoFocus unable to reach it in the first place.
     const ARRIVAL_MARK = '[data-ns-arrival-focus]:not([disabled]):not([aria-readonly="true"])';
     const ARRIVAL_FALLBACK_WAIT_MS = 1000;
 
@@ -1060,34 +1062,49 @@
 
         disconnectArrival();
 
-        // A touch screen's keyboard rises the instant a text box takes focus, over the very
+        // A touch screen's keyboard rises the instant a TEXT BOX takes focus, over the very
         // list the cursor was handed to see -- a device with a physical keyboard, or a pointer
-        // that only hovers over one (a mouse, a trackpad), never pays that cost.
-        if (window.matchMedia("(pointer: coarse)").matches)
-            return;
+        // that only hovers over one (a mouse, a trackpad), never pays that cost. The cost is
+        // the box's, not the arrival's: a heading raises no keyboard, so a coarse pointer skips
+        // the marker's pass alone and the screen's name still takes the cursor, which is how a
+        // screen reader on a phone hears the page it just landed on (ui/focus.md, Touch).
+        const marked = !window.matchMedia("(pointer: coarse)").matches;
 
-        const marker = findArrivalMarker();
-        if (marker) {
-            marker.focus();
+        // Where the cursor stands as the arrival lands, which is the gesture that brought the
+        // person here -- the link or the menu item they pressed, or nobody at all once the page
+        // that held it is gone. It is what tells "untouched since we landed" from "a hand
+        // reached for something of its own while we waited" below.
+        const entry = document.activeElement;
+
+        // The first, synchronous try always wins, exactly as the vendor's own unconditional
+        // focus does; only from the moment this call starts WAITING does a hand that got there
+        // first keep what it took (settle below).
+        const present = marked ? findArrivalMarker() : document.querySelector(fallbackSelector);
+        if (present) {
+            land(present, marked);
             return;
         }
 
         let settled = false;
         const timer = setTimeout(function () {
-            settle(document.querySelector(fallbackSelector));
+            settle(document.querySelector(fallbackSelector), false);
         }, ARRIVAL_FALLBACK_WAIT_MS);
 
-        arrivalObserver = new MutationObserver(function () {
-            const late = findArrivalMarker();
-            if (late)
-                settle(late);
-        });
-        arrivalObserver.observe(document.body, { childList: true, subtree: true });
+        // Nothing to watch for where the marker is not wanted: what is left to wait for is the
+        // screen's own name, and the timeout above is the one that asks for it.
+        if (marked) {
+            arrivalObserver = new MutationObserver(function () {
+                const late = findArrivalMarker();
+                if (late)
+                    settle(late, true);
+            });
+            arrivalObserver.observe(document.body, { childList: true, subtree: true });
+        }
 
         // The guard a later arrival needs is generation, not merely "has this settled" -- a
         // second navigation landing inside the wait window must never let this one's fallback
         // steal the cursor from whatever the newer arrival already placed it on.
-        function settle(el) {
+        function settle(el, isMarker) {
             if (settled || generation !== arrivalGeneration)
                 return;
 
@@ -1098,9 +1115,40 @@
             // Between the marker not being there yet and it (or the fallback) finally landing,
             // a person may have reached for something themselves -- the one window this call
             // must never win against, unlike its own first, synchronous try above.
-            if (el && !reached(document.activeElement))
-                el.focus();
+            if (el && !taken())
+                land(el, isMarker);
         }
+
+        // Asked as "has the cursor MOVED since we landed", not as reached()'s list of shapes a
+        // click can focus: inside this window a tab strip's div, a clickable grid row or a
+        // tree's node is a place a hand deliberately went and none of them is in that list,
+        // while the link that brought the person here IS -- so the list answers backwards at
+        // both ends. Nobody holding it (the page that held the gesture is gone) reads as
+        // untouched, which is what keeps the arrival working for the ordinary navigation.
+        // reached() stays what it is for focusFirst, whose question is a different one: whether
+        // the cursor is on a control at all, or on the focus trap's own landing div.
+        function taken() {
+            const now = document.activeElement;
+
+            return now !== null
+                && now !== entry
+                && now !== document.body
+                && now !== document.documentElement;
+        }
+    }
+
+    // The marker is brought INTO VIEW the way any focus does: it is the box the person is about
+    // to type in, and a list's search can sit below the fold on a short window. The screen's own
+    // name is the opposite -- it draws no ring (ns-mud.css excludes tabindex -1), so scrolling to
+    // it reveals nothing at all, and it stands at the top of the document, which is itself the
+    // scroller (NsMainLayout gives the content no overflow of its own). Its pass can also land a
+    // full second after the arrival (ARRIVAL_FALLBACK_WAIT_MS), and taken() does not see a wheel:
+    // whatever the view moved to in that second -- the guide scrolling to the section a cold
+    // /guide/{chapter}#{slug} names, a notch down a dashboard taller than the window -- is a
+    // person's or a screen's own doing, and a scrolling focus would take it back to the top
+    // (Vigía, nsail#2338 round 3).
+    function land(el, isMarker) {
+        el.focus({ preventScroll: !isMarker });
     }
 
     function findArrivalMarker() {

@@ -1164,9 +1164,11 @@ public sealed class SurfaceContext
 
     // The surface's OWN row — the one that names the screen — is the first one it rendered, and a
     // panel that draws a second title row is a section of that screen rather than a screen of its
-    // own. Two things ride the claim: the way back to a hidden drawer, which the surface offers
-    // once however many rows a screen draws, and which row goes quiet where the shell draws this
-    // surface's chrome itself (ui/surfaces.md, the announce seam). Asked from the row's render and
+    // own. Three things ride the claim: the way back to a hidden drawer, which the surface offers
+    // once however many rows a screen draws; which row goes quiet where the shell draws this
+    // surface's chrome itself (ui/surfaces.md, the announce seam); and, on the main surface, which
+    // row names the screen with the top-level heading a navigation's arrival lands on when the
+    // screen marks no field of its own (NsTitleBar, ui/focus.md). Asked from the row's render and
     // not once at its creation, because the claim changes hands while the surface lives — a step
     // that replaces its panel initializes the arriving row before it disposes the leaving one, so
     // the only moment that can be trusted is the render after the release.

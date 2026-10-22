@@ -6,7 +6,13 @@
 @* Secondary is the *text* rank, not the palette's secondary accent — the two meanings of
    the word collide here, and taking the accent painted every muted line in the brand's
    spare colour (MudBlazor's own pink, since a brand may leave it unset). *@
-<MudText Typo="@GetTypo()" Class="@GetClasses()">
+@* PageName draws the SCREEN's name, which is the one title row drawn as a top-level heading
+   (ui/focus.md): the element and the type scale are separable here (MudText.HtmlTag), so the
+   heading rank costs the title row no change of size. tabindex -1 is what lets the cursor the
+   router hands it on arrival actually land — focus() moves nothing onto a heading, the same
+   price NsMainLayout pays for the region its skip link lands in — and it is no tab stop, so
+   ns-mud.css draws no ring around it either. *@
+<MudText Typo="@GetTypo()" Class="@GetClasses()" HtmlTag="@GetHtmlTag()" tabindex="@GetTabIndex()">
     @ChildContent
 </MudText>
 
@@ -15,11 +21,13 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    /// <summary>Semantic role — Title overrides Size with the heading treatment.</summary>
+    /// <summary>Semantic role — Title and PageName override Size with the heading treatment,
+    /// and PageName also draws the page's one top-level heading.</summary>
     [Parameter]
     public NsTextAs As { get; set; } = NsTextAs.Body;
 
-    /// <summary>Typographic scale, reusing NsSize (Md = body text, Lg+ = headings). Ignored when As="Title".</summary>
+    /// <summary>Typographic scale, reusing NsSize (Md = body text, Lg+ = headings). Ignored when
+    /// As="Title" or As="PageName".</summary>
     [Parameter]
     public NsSize Size { get; set; } = NsSize.Md;
 
@@ -37,9 +45,20 @@
             .ToString();
     }
 
+    // Null leaves the vendor's own default standing: the element it decides from the Typo.
+    string? GetHtmlTag()
+    {
+        return As == NsTextAs.PageName ? "h1" : null;
+    }
+
+    string? GetTabIndex()
+    {
+        return As == NsTextAs.PageName ? "-1" : null;
+    }
+
     Typo GetTypo()
     {
-        if (As == NsTextAs.Title)
+        if (As is NsTextAs.Title or NsTextAs.PageName)
         {
             return Typo.h6;
         }

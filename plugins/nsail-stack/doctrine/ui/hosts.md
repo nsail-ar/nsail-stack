@@ -119,6 +119,43 @@ looks up its own. No `<NsColumn>`, no `<NsTr>`.
   is allowed to wrap under them. A stacked tablet has room for the label and keeps it — the line
   is the width, not the stack (cases).
 
+### Order (`NsTh Sortable`)
+
+**A heading the reader presses to order the list by its column is `NsTh Sortable`, declared per
+column like `Breakpoint` and `Format` beside it.** Per column because widening the offer later —
+every heading that declares a `For` — costs no screen a line, while narrowing it afterwards would
+change every list that had come to rely on it. Nothing else is asked of a screen: the heading's
+own word is the control's name, so there is no string, no glyph and no handler at a call site.
+
+- **Ascending on the first press, descending on the second, back to ascending, one column at a
+  time** — and pressing another heading takes the order over at ascending. The gesture a data
+  table and a spreadsheet both make. The vendor's third *unsorted* state is left off: it is a
+  press spent on a state a reader cannot tell from the order the rows arrived in.
+- **Unsorted is that arriving order**, the one the list message's own handler settled. The table
+  imposes no first order of its own, and a column declaring itself sortable does not become the
+  ordered one.
+- **Only a grid holding EVERY row of its list orders** — the in-memory half of `CanExport`. A
+  server-paged or scrolling grid holds a slice, and ordering a slice reads as ordering the list; a
+  grid typed into is writing its rows rather than listing them. There the heading stays plain
+  text rather than the markup being refused: one column declaration serves a screen whichever
+  list the column ends up on. **A server-side order is its own question** and this is not it.
+- **The mark is an arrow on the pressed heading and `aria-sort` on its cell** —
+  `NsIcons.MoveUp`/`MoveDown`, with no other heading carrying a glyph at all. Both are read off
+  the one state, so nothing is written twice and nothing is shown to the eye that is withheld
+  from a screen reader. The word itself is the accessible name ([actions.md](actions.md)).
+- **What is ordered is what the CELLS SHOW** (`TableColumn.Read`, the export's own reader): an
+  enum orders by its own word, a boolean by Sí/No, a stamp in the reader's clock. A list ordered
+  by something other than what is printed in the column reads as wrongly ordered.
+- **Text orders case- and accent-insensitively in the reader's culture** — the model-wide
+  collation of [data.md](../data.md): a list ordered by a stricter rule than the read that
+  answered it reads as wrong. Equal values keep the order they arrived in.
+- **A blank cell is LAST in both directions.** An empty cell is an unknown, not the smallest
+  value there is — "sin backup" is not the oldest backup. A cell a screen fills with words of its
+  own is not blank and orders by them.
+- **An order and the list's own filter do not reach each other**: both narrow the same rows in
+  hand, so a filter press keeps the order and a heading press keeps the filter.
+- **The file Exportar writes is the order on screen** ([exporting.md](../exporting.md)).
+
 ### Inline editing (`RowEditor`)
 
 **A way IN belongs to the HOST, so the form is what takes it away.** Handing `NsTable` a

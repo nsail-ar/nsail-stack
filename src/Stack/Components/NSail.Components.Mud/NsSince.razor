@@ -1,0 +1,121 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using NSail.Localization
+
+@inject StringManager Strings
+@inject LanguageProvider Language
+
+@* How long ago, in the unit a person would say it in, with the exact moment on hover and focus:
+   a backup reads "hace 5 min" and the timestamp is one gesture away, never the other way round.
+   Past StaleAfter the same text wears the warning tone, because the number alone is what nobody
+   reads on a list of forty rows. *@
+@if (At is { } at)
+{
+    <NsTooltip Text="@Moment(at)">
+        @if (IsStale(at))
+        {
+            <NsStatusText Size="NsSize.Sm" Severity="NsSeverity.Warning">@Ago(at)</NsStatusText>
+        }
+        else
+        {
+            <NsText Size="NsSize.Sm">@Ago(at)</NsText>
+        }
+    </NsTooltip>
+}
+else if (Missing is { Length: > 0 })
+{
+    <NsStatusText Size="NsSize.Sm" Severity="NsSeverity.Warning">@Missing</NsStatusText>
+}
+
+@code {
+
+    const string Keys = "Components.NsSince.";
+
+    [Parameter]
+    public DateTime? At { get; set; }
+
+    /// <summary>What to say in place of a moment that never happened — a cell nothing was ever
+    /// dumped from. Nothing is drawn where the caller names none: an absent date is not always
+    /// an alarm.</summary>
+    [Parameter]
+    public string? Missing { get; set; }
+
+    /// <summary>How much elapsed time makes the reading an alarm — the caller's own threshold,
+    /// because what counts as late is the domain's word and never the control's. Null is a
+    /// reading that is never late.</summary>
+    [Parameter]
+    public TimeSpan? StaleAfter { get; set; }
+
+    /// <summary>The sentence the elapsed time is set inside, with "{0}" where it goes, for a
+    /// column that does not say by itself what the moment is of: a measurement's own moment
+    /// ("medido hace 5 min") is read beside a number the box measured, and reads as that
+    /// number's own age if nothing names it.</summary>
+    [Parameter]
+    public string? Format { get; set; }
+
+    // Days and up is as coarse as it gets: a cell dumped three weeks ago and one dumped
+    // twenty-one days ago are the same alarm. A clock that runs ahead of this one reads as the
+    // nearest unit rather than as a negative number.
+    internal static (string Key, int Value) Elapsed(DateTime at, DateTime now)
+    {
+        var elapsed = now - at.ToUniversalTime();
+
+        if (elapsed < TimeSpan.Zero)
+        {
+            elapsed = TimeSpan.Zero;
+        }
+
+        if (elapsed < TimeSpan.FromMinutes(1))
+        {
+            return (Keys + "Moments", 0);
+        }
+
+        if (elapsed < TimeSpan.FromHours(1))
+        {
+            return (Keys + "Minutes", (int)elapsed.TotalMinutes);
+        }
+
+        if (elapsed < TimeSpan.FromDays(1))
+        {
+            return (Keys + "Hours", (int)elapsed.TotalHours);
+        }
+
+        return (Keys + "Days", (int)elapsed.TotalDays);
+    }
+
+    bool IsStale(DateTime at)
+    {
+        return StaleAfter is { } stale && DateTime.UtcNow - at.ToUniversalTime() >= stale;
+    }
+
+    // The counting overload, not the plain one: the day's own reading is the ".Plural" pair
+    // StringManager picks between, because one day is the value the warning tone lights up on —
+    // the most read number of the column — and Spanish cannot spell it with the plural's word.
+    string Ago(DateTime at)
+    {
+        var (key, value) = Elapsed(at, DateTime.UtcNow);
+        var culture = RegionCulture.For(Language);
+        var ago = string.Format(culture, Strings.Translate(key, value), value);
+
+        return Format is { Length: > 0 } format ? string.Format(culture, format, ago) : ago;
+    }
+
+    // The operator's region, never the host's ambient culture: the app's language is a neutral
+    // two-letter code carrying no date pattern (RegionCulture), and a server in one timezone
+    // serving a shop in another would otherwise write the moment in whatever the machine was
+    // installed as.
+    // Only a moment that SAYS it is UTC moves into the reader's clock — the house's rule
+    // (exporting.md, guarded the same way in Tables/TableColumn.cs): any other kind is already
+    // local, or is a civil hour with no zone to it, which is how Elapsed reads it too. A bare
+    // ToLocalTime() supposes the opposite of ToUniversalTime() for an unspecified kind, so the
+    // whisper would name an instant the number beside it contradicts.
+    string Moment(DateTime at)
+    {
+        var moment = at.Kind == DateTimeKind.Utc ? at.ToLocalTime() : at;
+
+        return moment.ToString("g", RegionCulture.For(Language));
+    }
+
+}

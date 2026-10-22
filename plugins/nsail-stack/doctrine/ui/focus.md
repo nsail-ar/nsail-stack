@@ -21,22 +21,65 @@ parameter every `NsFieldBase` field already carries — is one source of it: `tr
 it already writes `data-ns-field` for the Enter policy. Nothing else needs to spell the
 attribute by hand.
 
+## The fallback is a heading something has to draw
+
+A selector finds nothing that nobody draws: the fallback is **the screen's own title row**
+(`NsTitleBar`, through `NsText As="PageName"`), and it is the ONE row that is the screen's
+subject — the row that claimed the surface, the same claim the hidden drawer's toggle rides
+(`SurfaceContext.ClaimsRow`). A section's row, a table's title and an overlay's row stay
+`Title`: **one title row names the screen**, and a second top-level heading would name it
+twice. A heading inside the CONTENT is not one of those rows and is not governed here — a guide
+chapter's `#` renders as an `<h1>` of the markdown's own (`Markdown`), and what keeps the
+arrival on the screen's name is document order: the title row is drawn before the content it
+heads.
+
+The heading also carries `tabindex="-1"`: `focus()` moves the cursor only onto something that
+can hold it, so a bare `<h1>` leaves the call a no-op — the same price the shell's skip link
+pays for the main region it lands in (`NsMainLayout`). It is no tab stop, so `ns-mud.css` draws
+no ring around it, and the rank is the element alone: the title row's type scale is unchanged
+(`MudText.HtmlTag` separates the two).
+
+**The heading takes the cursor without moving the view** (`preventScroll`, `ns.js`): it draws no
+ring, so a scroll to it shows nothing, and it stands at the top of the document — so a focus that
+scrolled would undo whatever the view moved to since the arrival, a guide chapter's own jump to
+the section a cold `/guide/{chapter}#{slug}` names included (guide.md, *Anchors*), or a notch of
+wheel down a dashboard taller than the window. The marker is the other way round: it is a box
+about to be typed in, so it is brought into view like any other focus.
+
 The actual focus happens in `ns.js` (`arrivalFocus`), for three reasons a comma selector cannot
 cover:
 
 - **An element rendered after the first paint** — a list still reading, a tab's panel — is not
   a lost cause: not finding the marker right away starts a `MutationObserver` (bounded by a
-  timeout that falls back to `h1`) instead of giving up on the spot, which is what left the
-  vendor's own first-render-only `AutoFocus` unable to reach it (the Notes on nsail#2338: a field
-  inside a panel not yet shown).
+  timeout that falls back to the screen's name) instead of giving up on the spot, which is what
+  left the vendor's own first-render-only `AutoFocus` unable to reach it (the Notes on
+  nsail#2338: a field inside a panel not yet shown).
 - **A navigation between two pages sharing a layout** (the same routed component, new
-  parameters) still fires: `NsArrivalFocus` compares `RouteData` BY REFERENCE, which Blazor's
-  router hands it fresh on every navigation and keeps identical across a render the page caused
-  for its own reasons — so this runs once per arrival and never again on a re-render.
+  parameters) still fires: the arrival is read off the address, not off the page type or the
+  component's identity.
 - **Something the person already reached for is never stolen** — only for the deferred half
-  (the wait for a late marker, or the eventual `h1`): the first, synchronous try always wins,
-  exactly as today's unconditional `h1` focus does, but the moment this call starts WAITING for
-  something that is not there yet, a hand that got there first keeps what it took.
+  (the wait for a late marker, or the eventual heading): the first, synchronous try always wins,
+  as an arrival's unconditional focus does, but the moment this call starts WAITING for
+  something that is not there yet, a hand that got there first keeps what it took. Asked as
+  "has the cursor moved since we landed", so a tab strip, a clickable grid row or a tree node —
+  places a hand deliberately goes, none of them a control — are kept too.
+
+## An arrival is a change of path
+
+`NsArrivalFocus` fires on a new **path**, and on nothing else. Blazor's router hands down a
+fresh `RouteData` on every location change, and **a surface written over the address the person
+is already standing at — an aside, a dialog, a tab, a filter — is not an arrival**
+(navigation.md, the same rule that keeps `NsNavMenu` from recounting on one): nobody went
+anywhere, so nothing may move the cursor out of what the hand is doing. The reference to the
+previous `RouteData` is still the first question, because it is what keeps a render the page
+caused for its own reasons free; the path (`SurfaceContext.StaysInPlace`'s own question) is the
+second. The cost of asking only the first: a screen writing its own tab or filter onto the
+address takes the cursor back, and on a coarse pointer — where the fallback's pass is the one
+that runs — the keyboard closes over the very box that wrote the query.
+
+**A fragment is the same answer**: the shell's skip link and a guide section link are same-path
+moves (`NsMainLayout`, guide.md, *Anchors*), and an arrival firing on one hands the cursor back
+to the screen's name — the exact place the link was pressed to get away from.
 
 ## By kind of screen
 
@@ -64,8 +107,11 @@ cover:
   breakpoint the page stands beside it, so this page's own arrival focus is left to settle;
   below it the region IS the screen, and takes focus the way a drawer that opened for a reason
   does. A door's own `Toggle`/`Open` always takes it, docked or not. Reference: `NsCompanion`.
-- **A read-only page, a dashboard** — nothing declares the marker, so the router's fallback
-  (`h1`) is the arrival focus, same as every page got before this.
+- **A read-only page, a dashboard** — nothing declares the marker, so the router's fallback is
+  the arrival focus: the screen's own name, the `h1` its title row draws. A screen with no field
+  to mark still announces itself to a screen reader, which is the whole point of the fallback;
+  a screen that renders no title row of its own gets no arrival focus at all, and is the one
+  shape to fix at the row rather than here.
 
 The per-screen table — which of these six a screen actually is, and which needed a line
 changed — is the walk in the story's own PR, not repeated here: a table copied into a doc rots
@@ -75,9 +121,11 @@ the day a screen is added, and this page states the rule it was walked against.
 
 A coarse pointer's own keyboard rises the instant a text box takes focus, over the very list
 the cursor was just handed to see — a cost a device with a physical keyboard, or a pointer that
-only hovers (a mouse, a trackpad), never pays. `arrivalFocus` skips outright wherever
+only hovers (a mouse, a trackpad), never pays. That cost belongs to the BOX, so wherever
 `(pointer: coarse)` matches (the same query `ns-mud.css` already gates touch-sized targets on)
-— **the router's own pass never fires on a touch screen**, marker or fallback alike.
+`arrivalFocus` skips **the marker's pass alone**: the fallback still fires and the screen's own
+name takes the cursor, because a heading raises no keyboard and a person reading a phone with a
+screen reader is owed the name of the page they just landed on.
 
 This is the arrival marker's rule alone. A create form's first-field focus (forms.md) is a
 different mechanism — `NsForm.focusFirst`, not `arrivalFocus` — and is not part of this story:

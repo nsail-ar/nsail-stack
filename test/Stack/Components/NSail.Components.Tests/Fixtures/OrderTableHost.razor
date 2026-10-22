@@ -1,0 +1,91 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+
+@* A list whose every row arrived in one read, which is the only kind a pressed heading orders:
+   two columns declare themselves sortable, one declares nothing of the sort, and the actions
+   header declares no column at all. Queried wires the same markup to a server instead, where the
+   grid holds a page and not the list.
+   <para>The rows arrive in neither column's order and carry a blank cell, a pair of names that
+   differ by an accent and one that differs by case — what a folded comparison has to answer and
+   what the order they arrived in has to survive. Cantidad is each row's own number: it is what
+   every assertion reads the order off, so no test depends on a column it just pressed.</para> *@
+
+<MudPopoverProvider />
+
+<NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="Query">
+    <HeaderContent>
+        <NsTh For="() => context.Count" />
+        <NsTh For="() => context.Name" Sortable />
+        <NsTh For="() => context.Kind" Sortable />
+        <NsTh Sortable />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Count">@row.Count</NsTd>
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd For="() => row.Kind">@row.Kind</NsTd>
+        <NsTd />
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    /// <summary>The rows as they arrive, by their own Cantidad.</summary>
+    public static readonly int[] Arrived = [0, 1, 2, 3, 4];
+
+    static readonly (string? Name, ExportRowKind Kind)[] _cells =
+    [
+        ("Zorro", ExportRowKind.Person),
+        ("ánimo", ExportRowKind.Shop),
+        ("Animo", ExportRowKind.Person),
+        ("beta", ExportRowKind.Shop),
+        (null, ExportRowKind.Shop)
+    ];
+
+    DataPage<ExportRowModel> _rows = DataPage<ExportRowModel>.Empty();
+
+    /// <summary>Whether the rows come from a server a page at a time, which is what makes the
+    /// grid hold a slice of its list rather than all of it.</summary>
+    [Parameter]
+    public bool Queried { get; set; }
+
+    EventCallback<QueryEventArgs> Query =>
+        Queried ? EventCallback.Factory.Create<QueryEventArgs>(this, Answer) : default;
+
+    protected override void OnInitialized()
+    {
+        _rows = DataPage<ExportRowModel>.From([.. Arrived.Select(Make)]);
+    }
+
+    async Task Answer(QueryEventArgs args)
+    {
+        _rows = new DataPage<ExportRowModel>
+        {
+            Items = [.. Arrived.Select(Make)],
+            PageIndex = args.PageIndex,
+            PageSize = args.PageSize,
+            TotalCount = Arrived.Length
+        };
+
+        // The render the grid's own Rows parameter travels on, and then the yield that lets it
+        // land: a real page gets both for free, bUnit's renderer processes its batch on a
+        // continuation instead (ExportTableHost's note).
+        await InvokeAsync(StateHasChanged);
+        await Task.Yield();
+    }
+
+    static ExportRowModel Make(int index)
+    {
+        return new ExportRowModel
+        {
+            Count = index,
+            Name = _cells[index].Name,
+            Kind = _cells[index].Kind
+        };
+    }
+}

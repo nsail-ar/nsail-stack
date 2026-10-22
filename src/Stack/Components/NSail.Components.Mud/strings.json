@@ -76,6 +76,12 @@
 
   "Components.NsPasswordField.Stored": "Stored. Leave this empty to keep it.",
 
+  "Components.NsSince.Moments": "moments ago",
+  "Components.NsSince.Minutes": "{0} min ago",
+  "Components.NsSince.Hours": "{0} h ago",
+  "Components.NsSince.Days": "{0} d ago",
+  "Components.NsSince.Days.Plural": "{0} d ago",
+
   "Components.PasswordStrength.Weak": "Weak",
   "Components.PasswordStrength.Medium": "Medium",
   "Components.PasswordStrength.Strong": "Strong",

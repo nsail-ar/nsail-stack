@@ -4,16 +4,25 @@
 @namespace NSail.Components
 @using System.Linq.Expressions
 @using NSail.Exporting
+@using NSail.Icons
 @using NSail.Localization
 @using NSail.Metadata
 
 @inject StringManager Strings
 @inject MetadataProvider Metadata
 
-<MudTh Class="@GetClasses()">
+<MudTh Class="@GetClasses()" UserAttributes="@Announced()">
     @if (ChildContent is not null)
     {
         @ChildContent
+    }
+    else if (Presses)
+    {
+        @* The heading word IS the control's name, so a pressable column needs no string of its
+           own and is anonymous to nobody (ui/actions.md). The arrow is drawn only on the column
+           the list is ordered by: one of them points, the rest are plain words. *@
+        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Always" Class="ns-th-order"
+                  Label="@_label" Icon="@Arrow()" OnClick="Press" />
     }
     else
     {
@@ -25,6 +34,8 @@
 
     string? _key;
     string? _label;
+    TableColumn? _column;
+    Dictionary<string, object>? _announced;
 
     [CascadingParameter]
     TableColumns? Columns { get; set; }
@@ -50,6 +61,15 @@
     [Parameter]
     public ExportFormat? Format { get; set; }
 
+    /// <summary>Makes this heading a control the reader can press to order the list by this
+    /// column — ascending, then descending, then ascending again, one column at a time. Per
+    /// column and off by default: a heading orders only where the screen said that column
+    /// orders. Silent on a column that names no field, and on a grid that holds a slice of its
+    /// list rather than all of it — a server-paged or scrolling one — where the heading stays
+    /// plain text (ui/hosts.md).</summary>
+    [Parameter]
+    public bool Sortable { get; set; }
+
     // A header that names no field and shows no text is the action column: it is the one
     // column with nothing to key on, which is already why it never hides. Deriving it here
     // is what lets the column's width belong to the column instead of to every grid.
@@ -67,6 +87,7 @@
         _key = target is { } named ? Metadata.KeyFor(named.Type, named.Member) : null;
 
         _label = _key is null ? null : Strings.Translate(_key);
+        _column = null;
 
         if (_key is null || target is not { } field)
         {
@@ -78,9 +99,57 @@
         // The same expression, the same key and the same heading the column already resolved,
         // handed on as what a file's column IS: a header that declares itself once is the whole
         // reason an export needs nothing from the screen.
-        if (TableColumn.Of(field.Type, field.Member, _label ?? _key, _key, Format, Strings) is { } column)
+        _column = TableColumn.Of(field.Type, field.Member, _label ?? _key, _key, Format, Strings);
+
+        if (_column is { } column)
         {
             Columns?.Declare(column);
         }
+    }
+
+    // A heading is pressable where the column asked for it, named a member to order by, and
+    // stands in a grid that orders at all: ordering a server-paged grid's page would order a
+    // slice and read as ordering the list (ui/hosts.md).
+    bool Presses => Sortable && _column is not null && (Columns?.Orders ?? false);
+
+    bool Ordered => _key is not null && Columns?.Ordered?.Key == _key;
+
+    // The one mark the order gets: the column pressed points the way it is pointing, and no
+    // other column carries a glyph at all — a third state the reader cannot tell from the order
+    // the rows arrived in is a press spent on nothing (ui/hosts.md).
+    Glyph? Arrow()
+    {
+        if (!Ordered)
+        {
+            return null;
+        }
+
+        return Columns!.Descending ? NsIcons.MoveDown : NsIcons.MoveUp;
+    }
+
+    // The arrow is the reader's mark and aria-sort is the same news for anyone who cannot see it,
+    // off the same state and in no new words. Only on a pressable heading: on a plain one the
+    // attribute would claim the column can be ordered and it cannot. Rebuilt only when that news
+    // actually changes — a fresh dictionary every render reads as a changed parameter to the
+    // vendor's cell (NsButton.OnParametersSet carries the same concern).
+    Dictionary<string, object>? Announced()
+    {
+        var sort = Presses ? Ordered ? Columns!.Descending ? "descending" : "ascending" : "none" : null;
+
+        if (sort is null)
+        {
+            _announced = null;
+        }
+        else if (_announced?.GetValueOrDefault("aria-sort") as string != sort)
+        {
+            _announced = new Dictionary<string, object> { ["aria-sort"] = sort };
+        }
+
+        return _announced;
+    }
+
+    void Press()
+    {
+        Columns!.Press(_column!);
     }
 }
