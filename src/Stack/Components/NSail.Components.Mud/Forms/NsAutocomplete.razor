@@ -57,7 +57,7 @@
                  AdornmentIcon="@NsIcons.DropDown.Markup"
                  AdornmentAriaLabel="@Strings.Translate("Common.ShowOptions")"
                  MinCharacters="0"
-                 OpenOnFocus="true"
+                 OpenOnFocus="@(!_refocusIsStale)"
                  OpenChanged="OnOpenChanged"
                  ShowProgressIndicator="@IsBusy"
                  ProgressIndicatorColor="Color.Primary"
@@ -111,8 +111,8 @@
     /// <summary>Search-first, for tables too big to browse (parties, products): the field
     /// shows a magnifier instead of the dropdown arrow and doesn't query until something is
     /// typed. It still opens on focus — on an empty box that shows the create entry alone,
-    /// which is the only discoverability the field has. Off, it behaves like a select over
-    /// a short list.</summary>
+    /// which is the only discoverability the field has; the one focus it does not answer is the
+    /// one a pick of its own handed back. Off, it behaves like a select over a short list.</summary>
     [Parameter]
     public bool Lazy { get; set; }
 
@@ -182,10 +182,24 @@
     // A pick made while a search was still out: the vendor runs that open to completion AFTER
     // the selection has already closed the list, and raises it again on the very row just
     // chosen — a list nobody asked for, standing over the answer, which nothing afterwards
-    // closes. Only a search that was ALREADY out can do that; one that starts later is this
+    // closes. Only a search that was ALREADY out opens that way; one that starts later is this
     // field being asked for its list again, so the mark is taken at the pick and dropped the
     // moment another search begins.
     bool _reopenIsStale;
+
+    // The other half of the same promise, and the one the vendor cannot keep for itself: a pick
+    // made with the mouse ends with the vendor handing the cursor back to the box it was made
+    // from (its own list item click calls FocusAsync), and OpenOnFocus answers that focus
+    // exactly like a click — a list raised over the answer just chosen, which nothing
+    // afterwards closes. The vendor marks that focus to swallow it, but its mark is cleared by
+    // the box's own blur, which THE SAME GESTURE raised at the option's mousedown: both
+    // handlers are queued, and the one that resumes last wins, which is why an idle box got
+    // away with it and a loaded one did not. So the open is refused at its source instead,
+    // where no blur can reach the decision — and the cursor is never moved to get the list
+    // down, which would cost the box the keystrokes that follow (forms.md, Focus on open). The
+    // mark comes off the moment the field is asked for its list again, which is every other way
+    // one opens: a press on the box, the chevron, a typed term.
+    bool _refocusIsStale;
 
     /// <summary>The Runner the RESOLVE runs on, separate from the field's own because they are
     /// two unrelated reads: the search answers "what can I pick", the resolve answers "what does
@@ -413,6 +427,9 @@
     // from an open that was already under way when the pick closed the list. It is closed here
     // rather than at the pick because the open has not happened yet then — the vendor raises it
     // only once the search it is waiting on answers, which is after the selection has finished.
+    // The pick's own refocus never reaches this: it is refused where it is decided, by the
+    // OpenOnFocus the field withholds while _refocusIsStale stands, so there is no open to
+    // close and no list to flicker.
     async Task OnOpenChanged(bool open)
     {
         if (!open || !_reopenIsStale || _autocomplete is null)
@@ -530,6 +547,7 @@
     async Task OnItemChanged(TItem? item)
     {
         _reopenIsStale = _searchesOut > 0;
+        _refocusIsStale = true;
 
         _selectedItem = item;
 
@@ -572,8 +590,13 @@
     async Task<IEnumerable<TItem>> Search(string text, CancellationToken vendorToken)
     {
         // A search beginning now is this field being asked for its list, so whatever a pick
-        // before it left marked is no longer a reopen nobody asked for.
+        // before it left marked is no longer a reopen nobody asked for. It answers for the
+        // refocus too, and it is the ONLY thing that drops that mark: every other way the list
+        // opens asks the vendor for a search first — a press on the box, the chevron, a typed
+        // term — while the refocus the pick hands back opens on nothing but the focus, so the
+        // mark can only be spent by a gesture.
         _reopenIsStale = false;
+        _refocusIsStale = false;
         _searchesOut++;
 
         try

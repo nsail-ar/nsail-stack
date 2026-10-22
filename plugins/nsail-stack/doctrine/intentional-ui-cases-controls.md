@@ -176,6 +176,28 @@ instead. Two more measured facts, both load-bearing for the permanent create ent
 **only** when it returned none, and never both — one fragment passed to both is what makes the
 entry permanent rather than duplicated.
 
+## Why a pick WITHHOLDS `OpenOnFocus` instead of closing the list its refocus raises
+
+Measured against MudBlazor 9.10.0: a click on an option runs `ListItemOnClickAsync`, which arms a
+one-shot mark of its own and focuses the box BEFORE it selects; `OnInputFocusedAsync` spends that
+mark and returns without opening. The mark is cleared on the FIRST LINE of
+`OnInputBlurredAsync` — and the box's blur belongs to the same gesture, raised at the option's
+mousedown, so the two handlers sit in one queue and whichever resumes last decides whether the
+vendor's own guard survives its own gesture. Traced in Chromium on Nuevo Asiento, the refocus
+opened in every run measured: 110 ms before the close on an idle box, 230 ms with the lookup's
+answers held 1.2 s, 640 ms held 4 s, 1.8 s under 10× CPU throttling — and on a runner at a
+1-minute load of 17 the close landed FIRST, leaving the list standing over the form with its one
+row `aria-selected` and `data-ticks` stamped at the instant of the pick.
+
+**Closing that open instead was rejected**: it cannot be told from the open a press on the box
+raises. `Strict` defaults to `true`, so the refocus searches for the TEXT the pick just wrote —
+the same term, the same single row — as a press on the box would, and a belt that closes "the
+first open after a pick" eats the gesture after an ENTER pick, where the cursor never leaves and
+no refocus is ever coming. `OnInputActivatedAsync` reads `OpenOnFocus` only on the focus path;
+the press, the chevron and the debounce after a keystroke each pass `true` of their own. That is
+what makes withholding the parameter exact: it refuses the focus's open and nothing else's, and
+the mark comes off on the next search, which every one of those gestures asks for.
+
 ## Why the open list is floored at the field and capped at a measure
 
 **The popover.** Measured in Chromium at 1600px on an OT: `RelativeWidth` defaults to

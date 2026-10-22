@@ -13,17 +13,22 @@ using NSail.Metadata;
 
 namespace NSail.Components.Tests;
 
-/// <summary>What a pick owes the screen: the list it was made from is gone. The vendor closes
-/// its own popover inside the selection, but an OPEN already under way — the keystroke before
-/// the pick, whose search is still out — runs to completion afterwards and raises the list
-/// again, on the very row just chosen, with nothing left to close it. The user is left reading
-/// an answer through the list it came from, and the only way out is to click elsewhere.
+/// <summary>What a pick owes the screen: the list it was made from is gone, and it stays gone
+/// however the close and the box's own refocus are ordered. The vendor closes its own popover
+/// inside the selection, and two opens still follow it. One is an OPEN already under way — the
+/// keystroke before the pick, whose search is still out — running to completion afterwards and
+/// raising the list again, on the very row just chosen, with nothing left to close it. The other
+/// is the cursor the pick hands back: the vendor focuses the box it was picked from, and
+/// OpenOnFocus answers that focus exactly like a click. The user is left reading an answer
+/// through the list it came from, and the only way out is to click elsewhere.
 ///
 /// The window is the round trip, so it is wide exactly where a lookup is slowest, and it is why
 /// a search is held open here rather than hurried: the order is the subject, not the clock. The
-/// field marks a pick made while a search was out and closes the list the vendor opens for it;
-/// a search begun AFTER the pick drops the mark, because that one is the field being asked for
-/// its list again and the list it opens is wanted.</summary>
+/// field marks a pick made while a search was out and closes the list the vendor opens for it,
+/// and it withholds OpenOnFocus until it is asked again so the refocus opens nothing at all. A
+/// search begun AFTER the pick drops both marks, because that one is the field being asked for
+/// its list again and the list it opens is wanted — by a typed term or by a bare press on the
+/// box, which asks for the same term the refused refocus would have.</summary>
 public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
 {
     public NsAutocompletePickClosesTests()
@@ -134,9 +139,43 @@ public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
         Assert.Equal(Caja.Id, _value);
     }
 
+    /// <summary>The ordering the browser could not be made to produce and a loaded runner met on
+    /// its own: the pick's close has already landed, and the cursor the pick hands back arrives
+    /// after it, with no search of its own out. The vendor's one-shot mark for that focus is
+    /// already spent by then — the box's blur, which the same gesture raised, clears it — so
+    /// nothing but the field's own withheld OpenOnFocus stands between that focus and a list over
+    /// the answer just chosen. Forced here rather than waited for: the order is the subject.
+    /// </summary>
+    [Fact]
+    public async Task APicksOwnRefocusLandingAfterTheCloseLeavesNoListOpen()
+    {
+        var cut = await OpenedOnTheWholeChart();
+
+        await Pick(cut, Caja.DisplayName);
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+
+        // The box's own focusout, raised when the option took the cursor at mousedown, landing
+        // after the click it preceded.
+        await cut.Find("input").BlurAsync(new FocusEventArgs());
+
+        // The cursor coming back to the box the pick was made from — the order the nightly's own
+        // box met and no run on an idle one did, the close already landed and the refocus last.
+        // Not awaited, and its gate opened straight after: a field that still answers this focus
+        // with a search searches for the text the pick wrote in the box, and the list it raises
+        // on that answer is what this case refuses — held, the act would prove nothing.
+        var refocus = cut.Find("input").FocusAsync(new FocusEventArgs());
+
+        Gate(Caja.DisplayName).TrySetResult();
+
+        await refocus;
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
     /// <summary>The other half, and the reason the mark is dropped rather than held: a field
     /// asked for its list again after a pick has to open. Nothing here is left out — the pick
-    /// is made on a settled list — and the click that follows is a plain reopen.</summary>
+    /// is made on a settled list — and the term typed after it is a plain reopen.</summary>
     [Fact]
     public async Task AskingForTheListAgainAfterAPickStillOpensIt()
     {
@@ -153,6 +192,28 @@ public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
         Gate("Banco").TrySetResult();
 
         await reopened;
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>The same half for the gesture that asks without typing a thing: a press on the
+    /// box after a pick. It opens on the text the pick left there, which is the term the refused
+    /// refocus would have asked for too — so the mark cannot be read off the term, and what
+    /// spends it is that this open asked for a search at all.</summary>
+    [Fact]
+    public async Task PressingTheBoxAfterAPickStillOpensItsList()
+    {
+        var cut = await OpenedOnTheWholeChart();
+
+        await Pick(cut, Caja.DisplayName);
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+
+        var pressed = cut.Find("input").MouseDownAsync(new MouseEventArgs());
+
+        Gate(Caja.DisplayName).TrySetResult();
+
+        await pressed;
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
     }
