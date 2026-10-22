@@ -4,6 +4,7 @@
 @namespace NSail.Components
 @typeparam TItem
 @typeparam TValue
+@using System.Diagnostics.CodeAnalysis
 @using Microsoft.AspNetCore.Components.Routing
 @inherits NsAsyncFieldBase<TValue>
 
@@ -58,8 +59,9 @@
                  AdornmentAriaLabel="@Strings.Translate("Common.ShowOptions")"
                  MinCharacters="0"
                  OpenOnFocus="@(!_refocusIsStale)"
-                 OnKeyDown="OnBoxKeyDown"
                  OpenChanged="OnOpenChanged"
+                 OnKeyDown="OnBoxKeyDown"
+                 TextChanged="OnBoxText"
                  ShowProgressIndicator="@IsBusy"
                  ProgressIndicatorColor="Color.Primary"
                  Error="@HasError()"
@@ -168,6 +170,13 @@
 
     string _text = string.Empty;
 
+    // What the box holds RIGHT NOW, off the vendor's own text event and not off _text, which is
+    // the term a search is about: the keystroke this field answers is pressed before any search
+    // was asked for the text under it — the vendor debounces its own, and a reader is done
+    // typing in a fraction of that. The same reason a debounced box holds its own typed value
+    // rather than reading it back off the binding (NsTextFieldBase.HoldTyped).
+    string? _typed;
+
     IEnumerable<TItem> _results = [];
 
     // The term _results answer for. The box's own text moves the moment a search starts, and
@@ -181,6 +190,12 @@
     // the one before it, so the count and not a flag is what says whether any is still unheard.
     int _searchesOut;
 
+    // Whoever is waiting for a search that is already out to END — answered or outlived. Only
+    // this field's own Enter ever waits: it cannot ask a second time, because a field has ONE
+    // Runner for its searches and a second ask cancels the first, which is the very call the
+    // vendor redraws its own list from.
+    TaskCompletionSource? _settling;
+
     // A pick made while a search was still out: the vendor runs that open to completion AFTER
     // the selection has already closed the list, and raises it again on the very row just
     // chosen — a list nobody asked for, standing over the answer, which nothing afterwards
@@ -188,6 +203,13 @@
     // field being asked for its list again, so the mark is taken at the pick and dropped the
     // moment another search begins.
     bool _reopenIsStale;
+
+    // Set while THIS field is answering an Enter of its own: the vendor's debounced search for
+    // the text that key ended is still on its way, and it will open a list over whatever the
+    // keystroke resolved — the same stale reopen a pick made under a live search leaves, from
+    // the other side of the debounce (nothing is out yet, so _searchesOut cannot see it). The
+    // span ends at the pick it was taken for, which is where the mark above reads it.
+    bool _entered;
 
     // The other half of the same promise, and the one the vendor cannot keep for itself: a pick
     // made with the mouse ends with the vendor handing the cursor back to the box it was made
@@ -200,10 +222,11 @@
     // where no blur can reach the decision — and the cursor is never moved to get the list
     // down, which would cost the box the keystrokes that follow (forms.md, Focus on open).
     //
-    // It covers ONE focus, the pick's own, and what spends it is the box being used again: a
-    // search (a press, the chevron, a typed term) or any key the box takes — never a blur,
-    // which is the very event the vendor loses its own mark to. Held until one of those, and a
-    // field a person walked away from would refuse the focus they come back with.
+    // It is taken for the focus a pick hands back, and what spends it is the box being used
+    // again: a search (a press, the chevron, a typed term) or any key the box takes — never a
+    // blur, which is the very event the vendor loses its own mark to. Held until one of those, so
+    // a field a person walked away from refuses the focus they come back with, every time that
+    // walk repeats.
     bool _refocusIsStale;
 
     /// <summary>The Runner the RESOLVE runs on, separate from the field's own because they are
@@ -428,6 +451,159 @@
         _ = InvokeAsync(async () => await _autocomplete.CloseMenuAsync());
     }
 
+    /// <summary>Enter over a SEARCH-FIRST box is the box's own gesture — it resolves the text
+    /// that was typed — so the form never sees it: a code ended with Enter in a filter bar or in
+    /// a one-field dialog would otherwise send the question on the keystroke that was only
+    /// finding the article (ns.js, onDocumentKeyDown). Only while there IS something to resolve,
+    /// which is the same answer the keystroke itself reads: the mark is the STATE and not the
+    /// posture, the way every other field's is — a box with nothing hanging on this key has no
+    /// second meaning for it to collide with (NsTextFieldBase.TakesEnter) — so an empty box, one
+    /// settled on the value it holds and one nobody may write to hand the key back to the policy
+    /// around them, which is what the combobox read next to this one already says a closed,
+    /// empty or settled box does. Eaten in those states it would die: a filter bar whose Enter
+    /// sends the question from every other box would answer nothing from this one. A browsed
+    /// lookup never takes it — its whole set is on screen from the focus, so the vendor answers
+    /// that Enter off the list already open.</summary>
+    protected override bool TakesEnter
+    {
+        get { return Resolves(_typed); }
+    }
+
+    // What the keystroke has to resolve, and the mark above's own answer, so the key is taken
+    // from the form exactly where this field answers it: text in the box that no list on screen
+    // answers for, and that is not the reading of the value the field already holds — the vendor
+    // writes that reading into the box itself on every pick and every leave. A hand typing at its
+    // own speed leaves a settled list, and THAT Enter is the vendor's: it takes what the list
+    // highlights. A field nobody may write to resolves nothing at all — it asks nothing
+    // (ui/fields.md), and nothing was typed into it to resolve.
+    bool Resolves([NotNullWhen(true)] string? typed)
+    {
+        if (!Lazy || IsReadOnly || IsDisabled || string.IsNullOrWhiteSpace(typed))
+        {
+            return false;
+        }
+
+        if (_answered == typed)
+        {
+            return false;
+        }
+
+        return _selectedItem is null || GetItemText(_selectedItem) != typed;
+    }
+
+    void OnBoxText(string text)
+    {
+        _typed = text;
+    }
+
+    // THE READER'S OWN KEYSTROKE. A reader is a keyboard: it types the whole code and ends it
+    // with Enter, in one burst — and a Lazy box's list is a round trip behind the vendor's own
+    // debounce, so the key lands before any search was even asked. The vendor picks the option
+    // it is HIGHLIGHTING, which is nothing at all at that instant, so the code resolves to
+    // nothing and the counter is holding a reader that does not work. The field answers the key
+    // itself instead: it asks the search the box was about to ask and reads the answer the way
+    // the scan box over the grid reads it (ProductScanField, nsail#2337) — ONE answer is taken,
+    // several are left in the list to choose from, and none leaves the box exactly as it was,
+    // which is what the caller's own offer and the create entry are about.
+    //
+    // Only where the list is not already this text's own answer: a hand typing at its own speed
+    // leaves the vendor a settled list, and that Enter is the vendor's — it picks what the list
+    // is highlighting, which for a single answer is that answer, with no arrow-down.
+    //
+    // ANY key the box takes also spends the refocus mark, which is what a search cannot reach: a
+    // key is the person using the field again, and the pick they made is over. It is the Tab or
+    // Shift+Tab that carries the cursor out — so the focus they come back with is answered — and
+    // it is the whole answer after an Enter pick, where the cursor never left and no refocus was
+    // ever coming. Not the blur: that one belongs to the gesture that made the pick, raised at
+    // the option's mousedown, and a mark spent on it is the vendor's own mark, lost the same way.
+    async Task OnBoxKeyDown(KeyboardEventArgs args)
+    {
+        // Before the resolve below and before any key filter: the pick this key itself may make
+        // marks the refocus it hands back, and a mark spent after that pick is the pick's own —
+        // gone the instant it was taken, with the list it was holding down left open.
+        _refocusIsStale = false;
+
+        if (args.Key is not ("Enter" or "NumpadEnter") || _autocomplete is null)
+        {
+            return;
+        }
+
+        var typed = _typed;
+
+        // Nothing to resolve, and the same read the mark on the box is written from, so the
+        // keystroke the form was refused is always the keystroke this answers.
+        if (!Resolves(typed))
+        {
+            return;
+        }
+
+        var rows = await Answered(typed);
+
+        // One answer is the only one this key can take. Several are a choice, which is the list
+        // the vendor's own search is about to open; none is the text the offer quotes.
+        if (rows.Count != 1)
+        {
+            return;
+        }
+
+        _entered = true;
+
+        await OnItemChanged(rows[0]);
+
+        // And the list the answer this key read opened on the way, which is the ONE open the two
+        // marks cannot reach: it landed while the keystroke was waiting for that answer, so it is
+        // already up by the time the pick is made, and the vendor — which was never told a
+        // selection happened, the field having read the answer itself — closes nothing for it. A
+        // list standing on the single row just taken is the same thing this field refuses after
+        // every other pick (measured: 1 popover, 1 item, still there a half-second later).
+        await _autocomplete.CloseMenuAsync();
+    }
+
+    // What the box's text answers, from a search that is already out wherever there is one: the
+    // keystroke this field answers is the END of the burst the vendor's own debounce is still
+    // waiting out, so the search for that text is usually in flight by the time the key lands.
+    // Asking again instead would cancel it — one Runner — and the vendor, which redraws its list
+    // from whatever that cancelled call returns, would come back with no list at all: the choice
+    // taken away from the operator on the keystroke that was asking for it.
+    //
+    // Where none is out the field asks it itself, and that ask is the one the vendor's own
+    // debounce then cancels — it fires for the SAME text a tenth of a second later, and a second
+    // ask on the one Runner cancels the first. A cancelled ask filed no answer, so it hands back
+    // the list of an older term (Ask), which this key must never read: empty it takes nothing on
+    // the very code it was resolving, and holding one row of a term already picked and cleared it
+    // would take THAT article, silently, over the code in the box. So the answer is waited for a
+    // second time instead — the search that cancelled ours asked our own text, and it is the one
+    // bringing the list. Unanswered with nothing left out, the key resolves nothing at all.
+    async Task<List<TItem>> Answered(string typed)
+    {
+        await Settling(typed);
+
+        if (_answered == typed)
+        {
+            return [.. _results];
+        }
+
+        await Ask(typed);
+
+        await Settling(typed);
+
+        if (_answered == typed)
+        {
+            return [.. _results];
+        }
+
+        return [];
+    }
+
+    // Holds while any search is out and none of them has answered for this text.
+    async Task Settling(string typed)
+    {
+        while (_answered != typed && _searchesOut > 0)
+        {
+            await (_settling ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
+        }
+    }
+
     // The third belt, for the one reopen the two above cannot see: the vendor's own, raised
     // from an open that was already under way when the pick closed the list. It is closed here
     // rather than at the pick because the open has not happened yet then — the vendor raises it
@@ -445,19 +621,6 @@
         _reopenIsStale = false;
 
         await _autocomplete.CloseMenuAsync();
-    }
-
-    // What spends the refocus mark where a search cannot: a key the box takes is the person
-    // using the field again, and the pick they made is over. It is the Tab or Shift+Tab that
-    // carries the cursor out — so the focus they come back with is answered — and it is the
-    // whole answer after an ENTER pick, where the cursor never left and no refocus was ever
-    // coming: the vendor picks on the key UP (OnInputKeyUpAsync), so the keydown that caused
-    // the pick lands before the mark is taken and the next key to arrive is theirs. Not the
-    // blur: that one belongs to the gesture that made the pick, raised at the option's
-    // mousedown, and a mark spent on it is the vendor's own mark, lost the same way.
-    void OnBoxKeyDown()
-    {
-        _refocusIsStale = false;
     }
 
     protected override void DisposeCore()
@@ -564,7 +727,11 @@
     // the last word after it — a refused change then really changes the parameter back.
     async Task OnItemChanged(TItem? item)
     {
-        _reopenIsStale = _searchesOut > 0;
+        // The Enter's own span ends at the pick it was taken for: what it had to say is said in
+        // the mark below, and left standing it would make every later pick of this field's life
+        // read as one made under a list nobody asked for.
+        _reopenIsStale = _searchesOut > 0 || _entered;
+        _entered = false;
 
         // Only a pick hands a cursor back. The (x) raises this with no item at all — the vendor
         // withdraws its own focus features for the whole clearing chain, so there is no open to
@@ -629,6 +796,14 @@
         finally
         {
             _searchesOut--;
+
+            // Said after the count moves and after Answer has filed what came back, so whoever
+            // was waiting reads a settled field rather than this one mid-flight.
+            var settling = _settling;
+
+            _settling = null;
+
+            settling?.TrySetResult();
         }
     }
 

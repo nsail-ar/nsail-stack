@@ -15,23 +15,25 @@ namespace NSail.Components.Tests;
 
 /// <summary>What a pick owes the screen: the list it was made from is gone, and it stays gone
 /// however the close and the box's own refocus are ordered. The vendor closes its own popover
-/// inside the selection, and two opens still follow it. One is an OPEN already under way — the
-/// keystroke before the pick, whose search is still out — running to completion afterwards and
-/// raising the list again, on the very row just chosen, with nothing left to close it. The other
-/// is the cursor the pick hands back: the vendor focuses the box it was picked from, and
-/// OpenOnFocus answers that focus exactly like a click. The user is left reading an answer
+/// inside the selection, and three opens still get past that close. One is an OPEN already under
+/// way — the keystroke before the pick, whose search is still out — running to completion
+/// afterwards and raising the list again, on the very row just chosen, with nothing left to close
+/// it. Another is the cursor the pick hands back: the vendor focuses the box it was picked from,
+/// and OpenOnFocus answers that focus exactly like a click. The third is the open a pick the FIELD
+/// itself makes is late to: the answer its own keystroke read raised the list on the way in, and
+/// the vendor closes nothing for a selection it never saw. The user is left reading an answer
 /// through the list it came from, and the only way out is to click elsewhere.
 ///
 /// The window is the round trip, so it is wide exactly where a lookup is slowest, and it is why
 /// a search is held open here rather than hurried: the order is the subject, not the clock. The
 /// field marks a pick made while a search was out and closes the list the vendor opens for it,
 /// and it withholds OpenOnFocus for the one focus the pick hands back so that one opens nothing
-/// at all. Both marks cover a single gesture and the cases below are what spends them: a search
-/// begun AFTER the pick — a typed term, or a bare press on the box, which asks for the same term
-/// the refused refocus would have — and, where no search is coming, the next key the box takes,
-/// which is how a field left by the keyboard answers the focus it is come back with. The (x)
-/// takes no mark at all: it hands no cursor back, and an empty box that could not open on focus
-/// would have no list left to show.</summary>
+/// at all. Each mark stands until the field is used again, and the cases below are what spends
+/// it: a search begun AFTER the pick — a typed term, or a bare press on the box, which asks for
+/// the same term the refused refocus would have — and, where no search is coming, the next key the
+/// box takes, which is how a field left by the keyboard answers the focus it is come back with.
+/// The (x) takes no mark at all: it hands no cursor back, and a mark taken there would cost the
+/// empty box it leaves the create entry, the only list a Lazy field has to show.</summary>
 public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
 {
     public NsAutocompletePickClosesTests()
@@ -80,11 +82,12 @@ public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
 
     Guid _value;
 
-    IRenderedComponent<SearchLookupHost> Mount(bool clearable)
+    IRenderedComponent<SearchLookupHost> Mount(bool clearable, bool lazy = false)
     {
         return Render<SearchLookupHost>(p => p
             .Add(x => x.Rows, Chart)
             .Add(x => x.Clearable, clearable)
+            .Add(x => x.Lazy, lazy)
             .Add(x => x.Gate, term => Gate(term).Task)
             .Bind(x => x.Value, _value, value => _value = value, () => _value));
     }
@@ -249,6 +252,49 @@ public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
         await cut.Find("input").FocusAsync(new FocusEventArgs());
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>The pick the field makes INSIDE a keystroke (NsAutocompleteReaderEnterTests), and
+    /// the one open neither mark can reach: the list the key's own answer raises is already up
+    /// when the pick is made — it landed while the keystroke was waiting for that answer — and the
+    /// vendor, never told a selection happened, closes nothing for it. Measured without the close:
+    /// one popover holding the single row just taken, still standing a half-second later. The
+    /// focus after it is the other half, the mark the pick took and its own key did not
+    /// spend.</summary>
+    [Fact]
+    public async Task APickAKeystrokeResolvesLeavesNoListOpen()
+    {
+        var cut = Mount(clearable: false, lazy: true);
+
+        var input = cut.Find("input");
+
+        await input.FocusAsync(new FocusEventArgs());
+
+        // The reader's burst: the term goes in and the Enter is pressed over a search that is
+        // still out, which is the keystroke the field answers itself.
+        _ = Type(cut, "Caja");
+
+        cut.WaitForAssertion(() => Assert.Contains("Caja", cut.Instance.Asked!), TimeSpan.FromSeconds(5));
+
+        var entered = input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        Gate("Caja").TrySetResult();
+
+        await entered;
+
+        cut.WaitForAssertion(() => Assert.Equal(Caja.Id, _value), TimeSpan.FromSeconds(5));
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+
+        // The cursor coming back to the box the keystroke picked in, with its gate opened as the
+        // mouse pick's is. What forces the mark's own ordering is the Tab case below — a box
+        // whose text bUnit does not hand back searches for nothing, so this focus is the shape of
+        // the gesture and not the measure of it (the case above).
+        Gate(Caja.DisplayName).TrySetResult();
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
     }
 
     /// <summary>The (x) is not a pick: it hands no cursor back — the vendor withdraws its own

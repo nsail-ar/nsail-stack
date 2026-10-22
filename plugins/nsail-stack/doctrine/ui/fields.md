@@ -622,7 +622,10 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   through the list it came from, and no way out but a click elsewhere. So a pick made while a
   search was out is marked and the open the vendor raises for it is closed. Only a search
   ALREADY out can do this; one that begins after the pick drops the mark, because that one is
-  the field being asked for its list again and the list it opens is wanted.
+  the field being asked for its list again and the list it opens is wanted. A pick the FIELD makes
+  is late to its own open rather than early — the answer its keystroke waited for raised the list
+  before the pick — so there the list is closed at the pick (*A SEARCH-FIRST box answers its own
+  Enter*, below).
 - **And no list either, however the close and the box's own refocus are ordered.** A pick made
   with the mouse ends with the vendor focusing the box it was made from, and `OpenOnFocus`
   answers that focus exactly like a click — the same list over the same answer, raised by the
@@ -632,12 +635,16 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   got away with it and a loaded one did not. So the open is refused at the source instead — the
   field withholds `OpenOnFocus` for that one focus, never a blur or a moved cursor to get the
   list down ([forms.md](forms.md), *Focus on open*: a focus that is not a gesture is answered by
-  swallowing the open). **The mark covers one focus, and the field being used again spends it**:
-  the next SEARCH, which every other way of opening a list asks for first — a press on the box,
-  the chevron, a typed term — or the next KEY the box takes, which is the Tab that carries the
-  cursor out of a field somebody is done with and the whole answer after an ENTER pick, where
-  the cursor never left and no refocus was ever coming. Only a pick takes the mark: the (x)
-  hands no cursor back, and the empty box it leaves would have no list left to show.
+  swallowing the open). **The mark stands until the field is used again, and that is what spends
+  it** — not the focus it was taken for, so a walk that leaves with the mouse and returns with
+  Shift+Tab is refused every time it repeats: the next SEARCH, which every other way of opening a
+  list asks for first — a press on the box, the chevron, a typed term — or the next KEY the box
+  takes, which is the Tab that carries the cursor out of a field somebody is done with and the
+  whole answer after an ENTER pick, where the cursor never left and no refocus was ever coming.
+  A key spends it BEFORE the field resolves an Enter of its own (*A SEARCH-FIRST box answers its
+  own Enter*, below), or the pick that keystroke makes would spend the mark it just took. Only
+  a pick takes the mark: the (x) hands no cursor back, and a mark taken there would cost the
+  empty box it leaves the create entry, which is the only list a `Lazy` field has to show.
 - **The open list is sized by its RESULTS** — floored at the field it drops from, bounded by a
   measure, never capped at the box the field stands in. The vendor caps its popover at the
   anchor's own width by default, and in a line editor the anchor is a table cell, so one word at
@@ -672,6 +679,43 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   since the guard reads the element the keystroke landed on. The same rule covers `NsSelect` and
   `NsMultiSelect`: the vendor stamps both words on their own input too, so nothing in the guard
   names a component (`NsComboboxExpandedMarkTests` holds all three).
+- **A SEARCH-FIRST box answers its own Enter, because the reader's code arrives before any list
+  does.** A reader is a keyboard: it types the whole code and ends it with Enter inside a fraction
+  of the vendor's own debounce, so at that instant no search has been asked, the list is closed
+  and the vendor — which picks the option it is HIGHLIGHTING — has nothing to pick. The code
+  resolved to nothing and the hand was holding a reader that did not work. So a `Lazy` lookup
+  reads that keystroke itself and answers it the way the scan box over a grid answers one
+  (`ProductScanField`): **one** answer is taken, with no arrow-down; **several** are left in the
+  list to choose from, because an exact code that also spells other articles is a choice and not a
+  match; **none** leaves the box exactly as it was, which is what the caller's own offer and the
+  create entry quote. **The one answer it takes closes the list**, which is the pick promise above
+  read on the one path the vendor cannot keep it on: the answer the key waited for opened that list
+  on the way in, so it is already up when the pick is made, and the vendor closes nothing for a
+  selection it never saw — the field read the answer itself. Several answers keep theirs open; that
+  list IS the choice. The text it resolves is held off the vendor's own text event and never read
+  back off the term a search is about — the whole point of the keystroke is that no search has
+  started for it (`NsTextFieldBase.HoldTyped`'s reason). Derived from the posture and never a
+  parameter: a browsed lookup has its whole set on screen from the focus, so the vendor answers
+  off the list already open.
+- **No answer of a search that key does not own is read as its own.** A search already out for
+  the text is **waited** for and never asked again: a field has one Runner for its searches, so a
+  second ask cancels the first, and the first is the call the vendor redraws its list from — it
+  would come back empty, taking the choice away from the operator on the keystroke that was asking
+  for it. And where none was out, the ask the key makes itself is the one the vendor's own debounce
+  **cancels**, firing for the same text a tenth of a second later: a cancelled ask files no answer
+  and hands back the field's last good read, so taken as this key's answer it resolves nothing on
+  the very code it was asking about — or, in a box that answered once already, the article of the
+  term before it. That answer is waited for too, and it is the one the search that cancelled ours
+  brings.
+- **The mark that takes Enter from the form is the STATE, never the posture** (above,
+  `data-ns-commits`): it is on while there is a term in the box that no list on screen answers and
+  that is not the reading of the article the box already holds — a code ended with Enter in a
+  filter bar or in a one-field dialog must not send the question on the keystroke that was only
+  finding the article. Empty, settled or locked, the key goes back to the policy around it: the
+  same three states the combobox read hands it back in, by the same criterion every other field's
+  mark is derived with — a box with nothing hanging on this key has no second meaning for it to
+  collide with. Eaten there it would die where it used to work, and the question a filter bar IS
+  would be sent by the Enter in every box of it but this one.
 - **A row the rules cannot settle alone opens its own second level, inside the list.**
   `ItemTemplate` seats an `NsMenu` with a `Content` face on that option, and the same row is
   also handed to `ItemDisabledFunc`: the face IS the row — `.ns-lookup-list` makes the trigger

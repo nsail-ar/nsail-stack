@@ -204,11 +204,28 @@ for one — and so does any key the input takes (`OnKeyDown`, raised at the end 
 finished with, whose return focus would otherwise be the one refused. The key is also the whole
 answer after an ENTER pick, where the cursor never left and no refocus was ever coming — the
 vendor picks on the key UP (`OnInputKeyUpAsync`), so the keydown that caused the pick lands before
-the mark is taken and the next key to arrive is the person's. **Not the blur**: that is the event
-the vendor loses its own mark to, and a mark spent on it would be lost the same way. What is left
-is bounded and measured: a pick made with the mouse, left with the mouse and come back to with
-Shift+Tab refuses that one focus, and the press, the chevron or a typed term it is followed by
-opens the list.
+the mark is taken and the next key to arrive is the person's. The field's OWN Enter pick is the one
+that does not, since it resolves inside that keydown (`OnBoxKeyDown`, [fields.md](ui/fields.md), *A
+SEARCH-FIRST box answers its own Enter*): the key spends the mark before the resolve, or the pick it
+makes would lose the mark it has just taken. **Not the blur**: that is the event the vendor loses its
+own mark to, and a mark spent on it would be lost the same way.
+
+**The mark is held, not spent per focus**, so what is left is bounded and measured: a pick made
+with the mouse, left with the mouse and come back to with Shift+Tab refuses that focus — and
+refuses it again every time that same walk repeats, since no key and no search came in between —
+and the press, the chevron or a typed term it is followed by opens the list.
+
+## Why a pick the FIELD makes closes the list itself
+
+Measured against MudBlazor 9.10.0: the vendor closes its popover inside `ListItemOnClickAsync`, so
+every pick the VENDOR makes arrives with its list already down. A pick the field makes — the single
+answer a search-first Enter takes — reaches the vendor as a `Value` change and nothing else, and a
+`Value` it already holds is where `OnParametersSet`'s own close belt returns early. So the list the
+key's answer opened on the way in stays up: one popover holding the one row just taken, still
+standing a half-second after the pick (`NsAutocompletePickClosesTests`, measured with the close
+removed). The field closes the menu at that pick. The two marks cannot reach this one — both are
+read when an open LANDS, and this open landed while the keystroke was still waiting for the answer
+it picks from.
 
 ## Why the open list is floored at the field and capped at a measure
 
