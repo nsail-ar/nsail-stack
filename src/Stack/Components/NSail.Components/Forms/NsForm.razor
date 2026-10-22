@@ -78,9 +78,10 @@ else if (HasDocument)
                         <CascadingValue Value="IsRunning" Name="FormRunning">
                             @* Every field under the form announces itself here, so the form knows
                                which members are actually on screen when a refusal arrives naming
-                               one. NsTab shadows this cascade and forwards to it, and so does an
-                               NsListEditor's open row — both answer their own refusal with the
-                               same piece (RefusalPlacement). *@
+                               one. NsTab shadows this cascade and forwards to it, and so does the
+                               open row of an NsListEditor or of an editable NsTable — each of
+                               them answers its own refusal with the same piece
+                               (RefusalPlacement). *@
                             <CascadingValue Value="(IFieldTracker)Placement" IsFixed="true">
                                 <CascadingValue Value="(IFormProblems)this" IsFixed="true">
                                     @* And a row left open announces itself too: the submit

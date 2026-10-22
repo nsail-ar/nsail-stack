@@ -4,6 +4,8 @@
 @namespace NSail.Components
 @typeparam TRow where TRow : class
 @inherits NsCollectionBase
+@implements IFormRow
+@using Microsoft.AspNetCore.Components.Forms
 @using MudBlazor.Services
 @using NSail.Exporting
 @using NSail.Paging
@@ -86,20 +88,29 @@
             }
             @if (IsEditing(item))
             {
-                @* Fixed: the marker is a constant and the cells under it are the row's own. *@
-                <CascadingValue Value="TableRowEdit.Open" IsFixed="true">
-                    @RowEditor!(item)
+                @* The open row answers its own refusal, so what its cells' fields announce is
+                   announced HERE: this shadows the form's tracker and forwards to it (NsTab's
+                   own rule), and the context the messages are posted to is the form's where
+                   there is one — the row's fields already read that one — so nothing is wired
+                   by the screen either way (RefusalPlacement). *@
+                <CascadingValue TValue="EditContext" Value="RowContext" IsFixed="false">
+                    <CascadingValue Value="(IFieldTracker)Placement" IsFixed="true">
+                        @* Fixed: the marker is a constant and the cells under it are the row's own. *@
+                        <CascadingValue Value="TableRowEdit.Open" IsFixed="true">
+                            @RowEditor!(item)
+                        </CascadingValue>
+                        @* ns-row-commit and ns-row-edit below are what Enter inside a cell presses: the
+                           key confirms the row and opens the one under it by running these very
+                           controls, so there is no second path a row is committed by (ns.js, the Enter
+                           policy). *@
+                        <NsTd>
+                            <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Justify="NsAlign.End">
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-commit" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
+                            </NsStack>
+                        </NsTd>
+                    </CascadingValue>
                 </CascadingValue>
-                @* ns-row-commit and ns-row-edit below are what Enter inside a cell presses: the
-                   key confirms the row and opens the one under it by running these very
-                   controls, so there is no second path a row is committed by (ns.js, the Enter
-                   policy). *@
-                <NsTd>
-                    <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Justify="NsAlign.End">
-                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-commit" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
-                        <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
-                    </NsStack>
-                </NsTd>
             }
             else
             {
@@ -120,6 +131,36 @@
                         </NsStack>
                     </NsTd>
                 }
+            }
+        </text>;
+
+    @* What the open row's refusal named that the row renders no field for — a rule, a member no
+       cell bound — as ONE strip directly under that row, which is where the row that caused it
+       ends. A cell is one column wide and the answer belongs to the whole row, so the strip
+       takes a row of its own (the vendor's nested-row slot) rather than a seat in the editor's
+       cells: the row grows downward and nothing above it moves (intentional-ui.md, Refusal
+       placement). It exists only while there is something to say, so a row nobody refused
+       spends no height on the possibility. *@
+    RenderFragment<TRow> problemRow = item =>
+        @<text>
+            @if (IsEditing(item) && Placement.Unplaced.Count > 0)
+            {
+                <tr class="ns-table-problem">
+                    @* Past any column count on purpose: this row holds one cell and the columns
+                       it has to cross are the header's, which the table does not count — a
+                       computed column declares no key and the two the table seats itself are
+                       conditional. A span wider than the table resolves to the whole row. *@
+                    <td colspan="100">
+                        <div class="ns-form-problem ns-form-problem-shown" role="alert">
+                            <div class="ns-form-problem-text">
+                                @foreach (var text in Placement.Unplaced)
+                                {
+                                    <span>@text</span>
+                                }
+                            </div>
+                        </div>
+                    </td>
+                </tr>
             }
         </text>;
 
@@ -203,6 +244,9 @@
         <RowTemplate>
             @rowCells(context)
         </RowTemplate>
+        <ChildRowContent>
+            @problemRow(context)
+        </ChildRowContent>
         <NoRecordsContent>
             @noRecords
         </NoRecordsContent>
@@ -238,6 +282,9 @@ else if (OnQuery.HasDelegate)
         <RowTemplate>
             @rowCells(context)
         </RowTemplate>
+        <ChildRowContent>
+            @problemRow(context)
+        </ChildRowContent>
         <NoRecordsContent>
             @noRecords
         </NoRecordsContent>
@@ -263,6 +310,9 @@ else
         <RowTemplate>
             @rowCells(context)
         </RowTemplate>
+        <ChildRowContent>
+            @problemRow(context)
+        </ChildRowContent>
         <NoRecordsContent>
             @noRecords
         </NoRecordsContent>
@@ -311,6 +361,11 @@ else
     readonly TableColumns _columns = new();
     TRow? _editing;
     bool _editingIsNew;
+    bool _claimed;
+
+    RefusalPlacement? _placement;
+    EditContext? _own;
+    ValidationMessageStore? _rowMessages;
 
     // Scroll mode's own state: the rows accumulated so far, where the next page starts, and
     // whether the server has nothing left to give. The instance class is what pins the
@@ -482,10 +537,22 @@ else
     [Parameter]
     public EventCallback<RowEditEventArgs<TRow>> OnRowCommit { get; set; }
 
-    /// <summary>The row leaves the collection: the delete control, or cancelling a row that
-    /// was never confirmed. Without a handler the delete control does not render.</summary>
+    /// <summary>The row leaves the collection: the delete control, cancelling a row that was
+    /// never confirmed, or the document's submit taking back a new row nobody typed into
+    /// (<see cref="NewRowEmpty"/>). Without a handler the delete control does not render.</summary>
     [Parameter]
     public EventCallback<RowEditEventArgs<TRow>> OnRowRemove { get; set; }
+
+    /// <summary>Whether a row the table opened as NEW is one nobody typed into — asked of the
+    /// screen, never guessed from TRow: what counts as typed in is the register's own word (a
+    /// sale line is empty until an article is on it, whatever the quantity box shows).
+    /// <para>Asked by the document's submit, and only of a never-confirmed row: a row this
+    /// answers true for is taken back out through <see cref="OnRowRemove"/> and the save goes
+    /// on, which is what makes the keyboard's own trailing row — Enter on the last row adds one
+    /// — cost nothing. A screen that answers nothing keeps the default: every open row is
+    /// committed or refused by its own rule, so no row is ever dropped in silence.</para></summary>
+    [Parameter]
+    public Func<TRow, bool>? NewRowEmpty { get; set; }
 
     [Parameter, EditorRequired]
     public DataPage<TRow> Rows { get; set; } = DataPage<TRow>.Empty();
@@ -526,7 +593,33 @@ else
     [CascadingParameter]
     IFormDocument? Document { get; set; }
 
+    /// <summary>The form the table stands inside, where it stands inside one: its context is
+    /// what the open row's own fields already read, so a message posted there needs no second
+    /// cascade to reach them, and its tracker is what the open row forwards to.</summary>
+    [CascadingParameter]
+    EditContext? Form { get; set; }
+
+    [CascadingParameter]
+    IFieldTracker? Tracker { get; set; }
+
+    /// <summary>The document's own register of open rows: the form's submit settles this table
+    /// before it validates, so a row left open is committed, taken back out or refused with its
+    /// own words (IFormRows). A table mounted outside any form has nobody to settle it.</summary>
+    [CascadingParameter]
+    IFormRows? OpenRows { get; set; }
+
     bool Selectable => Selection is not null && RowKey is not null;
+
+    // Built on first use rather than in a field initializer: the words a refusal is said with
+    // come from an injected StringManager, which does not exist while a field does.
+    RefusalPlacement Placement => _placement ??= new RefusalPlacement(Strings);
+
+    // The context the open row's fields read their own refusal off — the form's where the table
+    // stands inside one, which is the case every editable grid in the house is, and one of the
+    // table's own where there is none. The reasons for both, and for modelling the fallback on
+    // the TABLE rather than on the row, are NsListEditor's: the same two lines answer the same
+    // question for the same reason.
+    EditContext RowContext => Form ?? (_own ??= new EditContext(this));
 
     // What the reader is looking at, which in page mode is the winning read's answer and not
     // the Rows parameter: a tick, its header's third state and the count over the selection bar
@@ -716,8 +809,56 @@ else
         _editingIsNew = false;
     }
 
-    async Task Commit(TRow item)
+    /// <summary>The document's submit, closing the row this table has open: a new row nobody
+    /// typed into is taken back out (<see cref="NewRowEmpty"/>) and the save goes on, and any
+    /// other open row has its own rule asked again on the values on screen — the keystroke
+    /// already wrote them into the row, so what the boxes hold is what the handler is asked
+    /// about. A row nothing refuses closes and the document saves in one tap; a refused one
+    /// stays open wearing its own answer under the field that answer names (intentional-ui.md,
+    /// Refusal placement).</summary>
+    async Task<bool> IFormRow.Settle()
     {
+        if (_editing is not { } row)
+        {
+            return true;
+        }
+
+        // The row the keyboard's last Enter minted and nobody filled in: it is in the collection
+        // already — NewRow appends before returning, which is that parameter's contract — so the
+        // save was going to write it, and the only answer that is not a lie is to take it back
+        // out. Asked only of a never-confirmed row:
+        // a row somebody once confirmed and reopened is an EDIT, and emptying its boxes is a
+        // change the row's own rule answers for (hosts.md).
+        if (_editingIsNew && NewRowEmpty is not null && NewRowEmpty(row))
+        {
+            await Discard(row);
+
+            return true;
+        }
+
+        return await Commit(row);
+    }
+
+    /// <summary>Confirms the row and answers whether it took, which is what the document's
+    /// submit reads to know it may go on (Settle). The press itself has no use for the answer:
+    /// the row is either closed or standing there with its reason drawn.</summary>
+    async Task<bool> Commit(TRow item)
+    {
+        // What the last press refused is lifted before this one runs: a message standing beside
+        // a value the user has already corrected says the row is still refused when it is not.
+        Placement.Clear();
+        _rowMessages?.Clear();
+
+        // The row's own declarations, asked before its handler and before the document's own
+        // pass: the walk and the reason it runs here are RowAnnotations', shared with the list
+        // editor's row so one open row owes one rule.
+        _rowMessages ??= new ValidationMessageStore(RowContext);
+
+        if (RowAnnotations.Refuses(Form?.Model, item, RowContext, _rowMessages, Strings))
+        {
+            return false;
+        }
+
         var args = new RowEditEventArgs<TRow>
         {
             Row = item,
@@ -730,10 +871,29 @@ else
         // the args: a rejected row must stay open where the user can still fix it.
         if (args.Cancel || args.Problem is not null)
         {
-            return;
+            return false;
         }
 
         Close();
+
+        return true;
+    }
+
+    /// <summary>The open row answers its own refusal: an issue naming a field the row renders
+    /// draws under that field, everything else as one strip on a row of its own under it — never
+    /// a toast in a corner the user has to connect back to the row they just confirmed
+    /// (intentional-ui.md, Refusal placement). With no row open there is nothing on screen to
+    /// draw under, so the report goes on as it always did.</summary>
+    public override async Task Report(ProblemEventArgs args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        if (!args.Handled && _editing is { } row && Placement.Place(args.Problem, row))
+        {
+            args.Handled = true;
+        }
+
+        await base.Report(args);
     }
 
     async Task Cancel(TRow item)
@@ -742,10 +902,25 @@ else
         // out of it leaves nothing to fall back to, so it goes.
         if (_editingIsNew)
         {
-            await Raise(OnRowRemove, new RowEditEventArgs<TRow> { Row = item, IsNew = true });
+            await Discard(item);
+
+            return;
         }
 
         Close();
+    }
+
+    // The never-confirmed row leaving, by the person's own Cancelar or by a submit that found
+    // nothing typed into it (Settle). The editor closes BEFORE the notification goes out: the
+    // row is off the screen either way, so a problem the remove handler reports has no open row
+    // to be drawn on and takes the road any report with no host to claim it takes. The caller is
+    // what takes the row out of the collection, because the caller's own factory is what put it
+    // in (NewRow).
+    async Task Discard(TRow item)
+    {
+        Close();
+
+        await Raise(OnRowRemove, new RowEditEventArgs<TRow> { Row = item, IsNew = true });
     }
 
     Task Remove(TRow item)
@@ -755,6 +930,15 @@ else
 
     void Close()
     {
+        // The row leaving takes its refusal with it: the editor that was refused is gone, and a
+        // message left posted would draw under the next row opened on the same field. Its FIELDS
+        // are let go of in the same breath, for the answer that has not arrived yet: the boxes
+        // stand until the next render, and the document's own refusal about the row just settled
+        // belongs at the form's foot, not under an input leaving the screen (RefusalPlacement).
+        Placement.Clear();
+        Placement.Forget();
+        _rowMessages?.Clear();
+
         _editing = null;
         _editingIsNew = false;
     }
@@ -1082,6 +1266,21 @@ else
         }
     }
 
+    protected override void OnParametersSet()
+    {
+        Placement.Parent = Tracker;
+        Placement.Bind(RowContext);
+
+        // Claimed whatever the table is showing right now: RowEditor and the form's own writability
+        // are parameters that can flip, and a table with no row open settles in one line — the
+        // condition the claim would carry is the one Settle already answers.
+        if (!_claimed && OpenRows is not null)
+        {
+            OpenRows.Claim(this);
+            _claimed = true;
+        }
+    }
+
     // The only thing this grid's own render reads off the surface is whether a header holds the
     // export slot, and the event carries far more than that: every grid on the surface raises it
     // from every one of its own renders, this grid included, so redrawing for all of them would
@@ -1245,6 +1444,20 @@ else
             // An export in flight has a screen to put its file on no longer, and its next page
             // would be a round trip asked for by nobody.
             _export?.Cancel();
+
+            // The table's own end is where it lets go of the form's context: a refusal posted
+            // there is the FORM's problem once the table is gone — nothing can lift it and the
+            // form's own submit would refuse with nothing on screen to explain it. And the
+            // register lets go of the table for the same reason: a submit that settled a grid no
+            // longer on screen would raise OnRowCommit for a row nobody can see.
+            _placement?.Bind(null);
+            _rowMessages?.Clear();
+
+            if (_claimed && OpenRows is not null)
+            {
+                OpenRows.Release(this);
+                _claimed = false;
+            }
 
             if (Surface is not null)
             {

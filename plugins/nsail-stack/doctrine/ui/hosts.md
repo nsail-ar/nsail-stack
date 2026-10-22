@@ -156,6 +156,29 @@ list is on that side of it, Ajustes de Venta is not. Both row hosts raise remova
 (`NsListEditor.OnRemove`, `NsTable.OnRowRemove`), so the screen that deletes per row is the one
 that owns the confirm.
 
+**The document's submit answers for the row left open, and the table answers for it the way the
+list does** (`IFormRow`, [forms.md](forms.md)): the row's values are already the document's —
+`NewRow` appends before returning, which is this host's contract where the list's `NewItem` only
+mints — so Guardar asks the row's own rule again on what the boxes hold. A row nothing refuses
+is committed, the editor closes and the save goes on in the same press; a refused one stays
+open wearing its own reason, under the field that reason names and otherwise as one strip on a
+row of its own directly under it (`.ns-table-problem`) — never at the form's foot, and never a
+toast the person has to connect back to the row. The
+placement is the form's own piece asked a second time (`RefusalPlacement`), so a screen wires
+none of it: a page sets `args.Problem` and nothing else. A `[Validated]` row's own declarations
+are asked in that same breath, for the reason and through the walk the list's are
+(`RowAnnotations`, [fields.md](fields.md)).
+
+- **What "a new row nobody typed into" means is the HOST's answer: `NewRowEmpty`.** A row the
+  screen answers true for is taken back out by the submit — through `OnRowRemove`, the door
+  Cancelar already uses — and the save goes through, which is what makes the keyboard's own
+  trailing row cost nothing (Enter on the last row adds one, below). Asked only of a
+  never-confirmed row: reopening a row and emptying its boxes is an EDIT, and the row's own rule
+  answers for that. **A grid that answers nothing commits or refuses every open row**, so no
+  screen quietly sends a row its own rule would have thrown back — and the Stack derives nothing
+  from `TRow`, where a default quantity and a blank description cannot be told from a line
+  somebody meant. The counter sale is the screen that asked the question (cases);
+  `NsListEditor` earns the same parameter the day a list needs one.
 - **Enter in a row being typed into confirms it and the cursor goes down the column**, and on the
   last row it adds one — the keyboard writing line after line, which is what a grid is for. The
   key presses the row's OWN controls to do it (`ns-row-commit`, `ns-row-edit`, `ns-cells-add`,
@@ -302,12 +325,13 @@ the issue names, as one strip on the row's last line for anything the row render
 never a toast (intentional-ui.md, Refusal placement). The row's fields announce themselves to the
 list the way they announce themselves to a form, so a screen wires none of it — a page sets
 `args.Problem` and nothing else. The next Confirmar lifts it, and so does the submit of the
-document the list stands in — which **settles the row left open before it validates**: `OnCommit`
-runs again on the values on screen, so Guardar confirms a row nothing refuses (the editor closes,
-the document saves in one tap) and is refused by a bad one in the row's own words, under the field
-they name (intentional-ui.md). A page writes nothing for that either. **Once the fields have
-stacked, the commit pair reads after the last of them**, the way `NsTable`'s row editor seats
-Confirmar/Cancelar in the last cell.
+document the list stands in — which **settles the row left open before it validates**, exactly as
+it settles the table's (Inline editing, above): `OnCommit` runs again on the values on screen, so
+Guardar confirms a row nothing refuses (the editor closes, the document saves in one tap) and is
+refused by a bad one in the row's own words, under the field they name (intentional-ui.md). A
+page writes nothing for that either. **Once the fields have stacked, the commit pair reads
+after the last of them**, the way `NsTable`'s row editor seats Confirmar/Cancelar in the last
+cell.
 **`OnRemove` is the delete control's** — it renders only where there is a handler to take the
 item out — and is raised on a cancelled new row as a notification (cases), with no question in
 front of it (Inline editing, above). An item is a flex row that **wraps**. Reference:

@@ -11,8 +11,9 @@ namespace NSail.Components;
 // naming a field the host actually RENDERED goes under that field, and everything else — a
 // member no field bound, a rule naming itself, a problem carrying no issue at all — is one
 // strip at the host's foot (intentional-ui.md, Refusal placement). NsForm places a document's
-// refusal with it and NsListEditor its open row's, so the two cannot come to place the same
-// refusal in two different ways, and the host that joins them next writes neither half.
+// refusal with it, and the hosts with a row open inside one — an NsListEditor, an editable
+// NsTable — place that row's, so no two of them come to place the same refusal in two different
+// ways, and the host that joins them next writes neither half.
 //
 // The field tracker is the same object because it answers the same question: only a field that
 // announced itself may carry a message, so the set that decides that is the set the placement
@@ -76,11 +77,21 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
         Parent?.Untrack(identifier);
     }
 
-    /// <summary>Forgets every field announced so far, for a host whose document was replaced:
+    /// <summary>Forgets every field announced so far: for a host whose document was replaced —
     /// the new one renders its own set, and a member left over from the old one would carry a
-    /// message under an input nobody can see.</summary>
+    /// message under an input nobody can see — and for a row host closing the row it held open,
+    /// whose boxes are still on screen until the next render lands. What was passed on goes with
+    /// it, or the host ABOVE places its own answer under an input that is leaving: the submit
+    /// settles the row, the server then refuses that very row by name, and the message would be
+    /// posted under a box that unmounts a tick later, leaving nothing on screen to carry
+    /// it.</summary>
     public void Forget()
     {
+        foreach (var identifier in _rendered)
+        {
+            Parent?.Untrack(identifier);
+        }
+
         _rendered.Clear();
     }
 

@@ -5,7 +5,6 @@
 @typeparam TItem where TItem : class
 @inherits NsCollectionBase
 @implements IFormRow
-@using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Forms
 @using NSail.Localization
 
@@ -342,14 +341,12 @@ else
         Placement.Clear();
         _rowMessages?.Clear();
 
-        // A [Validated] row's own bound is asked NOW, not left to the document's own lazy gate:
-        // Settle() runs before EditContext.Validate() (the whole reason this method exists), and
-        // the row is about to UNMOUNT on a successful close — a refusal the ambient validator
-        // would otherwise discover one step too late, on a field nobody is listening to any
-        // more (the "mute Guardar" ARowStillRefusedByItsOwnFieldRefusesTheSubmitOutLoud already
-        // refuses for an OnCommit-decided rule). A row no member opened with [Validated] takes
-        // none of this, same as today.
-        if (Form is not null && ValidatedModels.Covers(Form.Model, item) && !ValidateRow(item))
+        // The row's own declarations, asked before its handler and before the document's own
+        // pass: the walk and the reason it runs here are RowAnnotations', shared with the
+        // table's row editor so one open row owes one rule.
+        _rowMessages ??= new ValidationMessageStore(RowContext);
+
+        if (RowAnnotations.Refuses(Form?.Model, item, RowContext, _rowMessages, Strings))
         {
             return false;
         }
@@ -372,43 +369,6 @@ else
         Close();
 
         return true;
-    }
-
-    // The same walk and the same wording NsDataAnnotationsValidator uses on the whole document,
-    // scoped to this one row: DataAnnotations, coded validations and IValidatableObject, plus a
-    // [Validated] member the row's own type opens in turn. Posted on the FORM's EditContext —
-    // the row's fields already read that one — so the field draws it with no second cascade.
-    bool ValidateRow(TItem item)
-    {
-        _rowMessages ??= new ValidationMessageStore(RowContext);
-
-        var valid = true;
-
-        foreach (var model in ValidatedModels.Reach(item))
-        {
-            var context = new ValidationContext(model);
-            var results = new List<ValidationResult>();
-
-            if (!Validator.TryValidateObject(model, context, results, validateAllProperties: true))
-            {
-                valid = false;
-            }
-
-            foreach (var result in results)
-            {
-                foreach (var memberName in result.MemberNames.DefaultIfEmpty(string.Empty))
-                {
-                    _rowMessages.Add(new FieldIdentifier(model, memberName), RefusalWords.For(Strings, model, memberName, result));
-                }
-            }
-        }
-
-        if (!valid)
-        {
-            RowContext.NotifyValidationStateChanged();
-        }
-
-        return valid;
     }
 
     async Task Cancel(TItem item)
@@ -454,8 +414,12 @@ else
     void Close()
     {
         // The row leaving takes its refusal with it: the editor that was refused is gone, and a
-        // message left posted would draw under the next row opened on the same field.
+        // message left posted would draw under the next row opened on the same field. Its FIELDS
+        // are let go of in the same breath, for the answer that has not arrived yet: the boxes
+        // stand until the next render, and the document's own refusal about the row just settled
+        // belongs at the form's foot, not under an input leaving the screen (RefusalPlacement).
         Placement.Clear();
+        Placement.Forget();
         _rowMessages?.Clear();
 
         _editing = null;

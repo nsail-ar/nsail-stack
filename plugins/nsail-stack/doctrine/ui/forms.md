@@ -355,15 +355,19 @@ field; an issue naming anything else — a member no field bound, a rule name, o
 
 **The contract is a piece, not a method of the form** (`RefusalPlacement`): it is the field
 tracker and the placement together, because only a field that announced itself may carry a
-message. A second host with fields on screen when a refusal arrives — `NsListEditor`'s open row —
-places its own with it rather than writing the rule again ([hosts.md](hosts.md)). **A placement
-lifts what it has standing whenever the `EditContext` it posted to is validated**, and lets go of
-it when its own host leaves the screen: a store's messages outlive the store, and one posted on
-someone else's context is a validation failure that context's owner cannot reach. **What the lift
-would leave unanswered is settled before it**: a host holding a row open registers on the form
-(`IFormRows`), and the submit runs that row's own commit on the current values before it validates
-anything — a row nothing refuses closes and the save goes on, a refused one draws its reason and
-ends the submit there (intentional-ui.md, Refusal placement).
+message. The other hosts with fields on screen when a refusal arrives — the open row of an
+`NsListEditor` or of an editable `NsTable` — place their own with it rather than writing the rule
+again ([hosts.md](hosts.md)). **A placement lifts what it has standing whenever the `EditContext`
+it posted to is validated**, and lets go of it when its own host leaves the screen: a store's
+messages outlive the store, and one posted on someone else's context is a validation failure that
+context's owner cannot reach. **What the lift would leave unanswered is settled before it**: a
+host holding a row open registers on the form (`IFormRows`), and the submit runs that row's own
+commit on the current values before it validates anything — a row nothing refuses closes and the
+save goes on, a refused one draws its reason and ends the submit there (intentional-ui.md,
+Refusal placement). **A row the settle CLOSED stops claiming its fields in the same breath**,
+before the render that takes them off screen: otherwise the document's own answer about that very
+row — the server refusing `Lines[2].Quantity` — would be posted under a box about to unmount,
+which is the silence the placement exists to prevent (`RefusalPlacement.Forget`).
 
 - **Being a real property is not what anchors an issue — being *rendered* is.** A field announces
   the identifier it binds (`IFieldTracker`, cascaded by `NsForm`, forwarded by `NsTab`), and only

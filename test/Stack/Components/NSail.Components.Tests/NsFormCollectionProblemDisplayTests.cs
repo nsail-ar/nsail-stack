@@ -15,14 +15,13 @@ using NSail.Testing.Models;
 namespace NSail.Components.Tests;
 
 /// <summary>nsail#2275: a [Validated] collection's issue names its element by index
-/// ("Addresses[1].Street"), which `RefusalPlacement`'s field resolver now reads by indexing
-/// into the collection — the same resolver an un-indexed nested-model path already took, so a
-/// collection earns no second placement rule. Whether the row that path names is still open
-/// when the answer arrives decides where it draws: an editable `NsTable` row carries no
-/// `IFormRow` of its own, so nothing settles it before the document's own submit and an open
-/// row stands through the whole round trip; a closed row (or an `NsListEditor` row, which DOES
-/// settle before the send) claims no field, and the refusal falls to the form's foot like any
-/// other unplaced issue.</summary>
+/// ("Addresses[1].Street"), which `RefusalPlacement`'s field resolver reads by indexing into the
+/// collection — the same resolver an un-indexed nested-model path already took, so a collection
+/// earns no second placement rule. Whether that path has a field to draw under when the answer
+/// arrives decides where it draws: a screen rendering a field per element has one, while a row
+/// editor's open row has none by then — both row hosts settle the row they hold open before the
+/// document is sent (nsail#2245), so the row the server answers about is already closed and the
+/// refusal falls to the form's foot like any other unplaced issue.</summary>
 public sealed class NsFormCollectionProblemDisplayTests : BunitContext, IAsyncLifetime
 {
     public NsFormCollectionProblemDisplayTests()
@@ -66,7 +65,58 @@ public sealed class NsFormCollectionProblemDisplayTests : BunitContext, IAsyncLi
     }
 
     [Fact]
-    public async Task AnIssueNamingAnOpenTableRowsElement_DrawsUnderThatRowsField()
+    public async Task AnIssueNamingACollectionsElement_DrawsUnderThatElementsField()
+    {
+        var model = new CollectionProblemModel
+        {
+            Addresses = [new AddressRow { Street = "Siempreviva 742" }, new AddressRow { Street = "Falsa 123" }],
+        };
+
+        var problem = Invalid(new Issue("Required", "Falta la calle.", "Addresses[1].Street"));
+
+        var cut = Render<CollectionFieldsHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Problem, problem));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        var fields = cut.FindComponents<MudTextField<string>>();
+
+        Assert.True(fields[1].Instance.Error);
+        Assert.Equal("Falta la calle.", fields[1].Instance.ErrorText);
+        Assert.Equal(string.Empty, FootAlert(cut));
+    }
+
+    /// <summary>The index picks the element, not the value: two elements holding different text
+    /// are still resolved by POSITION, so the second one's refusal never bleeds onto the
+    /// first.</summary>
+    [Fact]
+    public async Task TheIndexPicksTheElement_NotWhicheverElementLooksTheSame()
+    {
+        var model = new CollectionProblemModel
+        {
+            Addresses = [new AddressRow { Street = "Siempreviva 742" }, new AddressRow { Street = "Falsa 123" }],
+        };
+
+        var problem = Invalid(new Issue("Required", "Falta la calle.", "Addresses[1].Street"));
+
+        var cut = Render<CollectionFieldsHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Problem, problem));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        var fields = cut.FindComponents<MudTextField<string>>();
+
+        Assert.False(fields[0].Instance.Error);
+    }
+
+    /// <summary>The table's open row, which by the time an answer arrives is not open: the
+    /// submit settles it first (nsail#2245) — the row's own rule commits it and the editor
+    /// closes — so the server's issue about that row names no field on screen and lands at the
+    /// form's foot, exactly like a row nobody ever opened.</summary>
+    [Fact]
+    public async Task AnOpenTableRowIsSettledBeforeTheSend_SoTheServersAnswerLandsAtTheFoot()
     {
         var model = new CollectionProblemModel
         {
@@ -79,42 +129,14 @@ public sealed class NsFormCollectionProblemDisplayTests : BunitContext, IAsyncLi
             .Add(x => x.Model, model)
             .Add(x => x.Problem, problem));
 
-        // The row is left OPEN on purpose: NsTable carries no IFormRow, so nothing settles (and
-        // closes) it ahead of the document's own submit — unlike NsListEditor's.
         await Edit(cut, 1);
 
         await cut.InvokeAsync(() => cut.Find("form").Submit());
 
-        var field = Assert.Single(cut.FindComponents<MudTextField<string>>());
-
-        Assert.True(field.Instance.Error);
-        Assert.Equal("Falta la calle.", field.Instance.ErrorText);
-        Assert.Equal(string.Empty, FootAlert(cut));
-    }
-
-    /// <summary>The index picks the row, not the value: two rows holding different text are
-    /// still resolved by POSITION, so the second row's refusal never bleeds onto the first.</summary>
-    [Fact]
-    public async Task TheIndexPicksTheRow_NotWhicheverRowLooksTheSame()
-    {
-        var model = new CollectionProblemModel
-        {
-            Addresses = [new AddressRow { Street = "Siempreviva 742" }, new AddressRow { Street = "Falsa 123" }],
-        };
-
-        var problem = Invalid(new Issue("Required", "Falta la calle.", "Addresses[1].Street"));
-
-        var cut = Render<TableProblemHost>(p => p
-            .Add(x => x.Model, model)
-            .Add(x => x.Problem, problem));
-
-        await Edit(cut, 0);
-
-        await cut.InvokeAsync(() => cut.Find("form").Submit());
-
-        var field = Assert.Single(cut.FindComponents<MudTextField<string>>());
-
-        Assert.False(field.Instance.Error);
+        // Nothing refuses the row, so the settle closed it and the save went out in the same
+        // press: no editor left on screen, and the answer where an unplaced issue goes.
+        Assert.Empty(cut.FindComponents<MudTextField<string>>());
+        Assert.Contains("Falta la calle.", FootAlert(cut), StringComparison.Ordinal);
     }
 
     /// <summary>A row the screen never opened renders no field to claim the path — exactly the
@@ -159,6 +181,31 @@ public sealed class NsFormCollectionProblemDisplayTests : BunitContext, IAsyncLi
         await cut.InvokeAsync(() => cut.Find("form").Submit());
 
         // Still open: the row's own field, carrying its own reason, and no send went out.
+        var field = Assert.Single(cut.FindComponents<MudTextField<string>>());
+
+        Assert.True(field.Instance.Error);
+        Assert.Equal(0, cut.Instance.Submits);
+    }
+
+    /// <summary>The same for the grid's own row editor: what a row owes its own declarations is
+    /// one walk both row hosts ask (RowAnnotations), so an open table row with the Street
+    /// emptied refuses the submit in its own words, with nothing sent — the screen wiring no
+    /// rule of its own.</summary>
+    [Fact]
+    public async Task AnNsTableRowsOwnRequiredStreet_RefusesTheSubmitWithNoSend()
+    {
+        var model = new CollectionProblemModel { Addresses = [new AddressRow { Street = "Siempreviva 742" }] };
+
+        var cut = Render<TableProblemHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Problem, (Problem?)null));
+
+        await Edit(cut, 0);
+
+        await cut.InvokeAsync(() => cut.Find("input").Input(string.Empty));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
         var field = Assert.Single(cut.FindComponents<MudTextField<string>>());
 
         Assert.True(field.Instance.Error);
