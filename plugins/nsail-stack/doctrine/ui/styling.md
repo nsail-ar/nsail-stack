@@ -33,9 +33,11 @@ marked *(cases)* has its story there.
     eyes) pair only on a line that seats both as rows, and stack below it; `.ns-heading-row`
     gives such blocks' headings one height (a checkbox row's), so the fields under them start
     level.
-  - `.ns-money-slot` holds a price at 10rem beside the article it prices in a horizontal
-    `NsStack`, and `.ns-field-slot` is the other half of that row — a field laid out by hand
-    reading the same `--ns-field-width` the grid's items read, so `ns-field-wide` means 20rem
+  - `.ns-money-slot` holds a price at `--ns-money-slot`'s 10rem beside the article it prices in
+    a horizontal `NsStack` — a token because a sheet's add row ends in that slot and the column
+    reserved under it spends the same figure from outside the row (the mirror, below).
+    `.ns-field-slot` is the other half of that row — a field laid out by hand reading the same
+    `--ns-field-width` the grid's items read, so `ns-field-wide` means 20rem
     wherever a field is placed (a job card's Armazón, which spans the whole card's row and is
     not the whole card's business).
   - `.ns-select-gutter` mirrors a selecting `NsTable`'s own checkbox column width, by hand, on
@@ -48,17 +50,33 @@ marked *(cases)* has its story there.
     **`.ns-row-submit-gutter` is the mirror at the other end**, and goes on the `NsTable`: the
     add row ends in that act where the rows below it end in a cell's padding, so the table's
     **last column** is pinned to what the add row spends from the trailing edge inward — the
-    last field's 10rem, the grid's gap, the act cell's 14rem and the cell's own leading padding.
-    A specified width is the column's own in an auto-layout table and takes none of the surplus,
-    so the data column beside it ends up exactly the width the add row's `Grow` takes. Dropped
-    at the same stacking width, for the same reason. The two agree at every width where the add
-    row is **one line**, and only there: its items claim a sum a table column has no floor for,
-    and once the window stops affording it the act wraps, which leaves the last field at the
-    row's own trailing edge instead of over the column. A four-item row (the gutter, a `Grow`
-    field at its 12rem floor, the price slot, the act cell) claims 664px of content and wraps
-    below ~976px of window; a fifth item — a unit picker, which an article that comes in more
-    than one raises — claims 904px and wraps below 1216px, and there the axis reads 240px out.
-    That band is the add row's own arithmetic to spend, not a reserve's to answer (nsail#2127).
+    last field's `--ns-money-slot`, the grid's gap, the act cell's `--ns-add-row-act` and the
+    cell's own leading padding, every width of it the row's own declaration read from outside
+    the row, so neither end can be moved alone. A specified width is the column's own in an
+    auto-layout table and takes none of the surplus, so the data column beside it ends up
+    exactly the width the add row's `Grow` takes. Dropped at the same stacking width, for the
+    same reason. The two agree at every width where the add row is **one line**, and only
+    there: the grid wraps before anything in it shrinks, so once the window stops affording
+    what the items declare, the act drops to a second line and leaves the last field at the
+    row's own trailing edge instead of over the column. No reserve can answer that — the wrap
+    is the row's own arithmetic — so **the row declares what its items are worth** rather than
+    taking the field family's defaults, which were never sized for five of them on one line.
+    The two it spends on itself (7rem for a bounded item, 7rem as the open-ended one's basis,
+    which for `Grow` is also its min-width and so is the wrap floor itself — the open-ended
+    field is the row's honest absorber, since every pixel past the floor is already its) are
+    declared on the grid that spends them; only the act's **cell** is a token, because the
+    reserve reads it from outside the grid. That cell is also the one term not free to be as
+    narrow as its content reads: a field's min-width is `min-content`, so a cell declared under
+    the act's own word grows back to it and parts the mirror — which a browser's mirror walk
+    is the only reader of. The floor the sum has to clear is the width `NsTable` stops drawing
+    columns at, since below it both halves are dropped anyway — 961px of window, 649px of
+    content once the shell takes its 312px. Five items (the gutter, the `Grow` basis, a unit
+    picker, the price slot, the act cell) then claim 632px of it and four claim 504px, so the
+    band has a floor and not an exception. Keyed off `.ns-row-submit` rather than a class of
+    the row's own, so no row can be given the act without the floor that affords it — and
+    **released below the window the mirror itself is dropped at**, where the row is a stack of
+    lines with no column to line up with and a width answering a desktop band's arithmetic
+    would only narrow a phone's fields for nothing.
     A **boolean control** is the same mismatch and takes the same answer: it draws neither the
     label gutter nor the outline its row partners draw, so `NsRecordState` and `NsCheckBox` mark
     their own control (`ns-record-state`, `ns-form-check`) and the grid centres that cell. The
