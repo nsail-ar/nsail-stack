@@ -242,6 +242,39 @@ public class TenancySeamTests
         Assert.Contains(named, refusal.Message, StringComparison.Ordinal);
     }
 
+    // The switch that turns the missing wall into a refusal is only answerable where the column
+    // IS the wall: nothing asks the Postgres role under the other two modes, so a cell that
+    // turned it on without moving Tenancy:Mode would start with neither the refusal nor the
+    // warning. The seam says so instead of ignoring the key.
+    [Theory]
+    [InlineData(TenancyMode.SingleDb, false)]
+    [InlineData(TenancyMode.None, true)]
+    [InlineData(TenancyMode.MultiDb, true)]
+    public void RequiringTheRowWallIsRefusedWhereTheRowsAreNotATenants(TenancyMode mode, bool refused)
+    {
+        var tenancy = new TenancyOptions
+        {
+            Mode = mode,
+            Product = "sample",
+            Cell = "cell",
+            RequireRowSecurity = true,
+        };
+
+        var compose = () => new ServiceCollection().AddDataAccess<SeamDbContext>(Install, tenancy);
+
+        if (!refused)
+        {
+            compose();
+
+            return;
+        }
+
+        var refusal = Assert.Throws<InvalidOperationException>(() => compose());
+
+        Assert.Contains("Tenancy:RequireRowSecurity", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(mode.ToString(), refusal.Message, StringComparison.Ordinal);
+    }
+
     // MultiDb passes the Rows switch AddDataAccess guards, and a scope that reached a context
     // without anyone resolving a tenant would be served the install's database — the leak the
     // mode was configured to prevent. The provider that resolves tenants keeps that refusal

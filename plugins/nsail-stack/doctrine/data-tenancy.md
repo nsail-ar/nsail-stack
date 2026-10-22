@@ -20,7 +20,11 @@ Stack sets and no product writes:
   navigation told `ToTable`, an owned collection, a derived type given its own table would be a
   second table carrying every tenant's rows with no column to filter and none to wall (The
   second wall), and no sweep can see it — the table owes no policy, so a migrated database
-  reads clean. Map it into its owner's table, or make it an entity of its own.
+  reads clean. Map it into its owner's table, or make it an entity of its own. **Unless the row
+  it shares is the install's**: a table hanging off an install-scoped root — an `OwnsMany` under
+  one, a TPT leaf of one — is the install's own table, the same rows for every tenant, which is
+  what the marker means and not a defect; the remedy would give back exactly that table. The
+  marker is asked of the ROOT of the chain, never of the type beside it, which carries none.
 - **The write is stamped from the resolved identity**, in a `SaveChanges` interceptor
   registered by `AddDataAccess` — where the unit of work sits, never in a handler. A payload
   cannot name a tenant: the column is a shadow property, so no message and no entity carries
@@ -123,7 +127,10 @@ refused rather than stored.
   down for work nobody has been given yet. A cell that HAS done the pass says so where it states
   `Tenancy:Mode`, and **refuses to start** instead — and owes its `backup` verb a credential that
   CAN bypass, because `pg_dump` reads with `row_security off` and Postgres refuses that to a role
-  the policies apply to (baseservices.md, Install console).
+  the policies apply to (baseservices.md, Install console). That question is only asked where the
+  column IS the wall, so `Tenancy:RequireRowSecurity` under `None` or `MultiDb` is **refused at
+  startup** rather than ignored: a cell that turned the switch on without moving `Tenancy:Mode`
+  would get neither the refusal nor the warning it asked for.
 - **The laws are tested, not remembered.** `TenantPolicyAudit.Unwalled` reads a migrated
   database back against the model and names every tenant-scoped table whose policy is missing,
   not enabled or not forced — the database-side twin of `TenantAxisTests`, and what keeps each

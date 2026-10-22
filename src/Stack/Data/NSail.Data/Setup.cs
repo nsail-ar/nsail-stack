@@ -143,6 +143,15 @@ public static class Setup
             // nothing. Here it is the difference between a second wall and DDL.
             services.AddHostedService<TenantWall>();
         }
+        else if (tenancy.RequireRowSecurity)
+        {
+            // And the switch is only answerable there, so a cell that turned it on without
+            // moving Tenancy:Mode is refused rather than served silence: the wall it asks for
+            // is the tenant column, nothing asks the role under the other modes, and the
+            // install would start with neither the refusal nor the warning the switch is for.
+            throw new InvalidOperationException(
+                $"Tenancy:RequireRowSecurity is on and Tenancy:Mode is {tenancy.Mode}, whose wall is the connection and not the tenant column. The switch asks the Postgres role about the row policies, which only wall anything under SingleDb — state the mode beside it, or clear it.");
+        }
 
         if (tenancy.Connection == TenancyScope.Tenant || tenancy.Rows == TenancyScope.Tenant)
         {

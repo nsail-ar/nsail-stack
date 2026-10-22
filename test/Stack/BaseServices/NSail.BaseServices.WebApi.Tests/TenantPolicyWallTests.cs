@@ -268,8 +268,6 @@ public sealed class TenantWallStartupTests
         Assert.Equal(["20260824000000_Notes", "20260824000001_Journals"], await host.AppliedMigrations(null));
     }
 
-    // The cell that HAS done the pass says so, and gets the hard guarantee instead of a log
-    // line: nothing changes for it beyond the refusal being available.
     // The other half of what the ruling bought, and in the default path the ONLY sign the wall
     // is off: the warning, and the gauge beside it because the export seam drops a log record's
     // string attributes and an alert has to name what is off. A refactor that dropped either
@@ -300,6 +298,8 @@ public sealed class TenantWallStartupTests
         Assert.Equal(1, Assert.Single(Standing(host)));
     }
 
+    // The cell that HAS done the pass says so, and gets the hard guarantee instead of a log
+    // line: nothing changes for it beyond the refusal being available.
     [Fact]
     public async Task AnInstallThatRequiresTheWallStartsWhenItsRoleCannotBypass()
     {

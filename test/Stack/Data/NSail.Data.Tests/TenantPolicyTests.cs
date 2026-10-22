@@ -60,6 +60,27 @@ public class TenantPolicyTests
         Assert.Contains("behind neither wall", refusal.Message, StringComparison.Ordinal);
     }
 
+    // And where the row shared is the INSTALL's, the second table is not that shape at all: the
+    // same rows for every tenant, which is what the marker means. The refusal asks the marker on
+    // the ROOT of the chain, because an owned collection reaches it through a type that carries
+    // none and a TPT leaf through its base — and it refuses in every mode, so a model refused
+    // here would not start under None either, where there is no second wall and no tenants.
+    [Theory]
+    [InlineData("KindLabels")]
+    [InlineData("SeasonalKinds")]
+    public void ATableHangingOffAnInstallScopedRootIsNotRefusedAndOwesNoPolicy(string table)
+    {
+        using var context = new InstallSplitDbContext(
+            new DbContextOptionsBuilder<InstallSplitDbContext>()
+                .UseNpgsql("Host=localhost;Database=none;Username=postgres")
+                .Options);
+
+        var entity = Assert.Single(context.Model.GetEntityTypes(), type => type.GetTableName() == table);
+
+        Assert.Null(entity.FindProperty("TenantId"));
+        Assert.Equal(["AppliedSeedSteps", "Notes"], TenantPolicies.Tables(context.Model));
+    }
+
     // Raw SQL handed to migrationBuilder.Sql carries no terminator of its own and the generated
     // script concatenates commands without adding one, so a statement missing its semicolon
     // swallows whatever EF wrote next (MigrationScriptTests reads the chain as that one script).
@@ -190,6 +211,58 @@ sealed class SplitSetup : IDbContextSetup
     }
 }
 
+// The install's own reference data wearing the two shapes that hang a second table off it: an
+// owned collection, which EF maps to a table of its own by default, and a hierarchy told TPT.
+public sealed class InstallSplitDbContext : DbContext, ITenanted, IHasOrgScope
+{
+    public InstallSplitDbContext(DbContextOptions<InstallSplitDbContext> options)
+        : base(options)
+    {
+    }
+
+    public Guid? TenantId
+    {
+        get { return Guid.Empty; }
+    }
+
+    public OrgScope OrgScope
+    {
+        get { return OrgScope.Everywhere; }
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.ApplyTenancy();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplySetups(this, [new InstallSplitSetup()]);
+    }
+}
+
+sealed class InstallSplitSetup : IDbContextSetup
+{
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PolicyNote>(note =>
+        {
+            note.ToTable("Notes");
+            note.HasKey(entity => entity.Id);
+            note.OwnsOne(entity => entity.Colours);
+        });
+
+        modelBuilder.Entity<PolicyLabelledKind>(kind =>
+        {
+            kind.ToTable("LabelledKinds");
+            kind.HasKey(entity => entity.Id);
+            kind.OwnsMany(entity => entity.Labels, labels => labels.ToTable("KindLabels"));
+        });
+
+        modelBuilder.Entity<PolicySeasonalKind>(kind => kind.ToTable("SeasonalKinds"));
+    }
+}
+
 public sealed class PolicyNote
 {
     public Guid Id { get; set; }
@@ -207,4 +280,21 @@ public sealed class PolicyNoteKind : IInstallScoped
     public Guid Id { get; set; }
 
     public string Name { get; set; } = string.Empty;
+}
+
+public class PolicyLabelledKind : IInstallScoped
+{
+    public Guid Id { get; set; }
+
+    public List<PolicyLabel> Labels { get; } = [];
+}
+
+public sealed class PolicyLabel
+{
+    public string Text { get; set; } = string.Empty;
+}
+
+public sealed class PolicySeasonalKind : PolicyLabelledKind
+{
+    public string Season { get; set; } = string.Empty;
 }
