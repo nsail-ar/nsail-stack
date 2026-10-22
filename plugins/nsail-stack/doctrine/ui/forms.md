@@ -249,6 +249,13 @@ What it never does is save a document in the middle of being written:
   is `Untracked` read at the keystroke) together with how many fields it is rendering at that
   instant (`NsFieldBase` stamps `data-ns-field` on every field's input, counted inside the form).
   A tracked form of one box — a dialog collecting an amount — is a question too.
+- **Over a search-first lookup with a term to resolve, Enter resolves it and the form never sees
+  that keystroke**: a reader sends the whole code and the key together, before the box's own
+  search has even been asked, so the box answers it itself — one answer taken, several left in the
+  list to choose from, none leaving the box as it was ([fields.md](fields.md)). The collision is
+  the committing box's own and it wears the same mark, which comes off in the states that have
+  nothing to resolve: a box left empty, one settled on the article it holds and one nobody may
+  write to still send the question the line above keeps for them.
 - **In a grid cell or a list-editor row, Enter confirms the row and the cursor keeps going down
   the column it was typing in**; on the last row it adds one, which is a counter writing a sale
   line after line without reaching for the mouse. It never submits the document: a grid is a
