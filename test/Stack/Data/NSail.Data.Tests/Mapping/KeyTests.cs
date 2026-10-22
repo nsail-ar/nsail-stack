@@ -173,4 +173,62 @@ public sealed class KeyTests
     {
         public DbSet<Customer> Customers { get; set; } = null!;
     }
+
+    // A composite root key naming a real row not there is still NotFound — SourceHasKey's open
+    // gap is the composite key's own default (below), never a complete one that names nothing.
+    [Fact]
+    public async Task map_entity_composite_key_notfound()
+    {
+        await using var store = await MapperStore<CompositeKeyContext>.Create();
+
+        await Assert.ThrowsAsync<BusinessException>(
+            () => store.Mapper.Map<SlotDto, Slot>(new SlotDto { Row = 1, Column = 2, Label = "ghost" }));
+    }
+
+    // The gap this story leaves open: none of its 22 updates has a composite root key, so a
+    // composite key at its own default still creates past Map, same as main.
+    [Fact]
+    public async Task map_entity_composite_key_default_creates()
+    {
+        await using var store = await MapperStore<CompositeKeyContext>.Create();
+
+        await store.Mapper.Map<SlotDto, Slot>(new SlotDto { Row = 0, Column = 0, Label = "new" });
+
+        await store.Db.SaveChangesAsync();
+
+        await using var read = store.Fresh();
+
+        Assert.Equal("new", Assert.Single(read.Slots).Label);
+    }
+
+    [MapFrom(typeof(SlotDto))]
+    public class Slot
+    {
+        [Key]
+        public int Row { get; set; }
+
+        [Key]
+        public int Column { get; set; }
+
+        public string? Label { get; set; }
+    }
+
+    public class SlotDto
+    {
+        public int Row { get; set; }
+
+        public int Column { get; set; }
+
+        public string? Label { get; set; }
+    }
+
+    public class CompositeKeyContext(DbContextOptions<CompositeKeyContext> options) : DbContext(options)
+    {
+        public DbSet<Slot> Slots { get; set; } = null!;
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Slot>().HasKey(s => new { s.Row, s.Column });
+        }
+    }
 }

@@ -54,10 +54,9 @@ public abstract class EntityPair<TSource, TTarget> : EntityType<TTarget>
             target = await context.Load(Match(key), Includes, cancellationToken).ConfigureAwait(false);
         }
 
-        // A key at its default collapses to the same null as a key with no value at all
-        // (SourceKey, above) — SourceHasKey is what tells the root's own refusal apart from a
-        // legitimate create, without changing what the rest of the graph sees.
-        if (target is null && SourceHasKey(source) && context.Stores && context.Parameters.MissingRootBehavior == MissingRootBehavior.Throw)
+        // SourceHasKey adds the one case SourceKey's own null cannot carry here: a key at its
+        // default, which the rest of the graph still reads as "no value" (SourceKey, above).
+        if (target is null && (key is not null || SourceHasKey(source)) && context.Stores && context.Parameters.MissingRootBehavior == MissingRootBehavior.Throw)
         {
             throw context.Missing(typeof(TTarget), key ?? DefaultKey);
         }

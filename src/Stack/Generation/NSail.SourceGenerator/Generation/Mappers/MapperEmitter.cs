@@ -252,13 +252,7 @@ sealed partial class MapperEmitter
         text.AppendLine("            }");
         text.AppendLine();
 
-        // Read only by MapRoot: SourceKey alone collapses a default-valued key to null the
-        // same way as a key with no value at all, because the rest of the graph (Compose,
-        // Aggregate and their *Many forms) depends on that collapse to merge or clear past a
-        // default key. A single key member answers whether this call's own instance carries a
-        // value at all — true always for a required member, true for an optional one only when
-        // it actually has a value — so MapRoot can refuse a present default instead of creating
-        // past it, without the other branches ever seeing that it changed.
+        // MapRoot's own question: does this instance carry a value at all, default included.
         text.AppendLine($"            public override bool SourceHasKey({s} source)");
         text.AppendLine("            {");
         text.AppendLine(sourceHasKey && keys.Count == 1 ? SourceHasKeyBody(sourceKeys[0]!) : "                return false;");
