@@ -208,6 +208,11 @@ sealed partial class MapperEmitter
         var sourceKeys = keys.Select(key => SourceMember(source, key, out _)).ToList();
         var sourceHasKey = sourceKeys.All(member => member is not null);
 
+        // An optional member (Guid?, a nullable reference) already answers null for "no row
+        // named" by its own type — collapsing its default is the established contract (a
+        // nullable key is a create), not the gap MapRoot refuses on.
+        var sourceKeyRequired = sourceHasKey && sourceKeys.All(member => !IsOptionalKey(member!.Type));
+
         foreach (var key in sourceKeys)
         {
             Consume(source, key);
@@ -249,6 +254,18 @@ sealed partial class MapperEmitter
             text.AppendLine("                return null;");
         }
 
+        text.AppendLine("            }");
+        text.AppendLine();
+
+        text.AppendLine("            public override bool SourceHasKey");
+        text.AppendLine("            {");
+        text.AppendLine($"                get {{ return {(sourceKeyRequired ? "true" : "false")}; }}");
+        text.AppendLine("            }");
+        text.AppendLine();
+
+        text.AppendLine("            public override object DefaultKey");
+        text.AppendLine("            {");
+        text.AppendLine($"                get {{ return default({KeyType(keys)})!; }}");
         text.AppendLine("            }");
         text.AppendLine();
 
@@ -1488,6 +1505,14 @@ sealed partial class MapperEmitter
         return type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable
             ? nullable.TypeArguments[0]
             : type;
+    }
+
+    // Guid? or a nullable reference: its own type already tells "no row named" from a value,
+    // so a default read off it is that member's ordinary null, not a key sent at its zero.
+    static bool IsOptionalKey(ITypeSymbol type)
+    {
+        return !SymbolEqualityComparer.Default.Equals(Underlying(type), type)
+            || (type.IsReferenceType && type.NullableAnnotation == NullableAnnotation.Annotated);
     }
 
     static string Name(ITypeSymbol type)

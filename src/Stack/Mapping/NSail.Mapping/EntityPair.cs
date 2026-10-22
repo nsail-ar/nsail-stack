@@ -15,6 +15,17 @@ public abstract class EntityPair<TSource, TTarget> : EntityType<TTarget>
     /// names no row (no key member, or the key's default value).</summary>
     public abstract object? SourceKey(TSource source);
 
+    /// <summary>Whether TSource carries the target's key at all. False only for a source with no
+    /// such member, the one case where SourceKey's null legitimately means "no row to find" —
+    /// never "not found". A true source still answers null from SourceKey when the value is the
+    /// key type's own default; MapRoot asks this to refuse that default instead of silently
+    /// creating past it.</summary>
+    public abstract bool SourceHasKey { get; }
+
+    /// <summary>The key type's own default, boxed: the id a refusal reports when the source
+    /// carries the key (SourceHasKey true) at that default (SourceKey null).</summary>
+    public abstract object DefaultKey { get; }
+
     /// <summary>A new entity carrying the source's key, when it has one.</summary>
     public abstract TTarget Create(TSource source);
 
@@ -38,11 +49,13 @@ public abstract class EntityPair<TSource, TTarget> : EntityType<TTarget>
         if (target is null && key is not null)
         {
             target = await context.Load(Match(key), Includes, cancellationToken).ConfigureAwait(false);
+        }
 
-            if (target is null && context.Stores && context.Parameters.MissingRootBehavior == MissingRootBehavior.Throw)
-            {
-                throw context.Missing(typeof(TTarget), key);
-            }
+        // A key at its default names no row either — SourceHasKey is what tells that apart from
+        // a source with no key member at all, which never reaches here with target still null.
+        if (target is null && SourceHasKey && context.Stores && context.Parameters.MissingRootBehavior == MissingRootBehavior.Throw)
+        {
+            throw context.Missing(typeof(TTarget), key ?? DefaultKey);
         }
 
         if (target is null)
