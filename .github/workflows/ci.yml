@@ -143,11 +143,61 @@ jobs:
           --api-key ${{ steps.nuget.outputs.NUGET_API_KEY }}
           --skip-duplicate
 
+      # nuget.org serves a push package by package, minutes apart: a restore in that window
+      # takes one package at the new version and fails on another it depends on (0.1.299,
+      # 2026-10-22: NSail.Mapping >= 0.1.299 not found, red on the monorepo's main). So the
+      # tag, and the monorepo's bump below, wait until every package of this release is in
+      # the flat container restore reads.
+      - name: Wait for nuget.org
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        timeout-minutes: 45
+        run: |
+          pending=()
+          for f in artifacts/*.nupkg; do
+            pending+=("$(basename "$f" ".$VERSION.nupkg" | tr '[:upper:]' '[:lower:]')")
+          done
+          while [ ${#pending[@]} -gt 0 ]; do
+            left=()
+            for id in "${pending[@]}"; do
+              curl -fsS "https://api.nuget.org/v3-flatcontainer/$id/index.json" 2>/dev/null \
+                | jq -e --arg v "$VERSION" '.versions | index($v)' >/dev/null || left+=("$id")
+            done
+            pending=("${left[@]}")
+            [ ${#pending[@]} -eq 0 ] || { echo "$(date -u +%H:%M:%S) not served yet: ${pending[*]}"; sleep 30; }
+          done
+          echo "every package of $VERSION is served"
+
       - name: Tag
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: |
           git tag "v$VERSION"
           git push origin "v$VERSION"
+
+      # The monorepo pins the version every restore takes (its Directory.Build.props), and
+      # this is the one hand that moves it: a complete release reaches every kit and app with
+      # nobody bumping anything (Leonardo, 2026-10-22), and a Stack change that breaks one
+      # reds the bump's own CI run. Only forward: a slower run never moves it back.
+      - name: Bump the monorepo
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.NSAIL_CREW_PAT }}
+        run: |
+          git clone --quiet --depth 20 "https://x-access-token:${GH_TOKEN}@github.com/nsail-ar/nsail.git" mono
+          cd mono
+          git config user.name "release"
+          git config user.email "release@nsail.ar"
+          for attempt in 1 2 3 4 5; do
+            git fetch --quiet origin main && git reset --quiet --hard origin/main
+            current=$(sed -n 's:.*<NSailStackVersion>\(.*\)</NSailStackVersion>.*:\1:p' Directory.Build.props)
+            if [ "$(printf '%s\n%s\n' "$current" "$VERSION" | sort -V | tail -1)" != "$VERSION" ] || [ "$current" = "$VERSION" ]; then
+              echo "the monorepo is at $current already - nothing to move"; exit 0
+            fi
+            sed -i "s:<NSailStackVersion>$current</NSailStackVersion>:<NSailStackVersion>$VERSION</NSailStackVersion>:" Directory.Build.props
+            git commit --quiet -m "stack: v$VERSION is on nuget.org" -- Directory.Build.props
+            git push --quiet origin HEAD:main && { echo "the monorepo moved $current -> $VERSION"; exit 0; }
+            sleep $((attempt * 5))
+          done
+          echo "::error::could not push the bump to v$VERSION after 5 attempts"; exit 1
 
       # npm's Trusted Publishing: the CLI trades this run's OIDC token with npmjs.com, against
       # a trusted publisher each package names (this repository, this workflow file), and signs
