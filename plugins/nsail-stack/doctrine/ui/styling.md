@@ -264,6 +264,22 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   on a line of its own, only where more than one source of that article survives — what tells
   two rows apart is on the row. A tooltip carrying the only copy of a value is the smell, and no
   screen in the tree wears one.
+- `NsSince` is how long ago something happened, said in the one unit a person would say it in
+  ("hace 5 min", "3 d ago") with the exact moment on the whisper — `At`, `Missing`, `StaleAfter`,
+  `Format`, and nothing else. Days is as coarse as it gets: a cell dumped three weeks ago and one
+  dumped twenty-one days ago are the same alarm. **What counts as late is the caller's own
+  threshold** (`StaleAfter`, past which the same text wears `Warning`), never the control's — the
+  mechanism is the Stack's and the meaning stays with the page, the `NsStatusText` split. The
+  day's reading is the catalog's reserved `.Plural` pair rather than two sibling keys, because
+  Spanish cannot spell one day with the plural's word
+  ([localization.md](localization.md)); `Missing` is the word for a moment that never happened,
+  and nothing is drawn where the caller names none, an absent date not always being an alarm.
+  The moment on the whisper is the operator's REGION pattern (`RegionCulture`) and never the
+  host's ambient culture, and it is the long form of what is already on screen — the tooltip rule
+  above, not an exception to it: **only an `At` that says it is UTC is moved into the reader's
+  clock**, the house's reading of a kind ([exporting.md](../exporting.md)), because any other kind
+  is already local or is a civil hour with no zone to it, and a half that moved it would whisper
+  an instant the reading beside it contradicts.
 - `NsMeter` is the bar for a reading against an allowance: `Value` and `Max` in the caller's own
   units — never a pre-computed percentage — plus `As` (`NsAs`, `Main` default, `Danger` for
   an allowance already spent). The percentage is worked out inside and clamped, so a reading
