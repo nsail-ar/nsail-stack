@@ -144,12 +144,13 @@ it).
 
 **The one exception: a screen whose footer is a COMPOSER carries its one state act in the title
 row.** A thread answered from the bottom has no footer left to put a verb in — the foot is
-`NsSendMessage` ([ui/forms.md](ui/forms.md), *The composer*), the box the reply is typed into,
-and a state act wedged above it reads as part of the message. So it rides the title row with the
-utilities, last of them, left of the guide's `?` (the ticket workspace's Resolver). **One act, not a row of them**: a second verb up there is a screen that
-owes itself a surface of its own for the transition, which is the rule above and not this
-carve-out. And **every act of such a header belongs in that row** — one left on a toolbar slot
-draws a second row under the title, which is the defect this answers.
+`NsSendMessage` ([ui/forms.md](ui/forms.md), *The composer*), the box the reply is typed into, and
+a state act wedged above it reads as part of the message. So it rides the title row with the
+utilities, last of them, left of the guide's `?` (the ticket workspace's Resolver). **One act, not
+a row of them**: a second verb up there is a screen that owes itself a surface of its own for the
+transition, which is the rule above and not this carve-out. And **every act of such a header
+belongs in that row** — one left on a toolbar slot draws a second row under the title, which is
+the defect this answers.
 
 **A field nobody will type is not a field.** A value the user would have to look up elsewhere —
 an exchange rate, a tax index — never rides a document form: it lives in configuration, a
