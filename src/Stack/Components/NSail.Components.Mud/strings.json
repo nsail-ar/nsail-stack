@@ -1,5 +1,6 @@
 {
   "Common.Submit": "Save",
+  "Common.Send": "Send",
   "Common.Filter": "Search",
   "Common.Search": "Type to search",
   "Common.SearchPrompt": "Search {0}",

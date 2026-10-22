@@ -9,7 +9,7 @@ placing.
 |---|---|
 | [fields.md](fields.md) | `NsTextField`, `NsSearchField`, `NsPasswordField`, `NsSelect`, `NsMultiSelect`, `NsAutocomplete`, `NsRadioGroup`, `NsDateField`, `NsDateTimeField`, `NsNumericField`, `NsMoneyField`, `NsColorField`, `NsFileUpload`, `NsMultiFileUpload`, `NsField`, `NsFieldRefusal`, `NsHelp`, `NsMissing` |
 | [actions.md](actions.md) | `NsButton`, `NsLink`, `NsAction`, `NsPageLink`, `NsSubmit`, `NsClose`, `NsActionOutlet`, `NsActionToolbar`, `ActionItem`, the contribution mechanism, a grid row's action cell |
-| [forms.md](forms.md) | `NsForm`: the read half (`OnLoad`, `Document`, the three states), tracking, the exit guard, closing, `ApplyProblem` |
+| [forms.md](forms.md) | `NsForm`: the read half (`OnLoad`, `Document`, the three states), tracking, the exit guard, closing, `ApplyProblem`, the Enter policy, `NsSendMessage` (the composer) |
 | [focus.md](focus.md) | Where a navigation's arrival hands the cursor — `NsArrivalFocus`, the marker `AutoFocus` writes, `NsPageHeader.ArrivalFocus`, the touch rule |
 | [hosts.md](hosts.md) | `NsTable`/`NsTh`/`NsTd`, `NsTabs`/`NsTab`, `NsListEditor`, `NsTimeGrid`/`NsTimeBlock`, `NsDashboard`/`NsSubjectDashboard`, `NsLoad` |
 | [styling.md](styling.md) | `NsFormGrid`/`NsFormGridItem`, `NsStack`, `NsCard`, `NsPanel`, `NsPaper`, `NsExpander`, `NsText`, `NsRemoteImage`, `NsTooltip`, `NsMeter`, `NsStatusText`/`NsStatusDot`, `ns-mud.css`, container queries |

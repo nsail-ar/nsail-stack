@@ -300,7 +300,9 @@ when the entry ENDS — Enter pressed, or the box left — carrying what the box
   leave already, so a knob there would be one that means nothing
   ([principles.md](../principles.md), *Remove the possibility* — the same reading that deleted
   `Immediate`).
-- **Enter is not an ending in `NsTextArea`**, where it is itself text (`CommitsOnEnter`).
+- **Enter is not an ending in `NsTextArea`**, where it is itself text (`CommitsOnEnter`) — and
+  inside a composer, where it sends, the key is the Enter policy's and not this seam's
+  ([forms.md](forms.md), *The composer*).
 - **`OnEnterCommit` is the Enter alone** — the same value `OnCommit` carries at the same moment,
   withheld on the leave, for an act only a deliberate key should fire: a reader's burst ending on
   Enter opens the record its term names, where a box merely losing the cursor must open nothing.

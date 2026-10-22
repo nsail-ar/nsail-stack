@@ -152,4 +152,20 @@ public sealed class NsEnterPolicyMarkTests : BunitContext, IAsyncLifetime
         Assert.NotNull(cut.Find("ul.ns-cells"));
         Assert.NotNull(cut.Find(".ns-row-commit"));
     }
+
+    /// <summary>A COMPOSER is the one textarea whose Enter is not a line: there the words being
+    /// typed ARE the message, so the policy sends instead of standing down. Both marks it reads
+    /// are pinned here — the composer around the box, which it finds from the keystroke's own
+    /// target upwards, and the send face inside it, which is what the key presses
+    /// (NsSendMessageTests holds what that face does).</summary>
+    [Fact]
+    public void AComposer_CarriesTheMarkAndTheFaceTheKeyPresses()
+    {
+        var cut = Render<SendMessageHost>();
+
+        var composer = cut.Find("textarea").Closest(".ns-send");
+
+        Assert.NotNull(composer);
+        Assert.NotNull(composer.QuerySelector("button[type=\"submit\"]"));
+    }
 }

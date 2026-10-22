@@ -241,6 +241,15 @@ What it never does is save a document in the middle of being written:
   menu's face and the submit stand inside the very grid rows and the very form the two reads
   above answer for, and a button's Enter IS the keydown's default action: taking it would leave
   them pressed by nobody.
+- **In a COMPOSER, Enter sends and Shift+Enter writes the line** — the one textarea whose plain
+  Enter is never a line, because the words being typed ARE the message and there is no document
+  around them to save by accident. What says so is the composer around the box (`NsSendMessage`
+  writes `ns-send`, read from the keystroke's own target upwards), and the key presses that
+  composer's own send face — and it presses no face a hand could not press, so a blank box and a
+  send in flight answer the key with **nothing at all** rather than with a blank line nobody
+  asked for. The Shift half is the policy standing down and leaving the
+  browser its newline; a keystroke still composing a candidate (an accent, a CJK pick) belongs to
+  the word and is left alone the same way.
 
 **A grid's move is the one half of the policy that is not a prevention, and it presses the row's
 own controls to make it** — the confirm, the pencil of the row below, the grid's Agregar
@@ -255,6 +264,38 @@ to press.
 The policy cannot be proved at the bUnit layer — AngleSharp performs no implicit form submission
 — so what the tests there hold is the marks it reads (`NsEnterPolicyMarkTests`), and the
 keystrokes themselves are walked in a browser.
+
+---
+
+## The composer
+
+**A screen that sends WORDS draws `NsSendMessage` and never a text area with a button beside
+it**: an assistant's question, a ticket's answer, a note on a conversation. The control is the
+box and the send face together because the rules of sending are one set, and every one of them
+is read off what it renders:
+
+- **Enter sends, Shift+Enter writes the line** — the Enter policy above, which finds the
+  composer from the box the keystroke landed in. The plain Enter is never a line here, so where
+  it cannot send it does nothing.
+- **A blank box never sends.** Whitespace is not a message: the face greys out, and the key
+  presses no face a hand could not press, so the rule is written once and the two gestures
+  cannot come apart.
+- **A send in flight never sends twice** — `NsSubmit`'s own `FormRunning`, for the same single
+  reading.
+- **The word is `Enviar` and the glyph the paper plane**, from `NsAs.Send` and the Stack's own
+  catalog ([actions.md](actions.md)): no screen writes either, so no screen can word its send
+  differently.
+
+**The message being written is the screen's own model, and so is emptying the box after a
+send**: the composer binds a member (`@bind-Text`) of the form it stands in and holds no copy of
+it, so what the submit sends is what the box holds — a fresh model, or the member set back, is
+the screen's gesture on its own document ([fields.md](fields.md), *What the box holds is what the
+form submits*). What a screen puts BESIDE the face — a road to pick, a link out to the channel
+the answer leaves by — rides the control's slot and stands before it: the act's place is one
+across every screen that sends. **A state act is not one of those**: a screen whose footer is a
+composer carries its one transition in the title row, not beside the send
+([intentional-ui.md](../intentional-ui.md), *The one exception*) — a verb wedged into this row
+reads as part of the message.
 
 ---
 

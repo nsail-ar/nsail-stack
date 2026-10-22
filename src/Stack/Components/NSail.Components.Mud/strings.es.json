@@ -1,5 +1,6 @@
 {
   "Common.Submit": "Guardar",
+  "Common.Send": "Enviar",
   "Common.Filter": "Buscar",
   "Common.Search": "Escribí para buscar",
   "Common.SearchPrompt": "Buscar {0}",
