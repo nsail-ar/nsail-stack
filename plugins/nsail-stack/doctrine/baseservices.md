@@ -333,6 +333,14 @@ its own name.
 - **`pg_dump`, not a structured export**: a backup returns an install to its exact state, byte
   for byte; an export that survives a schema change is a different feature. So the runtime
   image carries `postgres-client` at the production server's major.
+- **The dump is taken by a role that can step over the tenant policies**, which the app's own
+  role deliberately cannot. `pg_dump` copies with `row_security off` and Postgres refuses a
+  statement run that way by a role a policy applies to — `FORCE ROW LEVEL SECURITY` subjects
+  even the table's owner (data-tenancy.md, The second wall) — so on a cell that has provisioned
+  the app a role without `BYPASSRLS`, `backup` is a credential of its own: a superuser or a
+  `BYPASSRLS` role on the same database. The verb asks before it starts the process and refuses
+  by name, rather than ending in pg_dump's exit code on the first tenant table. Restore is not
+  affected: an archive's data lands before its policies do.
 - **A restore refuses before it writes.** `RestorePlan.For` throws `BackupFailure` on an
   archive whose schema this build does not know (newer), whose product is another product,
   whose Postgres major differs, or whose archive format this build cannot read. Then it says

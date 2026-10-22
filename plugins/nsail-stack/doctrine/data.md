@@ -376,6 +376,22 @@ await app.ApplyMigrations<OpticalDbContext>();
 where schema lives (data-tenancy.md, The second wall). A table added and not walled reds in the
 sweep over the migrated database, which prints the call.
 
+**A data migration that must touch rows that are the TENANTS' drops the wall and puts it back,
+in its own body**, around the statement:
+
+```csharp
+migrationBuilder.DropTenantPolicies("Contacts");
+migrationBuilder.Sql("UPDATE \"Contacts\" SET \"Kind\" = 'Person' WHERE \"Kind\" IS NULL");
+migrationBuilder.AddTenantPolicies("Contacts");
+```
+
+The chain runs on a connection carrying the install's own key, so over a walled table an
+`UPDATE` or a `DELETE` reaches the install's rows and nobody else's — and **silently**: the
+policy narrows the statement rather than refusing it, the migration is recorded as applied, and
+a script run against an empty database (`MigrationScriptTests`) has no tenant's rows to miss.
+An INSERT of the install's own rows needs none of this: those rows ARE the install's, which is
+why the chain carries that key at all (data-tenancy.md, The second wall).
+
 **Migrations are normal and append-only.** A schema change adds a new migration; nothing is
 folded, no database is dropped. Every slot's next `ApplyMigrations` moves its own database
 forward, so parallel sessions take schema changes from each other without recreating anything.

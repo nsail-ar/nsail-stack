@@ -18,7 +18,7 @@ namespace NSail.Data;
 // pass on a live box and the pin that carries the policies must not take a cell down for work
 // nobody has been given yet. A cell that HAS done that pass says so (Tenancy:RequireRowSecurity)
 // and gets the refusal instead of the warning.
-sealed class TenantWall : IHostedService, IDisposable
+sealed class TenantWall : IHostedService
 {
     const string Bypasses = "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user";
 
@@ -29,22 +29,27 @@ sealed class TenantWall : IHostedService, IDisposable
     readonly IServiceScopeFactory _scopes;
     readonly TenancyOptions _tenancy;
     readonly ILogger<TenantWall> _log;
-    readonly Meter _meter;
 
     int _stands = Unasked;
 
-    public TenantWall(IServiceScopeFactory scopes, TenancyOptions tenancy, ILogger<TenantWall> log)
+    // The meter comes from the container's factory and not from `new Meter`: the install is one
+    // process and one wall, so the gauge carries no attribute to tell two of them apart, and the
+    // factory is what ties this instrument to the container that composed it — which is also how
+    // a suite reads THIS install's answer rather than another install's in the same process.
+    public TenantWall(IServiceScopeFactory scopes, TenancyOptions tenancy, ILogger<TenantWall> log, IMeterFactory meters)
     {
         ArgumentNullException.ThrowIfNull(scopes);
         ArgumentNullException.ThrowIfNull(tenancy);
         ArgumentNullException.ThrowIfNull(log);
+        ArgumentNullException.ThrowIfNull(meters);
 
         _scopes = scopes;
         _tenancy = tenancy;
         _log = log;
-        _meter = new Meter(TenantPolicies.MeterName);
 
-        _meter.CreateObservableGauge(
+        var meter = meters.Create(new MeterOptions(TenantPolicies.MeterName));
+
+        meter.CreateObservableGauge(
             TenantPolicies.Standing,
             Observe,
             description: "Whether the app's Postgres role is subject to the tenant policies: 1 walled, 0 able to bypass.");
@@ -93,11 +98,6 @@ sealed class TenantWall : IHostedService, IDisposable
     public Task StopAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        _meter.Dispose();
     }
 
     // Nothing is reported before the question has been asked: a gauge that read 0 during startup

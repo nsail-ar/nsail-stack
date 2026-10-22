@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using NSail.Data;
+using NSail.Data.Testing;
 
 namespace NSail.BaseServices.WebApi.Tests;
 
@@ -48,7 +51,11 @@ public sealed class TenantPolicyWallTests : IAsyncLifetime
     [Fact]
     public async Task EveryTenantScopedTableOfTheChainIsWalled()
     {
-        Assert.Empty(await Unwalled());
+        var unwalled = await Unwalled();
+
+        // Asserted through the sweep's own sentence, which is what a product's suite prints when
+        // this reds: the call to paste into the migration that forgot it.
+        Assert.True(unwalled.Count is 0, TenantPolicyAudit.Describe("The Stack's tenancy chain", unwalled));
     }
 
     // The acceptance criterion, in one test. The query carries no filter at all — raw SQL, so
@@ -115,6 +122,21 @@ public sealed class TenantPolicyWallTests : IAsyncLifetime
         Assert.Empty(await Unfiltered("/journals/unfiltered", tenant));
     }
 
+    // What the chain's own connection costs, which is the other half of the rule above: it
+    // carries the INSTALL's key, so a later data migration's UPDATE over a walled table reaches
+    // the install's rows and no tenant's — and Postgres narrows the statement instead of
+    // refusing it, so the migration is recorded as applied with every tenant's row untouched.
+    // The shape that reaches them is the one the page names, and it is visible in the chain.
+    [Fact]
+    public async Task ADataMigrationReachesATenantsRowsOnlyByDroppingTheWallInTheSameMigration()
+    {
+        await Write("lumina", "lumina's note");
+        await Write("vision", "vision's note");
+
+        Assert.Equal(0, await AsTheChain("UPDATE \"Notes\" SET \"Text\" = 'backfilled'"));
+        Assert.Equal(2, await AsTheChain("UPDATE \"Notes\" SET \"Text\" = 'backfilled'", droppingTheWall: true));
+    }
+
     async Task<IReadOnlyList<string>> Unwalled()
     {
         using var response = await _host.Client.SendAsync(_host.Get("/unwalled", "lumina"));
@@ -154,6 +176,38 @@ public sealed class TenantPolicyWallTests : IAsyncLifetime
         {
             Headers = { { TenancyMiddleware.TenantHeader, tenant } },
         };
+    }
+
+    // A statement run the way ApplyMigrations runs the chain: on the app's own role, over a
+    // connection carrying the install's key, which is what TenantSession writes onto it. The
+    // answer is how many rows the statement reached.
+    async Task<int> AsTheChain(string statement, bool droppingTheWall = false)
+    {
+        await using var connection = new NpgsqlConnection(_host.InstallConnection);
+
+        await connection.OpenAsync();
+
+        await Execute(connection, $"SELECT set_config('{TenantPolicies.Setting}', '{Guid.Empty:D}', false)");
+
+        if (!droppingTheWall)
+        {
+            return await Execute(connection, statement);
+        }
+
+        await Execute(connection, TenantPolicies.Drop("Notes"));
+
+        var touched = await Execute(connection, statement);
+
+        await Execute(connection, TenantPolicies.Create("Notes"));
+
+        return touched;
+    }
+
+    static async Task<int> Execute(NpgsqlConnection connection, string statement)
+    {
+        await using var command = new NpgsqlCommand(statement, connection);
+
+        return await command.ExecuteNonQueryAsync();
     }
 
     // Counted as postgres, which the policies do not apply to: what the assertions above are
@@ -216,6 +270,36 @@ public sealed class TenantWallStartupTests
 
     // The cell that HAS done the pass says so, and gets the hard guarantee instead of a log
     // line: nothing changes for it beyond the refusal being available.
+    // The other half of what the ruling bought, and in the default path the ONLY sign the wall
+    // is off: the warning, and the gauge beside it because the export seam drops a log record's
+    // string attributes and an alert has to name what is off. A refactor that dropped either
+    // would leave an install with no wall and nobody who could know.
+    [Fact]
+    public async Task AnInstallWhoseRoleCanBypassWarnsAndReportsIt()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await TenancyHost.Start(TenancyMode.SingleDb, bypassable: true, logs: trail);
+
+        var warning = Assert.Single(trail.Warnings, said => said.Contains("row-level security", StringComparison.Ordinal));
+
+        Assert.Contains("Tenancy:RequireRowSecurity", warning, StringComparison.Ordinal);
+        Assert.Equal(0, Assert.Single(Standing(host)));
+    }
+
+    // And the install that has the wall reports the other number and says nothing: the warning
+    // is what the default path costs, not a line every cell logs.
+    [Fact]
+    public async Task AnInstallWhoseRoleCannotBypassReportsTheWallStanding()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await TenancyHost.Start(TenancyMode.SingleDb, logs: trail);
+
+        Assert.DoesNotContain(trail.Warnings, said => said.Contains("row-level security", StringComparison.Ordinal));
+        Assert.Equal(1, Assert.Single(Standing(host)));
+    }
+
     [Fact]
     public async Task AnInstallThatRequiresTheWallStartsWhenItsRoleCannotBypass()
     {
@@ -231,5 +315,109 @@ public sealed class TenantWallStartupTests
             () => TenancyHost.Start(TenancyMode.SingleDb, requireWall: true, bypassable: true));
 
         Assert.Contains("bypass row-level security", refusal.Message, StringComparison.Ordinal);
+    }
+
+    // The gauge, read off THIS install's own instrument. The meter's name is a constant and the
+    // measurement carries no attribute — an install is one process and one wall — so what keeps a
+    // sibling suite's install out of the answer is the factory the meter came from, which is the
+    // host's own container (NSail.Background.Testing.Meters keeps its two apart by the job name,
+    // which is the same problem with a tag available).
+    static IReadOnlyList<int> Standing(TenancyHost host)
+    {
+        var meter = host.Services
+            .GetRequiredService<IMeterFactory>()
+            .Create(new MeterOptions(TenantPolicies.MeterName));
+
+        var measured = new List<int>();
+
+        using var listener = new MeterListener();
+
+        listener.InstrumentPublished = (instrument, subscriber) =>
+        {
+            if (ReferenceEquals(instrument.Meter, meter) && instrument.Name == TenantPolicies.Standing)
+            {
+                subscriber.EnableMeasurementEvents(instrument);
+            }
+        };
+
+        listener.SetMeasurementEventCallback<int>((_, measurement, _, _) => measured.Add(measurement));
+        listener.Start();
+
+        // What the exporter does on its own interval, and the only way a gauge is ever read.
+        listener.RecordObservableInstruments();
+
+        return measured;
+    }
+}
+
+/// <summary>What the install said at warning or above on its way up. A provider rather than a
+/// fake <c>ILogger&lt;T&gt;</c>: the wall's logger is typed on a class internal to its own
+/// module, so naming it from here would need that module to open itself up for a test.</summary>
+sealed class WallTrail : ILoggerProvider
+{
+    readonly List<string> _warnings = [];
+
+    public IReadOnlyList<string> Warnings
+    {
+        get
+        {
+            lock (_warnings)
+            {
+                return _warnings.ToList();
+            }
+        }
+    }
+
+    public ILogger CreateLogger(string categoryName)
+    {
+        return new Pen(this);
+    }
+
+    public void Dispose()
+    {
+    }
+
+    void Say(string line)
+    {
+        lock (_warnings)
+        {
+            _warnings.Add(line);
+        }
+    }
+
+    sealed class Pen : ILogger
+    {
+        readonly WallTrail _trail;
+
+        public Pen(WallTrail trail)
+        {
+            _trail = trail;
+        }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return logLevel >= LogLevel.Warning;
+        }
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            ArgumentNullException.ThrowIfNull(formatter);
+
+            if (logLevel >= LogLevel.Warning)
+            {
+                _trail.Say(formatter(state, exception));
+            }
+        }
     }
 }

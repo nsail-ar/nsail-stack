@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.EntityFrameworkCore;
@@ -206,19 +206,29 @@ public class TenancySeamTests
         Assert.Null(descriptor.ImplementationType);
     }
 
-    // The tenant reaches Postgres as a setting written once per connection open, so a connection
-    // shared between scopes in turn would carry one tenant's answer into another's queries. The
-    // seam refuses the composition rather than documenting the constraint.
+    // The tenant reaches Postgres as a setting written once per connection open, so either
+    // switch that lets a connection outlive the scope that wrote it would carry one tenant's
+    // answer into another's queries: multiplexing hands one physical connection to several
+    // scopes in turn, and No Reset On Close returns a pooled connection without the DISCARD ALL
+    // that clears the setting. The seam refuses the composition rather than documenting the
+    // constraint.
     [Theory]
-    [InlineData(TenancyMode.SingleDb, true)]
-    [InlineData(TenancyMode.None, false)]
-    [InlineData(TenancyMode.MultiDb, false)]
-    public void MultiplexingIsRefusedWhereTheRowsAreATenants(TenancyMode mode, bool refused)
+    [InlineData("Multiplexing=true", "multiplexing", TenancyMode.SingleDb, true)]
+    [InlineData("Multiplexing=true", "multiplexing", TenancyMode.None, false)]
+    [InlineData("Multiplexing=true", "multiplexing", TenancyMode.MultiDb, false)]
+    [InlineData("No Reset On Close=true", "No Reset On Close", TenancyMode.SingleDb, true)]
+    [InlineData("No Reset On Close=true", "No Reset On Close", TenancyMode.None, false)]
+    [InlineData("No Reset On Close=true", "No Reset On Close", TenancyMode.MultiDb, false)]
+    public void AConnectionThatOutlivesItsScopeIsRefusedWhereTheRowsAreATenants(
+        string tuning,
+        string named,
+        TenancyMode mode,
+        bool refused)
     {
         var tenancy = new TenancyOptions { Mode = mode, Product = "sample", Cell = "cell" };
 
         var compose = () => new ServiceCollection()
-            .AddDataAccess<SeamDbContext>($"{Install};Multiplexing=true", tenancy);
+            .AddDataAccess<SeamDbContext>($"{Install};{tuning}", tenancy);
 
         if (!refused)
         {
@@ -229,7 +239,7 @@ public class TenancySeamTests
 
         var refusal = Assert.Throws<InvalidOperationException>(() => compose());
 
-        Assert.Contains("multiplexing", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(named, refusal.Message, StringComparison.Ordinal);
     }
 
     // MultiDb passes the Rows switch AddDataAccess guards, and a scope that reached a context

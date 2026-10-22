@@ -19,8 +19,10 @@ namespace NSail.Data;
 //
 // Npgsql resets a pooled connection's state when it is returned, so the setting cannot outlive
 // the connection that carried it; ResolvedTenancyProvider.Enter refuses a second tenant on one
-// scope, so it cannot outlive its scope either. Multiplexing — which would hand one physical
-// connection to two scopes — is off and has to stay off for both to hold.
+// scope, so it cannot outlive its scope either. Both of those rest on the connection string:
+// multiplexing would hand one physical connection to two scopes, and No Reset On Close would
+// return it to the pool still carrying this setting. Where the rows are a tenant's, the seam
+// refuses either (Setup.AddDataAccess).
 sealed class TenantSession : DbConnectionInterceptor
 {
     const string Write = "SELECT set_config(@setting, @tenant, false)";

@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Globalization;
@@ -16,6 +16,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 using NSail.Data;
 using NSail.Data.Testing;
@@ -83,7 +84,8 @@ public sealed class TenancyHost : IAsyncDisposable
     /// what an app would register — the rows a tenant is born with — and is off by default so
     /// the suites that count rows are counting their own. <paramref name="clock"/> is the
     /// install's own clock, which is what makes a pause window and the state memo reachable
-    /// without waiting; <paramref name="contact"/> is who its suspended page names.</summary>
+    /// without waiting; <paramref name="contact"/> is who its suspended page names;
+    /// <paramref name="logs"/> is what the install said on its way up.</summary>
     public static Task<TenancyHost> Start(
         TenancyMode mode,
         bool bootstraps = false,
@@ -93,7 +95,8 @@ public sealed class TenancyHost : IAsyncDisposable
         string? contact = null,
         bool requireWall = false,
         bool bypassable = false,
-        bool provisions = true)
+        bool provisions = true,
+        ILoggerProvider? logs = null)
     {
         return Start(
             mode,
@@ -105,7 +108,8 @@ public sealed class TenancyHost : IAsyncDisposable
             contact,
             requireWall,
             bypassable,
-            provisions);
+            provisions,
+            logs);
     }
 
     /// <summary>The same install again, carrying whatever chain that build carries — a deploy,
@@ -129,7 +133,8 @@ public sealed class TenancyHost : IAsyncDisposable
         string? contact = null,
         bool requireWall = false,
         bool bypassable = false,
-        bool provisions = true)
+        bool provisions = true,
+        ILoggerProvider? logs = null)
     {
         var owned = cell is null;
 
@@ -175,6 +180,14 @@ public sealed class TenancyHost : IAsyncDisposable
         });
 
         builder.WebHost.UseTestServer();
+
+        // A provider rather than a fake ILogger<T>: what the wall says on its way up is logged
+        // on a logger typed on an internal class, so naming it from here would need the module
+        // to open itself up for a test.
+        if (logs is not null)
+        {
+            builder.Logging.AddProvider(logs);
+        }
 
         // The install's own language, which is what the one page this pipeline draws itself
         // speaks (TenantStateMiddleware): the gate stands ahead of the step that resolves the
@@ -320,8 +333,6 @@ public sealed class TenancyHost : IAsyncDisposable
         _provisioned.Add(database);
     }
 
-    /// <summary>Whether the app's own role could step over the row policies — what the install
-    /// asks itself at startup, asked here of the same role over the same connection.</summary>
     /// <summary>Records a database this run is responsible for dropping without creating
     /// it.</summary>
     public void Claim(string? slug)
@@ -329,9 +340,18 @@ public sealed class TenancyHost : IAsyncDisposable
         _provisioned.Add(DatabaseOf(slug));
     }
 
+    /// <summary>The app's own connection string — its role, its install database — which is the
+    /// one connection in a run the row policies apply to, and the one the chain runs on.</summary>
+    public string InstallConnection
+    {
+        get { return Connection($"{Product}_{Cell}", _owner); }
+    }
+
+    /// <summary>Whether the app's own role could step over the row policies — what the install
+    /// asks itself at startup, asked here of the same role over the same connection.</summary>
     public async Task<bool> RoleCanBypass()
     {
-        await using var connection = new NpgsqlConnection(Connection($"{Product}_{Cell}", _owner));
+        await using var connection = new NpgsqlConnection(InstallConnection);
 
         await connection.OpenAsync();
 

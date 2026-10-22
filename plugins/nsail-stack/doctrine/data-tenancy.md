@@ -16,7 +16,11 @@ Stack sets and no product writes:
   (no entity class names the tenant; `modelBuilder` does) and a query filter comparing it
   against the context's own tenant. Skipped: owned types (their columns are the owner's row),
   derived types in a hierarchy (EF allows one filter, on the root), and install-scoped entities
-  (below).
+  (below). **A skipped type mapped to a table of its OWN is refused**, there and then: an owned
+  navigation told `ToTable`, an owned collection, a derived type given its own table would be a
+  second table carrying every tenant's rows with no column to filter and none to wall (The
+  second wall), and no sweep can see it — the table owes no policy, so a migrated database
+  reads clean. Map it into its owner's table, or make it an entity of its own.
 - **The write is stamped from the resolved identity**, in a `SaveChanges` interceptor
   registered by `AddDataAccess` — where the unit of work sits, never in a handler. A payload
   cannot name a tenant: the column is a shadow property, so no message and no entity carries
@@ -97,20 +101,29 @@ refused rather than stored.
   no row equals it. That is *an unresolved scope reads nothing*, said by Postgres, which is what
   makes it true of a query that forgot the filter. Npgsql resets a pooled connection's state on
   return and `Enter` refuses a second tenant on one scope, so the setting outlives neither its
-  connection nor its scope — Npgsql multiplexing stays off, and has to.
+  connection nor its scope — and because both of those rest on the connection string, the seam
+  **refuses the two tuning switches that would break them**: multiplexing, which hands one
+  physical connection to several scopes in turn, and `No Reset On Close`, which returns a pooled
+  connection still carrying the setting.
 - **The chain is the install's own work and its connection says so.** `ApplyMigrations` writes
   the install's key onto the connection it opens and runs the whole chain on it: a startup scope
   resolves no tenant, and a data migration's INSERT into a tenant-scoped table would otherwise
   be refused by the very policy it just created. A background job keeps the other answer, which
   is why the two are not one rule: the job must read nothing, the chain must write the install's
-  rows.
+  rows. **What that key cannot do is touch a TENANT's rows**: over a walled table the policy
+  narrows an `UPDATE` or a `DELETE` to the install's own rows and does not refuse it, so a
+  backfill written the obvious way applies, is recorded, and changes nothing. A migration that
+  must reach those rows brackets the statement with `DropTenantPolicies` and
+  `AddTenantPolicies` (data.md, Migrations), which the chain itself can be read for.
 - **The wall only stands where the app's role cannot step over it.** A superuser and a
   `BYPASSRLS` role are let through whatever a table says, and the defect is silent — every query
   answers exactly as it did before. So the install asks once at startup (`TenantWall`) and, by
   default, **starts, warns and reports it** as the gauge `nsail.tenancy.wall`: provisioning the
   role is an operator pass on a live box, and a release carrying the policies must take no cell
   down for work nobody has been given yet. A cell that HAS done the pass says so where it states
-  `Tenancy:Mode`, and **refuses to start** instead.
+  `Tenancy:Mode`, and **refuses to start** instead — and owes its `backup` verb a credential that
+  CAN bypass, because `pg_dump` reads with `row_security off` and Postgres refuses that to a role
+  the policies apply to (baseservices.md, Install console).
 - **The laws are tested, not remembered.** `TenantPolicyAudit.Unwalled` reads a migrated
   database back against the model and names every tenant-scoped table whose policy is missing,
   not enabled or not forced — the database-side twin of `TenantAxisTests`, and what keeps each

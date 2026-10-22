@@ -29,13 +29,35 @@ public class TenantPolicyTests
     }
 
     // An owned type's columns are its owner's row, which already carries the tenant, so there is
-    // no second table to wall.
+    // no second table to wall — and that premise is the whole reason it owes no policy.
     [Fact]
-    public void AnOwnedTypeIsNotATableOfItsOwn()
+    public void AnOwnedTypeSharingItsOwnersRowOwesNone()
     {
         using var context = Model();
 
-        Assert.DoesNotContain("Colours", TenantPolicies.Tables(context.Model));
+        var colours = context.Model.FindEntityType(typeof(PolicyColours))!;
+
+        Assert.Equal("Notes", colours.GetTableName());
+        Assert.Null(colours.FindProperty("TenantId"));
+        Assert.Equal(["AppliedSeedSteps", "Notes"], TenantPolicies.Tables(context.Model));
+    }
+
+    // And where the premise is false the model is refused, because nothing else can catch it: a
+    // table of the owned type's own takes no tenant column and no filter, the chain writes it no
+    // policy, and the sweep — which reads the model for the tables that OWE one — calls the
+    // install clean.
+    [Fact]
+    public void AnOwnedTypeMappedToATableOfItsOwnIsRefused()
+    {
+        using var context = new SplitDbContext(
+            new DbContextOptionsBuilder<SplitDbContext>()
+                .UseNpgsql("Host=localhost;Database=none;Username=postgres")
+                .Options);
+
+        var refusal = Assert.Throws<InvalidOperationException>(() => context.Model);
+
+        Assert.Contains("\"Colours\"", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("behind neither wall", refusal.Message, StringComparison.Ordinal);
     }
 
     // Raw SQL handed to migrationBuilder.Sql carries no terminator of its own and the generated
@@ -114,13 +136,56 @@ sealed class PolicySetup : IDbContextSetup
         {
             note.ToTable("Notes");
             note.HasKey(entity => entity.Id);
-            note.OwnsOne(entity => entity.Colours, colours => colours.ToTable("Colours"));
+            note.OwnsOne(entity => entity.Colours);
         });
 
         modelBuilder.Entity<PolicyNoteKind>(kind =>
         {
             kind.ToTable("NoteKinds");
             kind.HasKey(entity => entity.Id);
+        });
+    }
+}
+
+// The same model again with its owned type told to live in a table of its own, which is the one
+// shape the tenant pass refuses.
+public sealed class SplitDbContext : DbContext, ITenanted, IHasOrgScope
+{
+    public SplitDbContext(DbContextOptions<SplitDbContext> options)
+        : base(options)
+    {
+    }
+
+    public Guid? TenantId
+    {
+        get { return Guid.Empty; }
+    }
+
+    public OrgScope OrgScope
+    {
+        get { return OrgScope.Everywhere; }
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.ApplyTenancy();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplySetups(this, [new SplitSetup()]);
+    }
+}
+
+sealed class SplitSetup : IDbContextSetup
+{
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PolicyNote>(note =>
+        {
+            note.ToTable("Notes");
+            note.HasKey(entity => entity.Id);
+            note.OwnsOne(entity => entity.Colours, colours => colours.ToTable("Colours"));
         });
     }
 }

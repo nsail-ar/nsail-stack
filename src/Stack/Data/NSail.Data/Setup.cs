@@ -117,14 +117,24 @@ public static class Setup
             // declared, refused here if one of them cannot be a slug.
             services.AddSingleton(new TenantRoster(tenancy));
 
-            // Npgsql multiplexing hands one physical connection to several scopes in turn, and
-            // the setting the row policies compare against is written once per connection open
-            // (TenantSession): two tenants sharing one connection is the leak the policies exist
-            // to close. Refused at startup rather than written down as a thing to remember.
-            if (new NpgsqlConnectionStringBuilder(connectionString).Multiplexing)
+            // The setting the row policies compare against is written once per connection open
+            // (TenantSession), so the two tuning switches that make a connection outlive the
+            // scope that wrote it are the leak those policies exist to close, and both are
+            // refused at startup rather than written down as things to remember: multiplexing
+            // hands one physical connection to several scopes in turn, and No Reset On Close
+            // returns a connection to the pool without the DISCARD ALL that clears the setting.
+            var npgsql = new NpgsqlConnectionStringBuilder(connectionString);
+
+            if (npgsql.Multiplexing)
             {
                 throw new InvalidOperationException(
                     $"Tenancy:Mode is {tenancy.Mode}, whose wall is the tenant column, and the connection string turns Npgsql multiplexing on. The tenant reaches Postgres as a session setting written per connection, so a connection shared between scopes would carry one tenant's answer into another's queries.");
+            }
+
+            if (npgsql.NoResetOnClose)
+            {
+                throw new InvalidOperationException(
+                    $"Tenancy:Mode is {tenancy.Mode}, whose wall is the tenant column, and the connection string turns Npgsql's No Reset On Close on. The tenant reaches Postgres as a session setting written per connection open, so a pooled connection returned without its reset would still name one tenant when the next scope — a job or a startup pass, which write none — takes it.");
             }
 
             // Whether the second wall actually stands, asked once at startup. Only where the
