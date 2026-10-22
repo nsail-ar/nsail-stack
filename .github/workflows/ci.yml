@@ -27,14 +27,18 @@ on:
 permissions:
   contents: read
 
+# A PR's run gives way to its next push; a release on main never does — cancelled after its
+# publish it would leave a version on nuget.org with no tag and no bump.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The build and the publish take most of half an hour, and the wait for nuget.org up to
+    # 45 minutes more (0.1.300 died at 30 inside the wait, 2026-10-22).
+    timeout-minutes: 80
 
     permissions:
       contents: write
