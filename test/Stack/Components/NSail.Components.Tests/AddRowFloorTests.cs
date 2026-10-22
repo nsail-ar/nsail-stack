@@ -33,9 +33,9 @@ public sealed class AddRowFloorTests
         var css = HouseStylesheet.Read();
 
         var claim = Basis(css, ".ns-select-gutter")
-            + Basis(css, ".ns-money-slot")
-            + Token(css, "--ns-add-row-grow")
-            + Token(css, "--ns-add-row-field")
+            + Token(css, "--ns-money-slot")
+            + Declared(css, "--ns-field-grow-basis")
+            + Declared(css, "--ns-field-width")
             + Token(css, "--ns-add-row-act")
             + Gaps;
 
@@ -62,7 +62,10 @@ public sealed class AddRowFloorTests
             css,
             StringComparison.Ordinal);
 
-        Assert.Contains("+ var(--ns-add-row-act) +", css, StringComparison.Ordinal);
+        Assert.Contains(
+            "width: calc(var(--ns-money-slot) + 1rem + var(--ns-add-row-act) + 1rem);",
+            css,
+            StringComparison.Ordinal);
     }
 
     // Keyed off the act itself rather than a class of the row's own: the act is what makes the
@@ -75,18 +78,52 @@ public sealed class AddRowFloorTests
         Assert.Contains(
             """
             .ns-grid:has(> * > .ns-row-submit) {
-                --ns-field-width: var(--ns-add-row-field);
-                --ns-field-grow-basis: var(--ns-add-row-grow);
+                --ns-field-width: 7rem;
+                --ns-field-grow-basis: 7rem;
             }
             """,
             css,
             StringComparison.Ordinal);
     }
 
-    /// <summary>The rem a custom property is declared at.</summary>
+    // And released below the window the mirror itself is dropped at — the same boundary
+    // .ns-select-gutter is hidden at and the reserve goes back to auto. There the row is a stack
+    // of lines with no column to line up with, so a width answering a desktop band's arithmetic
+    // would only be narrowing a phone's fields for nothing.
+    [Fact]
+    public void TheFloorIsReleasedBelowTheWindowTheMirrorIsDroppedAt()
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Contains(
+            """
+            @media (max-width: 960px) {
+                .ns-grid:has(> * > .ns-row-submit),
+                .ns-grid > *:has(> .ns-row-submit) {
+                    --ns-field-width: initial;
+                    --ns-field-grow-basis: initial;
+                }
+            }
+            """,
+            css,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>The rem a token is declared at, wherever the sheet declares it.</summary>
     static double Token(string css, string token)
     {
         return Read(css, $@"{Regex.Escape(token)}:\s*([\d.]+)rem;", token);
+    }
+
+    /// <summary>The rem the add row's own grid hands one of the field family's properties — the
+    /// two widths it spends on itself, which are declared where they are spent rather than as
+    /// tokens, since nothing outside the row reads them.</summary>
+    static double Declared(string css, string property)
+    {
+        return Read(
+            css,
+            $@"\.ns-grid:has\(> \* > \.ns-row-submit\) \{{[^}}]*?{Regex.Escape(property)}:\s*([\d.]+)rem;",
+            property);
     }
 
     /// <summary>The rem a flex shorthand declares as its basis — a bare item's own width, which

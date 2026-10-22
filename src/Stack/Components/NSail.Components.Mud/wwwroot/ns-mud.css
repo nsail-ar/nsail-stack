@@ -3376,9 +3376,15 @@
 
 /* A money field riding a horizontal row beside the article it prices (a job card's slot, or a
    price list's own sheet cell): the article takes the line, the price holds six figures and
-   cents and no more -- sharing the row equally handed a price the width of a product name. */
+   cents and no more -- sharing the row equally handed a price the width of a product name. The
+   width is a token because a sheet's add row ends in this slot and the column reserved under it
+   has to spend the same figure from outside the row (.ns-row-submit-gutter below). */
+:root {
+    --ns-money-slot: 10rem;
+}
+
 .ns-money-slot {
-    flex: 0 1 10rem;
+    flex: 0 1 var(--ns-money-slot);
     min-width: 8rem;
 }
 
@@ -3414,37 +3420,50 @@
    mirror are dropped anyway: 961px, which leaves this grid 649px of content (the shell spends
    312px of it, the same figure Optical's OpeningEntriesRowWidthTests probes its container at).
 
-   --ns-add-row-field is a BOUNDED item's width: a unit, which the sheet's own rows print under
-   the article's name rather than in a column of its own, so what it holds is two or three
-   characters and a shrunk label. --ns-add-row-grow is the OPEN-ENDED item's basis, which for Grow
-   is also its min-width and so IS the wrap floor: the article field is the row's honest absorber,
-   since every pixel past the floor is already its. --ns-add-row-act is the act's CELL, read by
-   the reserve as well, and the one term of the three that is not free to be as narrow as its
-   content reads -- a field's min-width is min-content, so a cell declared under the act's own
-   word grows back to it and takes the mirror with it. 9rem is that word (Agregar draws 129px)
-   with room for a longer one in another language, since the act is worded at every width
-   (ui/actions.md) and an icon-only face is not the room to spend.
+   A BOUNDED item takes 7rem: a unit, which the sheet's own rows print under the article's name
+   rather than in a column of its own, so what it holds is two or three characters and a shrunk
+   label. The OPEN-ENDED one takes 7rem as its basis, which for Grow is also its min-width and so
+   IS the wrap floor -- the article field is the row's honest absorber, since every pixel past the
+   floor is already its. Both are declared on the grid that spends them, the way ns-field-money
+   declares its own; only the act's CELL is a token, because the column reserved under the row
+   reads it from outside the grid.
+
+   That cell is also the one term of the three that is not free to be as narrow as its content
+   reads: a field's min-width is min-content, so a cell declared under the act's own word grows
+   back to it and parts the mirror. 9rem is that word (Agregar draws 129px) and 15px, which is
+   not another word -- a longer one in another language grows the cell and shows up as the
+   consumer's mirror walk failing at every width, which is the only place it can be seen. The act
+   is worded at every width (ui/actions.md) and an icon-only face is not the room to spend.
 
    The five items then claim 2.5rem + 7rem + 7rem + 10rem + 9rem + four 1rem gaps = 632px, 17px
-   inside the floor, and .ns-money-slot's 10rem -- read by three screens outside this one -- is
-   left alone.
+   inside the floor, and .ns-money-slot's own width -- read by three screens outside this one --
+   is left where it is.
 
    Keyed off .ns-row-submit rather than a class of the row's own: the act is what makes the row
    five items wide, so the mark that already says "this submit shares a line with labeled fields"
-   is the condition, and no row can be given the act without the floor that affords it. */
+   is the condition, and no row can be given the act without the floor that affords it. And
+   dropped below the window the mirror itself is dropped at, like both of its halves: there the
+   row is a stack of cards' worth of lines and nothing to line up with, so a width answering a
+   desktop band's arithmetic would only be narrowing a phone's fields for nothing. */
 :root {
-    --ns-add-row-field: 7rem;
-    --ns-add-row-grow: 7rem;
     --ns-add-row-act: 9rem;
 }
 
 .ns-grid:has(> * > .ns-row-submit) {
-    --ns-field-width: var(--ns-add-row-field);
-    --ns-field-grow-basis: var(--ns-add-row-grow);
+    --ns-field-width: 7rem;
+    --ns-field-grow-basis: 7rem;
 }
 
 .ns-grid > *:has(> .ns-row-submit) {
     --ns-field-width: var(--ns-add-row-act);
+}
+
+@media (max-width: 960px) {
+    .ns-grid:has(> * > .ns-row-submit),
+    .ns-grid > *:has(> .ns-row-submit) {
+        --ns-field-width: initial;
+        --ns-field-grow-basis: initial;
+    }
 }
 
 /* The same mirror at the OTHER end of the row (nsail#1820). An add row laid out beside the table
@@ -3456,22 +3475,23 @@
    there; here the table is, so the table is the side that reserves.
 
    The last column is pinned to what the add row spends from the trailing edge inward: its last
-   field (.ns-money-slot's 10rem, the only width an add row's last field has), the grid's own
-   gap, the act CELL (--ns-add-row-act, the one declaration both sides read, so the row's floor
-   and the column reserved for it cannot be moved apart) and this cell's own leading padding.
-   A specified width belongs to the column in an auto-layout table
-   and takes no share of the surplus -- the same reason .ns-table .ns-select reads 1% rather than
-   the 56px it measures -- so the surplus all goes to the data column beside it, which is then
-   exactly the width the add row's own Grow takes. Both sides of the mirror then spend the row's
-   width the same way, which is what lines the fields up at every width instead of at the one
-   that happened to be measured.
+   field (--ns-money-slot, the only width an add row's last field has), the grid's own gap, the
+   act CELL (--ns-add-row-act) and this cell's own leading padding. Every width of it is the
+   row's own declaration read from outside the row, so neither end of the mirror can be moved
+   alone; the gaps are the only literals, and they are MudBlazor's gap-4 rather than anything
+   this file declares. A specified width belongs to the column in an auto-layout table and takes
+   no share of the surplus -- the same reason .ns-table .ns-select reads 1% rather than the 56px
+   it measures -- so the surplus all goes to the data column beside it, which is then exactly the
+   width the add row's own Grow takes. Both sides of the mirror then spend the row's width the
+   same way, which is what lines the fields up at every width instead of at the one that happened
+   to be measured.
 
-   Dropped below the window width NsTable stacks at, the boundary .ns-select-gutter is hidden at:
-   a stack of cards has no column left to mirror, and the reserve would be 25rem of padding
-   inside a phone's card. */
+   Dropped below the window width NsTable stacks at, the boundary .ns-select-gutter is hidden at
+   and the row's own floor is released at: a stack of cards has no column left to mirror, and the
+   reserve would be a card's whole width of padding inside a phone's. */
 .ns-table.ns-row-submit-gutter thead th:last-child,
 .ns-table.ns-row-submit-gutter tbody td:last-child {
-    width: calc(10rem + 1rem + var(--ns-add-row-act) + 1rem);
+    width: calc(var(--ns-money-slot) + 1rem + var(--ns-add-row-act) + 1rem);
 }
 
 @media (max-width: 960px) {
