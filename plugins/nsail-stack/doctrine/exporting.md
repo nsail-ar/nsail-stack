@@ -140,6 +140,12 @@ off-by-one to live. The slice is taken when Exportar is pressed, because the `Ro
 when the page that owns it renders and a file written out of a moving parameter would be two
 filters' rows under one heading.
 
+**And it is taken in the order the reader is looking at it** (`NsTable.HeldRows`): a heading
+pressed to order the list orders the file with it. A file in another order than its own list is
+the same defect as one three hours off it — what the list promises is all of it *in order*, and
+the order is the one on screen ([ui/hosts.md](ui/hosts.md)). A server-paged list has no such order
+to carry: its headings are not pressable in the first place.
+
 **The columns are the header's own declarations.** `NsTh` already carries a `For` expression and
 already resolves a heading from it; `TableColumns` keeps those in header order and `TableColumn`
 turns each into a key, a title, a format and a reader. Nothing about a column is stated twice, and
