@@ -657,6 +657,25 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   since the guard reads the element the keystroke landed on. The same rule covers `NsSelect` and
   `NsMultiSelect`: the vendor stamps both words on their own input too, so nothing in the guard
   names a component (`NsComboboxExpandedMarkTests` holds all three).
+- **A SEARCH-FIRST box answers its own Enter, because the reader's code arrives before any list
+  does.** A reader is a keyboard: it types the whole code and ends it with Enter inside a fraction
+  of the vendor's own debounce, so at that instant no search has been asked, the list is closed
+  and the vendor — which picks the option it is HIGHLIGHTING — has nothing to pick. The code
+  resolved to nothing and the hand was holding a reader that did not work. So a `Lazy` lookup
+  reads that keystroke itself and answers it the way the scan box over a grid answers one
+  (`ProductScanField`): **one** answer is taken, with no arrow-down; **several** are left in the
+  list to choose from, because an exact code that also spells other articles is a choice and not a
+  match; **none** leaves the box exactly as it was, which is what the caller's own offer and the
+  create entry quote. The text it resolves is held off the vendor's own text event and never read
+  back off the term a search is about — the whole point of the keystroke is that no search has
+  started for it (`NsTextFieldBase.HoldTyped`'s reason). A search already out for that text is
+  **waited** for and never asked again: a field has one Runner for its searches, so a second ask
+  cancels the first, and the first is the call the vendor redraws its list from — it would come
+  back empty, taking the choice away from the operator on the keystroke that was asking for it.
+  Derived from the posture and never a parameter: a browsed lookup has its whole set on screen
+  from the focus, so the vendor answers off the list already open. The same box takes the Enter
+  from the form (above, `data-ns-commits`): a code ended with Enter in a filter bar or a one-field
+  dialog must not send the question on the keystroke that was only finding the article.
 - **A row the rules cannot settle alone opens its own second level, inside the list.**
   `ItemTemplate` seats an `NsMenu` with a `Content` face on that option, and the same row is
   also handed to `ItemDisabledFunc`: the face IS the row — `.ns-lookup-list` makes the trigger

@@ -81,6 +81,30 @@ public sealed class NsFieldTakesEnterMarkTests : BunitContext, IAsyncLifetime
         Assert.Null(cut.Find("textarea").GetAttribute("data-ns-commits"));
     }
 
+    /// <summary>nsail#2337: a search-first lookup answers Enter itself — it resolves the text
+    /// that was typed, which is the whole of what a reader's code plus Enter means — so the
+    /// collision is the same one and the mark is the same: a code ended with Enter in a filter bar
+    /// or in a one-field dialog must not send the question on the keystroke that was only finding
+    /// the article.</summary>
+    [Fact]
+    public void ASearchFirstLookup_TakesTheEnter()
+    {
+        var cut = Render<SearchLookupHost>(ps => ps.Add(p => p.Lazy, true));
+
+        Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-commits"));
+    }
+
+    /// <summary>A BROWSED lookup does not: its whole set is on screen from the focus, so the
+    /// vendor answers that Enter off the list already open — and an open list's Enter is taken
+    /// from the form by the combobox read instead (NsComboboxExpandedMarkTests).</summary>
+    [Fact]
+    public void ABrowsedLookup_LeavesTheEnterToTheForm()
+    {
+        var cut = Render<SearchLookupHost>(ps => ps.Add(p => p.Lazy, false));
+
+        Assert.Null(cut.Find("input").GetAttribute("data-ns-commits"));
+    }
+
     /// <summary>The whole typed family carries it, not NsTextField alone: a money cell that
     /// saves on Enter is the same collision as a chip list's entry box.</summary>
     [Fact]
