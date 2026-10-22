@@ -22,11 +22,23 @@ public sealed class CountingDialogManager : DialogManager
 
     public List<OfferedAction> Offers { get; } = [];
 
+    /// <summary>How many of those came through the DESTRUCTIVE door — which is the whole of what
+    /// a confirmation guarding a delete or an abandoned draft does differently, so it is counted
+    /// apart and still counted as the confirmation it is.</summary>
+    public int Destructions { get; private set; }
+
     public override Task<bool> Confirm(string message, string? title = null)
     {
         Confirms++;
 
         return Task.FromResult(Answer);
+    }
+
+    public override Task<bool> ConfirmDestruction(string message, string? title = null)
+    {
+        Destructions++;
+
+        return Confirm(message, title);
     }
 
     public override Task Alert(string message, string? title = null)

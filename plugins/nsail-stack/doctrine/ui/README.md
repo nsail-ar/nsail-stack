@@ -24,5 +24,7 @@ placing.
 | [localization.md](localization.md) | `StringManager`, `IStringSource`, the derived keys, culture negotiation |
 
 Not on the shelf, because nothing but the layout composes them: `NsDialog`, `NsOpenDialog`,
-`NsDialogExit` (the dialog's own, and its rule is [actions.md](actions.md)'s), `NsMainLayout`,
-`NsContainer`, `NsDrawer`, `NsSurface`, `NsApp`, `NsRouter`.
+`NsConfirmDialog` (the yes/no question `DialogManager.Confirm` opens, and where its cursor lands
+is [forms.md](forms.md)'s *Focus on open*), `NsDialogExit` (the dialog's own, and its rule is
+[actions.md](actions.md)'s), `NsMainLayout`, `NsContainer`, `NsDrawer`, `NsSurface`, `NsApp`,
+`NsRouter`.
