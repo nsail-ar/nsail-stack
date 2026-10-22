@@ -11,8 +11,9 @@ namespace NSail.Components;
 // naming a field the host actually RENDERED goes under that field, and everything else — a
 // member no field bound, a rule naming itself, a problem carrying no issue at all — is one
 // strip at the host's foot (intentional-ui.md, Refusal placement). NsForm places a document's
-// refusal with it and NsListEditor its open row's, so the two cannot come to place the same
-// refusal in two different ways, and the host that joins them next writes neither half.
+// refusal with it, and the hosts with a row open inside one — an NsListEditor, an editable
+// NsTable — place that row's, so no two of them come to place the same refusal in two different
+// ways, and the host that joins them next writes neither half.
 //
 // The field tracker is the same object because it answers the same question: only a field that
 // announced itself may carry a message, so the set that decides that is the set the placement

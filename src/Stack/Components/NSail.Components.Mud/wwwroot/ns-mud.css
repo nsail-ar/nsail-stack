@@ -530,14 +530,15 @@
 
 /* THE OPEN ROW'S REFUSAL STRIP, on a row of its own directly under the row it answers for
    (NsTable, problemRow): what that refusal named that the row renders no field for. The answer
-   belongs to the whole row and a cell is one column wide, so the strip crosses every column
-   rather than being squeezed into the editor's last one.
+   belongs to the whole row and a cell is one column wide, so the strip is one colspan cell
+   crossing every column rather than being squeezed into the editor's last one. That holds in
+   the stacked regimes too: what they restyle is the CELL (.mud-table-cell, below), so the
+   strip's row stays a table row and its span still reaches the card's width.
 
    Its cell carries no vendor class on purpose — none of the table's own cell chrome belongs
-   here, neither the dense padding nor the stacked label pseudo, and in both stacked regimes a
-   plain cell among flex ones is already a line of the card. What is left is the strip's own
-   inset: none above, the error block bringing its own margin, and the row above keeping the
-   line it already draws. */
+   here, neither the dense padding nor the stacked label pseudo. What is left is the strip's
+   own inset: none above, the error block bringing its own margin, and the row above keeping
+   the line it already draws. */
 .ns-table-problem > td {
     border: none;
     padding: 0 16px 8px;

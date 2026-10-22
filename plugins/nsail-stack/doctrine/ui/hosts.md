@@ -159,10 +159,11 @@ that owns the confirm.
 **The document's submit answers for the row left open, and the table answers for it the way the
 list does** (`IFormRow`, [forms.md](forms.md)): the row's values are already the document's —
 `NewRow` appends before returning, which is this host's contract where the list's `NewItem` only
-mints — so Guardar asks the row's own rule again on what the boxes hold. A row nothing refuses is committed, the editor closes and the save goes on
-in the same press; a refused one stays open wearing its own reason, under the field that reason
-names and otherwise as one strip on a row of its own directly under it (`.ns-table-problem`) —
-never at the form's foot, and never a toast the person has to connect back to the row. The
+mints — so Guardar asks the row's own rule again on what the boxes hold. A row nothing refuses
+is committed, the editor closes and the save goes on in the same press; a refused one stays
+open wearing its own reason, under the field that reason names and otherwise as one strip on a
+row of its own directly under it (`.ns-table-problem`) — never at the form's foot, and never a
+toast the person has to connect back to the row. The
 placement is the form's own piece asked a second time (`RefusalPlacement`), so a screen wires
 none of it: a page sets `args.Problem` and nothing else. A `[Validated]` row's own declarations
 are asked in that same breath, for the reason and through the walk the list's are
@@ -328,9 +329,9 @@ document the list stands in — which **settles the row left open before it vali
 it settles the table's (Inline editing, above): `OnCommit` runs again on the values on screen, so
 Guardar confirms a row nothing refuses (the editor closes, the document saves in one tap) and is
 refused by a bad one in the row's own words, under the field they name (intentional-ui.md). A
-page writes nothing for that either. **Once the fields have
-stacked, the commit pair reads after the last of them**, the way `NsTable`'s row editor seats
-Confirmar/Cancelar in the last cell.
+page writes nothing for that either. **Once the fields have stacked, the commit pair reads
+after the last of them**, the way `NsTable`'s row editor seats Confirmar/Cancelar in the last
+cell.
 **`OnRemove` is the delete control's** — it renders only where there is a handler to take the
 item out — and is raised on a cancelled new row as a notification (cases), with no question in
 front of it (Inline editing, above). An item is a flex row that **wraps**. Reference:
