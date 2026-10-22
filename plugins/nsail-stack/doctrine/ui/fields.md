@@ -619,13 +619,18 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   its popover inside the selection, but an OPEN already under way — the keystroke before the
   pick, whose search is still out — runs to completion after that selection is over and raises
   the list again on the very row just chosen, with nothing left to close it: the answer read
-  through the list it came from, and no way out but a click elsewhere. So a pick made while a
-  search was out is marked and the open the vendor raises for it is closed. Only a search
-  ALREADY out can do this; one that begins after the pick drops the mark, because that one is
-  the field being asked for its list again and the list it opens is wanted. A pick the FIELD makes
-  is late to its own open rather than early — the answer its keystroke waited for raised the list
-  before the pick — so there the list is closed at the pick (*A SEARCH-FIRST box answers its own
-  Enter*, below).
+  through the list it came from, and no way out but a click elsewhere. So every pick is marked and
+  the open the vendor raises for it is closed. **What keeps that mark off a list somebody wants is
+  where it is READ, not when it is taken:** it answers an open as the open LANDS, and every other
+  way of opening a list asks the vendor for a search first — a press on the box, the chevron, a
+  typed term — which drops it. The only open left that can read it is one whose search began
+  BEFORE the pick, and that is the one nobody asked for.
+- **A pick the FIELD makes closes the list itself**, the vendor being told nothing but that the
+  value changed: the single answer a search-first Enter takes (*A SEARCH-FIRST box answers its own
+  Enter*, below), and the quick add's row, which is pressed INSIDE the open list. The same close
+  settles the search such a keystroke BEAT — the vendor's pending interval dies with it, so the
+  debounced search for the text the key just resolved never asks and never opens a list over the
+  row it took.
 - **And no list either, however the close and the box's own refocus are ordered.** A pick made
   with the mouse ends with the vendor focusing the box it was made from, and `OpenOnFocus`
   answers that focus exactly like a click — the same list over the same answer, raised by the
@@ -688,11 +693,14 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   (`ProductScanField`): **one** answer is taken, with no arrow-down; **several** are left in the
   list to choose from, because an exact code that also spells other articles is a choice and not a
   match; **none** leaves the box exactly as it was, which is what the caller's own offer and the
-  create entry quote. **The one answer it takes closes the list**, which is the pick promise above
-  read on the one path the vendor cannot keep it on: the answer the key waited for opened that list
-  on the way in, so it is already up when the pick is made, and the vendor closes nothing for a
-  selection it never saw — the field read the answer itself. Several answers keep theirs open; that
-  list IS the choice. The text it resolves is held off the vendor's own text event and never read
+  create entry quote. **The one answer it takes closes the list, whichever side of the pick that
+  list is on** — the pick promise above read on the one path the vendor cannot keep it on, since it
+  was never told a selection happened. Where the key WAITED for its answer the list opened on the
+  way in and is already up at the pick; where the key BEAT the vendor's interval nothing is open
+  yet and what is pending is the vendor's own debounced search for the same text, whose answer
+  would open over the row just taken. One close answers both: it takes the vendor's pending
+  interval with it. Several answers keep their list open; that list IS the choice. The text it
+  resolves is held off the vendor's own text event and never read
   back off the term a search is about — the whole point of the keystroke is that no search has
   started for it (`NsTextFieldBase.HoldTyped`'s reason). Derived from the posture and never a
   parameter: a browsed lookup has its whole set on screen from the focus, so the vendor answers

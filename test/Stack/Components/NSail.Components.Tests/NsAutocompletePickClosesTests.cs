@@ -15,25 +15,30 @@ namespace NSail.Components.Tests;
 
 /// <summary>What a pick owes the screen: the list it was made from is gone, and it stays gone
 /// however the close and the box's own refocus are ordered. The vendor closes its own popover
-/// inside the selection, and three opens still get past that close. One is an OPEN already under
+/// inside the selection, and four opens still get past that close. One is an OPEN already under
 /// way — the keystroke before the pick, whose search is still out — running to completion
 /// afterwards and raising the list again, on the very row just chosen, with nothing left to close
 /// it. Another is the cursor the pick hands back: the vendor focuses the box it was picked from,
-/// and OpenOnFocus answers that focus exactly like a click. The third is the open a pick the FIELD
-/// itself makes is late to: the answer its own keystroke read raised the list on the way in, and
-/// the vendor closes nothing for a selection it never saw. The user is left reading an answer
-/// through the list it came from, and the only way out is to click elsewhere.
+/// and OpenOnFocus answers that focus exactly like a click. The last two belong to the picks the
+/// FIELD makes, which the vendor only ever learns as a Value change: the list its own keystroke's
+/// answer raised on the way in, and the list the quick add's row was pressed inside. The user is
+/// left reading an answer through the list it came from, and the only way out is to click
+/// elsewhere.
 ///
 /// The window is the round trip, so it is wide exactly where a lookup is slowest, and it is why
 /// a search is held open here rather than hurried: the order is the subject, not the clock. The
-/// field marks a pick made while a search was out and closes the list the vendor opens for it,
-/// and it withholds OpenOnFocus for the one focus the pick hands back so that one opens nothing
-/// at all. Each mark stands until the field is used again, and the cases below are what spends
-/// it: a search begun AFTER the pick — a typed term, or a bare press on the box, which asks for
-/// the same term the refused refocus would have — and, where no search is coming, the next key the
-/// box takes, which is how a field left by the keyboard answers the focus it is come back with.
-/// The (x) takes no mark at all: it hands no cursor back, and a mark taken there would cost the
-/// empty box it leaves the create entry, the only list a Lazy field has to show.</summary>
+/// field marks every pick and closes the open the vendor raises after it, and it withholds
+/// OpenOnFocus for the one focus the pick hands back so that one opens nothing at all. The reopen
+/// mark is read when an open LANDS, which is what keeps it off a list somebody asked for: every
+/// other way of opening one asks for a search first and that search drops the mark. The refocus
+/// mark has no landing of its own to be read at, so it stands until the field is used again, and
+/// the cases below are what spends it: a search begun AFTER the pick — a typed term, or a bare
+/// press on the box, which asks for the same term the refused refocus would have — and, where no
+/// search is coming, the next key the box takes, which is how a field left by the keyboard answers
+/// the focus it is come back with. The (x) takes no mark at all: it hands no cursor back, and a
+/// mark taken there would cost the empty box it leaves the create entry, the only list a Lazy
+/// field has to show. A pick the field makes closes its own list outright, since no mark can reach
+/// a list that is not open yet.</summary>
 public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
 {
     public NsAutocompletePickClosesTests()
@@ -293,6 +298,90 @@ public sealed class NsAutocompletePickClosesTests : BunitContext, IAsyncLifetime
         Gate(Caja.DisplayName).TrySetResult();
 
         await cut.Find("input").FocusAsync(new FocusEventArgs());
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>The same pick at its earliest, where the field's own answer BEATS the vendor's
+    /// interval: nothing is open when the key resolves, so the close it makes closes nothing —
+    /// and what the vendor still holds is the debounced search for the text that key just took,
+    /// whose own answer would open a list over the row it chose. That open never comes: the close
+    /// takes the vendor's timer with it, the way the vendor's own selection path does. The
+    /// interval is wound by hand here rather than waited out, so the one ask ever made is
+    /// necessarily the field's own and the one that never arrives is measured instead of
+    /// hoped for.</summary>
+    [Fact]
+    public async Task APickMadeBeforeTheVendorsIntervalLeavesNoSearchBehindToOpenAList()
+    {
+        var clock = new HandWoundClock();
+
+        // Last registration wins the resolve, which is how the key interceptor stub is swapped in
+        // too — and only for this case: every other one here needs the vendor's own interval to
+        // run, since the search it asks for is what puts the list on screen.
+        Services.AddSingleton<TimeProvider>(clock);
+
+        var cut = Mount(clearable: false, lazy: true);
+
+        var input = cut.Find("input");
+
+        await input.FocusAsync(new FocusEventArgs());
+
+        // Open before the term is typed: what makes this burst the early one is that the field's
+        // own ask answers while the vendor's interval is still unwound.
+        Gate("Caja").TrySetResult();
+
+        _ = Type(cut, "Caja");
+
+        await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        cut.WaitForAssertion(() => Assert.Equal(Caja.Id, _value), TimeSpan.FromSeconds(5));
+
+        // The clock has not moved, so the vendor cannot have asked anything: the one term asked
+        // is the one the keystroke resolved itself, and the row was taken with no list on screen.
+        Assert.Equal(["Caja"], cut.Instance.Asked);
+        Assert.Empty(cut.FindAll(".mud-popover-open"));
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal(["Caja"], cut.Instance.Asked), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>The other pick the FIELD makes, and the only one made from inside the open list:
+    /// the quick add's row, which creates the item and selects it. The vendor saw no selection of
+    /// its own — the entry is this field's own fragment and not one of its options — so the list
+    /// the row was pressed in is left standing over the form, now holding nothing but the entry
+    /// itself (measured without the close: 1 popover, 0 options, the made row in the box).
+    /// </summary>
+    [Fact]
+    public async Task APickMadeFromTheQuickAddRowLeavesNoListOpen()
+    {
+        var made = new SelectRef(Guid.Parse("44444444-4444-4444-4444-444444444444"), "Caja chica");
+
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Chart)
+            .Add(x => x.Lazy, true)
+            .Add(x => x.Gate, term => Gate(term).Task)
+            .Add(x => x.OnQuickAdd, EventCallback.Factory.Create<QuickAddEventArgs<SelectRef>>(
+                this, args => args.Item = made))
+            .Bind(x => x.Value, _value, value => _value = value, () => _value));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+
+        Gate(made.DisplayName).TrySetResult();
+
+        await Type(cut, made.DisplayName);
+
+        // A term the chart answers nothing for, which is the only state the row is offered in —
+        // and the search for it has to have landed, or the entry would quote a term nobody looked
+        // up yet (NsAutocompleteQuickAddTests).
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-lookup-create button")), TimeSpan.FromSeconds(5));
+
+        Assert.NotEmpty(cut.FindAll(".mud-popover-open"));
+
+        await cut.Find(".ns-lookup-create button").ClickAsync(new MouseEventArgs());
+
+        cut.WaitForAssertion(() => Assert.Equal(made.Id, _value), TimeSpan.FromSeconds(5));
 
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
     }

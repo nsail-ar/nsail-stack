@@ -218,14 +218,21 @@ and the press, the chevron or a typed term it is followed by opens the list.
 ## Why a pick the FIELD makes closes the list itself
 
 Measured against MudBlazor 9.10.0: the vendor closes its popover inside `ListItemOnClickAsync`, so
-every pick the VENDOR makes arrives with its list already down. A pick the field makes — the single
-answer a search-first Enter takes — reaches the vendor as a `Value` change and nothing else, and a
-`Value` it already holds is where `OnParametersSet`'s own close belt returns early. So the list the
-key's answer opened on the way in stays up: one popover holding the one row just taken, still
-standing a half-second after the pick (`NsAutocompletePickClosesTests`, measured with the close
-removed). The field closes the menu at that pick. The two marks cannot reach this one — both are
-read when an open LANDS, and this open landed while the keystroke was still waiting for the answer
-it picks from.
+every pick the VENDOR makes arrives with its list already down. The two picks the FIELD makes — the
+single answer a search-first Enter takes, and the quick add's row — reach the vendor as a `Value`
+change and nothing else, and a `Value` it already holds is where `OnParametersSet`'s own close belt
+returns early. So each leaves its own list standing (`NsAutocompletePickClosesTests`, measured with
+the close removed): one popover holding the one row just taken, still there a half-second after an
+Enter pick, and one holding nothing but the quick add's own entry after that row is pressed. The
+field closes the menu at both.
+
+**That close is also what answers the search the keystroke beat.** `CloseMenuAsync` disposes the
+debounce timer, which is what `SelectOptionAsync` does for the vendor's own picks: without it, a
+burst whose answer lands inside the interval is asked a SECOND time by the vendor a tenth of a
+second later — measured, the same term twice and one popover holding the one row just taken, which
+is how a Value-change pick differs from a selection the vendor made. No mark can answer that one:
+the open comes from a search that BEGINS after the pick, and the first thing a search does is drop
+the marks a pick left.
 
 ## Why the open list is floored at the field and capped at a measure
 
