@@ -43,10 +43,14 @@
     [Parameter]
     public Problem? Problem { get; set; }
 
+    public int Submits { get; private set; }
+
     DataPage<AddressRow> Rows => DataPage<AddressRow>.From(Model.Addresses);
 
     void HandleSubmit(SubmitEventArgs<CollectionProblemModel> args)
     {
+        Submits++;
+
         args.Problem = Problem;
     }
 }

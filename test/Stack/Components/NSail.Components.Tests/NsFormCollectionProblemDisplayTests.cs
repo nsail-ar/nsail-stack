@@ -91,7 +91,7 @@ public sealed class NsFormCollectionProblemDisplayTests : BunitContext, IAsyncLi
     /// are still resolved by POSITION, so the second one's refusal never bleeds onto the
     /// first.</summary>
     [Fact]
-    public async Task TheIndexPicksTheRow_NotWhicheverRowLooksTheSame()
+    public async Task TheIndexPicksTheElement_NotWhicheverElementLooksTheSame()
     {
         var model = new CollectionProblemModel
         {
@@ -181,6 +181,31 @@ public sealed class NsFormCollectionProblemDisplayTests : BunitContext, IAsyncLi
         await cut.InvokeAsync(() => cut.Find("form").Submit());
 
         // Still open: the row's own field, carrying its own reason, and no send went out.
+        var field = Assert.Single(cut.FindComponents<MudTextField<string>>());
+
+        Assert.True(field.Instance.Error);
+        Assert.Equal(0, cut.Instance.Submits);
+    }
+
+    /// <summary>The same for the grid's own row editor: what a row owes its own declarations is
+    /// one walk both row hosts ask (RowAnnotations), so an open table row with the Street
+    /// emptied refuses the submit in its own words, with nothing sent — the screen wiring no
+    /// rule of its own.</summary>
+    [Fact]
+    public async Task AnNsTableRowsOwnRequiredStreet_RefusesTheSubmitWithNoSend()
+    {
+        var model = new CollectionProblemModel { Addresses = [new AddressRow { Street = "Siempreviva 742" }] };
+
+        var cut = Render<TableProblemHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Problem, (Problem?)null));
+
+        await Edit(cut, 0);
+
+        await cut.InvokeAsync(() => cut.Find("input").Input(string.Empty));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
         var field = Assert.Single(cut.FindComponents<MudTextField<string>>());
 
         Assert.True(field.Instance.Error);

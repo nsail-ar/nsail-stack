@@ -3,8 +3,19 @@
 
 @namespace NSail.Components.Tests.Fixtures
 
+@using MudBlazor
 @using NSail.Components
+@using NSail.Paging
 @using NSail.Problems
+
+@{
+    RenderFragment<SubmitTrackingModel> rowEditor = row =>
+        @<text>
+            <NsTd For="() => row.Name">
+                <NsTextField @bind-Value="row.Name" Label="" />
+            </NsTd>
+        </text>;
+}
 
 @* The same pair NsRouter mounts for every routed page — a real NsSurfaceContext wrapping a
    real NsForm — so the close decision is exercised through the machinery a browser drives
@@ -35,6 +46,22 @@
                     </ItemEditor>
                 </NsListEditor>
             }
+            @* The other row host, for the same fact over the grid: both settle their open row
+               on the document's submit, so what that costs the surface is read off each of
+               them rather than off the list alone (hosts.md). *@
+            @if (OpenTableRow)
+            {
+                <NsTable TRow="SubmitTrackingModel" Rows="TableRows" Title="Rows"
+                         NewRow="NewTableRow" OnRowCommit="CommitRow" OnRowRemove="RemoveRow"
+                         RowEditor="rowEditor" @ref="_table">
+                    <HeaderContent Context="header">
+                        <NsTh For="() => header.Name" />
+                    </HeaderContent>
+                    <RowTemplate Context="row">
+                        <NsTd For="() => row.Name">@row.Name</NsTd>
+                    </RowTemplate>
+                </NsTable>
+            }
             <NsSubmit />
         </NsForm>
         @* The settings page's shape: a second tracked document on the same surface, saved by
@@ -59,6 +86,7 @@
     SurfaceContext? _surface;
     DirtySourceProbe? _probe;
     NsListEditor<SubmitTrackingModel>? _list;
+    NsTable<SubmitTrackingModel>? _table;
     bool _reported;
     NsForm<SubmitTrackingModel>? _form;
     NsForm<SubmitTrackingModel>? _siblingForm;
@@ -89,6 +117,11 @@
     /// settles. <see cref="OpenARow"/> is what opens one.</summary>
     [Parameter]
     public bool OpenRow { get; set; }
+
+    /// <summary>The same row, held open by the grid instead of the list — the other host that
+    /// settles on the document's submit. <see cref="OpenARow"/> opens this one too.</summary>
+    [Parameter]
+    public bool OpenTableRow { get; set; }
 
     /// <summary>The row's own rule says no, however many times it is asked.</summary>
     [Parameter]
@@ -144,6 +177,8 @@
     [Parameter]
     public Func<SurfaceFormHost, SubmitEventArgs<SubmitTrackingModel>, Task>? WhileSiblingSaving { get; set; }
 
+    DataPage<SubmitTrackingModel> TableRows => DataPage<SubmitTrackingModel>.From(_rows);
+
     public SurfaceContext? Surface => _surface;
 
     public DirtySourceProbe? Probe => _probe;
@@ -161,11 +196,28 @@
     public void OpenARow()
     {
         _list?.Add();
+        _table?.Add();
     }
 
     static SubmitTrackingModel NewRow()
     {
         return new SubmitTrackingModel();
+    }
+
+    // The grid's factory appends before returning, which is that parameter's contract and what
+    // every NewRow in the house does.
+    SubmitTrackingModel NewTableRow()
+    {
+        var row = new SubmitTrackingModel();
+
+        _rows.Add(row);
+
+        return row;
+    }
+
+    void RemoveRow(RowEditEventArgs<SubmitTrackingModel> args)
+    {
+        _rows.Remove(args.Row);
     }
 
     void CommitRow(RowEditEventArgs<SubmitTrackingModel> args)

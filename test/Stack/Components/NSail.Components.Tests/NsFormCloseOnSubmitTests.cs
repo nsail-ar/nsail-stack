@@ -434,6 +434,51 @@ public sealed class NsFormCloseOnSubmitTests : BunitContext, IAsyncLifetime
         Assert.Equal(2, announcements);
     }
 
+    /// <summary>The same count over the GRID, which settles its open row the same way
+    /// (nsail#2245): two hosts raising the row's rule on a Runner of their own is two chances
+    /// for the number to drift, so it is read off each of them rather than carried over from
+    /// the list. Four again — the row's own window, then the commit's dirty report and the
+    /// submit spending it — and two for a Guardar the row refuses, which never reaches the
+    /// save.</summary>
+    [Fact]
+    public async Task ASubmitThatSettlesATablesRow_CostsTheSurfaceTheSameFourAnnouncements()
+    {
+        var bare = RenderInAside();
+        var announcements = 0;
+
+        bare.Instance.Surface!.StateChanged += () => announcements++;
+
+        await bare.InvokeAsync(() => bare.Find("form").Submit());
+
+        var withoutARow = announcements;
+
+        var committed = RenderInAside(p => p.Add(x => x.OpenTableRow, true));
+
+        await committed.InvokeAsync(() => committed.Instance.OpenARow());
+
+        announcements = 0;
+        committed.Instance.Surface!.StateChanged += () => announcements++;
+
+        await committed.InvokeAsync(() => committed.Find("form").Submit());
+
+        var settledAndSaved = announcements;
+
+        var refused = RenderInAside(p => p
+            .Add(x => x.OpenTableRow, true)
+            .Add(x => x.RefusesTheRow, true));
+
+        await refused.InvokeAsync(() => refused.Instance.OpenARow());
+
+        announcements = 0;
+        refused.Instance.Surface!.StateChanged += () => announcements++;
+
+        await refused.InvokeAsync(() => refused.Find("form").Submit());
+
+        Assert.Equal(2, withoutARow);
+        Assert.Equal(withoutARow + 4, settledAndSaved);
+        Assert.Equal(2, announcements);
+    }
+
     /// <summary>The other half of the same sentence: the marker is SPENT, not merely outvoted.
     /// A surface outlives the page rendered in it, so a report left standing asks the next
     /// screen about changes nobody made (CreateClearDirtyTests, Directory).</summary>
