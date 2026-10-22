@@ -8,10 +8,11 @@
 @using NSail.Testing.Models
 
 @* A composer the way a screen seats one: the form holds the message being written, the box is
-   bound to its member and whatever the screen puts beside the send face rides in the slot. *@
+   bound to its member and whatever the screen puts beside the send face rides in the slot. Keyed
+   by the message, which is how a screen empties the box — a fresh model is a first render. *@
 <MudPopoverProvider />
 
-<NsForm TModel="TestModel" Model="_message" OnSubmit="Send" Untracked>
+<NsForm TModel="TestModel" Model="_message" OnSubmit="Send" Untracked @key="_message">
     <NsSendMessage @bind-Text="context.Name">
         <button type="button" class="beside">Camino</button>
     </NsSendMessage>
@@ -19,7 +20,7 @@
 
 @code {
 
-    readonly TestModel _message = new();
+    TestModel _message = new();
 
     /// <summary>Held open until the test lets it finish, which is the window the face is greyed
     /// out for: a send in flight is the second way Enter must do nothing.</summary>
@@ -31,6 +32,8 @@
     async Task Send(SubmitEventArgs<TestModel> args)
     {
         Sent.Add(args.Model.Name);
+
+        _message = new TestModel();
 
         if (Holding is not null)
         {

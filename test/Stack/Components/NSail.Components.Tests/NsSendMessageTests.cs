@@ -147,4 +147,32 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
         Assert.Contains("beside", controls[0].ClassList);
         Assert.Equal("submit", controls[1].GetAttribute("type"));
     }
+
+    /// <summary>The box is empty again after a send, and that is the SCREEN's gesture: a fresh
+    /// model, keyed, is a first render — which is also what gives AutoFocus the caret back. The
+    /// composer holds no copy of the words, so nothing of it survives the new model.</summary>
+    [Fact]
+    public async Task AFreshModelEmptiesTheBox()
+    {
+        var cut = Render<SendMessageHost>();
+
+        await cut.InvokeAsync(() => cut.Find("textarea").Input("hola"));
+        await cut.Find(".ns-send button[type=\"submit\"]").ClickAsync(new());
+
+        Assert.Equal(["hola"], cut.Instance.Sent);
+        Assert.Empty(cut.Find("textarea").TextContent);
+        Assert.True(cut.Find(".ns-send button[type=\"submit\"]").HasAttribute("disabled"));
+    }
+
+    /// <summary>The box DRAWS the words it was handed: the control holds no copy of them, so
+    /// what a screen's model carries into it — a draft, a handover — is what the person reads in
+    /// the box and what the send would carry back out.</summary>
+    [Fact]
+    public void TheBoxDrawsTheWordsItWasHanded()
+    {
+        var cut = Render<NsSendMessage>(ps => ps.Add(p => p.Text, "hola"));
+
+        Assert.Equal("hola", cut.Find("textarea").TextContent);
+        Assert.False(cut.Find("button[type=\"submit\"]").HasAttribute("disabled"));
+    }
 }
