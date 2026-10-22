@@ -5,6 +5,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
+using NSail.Messaging;
 using NSail.Messaging.Runtime;
 using NSail.Messaging.Runtime.Context;
 using NSail.Metadata;
@@ -47,9 +48,39 @@ public sealed class ConfirmSendInUseTests : BunitContext
 
     async Task<bool> Delete()
     {
+        return await Send(new DeleteProbeThing());
+    }
+
+    async Task<bool> Send(IMessage message)
+    {
         var probe = Render<ConfirmSendProbe>();
 
-        return await probe.Instance.Run(new DeleteProbeThing());
+        return await probe.Instance.Run(message);
+    }
+
+    /// <summary>Which of the two confirmations a send asks is derived from its own verb: Delete
+    /// is the closed verb set's word for destroying something (naming.md), so a delete opens its
+    /// question with the cursor on the way out (ui/forms.md, <em>Focus on open</em>) without the
+    /// screen that drew the row saying anything.</summary>
+    [Fact]
+    public async Task ASendThatDeletes_AsksTheDestructiveQuestion()
+    {
+        await Delete();
+
+        Assert.Equal(1, _dialogs.Confirms);
+        Assert.Equal(1, _dialogs.Destructions);
+    }
+
+    /// <summary>And every other verb keeps the ordinary one, whose cursor stands on the act it
+    /// offers: an update rewrites, and a send outside the set mints. A confirmation that opened
+    /// on the way out for those would cost Enter the act it is for.</summary>
+    [Fact]
+    public async Task ASendThatWrites_AsksTheOrdinaryQuestion()
+    {
+        await Send(new UpdateProbeThing());
+
+        Assert.Equal(1, _dialogs.Confirms);
+        Assert.Equal(0, _dialogs.Destructions);
     }
 
     /// <summary>The specific key wins, and it is derived from the message type — the send is

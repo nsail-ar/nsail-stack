@@ -24,15 +24,35 @@ public sealed class MudDialogManager(IDialogService dialogs, ISnackbar snackbar,
         MaxWidth = MaxWidth.Medium
     };
 
-    public override async Task<bool> Confirm(string message, string? title = null)
+    public override Task<bool> Confirm(string message, string? title = null)
     {
-        var result = await dialogs.ShowMessageBoxAsync(
-            title ?? strings.Translate("Common.Confirm"),
-            message,
-            yesText: strings.Translate("Common.Yes"),
-            cancelText: strings.Translate("Common.No"));
+        return Ask(message, title, destroys: false);
+    }
 
-        return result == true;
+    public override Task<bool> ConfirmDestruction(string message, string? title = null)
+    {
+        return Ask(message, title, destroys: true);
+    }
+
+    // The house's own dialog and not the vendor's message box, for the one thing the message box
+    // cannot be told: which of its two faces the cursor opens on (NsConfirmDialog). No options are
+    // passed, exactly as the message box passed none — a question takes the provider's own, which
+    // is what makes Escape and a backdrop click the ways out it always had.
+    async Task<bool> Ask(string message, string? title, bool destroys)
+    {
+        var parameters = new DialogParameters<NsConfirmDialog>
+        {
+            { x => x.Message, message },
+            { x => x.Destroys, destroys }
+        };
+
+        var reference = await dialogs.ShowAsync<NsConfirmDialog>(
+            title ?? strings.Translate("Common.Confirm"),
+            parameters);
+
+        var result = await reference.Result;
+
+        return result?.Data is true;
     }
 
     public override async Task Alert(string message, string? title = null)

@@ -93,7 +93,10 @@
             return;
         }
 
-        var confirmed = await DialogManager.Confirm(
+        // The destructive confirmation, which is what this one is: the act it offers throws away
+        // work nobody has saved, so the cursor opens on staying (ui/forms.md, Enter). The house's
+        // own exit guard is one of the two seams that know they destroy — no screen says it.
+        var confirmed = await DialogManager.ConfirmDestruction(
             Strings.Translate("Common.UnsavedChanges"),
             Strings.Translate("Common.UnsavedChangesTitle"));
 

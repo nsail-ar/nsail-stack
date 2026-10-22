@@ -1,0 +1,69 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using MudBlazor
+@using NSail.Localization
+
+@inject StringManager Strings
+
+@* The house's own yes/no question, in place of the vendor's message box, for the one thing a
+   message box does not offer: WHERE THE CURSOR OPENS. Its buttons arrive as texts and nothing
+   else, and it wraps them in a focus trap of its own that always lands on the affirmative — so a
+   confirmation that DESTROYS something opened with the cursor on the act that destroys, and a
+   reflex Enter threw away the document (ui/forms.md, Enter).
+
+   Everything else is the message box's own shape, so the question reads and is pressed exactly as
+   it was: the title the opener passed (rendered by the dialog itself), the message, and No then
+   the primary Yes.
+
+   The cursor is the TRAP's to place and is told where rather than raced: it focuses after any
+   gesture this component could make, and taking it back on the next frame is how a FIELD inside a
+   dialog has to do it (ns.js, focusFirst) because a field is not a child the trap can be pointed
+   at. A button is. What the doctrine warns does not reach the trap is DialogOptions.DefaultFocus,
+   which MudDialog never reads — it reads this parameter, and the provider's global as its
+   fallback. *@
+<MudDialog DefaultFocus="@Opening">
+    <DialogContent>
+        @Message
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Refuse">@Strings.Translate("Common.No")</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Accept">@Strings.Translate("Common.Yes")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Message { get; set; } = string.Empty;
+
+    /// <summary>Whether the act behind the question destroys something, which is the whole of
+    /// what this dialog does differently (DialogManager.ConfirmDestruction). Derived from the act
+    /// itself and never asked of a screen.</summary>
+    [Parameter]
+    public bool Destroys { get; set; }
+
+    // Which face the cursor opens on, and the reason the two faces are drawn in this order: an
+    // ordinary confirmation offers its own act, so the cursor stands on it and Enter takes it;
+    // one that destroys stands on the way out, so Enter alone can only decline.
+    DefaultFocus Opening
+    {
+        get { return Destroys ? DefaultFocus.FirstChild : DefaultFocus.LastChild; }
+    }
+
+    void Accept()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+
+    // A definite no, so a refusal and the ways out that answer nothing — Escape, the backdrop —
+    // reach the opener as the same false.
+    void Refuse()
+    {
+        MudDialog.Close(DialogResult.Ok(false));
+    }
+}

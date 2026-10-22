@@ -95,6 +95,21 @@ public sealed class UnsavedChangesGuardTests : BunitContext, IAsyncLifetime
         Assert.Equal(1, _dialogs.Confirms);
     }
 
+    /// <summary>And it asks the DESTRUCTIVE question: its Yes throws away work nobody saved, so
+    /// the cursor opens on staying and a reflex Enter cannot discard the document (ui/forms.md,
+    /// <em>Focus on open</em>). The guard is one of the two seams that know they destroy — the
+    /// other is the message's own verb — and no screen says it.</summary>
+    [Fact]
+    public async Task TheQuestionTheGuardAsks_IsTheDestructiveOne()
+    {
+        var host = await RenderDirtyForm();
+        var navigation = Services.GetRequiredService<NavigationManager>();
+
+        await host.InvokeAsync(() => navigation.NavigateTo("/somewhere/else"));
+
+        Assert.Equal(1, _dialogs.Destructions);
+    }
+
     // A create page on the main surface, ending its submit the way every one of them does: it
     // navigates to what it just wrote (create-thin-then-enrich). ReportsWhileSaving is the echo —
     // an editor that reports the SURFACE re-entered by a render the handler's own publishes
