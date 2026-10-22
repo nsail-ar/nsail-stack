@@ -4,6 +4,7 @@
 @namespace NSail.Components
 @typeparam TItem
 @typeparam TValue
+@using System.Diagnostics.CodeAnalysis
 @using Microsoft.AspNetCore.Components.Routing
 @inherits NsAsyncFieldBase<TValue>
 
@@ -205,7 +206,8 @@
     // Set while THIS field is answering an Enter of its own: the vendor's debounced search for
     // the text that key ended is still on its way, and it will open a list over whatever the
     // keystroke resolved — the same stale reopen a pick made under a live search leaves, from
-    // the other side of the debounce (nothing is out yet, so _searchesOut cannot see it).
+    // the other side of the debounce (nothing is out yet, so _searchesOut cannot see it). The
+    // span ends at the pick it was taken for, which is where the mark above reads it.
     bool _entered;
 
     /// <summary>The Runner the RESOLVE runs on, separate from the field's own because they are
@@ -433,12 +435,41 @@
     /// <summary>Enter over a SEARCH-FIRST box is the box's own gesture — it resolves the text
     /// that was typed — so the form never sees it: a code ended with Enter in a filter bar or in
     /// a one-field dialog would otherwise send the question on the keystroke that was only
-    /// finding the article (ns.js, onDocumentKeyDown). A browsed lookup opens its whole set on
-    /// focus and the vendor answers that Enter off the list already on screen, which the open
-    /// list's own guard already takes from the form.</summary>
+    /// finding the article (ns.js, onDocumentKeyDown). Only while there IS something to resolve,
+    /// which is the same answer the keystroke itself reads: the mark is the STATE and not the
+    /// posture, the way every other field's is — a box with nothing hanging on this key has no
+    /// second meaning for it to collide with (NsTextFieldBase.TakesEnter) — so an empty box, one
+    /// settled on the value it holds and one nobody may write to hand the key back to the policy
+    /// around them, which is what the combobox read next to this one already says a closed,
+    /// empty or settled box does. Eaten in those states it would die: a filter bar whose Enter
+    /// sends the question from every other box would answer nothing from this one. A browsed
+    /// lookup never takes it — its whole set is on screen from the focus, so the vendor answers
+    /// that Enter off the list already open.</summary>
     protected override bool TakesEnter
     {
-        get { return Lazy; }
+        get { return Resolves(_typed); }
+    }
+
+    // What the keystroke has to resolve, and the mark above's own answer, so the key is taken
+    // from the form exactly where this field answers it: text in the box that no list on screen
+    // answers for, and that is not the reading of the value the field already holds — the vendor
+    // writes that reading into the box itself on every pick and every leave. A hand typing at its
+    // own speed leaves a settled list, and THAT Enter is the vendor's: it takes what the list
+    // highlights. A field nobody may write to resolves nothing at all — it asks nothing
+    // (ui/fields.md), and nothing was typed into it to resolve.
+    bool Resolves([NotNullWhen(true)] string? typed)
+    {
+        if (!Lazy || IsReadOnly || IsDisabled || string.IsNullOrWhiteSpace(typed))
+        {
+            return false;
+        }
+
+        if (_answered == typed)
+        {
+            return false;
+        }
+
+        return _selectedItem is null || GetItemText(_selectedItem) != typed;
     }
 
     void OnBoxText(string text)
@@ -461,20 +492,16 @@
     // is highlighting, which for a single answer is that answer, with no arrow-down.
     async Task OnBoxKeyDown(KeyboardEventArgs args)
     {
-        if (!Lazy || args.Key is not ("Enter" or "NumpadEnter") || _autocomplete is null)
+        if (args.Key is not ("Enter" or "NumpadEnter") || _autocomplete is null)
         {
             return;
         }
 
         var typed = _typed;
 
-        // Nothing to resolve: an empty box, a text the list on screen already answers — a hand
-        // typing at its own speed leaves the vendor a settled list, and that Enter is the
-        // vendor's own — or the reading of what the field is already holding, which the vendor
-        // writes into the box itself on every pick and every leave.
-        if (string.IsNullOrWhiteSpace(typed)
-            || _answered == typed
-            || (_selectedItem is not null && GetItemText(_selectedItem) == typed))
+        // Nothing to resolve, and the same read the mark on the box is written from, so the
+        // keystroke the form was refused is always the keystroke this answers.
+        if (!Resolves(typed))
         {
             return;
         }
@@ -499,19 +526,43 @@
     // Asking again instead would cancel it — one Runner — and the vendor, which redraws its list
     // from whatever that cancelled call returns, would come back with no list at all: the choice
     // taken away from the operator on the keystroke that was asking for it.
+    //
+    // Where none is out the field asks it itself, and that ask is the one the vendor's own
+    // debounce then cancels — it fires for the SAME text a tenth of a second later, and a second
+    // ask on the one Runner cancels the first. A cancelled ask filed no answer, so it hands back
+    // the list of an older term (Ask), which this key must never read: empty it takes nothing on
+    // the very code it was resolving, and holding one row of a term already picked and cleared it
+    // would take THAT article, silently, over the code in the box. So the answer is waited for a
+    // second time instead — the search that cancelled ours asked our own text, and it is the one
+    // bringing the list. Unanswered with nothing left out, the key resolves nothing at all.
     async Task<List<TItem>> Answered(string typed)
     {
-        while (_answered != typed && _searchesOut > 0)
-        {
-            await (_settling ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
-        }
+        await Settling(typed);
 
         if (_answered == typed)
         {
             return [.. _results];
         }
 
-        return [.. await Ask(typed)];
+        await Ask(typed);
+
+        await Settling(typed);
+
+        if (_answered == typed)
+        {
+            return [.. _results];
+        }
+
+        return [];
+    }
+
+    // Holds while any search is out and none of them has answered for this text.
+    async Task Settling(string typed)
+    {
+        while (_answered != typed && _searchesOut > 0)
+        {
+            await (_settling ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
+        }
     }
 
     // The third belt, for the one reopen the two above cannot see: the vendor's own, raised
@@ -634,7 +685,11 @@
     // the last word after it — a refused change then really changes the parameter back.
     async Task OnItemChanged(TItem? item)
     {
+        // The Enter's own span ends at the pick it was taken for: what it had to say is said in
+        // the mark below, and left standing it would make every later pick of this field's life
+        // read as one made under a list nobody asked for.
         _reopenIsStale = _searchesOut > 0 || _entered;
+        _entered = false;
 
         _selectedItem = item;
 

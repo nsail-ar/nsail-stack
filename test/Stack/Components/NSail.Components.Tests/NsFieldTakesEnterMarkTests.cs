@@ -3,6 +3,7 @@
 
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
@@ -85,16 +86,40 @@ public sealed class NsFieldTakesEnterMarkTests : BunitContext, IAsyncLifetime
     /// that was typed, which is the whole of what a reader's code plus Enter means — so the
     /// collision is the same one and the mark is the same: a code ended with Enter in a filter bar
     /// or in a one-field dialog must not send the question on the keystroke that was only finding
-    /// the article.</summary>
+    /// the article. While there is something to resolve, which is this family's own rule: the term
+    /// is in the box and no list on screen answers it yet (held open here, which is the state the
+    /// reader's own burst presses the key in).</summary>
     [Fact]
-    public void ASearchFirstLookup_TakesTheEnter()
+    public async Task ASearchFirstLookupWithATermToResolve_TakesTheEnter()
     {
-        var cut = Render<SearchLookupHost>(ps => ps.Add(p => p.Lazy, true));
+        var cut = Render<SearchLookupHost>(ps => ps
+            .Add(p => p.Lazy, true)
+            .Add(p => p.Gate, _ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously).Task));
+
+        var input = cut.Find("input");
+
+        // The box has to be the one being typed into for the vendor to read the text at all,
+        // which is the state any keystroke of this kind lands in.
+        await input.FocusAsync(new FocusEventArgs());
+
+        await input.InputAsync(new ChangeEventArgs { Value = "7798123456789" });
 
         Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-commits"));
     }
 
-    /// <summary>A BROWSED lookup does not: its whole set is on screen from the focus, so the
+    /// <summary>And an EMPTY one does not, for the same reason a box that only binds does not:
+    /// there is no term for the key to resolve, so nothing of this field's own collides with it
+    /// and the question a filter bar or a one-field dialog IS still goes on Enter. The states the
+    /// mark comes off in are the keystroke's own (NsAutocompleteReaderEnterTests).</summary>
+    [Fact]
+    public void AnEmptySearchFirstLookup_LeavesTheEnterToTheForm()
+    {
+        var cut = Render<SearchLookupHost>(ps => ps.Add(p => p.Lazy, true));
+
+        Assert.Null(cut.Find("input").GetAttribute("data-ns-commits"));
+    }
+
+    /// <summary>A BROWSED lookup never takes it: its whole set is on screen from the focus, so the
     /// vendor answers that Enter off the list already open — and an open list's Enter is taken
     /// from the form by the combobox read instead (NsComboboxExpandedMarkTests).</summary>
     [Fact]

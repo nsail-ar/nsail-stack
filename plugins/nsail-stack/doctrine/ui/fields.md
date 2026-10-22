@@ -668,14 +668,28 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   match; **none** leaves the box exactly as it was, which is what the caller's own offer and the
   create entry quote. The text it resolves is held off the vendor's own text event and never read
   back off the term a search is about — the whole point of the keystroke is that no search has
-  started for it (`NsTextFieldBase.HoldTyped`'s reason). A search already out for that text is
-  **waited** for and never asked again: a field has one Runner for its searches, so a second ask
-  cancels the first, and the first is the call the vendor redraws its list from — it would come
-  back empty, taking the choice away from the operator on the keystroke that was asking for it.
-  Derived from the posture and never a parameter: a browsed lookup has its whole set on screen
-  from the focus, so the vendor answers off the list already open. The same box takes the Enter
-  from the form (above, `data-ns-commits`): a code ended with Enter in a filter bar or a one-field
-  dialog must not send the question on the keystroke that was only finding the article.
+  started for it (`NsTextFieldBase.HoldTyped`'s reason). Derived from the posture and never a
+  parameter: a browsed lookup has its whole set on screen from the focus, so the vendor answers
+  off the list already open.
+- **No answer of a search that key does not own is read as its own.** A search already out for
+  the text is **waited** for and never asked again: a field has one Runner for its searches, so a
+  second ask cancels the first, and the first is the call the vendor redraws its list from — it
+  would come back empty, taking the choice away from the operator on the keystroke that was asking
+  for it. And where none was out, the ask the key makes itself is the one the vendor's own debounce
+  **cancels**, firing for the same text a tenth of a second later: a cancelled ask files no answer
+  and hands back the field's last good read, so taken as this key's answer it resolves nothing on
+  the very code it was asking about — or, in a box that answered once already, the article of the
+  term before it. That answer is waited for too, and it is the one the search that cancelled ours
+  brings.
+- **The mark that takes Enter from the form is the STATE, never the posture** (above,
+  `data-ns-commits`): it is on while there is a term in the box that no list on screen answers and
+  that is not the reading of the article the box already holds — a code ended with Enter in a
+  filter bar or in a one-field dialog must not send the question on the keystroke that was only
+  finding the article. Empty, settled or locked, the key goes back to the policy around it: the
+  same three states the combobox read hands it back in, by the same criterion every other field's
+  mark is derived with — a box with nothing hanging on this key has no second meaning for it to
+  collide with. Eaten there it would die where it used to work, and the question a filter bar IS
+  would be sent by the Enter in every box of it but this one.
 - **A row the rules cannot settle alone opens its own second level, inside the list.**
   `ItemTemplate` seats an `NsMenu` with a `Content` face on that option, and the same row is
   also handed to `ItemDisabledFunc`: the face IS the row — `.ns-lookup-list` makes the trigger
