@@ -224,7 +224,7 @@ drawing its own row with its own X — which is what a bar standing outside a sh
 (`SurfaceContext.ClaimsRow`, handed back by `ReleaseRow` from `Dispose`): the hamburger, so a
 screen shows it once however many title rows it draws; which row goes quiet where the shell
 drew the chrome — a panel that is a section of the screen keeps the row it declared; and, on the
-main surface, which row draws the page's one top-level heading, where a navigation's arrival
+main surface, which row names the screen with a top-level heading, where a navigation's arrival
 hands the cursor when the screen marks no field of its own (focus.md). The claim is
 handed back because the main surface outlives every page on it and one left standing would be a
 phone with no way to the drawer on every screen after. **A panel that is a section of the screen

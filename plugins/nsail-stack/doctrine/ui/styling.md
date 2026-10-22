@@ -240,11 +240,12 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
 ## Text and image chrome
 
 - `NsText` has its own `As` (`NsTextAs`: `Body` default, `Title` = the h6 treatment) — a
-  separate enum from `NsAs`. **`PageName` is that same treatment drawn as the page's one
-  top-level heading** (`<h1 tabindex="-1">` — the rank and the focusability a screen's name owes
-  a screen reader and the router's arrival focus, never a change of size), and only the title
-  row that is the screen's subject takes it: `NsTitleBar` decides it and a screen never writes
-  it (focus.md).
+  separate enum from `NsAs`. **`PageName` is that same treatment drawn as a top-level heading**
+  (`<h1 tabindex="-1">` — the rank and the focusability a screen's name owes a screen reader and
+  the router's arrival focus, never a change of size), and **one** title row takes it: the one
+  that is the screen's subject, decided by `NsTitleBar` and never written by a screen
+  (focus.md). A heading drawn inside the CONTENT — a guide chapter's `#` through `Markdown` — is
+  the content's own and is not this.
 - `NsRemoteImage` and `NsImage` (Assets) both carry `As` (reusing `NsAs`, never a second enum):
   `Inline` (default) inherits the surrounding colour, `Main` maps to `.text-primary`. Tinting
   an image is that parameter, never a class or a `style=` — including on the row *around* the

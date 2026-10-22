@@ -1070,8 +1070,14 @@
         // screen reader on a phone hears the page it just landed on (ui/focus.md, Touch).
         const marked = !window.matchMedia("(pointer: coarse)").matches;
 
+        // Where the cursor stands as the arrival lands, which is the gesture that brought the
+        // person here -- the link or the menu item they pressed, or nobody at all once the page
+        // that held it is gone. It is what tells "untouched since we landed" from "a hand
+        // reached for something of its own while we waited" below.
+        const entry = document.activeElement;
+
         // The first, synchronous try always wins, exactly as the vendor's own unconditional
-        // focus did; only from the moment this call starts WAITING does a hand that got there
+        // focus does; only from the moment this call starts WAITING does a hand that got there
         // first keep what it took (settle below).
         const present = marked ? findArrivalMarker() : document.querySelector(fallbackSelector);
         if (present) {
@@ -1109,8 +1115,25 @@
             // Between the marker not being there yet and it (or the fallback) finally landing,
             // a person may have reached for something themselves -- the one window this call
             // must never win against, unlike its own first, synchronous try above.
-            if (el && !reached(document.activeElement))
+            if (el && !taken())
                 el.focus();
+        }
+
+        // Asked as "has the cursor MOVED since we landed", not as reached()'s list of shapes a
+        // click can focus: inside this window a tab strip's div, a clickable grid row or a
+        // tree's node is a place a hand deliberately went and none of them is in that list,
+        // while the link that brought the person here IS -- so the list answers backwards at
+        // both ends. Nobody holding it (the page that held the gesture is gone) reads as
+        // untouched, which is what keeps the arrival working for the ordinary navigation.
+        // reached() stays what it is for focusFirst, whose question is a different one: whether
+        // the cursor is on a control at all, or on the focus trap's own landing div.
+        function taken() {
+            const now = document.activeElement;
+
+            return now !== null
+                && now !== entry
+                && now !== document.body
+                && now !== document.documentElement;
         }
     }
 
