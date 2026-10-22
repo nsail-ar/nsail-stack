@@ -208,11 +208,6 @@ sealed partial class MapperEmitter
         var sourceKeys = keys.Select(key => SourceMember(source, key, out _)).ToList();
         var sourceHasKey = sourceKeys.All(member => member is not null);
 
-        // An optional member (Guid?, a nullable reference) already answers null for "no row
-        // named" by its own type — collapsing its default is the established contract (a
-        // nullable key is a create), not the gap MapRoot refuses on.
-        var sourceKeyRequired = sourceHasKey && sourceKeys.All(member => !IsOptionalKey(member!.Type));
-
         foreach (var key in sourceKeys)
         {
             Consume(source, key);
@@ -230,7 +225,11 @@ sealed partial class MapperEmitter
         text.AppendLine($"            public override object SourceKey({s} source)");
         text.AppendLine("            {");
 
-        if (sourceHasKey)
+        if (sourceHasKey && keys.Count == 1)
+        {
+            text.Append(SingleSourceKeyBody(source, target, sourceKeys[0]!, keys[0]));
+        }
+        else if (sourceHasKey)
         {
             var parts = new List<string>();
 
@@ -254,18 +253,6 @@ sealed partial class MapperEmitter
             text.AppendLine("                return null;");
         }
 
-        text.AppendLine("            }");
-        text.AppendLine();
-
-        text.AppendLine("            public override bool SourceHasKey");
-        text.AppendLine("            {");
-        text.AppendLine($"                get {{ return {(sourceKeyRequired ? "true" : "false")}; }}");
-        text.AppendLine("            }");
-        text.AppendLine();
-
-        text.AppendLine("            public override object DefaultKey");
-        text.AppendLine("            {");
-        text.AppendLine($"                get {{ return default({KeyType(keys)})!; }}");
         text.AppendLine("            }");
         text.AppendLine();
 
@@ -443,6 +430,48 @@ sealed partial class MapperEmitter
         text.AppendLine($"                {type} key = {(parts.Count == 1 ? parts[0] : $"({string.Join(", ", parts)})")};");
         text.AppendLine();
         text.AppendLine($"                return global::System.Collections.Generic.EqualityComparer<{type}>.Default.Equals(key, default({type})) ? null : (object)key;");
+
+        return text.ToString();
+    }
+
+    // A single key member, converted on its own: a required value type names a row at any
+    // value, default included — the one gap `MapRoot` must refuse rather than create past. An
+    // optional member (Guid?, a nullable reference) still answers null for "no row" by its own
+    // type, the established "a nullable key is a create" contract; a value it does carry,
+    // default included, names a row exactly like a required member's.
+    string SingleSourceKeyBody(INamedTypeSymbol source, INamedTypeSymbol target, IPropertySymbol sourceKey, IPropertySymbol targetKey)
+    {
+        var text = new StringBuilder();
+        var memberType = sourceKey.Type;
+        var underlying = Underlying(memberType);
+        var expr = $"source.{Id(sourceKey.Name)}";
+
+        string Converted(string value, ITypeSymbol from)
+        {
+            var converted = Convert(value, from, targetKey.Type);
+
+            if (converted is not null)
+            {
+                return converted;
+            }
+
+            Report(GeneratorDiagnostics.MappedMemberNotConvertible, targetKey, target.Name, targetKey.Name, targetKey.Type.ToDisplayString(), source.Name, sourceKey.Name, sourceKey.Type.ToDisplayString());
+
+            return $"default({Name(targetKey.Type)})";
+        }
+
+        if (!SymbolEqualityComparer.Default.Equals(underlying, memberType))
+        {
+            text.AppendLine($"                return {expr}.HasValue ? (object)({Converted($"{expr}.Value", underlying)}) : null;");
+        }
+        else if (memberType.IsReferenceType)
+        {
+            text.AppendLine($"                return {expr} is null ? null : (object)({Converted(expr, memberType)});");
+        }
+        else
+        {
+            text.AppendLine($"                return (object)({Converted(expr, memberType)});");
+        }
 
         return text.ToString();
     }
@@ -1505,14 +1534,6 @@ sealed partial class MapperEmitter
         return type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable
             ? nullable.TypeArguments[0]
             : type;
-    }
-
-    // Guid? or a nullable reference: its own type already tells "no row named" from a value,
-    // so a default read off it is that member's ordinary null, not a key sent at its zero.
-    static bool IsOptionalKey(ITypeSymbol type)
-    {
-        return !SymbolEqualityComparer.Default.Equals(Underlying(type), type)
-            || (type.IsReferenceType && type.NullableAnnotation == NullableAnnotation.Annotated);
     }
 
     static string Name(ITypeSymbol type)

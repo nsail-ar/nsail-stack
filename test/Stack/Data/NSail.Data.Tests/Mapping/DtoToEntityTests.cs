@@ -79,6 +79,7 @@ public sealed class DtoToEntityTests
         var refused = await Assert.ThrowsAsync<BusinessException>(() => store.Mapper.Map<UserDto, User>(new UserDto { Id = 0, Name = "ghost" }));
 
         Assert.Equal(BusinessProblem.NotFoundCode, refused.Code);
+        Assert.Equal("0", refused.Issues.Single().Arguments!["id"]);
         Assert.Empty(store.Db.Users);
     }
 

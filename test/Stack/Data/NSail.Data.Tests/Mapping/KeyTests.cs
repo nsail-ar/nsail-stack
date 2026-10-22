@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using NSail.Mapping.Annotations;
+using NSail.Problems;
 
 namespace NSail.Data.Tests.Mapping;
 
@@ -57,6 +58,38 @@ public sealed class KeyTests
         var customer = await store.Mapper.Map<CustomerDto, Customer>(new CustomerDto { Id = null, Name = "new customer" });
 
         Assert.Equal("new customer", customer.Name);
+    }
+
+    // A nullable key member naming a real id that is not there is still NotFound — the type
+    // being Guid? decides what null means, never whether a value in hand gets checked.
+    [Fact]
+    public async Task map_dto_nullable_key_realid_notfound()
+    {
+        await using var store = await MapperStore<NullableKeyContext>.Create();
+
+        var id = Guid.NewGuid();
+
+        var refused = await Assert.ThrowsAsync<BusinessException>(
+            () => store.Mapper.Map<CustomerDto, Customer>(new CustomerDto { Id = id, Name = "ghost" }));
+
+        Assert.Equal(BusinessProblem.NotFoundCode, refused.Code);
+        Assert.Equal(id.ToString(), refused.Issues.Single().Arguments!["id"]);
+        Assert.Empty(store.Db.Customers);
+    }
+
+    // A nullable key member carrying its own type's default is a value, not an absence: the
+    // caller distinguished "no id" (null) from "id Guid.Empty" already, and Map must too.
+    [Fact]
+    public async Task map_dto_nullable_key_default_notfound()
+    {
+        await using var store = await MapperStore<NullableKeyContext>.Create();
+
+        var refused = await Assert.ThrowsAsync<BusinessException>(
+            () => store.Mapper.Map<CustomerDto, Customer>(new CustomerDto { Id = Guid.Empty, Name = "ghost" }));
+
+        Assert.Equal(BusinessProblem.NotFoundCode, refused.Code);
+        Assert.Equal(Guid.Empty.ToString(), refused.Issues.Single().Arguments!["id"]);
+        Assert.Empty(store.Db.Customers);
     }
 
     public class NoKeyUserDto
