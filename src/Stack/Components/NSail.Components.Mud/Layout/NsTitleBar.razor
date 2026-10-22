@@ -69,7 +69,7 @@
                         <NsIcon Icon="@icon" />
                     }
                 </span>
-                <NsText As="NsTextAs.Title">@Title</NsText>
+                <NsText As="@GetTitleAs()">@Title</NsText>
             </NsStack>
         </div>
         <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ms-auto">
@@ -183,6 +183,19 @@ else if (!Hoisted)
     // Asked at render, never cached: the row that holds the claim can leave while the surface
     // stays, and the taker is then whichever row renders next (SurfaceContext.ClaimsRow).
     bool OwnsToggle => ShowsToggle(Surface, LayoutState) && Surface!.ClaimsRow(this);
+
+    // A screen's NAME is the page's one top-level heading, and the row that names the screen is
+    // the one that claimed the surface — the same claim the hamburger rides: a panel drawing a
+    // second row is a section of the screen, and an overlay's row names what opened over the
+    // screen rather than the screen. Asked of the claim and not of the drawer's presence, since
+    // a screen is named at every width and in a shell with no drawer at all; asked at render,
+    // like the toggle, because the claim changes hands while the surface lives. What the heading
+    // buys is where the cursor lands on arrival (ui/focus.md): the router's fallback focuses it
+    // on a screen that marks no field of its own.
+    NsTextAs GetTitleAs()
+    {
+        return OnMain && Surface!.ClaimsRow(this) ? NsTextAs.PageName : NsTextAs.Title;
+    }
 
     protected override void OnInitialized()
     {

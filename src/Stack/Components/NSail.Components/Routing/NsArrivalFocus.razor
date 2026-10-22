@@ -4,38 +4,63 @@
 @namespace NSail.Components
 
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 @* Draws nothing. Blazor's own FocusOnNavigate calls a plain selector the instant a navigation
    lands — a comma list ("[data-ns-arrival-focus], h1") is not that selector, because
-   querySelector answers the first match in DOCUMENT ORDER and the header's h1 always comes
-   before whatever a screen marks. ns.js (arrivalFocus) checks the marker on its own first and
-   reaches for the fallback only when there is none — waiting for it, since a list's own search
-   can still be behind a read in flight the instant this fires. *@
+   querySelector answers the first match in DOCUMENT ORDER and the screen's own name always
+   comes before whatever a screen marks. ns.js (arrivalFocus) checks the marker on its own first
+   and reaches for the fallback only when there is none — waiting for it, since a list's own
+   search can still be behind a read in flight the instant this fires. *@
 
 @code {
 
     RouteData? _last;
+    string? _arrived;
     bool _pending;
 
     [Parameter]
     public RouteData? RouteData { get; set; }
 
     /// <summary>What the router focuses when the arriving page carries no marker — a read-only
-    /// page, a dashboard. "h1" so a screen reader still hears the page's title.</summary>
+    /// page, a dashboard. "h1" so a screen reader still hears the page's title: the screen's own
+    /// title row draws that heading, focusable (NsTitleBar, ui/focus.md).</summary>
     [Parameter]
     public string FallbackSelector { get; set; } = "h1";
 
-    // RouteData is a fresh instance per navigation (Blazor's Router.Refresh) and the same
+    // Two questions, and the arrival is only where both answer yes.
+    //
+    // RouteData is a fresh instance per LOCATION CHANGE (Blazor's Router.Refresh) and the same
     // instance across a render the page caused for its own reasons — StateHasChanged moves no
-    // route — so comparing the reference, not the page type or the route values, is what makes
-    // this fire once per arrival and never on a re-render.
+    // route — so the reference, not the page type or the route values, is what keeps a
+    // re-render free.
+    //
+    // A location change is not an arrival, though: a surface written over the address the person
+    // is already standing at — an aside, a dialog, a tab, a filter — navigates in place
+    // (SurfaceContext.InPlace) and nobody went anywhere (ui/navigation.md, which is why
+    // NsNavMenu refuses to recount on one). So the PATH is the second question, asked the way
+    // SurfaceContext.StaysInPlace asks it. Without it the cursor leaves what the hand is doing
+    // every time a screen writes its own tab or filter onto the address, and on a coarse pointer
+    // — where the fallback's pass is the one that runs — the keyboard closes mid-typing on the
+    // very box that wrote the query.
     protected override void OnParametersSet()
     {
-        if (!ReferenceEquals(RouteData, _last))
+        if (ReferenceEquals(RouteData, _last))
         {
-            _last = RouteData;
-            _pending = true;
+            return;
         }
+
+        _last = RouteData;
+
+        var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath;
+
+        if (string.Equals(path, _arrived, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _arrived = path;
+        _pending = true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
