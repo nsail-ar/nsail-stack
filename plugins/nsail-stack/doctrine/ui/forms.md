@@ -241,14 +241,15 @@ What it never does is save a document in the middle of being written:
   menu's face and the submit stand inside the very grid rows and the very form the two reads
   above answer for, and a button's Enter IS the keydown's default action: taking it would leave
   them pressed by nobody.
-- **In a COMPOSER, Enter sends and Shift+Enter writes the line** — the one textarea whose Enter
-  is not a line, because the words being typed ARE the message and there is no document around
-  them to save by accident. What says so is the composer around the box (`NsSendMessage` writes
-  `ns-send`, read from the keystroke's own target upwards), and the key presses that composer's
-  own send face: so a blank box and a send in flight refuse the keystroke for the single reason
-  they grey the face out, and the Shift half is the policy standing down and leaving the browser
-  its newline. A keystroke still composing a candidate (an accent, a CJK pick) belongs to the
-  word and is left alone.
+- **In a COMPOSER, Enter sends and Shift+Enter writes the line** — the one textarea whose plain
+  Enter is never a line, because the words being typed ARE the message and there is no document
+  around them to save by accident. What says so is the composer around the box (`NsSendMessage`
+  writes `ns-send`, read from the keystroke's own target upwards), and the key presses that
+  composer's own send face: so a blank box and a send in flight refuse the keystroke for the
+  single reason they grey the face out, and it **does nothing at all** there rather than leaving
+  a blank line nobody asked for. The Shift half is the policy standing down and leaving the
+  browser its newline; a keystroke still composing a candidate (an accent, a CJK pick) belongs to
+  the word and is left alone the same way.
 
 **A grid's move is the one half of the policy that is not a prevention, and it presses the row's
 own controls to make it** — the confirm, the pencil of the row below, the grid's Agregar
@@ -274,7 +275,8 @@ box and the send face together because the rules of sending are one set, and eve
 is read off what it renders:
 
 - **Enter sends, Shift+Enter writes the line** — the Enter policy above, which finds the
-  composer from the box the keystroke landed in.
+  composer from the box the keystroke landed in. The plain Enter is never a line here, so where
+  it cannot send it does nothing.
 - **A blank box never sends.** Whitespace is not a message: the face greys out, and the key
   presses no face a hand could not press, so the rule is written once and the two gestures
   cannot come apart.

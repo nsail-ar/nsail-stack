@@ -199,16 +199,20 @@
             if (!composer || e.isComposing)
                 return;
 
-            // The key presses the composer's own send, so a blank box and a send already in
-            // flight refuse it for the single reason they grey that face out (NsSendMessage's
-            // blank rule, NsSubmit's FormRunning) -- no second rule here to come apart from it.
+            // The plain Enter is never a LINE in a composer -- Shift+Enter is, and it never
+            // reaches here -- so the key either sends or does nothing at all, and an empty box
+            // does not answer it with a blank line nobody asked for.
+            e.preventDefault();
+
+            // What it presses is the composer's own send, so a blank box and a send already in
+            // flight refuse the key for the single reason they grey that face out
+            // (NsSendMessage's blank rule, NsSubmit's FormRunning) -- no second rule here to
+            // come apart from it.
             const send = composer.querySelector('button[type="submit"]');
 
-            if (!send || !live(send))
-                return;
+            if (send && live(send))
+                activate(send);
 
-            e.preventDefault();
-            activate(send);
             return;
         }
 
