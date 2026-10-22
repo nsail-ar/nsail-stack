@@ -271,7 +271,10 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   and nothing is drawn where the caller names none, an absent date not always being an alarm.
   The moment on the whisper is the operator's REGION pattern (`RegionCulture`) and never the
   host's ambient culture, and it is the long form of what is already on screen — the tooltip rule
-  above, not an exception to it.
+  above, not an exception to it: **only an `At` that says it is UTC is moved into the reader's
+  clock**, the house's reading of a kind ([exporting.md](../exporting.md)), because any other kind
+  is already local or is a civil hour with no zone to it, and a half that moved it would whisper
+  an instant the reading beside it contradicts.
 - `NsMeter` is the bar for a reading against an allowance: `Value` and `Max` in the caller's own
   units — never a pre-computed percentage — plus `As` (`NsAs`, `Main` default, `Danger` for
   an allowance already spent). The percentage is worked out inside and clamped, so a reading

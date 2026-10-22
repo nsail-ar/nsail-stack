@@ -31,9 +31,6 @@ else if (Missing is { Length: > 0 })
 
 @code {
 
-    // Every unit's key in one place, and the day's own reading is the ".Plural" pair
-    // StringManager picks between: one day is the value the warning tone lights up on, so it is
-    // the most read number of the column, and Spanish cannot spell it with the plural's word.
     const string Keys = "Components.NsSince.";
 
     [Parameter]
@@ -93,6 +90,9 @@ else if (Missing is { Length: > 0 })
         return StaleAfter is { } stale && DateTime.UtcNow - at.ToUniversalTime() >= stale;
     }
 
+    // The counting overload, not the plain one: the day's own reading is the ".Plural" pair
+    // StringManager picks between, because one day is the value the warning tone lights up on —
+    // the most read number of the column — and Spanish cannot spell it with the plural's word.
     string Ago(DateTime at)
     {
         var (key, value) = Elapsed(at, DateTime.UtcNow);
@@ -106,9 +106,16 @@ else if (Missing is { Length: > 0 })
     // two-letter code carrying no date pattern (RegionCulture), and a server in one timezone
     // serving a shop in another would otherwise write the moment in whatever the machine was
     // installed as.
+    // Only a moment that SAYS it is UTC moves into the reader's clock — the house's rule
+    // (exporting.md, guarded the same way in Tables/TableColumn.cs): any other kind is already
+    // local, or is a civil hour with no zone to it, which is how Elapsed reads it too. A bare
+    // ToLocalTime() supposes the opposite of ToUniversalTime() for an unspecified kind, so the
+    // whisper would name an instant the number beside it contradicts.
     string Moment(DateTime at)
     {
-        return at.ToLocalTime().ToString("g", RegionCulture.For(Language));
+        var moment = at.Kind == DateTimeKind.Utc ? at.ToLocalTime() : at;
+
+        return moment.ToString("g", RegionCulture.For(Language));
     }
 
 }

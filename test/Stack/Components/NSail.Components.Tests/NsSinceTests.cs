@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
@@ -165,15 +166,48 @@ public sealed class NsSinceTests : BunitContext, IAsyncLifetime
     /// <summary>The exact moment rides the whisper attribute, in the OPERATOR's region pattern —
     /// day first for es-AR, month first for en-US — and never in the host machine's ambient
     /// culture: the app's language is a neutral two-letter code carrying no date pattern at all.
-    /// Noon UTC, so no timezone the runner may be installed in moves the day.</summary>
+    /// The day is read off the runner's own clock rather than written out: a moment that says it
+    /// is UTC is drawn in the reader's zone, so a runner east of Greenwich is already on the next
+    /// day and what this pins is the pattern.</summary>
     [Theory]
-    [InlineData("es", "21/10/2026")]
-    [InlineData("en", "10/21/2026")]
-    public void TheExactMomentReadsInTheOperatorsRegion(string language, string date)
+    [InlineData("es", true)]
+    [InlineData("en", false)]
+    public void TheExactMomentReadsInTheOperatorsRegion(string language, bool dayFirst)
     {
+        var local = Noon.ToLocalTime();
         var cut = Render(language, Noon);
 
-        Assert.StartsWith(date, cut.Find(".ns-whisper-host").GetAttribute("data-ns-whisper"));
+        var whisper = cut.Find(".ns-whisper-host").GetAttribute("data-ns-whisper")!;
+
+        Assert.Equal(
+            dayFirst ? local.Day : local.Month,
+            int.Parse(whisper.Split('/')[0], CultureInfo.InvariantCulture));
+        Assert.Equal(local, DateTime.Parse(whisper, Region(language)));
+    }
+
+    /// <summary>A moment with no zone to it is the civil hour it says it is — the house's reading
+    /// of any kind that is not UTC (exporting.md) — in BOTH halves: the count reads it as a local
+    /// hour, and the whisper names that same hour unmoved, so the bubble is the long form of the
+    /// number beside it and not a second instant an offset away from it. A runner whose own clock
+    /// is UTC cannot tell the two apart, which is the whole reason the rule is pinned here.
+    /// </summary>
+    [Fact]
+    public void AMomentWithNoZoneToItIsTheSameInstantToBothHalves()
+    {
+        var civil = DateTime.SpecifyKind(Noon.ToLocalTime(), DateTimeKind.Unspecified);
+
+        Assert.Equal(("Components.NsSince.Minutes", 5), NsSince.Elapsed(civil, Noon.AddMinutes(5)));
+
+        var cut = Render("es", civil);
+
+        Assert.Equal(civil, DateTime.Parse(cut.Find(".ns-whisper-host").GetAttribute("data-ns-whisper")!, Region("es")));
+    }
+
+    // The region the control itself reads the moment in, reached through its own mapping rather
+    // than a second copy of it here (NsDateFieldTests does the same).
+    static CultureInfo Region(string language)
+    {
+        return RegionCulture.For(new LanguageProvider { Current = language });
     }
 
     IRenderedComponent<NsSince> Render(
