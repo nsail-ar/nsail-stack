@@ -162,11 +162,12 @@ sealed class BackgroundJobRunner : BackgroundService
 
         if (roster.Count == 0 && _emptyRosterSaid.TryAdd(jobType, 0))
         {
-            // Said once rather than every tick: an install with no tenants is a standing
-            // condition, not an event, and a per-tick repeat would bury the errors this job's
-            // own failures are logged as.
+            // Said once rather than every tick, because a per-tick repeat would bury the errors
+            // this job's own failures are logged as — and once is enough even where the roster
+            // is a file read every tick, which can empty again after it filled: the gauge above
+            // is what reads a roster that comes and goes.
             _logger.LogWarning(
-                "The tenant roster is empty, so per-tenant background job {Job} runs for nobody. An install whose rows belong to tenants declares them in Tenancy:Tenants; one that connects per tenant has no provisioned database.",
+                "The tenant roster is empty, so per-tenant background job {Job} runs for nobody. An install whose rows belong to tenants declares them in Tenancy:Tenants and in the file Tenancy:TenantsFile names; one that connects per tenant has no provisioned database.",
                 jobType.Name);
         }
 

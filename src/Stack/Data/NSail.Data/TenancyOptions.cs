@@ -22,8 +22,24 @@ public class TenancyOptions
     /// (<see cref="TenantRoster"/>) that work outside a request sweeps. Stated only where the
     /// wall is the tenant column: there, nothing in the install knows who exists, because the
     /// proxy's whitelist is the roster and the rows cannot be asked. A mode that connects per
-    /// tenant reads its databases instead and ignores this.</summary>
+    /// tenant reads its databases instead and ignores this. Read once, at startup, so a slug the
+    /// install cannot name is refused there.</summary>
     public string? Tenants { get; set; }
+
+    /// <summary>A file holding the same roster, one slug per line, unioned with
+    /// <see cref="Tenants"/> and read again on every sweep — so whoever provisions a tenant can
+    /// write it where this install reads it and have the next tick sweep it, with no restart. An
+    /// install that names none keeps <see cref="Tenants"/> alone and behaves as it always has,
+    /// and a mode that connects per tenant reads its databases instead and ignores both. An
+    /// install that names one <b>empties</b> <see cref="Tenants"/>: the union exists so that an
+    /// install nobody has re-composed keeps sweeping what it sweeps today, and a slug left in
+    /// both is pinned on the roster until a restart — which is how a tenant the file drops keeps
+    /// its jobs. A named file that cannot be read whole, or that holds an entry that cannot be a
+    /// slug, fails the sweep that asked for it instead of sweeping the part it could read — and
+    /// whoever writes it replaces it <b>atomically</b>, beside it and renamed over it, never
+    /// truncated and rewritten in place, because a sweep reading a half-written file would enter
+    /// a shortened roster, or a cut slug no tenant owns, in silence.</summary>
+    public string? TenantsFile { get; set; }
 
     /// <summary>How long this process holds what it read about a tenant
     /// (<see cref="TenantStateMemo"/>). It is the one knob over the gate's cost, and the one

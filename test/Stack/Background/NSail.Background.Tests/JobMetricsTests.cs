@@ -115,6 +115,37 @@ public sealed class JobMetricsTests
         Assert.Equal(0, meters.Passes(nameof(MeteredJob), BackgroundJobMetrics.Failed));
     }
 
+    // The third reading, and the one an install whose roster is written from outside it needs:
+    // the roster itself could not be read, so this tick entered nobody. The same zero as the
+    // reading above — the outcome is the same for the job — and what tells them apart is the
+    // error logged beside it. Never a subset swept in silence.
+    [Fact]
+    public async Task A_roster_that_cannot_be_read_reports_zero_and_says_why_at_error()
+    {
+        using var meters = new Meters();
+        var logs = new LogRecorder();
+        var missing = Path.Combine(Path.GetTempPath(), "nsail-roster-" + Guid.NewGuid().ToString("N")[..12]);
+
+        await using var provider = Harness.Build(
+            services =>
+            {
+                Tenants(services, roster: null, file: missing);
+                Job<MeteredJob>(services, new Signal());
+            },
+            logs);
+
+        await Harness.Run(provider, () => Read(meters, BackgroundJobMetrics.Roster) == 0d);
+
+        Assert.Equal(0d, meters.Gauge(BackgroundJobMetrics.Roster, nameof(MeteredJob)));
+        Assert.Equal(0, meters.Passes(nameof(MeteredJob), BackgroundJobMetrics.Succeeded));
+        Assert.Equal(0, meters.Passes(nameof(MeteredJob), BackgroundJobMetrics.Failed));
+
+        var error = Assert.Single(logs.Entries, entry => entry.Level >= LogLevel.Error);
+
+        Assert.Contains(nameof(MeteredJob), error.Message, StringComparison.Ordinal);
+        Assert.Contains(missing, error.Exception?.Message ?? string.Empty, StringComparison.Ordinal);
+    }
+
     // The other reason: the roster is there and the job is what is broken.
     [Fact]
     public async Task A_pass_that_throws_is_counted_failed_and_leaves_the_job_uncompleted()
@@ -232,9 +263,9 @@ public sealed class JobMetricsTests
         return meters.Gauge(instrument, nameof(MeteredJob));
     }
 
-    static void Tenants(IServiceCollection services, string? roster)
+    static void Tenants(IServiceCollection services, string? roster, string? file = null)
     {
-        var tenancy = new TenancyOptions { Mode = TenancyMode.SingleDb, Tenants = roster };
+        var tenancy = new TenancyOptions { Mode = TenancyMode.SingleDb, Tenants = roster, TenantsFile = file };
 
         services.AddSingleton(tenancy);
         services.AddSingleton(new TenantRoster(tenancy));

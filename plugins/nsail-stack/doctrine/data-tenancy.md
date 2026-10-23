@@ -589,13 +589,30 @@ reads nothing and cannot write at all.
 - **The roster is declared, never guessed** (`TenantRoster`). Where the wall is the connection,
   the provisioned databases ARE the registry and are read whole — the same truth a request
   resolves against. Where the wall is the tenant column there is no registry: the proxy's
-  whitelist is the roster, so the install states it in **`Tenancy:Tenants`**, comma-separated,
-  refused at startup if one entry cannot be a slug. Rows cannot answer the question — a query
-  spanning tenants is what the filter refuses, and `DISTINCT TenantId` would name whoever has
-  written rather than whoever exists. The cost is a second place to add a tenant under
-  `SingleDb`: a slug in Caddy and not here serves requests and gets no jobs, which is why an
-  **empty roster under a tenant-scoped mode is logged at warning**, once per job, **and reported
-  as a metric**.
+  whitelist is the roster, so the install states it — in **`Tenancy:Tenants`**, comma-separated,
+  read once and refused at startup if one entry cannot be a slug, and in the file
+  **`Tenancy:TenantsFile`** names, one slug per line, the union of the two. Rows cannot answer
+  the question — a query spanning tenants is what the filter refuses, and `DISTINCT TenantId`
+  would name whoever has written rather than whoever exists.
+- **The file is the same declaration, where whoever provisions a tenant can write it.** It is
+  **read again on every sweep**, never bound once, so an install whose tenants come and go has
+  each new one swept on the next tick with no restart — and the roster is still declared, only
+  re-read. It is not read at startup, because an install boots before its first roster is
+  written; a named file that is **missing, unreadable or holding an entry that cannot be a slug
+  refuses the whole answer**, at the sweep that asked for it, which the runner logs at error and
+  reports as a roster of zero. A subset swept in silence is the one outcome a roster must never
+  have — which is also what whoever writes the file owes it: **replaced atomically**, written
+  beside it and renamed over it, never truncated and rewritten in place, because the read takes
+  no lock and a sweep landing inside that window would enter a shortened roster, or a cut slug
+  no tenant owns, in silence. The cost is unchanged: a tenant has to appear in a second place
+  under `SingleDb`, and a slug in Caddy that is in neither of these serves requests and gets no
+  jobs — which is why an **empty roster under a tenant-scoped mode is logged at warning**, once
+  per job, **and reported as a metric**.
+- **An install that names the file empties `Tenancy:Tenants`.** The two are unioned so that an
+  install nobody has re-composed keeps sweeping exactly what it sweeps today: the key is
+  honoured, never retired. Left populated beside the file, though, it pins whoever it names —
+  the file is written whole, so dropping a slug from it is how a tenant stops being swept, and
+  a slug the key still declares keeps its jobs until the process restarts.
 - **The runner's silence is a metric, not a log line** (`BackgroundJobMetrics`, meter
   `NSail.Background`). `LogScrubber` drops every string attribute at the export seam, so the
   warning above reaches the backend with `{Job}` cut out and no alert could name what broke.

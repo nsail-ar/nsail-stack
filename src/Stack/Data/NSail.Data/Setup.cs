@@ -114,7 +114,8 @@ public static class Setup
             services.AddScoped<TenantBootstrap, TenantBootstrap<TDbContext>>();
 
             // And the roster of the wall that has no registry to read: whoever the install
-            // declared, refused here if one of them cannot be a slug.
+            // declared in Tenancy:Tenants, refused here if one of them cannot be a slug, plus
+            // whoever the file it may also name holds, read again on every sweep.
             services.AddSingleton(new TenantRoster(tenancy));
 
             // The setting the row policies compare against is written once per connection open

@@ -11,9 +11,19 @@ using NSail.Configuration;
 
 namespace NSail.Data.Tests;
 
-public class TenancySeamTests
+public class TenancySeamTests : IDisposable
 {
     const string Install = "Host=localhost;Database=optical_dev1;Username=postgres";
+
+    readonly string _rosterDirectory = Path.Combine(Path.GetTempPath(), "nsail-roster-" + Guid.NewGuid().ToString("N")[..12]);
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_rosterDirectory))
+        {
+            Directory.Delete(_rosterDirectory, recursive: true);
+        }
+    }
 
     [Fact]
     public void AbsentSectionIsNone()
@@ -405,6 +415,102 @@ public class TenancySeamTests
         Assert.DoesNotContain(services, service => service.ServiceType == typeof(TenantMigrator));
     }
 
+    [Fact]
+    public async Task AnInstallThatNamesNoFileSweepsWhatItDeclares()
+    {
+        var roster = new TenantRoster(SingleDb(tenants: "lumina, vision"));
+
+        Assert.Equal(["lumina", "vision"], Slugs(await roster.Tenants()));
+    }
+
+    [Fact]
+    public void ASlugTheInstallCannotNameIsRefusedAtStartup()
+    {
+        var refusal = Assert.Throws<InvalidOperationException>(() => new TenantRoster(SingleDb(tenants: "lumina,Óptica")));
+
+        Assert.Contains("Tenancy:Tenants", refusal.Message, StringComparison.Ordinal);
+    }
+
+    // The file is the declaration whoever provisions a tenant rewrites, so it is read again on
+    // every call and not bound once: a tenant written between two ticks is swept by the second
+    // without a restart.
+    [Fact]
+    public async Task AFiledRosterIsReadAgainOnEverySweep()
+    {
+        var file = Filed("lumina\n");
+        var roster = new TenantRoster(SingleDb(file: file));
+
+        Assert.Equal(["lumina"], Slugs(await roster.Tenants()));
+
+        await File.WriteAllTextAsync(file, "lumina\nvision\n");
+
+        Assert.Equal(["lumina", "vision"], Slugs(await roster.Tenants()));
+    }
+
+    // One grammar for the two declarations: the file's own shape is a slug per line, and a line
+    // that holds a list reads exactly as Tenancy:Tenants does.
+    [Fact]
+    public async Task AFiledRosterReadsALinePerSlugAndAListOnOne()
+    {
+        var roster = new TenantRoster(SingleDb(file: Filed("lumina\r\n  vision\n\nalfa, beta\n")));
+
+        Assert.Equal(["lumina", "vision", "alfa", "beta"], Slugs(await roster.Tenants()));
+    }
+
+    // Unioned and never replaced: a cell nobody has re-composed names no file, and one that has
+    // keeps sweeping whatever its configuration still declares.
+    [Fact]
+    public async Task AFileAndTheConfiguredRosterAreSweptAsOne()
+    {
+        var roster = new TenantRoster(SingleDb(tenants: "lumina,vision", file: Filed("vision\nalfa\n")));
+
+        Assert.Equal(["lumina", "vision", "alfa"], Slugs(await roster.Tenants()));
+    }
+
+    // Not read at construction, because a cell boots before whoever provisions its tenants has
+    // written its first roster — and then refused whole at the sweep that asked for it, where
+    // BackgroundJobRunner logs the error and reports a roster of zero.
+    [Fact]
+    public async Task ANamedFileThatIsMissingRefusesTheSweepAndNotTheBoot()
+    {
+        var missing = Path.Combine(_rosterDirectory, "absent");
+        var roster = new TenantRoster(SingleDb(tenants: "lumina", file: missing));
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => roster.Tenants());
+
+        Assert.Contains("Tenancy:TenantsFile", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(missing, refusal.Message, StringComparison.Ordinal);
+    }
+
+    // The other way a named file cannot be read whole: it is there and the read refuses it — a
+    // permission, or, as here, a name that is a directory. The same refusal as the missing one,
+    // never a roster of nobody, which would read as an install with no tenants.
+    [Fact]
+    public async Task ANamedFileThatCannotBeReadRefusesTheSweepToo()
+    {
+        Directory.CreateDirectory(_rosterDirectory);
+
+        var roster = new TenantRoster(SingleDb(tenants: "lumina", file: _rosterDirectory));
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => roster.Tenants());
+
+        Assert.Contains("Tenancy:TenantsFile", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(_rosterDirectory, refusal.Message, StringComparison.Ordinal);
+    }
+
+    // A subset swept in silence is the failure the roster exists to make visible, so one entry
+    // nobody can name costs the whole answer.
+    [Fact]
+    public async Task AFiledEntryThatCannotBeASlugRefusesTheWholeRoster()
+    {
+        var roster = new TenantRoster(SingleDb(file: Filed("lumina\nÓptica\n")));
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => roster.Tenants());
+
+        Assert.Contains("Tenancy:TenantsFile", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("Óptica", refusal.Message, StringComparison.Ordinal);
+    }
+
     // What the factory buys over a connection string bound once at registration: the scope's
     // own TenancyProvider is asked every time, so the per-request resolution slice 2 brings
     // needs no second shape here — and replacing the provider is what lifts MultiDb's refusal.
@@ -434,6 +540,27 @@ public class TenancySeamTests
     static TenancyOptions MultiDb()
     {
         return new TenancyOptions { Mode = TenancyMode.MultiDb, Product = "optical", Cell = "sa1" };
+    }
+
+    static TenancyOptions SingleDb(string? tenants = null, string? file = null)
+    {
+        return new TenancyOptions { Mode = TenancyMode.SingleDb, Tenants = tenants, TenantsFile = file };
+    }
+
+    static IEnumerable<string?> Slugs(IReadOnlyList<Tenant> roster)
+    {
+        return roster.Select(tenant => tenant.Slug);
+    }
+
+    string Filed(string declaration)
+    {
+        Directory.CreateDirectory(_rosterDirectory);
+
+        var file = Path.Combine(_rosterDirectory, Guid.NewGuid().ToString("N")[..8]);
+
+        File.WriteAllText(file, declaration);
+
+        return file;
     }
 
     static IConfiguration Configured(string mode)
