@@ -296,6 +296,48 @@
     flex-shrink: 0;
 }
 
+/* A STACKED GRID GROWS TO ITS ROWS, SO ITS CONTAINER HAS NOTHING LEFT TO SCROLL (nsail#2595).
+   What the container's own scroll above buys is the pager pinned at the box's foot while the
+   rows move under it. A card is ten times a row's height, so on a stacked list that collapses
+   into its opposite: the page's own region is tall enough for two cards and a half, the eight
+   behind them are inside a box nothing says scrolls on a touch screen, and the pager pinned at
+   that box's foot sits OVER the last card's acts. The whole grid is the thing to scroll there,
+   and the surface already owns a scroll for it (NsPanel's content): the pager lands under the
+   last card, in flow, and the cards pass under the screen's own header.
+
+   ONE declaration does all of it. .ns-table carries min-h-0 (NsTable.GetClasses), which is what
+   lets a flex item shrink below its content; auto gives the automatic minimum back, so the
+   grid's own box (its fill, its radius, its one elevation ring) is as tall as the cards inside
+   it and the container's own height is its rows' — nothing overflows it, so it owns no scroll
+   even though it still declares one. Measured at 412px on a ten-card page: the container's
+   scrollHeight and clientHeight are both 1069, the panel's content region is the one owner
+   inside the panel (1121/715), and the pager's top meets the last card's bottom at 1253.
+
+   The container's own overflow is deliberately NOT released. The two axes cannot be set apart:
+   the CSS Overflow spec computes a visible axis to auto once its sibling is not visible (the
+   ns-scroll-shadow block further down turns on that same rule), so overflow-y: visible here
+   takes overflow-x: visible with it — and a stacked card wider than the row (measured 1060
+   against 380) then escapes the grid's box and is CLIPPED by the Content div's overflow-x:
+   hidden instead of scrolling sideways inside the container, which is what that hidden was
+   written to leave it doing (nsail#1004, Leonardo's Personas screenshot).
+
+   Scoped to the PAGED branch (ns-table-pages, NsTable.GetClasses) and not to every stacked
+   grid: in Scroll mode — Auto's answer on a real phone — that same container IS the surface the
+   vendor's scroll listener reads to ask for the next page (NsTable.StartScrollListener), and a
+   grid whose box stops ending where the viewport does stops producing the scroll it listens to.
+
+   Inside the query and not keyed off mud-sm-table alone: that class is what Breakpoint="Sm"
+   stamps on the ROOT at every width (NsTable.razor), and the stacking it names is the vendor's
+   own max-width: 960px — so without the query a paged desktop grid carries both hooks and
+   loses the container scroll its pinned pager stands on, which is this story's own fault 3
+   moved to the desktop. Same query the rest of the file's stacked rules live in (the block
+   further down), matched rather than translated for the same reason. */
+@media (max-width: 960px) {
+    .ns-table.ns-table-pages.mud-sm-table {
+        min-height: auto;
+    }
+}
+
 /* Column headers left at text-primary weigh exactly as much as the data underneath;
    dropping them to secondary is what gives the grid a spine. */
 .ns-table .mud-table-head .mud-table-cell {
@@ -1550,6 +1592,20 @@
     flex: 0 1 22rem;
 }
 
+/* On a phone the comfort width is already most of the row, so the row wraps and the box ends up
+   ALONE on its line (NsToolBar, nsail#2041) — but alone with the spacer, which is an empty
+   flex-grow-1 of base 0 (NsPageHeader): what the box does not take, the spacer does, and the
+   search reads as a field that stopped short of the page rather than as the row's own. A basis
+   of the whole line is what closes that (nsail#2595): the box takes the line end to end, the
+   spacer gets nothing to hold, and the tools wrap under it at the trailing edge they already
+   keep. The container and not the window, like every other narrow-box rule in this file: a list
+   drawn in a drawer is this narrow on a desktop too. */
+@container (max-width: 599.98px) {
+    .ns-toolbar-search {
+        flex: 1 1 100%;
+    }
+}
+
 /* SignInPage's contributed provider buttons (AppleSignInButton, GoogleSignInButton, and
    whatever ISignInContributor a future kit adds) render as square icon tiles, Symbaloo-style,
    rather than the stacked full-width rows they used to be (nsail#638, Leonardo 2026-08-31:
@@ -1629,23 +1685,6 @@
    padding to cancel, and the compound selector below simply does not match it. */
 .ns-guide-link.mud-icon-button {
     margin-inline-end: -12px;
-}
-
-/* nsail#1006: below the drawer's own breakpoint NsTitleBar's Announces row draws the hamburger
-   that stands in for the hidden drawer (intentional-ui.md, "Chrome, size and scroll"), which
-   reserves a gutter ahead of the title's own glyph that the toolbar row underneath does not draw
-   for itself — so the two rows' leading content parts ways by exactly that gutter. NsPageHeader
-   mirrors it here on the toolbar (ReservesToggleGutter, matching NsTitleBar's own Announces
-   condition) rather than the page: the hamburger is MudBlazor's own medium icon button
-   (12px padding) with Edge.Start already cancelling its own leading padding
-   (.mud-icon-button-edge-start, -12px), which leaves the OTHER padding step plus the app's own
-   Md icon step (.mud-icon-size-medium, 1.25rem) as its net footprint — 12px + 20px = 2rem.
-   959.98px is the exact complement of MudBlazor's own d-md-none breakpoint (min-width: 960px),
-   so the two rows never disagree about which side of it they are on. */
-@media (max-width: 959.98px) {
-    .ns-toolbar-align-toggle {
-        padding-inline-start: 2rem;
-    }
 }
 
 /* A heading's own glyph does not compete with it. The window title is the one heading on

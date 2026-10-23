@@ -11,7 +11,9 @@
    glyph parked between the two lines (Importar Feriados nacionales on a phone); with it an
    action that no longer fits takes a line of its own, whole. The search zone is the one child
    that declares a width it may give back (ns-toolbar-search's flex: 0 1 22rem), so it is still
-   what squeezes first and the wrap costs the row nothing where the tools already fit. *@
+   what squeezes first and the wrap costs the row nothing where the tools already fit — below
+   the phone breakpoint it stops giving and takes the whole line instead, with the tools
+   wrapping under it (ns-mud.css, nsail#2595). *@
 <NsStack Horizontal Wrap Align="NsAlign.Center" Justify="NsAlign.End" Gap="NsSize.Sm" Class="@Class">
     @ChildContent
 </NsStack>

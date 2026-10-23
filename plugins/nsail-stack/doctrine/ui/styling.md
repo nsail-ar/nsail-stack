@@ -188,6 +188,20 @@ marked *(cases)* has its story there.
 - **One overflow owner per surface** — `NsTable`'s container, `NsPanel`'s content, a grown
   `NsCard`'s content, an `NsStack` with `Scroll` — and the shell around them declares none
   (cases).
+  - **A PAGED grid stacked as cards grows to its rows, so its container has nothing left to
+    scroll.** That container's scroll buys a pager pinned at the box's foot while the rows move
+    under it; one card is several rows tall, so a region with room for two cards keeps the other
+    eight inside a box nothing says scrolls and pins the pager over the last one. Giving the
+    grid its automatic minimum height back (`min-height: auto` against `min-h-0`) is the whole
+    release: the box is its rows' height, the surface's own owner scrolls the whole of it, and
+    the pager lands in flow under the last card. The container's own `overflow` is deliberately
+    left alone — the two axes cannot be set apart (a visible axis computes to `auto` beside a
+    non-visible one), so releasing the vertical one takes the horizontal with it and a card
+    wider than the row gets clipped instead of scrolled. Nothing else is released either: in
+    `Scroll` mode that container IS what the next page is asked from, and a grid holding its own
+    rows draws no pager to pin over anything. Scoped by the branch in C# (`.ns-table-pages`,
+    `NsTable`) **and** by the vendor's own stacking query in the stylesheet — `.mud-sm-table`
+    rides the root at every width, so a rule keyed off it alone reaches the desktop grid too.
 - **A scroll box INSIDE a surface wears the house's own bar** (`.ns-scroll-thin`): thin, the
   theme's line colour, no track. The shell's own scrollbars stay the platform's.
 

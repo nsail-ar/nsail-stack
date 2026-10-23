@@ -278,9 +278,13 @@ is the page's own.
 
 **The toolbar's left side is the search zone or `Lead`, and they are different slots.** `Search`
 takes over the search zone and wears its width (`.ns-toolbar-search`, a comfortable 22rem that
-shrinks) — free text, or the scope selector a list is read through. `Lead` is for a control over
+shrinks, and the whole row below the phone breakpoint — where it is alone on its line and a
+comfort width would leave the rest of that line to the row's spacer) — free text, or the scope
+selector a list is read through. `Lead` is for a control over
 what the screen is **showing** rather than over what it lists, and it stands before the search
-zone at its own width, so a screen that wants both keeps both. A control that governs the subject
+zone at its own width, so a screen that wants both keeps both — on a phone the search takes a
+line of its own, so a header carrying both reads as three stacked lines: `Lead`, the search, the
+acts. A control that governs the subject
 *beside the acts on it* is neither: it rides `Actions`, at the row's right edge with them (no
 header in the tree carries such a control today). **The right side has one more seat, and no
 page fills it by hand**: the export trigger a list hands up, between the spacer and `Actions` so

@@ -498,9 +498,16 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
     edge: a row that cannot wrap has only shrink left, and a shrunk worded button wraps its own
     LABEL instead, with the glyph parked between the two lines. The search box is still the one
     thing on that row that gives — it declares a comfort width, not a content one
-    ([ui/styling.md](ui/styling.md)) — and the row takes the line once that is spent. **A
-    document's footer row is the third of this family** and gives the same answer, with the
-    seated refusal as the child that gives (important acts sit at the bottom with text).
+    ([ui/styling.md](ui/styling.md)) — and the row takes the line once that is spent. On a phone
+    **the search box is the line**, end to end, and the tools wrap under it: a comfort width on a
+    line it is alone on leaves the rest to the row's spacer, and a field that stops short of the
+    page reads as off the page's grid even when it starts on it.
+    **The toolbar starts at the content gutter, like every other block of the page** — the cards,
+    the filter panel, the footer. It does NOT follow the title's own glyph, which the hamburger
+    displaces by a gutter below the drawer's breakpoint: one row agreeing with another is not
+    worth the page's only grid. **A document's footer row is the third of this family** and gives
+    the same answer, with the seated refusal as the child that gives (important acts sit at the
+    bottom with text).
   - **The drawer owns the brand wherever it is on screen, and the session too**: a sticky chip
     at its foot — avatar, name, current organization — anchors the session menu. Sidebar is
     identity, the title row is context: the nav drawer runs the full viewport height, shows the brand
