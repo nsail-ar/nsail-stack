@@ -25,7 +25,7 @@ never all-or-nothing.
 `NavMenuItem` (`NSail.Components/Navigation/`) is a flat model — `Name`, `Icon` (a `Glyph`),
 `PageType` (+ optional `Parameters`) **or** `Url` for leaves, `Items` for groups, plus the four
 fields an override carries — `Weight`, `Parent`, `Visible`, `Permission`; **no Razor**. `Url` is
-the leaf whose destination is outside the app entirely — nothing the route table resolves, so it
+the leaf whose destination the route table resolves nothing for, so it
 carries no `Parameters` and is never tracked as the active route (below, "A leaf naming a `Url`
 instead of a page"). A kit implements
 `INavMenuContributor` (async, re-asked whenever the authentication state changes) and registers
@@ -302,10 +302,10 @@ module's by being mounted early.
   label the module composed, with its own second line under it for what tells two records
   wearing one label apart. It is never the active route and carries no count — a result is a
   record the term produced, not a door the merge arranged, and nothing keys on it. Its address
-  is written by whoever found it and is a place INSIDE the app — a route plus whatever query the
-  surface it opens travels as, neither of them derivable by the drawer — and so is not the
-  leaf's `Url` (below, *A leaf naming a `Url` instead of a page*), which is by definition
-  outside it.
+  is written by whoever found it and is a place THE ROUTER answers for — a route plus whatever
+  query the surface it opens travels as, neither of them derivable by the drawer — so the row is
+  reached in place, where the leaf's `Url` (below, *A leaf naming a `Url` instead of a page*) is
+  a destination the route table resolves nothing for and leaves this surface to open.
 - **A section with one screen contributes an entry, not a group.** The contributor writes the
   first-level entry itself — the *group's* name, the *leaf's* `PageType` — and the group is born
   the day the section gains its second screen. This is NSail's rule, not a product's: the kit
@@ -362,11 +362,12 @@ app unable to remove the one it did not ask for.
 
 ## A leaf naming a `Url` instead of a page
 
-**Some destinations are outside the app entirely**, and the route table has nothing to resolve
-for one — `PageType` is how the menu names a door *in* the app, and `Url` is the seam for a door
-*out* of it (nsail#2497, Ops' Observabilidad onto OpenObserve). The two are not a choice of
-syntax for one idea: a page is reached, a `Url` is opened, always in a new window, because
-leaving no surface behind means leaving the app.
+**Some destinations the route table resolves nothing for** — `PageType` is how the menu names a
+door the router answers for, and `Url` is the seam for one it does not: another site (nsail#2497,
+Ops' Observabilidad onto OpenObserve), or an address this same host serves outside the router,
+which no `PageType` could name either. The two are not a choice of syntax for one idea: a page is
+reached and the app stays up, a `Url` is opened, always in a new window — whoever answers at the
+other end, the surface this session was on would be gone and no route brings it back.
 
 - **`Hide` asks only `Permission` of a `Url` leaf.** There is no page for the `PageGate` to
   allow or deny, so the leaf draws whenever its own `Permission` (if it names one) is granted —
@@ -380,4 +381,17 @@ leaving no surface behind means leaving the app.
   to know.
 - **The render always forces a new window** (`Target="_blank"`, the one case `NsNavMenu` sets it
   without being told): a kit offering a `Url` writes no `Target` of its own, and nothing in the
-  model carries one — the destination being external already decided it.
+  model carries one — a destination the router resolves nothing for already decided it, the
+  endpoint of our own no page hosts as much as the other site.
+- **Only an address that may become an `href` is a destination at all**, and
+  `WebAddress.IsNavigable` (`NSail.Text`) is the one rule that says which: `http`, `https`,
+  `mailto` or a path of this host's own, which is how that unrouted endpoint is named — never a
+  protocol-relative `//host`, in either slant (`/\host` is that same address to a browser's URL
+  parser, which reads a backslash as a slash while it resolves the authority), and never an
+  address carrying whitespace or a control character, which a browser strips before it reads the
+  scheme. This is the drawer's only *written* address; every other one comes off the route
+  table, so a `javascript:` here could only have been typed, and the leaf carrying one goes
+  where a leaf naming nowhere goes instead of being drawn as a door. The same rule answers for a
+  `NavMenuResult.Url` — a finder resolved it, the drawer did not derive it either — and for the
+  markdown renderer over a document's own links ([guide.md](guide.md)): one rule, because a
+  second copy of it is a second answer.

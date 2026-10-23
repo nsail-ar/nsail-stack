@@ -255,7 +255,7 @@ sealed partial class MapperEmitter
         // MapRoot's own question: does this instance carry a value at all, default included.
         text.AppendLine($"            public override bool SourceHasKey({s} source)");
         text.AppendLine("            {");
-        text.AppendLine(sourceHasKey && keys.Count == 1 ? SourceHasKeyBody(sourceKeys[0]!) : "                return false;");
+        text.AppendLine(sourceHasKey ? SourceHasKeyBody(sourceKeys) : "                return false;");
         text.AppendLine("            }");
         text.AppendLine();
 
@@ -443,10 +443,22 @@ sealed partial class MapperEmitter
         return text.ToString();
     }
 
-    // Does this call's own source carry a value for its single key member at all — never what
-    // that value is. A required member always does, default included; an optional one (Guid?,
-    // a nullable reference) only when it actually has a value, default included there too.
-    string SourceHasKeyBody(IPropertySymbol sourceKey)
+    // Does this call's own source carry a value for its key at all — never what that value is.
+    // A required member always does, default included; an optional one (Guid?, a nullable
+    // reference) only when it actually has a value, default included there too. A composite key
+    // is the AND of its members' own signals, which is what tells a source naming the whole key
+    // at its default — an Update* over a link row — from one naming no key: SourceKey collapses
+    // the default tuple to null for both, and MapRoot refuses the first on this answer alone.
+    string SourceHasKeyBody(List<IPropertySymbol?> sourceKeys)
+    {
+        var parts = sourceKeys.Select(key => Present(key!)).OfType<string>().ToList();
+
+        return $"                return {(parts.Count == 0 ? "true" : string.Join(" && ", parts))};";
+    }
+
+    // How one key member answers that question, or null where its type leaves it no way to be
+    // absent — a required value member always carries a value, so it adds no condition.
+    string? Present(IPropertySymbol sourceKey)
     {
         var memberType = sourceKey.Type;
         var underlying = Underlying(memberType);
@@ -454,10 +466,10 @@ sealed partial class MapperEmitter
 
         if (!SymbolEqualityComparer.Default.Equals(underlying, memberType))
         {
-            return $"                return {expr}.HasValue;";
+            return $"{expr}.HasValue";
         }
 
-        return memberType.IsReferenceType ? $"                return {expr} is not null;" : "                return true;";
+        return memberType.IsReferenceType ? $"{expr} is not null" : null;
     }
 
     string KeyType(List<IPropertySymbol> keys)

@@ -20,9 +20,11 @@ public abstract class EntityPair<TSource, TTarget> : EntityType<TTarget>
 
     /// <summary>Whether this call's own source carries a value for the key at all — true for a
     /// required member regardless of its value, true for an optional one (Guid?, a nullable
-    /// reference) only when it actually has a value, default included either way. Always false
-    /// for a composite key: MapRoot is the only reader, and the gap stays open there (none of a
-    /// composite key's writers in this tree need it closed).</summary>
+    /// reference) only when it actually has a value, default included either way. A composite
+    /// key is the AND of its members' own answers, so a source naming the whole key at its
+    /// default is told apart from one naming no key, as a single key's default is. False where
+    /// the source has no member for some part of the key: there is no key there to be at a
+    /// default in the first place.</summary>
     public abstract bool SourceHasKey(TSource source);
 
     /// <summary>The key type's own default, boxed: the id MapRoot reports for a refusal when

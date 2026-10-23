@@ -83,7 +83,16 @@ public sealed class OpenObserveFailureLog : IFailureLog
             throw new FailureLogException("The failure log answered something that is not a search result.", exception);
         }
 
-        var hits = answer?.Hits ?? [];
+        // A body that deserialized and still carries no hits is the same answer as one that did
+        // not deserialize at all: a search result has that member, and {}, a portal's or a
+        // gateway's {"code":200,"message":"..."} and an explicit "hits":null are all something
+        // else. The empty list the absent member reads as is the one answer this door must never
+        // invent — it says "you have no recent failures", for as long as nobody looks.
+        if (answer?.Hits is not { } hits)
+        {
+            throw new FailureLogException("The failure log answered something that is not a search result.");
+        }
+
         var failures = hits.Select(Failure).OfType<LoggedFailure>().ToList();
 
         // One unreadable row among readable ones is dropped: a single row the store wrote
@@ -152,10 +161,12 @@ public sealed class OpenObserveFailureLog : IFailureLog
     }
 
     // A hit with no readable timestamp is dropped rather than dated: a made-up date would file
-    // the failure as the oldest entry in a list whose whole order is by when.
-    static LoggedFailure? Failure(Dictionary<string, JsonElement> hit)
+    // the failure as the oldest entry in a list whose whole order is by when. A null element in
+    // the array is read the same way — there is no object to take a column from — and not
+    // dereferenced: an array's elements are the store's word, like every value inside one.
+    static LoggedFailure? Failure(Dictionary<string, JsonElement>? hit)
     {
-        if (Number(hit, TimeColumn) is not { } stamp || At(stamp) is not { } at)
+        if (hit is null || Number(hit, TimeColumn) is not { } stamp || At(stamp) is not { } at)
         {
             return null;
         }
@@ -236,5 +247,5 @@ public sealed class OpenObserveFailureLog : IFailureLog
         }
     }
 
-    sealed record Answer([property: JsonPropertyName("hits")] IReadOnlyList<Dictionary<string, JsonElement>>? Hits);
+    sealed record Answer([property: JsonPropertyName("hits")] IReadOnlyList<Dictionary<string, JsonElement>?>? Hits);
 }
