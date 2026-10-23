@@ -56,27 +56,34 @@ public sealed class NsTableAddControlTests : BunitContext, IAsyncLifetime
 
         Assert.True(HasAdd(cut));
         Assert.NotNull(cut.Find(".ns-collection-bar").QuerySelector("button[aria-label='Agregar']"));
+        Assert.Single(cut.FindAll(".ns-cells-add"));
     }
 
-    /// <summary>And the other half of one seat: unnamed there is no bar, so there is nowhere for
-    /// the control to live — which is why the Architecture suite refuses an unnamed grid that
-    /// wires NewRow rather than letting it ship with no way in.</summary>
+    /// <summary>And the other half of one seat: unnamed there is no bar, so nothing a hand can
+    /// press — which is why the Architecture suite refuses an unnamed grid that wires NewRow
+    /// rather than letting it ship with no way in for a hand. What the grid keeps there is the
+    /// keystroke's way in, undrawn: one control still, and not one of the faces.</summary>
     [Fact]
-    public void An_unnamed_table_draws_no_bar_and_no_add_control()
+    public void An_unnamed_table_draws_no_bar_and_no_add_control_a_hand_can_reach()
     {
         var cut = Render<TableAddHost>();
 
         Assert.Empty(cut.FindAll(".ns-collection-bar"));
         Assert.False(HasAdd(cut));
+        Assert.Contains("ns-cells-add-undrawn", Assert.Single(cut.FindAll(".ns-cells-add")).ClassName);
     }
 
+    /// <summary>The page that adds from chrome of its own keeps its bar and its heading and
+    /// draws no Agregar on it — and the grid keeps the keystroke's way in undrawn, which is the
+    /// canonical shape of that screen (hosts.md).</summary>
     [Fact]
-    public void Turned_off_it_draws_none_on_its_bar()
+    public void Turned_off_it_draws_none_on_its_bar_and_keeps_the_way_in_undrawn()
     {
         var cut = Render<TableAddHost>(p => p.Add(x => x.AddControl, false).Add(x => x.Title, "Renglones"));
 
         Assert.False(HasAdd(cut));
         Assert.NotEmpty(cut.FindAll(".ns-collection-bar"));
+        Assert.Contains("ns-cells-add-undrawn", Assert.Single(cut.FindAll(".ns-cells-add")).ClassName);
     }
 
     [Fact]

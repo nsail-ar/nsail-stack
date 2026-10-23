@@ -214,6 +214,18 @@
               <NsIcon Icon="@NsIcons.Progress" Size="NsSize.Lg" />
           </div>
         : null;
+
+    @* The keyboard's way in where the bar does not draw one — a page adding from chrome of its
+       own (AddControl off) or a grid the page around it already names. The grid keeps the
+       control either way, so the key presses the same code the click presses and the host goes
+       on deciding what adding a row means (ns.js, the Enter policy): what the page draws is the
+       page's and is never pressed from here. Clipped rather than display:none, which the
+       keystroke reads as no way in at all, and out of both the accessibility tree and the tab
+       order: the hand's way in is the one the page drew, and a second control under the same
+       name is the shape the one-seat rule refuses (hosts.md). *@
+    RenderFragment? undrawnAdd = Editable && NewRow is not null && !BarAdds
+        ? @<button type="button" class="ns-cells-add ns-cells-add-undrawn" tabindex="-1" aria-hidden="true" disabled="@IsBusy" @onclick="Add"></button>
+        : null;
 }
 
 @* Fixed: the instance outlives every render, and a column's Breakpoint is markup — cells
@@ -243,7 +255,7 @@
             {
                 @exportTrigger
             }
-            @if (Editable && NewRow is not null && AddControl)
+            @if (BarAdds)
             {
                 <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-cells-add" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
             }
@@ -277,6 +289,7 @@
             </NoRecordsContent>
         </MudTable>
         @loadingOverlay
+        @undrawnAdd
     </div>
 
     @* The floor the scroll listener aims at, and the way past it for anyone who cannot reach
@@ -319,6 +332,7 @@ else if (OnQuery.HasDelegate)
             </PagerContent>
         </MudTable>
         @loadingOverlay
+        @undrawnAdd
     </div>
 }
 else
@@ -345,6 +359,7 @@ else
             @noRecords
         </NoRecordsContent>
     </MudTable>
+    @undrawnAdd
 }
 
 @* What a tick reaches is said out loud, and the one offer a page of ticks earns is made here:
@@ -449,9 +464,10 @@ else
     public bool Grow { get; set; } = true;
 
     /// <summary>Names the table in a bar rendered above it, with the add control at the bar's
-    /// right edge — the collection-editor chrome (Seña). Unset draws no bar at all, which also
-    /// leaves the add control nowhere to live: a grid wired to add rows and left unnamed is
-    /// refused by the Architecture suite rather than shipped with no way in.</summary>
+    /// right edge — the collection-editor chrome (Seña). Unset draws no bar at all, so there is
+    /// no add control a hand can press: a grid wired to add rows and left unnamed is refused by
+    /// the Architecture suite rather than shipped with nothing for a hand to reach. The
+    /// keystroke's way in the grid keeps either way, undrawn where no bar draws it.</summary>
     [Parameter]
     public string? Title { get; set; }
 
@@ -578,7 +594,8 @@ else
 
     /// <summary>Whether the table's bar draws its own add control. Off where the page already
     /// adds from chrome of its own — a tab strip's Agregar over the collection — and calls
-    /// <see cref="Add"/>; NewRow still makes the row either way.</summary>
+    /// <see cref="Add"/>; NewRow still makes the row either way, and the keystroke's way in
+    /// stays with the grid undrawn.</summary>
     [Parameter]
     public bool AddControl { get; set; } = true;
 
@@ -819,6 +836,11 @@ else
     // One row at a time: while an editor is open every other row's controls are inert, so
     // there is no half-typed row to lose track of and no order to resolve between two.
     bool IsBusy => _editing is not null;
+
+    // Whether the bar draws the way in: a grid that is not named and exports nothing inline
+    // renders no bar at all, so there is no seat for the control even where the parameter
+    // leaves it on. The keystroke's own way in is kept undrawn in exactly the other case.
+    bool BarAdds => (Title is not null || ShowExportInline) && Editable && NewRow is not null && AddControl;
 
     // Reference identity, not equality: two rows carrying the same values are still two
     // rows, and only the one the user opened may render its editor.

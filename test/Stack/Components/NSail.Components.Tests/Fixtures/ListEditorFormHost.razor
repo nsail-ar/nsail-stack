@@ -17,7 +17,7 @@
 <NsForm TModel="TestModel" Model="_document" OnSubmit="Save" Untracked>
     @if (ListMounted)
     {
-        <NsListEditor TItem="TestModel" Items="_items" Title="Pagos"
+        <NsListEditor TItem="TestModel" Items="_items" Title="@(Titled ? "Pagos" : null)"
                       NewItem="NewItem" OnCommit="Commit">
             <ItemTemplate Context="item">
                 <span class="item-name">@item.Name</span>
@@ -34,6 +34,11 @@
     readonly TestModel _document = new() { Name = "Caja" };
 
     readonly List<TestModel> _items = [];
+
+    /// <summary>Whether the list names itself, which is what draws its bar — unset where the
+    /// page around it already says what the collection is and adds from its own chrome.</summary>
+    [Parameter]
+    public bool Titled { get; set; } = true;
 
     /// <summary>Whether the collection is on screen at all — a tab, a conditional panel, any
     /// screen that stops rendering the list while the form around it stays.</summary>

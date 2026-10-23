@@ -96,6 +96,22 @@
     border-bottom: 1px solid var(--mud-palette-table-lines);
 }
 
+/* The way in a collection keeps for the keyboard where its bar draws none: the page's own
+   Agregar is the one face there is, and the grid still owns the control the keystroke presses
+   (ui/hosts.md). Clipped near zero and taken out of flow, the same technique .ns-field-described
+   spends for the opposite reason — display:none would take the control out of the layout, and
+   out of the layout is exactly how a keystroke reads "there is no way in" (ns.js, live). */
+.ns-cells-add-undrawn {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+}
+
 /* NsListEditor's items. A real <ul>, so the collection is announced as a list and each item
    as one of it; the browser's own bullets and indent are chrome the house draws itself.
 

@@ -133,6 +133,15 @@ because a BUTTON is a child the trap can be pointed at. What that case measured 
 the trap is the per-dialog `DefaultFocus` *option*: the vendor's dialog reads its own parameter
 and the provider's global, never the options the opener passed.
 
+**The rule is the renderer's, not the vendor's**: the React client's own confirmation
+(`useConfirm`, [react.md](../react.md)) answers it off the same `danger` the fill reads, and
+places the cursor itself — the one line of code either renderer owns here. It has no trap to
+point at: a native `<dialog>` places the cursor inside `showModal()`, from the `autofocus`
+ATTRIBUTE, which React's `autoFocus` prop does not write — the prop focuses at the commit that
+mounted the faces, and that commit is one where the dialog is still closed, so nothing takes the
+cursor. Placing it after `showModal()` returns is not racing anything: those steps are synchronous
+inside the call.
+
 ---
 
 ## Tracking and the exit guard
@@ -289,9 +298,13 @@ own controls to make it** — the confirm, the pencil of the row below, the grid
 key runs exactly the code the click runs: the host keeps deciding what a commit means, a row it
 refuses stays open with its reason and keeps the cursor, and there is no second path a row is
 committed by. What the key adds is the MOVE, which is a DOM gesture and belongs on that side for
-*Focus on open*'s reason. A page that draws the add control out of its own chrome declares
-nothing: that control adds to whichever collection the page is showing, and it is not the grid's
-to press.
+*Focus on open*'s reason. The Agregar it presses is always the HOST's: a page that draws the add
+control out of its own chrome turns the bar's off, and the host keeps the same control undrawn
+beside its rows ([hosts.md](hosts.md)) — so the key never reaches for a control the page owns,
+and the last row writes the next line on every grid in the house. **Where the move cannot be
+made the cursor stays in the row the keystroke confirmed, on that row's own Editar** — never the
+document body, which is where a confirmed row's boxes leave it on their way off the screen (WCAG
+2.4.3, and the answer a refused row already gets).
 
 The policy cannot be proved at the bUnit layer — AngleSharp performs no implicit form submission
 — so what the tests there hold is the marks it reads (`NsEnterPolicyMarkTests`), and the

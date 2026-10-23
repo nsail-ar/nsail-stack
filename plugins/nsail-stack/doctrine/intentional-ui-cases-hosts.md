@@ -68,6 +68,13 @@ forgotten: the Architecture suite reads every `.razor` in `src` and refuses a `N
 `NsText As="Title"` line above the grid, which the bar now carries, and the two wizard steps took
 the name the wizard's own rail already owns. Nothing new was translated.
 
+**The undrawn way in is not a second seat.** Where the page adds from chrome of its own the host
+keeps `.ns-cells-add` clipped — out of the accessibility tree and out of the tab order — so the
+keyboard's last step presses the grid's own control and never one the page owns. The alternative
+was the page DECLARING its Agregar as the collection's way in: a public parameter a screen can
+forget, losing that step silently on screen, which is the failure this whole case was fought
+over (principles.md 4). One face a hand can reach is still the rule; nothing is drawn twice.
+
 The sweep that rule runs on had a blind spot worth knowing about: `RazorMarkup` dropped the
 frames still open at the end of a file, and a `RenderFragment<TRow>` in an `@{}` block opens a tag
 named after its type argument that never closes — so every element at a file's ROOT hung under it
