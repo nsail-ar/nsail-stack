@@ -247,7 +247,7 @@ its own on a touch screen — and the pager, pinned at that box's foot at y=847,
 card that ran to y=1253. Two and a half cards of ten were reachable. The inner owner is the one
 that gets squeezed, because it is the one with the whole surface above it. The cure is not to
 take its `overflow` away — a box that declares a scroll and has nothing to scroll is no owner,
-and the two axes cannot be set apart anyway — but to stop it being squeezed: the grid's
+and the two axes cannot be set apart anyway — but to stop it being squeezed: giving the grid its
 automatic minimum height back put its own box at its rows' height (1121px), the container's
 scrollHeight at its clientHeight, and the pager in flow at y=1253 under the last card, with the
 panel's region scrolling the grid whole. **Two owners is not a stricter version of one — it is a
