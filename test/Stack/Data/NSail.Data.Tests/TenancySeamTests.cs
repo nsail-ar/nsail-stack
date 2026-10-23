@@ -482,6 +482,22 @@ public class TenancySeamTests : IDisposable
         Assert.Contains(missing, refusal.Message, StringComparison.Ordinal);
     }
 
+    // The other way a named file cannot be read whole: it is there and the read refuses it — a
+    // permission, or, as here, a name that is a directory. The same refusal as the missing one,
+    // never a roster of nobody, which would read as an install with no tenants.
+    [Fact]
+    public async Task ANamedFileThatCannotBeReadRefusesTheSweepToo()
+    {
+        Directory.CreateDirectory(_rosterDirectory);
+
+        var roster = new TenantRoster(SingleDb(tenants: "lumina", file: _rosterDirectory));
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => roster.Tenants());
+
+        Assert.Contains("Tenancy:TenantsFile", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(_rosterDirectory, refusal.Message, StringComparison.Ordinal);
+    }
+
     // A subset swept in silence is the failure the roster exists to make visible, so one entry
     // nobody can name costs the whole answer.
     [Fact]
