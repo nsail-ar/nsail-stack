@@ -31,7 +31,6 @@ public static class Markdown
     static readonly Regex TableRow = new(@"^\s*\|(.+)\|\s*$", RegexOptions.Compiled);
     static readonly Regex TableRule = new(@"^\s*\|(\s*:?-{1,}:?\s*\|)+\s*$", RegexOptions.Compiled);
 
-    static readonly string[] Schemes = ["http://", "https://", "mailto:"];
     static readonly string[] ImageSchemes = ["http://", "https://"];
 
     public static string ToHtml(string? markdown)
@@ -502,17 +501,14 @@ public static class Markdown
         var text = match.Groups[1].Value;
         var address = match.Groups[2].Value;
 
-        // An address whose scheme is not one of the three stays the literal text it was
-        // written as: a "javascript:" href is the whole reason this renderer never trusts its
-        // input, and repairing one would be guessing at what the author meant. A document
-        // rendered inside the app also admits its own root-relative addresses and a bare
-        // fragment — a section of the chapter already open — never a protocol-relative
-        // "//host", which names somebody else's.
-        var withinApp = options.AppLinks
-            && (address.StartsWith('#')
-                || (address.StartsWith('/') && !address.StartsWith("//", StringComparison.Ordinal)));
+        // An address this renderer may not draw as a door stays the literal text it was written
+        // as: a "javascript:" href is the whole reason it never trusts its input. WebAddress
+        // holds that rule, for every surface that draws an address nobody derived. What a
+        // document rendered inside the app admits on top of it is a bare fragment — a section
+        // of the chapter already open, which names no host to decide about.
+        var fragment = options.AppLinks && address.StartsWith('#');
 
-        if (!withinApp && !Schemes.Any(scheme => address.StartsWith(scheme, StringComparison.OrdinalIgnoreCase)))
+        if (!fragment && !WebAddress.IsNavigable(address, options.AppLinks))
         {
             return match.Value;
         }

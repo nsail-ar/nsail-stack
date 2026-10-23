@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Components.Routing
 @using NSail.Localization
 @using NSail.Messaging.Runtime
+@using NSail.Text
 @using Microsoft.JSInterop
 @using System.Security.Claims
 
@@ -354,7 +355,11 @@
             return;
         }
 
-        _results = found;
+        // A result is the drawer's other written address — the finder resolved it, nothing here
+        // derived it — so it passes the same door as a contributed Url: a row whose address
+        // cannot be drawn as one is not drawn at all, and the no-match row then says the honest
+        // thing about a term whose every answer was unusable.
+        _results = found.Where(result => WebAddress.IsNavigable(result.Url, withinApp: true)).ToList();
     }
 
     // What the no-match row may be handed: the text as it was typed, and null where there is no
@@ -720,8 +725,11 @@
         else
         {
             // An external destination names no page for the Gate to ask about, and Permission
-            // already stood in front of it above: carrying a Url is itself the answer.
-            hidden = item.Url is null;
+            // already stood in front of it above: carrying a Url that can be drawn as a door is
+            // itself the answer. One that cannot — a "javascript:" a module contributed, which
+            // the route table could never have produced — is no destination, so the entry goes
+            // where an entry naming nowhere goes, and the address never reaches an href.
+            hidden = !WebAddress.IsNavigable(item.Url, withinApp: true);
         }
 
         if (hidden)
@@ -792,7 +800,7 @@
                     }
                 </MudNavLink>
             }
-            else if (item.Url is not null)
+            else if (WebAddress.IsNavigable(item.Url, withinApp: true))
             {
                 @* No ActiveClass and no Match: an external destination is never the active
                    route, so there is nothing here for the vendor's prefix match to decide.

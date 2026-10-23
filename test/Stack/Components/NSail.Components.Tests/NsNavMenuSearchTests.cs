@@ -425,4 +425,22 @@ public sealed class NsNavMenuSearchTests : BunitContext, IAsyncLifetime
         Assert.Single(menu.FindAll("a[href='/search/parties']"));
         Assert.Empty(menu.FindAll(".ns-nav-result"));
     }
+
+    /// <summary>A result's address is the finder's own — nothing here derived it — so it passes
+    /// the same door a contributed Url passes: an address no route table could have produced is
+    /// not a row, and a term whose every answer was one is a term that found nothing.</summary>
+    [Fact]
+    public async Task AResultWhoseAddressCouldNotBecomeAnHrefIsNotDrawn()
+    {
+        _search.Answers(new NavMenuResult { Label = "lumina@optical/canary", Url = "javascript:alert(1)" });
+
+        var menu = RenderWithNoMatch();
+
+        await Type(menu, "lumina");
+
+        await Settled(menu);
+
+        Assert.Empty(menu.FindAll(".ns-nav-result"));
+        Assert.Single(menu.FindAll(".ns-nav-nomatch button"));
+    }
 }

@@ -93,8 +93,7 @@ public sealed class KeyTests
         Assert.Empty(store.Db.Customers);
     }
 
-    // A composite root key naming a real row not there is still NotFound — SourceHasKey's open
-    // gap is the composite key's own default (below), never a complete one that names nothing.
+    // A composite root key naming a real row that is not there is NotFound, like a single one.
     [Fact]
     public async Task map_entity_composite_key_notfound()
     {
@@ -104,20 +103,20 @@ public sealed class KeyTests
             () => store.Mapper.Map<SlotDto, Slot>(new SlotDto { Row = 1, Column = 2, Label = "ghost" }));
     }
 
-    // The gap this story leaves open: none of its 22 updates has a composite root key, so a
-    // composite key at its own default still creates past Map, same as main.
+    // And a composite key whose every member is at its own default is a key carried, not a key
+    // absent: SourceKey collapses the default tuple to null exactly as it collapses a single
+    // default, so SourceHasKey — the AND of the members' own signals — is the whole of what
+    // keeps Map from minting a phantom row where it owes a NotFound.
     [Fact]
-    public async Task map_entity_composite_key_default_creates()
+    public async Task map_entity_composite_key_default_notfound()
     {
         await using var store = await MapperStore<CompositeKeyContext>.Create();
 
-        await store.Mapper.Map<SlotDto, Slot>(new SlotDto { Row = 0, Column = 0, Label = "new" });
+        var refused = await Assert.ThrowsAsync<BusinessException>(
+            () => store.Mapper.Map<SlotDto, Slot>(new SlotDto { Row = 0, Column = 0, Label = "ghost" }));
 
-        await store.Db.SaveChangesAsync();
-
-        await using var read = store.Fresh();
-
-        Assert.Equal("new", Assert.Single(read.Slots).Label);
+        Assert.Equal(BusinessProblem.NotFoundCode, refused.Code);
+        Assert.Empty(store.Db.Slots);
     }
 
     public class NoKeyUserDto

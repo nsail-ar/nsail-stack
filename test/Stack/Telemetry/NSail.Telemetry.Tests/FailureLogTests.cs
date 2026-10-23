@@ -168,16 +168,29 @@ public sealed class FailureLogTests
             Read(store, new FailureLogQuery(Guid.NewGuid(), DateTimeOffset.UtcNow.AddHours(-24), 20)));
     }
 
-    // A column the stream's schema has and this row left empty, or filled with something that
-    // is not a number. TryGetInt64 throws rather than answering false for either, and a hit
-    // with no readable timestamp has no place in a list ordered by when: it is dropped, not
-    // dated 1970.
+    // A 2xx whose body parses and is still not a search result: a search result is made of
+    // hits, and {}, an explicit "hits":null and a gateway's or a portal's own JSON envelope
+    // carry none. The empty list the absent member would otherwise read as is the one answer
+    // this door must never invent, so it is the same single failure as a body that did not
+    // parse at all.
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("null")]
+    [InlineData("{\"hits\":null}")]
+    [InlineData("{\"code\":200,\"message\":\"login required\"}")]
+    public async Task A_200_that_carries_no_hits_at_all_is_one_failure_too(string body)
+    {
+        using var store = new Store(HttpStatusCode.OK, body);
+
+        await Assert.ThrowsAsync<FailureLogException>(() =>
+            Read(store, new FailureLogQuery(Guid.NewGuid(), DateTimeOffset.UtcNow.AddHours(-24), 20)));
+    }
+
     // The stream's unit is the one thing about this store no build can check, so it is derived
     // per row rather than assumed: the same instant written in seconds, milliseconds,
-    // microseconds or nanoseconds reads as the same instant. Nanoseconds is OTLP's own unit
-    // and used to be an ArgumentOutOfRangeException out of this reader; milliseconds and
-    // seconds used to be a failure dated 1970, which is worse, because order and the bound
-    // are both by when.
+    // microseconds or nanoseconds reads as the same instant. Order and the whole bound are by
+    // when, so no unit can be taken for granted — read as microseconds, OTLP's own nanoseconds
+    // are past what a date can hold, and seconds are a failure dated 1970.
     [Theory]
     [InlineData(1_760_000_000L)]
     [InlineData(1_760_000_000_000L)]
@@ -195,20 +208,22 @@ public sealed class FailureLogTests
     }
 
     // A column the stream's schema has and this row left empty, or filled with something that
-    // is not a number, or in no unit this reader knows. TryGetInt64 throws rather than
-    // answering false for the first two, and a hit with no readable time has no place in a
-    // list ordered by when — so it is dropped, beside the rows that could be read. One odd row
-    // the store wrote is not an outage.
+    // is not a number, or in no unit this reader knows — and, last, a row that is not an object
+    // at all, since the elements of the array are the store's word like every value inside one.
+    // TryGetInt64 throws rather than answering false for the first two, a null element would be
+    // dereferenced, and a hit with no readable time has no place in a list ordered by when — so
+    // each is dropped, beside the rows that could be read. One odd row the store wrote is not
+    // an outage.
     [Theory]
-    [InlineData("\"1760000000000000\"")]
+    [InlineData("{\"start_time\":\"1760000000000000\",\"span_name\":\"Sales.Boxes.CloseBox\"}")]
+    [InlineData("{\"start_time\":null,\"span_name\":\"Sales.Boxes.CloseBox\"}")]
+    [InlineData("{\"start_time\":{},\"span_name\":\"Sales.Boxes.CloseBox\"}")]
+    [InlineData("{\"start_time\":0,\"span_name\":\"Sales.Boxes.CloseBox\"}")]
+    [InlineData("{\"start_time\":9223372036854775807,\"span_name\":\"Sales.Boxes.CloseBox\"}")]
     [InlineData("null")]
-    [InlineData("{}")]
-    [InlineData("0")]
-    [InlineData("9223372036854775807")]
-    public async Task A_hit_with_no_readable_time_is_dropped_beside_the_ones_that_read(string time)
+    public async Task A_hit_with_no_readable_time_is_dropped_beside_the_ones_that_read(string hit)
     {
-        var body = $"{{\"hits\":["
-            + $"{{\"start_time\":{time},\"span_name\":\"Sales.Boxes.CloseBox\"}},"
+        var body = $"{{\"hits\":[{hit},"
             + "{\"start_time\":1760000000000000,\"span_name\":\"Sales.Boxes.ListBoxes\"}]}";
 
         using var store = new Store(HttpStatusCode.OK, body);
@@ -222,12 +237,13 @@ public sealed class FailureLogTests
     // or its unit, is not what this reader takes it for — and an empty list there would read as
     // "you have no recent failures" for as long as nobody looked. It is the same outage as a
     // store that will not answer at all.
-    [Fact]
-    public async Task A_response_whose_every_row_is_unreadable_is_one_failure_too()
+    [Theory]
+    [InlineData("{\"start_time\":\"1760000000000000\",\"span_name\":\"Sales.Boxes.CloseBox\"},"
+        + "{\"start_time\":null,\"span_name\":\"Sales.Boxes.ListBoxes\"}")]
+    [InlineData("null")]
+    public async Task A_response_whose_every_row_is_unreadable_is_one_failure_too(string hits)
     {
-        var body = "{\"hits\":["
-            + "{\"start_time\":\"1760000000000000\",\"span_name\":\"Sales.Boxes.CloseBox\"},"
-            + "{\"start_time\":null,\"span_name\":\"Sales.Boxes.ListBoxes\"}]}";
+        var body = $"{{\"hits\":[{hits}]}}";
 
         using var store = new Store(HttpStatusCode.OK, body);
 

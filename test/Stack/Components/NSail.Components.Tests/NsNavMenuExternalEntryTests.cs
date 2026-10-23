@@ -82,4 +82,28 @@ public sealed class NsNavMenuExternalEntryTests : BunitContext, IAsyncLifetime
 
         Assert.Empty(menu.FindAll(".ns-nav-entry"));
     }
+
+    // A path of this app's own is a destination too — the one leaf whose address the route table
+    // cannot answer for, an endpoint no page hosts.
+    [Fact]
+    public void AnEntryNamingThisAppsOwnPathIsDrawnAsALinkToIt()
+    {
+        var menu = RenderMenu(new NavMenuItem { Name = "Observability", Url = "/health" });
+
+        Assert.Equal("/health", menu.Find(".ns-nav-entry a").GetAttribute("href"));
+    }
+
+    // And an address that no route table could have produced is no destination: the entry goes
+    // where one naming nowhere goes, so a scheme a module contributed never reaches the href.
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("java\tscript:alert(1)")]
+    [InlineData("data:text/html;base64,PHNjcmlwdD4=")]
+    [InlineData("//evil.example/looks-like-ours")]
+    public void AnEntryWhoseUrlCouldNotBecomeAnHrefDrawsNothing(string url)
+    {
+        var menu = RenderMenu(new NavMenuItem { Name = "Observability", Url = url });
+
+        Assert.Empty(menu.FindAll(".ns-nav-entry"));
+    }
 }
