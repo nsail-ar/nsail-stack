@@ -51,6 +51,31 @@ public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
         Assert.NotEmpty(cut.FindAll(".ns-table"));
     }
 
+    // Which branch rendered is what ns-mud.css needs in order to release the container's own
+    // scroll on a stacked PAGED grid and not on a scrolling one, where that same container is
+    // what the next page is asked from (nsail#2595). The vendor's stacking class rides the
+    // viewport and is no help off a browser; this half is the component's and is readable here.
+    // One host per test, not two in one: the host mounts MudPopoverProvider, whose SectionOutlet
+    // takes a registry subscription under one identifier — a second one in the same render tree
+    // throws out of SetParametersAsync before any assertion is reached.
+    [Fact]
+    public void ThePagedBranchSaysSoOnItsRoot()
+    {
+        var cut = Render<ScrollTableHost>(parameters => parameters.Add(p => p.Mode, NsTableMode.Page));
+
+        Assert.NotEmpty(cut.FindAll(".ns-table.ns-table-pages"));
+        Assert.NotEmpty(cut.FindAll(".ns-table .mud-table-pagination"));
+    }
+
+    [Fact]
+    public void TheScrollBranchDoesNot()
+    {
+        var cut = Render<ScrollTableHost>();
+
+        Assert.Empty(cut.FindAll(".ns-table.ns-table-pages"));
+        Assert.NotEmpty(cut.FindAll(".ns-table"));
+    }
+
     [Fact]
     public void AScrollListenerThatThrowsLeavesTheTableStanding()
     {

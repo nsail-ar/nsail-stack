@@ -188,6 +188,13 @@ marked *(cases)* has its story there.
 - **One overflow owner per surface** — `NsTable`'s container, `NsPanel`'s content, a grown
   `NsCard`'s content, an `NsStack` with `Scroll` — and the shell around them declares none
   (cases).
+  - **A grid stacked as cards owns no scroll, and a paged one grows to its rows.** The
+    container's own scroll buys a column header that stays and a pager that stays reachable;
+    stacked there is neither — no header row is drawn, and one card is several rows tall, so a
+    region with room for two cards keeps the other eight inside a box nothing says scrolls and
+    pins the pager over the last one. The grid declares none there and the surface's own owner
+    scrolls the whole of it, pager in flow under the last card. The paged branch only
+    (`.ns-table-pages`): in `Scroll` mode that container IS what the next page is asked from.
 - **A scroll box INSIDE a surface wears the house's own bar** (`.ns-scroll-thin`): thin, the
   theme's line colour, no track. The shell's own scrollbars stay the platform's.
 

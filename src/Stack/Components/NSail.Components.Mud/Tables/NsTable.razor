@@ -468,12 +468,20 @@ else
     // inside one: confirm the row and keep going down the column, never submit the document the
     // grid is a field of (ns.js, the Enter policy). A grid offering no way into a row is read,
     // not filled in, so its Enter is the document's.
+    //
+    // ns-table-pages says this grid drew a PAGER, which is the one branch whose rows are safe to
+    // hand to the surface's own scroll once they stack as cards (ns-mud.css): the branch under it
+    // reads the container's own scroll to fetch the next page, and there is no third answer a
+    // class could be read as. Said in C# because only this component knows which branch rendered
+    // — whether the grid STACKED is the vendor's own breakpoint call, which is why the CSS rule
+    // needs both.
     string GetClasses()
     {
         return new NsClassBuilder("ns-table d-flex flex-column min-h-0")
             .Add("flex-grow-1", Grow)
             .Add("ns-cells", Editable)
             .Add("ns-table-editing", _editing is not null)
+            .Add("ns-table-pages", OnQuery.HasDelegate && !Scrolls)
             .Add(_instance)
             .Add(Class)
             .ToString();

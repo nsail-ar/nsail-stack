@@ -26,7 +26,13 @@
 
     @if (_hasToolBar)
     {
-        <NsToolBar Class="@(ReservesToggleGutter ? "ns-toolbar-align-toggle" : null)">
+        @* No inset of its own, at any width: the toolbar is one of the page's BLOCKS, and every
+           other one — the cards, the filter panel, the footer — starts at the content gutter.
+           Below the drawer's breakpoint the title row's hamburger pushes the title's own glyph a
+           gutter inward, and the toolbar does NOT follow it there: lining a search box up with a
+           heading that a button displaced is one row agreeing with another at the cost of the
+           page's only grid (nsail#2595). *@
+        <NsToolBar>
             @* Its own width, whatever it is: the search zone below is the one thing in this row
                that declares one, and a control that is not a search has no business inheriting
                it. *@
@@ -110,11 +116,6 @@
             Surface.ReleaseExport(this);
         }
     }
-
-    /// <summary>The shell's drawer state, cascaded by NsMainLayout — the same cascade
-    /// NsTitleBar reads to decide whether its own row draws the hamburger.</summary>
-    [CascadingParameter]
-    public NsLayoutState? LayoutState { get; set; }
 
     [Parameter]
     public string? Title { get; set; }
@@ -207,8 +208,6 @@
     public bool FilterAlwaysOpen { get; set; }
 
     bool _hasToolBar => Lead is not null || Search is not null || SearchTextChanged.HasDelegate || Filter is not null || Actions is not null || (Surface?.ClaimsExport(this) == true && Surface.Export is not null);
-
-    bool ReservesToggleGutter => NsTitleBar.ShowsToggle(Surface, LayoutState);
 
     bool FilterOpenValue => FilterOpen ?? _filterOpen;
 

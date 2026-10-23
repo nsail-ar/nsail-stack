@@ -296,6 +296,35 @@
     flex-shrink: 0;
 }
 
+/* ONE OVERFLOW OWNER, AND ON A STACKED LIST IT IS NOT THE GRID (nsail#2595). The container's
+   own scroll above buys two things: the column header stays while the rows move under it, and
+   the pager stays reachable at the box's foot. A grid stacked as cards per row has NO header
+   row — the vendor hides it (.mud-sm-table .mud-table-head) — and a card is ten times a row's
+   height, so the rule above collapses into its opposite: the page's own region is tall enough
+   for two cards and a half, the eight behind them are inside a box nothing says scrolls, and
+   the pager pinned at that box's foot sits OVER the last card's acts. The whole grid is the
+   thing to scroll there, and the surface already owns a scroll for it (NsPanel's content), so
+   the grid declares none and grows to its rows instead: the pager lands under the last card, in
+   flow, and the cards pass under the screen's own header.
+
+   min-height is half the release and not decoration: .ns-table carries min-h-0, which is what
+   lets a flex item shrink below its content — with the container no longer a scroll box, auto
+   is what makes the grid's own box (its fill, its radius, its one elevation ring) as tall as
+   the cards inside it instead of ending where the viewport does with rows painting past it.
+
+   Scoped to the PAGED branch (ns-table-pages, NsTable.GetClasses) and not to every stacked
+   grid: in Scroll mode — Auto's answer on a real phone — that same container IS the surface the
+   vendor's scroll listener reads to ask for the next page (NsTable.StartScrollListener), and a
+   grid that stops scrolling there stops asking. Nothing in the column-mode branch matches
+   either, so a desktop keeps the pinned header and pager it was drawn for. */
+.ns-table.ns-table-pages.mud-sm-table {
+    min-height: auto;
+}
+
+.ns-table.ns-table-pages.mud-sm-table .mud-table-container {
+    overflow-y: visible;
+}
+
 /* Column headers left at text-primary weigh exactly as much as the data underneath;
    dropping them to secondary is what gives the grid a spine. */
 .ns-table .mud-table-head .mud-table-cell {
@@ -1533,6 +1562,20 @@
     flex: 0 1 22rem;
 }
 
+/* On a phone the comfort width is already wider than the row, so the row wraps and the box ends
+   up ALONE on the first line (NsToolBar, nsail#2041) — and that row justifies to the trailing
+   edge, so what a basis narrower than the line leaves over is a hole on the LEFT and the search
+   starts in from the page's gutter while every card under it starts at it (nsail#2595). A basis
+   of the whole line is what closes that: the box takes the row it was already taking, end to
+   end, and the tools behind it wrap under it at the trailing edge they already keep. The
+   container and not the window, like every other narrow-box rule in this file: a list drawn in
+   a drawer is this narrow on a desktop too. */
+@container (max-width: 599.98px) {
+    .ns-toolbar-search {
+        flex: 1 1 100%;
+    }
+}
+
 /* SignInPage's contributed provider buttons (AppleSignInButton, GoogleSignInButton, and
    whatever ISignInContributor a future kit adds) render as square icon tiles, Symbaloo-style,
    rather than the stacked full-width rows they used to be (nsail#638, Leonardo 2026-08-31:
@@ -1612,23 +1655,6 @@
    padding to cancel, and the compound selector below simply does not match it. */
 .ns-guide-link.mud-icon-button {
     margin-inline-end: -12px;
-}
-
-/* nsail#1006: below the drawer's own breakpoint NsTitleBar's Announces row draws the hamburger
-   that stands in for the hidden drawer (intentional-ui.md, "Chrome, size and scroll"), which
-   reserves a gutter ahead of the title's own glyph that the toolbar row underneath does not draw
-   for itself — so the two rows' leading content parts ways by exactly that gutter. NsPageHeader
-   mirrors it here on the toolbar (ReservesToggleGutter, matching NsTitleBar's own Announces
-   condition) rather than the page: the hamburger is MudBlazor's own medium icon button
-   (12px padding) with Edge.Start already cancelling its own leading padding
-   (.mud-icon-button-edge-start, -12px), which leaves the OTHER padding step plus the app's own
-   Md icon step (.mud-icon-size-medium, 1.25rem) as its net footprint — 12px + 20px = 2rem.
-   959.98px is the exact complement of MudBlazor's own d-md-none breakpoint (min-width: 960px),
-   so the two rows never disagree about which side of it they are on. */
-@media (max-width: 959.98px) {
-    .ns-toolbar-align-toggle {
-        padding-inline-start: 2rem;
-    }
 }
 
 /* A heading's own glyph does not compete with it. The window title is the one heading on

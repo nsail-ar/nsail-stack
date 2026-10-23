@@ -237,6 +237,19 @@ definite height, and every row is compressed and paints across its neighbours. T
 chopped and overlapped, not cut off at the bottom. The cure is never a scrollbar further out; it
 is a parent whose cross axis does not stretch (a column stack), marked as the owner.
 
+## The second owner, and the list that scrolled inside itself
+
+A list surface declared two: `NsPanel`'s content and, inside it, `NsTable`'s container. On a
+desktop only the inner one ever engages, so the pair read as one rule for as long as nobody held
+a phone. Measured in Chromium at 412×915 on a ten-row page of stacked cards: the panel's region
+was 715px, the cards 1069px, so the container scrolled 354px of them inside a box with no bar of
+its own on a touch screen — and the pager, pinned at that box's foot at y=847, stood over a last
+card that ran to y=1253. Two and a half cards of ten were reachable. The inner owner is the one
+that gets squeezed, because it is the one with the whole surface above it; releasing it put the
+grid's own box at its rows' height (1121px) and the pager in flow at y=1253, under the last card,
+with the panel's region scrolling the grid whole. **Two owners is not a stricter version of one —
+it is a layout whose behaviour depends on which of them runs out of room first.**
+
 ## Page lifecycle: why `OnInitialized` is sealed
 
 The wiring cannot be lost to a forgotten `base.OnInitialized()` — the compiler rejects the
