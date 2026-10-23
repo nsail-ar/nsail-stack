@@ -170,19 +170,12 @@ else if (!Hoisted)
     /// reader (NsAppBar, for a host that mounts one) and an overlay's row both read it there.</summary>
     bool Announces => OnMain || Hoisted;
 
-    // Whether this SURFACE draws a toggle at all — main surface, drawer cascade present.
-    // NsPageHeader's toolbar row reserves the same gutter beneath this one's, so it calls
-    // this predicate too rather than re-deriving it: two rows agreeing by construction,
-    // never by two hand-written conditions staying in sync. The page header composes the row
-    // that reserves that gutter and is the page's first, so the claim below is its own.
-    internal static bool ShowsToggle(SurfaceContext? surface, NsLayoutState? layoutState)
-    {
-        return surface?.IsMain == true && layoutState is not null;
-    }
-
+    // The hamburger is this row's alone — a main surface with the drawer cascade present, and
+    // the claim on top. No other row in the page derives it or lines anything up with it: the
+    // toolbar beneath keeps the page's gutter whatever this row does (NsPageHeader, nsail#2595).
     // Asked at render, never cached: the row that holds the claim can leave while the surface
     // stays, and the taker is then whichever row renders next (SurfaceContext.ClaimsRow).
-    bool OwnsToggle => ShowsToggle(Surface, LayoutState) && Surface!.ClaimsRow(this);
+    bool OwnsToggle => Surface?.IsMain == true && LayoutState is not null && Surface.ClaimsRow(this);
 
     // A screen's NAME is the page's one top-level heading, and the row that names the screen is
     // the one that claimed the surface — the same claim the hamburger rides: a panel drawing a

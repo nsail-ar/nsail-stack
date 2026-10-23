@@ -499,9 +499,9 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
     LABEL instead, with the glyph parked between the two lines. The search box is still the one
     thing on that row that gives — it declares a comfort width, not a content one
     ([ui/styling.md](ui/styling.md)) — and the row takes the line once that is spent. On a phone
-    that width is already more than the row has, so the box takes the whole row and the tools
-    wrap under it: **a wrapped line's leftover space falls on the LEFT of a row justified to the
-    trailing edge**, and a search box floating off the page's grid is what that costs.
+    **the search box is the line**, end to end, and the tools wrap under it: a comfort width on a
+    line it is alone on leaves the rest to the row's spacer, and a field that stops short of the
+    page reads as off the page's grid even when it starts on it.
     **The toolbar starts at the content gutter, like every other block of the page** — the cards,
     the filter panel, the footer. It does NOT follow the title's own glyph, which the hamburger
     displaces by a gutter below the drawer's breakpoint: one row agreeing with another is not

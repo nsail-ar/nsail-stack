@@ -315,14 +315,22 @@
    Scoped to the PAGED branch (ns-table-pages, NsTable.GetClasses) and not to every stacked
    grid: in Scroll mode — Auto's answer on a real phone — that same container IS the surface the
    vendor's scroll listener reads to ask for the next page (NsTable.StartScrollListener), and a
-   grid that stops scrolling there stops asking. Nothing in the column-mode branch matches
-   either, so a desktop keeps the pinned header and pager it was drawn for. */
-.ns-table.ns-table-pages.mud-sm-table {
-    min-height: auto;
-}
+   grid that stops scrolling there stops asking.
 
-.ns-table.ns-table-pages.mud-sm-table .mud-table-container {
-    overflow-y: visible;
+   Inside the query and not keyed off mud-sm-table alone: that class is what Breakpoint="Sm"
+   stamps on the ROOT at every width (NsTable.razor), and the stacking it names is the vendor's
+   own max-width: 960px — so without the query a paged desktop grid carries both hooks and
+   loses the container scroll the pinned header and the pinned pager stand on, which is this
+   story's own fault 3 moved to the desktop. Same query the rest of the file's stacked rules
+   live in (the block further down), matched rather than translated for the same reason. */
+@media (max-width: 960px) {
+    .ns-table.ns-table-pages.mud-sm-table {
+        min-height: auto;
+    }
+
+    .ns-table.ns-table-pages.mud-sm-table .mud-table-container {
+        overflow-y: visible;
+    }
 }
 
 /* Column headers left at text-primary weigh exactly as much as the data underneath;
@@ -1562,14 +1570,14 @@
     flex: 0 1 22rem;
 }
 
-/* On a phone the comfort width is already wider than the row, so the row wraps and the box ends
-   up ALONE on the first line (NsToolBar, nsail#2041) — and that row justifies to the trailing
-   edge, so what a basis narrower than the line leaves over is a hole on the LEFT and the search
-   starts in from the page's gutter while every card under it starts at it (nsail#2595). A basis
-   of the whole line is what closes that: the box takes the row it was already taking, end to
-   end, and the tools behind it wrap under it at the trailing edge they already keep. The
-   container and not the window, like every other narrow-box rule in this file: a list drawn in
-   a drawer is this narrow on a desktop too. */
+/* On a phone the comfort width is already most of the row, so the row wraps and the box ends up
+   ALONE on its line (NsToolBar, nsail#2041) — but alone with the spacer, which is an empty
+   flex-grow-1 of base 0 (NsPageHeader): what the box does not take, the spacer does, and the
+   search reads as a field that stopped short of the page rather than as the row's own. A basis
+   of the whole line is what closes that (nsail#2595): the box takes the line end to end, the
+   spacer gets nothing to hold, and the tools wrap under it at the trailing edge they already
+   keep. The container and not the window, like every other narrow-box rule in this file: a list
+   drawn in a drawer is this narrow on a desktop too. */
 @container (max-width: 599.98px) {
     .ns-toolbar-search {
         flex: 1 1 100%;
