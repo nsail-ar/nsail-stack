@@ -12,9 +12,11 @@
    callers differ only in the words and in whether a second escape hatch rides beside the
    door (NsPageError's Reload) -- never in the frame itself, so the frame lives once, here.
    ns-brand-column is NsSplash's own column width, shared by class rather than repeated here
-   so a wide lockup draws at the same size on both faces regardless of viewport -- without
-   an absolute ceiling of its own this frame's width is the viewport, and NsRemoteImage's
-   max-width:100% only bites once the container is already narrower than the mark. *@
+   so a wide lockup never draws past that ceiling -- without one of its own this frame's
+   width is the viewport, and NsRemoteImage's max-width:100% only bites once the container
+   is already narrower than the mark. A shared ceiling, not a shared size: this frame's mark
+   draws at NsRemoteImage's own fixed Height, not at NsSplash's name-driven width, so a wide
+   lockup still draws at two different sizes between the two faces. *@
 <div id="@Id" class="fixed inset-0 z-max d-flex flex-column align-center justify-center pa-6 bg-background">
     <NsStack Align="NsAlign.Center" Gap="NsSize.Md" Class="ns-brand-column">
         @if (LogoUrl is not null)

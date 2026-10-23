@@ -296,6 +296,66 @@
     flex-shrink: 0;
 }
 
+/* The vendor's own loading row: a ServerData table draws it from its own await on the data
+   source, whether or not NsTable hands it a Loading parameter at all — removing the parameter
+   (NsTable.razor) is not enough on its own. Neutralised rather than kept out of the DOM: the
+   vendor still renders the node, so the house takes away only what it does, the height and the
+   paint, never the markup itself. The overlay below is the ONE loading indicator this
+   table draws. */
+.ns-table .mud-table-loading-row {
+    display: none;
+}
+
+/* The positioning context NsTable's loading overlay draws against (NsTable.razor): a wrapper
+   around the MudTable it holds, so the overlay below can sit OVER the table's own box rather
+   than inside it as a row — the vendor's own Loading row is in flow and drops every row under
+   it by the bar's own height, which this whole mechanism exists to stop. Relative costs this
+   wrapper nothing of its own height: it is exactly the table's box, nothing more — the flex
+   role that box needs (GetHostClasses, NsTable.razor) rides the markup instead, the same way
+   the table root's own always did. */
+.ns-table-loading-host {
+    position: relative;
+}
+
+/* Absolute and inset:0 is what keeps it from taking any height of its own — the table under it
+   never moves, loading or not. NsTable.razor wraps the whole MudTable in ns-table-loading-host,
+   PagerContent included (the vendor renders it INSIDE the table root, not beside it) — only the
+   Cargar más button of Scroll mode sits outside, a sibling of the host rather than a child.
+   Centred on that box, which is mostly the body: the header and the pager are a sliver of it
+   next to the rows, so a short table reads the spinner closer to the pager than to the header.
+   Covering the pager is intentional, not an oversight — the overlay's pointer-events (the
+   default for an in-flow box, stated here anyway) float OVER rows and pager alike, because a
+   click mid-reload, on either, would act on stale data. */
+.ns-table-loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+}
+
+/* The rows already on screen stay legible under a LIGHT wash rather than vanishing — a reload
+   is not a blank table — while the first load, with nothing under it yet, washes an empty body
+   that reads no differently either way. A sibling behind the spinner in document order rather
+   than a z-index: the spinner has none of its own to out-rank. */
+.ns-table-loading-scrim {
+    position: absolute;
+    inset: 0;
+    background-color: var(--mud-palette-surface);
+    opacity: 0.6;
+}
+
+/* Primary, like every other progress indicator in the house (NsAutocomplete's own
+   ProgressIndicatorColor="Color.Primary") — stated rather than left to the icon's default ink,
+   which painted the spinner in whatever colour the row under it happened to carry. Positioned
+   relative so normal document order (it paints after the scrim) is what puts it on top, rather
+   than a z-index this slot has no sibling to be out-ranked by. */
+.ns-table-loading-overlay .mud-icon-root {
+    position: relative;
+    color: var(--mud-palette-primary);
+}
+
 /* A STACKED GRID GROWS TO ITS ROWS, SO ITS CONTAINER HAS NOTHING LEFT TO SCROLL (nsail#2595).
    What the container's own scroll above buys is the pager pinned at the box's foot while the
    rows move under it. A card is ten times a row's height, so on a stacked list that collapses
@@ -331,9 +391,21 @@
    own max-width: 960px — so without the query a paged desktop grid carries both hooks and
    loses the container scroll its pinned pager stands on, which is this story's own fault 3
    moved to the desktop. Same query the rest of the file's stacked rules live in (the block
-   further down), matched rather than translated for the same reason. */
+   further down), matched rather than translated for the same reason.
+
+   ns-table-loading-host (NsTable.GetHostClasses) sits above the grid and carries the same
+   min-h-0 the grid's own root does, for the same reason — so it owes the grid's auto back here
+   too: without it, the host is still free to shrink the panel's flex algorithm offers it below
+   the stacked rows' own height, which this rule just forced the grid NOT to shrink below, and
+   the rows overflow a box smaller than them instead of the grid's. :has() rather than a class
+   from the component, because GetHostClasses has no reason of its own to know the breakpoint
+   the grid already resolves. */
 @media (max-width: 960px) {
     .ns-table.ns-table-pages.mud-sm-table {
+        min-height: auto;
+    }
+
+    .ns-table-loading-host:has(> .ns-table-pages.mud-sm-table) {
         min-height: auto;
     }
 }
@@ -1699,6 +1771,16 @@
     color: var(--mud-palette-text-secondary);
 }
 
+/* The one exception to the muted rank above: while the slot holds the loading spinner rather
+   than the page's own glyph, a working window has to be SEEN working, so it takes the primary
+   ink instead — ns-spin (NsIcons.Progress's own SVG, never written by the icon the page names)
+   is what tells the two apart. :has(.ns-spin) outweighs the muted rule's plain class selector
+   on specificity (0,3,0 against 0,2,0), so it wins over the glyph it overrides whatever order
+   the two rules are declared in. */
+.ns-title-icon-slot:has(.ns-spin) .mud-icon-root {
+    color: var(--mud-palette-primary);
+}
+
 /* A card's title carries the word, and its glyph steps down to the muted rank (nsail#1051):
    a home is a wall of card headings, and a glyph sitting at the title's own ink makes each of
    them two things leading at once. Muted is the vendor's own default for an icon too, and the
@@ -2964,8 +3046,10 @@
 }
 
 /* The one absolute width ceiling NsSplash and NsPageFace both draw their mark against --
-   named once here so the two faces size a wide lockup equally at any viewport instead of
-   each carrying its own copy of the number. */
+   named once here instead of each carrying its own copy of the number. A ceiling, not an
+   equalizer: NsSplash's band takes the install name's rendered width and NsPageFace's
+   takes NsRemoteImage's own fixed Height, so a wide lockup still draws at two different
+   sizes within it. */
 .ns-brand-column {
     max-width: 320px;
     width: 100%;

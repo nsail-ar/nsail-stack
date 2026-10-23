@@ -80,14 +80,21 @@ the profiler says.
 **What the content area draws while a read is in flight is NOTHING** — plus the title bar's
 spinner, which every `Runner` raises for the length of a read and which is therefore already on
 screen. That is the whole loading state, and it is why `NsLoad` has three states and no fourth:
-a skeleton or an in-place spinner would be the second loading, and content→placeholder→content
-is exactly the flash the rule above forbids.
+a skeleton would be the second loading, and content→placeholder→content is exactly the flash the
+rule above forbids. The grid below is the one named exception to drawing nothing; nothing else
+draws a loading indicator of its own.
 
-**The paged grid is the one exception, and it is a concession, not a pattern.** A `ServerData`
-grid draws what its own query returned, so the question cannot leave `OnQuery` and the grid has
-to be mounted in order to ask: its pager reads 0-0 and its own in-line progress bar runs for the
-length of that first query. `ui/hosts.md` states the limit and `NsTable` carries it. What a
-region still takes off a paged list is the state AROUND the read — a read that failed draws the
+**The grid is the one exception, and it is a concession, not a pattern.** A `ServerData` or a
+Scroll grid draws what its own query returned, so the question cannot leave `OnQuery` and the
+grid has to be mounted in order to ask: its pager (or its row count) reads 0-0 while the first
+query is in flight. The concession is an overlay, never a row the vendor draws IN the table's
+flow — the house's own spinner over a light scrim, centred on the grid's box, rows already on
+screen staying visible under the scrim rather than vanishing. An in-flow row would drop every
+row under it by the bar's own height and lift them back up the moment the read answers, the
+exact flash the rule above forbids moved one level down into the grid itself — which is the
+defect the overlay exists to take out. `NsTable` carries it (`ns-mud.css`'s
+`ns-table-loading-host`/`ns-table-loading-overlay`) and `ui/hosts.md` states the limit. What a
+region still takes off a grid is the state AROUND the read — a read that failed draws the
 sender's reason and a Retry where the grid went, instead of the table's own "no records" standing
 in for an answer about the network.
 

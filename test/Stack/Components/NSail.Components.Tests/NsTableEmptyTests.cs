@@ -94,6 +94,29 @@ public sealed class NsTableEmptyTests : BunitContext, IAsyncLifetime
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#no-medicos")));
     }
 
+    // Scroll's own branch (nsail#2604): Items has no vendor loading state of
+    // its own the way ServerData does, so the guard against printing either sentence before
+    // the first query answers has to come from NsTable itself (scrollNoRecords) rather than
+    // from the vendor's own await. Mode="Scroll" is what forces the Items branch under bUnit
+    // without a registered IDeviceProvider for Auto to resolve against.
+    [Fact]
+    public void NeitherSentenceIsPrintedBeforeTheFirstScrollReadAnswered()
+    {
+        var gate = new TaskCompletionSource();
+
+        var cut = Render<EmptyTableHost>(parameters => parameters
+            .Add(host => host.Mode, NsTableMode.Scroll)
+            .Add(host => host.Gate, gate)
+            .Add(host => host.Empty, Fragment()));
+
+        Assert.Empty(cut.FindAll("#no-medicos"));
+        Assert.DoesNotContain(Generic, cut.Markup);
+
+        gate.SetResult();
+
+        cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#no-medicos")));
+    }
+
     static RenderFragment Fragment()
     {
         return builder => builder.AddMarkupContent(0, EmptyMarkup);

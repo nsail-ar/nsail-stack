@@ -166,6 +166,45 @@ public sealed class NsTitleBarProgressTests : BunitContext
         Assert.Single(Bar(cut).FindAll(".ns-title-icon-slot"));
     }
 
+    /// <summary>bUnit paints nothing, so what a render proves is the hook the colour rule selects
+    /// by — ns-spin is baked into NsIcons.Progress's own SVG (NsIcons.cs) and nothing else's, so
+    /// it is what tells the spinner and the page's own glyph apart inside the one slot they
+    /// share. The rule itself is read off the shipped stylesheet (CardIconRankTests' idiom).</summary>
+    [Fact]
+    public async Task WhileWorkingTheSlotCarriesTheSpinHookTheColourRuleSelectsBy()
+    {
+        var surface = Setup();
+        var cut = RenderBar(surface, PageGlyph);
+
+        Assert.Empty(Bar(cut).FindAll(".ns-title-icon-slot .ns-spin"));
+
+        await cut.InvokeAsync(surface.Enter);
+
+        Assert.NotEmpty(Bar(cut).FindAll(".ns-title-icon-slot .ns-spin"));
+    }
+
+    [Fact]
+    public void TheSpinnerTakesThePrimaryInkAndTheIdleGlyphStaysMuted()
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Contains(
+            """
+            .ns-title-icon-slot .mud-icon-root {
+                color: var(--mud-palette-text-secondary);
+            }
+            """,
+            css);
+
+        Assert.Contains(
+            """
+            .ns-title-icon-slot:has(.ns-spin) .mud-icon-root {
+                color: var(--mud-palette-primary);
+            }
+            """,
+            css);
+    }
+
     /// <summary>The property the swap exists to buy: the title occupies the same position in the
     /// same row of nodes whether or not the surface is working, so nothing under the reader's eye
     /// moves when a load starts or ends.</summary>

@@ -24,6 +24,15 @@
 
     RenderFragment noRecords = Empty ?? defaultEmpty;
 
+    // Scroll mode's own NoRecordsContent, not the plain noRecords above: Items has no vendor
+    // loading state of its own the way ServerData does — ServerData's own await is what
+    // suppresses NoRecordsContent there, and Scroll's has nothing to. Without this, the
+    // first query, and every ReloadRows's own _scrolled.Clear(), draws a false "no records"
+    // on an answer nobody has yet — exactly the claim _hasLoaded exists to refuse. Null while
+    // the overlay's own condition holds (IsRunning || !_hasLoaded) is the other face of
+    // loadingOverlay below; once it is false either a real empty list draws here or rows do.
+    RenderFragment? scrollNoRecords = IsRunning || !_hasLoaded ? null : noRecords;
+
     // Built once per render whether or not it draws here: a page header elsewhere on this
     // surface may be the one putting it on screen (ShowExportInline, Surface.Export), and
     // either way the trigger and its options are the same markup — one declaration, not two
@@ -188,6 +197,23 @@
     @* Null is what keeps the tfoot off a table that declared no footer row: the vendor renders
        the element from the mere presence of this fragment. *@
     RenderFragment? footerContent = FooterRow is null ? null : footerCells;
+
+    @* The vendor's own Loading row is IN FLOW (.mud-table-loading-row), so drops every row
+       below it by the bar's own height and lifts them back up the moment the read answers —
+       content moving twice for a state that carries no information. It is the ServerData
+       branch's OWN await, drawn whether or not a Loading parameter is handed to it at all, so
+       neither branch below passes one AND ns-mud.css neutralises the row itself
+       (.ns-table .mud-table-loading-row). This fragment is drawn instead, as a sibling
+       positioned OVER the table rather than a row INSIDE it (ns-table-loading-host, ns-mud.css),
+       so the header and the rows it is reading never move. Null while nothing is running is
+       what keeps the wrapper from drawing an empty hit-testing layer over a table that
+       answered. *@
+    RenderFragment? loadingOverlay = IsRunning || !_hasLoaded
+        ? @<div class="ns-table-loading-overlay" role="status" aria-label="@Strings.Translate("Common.Loading")">
+              <div class="ns-table-loading-scrim"></div>
+              <NsIcon Icon="@NsIcons.Progress" Size="NsSize.Lg" />
+          </div>
+        : null;
 }
 
 @* Fixed: the instance outlives every render, and a column's Breakpoint is markup — cells
@@ -227,30 +253,31 @@
 
 @if (OnQuery.HasDelegate && Scrolls)
 {
-    <MudTable T="TRow"
-              Items="_scrolled"
-              Class="@GetClasses()"
-              RowClassFunc="@((row, _) => GetRowClasses(row))"
-              OnRowClick="RowClick"
-              Hover="true"
-              Breakpoint="Breakpoint.Sm"
-              Loading="@(IsRunning || !_hasLoaded)"
-              LoadingProgressColor="Color.Primary"
-              Dense="true"
-              FooterContent="@footerContent">
-        <HeaderContent>
-            @headerCells
-        </HeaderContent>
-        <RowTemplate>
-            @rowCells(context)
-        </RowTemplate>
-        <ChildRowContent>
-            @problemRow(context)
-        </ChildRowContent>
-        <NoRecordsContent>
-            @noRecords
-        </NoRecordsContent>
-    </MudTable>
+    <div class="@GetHostClasses()">
+        <MudTable T="TRow"
+                  Items="_scrolled"
+                  Class="@GetClasses()"
+                  RowClassFunc="@((row, _) => GetRowClasses(row))"
+                  OnRowClick="RowClick"
+                  Hover="true"
+                  Breakpoint="Breakpoint.Sm"
+                  Dense="true"
+                  FooterContent="@footerContent">
+            <HeaderContent>
+                @headerCells
+            </HeaderContent>
+            <RowTemplate>
+                @rowCells(context)
+            </RowTemplate>
+            <ChildRowContent>
+                @problemRow(context)
+            </ChildRowContent>
+            <NoRecordsContent>
+                @scrollNoRecords
+            </NoRecordsContent>
+        </MudTable>
+        @loadingOverlay
+    </div>
 
     @* The floor the scroll listener aims at, and the way past it for anyone who cannot reach
        a floor: a first page shorter than the viewport never produces a scroll event, and a
@@ -264,34 +291,35 @@
 }
 else if (OnQuery.HasDelegate)
 {
-    <MudTable T="TRow"
-              ServerData="LoadPage"
-              @ref="_table"
-              Class="@GetClasses()"
-              RowClassFunc="@((row, _) => GetRowClasses(row))"
-              OnRowClick="RowClick"
-              Hover="true"
-              Breakpoint="Breakpoint.Sm"
-              Loading="@(IsRunning || !_hasLoaded)"
-              LoadingProgressColor="Color.Primary"
-              Dense="true"
-              FooterContent="@footerContent">
-        <HeaderContent>
-            @headerCells
-        </HeaderContent>
-        <RowTemplate>
-            @rowCells(context)
-        </RowTemplate>
-        <ChildRowContent>
-            @problemRow(context)
-        </ChildRowContent>
-        <NoRecordsContent>
-            @noRecords
-        </NoRecordsContent>
-        <PagerContent>
-            <MudTablePager />
-        </PagerContent>
-    </MudTable>
+    <div class="@GetHostClasses()">
+        <MudTable T="TRow"
+                  ServerData="LoadPage"
+                  @ref="_table"
+                  Class="@GetClasses()"
+                  RowClassFunc="@((row, _) => GetRowClasses(row))"
+                  OnRowClick="RowClick"
+                  Hover="true"
+                  Breakpoint="Breakpoint.Sm"
+                  Dense="true"
+                  FooterContent="@footerContent">
+            <HeaderContent>
+                @headerCells
+            </HeaderContent>
+            <RowTemplate>
+                @rowCells(context)
+            </RowTemplate>
+            <ChildRowContent>
+                @problemRow(context)
+            </ChildRowContent>
+            <NoRecordsContent>
+                @noRecords
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+        @loadingOverlay
+    </div>
 }
 else
 {
@@ -484,6 +512,20 @@ else
             .Add("ns-table-pages", OnQuery.HasDelegate && !Scrolls)
             .Add(_instance)
             .Add(Class)
+            .ToString();
+    }
+
+    // ns-table-loading-host (ns-mud.css) sits between the table root and whatever panel sizes
+    // it, so it owes the root's OWN flex role down the chain the root's box model lives
+    // on: d-flex flex-column min-h-0, and flex-grow-1 whenever Grow asks the root itself to
+    // take it. Without this the host is the flex item a panel's column sizes instead of the
+    // root, the root's own flex-grow-1 does nothing inside a block-laid host, and the paged
+    // grid's internal scroll and pinned pager (the container rule above) and Scroll mode's
+    // own scroll listener both lose the box they measure against.
+    string GetHostClasses()
+    {
+        return new NsClassBuilder("ns-table-loading-host d-flex flex-column min-h-0")
+            .Add("flex-grow-1", Grow)
             .ToString();
     }
 
@@ -985,6 +1027,14 @@ else
             // The page assigns Rows while handling the query, so the fresh value is read from
             // the parameter right after — it is the same DataPage the caller just fetched.
             _page = Rows;
+
+            // The loading overlay is drawn by THIS component, a render ahead of the one Raise's
+            // own IsRunningChanged just asked for — that one landed before this line, while
+            // _hasLoaded was still false, so it is this redraw that actually takes the overlay
+            // down. MudTable needs none of this for its own rows: it reacts to this same
+            // ServerData answer on its own render, and has no overlay of its own that needs
+            // this call.
+            StateHasChanged();
         }
 
         return new TableData<TRow>
