@@ -70,6 +70,7 @@
             .Add("ns-cell-editing", RowEdit is not null)
             .Add("ns-actions", unnamed && Foot is null)
             .Add("ns-foot-label", unnamed && Foot is not null)
+            .Add("ns-col-numeric", Columns?.IsNumericFor(_key) ?? false)
             .ToString();
     }
 

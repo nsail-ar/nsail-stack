@@ -77,6 +77,7 @@
     {
         return new NsClassBuilder(NsResponsive.CellClasses(Breakpoint))
             .Add("ns-actions", For is null && ChildContent is null)
+            .Add("ns-col-numeric", Columns?.IsNumericFor(_key) ?? false)
             .ToString();
     }
 
@@ -94,17 +95,24 @@
             return;
         }
 
-        Columns?.Declare(_key, Breakpoint);
-
         // The same expression, the same key and the same heading the column already resolved,
         // handed on as what a file's column IS: a header that declares itself once is the whole
         // reason an export needs nothing from the screen.
         _column = TableColumn.Of(field.Type, field.Member, _label ?? _key, _key, Format, Strings);
 
+        Columns?.Declare(_key, Breakpoint, IsNumeric(_column?.Format));
+
         if (_column is { } column)
         {
             Columns?.Declare(column);
         }
+    }
+
+    // Number, Money and Percent are figures; Text and Date read as words, a date's own digits
+    // meaning a position on a calendar rather than a quantity to compare at a glance.
+    static bool IsNumeric(ExportFormat? format)
+    {
+        return format is ExportFormat.Number or ExportFormat.Money or ExportFormat.Percent;
     }
 
     // A heading is pressable where the column asked for it, named a member to order by, and

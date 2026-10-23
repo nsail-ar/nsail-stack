@@ -479,6 +479,17 @@
     margin: 0;
 }
 
+/* A figure reads right-aligned, digit against digit, so two rows disagree at a glance — the
+   one column type NsTh/NsTd derive on their own from a member's Format (Number, Money,
+   Percent), never asked of the screen. The header keeps the alignment so the word sits over
+   the figures it names, and a foot cell carries the same class through the one thing it
+   shares with its column: the same key (TableColumns.IsNumericFor). Tabular figures keep a
+   changing amount from re-flowing the column as its digit count does. */
+.ns-table .ns-col-numeric {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+}
+
 /* NsLink wraps a link it drives itself (a surface move, which replaces its history entry
    instead of pushing one) so it has an element to catch the click on — and a class the
    document listener that decides whether to prevent that click's default answers on (ns.js).

@@ -19,11 +19,13 @@ namespace NSail.Components;
 public sealed class TableColumns
 {
     readonly Dictionary<string, NsSize> _breakpoints = [];
+    readonly Dictionary<string, bool> _numeric = [];
     readonly List<TableColumn> _declared = [];
 
-    public void Declare(string key, NsSize breakpoint)
+    public void Declare(string key, NsSize breakpoint, bool numeric)
     {
         _breakpoints[key] = breakpoint;
+        _numeric[key] = numeric;
     }
 
     /// <summary>The width a column appears from; None (never hidden) for a column that
@@ -36,6 +38,16 @@ public sealed class TableColumns
         }
 
         return breakpoint;
+    }
+
+    /// <summary>Whether this column's values are a figure — Number, Money or Percent, the
+    /// three a header's own <see cref="TableColumn.Format"/> can resolve to — so the header
+    /// and every cell under it, including the foot's, align the same way from the one
+    /// declaration (ui/hosts.md, Grids). False for a column that declared nothing, the action
+    /// column included.</summary>
+    public bool IsNumericFor(string? key)
+    {
+        return key is not null && _numeric.TryGetValue(key, out var numeric) && numeric;
     }
 
     /// <summary>Called by the table as it renders its header row, before the headers in it set
