@@ -24,9 +24,13 @@ public sealed class NavMenu : IDisposable
 {
     const string HandoffKey = "NSail.NavMenu";
 
+    const int Shortest = 2;
+
     readonly IEnumerable<INavMenuContributor> _contributors;
 
     readonly IEnumerable<INavMenuCount> _counts;
+
+    readonly IEnumerable<INavMenuSearch> _searches;
 
     readonly IEnumerable<INavMenuArrangement> _arrangements;
 
@@ -47,17 +51,19 @@ public sealed class NavMenu : IDisposable
     PersistingComponentStateSubscription _persisting;
 
     /// <summary>An app that stores no arrangement registers none and gets the menu its modules
-    /// contributed, which is why the arrangements arrive as a collection and not as one
-    /// collaborator somebody has to remember to register.</summary>
+    /// contributed, which is why the arrangements — and the searches, the same way — arrive as
+    /// a collection and not as one collaborator somebody has to remember to register.</summary>
     public NavMenu(
         IEnumerable<INavMenuContributor> contributors,
         IEnumerable<INavMenuCount> counts,
+        IEnumerable<INavMenuSearch>? searches = null,
         IEnumerable<INavMenuArrangement>? arrangements = null,
         LanguageProvider? language = null,
         PersistentComponentState? handoff = null)
     {
         _contributors = contributors;
         _counts = counts;
+        _searches = searches ?? [];
         _arrangements = arrangements ?? [];
         _language = language ?? new LanguageProvider();
         _handoff = handoff;
@@ -116,6 +122,45 @@ public sealed class NavMenu : IDisposable
         }
 
         return Ask();
+    }
+
+    /// <summary>What the modules offer for a term, in registration order, under whatever the
+    /// typing left of the map. Remembered nowhere: the term is the whole input, and the next
+    /// keystroke makes a new one. A contributor that cannot answer is left out rather than
+    /// allowed to take the map down with it, exactly as a count is — the box keeps filtering
+    /// the menu whatever a server says.
+    ///
+    /// <para>A term under two characters asks nobody. One letter is a round trip per settled
+    /// keystroke that comes back with whatever cap the contributor answers with, and it names
+    /// nothing a person was looking for; the floor lives here because the ask does, so no
+    /// contributor repeats it and no two of them disagree about it.</para></summary>
+    public async Task<IReadOnlyList<NavMenuResult>> Find(string? term)
+    {
+        // Trimmed, and the trim is not cosmetic: a term is a filter sent to somebody's server,
+        // where a leading space matches nothing. The BOX keeps what was typed — the no-match
+        // row is a question and padding is part of one — so the two part ways here.
+        var asked = term?.Trim() ?? string.Empty;
+
+        if (asked.Length < Shortest)
+        {
+            return [];
+        }
+
+        var results = new List<NavMenuResult>();
+
+        foreach (var search in _searches)
+        {
+            try
+            {
+                results.AddRange(await search.Find(asked));
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                continue;
+            }
+        }
+
+        return results;
     }
 
     public void Dispose()

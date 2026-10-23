@@ -31,7 +31,7 @@ public sealed class NavMenuHandoffTests : BunitContext
         var arrangements = new CountingArrangement(Placed("Parties", 5));
         var counts = new CountingCount("Tickets", 9);
 
-        var menu = new NavMenu([_contributor], [counts], [arrangements], handoff: handoff.State);
+        var menu = new NavMenu([_contributor], [counts], arrangements: [arrangements], handoff: handoff.State);
 
         var items = menu.GetItems(null);
 
@@ -62,7 +62,7 @@ public sealed class NavMenuHandoffTests : BunitContext
 
         var counts = new CountingCount("Tickets", 9);
 
-        var menu = new NavMenu([_contributor], [counts], [], handoff: handoff.State);
+        var menu = new NavMenu([_contributor], [counts], arrangements: [], handoff: handoff.State);
 
         _ = menu.GetItems(null);
 
@@ -82,7 +82,7 @@ public sealed class NavMenuHandoffTests : BunitContext
         var arrangements = new CountingArrangement(Placed("Parties", 90));
         var counts = new CountingCount("Tickets", 4);
 
-        var menu = new NavMenu([_contributor], [counts], [arrangements], handoff: handoff.State);
+        var menu = new NavMenu([_contributor], [counts], arrangements: [arrangements], handoff: handoff.State);
 
         await menu.GetItems(null);
         await handoff.Manager.PersistStateAsync(handoff, Renderer);
@@ -102,7 +102,7 @@ public sealed class NavMenuHandoffTests : BunitContext
 
         var arrangements = new CountingArrangement(Placed("Parties", 90));
 
-        var menu = new NavMenu([_contributor], [], [arrangements], handoff: handoff.State);
+        var menu = new NavMenu([_contributor], [], arrangements: [arrangements], handoff: handoff.State);
 
         await menu.GetItems(null);
         await menu.GetItems(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(new System.Security.Claims.ClaimsPrincipal())));

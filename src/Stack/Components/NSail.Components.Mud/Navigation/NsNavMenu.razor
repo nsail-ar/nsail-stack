@@ -88,8 +88,10 @@
                filter that matched no door is the moment a question has nowhere else to go
                (ui/navigation.md). Drawn as the ONE entry, so there is nothing above it to press
                first — ns-nav-nomatch is the hook that makes Enter in the box reach it exactly as
-               it reaches the first entry (ns.js). An app that offers none keeps the empty list. *@
-            @if (NoMatch is not null && Question() is { } question && shown.Count == 0)
+               it reaches the first entry (ns.js). An app that offers none keeps the empty list.
+               A drawer showing the record a module found is not a drawer that found nothing, so
+               the results stand in front of that row the same way an entry does. *@
+            @if (NoMatch is not null && Question() is { } question && shown.Count == 0 && _results.Count == 0)
             {
                 <div class="ns-nav-nomatch">
                     @NoMatch(question)
@@ -100,6 +102,15 @@
                 @foreach (var item in shown)
                 {
                     @Render(item)
+                }
+
+                @* UNDER the map's matches, and marked as entries: Enter in the box opens the
+                   first live .ns-nav-entry at the instant it is pressed (ns.js), so one policy
+                   keeps meaning the menu where the menu answered and means the first result
+                   where it did not. *@
+                @foreach (var result in _results)
+                {
+                    @RenderResult(result)
                 }
             }
         </MudNavMenu>
@@ -137,6 +148,8 @@
     bool _manual;
 
     string _search = string.Empty;
+
+    IReadOnlyList<NavMenuResult> _results = [];
 
     IDisposable? _recount;
 
@@ -312,9 +325,25 @@
         return _counts.TryGetValue(item.Name, out var count) ? count : 0;
     }
 
-    void SetSearch(string? value)
+    // The box's value arrives already settled — NsSearchField debounces it — so this is one ask
+    // per term a person stopped typing, which is the rate INavMenuSearch is written against.
+    async Task SetSearch(string? value)
     {
         _search = value ?? string.Empty;
+
+        var asked = _search;
+        var found = await Menu.Find(asked);
+
+        // The answer belongs to the term that asked for it. A slower contributor's reply landing
+        // after the next keystroke would otherwise draw results for a term the box no longer
+        // holds — including after it was cleared, where the right list is the empty one and
+        // Find already answers with it.
+        if (!string.Equals(_search, asked, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _results = found;
     }
 
     // What the no-match row may be handed: the text as it was typed, and null where there is no
@@ -690,6 +719,27 @@
         }
 
         return hidden;
+    }
+
+    RenderFragment RenderResult(NavMenuResult result)
+    {
+        return __builder =>
+        {
+            @* The same row an entry is, because the box's Enter and the gutter's styling both
+               read the entry's own shape — what differs is that a result is never the active
+               route: it is a record the term produced and not a place the map holds, so the
+               vendor is handed no class to mark it with. *@
+            <MudNavLink Href="@result.Url" Icon="@(result.Icon?.Markup)" ActiveClass="" Class="ns-nav-entry ns-nav-result">
+                @result.Label
+                @* What tells two records wearing one label apart, and what shows the part that
+                   matched where the label does not. Inside the link, like the count: the whole
+                   row is one target. *@
+                @if (result.Detail is { Length: > 0 } detail)
+                {
+                    <span class="ns-nav-detail">@detail</span>
+                }
+            </MudNavLink>
+        };
     }
 
     RenderFragment Render(NavMenuItem item)

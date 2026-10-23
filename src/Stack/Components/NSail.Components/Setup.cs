@@ -84,6 +84,17 @@ public static class Setup
         services.AddScoped<INavMenuCount, TCount>();
     }
 
+    /// <summary>Registers what a module offers the drawer's search box besides the menu
+    /// entries — results of its own for the term typed. Apart from AddNavMenu because the two
+    /// are separate decisions and are asked at different rates: the tree is asked once for a
+    /// session, and this once per settled term.</summary>
+    public static void AddNavMenuSearch<TSearch>(this IServiceCollection services)
+        where TSearch : class, INavMenuSearch
+    {
+        services.TryAddScoped<NavMenu>();
+        services.AddScoped<INavMenuSearch, TSearch>();
+    }
+
     /// <summary>Registers what this install did to the menu its modules contribute — order,
     /// label and visibility, read from wherever that install keeps it. Apart from AddNavMenu
     /// because mounting and arranging are two verbs: a contributor says what is on the table,

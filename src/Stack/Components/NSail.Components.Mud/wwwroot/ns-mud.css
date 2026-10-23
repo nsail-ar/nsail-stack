@@ -1152,6 +1152,23 @@
     text-align: center;
 }
 
+/* A result the typing found, not a door the map holds: two lines in the height of one row, so
+   a list of them scans as a list and never pushes the entries above it off the screen. The
+   vendor's label wrapper is a plain div, which is why the stacking is declared here and not
+   left to the two spans. */
+.ns-nav-drawer .ns-nav-result .mud-nav-link-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25rem;
+}
+
+/* The second line reads as the first one's context and not as a second label: the secondary
+   ink and a smaller size are what say so, the same pair every caption in the house wears. */
+.ns-nav-drawer .ns-nav-detail {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.75rem;
+}
+
 .ns-nav-drawer .mud-input-outlined-border,
 .ns-nav-drawer .ns-nav-brand,
 .ns-nav-drawer .ns-nav-session {
