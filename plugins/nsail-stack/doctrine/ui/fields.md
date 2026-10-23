@@ -705,6 +705,16 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   started for it (`NsTextFieldBase.HoldTyped`'s reason). Derived from the posture and never a
   parameter: a browsed lookup has its whole set on screen from the focus, so the vendor answers
   off the list already open.
+- **That held text is also what the field hands the vendor BACK as its `Text`, and it is what
+  carries a half-typed term across a redraw.** The vendor refreshes its own box from the value it
+  holds on every parameter set it is not FOCUSED for, and the text event above is dispatched into
+  the field, so every keystroke redraws it: a term given to a box nobody is in left with that
+  first redraw, and the debounced search went out empty — which is the one search a `Lazy` lookup
+  answers with nothing (nsail#2695, paid for twice by focusing the box first). A `Text` in the
+  parameter view is what the vendor withholds that refresh for, so the box becomes the field's to
+  write: every item the field RESOLVES writes the reading itself, which is the same string the
+  refresh wrote, and only where the item changes — a term being typed changes none, and a write
+  mid-typing is the one `NsDateField` refuses to make for exactly that reason.
 - **No answer of a search that key does not own is read as its own.** A search already out for
   the text is **waited** for and never asked again: a field has one Runner for its searches, so a
   second ask cancels the first, and the first is the call the vendor redraws its list from — it
