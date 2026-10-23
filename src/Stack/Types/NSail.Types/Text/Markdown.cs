@@ -508,7 +508,7 @@ public static class Markdown
         // of the chapter already open, which names no host to decide about.
         var fragment = options.AppLinks && address.StartsWith('#');
 
-        if (!fragment && !WebAddress.IsNavigable(address, options.AppLinks))
+        if (!fragment && !WebAddress.IsNavigable(address, withinApp: options.AppLinks))
         {
             return match.Value;
         }

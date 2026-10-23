@@ -100,6 +100,9 @@ public sealed class NsNavMenuExternalEntryTests : BunitContext, IAsyncLifetime
     [InlineData("java\tscript:alert(1)")]
     [InlineData("data:text/html;base64,PHNjcmlwdD4=")]
     [InlineData("//evil.example/looks-like-ours")]
+    // The one leading slash of a path of our own, and then the slant the browser reads as the
+    // second: "/\evil.example" resolves to another host, so it is the protocol-relative case.
+    [InlineData("/\\evil.example/looks-like-ours")]
     public void AnEntryWhoseUrlCouldNotBecomeAnHrefDrawsNothing(string url)
     {
         var menu = RenderMenu(new NavMenuItem { Name = "Observability", Url = url });

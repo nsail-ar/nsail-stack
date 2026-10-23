@@ -14,15 +14,19 @@ public static class WebAddress
 
     /// <summary>True for one of the three schemes that open a page or a letter, and — where the
     /// surface admits this app's own addresses — for a root-relative path, never the
-    /// protocol-relative "//host" that reads like one and names somebody else. A rejected
-    /// address is not repaired: what its author meant by it would be a guess.</summary>
+    /// protocol-relative "//host" that reads like one and names somebody else, in either slant.
+    /// A rejected address is not repaired: what its author meant by it would be a guess.</summary>
     public static bool IsNavigable(string? address, bool withinApp)
     {
         // A browser strips whitespace and control characters before it reads the scheme, so
-        // "java\tscript:alert(1)" IS the javascript scheme to whoever clicks it: an address
-        // carrying either is refused rather than trimmed, since the value drawn is the one that
-        // arrived and not a cleaned copy of it.
-        if (string.IsNullOrEmpty(address) || address.Any(character => char.IsWhiteSpace(character) || char.IsControl(character)))
+        // "java\tscript:alert(1)" IS the javascript scheme to whoever clicks it; and its URL
+        // parser reads a backslash as a slash while it resolves the authority, so "/\host" IS
+        // the protocol-relative "//host" the next gate refuses. All three are refused rather
+        // than cleaned off, since the value drawn is the one that arrived and not a repaired
+        // copy of it. SafeReturnTo (NSail.Security) refuses the same three of a visitor's own
+        // return address, one layer up where no scheme may pass at all.
+        if (string.IsNullOrEmpty(address)
+            || address.Any(character => char.IsWhiteSpace(character) || char.IsControl(character) || character == '\\'))
         {
             return false;
         }

@@ -14,6 +14,7 @@ Namespaces use capability names, not the project name:
 | `NSail.Paging` | Pagination primitives |
 | `NSail.Serialization` | The wire's JSON contract (`JsonOptions`) |
 | `NSail.Tones` | `BrandTone` — the one derivation of an ink or a state from a picked colour. Down here because both the API edge (a kit, at save) and the palette (the Stack, at paint) have to reach it; see [ui/branding.md](ui/branding.md) |
+| `NSail.Text` | Text somebody WROTE, which the app renders instead of deriving: `Markdown` (a guide chapter, a manual, a note), `NamedTokens` (the `{name}` a template travels as) and `WebAddress` — whether a written address may become an `href`, asked by every surface that draws one it did not derive; see [ui/navigation.md](ui/navigation.md) and [ui/guide.md](ui/guide.md) |
 | `NSail.Builds` | `BuildVersion.Current` — the build this process runs, the one word the menu prints, the server stamps on every answer and the client compares against — and `ServerBuild`, what the transport heard the far side answer. Down here for the same reason `Tones` is: the transport writes it and the chrome reads it; see [messaging.md](messaging.md) |
 
 ---

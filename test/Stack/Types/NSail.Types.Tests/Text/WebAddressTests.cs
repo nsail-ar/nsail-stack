@@ -48,11 +48,27 @@ public sealed class WebAddressTests
         Assert.False(WebAddress.IsNavigable(address, withinApp: true));
     }
 
+    // The slant a browser's URL parser reads as the other one while it resolves the authority:
+    // "/\evil.example" resolved against this app's address is "https://evil.example", so the one
+    // leading slash buys nothing. SafeReturnTo refuses the same shape of a return address.
+    [Theory]
+    [InlineData("/\\evil.example")]
+    [InlineData("/\\\\evil.example")]
+    [InlineData("\\\\evil.example")]
+    [InlineData("/\\/evil.example")]
+    [InlineData("/sales\\boxes")]
+    public void A_backslash_is_the_other_slant_of_the_same_host_and_is_refused(string address)
+    {
+        Assert.False(WebAddress.IsNavigable(address, withinApp: true));
+        Assert.False(WebAddress.IsNavigable(address, withinApp: false));
+    }
+
     // Only where the surface says it admits this app's own addresses, and never the
     // protocol-relative "//host" that reads like one and names somebody else.
     [Theory]
     [InlineData("/sales/boxes", true)]
     [InlineData("/sales/boxes?open=1", true)]
+    [InlineData("/", true)]
     [InlineData("//evil.example", false)]
     [InlineData("sales/boxes", false)]
     [InlineData("#section", false)]

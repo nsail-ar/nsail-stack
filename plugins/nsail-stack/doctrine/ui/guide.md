@@ -97,8 +97,10 @@ so the same source read by a WhatsApp body is exactly the text its author typed.
 `[Comprobantes](/guide/vouchers#comprobantes)` — and `Document` renders an address rooted at the
 app as a link for exactly that reason (`MarkdownOptions.AppLinks`). `Prose` does not: text
 leaving over a wire has no host to resolve a `/` against, so there the address stays the literal
-characters its author typed. A protocol-relative `//host` is nobody's app and stays literal in
-both.
+characters its author typed. Which written address may become an `href` at all is
+`WebAddress.IsNavigable`'s one answer, here as in the drawer ([navigation.md](navigation.md)): a
+protocol-relative `//host` is nobody's app and stays literal in both, in either slant — `/\host`
+is that same address once a browser's parser reads the backslash as a slash.
 
 **A chapter names one of its own sections the same way, minus the chapter** —
 `[QR](#el-qr-del-comprobante)` — and `AppLinks` renders a bare fragment as a link for the same

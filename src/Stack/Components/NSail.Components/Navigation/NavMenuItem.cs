@@ -20,7 +20,8 @@ public sealed class NavMenuItem
     /// <summary>Route parameters as an anonymous object, for a page whose template has tokens.</summary>
     public object? Parameters { get; init; }
 
-    /// <summary>An external destination this leaf opens instead of a page — always in a new
+    /// <summary>A destination the route table does not hold — another site, or an address this
+    /// host serves outside the router — which this leaf opens instead of a page, always in a new
     /// window, since there is no surface here for the router to hand it to. A contributor names
     /// one or the other: PageType wins where a leaf carries both, silently, the same as every
     /// other first-non-null field (Merge). An entry naming only this carries no Parameters, is

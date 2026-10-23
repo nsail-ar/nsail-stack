@@ -41,6 +41,8 @@ public sealed class MarkdownTests
 
     [Theory]
     [InlineData("[x](//evil.example/steal)")]
+    // The same protocol-relative address in the slant a browser's parser reads as the other one.
+    [InlineData("[x](/\\evil.example/steal)")]
     [InlineData("[x](javascript:alert(1))")]
     public void ToHtml_leaves_an_address_that_is_not_this_app_literal_even_in_a_document(string markdown)
     {

@@ -38,7 +38,8 @@ public sealed class NavMenuEntry
 
     public object? Parameters { get; init; }
 
-    /// <summary>An external destination this entry opens instead of a page — always in a new
+    /// <summary>A destination the route table does not hold — another site, or an address this
+    /// host serves outside the router — which this entry opens instead of a page, always in a new
     /// window, since there is no surface in this app for the router to hand it to. A row
     /// declares one or the other; PageType wins where it names both, the same silent
     /// first-non-null the merge gives every other row of this Name.</summary>
