@@ -112,6 +112,61 @@ public sealed class NsEnterPolicyMarkTests : BunitContext, IAsyncLifetime
         Assert.NotNull(cut.Find(".ns-row-commit"));
     }
 
+    /// <summary>A page that adds from chrome of its own takes the control off the bar and the
+    /// grid keeps it undrawn: the way in the keystroke presses is always a control of the
+    /// GRID's, so the key runs the code the click runs and the page's own Agregar is never
+    /// pressed from here. Clipped and not removed — out of the layout is how the keystroke reads
+    /// "there is no way in" — and out of the accessibility tree and the tab order, which leaves
+    /// the one Agregar a hand can reach the one the page drew.</summary>
+    [Fact]
+    public async Task AGridWhosePageDrawsTheAdd_KeepsTheWayInUndrawn()
+    {
+        var cut = Render<RowEditorHost>(p => p
+            .Add(x => x.Titled, false)
+            .Add(x => x.AddControl, false));
+
+        var add = Assert.Single(cut.FindAll(".ns-cells-add"));
+
+        Assert.Contains("ns-cells-add-undrawn", add.ClassName);
+        Assert.Equal("true", add.GetAttribute("aria-hidden"));
+        Assert.Equal("-1", add.GetAttribute("tabindex"));
+
+        await cut.InvokeAsync(() => add.Click());
+
+        Assert.NotNull(cut.Find(".ns-row-commit"));
+    }
+
+    /// <summary>A grid that names itself draws the one control in its bar and keeps no second
+    /// one: the undrawn way in is the other half of the same single seat.</summary>
+    [Fact]
+    public void AGridThatNamesItself_DrawsTheOnlyWayIn()
+    {
+        var cut = Render<RowEditorHost>();
+
+        var add = Assert.Single(cut.FindAll(".ns-cells-add"));
+
+        Assert.DoesNotContain("ns-cells-add-undrawn", add.ClassName);
+    }
+
+    /// <summary>The other row host answers the same way where its page names the collection: a
+    /// null Title draws no bar at all, and the list keeps the keystroke's way in undrawn.</summary>
+    [Fact]
+    public async Task AListEditorWhosePageNamesIt_KeepsTheWayInUndrawn()
+    {
+        var cut = Render<ListEditorFormHost>(p => p.Add(x => x.Titled, false));
+
+        var add = Assert.Single(cut.FindAll(".ns-cells-add"));
+
+        Assert.Contains("ns-cells-add-undrawn", add.ClassName);
+        Assert.Equal("true", add.GetAttribute("aria-hidden"));
+        Assert.Equal("-1", add.GetAttribute("tabindex"));
+
+        await cut.InvokeAsync(() => add.Click());
+
+        Assert.NotNull(cut.Find("ul.ns-cells"));
+        Assert.NotNull(cut.Find(".ns-row-commit"));
+    }
+
     /// <summary>A row's own controls are not fields, and that is what keeps the policy off them:
     /// both reads reach for a box being typed into, so the pencil, the Confirmar and the
     /// Cancelar standing inside the very rows and the very form the policy answers for keep the

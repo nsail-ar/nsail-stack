@@ -329,23 +329,43 @@
 
         if (rowAt(grid, at + step)) {
             await placeInRow(grid, at + step, column);
+            rest(grid, at);
             return;
         }
 
-        if (!adding)
+        const add = adding ? addControl(grid) : null;
+
+        if (add && live(add)) {
+            add.click();
+
+            const field = await until(() => cellField(grid, rowsOf(grid).length - 1, -1));
+
+            if (field) {
+                place(field);
+                return;
+            }
+        }
+
+        rest(grid, at);
+    }
+
+    // Where the cursor comes to rest when the move was not made -- the arrows ran out of grid,
+    // or the last row was confirmed and there is no way in to press: the row the keystroke
+    // confirmed, on its own pencil, which is both what names that row and the way back into it.
+    // Confirming a row takes its boxes off the screen with the cursor inside them, and a
+    // keystroke never drops the focus on the document body (WCAG 2.4.3) -- it is the answer a
+    // refused row already gets, which is the row itself. Asked only where the cursor WAS
+    // dropped, so a row that kept it, a refused row and the row a move did reach are untouched.
+    function rest(grid, index) {
+        const active = document.activeElement;
+
+        if (active && active !== document.body)
             return;
 
-        const add = addControl(grid);
+        const pencil = rowAt(grid, index)?.querySelector(".ns-row-edit");
 
-        if (!add || !live(add))
-            return;
-
-        add.click();
-
-        const field = await until(() => cellField(grid, rowsOf(grid).length - 1, -1));
-
-        if (field)
-            place(field);
+        if (pencil && live(pencil))
+            pencil.focus();
     }
 
     // THE GRID's own arrows and its Delete, beside the Enter policy above and for its reason:
@@ -440,9 +460,9 @@
 
     // The way in stands in the grid's own bar, above the rows and outside them -- the one seat
     // Agregar has (ui/hosts.md) -- so it is a SIBLING of the rows and the search is made from
-    // their parent. A page that draws the add control itself, out of its own chrome, declares
-    // none of this: there the control adds to whichever collection the page is showing, and it
-    // is not this grid's to press.
+    // their parent. Where the bar draws no control, because the page adds from chrome of its
+    // own, the host keeps the same one undrawn beside the rows: the key presses a control of
+    // the GRID's whatever the page around it draws, and never the page's own.
     function addControl(grid) {
         return grid.querySelector(".ns-cells-add")
             ?? grid.parentElement?.querySelector(".ns-cells-add")
