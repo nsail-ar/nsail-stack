@@ -18,7 +18,7 @@ public sealed class TestDatabase : IAsyncDisposable
     // Every TestDatabase mints its own database name, so every fixture keys its own Npgsql
     // pool — a fresh pool per collection, not one shared pool. Left at Npgsql's default
     // (Maximum Pool Size=100), one runaway or leaked fixture could alone approach the
-    // server's own connection ceiling; capped here, it cannot, and ConcurrencyGate below
+    // server's own connection ceiling; capped here, it cannot, and the gate below
     // is what keeps the sum across every concurrently-alive fixture well under it.
     const string Server = "Host=localhost;Username=postgres;Maximum Pool Size=20";
 
@@ -47,18 +47,42 @@ public sealed class TestDatabase : IAsyncDisposable
     // from the harness — and its wall time is its longest collection, so this count is also
     // what bounds how long that suite takes. Such a run declares its own figure in
     // NSAIL_TESTDB_CONCURRENCY (e2e.yml's E2E step, which says eight). The permits are
-    // honoured across processes, so a raise is a raise for everything alive beside it: the
-    // effective ceiling is the largest figure any live process declared, which is why this is
-    // opt-in per run and not a higher default. Anything unparseable or under one is the
-    // default, so a mistyped variable costs a run nothing but its speed.
+    // honoured by every process reaching the same server, so a raise is a raise for everything
+    // alive beside it: the effective ceiling is the largest figure any live process declared,
+    // which is why this is opt-in per run and not a higher default. Anything unparseable or
+    // under one is the default, so a mistyped variable costs a run nothing but its speed.
     static readonly int MaxConcurrentDatabases = ReadConcurrency();
 
-    // One file per permit, each held exclusively for as long as its fixture is alive. A named
-    // Semaphore would be the natural cross-process primitive, but it exists only on Windows —
-    // on Linux, where CI runs, constructing one throws PlatformNotSupportedException — while
-    // an exclusive FileStream is honoured across .NET processes on both platforms, and the OS
-    // drops the lock with the process, so a crashed run never wedges the gate.
+    // A permit is a session-level advisory lock on the server the figure above is a figure
+    // FOR, held for as long as its fixture is alive. A temp directory belongs to one
+    // container and the server to the machine every runner slot on it shares, so a permit
+    // kept in a file bounds a container, which is not what the figure counts. Postgres drops
+    // a session's advisory locks when its backend ends, so a crashed run never wedges the
+    // gate — the same property an exclusive file handle has, at the scope of the resource
+    // being protected.
+    //
+    // The lock's first key is this gate's own keyspace — "NSDB" read as an int — so a permit
+    // can never collide with an advisory lock taken for anything else on the same server; the
+    // second is the permit's index.
+    const int GateKeyspace = 0x4E53_4442;
+
+    // In front of the server's permits, one file per permit in the container's own temp
+    // directory, held exclusively for as long as its fixture is alive. It bounds what waits:
+    // without it every fixture a run starts at once would hold a connection polling for a
+    // server permit, and a machine's worth of those is its own flood. A named Semaphore would
+    // be the natural primitive for it, but it exists only on Windows — on Linux, where CI
+    // runs, constructing one throws PlatformNotSupportedException — while an exclusive
+    // FileStream is honoured across .NET processes on both platforms, and the OS drops the
+    // lock with the process.
     static readonly string GateDirectory = Path.Combine(Path.GetTempPath(), "nsail-testdb-gate");
+
+    // A separate figure for that separate job, which happens to be the server's: a container
+    // holding more fixtures than the server has permits would only be holding connections for
+    // permits that cannot exist. It is not the figure above, and NSAIL_TESTDB_CONCURRENCY
+    // moves it only for that reason.
+    static readonly int MaxWaitingPerContainer = MaxConcurrentDatabases;
+
+    static readonly TimeSpan PermitPoll = TimeSpan.FromMilliseconds(250);
 
     const string TimestampFormat = "yyyyMMddHHmmss";
 
@@ -80,12 +104,17 @@ public sealed class TestDatabase : IAsyncDisposable
 
     readonly Func<string, DbContext> _context;
 
+    readonly string _permitConnectionString;
+
     FileStream? _gateSlot;
+
+    NpgsqlConnection? _gatePermit;
 
     public TestDatabase(string prefix, Func<string, DbContext> context)
     {
         Name = $"test_{DateTime.UtcNow.ToString(TimestampFormat)}_{Guid.NewGuid():N}_{prefix}";
         ConnectionString = ConnectionStrings.Complete($"{Server};Database={Name}");
+        _permitConnectionString = PermitConnectionString(Name);
         _context = context;
     }
 
@@ -108,7 +137,7 @@ public sealed class TestDatabase : IAsyncDisposable
             // A fixture that never finished starting never reaches DisposeAsync (xunit does
             // not tear down a collection fixture whose InitializeAsync threw) — the release
             // has to happen here or the permit is gone for the rest of the run.
-            ReleaseSlot();
+            await ReleaseGates();
             throw;
         }
     }
@@ -127,11 +156,13 @@ public sealed class TestDatabase : IAsyncDisposable
 
         try
         {
+            _gatePermit = await AcquirePermit();
+
             await Sweep.Value;
         }
         catch
         {
-            ReleaseSlot();
+            await ReleaseGates();
             throw;
         }
     }
@@ -153,7 +184,7 @@ public sealed class TestDatabase : IAsyncDisposable
 
         while (true)
         {
-            for (var i = 0; i < MaxConcurrentDatabases; i++)
+            for (var i = 0; i < MaxWaitingPerContainer; i++)
             {
                 try
                 {
@@ -170,14 +201,81 @@ public sealed class TestDatabase : IAsyncDisposable
                 }
             }
 
-            Thread.Sleep(250);
+            Thread.Sleep(PermitPoll);
         }
     }
 
-    void ReleaseSlot()
+    // Pooling=false because the permit rests on its session ending with the connection: a
+    // pooled Dispose hands the connection back to the pool instead of ending the backend that
+    // holds the lock. Application Name is the fixture's own database, so a run that is waiting
+    // can be read — pg_locks joined to pg_stat_activity says which fixture holds each permit.
+    // Postgres truncates that name at 63 bytes, which clips the free-length prefix off the end
+    // and never the timestamp and guid that make it unique.
+    static string PermitConnectionString(string database)
     {
-        _gateSlot?.Dispose();
+        return ConnectionStrings.Complete($"{Server};Database=postgres;Pooling=false;Application Name={database}");
+    }
+
+    async Task<NpgsqlConnection> AcquirePermit()
+    {
+        var permit = new NpgsqlConnection(_permitConnectionString);
+
+        try
+        {
+            await permit.OpenAsync();
+
+            while (true)
+            {
+                for (var i = 0; i < MaxConcurrentDatabases; i++)
+                {
+                    // try, never the blocking pg_advisory_lock: a wait that is allowed to last
+                    // as long as the fixtures ahead stay alive cannot be spent inside one
+                    // statement, which Npgsql's command timeout would cut.
+                    await using var take = new NpgsqlCommand("SELECT pg_try_advisory_lock(@keyspace, @permit)", permit);
+
+                    take.Parameters.AddWithValue("keyspace", GateKeyspace);
+                    take.Parameters.AddWithValue("permit", i);
+
+                    if (await take.ExecuteScalarAsync() is true)
+                    {
+                        return permit;
+                    }
+                }
+
+                await Task.Delay(PermitPoll);
+            }
+        }
+        catch
+        {
+            await permit.DisposeAsync();
+            throw;
+        }
+    }
+
+    async ValueTask ReleaseGates()
+    {
+        // Both fields are cleared before either handle is touched, and the file is released in
+        // a finally: "a dead holder never wedges the gate" is the property the whole design
+        // rests on, and a throw on the way out is the one path that could contradict it.
+        var permit = _gatePermit;
+        var slot = _gateSlot;
+
+        _gatePermit = null;
         _gateSlot = null;
+
+        try
+        {
+            // The server's permit first: it is the one every other slot on the machine is
+            // waiting for, while the file in front of it only ever gates this container.
+            if (permit is not null)
+            {
+                await permit.DisposeAsync();
+            }
+        }
+        finally
+        {
+            slot?.Dispose();
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -190,7 +288,7 @@ public sealed class TestDatabase : IAsyncDisposable
         }
         finally
         {
-            ReleaseSlot();
+            await ReleaseGates();
         }
     }
 
