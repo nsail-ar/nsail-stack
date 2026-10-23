@@ -366,6 +366,51 @@ public sealed class NsNavMenuSearchTests : BunitContext, IAsyncLifetime
         Assert.Single(menu.FindAll("a[href='/search/parties']"));
     }
 
+    /// <summary>The same invariant read forwards, and the window the normal case lives in: a
+    /// module slower than the debounce has an ask in flight at every keystroke, and what the
+    /// PREVIOUS term found may not be drawn under this one while it flies — Enter would open the
+    /// first record of a prefix of what was typed, and the app's way on with the question would
+    /// be held back by results nobody asked for.</summary>
+    [Fact]
+    public async Task TheResultsOfATermGoWithTheKeystrokeThatAsksForTheNextOne()
+    {
+        _search.Answers(Tenant("lumina@optical/canary"));
+
+        var menu = RenderWithNoMatch();
+
+        await Type(menu, "lum");
+
+        Waits(menu, () => Assert.Single(menu.FindAll(".ns-nav-result")));
+
+        // The second ask held open is what puts the drawer mid-flight: the box holds "lumina",
+        // the module has not answered it, and the records of "lum" are what there is to draw
+        // under a term they do not answer.
+        _search.Holds();
+
+        await Type(menu, "lumina");
+
+        Waits(
+            menu,
+            () =>
+            {
+                Assert.Equal(["lum", "lumina"], _search.Terms);
+                Assert.Empty(menu.FindAll(".ns-nav-result"));
+                Assert.Single(menu.FindAll(".ns-nav-nomatch button"));
+            });
+
+        // And the term that is actually held answers into a drawer that kept nothing of the one
+        // before it.
+        _search.Release();
+
+        Waits(
+            menu,
+            () =>
+            {
+                Assert.Single(menu.FindAll(".ns-nav-result"));
+                Assert.Empty(menu.FindAll(".ns-nav-nomatch"));
+            });
+    }
+
     /// <summary>The seam is opt-in in both directions: a module that found nothing for the term
     /// leaves the drawer exactly as the map's own filter left it.</summary>
     [Fact]

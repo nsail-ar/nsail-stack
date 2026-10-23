@@ -230,11 +230,16 @@
             // on the row's wrapper and not on the anchor, and a wrapper is not a thing a click
             // navigates.
             //
-            // Where the filter left no entry at all the one row drawn is the app's own way on
-            // with what was typed (NsNavMenu's NoMatch), and it is pressed by the same key: its
+            // A row carrying the mark is a row this key presses, whoever drew it: the map's own
+            // entries, and under them whatever a module found for the term (NsNavMenu's
+            // INavMenuSearch), which is how one policy means the menu where the menu answered
+            // and the first record where it did not.
+            //
+            // Where nothing marked stands at all the one row drawn is the app's own way on with
+            // what was typed (NsNavMenu's NoMatch), and it is pressed by the same key: its
             // control is a BUTTON as often as a link -- taking a question somewhere is not
             // navigating -- so both shapes are named. Never both lists at once: the row exists
-            // only while zero entries do, so document order is still "the first one shown".
+            // only while zero marked rows do, so document order is still "the first one shown".
             const entry = Array.from(document.querySelectorAll(
                 ".ns-nav-entry a[href], .ns-nav-nomatch button, .ns-nav-nomatch a[href]")).find(live);
 

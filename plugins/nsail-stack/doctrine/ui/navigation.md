@@ -95,6 +95,11 @@ ends, and these two, which are where an app reaches past the map:
   alone draws no row, because that row is a DOOR and what is behind it (`Companion.Open(text)`,
   an app's own "ask this") has nothing to be asked.
 
+What the box finds besides the map is deliberately NOT a fifth slot beside these: it is a
+contribution (`INavMenuSearch`, below). A fragment would hand the app the row's contract *and*
+the Enter key with it, which is the part that cannot be taken back once three products draw rows
+of their own; a seam that takes a term and gives back labelled records leaves both here.
+
 **Enter presses that entry exactly as it presses the first one otherwise.** The key is one policy
 in one place (`ns.js`) and it reads the DOM at the instant it is pressed: the first live
 `.ns-nav-entry` link, or the no-match row's own control where there is no entry at all — a
@@ -282,14 +287,25 @@ module's by being mounted early.
   drawing what it is handed: a cap written here would be the second number for one bound. So is
   **who may see them** — the read is authorized where it is sent ([permissions.md](../permissions.md)),
   never by the drawer, which has no page to ask the gate about. A module that throws is left out
-  exactly as a count is, and an answer landing after the box moved on is dropped: an answer
-  belongs to the term that asked for it. Nothing of this crosses `NavMenuHandoff` — a typed term
-  exists only after interactivity.
+  exactly as a count is. Nothing of this crosses `NavMenuHandoff` — a typed term exists only
+  after interactivity.
+- **An answer belongs to the term that asked for it, and that is the HOST's half of the seam**
+  (`NsNavMenu.SetSearch`, not `Find`, which answers a term and remembers nothing): the results
+  of the previous term go with the keystroke, before the new ask leaves — never when its answer
+  lands, or the older list stands under a term it does not answer for the whole flight, Enter
+  opens the first record of a prefix of what was typed and the no-match row is held back by
+  results nobody asked for. The list blinking while the ask flies is the honest drawing of
+  "nothing is known yet". And an answer arriving after the box moved on — a slower module, or a
+  cleared box — is dropped rather than drawn. A second host of `Find` owes both.
 - **A result is drawn under the map's matches and wears the entry's own mark**
   (`.ns-nav-entry`), which is what keeps Enter one policy (above) and the row one target: the
   label the module composed, with its own second line under it for what tells two records
   wearing one label apart. It is never the active route and carries no count — a result is a
-  record the term produced, not a door the merge arranged, and nothing keys on it.
+  record the term produced, not a door the merge arranged, and nothing keys on it. Its address
+  is written by whoever found it and is a place INSIDE the app — a route plus whatever query the
+  surface it opens travels as, neither of them derivable by the drawer — and so is not the
+  leaf's `Url` (below, *A leaf naming a `Url` instead of a page*), which is by definition
+  outside it.
 - **A section with one screen contributes an entry, not a group.** The contributor writes the
   first-level entry itself — the *group's* name, the *leaf's* `PageType` — and the group is born
   the day the section gains its second screen. This is NSail's rule, not a product's: the kit

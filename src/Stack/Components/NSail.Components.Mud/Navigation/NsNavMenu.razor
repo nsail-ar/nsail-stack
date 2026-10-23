@@ -177,9 +177,11 @@
     [Parameter]
     public RenderFragment? Tools { get; set; }
 
-    /// <summary>The one entry drawn where the search filtered the map to nothing, given the text
-    /// that was typed: the app's way on with a question the drawer could not answer. Absent keeps
-    /// the empty list.</summary>
+    /// <summary>The one entry drawn where the typing left nothing at all — no map entry and no
+    /// result a module contributed through INavMenuSearch — given the text that was
+    /// typed: the app's way on with a question the drawer could not answer. A drawer showing a
+    /// record it found is not a drawer that found nothing, so a result stands in front of this
+    /// row. Absent keeps the empty list.</summary>
     [Parameter]
     public RenderFragment<string>? NoMatch { get; set; }
 
@@ -332,12 +334,21 @@
         _search = value ?? string.Empty;
 
         var asked = _search;
+
+        // The answer belongs to the term that asked for it, which cuts both ways: what the
+        // previous term found goes with the keystroke and not with the arrival of the next
+        // answer. Otherwise the older list stands under a term it does not answer for the whole
+        // flight of the new ask — the normal case of sustained typing against a server slower
+        // than the debounce — and Enter would open the first result of a PREFIX of what was
+        // typed, while the no-match row stayed held back by results nobody asked for. The price
+        // is the list blinking while the ask flies, which is honest: nothing is known yet.
+        _results = [];
+
         var found = await Menu.Find(asked);
 
-        // The answer belongs to the term that asked for it. A slower contributor's reply landing
-        // after the next keystroke would otherwise draw results for a term the box no longer
-        // holds — including after it was cleared, where the right list is the empty one and
-        // Find already answers with it.
+        // The other half of the same invariant: a slower contributor's reply landing after the
+        // next keystroke — or after the box was cleared — is dropped rather than drawn over a
+        // term the box no longer holds.
         if (!string.Equals(_search, asked, StringComparison.Ordinal))
         {
             return;

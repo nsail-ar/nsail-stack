@@ -20,8 +20,9 @@ public sealed class SeamsPartiesProbePage : ComponentBase;
 
 /// <summary>The two seams an app reaches the drawer's own header and its empty result through
 /// (nsail#2420): Tools, where a door of the app's stands beside the search box and the frame's
-/// "?", and NoMatch, the one entry drawn where typing filtered the map to nothing — given the
-/// text, so the app can carry the question on somewhere else.
+/// "?", and NoMatch, the one entry drawn where the typing left nothing at all — no map entry and
+/// no contributed result (nsail#2590) — given the text, so the app can carry the question on
+/// somewhere else.
 ///
 /// <para>That entry is pressed by the same Enter the first entry is, and the keystroke itself is
 /// ns.js's (NsEnterPolicyMarkTests' own split: bUnit renders through AngleSharp and runs none of
