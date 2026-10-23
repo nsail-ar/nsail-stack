@@ -40,7 +40,8 @@
 
             @if (Search is not null || SearchTextChanged.HasDelegate)
             {
-                @* A comfortable width, not end to end. *@
+                @* A comfortable width where the row has one to give, and the whole line below
+                   the phone breakpoint (ns-mud.css). *@
                 <div class="ns-toolbar-search">
                     @if (Search is not null)
                     {

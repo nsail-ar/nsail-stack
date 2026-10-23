@@ -296,40 +296,45 @@
     flex-shrink: 0;
 }
 
-/* ONE OVERFLOW OWNER, AND ON A STACKED LIST IT IS NOT THE GRID (nsail#2595). The container's
-   own scroll above buys two things: the column header stays while the rows move under it, and
-   the pager stays reachable at the box's foot. A grid stacked as cards per row has NO header
-   row — the vendor hides it (.mud-sm-table .mud-table-head) — and a card is ten times a row's
-   height, so the rule above collapses into its opposite: the page's own region is tall enough
-   for two cards and a half, the eight behind them are inside a box nothing says scrolls, and
-   the pager pinned at that box's foot sits OVER the last card's acts. The whole grid is the
-   thing to scroll there, and the surface already owns a scroll for it (NsPanel's content), so
-   the grid declares none and grows to its rows instead: the pager lands under the last card, in
-   flow, and the cards pass under the screen's own header.
+/* A STACKED GRID GROWS TO ITS ROWS, SO ITS CONTAINER HAS NOTHING LEFT TO SCROLL (nsail#2595).
+   What the container's own scroll above buys is the pager pinned at the box's foot while the
+   rows move under it. A card is ten times a row's height, so on a stacked list that collapses
+   into its opposite: the page's own region is tall enough for two cards and a half, the eight
+   behind them are inside a box nothing says scrolls on a touch screen, and the pager pinned at
+   that box's foot sits OVER the last card's acts. The whole grid is the thing to scroll there,
+   and the surface already owns a scroll for it (NsPanel's content): the pager lands under the
+   last card, in flow, and the cards pass under the screen's own header.
 
-   min-height is half the release and not decoration: .ns-table carries min-h-0, which is what
-   lets a flex item shrink below its content — with the container no longer a scroll box, auto
-   is what makes the grid's own box (its fill, its radius, its one elevation ring) as tall as
-   the cards inside it instead of ending where the viewport does with rows painting past it.
+   ONE declaration does all of it. .ns-table carries min-h-0 (NsTable.GetClasses), which is what
+   lets a flex item shrink below its content; auto gives the automatic minimum back, so the
+   grid's own box (its fill, its radius, its one elevation ring) is as tall as the cards inside
+   it and the container's own height is its rows' — nothing overflows it, so it owns no scroll
+   even though it still declares one. Measured at 412px on a ten-card page: the container's
+   scrollHeight and clientHeight are both 1069, the panel's content region is the one owner
+   inside the panel (1121/715), and the pager's top meets the last card's bottom at 1253.
+
+   The container's own overflow is deliberately NOT released. The two axes cannot be set apart:
+   the CSS Overflow spec computes a visible axis to auto once its sibling is not visible (the
+   ns-scroll-shadow block further down turns on that same rule), so overflow-y: visible here
+   takes overflow-x: visible with it — and a stacked card wider than the row (measured 1060
+   against 380) then escapes the grid's box and is CLIPPED by the Content div's overflow-x:
+   hidden instead of scrolling sideways inside the container, which is what that hidden was
+   written to leave it doing (nsail#1004, Leonardo's Personas screenshot).
 
    Scoped to the PAGED branch (ns-table-pages, NsTable.GetClasses) and not to every stacked
    grid: in Scroll mode — Auto's answer on a real phone — that same container IS the surface the
    vendor's scroll listener reads to ask for the next page (NsTable.StartScrollListener), and a
-   grid that stops scrolling there stops asking.
+   grid whose box stops ending where the viewport does stops producing the scroll it listens to.
 
    Inside the query and not keyed off mud-sm-table alone: that class is what Breakpoint="Sm"
    stamps on the ROOT at every width (NsTable.razor), and the stacking it names is the vendor's
    own max-width: 960px — so without the query a paged desktop grid carries both hooks and
-   loses the container scroll the pinned header and the pinned pager stand on, which is this
-   story's own fault 3 moved to the desktop. Same query the rest of the file's stacked rules
-   live in (the block further down), matched rather than translated for the same reason. */
+   loses the container scroll its pinned pager stands on, which is this story's own fault 3
+   moved to the desktop. Same query the rest of the file's stacked rules live in (the block
+   further down), matched rather than translated for the same reason. */
 @media (max-width: 960px) {
     .ns-table.ns-table-pages.mud-sm-table {
         min-height: auto;
-    }
-
-    .ns-table.ns-table-pages.mud-sm-table .mud-table-container {
-        overflow-y: visible;
     }
 }
 

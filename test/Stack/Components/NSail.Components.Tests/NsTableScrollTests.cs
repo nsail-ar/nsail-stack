@@ -79,19 +79,22 @@ public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
 
     // The other half of the release, and the half the C# class cannot carry: the WIDTH. The
     // vendor's mud-sm-table is on the root at every width (Breakpoint="Sm" — StackedColumnBreakpointTests
-    // reads it off bUnit's own markup, where there is no viewport at all), so what the rules mean
-    // by "stacked" is the query they sit in and nothing else; outside it a paged DESKTOP grid
-    // wears both hooks and loses the container scroll its pinned header and pager stand on.
+    // reads it off bUnit's own markup, where there is no viewport at all), so what the rule means
+    // by "stacked" is the query it sits in and nothing else; outside it a paged DESKTOP grid
+    // wears both hooks and loses the container scroll its pinned pager stands on. The release is
+    // that ONE declaration: the container's own overflow stays, because a box whose height is its
+    // rows' has nothing to scroll and the two axes cannot be set apart (measured, nsail#2595).
     // Read off the file the app ships, like NsTablePagerShrinkTests, since bUnit paints nothing.
     [Fact]
     public void TheStylesheetReleasesTheStackedPagedGridOnlyUnderTheVendorsStackingQuery()
     {
         var rules = StackedPagedRules(HouseStylesheet.Read());
 
-        Assert.Equal(2, rules.Count);
-        Assert.All(rules, rule => Assert.Equal("@media (max-width: 960px)", rule.Query));
-        Assert.Contains(rules, rule => rule.Body.Contains("min-height: auto;", StringComparison.Ordinal));
-        Assert.Contains(rules, rule => rule.Body.Contains("overflow-y: visible;", StringComparison.Ordinal));
+        var rule = Assert.Single(rules);
+
+        Assert.Equal("@media (max-width: 960px)", rule.Query);
+        Assert.Contains("min-height: auto;", rule.Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("overflow", rule.Body, StringComparison.Ordinal);
     }
 
     /// <summary>Every rule whose selector names the stacked paged grid, each with the at-rule it
