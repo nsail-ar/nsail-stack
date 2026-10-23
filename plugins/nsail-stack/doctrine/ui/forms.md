@@ -133,6 +133,15 @@ because a BUTTON is a child the trap can be pointed at. What that case measured 
 the trap is the per-dialog `DefaultFocus` *option*: the vendor's dialog reads its own parameter
 and the provider's global, never the options the opener passed.
 
+**The rule is the renderer's, not the vendor's**: the React client's own confirmation
+(`useConfirm`, [react.md](../react.md)) answers it off the same `danger` the fill reads, and
+places the cursor itself — the one line of code either renderer owns here. It has no trap to
+point at: a native `<dialog>` places the cursor inside `showModal()`, from the `autofocus`
+ATTRIBUTE, which React's `autoFocus` prop does not write — the prop focuses at the commit that
+mounted the faces, and that commit is one where the dialog is still closed, so nothing takes the
+cursor. Placing it after `showModal()` returns is not racing anything: those steps are synchronous
+inside the call.
+
 ---
 
 ## Tracking and the exit guard
