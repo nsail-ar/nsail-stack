@@ -15,7 +15,7 @@ placing.
 | [styling.md](styling.md) | `NsFormGrid`/`NsFormGridItem`, `NsStack`, `NsCard`, `NsPanel`, `NsPaper`, `NsExpander`, `NsText`, `NsRemoteImage`, `NsTooltip`, `NsSince`, `NsMeter`, `NsStatusText`/`NsStatusDot`, `ns-mud.css`, container queries |
 | [surfaces.md](surfaces.md) | The base chain, and the query, size, stacking and announce seams |
 | [menus.md](menus.md) | `NsMenu`, `NsMenuItem`, `NsMenuBlock`, `NsMenuDivider`, `ActionItem.Menu` |
-| [navigation.md](navigation.md) | `NavMenuItem`, `INavMenuContributor`, `INavMenuCount`, `NavMenuCountsChanged`, `NsNavMenu` |
+| [navigation.md](navigation.md) | `NavMenuItem`, `INavMenuContributor`, `INavMenuCount`, `INavMenuSearch`/`NavMenuResult`, `NavMenuCountsChanged`, `NsNavMenu` |
 | [wizard.md](wizard.md) | `NsWizard`, `WizardContext`, `IRouteGate`, `NsFullLayout` |
 | [settings.md](settings.md) | `SettingsManager`, `ISettingsContributor`, `SettingsItem`/`SettingsMenu`, `DeviceMemory` |
 | [guide.md](guide.md) | `IGuideContributor`, `GuideItem`, `GuideReader`, `GuideRoute`, `NsGuide`, `NsGuideLink`, `Markdown.ToHtml` as a chapter's renderer |

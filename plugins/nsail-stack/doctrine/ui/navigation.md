@@ -87,17 +87,26 @@ ends, and these two, which are where an app reaches past the map:
   is ([intentional-ui.md](../intentional-ui.md), *A companion is not a surface*). Empty draws
   nothing. It is not where a destination goes: something a session may navigate to is an entry,
   the map being the one list of those.
-- **`NoMatch` is the one entry drawn where the search filtered the map to nothing**, handed the
-  text that found it — the app's way on with a question the drawer could not answer. Absent, a
-  filter that matches nothing keeps the empty list. What is handed over is a question and never
-  just a non-empty box: whitespace alone draws no row, because that row is a DOOR and what is
-  behind it (`Companion.Open(text)`, an app's own "ask this") has nothing to be asked.
+- **`NoMatch` is the one entry drawn where the search found nothing at all** — neither an entry
+  nor a contributed result (below, *Asking, counting, merging*) — handed the text that found it,
+  the app's way on with a question the drawer could not answer. A drawer showing the record a
+  module found is not a drawer that found nothing. Absent, a filter that matches nothing keeps
+  the empty list. What is handed over is a question and never just a non-empty box: whitespace
+  alone draws no row, because that row is a DOOR and what is behind it (`Companion.Open(text)`,
+  an app's own "ask this") has nothing to be asked.
+
+What the box finds besides the map is deliberately NOT a fifth slot beside these: it is a
+contribution (`INavMenuSearch`, below). A fragment would hand the app the row's contract *and*
+the Enter key with it, which is the part that cannot be taken back once three products draw rows
+of their own; a seam that takes a term and gives back labelled records leaves both here.
 
 **Enter presses that entry exactly as it presses the first one otherwise.** The key is one policy
 in one place (`ns.js`) and it reads the DOM at the instant it is pressed: the first live
 `.ns-nav-entry` link, or the no-match row's own control where there is no entry at all — a
-`button` as readily as a link, taking a question somewhere not being navigation. The two are never
-both on screen, that row existing only while zero entries do.
+`button` as readily as a link, taking a question somewhere not being navigation. The row and the
+entries are never both on screen, that row existing only while nothing else stands; a RESULT
+carries the entry's own mark and sits under the map's matches, so the one policy means the menu
+where the menu answered and means the first result where it did not.
 
 ---
 
@@ -267,6 +276,36 @@ module's by being mounted early.
   drawer hand-rolls what `NsPartial.Subscribe` would have given it, because the drawer is a plain
   component. Channels' `ConversationWatch` is the first publisher, woken by the server's push
   (messaging.md, Pushed to clients) — the drawer never learns a socket exists.
+- **What the box finds BESIDES the map is a third contribution, and a third rate.** The menu is
+  the list of where a session may go; `INavMenuSearch` is the seam for what it is looking FOR —
+  a record a module can name and open — registered with `AddNavMenuSearch<T>()` and asked for a
+  TERM. `NavMenu.Find` is the one asker, so the policy is one: **one ask per settled term** (the
+  box debounces, the drawer hands over what it was given), **nothing under two characters**
+  (one letter names nothing a person was looking for and is a round trip per keystroke), and the
+  term arrives **trimmed** while the box keeps what was typed — a filter goes to somebody's
+  server and a question does not. **How many results is the module's own answer**, the drawer
+  drawing what it is handed: a cap written here would be the second number for one bound. So is
+  **who may see them** — the read is authorized where it is sent ([permissions.md](../permissions.md)),
+  never by the drawer, which has no page to ask the gate about. A module that throws is left out
+  exactly as a count is. Nothing of this crosses `NavMenuHandoff` — a typed term exists only
+  after interactivity.
+- **An answer belongs to the term that asked for it, and that is the HOST's half of the seam**
+  (`NsNavMenu.SetSearch`, not `Find`, which answers a term and remembers nothing): the results
+  of the previous term go with the keystroke, before the new ask leaves — never when its answer
+  lands, or the older list stands under a term it does not answer for the whole flight, Enter
+  opens the first record of a prefix of what was typed and the no-match row is held back by
+  results nobody asked for. The list blinking while the ask flies is the honest drawing of
+  "nothing is known yet". And an answer arriving after the box moved on — a slower module, or a
+  cleared box — is dropped rather than drawn. A second host of `Find` owes both.
+- **A result is drawn under the map's matches and wears the entry's own mark**
+  (`.ns-nav-entry`), which is what keeps Enter one policy (above) and the row one target: the
+  label the module composed, with its own second line under it for what tells two records
+  wearing one label apart. It is never the active route and carries no count — a result is a
+  record the term produced, not a door the merge arranged, and nothing keys on it. Its address
+  is written by whoever found it and is a place INSIDE the app — a route plus whatever query the
+  surface it opens travels as, neither of them derivable by the drawer — and so is not the
+  leaf's `Url` (below, *A leaf naming a `Url` instead of a page*), which is by definition
+  outside it.
 - **A section with one screen contributes an entry, not a group.** The contributor writes the
   first-level entry itself — the *group's* name, the *leaf's* `PageType` — and the group is born
   the day the section gains its second screen. This is NSail's rule, not a product's: the kit

@@ -50,8 +50,8 @@ public sealed class NavMenuArrangementTests
         return new NavMenu(
             [new FixedNavContributor(contributed.Length > 0 ? contributed : [Calendar, Agenda])],
             [],
-            [arrangement],
-            new LanguageProvider { Current = language });
+            arrangements: [arrangement],
+            language: new LanguageProvider { Current = language });
     }
 
     /// <summary>The three fields the story is about, on one stored row, over a kit's entry that
@@ -257,6 +257,7 @@ public sealed class NavMenuArrangementTests
                 new FixedNavContributor(new NavMenuItem { Name = "Scheduling", Weight = 90, Icon = new Glyph("late") })
             ],
             [],
+            arrangements:
             [
                 new FixedNavArrangement(new NavMenuArrangementEntry
                 {
@@ -265,7 +266,7 @@ public sealed class NavMenuArrangementTests
                     Icon = new Glyph("lens")
                 })
             ],
-            new LanguageProvider { Current = "es" });
+            language: new LanguageProvider { Current = "es" });
 
         var agenda = Assert.Single(await menu.GetItems(Session()));
 
