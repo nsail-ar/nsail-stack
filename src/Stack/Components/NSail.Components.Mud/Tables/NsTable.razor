@@ -464,9 +464,10 @@ else
     public bool Grow { get; set; } = true;
 
     /// <summary>Names the table in a bar rendered above it, with the add control at the bar's
-    /// right edge — the collection-editor chrome (Seña). Unset draws no bar at all, which also
-    /// leaves the add control nowhere to live: a grid wired to add rows and left unnamed is
-    /// refused by the Architecture suite rather than shipped with no way in.</summary>
+    /// right edge — the collection-editor chrome (Seña). Unset draws no bar at all, so there is
+    /// no add control a hand can press: a grid wired to add rows and left unnamed is refused by
+    /// the Architecture suite rather than shipped with nothing for a hand to reach. The
+    /// keystroke's way in the grid keeps either way, undrawn where no bar draws it.</summary>
     [Parameter]
     public string? Title { get; set; }
 

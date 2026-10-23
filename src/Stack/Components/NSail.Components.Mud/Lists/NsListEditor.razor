@@ -156,8 +156,9 @@ else
     public IList<TItem> Items { get; set; } = [];
 
     /// <summary>Names the collection in a bar above it, with the add control at the bar's right
-    /// edge — the chrome a collection editor is born wearing. Unset draws no bar at all, which
-    /// also leaves the add control nowhere to live.</summary>
+    /// edge — the chrome a collection editor is born wearing. Unset draws no bar at all, so the
+    /// Agregar a hand can press is the page's own; the keystroke's way in the list keeps undrawn
+    /// there, which is the only thing a null Title turns on.</summary>
     [Parameter]
     public string? Title { get; set; }
 
