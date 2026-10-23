@@ -25,9 +25,8 @@
     RenderFragment noRecords = Empty ?? defaultEmpty;
 
     // Scroll mode's own NoRecordsContent, not the plain noRecords above: Items has no vendor
-    // loading state of its own the way ServerData does (the PR this guards against removed
-    // Loading from both MudTable renders for the overlay's sake, and ServerData's own await
-    // still suppresses NoRecordsContent on its own — Scroll's does not). Without this, the
+    // loading state of its own the way ServerData does — ServerData's own await is what
+    // suppresses NoRecordsContent there, and Scroll's has nothing to. Without this, the
     // first query, and every ReloadRows's own _scrolled.Clear(), draws a false "no records"
     // on an answer nobody has yet — exactly the claim _hasLoaded exists to refuse. Null while
     // the overlay's own condition holds (IsRunning || !_hasLoaded) is the other face of
@@ -203,7 +202,7 @@
        below it by the bar's own height and lifts them back up the moment the read answers —
        content moving twice for a state that carries no information. It is the ServerData
        branch's OWN await, drawn whether or not a Loading parameter is handed to it at all, so
-       neither branch below passes one any more AND ns-mud.css neutralises the row itself
+       neither branch below passes one AND ns-mud.css neutralises the row itself
        (.ns-table .mud-table-loading-row). This fragment is drawn instead, as a sibling
        positioned OVER the table rather than a row INSIDE it (ns-table-loading-host, ns-mud.css),
        so the header and the rows it is reading never move. Null while nothing is running is
@@ -516,8 +515,8 @@ else
             .ToString();
     }
 
-    // ns-table-loading-host (ns-mud.css) is a new ancestor the table root did not used to
-    // have, so it owes the root's OWN flex role down the chain the root's box model lives
+    // ns-table-loading-host (ns-mud.css) sits between the table root and whatever panel sizes
+    // it, so it owes the root's OWN flex role down the chain the root's box model lives
     // on: d-flex flex-column min-h-0, and flex-grow-1 whenever Grow asks the root itself to
     // take it. Without this the host is the flex item a panel's column sizes instead of the
     // root, the root's own flex-grow-1 does nothing inside a block-laid host, and the paged
@@ -1033,8 +1032,8 @@ else
             // own IsRunningChanged just asked for — that one landed before this line, while
             // _hasLoaded was still false, so it is this redraw that actually takes the overlay
             // down. MudTable needs none of this for its own rows: it reacts to this same
-            // ServerData answer on its own render, which is why nothing here asked for one
-            // before.
+            // ServerData answer on its own render, and has no overlay of its own that needs
+            // this call.
             StateHasChanged();
         }
 

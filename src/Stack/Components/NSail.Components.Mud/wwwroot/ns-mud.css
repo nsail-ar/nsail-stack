@@ -300,8 +300,8 @@
    source, whether or not NsTable hands it a Loading parameter at all — removing the parameter
    (NsTable.razor) is not enough on its own. Neutralised rather than kept out of the DOM: the
    vendor still renders the node, so the house takes away only what it does, the height and the
-   paint, never the markup itself. display:none is what the "or neutralise the row" half of
-   this story asks for — the overlay below is the ONE loading indicator this table draws. */
+   paint, never the markup itself. The overlay below is the ONE loading indicator this
+   table draws. */
 .ns-table .mud-table-loading-row {
     display: none;
 }
@@ -393,7 +393,7 @@
    moved to the desktop. Same query the rest of the file's stacked rules live in (the block
    further down), matched rather than translated for the same reason.
 
-   ns-table-loading-host (NsTable.GetHostClasses) sits above the grid now and carries the same
+   ns-table-loading-host (NsTable.GetHostClasses) sits above the grid and carries the same
    min-h-0 the grid's own root does, for the same reason — so it owes the grid's auto back here
    too: without it, the host is still free to shrink the panel's flex algorithm offers it below
    the stacked rows' own height, which this rule just forced the grid NOT to shrink below, and
@@ -3046,8 +3046,10 @@
 }
 
 /* The one absolute width ceiling NsSplash and NsPageFace both draw their mark against --
-   named once here so the two faces size a wide lockup equally at any viewport instead of
-   each carrying its own copy of the number. */
+   named once here instead of each carrying its own copy of the number. A ceiling, not an
+   equalizer: NsSplash's band takes the install name's rendered width and NsPageFace's
+   takes NsRemoteImage's own fixed Height, so a wide lockup still draws at two different
+   sizes within it. */
 .ns-brand-column {
     max-width: 320px;
     width: 100%;

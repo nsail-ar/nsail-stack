@@ -39,13 +39,11 @@
                    aspect-ratio:auto 1/1 is the height this band draws BEFORE the file's own
                    bytes decode: auto prefers the file's real ratio the moment the browser knows
                    it, and 1/1 is what it falls back to the instant before that, a square guess
-                   rather than the zero height an unconstrained height:auto leaves it (the band
-                   existed from the first frame at a fixed 160px before this story; this is its
-                   responsive replacement) -- without it the name, the bar and the percentage
-                   line below all drop the moment the logo answers, which is the exact defect
-                   half of this story exists to take out of the grid. A wide lockup still
-                   corrects once its real ratio is known: one resize, not the two a bare
-                   height:auto draws. *@
+                   rather than the zero height an unconstrained height:auto leaves it -- without
+                   it the name, the bar and the percentage line below all drop the moment the
+                   logo answers, content moving for a state that carries no information. A wide
+                   lockup still corrects once its real ratio is known: one resize, not the two a
+                   bare height:auto draws. *@
                 <div id="ns-splash-logo" data-logo="@LogoUrl"
                      style="width:100%; color:var(--mud-palette-primary, #8a8782);">
                     <img src="@LogoUrl" alt="" style="width:100%; height:auto; max-width:100%; aspect-ratio:auto 1 / 1; object-fit:contain;"

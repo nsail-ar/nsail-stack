@@ -94,7 +94,7 @@ public sealed class NsTableEmptyTests : BunitContext, IAsyncLifetime
         cut.WaitForAssertion(() => Assert.NotNull(cut.Find("#no-medicos")));
     }
 
-    // Scroll's own branch (nsail#2604, Vigía's round 1): Items has no vendor loading state of
+    // Scroll's own branch (nsail#2604): Items has no vendor loading state of
     // its own the way ServerData does, so the guard against printing either sentence before
     // the first query answers has to come from NsTable itself (scrollNoRecords) rather than
     // from the vendor's own await. Mode="Scroll" is what forces the Items branch under bUnit
