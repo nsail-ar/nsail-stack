@@ -896,6 +896,10 @@ mechanism, and the action column that names itself by silence: [ui/hosts.md](ui/
   wrong (it should have been a list); **2–3** is optimal; **4** tolerable; **5** the limit;
   **6+** means something must hide behind a breakpoint. The curve says *how many* survive at
   each size, the importance declaration *which* ([ui/hosts.md](ui/hosts.md)).
+- **A figure reads right-aligned, digit against digit, never a word's own `start`.** A column
+  whose `Format` is Number, Money or Percent aligns itself, header, cell and `tfoot` alike —
+  derived from the member the column already names, never a screen's own CSS
+  ([ui/hosts.md](ui/hosts.md)).
 - **One action cell per row, and that cell is ONE `NsActionToolbar`** — transition verbs and all,
   never a second cell for verbs, never a strip of hand-written icons around the presenter.
 - **The constant goes LAST among the VERBS and is always visible, and the kebab closes the
