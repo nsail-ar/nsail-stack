@@ -31,6 +31,16 @@
     </NsStack>
 }
 
+@* The keyboard's way in where no bar draws one — a list the page around it already names, so
+   its Agregar is the page's chrome. The list keeps the control undrawn so the key presses the
+   same code the click presses (ns.js, the Enter policy); clipped and not display:none, which
+   the keystroke reads as no way in, and out of the accessibility tree and the tab order both,
+   because the hand's way in is the one the page drew (hosts.md, the one seat Agregar has). *@
+@if (Title is null && Editable && NewItem is not null)
+{
+    <button type="button" class="ns-cells-add ns-cells-add-undrawn" tabindex="-1" aria-hidden="true" disabled="@IsBusy" @onclick="Add"></button>
+}
+
 @if (Items.Count == 0)
 {
     <NsText Secondary Class="ns-list-editor-empty">@Strings.Translate("Common.NoRecords")</NsText>
@@ -146,8 +156,9 @@ else
     public IList<TItem> Items { get; set; } = [];
 
     /// <summary>Names the collection in a bar above it, with the add control at the bar's right
-    /// edge — the chrome a collection editor is born wearing. Unset draws no bar at all, which
-    /// also leaves the add control nowhere to live.</summary>
+    /// edge — the chrome a collection editor is born wearing. Unset draws no bar at all, so the
+    /// Agregar a hand can press is the page's own; the keystroke's way in the list keeps undrawn
+    /// there, which is the only thing a null Title turns on.</summary>
     [Parameter]
     public string? Title { get; set; }
 

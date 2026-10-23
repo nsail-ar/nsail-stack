@@ -43,7 +43,8 @@
         </text>;
 }
 
-<NsTable TRow="TestModel" Rows="Page" Title="Renglones" RowEditor="editor" NewRow="NewRow" OnRowRemove="Remove">
+<NsTable TRow="TestModel" Rows="Page" Title="@(Titled ? "Renglones" : null)" AddControl="AddControl"
+         RowEditor="editor" NewRow="NewRow" OnRowRemove="Remove">
     <HeaderContent>
         <NsTh For="() => context.Name" />
         <NsTh For="() => context.Age" />
@@ -71,6 +72,16 @@
     /// attributes through a different internal path.</summary>
     [Parameter]
     public string Kind { get; set; } = "text";
+
+    /// <summary>Whether the grid names itself, which is what draws its bar — the shape a page
+    /// mounts when its own chrome already says what the collection is (Nueva Venta's tabs).</summary>
+    [Parameter]
+    public bool Titled { get; set; } = true;
+
+    /// <summary>Whether the bar draws the add control, for the page that adds from chrome of
+    /// its own.</summary>
+    [Parameter]
+    public bool AddControl { get; set; } = true;
 
     DataPage<TestModel> Page => DataPage<TestModel>.From(_rows);
 

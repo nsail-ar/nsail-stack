@@ -39,14 +39,18 @@ being read and dropped the status word onto a ground it had not been measured ag
 
 **A collection that offers a way IN names itself, and the name's bar is the only seat Agregar
 has.** `Title` draws that bar above the grid — heading left, add control at the right edge, one
-baseline — and unset there is no bar at all, which leaves the control nowhere to live: a grid
-wiring `NewRow` with no `Title` is refused by the Architecture suite rather than shipped with no
-way in. There is no second position to drift to; an Agregar under the rows is the shape this
+baseline — and unset there is no bar at all, so no face a hand can press: a grid wiring `NewRow`
+with no `Title` is refused by the Architecture suite rather than shipped with nothing for a hand
+to reach. There is no second position to drift to; an Agregar under the rows is the shape this
 rule replaced, after it had already split the house in two (cases). **It is the family's rule,
 not the table's** — `NsListEditor`'s bar is the same `.ns-collection-bar`, so the two collection
 editors cannot come to look like different components. A page that adds from chrome of its own —
 a tab strip's Agregar over the collection — turns the bar's control off (`AddControl="false"`)
-and calls `Add()`; the bar, and the heading, stay.
+and calls `Add()`; the bar, and the heading, stay. **Where no bar draws the control the host
+keeps it undrawn** (`.ns-cells-add` clipped, out of the accessibility tree and the tab order):
+the one face a hand can reach is still the page's, and the keyboard's last step presses a
+control of the GRID's rather than one the page owns (*Enter*, below). Clipped and not removed,
+because a control out of the layout is how the keystroke reads "this collection has no way in".
 
 - **`Empty` is what the table says instead of the generic "no records"** — the register's own
   words for having nothing yet, the same parameter `NsDashboard` carries. Unset, the default
@@ -221,8 +225,15 @@ are asked in that same breath, for the reason and through the walk the list's ar
   key presses the row's OWN controls to do it (`ns-row-commit`, `ns-row-edit`, `ns-cells-add`,
   which both hosts stamp, and `ns-cells` on the rows that offer a way in), so a row the host
   refuses stays open with its reason and keeps the cursor, and no row is ever committed by a
-  second path. It never submits the document the grid stands in: the whole policy is one place
+  second path. The way in is the host's whether the bar drew it or not (above), so the last row
+  of a grid a page adds to from its own chrome writes the next line like every other grid's. It
+  never submits the document the grid stands in: the whole policy is one place
   ([forms.md](forms.md), *Enter*).
+- **Where the move cannot be made the cursor stays in the row the keystroke confirmed**, on that
+  row's own Editar — the arrows at either end of the grid, a last row with nothing left to add
+  to. Confirming a row takes its boxes off the screen with the cursor inside them, and a
+  keystroke that drops the focus on the document body leaves the reader nowhere (WCAG 2.4.3):
+  it is the same answer a refused row already gets, which is the row itself.
 - **Up and Down make that same move either way, Left and Right stay the caret's, F2 opens the
   row the cursor is on and Delete removes it** — the row's own controls again (`ns-row-edit`,
   `ns-row-delete`), so the confirm the row already asks for is the confirm the key gets. The
