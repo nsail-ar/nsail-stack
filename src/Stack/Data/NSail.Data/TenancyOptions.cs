@@ -22,8 +22,19 @@ public class TenancyOptions
     /// (<see cref="TenantRoster"/>) that work outside a request sweeps. Stated only where the
     /// wall is the tenant column: there, nothing in the install knows who exists, because the
     /// proxy's whitelist is the roster and the rows cannot be asked. A mode that connects per
-    /// tenant reads its databases instead and ignores this.</summary>
+    /// tenant reads its databases instead and ignores this. Read once, at startup, so a slug the
+    /// install cannot name is refused there.</summary>
     public string? Tenants { get; set; }
+
+    /// <summary>A file holding the same roster, one slug per line, unioned with
+    /// <see cref="Tenants"/> and read again on every sweep — so whoever provisions a tenant can
+    /// write it where this install reads it and have the next tick sweep it, with no restart. An
+    /// install that names none keeps <see cref="Tenants"/> alone and behaves as it always has. A
+    /// named file that cannot be read whole, or that holds an entry that cannot be a slug, fails
+    /// the sweep that asked for it instead of sweeping the part it could read — and whoever
+    /// writes it replaces it whole rather than editing it in place, because a sweep may be
+    /// reading it.</summary>
+    public string? TenantsFile { get; set; }
 
     /// <summary>How long this process holds what it read about a tenant
     /// (<see cref="TenantStateMemo"/>). It is the one knob over the gate's cost, and the one

@@ -101,8 +101,8 @@ The rest lives in [data-tenancy.md](data-tenancy.md), under these headings:
   `TenantClaimMiddleware`, `AmbientTenant`, `TenantMigrator`.
 - **The install's own record of a tenant** — `TenantState`, `TenantStates`, `TenantStateMemo`,
   `TenantStateMiddleware`, the suspended page.
-- **Background jobs** — `IBackgroundJob.Tenancy`, one tenant per scope, `Tenancy:Tenants`,
-  `BackgroundJobMetrics`.
+- **Background jobs** — `IBackgroundJob.Tenancy`, one tenant per scope, `Tenancy:Tenants` and
+  `Tenancy:TenantsFile`, `BackgroundJobMetrics`.
 
 ### Provider
 

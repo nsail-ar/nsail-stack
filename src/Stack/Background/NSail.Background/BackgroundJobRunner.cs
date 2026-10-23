@@ -166,7 +166,7 @@ sealed class BackgroundJobRunner : BackgroundService
             // condition, not an event, and a per-tick repeat would bury the errors this job's
             // own failures are logged as.
             _logger.LogWarning(
-                "The tenant roster is empty, so per-tenant background job {Job} runs for nobody. An install whose rows belong to tenants declares them in Tenancy:Tenants; one that connects per tenant has no provisioned database.",
+                "The tenant roster is empty, so per-tenant background job {Job} runs for nobody. An install whose rows belong to tenants declares them in Tenancy:Tenants and in the file Tenancy:TenantsFile names; one that connects per tenant has no provisioned database.",
                 jobType.Name);
         }
 
