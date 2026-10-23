@@ -32,11 +32,24 @@ public sealed class AccentInkTests : BunitContext
         @"(?<![-\w])color:\s*var\(--mud-palette-primary\)",
         RegexOptions.Compiled);
 
-    // And the one rule that paints ink from it legitimately: .text-primary is NsImage's and
-    // NsRemoteImage's As="Main" tint, which reaches an inlined SVG through currentColor. A glyph
-    // is the other thing the accent is for (ui/branding.md), so a mark drawn in it is a mark at
+    // And the rules that paint ink from it legitimately: the accent is a GROUND — a fill, a
+    // GLYPH, a slider — and never a word (ui/branding.md), so a mark drawn in it is a mark at
     // the brand's own colour and not a word somebody has to read.
-    const string ImageTint = ".text-primary";
+    static readonly string[] Glyphs =
+    [
+        // NsImage's and NsRemoteImage's As="Main" tint, which reaches an inlined SVG through
+        // currentColor — an image is a mark.
+        ".text-primary",
+
+        // The title bar's own spinner, which takes over the page glyph's slot while a surface
+        // has work (NsTitleBarProgressTests) — a working window has to be SEEN working, and the
+        // glyph it replaces is a mark, never a sentence.
+        ".ns-title-icon-slot:has(.ns-spin) .mud-icon-root",
+
+        // The grid's own loading overlay (NsTableLoadingOverlayTests) — the same spinner, drawn
+        // once more because a table is not a window and carries no title-bar slot to share.
+        ".ns-table-loading-overlay .mud-icon-root",
+    ];
 
     public AccentInkTests()
     {
@@ -61,7 +74,7 @@ public sealed class AccentInkTests : BunitContext
     public void NoWordInTheHouseIsPaintedInTheRawAccent()
     {
         var offenders = Rules(Stylesheet())
-            .Where(rule => AccentAsInk.IsMatch(rule.Body) && rule.Selector != ImageTint)
+            .Where(rule => AccentAsInk.IsMatch(rule.Body) && !Glyphs.Contains(rule.Selector))
             .Select(rule => rule.Selector)
             .ToArray();
 

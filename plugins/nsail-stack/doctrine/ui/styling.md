@@ -127,8 +127,11 @@ marked *(cases)* has its story there.
     `.ns-card-header .mud-card-header-content .mud-icon-root` → `TextSecondary`: the word is the
     heading and the glyph names what the card is about behind it, so a home full of headings has
     one voice leading each, and the window title's own glyph reads the same var at its own slot
-    (`.ns-title-icon-slot`). The rank is *stated* even though the vendor's default resolves the
-    same today — a rank nobody wrote is a rank a vendor bump moves in silence.
+    (`.ns-title-icon-slot`) — **except while that slot holds the loading spinner instead of the
+    page's own glyph**, where `:has(.ns-spin)` takes it to `Primary`: a working window has to be
+    SEEN working, and the idle glyph it replaces must not compete with the title. The rank is
+    *stated* even though the vendor's default resolves the same today — a rank nobody wrote is a
+    rank a vendor bump moves in silence.
   - **A card header is ONE ROW: the title at the head, every act end-aligned at the tail** — the
     card's own and the dashboard's door alike, at the same box. The door is drawn by `NsCard`
     from a cascaded `CardDoor`, in the vendor's own header-actions slot and opening on `Main`, the
@@ -265,11 +268,14 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   an image is that parameter, never a class or a `style=` — including on the row *around* the
   image, which would tint every sibling with it.
 - **`NsRemoteImage.Height` is a box the mark is fitted into, never stretched to** (`ns-mud.css`;
-  `NsSplash`'s own mark is sized the same way): the box is that height whichever branch draws —
-  an SVG logo rides the `<img>` until the probe answers, and forever where there is no transport
-  to probe with — and the mark keeps its own proportion inside it, by `preserveAspectRatio`
-  when it is inlined and by `object-fit` when it is a file. A width ceiling that bites takes
-  the drawn mark down with it; it never clips one side alone.
+  `NsPageFace`'s own logo is one, at a fixed 160px): the box is that height whichever branch
+  draws — an SVG logo rides the `<img>` until the probe answers, and forever where there is no
+  transport to probe with — and the mark keeps its own proportion inside it, by
+  `preserveAspectRatio` when it is inlined and by `object-fit` when it is a file. A width
+  ceiling that bites takes the drawn mark down with it; it never clips one side alone.
+  `NsSplash` draws its own markup rather than `NsRemoteImage` and fits the opposite way — width,
+  not height: its logo, its name and its progress bar all take the width its own script measures
+  off the install's name, so the three read as one block instead of three widths of their own.
 - `NsTooltip` takes `Text` and wraps what it explains, declaring the whisper on a box of its own
   (cases: shell, *The bubble a control whispers*) — **detail on demand, never the only place a
   fact lives**. A phone has no hover, so what rides here is the long form of something

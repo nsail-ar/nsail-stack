@@ -10,14 +10,14 @@
 
     <div class="d-flex flex-column align-center gap-4 ns-brand-column">
 
-        @* The mark -- logo above, company name below, both permanent (the WhatsApp-desktop
-           shape) -- and the bar share one fit-content box so the bar's own width tracks
-           whatever the mark actually measures, never the page. The bar then bleeds 8px past
-           that box on each side (ns-mud's own gap-2 unit, reused rather than invented) so it
-           reads as "the mark's underline, drawn a bit wider" instead of a plain fitted rule.
-           A minimum width holds the floor for the no-logo, name-not-arrived-yet moment --
-           without it the box has nothing to size against but the bar itself, which collapses
-           to a sliver instead of reading as a deliberate progress bar.
+        @* The install's name sets the width of the whole block -- the script below measures the
+           name's own single-line width the moment it arrives and writes it here as this box's
+           width, so the logo (width:100%) and the bar track it in lockstep rather than each
+           reaching its own. The 200px floor is what the box sizes against before that measurement
+           lands -- the no-logo, name-not-arrived-yet moment -- and max-width:100% is the ceiling a
+           long name or a narrow phone falls back on: the script writes a width past it freely, and
+           this is what clips it back down, wrapping the name along with it (no JS needed for that
+           half).
 
            #8a8782 below is the CSS fallback for --mud-palette-primary, painted only until
            MudThemeProvider sets the real variable -- a WASM boot's very first frame has no
@@ -25,29 +25,33 @@
            NsTheme's own Neutral() grey (NsSetupBrandTests.NeutralDark), never a brand's
            colour: a fallback that guesses would flash the wrong one on every install but the
            one it guessed right. *@
-        <div class="d-flex flex-column align-center gap-4" style="width:fit-content; min-width:200px; max-width:100%;">
+        <div id="ns-splash-block" class="d-flex flex-column align-center gap-4" style="width:200px; max-width:100%;">
             @if (LogoUrl is not null)
             {
-                @* object-fit for the same reason .ns-remote-image's own <img> carries it: the
-                   height is a box the mark is fitted into, and without it a width ceiling
-                   clips the width alone and draws a wide lockup at twice its own proportion.
-                   The band keeps its 160px whatever answers, so the inlined SVG below and the
-                   <img> it replaces measure the same. *@
+                @* width:100%, not a fixed height: the mark takes whatever width the name leaves
+                   it (never more -- the block's own width is the name's, not the logo's) and
+                   keeps its own ratio under that width, the way a wide lockup always has.
+                   height:auto is what lets the aspect ratio answer instead of a number this
+                   markup would have to guess; object-fit:contain is the same belt the <img>
+                   fallback already wore, kept in case something past this box ever gives it a
+                   height too. *@
                 <div id="ns-splash-logo" data-logo="@LogoUrl"
-                     style="height:160px; color:var(--mud-palette-primary, #8a8782);">
-                    <img src="@LogoUrl" alt="" style="height:160px; max-width:100%; object-fit:contain;"
+                     style="width:100%; color:var(--mud-palette-primary, #8a8782);">
+                    <img src="@LogoUrl" alt="" style="width:100%; height:auto; max-width:100%; object-fit:contain;"
                          onerror="this.style.display='none'; this.parentElement.dataset.failed='1';" />
                 </div>
             }
 
             @* Populated by the script below from the same anonymous branding read the logo
                inlining uses -- stays display:none until the name arrives so there is no empty
-               gap while the fetch is in flight. *@
+               gap while the fetch is in flight. width:100% (rather than the shrink-to-fit this
+               flex column gives every other child) is what lets the text wrap inside the
+               measured width instead of pushing the box open to its own single line. *@
             <div id="ns-splash-name" data-brand-url="@BrandUrl"
-                 style="display:none; text-align:center; color:var(--mud-palette-text-primary, #ececea); font-size:1.25rem; font-weight:500; line-height:1.3;">
+                 style="display:none; width:100%; text-align:center; color:var(--mud-palette-text-primary, #ececea); font-size:1.25rem; font-weight:500; line-height:1.3;">
             </div>
 
-            <div class="ns-splash-track rounded-pill overflow-hidden" style="width:calc(100% + 16px); margin:0 -8px; height:5px; background:rgba(128,128,128,.24);">
+            <div class="ns-splash-track rounded-pill overflow-hidden" style="width:100%; height:5px; background:rgba(128,128,128,.24);">
                 <div class="rounded-pill"
                      style="
                         width:var(--blazor-load-percentage, 0%);
@@ -57,18 +61,52 @@
                         ">
                 </div>
             </div>
+
+            @* Centred under the bar and bound to the same width as everything else in the block
+               (width:100%, same reason as the name above) -- a long percentage line wraps
+               rather than stretching the block a fourth width of its own. *@
+            <div style="width:100%; text-align:center; color:var(--mud-palette-text-secondary, #b3b0ab); font-size:0.875rem;">
+                @Strings.Translate("Common.Loading") <span class="ns-splash-percent"></span>
+            </div>
         </div>
 
-        <div style="color:var(--mud-palette-text-secondary, #b3b0ab); font-size:0.875rem;">
-            @Strings.Translate("Common.Loading") <span class="ns-splash-percent"></span>
-        </div>
     </div>
 
 </div>
 
 <script>
+    // The name's own single-line width, measured off a throwaway probe rather than off the
+    // visible element: ns-splash-name is already width:100% of the block this figure is about
+    // to size, so reading its OWN box back would read whatever width the block happened to have
+    // a moment ago, not what the name's text actually asks for. nowrap on the probe is what
+    // makes that width independent of how narrow the real element currently is -- a long name
+    // that has not been capped yet still measures as one line.
+    function measureNaturalWidth(text, styleSource) {
+        const probe = document.createElement("div");
+        const style = getComputedStyle(styleSource);
+
+        probe.style.position = "absolute";
+        probe.style.visibility = "hidden";
+        probe.style.whiteSpace = "nowrap";
+        probe.style.left = "-9999px";
+        probe.style.top = "-9999px";
+        probe.style.fontSize = style.fontSize;
+        probe.style.fontWeight = style.fontWeight;
+        probe.style.fontFamily = style.fontFamily;
+        probe.textContent = text;
+
+        document.body.appendChild(probe);
+
+        const width = probe.getBoundingClientRect().width;
+
+        probe.remove();
+
+        return width;
+    }
+
     (function () {
         const nameEl = document.getElementById("ns-splash-name");
+        const block = document.getElementById("ns-splash-block");
 
         if (!nameEl || !nameEl.dataset.brandUrl)
             return;
@@ -83,6 +121,13 @@
 
                 nameEl.textContent = data.name;
                 nameEl.style.display = "";
+
+                // The width this writes is what ns-splash-block's own max-width:100% then caps
+                // for a long name or a narrow phone -- the CSS ceiling takes it from here, and
+                // the name (width:100%, no nowrap) wraps under whatever that ceiling leaves it.
+                if (block) {
+                    block.style.width = `${Math.ceil(measureNaturalWidth(data.name, nameEl))}px`;
+                }
             })
             .catch(() => { });
     })();
@@ -97,9 +142,8 @@
         // logo drawn with currentColor renders black. Inlining is the only way it takes the
         // primary the container carries -- and only an SVG is inlined, so a raster logo keeps
         // its own baked colours through the <img> that is already here. Sized the same as the
-        // <img> fallback above (height, then max-width as the ceiling) or the two paths draw
-        // the mark at two different sizes depending on which one answers -- the drawing needs
-        // no object-fit to go with it, preserveAspectRatio is already that.
+        // <img> fallback above (the block's own width, height following the ratio) or the two
+        // paths draw the mark at two different sizes depending on which one answers.
         fetch(host.dataset.logo, { credentials: "same-origin" })
             .then(response => {
                 const type = (response.headers.get("content-type") || "").split(";")[0].trim();
@@ -115,8 +159,8 @@
                 const root = host.firstElementChild;
 
                 if (root) {
-                    root.style.height = "160px";
-                    root.style.width = "auto";
+                    root.style.width = "100%";
+                    root.style.height = "auto";
                     root.style.maxWidth = "100%";
                 }
             })
