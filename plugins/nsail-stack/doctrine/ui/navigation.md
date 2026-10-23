@@ -381,3 +381,13 @@ leaving no surface behind means leaving the app.
 - **The render always forces a new window** (`Target="_blank"`, the one case `NsNavMenu` sets it
   without being told): a kit offering a `Url` writes no `Target` of its own, and nothing in the
   model carries one — the destination being external already decided it.
+- **Only an address that may become an `href` is a destination at all**, and
+  `WebAddress.IsNavigable` (`NSail.Text`) is the one rule that says which: `http`, `https`,
+  `mailto` or a path of this app's own — never a protocol-relative `//host`, and never an
+  address carrying whitespace or a control character, which a browser strips before it reads the
+  scheme. This is the drawer's only *written* address; every other one comes off the route
+  table, so a `javascript:` here could only have been typed, and the leaf carrying one goes
+  where a leaf naming nowhere goes instead of being drawn as a door. The same rule answers for a
+  `NavMenuResult.Url` — a finder resolved it, the drawer did not derive it either — and for the
+  markdown renderer over a document's own links ([guide.md](guide.md)): one rule, because a
+  second copy of it is a second answer.
