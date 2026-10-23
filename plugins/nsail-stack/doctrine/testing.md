@@ -194,9 +194,14 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   handler is what answers") — gate semantics belong to `NSail.Security.Tests`. The
   exception is a gate-proof collection (the `PolicyGate` precedent): it registers NO
   policies, so a denial can only come from the stored constraint under test.
-- `RetryingLazy` keeps a faulted sweep from poisoning an assembly; a whole assembly
-  failing instantly on connects is the shared Postgres under cross-slot load — rerun
-  serial before suspecting code.
+- `RetryingLazy` keeps a faulted sweep from poisoning an assembly.
+- **How many fixtures may be alive at once is a figure for a SERVER, so the permit carrying
+  it is held in that server** — a session advisory lock, not a file in a temp directory one
+  container owns. Every runner slot on a machine shares its Postgres, and a permit kept per
+  container bounded a container while the server carried slots-times-figure fixtures: whole
+  assemblies failing instantly on connect timeouts, never on the connection ceiling. The
+  figure is `TestDatabase`'s own default unless the run declares `NSAIL_TESTDB_CONCURRENCY`,
+  and the largest figure any live process declared is the one that binds.
 - **One suite connects as a role the row policies apply to**, and it is the Stack's own tenancy
   suite: a superuser bypasses every forced policy, so the second wall's behaviour is measured
   there or nowhere (data-tenancy.md, The second wall). It mints its own role per cell and owns

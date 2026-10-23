@@ -18,7 +18,7 @@ public sealed class TestDatabase : IAsyncDisposable
     // Every TestDatabase mints its own database name, so every fixture keys its own Npgsql
     // pool — a fresh pool per collection, not one shared pool. Left at Npgsql's default
     // (Maximum Pool Size=100), one runaway or leaked fixture could alone approach the
-    // server's own connection ceiling; capped here, it cannot, and ConcurrencyGate below
+    // server's own connection ceiling; capped here, it cannot, and the gate below
     // is what keeps the sum across every concurrently-alive fixture well under it.
     const string Server = "Host=localhost;Username=postgres;Maximum Pool Size=20";
 
@@ -47,18 +47,42 @@ public sealed class TestDatabase : IAsyncDisposable
     // from the harness — and its wall time is its longest collection, so this count is also
     // what bounds how long that suite takes. Such a run declares its own figure in
     // NSAIL_TESTDB_CONCURRENCY (e2e.yml's E2E step, which says eight). The permits are
-    // honoured across processes, so a raise is a raise for everything alive beside it: the
-    // effective ceiling is the largest figure any live process declared, which is why this is
-    // opt-in per run and not a higher default. Anything unparseable or under one is the
-    // default, so a mistyped variable costs a run nothing but its speed.
+    // honoured by every process reaching the same server, so a raise is a raise for everything
+    // alive beside it: the effective ceiling is the largest figure any live process declared,
+    // which is why this is opt-in per run and not a higher default. Anything unparseable or
+    // under one is the default, so a mistyped variable costs a run nothing but its speed.
     static readonly int MaxConcurrentDatabases = ReadConcurrency();
 
-    // One file per permit, each held exclusively for as long as its fixture is alive. A named
-    // Semaphore would be the natural cross-process primitive, but it exists only on Windows —
-    // on Linux, where CI runs, constructing one throws PlatformNotSupportedException — while
-    // an exclusive FileStream is honoured across .NET processes on both platforms, and the OS
-    // drops the lock with the process, so a crashed run never wedges the gate.
+    // A permit is a session-level advisory lock on the server the figure above is a figure
+    // FOR, held for as long as its fixture is alive. A lock file was the natural cross-process
+    // primitive and it is the wrong scope: the temp directory belongs to one container, the
+    // server to the machine every runner slot on it shares, so the figure bounded a container
+    // while the server carried slots-times-figure fixtures at once — whole assemblies dying on
+    // connect timeouts, never on the connection ceiling. Postgres drops a session's advisory
+    // locks when its backend ends, so a crashed run never wedges the gate: the property the
+    // file's exclusive handle had, now at the scope of the resource being protected.
+    //
+    // Pooling=false because that property is what the permit rests on — a pooled Dispose
+    // returns the connection to the pool rather than ending the backend that holds the lock.
+    static readonly string GateConnectionString =
+        ConnectionStrings.Complete($"{Server};Database=postgres;Pooling=false");
+
+    // The lock's first key is this gate's own keyspace — "NSDB" read as an int — so a permit
+    // can never collide with an advisory lock taken for anything else on the same server; the
+    // second is the permit's index.
+    const int GateKeyspace = 0x4E53_4442;
+
+    // In front of the server's permits, one file per permit in the container's own temp
+    // directory, held exclusively for as long as its fixture is alive. It bounds what waits:
+    // without it every fixture a run starts at once would hold a connection polling for a
+    // server permit, and a machine's worth of those is its own flood. A named Semaphore would
+    // be the natural primitive for it, but it exists only on Windows — on Linux, where CI
+    // runs, constructing one throws PlatformNotSupportedException — while an exclusive
+    // FileStream is honoured across .NET processes on both platforms, and the OS drops the
+    // lock with the process.
     static readonly string GateDirectory = Path.Combine(Path.GetTempPath(), "nsail-testdb-gate");
+
+    static readonly TimeSpan PermitPoll = TimeSpan.FromMilliseconds(250);
 
     const string TimestampFormat = "yyyyMMddHHmmss";
 
@@ -81,6 +105,8 @@ public sealed class TestDatabase : IAsyncDisposable
     readonly Func<string, DbContext> _context;
 
     FileStream? _gateSlot;
+
+    NpgsqlConnection? _gatePermit;
 
     public TestDatabase(string prefix, Func<string, DbContext> context)
     {
@@ -127,6 +153,8 @@ public sealed class TestDatabase : IAsyncDisposable
 
         try
         {
+            _gatePermit = await AcquirePermit();
+
             await Sweep.Value;
         }
         catch
@@ -170,12 +198,52 @@ public sealed class TestDatabase : IAsyncDisposable
                 }
             }
 
-            Thread.Sleep(250);
+            Thread.Sleep(PermitPoll);
+        }
+    }
+
+    static async Task<NpgsqlConnection> AcquirePermit()
+    {
+        var permit = new NpgsqlConnection(GateConnectionString);
+
+        try
+        {
+            await permit.OpenAsync();
+
+            while (true)
+            {
+                for (var i = 0; i < MaxConcurrentDatabases; i++)
+                {
+                    // try, never the blocking pg_advisory_lock: a wait that is allowed to last
+                    // as long as the fixtures ahead stay alive cannot be spent inside one
+                    // statement, which Npgsql's command timeout would cut.
+                    await using var take = new NpgsqlCommand("SELECT pg_try_advisory_lock(@keyspace, @permit)", permit);
+
+                    take.Parameters.AddWithValue("keyspace", GateKeyspace);
+                    take.Parameters.AddWithValue("permit", i);
+
+                    if (await take.ExecuteScalarAsync() is true)
+                    {
+                        return permit;
+                    }
+                }
+
+                await Task.Delay(PermitPoll);
+            }
+        }
+        catch
+        {
+            await permit.DisposeAsync();
+            throw;
         }
     }
 
     void ReleaseSlot()
     {
+        // The server's permit first: it is the one every other slot on the machine is waiting
+        // for, and the file in front of it only ever gates this container.
+        _gatePermit?.Dispose();
+        _gatePermit = null;
         _gateSlot?.Dispose();
         _gateSlot = null;
     }
