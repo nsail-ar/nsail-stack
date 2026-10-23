@@ -41,5 +41,8 @@
     "build": "tsc -p tsconfig.build.json && node -e \"require('fs').copyFileSync('src/ns.css', 'dist/ns.css')\"",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "happy-dom": "^21.0.4"
   }
 }

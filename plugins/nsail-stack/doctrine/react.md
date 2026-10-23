@@ -138,7 +138,7 @@ is always a `BusinessError` carrying a `Problem`: the server's own when it sent 
 | `useLoad` + `NsLoad` | stack + ui | A region owns its read (convert-to-nsload's contract): a spinner the first time, the last answer dimmed while it re-reads, a failure in place with a retry — never a toast |
 | `useForm` + `NsForm` + `NsField` | stack + ui | A form over one message: `NsField name="…"` picks its input from the member's kind, its label from the member's key, its bounds from the message; refusals are checked as the user types and the server's land under the field they name; anything no field can show is drawn above the fields; `onReload` is offered only for a `Conflict` |
 | `NsTable`, `NsPager`, `NsSearch`, `NsEnumSelect` | ui | A projection's rows with headers from keys and cells formatted by kind; a `DataPage`'s pager; a debounced search bound by its member; an enum pick whose options come from the descriptor |
-| `NsPage`, `NsButton`, `useConfirm` | ui | A titled page; a button whose `text` is a key, never a sentence; one native `<dialog>` for confirmations |
+| `NsPage`, `NsButton`, `useConfirm` | ui | A titled page; a button whose `text` is a key, never a sentence; one native `<dialog>` for confirmations, opening on the act it offers and on the way out when `danger` says the act destroys ([ui/forms.md](ui/forms.md), *Focus on open*) |
 
 **The Stack's sentences are the Blazor catalog's.** `Strings` reads `Common.*`,
 `Actions.*` and `Problems.*` from the very `strings*.json` that
@@ -166,6 +166,13 @@ router owns the paths and an unknown message keeps its bare 404.
 `npm test` and `npm run typecheck` at the root run every workspace's suite. Proof of the
 generator: `NSail.TypeScriptGenerator.Tests`, which compiles fixture Sdks from source the
 way the targets hand a real one over.
+
+A spec sits beside the source it proves, and a **spec that renders a piece asks for a DOM in its
+own docblock** (`// @vitest-environment happy-dom`, from the workspace's own devDependency) rather
+than in the workspace's config: a pure spec stays pure and pays nothing for one. The DOM is
+happy-dom because jsdom implements no `showModal()`, which the one confirmation surface is built
+on, and `react`'s own `act` is the only door left to drive a render (`react-dom/test-utils` is
+gone in 19).
 
 ---
 
