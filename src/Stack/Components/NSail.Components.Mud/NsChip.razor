@@ -11,11 +11,13 @@
    is never shown — that is ns.js's own rule and nothing here gates on it. *@
 @if (OnClose is null)
 {
-    <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" data-ns-whisper="@Tooltip">@Text</MudChip>
+    <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
+             Size="@GetSize()" Href="@Href" data-ns-whisper="@Tooltip">@Text</MudChip>
 }
 else
 {
-    <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" OnClose="Close" data-ns-whisper="@Tooltip">@Text</MudChip>
+    <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
+             Size="@GetSize()" Href="@Href" OnClose="Close" data-ns-whisper="@Tooltip">@Text</MudChip>
 }
 
 @code {
@@ -36,6 +38,39 @@ else
 
     [Parameter]
     public Action? OnClose { get; set; }
+
+    /// <summary>The state the chip names, worn as a soft tint of the severity's own color. Null
+    /// is the neutral chip every list value uses. Pair it with an Icon: the tint alone says
+    /// nothing to someone who cannot see it.</summary>
+    [Parameter]
+    public NsSeverity? Severity { get; set; }
+
+    /// <summary>Makes the whole chip a link. The caller derives it from the route table, the
+    /// way NsPageLink does; a chip never takes a literal address.</summary>
+    [Parameter]
+    public string? Href { get; set; }
+
+    Color GetColor()
+    {
+        return Severity switch
+        {
+            NsSeverity.Success => Color.Success,
+            NsSeverity.Warning => Color.Warning,
+            NsSeverity.Error => Color.Error,
+            NsSeverity.Info => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    Variant GetVariant()
+    {
+        return Severity is null ? Variant.Filled : Variant.Text;
+    }
+
+    Size GetSize()
+    {
+        return Severity is null ? Size.Medium : Size.Small;
+    }
 
     void Close(MudChip<string> chip) => OnClose?.Invoke();
 }
