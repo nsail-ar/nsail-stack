@@ -8,9 +8,11 @@
 
 <MudPopoverProvider />
 
-@* Page mode explicitly: what these tests are about is the sentence a table with no rows
-   prints, not the device question Auto asks. *@
-<NsTable TRow="TestModel" Rows="Page" OnQuery="Query" Mode="NsTableMode.Page" Empty="Empty">
+@* Page mode by default: what these tests are about is the sentence a table with no rows
+   prints, not the device question Auto asks. Scroll is the other explicit answer Mode gives
+   (NsTable.Scrolls), the one way a caller forces the Items branch under bUnit without a
+   registered IDeviceProvider for Auto to ask. *@
+<NsTable TRow="TestModel" Rows="Page" OnQuery="Query" Mode="Mode" Empty="Empty">
     <HeaderContent>
         <NsTh For="() => context.Name" />
     </HeaderContent>
@@ -20,6 +22,9 @@
 </NsTable>
 
 @code {
+
+    [Parameter]
+    public NsTableMode Mode { get; set; } = NsTableMode.Page;
 
     [Parameter]
     public RenderFragment? Empty { get; set; }

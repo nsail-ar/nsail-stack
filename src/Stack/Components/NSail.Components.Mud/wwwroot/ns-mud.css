@@ -306,22 +306,26 @@
     display: none;
 }
 
-/* The positioning context NsTable's loading overlay draws against (NsTable.razor): a plain
-   wrapper around the MudTable it holds, so the overlay below can sit OVER the table's own box
-   rather than inside it as a row — the vendor's own Loading row is in flow and drops every row
-   under it by the bar's own height, which this whole mechanism exists to stop. Relative costs
-   this wrapper nothing of its own height: it is exactly the table's box, nothing more. */
+/* The positioning context NsTable's loading overlay draws against (NsTable.razor): a wrapper
+   around the MudTable it holds, so the overlay below can sit OVER the table's own box rather
+   than inside it as a row — the vendor's own Loading row is in flow and drops every row under
+   it by the bar's own height, which this whole mechanism exists to stop. Relative costs this
+   wrapper nothing of its own height: it is exactly the table's box, nothing more — the flex
+   role that box needs (GetHostClasses, NsTable.razor) rides the markup instead, the same way
+   the table root's own always did. */
 .ns-table-loading-host {
     position: relative;
 }
 
 /* Absolute and inset:0 is what keeps it from taking any height of its own — the table under it
-   never moves, loading or not. Centred on the table's own box (NsTable.razor wraps only the
-   MudTable, not its pager or its Cargar más button, in ns-table-loading-host), which in
-   practice is the body: the header and the pager are a sliver of that box next to the rows.
-   pointer-events is the default for an in-flow box, stated here anyway because this box floats
-   OVER rows that would otherwise answer a click themselves — a row click mid-reload would act
-   on stale data. */
+   never moves, loading or not. NsTable.razor wraps the whole MudTable in ns-table-loading-host,
+   PagerContent included (the vendor renders it INSIDE the table root, not beside it) — only the
+   Cargar más button of Scroll mode sits outside, a sibling of the host rather than a child.
+   Centred on that box, which is mostly the body: the header and the pager are a sliver of it
+   next to the rows, so a short table reads the spinner closer to the pager than to the header.
+   Covering the pager is intentional, not an oversight — the overlay's pointer-events (the
+   default for an in-flow box, stated here anyway) float OVER rows and pager alike, because a
+   click mid-reload, on either, would act on stale data. */
 .ns-table-loading-overlay {
     position: absolute;
     inset: 0;
@@ -387,9 +391,21 @@
    own max-width: 960px — so without the query a paged desktop grid carries both hooks and
    loses the container scroll its pinned pager stands on, which is this story's own fault 3
    moved to the desktop. Same query the rest of the file's stacked rules live in (the block
-   further down), matched rather than translated for the same reason. */
+   further down), matched rather than translated for the same reason.
+
+   ns-table-loading-host (NsTable.GetHostClasses) sits above the grid now and carries the same
+   min-h-0 the grid's own root does, for the same reason — so it owes the grid's auto back here
+   too: without it, the host is still free to shrink the panel's flex algorithm offers it below
+   the stacked rows' own height, which this rule just forced the grid NOT to shrink below, and
+   the rows overflow a box smaller than them instead of the grid's. :has() rather than a class
+   from the component, because GetHostClasses has no reason of its own to know the breakpoint
+   the grid already resolves. */
 @media (max-width: 960px) {
     .ns-table.ns-table-pages.mud-sm-table {
+        min-height: auto;
+    }
+
+    .ns-table-loading-host:has(> .ns-table-pages.mud-sm-table) {
         min-height: auto;
     }
 }
@@ -1758,8 +1774,9 @@
 /* The one exception to the muted rank above: while the slot holds the loading spinner rather
    than the page's own glyph, a working window has to be SEEN working, so it takes the primary
    ink instead — ns-spin (NsIcons.Progress's own SVG, never written by the icon the page names)
-   is what tells the two apart. Declared after the muted rule, same specificity, so it is this one
-   that wins while the glyph it overrides is the spinner's. */
+   is what tells the two apart. :has(.ns-spin) outweighs the muted rule's plain class selector
+   on specificity (0,3,0 against 0,2,0), so it wins over the glyph it overrides whatever order
+   the two rules are declared in. */
 .ns-title-icon-slot:has(.ns-spin) .mud-icon-root {
     color: var(--mud-palette-primary);
 }

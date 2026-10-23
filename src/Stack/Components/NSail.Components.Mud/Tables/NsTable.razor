@@ -24,6 +24,16 @@
 
     RenderFragment noRecords = Empty ?? defaultEmpty;
 
+    // Scroll mode's own NoRecordsContent, not the plain noRecords above: Items has no vendor
+    // loading state of its own the way ServerData does (the PR this guards against removed
+    // Loading from both MudTable renders for the overlay's sake, and ServerData's own await
+    // still suppresses NoRecordsContent on its own — Scroll's does not). Without this, the
+    // first query, and every ReloadRows's own _scrolled.Clear(), draws a false "no records"
+    // on an answer nobody has yet — exactly the claim _hasLoaded exists to refuse. Null while
+    // the overlay's own condition holds (IsRunning || !_hasLoaded) is the other face of
+    // loadingOverlay below; once it is false either a real empty list draws here or rows do.
+    RenderFragment? scrollNoRecords = IsRunning || !_hasLoaded ? null : noRecords;
+
     // Built once per render whether or not it draws here: a page header elsewhere on this
     // surface may be the one putting it on screen (ShowExportInline, Surface.Export), and
     // either way the trigger and its options are the same markup — one declaration, not two
@@ -244,7 +254,7 @@
 
 @if (OnQuery.HasDelegate && Scrolls)
 {
-    <div class="ns-table-loading-host">
+    <div class="@GetHostClasses()">
         <MudTable T="TRow"
                   Items="_scrolled"
                   Class="@GetClasses()"
@@ -264,7 +274,7 @@
                 @problemRow(context)
             </ChildRowContent>
             <NoRecordsContent>
-                @noRecords
+                @scrollNoRecords
             </NoRecordsContent>
         </MudTable>
         @loadingOverlay
@@ -282,7 +292,7 @@
 }
 else if (OnQuery.HasDelegate)
 {
-    <div class="ns-table-loading-host">
+    <div class="@GetHostClasses()">
         <MudTable T="TRow"
                   ServerData="LoadPage"
                   @ref="_table"
@@ -503,6 +513,20 @@ else
             .Add("ns-table-pages", OnQuery.HasDelegate && !Scrolls)
             .Add(_instance)
             .Add(Class)
+            .ToString();
+    }
+
+    // ns-table-loading-host (ns-mud.css) is a new ancestor the table root did not used to
+    // have, so it owes the root's OWN flex role down the chain the root's box model lives
+    // on: d-flex flex-column min-h-0, and flex-grow-1 whenever Grow asks the root itself to
+    // take it. Without this the host is the flex item a panel's column sizes instead of the
+    // root, the root's own flex-grow-1 does nothing inside a block-laid host, and the paged
+    // grid's internal scroll and pinned pager (the container rule above) and Scroll mode's
+    // own scroll listener both lose the box they measure against.
+    string GetHostClasses()
+    {
+        return new NsClassBuilder("ns-table-loading-host d-flex flex-column min-h-0")
+            .Add("flex-grow-1", Grow)
             .ToString();
     }
 
