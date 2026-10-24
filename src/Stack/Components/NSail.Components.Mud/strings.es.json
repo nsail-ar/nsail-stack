@@ -55,6 +55,8 @@
   "Common.Alert": "Aviso",
   "Common.Yes": "Sí",
   "Common.No": "No",
+  "Common.Delete": "Eliminar",
+  "Common.Cancel": "Cancelar",
   "Common.Ok": "Aceptar",
   "Common.Upload": "Subir",
   "Common.File": "Archivo",
