@@ -13,8 +13,9 @@
    where a reflex Enter throws away the document (ui/forms.md, Enter).
 
    Everything else is the message box's own shape, so the question reads and is pressed the same:
-   the title the opener passed (rendered by the dialog itself), the message, and No then the Yes
-   that carries the act's own rank.
+   the title the opener passed (rendered by the dialog itself), the message, and the way out
+   before the act that carries the act's own rank and, when it destroys, its own word
+   ("Eliminar"/"Cancelar") rather than a bare Sí/No a sentence away from what it answers.
 
    The cursor is the TRAP's to place and is told where rather than raced: it focuses after any
    gesture this component could make, and taking it back on the next frame is how a FIELD inside a
@@ -27,8 +28,8 @@
         @Message
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Refuse">@Strings.Translate("Common.No")</MudButton>
-        <MudButton Color="@AcceptColor" Variant="@AcceptVariant" OnClick="Accept">@Strings.Translate("Common.Yes")</MudButton>
+        <MudButton OnClick="Refuse">@Strings.Translate(RefuseKey)</MudButton>
+        <MudButton Color="@AcceptColor" Variant="@AcceptVariant" OnClick="Accept">@Strings.Translate(AcceptKey)</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -68,6 +69,19 @@
     Variant AcceptVariant
     {
         get { return Destroys ? Variant.Filled : Variant.Text; }
+    }
+
+    // A destructive question wears the act itself ("Eliminar"), not a bare "Sí" that answers
+    // nothing until read beside the sentence above it — the generic word is honest because
+    // Destroys is itself derived from the one verb this door is reached through (Delete).
+    string AcceptKey
+    {
+        get { return Destroys ? "Common.Delete" : "Common.Yes"; }
+    }
+
+    string RefuseKey
+    {
+        get { return Destroys ? "Common.Cancel" : "Common.No"; }
     }
 
     void Accept()
