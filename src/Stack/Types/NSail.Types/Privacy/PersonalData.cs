@@ -31,8 +31,14 @@ public enum PersonalData
     Phone,
 
     /// <summary>Where somebody is — a street, a floor, a city written against a person, a
-    /// pair of coordinates.</summary>
+    /// pair of coordinates. The physical one; a web address is <see cref="WebAddress"/>.</summary>
     Address,
+
+    /// <summary>Somewhere on the web written against a person — a site, a profile, the room
+    /// a meeting is held in. Its fake is a reserved name nothing can reach, which is why it
+    /// is not <see cref="FreeText"/>: prose in place of a URL loses the shape, and a real
+    /// URL left standing in a copy is a live door to a real person.</summary>
+    WebAddress,
 
     /// <summary>Prose somebody wrote about a person and nobody can parse: a note, a
     /// diagnosis, a reason, a serialized payload. Nothing can be preserved about its shape,

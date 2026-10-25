@@ -30,6 +30,7 @@ public sealed class PersonalDataCommentTests
         Assert.Equal("personal:email", PersonalDataComment.For(PersonalData.Email));
         Assert.Equal("personal:phone", PersonalDataComment.For(PersonalData.Phone));
         Assert.Equal("personal:address", PersonalDataComment.For(PersonalData.Address));
+        Assert.Equal("personal:web-address", PersonalDataComment.For(PersonalData.WebAddress));
         Assert.Equal("personal:free-text", PersonalDataComment.For(PersonalData.FreeText));
         Assert.Equal("personal:birth-date", PersonalDataComment.For(PersonalData.BirthDate));
     }

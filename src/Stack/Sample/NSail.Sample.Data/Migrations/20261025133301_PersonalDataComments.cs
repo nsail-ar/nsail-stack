@@ -1,4 +1,7 @@
-﻿using System;
+﻿// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
+
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

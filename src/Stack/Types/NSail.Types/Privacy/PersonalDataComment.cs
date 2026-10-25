@@ -25,6 +25,7 @@ public static class PersonalDataComment
         (PersonalData.Email, "email"),
         (PersonalData.Phone, "phone"),
         (PersonalData.Address, "address"),
+        (PersonalData.WebAddress, "web-address"),
         (PersonalData.FreeText, "free-text"),
         (PersonalData.BirthDate, "birth-date"),
     ];
