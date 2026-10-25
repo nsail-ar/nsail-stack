@@ -298,19 +298,17 @@ else
     // breakpoint's hooks — there is no width at which a word of its own comes back.
     string LabelClasses => Wordless ? "ns-button-label" : NsResponsive.LabelClasses(Icon, Breakpoint);
 
-    // The bare anchor is one text node by default; a caller that also hands it an Icon needs the
-    // glyph laid out beside the word rather than wherever the browser's own inline flow drops
-    // it — ns-link-iconed is that row (ns-mud.css).
-    // Null rather than NsClassBuilder's own "" once there is nothing to add: Blazor omits an
-    // attribute whose value is null (Probe below relies on the same rule), so a plain anchor
-    // with no Class and no Icon renders no class attribute at all instead of an empty one.
-    string? GetAnchorClasses()
+    // The bare anchor draws no box of its own (a vendor anchor has none to grow), so ns-link
+    // gives it one — inline-flex with nothing else it needs for the word alone — which is also
+    // what lets a coarse pointer's 44px floor reach it (ns-mud.css). A caller that also hands it
+    // an Icon needs the glyph laid out beside the word rather than wherever the browser's own
+    // inline flow drops it — ns-link-iconed is that row, on the same box.
+    string GetAnchorClasses()
     {
-        var classes = new NsClassBuilder(Class)
+        return new NsClassBuilder(Class)
+            .Add("ns-link")
             .Add("ns-link-iconed", Icon is not null)
             .ToString();
-
-        return classes.Length == 0 ? null : classes;
     }
 
     // The vendor has no soft-accent variant, so Important is painted from a class over its

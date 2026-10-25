@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using AngleSharp.Dom;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -86,7 +87,7 @@ public sealed class NsPageHeaderFilterTests : BunitContext, IAsyncLifetime
 
         Assert.Empty(cut.FindAll(".probe-filter"));
 
-        var button = cut.Find("button");
+        var button = ToggleButton(cut);
 
         await cut.InvokeAsync(() => button.Click());
         Assert.Single(cut.FindAll(".probe-filter"));
@@ -108,12 +109,32 @@ public sealed class NsPageHeaderFilterTests : BunitContext, IAsyncLifetime
             .Add(header => header.FilterOpen, false)
             .Add(header => header.FilterOpenChanged, EventCallback.Factory.Create<bool>(this, next => reported.Add(next))));
 
-        var button = cut.Find("button");
+        var button = ToggleButton(cut);
 
         await cut.InvokeAsync(() => button.Click());
 
         Assert.True(Assert.Single(reported));
         Assert.Empty(cut.FindAll(".probe-filter")); // the panel stays closed until the page re-renders with FilterOpen=true
+    }
+
+    // ui/styling.md: aria-expanded is the state a disclosure trigger owes, and the toggle is
+    // one. Unbound so the press changes the state itself rather than waiting on a parameter the
+    // page never hands back.
+    [Fact]
+    public async Task TheToggleReportsItsOwnOpenStateAsAriaExpanded()
+    {
+        var cut = Render<NsPageHeader>(parameters => parameters
+            .Add(header => header.Title, "Trabajos")
+            .Add(header => header.Filter, Probe));
+
+        var button = ToggleButton(cut);
+        Assert.Equal("false", button.GetAttribute("aria-expanded"));
+
+        await cut.InvokeAsync(() => button.Click());
+        Assert.Equal("true", ToggleButton(cut).GetAttribute("aria-expanded"));
+
+        await cut.InvokeAsync(() => button.Click());
+        Assert.Equal("false", ToggleButton(cut).GetAttribute("aria-expanded"));
     }
 
     // A screen whose filters are required pins the panel open and offers no toggle to hide it —
@@ -128,6 +149,15 @@ public sealed class NsPageHeaderFilterTests : BunitContext, IAsyncLifetime
 
         Assert.DoesNotContain(cut.FindComponents<NsButton>(), button => button.Instance.Icon == NsIcons.Tune);
         Assert.Single(cut.FindAll(".probe-filter"));
+    }
+
+    // By icon and not cut.Find("button") — the first button in the tree is only the toggle
+    // today, and a title row that grows one of its own (a guide door, a close) would make a
+    // test written that way squeeze the wrong control while still reading green.
+    static IElement ToggleButton(IRenderedComponent<NsPageHeader> cut)
+    {
+        var toggle = Assert.Single(cut.FindComponents<NsButton>(), button => button.Instance.Icon == NsIcons.Tune);
+        return toggle.Find("button");
     }
 
     static void Probe(RenderTreeBuilder builder)

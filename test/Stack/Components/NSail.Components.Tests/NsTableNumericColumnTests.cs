@@ -110,7 +110,7 @@ public sealed class NsTableNumericColumnTests : BunitContext, IAsyncLifetime
     [Fact]
     public void TheStylesheetRightAlignsAndKeepsFiguresTabular()
     {
-        var block = Rule(ReadStylesheet(), ".ns-table .ns-col-numeric {");
+        var block = Rule(HouseStylesheet.Read(), ".ns-table .ns-col-numeric {");
 
         Assert.Contains("text-align: end;", block, StringComparison.Ordinal);
         Assert.Contains("font-variant-numeric: tabular-nums;", block, StringComparison.Ordinal);
@@ -125,29 +125,5 @@ public sealed class NsTableNumericColumnTests : BunitContext, IAsyncLifetime
         Assert.True(end >= 0, $"'{selector}' has no closing brace.");
 
         return css[start..end];
-    }
-
-    static string ReadStylesheet()
-    {
-        return File.ReadAllText(Path.Combine(
-            RepoRoot(),
-            "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
-    }
-
-    static string RepoRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException($"NSail.sln was not found above {AppContext.BaseDirectory}.");
     }
 }

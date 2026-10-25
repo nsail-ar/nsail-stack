@@ -59,9 +59,18 @@
        have. *@
     RenderFragment<ActionItem> icon = item =>
         @<text>
+            @{
+                var destructive = IsDestructive(item) ? "ns-action-destructive" : null;
+            }
             @if (item.Severity is { } severity)
             {
-                <span class="ns-status-text @NsSeverityMapper.ToStatusClass(severity) d-inline-flex align-center">
+                <span class="ns-status-text @NsSeverityMapper.ToStatusClass(severity) d-inline-flex align-center @destructive">
+                    @chrome(item)
+                </span>
+            }
+            else if (destructive is not null)
+            {
+                <span class="@destructive d-inline-flex align-center">
                     @chrome(item)
                 </span>
             }
@@ -245,6 +254,16 @@
     string GetName(ActionItem item)
     {
         return item.GetLabel(Strings, Metadata);
+    }
+
+    // Read off the glyph rather than asked of the contributor: every Delete across the house
+    // already passes NsIcons.Delete (GetAction(Delete, row, NsIcons.Delete)), which is the
+    // house's own catalog entry and not a per-page decision — so the row below reaches every
+    // existing call site with nothing to change in it, the opposite of a flag a page would have
+    // to remember to set (ui/actions.md).
+    static bool IsDestructive(ActionItem item)
+    {
+        return item.Icon == NsIcons.Delete;
     }
 
     IEnumerable<ActionItem> Visible()

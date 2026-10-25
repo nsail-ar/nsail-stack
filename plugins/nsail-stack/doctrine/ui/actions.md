@@ -74,8 +74,9 @@ complaint the rule answers: a phone's title row came out three different heights
   already 44px by construction (12px around the Md glyph), so the floor leaves it exactly as
   it is. It is a `min-height` for that reason — a square whose box this grew would be the
   rectangle again.
-- **The flat worded anchor is out.** It draws no box at all (the `ns-link-iconed` face above),
-  so there is no target to grow; the rule is worded *every intention that draws a box*.
+- **The flat worded anchor gets its own box.** A bare `<a>` has none to grow, so `NsLink`'s
+  Inline face wears `ns-link` (`ns-mud.css`) for exactly that — `inline-flex`, nothing a plain
+  word needed to change — and the floor reaches it there instead of through `.mud-button`.
 
 ## The six components
 
@@ -446,3 +447,8 @@ visible — are the core doc's. How the cell composes:
   - **Unset is "the rest"**, which is the whole reason contributions need no change: a kit that
     knows nothing about the host's families lands on the far side of the rule by declaring
     nothing.
+- **The verb that destroys never sits at the plain `gap-1` from its neighbour.** The toolbar
+  reads this off the glyph (`item.Icon == NsIcons.Delete`), not a flag a contributor sets: every
+  `GetAction(Delete, row, NsIcons.Delete)` already passes the house's one Delete icon, so the
+  separation reaches every row that calls it today, nothing to change at the call site. Skipped
+  when the act is the row's only visible one — there is nothing beside it to separate from.

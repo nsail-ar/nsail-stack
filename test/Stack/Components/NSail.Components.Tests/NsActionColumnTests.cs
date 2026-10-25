@@ -478,4 +478,65 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     {
         Standing
     }
+
+    // nsail#2696 — the verb that destroys never sits at the plain gap-1 from its neighbour
+    // (Catálogo, Users, Medidas measured at 4px). Read off NsIcons.Delete, not a flag a
+    // contributor sets, so a row that already calls GetAction(Delete, row, NsIcons.Delete)
+    // gets it with nothing changed at the call site.
+
+    [Fact]
+    public void TheVerbThatDestroysStandsApartFromItsNeighbour()
+    {
+        var cut = Render<ActionColumnHost>();
+
+        cut.Render(p => p.Add(x => x.Leading, new List<ActionItem>
+        {
+            new() { Name = "Edit", Icon = NsIcons.Edit, OnClick = () => Task.CompletedTask },
+            new() { Name = "Delete", Icon = NsIcons.Delete, OnClick = () => Task.CompletedTask },
+        }));
+
+        var destructive = cut.Find(".ns-action-toolbar .ns-action-destructive");
+
+        Assert.Equal("Delete", destructive.QuerySelector("button")!.GetAttribute("aria-label"));
+    }
+
+    // An ordinary verb — edit, the ficha, a contributed command — never earns the separation,
+    // whatever glyph it carries, so the rule stays Delete's alone.
+    [Fact]
+    public void AnOrdinaryVerbNeverCarriesTheSeparation()
+    {
+        var cut = Row(leading: 2);
+
+        Assert.Empty(cut.FindAll(".ns-action-toolbar .ns-action-destructive"));
+    }
+
+    // bUnit renders no box model, so the margin the class earns — and that it is skipped for a
+    // row whose only visible verb is Delete, first-child and with nothing to separate from —
+    // is read off the stylesheet itself.
+    [Fact]
+    public void TheStylesheetSeparatesTheDestructiveVerbUnlessItStandsAlone()
+    {
+        var css = HouseStylesheet.Read();
+
+        var start = css.IndexOf(".ns-action-toolbar .ns-action-destructive:not(:first-child) {", StringComparison.Ordinal);
+        Assert.True(start >= 0, "the separation rule was not found in the stylesheet.");
+
+        var end = css.IndexOf('}', start);
+        Assert.Contains("margin-inline-start:", css[start..end], StringComparison.Ordinal);
+    }
+
+    // nsail#2696 — a system row with no actions measured 33px against 45px for a row beside it
+    // that had them: the actions column's own icon button stands taller than a plain text
+    // cell's line, so the floor is read off the stylesheet, stated for every body cell.
+    [Fact]
+    public void TheStylesheetFloorsEveryBodyCellToTheActionsIconsHeight()
+    {
+        var css = HouseStylesheet.Read();
+
+        var start = css.IndexOf(".ns-table .mud-table-body .mud-table-cell {", StringComparison.Ordinal);
+        Assert.True(start >= 0, "the row-height floor was not found in the stylesheet.");
+
+        var end = css.IndexOf('}', start);
+        Assert.Contains("min-height: 1.875rem;", css[start..end], StringComparison.Ordinal);
+    }
 }
