@@ -80,12 +80,22 @@ public sealed class Entitlements
     }
 
     /// <summary>Whether the feature is open for this tenant: false only where the bag says so in
-    /// as many words. Absent, of the wrong kind, or no bag at all — all on.</summary>
+    /// as many words. Absent, of the wrong kind, or no bag at all — all on. What a key's own
+    /// declared default is belongs to <see cref="Features"/>, which reads <see cref="Flag"/>
+    /// instead to tell "written on" from "not written".</summary>
     public bool IsEnabled(string feature)
+    {
+        return Flag(feature) ?? true;
+    }
+
+    /// <summary>What the bag STATES about this flag, or null where it states nothing — the one
+    /// reading that tells silence from a written value, which is what resolving a key's declared
+    /// default needs.</summary>
+    public bool? Flag(string feature)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(feature);
 
-        return !_flags.TryGetValue(feature, out var enabled) || enabled;
+        return _flags.TryGetValue(feature, out var enabled) ? enabled : null;
     }
 
     /// <summary>The ceiling written for this key, or null for no ceiling — which is what an

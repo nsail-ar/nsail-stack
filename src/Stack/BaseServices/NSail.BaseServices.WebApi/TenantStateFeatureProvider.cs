@@ -27,9 +27,11 @@ public sealed class TenantStateFeatureProvider : FeatureProvider
     Entitlements? _parsed;
 
     public TenantStateFeatureProvider(
+        Features catalog,
         TenancyProvider tenancy,
         TenantStates? states = null,
         TenantStateMemo? memo = null)
+        : base(catalog)
     {
         ArgumentNullException.ThrowIfNull(tenancy);
 

@@ -483,6 +483,13 @@ the contract and the Stack only reads:
   customers off on deploy day — the same rule an unknown `Status` is read by, for the same
   reason. What a key's own default is belongs to whoever declared the key; the Stack reads the
   bag and nothing else.
+  - **Who declares a key: the module that enforces it, never a central list.** A kit contributes
+    its keys through `IFeatureContributor` — the shape of `ISettingsContributor` and the same
+    reason — registered with `AddFeatures<T>`, and the Stack gathers them into `Features`. Each
+    entry states the key, its `FeatureKind` (`Flag` or `Limit`) and **its default**, and
+    `Features.IsEnabled`/`Features.Limit` are what turn a bag's silence into that default. A key
+    nobody declared is open and uncapped: a mark naming one is a defect for the suite that reads
+    the composed products to catch, not a door to close on a running install.
   - A message declares the feature it belongs to with `[RequiresFeature("key")]`
     (`NSail.Security.Annotations`), and `SecurityManager` refuses it **ahead of every policy**
     when the bag says the feature is off: `AuthorizationResult.FeatureOff` names it and the gate

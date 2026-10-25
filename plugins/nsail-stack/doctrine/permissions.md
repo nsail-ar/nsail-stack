@@ -624,8 +624,13 @@ of every policy** and refuses with `SecurityProblem.FeatureUnavailable`, which i
 given widens a feature nobody bought, so a caller told "you do not have permission" would be
 sent to an administrator who cannot help them. `AuthorizationResult.FeatureOff` carries the key.
 
-It is read **permissively**: a key nobody has written is ON, which is the state of the whole
-fleet the day a key ships — the bag's own reading rules are data-tenancy.md's. But a feature the
+The key itself is declared by the module that enforces it (`IFeatureContributor`,
+`AddFeatures<T>`), with its kind and its default; the Stack gathers the declarations into
+`Features` and holds no list of keys of its own.
+
+It is read **permissively**: a key nobody has written about a tenant takes its declared default
+and every default is the permissive one, which is the state of the whole fleet the day a key
+ships — the bag's own reading rules are data-tenancy.md's. But a feature the
 bag positively closes is the one answer `PreAuthorize` is **not** optimistic about: the page, the
 menu entry and the row action are not offered at all, because a plan that excludes something must
 not go on offering it only to refuse the press. And the mark gates a **pressed** send: what the

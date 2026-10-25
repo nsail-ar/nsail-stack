@@ -257,7 +257,7 @@ public class SecurityManager
         // for an unpressed notice is the road itself and not this (data-tenancy.md, The install's
         // own record of a tenant).
         if (FeatureOf(message.GetType()) is { } feature
-            && !(await _features.Current(cancellationToken).ConfigureAwait(false)).IsEnabled(feature))
+            && !await _features.IsEnabled(feature, cancellationToken).ConfigureAwait(false))
         {
             return AuthorizationResult.Without(feature);
         }
@@ -309,7 +309,7 @@ public class SecurityManager
         if (session.IsSystem)
             return true;
 
-        if (FeatureOf(messageType) is { } feature && !_features.Assumed.IsEnabled(feature))
+        if (FeatureOf(messageType) is { } feature && !_features.Assumes(feature))
         {
             return false;
         }

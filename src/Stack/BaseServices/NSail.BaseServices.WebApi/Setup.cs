@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi;
 using NSail.Backup;
@@ -64,6 +65,12 @@ public static class Setup
         // bag a message's feature mark is gated against is what the install records about this
         // tenant, and only a composition that has the store can read it.
         builder.Services.AddScoped<FeatureProvider, TenantStateFeatureProvider>();
+
+        // Beside it, and TryAdd so AddSecurity's own call leaves it standing: the catalog is what
+        // turns a bag's silence about a key into the key owner's declared default, and a host
+        // that composes no kit — which is every host of this suite's own shape — still has to
+        // resolve the provider above.
+        builder.Services.TryAddSingleton<Features>();
 
         // Ahead of AddPush's own TryAdd: a push reaches the tenant it was published in, and a
         // connection joins the tenant the edge resolved for it.
