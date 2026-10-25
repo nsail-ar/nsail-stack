@@ -20,6 +20,8 @@ public class FeatureProvider
 {
     readonly Features? _catalog;
 
+    Entitlements? _assigned;
+
     public FeatureProvider(Features? catalog = null)
     {
         _catalog = catalog;
@@ -27,14 +29,25 @@ public class FeatureProvider
 
     public virtual Task<Entitlements> Current(CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(Entitlements.Unrestricted);
+        return Task.FromResult(_assigned ?? Entitlements.Unrestricted);
     }
 
     /// <summary>The bag this scope already has in hand, with no read of its own — unrestricted
     /// where there is none. What visibility is derived from, which cannot await.</summary>
     public virtual Entitlements Assumed
     {
-        get { return Entitlements.Unrestricted; }
+        get { return _assigned ?? Entitlements.Unrestricted; }
+    }
+
+    /// <summary>What the client is handed instead of reading the column it cannot reach: the bag
+    /// the server read, assigned once beside the effective policies it arrives with (the twin of
+    /// <see cref="SessionProvider.Session"/>'s own assignment). The server never assigns — it
+    /// reads the row — so an install that assigns nothing keeps the permissive base.</summary>
+    public void Assign(Entitlements bag)
+    {
+        ArgumentNullException.ThrowIfNull(bag);
+
+        _assigned = bag;
     }
 
     /// <summary>Whether the feature is open for this tenant, the key's declared default

@@ -108,6 +108,23 @@ public sealed class FeatureCatalogTests
         Assert.Equal(5m, await provider.Limit("users.max"));
     }
 
+    /// <summary>The client cannot reach the column, so it is handed what the server read. Until
+    /// something hands it over the base is permissive, which is the client's standing rule: the
+    /// server gate is the real check.</summary>
+    [Fact]
+    public async Task A_bag_handed_to_the_client_is_what_it_then_answers()
+    {
+        var provider = new FeatureProvider(new Features([new Declaring(Flag("whatsapp"))]));
+
+        Assert.True(await provider.IsEnabled("whatsapp"));
+
+        provider.Assign(Entitlements.Read("""{"whatsapp": false, "organizations.max": 3}"""));
+
+        Assert.False(await provider.IsEnabled("whatsapp"));
+        Assert.False(provider.Assumes("whatsapp"));
+        Assert.Equal(3m, await provider.Limit("organizations.max"));
+    }
+
     [Fact]
     public async Task A_provider_with_no_catalog_reads_the_bag_alone()
     {
