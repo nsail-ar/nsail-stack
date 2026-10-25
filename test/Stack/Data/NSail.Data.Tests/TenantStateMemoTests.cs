@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using NSail.Data;
-
 namespace NSail.Data.Tests;
 
 /// <summary>What the memo will answer WITHOUT reading, which is what the callers that cannot

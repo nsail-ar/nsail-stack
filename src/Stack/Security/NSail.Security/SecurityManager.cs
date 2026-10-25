@@ -28,7 +28,7 @@ public class SecurityManager
     readonly ILogger<SecurityManager> _logger;
     readonly FeatureProvider _features;
 
-    static readonly ConcurrentDictionary<Type, string?> Features = new();
+    static readonly ConcurrentDictionary<Type, string?> FeatureMarks = new();
 
     public SecurityManager(
         MessageRegistry messages,
@@ -331,6 +331,36 @@ public class SecurityManager
         return PreAuthorize(message.GetType(), session);
     }
 
+    /// <summary>Which refusal a send of this type meets before the message itself exists, or
+    /// null to let it through — what a gate ahead of model binding
+    /// (<c>EndpointGateMiddleware</c>) throws, so the two gates refuse the same send with the
+    /// same verdict. The feature comes first and is ASKED, not assumed: this caller can await,
+    /// so it reads the bag the way <see cref="Authorize"/> does and names the feature exactly as
+    /// the interceptor would (<see cref="SecurityProblem.FeatureUnavailable"/>) — a caller told
+    /// instead that they have no permission would be sent to an administrator who cannot help
+    /// them, since no grant widens a feature nobody bought. Everything past it is
+    /// <see cref="PreAuthorize"/>'s optimistic answer, refused as the permission it is.</summary>
+    public virtual async Task<Problem?> PreRefusal(Type messageType, Session session, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(messageType);
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (session.IsSystem)
+        {
+            return null;
+        }
+
+        if (FeatureOf(messageType) is { } feature
+            && !await _features.IsEnabled(feature, cancellationToken).ConfigureAwait(false))
+        {
+            return SecurityProblem.FeatureUnavailable(feature);
+        }
+
+        return PreAuthorize(messageType, session)
+            ? null
+            : SecurityProblem.Denied(session.IsAuthenticated, messageType.Name);
+    }
+
     /// <summary>Whether this field's only satisfiable value, for this session and message, is
     /// the caller's own party — every policy that could ever allow the send constrains the
     /// field to @me, and none leaves it free (or absent, which is free by the lenient-fields
@@ -429,12 +459,17 @@ public class SecurityManager
 
     /// <summary>The feature a message is sold with, or null for the ones every install has.
     /// Read off the type and remembered for the process: the mark is a compile-time declaration
-    /// and the gate asks it on every send.</summary>
+    /// and the gate asks it on every send.
+    /// <para>By reflection, where <c>[Requires]</c> rides the generated registration instead
+    /// (permissions.md, Mechanics): that one becomes a handler at boot and the client has to
+    /// rebuild the whole set without reflecting, while this is one question about a type the
+    /// gate already holds — and a client that cannot read the mark offers what it gates and
+    /// lets the server refuse the press, which is the recoverable direction.</para></summary>
     public static string? FeatureOf(Type messageType)
     {
         ArgumentNullException.ThrowIfNull(messageType);
 
-        return Features.GetOrAdd(
+        return FeatureMarks.GetOrAdd(
             messageType,
             type => type.GetCustomAttribute<RequiresFeatureAttribute>()?.Feature);
     }

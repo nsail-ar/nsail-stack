@@ -131,6 +131,11 @@ so handlers keep writing plain `Contains`. Deliberate consequences:
   keyed or serialized belongs on it — folding case there widens what counts as a match.
 - Nondeterministic collations require **PostgreSQL 18 or newer** — earlier versions reject
   `LIKE` against such a column, which is what `Contains` compiles to.
+- A string the model stores as a type that is **not text** — `jsonb`
+  (`TenantState.Entitlements`) and its kin — is not a text column and takes no collation:
+  Postgres refuses one there and the migration would not apply (`Collations.Collatable` holds
+  that roster). Naming a text type (`text`, `varchar(120)`, `citext`) changes nothing; the rule
+  is about what the column holds, not about who named the type.
 
 **Dates split by meaning** — three shapes, each with its own storage:
 

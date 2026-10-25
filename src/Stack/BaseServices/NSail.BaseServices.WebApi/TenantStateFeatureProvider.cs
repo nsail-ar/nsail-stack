@@ -75,6 +75,16 @@ public sealed class TenantStateFeatureProvider : FeatureProvider
         }
     }
 
+    /// <summary>Refused rather than ignored: this provider answers off the row, so a bag handed
+    /// to it would be read by nothing at all and whoever handed it over would never learn
+    /// (principles.md 4, silence is the worst failure). Being handed one is what a composition
+    /// that cannot reach the column does, on the permissive base.</summary>
+    public override void Assign(Entitlements bag)
+    {
+        throw new InvalidOperationException(
+            "the entitlements bag is read off TenantStates here, so an assigned one would be read by nothing");
+    }
+
     Entitlements? Parsed()
     {
         return _parsed is { } parsed && _parsedFor == _tenancy?.RowKey ? parsed : null;

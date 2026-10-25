@@ -421,8 +421,8 @@ composed name Postgres would truncate at 63 bytes is refused for the same reason
 Everything above is a tenant's own rows. **`TenantState` is the install's record ABOUT a
 tenant** — whether it is served at all, why, until when, which plan it is on and what that plan
 includes — and that is the whole of why it is the Stack's and not a product's: the state of a
-customer is identical in every product,
-and answered twice it would be answered differently. It is the second and last table the Stack
+customer is identical in every product, and answered twice it would be answered differently.
+It is the second and last table the Stack
 owns (`DbContextExtensions.ApplySetups`, beside the seed history, for the same reason: a
 product that forgot to compose it would serve a suspended customer).
 

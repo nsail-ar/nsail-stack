@@ -11,8 +11,8 @@ namespace NSail.Security;
 public static class Setup
 {
     /// <summary>TryAdds the security services with their permissive defaults (anonymous
-    /// SessionProvider, optimistic RelationProvider, FeatureProvider and CredentialProvider) and the
-    /// <c>Security:</c> section's — a product without Iam still runs.</summary>
+    /// SessionProvider, optimistic RelationProvider, FeatureProvider and CredentialProvider) and
+    /// the <c>Security:</c> section's — a product without Iam still runs.</summary>
     public static void AddSecurity(this IServiceCollection services)
     {
         services.AddMessageRegistry();

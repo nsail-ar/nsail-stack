@@ -5,9 +5,8 @@ namespace NSail.Data;
 
 /// <summary>What the INSTALL records about a tenant: whether it is served at all, why, until
 /// when, which plan it is on and what that plan includes. One row per tenant, written from
-/// outside the app by whoever
-/// operates the fleet and read by every product the same way — the state of a customer is not a
-/// product's question and must not be answered twice.
+/// outside the app by whoever operates the fleet and read by every product the same way — the
+/// state of a customer is not a product's question and must not be answered twice.
 ///
 /// <para>It is <see cref="IInstallScoped"/>, and that is the whole of why the tenant column is
 /// not on it: this is the install's record ABOUT a tenant, not a tenant's own row, and nothing

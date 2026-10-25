@@ -158,12 +158,11 @@ public static class DbContextExtensions
                     continue;
                 }
 
-                // A property the model gave a column type of its own is not the plain text this
-                // pass is about, and Postgres refuses a collation on a type that is not text at
-                // all — a jsonb column (TenantState.Entitlements) would fail the migration that
-                // adds it. Nothing here has to know which types those are: a named type was
-                // named on purpose.
-                if (property.GetColumnType() is { Length: > 0 })
+                // A string the model stores as something that is not text at all — a jsonb bag
+                // (TenantState.Entitlements) — takes no collation: Postgres refuses one on such a
+                // type and the migration that adds the column would not apply. Every other named
+                // type still gets the rule (Collations.Collatable).
+                if (!Collations.Collatable(property.GetColumnType()))
                 {
                     continue;
                 }

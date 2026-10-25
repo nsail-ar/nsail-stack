@@ -637,6 +637,21 @@ not go on offering it only to refuse the press. And the mark gates a **pressed**
 system sends on its own passes no gate at all (`AmbientPublish`), so whatever carries those sends
 is what has to find the road shut.
 
+**Both gates answer it, and with the same verdict.** The door ahead of model binding
+(`EndpointGateMiddleware`) asks `SecurityManager.PreRefusal`, which reads the bag the way
+`Authorize` does — awaited, not assumed — and hands back the refusal itself, so a marked message
+whose feature is off is answered `FeatureUnavailable` at whichever gate stops it first. It cannot
+be left to the interceptor behind it: that door refuses before the pipeline ever starts, and a
+`Forbidden` there would be exactly the answer this verdict exists not to give.
+
+**The mark is read off the type by reflection, and `[Requires]` is not** (`SecurityManager.FeatureOf`,
+remembered per type for the process). The asymmetry is deliberate: an implication becomes a
+*handler at boot*, so the client has to be able to rebuild the whole set without reflecting
+(above), while the mark is one question asked of a type the gate already holds. And a client that
+could not read it — trimmed, or served by a composition that never saw the attribute — reads no
+mark, offers what it gates and lets the server refuse the press: the recoverable direction, which
+is the same one `PreAuthorize` errs in everywhere else.
+
 The entry message is the one the screen exists *for*: a list page is governed by its `List{Entity}s`, a create page by its `Create{Entity}`, an update page by its `Update{Entity}` — never by the `Get`/`Lookup` sends it makes along the way (those are covered by `[Requires]` on the primary). A screen with no message that clearly governs it declares nothing and stays visible; an invented gate is worse than a declared gap — unless the screen's material is not an entity at all (the Manual: `NsGuide` composes its chapters client-side and sends nothing), in which case the story may mint an empty `IMessage` for the sole purpose of carrying the permission, with a handler that does nothing (`ViewGuide`/`GuideHandler`, `Optical.StaffGuide`). That message governs nothing else and gains no `[Requires]` dependents.
 
 The route table is a **public service** (`RouteTable`) — consumed by NsRouter, the nav menu and every link a page builds.

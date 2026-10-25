@@ -190,6 +190,39 @@ public sealed class FeatureGateTests
         Assert.Equal("whatsapp", SecurityManager.FeatureOf(typeof(SoldMessage)));
         Assert.Null(SecurityManager.FeatureOf(typeof(GatedMessage)));
     }
+
+    /// <summary>The gate ahead of model binding has no message to read fields off and asks this
+    /// instead (EndpointGateMiddleware): same bag, same verdict, so a caller cannot be told one
+    /// thing at the door and another by the interceptor behind it. Awaited and not assumed —
+    /// what the door may refuse on is the read, not the optimistic answer visibility rests on.</summary>
+    [Fact]
+    public async Task The_gate_ahead_of_the_message_refuses_the_feature_as_itself()
+    {
+        var refusal = await Manager("""{"whatsapp": false}""").PreRefusal(typeof(SoldMessage), Caller());
+
+        Assert.Equal("FeatureUnavailable", refusal?.Code);
+        Assert.Equal(403, refusal?.Status);
+        Assert.Equal("whatsapp", refusal?.Issues[0].Source);
+    }
+
+    [Theory]
+    [InlineData("""{"whatsapp": true}""")]
+    [InlineData("{}")]
+    [InlineData(null)]
+    public async Task The_gate_ahead_of_the_message_lets_through_what_the_bag_does_not_close(string? bag)
+    {
+        Assert.Null(await Manager(bag).PreRefusal(typeof(SoldMessage), Caller()));
+    }
+
+    /// <summary>And the permission half of that same gate still answers as the permission it is:
+    /// the feature verdict is a second answer, not a replacement.</summary>
+    [Fact]
+    public async Task The_gate_ahead_of_the_message_refuses_a_permission_as_a_permission()
+    {
+        var refusal = await Manager("""{"whatsapp": false}""").PreRefusal(typeof(GatedMessage), Caller());
+
+        Assert.Equal("Forbidden", refusal?.Code);
+    }
 }
 
 // The generator's output for a message with no constrainable field, as the denial tests' own:

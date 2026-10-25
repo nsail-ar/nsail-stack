@@ -42,8 +42,10 @@ public class FeatureProvider
     /// <summary>What the client is handed instead of reading the column it cannot reach: the bag
     /// the server read, assigned once beside the effective policies it arrives with (the twin of
     /// <see cref="SessionProvider.Session"/>'s own assignment). The server never assigns — it
-    /// reads the row — so an install that assigns nothing keeps the permissive base.</summary>
-    public void Assign(Entitlements bag)
+    /// reads the row — so an install that assigns nothing keeps the permissive base, and a
+    /// provider that reads one refuses an assignment rather than taking a bag nothing would
+    /// read.</summary>
+    public virtual void Assign(Entitlements bag)
     {
         ArgumentNullException.ThrowIfNull(bag);
 
