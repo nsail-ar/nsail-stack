@@ -596,15 +596,28 @@
    (MudBlazor's `.mud-table-dense .mud-table-cell`, unmodified here) on top of that — 2.625rem
    border-box. A row with no actions (a system row with nothing in that column) is shorter by
    exactly the gap between that and its own padded text line, so the floor has to be the
-   PADDED cell's height, not the bare button's: a min-height under what the box already
-   measures changes no pixel (box-sizing: border-box counts the padding INTO the number this
-   declares, so 1.875rem here was already smaller than every row it was meant to raise). The
-   floor is stated on every body cell, not only the actions one, so every row in the grid
-   shares one height whether or not its own row draws a button. Under a coarse pointer the
-   same button's padding grows (below), and so does this number, or a tablet above the 960px
-   container floor would read the two kinds of row apart again. */
-.ns-table .mud-table-body .mud-table-row .mud-table-cell {
-    min-height: 2.625rem;
+   PADDED cell's height, not the bare button's: a floor under what the box already measures
+   changes no pixel (box-sizing: border-box counts the padding INTO the number this declares,
+   so 1.875rem here was already smaller than every row it was meant to raise). The floor is
+   stated on every body cell, not only the actions one, so every row in the grid shares one
+   height whether or not its own row draws a button. Under a coarse pointer the same button's
+   padding grows (below), and so does this number, or a tablet above the 960px container floor
+   would read the two kinds of row apart again.
+
+   `height`, not `min-height`: the cell this targets is `display: table-cell` in every regime
+   this rule is scoped to, and CSS 2.1 §10.7 leaves `min-height`/`max-height` on a table cell
+   undefined — engines differ on whether it reaches the row at all. §17.5.3's auto table layout
+   DOES define a cell's specified `height` as a per-cell minimum the row's own height is the max
+   of, which is the floor this rule exists to state.
+
+   :not(.mud-sm-table): below 960px MudTable stacks every row into a card
+   (.mud-sm-table, the vendor's own breakpoint) where this cell is `display: flex` instead of
+   `table-cell` — a regime where this same declaration is no longer a floor under a short row
+   but a HEIGHT on every line of a tall one, which the stacked card's own rules below answer
+   on their own terms. The open row's own stacked form (.ns-table-editing under its
+   @container, below) is excluded there, for the same reason. */
+.ns-table:not(.mud-sm-table) .mud-table-body .mud-table-row .mud-table-cell {
+    height: 2.625rem;
 }
 
 /* Every icon in the column is one slot, whoever put it there. A grid's own row links are
@@ -643,12 +656,24 @@
 
    Both sides, not just the leading one: the toolbar draws Visible() before Constant
    (NsActionToolbar.razor), so a row whose Constant is its edit and whose only contributed verb
-   is Delete (the Stack's own Sample, ContactsPage) has Delete FIRST, not last — margin-inline-
-   start alone would sit on the edge nothing is beside and never reach the Constant that comes
-   after it. The unused side costs nothing: it is inside the toolbar's own box, never the
-   grid's fixed edge. */
-.ns-action-toolbar .ns-action-destructive:not(:only-child) {
-    margin-inline: 0.5rem;
+   is Delete (the Stack's own Sample, ContactsPage) has Delete FIRST, not last — a single
+   margin-inline-start would sit on the edge nothing is beside and never reach the Constant
+   that comes after it.
+
+   One side each, not both on every Delete: the toolbar packs to its own trailing edge (above),
+   so whichever control is LAST is the one sitting on the cell's fixed right border, and a
+   margin on that side pushes the glyph 8px inside it — the exact raggedness this column
+   exists to end, the moment Delete itself closes the row (Leading = [Edit, Delete], Constant
+   nil). :not(:last-child) pays the trailing gap only when something sits past Delete to
+   separate from; :not(:first-child) pays the leading one only when something sits before it;
+   a Delete in the middle of the strip earns both, same as before, and either side it costs
+   nothing beyond its own neighbour's edge, never the grid's. */
+.ns-action-toolbar .ns-action-destructive:not(:last-child) {
+    margin-inline-end: 0.5rem;
+}
+
+.ns-action-toolbar .ns-action-destructive:not(:first-child) {
+    margin-inline-start: 0.5rem;
 }
 
 /* The mark an outlet shows while its contributors answer stands in the slot their first verb
@@ -696,8 +721,8 @@
         padding: 12px;
     }
 
-    .ns-table .mud-table-body .mud-table-row .mud-table-cell {
-        min-height: 3.75rem;
+    .ns-table:not(.mud-sm-table) .mud-table-body .mud-table-row .mud-table-cell {
+        height: 3.75rem;
     }
 }
 
@@ -999,6 +1024,17 @@
             border: none;
             padding: 6px 16px;
             text-align: start;
+        }
+
+        /* The row floor (above, excluding .mud-sm-table) is stated on the same compound
+           selector's own four classes and lands first in the file, so an equal-specificity
+           five-class selector here — the fifth being .ns-table-editing itself — wins on source
+           order alone, the same tie the column-visibility rules below settle the same way.
+           Unanswered, every line of this flex box would stand as tall as the floor meant for a
+           whole dense row: 42px per line here, where this card's own padding (above) already
+           answers for the row's height. */
+        .ns-table.ns-table-editing .mud-table-body .mud-table-row .mud-table-cell {
+            height: auto;
         }
 
         /* The cells above dropped every border to stack, so the line between two records is

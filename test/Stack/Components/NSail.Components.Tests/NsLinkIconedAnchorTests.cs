@@ -81,7 +81,15 @@ public sealed class NsLinkIconedAnchorTests : BunitContext
     {
         var css = HouseStylesheet.Read();
 
-        var start = css.LastIndexOf(".ns-link {", StringComparison.Ordinal);
+        // Anchored on the full compound selector, not a LastIndexOf(".ns-link {") that only
+        // happened to land here because this selector's own form (".mud-button, .ns-link {")
+        // carries that literal as a substring one character past the selector it joins — the
+        // file carries a second, unrelated @media (pointer: coarse) block above this one, so a
+        // search keyed off the media query alone would have found THAT block's cell instead
+        // (review round 3).
+        var start = css.IndexOf(".mud-button, .ns-link {", StringComparison.Ordinal);
+        Assert.True(start >= 0, "the .ns-link touch-target floor was not found in the stylesheet.");
+
         var end = css.IndexOf('}', start);
 
         Assert.Contains("min-height: 44px;", css[start..end], StringComparison.Ordinal);

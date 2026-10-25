@@ -536,58 +536,97 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         Assert.Empty(cut.FindAll(".ns-action-toolbar .ns-action-destructive"));
     }
 
-    // bUnit renders no box model, so the margin the class earns — and that it is skipped for a
-    // row whose only visible verb is Delete, with nothing to separate from — is read off the
-    // stylesheet itself. :only-child, not :first-child (nsail#2696, review round 2): the
-    // Sample's own row draws Delete before its Constant, so a first-child-only exclusion would
-    // have skipped the one row the story measured. Both sides of the margin, not just the
-    // leading one, so the rule reaches Delete whichever side its neighbour is drawn on.
+    // bUnit renders no box model, so the margin the class earns is read off the stylesheet
+    // itself. One side each, not margin-inline on both (nsail#2696, review round 3): the
+    // toolbar packs to its own trailing edge, so whichever control is last sits on the cell's
+    // fixed right border — a margin on THAT side pushes it inside the border the moment
+    // Delete itself closes the row (Leading = [Edit, Delete], Constant nil), which is the
+    // raggedness this column exists to end. :not(:last-child) pays the trailing gap,
+    // :not(:first-child) pays the leading one, and either reduces to :only-child's own
+    // exclusion when Delete has no neighbour on that side.
     [Fact]
-    public void TheStylesheetSeparatesTheDestructiveVerbUnlessItStandsAlone()
+    public void TheStylesheetSeparatesTheDestructiveVerbOnlyFromTheSideThatHasANeighbour()
     {
         var css = HouseStylesheet.Read();
 
-        var start = css.IndexOf(".ns-action-toolbar .ns-action-destructive:not(:only-child) {", StringComparison.Ordinal);
-        Assert.True(start >= 0, "the separation rule was not found in the stylesheet.");
+        var end = css.IndexOf(".ns-action-toolbar .ns-action-destructive:not(:last-child) {", StringComparison.Ordinal);
+        Assert.True(end >= 0, "the trailing separation rule was not found in the stylesheet.");
+        Assert.Contains("margin-inline-end:", css[end..css.IndexOf('}', end)], StringComparison.Ordinal);
 
-        var end = css.IndexOf('}', start);
-        Assert.Contains("margin-inline:", css[start..end], StringComparison.Ordinal);
+        var start = css.IndexOf(".ns-action-toolbar .ns-action-destructive:not(:first-child) {", StringComparison.Ordinal);
+        Assert.True(start >= 0, "the leading separation rule was not found in the stylesheet.");
+        Assert.Contains("margin-inline-start:", css[start..css.IndexOf('}', start)], StringComparison.Ordinal);
+
+        // The shape review round 3 found: margin-inline (both sides at once) on :only-child's
+        // own exclusion, which costs the side sitting on the grid's own fixed edge when
+        // Delete itself closes the row.
+        Assert.DoesNotContain(".ns-action-toolbar .ns-action-destructive:not(:only-child) {", css, StringComparison.Ordinal);
     }
 
     // nsail#2696 — a system row with no actions measured 33px against 45px for a row beside it
     // that had them: the actions column's own icon button (1.875rem) stands inside the dense
     // table's own 6px-top-and-bottom cell padding, 2.625rem border-box, so the floor has to be
-    // that padded number — not the bare button's — or a min-height under what a text-only row
-    // already measures changes no pixel (review round 2). Stated for every body cell, not only
-    // the actions one, so a row's height never depends on whether its own row draws a button.
+    // that padded number — not the bare button's — or a floor under what a text-only row
+    // already measures changes no pixel. Stated for every body cell, not only the actions one,
+    // so a row's height never depends on whether its own row draws a button.
+    //
+    // `height`, not `min-height` (review round 3): the cell this targets is `display:
+    // table-cell` in column mode, where CSS 2.1 §10.7 leaves min-height/max-height undefined —
+    // engines differ on whether it ever reaches the row. And :not(.mud-sm-table), or the same
+    // declaration lands on the phone card's own `display: flex` cell as a HEIGHT on every
+    // stacked line, not a floor under a short row — the exact regime the story asks this not
+    // to touch (list toolbar and phone layout, "cards are 157-440px tall today").
     [Fact]
-    public void TheStylesheetFloorsEveryBodyCellToThePaddedActionsCellHeight()
+    public void TheStylesheetFloorsEveryBodyCellToThePaddedActionsCellHeightInColumnModeOnly()
     {
         var css = HouseStylesheet.Read();
 
-        var start = css.IndexOf(".ns-table .mud-table-body .mud-table-row .mud-table-cell {", StringComparison.Ordinal);
-        Assert.True(start >= 0, "the row-height floor was not found in the stylesheet.");
+        var start = css.IndexOf(".ns-table:not(.mud-sm-table) .mud-table-body .mud-table-row .mud-table-cell {", StringComparison.Ordinal);
+        Assert.True(start >= 0, "the column-mode row-height floor was not found in the stylesheet.");
 
         var end = css.IndexOf('}', start);
-        Assert.Contains("min-height: 2.625rem;", css[start..end], StringComparison.Ordinal);
+        Assert.Contains("height: 2.625rem;", css[start..end], StringComparison.Ordinal);
+        Assert.DoesNotContain("min-height:", css[start..end], StringComparison.Ordinal);
     }
 
     // The actions icon button grows under a coarse pointer (ns-mud.css, --ns-action-slot:
     // 3.25rem), so the row floor has to grow with it or a tablet above the 960px container
     // floor reads the two kinds of row apart again, in the very regime the story's 44px ask
-    // is about (review round 2).
+    // is about. Scoped off .mud-sm-table for the same reason as the fine-pointer floor above —
+    // a touchscreen phone is both stacked AND coarse (review round 3).
     [Fact]
-    public void TheStylesheetGrowsTheRowFloorUnderACoarsePointer()
+    public void TheStylesheetGrowsTheColumnModeRowFloorUnderACoarsePointer()
     {
         var css = HouseStylesheet.Read();
 
         var coarse = css.IndexOf("--ns-action-slot: 3.25rem;", StringComparison.Ordinal);
         Assert.True(coarse >= 0, "the coarse-pointer action-slot rule was not found in the stylesheet.");
 
-        var start = css.IndexOf(".ns-table .mud-table-body .mud-table-row .mud-table-cell {", coarse, StringComparison.Ordinal);
-        Assert.True(start >= 0, "the coarse-pointer row-height floor was not found in the stylesheet.");
+        var start = css.IndexOf(".ns-table:not(.mud-sm-table) .mud-table-body .mud-table-row .mud-table-cell {", coarse, StringComparison.Ordinal);
+        Assert.True(start >= 0, "the coarse-pointer column-mode row-height floor was not found in the stylesheet.");
 
         var end = css.IndexOf('}', start);
-        Assert.Contains("min-height: 3.75rem;", css[start..end], StringComparison.Ordinal);
+        Assert.Contains("height: 3.75rem;", css[start..end], StringComparison.Ordinal);
+        Assert.DoesNotContain("min-height:", css[start..end], StringComparison.Ordinal);
+    }
+
+    // The open row's own stacked form (.ns-table-editing under its @container, "the open row
+    // stacks where its container cannot seat it") goes through the same flex cell as the phone
+    // card, so the column-mode floor above — excluded there by class but not by that
+    // @container condition — has to be taken back inside it, or every line of a card being
+    // edited in a narrow aside stands as tall as a whole dense row (review round 3).
+    [Fact]
+    public void TheStylesheetTakesTheRowFloorBackInTheOpenRowsStackedForm()
+    {
+        var css = HouseStylesheet.Read();
+
+        var container = css.IndexOf("@container (max-width: 959.98px) {", StringComparison.Ordinal);
+        Assert.True(container >= 0, "the open row's stacked-form container query was not found in the stylesheet.");
+
+        var start = css.IndexOf(".ns-table.ns-table-editing .mud-table-body .mud-table-row .mud-table-cell {", container, StringComparison.Ordinal);
+        Assert.True(start >= 0, "the stacked-editing row-height reset was not found inside the container query.");
+
+        var end = css.IndexOf('}', start);
+        Assert.Contains("height: auto;", css[start..end], StringComparison.Ordinal);
     }
 }
