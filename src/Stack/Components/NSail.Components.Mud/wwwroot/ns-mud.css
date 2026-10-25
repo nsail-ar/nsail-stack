@@ -597,7 +597,7 @@
    has them, by exactly that difference. The floor is stated on every body cell, not only the
    actions one, so every row in the grid shares one height whether or not its own row draws a
    button. */
-.ns-table .mud-table-body .mud-table-cell {
+.ns-table .mud-table-body .mud-table-row .mud-table-cell {
     min-height: 1.875rem;
 }
 
@@ -697,15 +697,11 @@
    would be the per-caller branch principles.md refuses: a title bar, a toolbar, a form's footer
    and a composer all put the same button under the same finger. It reaches the worded face
    wherever the house draws one — NsButton, NsSubmit, NsClose, NsMenu's labelled trigger —
-   because .mud-button is that face and nothing else wears it. NsLink's own Inline face draws no
-   `.mud-button` at all (a bare anchor), so it carries the same floor on `.ns-link` instead,
-   below. */
+   through .mud-button, that face and nothing else wears, and NsLink's own Inline face too —
+   a bare anchor that draws no `.mud-button` at all — through `.ns-link` beside it in the same
+   declaration, one floor stated once for both. */
 @media (pointer: coarse) {
-    .mud-button {
-        min-height: 44px;
-    }
-
-    .ns-link {
+    .mud-button, .ns-link {
         min-height: 44px;
     }
 }

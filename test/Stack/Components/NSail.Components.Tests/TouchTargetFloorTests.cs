@@ -23,10 +23,12 @@ public sealed class TouchTargetFloorTests
         Assert.Equal(1, lines.Count(line => line == Floor));
 
         // The selector it is written against, and the query it is written inside. .mud-button is
-        // the chromed face and nothing else wears it — NsButton, NsLink, NsSubmit, NsClose and
-        // NsMenu's labelled trigger all render one — so one declaration reaches every container
-        // a finger meets it in, rather than the per-caller branch principles.md refuses.
-        Assert.Equal(".mud-button {", lines[Preceding(lines, Floor, line => line.EndsWith('{'))]);
+        // the chromed face NsButton, NsSubmit, NsClose and NsMenu's labelled trigger all render;
+        // NsLink's own Inline face draws no `.mud-button` at all (a bare anchor), so it reaches
+        // the same floor through .ns-link in the one declaration instead of a second of its own
+        // — one declaration reaches every container a finger meets it in, rather than the
+        // per-caller branch principles.md refuses.
+        Assert.Equal(".mud-button, .ns-link {", lines[Preceding(lines, Floor, line => line.EndsWith('{'))]);
         Assert.Equal("@media (pointer: coarse) {", lines[Query(lines, Floor)]);
     }
 

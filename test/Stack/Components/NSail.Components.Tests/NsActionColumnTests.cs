@@ -533,7 +533,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     {
         var css = HouseStylesheet.Read();
 
-        var start = css.IndexOf(".ns-table .mud-table-body .mud-table-cell {", StringComparison.Ordinal);
+        var start = css.IndexOf(".ns-table .mud-table-body .mud-table-row .mud-table-cell {", StringComparison.Ordinal);
         Assert.True(start >= 0, "the row-height floor was not found in the stylesheet.");
 
         var end = css.IndexOf('}', start);
