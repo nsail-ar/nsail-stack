@@ -20,6 +20,7 @@
                 Required="Required"
                 Disabled="Disabled"
                 AutoFocus="AutoFocus"
+                FocusOnRender="FocusOnRender"
                 Lines="Lines"
                 MaxLines="MaxLines" />
     <NsStack Horizontal Gap="NsSize.Sm" Justify="NsAlign.End" Align="NsAlign.Center">
@@ -66,8 +67,20 @@
     [Parameter]
     public bool Disabled { get; set; }
 
+    /// <summary>Whether the screen's arrival cursor lands in the box — the composer of a thread
+    /// that IS the screen. The marker alone, the same reading every field gives the word
+    /// (NsFieldBase.AutoFocus): a phone arriving at a conversation reads it before answering
+    /// it.</summary>
     [Parameter]
     public bool AutoFocus { get; set; }
+
+    /// <summary>Whether the box takes the cursor the moment it renders, which is how the caret
+    /// stays in the composer after a send: the screen hands the form a fresh model, the keyed
+    /// composer is a first render again, and the next message is typed with no click
+    /// (NsTextFieldBase.FocusOnRender). On every pointer — a thumb that just sent is already in
+    /// the box the keyboard stands open over.</summary>
+    [Parameter]
+    public bool FocusOnRender { get; set; }
 
     /// <summary>Same two words NsTextArea reads them by: the height the box opens at, and the
     /// height it stops growing past.</summary>

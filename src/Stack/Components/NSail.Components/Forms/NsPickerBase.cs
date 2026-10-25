@@ -24,7 +24,10 @@ public abstract class NsPickerBase : NsPartial
 
     /// <summary>Forwarded to the real field this picker composes — a picker standing where a
     /// list's scope selector goes (NsPageHeader's own Search fragment) is that screen's first
-    /// act exactly as a free-text search box is, and carries the same marker (ui/focus.md).</summary>
+    /// act exactly as a free-text search box is, and carries the same marker (ui/focus.md).
+    /// The marker and nothing else, the same as on a field: the arrival's own pass is what skips
+    /// a coarse pointer, and a value that arrives whole from a pick has no entry to re-arm — so
+    /// no picker carries the typed box's FocusOnRender.</summary>
     [Parameter]
     public bool AutoFocus { get; set; }
 

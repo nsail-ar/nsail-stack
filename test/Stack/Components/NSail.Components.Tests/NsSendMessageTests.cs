@@ -149,7 +149,7 @@ public sealed class NsSendMessageTests : BunitContext, IAsyncLifetime
     }
 
     /// <summary>The box is empty again after a send, and that is the SCREEN's gesture: a fresh
-    /// model, keyed, is a first render — which is also what gives AutoFocus the caret back. The
+    /// model, keyed, is a first render — which is what gives FocusOnRender the caret back. The
     /// composer holds no copy of the words, so nothing of it survives the new model.</summary>
     [Fact]
     public async Task AFreshModelEmptiesTheBox()
