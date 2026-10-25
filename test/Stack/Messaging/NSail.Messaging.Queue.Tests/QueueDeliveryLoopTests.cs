@@ -80,6 +80,33 @@ public sealed class QueueDeliveryLoopTests
         Assert.Equal(0, meters.Finished(typeof(AlwaysFails).FullName!, QueueMetrics.Succeeded));
     }
 
+    /// <summary><c>Queue:Backoff</c> is the install's, so no fixed count of doublings is "the
+    /// one that would overflow" — a wait of millennia reaches the end of the calendar on its
+    /// first retry. It saturates at the furthest date there is instead of throwing out of the
+    /// pass, which would leave the row with its attempt unrecorded and so due again on every
+    /// pass forever.</summary>
+    [Fact]
+    public async Task A_backoff_longer_than_the_calendar_saturates_instead_of_overflowing()
+    {
+        var options = new QueueOptions { MaxAttempts = 3, Backoff = TimeSpan.FromDays(3_000_000) };
+        var clock = new TestClock();
+
+        await using var host = await HandlerHost.Start(
+            "queue_backoff_ceiling", QueueHarness.Context, services => QueueHarness.Compose(services, options, clock));
+
+        await host.Send(new AlwaysFails(), Clerk());
+
+        Assert.Equal(1, await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None)));
+
+        var row = Assert.Single(await host.Read(db => db.Set<QueuedMessage>().ToListAsync()));
+
+        Assert.Equal(1, row.Attempts);
+        Assert.Null(row.DeadLetteredAt);
+        Assert.True(
+            row.NextAttemptAt > clock.GetUtcNow().UtcDateTime.AddYears(5000),
+            $"the row came due again at {row.NextAttemptAt:O}.");
+    }
+
     [Fact]
     public async Task A_delivered_row_is_counted_as_succeeded()
     {

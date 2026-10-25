@@ -573,6 +573,13 @@ reads nothing and cannot write at all.
   (messaging.md, The durable queue). **One tenant per scope** is mandatory: `Enter` pins onto
   the scope and refuses a second tenant, because a context built on the first keeps its
   connection.
+- **A job is constructible with no tenant.** Its `Interval` and `Tenancy` are read once, before
+  the first tick, from a scope that has entered none — so the constructor must not ask for
+  anything that needs one, a `DbContext` above all: its factory asks the scope for a connection,
+  and under `MultiDb` there is nothing to answer with. What a pass needs is resolved inside
+  `Run`, from the scope's own provider, which is the one the runner did enter a tenant on.
+  Getting this wrong is silent: the runner logs the loop as unstartable, returns, and that job
+  never runs again in the life of the process.
 - **A tenant that fails costs its own pass.** The catch is per pass, not per tick; the log line
   names the tenant and the sweep continues with the next one.
 - **A suspended tenant is not swept at all.** The runner asks the install's record once the

@@ -19,8 +19,8 @@ namespace NSail.Background;
 /// durable queue): this is in-memory, and a process that dies between Enqueue and the runner
 /// picking it up loses the item. Accepted because every caller here already persisted the fact
 /// that matters — the order, the sale — before enqueueing; what is lost on a crash is a
-/// notification, not data (ruled 2026-09-23). Work that must survive the crash is a
-/// <c>[Queue]</c> command instead.</para>
+/// notification, not data. Work that must survive the crash is a <c>[Queue]</c> command
+/// instead.</para>
 ///
 /// <para>Registered by <see cref="Setup.AddDeferredWork"/>, by hand rather than through the
 /// generator: it is a Stack-wide singleton every host gets once, the same shape

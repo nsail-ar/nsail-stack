@@ -80,7 +80,13 @@ public sealed class QueueSender<TMessage> : ISender<TMessage>, IAmbientSender
         // Written now rather than left to the unit's commit: the row has to be INSIDE this
         // operation's transaction, and a handler further down that reads the queue — the drain
         // itself, on a redelivery — would otherwise read a table the change tracker has not
-        // reached yet.
+        // reached yet. DbContextUnitOfWork.Commit confirms the transaction and never saves, so
+        // without this line there would be no row at all.
+        //
+        // Saving the context and not one row is unavoidable — EF has no narrower save — so it
+        // is part of what [Queue] promises rather than an accident: queueing flushes whatever
+        // the operation has tracked so far. QueueAttribute's own doc and messaging.md, The
+        // durable queue, say so where the caller reads them.
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

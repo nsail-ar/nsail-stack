@@ -109,9 +109,13 @@ message, which is why the list is closed. `Queue.Producers` sits beside `Http.En
 WebApi `Endpoints.cs`, `Queue.Consumers` beside it in the host that drains, both with
 `[Source(Assembly = "NSail.{Kit}.Sdk")]` where the messages are declared. Both holders compose
 the queue's own services first, the shape `Add{Kit}PushPublishers` already uses, so a
-composition that mounts the kit alone resolves what it registers. Two refusals are build
-errors: **NSG014** for `[Queue]` on a message that returns a result, **NSG015** for `[Queue]`
-beside `[Http]`. Runtime semantics: [messaging.md](messaging.md) (The durable queue).
+composition that mounts the kit alone resolves what it registers — which is why **the project
+declaring either holder takes a `PackageReference` to `NSail.Messaging.Queue`**: the emitted
+line names `AddQueue` / `AddQueueDelivery`, so without it the first adoption fails to compile
+before it reaches this page. Two refusals are build errors: **NSG014** for `[Queue]` on a
+message that returns a result, **NSG015** for `[Queue]` beside `[Http]`; both are reported from
+the `Producers` end alone, so an assembly holding both holders is told once.
+Runtime semantics: [messaging.md](messaging.md) (The durable queue).
 
 ---
 

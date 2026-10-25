@@ -16,6 +16,13 @@ namespace NSail.Messaging.Annotations;
 /// two would register two senders for one message. Both refusals are build errors (NSG014,
 /// NSG015).</para>
 ///
+/// <para>Queueing is a save point of the sending operation. The row is written with
+/// <c>SaveChangesAsync</c>, which saves the <b>context</b> and not one entity, so everything
+/// the operation has tracked so far goes to the database with it — inside the operation's own
+/// transaction. A handler that queues halfway through assembling a graph therefore meets that
+/// half-built graph's own constraints at the send and not at its own save: assemble first,
+/// queue last.</para>
+///
 /// <para>Read at compile time only: the kit's Queue.Producers and Queue.Consumers holders
 /// register the two ends for every message carrying it.</para></summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]

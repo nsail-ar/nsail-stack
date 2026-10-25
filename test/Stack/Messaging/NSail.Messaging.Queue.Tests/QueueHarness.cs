@@ -91,14 +91,28 @@ public sealed class WriteLetter : IMessage
     public string Text { get; set; } = string.Empty;
 }
 
-// Queued and refused on purpose: the operation that sends it throws after the send, so the
-// row has to go with it.
-// Spelled with its suffix, which a kit never has to: this suite's own namespace nests under
-// NSail.Messaging.Queue, so the bare [Queue] binds to that namespace instead of the attribute.
-[QueueAttribute]
+// An ordinary operation that queues and then refuses, so the row has to go with it.
+// Deliberately unmarked: what this proves is what a plain handler's transaction does to the
+// row it queued, and a mark the generator does not read in this suite would only suggest the
+// shape under test is a queued send of its own.
 public sealed class WriteLetterThenFail : IMessage
 {
     public string Text { get; set; } = string.Empty;
+}
+
+// An ordinary operation that tracks a row before it queues: the save point, seen from inside
+// the handler that pays for it.
+public sealed class WriteLetterAndQueue : IMessage
+{
+    public string Text { get; set; } = string.Empty;
+}
+
+/// <summary>What a handler saw of its own change tracker the moment a queued send returned.
+/// A singleton the composition hands over, because that state is only readable inside the
+/// operation and the assertion is outside it.</summary>
+public sealed class SavePointProbe
+{
+    public EntityState TrackedAfterTheSend { get; set; }
 }
 
 [QueueAttribute]
@@ -161,6 +175,40 @@ sealed class WriteLetterThenFailHandler : IHandler<WriteLetterThenFail>
     }
 }
 
+// Tracks a row, queues, and reads its own entry back: queueing writes the context and not one
+// entity, so by the time the send returns the handler's own row is in the database too — inside
+// this operation's transaction, and so still undone if the operation refuses.
+sealed class WriteLetterAndQueueHandler : IHandler<WriteLetterAndQueue>
+{
+    readonly DbContext _db;
+    readonly Runtime.Mediator _mediator;
+    readonly SavePointProbe _probe;
+
+    public WriteLetterAndQueueHandler(DbContext db, Runtime.Mediator mediator, SavePointProbe probe)
+    {
+        _db = db;
+        _mediator = mediator;
+        _probe = probe;
+    }
+
+    public async Task Handle(WriteLetterAndQueue message, CancellationToken cancellationToken = default)
+    {
+        var letter = new Letter
+        {
+            Id = Guid.NewGuid(),
+            Text = message.Text,
+            Language = CultureInfo.CurrentUICulture.Name,
+            Correlation = string.Empty,
+        };
+
+        _db.Add(letter);
+
+        await _mediator.Send(new WriteLetter { Text = "queued after the write" }, cancellationToken);
+
+        _probe.TrackedAfterTheSend = _db.Entry(letter).State;
+    }
+}
+
 // The generator's output for a message with no constrainable field: the key and the audience
 // are the whole question, so a policy that applies to it applies.
 sealed class FlatPolicyHandler : PolicyHandler
@@ -208,6 +256,8 @@ public static class QueueHarness
 
     public const string WriteLetterThenFailKey = "Messaging.Queue.WriteLetterThenFail";
 
+    public const string WriteLetterAndQueueKey = "Messaging.Queue.WriteLetterAndQueue";
+
     public const string Clerk = "clerk";
 
     /// <summary>What a product's two generated holders would register, by hand: the suite is
@@ -230,7 +280,9 @@ public static class QueueHarness
 
         // Both registrations stand in for the Policies.Handlers generator, which emits the
         // factory and the registry entry from the same line.
-        foreach (var type in new[] { typeof(WriteLetter), typeof(AlwaysFails), typeof(WriteLetterThenFail) })
+        services.AddSingleton<SavePointProbe>();
+
+        foreach (var type in new[] { typeof(WriteLetter), typeof(AlwaysFails), typeof(WriteLetterThenFail), typeof(WriteLetterAndQueue) })
         {
             services.AddSingleton(new PolicyHandlerFactory(type, policy => new FlatPolicyHandler(policy)));
             services.AddSingleton(new MessageRegistration(type));
@@ -239,13 +291,14 @@ public static class QueueHarness
         services.AddBuiltInPolicy(new Policy
         {
             Name = "Clerks queue their own work",
-            Messages = granted.Length > 0 ? granted : [WriteLetterKey, AlwaysFailsKey, WriteLetterThenFailKey],
+            Messages = granted.Length > 0 ? granted : [WriteLetterKey, AlwaysFailsKey, WriteLetterThenFailKey, WriteLetterAndQueueKey],
             Audience = new PolicyAudience { HasRole = Clerk },
         });
 
         services.AddScoped<ISender<WriteLetter>, QueueSender<WriteLetter>>();
         services.AddScoped<ISender<AlwaysFails>, QueueSender<AlwaysFails>>();
         services.AddScoped<ISender<WriteLetterThenFail>, InProcessSender<WriteLetterThenFail>>();
+        services.AddScoped<ISender<WriteLetterAndQueue>, InProcessSender<WriteLetterAndQueue>>();
 
         services.AddSingleton<QueueConsumer>(new QueueConsumer<WriteLetter>());
         services.AddSingleton<QueueConsumer>(new QueueConsumer<AlwaysFails>());
@@ -253,6 +306,7 @@ public static class QueueHarness
         services.AddScoped<IHandler<WriteLetter>, WriteLetterHandler>();
         services.AddScoped<IHandler<AlwaysFails>, AlwaysFailsHandler>();
         services.AddScoped<IHandler<WriteLetterThenFail>, WriteLetterThenFailHandler>();
+        services.AddScoped<IHandler<WriteLetterAndQueue>, WriteLetterAndQueueHandler>();
     }
 
     /// <summary>One pass of the real loop instead of <c>QueueDrain.Run</c> called by hand: the

@@ -71,6 +71,28 @@ public sealed class QueueDurabilityTests
         Assert.Empty(await host.Read(db => db.Set<Letter>().ToListAsync()));
     }
 
+    /// <summary>What queueing costs the operation that does it, and what
+    /// <c>QueueAttribute</c>'s contract now states: the row is written with
+    /// <c>SaveChangesAsync</c>, which saves the context and not one entity, so whatever the
+    /// handler had tracked goes to the database at the send. Measured on the handler's own
+    /// entry — Added before the send, Unchanged after it — because that is the difference a
+    /// caller holding a half-built graph pays.</summary>
+    [Fact]
+    public async Task A_queued_send_saves_whatever_the_operation_has_tracked()
+    {
+        await using var host = await HandlerHost.Start("queue_savepoint", QueueHarness.Context, services => QueueHarness.Compose(services));
+
+        await host.Send(new WriteLetterAndQueue { Text = "tracked before the send" }, Clerk());
+
+        var tracked = await host.Use<SavePointProbe, EntityState>(probe => Task.FromResult(probe.TrackedAfterTheSend));
+
+        Assert.Equal(EntityState.Unchanged, tracked);
+
+        var letter = Assert.Single(await host.Read(db => db.Set<Letter>().ToListAsync()));
+
+        Assert.Equal("tracked before the send", letter.Text);
+    }
+
     /// <summary>The second half: "the process died right after the commit" is a second host
     /// over the same database — the row is in Postgres and not in anybody's memory, so the
     /// host that never drained it is not the host that has to.</summary>

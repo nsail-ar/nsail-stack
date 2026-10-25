@@ -104,17 +104,17 @@ public class QueueTests
     [Fact]
     public void QueueBesideHttpIsABuildError()
     {
-        var diagnostics = Diagnose(new Generation.Queue.QueueConsumersSourceGenerator(), """
+        var diagnostics = Diagnose(new Generation.Queue.QueueProducersSourceGenerator(), """
             [Queue]
             [Http(Method.Post, "/billing/invoices/void")]
             public class VoidInvoice : IMessage
             {
             }
 
-            public static partial class Consumers
+            public static partial class Producers
             {
-                [Generated(global::NSail.SourceGeneration.Annotations.Queue.Consumers)]
-                public static partial void AddBillingQueueConsumers(this IServiceCollection services);
+                [Generated(global::NSail.SourceGeneration.Annotations.Queue.Producers)]
+                public static partial void AddBillingQueueProducers(this IServiceCollection services);
             }
             """);
 
@@ -124,9 +124,48 @@ public class QueueTests
         Assert.Contains("Acme.Billing.VoidInvoice", reported.GetMessage());
     }
 
+    /// <summary>Both ends run the same walk, and one assembly may hold both holders — the host
+    /// that drains what it also sends. Only the producers end reports, so a reader of that
+    /// build is told once about one declaration instead of twice.</summary>
+    [Fact]
+    public void AnAssemblyHoldingBothHoldersIsToldOnce()
+    {
+        var diagnostics = Diagnose(
+            [new Generation.Queue.QueueProducersSourceGenerator(), new Generation.Queue.QueueConsumersSourceGenerator()],
+            """
+            [Queue]
+            [Http(Method.Post, "/billing/invoices/void")]
+            public class VoidInvoice : IMessage
+            {
+            }
+
+            [Queue]
+            public class CountQueued : IMessage<int>
+            {
+            }
+
+            public static partial class Holders
+            {
+                [Generated(global::NSail.SourceGeneration.Annotations.Queue.Producers)]
+                public static partial void AddBillingQueueProducers(this IServiceCollection services);
+
+                [Generated(global::NSail.SourceGeneration.Annotations.Queue.Consumers)]
+                public static partial void AddBillingQueueConsumers(this IServiceCollection services);
+            }
+            """);
+
+        Assert.Single(diagnostics.Where(d => d.Id == "NSG014"));
+        Assert.Single(diagnostics.Where(d => d.Id == "NSG015"));
+    }
+
     static ImmutableArray<Diagnostic> Diagnose(IIncrementalGenerator generator, string holder)
     {
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        return Diagnose([generator], holder);
+    }
+
+    static ImmutableArray<Diagnostic> Diagnose(IIncrementalGenerator[] generators, string holder)
+    {
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generators);
 
         driver.RunGeneratorsAndUpdateCompilation(Compile(holder), out _, out var diagnostics);
 

@@ -7,6 +7,7 @@ using Microsoft.OpenApi;
 using NSail.Backup;
 using NSail.Configuration;
 using NSail.Data;
+using NSail.Messaging.Queue;
 using NSail.Messaging.Runtime;
 using NSail.Messaging.WebApi.Push;
 using NSail.Messaging.WebApi;
@@ -26,11 +27,15 @@ public static class Setup
         // AddSecurityEnforcement registers after this, and SendPipeline chains in
         // registration order, so a refusal falls inside the span instead of before it.
         //
-        // The second wall's instrument is named from here and not from inside AddTelemetry: an
-        // arrow from the telemetry module to the data module would put the OTLP exporter behind
-        // every host with a store and EF Core behind every host that exports a span. This
-        // composition has both modules already.
-        builder.AddTelemetry(TenantPolicies.MeterName);
+        // The second wall's instrument and the durable queue's are named from here and not from
+        // inside AddTelemetry: an arrow from the telemetry module to either of those would put
+        // the OTLP exporter behind every host with a store and EF Core behind every host that
+        // exports a span. This composition has all three modules already.
+        //
+        // Named whether or not this host composes the queue, because a meter nobody emits on
+        // costs a subscription and nothing else, while the reverse — naming it where AddQueue
+        // runs — would need the exporter packages inside NSail.Messaging.Queue.
+        builder.AddTelemetry(TenantPolicies.MeterName, QueueMetrics.MeterName);
 
         builder.Services.AddMessaging();
         builder.Services.AddMessagingJson();

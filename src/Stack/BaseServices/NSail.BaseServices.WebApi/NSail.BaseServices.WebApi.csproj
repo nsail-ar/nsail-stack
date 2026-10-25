@@ -30,6 +30,11 @@
 		<!-- What a message declares about its own transport, which is what the throttle reads
 		     off the type the matched route already names. -->
 		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj" />
+		<!-- For the name of the drain's meter and nothing else. The queue itself is composed by
+		     the generated holder of the first kit that declares a [Queue] message; the
+		     subscription is named from here because an arrow from telemetry to the queue would
+		     put EF Core behind every host that exports a span. -->
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Queue\NSail.Messaging.Queue.csproj" />
 		<ProjectReference Include="..\..\Messaging\NSail.Messaging.WebApi\NSail.Messaging.WebApi.csproj" />
 		<ProjectReference Include="..\..\Security\NSail.Security\NSail.Security.csproj" />
 		<ProjectReference Include="..\..\Telemetry\NSail.Telemetry\NSail.Telemetry.csproj" />

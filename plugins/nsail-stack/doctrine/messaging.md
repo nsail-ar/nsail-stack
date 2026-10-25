@@ -282,7 +282,16 @@ process over that database delivers it.
   `Queue:Backoff` (doubling per attempt), `Queue:Interval` and `Queue:BatchSize`. A row that
   fails its last attempt is dead-lettered: it stays, it is never attempted again, and it is
   counted on `nsail.queue.delivered` tagged by message and outcome. A meter and not a log line
-  because `LogScrubber` drops the name out of an exported record.
+  because `LogScrubber` drops the name out of an exported record — and the meter is subscribed
+  for every server host by `AddBaseWebApi`, since a counter nothing exports is the same silence
+  (baseservices.md, *Telemetry*).
+- **Queueing is a save point of the sending operation.** The producer writes its row with
+  `SaveChangesAsync`, which saves the *context* and not one entity: everything the operation
+  has tracked so far goes to the database with it, inside the operation's transaction. A
+  handler that queues between two halves of a graph it is still assembling therefore meets
+  that half-built graph's own constraints at the send, not at its own save. Assemble first,
+  queue last — or save what is tracked before the send, which is the same thing said in the
+  handler where the reader can see it.
 - **Delivery is at least once.** A process that dies between a handler's commit and the pass
   that deletes its row delivers that row again. The alternative — delete first — loses the
   work, which is the one thing a durable queue may not do.

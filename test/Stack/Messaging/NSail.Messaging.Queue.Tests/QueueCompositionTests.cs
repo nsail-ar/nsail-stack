@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NSail.Data;
 
 namespace NSail.Messaging.Queue.Tests;
@@ -92,5 +93,33 @@ public sealed class QueueCompositionTests
         Assert.Equal(TimeSpan.FromMinutes(2.5), options.Backoff);
         Assert.Equal(TimeSpan.FromSeconds(5), options.Interval);
         Assert.Equal(7, options.BatchSize);
+    }
+
+    /// <summary>The runner reads a job's cadence once, before its first tick, in a scope that
+    /// has entered no tenant — and under <c>MultiDb</c> no <c>DbContext</c> can be built in
+    /// such a scope at all. A drain the job had to be handed to be constructed would make that
+    /// read throw, and the runner answers an unstartable loop by logging it and returning: the
+    /// producer would keep writing rows nobody ever delivers. Measured on both halves, because
+    /// what makes this work is exactly that the second one still cannot be done there.</summary>
+    [Fact]
+    public void Under_MultiDb_the_drain_declares_its_cadence_with_no_tenant_entered()
+    {
+        var services = new ServiceCollection();
+
+        services.AddLogging();
+        services.AddDataAccess<QueueDbContext>(
+            "Host=localhost;Database=queue_composition;Username=nobody;Password=nobody",
+            new TenancyOptions { Mode = TenancyMode.MultiDb, Product = "queue", Cell = "test" });
+        services.AddQueueDelivery();
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        var job = scope.ServiceProvider.GetRequiredService<QueueDrainJob>();
+
+        Assert.Equal(TenancyScope.Tenant, job.Tenancy);
+        Assert.Equal(new QueueOptions().Interval, job.Interval);
+
+        Assert.Throws<InvalidOperationException>(() => scope.ServiceProvider.GetRequiredService<QueueDrain>());
     }
 }

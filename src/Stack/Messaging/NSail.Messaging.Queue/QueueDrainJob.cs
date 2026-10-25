@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.Extensions.DependencyInjection;
 using NSail.Background;
 using NSail.Data;
 
@@ -18,12 +19,20 @@ namespace NSail.Messaging.Queue;
 /// actor before each delivery.</para></summary>
 public sealed class QueueDrainJob : IBackgroundJob
 {
-    readonly QueueDrain _drain;
+    readonly IServiceProvider _services;
     readonly QueueOptions _options;
 
-    public QueueDrainJob(QueueDrain drain, QueueOptions options)
+    // The drain is resolved in Run and not taken here, which is the one thing this job cannot
+    // spell the obvious way. The runner reads a job's cadence once, before its first tick, from
+    // a scope that has entered no tenant (BackgroundJobRunner.Declared) — and QueueDrain needs
+    // a DbContext, whose factory asks the scope's TenancyProvider for a connection. Under
+    // MultiDb that provider has no tenant to answer with and throws, the runner logs the loop as
+    // unstartable and returns, and the queue fills with rows nothing ever delivers. Constructed
+    // from nothing but its options, the cadence is answerable with no tenant and the context is
+    // built inside Run, which the runner does call with one entered.
+    public QueueDrainJob(IServiceProvider services, QueueOptions options)
     {
-        _drain = drain;
+        _services = services;
         _options = options;
     }
 
@@ -42,6 +51,6 @@ public sealed class QueueDrainJob : IBackgroundJob
 
     public Task Run(CancellationToken cancellationToken)
     {
-        return _drain.Run(cancellationToken);
+        return _services.GetRequiredService<QueueDrain>().Run(cancellationToken);
     }
 }

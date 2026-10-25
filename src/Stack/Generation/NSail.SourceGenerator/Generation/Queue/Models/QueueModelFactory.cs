@@ -14,7 +14,8 @@ public static class QueueModelFactory
 
     /// <summary>One walk for both ends: the sending host registers a producer and the host that
     /// drains registers a consumer for exactly the same set, so what one side stored the other
-    /// can name.</summary>
+    /// can name. Both ends collect the refusals below and one end reports them
+    /// (<see cref="QueueModelRenderer"/>), because an assembly may hold both holders.</summary>
     public static QueueModel Create(IMethodSymbol methodSymbol, Compilation compilation)
     {
         var model = new QueueModel

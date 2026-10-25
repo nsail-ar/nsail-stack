@@ -10,19 +10,29 @@ public static class QueueModelRenderer
 {
     public static void RenderProducers(SourceProductionContext spc, QueueModel model)
     {
-        Render(spc, model, "QueueProducersSetup");
+        Render(spc, model, "QueueProducersSetup", reportDiagnostics: true);
     }
 
     public static void RenderConsumers(SourceProductionContext spc, QueueModel model)
     {
-        Render(spc, model, "QueueConsumersSetup");
+        Render(spc, model, "QueueConsumersSetup", reportDiagnostics: false);
     }
 
-    static void Render(SourceProductionContext spc, QueueModel model, string templateName)
+    // Reported from the producers end alone, though both ends run the same walk. The push's
+    // pair is free to report from both because its two holders live in different assemblies by
+    // rule; the queue's may share one (generation.md puts Queue.Consumers "beside it in the host
+    // that drains"), and an assembly holding both would then show NSG014 and NSG015 twice per
+    // type. The producer is the right end to keep: both refusals are about the sender it
+    // registers — a result nobody wrote, and a second sender for one message — and a [Queue]
+    // message with no producer holder anywhere cannot be sent at all.
+    static void Render(SourceProductionContext spc, QueueModel model, string templateName, bool reportDiagnostics)
     {
-        foreach (var diagnostic in model.Diagnostics)
+        if (reportDiagnostics)
         {
-            spc.ReportDiagnostic(diagnostic);
+            foreach (var diagnostic in model.Diagnostics)
+            {
+                spc.ReportDiagnostic(diagnostic);
+            }
         }
 
         var template = SourceTemplateRegistry.Instance.Get(templateName);

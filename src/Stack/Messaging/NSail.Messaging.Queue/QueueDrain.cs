@@ -140,7 +140,7 @@ public sealed class QueueDrain
         }
         else
         {
-            row.NextAttemptAt = now + Backoff(attempts);
+            row.NextAttemptAt = Due(now, attempts);
 
             _meter.Finished(row.MessageType, QueueMetrics.Failed);
 
@@ -162,14 +162,22 @@ public sealed class QueueDrain
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    TimeSpan Backoff(int attempts)
+    DateTime Due(DateTime now, int attempts)
     {
-        // Doubling, and capped at the shift that would overflow the ticks: an install that
-        // states a long first wait and many attempts must not reach a negative due date,
-        // which would make the row due forever.
-        var doublings = Math.Min(attempts - 1, 16);
+        // Doubling, saturated at the furthest date there is rather than at a fixed number of
+        // shifts: Queue:Backoff is the install's, so no constant count of doublings is "the one
+        // that overflows" — a wait of months reaches it in three. Both the doubling and the sum
+        // are kept under the ceiling instead of computed and then checked, because the
+        // arithmetic that overflowed is what would have to be inspected.
+        var ceiling = (DateTime.MaxValue - now).Ticks;
+        var ticks = _options.Backoff.Ticks;
 
-        return TimeSpan.FromTicks(_options.Backoff.Ticks * (1L << doublings));
+        for (var doubling = 0; doubling < attempts - 1 && ticks <= ceiling / 2; doubling++)
+        {
+            ticks *= 2;
+        }
+
+        return now + TimeSpan.FromTicks(Math.Min(ticks, ceiling));
     }
 
     Session Actor(QueuedMessage row)

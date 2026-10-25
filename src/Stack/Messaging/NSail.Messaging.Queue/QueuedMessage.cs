@@ -12,9 +12,9 @@ public class QueuedMessage
 {
     public Guid Id { get; set; }
 
-    /// <summary>The message's full type name and nothing about its assembly, the same rule
-    /// both ends of the push use (<c>QueueConsumer{TMessage}.Key</c>): the stored name picks a
-    /// registered consumer, and never becomes a type on its own.</summary>
+    /// <summary>The message's full type name and nothing about its assembly, written and read
+    /// by the one rule both of the queue's ends share (<c>QueueConsumer{TMessage}.Key</c>): the
+    /// stored name picks a registered consumer, and never becomes a type on its own.</summary>
     public string MessageType { get; set; } = string.Empty;
 
     public string Body { get; set; } = string.Empty;
