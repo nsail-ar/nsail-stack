@@ -502,6 +502,16 @@ public sealed class TenancyHost : IAsyncDisposable
             tenancy.Current.Database,
             db.Database.GetDbConnection().Database)));
 
+        // What the install records that this tenant is entitled to, read the way the gate reads
+        // it — through the composed FeatureProvider and not off the row — so the registration,
+        // the jsonb column's round trip and the permissive parse are one answer.
+        app.MapGet("/entitlements", async (FeatureProvider features) =>
+        {
+            var entitlements = await features.Current();
+
+            return Results.Json(new Bag(entitlements.IsEnabled("whatsapp"), entitlements.Limit("organizations.max")));
+        });
+
         // The same answer from a scope the request opened for itself: a prerendered component
         // resolving a brand takes one, so a tenant that only reached the request's own scope
         // would 500 on a page that had already been answered 200 for.
@@ -682,3 +692,7 @@ public sealed class TenancyHost : IAsyncDisposable
 }
 
 public sealed record Where(string? Slug, string? Database, string Connection);
+
+/// <summary>The two worked keys of the entitlements bag, as the gate's own reader answers them:
+/// a flag and a ceiling, each at its permissive default where the bag says nothing.</summary>
+public sealed record Bag(bool WhatsApp, decimal? Organizations);

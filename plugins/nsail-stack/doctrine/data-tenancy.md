@@ -416,11 +416,12 @@ alphanumerics and the hyphen, case folded, **anything else refused rather than r
 stripping a character folds two words onto one tenant, which is the leak, not the fix. A
 composed name Postgres would truncate at 63 bytes is refused for the same reason.
 
-## The install's own record of a tenant: its state and its plan
+## The install's own record of a tenant: its state, its plan and what the plan includes
 
 Everything above is a tenant's own rows. **`TenantState` is the install's record ABOUT a
-tenant** — whether it is served at all, why, until when, and which plan it is on — and that is the whole of why
-it is the Stack's and not a product's: the state of a customer is identical in every product,
+tenant** — whether it is served at all, why, until when, which plan it is on and what that plan
+includes — and that is the whole of why it is the Stack's and not a product's: the state of a
+customer is identical in every product,
 and answered twice it would be answered differently. It is the second and last table the Stack
 owns (`DbContextExtensions.ApplySetups`, beside the seed history, for the same reason: a
 product that forgot to compose it would serve a suspended customer).
@@ -434,6 +435,8 @@ the contract and the Stack only reads:
 | `TenantId` | `uuid`, primary key | The tenant's `RowKey`: `TenantKey.For(slug)` where the wall is the tenant column, `Guid.Empty` where it is the connection or there are no tenants — exactly what the shadow column carries on every other table |
 | `Status` | `varchar(32)`, not null | `Active` or `Suspended`. Compared, never parsed |
 | `Plan` | `varchar(32)`, null | The plan's word, carried and not interpreted — **the Stack names no plan and knows none** |
+| `Entitlements` | `jsonb`, null | What that plan includes: one key against a flag or a number — **the Stack names no key and knows none** either. `jsonb` and not text because this writer amends ONE key of the bag in plain SQL |
+| `EntitlementsUpdatedAt` | `timestamptz`, null | When the bag was last written. "Has my write landed" is a real question asked of this row, and the memo below is why the answer is not immediate |
 | `Reason` | `varchar(32)`, null | Why it is paused: `Maintenance` (a deploy, a big change, a maintenance stop), `Move` (between rings or servers), `Payment`. Compared, never parsed — it changes nothing about whether the tenant is served, only the words its page gets |
 | `SuspendedFrom` | `timestamptz`, null | When the pause opens. No `SuspendedFrom`, no window |
 | `SuspendedUntil` | `timestamptz`, null | When it closes, or null for a window with no end. It is also what the page says the service comes back at |
@@ -472,6 +475,36 @@ the contract and the Stack only reads:
   expires, and so does a restoration. Suspending for abuse is therefore not instant; an install
   that needs it closer shortens the setting, and whoever writes the row waits the window out
   rather than watching for an effect that has not arrived.
+- **What the plan includes is read permissively, and refused in the gate.** `Entitlements.Read`
+  (`NSail.Security`) turns the bag into flags and ceilings, and **every answer it does not find
+  positively written is the permissive one**: no bag, an empty bag, a key nobody wrote, a value
+  of the other kind and text no parser can read all come back "enabled" and "no ceiling". The
+  fleet's bags are empty the day the column ships, so a restrictive default would cut paying
+  customers off on deploy day — the same rule an unknown `Status` is read by, for the same
+  reason. What a key's own default is belongs to whoever declared the key; the Stack reads the
+  bag and nothing else.
+  - A message declares the feature it belongs to with `[RequiresFeature("key")]`
+    (`NSail.Security.Annotations`), and `SecurityManager` refuses it **ahead of every policy**
+    when the bag says the feature is off: `AuthorizationResult.FeatureOff` names it and the gate
+    answers `SecurityProblem.FeatureUnavailable` — 403, but **not** the permission refusal.
+    No grant widens a feature nobody bought, so a caller told "you do not have permission" would
+    be sent to an administrator who cannot help them. `PreAuthorize` reads the same bag, which is
+    how the page, the menu entry and the row action stop being offered at all
+    ([permissions.md](permissions.md)).
+  - The bag reaches the gate through `FeatureProvider`, permissive in the base
+    (`Entitlements.Unrestricted`) exactly as `RelationProvider` is, and answered off the row by
+    `TenantStateFeatureProvider`, which `AddBaseWebApi` registers. A mode that resolves no tenant
+    registers no `TenantStates`, and a client has none either: both keep the permissive base,
+    which is also why an install nobody wrote a bag for behaves as it did before the bag existed.
+  - **A ceiling never blocks the work.** A limit that is reached is stated — how much of it is
+    used, beside the figure — and the next act still succeeds; nothing is suspended by a number.
+    A flag is the hard half and a ceiling is the soft one, and nothing reading this table may
+    swap them.
+  - **A flag off closes a road; it never hides what already went down it.** What the tenant's own
+    rows record of a feature stays readable where it was read before. And a flag answers a
+    PRESSED send: what the system sends on its own passes no gate (`AmbientPublish`), so whatever
+    carries those sends is what has to find the road shut.
+
 - **A suspended tenant's requests answer the suspended page** (`TenantStateMiddleware`,
   immediately behind `TenancyMiddleware`): 503 and the page to a browser, 503 and the `Suspended`
   problem to a program — the same `Accept` negotiation the error handler makes, asked through the

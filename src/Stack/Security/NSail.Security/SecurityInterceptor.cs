@@ -46,7 +46,7 @@ public sealed class SecurityInterceptor<TMessage> : IInterceptor<TMessage>
         var result = await _security.Authorize(message, session, cancellationToken).ConfigureAwait(false);
 
         if (!result.Allowed)
-            throw new BusinessException(SecurityProblem.Denied(session.IsAuthenticated, typeof(TMessage).Name));
+            throw new BusinessException(SecurityRefusal.For(result, session, typeof(TMessage).Name));
 
         // What allowed the send travels with it: the plumbing behind this gate acts on the
         // message's values and has no other way to learn whether a policy read them, nor how
@@ -83,11 +83,25 @@ public sealed class SecurityInterceptor<TMessage, TResult> : IInterceptor<TMessa
         var result = await _security.Authorize(message, session, cancellationToken).ConfigureAwait(false);
 
         if (!result.Allowed)
-            throw new BusinessException(SecurityProblem.Denied(session.IsAuthenticated, typeof(TMessage).Name));
+            throw new BusinessException(SecurityRefusal.For(result, session, typeof(TMessage).Name));
 
         // Same handoff as the void arity: a query is where the org filter actually reads rows.
         return await AmbientAuthorization
             .Vetting(new AmbientGrant(result.FieldsVetted, result.EveryOrganization), () => next(message, cancellationToken))
             .ConfigureAwait(false);
+    }
+}
+
+/// <summary>Which refusal a denied verdict is, in one place for both arities: a feature the
+/// install was not sold names itself, and everything else is the deny-by-default answer about
+/// the caller. Two different facts, and a client that could not tell them apart would tell
+/// somebody to ask for a permission nobody can grant them.</summary>
+static class SecurityRefusal
+{
+    internal static Problem For(AuthorizationResult result, Session session, string action)
+    {
+        return result.FeatureOff is { } feature
+            ? SecurityProblem.FeatureUnavailable(feature)
+            : SecurityProblem.Denied(session.IsAuthenticated, action);
     }
 }

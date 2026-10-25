@@ -608,12 +608,29 @@ Page/menu/link visibility — **`[Authorize<TMessage>]` on the page**: `[Authori
 
 `[Authorize<T>]` is a real ASP.NET `AuthorizeAttribute` (so `AuthorizeRouteView` reads it natively and it composes with plain `[Authorize]`/`[AllowAnonymous]`), and the generic argument is checked at compile time where a `typeof()` is not. The message type travels in `Policy` as `msg:{AssemblyQualifiedName}`; an `IAuthorizationPolicyProvider` fabricates the policy and answers it with `SecurityManager.PreAuthorize` — the same optimistic gate the menu and the action panels use, so a page, its menu entry and its row action agree.
 
-**Two attributes, two different words** — they are not interchangeable:
+**Three attributes, three different words** — they are not interchangeable:
 
 | Where | Attribute | Means |
 |---|---|---|
 | Message | `[Requires(typeof(X))]` | **implication** — whoever may send me may send X |
+| Message | `[RequiresFeature("key")]` | **the feature I belong to** — this install has to have been sold it, whoever is asking |
 | Page | `[Authorize<X>]` | **gate** — you must be able to send X to see me |
+
+**A feature is not a permission, and the gate answers it as a different fact.** The mark names a
+key in the entitlements bag the install records about this tenant (`TenantState.Entitlements`,
+[data-tenancy.md](data-tenancy.md)); `SecurityManager` reads it through `FeatureProvider` **ahead
+of every policy** and refuses with `SecurityProblem.FeatureUnavailable`, which is a 403 and is
+*not* `Forbidden`. The reason is the whole of why it is its own verdict: no grant anybody can be
+given widens a feature nobody bought, so a caller told "you do not have permission" would be
+sent to an administrator who cannot help them. `AuthorizationResult.FeatureOff` carries the key.
+
+It is read **permissively**: a key nobody has written is ON, which is the state of the whole
+fleet the day a key ships — the bag's own reading rules are data-tenancy.md's. But a feature the
+bag positively closes is the one answer `PreAuthorize` is **not** optimistic about: the page, the
+menu entry and the row action are not offered at all, because a plan that excludes something must
+not go on offering it only to refuse the press. And the mark gates a **pressed** send: what the
+system sends on its own passes no gate at all (`AmbientPublish`), so whatever carries those sends
+is what has to find the road shut.
 
 The entry message is the one the screen exists *for*: a list page is governed by its `List{Entity}s`, a create page by its `Create{Entity}`, an update page by its `Update{Entity}` — never by the `Get`/`Lookup` sends it makes along the way (those are covered by `[Requires]` on the primary). A screen with no message that clearly governs it declares nothing and stays visible; an invented gate is worse than a declared gap — unless the screen's material is not an entity at all (the Manual: `NsGuide` composes its chapters client-side and sends nothing), in which case the story may mint an empty `IMessage` for the sole purpose of carrying the permission, with a handler that does nothing (`ViewGuide`/`GuideHandler`, `Optical.StaffGuide`). That message governs nothing else and gains no `[Requires]` dependents.
 

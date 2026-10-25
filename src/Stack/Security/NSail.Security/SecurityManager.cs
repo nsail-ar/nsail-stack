@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
+using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSail.Dates;
@@ -24,18 +26,23 @@ public class SecurityManager
     readonly List<PolicyHandler> _stored = [];
     readonly List<DependencyPolicyHandler> _dependencies = [];
     readonly ILogger<SecurityManager> _logger;
+    readonly FeatureProvider _features;
+
+    static readonly ConcurrentDictionary<Type, string?> Features = new();
 
     public SecurityManager(
         MessageRegistry messages,
         RelationProvider relations,
         IEnumerable<PolicyHandlerFactory> factories,
         IEnumerable<Policy> builtInPolicies,
-        ILogger<SecurityManager>? logger = null)
+        ILogger<SecurityManager>? logger = null,
+        FeatureProvider? features = null)
     {
         _messages = messages;
         _relations = relations;
         _factories = factories.ToDictionary(f => f.MessageType);
         _logger = logger ?? NullLogger<SecurityManager>.Instance;
+        _features = features ?? new FeatureProvider();
 
         // Built-ins are code: a built-in that fails to hydrate is a deploy-time bug, not a
         // stale row, so it stays a hard failure — the loop below exists for stored rows only.
@@ -243,6 +250,18 @@ public class SecurityManager
         if (session.IsSystem)
             return new AuthorizationResult { Allowed = true };
 
+        // Ahead of every policy, and refused on its own terms: a feature the install was not
+        // sold is not a grant anybody can widen, so no policy is consulted and the verdict names
+        // the feature rather than the permission. It is asked of a CALLER's send only — the gate
+        // above already exempts what the system carries out on its own, and what closes the road
+        // for an unpressed notice is the road itself and not this (data-tenancy.md, The install's
+        // own record of a tenant).
+        if (FeatureOf(message.GetType()) is { } feature
+            && !(await _features.Current(cancellationToken).ConfigureAwait(false)).IsEnabled(feature))
+        {
+            return AuthorizationResult.Without(feature);
+        }
+
         var key = KeyFor(message.GetType());
         var today = BusinessDate.Today;
         var matches = new List<PolicyHandler>();
@@ -277,7 +296,11 @@ public class SecurityManager
     /// applies to the key for this session — field constraints, which need concrete values
     /// the UI doesn't have yet, are ignored (assumed satisfiable). Showing something the
     /// strict Authorize later denies is recoverable; hiding something allowed is not, so
-    /// the UI errs on the permissive side and the Mediator stays the real guard.</summary>
+    /// the UI errs on the permissive side and the Mediator stays the real guard.
+    /// <para>A feature the install does not have is the one answer here that is NOT optimistic:
+    /// the bag is read permissively (<see cref="FeatureProvider.Assumed"/>), but a feature it
+    /// positively says is off hides what it gates, because a plan that excludes something must
+    /// not go on offering it only to refuse the press.</para></summary>
     public virtual bool PreAuthorize(Type messageType, Session session)
     {
         ArgumentNullException.ThrowIfNull(messageType);
@@ -285,6 +308,11 @@ public class SecurityManager
 
         if (session.IsSystem)
             return true;
+
+        if (FeatureOf(messageType) is { } feature && !_features.Assumed.IsEnabled(feature))
+        {
+            return false;
+        }
 
         var key = KeyFor(messageType);
         var today = BusinessDate.Today;
@@ -397,6 +425,18 @@ public class SecurityManager
     string KeyFor(Type messageType)
     {
         return _messages.KeyFor(messageType);
+    }
+
+    /// <summary>The feature a message is sold with, or null for the ones every install has.
+    /// Read off the type and remembered for the process: the mark is a compile-time declaration
+    /// and the gate asks it on every send.</summary>
+    public static string? FeatureOf(Type messageType)
+    {
+        ArgumentNullException.ThrowIfNull(messageType);
+
+        return Features.GetOrAdd(
+            messageType,
+            type => type.GetCustomAttribute<RequiresFeatureAttribute>()?.Feature);
     }
 
     PolicyHandlerFactory FactoryFor(string key)

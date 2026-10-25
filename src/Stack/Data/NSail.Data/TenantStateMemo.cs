@@ -56,5 +56,24 @@ public sealed class TenantStateMemo
         return state;
     }
 
+    /// <summary>What is held for <paramref name="tenant"/> right now, reading nothing: false
+    /// where nothing unexpired is, and true with the row — null included, which is the answer
+    /// most tenants have. For the callers that cannot await (visibility derived in render code),
+    /// which is also why there is no read behind it: a question asked where no answer is in hand
+    /// is answered permissively by whoever asked it.</summary>
+    public bool Holds(Guid tenant, out TenantState? state)
+    {
+        if (_entries.TryGetValue(tenant, out var held) && _clock.GetUtcNow() < held.Until)
+        {
+            state = held.State;
+
+            return true;
+        }
+
+        state = null;
+
+        return false;
+    }
+
     readonly record struct Entry(TenantState? State, DateTimeOffset Until);
 }

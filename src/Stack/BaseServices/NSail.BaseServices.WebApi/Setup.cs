@@ -60,6 +60,11 @@ public static class Setup
         // install's value and not the default.
         builder.Services.AddSingleton(builder.Configuration.Load<SecurityOptions>());
 
+        // Ahead of AddSecurity's own TryAdd, for the same reason as the push audience below: the
+        // bag a message's feature mark is gated against is what the install records about this
+        // tenant, and only a composition that has the store can read it.
+        builder.Services.AddScoped<FeatureProvider, TenantStateFeatureProvider>();
+
         // Ahead of AddPush's own TryAdd: a push reaches the tenant it was published in, and a
         // connection joins the tenant the edge resolved for it.
         builder.Services.AddScoped<PushAudience, TenantPushAudience>();

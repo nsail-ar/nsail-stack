@@ -32,5 +32,19 @@ public sealed class AuthorizationResult
         get { return Matches.Any(match => match.Policy.EveryOrganization); }
     }
 
+    /// <summary>The feature that closed the send, when that is why it was refused — the key off
+    /// the message's <see cref="Annotations.RequiresFeatureAttribute"/>. Null for every other
+    /// verdict, including every refusal by policy: a plan that does not include something and a
+    /// caller who may not do it are two different facts, and whoever answers the caller has to
+    /// be able to tell them apart (<c>SecurityProblem.FeatureUnavailable</c>).</summary>
+    public string? FeatureOff { get; init; }
+
     public static AuthorizationResult Deny { get; } = new() { Allowed = false };
+
+    /// <summary>What the gate answers a send whose feature is off — refused ahead of every
+    /// policy, because no grant widens a feature the install was not sold.</summary>
+    public static AuthorizationResult Without(string feature)
+    {
+        return new AuthorizationResult { Allowed = false, FeatureOff = feature };
+    }
 }

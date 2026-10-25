@@ -54,6 +54,12 @@ namespace NSail.Sample.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Entitlements")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime?>("EntitlementsUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Message")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
