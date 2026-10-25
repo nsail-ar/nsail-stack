@@ -270,6 +270,14 @@ process over that database delivers it.
   person who asked. The delivery itself is ungated — the grants were answered at the send, and
   a check made hours later would refuse, with nobody left to tell, a command the caller was
   already told was accepted ([permissions.md](permissions.md), Evaluation).
+- **Everything else above the handler runs again.** The delivery builds the in-process
+  pipeline, so the message's own DataAnnotations, every `IValidator<T>` and every interceptor
+  answer a second time, inside the consumer's own unit of work — which is what makes a
+  delivery as atomic as the send that stored it. The cost is the contract a `[Queue]` command
+  signs: a rule that was true at the send and false hours later turns a command already
+  answered "accepted" into retries and then a dead letter. A rule over state the delivery can
+  find changed therefore belongs in the handler, where a refusal is that handler's own failure
+  and not a second verdict on a message already accepted.
 - **Retry, backoff, dead letter — the Stack's own, and configuration.** `Queue:MaxAttempts`,
   `Queue:Backoff` (doubling per attempt), `Queue:Interval` and `Queue:BatchSize`. A row that
   fails its last attempt is dead-lettered: it stays, it is never attempted again, and it is
@@ -279,8 +287,10 @@ process over that database delivers it.
   that deletes its row delivers that row again. The alternative — delete first — loses the
   work, which is the one thing a durable queue may not do.
 
-An opt-in like the interceptor: composing the kit that declares a `[Queue]` message is what
-brings the table, so a product with none gains no table and its migration chain does not move.
+An opt-in like the interceptor, and the generated holder is the opt-in: it composes the queue
+whether or not the kit has reached its first `[Queue]` message yet, and a kit declares that
+holder with that first message. A product composing no kit that has one gains no table and its
+migration chain does not move.
 
 ---
 

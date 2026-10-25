@@ -150,7 +150,15 @@ public sealed class QueueDrain
         // The change tracker may be holding whatever the failed delivery left on it — the
         // delivery ran on a scope and a context of its own, but a handler that threw before
         // its own save can still have touched this one through a shared service. The row's own
-        // state is the only thing this save is about.
+        // state is the only thing this save is about, and a delivery that threw on the very
+        // save that deletes the row left it Deleted here: EF ignores what is written to a
+        // deleted entity, so without this the attempt and the error this pass just decided
+        // would be dropped and the same delete re-emitted.
+        if (_db.Entry(row).State == EntityState.Deleted)
+        {
+            _db.Entry(row).State = EntityState.Modified;
+        }
+
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

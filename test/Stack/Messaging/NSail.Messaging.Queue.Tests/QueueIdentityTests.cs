@@ -2,6 +2,8 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using NSail.Data;
 using NSail.Data.Testing;
 using NSail.Problems;
@@ -87,6 +89,39 @@ public sealed class QueueIdentityTests
 
         Assert.Equal("Forbidden", refusal.Code);
         Assert.Empty(await host.Read(db => db.Set<QueuedMessage>().Where(row => row.MessageType == typeof(AlwaysFails).FullName).ToListAsync()));
+    }
+
+    /// <summary>The third thing a delivery owes its send, beside the actor and the headers: the
+    /// install's default language, which a queued handler gets for the same reason every
+    /// background job does — the drain IS one, and the runner sets the culture per loop.
+    /// Without it a delivery runs invariant, <c>LanguageProvider</c> seeds itself with "iv",
+    /// and a handler that reaches for a template finds one in a language nobody has
+    /// (nsail#1108). What is deliberately NOT in the envelope is the sender's own culture: an
+    /// operation answered in English queues work the install does in its own language.</summary>
+    [Fact]
+    public async Task The_handler_runs_in_the_installs_default_language()
+    {
+        await using var host = await HandlerHost.Start(
+            "queue_language",
+            QueueHarness.Context,
+            services =>
+            {
+                // The one place the install's language lives, read by the runner the way the
+                // request edge reads it (BackgroundJobLanguageTests is the twin).
+                services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?> { ["Language:Default"] = "es" })
+                    .Build());
+
+                QueueHarness.Compose(services);
+            });
+
+        await host.Send(new WriteLetter { Text = "en el idioma del install" }, Clerk(Guid.NewGuid()));
+
+        await QueueHarness.Sweep(host, () => host.Read(db => db.Set<Letter>().AnyAsync()));
+
+        var letter = Assert.Single(await host.Read(db => db.Set<Letter>().ToListAsync()));
+
+        Assert.Equal("es", letter.Language);
     }
 
     /// <summary>Tenant-scoped like any kit entity, and not <c>IInstallScoped</c>: the column,

@@ -5,17 +5,16 @@ using Microsoft.Extensions.Hosting;
 
 namespace NSail.Messaging.Queue;
 
-/// <summary>What the install may say about <c>Queue:Transport</c>, asked once at startup in
-/// the shape every other incompatible configuration is refused in (<c>NSail.Data</c>'s
-/// <c>Tenancy:RequireRowSecurity</c>): the broker names are declared so an install states its
-/// intent in one place, and refused by name until the brokers' own story lands — the
-/// alternative is an install that reads as configured for RabbitMQ and quietly queues
-/// in-process instead.</summary>
+// What the install may say about Queue:Transport, asked once at startup in the shape every
+// other incompatible configuration is refused in (NSail.Data's Tenancy:RequireRowSecurity):
+// the broker names are declared so an install states its intent in one place, and refused by
+// name until the brokers' own story lands — the alternative is an install that reads as
+// configured for RabbitMQ and quietly queues in-process instead.
 sealed class QueueTransportGuard : IHostedService
 {
-    /// <summary>The in-process transport, which is also what an install that states nothing
-    /// gets: the durable row IS the queue and the drain is a job of this process, so a default
-    /// install provisions nothing it does not provision today.</summary>
+    // The in-process transport, which is also what an install that states nothing gets: the
+    // durable row IS the queue and the drain is a job of this process, so a default install
+    // provisions nothing it does not provision today.
     public const string InProcess = "InProcess";
 
     static readonly string[] Brokers = ["Postgres", "RabbitMq", "AmazonSqs", "AzureServiceBus"];

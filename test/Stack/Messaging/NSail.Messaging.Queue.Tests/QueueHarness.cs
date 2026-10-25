@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NSail.Data;
+using NSail.Data.Testing;
 using NSail.Messaging.Annotations;
 using NSail.Messaging.Runtime;
 using NSail.Messaging.Runtime.Context;
@@ -250,6 +253,52 @@ public static class QueueHarness
         services.AddScoped<IHandler<WriteLetter>, WriteLetterHandler>();
         services.AddScoped<IHandler<AlwaysFails>, AlwaysFailsHandler>();
         services.AddScoped<IHandler<WriteLetterThenFail>, WriteLetterThenFailHandler>();
+    }
+
+    /// <summary>One pass of the real loop instead of <c>QueueDrain.Run</c> called by hand: the
+    /// runner is what decides a job's culture and its session, so what the drain inherits can
+    /// only be measured through it. The wait is bounded by what the pass is supposed to have
+    /// written — a delay long enough to "probably" have ticked proves nothing — which is the
+    /// shape <c>NSail.Background.Tests</c>' own harness has.</summary>
+    public static async Task Sweep(HandlerHost host, Func<Task<bool>> delivered)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentNullException.ThrowIfNull(delivered);
+
+        var bound = TimeSpan.FromSeconds(30);
+
+        // Every hosted service the composition holds, which is the runner and the transport
+        // guard: picking one by type would name a class NSail.Background keeps internal.
+        var reached = await host.Use<IEnumerable<IHostedService>, bool>(async hosted =>
+        {
+            var services = hosted.ToList();
+
+            foreach (var service in services)
+            {
+                await service.StartAsync(CancellationToken.None);
+            }
+
+            var elapsed = Stopwatch.StartNew();
+            var met = await delivered();
+
+            while (!met && elapsed.Elapsed < bound)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(25));
+
+                met = await delivered();
+            }
+
+            // Awaited rather than fired: StopAsync joins the loops, so what the assertions
+            // read afterwards is a database nothing is still writing to.
+            foreach (var service in services)
+            {
+                await service.StopAsync(CancellationToken.None);
+            }
+
+            return met;
+        });
+
+        Assert.True(reached, $"the drain delivered nothing within {bound.TotalSeconds} seconds.");
     }
 }
 

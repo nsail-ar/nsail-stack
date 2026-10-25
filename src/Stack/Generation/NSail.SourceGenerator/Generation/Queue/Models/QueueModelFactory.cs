@@ -45,9 +45,11 @@ public static class QueueModelFactory
                 continue;
             }
 
-            // Neither arity: the attribute is on something that is not a message at all, and
-            // there is no sender to register for it. Left to the compiler, which already has
-            // nothing to say about it, rather than given a diagnostic id of its own.
+            // Neither arity: the attribute sits on a type no Send overload accepts, so no
+            // caller can reach it and there is no sender to register for it. Skipped rather
+            // than refused, because the two refusals this generator does make are the two
+            // that would otherwise surface at runtime — a result nobody wrote, and
+            // MultipleSenders.
             if (messages.Length == 0)
                 continue;
 

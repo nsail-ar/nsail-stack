@@ -290,6 +290,8 @@ same thing.
 | `NSG011` | Warning | A `[MapFrom]` source member is written to no member of the entity — the caller sends it and every save drops it (data.md, Mapping). |
 | `NSG012` | Warning | A settable `[MapTo]` target member is read from no member of the entity — every row reaches the caller with it empty. |
 | `NSG013` | Error | An `Ignore` entry on a `[MapFrom]` or `[MapTo]` names a member the type does not declare, so it silences nothing. |
+| `NSG014` | Error | A `[Queue]` message implements `IMessage<T>` — a durable send answers "accepted" and never the outcome, so there is no result to hand back. |
+| `NSG015` | Error | A `[Queue]` message also carries `[Http]` — each registers an `ISender`, so every send would meet `MultipleSenders` at runtime. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only
