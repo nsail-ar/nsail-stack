@@ -99,7 +99,8 @@ namespace NSail.Sample.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateOnly?>("BirthDate")
-                        .HasColumnType("date");
+                        .HasColumnType("date")
+                        .HasComment("personal:birth-date");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -107,6 +108,7 @@ namespace NSail.Sample.Migrations
                     b.Property<string>("Email")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
+                        .HasComment("personal:email")
                         .UseCollation("case_insensitive");
 
                     b.Property<bool>("IsFavorite")
@@ -121,16 +123,19 @@ namespace NSail.Sample.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
+                        .HasComment("personal:name")
                         .UseCollation("case_insensitive");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
+                        .HasComment("personal:free-text")
                         .UseCollation("case_insensitive");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
+                        .HasComment("personal:phone")
                         .UseCollation("case_insensitive");
 
                     b.Property<int>("Rating")
@@ -165,6 +170,7 @@ namespace NSail.Sample.Migrations
                     b.Property<string>("City")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
+                        .HasComment("personal:address")
                         .UseCollation("case_insensitive");
 
                     b.Property<Guid>("ContactId")
@@ -179,6 +185,7 @@ namespace NSail.Sample.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
+                        .HasComment("personal:address")
                         .UseCollation("case_insensitive");
 
                     b.Property<Guid>("TenantId")

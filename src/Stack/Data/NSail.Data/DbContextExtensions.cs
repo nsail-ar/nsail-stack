@@ -1,6 +1,7 @@
 ﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using NSail.Messaging.Runtime.Pipelines;
 using NSail.Messaging.Runtime.UnitOfWork;
+using NSail.Privacy;
 
 namespace NSail.Data;
 
@@ -17,8 +19,9 @@ public static class DbContextExtensions
 {
     /// <summary>Applies every kit's model configuration, the Stack's own two tables — the seed
     /// history and the tenant state — and then
-    /// the four rules the Stack sets over the whole model: the row version, the case-insensitive
-    /// collation, the tenant column with the filter that rides it, and the org filter over what
+    /// the five rules the Stack sets over the whole model: the row version, the case-insensitive
+    /// collation, the personal-data comment each declaration carries to its column, the tenant
+    /// column with the filter that rides it, and the org filter over what
     /// the map classifies as having happened at a branch. The context is a parameter because
     /// both filters have to reach the scope of whichever context runs the query — see
     /// <see cref="ITenanted"/> and <see cref="IHasOrgScope"/>.</summary>
@@ -39,6 +42,7 @@ public static class DbContextExtensions
         ApplyTenantState(modelBuilder);
         ApplyRowVersion(modelBuilder);
         ApplyCaseInsensitiveText(modelBuilder);
+        ApplyPersonalData(modelBuilder);
         TenantColumn.Apply(modelBuilder.Model, context);
         OrgFilter.Apply(modelBuilder.Model, context);
     }
@@ -173,6 +177,33 @@ public static class DbContextExtensions
                 }
 
                 property.SetCollation(Collations.CaseInsensitive);
+            }
+        }
+    }
+
+    // A program outside the app has to be able to tell which columns hold a person's datum: the
+    // fleet runner that copies a tenant's rows into somewhere people and agents walk knows no
+    // product, no kit and no entity, and reads only the catalog. So the declaration the property
+    // wears rides the model into Postgres's own col_description, set once over the whole model
+    // for the reason the collation is — a per-kit fluent call is one a kit can forget, and this
+    // is the rule nobody may forget. Only the personal declaration writes: a column with no
+    // comment holds no personal datum, and what makes the declaration unforgettable is the sweep
+    // that demands one (NotPersonalAttribute).
+    static void ApplyPersonalData(ModelBuilder modelBuilder)
+    {
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entity.GetProperties())
+            {
+                var declaration = property.PropertyInfo?
+                    .GetCustomAttribute<PersonalAttribute>(inherit: true);
+
+                if (declaration is null)
+                {
+                    continue;
+                }
+
+                property.SetComment(PersonalDataComment.For(declaration.Kind));
             }
         }
     }

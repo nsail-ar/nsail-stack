@@ -3,6 +3,7 @@
 
 using NSail.Data;
 using NSail.Mapping.Annotations;
+using NSail.Privacy;
 using NSail.Sample.Contacts;
 using NSail.Sample.Contacts.Models;
 
@@ -18,20 +19,25 @@ public class Contact : IVersioned, IAudited
 
     public uint Version { get; set; }
 
+    [Personal(PersonalData.Name)]
     public string Name { get; set; } = string.Empty;
 
     public ContactKind Kind { get; set; }
 
+    [Personal(PersonalData.Email)]
     public string? Email { get; set; }
 
+    [Personal(PersonalData.Phone)]
     public string? Phone { get; set; }
 
+    [Personal(PersonalData.BirthDate)]
     public DateOnly? BirthDate { get; set; }
 
     public int Rating { get; set; }
 
     public bool IsFavorite { get; set; }
 
+    [Personal(PersonalData.FreeText)]
     public string? Notes { get; set; }
 
     public DateTime CreatedAt { get; set; }

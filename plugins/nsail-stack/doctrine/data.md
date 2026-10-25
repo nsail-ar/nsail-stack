@@ -31,7 +31,7 @@ Infrastructure only. No domain entities, no shared DbContext type.
 |---|---|
 | `IDbContextSetup` | Kit/app registers EF model configuration |
 | `Setup.AddDbContextSetup<T>` | Registers a kit's `IDbContextSetup` in DI |
-| `DbContextExtensions.ApplySetups` | Applies `IDbContextSetup` instances to a `ModelBuilder`, then the Stack's own two tables (seed history, tenant state) and the model-wide rules (row version, collation, tenant column, org filter) |
+| `DbContextExtensions.ApplySetups` | Applies `IDbContextSetup` instances to a `ModelBuilder`, then the Stack's own two tables (seed history, tenant state) and the model-wide rules (row version, collation, personal-data comment, tenant column, org filter) |
 | `DbContextExtensions.ApplyTenancy` | What a product's context states in `ConfigureConventions` — see Tenancy |
 | `DbContextExtensions.SetDefaultDbContext<T>` | `AddScoped<DbContext, T>()` for handler injection |
 | `Setup.AddDataAccess<T>` | The tenancy seam plus the app's context — what a host calls instead of `AddDbContext` |
@@ -41,6 +41,7 @@ Infrastructure only. No domain entities, no shared DbContext type.
 | `TenantSeedStep` / `AppliedSeedStep` | One named step of that seed, and the tenant's history of which it has run — one of the Stack's two tables (data-tenancy.md, First touch bootstraps) |
 | `TenantState` / `TenantStates` / `TenantStateMemo` | What the install records ABOUT a tenant — whether it is served, why, until when, and which plan it is on, written from outside the app — the scoped reader of it, and what holds that reading for minutes: the other Stack table (data-tenancy.md, The install's own record) |
 | `WellKnownRows` / `TenancyProvider.Row` | The ids code names by constant, and which scope's copy one means (data-tenancy.md, A frozen id) |
+| `[Personal]` / `[NotPersonal]` / `PersonalDataComment` | What a column holds about a person, declared on the property and carried to the column's comment — see Provider |
 
 Connection string: app `{App}Options` with `[Required] ConnectionString`, loaded via
 `configuration.Load<OpticalOptions>()` from `NSail.Configuration`. See
@@ -136,6 +137,30 @@ so handlers keep writing plain `Contains`. Deliberate consequences:
   Postgres refuses one there and the migration would not apply (`Collations.Collatable` holds
   that roster). Naming a text type (`text`, `varchar(120)`, `citext`) changes nothing; the rule
   is about what the column holds, not about who named the type.
+
+**Every text column says whether it holds a person's datum.** `[Personal(PersonalData.Email)]`
+on the property, or `[NotPersonal]`; the pair is exhaustive, and a text column wearing neither
+reds the sweep over the apps' models. The declaration is set once over the whole model by
+`ApplySetups`, like the collation and for the same reason: a per-kit fluent call is one a kit can
+forget, and nobody may forget this one. Deliberate consequences:
+
+- **The schema is the carrier.** The pass writes the kind into the column's comment, so it rides
+  the migration into Postgres's `col_description` — the only place a program outside the app can
+  read it. That program is the fleet runner copying a tenant's rows into somewhere people and
+  agents walk: it knows no product, kit or entity and reads only the catalog. Both ends spell the
+  kind through `NSail.Privacy.PersonalDataComment`, never a literal.
+- **`[NotPersonal]` writes nothing** — a column with no comment holds no personal datum. What
+  makes the declaration unforgettable is the sweep that demands one, not a mark on hundreds of
+  columns every reader of the schema would have to discount. A column's comment therefore IS this
+  declaration: nothing else in the model writes one.
+- **The kind says what a plausible fake looks like**, and nothing else — not a sensitivity level,
+  not a retention rule. A value that is secret rather than personal (`Login.AccessKey`, a token,
+  a hash) is `[NotPersonal]`, and neutralizing it belongs to whoever restores. Takeout's
+  `ITakeoutWithholding` answers that other question, per column too, and the two must not be read
+  as one list.
+- **Allowed on any property, demanded on text.** A date of birth identifies a person as plainly
+  as a name does and declares itself the same way; the sweep insists only where it cannot judge
+  for itself, which is every `string`.
 
 **Dates split by meaning** — three shapes, each with its own storage:
 
@@ -259,6 +284,11 @@ public class DbContextSetup : IDbContextSetup
     static void ConfigureParty(ModelBuilder modelBuilder) { ... }
 }
 ```
+
+**An entity's text properties declare themselves** — `[Personal(PersonalData.Name)]` or
+`[NotPersonal]`, on the property and never in the setup (see Provider). A text column wearing
+neither reds the sweep over the apps' models, so a new entity answers before its migration
+lands.
 
 ---
 

@@ -20,6 +20,7 @@ public class AppliedSeedStep
     /// prose, and the unique index over it is what makes a step's second run impossible even
     /// where two processes touch one tenant at once.</summary>
     [CaseSensitive]
+    [NotPersonal]
     public string Step { get; set; } = string.Empty;
 
     public DateTime AppliedAt { get; set; }
