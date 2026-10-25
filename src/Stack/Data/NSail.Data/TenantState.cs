@@ -73,6 +73,7 @@ public class TenantState : IInstallScoped
     /// paying customer where it found them. Whoever reads it reads it through
     /// <c>Entitlements.Read</c> (NSail.Security), which answers the permissive thing to
     /// everything it cannot read.</summary>
+    [NotPersonal]
     public string? Entitlements { get; set; }
 
     /// <summary>When the bag above was last written, in UTC. Its writer is a program outside
