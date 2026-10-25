@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Data;
+using NSail.Privacy;
+
 namespace NSail.Messaging.Queue;
 
 /// <summary>One durable send, written through the sending operation's own
@@ -15,12 +18,19 @@ public class QueuedMessage
     /// <summary>The message's full type name and nothing about its assembly, written and read
     /// by the one rule both of the queue's ends share (<c>QueueConsumer{TMessage}.Key</c>): the
     /// stored name picks a registered consumer, and never becomes a type on its own.</summary>
+    [NotPersonal]
     public string MessageType { get; set; } = string.Empty;
 
+    // A send's own payload: whatever the operation carried, which for a product that books
+    // appointments or sells glasses is a person's name, phone or note. Nothing here can parse it,
+    // so an anonymized copy loses the whole body — a queue row restored where people walk must
+    // not be readable, and a send re-run against a copy is not something anybody asked for.
+    [Personal(PersonalData.FreeText)]
     public string Body { get; set; } = string.Empty;
 
     /// <summary>The headers the send carried, as the wire JSON of a string dictionary; null
     /// where it carried none.</summary>
+    [Personal(PersonalData.FreeText)]
     public string? Headers { get; set; }
 
     /// <summary>Who asked. The actor's own ids and never a credential: the delivery re-enters
@@ -45,5 +55,7 @@ public class QueuedMessage
     /// be the silence the queue exists not to keep.</summary>
     public DateTime? DeadLetteredAt { get; set; }
 
+    // An exception's own words, which quote the value that threw.
+    [Personal(PersonalData.FreeText)]
     public string? LastError { get; set; }
 }

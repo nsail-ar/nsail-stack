@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Data;
 using NSail.Mapping.Annotations;
+using NSail.Privacy;
 using NSail.Sample.Contacts;
 using NSail.Sample.Contacts.Models;
 
@@ -17,8 +19,10 @@ public class ContactAddress
 
     public AddressKind Kind { get; set; }
 
+    [Personal(PersonalData.Address)]
     public string Street { get; set; } = string.Empty;
 
+    [Personal(PersonalData.Address)]
     public string? City { get; set; }
 
     [Parent]
