@@ -217,7 +217,9 @@ The live values are the operations ledger's (nsail-ops `providers/grafana.md`).
 Area `Optical`), `service.namespace` = `nsail`, `deployment.environment`, `nsail.tenant`
 (the `Tenant` setting, else the machine name).
 
-**No personal data reaches telemetry — ids, timings and codes only.** This is shape, not
+**No personal data reaches telemetry — ids, timings and codes only.** What counts as personal
+is not judged here: the column that holds one declares it, and the model carries the
+declaration to the schema (data.md § Provider). This is shape, not
 discipline. NSail's own span never reads a message's members: it carries `nsail.outcome`
 (`ok`/`refused`/`failed`), `nsail.user` (who asked), and, to say how it ended,
 `nsail.problem` on a refusal — the Problem's **Code**, never its Title — plus `nsail.rule`,

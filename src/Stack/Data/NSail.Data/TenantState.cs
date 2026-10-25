@@ -56,17 +56,20 @@ public class TenantState : IInstallScoped
     /// as active. Text rather than an enum because the column IS the contract with a program
     /// outside this codebase — a row a person can read, and a value no deserializer can throw
     /// on.</summary>
+    [NotPersonal]
     public string Status { get; set; } = Active;
 
     /// <summary>Which plan the customer is on, carried and not interpreted: the Stack names no
     /// plan and knows none. Whoever sells them says what the words are, and a product that
     /// limits by plan reads this.</summary>
+    [NotPersonal]
     public string? Plan { get; set; }
 
     /// <summary>Why the tenant is paused, a word of <see cref="Reasons"/> — compared and never
     /// parsed, like <see cref="Status"/>. It changes nothing about whether the tenant is served:
     /// it is what the suspended page words itself by, and an unknown word gets the generic
     /// words.</summary>
+    [NotPersonal]
     public string? Reason { get; set; }
 
     /// <summary>The moment the window opens, in UTC. A row with no <c>SuspendedFrom</c> has no
@@ -83,6 +86,7 @@ public class TenantState : IInstallScoped
     /// <summary>What the writer wants this tenant's people to read, instead of nothing — plain
     /// text, shown under the generic words. Trusted and escaped anyway: the page is markup
     /// (data-tenancy.md, Tenant state).</summary>
+    [NotPersonal]
     public string? Message { get; set; }
 
     /// <summary>Whether the tenant is paused at <paramref name="now"/>: the open-ended switch,
