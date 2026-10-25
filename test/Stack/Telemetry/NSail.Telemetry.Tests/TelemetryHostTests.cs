@@ -3,8 +3,10 @@
 
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
+using NSail.Background;
 using NSail.Consulting.Patients;
 using NSail.Data;
+using NSail.Messaging.Queue;
 using NSail.Messaging.Runtime.Pipelines;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
@@ -83,9 +85,28 @@ public sealed class TelemetryHostTests
         Assert.NotNull(app.Services.GetService<MeterProvider>());
 
         using var data = new Meter(TenantPolicies.MeterName);
+        using var queue = new Meter(QueueMetrics.MeterName);
         using var unnamed = new Meter("NSail.Telemetry.Tests.Unnamed");
 
         Assert.True(data.CreateCounter<long>("probe").Enabled);
+        Assert.True(queue.CreateCounter<long>("probe").Enabled);
         Assert.False(unnamed.CreateCounter<long>("probe").Enabled);
+    }
+
+    // The two meters this module does reference, subscribed by their declaring constants: a
+    // dead letter and a deferred item that timed out are both counted and never logged, so an
+    // unsubscribed meter is the whole difference between an alert and silence.
+    [Fact]
+    public void Both_of_the_background_modules_meters_are_subscribed()
+    {
+        using var app = Harness.Host(credentialed: true);
+
+        Assert.NotNull(app.Services.GetService<MeterProvider>());
+
+        using var jobs = new Meter(BackgroundJobMetrics.MeterName);
+        using var deferred = new Meter(DeferredWorkMetrics.MeterName);
+
+        Assert.True(jobs.CreateCounter<long>("probe").Enabled);
+        Assert.True(deferred.CreateCounter<long>("probe").Enabled);
     }
 }

@@ -112,11 +112,13 @@ public static class Setup
                 metrics.AddHttpClientInstrumentation();
                 metrics.AddMeter(_blazor);
 
-                // The background runner's own three instruments. A metric and not the runner's
-                // log lines, because LogScrubber drops every string attribute at this same
-                // seam: the line that names the job would arrive with the job cut out of it,
-                // and an alert has to name what broke.
+                // The background runner's own three instruments, and the deferred runner's own
+                // meter beside them. A metric and not either runner's log lines, because
+                // LogScrubber drops every string attribute at this same seam: the line that
+                // names the job would arrive with the job cut out of it, and an alert has to
+                // name what broke.
                 metrics.AddMeter(BackgroundJobMetrics.MeterName);
+                metrics.AddMeter(DeferredWorkMetrics.MeterName);
 
                 metrics.AddMeter(meters);
 

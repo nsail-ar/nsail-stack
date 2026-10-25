@@ -1,0 +1,20 @@
+#nullable enable
+
+using Microsoft.Extensions.DependencyInjection;
+
+namespace {{ Namespace }}
+{
+    {{ ClassDeclaration }}
+    {
+        {{ MethodDeclaration }}
+        {
+            // The drain and its job ride with the first kit that queues; the entries below are
+            // the closed list it delivers from, so a stored type name picks an entry and never
+            // becomes a type.
+            global::NSail.Messaging.Queue.Setup.AddQueueDelivery({{ ServicesParameterName }});
+            {{~ for Message in Messages ~}}
+            {{ ServicesParameterName }}.AddSingleton<global::NSail.Messaging.Queue.QueueConsumer>(new global::NSail.Messaging.Queue.QueueConsumer<{{ Message }}>());
+            {{~ end ~}}
+        }
+    }
+}

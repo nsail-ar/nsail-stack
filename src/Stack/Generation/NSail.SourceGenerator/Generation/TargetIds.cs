@@ -17,9 +17,9 @@ public static class TargetIds
 
     public const int Push_Clients = 32;
 
-    public const int MassTransit_Consumers = 41;
+    public const int Queue_Consumers = 41;
 
-    public const int MassTransit_Producers = 42;
+    public const int Queue_Producers = 42;
 
     public const int Policies_Handlers = 51;
 

@@ -452,6 +452,13 @@ Optical fixture with no overriding wildcard, so the preset itself answers).
    - Not exempt: **a caller's own `Send`** (still 403) and anything crossing a **process
      boundary**, since an `HttpSender`'s message arrives at the other side as an ordinary
      send and is gated there.
+   - The second exemption, and the only other one: **a `[Queue]` command's delivery**
+     (`AmbientQueue`, read beside `AmbientPublish` by the same two lines). It is the same
+     reasoning across a wait rather than a frame — the grants were answered at the send and
+     the caller was told "accepted" — and the alternative is a grant revoked in between
+     refusing, hours later, a command there is nobody left to tell about. The actor is not
+     elevated there either: the envelope carries his own ids, never a credential, and the
+     drain re-enters them ([messaging.md](messaging.md), The durable queue).
    - **The boundary this rests on is DI registration**, as a background job's is: a domain
      event carries no `[Http]`, so nothing off the wire can publish. What may publish is what
      the app composed, and a new `IHandler<TEvent>` is reviewed as code — no stored policy
@@ -464,6 +471,7 @@ Optical fixture with no overriding wildcard, so the preset itself answers).
    message, the event behind it and the reaction's own sends — and pins that the same
    ungranted message sent by the caller is still refused; `AmbientPublishTests`
    (`NSail.Messaging.Runtime.Tests`) pins the flow that carries the flag.
+   `QueueIdentityTests` (`NSail.Messaging.Queue.Tests`) is the queue's twin of the first.
 
 Graph questions go through a **provider** (`RelationProvider` — Provider family, lives in NSail.Security, covers both edges: `IsRelated(partyA, partyB, role)` over Relationships, `IsMember(party, org, role)` over Memberships, plus `GetAncestors`/`GetDescendants` over the chart — in-query always; post-query filtering is banned: paging, counts, existence leaks). Two implementations:
 - **Optimistic default** (TryAdd, returns true) — serves the WASM client AND apps without Iam (the Null pattern). Client flow for `relatedAs`: handler passes optimistically → UI attempts → server 403 → Forbidden toast. Few cases, acceptable UX.

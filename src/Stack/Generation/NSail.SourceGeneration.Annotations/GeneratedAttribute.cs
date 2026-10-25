@@ -29,9 +29,12 @@ public enum Push
     Clients = 32,
 }
 
-public enum MassTransit
+public enum Queue
 {
+    /// <summary>A QueueConsumer per [Queue] message in scope, the closed list the drain delivers from (receive side: the row's type name picks the entry, never a string becoming a type).</summary>
     Consumers = 41,
+
+    /// <summary>A QueueSender per [Queue] message in scope, registered as its ISender (send side: the send writes the durable row through the operation's own DbContext).</summary>
     Producers = 42
 }
 
@@ -67,7 +70,7 @@ public class GeneratedAttribute : Attribute
     {
     }
 
-    public GeneratedAttribute(MassTransit artifact)
+    public GeneratedAttribute(Queue artifact)
     {
     }
 

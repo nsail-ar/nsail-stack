@@ -24,9 +24,11 @@ in process; the same component running in WebAssembly sends over HTTP. There is 
 sender registered is `SenderNotFound`, two is `MultipleSenders` — the composition decides
 explicitly, so a message never silently travels a road nobody chose.
 
-A future queue transport fits the same seam: its messages declare `[Queue]` instead of `[Http]`,
-and its producer is the sender *everywhere*, including the handler's own host — a queue is a
-promise about delivery, not about location.
+The durable queue fits the same seam: its messages declare `[Queue]` instead of `[Http]`, and
+its producer is the sender *everywhere*, including the handler's own host — a queue is a
+promise about delivery, not about location. The send writes a row inside the operation's own
+transaction and the handler runs afterwards, so it answers "accepted" and never the outcome
+(messaging.md, The durable queue).
 
 ## The pipeline
 

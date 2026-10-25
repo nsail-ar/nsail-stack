@@ -61,10 +61,11 @@ decision per host, never an implicit fallback:
 
 Both targets scan the same `[Http]` messages — `Http.InProcess` is the local counterpart of
 `Http.Clients`. No sender registered → `SenderNotFound`; two
-→ `MultipleSenders`. A future asynchronous transport (queue) will register its producer as
-the sender **everywhere, including the handler's own host** — a queue is a semantic contract
-(durability, retry), not a location boundary. Its messages declare `[Queue]` instead of
-`[Http]`, so they are excluded from the HTTP targets by construction.
+→ `MultipleSenders`. The durable queue registers its producer as the sender **everywhere,
+including the handler's own host** — a queue is a semantic contract (durability, retry), not a
+location boundary. Its messages declare `[Queue]` instead of `[Http]`, so they are excluded
+from the HTTP targets by construction and a Wasm or external client cannot send one at all
+(see The durable queue).
 
 Client hosts get the host's own origin for every named client automatically; the
 `HttpClients` section in `appsettings.json` is an override for kits that live elsewhere,
@@ -83,9 +84,10 @@ scope, re-enters the tenant, **runs in the install's default language** the way 
 does (data-tenancy.md, Background jobs — a queue sets no culture either, and an item that ran
 invariant found no WhatsApp template in a language nobody has), applies a 30s timeout and emits a
 `nsail.deferred.work.completed` metric (tagged by kind and outcome), so a failure stays
-visible without a task panel. This is NOT the `[Queue]` transport: it is in-process and not
-durable, so a crash between Enqueue and pickup loses the notice — accepted because the
-operation already persisted the fact that mattered.
+visible without a task panel. This is NOT `[Queue]`: it is in-process and not durable, so a
+crash between Enqueue and pickup loses the notice — accepted because the operation already
+persisted the fact that mattered. What must survive a crash is a `[Queue]` command instead
+(see The durable queue); converting a notice to one is a decision per notice, not a default.
 
 **A notice about something THIS operation wrote enqueues through `AfterCommit`, not from inside
 the handler.** The runner owns its own scope and connection, so a row the operation has not
@@ -171,7 +173,11 @@ once, in `AmbientUnitOfWork` (`NSail.Messaging.Runtime.UnitOfWork`), and travels
 The boundaries, each deliberate:
 
 - **HTTP sends stay outside.** A send crossing a process boundary is a second operation by
-  design; `HttpSender` is untouched. If a seam becomes a service, the outbox joins there.
+  design; `HttpSender` is untouched. If a seam becomes a service, the outbox joins there. A
+  `[Queue]` send is NOT outside: its producer writes a row through the operation's own
+  `DbContext`, so it is an `IAmbientSender` like the in-process one — the durability is the
+  point, and a row committed by a second transaction could outlive an operation that
+  refused.
 - **Every interceptor and validator runs inside the send's own unit** — outermost or nested.
   The pipeline asks the sender for the operation's scope *before* building anything:
   `InProcessSender` implements `IAmbientSender`, `SendPipeline.Execute` calls its `Run`
@@ -231,6 +237,69 @@ refusal after them leaves neither.
 Store side: `SetDefaultDbContext<T>()` registers `DbContextUnitOfWork` as the scope's
 `IUnitOfWork` ([data.md](data.md)), and `HandlerHost` calls `AddUnitOfWork()` for the same
 reason. A host with no store (a client, a Wasm host) has nothing to enlist.
+
+---
+
+## The durable queue
+
+`[Queue]` on a command makes its send durable. The send is stored as a row through the
+sending operation's own `DbContext` and so commits with it; the caller is answered the moment
+that transaction commits; the same `IHandler` runs it afterwards. An operation that rolls back
+queues nothing. One that commits has already queued it, so the handler runs even if the
+process dies immediately after — the row is in Postgres, not in anybody's memory, and the next
+process over that database delivers it.
+
+**Only a command with no result.** A queued send answers "accepted", never the outcome, so
+`IMessage<T>` is a build error (NSG014) and a screen that needs the outcome hears it through a
+`[Pushed]` event. **Declared instead of `[Http]`, never beside it** (NSG015): both register an
+`ISender`, which the pipeline could only refuse at runtime as `MultipleSenders`.
+
+- **The queue is the row, and nothing new is deployed.** The default install queues on the
+  database it already has and drains in this process. `Queue:Transport` names the brokers —
+  `Postgres`, `RabbitMq`, `AmazonSqs`, `AzureServiceBus` — and refuses each by name at startup
+  until the brokers' own story lands, so an install that reads as configured for one is told
+  rather than quietly served the in-process queue.
+- **Tenant-scoped like any other entity.** The row takes its column, its filter and its
+  tenant-leading index from the model pass, so each tenant's queue is its own: under
+  `SingleDb` the cell's database with the tenant in the column, under `MultiDb` the tenant's
+  own database. The drain is a per-tenant background job, so the sweep, the install's default
+  language and the suspended-tenant skip are the ones
+  [data-tenancy.md](data-tenancy.md) already describes.
+- **The actor travels, the gate does not run twice.** The envelope carries the actor's own ids
+  and never a credential, and the drain re-enters them, so what the handler writes names the
+  person who asked. The delivery itself is ungated — the grants were answered at the send, and
+  a check made hours later would refuse, with nobody left to tell, a command the caller was
+  already told was accepted ([permissions.md](permissions.md), Evaluation).
+- **Everything else above the handler runs again.** The delivery builds the in-process
+  pipeline, so the message's own DataAnnotations, every `IValidator<T>` and every interceptor
+  answer a second time, inside the consumer's own unit of work — which is what makes a
+  delivery as atomic as the send that stored it. The cost is the contract a `[Queue]` command
+  signs: a rule that was true at the send and false hours later turns a command already
+  answered "accepted" into retries and then a dead letter. A rule over state the delivery can
+  find changed therefore belongs in the handler, where a refusal is that handler's own failure
+  and not a second verdict on a message already accepted.
+- **Retry, backoff, dead letter — the Stack's own, and configuration.** `Queue:MaxAttempts`,
+  `Queue:Backoff` (doubling per attempt), `Queue:Interval` and `Queue:BatchSize`. A row that
+  fails its last attempt is dead-lettered: it stays, it is never attempted again, and it is
+  counted on `nsail.queue.delivered` tagged by message and outcome. A meter and not a log line
+  because `LogScrubber` drops the name out of an exported record — and the meter is subscribed
+  for every server host by `AddBaseWebApi`, since a counter nothing exports is the same silence
+  (baseservices.md, *Telemetry*).
+- **Queueing is a save point of the sending operation.** The producer writes its row with
+  `SaveChangesAsync`, which saves the *context* and not one entity: everything the operation
+  has tracked so far goes to the database with it, inside the operation's transaction. A
+  handler that queues between two halves of a graph it is still assembling therefore meets
+  that half-built graph's own constraints at the send, not at its own save. Assemble first,
+  queue last — or save what is tracked before the send, which is the same thing said in the
+  handler where the reader can see it.
+- **Delivery is at least once.** A process that dies between a handler's commit and the pass
+  that deletes its row delivers that row again. The alternative — delete first — loses the
+  work, which is the one thing a durable queue may not do.
+
+An opt-in like the interceptor, and the generated holder is the opt-in: it composes the queue
+whether or not the kit has reached its first `[Queue]` message yet, and a kit declares that
+holder with that first message. A product composing no kit that has one gains no table and its
+migration chain does not move.
 
 ---
 

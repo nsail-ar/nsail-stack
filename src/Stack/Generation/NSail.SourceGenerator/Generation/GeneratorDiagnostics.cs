@@ -128,4 +128,22 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "A name that matches nothing silences nothing, and goes on silencing nothing after the member it meant is renamed.");
+
+    public static readonly DiagnosticDescriptor QueuedCarriesAResult = new(
+        id: "NSG014",
+        title: "[Queue] on a message that returns a result",
+        messageFormat: "'{0}' is marked [Queue] and implements IMessage<T>. A durable send answers its caller \"accepted\" the moment the operation commits, hours before the handler runs, so there is no outcome to hand back: drop the result, or drop the attribute and let the caller wait.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The result a queued send could return is the acceptance and never the outcome; a screen that needs the outcome hears it through a [Pushed] event.");
+
+    public static readonly DiagnosticDescriptor QueuedAlsoHttp = new(
+        id: "NSG015",
+        title: "[Queue] beside [Http]",
+        messageFormat: "'{0}' carries both [Queue] and [Http]. Each registers an ISender for the message, so the host would hold two and every send would meet MultipleSenders at runtime: [Queue] is declared instead of [Http], not beside it.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Two senders for one message is a refusal the send pipeline can only make at runtime; the declaration is where it is visible.");
 }

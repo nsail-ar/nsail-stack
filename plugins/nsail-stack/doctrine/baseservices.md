@@ -141,19 +141,24 @@ own** — .NET 10 ships it on the sources/meters `Microsoft.AspNetCore.Component
 `.Components.Lifecycle` and `.Components.Server.Circuits`, so there is nothing to install,
 only to subscribe.
 
-**The background runner's metrics are subscribed by reference, not literal.**
-`NSail.Telemetry` references `NSail.Background` and subscribes `BackgroundJobMetrics.MeterName`
-beside the Blazor meters — a subscription to a meter nobody emits on fails silently in
-production with a green build, so the name is derived from the declaring constant. The
-reference points this way because the reverse would put the OTLP exporter packages behind
-every kit that ships a job. The three instruments and why they are metrics rather than log
-lines: data-tenancy.md, *Background jobs*.
+**The background module's metrics are subscribed by reference, not literal.**
+`NSail.Telemetry` references `NSail.Background` and subscribes both of that module's meters —
+`BackgroundJobMetrics.MeterName` and `DeferredWorkMetrics.MeterName` — beside the Blazor
+meters. A subscription to a meter nobody emits on fails silently in production with a green
+build, so the name is derived from the declaring constant; a meter nobody *subscribes* fails
+the same way, and counting a dead letter that never leaves the host is the silence a metric was
+chosen over a log line to avoid. The reference points this way because the reverse would put
+the OTLP exporter packages behind every kit that ships a job. The instruments and why they are
+metrics rather than log lines: data-tenancy.md, *Background jobs*.
 
 **A module the telemetry one cannot reference names its meter at the composition.**
-`AddTelemetry` takes the extra meter names and `AddBaseWebApi` passes the data module's
-(`TenantPolicies.MeterName`, the tenant wall's one gauge): a reference from telemetry to data
-would put EF Core behind every host that exports a span, and a client host has no store. Still
-the declaring constant, never a literal.
+`AddTelemetry` takes the extra meter names and `AddBaseWebApi` passes them: the data module's
+(`TenantPolicies.MeterName`, the tenant wall's one gauge) and the durable queue's
+(`QueueMetrics.MeterName`, the drain's one counter). A reference from telemetry to either would
+put EF Core behind every host that exports a span, and a client host has no store. Still the
+declaring constant, never a literal — and named whether or not the host composes the queue,
+because a meter nobody emits on costs a subscription and nothing else, while naming it inside
+`AddQueue` would need the exporter packages in `NSail.Messaging.Queue`.
 
 **The Mediator span is an interceptor**, registered open-generic like `SecurityInterceptor`
 and *before* it, so it is the outermost link of `SendPipeline`'s chain and a refusal falls

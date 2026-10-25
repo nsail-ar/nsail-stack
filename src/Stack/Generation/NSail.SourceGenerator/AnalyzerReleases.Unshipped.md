@@ -18,3 +18,5 @@ NSG010 | NSail.Generation | Error | [MapFrom] or [MapTo] is declared on an open 
 NSG011 | NSail.Generation | Warning | A [MapFrom] source member is written to no member of the entity.
 NSG012 | NSail.Generation | Warning | A [MapTo] target member is read from no member of the entity.
 NSG013 | NSail.Generation | Error | An Ignore entry names a member the type does not declare.
+NSG014 | NSail.Generation | Error | A [Queue] message returns a result.
+NSG015 | NSail.Generation | Error | A [Queue] message also carries [Http].

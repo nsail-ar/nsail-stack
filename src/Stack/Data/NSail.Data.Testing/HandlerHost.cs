@@ -14,12 +14,16 @@ namespace NSail.Data.Testing;
 public sealed class HandlerHost : IAsyncDisposable
 {
     readonly TestDatabase _database;
+    readonly Func<string, DbContext> _context;
     readonly ServiceProvider _services;
+    readonly bool _ownsDatabase;
 
-    HandlerHost(TestDatabase database, ServiceProvider services)
+    HandlerHost(TestDatabase database, Func<string, DbContext> context, ServiceProvider services, bool ownsDatabase)
     {
         _database = database;
+        _context = context;
         _services = services;
+        _ownsDatabase = ownsDatabase;
     }
 
     public static async Task<HandlerHost> Start(
@@ -31,6 +35,27 @@ public sealed class HandlerHost : IAsyncDisposable
 
         await database.Migrate();
 
+        return Build(database, context, compose, ownsDatabase: true);
+    }
+
+    /// <summary>The same composition again over the same rows — a deploy, in the only shape a
+    /// test can have one: another service provider that has never seen this database, reading
+    /// what the first one committed. It migrates nothing and drops nothing; the database
+    /// belongs to the host it was started beside, so this one is disposed first and the
+    /// original last.</summary>
+    public static HandlerHost Redeploy(HandlerHost host, Action<IServiceCollection> compose)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+
+        return Build(host._database, host._context, compose, ownsDatabase: false);
+    }
+
+    static HandlerHost Build(
+        TestDatabase database,
+        Func<string, DbContext> context,
+        Action<IServiceCollection> compose,
+        bool ownsDatabase)
+    {
         var services = new ServiceCollection();
 
         services.AddLogging();
@@ -77,7 +102,7 @@ public sealed class HandlerHost : IAsyncDisposable
         // runs in a scope of its own.
         services.AddScoped<SessionProvider, AmbientSessionProvider>();
 
-        return new HandlerHost(database, services.BuildServiceProvider());
+        return new HandlerHost(database, context, services.BuildServiceProvider(), ownsDatabase);
     }
 
     public async Task<TResult> Send<TResult>(IMessage<TResult> message, Session session, CancellationToken cancellationToken = default)
@@ -194,6 +219,10 @@ public sealed class HandlerHost : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await _services.DisposeAsync();
-        await _database.DisposeAsync();
+
+        if (_ownsDatabase)
+        {
+            await _database.DisposeAsync();
+        }
     }
 }
