@@ -15,11 +15,12 @@ namespace NSail.Background;
 /// its own scope, its own tenant, the install's language and a timeout, so a slow vendor costs a
 /// queue slot and never a request.
 ///
-/// <para>Not a message transport and not the <c>[Queue]</c> messaging.md reserves for a future
-/// durable dispatch (messaging.md, "a queue is a semantic contract"): this is in-memory, and a
-/// process that dies between Enqueue and the runner picking it up loses the item. Accepted
-/// because every caller here already persisted the fact that matters — the order, the sale —
-/// before enqueueing; what is lost on a crash is a notification, not data (ruled 2026-09-23).</para>
+/// <para>Not a message transport and not <c>[Queue]</c>, which is durable (messaging.md, The
+/// durable queue): this is in-memory, and a process that dies between Enqueue and the runner
+/// picking it up loses the item. Accepted because every caller here already persisted the fact
+/// that matters — the order, the sale — before enqueueing; what is lost on a crash is a
+/// notification, not data (ruled 2026-09-23). Work that must survive the crash is a
+/// <c>[Queue]</c> command instead.</para>
 ///
 /// <para>Registered by <see cref="Setup.AddDeferredWork"/>, by hand rather than through the
 /// generator: it is a Stack-wide singleton every host gets once, the same shape

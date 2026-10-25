@@ -12,6 +12,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- The durable queue's two seams into the runtime, and the only assembly that gets
+		     them: AmbientUnitOfWork, so a [Queue] send writes its row through the operation's
+		     own transaction, and AmbientQueue.Run, so the drain can turn the gate's question
+		     off for a delivery. Both are internal on purpose — one named consumer keeps the
+		     list of things that can do either readable. -->
+		<InternalsVisibleTo Include="NSail.Messaging.Queue" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\..\Metadata\NSail.Metadata\NSail.Metadata.csproj" />
 		<ProjectReference Include="..\..\Types\NSail.BclExtensions\NSail.BclExtensions.csproj" />
 		<ProjectReference Include="..\..\Types\NSail.Types\NSail.Types.csproj" />

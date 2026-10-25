@@ -4,6 +4,7 @@
 using NSail.Messaging;
 using NSail.Messaging.Runtime.Pipelines;
 using NSail.Messaging.Runtime.Publishing;
+using NSail.Messaging.Runtime.Sending;
 using NSail.Problems;
 
 namespace NSail.Security;
@@ -13,7 +14,8 @@ namespace NSail.Security;
 /// default: no matching policy means a refusal before any handler or DB work — 403 for a
 /// caller who is somebody, 401 for one who is nobody (SecurityProblem.Denied). What a
 /// published event's subscribers send in reaction is exempt: it is the system carrying out a
-/// decision already authorized, never a caller asking (AmbientPublish).</summary>
+/// decision already authorized, never a caller asking (AmbientPublish). A queued command's
+/// delivery is exempt for the same reason, one hop later (AmbientQueue).</summary>
 public sealed class SecurityInterceptor<TMessage> : IInterceptor<TMessage>
     where TMessage : IMessage
 {
@@ -30,8 +32,10 @@ public sealed class SecurityInterceptor<TMessage> : IInterceptor<TMessage>
     {
         // A reaction is not a request: the caller's grants answered the send that decided this
         // already, and asking again would make every policy name the events its messages
-        // publish and the sends behind them (AmbientPublish).
-        if (AmbientPublish.Active)
+        // publish and the sends behind them (AmbientPublish). A delivery off the durable queue
+        // is the same exemption across a wait: the send was answered "accepted" when it was
+        // gated, and a grant revoked since would refuse here with nobody left to tell.
+        if (AmbientPublish.Active || AmbientQueue.Active)
         {
             await next(message, cancellationToken).ConfigureAwait(false);
 
@@ -67,9 +71,10 @@ public sealed class SecurityInterceptor<TMessage, TResult> : IInterceptor<TMessa
 
     public async Task<TResult> Invoke(TMessage message, PipelineDelegate<TMessage, TResult> next, CancellationToken cancellationToken)
     {
-        // Same exemption as the void arity: a subscriber reads before it writes, so a query it
-        // sends in reaction is as much the system's as the command beside it.
-        if (AmbientPublish.Active)
+        // Same exemptions as the void arity: a subscriber reads before it writes, so a query it
+        // sends in reaction is as much the system's as the command beside it — and so is one a
+        // queued command's handler sends while delivering.
+        if (AmbientPublish.Active || AmbientQueue.Active)
         {
             return await next(message, cancellationToken).ConfigureAwait(false);
         }

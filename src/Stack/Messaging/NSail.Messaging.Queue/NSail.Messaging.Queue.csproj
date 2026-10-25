@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.13" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The durable row rides the operation's own DbContext and takes its tenant column,
+		     its filter and its indexes from the model pass, like any other entity. -->
+		<ProjectReference Include="..\..\Data\NSail.Data\NSail.Data.csproj" />
+		<!-- The per-tenant sweep, the install's language and the error isolation a drain needs
+		     are the job runner's, already written: the drain is a job and not a second loop. -->
+		<ProjectReference Include="..\..\Background\NSail.Background\NSail.Background.csproj" />
+		<ProjectReference Include="..\..\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
+		<ProjectReference Include="..\..\Types\NSail.Types\NSail.Types.csproj" />
+		<ProjectReference Include="..\NSail.Messaging.Annotations\NSail.Messaging.Annotations.csproj" />
+		<ProjectReference Include="..\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
+	</ItemGroup>
+
+</Project>

@@ -1,0 +1,20 @@
+#nullable enable
+
+using Microsoft.Extensions.DependencyInjection;
+
+namespace {{ Namespace }}
+{
+    {{ ClassDeclaration }}
+    {
+        {{ MethodDeclaration }}
+        {
+            // The outbox's own services ride with the first kit that queues, the same shape the
+            // push's publishers holder uses: a composition that mounts this kit alone — a
+            // handler harness — resolves every sender it registers.
+            global::NSail.Messaging.Queue.Setup.AddQueue({{ ServicesParameterName }});
+            {{~ for Message in Messages ~}}
+            {{ ServicesParameterName }}.AddScoped<global::NSail.Messaging.Runtime.Sending.ISender<{{ Message }}>, global::NSail.Messaging.Queue.QueueSender<{{ Message }}>>();
+            {{~ end ~}}
+        }
+    }
+}

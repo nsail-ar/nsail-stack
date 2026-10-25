@@ -568,7 +568,9 @@ reads nothing and cannot write at all.
 
 - **The runner acts on it and the job never does.** For a per-tenant job `BackgroundJobRunner`
   opens **one scope per tenant** and enters it before resolving the job, so `Run` is written as
-  if there were one tenant in the world. **One tenant per scope** is mandatory: `Enter` pins onto
+  if there were one tenant in the world. The durable queue's drain is one of those jobs and not
+  a loop of its own, so a `[Queue]` command is delivered in the tenant its send was made in
+  (messaging.md, The durable queue). **One tenant per scope** is mandatory: `Enter` pins onto
   the scope and refuses a second tenant, because a context built on the first keeps its
   connection.
 - **A tenant that fails costs its own pass.** The catch is per pass, not per tick; the log line
