@@ -9,9 +9,11 @@ namespace NSail.BaseServices.WebApi;
 /// <summary>The entitlements of this scope's tenant, read off what the install records about it
 /// (<see cref="TenantState.Entitlements"/>) — the server half of <see cref="FeatureProvider"/>,
 /// registered here because this is the composition that has the store. The twin of Iam's
-/// DB-backed <see cref="RelationProvider"/>, and permissive for the same reasons: a mode that
-/// resolves no tenant registers no <see cref="TenantStates"/>, and an install nobody has written
-/// a bag for behaves exactly as it did before the bag existed.
+/// DB-backed <see cref="RelationProvider"/>, and permissive for the same reasons. Every
+/// dependency past the catalog is optional, and each one is a real composition: a host with no
+/// data access has no tenancy seam at all, a mode that resolves no tenant registers no
+/// <see cref="TenantStates"/>, and an install nobody has written a bag for behaves exactly as it
+/// did before the bag existed.
 ///
 /// <para>The row itself costs nothing to ask for — <see cref="TenantStates"/> reads it through
 /// the process memo — so what is held here is the PARSE, keyed by the tenant it was parsed for:
@@ -19,7 +21,7 @@ namespace NSail.BaseServices.WebApi;
 /// was built.</para></summary>
 public sealed class TenantStateFeatureProvider : FeatureProvider
 {
-    readonly TenancyProvider _tenancy;
+    readonly TenancyProvider? _tenancy;
     readonly TenantStates? _states;
     readonly TenantStateMemo? _memo;
 
@@ -28,13 +30,11 @@ public sealed class TenantStateFeatureProvider : FeatureProvider
 
     public TenantStateFeatureProvider(
         Features catalog,
-        TenancyProvider tenancy,
+        TenancyProvider? tenancy = null,
         TenantStates? states = null,
         TenantStateMemo? memo = null)
         : base(catalog)
     {
-        ArgumentNullException.ThrowIfNull(tenancy);
-
         _tenancy = tenancy;
         _states = states;
         _memo = memo;
@@ -66,7 +66,7 @@ public sealed class TenantStateFeatureProvider : FeatureProvider
                 return held;
             }
 
-            if (_memo is null || _tenancy.RowKey is not { } key || !_memo.Holds(key, out var state))
+            if (_memo is null || _tenancy?.RowKey is not { } key || !_memo.Holds(key, out var state))
             {
                 return Entitlements.Unrestricted;
             }
@@ -77,12 +77,12 @@ public sealed class TenantStateFeatureProvider : FeatureProvider
 
     Entitlements? Parsed()
     {
-        return _parsed is { } parsed && _parsedFor == _tenancy.RowKey ? parsed : null;
+        return _parsed is { } parsed && _parsedFor == _tenancy?.RowKey ? parsed : null;
     }
 
     Entitlements Remember(Entitlements entitlements)
     {
-        _parsedFor = _tenancy.RowKey;
+        _parsedFor = _tenancy?.RowKey;
         _parsed = entitlements;
 
         return entitlements;
