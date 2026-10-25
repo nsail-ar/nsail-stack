@@ -94,6 +94,14 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         get { return Required || _declared; }
     }
 
+    /// <summary>Whether the screen's ARRIVAL cursor lands in this box, and nothing else: it
+    /// writes the router's marker (ArrivalFocusMark below, read by NsArrivalFocus) and hands the
+    /// vendor's input no focus of its own, which is what keeps the rule the marker is written
+    /// under: the arrival's pass skips a coarse pointer, so a phone does not raise its keyboard
+    /// over the list it just landed on (ui/focus.md, Touch) — and a field focusing itself at its
+    /// first render would raise it anyway, reading no pointer and no arrival. A box that has to
+    /// take the cursor on its own render asks for that by name (FocusOnRender, on the typed
+    /// box).</summary>
     [Parameter]
     public bool AutoFocus { get; set; }
 
@@ -143,11 +151,13 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     const string FieldMark = "data-ns-field";
 
     // What the router's own arrival pass (NsArrivalFocus, ns.js) looks for on the element it
-    // lands the cursor on: AutoFocus is the one parameter a screen already writes for "the
-    // cursor starts here", and this is what carries that intent past a single first render — a
-    // marker in the DOM survives a navigation the router defers past the page's own first
-    // paint (a list still loading), where the vendor's own AutoFocus (fired once, then) cannot
-    // reach it.
+    // lands the cursor on: AutoFocus is the one parameter a screen writes for "the cursor starts
+    // here", and this is what carries that intent past a single first render — a marker in the
+    // DOM survives a navigation the router defers past the page's own first paint (a list still
+    // loading), where a focus fired at the first render cannot reach it. It is also why the
+    // marker is the pass that a coarse pointer skips and the vendor's own focus is not
+    // (FocusOnRender, on the typed box): a rule about where an arrival lands can only be kept
+    // by the mechanism the arrival runs.
     const string ArrivalFocusMark = "data-ns-arrival-focus";
 
     // Most fields have nothing else to stamp, so the plain case is one shared dictionary rather

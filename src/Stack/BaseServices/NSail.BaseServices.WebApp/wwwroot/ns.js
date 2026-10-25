@@ -1075,7 +1075,9 @@
     // A marker rendered after this very call -- a list still reading, a tab's panel -- is not
     // yet a lost cause: this waits for it (a MutationObserver, bounded by a timeout that falls
     // back to the screen's name), rather than reading the DOM once and giving up, which is what
-    // left the vendor's own first-render-only AutoFocus unable to reach it in the first place.
+    // left a focus fired at the box's own first render (FocusOnRender, NsTextFieldBase) unable
+    // to reach it in the first place -- and why that one, reading no pointer and no arrival, is
+    // a mechanism of its own rather than this pass.
     const ARRIVAL_MARK = '[data-ns-arrival-focus]:not([disabled]):not([aria-readonly="true"])';
     const ARRIVAL_FALLBACK_WAIT_MS = 1000;
 
