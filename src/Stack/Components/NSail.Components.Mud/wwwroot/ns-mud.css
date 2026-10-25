@@ -591,14 +591,20 @@
     justify-content: flex-end;
 }
 
-/* The actions column's own icon button (below) stands 1.875rem tall in its cell (3px padding
-   either side of a 1.5rem glyph) — taller than a plain text cell's line, so a row with no
-   actions (a system row with nothing in that column) reads shorter than one beside it that
-   has them, by exactly that difference. The floor is stated on every body cell, not only the
-   actions one, so every row in the grid shares one height whether or not its own row draws a
-   button. */
+/* The actions column's own icon button (below) stands 1.875rem tall (3px padding either side
+   of a 1.5rem glyph), and the cell it sits in adds the dense table's own 6px top and bottom
+   (MudBlazor's `.mud-table-dense .mud-table-cell`, unmodified here) on top of that — 2.625rem
+   border-box. A row with no actions (a system row with nothing in that column) is shorter by
+   exactly the gap between that and its own padded text line, so the floor has to be the
+   PADDED cell's height, not the bare button's: a min-height under what the box already
+   measures changes no pixel (box-sizing: border-box counts the padding INTO the number this
+   declares, so 1.875rem here was already smaller than every row it was meant to raise). The
+   floor is stated on every body cell, not only the actions one, so every row in the grid
+   shares one height whether or not its own row draws a button. Under a coarse pointer the
+   same button's padding grows (below), and so does this number, or a tablet above the 960px
+   container floor would read the two kinds of row apart again. */
 .ns-table .mud-table-body .mud-table-row .mud-table-cell {
-    min-height: 1.875rem;
+    min-height: 2.625rem;
 }
 
 /* Every icon in the column is one slot, whoever put it there. A grid's own row links are
@@ -630,12 +636,19 @@
 }
 
 /* The one verb that destroys never sits at the toolbar's own gap-1 from its neighbour — a
-   mis-tap there deletes instead of editing. first-child is excluded on purpose: a row whose
+   mis-tap there deletes instead of editing. only-child is excluded on purpose: a row whose
    only visible act is Delete has nothing beside it to separate from, and the extra room would
    only widen that row's slot past the others' (NsActionToolbar.razor, IsDestructive — read off
-   NsIcons.Delete, so every existing call site gets this without declaring anything). */
-.ns-action-toolbar .ns-action-destructive:not(:first-child) {
-    margin-inline-start: 0.5rem;
+   NsIcons.Delete, so every existing call site gets this without declaring anything).
+
+   Both sides, not just the leading one: the toolbar draws Visible() before Constant
+   (NsActionToolbar.razor), so a row whose Constant is its edit and whose only contributed verb
+   is Delete (the Stack's own Sample, ContactsPage) has Delete FIRST, not last — margin-inline-
+   start alone would sit on the edge nothing is beside and never reach the Constant that comes
+   after it. The unused side costs nothing: it is inside the toolbar's own box, never the
+   grid's fixed edge. */
+.ns-action-toolbar .ns-action-destructive:not(:only-child) {
+    margin-inline: 0.5rem;
 }
 
 /* The mark an outlet shows while its contributors answer stands in the slot their first verb
@@ -668,7 +681,11 @@
    min-width above is a calc over the variable and needs no restatement.
 
    Not a breakpoint: a phone held in landscape is still a finger, and a touchscreen laptop
-   reports its mouse as the primary pointer, so the desktop grid is untouched by measure. */
+   reports its mouse as the primary pointer, so the desktop grid is untouched by measure.
+
+   The row floor above grows here too: it is the dense cell's own 6+6px padding plus this
+   button's new 3rem (12+24+12), 3.75rem border-box, or the floor would stay at the fine
+   pointer's number while the actions cell it is matched against grew past it. */
 @media (pointer: coarse) {
     .ns-table .ns-actions {
         --ns-action-slot: 3.25rem;
@@ -677,6 +694,10 @@
     .ns-table .ns-actions .mud-icon-button,
     .ns-table .ns-actions .ns-action-mark {
         padding: 12px;
+    }
+
+    .ns-table .mud-table-body .mud-table-row .mud-table-cell {
+        min-height: 3.75rem;
     }
 }
 

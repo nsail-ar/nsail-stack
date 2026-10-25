@@ -500,6 +500,32 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         Assert.Equal("Delete", destructive.QuerySelector("button")!.GetAttribute("aria-label"));
     }
 
+    // The Stack's own Sample (ContactsPage) draws it the other way round: Delete is the row's
+    // contributed Leading verb and Edit is its Constant, so Delete renders FIRST, not last —
+    // the one order the fact above never exercises, and the one a first-child-only rule could
+    // never reach (nsail#2696, review round 2).
+    [Fact]
+    public void TheVerbThatDestroysStandsApartWhateverSideItsNeighbourIsOn()
+    {
+        var cut = Render<ActionColumnHost>();
+
+        cut.Render(p => p
+            .Add(x => x.Leading, new List<ActionItem>
+            {
+                new() { Name = "Delete", Icon = NsIcons.Delete, OnClick = () => Task.CompletedTask },
+            })
+            .Add(x => x.Constant, new ActionItem { Name = "Edit", Icon = NsIcons.Edit, OnClick = () => Task.CompletedTask }));
+
+        var destructive = cut.Find(".ns-action-toolbar .ns-action-destructive");
+
+        Assert.Equal("Delete", destructive.QuerySelector("button")!.GetAttribute("aria-label"));
+
+        // Delete IS :first-child here (Visible() draws before Constant) — the exact shape
+        // :not(:first-child) missed. :only-child is what the rule has to key off instead, so
+        // pin the precondition directly: the destructive span is not alone in its row.
+        Assert.True(destructive.ParentElement!.Children.Length > 1);
+    }
+
     // An ordinary verb — edit, the ficha, a contributed command — never earns the separation,
     // whatever glyph it carries, so the rule stays Delete's alone.
     [Fact]
@@ -511,25 +537,31 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     // bUnit renders no box model, so the margin the class earns — and that it is skipped for a
-    // row whose only visible verb is Delete, first-child and with nothing to separate from —
-    // is read off the stylesheet itself.
+    // row whose only visible verb is Delete, with nothing to separate from — is read off the
+    // stylesheet itself. :only-child, not :first-child (nsail#2696, review round 2): the
+    // Sample's own row draws Delete before its Constant, so a first-child-only exclusion would
+    // have skipped the one row the story measured. Both sides of the margin, not just the
+    // leading one, so the rule reaches Delete whichever side its neighbour is drawn on.
     [Fact]
     public void TheStylesheetSeparatesTheDestructiveVerbUnlessItStandsAlone()
     {
         var css = HouseStylesheet.Read();
 
-        var start = css.IndexOf(".ns-action-toolbar .ns-action-destructive:not(:first-child) {", StringComparison.Ordinal);
+        var start = css.IndexOf(".ns-action-toolbar .ns-action-destructive:not(:only-child) {", StringComparison.Ordinal);
         Assert.True(start >= 0, "the separation rule was not found in the stylesheet.");
 
         var end = css.IndexOf('}', start);
-        Assert.Contains("margin-inline-start:", css[start..end], StringComparison.Ordinal);
+        Assert.Contains("margin-inline:", css[start..end], StringComparison.Ordinal);
     }
 
     // nsail#2696 — a system row with no actions measured 33px against 45px for a row beside it
-    // that had them: the actions column's own icon button stands taller than a plain text
-    // cell's line, so the floor is read off the stylesheet, stated for every body cell.
+    // that had them: the actions column's own icon button (1.875rem) stands inside the dense
+    // table's own 6px-top-and-bottom cell padding, 2.625rem border-box, so the floor has to be
+    // that padded number — not the bare button's — or a min-height under what a text-only row
+    // already measures changes no pixel (review round 2). Stated for every body cell, not only
+    // the actions one, so a row's height never depends on whether its own row draws a button.
     [Fact]
-    public void TheStylesheetFloorsEveryBodyCellToTheActionsIconsHeight()
+    public void TheStylesheetFloorsEveryBodyCellToThePaddedActionsCellHeight()
     {
         var css = HouseStylesheet.Read();
 
@@ -537,6 +569,25 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         Assert.True(start >= 0, "the row-height floor was not found in the stylesheet.");
 
         var end = css.IndexOf('}', start);
-        Assert.Contains("min-height: 1.875rem;", css[start..end], StringComparison.Ordinal);
+        Assert.Contains("min-height: 2.625rem;", css[start..end], StringComparison.Ordinal);
+    }
+
+    // The actions icon button grows under a coarse pointer (ns-mud.css, --ns-action-slot:
+    // 3.25rem), so the row floor has to grow with it or a tablet above the 960px container
+    // floor reads the two kinds of row apart again, in the very regime the story's 44px ask
+    // is about (review round 2).
+    [Fact]
+    public void TheStylesheetGrowsTheRowFloorUnderACoarsePointer()
+    {
+        var css = HouseStylesheet.Read();
+
+        var coarse = css.IndexOf("--ns-action-slot: 3.25rem;", StringComparison.Ordinal);
+        Assert.True(coarse >= 0, "the coarse-pointer action-slot rule was not found in the stylesheet.");
+
+        var start = css.IndexOf(".ns-table .mud-table-body .mud-table-row .mud-table-cell {", coarse, StringComparison.Ordinal);
+        Assert.True(start >= 0, "the coarse-pointer row-height floor was not found in the stylesheet.");
+
+        var end = css.IndexOf('}', start);
+        Assert.Contains("min-height: 3.75rem;", css[start..end], StringComparison.Ordinal);
     }
 }

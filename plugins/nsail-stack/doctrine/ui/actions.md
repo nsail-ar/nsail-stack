@@ -39,11 +39,12 @@ like is the intention's business:
 - **`Inline` in that state is the flat glyph** — the vendor's bare icon button, which is what
   a grid row's actions, a title bar's utilities, the header X, `NsHelp` and `NsHint` wear.
 - **`NsLink` alone also draws a third `Inline` face no other primitive has**: a bare `<a>`
-  carrying both an `Icon` and a word, the two laid out as one row (`ns-link-iconed`) rather
-  than a box. An `Inline` link handed an `Icon`, a `Label` and any `Breakpoint` but `Never`
-  draws it — that combination IS the face, which is the whole of what reaches it. It takes no
-  part in the icon-only state above; `Breakpoint` has no effect on it at all (below), and the
-  touch floor does not reach it either — it has no box to grow.
+  carrying both an `Icon` and a word, the two laid out as one row (`ns-link-iconed`) on the
+  same box every worded Inline face gets (below), rather than wherever the browser's own
+  inline flow would drop them. An `Inline` link handed an `Icon`, a `Label` and any
+  `Breakpoint` but `Never` draws it — that combination IS the face, which is the whole of what
+  reaches it. It takes no part in the icon-only state above; `Breakpoint` has no effect on it
+  at all.
 - **Every intention with a fill is a SQUARE**, carrying its own fill and shadow — never a
   rectangle: the vendor's button carries a 64px floor and side padding for a label that is not
   coming. The geometry is [styling.md](styling.md)'s.
