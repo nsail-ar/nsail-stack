@@ -12,6 +12,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\Types\NSail.Types\NSail.Types.csproj" />
+		<ProjectReference Include="..\..\Exporting\NSail.Exporting\NSail.Exporting.csproj" />
 		<ProjectReference Include="..\..\Messaging\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
 		<ProjectReference Include="..\..\Localization\NSail.Localization\NSail.Localization.csproj" />
 		<ProjectReference Include="..\..\Settings\NSail.Settings\NSail.Settings.csproj" />

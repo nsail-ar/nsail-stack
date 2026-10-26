@@ -15,7 +15,8 @@ namespace NSail.Components.Tests;
 
 /// <summary>Every list offers Exportar, and what it exports is what the current filter answers —
 /// all of it, not the page on screen. The grid's half of that: which grids offer it, what the
-/// book's columns are, and that the rows come from reading every page.
+/// book's columns are, that the rows come from reading every page, and that the act the grid hands
+/// its surface beside the trigger writes that same file for a caller who pressed nothing.
 /// <para>The writer here records the book instead of writing a file (RecordingExportWriter): what
 /// a real one does with it is NSail.Exporting.Tests'.</para></summary>
 public sealed class TableExportTests : BunitContext, IAsyncLifetime
@@ -351,6 +352,91 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
         Assert.Equal("Pedidos", _excel.Book!.Name);
         Assert.Equal("Pedidos", _excel.Book.Pages[0].Name);
         Assert.Equal("es-AR", _excel.Culture!.Name);
+    }
+
+    /// <summary>The act the grid hands its surface beside the trigger (SurfaceExport): what it
+    /// writes is the same file pressing Exportar writes — the header's own columns, every page the
+    /// filter answers, named after what the screen calls the list — and it answers how many rows
+    /// the file carries, which is the one thing a caller away from the screen cannot read off a
+    /// download.</summary>
+    [Fact]
+    public async Task The_surfaces_own_export_writes_the_lists_file_and_answers_its_rows()
+    {
+        Writers(_excel, _csv);
+
+        var surface = Services.GetRequiredService<RootSurface>().Surface;
+
+        // What a page announces of itself, which is where the file's name comes from: nobody
+        // pressed a trigger here, and the file is still the screen's list and not "Exportar".
+        surface.Announce("Pedidos", null, null);
+
+        var cut = Render<ExportTableHost>(parameters => parameters.Add(host => host.Surface, surface));
+
+        var export = surface.Export;
+
+        Assert.NotNull(export);
+
+        // Offered in ExportKind's own order, which is the order chrome lists: what the install
+        // registered and nothing else.
+        Assert.Equal([ExportKind.Excel, ExportKind.Csv], export.Kinds);
+
+        int? rows = null;
+
+        await cut.InvokeAsync(async () => rows = await export.Run(ExportKind.Csv));
+
+        Assert.Equal(ExportTableHost.Register, rows);
+        Assert.Equal(ExportTableHost.Register, _csv.Rows.Count);
+        Assert.Equal("Pedidos", _csv.Book!.Name);
+
+        // The header's declarations, not the row type's members: the action column is no column
+        // and the grid's own filter decides the rest (Every_column_the_header_declared…).
+        Assert.Equal(
+            ["Nombre", "Cantidad", "Total", "Parte", "Fecha", "Tipo"],
+            _csv.Book.Pages[0].Tables[0].Columns.Select(column => column.Title));
+
+        // The kind asked for, and only it: a caller naming CSV does not write a spreadsheet too.
+        Assert.Null(_excel.Book);
+    }
+
+    /// <summary>What an install can produce is what it registered: a kind nobody registered is
+    /// never offered, and asked for anyway it writes no file rather than throwing at a caller
+    /// that read the kinds off the same announcement.</summary>
+    [Fact]
+    public async Task The_surfaces_own_export_writes_nothing_for_a_kind_no_writer_answers()
+    {
+        Writers(_csv);
+
+        var surface = Services.GetRequiredService<RootSurface>().Surface;
+
+        var cut = Render<ExportTableHost>(parameters => parameters.Add(host => host.Surface, surface));
+
+        int? rows = null;
+
+        await cut.InvokeAsync(async () => rows = await surface.Export!.Run(ExportKind.Excel));
+
+        Assert.Null(rows);
+        Assert.Null(_csv.Book);
+    }
+
+    /// <summary>A read that does not land leaves no file, and the act says so by counting
+    /// nothing: half a list is not offered to a caller any more than it is to a reader.</summary>
+    [Fact]
+    public async Task The_surfaces_own_export_answers_nothing_where_the_read_does_not_land()
+    {
+        Writers(_csv);
+
+        var surface = Services.GetRequiredService<RootSurface>().Surface;
+
+        var cut = Render<ExportTableHost>(parameters => parameters
+            .Add(host => host.Surface, surface)
+            .Add(host => host.RefuseFrom, 0));
+
+        int? rows = null;
+
+        await cut.InvokeAsync(async () => rows = await surface.Export!.Run(ExportKind.Csv));
+
+        Assert.Null(rows);
+        Assert.Empty(_csv.Rows);
     }
 
     async Task<IRenderedComponent<ExportTableHost>> Choose(

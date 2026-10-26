@@ -33,7 +33,7 @@ public sealed class SurfaceContext
     Glyph? _icon;
     RenderFragment? _utilities;
     RenderFragment? _index;
-    RenderFragment? _export;
+    SurfaceExport? _export;
     object? _refusingSource;
     object? _rowSource;
     object? _exportSource;
@@ -213,14 +213,16 @@ public sealed class SurfaceContext
         IndexChanged?.Invoke();
     }
 
-    /// <summary>A reading grid's own export trigger, handed up the other way across the same
-    /// boundary <see cref="Title"/> already crosses (a table reads the page's own name; this is
-    /// the page's header asking the table for its control instead of drawing one of its own).
-    /// Null where nothing on this surface exports, or where the exporting grid's own fragment is
-    /// stale — not deduplicated by reference like <see cref="Announce"/>'s fields, because the
-    /// grid rebuilds the fragment on every render of its own and a disabled trigger while an
-    /// export is running has to reach a header that never re-renders on its own.</summary>
-    public RenderFragment? Export => _export;
+    /// <summary>The reading grid's own export, handed up the other way across the same boundary
+    /// <see cref="Title"/> already crosses (a table reads the page's own name; this is the page's
+    /// header asking the table for its control instead of drawing one of its own) — its trigger
+    /// for chrome to draw and the act for whoever asks for the file without pressing it
+    /// (<see cref="SurfaceExport"/>). Null where nothing on this surface exports, or where the
+    /// exporting grid's own announcement is stale — not deduplicated by reference like
+    /// <see cref="Announce"/>'s fields, because the grid rebuilds it on every render of its own
+    /// and a disabled trigger while an export is running has to reach a header that never
+    /// re-renders on its own.</summary>
+    public SurfaceExport? Export => _export;
 
     /// <summary>Raised whenever the announcing grid re-announces — on every one of its own
     /// renders while it has something to export, never only when the fragment's shape changed —
@@ -237,7 +239,7 @@ public sealed class SurfaceContext
     /// source — a second grid on the same surface, exportable or not — is simply not read while
     /// the slot is held, so neither a sibling grid's every-render null nor its own export can
     /// evict the grid the header is actually drawing.</summary>
-    public void AnnounceExport(object source, RenderFragment? export)
+    public void AnnounceExport(object source, SurfaceExport? export)
     {
         ArgumentNullException.ThrowIfNull(source);
 
