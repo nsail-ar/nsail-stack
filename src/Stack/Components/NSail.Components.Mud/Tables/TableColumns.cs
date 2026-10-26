@@ -40,9 +40,11 @@ public sealed class TableColumns
 
     /// <summary>Called by the table as it renders its header row, before the headers in it set
     /// their own parameters: it is the pass boundary, and the only thing that can tell this
-    /// render's column set from the last one's. Nothing reads <see cref="Declared"/> during a
-    /// render — only a gesture does — so the list standing momentarily empty is not observable.
-    /// </summary>
+    /// render's column set from the last one's. What reads <see cref="Declared"/> reads a pass
+    /// that has LANDED — a gesture, or the export act a surface announces, which waits for the
+    /// pass where it finds nothing declared yet (NsTable, Declaring) — so the list standing
+    /// momentarily empty between this call and the declarations that follow it is not
+    /// observable.</summary>
     public void BeginPass()
     {
         _declared.Clear();
