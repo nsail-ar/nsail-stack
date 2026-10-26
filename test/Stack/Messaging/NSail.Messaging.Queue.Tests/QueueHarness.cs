@@ -402,9 +402,10 @@ public sealed class QueueMigration : Migration
             },
             constraints: table => table.PrimaryKey("PK_Letters", letter => letter.Id));
 
-        // The Stack's own two tables, which a product gets from its scaffolded chain and a
-        // hand-authored one has to state: the tenant's seed history and what the install
-        // records about a tenant.
+        // Two of the Stack's own three tables, which a product gets from its scaffolded chain and
+        // a hand-authored one has to state: the tenant's seed history and what the install records
+        // about a tenant. The third — the keys this build declares — is written by the web
+        // composition this suite does not raise, so stating it here would be schema no test sees.
         migrationBuilder.CreateTable(
             name: "AppliedSeedSteps",
             columns: table => new

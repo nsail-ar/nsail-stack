@@ -61,7 +61,7 @@ public static class DbContextExtensions
         configurationBuilder.Conventions.Remove(typeof(ForeignKeyIndexConvention));
     }
 
-    // The tenant's own migration history, one of the two tables the Stack owns. It is configured
+    // The tenant's own migration history, one of the three tables the Stack owns. It is configured
     // here rather than contributed as an IDbContextSetup because a product that forgot to
     // compose it would have a seed chain nothing records — every step re-running on every touch —
     // and the whole point of the pass over the model is that no composition can forget a rule.
