@@ -61,11 +61,23 @@ marked *(cases)* has its story there.
     row's own trailing edge instead of over the column. No reserve can answer that — the wrap
     is the row's own arithmetic — so **the row declares what its items are worth** rather than
     taking the field family's defaults, which were never sized for five of them on one line.
-    The two it spends on itself (7rem for a bounded item, 7rem as the open-ended one's basis,
+    The two it spends on itself (7rem as a bounded item's BASIS, 7rem as the open-ended one's,
     which for `Grow` is also its min-width and so is the wrap floor itself — the open-ended
     field is the row's honest absorber, since every pixel past the floor is already its) are
     declared on the grid that spends them; only the act's **cell** is a token, because the
-    reserve reads it from outside the grid. That cell is also the one term not free to be as
+    reserve reads it from outside the grid. A basis and not a width, because **the floor is what
+    the wrap is decided on and not what the items are left at**: flex reads the basis, so
+    declaring it there is the whole of what one line costs, and a bounded item then grows back
+    to the width it declares for itself — the family's 14rem unless it says otherwise — out of
+    whatever the line has over the floor, sharing that surplus equally with the open-ended one
+    until it reaches that width and stops taking any. So the narrowing is spent only where the
+    window is actually short of it (7rem reads two or three characters, which a unit like
+    "Esf -1.00 / Cil -0.75" is not), and from 1168px of window up — 856px of content, the claim
+    plus twice the bounded item's own difference — the row renders exactly as it would with no
+    floor at all. The growth is free to the mirror, which is why it is the shape to spend: the
+    items after the bounded one are declared widths that neither grow nor shrink, so the row's
+    last field sits the same distance in from the trailing edge however the surplus before it
+    was split. That cell is also the one term not free to be as
     narrow as its content reads: a field's min-width is `min-content`, so a cell declared under
     the act's own word grows back to it and parts the mirror — which a browser's mirror walk
     is the only reader of. The floor the sum has to clear is the width `NsTable` stops drawing

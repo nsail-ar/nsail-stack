@@ -3627,13 +3627,24 @@
    mirror are dropped anyway: 961px, which leaves this grid 649px of content (the shell spends
    312px of it, the same figure Optical's OpeningEntriesRowWidthTests probes its container at).
 
-   A BOUNDED item takes 7rem: a unit, which the sheet's own rows print under the article's name
-   rather than in a column of its own, so what it holds is two or three characters and a shrunk
-   label. The OPEN-ENDED one takes 7rem as its basis, which for Grow is also its min-width and so
-   IS the wrap floor -- the article field is the row's honest absorber, since every pixel past the
-   floor is already its. Both are declared on the grid that spends them, the way ns-field-money
-   declares its own; only the act's CELL is a token, because the column reserved under the row
-   reads it from outside the grid.
+   A BOUNDED item takes 7rem as its BASIS and grows back to the width it declares for itself --
+   the field family's own 14rem unless it says otherwise -- out of whatever the line has over the
+   floor. The floor is what the WRAP is decided on (flex reads the basis, never the rendered
+   width), so declaring it as a basis is the whole of what the one line costs, and the narrowing
+   is then spent only where the window is actually short of it: 7rem reads two or three
+   characters, which a unit like "Esf -1.00 / Cil -0.75" is not, and at the widths where the
+   row's defaults already fitted there is nothing to buy with it. The OPEN-ENDED one takes 7rem
+   as its basis too, which for Grow is also its min-width and so IS the wrap floor -- the article
+   field is the row's honest absorber, since every pixel past the floor is already its; past the
+   floor the two share the surplus the way this grid's growing items share it everywhere else,
+   equally, until the bounded one reaches its own width and stops taking any. Both are declared
+   on the grid that spends them, the way ns-field-money declares its own; only the act's CELL is
+   a token, because the column reserved under the row reads it from outside the grid.
+
+   The growth is invisible to the mirror, which is why it is free: the items after the bounded
+   one are all declared widths that neither grow nor shrink here, so the row's last field sits
+   the same distance in from the trailing edge however the surplus before it was split -- what
+   moves is only which of the two open items holds it.
 
    That cell is also the one term of the three that is not free to be as narrow as its content
    reads: a field's min-width is min-content, so a cell declared under the act's own word grows
@@ -3644,7 +3655,10 @@
 
    The five items then claim 2.5rem + 7rem + 7rem + 10rem + 9rem + four 1rem gaps = 632px, 17px
    inside the floor, and .ns-money-slot's own width -- read by three screens outside this one --
-   is left where it is.
+   is left where it is. The claim is what the line is asked for; above the floor the two open
+   items render wider than it, and from 1168px of window up -- 856px of content, the claim plus
+   TWICE the bounded item's own 7rem of difference, since the two share the surplus equally --
+   the bounded one is back at the full width it would have had with no floor at all.
 
    Keyed off .ns-row-submit rather than a class of the row's own: the act is what makes the row
    five items wide, so the mark that already says "this submit shares a line with labeled fields"
@@ -3653,12 +3667,20 @@
    row is a stack of cards' worth of lines and nothing to line up with, so a width answering a
    desktop band's arithmetic would only be narrowing a phone's fields for nothing. */
 :root {
+    --ns-add-row-field: 7rem;
     --ns-add-row-act: 9rem;
 }
 
 .ns-grid:has(> * > .ns-row-submit) {
-    --ns-field-width: 7rem;
-    --ns-field-grow-basis: 7rem;
+    --ns-field-grow-basis: var(--ns-add-row-field);
+}
+
+/* Every bounded field of the row but the act's cell, which is a declared width and not an
+   absorber: the floor as the basis the line is seated on, its own width as the cap it grows
+   back to. */
+.ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
+    flex: 1 1 var(--ns-add-row-field);
+    max-width: var(--ns-field-width, 14rem);
 }
 
 .ns-grid > *:has(> .ns-row-submit) {
@@ -3670,6 +3692,11 @@
     .ns-grid > *:has(> .ns-row-submit) {
         --ns-field-width: initial;
         --ns-field-grow-basis: initial;
+    }
+
+    .ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
+        flex: 0 1 auto;
+        max-width: 100%;
     }
 }
 
