@@ -72,6 +72,12 @@ public static class Setup
         // resolve the provider above.
         builder.Services.TryAddSingleton<Features>();
 
+        // And what that catalog says, published to the install's own table for whoever operates
+        // the fleet to read — the one write this composition owes outwards, and here for the same
+        // reason as the provider above: it is the composition that has both the catalog and the
+        // store.
+        builder.Services.AddHostedService<FeaturePublisher>();
+
         // Ahead of AddPush's own TryAdd: a push reaches the tenant it was published in, and a
         // connection joins the tenant the edge resolved for it.
         builder.Services.AddScoped<PushAudience, TenantPushAudience>();

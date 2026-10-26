@@ -49,6 +49,30 @@ namespace NSail.Sample.Migrations
                     b.ToTable("AppliedSeedSteps", (string)null);
                 });
 
+            modelBuilder.Entity("NSail.Data.DeclaredFeature", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .UseCollation("case_insensitive");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .UseCollation("case_insensitive");
+
+                    b.Property<decimal?>("Limit")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("DeclaredFeatures", (string)null);
+                });
+
             modelBuilder.Entity("NSail.Data.TenantState", b =>
                 {
                     b.Property<Guid>("TenantId")

@@ -85,7 +85,9 @@ public sealed class TenancyHost : IAsyncDisposable
     /// the suites that count rows are counting their own. <paramref name="clock"/> is the
     /// install's own clock, which is what makes a pause window and the state memo reachable
     /// without waiting; <paramref name="contact"/> is who its suspended page names;
-    /// <paramref name="logs"/> is what the install said on its way up.</summary>
+    /// <paramref name="logs"/> is what the install said on its way up;
+    /// <paramref name="features"/> is the <c>IFeatureContributor</c> this build composes, which is
+    /// what the install publishes about itself.</summary>
     public static Task<TenancyHost> Start(
         TenancyMode mode,
         bool bootstraps = false,
@@ -96,7 +98,8 @@ public sealed class TenancyHost : IAsyncDisposable
         bool requireWall = false,
         bool bypassable = false,
         bool provisions = true,
-        ILoggerProvider? logs = null)
+        ILoggerProvider? logs = null,
+        Type? features = null)
     {
         return Start(
             mode,
@@ -109,18 +112,20 @@ public sealed class TenancyHost : IAsyncDisposable
             requireWall,
             bypassable,
             provisions,
-            logs);
+            logs,
+            features);
     }
 
     /// <summary>The same install again, carrying whatever chain that build carries — a deploy,
     /// in the only shape a test can have one: another process, another <c>FirstTouch</c> memo,
     /// the same database. It provisions nothing and drops nothing: the database is the host it
-    /// was started beside.</summary>
-    public static Task<TenancyHost> Redeploy(TenancyHost host, Type seed)
+    /// was started beside. <paramref name="features"/> is what THAT build declares, which is how a
+    /// deploy that sells one key more or one key fewer is reachable at all.</summary>
+    public static Task<TenancyHost> Redeploy(TenancyHost host, Type? seed = null, Type? features = null)
     {
         ArgumentNullException.ThrowIfNull(host);
 
-        return Start(TenancyMode.SingleDb, seed, host.Cell);
+        return Start(TenancyMode.SingleDb, seed, host.Cell, features: features);
     }
 
     public static async Task<TenancyHost> Start(
@@ -134,7 +139,8 @@ public sealed class TenancyHost : IAsyncDisposable
         bool requireWall = false,
         bool bypassable = false,
         bool provisions = true,
-        ILoggerProvider? logs = null)
+        ILoggerProvider? logs = null,
+        Type? features = null)
     {
         var owned = cell is null;
 
@@ -212,6 +218,14 @@ public sealed class TenancyHost : IAsyncDisposable
         }
 
         builder.AddBaseWebApi();
+
+        // What a kit that owns a key registers with AddFeatures<T>, handed over as a type because
+        // the suite picks the build's declaration per host: this is that call's one line, the
+        // generic overload being unreachable from a Type.
+        if (features is not null)
+        {
+            builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton(typeof(IFeatureContributor), features));
+        }
 
         // Cookies, because the subject is a ticket that outlives the request that minted it and
         // can be carried to another host — the only kind of credential that can cross a tenant
