@@ -145,10 +145,14 @@ the default is capped**: `--ns-field-width` (`ns-field-narrow`, `ns-field-money`
 at every container size, which is what a label too long for half a line asks for instead of a
 shorter word — and, at `ns-field-money`'s 10rem, what a block of money figures read together
 (Cerrar Caja's four) asks for so the line seats all of them instead of leaving the last one a
-row of its own. A **grid** sets it for a whole row in one case only, an add row laid out beside
-a table: there the line is what the width answers — the items have to fit one of it or the act
-wraps and takes the price axis with it (styling.md's mirror) — so it is declared on the grid,
-over the band the mirror exists in and nowhere else.
+row of its own. One **row** answers the line instead of its own content, an add row laid out
+beside a table: its items have to fit one line of it or the act wraps and takes the price axis
+with it (styling.md's mirror). It does not set this width for the row — a flex line is seated on
+the BASIS, so what the row declares there is a wrap floor, and a field's own `--ns-field-width`
+becomes the ceiling it grows back to out of whatever the line has over that floor: the one grid
+that reads the property as a ceiling rather than a starting width. A width proper is declared in
+that row on the act's own **cell** alone, because the column reserved under the row spends the
+same figure from outside the grid.
 
 It stops at **400px** — two `Grow` bases plus the gap, the narrowest line on which a pair still
 reads. Under that the cap lifts and the band is one field per row: the phone, where half a line

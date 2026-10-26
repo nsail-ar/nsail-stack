@@ -28,7 +28,10 @@ marked *(cases)* has its story there.
     `.ns-field-money` is the other direction — a **block** of money figures read together (Cerrar
     Caja's four) at the same 10rem `.ns-money-slot` calls a price's own, so four share one line
     instead of three sharing it and the fourth taking a row the content under it needs. A lone
-    importe among fields of other kinds stays at the family's 14rem.
+    importe among fields of other kinds stays at the family's 14rem. Inside an **add row laid
+    out beside a table** that width is read as a ceiling rather than a starting width — the row
+    seats its line on its own floor and the field grows back to what it declares (the mirror,
+    below) — which is the only grid that reads it that way.
   - `.ns-field-pair` raises a `Grow` item's basis to 32rem — two blocks of fields (a job card's
     eyes) pair only on a line that seats both as rows, and stack below it; `.ns-heading-row`
     gives such blocks' headings one height (a checkbox row's), so the fields under them start
@@ -61,22 +64,37 @@ marked *(cases)* has its story there.
     row's own trailing edge instead of over the column. No reserve can answer that — the wrap
     is the row's own arithmetic — so **the row declares what its items are worth** rather than
     taking the field family's defaults, which were never sized for five of them on one line.
-    The two it spends on itself (7rem for a bounded item, 7rem as the open-ended one's basis,
-    which for `Grow` is also its min-width and so is the wrap floor itself — the open-ended
-    field is the row's honest absorber, since every pixel past the floor is already its) are
-    declared on the grid that spends them; only the act's **cell** is a token, because the
-    reserve reads it from outside the grid. That cell is also the one term not free to be as
-    narrow as its content reads: a field's min-width is `min-content`, so a cell declared under
-    the act's own word grows back to it and parts the mirror — which a browser's mirror walk
-    is the only reader of. The floor the sum has to clear is the width `NsTable` stops drawing
-    columns at, since below it both halves are dropped anyway — 961px of window, 649px of
-    content once the shell takes its 312px. Five items (the gutter, the `Grow` basis, a unit
-    picker, the price slot, the act cell) then claim 632px of it and four claim 504px, so the
-    band has a floor and not an exception. Keyed off `.ns-row-submit` rather than a class of
-    the row's own, so no row can be given the act without the floor that affords it — and
-    **released below the window the mirror itself is dropped at**, where the row is a stack of
-    lines with no column to line up with and a width answering a desktop band's arithmetic
-    would only narrow a phone's fields for nothing.
+    What it spends on itself is **one figure, 7rem**, and it is a BASIS and not a width:
+    **the floor is what the wrap is decided on, not what the items are left at**. Flex seats a
+    line on the basis, so declaring it there is the whole of what one line costs — and both of
+    the row's open items read it, the open-ended one as its `Grow` basis (which for `Grow` is
+    also its min-width, and so is the wrap floor itself: that field is the row's honest absorber,
+    since every pixel past the floor is already its) and the bounded one as its own
+    `flex-basis`, from which it then grows back to the width it declares for itself — the
+    family's 14rem unless it says otherwise — out of whatever the line has over the floor,
+    sharing that surplus equally with the open-ended one until it reaches that width and stops
+    taking any. So the narrowing is spent only where the window is actually short of it (7rem
+    reads two or three characters, which a unit like "Esf -1.00 / Cil -0.75" is not), and from
+    1168px of window up — 856px of content, the claim plus twice the bounded item's own
+    difference — the row renders exactly as it would with no floor at all. The growth is free to
+    the mirror, which is why it is the shape to spend: the items after the bounded one are
+    declared widths that neither grow nor shrink, so the row's last field sits the same distance
+    in from the trailing edge however the surplus before it was split. The figure is declared on
+    the grid that spends it, the way `.ns-field-money` declares its own, and the bounded item's
+    rule inherits it from there; only the act's **cell** is a token, because the reserve is the
+    one reader outside the grid — which is what makes a width this file's business rather than
+    one row's. That cell is also the one term not free to be as narrow as its content reads: a
+    field's min-width is `min-content`, so a cell declared under the act's own word grows back
+    to it and parts the mirror — which a browser's mirror walk is the only reader of. The floor
+    the sum has to clear is the width `NsTable` stops drawing columns at, since below it both
+    halves are dropped anyway — 961px of window, 649px of content once the shell takes its
+    312px. Five items (the gutter, the `Grow` basis, a unit picker, the price slot, the act
+    cell) then claim 632px of it and four claim 504px, so the band has a floor and not an
+    exception. Keyed off `.ns-row-submit` rather than a class of the row's own, so no row can be
+    given the act without the floor that affords it — and **released below the window the mirror
+    itself is dropped at**, each rule releasing what it declares, where the row is a stack of
+    lines with no column to line up with and a width answering a desktop band's arithmetic would
+    only narrow a phone's fields for nothing.
     A **boolean control** is the same mismatch and takes the same answer: it draws neither the
     label gutter nor the outline its row partners draw, so `NsRecordState` and `NsCheckBox` mark
     their own control (`ns-record-state`, `ns-form-check`) and the grid centres that cell. The
