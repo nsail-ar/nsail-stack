@@ -24,5 +24,11 @@ public sealed class SurfaceExport
     /// file for it rather than refusing: what an install can produce is what it registered.</summary>
     public required IReadOnlyList<ExportKind> Kinds { get; init; }
 
+    /// <summary>The file written, answered as the rows it carries — or null where none was
+    /// written at all, which is the only thing null means: run on the first announcement heard,
+    /// before the grid's header has declared a column, it waits for that pass rather than
+    /// answering as though the list had nothing to export (exporting.md). Run on the renderer's
+    /// dispatcher, like anything that ends in a render, which is where a caller that heard
+    /// <see cref="SurfaceContext.ExportChanged"/> already stands.</summary>
     public required Func<ExportKind, Task<int?>> Run { get; init; }
 }

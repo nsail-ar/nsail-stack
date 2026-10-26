@@ -439,6 +439,42 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
         Assert.Empty(_csv.Rows);
     }
 
+    /// <summary>The act is run by whoever hears the announcement, and the only notice the surface
+    /// gives that it exists is ExportChanged — raised from the grid's own render body, before the
+    /// header's NsTh have declared a single column. A caller that runs it there gets the file,
+    /// not the null that means none was written: the announcement's act is honoured whenever it
+    /// is heard, rather than from the grid's second pass on.</summary>
+    [Fact]
+    public async Task The_surfaces_own_export_writes_the_file_run_on_the_first_announcement()
+    {
+        Writers(_csv);
+
+        var surface = Services.GetRequiredService<RootSurface>().Surface;
+
+        Task<int?>? running = null;
+
+        surface.ExportChanged += () =>
+        {
+            if (running is null && surface.Export is { } export)
+            {
+                running = export.Run(ExportKind.Csv);
+            }
+        };
+
+        Render<ExportTableHost>(parameters => parameters.Add(host => host.Surface, surface));
+
+        Assert.NotNull(running);
+
+        Assert.Equal(ExportTableHost.Register, await running);
+        Assert.Equal(ExportTableHost.Register, _csv.Rows.Count);
+
+        // The header's declarations, and all of them: the file a caller that heard the first
+        // announcement gets is the one the trigger writes, not a narrower one.
+        Assert.Equal(
+            ["Nombre", "Cantidad", "Total", "Parte", "Fecha", "Tipo"],
+            _csv.Book!.Pages[0].Tables[0].Columns.Select(column => column.Title));
+    }
+
     async Task<IRenderedComponent<ExportTableHost>> Choose(
         string row,
         Action<ComponentParameterCollectionBuilder<ExportTableHost>>? parameters = null)

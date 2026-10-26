@@ -90,17 +90,18 @@ bigger page and keeps its export beside that name, in its own `.ns-collection-ba
 what else stands on the surface; an unnamed grid is a candidate for being the page's own list, so
 it hands its export up to its `SurfaceContext` instead (`AnnounceExport`, the same crossing
 `Title` already makes the other way: a table reads the page's own name, a header reads the
-table's own control), and `NsPageHeader` draws that export's trigger in its toolbar, before `Actions`, where it
-claims the slot (`SurfaceContext.ClaimsExport`, asked from its own render, first header wins). An
-unnamed grid whose surface has no header to claim the slot — an embedded grid, a dialog — keeps
-drawing its own, same as a named one. First unnamed, exportable grid to announce on a surface
-wins the slot the same way (`SurfaceContext.AnnounceExport`): a second grid's render, exportable
-or not, is simply not read while another grid holds it, and a grid's own teardown hands the slot
-back. The bar still draws for a grid that has a control of its own to put there even where
-nothing named the grid, because the pager row is the only alternative seat and it exists in one
-of the three paging modes. The icon is `NsIcons.Download` and the word `Exportar` is its tooltip
-and accessible name, never visible text, at any width — `NsMenu`'s own `Icon`+`Label` already
-whisper both through the house's one bubble, so nothing wraps it in a tooltip of its own.
+table's own control), and `NsPageHeader` draws that export's trigger in its toolbar, before
+`Actions`, where it claims the slot (`SurfaceContext.ClaimsExport`, asked from its own render,
+first header wins). An unnamed grid whose surface has no header to claim the slot — an embedded
+grid, a dialog — keeps drawing its own, same as a named one. First unnamed, exportable grid to
+announce on a surface wins the slot the same way (`SurfaceContext.AnnounceExport`): a second
+grid's render, exportable or not, is simply not read while another grid holds it, and a grid's
+own teardown hands the slot back. The bar still draws for a grid that has a control of its own to
+put there even where nothing named the grid, because the pager row is the only alternative seat
+and it exists in one of the three paging modes. The icon is `NsIcons.Download` and the word
+`Exportar` is its tooltip and accessible name, never visible text, at any width — `NsMenu`'s own
+`Icon`+`Label` already whisper both through the house's one bubble, so nothing wraps it in a
+tooltip of its own.
 
 **The slot changes hands out loud, both ways.** A header's own teardown hands the claim back
 (`SurfaceContext.ReleaseExport`) and a free slot taken says so too, both on the event the grid's
@@ -122,9 +123,15 @@ neither.
 
 **`Run` answers the rows the file carries, or null where no file was written.** A reader sees the
 download; a caller away from the screen sees nothing, and "it worked" is the one thing it cannot
-be left to assume — a read that does not land leaves no file (below), a kind nobody registered has
-no writer, and both are null. The count is taken as the writer pulls the rows past, so it is the
-rows of the FILE and never a total something computed for a pager.
+be left to assume — a read that does not land leaves no file (below), a kind nobody registered
+has no writer, an export already in flight writes no second file, and all three are null. What
+null never means is **"not yet"**: the announcement is handed out from the top of the grid's own
+render pass, before the header's `NsTh` have declared a single column, and an act run right there
+waits for that pass to land rather than answering as though the list had nothing to export — a
+caller hears the announcement once and the file it gets is the trigger's file. The count is taken
+as the writer pulls the rows past, so it is the rows of the FILE and never a total something
+computed for a pager. Run on the renderer's dispatcher, like anything that ends in a render,
+which is where a caller that heard `ExportChanged` already stands.
 
 **Each option's icon is the writer's own** (`IExportWriter.Icon`), named through its own catalog
 entry — `ExportingIcons` (`NSail.Exporting`) — never pasted inline: a writer a host adds brings

@@ -60,7 +60,7 @@
     // The trigger and the act in one announcement: a header draws the one and an agent asked for
     // the file of a list nobody is looking at runs the other, and both are THIS grid's export
     // (SurfaceExport). Null the moment this grid has nothing to export or is a panel of a bigger
-    // page, exactly as the trigger alone was.
+    // page: one announcement, so the two appear and vanish together.
     Surface?.AnnounceExport(this, Title is null && exportTrigger is not null
         ? new SurfaceExport
         {
@@ -467,6 +467,11 @@ else
     // the top of that pass and not again, so the seat the bar drew and the answer
     // OnExportChanged compares against are the same answer.
     bool _drawnExportHeader;
+
+    // Whoever is waiting for a header pass to land, which is only ever the act the surface
+    // announces: the announcement is handed out from the top of a pass and a caller can run the
+    // act right there, before the NsTh in the header have declared a single column (Declaring).
+    TaskCompletionSource? _declaring;
 
     [Parameter]
     public string? Class { get; set; }
@@ -1079,6 +1084,15 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // First, and before anything here can return early: the pass is in, so the columns an
+        // act arrived too early for are declared (Declaring).
+        if (_declaring is { } declaring)
+        {
+            _declaring = null;
+
+            declaring.SetResult();
+        }
+
         if (firstRender && Mode == NsTableMode.Auto)
         {
             await SubscribeToViewport();
@@ -1446,6 +1460,21 @@ else
         };
     }
 
+    // The header pass this grid is in the middle of, waited for until it has LANDED: the render
+    // body returning is not the end of it — the NsTh in the header set their parameters after
+    // that, and OnAfterRender is the first moment the declarations are all in. A render is asked
+    // for rather than hoped for, so this also ends for a caller that arrived between two passes
+    // of the grid's own. Teardown ends it too (Dispose), and then there are no columns, which is
+    // the no-file answer.
+    Task Declaring()
+    {
+        _declaring ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        StateHasChanged();
+
+        return _declaring.Task;
+    }
+
     // The surface's own half of Exportar, asked for by kind rather than by a writer: what reaches
     // here from off the grid is a caller that read Kinds off the announcement, and the writer is
     // this install's to resolve. A kind nothing registered writes no file, which is the same
@@ -1460,6 +1489,17 @@ else
     // read it from.
     async Task<int?> Export(IExportWriter writer)
     {
+        // No column declared yet is "not yet", never "nothing to export", and the two cannot both
+        // answer null: the announcement this act travels on is handed out from the top of a
+        // render pass, so a caller that runs it on the first announcement it hears is here before
+        // the header's NsTh have declared anything. The reader at the trigger never is — pressing
+        // one means a header is on screen — so this waits for the pass instead of refusing, and
+        // the file is the same file either way.
+        if (_columns.Declared.Count == 0)
+        {
+            await Declaring();
+        }
+
         // One at a time, and the menu says so by being disabled: two exports read their pages out
         // of the same Rows parameter, so a second one would interleave its pages into the first
         // one's file.
@@ -1611,6 +1651,12 @@ else
             // An export in flight has a screen to put its file on no longer, and its next page
             // would be a round trip asked for by nobody.
             _export?.Cancel();
+
+            // And one waiting for a header pass that is not coming is let go the same way: the
+            // render it asked for will never land, and a caller left on that await would hold its
+            // own answer open forever. It reads no columns past this and answers no file.
+            _declaring?.TrySetResult();
+            _declaring = null;
 
             // The table's own end is where it lets go of the form's context: a refusal posted
             // there is the FORM's problem once the table is gone — nothing can lift it and the
