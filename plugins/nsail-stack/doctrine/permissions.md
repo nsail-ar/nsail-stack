@@ -636,7 +636,9 @@ sent to an administrator who cannot help them. `AuthorizationResult.FeatureOff` 
 
 The key itself is declared by the module that enforces it (`IFeatureContributor`,
 `AddFeatures<T>`), with its kind and its default; the Stack gathers the declarations into
-`Features` and holds no list of keys of its own.
+`Features` and holds no list of keys of its own. Each install publishes the set its own build
+declares (`DeclaredFeature`, [data-tenancy.md](data-tenancy.md)), because the program that writes
+the bag is one program for a whole fleet and often a version ahead of the install it writes to.
 
 It is read **permissively**: a key nobody has written about a tenant takes its declared default
 and every default is the permissive one, which is the state of the whole fleet the day a key

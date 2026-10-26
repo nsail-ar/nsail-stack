@@ -188,7 +188,7 @@ public sealed class SuspendedSweepTests : IAsyncLifetime
     }
 }
 
-// The Stack's own two tables and nothing else: what ApplySetups puts on a model is the subject,
+// The Stack's own three tables and nothing else: what ApplySetups puts on a model is the subject,
 // so the model goes through it rather than naming the table a second time.
 sealed class StateDbContext : DbContext, ITenanted, IHasOrgScope
 {

@@ -226,6 +226,20 @@ public sealed class Notes : Migration
             },
             constraints: table => table.PrimaryKey("PK_TenantStates", state => state.TenantId));
 
+        // The Stack's third, and the one this install WRITES: the entitlement keys this build
+        // declares (DeclaredFeature), published at startup for whoever operates the fleet.
+        // Install-scoped like the one above, so it carries no tenant column either.
+        migrationBuilder.CreateTable(
+            name: "DeclaredFeatures",
+            columns: table => new
+            {
+                Key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                Kind = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
+                Enabled = table.Column<bool>(type: "boolean", nullable: false),
+                Limit = table.Column<decimal>(type: "numeric", nullable: true),
+            },
+            constraints: table => table.PrimaryKey("PK_DeclaredFeatures", feature => feature.Key));
+
         // No tenant column, deliberately: an install-scoped table has none, and the rows below
         // are the seed's — planted once, read by every tenant.
         migrationBuilder.CreateTable(
@@ -265,6 +279,7 @@ public sealed class Notes : Migration
         migrationBuilder.DropTable("NoteKinds");
         migrationBuilder.DropTable("AppliedSeedSteps");
         migrationBuilder.DropTable("TenantStates");
+        migrationBuilder.DropTable("DeclaredFeatures");
     }
 }
 

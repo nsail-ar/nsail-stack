@@ -31,15 +31,16 @@ Infrastructure only. No domain entities, no shared DbContext type.
 |---|---|
 | `IDbContextSetup` | Kit/app registers EF model configuration |
 | `Setup.AddDbContextSetup<T>` | Registers a kit's `IDbContextSetup` in DI |
-| `DbContextExtensions.ApplySetups` | Applies `IDbContextSetup` instances to a `ModelBuilder`, then the Stack's own two tables (seed history, tenant state) and the model-wide rules (row version, collation, personal-data comment, tenant column, org filter) |
+| `DbContextExtensions.ApplySetups` | Applies `IDbContextSetup` instances to a `ModelBuilder`, then the Stack's own three tables (seed history, tenant state, declared features) and the model-wide rules (row version, collation, personal-data comment, tenant column, org filter) |
 | `DbContextExtensions.ApplyTenancy` | What a product's context states in `ConfigureConventions` — see Tenancy |
 | `DbContextExtensions.SetDefaultDbContext<T>` | `AddScoped<DbContext, T>()` for handler injection |
 | `Setup.AddDataAccess<T>` | The tenancy seam plus the app's context — what a host calls instead of `AddDbContext` |
 | `TenancyOptions` / `TenancyProvider` / `Tenant` / `ITenanted` | The seam itself — see Tenancy |
 | `TenantRoster` | Who the install's tenants are, for work outside a request — data-tenancy.md, Background jobs |
 | `IInstallScoped` / `ITenantSeed` | What a tenant does NOT own, and what it is born with — data-tenancy.md |
-| `TenantSeedStep` / `AppliedSeedStep` | One named step of that seed, and the tenant's history of which it has run — one of the Stack's two tables (data-tenancy.md, First touch bootstraps) |
-| `TenantState` / `TenantStates` / `TenantStateMemo` | What the install records ABOUT a tenant — whether it is served, why, until when, and which plan it is on, written from outside the app — the scoped reader of it, and what holds that reading for minutes: the other Stack table (data-tenancy.md, The install's own record) |
+| `TenantSeedStep` / `AppliedSeedStep` | One named step of that seed, and the tenant's history of which it has run — one of the Stack's three tables (data-tenancy.md, First touch bootstraps) |
+| `TenantState` / `TenantStates` / `TenantStateMemo` | What the install records ABOUT a tenant — whether it is served, why, until when, and which plan it is on, written from outside the app — the scoped reader of it, and what holds that reading for minutes: the second Stack table (data-tenancy.md, The install's own record) |
+| `DeclaredFeature` | The entitlement keys this build declares, published by the install at startup for whoever writes the bag above — the third Stack table, and the only one the app writes outwards (data-tenancy.md, What this build declares) |
 | `WellKnownRows` / `TenancyProvider.Row` | The ids code names by constant, and which scope's copy one means (data-tenancy.md, A frozen id) |
 | `[Personal]` / `[NotPersonal]` / `PersonalDataComment` | What a column holds about a person, declared on the property and carried to the column's comment — see Provider |
 
@@ -102,6 +103,9 @@ The rest lives in [data-tenancy.md](data-tenancy.md), under these headings:
   `TenantClaimMiddleware`, `AmbientTenant`, `TenantMigrator`.
 - **The install's own record of a tenant** — `TenantState`, `TenantStates`, `TenantStateMemo`,
   `TenantStateMiddleware`, the suspended page.
+- **What this build declares** — `DeclaredFeature`, `FeaturePublisher`, the contract table the
+  writer of that bag reads from outside, the two compositions with nowhere to publish to, and why
+  an empty table reads *not reported* and never an empty list.
 - **Background jobs** — `IBackgroundJob.Tenancy`, one tenant per scope, `Tenancy:Tenants` and
   `Tenancy:TenantsFile`, `BackgroundJobMetrics`.
 

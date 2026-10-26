@@ -91,7 +91,8 @@ refused rather than stored.
 - **Which tables: the tenant-scoped set, asked by the marker and never by the column.**
   `TenantPolicies.Tables` reads a built model for the entities the tenant pass put the column
   on, minus `IInstallScoped` — so `TenantStates`, which names the tenant it is ABOUT in a column
-  of its own, owes no policy, exactly as `TenantStamp` skips it by the marker.
+  of its own, owes no policy, exactly as `TenantStamp` skips it by the marker; and so does
+  `DeclaredFeatures`, which names no tenant at all.
 - **The DDL lives in each product's own migration chain** (`migrationBuilder.AddTenantPolicies`),
   never in a startup pass: a chain is what CI applies to an empty database, so schema written
   outside it is schema no test ever sees. The tables are NAMED there, because a migration's own
@@ -148,7 +149,8 @@ so one planted row answers every tenant, and a scope that resolved none reads it
 entities wear it: org-map.md (the codebase's own map; in nsail, `plugins/nsail-kits/doctrine/org-map.md`), Shared. The
 Stack's own `TenantState` wears it too, and is the one marked entity that names a tenant in a
 column of its own — it is the install's record ABOUT a customer rather than reference data (The
-install's own record, below).
+install's own record, below). So does `DeclaredFeature`, which names no tenant at all: it is what
+the install declares about ITSELF (What this build declares, below).
 
 **An entity a tenant can WRITE is the tenant's**: the editor's existence is the classification.
 Under a per-tenant database the customer already edits such rows freely, so marking one
@@ -308,12 +310,13 @@ slug. So **provisioning a tenant is writing the Caddy block; nothing else exists
 
 - **The seed is a chain, and the tenant has a history of it.** `ITenantSeed` is an ordered list
   of named `TenantSeedStep`s and each touch runs the ones this tenant has not, so a step added
-  after a tenant existed still reaches it. `AppliedSeedStep` is that history and one of the Stack's
-  two tables (`TenantState` is the other): one row per step per tenant, written in the SAME transaction as the step's rows, so a
-  step that throws is not recorded and is tried again. It has rows only where rows are a
-  tenant's; under `None` and `MultiDb` the install's EF chain is the truth and the table stays
-  empty. **The memo is per process on purpose**: a deploy restarts the process, so a step that
-  deploy added runs on the first touch after it.
+  after a tenant existed still reaches it. `AppliedSeedStep` is that history and one of the
+  Stack's three tables (`TenantState` and `DeclaredFeature` are the others): one row per step per
+  tenant, written in the SAME transaction as the step's rows, so a step that throws is not
+  recorded and is tried again. It has rows only where rows are a tenant's; under `None` and
+  `MultiDb` the install's EF chain is the truth and the table stays empty. **The memo is per
+  process on purpose**: a deploy restarts the process, so a step that deploy added runs on the
+  first touch after it.
 - **A step's name is frozen the day it ships**, like a migration id: the history stores it, so
   renaming one makes every tenant run it again. Append, never edit.
 - **What a process holds of a tenant's rows in memory is that tenant's, and the touch empties
@@ -422,7 +425,7 @@ Everything above is a tenant's own rows. **`TenantState` is the install's record
 tenant** — whether it is served at all, why, until when, which plan it is on and what that plan
 includes — and that is the whole of why it is the Stack's and not a product's: the state of a
 customer is identical in every product, and answered twice it would be answered differently.
-It is the second and last table the Stack
+It is the second of the three tables the Stack
 owns (`DbContextExtensions.ApplySetups`, beside the seed history, for the same reason: a
 product that forgot to compose it would serve a suspended customer).
 
@@ -489,7 +492,9 @@ the contract and the Stack only reads:
     entry states the key, its `FeatureKind` (`Flag` or `Limit`) and **its default**, and
     `Features.IsEnabled`/`Features.Limit` are what turn a bag's silence into that default. A key
     nobody declared is open and uncapped: a mark naming one is a defect for the suite that reads
-    the composed products to catch, not a door to close on a running install.
+    the composed products to catch, not a door to close on a running install. Each install
+    publishes the set its own build declares, so whoever writes the bag can type against it (What
+    this build declares, below).
   - A message declares the feature it belongs to with `[RequiresFeature("key")]`
     (`NSail.Security.Annotations`), and `SecurityManager` refuses it **ahead of every policy**
     when the bag says the feature is off: `AuthorizationResult.FeatureOff` names it and the gate
@@ -539,6 +544,48 @@ the contract and the Stack only reads:
   `Tenancy:SupportContact`. The contact is the **install's**, because it is the operator and not
   the tenant that lifts a pause; empty means no line, and a tenant that wants its own words puts
   them in `Message`.
+
+## What this build declares, published for the writer of that row to read
+
+The table above is written from outside and read here. **`DeclaredFeature` is the one that runs
+the other way**: the entitlement keys the build composed into THIS install declares, written by
+the install at startup and read by whoever operates the fleet. It is the third and last table the
+Stack owns, and the only one the app writes outwards.
+
+The reason is the gap between the two programs. A key exists because a module enforces it
+(`IFeatureContributor`, above), so what can be sold on an install is a fact of the build running
+*there* — and the program that writes the bags is one program for a whole fleet, often a version
+ahead of the install it is writing to. Without this table that program would have to offer its
+operator the keys *its own* build knows, which is a different list the moment a cell runs behind.
+
+| Column | Type | Written as |
+|---|---|---|
+| `Key` | `varchar(128)`, primary key | The key as the module that enforces it spells it, under the model's case-insensitive collation — which is `Features`' own rule for two spellings of one key |
+| `Kind` | `varchar(16)`, not null | The `FeatureKind` word, `Flag` or `Limit`. Text and not an enum because the reader is outside this codebase: a word it does not know must leave it reading the rest of the row |
+| `Enabled` | `boolean`, not null | What a flag answers where a tenant's bag is silent |
+| `Limit` | `numeric`, null | What a ceiling answers there, or null for no ceiling at all |
+
+- **Rewritten whole at startup, which is the only moment it can change.** The catalog is gathered
+  from the modules composed into the process, so what a build declares is a compile-time fact and
+  a deploy is the one event that moves it (`FeaturePublisher`, `NSail.BaseServices.WebApi` — the
+  one composition that reaches both the catalog and the context, since `NSail.Data` references no
+  `NSail.Security`). The table then says what THIS build declares: a key that left the build
+  leaves the table with it, and the same build twice says the same thing.
+- **Amended, never emptied and refilled.** A program outside this process reads it, and a
+  delete-then-insert would show it empty to whoever read between the two.
+- **An empty table is an honest answer and the reader owes it no entry.** A build that composes no
+  module owning a key publishes nothing, and so does an install older than the table itself —
+  nothing can tell those apart, and what a reader shows for either is *not reported*, never an
+  empty list of keys and never a zero.
+- **Two compositions have nowhere to publish to**, and neither is a failure: a host with no store
+  composes no context at all, and a mode that connects PER TENANT has no database of its own —
+  there the table rides each tenant's database, where the process holds no connection until a
+  request names one.
+- **It is `IInstallScoped` for the plainest of the reasons**: a key is the install's and no tenant
+  holds a copy. No tenant column is stamped on it, no filter hides it, and it owes no row-level
+  policy — a policy there would hide from the install what the install itself published.
+- **Nothing in the app reads it.** The app's own answer about a key is `Features`, which this
+  table is written from; a second reader here would be one question answered twice.
 
 ## The credential is stamped, and checked on every request
 

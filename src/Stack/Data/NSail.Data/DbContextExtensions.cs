@@ -17,8 +17,8 @@ namespace NSail.Data;
 
 public static class DbContextExtensions
 {
-    /// <summary>Applies every kit's model configuration, the Stack's own two tables — the seed
-    /// history and the tenant state — and then
+    /// <summary>Applies every kit's model configuration, the Stack's own three tables — the seed
+    /// history, the tenant state and the keys this build declares — and then
     /// the five rules the Stack sets over the whole model: the row version, the case-insensitive
     /// collation, the personal-data comment each declaration carries to its column, the tenant
     /// column with the filter that rides it, and the org filter over what
@@ -40,6 +40,7 @@ public static class DbContextExtensions
 
         ApplySeedHistory(modelBuilder);
         ApplyTenantState(modelBuilder);
+        ApplyDeclaredFeatures(modelBuilder);
         ApplyRowVersion(modelBuilder);
         ApplyCaseInsensitiveText(modelBuilder);
         ApplyPersonalData(modelBuilder);
@@ -60,7 +61,7 @@ public static class DbContextExtensions
         configurationBuilder.Conventions.Remove(typeof(ForeignKeyIndexConvention));
     }
 
-    // The tenant's own migration history, one of the two tables the Stack owns. It is configured
+    // The tenant's own migration history, one of the three tables the Stack owns. It is configured
     // here rather than contributed as an IDbContextSetup because a product that forgot to
     // compose it would have a seed chain nothing records — every step re-running on every touch —
     // and the whole point of the pass over the model is that no composition can forget a rule.
@@ -118,6 +119,31 @@ public static class DbContextExtensions
             // what it feeds is one paragraph of a document with no app behind it.
             entity.Property(row => row.Message)
                 .HasMaxLength(500);
+        });
+    }
+
+    // What this build says it can be sold, beside the two above and for the third turn of the
+    // same reason: a product that forgot to compose it would leave whoever writes the bags typing
+    // keys from memory. It is the only one of the three the app WRITES and never reads — the
+    // catalog it is written from is the app's own answer — so the contract runs outwards here,
+    // and the install-scoped marker keeps the tenant column and its filter off a row that is the
+    // install's (data-tenancy.md, What this build declares).
+    static void ApplyDeclaredFeatures(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<DeclaredFeature>(entity =>
+        {
+            entity.ToTable("DeclaredFeatures");
+            entity.HasKey(row => row.Key);
+
+            // Long enough for a dotted key a module composes out of its own name
+            // ("organizations.max"), and bounded because what bounds the set is a declaration in
+            // code: a key no build declares cannot reach this table at all.
+            entity.Property(row => row.Key)
+                .HasMaxLength(128);
+
+            entity.Property(row => row.Kind)
+                .HasMaxLength(16)
+                .IsRequired();
         });
     }
 
