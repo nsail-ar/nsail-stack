@@ -267,7 +267,7 @@ lookup nothing declares is still 403.
 Security mirrors the messaging architecture: **`Policy` is data** (entity at rest, JSON on the wire), **`PolicyHandler` is behavior** — the Message/Handler pair repeated. The generated default and the hand-written escape hatch are the same concept: a PolicyHandler, different authorship.
 
 - **Contract is non-generic**: `Authorize(object message, Session session)` (+ `Fields`, `Name`, `Origin`). No generic interface (`PolicyHandler<T>` rejected — no utility): an object contract lets one handler cover *all* messages (the Admin wildcard) or a whole feature. Generated handlers type-test and cast once.
-- **Home: `NSail.Security`** — Session, PolicyHandler, SecurityManager, SecurityInterceptor, RelationProvider, plus `NSail.Security.Annotations` for the Sdk-facing attributes. Iam implements: the DB-backed `DbRelationProvider`, the `SessionAdapter`/`HttpSessionProvider` edge, built-ins, the stored set (`PolicyStore`, `DbSecurityManager`) and the effective-policies endpoint.
+- **Home: `NSail.Security`** — Session, PolicyHandler, SecurityManager, SecurityInterceptor, RelationProvider, and the feature half the gate asks ahead of every policy (`FeatureProvider`, `Entitlements`, `Features`), plus `NSail.Security.Annotations` for the Sdk-facing attributes. Iam implements: the DB-backed `DbRelationProvider`, the `SessionAdapter`/`HttpSessionProvider` edge, built-ins, the stored set (`PolicyStore`, `DbSecurityManager`) and the effective-policies endpoint; `TenantStateFeatureProvider` (`NSail.BaseServices.WebApi`) is the row-backed twin of `DbRelationProvider`.
 - **`PolicyHandlerBase`** (NSail.Security, hand-written): owns ALL evaluation semantics — audience matching, symbol evaluation (`@me`, `relatedAs` graph query, org symbols). Generated code only dispatches to it (same split as the HttpClient generator): a symbol bug is fixed in one Stack file, never by regenerating.
 - **Generated per message** (`[Generated(Policies.Handlers)]` holder per Sdk, scanning `IMessage`s in scope): `GetPartyPolicyHandler` with its `Fields` (name, kind, typed getter delegates — no per-send reflection, AOT-safe). `[Requires]` additionally yields an in-memory dependency handler, `Origin: Dependency`.
 - **Flat/wildcard documents expand at load** against the boot-computed registry into per-type generated handlers, exactly like lists — one evaluation path.
@@ -409,7 +409,7 @@ Optical fixture with no overriding wildcard, so the preset itself answers).
 
 ## Evaluation
 
-1. **Gate** — a filter in the Mediator pipeline. Full evaluation against actor + message fields: audience, message key, field constraints. Deny → a refusal Problem, and **which one depends on the caller** (`SecurityProblem.Denied`, see [The two refusals](#the-two-refusals)): 403 for a session, 401 for none. Covers queries-by-fields AND creates with zero DB loads beyond the graph edge checks. A constrained field rejects a null claim — the evaluator fails closed, so a nullable marked filter cannot widen a scoped caller's view by omission; the admin's free view arrives through an Any constraint, never through leaving the field out. `@memberOfOrDescendant` is the one exception, and the reason is that omission under that symbol alone is not a widening (Null semantics above).
+1. **Gate** — a filter in the Mediator pipeline. Full evaluation against actor + message fields: audience, message key, field constraints. Deny → a refusal Problem, and **which one depends on the caller** (`SecurityProblem.Denied`, see [The three refusals](#the-three-refusals)): 403 for a session, 401 for none — unless the message belongs to a feature the install was not sold, which is answered ahead of every policy and is about the install, not the caller. Covers queries-by-fields AND creates with zero DB loads beyond the graph edge checks. A constrained field rejects a null claim — the evaluator fails closed, so a nullable marked filter cannot widen a scoped caller's view by omission; the admin's free view arrives through an Any constraint, never through leaving the field out. `@memberOfOrDescendant` is the one exception, and the reason is that omission under that symbol alone is not a widening (Null semantics above).
 2. **By-id operations are handler doctrine** (no framework machinery):
    - **Gets/Deletes by id**: the handler bakes the check into the query (scoped WHERE via graph helpers) and returns empty — hides existence (no 403 oracle). On the ORG axis the handler writes nothing wherever the row wears `IOrgScoped`: the model carries that WHERE (data-tenancy.md, The org filter). A hand-written scoped WHERE is what is left: a list of one person's EDGES, which no model-wide filter can reach without circularity, and a `Conversation`, whose organization is NULLABLE so `OrgFilter.Axes` has no column to join (`ConversationHandler.Read`) — and it compares against the operation's own `OrgScopeProvider`, never a second walk down the chart (org-map.md, The party axis).
    - **The by-id carve-out**: a verb whose success asserts a credential is dead (revoke, rotate) answers NotFound on missing and foreign alike instead of succeeding silently — both answers hide existence equally well, and a refused revocation must never read as success. The owner's retry still succeeds — a soft disable finds the disabled row and matches.
@@ -479,23 +479,33 @@ Graph questions go through a **provider** (`RelationProvider` — Provider famil
 
 Consequences: **`Authorize` is async** (the graph is DB, even with policies preloaded). And no `WasmSecurityManager`/`WebSecurityManager` split: ONE SecurityManager — the environment difference is which provider and policy source get registered (composition, not class proliferation).
 
-## The two refusals
+## The three refusals
 
-Deny-by-default answers a refused send with one of two facts a client must tell apart:
+A refused send answers one of three facts a client must tell apart, because each sends the
+person in front of it somewhere different:
 
 - **403 Forbidden** — *you may not*. The caller is somebody; no policy covers this send for
-  them. Signing in again changes nothing.
+  them. Signing in again changes nothing; an administrator can widen the grant.
 - **401 Unauthorized** — *there is nobody here*. The caller carries no session, so there was
   no one for a policy to allow. Signing in fixes it.
+- **403 FeatureUnavailable** — *this install was not sold this*. It names the feature key and
+  says nothing about the caller: no grant anybody can be given widens a feature nobody
+  bought, so a client that read this as `Forbidden` would send the user to ask an
+  administrator for a permission nobody can grant (A feature is not a permission, below).
 
-`SecurityProblem.Denied(authenticated, action)` is the one place that chooses, and both gates
-call it — `SecurityInterceptor` (both arities) and `EndpointGateMiddleware` — so they cannot
-drift. An anonymous built-in still lets its message through; only a **denied** anonymous send
-answers 401.
+**One rule per gate, and the gates agree.** `SecurityRefusal.For` chooses for the interceptor
+(`SecurityInterceptor`, both arities, off the verdict's `FeatureOff`) and
+`SecurityManager.PreRefusal` chooses for the door ahead of model binding
+(`EndpointGateMiddleware`, which throws whatever it is handed and decides nothing) — both
+reaching `SecurityProblem.FeatureUnavailable` for a closed feature and
+`SecurityProblem.Denied(authenticated, action)`, the one place that picks between the first
+two, for everything else. An anonymous built-in still lets its message through; only a
+**denied** anonymous send answers 401 — a *marked* one answers `FeatureUnavailable` even to a
+caller with no session, since the feature is asked ahead of every policy.
 
 **Why it matters:** a client holds its `Session` in memory for the life of its tab while the
-cookie behind it expires on the server; with one refusal for both facts, the tab could never
-learn its credential had died.
+cookie behind it expires on the server; with one refusal for every fact, the tab could never
+learn its credential had died, and the screen a plan excludes would go on offering itself.
 
 **The client half** is `SessionInterceptor` (`NSail.Iam.Shared`), registered by `AddIamWasm`
 only — a server host rebuilds its `Session` from the request's cookie every time. On a 401
@@ -569,7 +579,7 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   one sentence for all three ways (marked on the challenge as `SignInRoutes.StaleProperty`, turned
   into the query by Iam's `OnRedirectToLogin`). **The arm every product actually ships is the
   401**: both render `InteractiveWebAssembly`, so after boot there is no document navigation and
-  somebody already inside meets the refusal on a send ([The two refusals](#the-two-refusals)).
+  somebody already inside meets the refusal on a send ([The three refusals](#the-three-refusals)).
   There the client is what carries the reason: `SessionInterceptor` renews on a 401 that met a
   live session, the state it rebuilds is anonymous *and marked* (`SignInRoutes.StaleClaim`), and
   `NsNotAuthorized` puts `StaleParameter` on the address it bounces to. Without that the person
@@ -594,7 +604,7 @@ The client fetches its **effective policies** once per session (twin of GetSessi
 
 - Field states: `@me`/`@current`/literals → client-derivable (locked/prefilled/hidden, or restricted to the literal set); a pinned **flag** is the sharpest case — `SecurityManager.Permits(message, field, value, session)` answers whether any matching policy leaves that value possible, `NsPartial.CanSend<T>(field, value)` is the markup half, and a control the caller may not tick is **not drawn** rather than drawn and refused; `*` → free (admin view sends null); `relatedAs` → **not client-evaluable** (no graph client-side): the optimistic provider passes it, the field renders free, the server gate validates — wrong picks get a Forbidden toast; apps may ship scoped lookup messages ("my patients") so the dropdown only offers values that will pass. No satisfiable policy for the message → the view/menu/link doesn't exist for this user.
 - "Doctor view" and "Admin view" are the same page with fields in different derived states — no `if (IsAdmin)` in pages, ever. The client asks "what may I send?", not "what am I?".
-- Defense in depth: the client is best-effort; the gate validates regardless. Stale client policies degrade to refusals, never to exposure — and a stale client *session* degrades to 401s, which the client acts on rather than absorbs ([The two refusals](#the-two-refusals)).
+- Defense in depth: the client is best-effort; the gate validates regardless. Stale client policies degrade to refusals, never to exposure — and a stale client *session* degrades to 401s, which the client acts on rather than absorbs ([The three refusals](#the-three-refusals)).
 
 The wiring, from the same code on both sides:
 

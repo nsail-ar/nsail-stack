@@ -15,8 +15,9 @@ public static class Collations
     internal const string CaseInsensitiveProvider = "icu";
 
     // Postgres types that hold a string but are not text, so a COLLATE on them is refused and
-    // the migration that creates the column fails. The roster is the exception to the rule
-    // below, and it is spelled out rather than inverted: skipping every column type the model
+    // the migration that creates the column fails. The roster is the exception to
+    // `DbContextExtensions.ApplyCaseInsensitiveText`, which is the rule, and it is spelled out
+    // rather than inverted: skipping every column type the model
     // NAMED would also skip `text`, `varchar(120)` and `citext`, which are the plain text this
     // is all about, and dropping the rule for one of those stops a search matching with nothing
     // on the entity to say why. A type nobody listed here fails its own migration out loud,

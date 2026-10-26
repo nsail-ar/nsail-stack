@@ -12,7 +12,10 @@ namespace NSail.Security;
 /// <summary>The gate: registered server-side as an open-generic Mediator interceptor,
 /// it evaluates every send against the SecurityManager before the sender runs. Deny by
 /// default: no matching policy means a refusal before any handler or DB work — 403 for a
-/// caller who is somebody, 401 for one who is nobody (SecurityProblem.Denied). What a
+/// caller who is somebody, 401 for one who is nobody (SecurityProblem.Denied), and a third
+/// answer where the message belongs to a feature this install was not sold — 403
+/// FeatureUnavailable, which is about the install and not the caller (SecurityRefusal.For,
+/// permissions.md, The three refusals). What a
 /// published event's subscribers send in reaction is exempt: it is the system carrying out a
 /// decision already authorized, never a caller asking (AmbientPublish). A queued command's
 /// delivery is exempt for the same reason, one hop later (AmbientQueue).</summary>
