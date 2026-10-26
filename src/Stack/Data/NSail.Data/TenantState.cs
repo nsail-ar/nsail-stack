@@ -4,9 +4,9 @@
 namespace NSail.Data;
 
 /// <summary>What the INSTALL records about a tenant: whether it is served at all, why, until
-/// when, and which plan it is on. One row per tenant, written from outside the app by whoever
-/// operates the fleet and read by every product the same way — the state of a customer is not a
-/// product's question and must not be answered twice.
+/// when, which plan it is on and what that plan includes. One row per tenant, written from
+/// outside the app by whoever operates the fleet and read by every product the same way — the
+/// state of a customer is not a product's question and must not be answered twice.
 ///
 /// <para>It is <see cref="IInstallScoped"/>, and that is the whole of why the tenant column is
 /// not on it: this is the install's record ABOUT a tenant, not a tenant's own row, and nothing
@@ -64,6 +64,22 @@ public class TenantState : IInstallScoped
     /// limits by plan reads this.</summary>
     [NotPersonal]
     public string? Plan { get; set; }
+
+    /// <summary>What that plan includes, as the bag was written: a JSON object of one key against
+    /// a flag or a number, carried and not interpreted — <b>the Stack names no key and knows
+    /// none</b>, exactly as it names no plan above. Text rather than a mapped shape for the same
+    /// reason the rest of this row is text: the column IS the contract with a program outside
+    /// this codebase, which writes it in plain SQL, and a bag no parser can read must leave a
+    /// paying customer where it found them. Whoever reads it reads it through
+    /// <c>Entitlements.Read</c> (NSail.Security), which answers the permissive thing to
+    /// everything it cannot read.</summary>
+    [NotPersonal]
+    public string? Entitlements { get; set; }
+
+    /// <summary>When the bag above was last written, in UTC. Its writer is a program outside
+    /// this process, so "has my write landed" is a real question an operator asks of the row —
+    /// and the memo in front of the read is why the answer is not immediate.</summary>
+    public DateTime? EntitlementsUpdatedAt { get; set; }
 
     /// <summary>Why the tenant is paused, a word of <see cref="Reasons"/> — compared and never
     /// parsed, like <see cref="Status"/>. It changes nothing about whether the tenant is served:

@@ -62,4 +62,24 @@ public static class SecurityProblem
             },
             status: 403);
     }
+
+    /// <summary>What the gate answers a send whose feature the install's record about this
+    /// tenant says is off. It is not a refusal of the caller — no grant of theirs changes it and
+    /// no second attempt turns it into another answer — so it names the FEATURE and not the
+    /// permission: whoever reads it has to be able to tell "your plan does not include this"
+    /// from "you, specifically, may not".</summary>
+    public static Problem FeatureUnavailable(string feature)
+    {
+        return new(
+            code: "FeatureUnavailable",
+            title: "Feature not available",
+            issues: new[]
+            {
+                new Issue(
+                    code: "FeatureUnavailable",
+                    message: $"The {feature} feature is not available on this installation",
+                    source: feature)
+            },
+            status: 403);
+    }
 }

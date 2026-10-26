@@ -104,6 +104,13 @@ public static class DbContextExtensions
             entity.Property(row => row.Plan)
                 .HasMaxLength(32);
 
+            // jsonb, which is the one place in this table where the type is more than storage:
+            // the writer outside this codebase has to read and amend ONE key of the bag in plain
+            // SQL, and that is what Postgres' own key/value type is for. No length, because
+            // what bounds it is the set of keys somebody declared.
+            entity.Property(row => row.Entitlements)
+                .HasColumnType("jsonb");
+
             entity.Property(row => row.Reason)
                 .HasMaxLength(32);
 
@@ -151,6 +158,15 @@ public static class DbContextExtensions
             foreach (var property in entity.GetProperties())
             {
                 if (property.ClrType != typeof(string))
+                {
+                    continue;
+                }
+
+                // A string the model stores as something that is not text at all — a jsonb bag
+                // (TenantState.Entitlements) — takes no collation: Postgres refuses one on such a
+                // type and the migration that adds the column would not apply. Every other named
+                // type still gets the rule (Collations.Collatable).
+                if (!Collations.Collatable(property.GetColumnType()))
                 {
                     continue;
                 }

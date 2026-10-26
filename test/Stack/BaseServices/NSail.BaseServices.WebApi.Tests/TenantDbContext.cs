@@ -217,6 +217,8 @@ public sealed class Notes : Migration
                 TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                 Status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                 Plan = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
+                Entitlements = table.Column<string>(type: "jsonb", nullable: true),
+                EntitlementsUpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                 Reason = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
                 SuspendedFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                 SuspendedUntil = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),

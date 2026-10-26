@@ -238,8 +238,10 @@ accounts for.
 **A second claim rides the same surface, for the seat a list's Exportar is drawn in**
 (`SurfaceContext.ClaimsExport`, handed back by `ReleaseExport` from `Dispose`): first header
 wins, asked from its own render, and the rule for what goes in that seat — which grid hands its
-trigger up and which keeps its own — is [exporting.md](../exporting.md). It is handed back for
-the row claim's reason and it is handed back **out loud**: a surface that outlives its pages
+trigger up, which keeps its own, and why the announcement carries the grid's export rather than
+its trigger alone (`SurfaceExport`, which is also how something that is not chrome at all asks
+that list for its file) — is [exporting.md](../exporting.md). It is handed back for the row
+claim's reason and it is handed back **out loud**: a surface that outlives its pages
 initializes the arriving header before it disposes the leaving one, so the render after the
 release is the only moment either side of the seat can be told the slot moved, and taking a free
 slot says so for the same reason. Both halves ride `ExportChanged`.

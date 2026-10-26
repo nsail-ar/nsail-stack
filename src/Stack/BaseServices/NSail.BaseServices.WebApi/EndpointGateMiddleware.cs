@@ -45,19 +45,21 @@ public sealed class EndpointGateMiddleware : IMiddleware
         var sessions = context.RequestServices.GetRequiredService<SessionProvider>();
         var session = sessions.Session;
 
-        // Ahead of the sync PreAuthorize below: a tenant's very first message since the
+        // Ahead of the policy half of PreRefusal below: a tenant's very first message since the
         // process started otherwise reads an empty, not-yet-loaded policy set here and
         // denies before Authorize ever gets a chance at the real one.
         await security.EnsureLoaded(context.RequestAborted).ConfigureAwait(false);
 
-        // PreAuthorize, not Authorize: no message exists yet to read field constraints from.
-        // The asymmetry is what makes this safe — it ignores fields and so can only ever be
-        // more permissive than the interceptor, never less. A false answer means no policy
-        // applies to this key for this session at all, which Authorize would refuse for any
-        // values whatsoever, so answering it here costs the caller nothing it would have won.
-        if (!security.PreAuthorize(message.MessageType, session))
+        // PreRefusal, not Authorize: no message exists yet to read field constraints from, so
+        // the policy half ignores fields and can only ever be more permissive than the
+        // interceptor, never less — a refusal there means no policy applies to this key for this
+        // session at all, which Authorize would refuse for any values whatsoever. Which verdict
+        // it is belongs to the manager and not here: a feature the install was not sold is
+        // refused as itself, and the caller gets at this door the same answer the interceptor
+        // behind it would have given.
+        if (await security.PreRefusal(message.MessageType, session, context.RequestAborted).ConfigureAwait(false) is { } refusal)
         {
-            throw new BusinessException(SecurityProblem.Denied(session.IsAuthenticated, message.MessageType.Name));
+            throw new BusinessException(refusal);
         }
     }
 }
