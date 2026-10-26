@@ -71,16 +71,31 @@ public sealed class AddRowFloorTests
     }
 
     // Keyed off the act itself rather than a class of the row's own: the act is what makes the
-    // row wide enough to wrap, so no row can be given one without the floor that affords it.
+    // row wide enough to wrap, so no row can be given one without the floor that affords it. And
+    // the floor is one figure declared on that grid — both of the row's open items read it from
+    // there, the open-ended one through the family's own basis property and the bounded one by
+    // inheritance — so nothing outside the row can be left spending a stale copy of it. A :root
+    // token is what a figure the mirror's OTHER end has to read becomes, which is the act's cell
+    // and only it.
     [Fact]
-    public void TheFloorIsKeyedOffTheActTheRowCarries()
+    public void TheFloorIsKeyedOffTheActTheRowCarriesAndDeclaredOnThatGrid()
     {
         var css = HouseStylesheet.Read();
 
         Assert.Contains(
             """
             .ns-grid:has(> * > .ns-row-submit) {
+                --ns-add-row-field: 7rem;
                 --ns-field-grow-basis: var(--ns-add-row-field);
+            }
+            """,
+            css,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            """
+            :root {
+                --ns-add-row-act: 9rem;
             }
             """,
             css,
@@ -114,7 +129,10 @@ public sealed class AddRowFloorTests
     // And released below the window the mirror itself is dropped at — the same boundary
     // .ns-select-gutter is hidden at and the reserve goes back to auto. There the row is a stack
     // of lines with no column to line up with, so a width answering a desktop band's arithmetic
-    // would only be narrowing a phone's fields for nothing.
+    // would only be narrowing a phone's fields for nothing. Each of the three releases exactly
+    // what its own selector declares above: the grid the basis, the act's cell the width, the
+    // bounded item the family's own flex. A release of a property its selector never declares
+    // reads as a rule that is still there.
     [Fact]
     public void TheFloorIsReleasedBelowTheWindowTheMirrorIsDroppedAt()
     {
@@ -123,10 +141,12 @@ public sealed class AddRowFloorTests
         Assert.Contains(
             """
             @media (max-width: 960px) {
-                .ns-grid:has(> * > .ns-row-submit),
+                .ns-grid:has(> * > .ns-row-submit) {
+                    --ns-field-grow-basis: initial;
+                }
+
                 .ns-grid > *:has(> .ns-row-submit) {
                     --ns-field-width: initial;
-                    --ns-field-grow-basis: initial;
                 }
 
                 .ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
