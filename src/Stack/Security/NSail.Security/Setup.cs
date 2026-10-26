@@ -11,8 +11,8 @@ namespace NSail.Security;
 public static class Setup
 {
     /// <summary>TryAdds the security services with their permissive defaults (anonymous
-    /// SessionProvider, optimistic RelationProvider and CredentialProvider) and the
-    /// <c>Security:</c> section's — a product without Iam still runs.</summary>
+    /// SessionProvider, optimistic RelationProvider, FeatureProvider and CredentialProvider) and
+    /// the <c>Security:</c> section's — a product without Iam still runs.</summary>
     public static void AddSecurity(this IServiceCollection services)
     {
         services.AddMessageRegistry();
@@ -23,8 +23,13 @@ public static class Setup
         // either order must end up with the configured value.
         services.TryAddSingleton<SecurityOptions>();
 
+        // One per process: what it gathers is a compile-time declaration, and a host composing no
+        // module that owns a key gets an empty catalog rather than a missing service.
+        services.TryAddSingleton<Features>();
+
         services.TryAddScoped<SessionProvider>();
         services.TryAddScoped<RelationProvider>();
+        services.TryAddScoped<FeatureProvider>();
         services.TryAddScoped<CredentialProvider>();
         services.TryAddScoped<RequestOrganizationProvider>();
         services.TryAddScoped<SecurityManager>();
@@ -38,6 +43,16 @@ public static class Setup
         services.AddSingleton<SecurityEnforcement>();
         services.AddScoped(typeof(IInterceptor<>), typeof(SecurityInterceptor<>));
         services.AddScoped(typeof(IInterceptor<,>), typeof(SecurityInterceptor<,>));
+    }
+
+    /// <summary>Registers the entitlement keys a module owns, beside the code that enforces
+    /// them: the Stack gathers the declarations (<see cref="Features"/>) and holds no list of
+    /// keys of its own, exactly as it names no plan.</summary>
+    public static void AddFeatures<TContributor>(this IServiceCollection services)
+        where TContributor : class, IFeatureContributor
+    {
+        services.AddSecurity();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IFeatureContributor, TContributor>());
     }
 
     /// <summary>Registers a code-owned policy: immune to administration (no deleted row

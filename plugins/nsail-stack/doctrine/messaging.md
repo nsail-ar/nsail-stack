@@ -708,10 +708,15 @@ which `UseBaseWebApi` runs after authentication and ahead of `MapEndpoints`:
 - **It reads the message off the route, not the request.** Every generated entry carries
   `MessageEndpointMetadata` (`.WithMetadata(...)` in the entry template), so the matched
   endpoint names its message type before the body is read.
-- **It asks `SecurityManager.PreAuthorize`, never `Authorize`** — there is no message yet to
-  read field constraints from. `PreAuthorize` ignores fields, so it can only be *more*
-  permissive than `SecurityInterceptor`: a false answer means no policy applies to that key
-  for that session at all, which `Authorize` would refuse whatever the values.
+- **It asks `SecurityManager.PreRefusal`, never `Authorize`** — there is no message yet to read
+  field constraints from. Its policy half is `PreAuthorize`, which ignores fields and so can
+  only be *more* permissive than `SecurityInterceptor`: a refusal there means no policy applies
+  to that key for that session at all, which `Authorize` would refuse whatever the values.
+- **Which refusal it is comes from the manager, not from here.** A message whose
+  `[RequiresFeature]` key the install's entitlements bag closes is answered
+  `FeatureUnavailable`, not the permission refusal — at this door exactly as at the interceptor
+  behind it, because `PreRefusal` reads the bag awaited the way `Authorize` does
+  (permissions.md).
 - **`SecurityInterceptor` is still the real guard**, unchanged. This one denies sooner; it
   never allows.
 - **Opt-in like the interceptor.** `AddSecurityEnforcement` registers the
