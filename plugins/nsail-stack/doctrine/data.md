@@ -103,6 +103,9 @@ The rest lives in [data-tenancy.md](data-tenancy.md), under these headings:
   `TenantClaimMiddleware`, `AmbientTenant`, `TenantMigrator`.
 - **The install's own record of a tenant** — `TenantState`, `TenantStates`, `TenantStateMemo`,
   `TenantStateMiddleware`, the suspended page.
+- **What this build declares** — `DeclaredFeature`, `FeaturePublisher`, the contract table the
+  writer of that bag reads from outside, the two compositions with nowhere to publish to, and why
+  an empty table reads *not reported* and never an empty list.
 - **Background jobs** — `IBackgroundJob.Tenancy`, one tenant per scope, `Tenancy:Tenants` and
   `Tenancy:TenantsFile`, `BackgroundJobMetrics`.
 
