@@ -57,7 +57,18 @@
     // grid's own ExportChanged handler, which answers by comparing against this field.
     _drawnExportHeader = Surface?.HasExportHeader ?? false;
 
-    Surface?.AnnounceExport(this, Title is null ? exportTrigger : null);
+    // The trigger and the act in one announcement: a header draws the one and an agent asked for
+    // the file of a list nobody is looking at runs the other, and both are THIS grid's export
+    // (SurfaceExport). Null the moment this grid has nothing to export or is a panel of a bigger
+    // page: one announcement, so the two appear and vanish together.
+    Surface?.AnnounceExport(this, Title is null && exportTrigger is not null
+        ? new SurfaceExport
+        {
+            Trigger = exportTrigger,
+            Kinds = [.. Writers!.All.Select(writer => writer.Kind)],
+            Run = ExportAs
+        }
+        : null);
 
     RenderFragment headerCells =
         @<text>
@@ -456,6 +467,11 @@ else
     // the top of that pass and not again, so the seat the bar drew and the answer
     // OnExportChanged compares against are the same answer.
     bool _drawnExportHeader;
+
+    // Whoever is waiting for a header pass to land, which is only ever the act the surface
+    // announces: the announcement is handed out from the top of a pass and a caller can run the
+    // act right there, before the NsTh in the header have declared a single column (Declaring).
+    TaskCompletionSource? _declaring;
 
     [Parameter]
     public string? Class { get; set; }
@@ -1068,6 +1084,15 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // First, and before anything here can return early: the pass is in, so the columns an
+        // act arrived too early for are declared (Declaring).
+        if (_declaring is { } declaring)
+        {
+            _declaring = null;
+
+            declaring.SetResult();
+        }
+
         if (firstRender && Mode == NsTableMode.Auto)
         {
             await SubscribeToViewport();
@@ -1435,14 +1460,52 @@ else
         };
     }
 
-    async Task Export(IExportWriter writer)
+    // The header pass this grid is in the middle of, waited for until it has LANDED: the render
+    // body returning is not the end of it — the NsTh in the header set their parameters after
+    // that, and OnAfterRender is the first moment the declarations are all in. A render is asked
+    // for rather than hoped for, so this also ends for a caller that arrived between two passes
+    // of the grid's own. Teardown ends it too (Dispose), and then there are no columns, which is
+    // the no-file answer.
+    Task Declaring()
     {
+        _declaring ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        StateHasChanged();
+
+        return _declaring.Task;
+    }
+
+    // The surface's own half of Exportar, asked for by kind rather than by a writer: what reaches
+    // here from off the grid is a caller that read Kinds off the announcement, and the writer is
+    // this install's to resolve. A kind nothing registered writes no file, which is the same
+    // answer chrome gives by never offering it.
+    Task<int?> ExportAs(ExportKind kind)
+    {
+        return Writers?.For(kind) is { } writer ? Export(writer) : Task.FromResult<int?>(null);
+    }
+
+    // How many rows the file carries, or null where no file was written: the person at the
+    // trigger reads that off the download, and a caller away from the screen has nothing else to
+    // read it from.
+    async Task<int?> Export(IExportWriter writer)
+    {
+        // No column declared yet is "not yet", never "nothing to export", and the two cannot both
+        // answer null: the announcement this act travels on is handed out from the top of a
+        // render pass, so a caller that runs it on the first announcement it hears is here before
+        // the header's NsTh have declared anything. The reader at the trigger never is — pressing
+        // one means a header is on screen — so this waits for the pass instead of refusing, and
+        // the file is the same file either way.
+        if (_columns.Declared.Count == 0)
+        {
+            await Declaring();
+        }
+
         // One at a time, and the menu says so by being disabled: two exports read their pages out
         // of the same Rows parameter, so a second one would interleave its pages into the first
         // one's file.
         if (_exporting || _columns.Declared.Count == 0)
         {
-            return;
+            return null;
         }
 
         _exporting = true;
@@ -1467,10 +1530,13 @@ else
             ? TableExport.Rows<TRow>(Read, columns, _export.Token)
             : TableExport.Held(HeldRows, columns, _export.Token);
 
+        var counted = 0;
+        int? written = null;
+
         var book = ExportBook.Of(name, new ExportTable
         {
             Columns = [.. columns.Select(column => new ExportColumn { Key = column.Key, Title = column.Title, Format = column.Format })],
-            Rows = rows
+            Rows = Count(rows)
         });
 
         try
@@ -1490,6 +1556,10 @@ else
             using var reference = new DotNetStreamReference(file, leaveOpen: true);
 
             await JS.InvokeVoidAsync("nsapp.download", ExportWriters.FileName(book, writer), writer.ContentType, reference);
+
+            // Last, so every path that leaves no file answers null: a count read off a book whose
+            // rows ran out halfway would say a file exists that nobody was handed.
+            written = counted;
         }
         catch (ExportInterrupted) when (refused)
         {
@@ -1512,6 +1582,22 @@ else
             _exporting = false;
 
             StateHasChanged();
+        }
+
+        return written;
+
+        // The rows as the writer pulls them, counted on the way past: the file is the only place
+        // the number exists afterwards, and the rows are read a page at a time and dropped. No
+        // cancellation token of its own — the enumerable this wraps already closes over the
+        // export's, so a token taken here would be the same stop asked for twice.
+        async IAsyncEnumerable<ExportRow> Count(IAsyncEnumerable<ExportRow> reading)
+        {
+            await foreach (var row in reading)
+            {
+                counted++;
+
+                yield return row;
+            }
         }
 
         // One page of the export, asked for the only way this component ever asks for rows: the
@@ -1565,6 +1651,12 @@ else
             // An export in flight has a screen to put its file on no longer, and its next page
             // would be a round trip asked for by nobody.
             _export?.Cancel();
+
+            // And one waiting for a header pass that is not coming is let go the same way: the
+            // render it asked for will never land, and a caller left on that await would hold its
+            // own answer open forever. It reads no columns past this and answers no file.
+            _declaring?.TrySetResult();
+            _declaring = null;
 
             // The table's own end is where it lets go of the form's context: a refusal posted
             // there is the FORM's problem once the table is gone — nothing can lift it and the

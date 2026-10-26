@@ -12,7 +12,10 @@
 <MudPopoverProvider />
 
 @* A server-paged list, which is what offers Exportar: the handler answers the page it is asked
-   for out of a register far longer than any page of it. *@
+   for out of a register far longer than any page of it. The surface is cascaded whether or not
+   one was given — null is what a grid with no surface around it reads anyway — so the grid's
+   announcement is this host's to ask for by handing one in. *@
+<CascadingValue Value="Surface" IsFixed="true">
 <NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="OnQuery" RowEditor="Editor" NewRow="Blank" Title="@Title" Exportable="Exportable">
     <HeaderContent>
         <NsTh For="() => context.Name" />
@@ -39,6 +42,7 @@
         <NsTd />
     </RowTemplate>
 </NsTable>
+</CascadingValue>
 
 @code {
 
@@ -50,6 +54,11 @@
 
     [Parameter]
     public string? Title { get; set; }
+
+    /// <summary>The surface the grid hands its export to, where a test asks for the act rather
+    /// than the trigger. Null is the embedded grid every other test here renders.</summary>
+    [Parameter]
+    public SurfaceContext? Surface { get; set; }
 
     /// <summary>The business/machinery opt-out, passed straight through: default true so a host
     /// that never sets it keeps every other test's behavior.</summary>
