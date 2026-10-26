@@ -65,7 +65,7 @@ its own, the words of the one page this project draws without the app (the suspe
   `Suspended` problem to a program, worded by the row's reason and carrying its message. A tenant
   with no state row is active; a pause can also be a window, and the clock it opens and closes on
   is read here, on every request. See
-  [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-and-its-plan).
+  [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-and-what-the-plan-includes).
 - Authentication + authorization middleware (schemes are registered by kits, e.g. Iam registers cookie auth in `AddIamWebApi`)
 - `TenantClaimMiddleware` — the identity half of the tenant wall, **only where a tenant is
   resolved**, like the one above. After authentication, because the claim only exists once the ticket is read,

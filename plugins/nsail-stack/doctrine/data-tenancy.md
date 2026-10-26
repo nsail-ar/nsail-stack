@@ -310,12 +310,13 @@ slug. So **provisioning a tenant is writing the Caddy block; nothing else exists
 
 - **The seed is a chain, and the tenant has a history of it.** `ITenantSeed` is an ordered list
   of named `TenantSeedStep`s and each touch runs the ones this tenant has not, so a step added
-  after a tenant existed still reaches it. `AppliedSeedStep` is that history and one of the Stack's
-  three tables (`TenantState` and `DeclaredFeature` are the others): one row per step per tenant, written in the SAME transaction as the step's rows, so a
-  step that throws is not recorded and is tried again. It has rows only where rows are a
-  tenant's; under `None` and `MultiDb` the install's EF chain is the truth and the table stays
-  empty. **The memo is per process on purpose**: a deploy restarts the process, so a step that
-  deploy added runs on the first touch after it.
+  after a tenant existed still reaches it. `AppliedSeedStep` is that history and one of the
+  Stack's three tables (`TenantState` and `DeclaredFeature` are the others): one row per step per
+  tenant, written in the SAME transaction as the step's rows, so a step that throws is not
+  recorded and is tried again. It has rows only where rows are a tenant's; under `None` and
+  `MultiDb` the install's EF chain is the truth and the table stays empty. **The memo is per
+  process on purpose**: a deploy restarts the process, so a step that deploy added runs on the
+  first touch after it.
 - **A step's name is frozen the day it ships**, like a migration id: the history stores it, so
   renaming one makes every tenant run it again. Append, never edit.
 - **What a process holds of a tenant's rows in memory is that tenant's, and the touch empties
