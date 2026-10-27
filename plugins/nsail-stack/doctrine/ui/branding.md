@@ -172,6 +172,16 @@ tab, the wizard's current step, the guide's open chapter — and a rule that set
 `--mud-palette-primary` is a defect (`AccentInkTests` sweeps the stylesheet for one; the single
 exception is `.text-primary`, which tints an `NsImage`, and an image is a mark).
 
+**The vendor's own classes owe the same floor once a screen reaches for them** — a text button's
+`Color.Primary`, the `mud-primary-text` icon/label utility, the keyboard focus ring, an outlined
+field's focused border — so `ns-mud.css` routes all four through `--ns-accent-ink` too, read off
+the vendor's own selector rather than restated per call site. **Scoped to the content regions
+only** (`.mud-main-content`, `.mud-dialog`, `.mud-popover`, `.ns-drawer` — the aside panel, which
+wears the vendor's drawer class for its slide-in and is content, never the band): inside
+`.mud-appbar` and `.ns-nav-drawer` the same four read `--ns-accent-on-chrome` instead, for the
+reason below — `--ns-accent-ink` is an answer about a card and would land on a chrome of any
+luminance.
+
 **That ink is derived in code and not in CSS, which is the one thing it does not share with the
 status channel's lean above: a severity is a CONSTANT, so a fixed fraction of it can be mixed in a
 stylesheet, and an accent is a free pick. It is NOT `AccentHover` either.** Over the light scheme the house
@@ -199,7 +209,9 @@ exist.
 freely while only the luminance of the content's surfaces is fixed, so a card's answer would land on a chrome of any
 luminance; the drawer leans from `TextOnChrome` and reads against the chrome and the wash it marks
 a row with. `ns-mud.css` names it `--ns-rail-accent`, with the band's own ink as the fallback, and
-the entry a reader is on — nav and guide rail alike, one gutter, one pair — wears it.
+the entry a reader is on — nav and guide rail alike, one gutter, one pair — wears it; so does the
+keyboard focus ring and the same four vendor classes above, wherever they land on `.mud-appbar`
+or `.ns-nav-drawer` instead of a card.
 
 `NsTheme` emits both for the scheme that is lit, and `ns-mud.css` only reads them. The floors are
 swept, not sampled: `BrandThemeContrastTests` walks the accent cube in both schemes. On the
@@ -253,6 +265,13 @@ colourless grey — is the last resort only, for a client no prerender handed an
 vendor stylesheet ships no `:root` defaults and anything drawn before it mounts paints from
 unset ones. `NsSetup` mounts it above the app; a document rendered with no app around it
 (`NsProblemDocument`) mounts it alone.
+
+**`NsTheme.Dark` resolves the same way `GetBrand` does — a live fact, never a guess held past
+its welcome.** An explicit Claro/Oscuro always wins; unset, it follows the OS scheme, asked once
+after the first interactive render (`MudThemeProvider.GetSystemDarkModeAsync`) and kept live
+(`WatchSystemDarkModeAsync`), and `Brand.DefaultDark` is the hold only until a client has an
+answer to give — a prerender, or a document with no circuit at all, the same case `GetBrand`'s
+own null is for.
 
 **Every saver announces in place; nothing reloads to repaint.** `BrandChanged` is the event —
 published after a successful `CreateBranding`/`UpdateBranding` — and `NsSetup` (theme),

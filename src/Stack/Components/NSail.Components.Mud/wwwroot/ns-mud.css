@@ -1647,6 +1647,26 @@
     color: var(--ns-accent-ink, var(--mud-palette-text-primary)) !important;
 }
 
+/* The same three rules, answered: NsSearchField's own box docks in the drawer (NsNavMenu's
+   Map search) as an outlined field, and a product is free to write Color="Primary" on an icon
+   or a text button anywhere, the rail included. None of the three carries a region of its own
+   above, so the band would otherwise read the three exactly as a card does — --ns-accent-ink,
+   a pick leaned against the content's fixed surfaces, landing on a chrome of whatever luminance
+   a tenant gave it. Higher specificity than each rule above (one more class) is what wins this
+   back for the band without touching what every card already reads correctly. */
+:is(.mud-appbar, .ns-nav-drawer) .mud-input.mud-input-outlined:focus-within > .mud-input-outlined-border,
+:is(.mud-appbar, .ns-nav-drawer) .mud-input.mud-input-outlined:focus-within .mud-shrink > .mud-input-outlined-border {
+    border-color: var(--ns-accent-on-chrome, var(--mud-palette-appbar-text));
+}
+
+:is(.mud-appbar, .ns-nav-drawer) .mud-button-text.mud-button-text-primary {
+    color: var(--ns-accent-on-chrome, var(--mud-palette-appbar-text));
+}
+
+:is(.mud-appbar, .ns-nav-drawer) .mud-primary-text {
+    color: var(--ns-accent-on-chrome, var(--mud-palette-appbar-text)) !important;
+}
+
 /* The vendor's own placeholder is the field's text colour at 42% opacity (nsail#2744: ~2.5:1
    on the light canvas, ~3.5:1 on the dark one — "Escribí para buscar" among them). The
    secondary rank reads as a hint everywhere else in the house, so the placeholder reads it
@@ -4287,12 +4307,31 @@ div.mud-input-slot.mud-input-root::placeholder {
    and this sheet second).
 
    The ring is drawn in the accent AS INK (--ns-accent-ink) and not the accent itself: a free
-   pick read as a 2px line on a pale surface is 2.43:1 for the house gold (nsail#1940's own
+   pick read as a 2px line on a pale surface is 2.43:1 for the house gold (nsail#2744's own
    number), under the 3:1 a UI boundary owes. The same reason every other place the accent
-   becomes a line or a glyph reads this variable instead of the ground it is for. */
-:is(.mud-appbar, .mud-drawer, .mud-main-content, .mud-dialog, .mud-popover)
+   becomes a line or a glyph reads this variable instead of the ground it is for.
+
+   The chrome is excluded from THIS rule and answered below: --ns-accent-ink is derived
+   against the content's fixed surfaces (BrandTheme.AccentInk), and the band is a free pick
+   of its own luminance (ui/branding.md, "On the chrome it is a second derivation") — a dark
+   accent on a dark chrome can fall under 2:1 there, which is the ring vanishing on a keyboard
+   that only ever tabs through the drawer. .ns-drawer stands in for .mud-drawer: the aside
+   panel is content wearing the vendor's drawer class for its slide-in, never the band. */
+:is(.mud-main-content, .mud-dialog, .mud-popover, .ns-drawer)
 :is(a, button, [role="button"], [role="tab"], [role="menuitem"], [role="option"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
     outline: 2px solid var(--ns-accent-ink, var(--mud-palette-text-primary));
+    outline-offset: 2px;
+}
+
+/* The band's own answer to the same ring: --ns-accent-on-chrome, derived against the chrome
+   and promised (BrandThemeContrastTests.TheAccentOnTheChromeNeverReadsWorseThanTheBandsOwnInk)
+   to never read worse than the band's own plain ink there — which already clears the body
+   floor, well past the 3:1 a ring owes. The fallback is the appbar's text slot rather than
+   --ns-rail-text: .mud-appbar carries no rail variables of its own, and both slots resolve the
+   same scheme ink (BrandMudTheme.AppbarText/DrawerText both read TextOnChrome). */
+:is(.mud-appbar, .ns-nav-drawer)
+:is(a, button, [role="button"], [role="tab"], [role="menuitem"], [role="option"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--ns-accent-on-chrome, var(--mud-palette-appbar-text));
     outline-offset: 2px;
 }
 

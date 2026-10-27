@@ -65,9 +65,10 @@
     // the brand's own default. The live watcher rides the vendor's default
     // ObserveSystemDarkModeChange rather than a second one of our own: WatchSystemDarkModeAsync
     // only subscribes to what that watcher already reports. Unconditional on Dark's own value:
-    // Apply's own guard is what keeps a saved Claro/Oscuro from ever repainting over this, so a
-    // later switch to Automático (Dark turning null on an already-mounted NsTheme) still has a
-    // current reading to fall back on instead of the brand's guess.
+    // OnSystemDarkModeChanged's own guard (Dark ?? _systemDark ?? brand.DefaultDark) is what
+    // keeps a saved Claro/Oscuro from ever repainting over this, so a later switch to
+    // Automático (Dark turning null on an already-mounted NsTheme) still has a current
+    // reading to fall back on instead of the brand's guess.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender || _provider is null)
