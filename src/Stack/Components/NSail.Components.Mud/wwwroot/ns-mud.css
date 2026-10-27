@@ -1107,10 +1107,12 @@
     background-color: var(--mud-palette-surface);
     color: var(--mud-palette-text-primary);
 
-    /* The ring is the one piece BuildElevations' own comment does not reach, this box-shadow
-       being written here instead of an elevation level — so it reads --ns-elevation-ring the
-       same way (nsail#2744): the aside IS the content surface above, and a white ring is as
-       invisible on its light reading as on any other card's. */
+    /* A ring BuildElevations' own comment does not reach, this box-shadow being written here
+       instead of an elevation level — so it reads --ns-elevation-ring the same way (nsail#2744):
+       the aside IS the content surface above, and a white ring is as invisible on its light
+       reading as on any other card's. The rail draws the other hand-written ring, below, and
+       reads a different token for the same reason it reads TextOnChrome and not the scheme's
+       own text: its surface is a free pick, not one of the two fixed schemes. */
     box-shadow: -3px 0 8px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--ns-elevation-ring, rgba(255, 255, 255, 0.06));
 }
 
@@ -1119,9 +1121,17 @@
    where the light theme wants a little — enough to read as a surface, clearly under the
    title bar's own Elevation="2" (BrandMudTheme's ladder: ~0.24 alpha, ~6.8px blur, 3px
    offset) and about the aside's pulled-back value above. Same mechanism as .ns-drawer,
-   mirrored offset, one notch quieter. */
+   mirrored offset, one notch quieter.
+
+   The ring itself cannot be --ns-elevation-ring: that token answers which of the two FIXED
+   schemes is lit, and the rail's surface is Chrome, a free pick neither scheme owns — the
+   house's own light chrome (#fcfbf9) sits a hair under its own light Background, where either
+   literal ring would be invisible (nsail#2744, round 2). --ns-rail-edge is the rail's existing
+   answer to the same question for every other hairline it draws (the brand block and the
+   session chip's own borders): a wash of the chrome's own ink, so it reads against whatever
+   luminance the chrome happens to be instead of assuming one. */
 .ns-nav-drawer.mud-drawer {
-    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--ns-rail-edge);
 }
 
 /* The nav drawer is a SIBLING of MudMainContent, never touched by the main-surface scroll
@@ -4379,6 +4389,15 @@ div.mud-input-slot.mud-input-root::placeholder {
     line-height: 1.4;
     white-space: nowrap;
     pointer-events: none;
+}
+
+/* The drawer's own search field (NsNavMenu's Map box) draws this same mark, and the rule above
+   carries no region of its own: left as the content's text-secondary, the hint would flip with
+   the scheme on the rail's fixed ground exactly the way ui/branding.md's ".ns-text-muted"
+   restatement already guards against — the house's light chrome under a dark rail override read
+   6.40:1 before and 3.51:1 after, under the body floor a .6875rem hint owes (nsail#2744). */
+.ns-nav-drawer .ns-search-key {
+    color: var(--ns-rail-text-muted);
 }
 
 /* A field whose label sits above the box (a page's search with a Label) puts the box lower in

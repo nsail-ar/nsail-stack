@@ -24,6 +24,10 @@ public sealed class BrandThemeContrastTests
     const double BodyFloor = 4.5;
     const double LargeFloor = 3;
 
+    // NsTheme's own light-only tint for a filled info alert (--ns-alert-info-bg): dark restates
+    // the vendor's flat fill and moves nothing, so only light mixes the surface toward Info.
+    const double AlertInfoTintWeight = 0.12;
+
     // MudBlazor's own hover share of the primary (--mud-palette-primary-hover), the wash a washed
     // row is marked with: the active tab's own hover, the wizard's current step, the guide's open
     // chapter. Named here and nowhere in BrandTheme because the derivation does not measure it —
@@ -286,43 +290,49 @@ public sealed class BrandThemeContrastTests
 
     // nsail#2744: an outlined field's border at rest is a boundary, not a decoration, so it owes
     // the large floor the table/paper hairlines above do not — left at the vendor's own default
-    // it read 1.79:1 on the light canvas. Swept across the chrome cube like every other rung:
-    // the mask is tinted the same way they are.
+    // it read 1.79:1 on the light canvas, and the mask that first gave dark a rung of its own
+    // repeated Lines' dark value and read 1.30:1 there, the same defect transplanted to the other
+    // scheme. Swept across the chrome cube like every other rung, and in BOTH schemes: the mask
+    // is tinted the same way they are, so the floor cannot be met in one and skipped in the
+    // other.
     [Theory]
     [MemberData(nameof(Schemes))]
-    public void TheInputsLineClearsTheLargeFloorOnTheSurfaceInLight(string scheme, BrandTheme theme)
+    public void TheInputsLineClearsTheLargeFloorOnTheSurface(string scheme, BrandTheme theme)
     {
-        if (theme.IsDark)
-        {
-            return;
-        }
-
         Clears(theme.LinesInputs, theme.Surface, LargeFloor, scheme);
     }
 
-    // Dark already reads a light line on a dark surface — nothing there was under the floor —
-    // so LinesInputs owes dark no rung of its own: it repeats Lines' own dark value rather than
-    // opening a second number nobody asked to move.
-    [Fact]
-    public void TheInputsLineRepeatsLinesInDarkUnchanged()
-    {
-        var dark = BrandTheme.DefaultDark();
-
-        Assert.Equal(dark.Lines, dark.LinesInputs);
-    }
-
-    // And in light the two rungs diverge on purpose: the decorative Lines stays a hairline
+    // The two rungs diverge on purpose in both schemes: the decorative Lines stays a hairline
     // (table rows, an outlined paper) while LinesInputs is the one line in the house dark enough
-    // to read as a boundary, so darkening Lines itself to the same floor is the mistake this
-    // keeps off the record.
+    // to read as a boundary — darker than Lines against the near-white light surface, lighter
+    // than Lines against the near-black dark one. Darkening (or, in dark, dimming) Lines itself
+    // to the same floor is the mistake this keeps off the record.
     [Fact]
-    public void TheInputsLineIsDarkerThanTheDecorativeLinesInLight()
+    public void TheInputsLineIsFartherFromTheSurfaceThanTheDecorativeLinesInBothSchemes()
     {
         var light = BrandTheme.DefaultLight();
+        var dark = BrandTheme.DefaultDark();
 
         Assert.True(
             Ratio(light.LinesInputs, light.Surface) > Ratio(light.Lines, light.Surface),
             $"LinesInputs ({Ratio(light.LinesInputs, light.Surface):0.00}:1) is not darker than Lines ({Ratio(light.Lines, light.Surface):0.00}:1) in light");
+
+        Assert.True(
+            Ratio(dark.LinesInputs, dark.Surface) > Ratio(dark.Lines, dark.Surface),
+            $"LinesInputs ({Ratio(dark.LinesInputs, dark.Surface):0.00}:1) is not lighter than Lines ({Ratio(dark.Lines, dark.Surface):0.00}:1) in dark");
+    }
+
+    // The light-only tint NsTheme emits for a filled info alert: TextPrimary read on the card
+    // surface mixed a tenth-plus toward Info, which is the face the hint actually stands on and
+    // not the raw fill AFilledSeverityFaceIsReadInItsOwnInk grades. Light only -- dark restates
+    // the vendor's flat fill, already covered by that theory.
+    [Fact]
+    public void TheInfoAlertsLightOnlyTintIsReadInTheCardsOwnInk()
+    {
+        var light = BrandTheme.DefaultLight();
+        var tint = BrandTone.Mix(light.Surface, light.Info, AlertInfoTintWeight);
+
+        Clears(light.TextPrimary, tint, BodyFloor, "light info tint");
     }
 
     // The two bands that are not the content's surface, each read in its own ink: the accent a

@@ -115,8 +115,10 @@ public sealed class BrandTheme
     /// way to a free-standing line). Its own rung because <see cref="Lines"/> stays decorative:
     /// a table row or an outlined paper is told apart by padding too, an empty field is not, so
     /// darkening <see cref="Lines"/> itself to this floor would turn every hairline in the house
-    /// into a ruled page. Dark needs no rung of its own — a light line on a dark surface already
-    /// clears it — so the mask below repeats <see cref="Lines"/>' own dark value.</summary>
+    /// into a ruled page. Dark owes the same floor and not a lighter one: a field with no visible
+    /// edge is the defect whichever way the scheme runs, so the mask below is its own rung there
+    /// too, a light line on the dark surface rather than a repeat of <see cref="Lines"/>' own dark
+    /// value.</summary>
     [JsonIgnore]
     public string LinesInputs => Rung(Ladder.LinesInputs, BrandTone.SurfaceTint);
 
@@ -190,7 +192,7 @@ public sealed class BrandTheme
         TextSecondary: "#9c9992",
         TextDisabled: "#65635f",
         Lines: "#312f2b",
-        LinesInputs: "#312f2b");
+        LinesInputs: "#726f69");
 
     // Light has no room to sink the surfaces further up than white, so the step is spent on
     // Background instead: the mask stays close enough to white to keep backing its own chroma off

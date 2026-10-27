@@ -34,6 +34,18 @@ public sealed class LightPaletteFollowupTests
             Stylesheet());
     }
 
+    // The rule above carries no region of its own, and the same hint renders inside the rail
+    // too (NsNavMenu's Map box): left unscoped, the house's light chrome under a dark rail
+    // override would read 3.51:1, under the body floor the hint owes. This is the rail's own
+    // counterpart, the same pattern .ns-text-muted already follows.
+    [Fact]
+    public void TheSearchShortcutHintOnTheRailReadsTheRailsMutedInk()
+    {
+        Assert.Contains(
+            ".ns-nav-drawer .ns-search-key {\n    color: var(--ns-rail-text-muted);",
+            Stylesheet());
+    }
+
     // The card/popover elevation ring itself (BrandMudTheme.BuildElevations) is not in this
     // stylesheet at all -- Shadows is generated C#, pinned by
     // BrandMudThemeTests.EveryElevationLevelReadsTheSchemeAwareRingToken. What IS here is the
@@ -46,15 +58,15 @@ public sealed class LightPaletteFollowupTests
             Stylesheet());
     }
 
-    // The nav drawer is NOT among the fixes above: it wears the chrome's own dark hue in BOTH
-    // schemes (ui/branding.md, nsail#2744's own story), so its ring stays the vendor's literal
-    // white rather than reading a token that would turn black against a surface that never
-    // lightens.
+    // The nav drawer's surface is Chrome, a free pick neither fixed scheme owns -- under the
+    // house's own light chrome a literal ring of either colour is invisible (nsail#2744, round
+    // 2), so the ring reads --ns-rail-edge instead, the same chrome-derived wash every other
+    // hairline on the rail already reads.
     [Fact]
-    public void TheNavDrawersOwnRingStaysLiteralBecauseItsSurfaceNeverLightens()
+    public void TheNavDrawersOwnRingReadsTheRailsChromeDerivedEdge()
     {
         Assert.Contains(
-            "box-shadow: 2px 0 6px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.06);",
+            "box-shadow: 2px 0 6px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--ns-rail-edge);",
             Stylesheet());
     }
 

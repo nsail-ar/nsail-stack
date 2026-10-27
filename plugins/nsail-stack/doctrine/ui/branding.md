@@ -57,9 +57,10 @@ because the tint holds luminance, every contrast floor below is met on any chrom
 questions: `Lines` is decorative (a table row, an outlined paper), told apart by its own padding
 too, so it owes nothing past a hairline; `LinesInputs` is an outlined field's border at rest, a
 boundary with nothing else to tell it from the surface beside it, so it owes the large floor
-(3:1) a free-standing line reads as a glyph for. Dark needs one rung for both — a light line
-already clears the floor on a dark surface — so `LinesInputs` repeats `Lines`' own dark value
-there. The Sdk model carries the accent, its three states, `TextOnAccent`, `Chrome`
+(3:1) a free-standing line reads as a glyph for. Dark owes the same floor and not a lighter one —
+an empty field with no visible edge is the same defect whichever way the scheme runs — so
+`LinesInputs` is its own rung in both, a light line on the dark surface rather than a repeat of
+`Lines`' own dark value. The Sdk model carries the accent, its three states, `TextOnAccent`, `Chrome`
 and the chrome's two inks; the Data entity carries `Primary`, `Chrome` and the two abandoned
 columns. `SessionBrandProvider` starts from `BrandTheme.DefaultDark()`/`DefaultLight()` and lays
 the row's picks over it — so **an install that saved a brand under an older palette shows the
