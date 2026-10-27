@@ -101,4 +101,33 @@ public sealed class BrandMudThemeTests
 
         Assert.Null(theme.Typography.H6.FontFamily);
     }
+
+    // nsail#2744: left at the vendor's own default, an outlined field's border read 1.79:1 on
+    // the light canvas -- LinesInputs is the one slot BrandMudTheme used to leave unset while
+    // mapping every other line to the same decorative Lines rung, in either scheme.
+    [Fact]
+    public void LinesInputs_is_mapped_and_never_the_decorative_Lines_rung()
+    {
+        var theme = BrandMudTheme.From(new Brand());
+
+        Assert.Equal(new MudColor(BrandTheme.DefaultDark().LinesInputs).Value, theme.PaletteDark.LinesInputs.Value);
+        Assert.Equal(new MudColor(BrandTheme.DefaultLight().LinesInputs).Value, theme.PaletteLight.LinesInputs.Value);
+        Assert.NotEqual(theme.PaletteLight.LinesDefault.Value, theme.PaletteLight.LinesInputs.Value);
+        Assert.NotEqual(theme.PaletteDark.LinesDefault.Value, theme.PaletteDark.LinesInputs.Value);
+    }
+
+    // nsail#2744: a white ring is the card's own edge in dark and invisible in light, so the
+    // shared Shadows array -- MudTheme has one, not one per palette -- reads a token NsTheme is
+    // the one place with both schemes to resolve, rather than a literal that could only ever be
+    // right for one of them.
+    [Fact]
+    public void EveryElevationLevelReadsTheSchemeAwareRingToken()
+    {
+        var theme = BrandMudTheme.From(new Brand());
+
+        for (var level = 1; level < theme.Shadows.Elevation.Length; level++)
+        {
+            Assert.Contains("var(--ns-elevation-ring", theme.Shadows.Elevation[level]);
+        }
+    }
 }

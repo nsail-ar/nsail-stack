@@ -1106,7 +1106,14 @@
 
     background-color: var(--mud-palette-surface);
     color: var(--mud-palette-text-primary);
-    box-shadow: -3px 0 8px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.06);
+
+    /* A ring BuildElevations' own comment does not reach, this box-shadow being written here
+       instead of an elevation level — so it reads --ns-elevation-ring the same way (nsail#2744):
+       the aside IS the content surface above, and a white ring is as invisible on its light
+       reading as on any other card's. The rail draws the other hand-written ring, below, and
+       reads a different token for the same reason it reads TextOnChrome and not the scheme's
+       own text: its surface is a free pick, not one of the two fixed schemes. */
+    box-shadow: -3px 0 8px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--ns-elevation-ring, rgba(255, 255, 255, 0.06));
 }
 
 /* The nav menu's own quiet counterpart: a start-anchored drawer casts sideways too, toward
@@ -1114,9 +1121,17 @@
    where the light theme wants a little — enough to read as a surface, clearly under the
    title bar's own Elevation="2" (BrandMudTheme's ladder: ~0.24 alpha, ~6.8px blur, 3px
    offset) and about the aside's pulled-back value above. Same mechanism as .ns-drawer,
-   mirrored offset, one notch quieter. */
+   mirrored offset, one notch quieter.
+
+   The ring itself cannot be --ns-elevation-ring: that token answers which of the two FIXED
+   schemes is lit, and the rail's surface is Chrome, a free pick neither scheme owns — the
+   house's own light chrome (#fcfbf9) sits a hair under its own light Background, where either
+   literal ring would be invisible (nsail#2744, round 2). --ns-rail-edge is the rail's existing
+   answer to the same question for every other hairline it draws (the brand block and the
+   session chip's own borders): a wash of the chrome's own ink, so it reads against whatever
+   luminance the chrome happens to be instead of assuming one. */
 .ns-nav-drawer.mud-drawer {
-    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    box-shadow: 2px 0 6px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--ns-rail-edge);
 }
 
 /* The nav drawer is a SIBLING of MudMainContent, never touched by the main-surface scroll
@@ -1616,6 +1631,61 @@
 
 .mud-input:focus-within ~ label.mud-input-label.mud-input-label-inputcontrol {
     color: var(--ns-accent-ink, var(--mud-palette-text-primary));
+}
+
+/* The focused outline border is the vendor's own accent-as-GROUND reflex (every other border
+   state reads --mud-palette-action-default or -lines-inputs, a neutral), so this one line reads
+   --ns-accent-ink instead: a border is thin enough that the eye reads it the way it reads a
+   glyph, not a fill, and the house gold measured 2.43:1 there (nsail#2744). */
+.mud-input.mud-input-outlined:focus-within > .mud-input-outlined-border,
+.mud-input.mud-input-outlined:focus-within .mud-shrink > .mud-input-outlined-border {
+    border-color: var(--ns-accent-ink, var(--mud-palette-text-primary));
+}
+
+/* Every place MudBlazor paints Color.Primary as TEXT rather than a fill — a text button
+   (the confirm dialog's destructive answer among them), and the Color.Primary icon/label
+   utility class kits and apps reach for directly. Both are the vendor's own classes, read
+   here instead of restated per call site, so a screen that writes Color="Primary" on a text
+   button or an icon never has to know the ink is derived. The accent itself is a ground
+   (2.43:1 for the house gold on white, nsail#2744); --ns-accent-ink is what the same pick reads
+   as text, the same variable the active tab and the focused label already use. */
+.mud-button-text.mud-button-text-primary {
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary));
+}
+
+.mud-primary-text {
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary)) !important;
+}
+
+/* The same three rules, answered: NsSearchField's own box docks in the drawer (NsNavMenu's
+   Map search) as an outlined field, and a product is free to write Color="Primary" on an icon
+   or a text button anywhere, the rail included. None of the three carries a region of its own
+   above, so the band would otherwise read the three exactly as a card does — --ns-accent-ink,
+   a pick leaned against the content's fixed surfaces, landing on a chrome of whatever luminance
+   a tenant gave it. Higher specificity than each rule above (one more class) is what wins this
+   back for the band without touching what every card already reads correctly. */
+:is(.mud-appbar, .ns-nav-drawer) .mud-input.mud-input-outlined:focus-within > .mud-input-outlined-border,
+:is(.mud-appbar, .ns-nav-drawer) .mud-input.mud-input-outlined:focus-within .mud-shrink > .mud-input-outlined-border {
+    border-color: var(--ns-accent-on-chrome, var(--mud-palette-appbar-text));
+}
+
+:is(.mud-appbar, .ns-nav-drawer) .mud-button-text.mud-button-text-primary {
+    color: var(--ns-accent-on-chrome, var(--mud-palette-appbar-text));
+}
+
+:is(.mud-appbar, .ns-nav-drawer) .mud-primary-text {
+    color: var(--ns-accent-on-chrome, var(--mud-palette-appbar-text)) !important;
+}
+
+/* The vendor's own placeholder is the field's text colour at 42% opacity (nsail#2744: ~2.5:1
+   on the light canvas, ~3.5:1 on the dark one — "Escribí para buscar" among them). The
+   secondary rank reads as a hint everywhere else in the house, so the placeholder reads it
+   outright instead of a fraction of a colour that was never tuned as one. */
+.mud-input > input.mud-input-root::placeholder,
+.mud-input > textarea.mud-input-root::placeholder,
+div.mud-input-slot.mud-input-root::placeholder {
+    color: var(--mud-palette-text-secondary);
+    opacity: 1;
 }
 
 /* The browser fills a saved credential by writing the input's value directly, without the
@@ -4244,11 +4314,51 @@
    aimed at. Scoped to the
    shell's own regions rather than written against the document, so the two-class selector
    outranks the vendor's own single-class focus rules (NsAssets loads MudBlazor.min.css first
-   and this sheet second). */
-:is(.mud-appbar, .mud-drawer, .mud-main-content, .mud-dialog, .mud-popover)
+   and this sheet second).
+
+   The ring is drawn in the accent AS INK (--ns-accent-ink) and not the accent itself: a free
+   pick read as a 2px line on a pale surface is 2.43:1 for the house gold (nsail#2744's own
+   number), under the 3:1 a UI boundary owes. The same reason every other place the accent
+   becomes a line or a glyph reads this variable instead of the ground it is for.
+
+   The chrome is excluded from THIS rule and answered below: --ns-accent-ink is derived
+   against the content's fixed surfaces (BrandTheme.AccentInk), and the band is a free pick
+   of its own luminance (ui/branding.md, "On the chrome it is a second derivation") — a dark
+   accent on a dark chrome can fall under 2:1 there, which is the ring vanishing on a keyboard
+   that only ever tabs through the drawer. .ns-drawer stands in for .mud-drawer: the aside
+   panel is content wearing the vendor's drawer class for its slide-in, never the band. */
+:is(.mud-main-content, .mud-dialog, .mud-popover, .ns-drawer)
 :is(a, button, [role="button"], [role="tab"], [role="menuitem"], [role="option"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
-    outline: 2px solid var(--mud-palette-primary);
+    outline: 2px solid var(--ns-accent-ink, var(--mud-palette-text-primary));
     outline-offset: 2px;
+}
+
+/* The band's own answer to the same ring: --ns-accent-on-chrome, derived against the chrome
+   and promised (BrandThemeContrastTests.TheAccentOnTheChromeNeverReadsWorseThanTheBandsOwnInk)
+   to never read worse than the band's own plain ink there — which already clears the body
+   floor, well past the 3:1 a ring owes. The fallback is the appbar's text slot rather than
+   --ns-rail-text: .mud-appbar carries no rail variables of its own, and both slots resolve the
+   same scheme ink (BrandMudTheme.AppbarText/DrawerText both read TextOnChrome). */
+:is(.mud-appbar, .ns-nav-drawer)
+:is(a, button, [role="button"], [role="tab"], [role="menuitem"], [role="option"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--ns-accent-on-chrome, var(--mud-palette-appbar-text));
+    outline-offset: 2px;
+}
+
+/* NsAlert's Info face (NSail.Components.Mud/Layout/NsAlert.razor) is the one severity that
+   never carries news worth a loud block — a plain hint ("Sin cobertura vinculada…") painted as
+   solid as a real warning, which on the light scheme read as the heaviest object on the page
+   next to Inicio's own quiet icon-and-text notices (nsail#2744). Dark is left exactly as the
+   vendor ships it — its own pair of variables restates the flat fill, so there is nothing here
+   for it to move — and light reads a tint over the card plus the severity as its own border,
+   the same voice the soft NsAs.Important wash already speaks in. The three come from NsTheme,
+   which is the one place with both schemes to pick a light-only tint from (ns-mud.css cannot
+   key a rule off which scheme is lit, only the --mud-palette-* values MudThemeProvider swaps
+   in place without a lasting selector of its own). */
+.mud-alert-filled-info {
+    background-color: var(--ns-alert-info-bg, var(--mud-palette-info));
+    border: 1px solid var(--ns-alert-info-border, transparent);
+    color: var(--ns-alert-info-ink, var(--mud-palette-info-text)) !important;
 }
 
 /* THE KEY A SEARCH BOX ANSWERS, drawn inside the box at its trailing edge (NsSearchField) —
@@ -4270,11 +4380,24 @@
     padding: 1px 5px;
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: 4px;
-    color: var(--mud-palette-text-disabled);
+
+    /* The disabled-text ink reads as "you cannot press this", which a shortcut hint is not —
+       nsail#2744, 2.77:1 on the light canvas. The secondary rank is the box's own ink everywhere
+       else a hint is quiet rather than refused. */
+    color: var(--mud-palette-text-secondary);
     font-size: .6875rem;
     line-height: 1.4;
     white-space: nowrap;
     pointer-events: none;
+}
+
+/* The drawer's own search field (NsNavMenu's Map box) draws this same mark, and the rule above
+   carries no region of its own: left as the content's text-secondary, the hint flips with the
+   scheme on the rail's fixed ground exactly the way ui/branding.md's ".ns-text-muted"
+   restatement already guards against — the house's light chrome under a dark rail override
+   would fall under the body floor a .6875rem hint owes (nsail#2744). */
+.ns-nav-drawer .ns-search-key {
+    color: var(--ns-rail-text-muted);
 }
 
 /* A field whose label sits above the box (a page's search with a Label) puts the box lower in

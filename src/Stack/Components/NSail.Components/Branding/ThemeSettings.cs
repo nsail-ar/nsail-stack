@@ -3,7 +3,8 @@
 
 namespace NSail.Components;
 
-/// <summary>Per-user theme; null follows the brand default.</summary>
+/// <summary>Per-user theme; null follows the OS colour scheme (live), the brand default being
+/// only the hold until a client has one to report.</summary>
 public sealed class ThemeSettings
 {
     public bool? DarkMode { get; set; }

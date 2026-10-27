@@ -284,6 +284,51 @@ public sealed class BrandThemeContrastTests
             $"a lean of {BrandTone.ToneLean + 0.05:0.00} would clear the floor too, so the lean is deeper than it needs to be");
     }
 
+    // nsail#2744: an outlined field's border at rest is a boundary, not a decoration, so it owes
+    // the large floor the table/paper hairlines above do not — left at the vendor's own default
+    // it reads 1.79:1 on the light canvas. Swept across the chrome cube like every other rung,
+    // and in BOTH schemes: the mask is tinted the same way they are, so the floor cannot be met
+    // in one and skipped in the other.
+    [Theory]
+    [MemberData(nameof(Schemes))]
+    public void TheInputsLineClearsTheLargeFloorOnTheSurface(string scheme, BrandTheme theme)
+    {
+        Clears(theme.LinesInputs, theme.Surface, LargeFloor, scheme);
+    }
+
+    // The two rungs diverge on purpose in both schemes: the decorative Lines stays a hairline
+    // (table rows, an outlined paper) while LinesInputs is the one line in the house strong
+    // enough to read as a boundary in both schemes — darker than Lines against the near-white
+    // light surface, lighter than Lines against the near-black dark one. Moving Lines itself to
+    // the same floor instead is the mistake this keeps off the record.
+    [Fact]
+    public void TheInputsLineIsFartherFromTheSurfaceThanTheDecorativeLinesInBothSchemes()
+    {
+        var light = BrandTheme.DefaultLight();
+        var dark = BrandTheme.DefaultDark();
+
+        Assert.True(
+            Ratio(light.LinesInputs, light.Surface) > Ratio(light.Lines, light.Surface),
+            $"LinesInputs ({Ratio(light.LinesInputs, light.Surface):0.00}:1) is not darker than Lines ({Ratio(light.Lines, light.Surface):0.00}:1) in light");
+
+        Assert.True(
+            Ratio(dark.LinesInputs, dark.Surface) > Ratio(dark.Lines, dark.Surface),
+            $"LinesInputs ({Ratio(dark.LinesInputs, dark.Surface):0.00}:1) is not lighter than Lines ({Ratio(dark.Lines, dark.Surface):0.00}:1) in dark");
+    }
+
+    // The light-only tint NsTheme emits for a filled info alert: TextPrimary read on the card
+    // surface mixed a tenth-plus toward Info, which is the face the hint actually stands on and
+    // not the raw fill AFilledSeverityFaceIsReadInItsOwnInk grades. Light only -- dark restates
+    // the vendor's flat fill, already covered by that theory.
+    [Fact]
+    public void TheInfoAlertsLightOnlyTintIsReadInTheCardsOwnInk()
+    {
+        var light = BrandTheme.DefaultLight();
+        var tint = BrandTone.Mix(light.Surface, light.Info, NsTheme.AlertInfoTintWeight);
+
+        Clears(light.TextPrimary, tint, BodyFloor, "light info tint");
+    }
+
     // The two bands that are not the content's surface, each read in its own ink: the accent a
     // filled button wears, and the chrome the appbar and the drawer wear.
     [Theory]

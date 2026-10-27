@@ -138,8 +138,8 @@
         if (await Brands.GetBrand(cancellationToken) is not { } brand)
             return;
 
-        // Anonymous or settings-less products keep the brand default: the provider answers
-        // with an unset preference rather than failing.
+        // Anonymous or settings-less products follow the OS scheme: the provider answers
+        // with an unset preference (NsTheme.Dark) rather than failing.
         var settings = await Themes.GetTheme(cancellationToken);
 
         Show(brand, settings);

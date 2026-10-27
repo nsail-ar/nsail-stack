@@ -56,6 +56,12 @@ public sealed class NsSetupBrandTests : BunitContext, IAsyncLifetime
         Services.AddScoped<PushFeed>();
 
         JSInterop.Mode = JSRuntimeMode.Loose;
+
+        // Every brand this file paints is dark by its own default (Brand.DefaultDark), so the OS
+        // reading NsTheme asks for after mount (nsail#2744) is set to agree with it: this file's
+        // own RenderCount assertions are about the BRAND handoff, not the OS theme query, and an
+        // answer that disagreed would cost a second, unrelated render.
+        JSInterop.Setup<bool>("mudThemeProvider.isDarkMode", _ => true).SetResult(true);
     }
 
     // MudPopoverProvider, which NsSetup mounts, resolves a MudBlazor service that only

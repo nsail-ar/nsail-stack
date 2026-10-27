@@ -12,9 +12,9 @@ The rule a page lives by — **change the `Brand`, never the vendor theme** — 
 
 Branding is a vendor-agnostic, **serializable** object in `NSail.Components` (`Branding/`):
 `Brand` — `Name`, `Typeface`, `DefaultDark`, two `BrandTheme`s (`Light`/`Dark`); `BrandTheme` —
-per-scheme `Logo`, the accent and its states, the surface ladder, text, `Lines` and status
-colors, **hex strings only**. `IBrandProvider` (async) supplies the active brand, the async
-contract existing so a provider can resolve branding per organization. **Components never read
+per-scheme `Logo`, the accent and its states, the surface ladder, text, `Lines`, `LinesInputs`
+and status colors, **hex strings only**. `IBrandProvider` (async) supplies the active brand, the
+async contract existing so a provider can resolve branding per organization. **Components never read
 Mud palette types from app code.** Default look: dark, a near-black surface in the house
 chrome's warm hue, with orange `#F68E1E`.
 
@@ -48,16 +48,24 @@ a scheme constant or derived.
 **The palette is one fact in one place, and that place is `BrandTheme`.** `RowHover`, the four
 status colours and the ink each of them is read in when it is FILLED are **scheme constants**:
 they are not stored, they do not travel, and no editor offers one. **The surface and ink ladder
-is a mask** — `Background`, `Surface`, `SurfaceRaised`, `Lines` and the three inks
+is a mask** — `Background`, `Surface`, `SurfaceRaised`, `Lines`, `LinesInputs` and the three inks
 (`TextDisabled`, the refused rung, with the two above it): each rung's luminance is a constant of
 the scheme, and its hue and a capped chroma are the chrome's (`BrandTone.Tint`). It is derived at
 paint from `IsDark` and `Chrome`, so it is stored nowhere and travels only as those two, and
-because the tint holds luminance, every contrast floor below is met on any chrome's greys. The Sdk model carries the accent, its three states, `TextOnAccent`, `Chrome`
-and the chrome's two inks; the Data entity carries `Primary`, `Chrome` and the two abandoned
-columns. `SessionBrandProvider` starts from `BrandTheme.DefaultDark()`/`DefaultLight()` and lays
-the row's picks over it — so **an install that saved a brand under an older palette shows the
-current one on its next paint, with no UPDATE to run**, and there is no second copy to drift.
-`BrandPaletteTests` (Architecture) keeps it one copy.
+because the tint holds luminance, every contrast floor below is met on any chrome's greys.
+**`Lines` and `LinesInputs` are two rungs and not one** because they answer two different
+questions: `Lines` is decorative (a table row, an outlined paper), told apart by its own padding
+too, so it owes nothing past a hairline; `LinesInputs` is an outlined field's border at rest, a
+boundary with nothing else to tell it from the surface beside it, so it owes the large floor
+(3:1) a free-standing line reads as a glyph for. Dark owes the same floor and not a lighter one —
+an empty field with no visible edge is the same defect whichever way the scheme runs — so
+`LinesInputs` is its own rung in both, a light line on the dark surface rather than a repeat of
+`Lines`' own dark value. The Sdk model carries the accent, its three states, `TextOnAccent`,
+`Chrome` and the chrome's two inks; the Data entity carries `Primary`, `Chrome` and the two
+abandoned columns. `SessionBrandProvider` starts from `BrandTheme.DefaultDark()`/`DefaultLight()`
+and lays the row's picks over it — so **an install that saved a brand under an older palette
+shows the current one on its next paint, with no UPDATE to run**, and there is no second copy to
+drift. `BrandPaletteTests` (Architecture) keeps it one copy.
 
 **A severity at full strength is a band, so its text is read against the fill and never against
 the card** — `TextOnError`/`TextOnWarning`/`TextOnSuccess`/`TextOnInfo`, one per severity per
@@ -165,6 +173,16 @@ tab, the wizard's current step, the guide's open chapter — and a rule that set
 `--mud-palette-primary` is a defect (`AccentInkTests` sweeps the stylesheet for one; the single
 exception is `.text-primary`, which tints an `NsImage`, and an image is a mark).
 
+**The vendor's own classes owe the same floor once a screen reaches for them** — a text button's
+`Color.Primary`, the `mud-primary-text` icon/label utility, the keyboard focus ring, an outlined
+field's focused border — so `ns-mud.css` routes all four through `--ns-accent-ink` too, read off
+the vendor's own selector rather than restated per call site. **Scoped to the content regions
+only** (`.mud-main-content`, `.mud-dialog`, `.mud-popover`, `.ns-drawer` — the aside panel, which
+wears the vendor's drawer class for its slide-in and is content, never the band): inside
+`.mud-appbar` and `.ns-nav-drawer` the same four read `--ns-accent-on-chrome` instead, for the
+reason below — `--ns-accent-ink` is an answer about a card and would land on a chrome of any
+luminance.
+
 **That ink is derived in code and not in CSS, which is the one thing it does not share with the
 status channel's lean above: a severity is a CONSTANT, so a fixed fraction of it can be mixed in a
 stylesheet, and an accent is a free pick. It is NOT `AccentHover` either.** Over the light scheme the house
@@ -192,13 +210,29 @@ exist.
 freely while only the luminance of the content's surfaces is fixed, so a card's answer would land on a chrome of any
 luminance; the drawer leans from `TextOnChrome` and reads against the chrome and the wash it marks
 a row with. `ns-mud.css` names it `--ns-rail-accent`, with the band's own ink as the fallback, and
-the entry a reader is on — nav and guide rail alike, one gutter, one pair — wears it.
+the entry a reader is on — nav and guide rail alike, one gutter, one pair — wears it; so does the
+keyboard focus ring and the same four vendor classes above, wherever they land on `.mud-appbar`
+or `.ns-nav-drawer` instead of a card.
 
 `NsTheme` emits both for the scheme that is lit, and `ns-mud.css` only reads them. The floors are
 swept, not sampled: `BrandThemeContrastTests` walks the accent cube in both schemes. On the
 chrome, a floor cannot be promised over two free picks at once — a mid-luminance chrome whose own
 `Ink` does not clear it has nothing legible to lean from — so what is promised there is that
 marking the row never reads worse than the band's plain ink.
+
+---
+
+## Scheme-only tokens
+
+Not every `--ns-*` variable is about a free pick's luminance — `--ns-elevation-ring` (a card's
+and a popover's edge) and `--ns-alert-info-bg`/`-border`/`-ink` (a filled info alert's face) are
+about which of the two FIXED schemes is lit, the one thing MudThemeProvider answers by swapping
+a palette's worth of `--mud-palette-*` variables in place with no lasting selector of its own a
+stylesheet rule could key off. `NsTheme` is still the one place both schemes are in hand to
+choose between, so it emits the pair for each: the elevation ring is a white top edge in dark and
+a black one in light (a white ring is invisible on a light card, nsail#2744), and the alert
+reads a light-only tint — dark's own pair restates the vendor's flat fill, so nothing moves
+there.
 
 ---
 
@@ -232,6 +266,13 @@ colourless grey — is the last resort only, for a client no prerender handed an
 vendor stylesheet ships no `:root` defaults and anything drawn before it mounts paints from
 unset ones. `NsSetup` mounts it above the app; a document rendered with no app around it
 (`NsProblemDocument`) mounts it alone.
+
+**`NsTheme.Dark` resolves the same way `GetBrand` does — a live fact, never a guess held past
+its welcome.** An explicit Claro/Oscuro always wins; unset, it follows the OS scheme, asked once
+after the first interactive render (`MudThemeProvider.GetSystemDarkModeAsync`) and kept live
+(`WatchSystemDarkModeAsync`), and `Brand.DefaultDark` is the hold only until a client has an
+answer to give — a prerender, or a document with no circuit at all, the same case `GetBrand`'s
+own null is for.
 
 **Every saver announces in place; nothing reloads to repaint.** `BrandChanged` is the event —
 published after a successful `CreateBranding`/`UpdateBranding` — and `NsSetup` (theme),

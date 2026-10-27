@@ -103,9 +103,24 @@ public sealed class BrandTheme
     [JsonIgnore]
     public string TextDisabled => Rung(Ladder.TextDisabled, BrandTone.InkTint);
 
-    /// <summary>Borders, dividers and table lines.</summary>
+    /// <summary>Borders, dividers and table lines — decorative, so the rung sits well under
+    /// <see cref="LinesInputs"/>'s floor: a row or an outlined paper is told apart by its own
+    /// generous padding too, an outlined FIELD is not.</summary>
     [JsonIgnore]
     public string Lines => Rung(Ladder.Lines, BrandTone.SurfaceTint);
+
+    /// <summary>The border of an outlined field or select at rest — a boundary nobody is
+    /// reading text off, so it owes the large floor (3:1) rather than the body one, and reads
+    /// as a glyph rather than a fill (ui/branding.md's accent-as-ink reasoning applies the same
+    /// way to a free-standing line). Its own rung because <see cref="Lines"/> stays decorative:
+    /// a table row or an outlined paper is told apart by padding too, an empty field is not, so
+    /// darkening <see cref="Lines"/> itself to this floor would turn every hairline in the house
+    /// into a ruled page. Dark owes the same floor and not a lighter one: a field with no visible
+    /// edge is the defect whichever way the scheme runs, so the mask below is its own rung there
+    /// too, a light line on the dark surface rather than a repeat of <see cref="Lines"/>' own dark
+    /// value.</summary>
+    [JsonIgnore]
+    public string LinesInputs => Rung(Ladder.LinesInputs, BrandTone.SurfaceTint);
 
     /// <summary>Row hover — the only tint a row wears, and the second thing after
     /// <see cref="Lines"/> that tells two rows apart. Translucent, so it tints whatever surface
@@ -176,7 +191,8 @@ public sealed class BrandTheme
         TextPrimary: "#e7e4dd",
         TextSecondary: "#9c9992",
         TextDisabled: "#65635f",
-        Lines: "#312f2b");
+        Lines: "#312f2b",
+        LinesInputs: "#726f69");
 
     // Light has no room to sink the surfaces further up than white, so the step is spent on
     // Background instead: the mask stays close enough to white to keep backing its own chroma off
@@ -190,7 +206,8 @@ public sealed class BrandTheme
         TextPrimary: "#262624",
         TextSecondary: "#6e6b66",
         TextDisabled: "#9a9792",
-        Lines: "#e4e2de");
+        Lines: "#d0cdc8",
+        LinesInputs: "#757575");
 
     LadderMask Ladder => IsDark ? DarkLadder : LightLadder;
 
@@ -206,7 +223,8 @@ public sealed class BrandTheme
         string TextPrimary,
         string TextSecondary,
         string TextDisabled,
-        string Lines);
+        string Lines,
+        string LinesInputs);
 
     public static BrandTheme DefaultDark()
     {
