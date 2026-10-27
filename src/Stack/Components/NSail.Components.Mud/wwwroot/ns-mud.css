@@ -1106,7 +1106,12 @@
 
     background-color: var(--mud-palette-surface);
     color: var(--mud-palette-text-primary);
-    box-shadow: -3px 0 8px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.06);
+
+    /* The ring is the one piece BuildElevations' own comment does not reach, this box-shadow
+       being written here instead of an elevation level — so it reads --ns-elevation-ring the
+       same way (nsail#2744): the aside IS the content surface above, and a white ring is as
+       invisible on its light reading as on any other card's. */
+    box-shadow: -3px 0 8px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--ns-elevation-ring, rgba(255, 255, 255, 0.06));
 }
 
 /* The nav menu's own quiet counterpart: a start-anchored drawer casts sideways too, toward
@@ -1640,6 +1645,17 @@
 
 .mud-primary-text {
     color: var(--ns-accent-ink, var(--mud-palette-text-primary)) !important;
+}
+
+/* The vendor's own placeholder is the field's text colour at 42% opacity (nsail#2744: ~2.5:1
+   on the light canvas, ~3.5:1 on the dark one — "Escribí para buscar" among them). The
+   secondary rank reads as a hint everywhere else in the house, so the placeholder reads it
+   outright instead of a fraction of a colour that was never tuned as one. */
+.mud-input > input.mud-input-root::placeholder,
+.mud-input > textarea.mud-input-root::placeholder,
+div.mud-input-slot.mud-input-root::placeholder {
+    color: var(--mud-palette-text-secondary);
+    opacity: 1;
 }
 
 /* The browser fills a saved credential by writing the input's value directly, without the
@@ -4280,6 +4296,22 @@
     outline-offset: 2px;
 }
 
+/* NsAlert's Info face (NSail.Components.Mud/Layout/NsAlert.razor) is the one severity that
+   never carries news worth a loud block — a plain hint ("Sin cobertura vinculada…") painted as
+   solid as a real warning, which on the light scheme read as the heaviest object on the page
+   next to Inicio's own quiet icon-and-text notices (nsail#2744). Dark is left exactly as the
+   vendor ships it — its own pair of variables restates the flat fill, so there is nothing here
+   for it to move — and light reads a tint over the card plus the severity as its own border,
+   the same voice the soft NsAs.Important wash already speaks in. The three come from NsTheme,
+   which is the one place with both schemes to pick a light-only tint from (ns-mud.css cannot
+   key a rule off which scheme is lit, only the --mud-palette-* values MudThemeProvider swaps
+   in place without a lasting selector of its own). */
+.mud-alert-filled-info {
+    background-color: var(--ns-alert-info-bg, var(--mud-palette-info));
+    border: 1px solid var(--ns-alert-info-border, transparent);
+    color: var(--ns-alert-info-ink, var(--mud-palette-info-text)) !important;
+}
+
 /* THE KEY A SEARCH BOX ANSWERS, drawn inside the box at its trailing edge (NsSearchField) —
    the one place in the house a chord is painted on the control itself, because a box has no
    word to hover and no bubble to carry it. The wrapper is the field's own box, so the mark is
@@ -4299,7 +4331,11 @@
     padding: 1px 5px;
     border: 1px solid var(--mud-palette-lines-default);
     border-radius: 4px;
-    color: var(--mud-palette-text-disabled);
+
+    /* The disabled-text ink reads as "you cannot press this", which a shortcut hint is not —
+       nsail#2744, 2.77:1 on the light canvas. The secondary rank is the box's own ink everywhere
+       else a hint is quiet rather than refused. */
+    color: var(--mud-palette-text-secondary);
     font-size: .6875rem;
     line-height: 1.4;
     white-space: nowrap;

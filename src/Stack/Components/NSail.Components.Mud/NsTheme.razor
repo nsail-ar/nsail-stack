@@ -2,6 +2,7 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
+@using NSail.Tones
 
 @* The one place a Brand becomes the --mud-palette-* variables every surface reads its colour
    from: the vendor stylesheet ships no :root defaults, so those variables are UNSET until this
@@ -109,14 +110,35 @@
     // The vendor emits the palette of the scheme that is lit and nothing else, so the NSail
     // variables a stylesheet cannot compute ride beside it, for that same scheme: the accent as
     // INK is a decision about the accent's own luminance, and color-mix has no way to see how
-    // bright a colour is. Two of them, because the accent is read on two kinds of ground — the
-    // content's fixed surfaces, and the freely picked chrome the drawer wears — and one value
-    // over both would be a light chrome's ink chosen against a dark scheme's card. Everything
-    // else stays in ns-mud.css, where a wash mixed against transparent belongs.
+    // bright a colour is. Two of them for that reason, because the accent is read on two kinds
+    // of ground — the content's fixed surfaces, and the freely picked chrome the drawer wears —
+    // and one value over both would be a light chrome's ink chosen against a dark scheme's
+    // card. Everything else stays in ns-mud.css, where a wash mixed against transparent
+    // belongs, EXCEPT the three below, which are not about luminance but about which of the
+    // two schemes is lit — the one thing MudThemeProvider answers by swapping a palette's worth
+    // of --mud-palette-* variables in place, with no lasting selector of its own a stylesheet
+    // rule could key off (ns-mud.css's own note on .ns-drawer). A card's elevation ring
+    // (BrandMudTheme.BuildElevations) and the content aside's own box-shadow both read
+    // --ns-elevation-ring; a filled info alert, the one severity with no loud news to carry,
+    // reads the other two as a light-only tint — dark's pair restates the vendor's own flat
+    // fill so nothing there moves (nsail#2744).
     static string Variables(Brand brand, bool dark)
     {
         var scheme = dark ? brand.Dark : brand.Light;
-        var variables = $":root{{--ns-accent-ink:{scheme.AccentInk};--ns-accent-on-chrome:{scheme.AccentOnChrome};}}";
+
+        var elevationRing = dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.08)";
+        var alertInfoBg = dark ? scheme.Info : BrandTone.Mix(scheme.Surface, scheme.Info, 0.12);
+        var alertInfoBorder = dark ? "transparent" : scheme.Info;
+        var alertInfoInk = dark ? scheme.TextOnInfo : scheme.TextPrimary;
+
+        var variables = $":root{{"
+            + $"--ns-accent-ink:{scheme.AccentInk};"
+            + $"--ns-accent-on-chrome:{scheme.AccentOnChrome};"
+            + $"--ns-elevation-ring:{elevationRing};"
+            + $"--ns-alert-info-bg:{alertInfoBg};"
+            + $"--ns-alert-info-border:{alertInfoBorder};"
+            + $"--ns-alert-info-ink:{alertInfoInk};"
+            + "}";
 
         return variables + FontFace(brand.Typeface);
     }

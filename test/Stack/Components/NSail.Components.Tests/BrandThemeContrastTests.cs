@@ -284,6 +284,47 @@ public sealed class BrandThemeContrastTests
             $"a lean of {BrandTone.ToneLean + 0.05:0.00} would clear the floor too, so the lean is deeper than it needs to be");
     }
 
+    // nsail#2744: an outlined field's border at rest is a boundary, not a decoration, so it owes
+    // the large floor the table/paper hairlines above do not — left at the vendor's own default
+    // it read 1.79:1 on the light canvas. Swept across the chrome cube like every other rung:
+    // the mask is tinted the same way they are.
+    [Theory]
+    [MemberData(nameof(Schemes))]
+    public void TheInputsLineClearsTheLargeFloorOnTheSurfaceInLight(string scheme, BrandTheme theme)
+    {
+        if (theme.IsDark)
+        {
+            return;
+        }
+
+        Clears(theme.LinesInputs, theme.Surface, LargeFloor, scheme);
+    }
+
+    // Dark already reads a light line on a dark surface — nothing there was under the floor —
+    // so LinesInputs owes dark no rung of its own: it repeats Lines' own dark value rather than
+    // opening a second number nobody asked to move.
+    [Fact]
+    public void TheInputsLineRepeatsLinesInDarkUnchanged()
+    {
+        var dark = BrandTheme.DefaultDark();
+
+        Assert.Equal(dark.Lines, dark.LinesInputs);
+    }
+
+    // And in light the two rungs diverge on purpose: the decorative Lines stays a hairline
+    // (table rows, an outlined paper) while LinesInputs is the one line in the house dark enough
+    // to read as a boundary, so darkening Lines itself to the same floor is the mistake this
+    // keeps off the record.
+    [Fact]
+    public void TheInputsLineIsDarkerThanTheDecorativeLinesInLight()
+    {
+        var light = BrandTheme.DefaultLight();
+
+        Assert.True(
+            Ratio(light.LinesInputs, light.Surface) > Ratio(light.Lines, light.Surface),
+            $"LinesInputs ({Ratio(light.LinesInputs, light.Surface):0.00}:1) is not darker than Lines ({Ratio(light.Lines, light.Surface):0.00}:1) in light");
+    }
+
     // The two bands that are not the content's surface, each read in its own ink: the accent a
     // filled button wears, and the chrome the appbar and the drawer wear.
     [Theory]

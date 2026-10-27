@@ -94,6 +94,11 @@ public static class BrandMudTheme
         palette.TableLines = new MudColor(theme.Lines);
         palette.Divider = new MudColor(theme.Lines);
 
+        // An outlined field's border is read as a boundary and not as a decoration (nsail#2744:
+        // the vendor's own LinesInputs default measured 1.79:1 on the light canvas), so it owes
+        // the large floor the decorative Lines rung above does not.
+        palette.LinesInputs = new MudColor(theme.LinesInputs);
+
         // TableStriped is left at the vendor's own default and never reached: no table in the
         // house carries Striped, so the slot paints nothing. A value here would be a tint the
         // theme owns with nowhere to land.
@@ -119,9 +124,14 @@ public static class BrandMudTheme
 
     /// <summary>MudBlazor's 26 elevation levels (0 = none), retuned for a dark canvas.</summary>
     // Material's shadows are black at 12-20%, which is invisible on a dark surface. Each
-    // level here casts further and darker, and carries a translucent white ring: in dark
-    // it is the lit top edge that reads as "lifted", and in light it falls away to nothing
-    // over a white surface, leaving the shadow to do the work.
+    // level here casts further and darker, and carries a translucent ring: in dark it is a
+    // white top edge that reads as "lifted", in light a black one is the card's actual edge
+    // (nsail#2744 — a white ring on a near-white surface is invisible, which left a light card
+    // standing on its shadow alone). The ring reads --ns-elevation-ring, which NsTheme is the
+    // one place with both schemes to choose between (Shadows is one array shared by
+    // PaletteLight and PaletteDark, so the CSS value is what has to branch); the fallback is
+    // the dark ring, since a client with no var yet is the prerender painting the colourless
+    // fallback brand, which stays dark until a real one arrives.
     static string[] BuildElevations()
     {
         var elevations = new string[26];
@@ -135,7 +145,7 @@ public static class BrandMudTheme
             var alpha = Math.Min(0.45, 0.22 + (level * 0.01));
 
             elevations[level] = FormattableString.Invariant(
-                $"0 {offset}px {blur:0.#}px rgba(0,0,0,{alpha:0.##}), 0 0 0 1px rgba(255,255,255,0.06)");
+                $"0 {offset}px {blur:0.#}px rgba(0,0,0,{alpha:0.##}), 0 0 0 1px var(--ns-elevation-ring, rgba(255,255,255,0.06))");
         }
 
         return elevations;
