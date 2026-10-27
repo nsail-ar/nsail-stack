@@ -12,9 +12,9 @@ The rule a page lives by — **change the `Brand`, never the vendor theme** — 
 
 Branding is a vendor-agnostic, **serializable** object in `NSail.Components` (`Branding/`):
 `Brand` — `Name`, `Typeface`, `DefaultDark`, two `BrandTheme`s (`Light`/`Dark`); `BrandTheme` —
-per-scheme `Logo`, the accent and its states, the surface ladder, text, `Lines` and status
-colors, **hex strings only**. `IBrandProvider` (async) supplies the active brand, the async
-contract existing so a provider can resolve branding per organization. **Components never read
+per-scheme `Logo`, the accent and its states, the surface ladder, text, `Lines`, `LinesInputs`
+and status colors, **hex strings only**. `IBrandProvider` (async) supplies the active brand, the
+async contract existing so a provider can resolve branding per organization. **Components never read
 Mud palette types from app code.** Default look: dark, a near-black surface in the house
 chrome's warm hue, with orange `#F68E1E`.
 
@@ -48,11 +48,18 @@ a scheme constant or derived.
 **The palette is one fact in one place, and that place is `BrandTheme`.** `RowHover`, the four
 status colours and the ink each of them is read in when it is FILLED are **scheme constants**:
 they are not stored, they do not travel, and no editor offers one. **The surface and ink ladder
-is a mask** — `Background`, `Surface`, `SurfaceRaised`, `Lines` and the three inks
+is a mask** — `Background`, `Surface`, `SurfaceRaised`, `Lines`, `LinesInputs` and the three inks
 (`TextDisabled`, the refused rung, with the two above it): each rung's luminance is a constant of
 the scheme, and its hue and a capped chroma are the chrome's (`BrandTone.Tint`). It is derived at
 paint from `IsDark` and `Chrome`, so it is stored nowhere and travels only as those two, and
-because the tint holds luminance, every contrast floor below is met on any chrome's greys. The Sdk model carries the accent, its three states, `TextOnAccent`, `Chrome`
+because the tint holds luminance, every contrast floor below is met on any chrome's greys.
+**`Lines` and `LinesInputs` are two rungs and not one** because they answer two different
+questions: `Lines` is decorative (a table row, an outlined paper), told apart by its own padding
+too, so it owes nothing past a hairline; `LinesInputs` is an outlined field's border at rest, a
+boundary with nothing else to tell it from the surface beside it, so it owes the large floor
+(3:1) a free-standing line reads as a glyph for. Dark needs one rung for both — a light line
+already clears the floor on a dark surface — so `LinesInputs` repeats `Lines`' own dark value
+there. The Sdk model carries the accent, its three states, `TextOnAccent`, `Chrome`
 and the chrome's two inks; the Data entity carries `Primary`, `Chrome` and the two abandoned
 columns. `SessionBrandProvider` starts from `BrandTheme.DefaultDark()`/`DefaultLight()` and lays
 the row's picks over it — so **an install that saved a brand under an older palette shows the
@@ -199,6 +206,20 @@ swept, not sampled: `BrandThemeContrastTests` walks the accent cube in both sche
 chrome, a floor cannot be promised over two free picks at once — a mid-luminance chrome whose own
 `Ink` does not clear it has nothing legible to lean from — so what is promised there is that
 marking the row never reads worse than the band's plain ink.
+
+---
+
+## Scheme-only tokens
+
+Not every `--ns-*` variable is about a free pick's luminance — `--ns-elevation-ring` (a card's
+and a popover's edge) and `--ns-alert-info-bg`/`-border`/`-ink` (a filled info alert's face) are
+about which of the two FIXED schemes is lit, the one thing MudThemeProvider answers by swapping
+a palette's worth of `--mud-palette-*` variables in place with no lasting selector of its own a
+stylesheet rule could key off. `NsTheme` is still the one place both schemes are in hand to
+choose between, so it emits the pair for each: the elevation ring is a white top edge in dark and
+a black one in light (a white ring is invisible on a light card, nsail#2744), and the alert
+reads a light-only tint — dark's own pair restates the vendor's flat fill, so nothing moves
+there.
 
 ---
 
