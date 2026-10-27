@@ -60,12 +60,12 @@ boundary with nothing else to tell it from the surface beside it, so it owes the
 (3:1) a free-standing line reads as a glyph for. Dark owes the same floor and not a lighter one —
 an empty field with no visible edge is the same defect whichever way the scheme runs — so
 `LinesInputs` is its own rung in both, a light line on the dark surface rather than a repeat of
-`Lines`' own dark value. The Sdk model carries the accent, its three states, `TextOnAccent`, `Chrome`
-and the chrome's two inks; the Data entity carries `Primary`, `Chrome` and the two abandoned
-columns. `SessionBrandProvider` starts from `BrandTheme.DefaultDark()`/`DefaultLight()` and lays
-the row's picks over it — so **an install that saved a brand under an older palette shows the
-current one on its next paint, with no UPDATE to run**, and there is no second copy to drift.
-`BrandPaletteTests` (Architecture) keeps it one copy.
+`Lines`' own dark value. The Sdk model carries the accent, its three states, `TextOnAccent`,
+`Chrome` and the chrome's two inks; the Data entity carries `Primary`, `Chrome` and the two
+abandoned columns. `SessionBrandProvider` starts from `BrandTheme.DefaultDark()`/`DefaultLight()`
+and lays the row's picks over it — so **an install that saved a brand under an older palette
+shows the current one on its next paint, with no UPDATE to run**, and there is no second copy to
+drift. `BrandPaletteTests` (Architecture) keeps it one copy.
 
 **A severity at full strength is a band, so its text is read against the fill and never against
 the card** — `TextOnError`/`TextOnWarning`/`TextOnSuccess`/`TextOnInfo`, one per severity per

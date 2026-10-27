@@ -53,7 +53,7 @@ public sealed class NsThemeSchemeVariablesTests : BunitContext
             .Add(x => x.Dark, false));
 
         var light = BrandTheme.DefaultLight();
-        var expectedBg = BrandTone.Mix(light.Surface, light.Info, 0.12);
+        var expectedBg = BrandTone.Mix(light.Surface, light.Info, NsTheme.AlertInfoTintWeight);
 
         Assert.Contains("--ns-elevation-ring:rgba(0,0,0,.08);", cut.Markup);
         Assert.Contains($"--ns-alert-info-bg:{expectedBg};", cut.Markup);

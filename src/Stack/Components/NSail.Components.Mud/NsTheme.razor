@@ -34,6 +34,10 @@
     // still for.
     bool? _systemDark;
 
+    // The light-only tint's weight toward Info (--ns-alert-info-bg below); internal so the
+    // contrast sweep measures this value rather than a second copy of it.
+    internal const double AlertInfoTintWeight = 0.12;
+
     /// <summary>The brand painted. Null is "nothing resolved one", which paints the neutral
     /// grey rather than a guess — never a default <see cref="Brand"/>, which the eye reads as
     /// the wrong organization's colour.</summary>
@@ -128,7 +132,7 @@
         var scheme = dark ? brand.Dark : brand.Light;
 
         var elevationRing = dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.08)";
-        var alertInfoBg = dark ? scheme.Info : BrandTone.Mix(scheme.Surface, scheme.Info, 0.12);
+        var alertInfoBg = dark ? scheme.Info : BrandTone.Mix(scheme.Surface, scheme.Info, AlertInfoTintWeight);
         var alertInfoBorder = dark ? "transparent" : scheme.Info;
         var alertInfoInk = dark ? scheme.TextOnInfo : scheme.TextPrimary;
 

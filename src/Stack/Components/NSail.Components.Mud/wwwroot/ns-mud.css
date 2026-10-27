@@ -4392,10 +4392,10 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* The drawer's own search field (NsNavMenu's Map box) draws this same mark, and the rule above
-   carries no region of its own: left as the content's text-secondary, the hint would flip with
-   the scheme on the rail's fixed ground exactly the way ui/branding.md's ".ns-text-muted"
-   restatement already guards against — the house's light chrome under a dark rail override read
-   6.40:1 before and 3.51:1 after, under the body floor a .6875rem hint owes (nsail#2744). */
+   carries no region of its own: left as the content's text-secondary, the hint flips with the
+   scheme on the rail's fixed ground exactly the way ui/branding.md's ".ns-text-muted"
+   restatement already guards against — the house's light chrome under a dark rail override
+   would fall under the body floor a .6875rem hint owes (nsail#2744). */
 .ns-nav-drawer .ns-search-key {
     color: var(--ns-rail-text-muted);
 }
