@@ -1618,6 +1618,30 @@
     color: var(--ns-accent-ink, var(--mud-palette-text-primary));
 }
 
+/* The focused outline border is the vendor's own accent-as-GROUND reflex (every other border
+   state reads --mud-palette-action-default or -lines-inputs, a neutral), so this one line reads
+   --ns-accent-ink instead: a border is thin enough that the eye reads it the way it reads a
+   glyph, not a fill, and the house gold measured 2.43:1 there (nsail#2744). */
+.mud-input.mud-input-outlined:focus-within > .mud-input-outlined-border,
+.mud-input.mud-input-outlined:focus-within .mud-shrink > .mud-input-outlined-border {
+    border-color: var(--ns-accent-ink, var(--mud-palette-text-primary));
+}
+
+/* Every place MudBlazor paints Color.Primary as TEXT rather than a fill — a text button
+   (the confirm dialog's destructive answer among them), and the Color.Primary icon/label
+   utility class kits and apps reach for directly. Both are the vendor's own classes, read
+   here instead of restated per call site, so a screen that writes Color="Primary" on a text
+   button or an icon never has to know the ink is derived. The accent itself is a ground
+   (2.43:1 for the house gold on white, nsail#2744); --ns-accent-ink is what the same pick reads
+   as text, the same variable the active tab and the focused label already use. */
+.mud-button-text.mud-button-text-primary {
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary));
+}
+
+.mud-primary-text {
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary)) !important;
+}
+
 /* The browser fills a saved credential by writing the input's value directly, without the
    event the binding listens to — so the component's Value stays empty, MudBlazor never adds
    .mud-shrink, and the resting label (the position it only holds for an EMPTY field) is
@@ -4244,10 +4268,15 @@
    aimed at. Scoped to the
    shell's own regions rather than written against the document, so the two-class selector
    outranks the vendor's own single-class focus rules (NsAssets loads MudBlazor.min.css first
-   and this sheet second). */
+   and this sheet second).
+
+   The ring is drawn in the accent AS INK (--ns-accent-ink) and not the accent itself: a free
+   pick read as a 2px line on a pale surface is 2.43:1 for the house gold (nsail#1940's own
+   number), under the 3:1 a UI boundary owes. The same reason every other place the accent
+   becomes a line or a glyph reads this variable instead of the ground it is for. */
 :is(.mud-appbar, .mud-drawer, .mud-main-content, .mud-dialog, .mud-popover)
 :is(a, button, [role="button"], [role="tab"], [role="menuitem"], [role="option"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
-    outline: 2px solid var(--mud-palette-primary);
+    outline: 2px solid var(--ns-accent-ink, var(--mud-palette-text-primary));
     outline-offset: 2px;
 }
 
