@@ -4,9 +4,9 @@
 namespace NSail.Components;
 
 /// <summary>What one table's columns are: the per-column breakpoints and compact placements, and
-/// the columns themselves in the order the header declared them. NsTh declares, NsTd reads, and the two find each other
-/// through the localization key both already derive from their For expression — so a column is
-/// declared once, in the header, and its cells follow.
+/// the columns themselves in the order the header declared them. NsTh declares, NsTd reads, and
+/// the two find each other through the localization key both already derive from their For
+/// expression — so a column is declared once, in the header, and its cells follow.
 /// <para>Read during render, so it assumes the header renders before the body (it does: thead
 /// precedes tbody in the tree) and that a column's breakpoint is markup, not state.</para>
 /// <para>The declared half is what an export is built from, and it is rebuilt on every header
