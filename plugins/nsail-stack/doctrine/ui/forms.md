@@ -209,7 +209,13 @@ saving, the two answers are the same one.
   moved: the guard stays silent, and `NsSurface` keys its content by the same path, so the page
   keeps everything typed into it instead of remounting. A page whose identity genuinely lives in
   its query has no way to say so, deliberately.
-- **A value echoed into a field from the model is not an edit.**
+- **A value echoed into a field from the model is not an edit**, and a picker's echo raises no
+  `ValueChanged` either: the vendor pickers (`NsDateField`, `NsTimeField`, `NsDateTimeField`) call
+  back for a value pushed into them as well as for one picked, so their callbacks go through
+  `SetPicked`, which hands back nothing for the value the field last said or was handed. A page
+  that reads on every change of its field reads once for a value it set itself. Every other field
+  keeps raising `ValueChanged` for an equal value: a box bound by `Value` alone is never handed
+  its own keystroke back, so equality with `Value` proves no echo there.
 - **A component that mutates state outside `NsForm`'s field tracking is its own dirty source**:
   it cascades `SurfaceContext?` and calls `SetDirty(this)`. **No page spends that report** — the
   submit beside it spends every editor's on its surface before the handler runs, and the unmount
