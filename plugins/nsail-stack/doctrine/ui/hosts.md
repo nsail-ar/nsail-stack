@@ -98,7 +98,9 @@ a list whose rows are read whole (orders, documents, tickets) keeps the card.
   its cells: `Hidden` leaves a column off the line — still declared, so still a column of the file
   (a phone number the row's own call act carries) — and `Only` draws a cell there and nowhere
   else, which is how a row gains one-tap acts without the column and tablet faces changing. A cell
-  with no column behind it says `Only` on its own `NsTd`.
+  with no column behind it says `Only` on its own `NsTd`. Such an act is an `NsLink` or `NsPageLink`, and
+  every one of them — a `tel:` the browser follows itself included — keeps its tap from the row's
+  own `OnRowClick`, so the row does not open its record under the call.
 - **The lead is the first column the header declares that the line draws**, and nothing else on
   the line competes with it; a column hidden by its `Breakpoint` stays off the line as it does off
   the card, and a reading the row needs below that width is an `Only` cell that says it.

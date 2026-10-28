@@ -485,8 +485,11 @@
    The wrapper carries no presentation and must not become one: display:contents takes it out of layout
    entirely, so the chrome it holds stays the flex or grid item its parent already sized —
    a toolbar's icon slots and a row's action column count the button, not this span. Event
-   propagation is unaffected by display:contents, which is the whole reason it can be used. */
-.ns-link-intercept {
+   propagation is unaffected by display:contents, which is the whole reason it can be used. The
+   wrapper of a link the browser follows itself (ns-link-leaves) is the same box for the one flag
+   it carries, the row's click stopped short of the row. */
+.ns-link-intercept,
+.ns-link-leaves {
     display: contents;
 }
 

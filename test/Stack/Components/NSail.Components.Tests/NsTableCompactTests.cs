@@ -2,11 +2,12 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
 using NSail.Metadata;
+using NSail.Testing.Models;
 
 namespace NSail.Components.Tests;
 
@@ -19,13 +20,14 @@ public sealed class NsTableCompactTests : BunitContext, IAsyncLifetime
 {
     public NsTableCompactTests()
     {
-        Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        Services.AddComponentServices();
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();
         Services.AddSingleton<MetadataProvider>();
         Services.AddSingleton<StringManager>();
         JSInterop.Mode = JSRuntimeMode.Loose;
+        AddAuthorization().SetAuthorized("probe");
     }
 
     Task IAsyncLifetime.InitializeAsync()
@@ -74,10 +76,35 @@ public sealed class NsTableCompactTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<CompactTableHost>(p => p.Add(x => x.Compact, true));
 
-        var cell = cut.Find("#call").Closest("td")!;
+        var cell = cut.Find("a.call").Closest("td")!;
 
         Assert.Contains("ns-compact-only", cell.ClassList);
-        Assert.Equal("tel:3", cut.Find("#call").GetAttribute("href"));
+        Assert.Equal("tel:3", cut.Find("a.call").GetAttribute("href"));
+    }
+
+    /// <summary>A row's own act that leaves the app — Call's tel: — is the tap's whole answer:
+    /// the row under it opening its record as well would put the reader somewhere else when the
+    /// call ends.</summary>
+    [Fact]
+    public async Task A_link_that_leaves_the_app_does_not_also_open_the_row()
+    {
+        var opened = false;
+
+        var cut = Render<CompactTableHost>(p => p
+            .Add(x => x.Compact, true)
+            .Add(x => x.RowClicked, EventCallback.Factory.Create<TestModel>(this, _ => opened = true)));
+
+        Assert.True(cut.Find("span.ns-link-leaves").HasAttribute("blazor:onclick:stopPropagation"));
+
+        // bUnit bubbles a click the way Blazor does and stops where the flag stands: what the tap
+        // reaches is no handler at all, where the row's own would otherwise answer it.
+        await Assert.ThrowsAsync<MissingEventHandlerException>(() => cut.InvokeAsync(() => cut.Find("a.call").Click()));
+
+        Assert.False(opened);
+
+        await cut.InvokeAsync(() => cut.Find("tbody tr").Click());
+
+        Assert.True(opened);
     }
 
     [Fact]
@@ -100,7 +127,7 @@ public sealed class NsTableCompactTests : BunitContext, IAsyncLifetime
 
         // Drawn nowhere but on the compact row, so a table that never draws one keeps it off
         // through the same marker (ns-mud.css: .ns-table .ns-compact-only).
-        Assert.Contains("ns-compact-only", cut.Find("#call").Closest("td")!.ClassList);
+        Assert.Contains("ns-compact-only", cut.Find("a.call").Closest("td")!.ClassList);
     }
 
     [Fact]
