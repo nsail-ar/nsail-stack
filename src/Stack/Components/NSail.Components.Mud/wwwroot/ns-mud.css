@@ -906,7 +906,9 @@
    several times as many of them. The lead cell (ns-compact-lead, the first column the header
    declared that the row draws) opens the first line with the action cell packed after it; the
    row's pseudo is a full-width break, and every other surviving cell follows on the second line,
-   receding, with no data-label — a reading that needs its word says it in its own cell.
+   receding, with no data-label — a reading that needs its word says it in its own cell. The
+   lead wraps rather than ellipsizes: the name is what the line is scanned for, and two people
+   who share a first name and an ellipsis are one row to the reader.
 
    An Only cell is drawn here and nowhere else: off in column mode, where it has no header to
    sit under, and off in the stacked card. A Hidden cell is left off the line. A cell hidden by
@@ -927,7 +929,7 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            column-gap: 12px;
+            column-gap: 8px;
             padding: 4px 16px;
             border-bottom: 1px solid var(--mud-palette-table-lines);
         }
@@ -957,9 +959,7 @@
         .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-lead {
             order: 0;
             flex: 1 1 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            overflow-wrap: break-word;
             color: var(--mud-palette-text-primary);
         }
 
