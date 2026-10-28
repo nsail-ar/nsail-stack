@@ -479,6 +479,15 @@ else
     [Parameter]
     public bool Grow { get; set; } = true;
 
+    /// <summary>Opts this table into the compact phone form: where it would fall to the stacked
+    /// card on a phone, each row is one line instead — the lead column, the action cell beside
+    /// it, the other surviving cells under them — so a list read to find a person shows several
+    /// times as many rows. Off keeps the stacked card; desktop and tablet read the same either
+    /// way. Which list takes it is ui/hosts.md's, and NsTh/NsTd's Compact place each cell on the
+    /// line.</summary>
+    [Parameter]
+    public bool Compact { get; set; }
+
     /// <summary>Names the table in a bar rendered above it, with the add control at the bar's
     /// right edge — the collection-editor chrome (Seña). Unset draws no bar at all, so there is
     /// no add control a hand can press: a grid wired to add rows and left unnamed is refused by
@@ -535,6 +544,9 @@ else
     // class could be read as. Said in C# because only this component knows which branch rendered
     // — whether the grid STACKED is the vendor's own breakpoint call, which is why the CSS rule
     // needs both.
+    //
+    // ns-table-compact says this grid opted into the compact phone form: under the tablet's
+    // width the stacked card becomes one line per row (ns-mud.css, the compact block).
     string GetClasses()
     {
         return new NsClassBuilder("ns-table d-flex flex-column min-h-0")
@@ -542,6 +554,7 @@ else
             .Add("ns-cells", Editable)
             .Add("ns-table-editing", _editing is not null)
             .Add("ns-table-pages", OnQuery.HasDelegate && !Scrolls)
+            .Add("ns-table-compact", Compact)
             .Add(_instance)
             .Add(Class)
             .ToString();
@@ -1412,6 +1425,7 @@ else
         // read by every heading under it: a column that declares itself sortable where nothing
         // can be ordered draws no control instead of one that would lie.
         _columns.Orders = OrdersInHand;
+        _columns.Compact = Compact;
 
         Placement.Parent = Tracker;
         Placement.Bind(RowContext);

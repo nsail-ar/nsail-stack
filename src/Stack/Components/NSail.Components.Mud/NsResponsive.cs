@@ -37,6 +37,20 @@ static class NsResponsive
         return breakpoint == NsSize.None ? null : $"d-c-none d-c-{Suffix(breakpoint)}-table-cell";
     }
 
+    /// <summary>Marker for a cell's place on a compact row (ns-mud.css, the compact block). An
+    /// Only cell is marked in every table, since it is drawn nowhere else and a table that never
+    /// draws the compact row must still keep it off; Hidden is marked only where that row is
+    /// drawn, so a table that does not opt in renders as it would without it.</summary>
+    public static string? CompactClass(NsCompact compact, bool drawn)
+    {
+        return compact switch
+        {
+            NsCompact.Only => "ns-compact-only",
+            NsCompact.Hidden when drawn => "ns-compact-hidden",
+            _ => null
+        };
+    }
+
     /// <summary>Classes for chrome that answers to the WINDOW's width instead of its
     /// container's: gone below the given width, shown from it up. The one measurement that is
     /// not the surface's own, and it is narrow on purpose — the nav drawer docks or hides by

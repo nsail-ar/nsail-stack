@@ -898,6 +898,90 @@
     }
 }
 
+/* THE COMPACT PHONE FORM (NsTable Compact): under the tablet's width an opted-in table draws
+   each row as one line instead of the stacked card, so a list read to find a person shows
+   several times as many of them. The lead cell (ns-compact-lead, the first column the header
+   declared that the row draws) opens the first line with the action cell packed after it; the
+   row's pseudo is a full-width break, and every other surviving cell follows on the second line,
+   receding, with no data-label — a reading that needs its word says it in its own cell.
+
+   An Only cell is drawn here and nowhere else: off in column mode, where it has no header to
+   sit under, and off in the stacked card. A Hidden cell is left off the line. A cell hidden by
+   its column's Breakpoint stays hidden, as it does on the card; an Only cell wins over that,
+   being drawn here by definition. Rows only: the foot keeps the card, and a table with a row
+   open keeps the form its editor needs. */
+.ns-table .mud-table-cell.ns-compact-only {
+    display: none;
+}
+
+@media (max-width: 960px) {
+    @container (max-width: 599.98px) {
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body {
+            display: block;
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            column-gap: 12px;
+            padding: 4px 16px;
+            border-bottom: 1px solid var(--mud-palette-table-lines);
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-row::after {
+            content: "";
+            order: 1;
+            flex-basis: 100%;
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell {
+            display: block;
+            order: 2;
+            padding: 0;
+            border: none;
+            color: var(--mud-palette-text-secondary);
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell::before {
+            display: none;
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell:empty {
+            display: none;
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-lead {
+            order: 0;
+            flex: 1 1 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--mud-palette-text-primary);
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-actions,
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-select {
+            display: flex;
+            order: 0;
+            flex: none;
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.d-c-none,
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-hidden {
+            display: none;
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-only {
+            display: block;
+        }
+
+        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-only.ns-actions {
+            display: flex;
+        }
+    }
+}
+
 /* THE OPEN ROW STACKS WHERE ITS CONTAINER CANNOT SEAT IT (nsail#1614 — Leonardo, Nueva Orden
    de Compra in the 720px aside: Precio unitario was a 47px box against a 110px reading, so
    125.430,50 read "50").

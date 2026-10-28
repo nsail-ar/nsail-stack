@@ -3,7 +3,7 @@
 
 namespace NSail.Components;
 
-/// <summary>What one table's columns are: the per-column breakpoints, and the columns themselves
+/// <summary>What one table's columns are: the per-column breakpoints and compact placements, and the columns themselves
 /// in the order the header declared them. NsTh declares, NsTd reads, and the two find each other
 /// through the localization key both already derive from their For expression — so a column is
 /// declared once, in the header, and its cells follow.
@@ -19,11 +19,43 @@ namespace NSail.Components;
 public sealed class TableColumns
 {
     readonly Dictionary<string, NsSize> _breakpoints = [];
+    readonly Dictionary<string, NsCompact> _compact = [];
     readonly List<TableColumn> _declared = [];
 
     public void Declare(string key, NsSize breakpoint)
     {
+        Declare(key, breakpoint, NsCompact.Shown);
+    }
+
+    public void Declare(string key, NsSize breakpoint, NsCompact compact)
+    {
         _breakpoints[key] = breakpoint;
+        _compact[key] = compact;
+
+        if (Lead is null && compact != NsCompact.Hidden)
+        {
+            Lead = key;
+        }
+    }
+
+    /// <summary>Whether the table draws its compact phone form, said by the table itself so the
+    /// cells under it can say which part of the line they are.</summary>
+    public bool Compact { get; set; }
+
+    /// <summary>The column a compact row opens with: the first one the header declared that the
+    /// row draws. Every other surviving cell follows it on the row's second line.</summary>
+    public string? Lead { get; private set; }
+
+    /// <summary>Where a column is drawn on the compact row; Shown for a column that declared
+    /// nothing.</summary>
+    public NsCompact CompactFor(string? key)
+    {
+        if (key is null || !_compact.TryGetValue(key, out var compact))
+        {
+            return NsCompact.Shown;
+        }
+
+        return compact;
     }
 
     /// <summary>The width a column appears from; None (never hidden) for a column that
@@ -48,6 +80,7 @@ public sealed class TableColumns
     public void BeginPass()
     {
         _declared.Clear();
+        Lead = null;
     }
 
     public void Declare(TableColumn column)
