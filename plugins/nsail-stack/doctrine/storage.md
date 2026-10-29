@@ -18,7 +18,8 @@ needs somewhere to land uses the same door.
 | `NSail.Storage.S3` | anything speaking the S3 REST API |
 
 No `.Data` project: Storage keeps no entity of its own and the target rides a `NSail.Settings`
-row. The proof is `test/Stack/Storage/NSail.Storage.WebApi.Tests`, which needs no database.
+row. The proof is `test/Stack/Storage/NSail.Storage.WebApi.Tests`, which needs no database, and the
+settings screen's is `NSail.Storage.Shared.Tests` beside it.
 
 ## Rules
 
