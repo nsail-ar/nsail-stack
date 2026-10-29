@@ -76,7 +76,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           files=$(git diff --name-only HEAD^1 HEAD)
-          if [ -n "$files" ] && ! echo "$files" | grep -qv '.md$'; then
+          if [ -n "$files" ] && ! echo "$files" | grep -qv '\.md$'; then
             echo "docs=true" >> "$GITHUB_OUTPUT"
           fi
 
