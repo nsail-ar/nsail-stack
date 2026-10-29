@@ -36,22 +36,17 @@ public class StorageSettingsHandler :
 
     public async Task<List<StorageStoreRow>> Handle(ListStorageStores message, CancellationToken cancellationToken = default)
     {
-        var rows = new List<StorageStoreRow>();
+        var resolved = await _credentials.Get(_stores.Names, cancellationToken);
 
-        foreach (var name in _stores.Names)
-        {
-            var target = await _credentials.Get(name, cancellationToken);
-
-            rows.Add(new StorageStoreRow
+        return resolved
+            .Select(store => new StorageStoreRow
             {
-                Name = name,
-                Provider = target.Provider is { Length: > 0 } provider ? provider : null,
-                Container = target.Container is { Length: > 0 } container ? container : null,
-                UsesDefault = name != StorageNames.Default && !await _credentials.HasOwn(name, cancellationToken),
-            });
-        }
-
-        return rows;
+                Name = store.Name,
+                Provider = store.Target.Provider is { Length: > 0 } provider ? provider : null,
+                Container = store.Target.Container is { Length: > 0 } container ? container : null,
+                UsesDefault = store.Name != StorageNames.Default && !store.Own,
+            })
+            .ToList();
     }
 
     public async Task<StoredSettings<StorageSettingsModel>> Handle(GetStorageSettings message, CancellationToken cancellationToken = default)

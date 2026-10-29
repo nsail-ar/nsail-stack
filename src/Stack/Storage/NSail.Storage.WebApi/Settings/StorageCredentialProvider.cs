@@ -38,12 +38,16 @@ public sealed class StorageCredentialProvider
         return Own(settings, name) ?? Own(settings, StorageNames.Default) ?? StorageTarget.None;
     }
 
-    // Whether the name writes to a target of its own rather than falling to the default store.
-    public async Task<bool> HasOwn(string name, CancellationToken cancellationToken = default)
+    // Every name's target from one read of the row, each with whether it is the name's own
+    // rather than the default store's.
+    public async Task<List<StorageResolution>> Get(IEnumerable<string> names, CancellationToken cancellationToken = default)
     {
         var settings = await _settings.Get<StorageSettings>(cancellationToken);
+        var fallback = Own(settings, StorageNames.Default) ?? StorageTarget.None;
 
-        return Own(settings, name) is not null;
+        return names
+            .Select(name => Own(settings, name) is { } own ? new StorageResolution(name, own, true) : new StorageResolution(name, fallback, false))
+            .ToList();
     }
 
     StorageTarget? Own(StorageSettings settings, string name)
