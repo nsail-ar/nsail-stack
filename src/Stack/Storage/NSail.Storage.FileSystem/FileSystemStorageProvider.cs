@@ -29,14 +29,9 @@ public class FileSystemStorageProvider : IStorageProvider
         get { return "Local folder"; }
     }
 
-    // Material Symbols folder, carried here rather than named from NsIcons: a server
-    // assembly does not reference the component library.
     public Glyph Icon
     {
-        get
-        {
-            return new("""<g transform="translate(0,24) scale(0.025)"><path d="M144-192q-29.7 0-50.85-21.15Q72-234.3 72-264v-432q0-29.7 21.15-50.85Q114.3-768 144-768h242l72 72h358q29.7 0 50.85 21.15Q888-653.7 888-624v360q0 29.7-21.15 50.85Q845.7-192 816-192H144Zm0-72h672v-360H428l-72-72H144v432Zm0 0v-432 432Z"/></g>""");
-        }
+        get { return StorageIcons.Folder; }
     }
 
     public bool IsRemote

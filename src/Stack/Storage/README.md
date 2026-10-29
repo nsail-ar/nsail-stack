@@ -8,7 +8,7 @@ install's default is configuration.
 
 | Package | What it is | Referenced by |
 |---|---|---|
-| `NSail.Storage.Sdk` | The settings screen's messages and models (`GetStorageSettings`, `SaveStorageSettings`, `LookupStorageProviders`, `TestStorageTarget`) | `NSail.Storage.Shared`, `NSail.Storage.WebApi` |
+| `NSail.Storage.Sdk` | The settings screen's messages and models (`GetStorageSettings`, `SaveStorageSettings`, `LookupStorageProviders`, `TestStorageTarget`), and `StorageIcons`, the glyphs the section and each provider name | `NSail.Storage.Shared`, `NSail.Storage.WebApi` |
 | `NSail.Storage.WebApi` | `StorageManager`, the `IStorageProvider` seam, `StorageOptions`, the settings handlers | The host, and any server code that writes objects |
 | `NSail.Storage.Shared` | The settings screen, its strings and its guide chapter | The client composition roots that show the screen |
 | `NSail.Storage.FileSystem` | A directory on the host's own disk (provider `file`) | The host that may write to its disk |
