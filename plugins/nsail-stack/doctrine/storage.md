@@ -1,9 +1,9 @@
 # Storage
 
 The object store: put, get, list and delete a named object, and say where one can be read,
-with a provider per protocol behind it. It is infrastructure with no domain — no entity, no table, and nothing it knows about what it
-holds — so it is the Stack's, and an archive, an attachment, an export or an uploaded file that
-needs somewhere to land uses the same door.
+with a provider per protocol behind it. It is infrastructure with no domain — no entity, no
+table, and nothing it knows about what it holds — so it is the Stack's, and an archive, an
+attachment, an export or an uploaded file that needs somewhere to land uses the same door.
 
 ---
 
@@ -11,7 +11,7 @@ needs somewhere to land uses the same door.
 
 | Project | Holds |
 |---|---|
-| `NSail.Storage.Sdk` | the settings screen's messages and models — nothing about objects |
+| `NSail.Storage.Sdk` | the settings screen's messages and models, and `StorageNames` — nothing about objects |
 | `NSail.Storage.WebApi` | `StorageManager` (the outward API), `AddStore`, `IStorageProvider` (the seam), the sealed `StorageSettings` |
 | `NSail.Storage.Shared` | the settings screen |
 | `NSail.Storage.FileSystem` | a directory on the host's own disk |
@@ -126,7 +126,8 @@ deployed instance, and nothing smaller.
 called (a product's Wasm composition root). It lists one row per declared store name
 (`ListStorageStores`), the default first, each with the target it resolves to now and whether
 that is the default's; a row opens that name's own form (`StorageStorePage`), where clearing
-Proveedor sends the name back to the default. A product parks the screen out of sight by leaving
+Proveedor clears the name's row slot and nothing else — the name then resolves to its own
+`StorageOptions` when the host gave it one, and to the default only when it did not. A product parks the screen out of sight by leaving
 that one call out of both composition roots, which takes the route, the strings and the
 settings leaf with it, and keeps `AddStorageWebApi` for everything that still writes objects.
 The provider picker decides whether the address, the region and the key pair are asked for at

@@ -26,7 +26,7 @@ buckets (o "object storage") y la de claves de acceso (o "API keys" / "access ke
 2. En **Proveedor**, elegí **Local folder** para una carpeta del servidor, o **S3-compatible** para tu propio bucket.
 3. Completá **Contenedor** con el nombre de la carpeta (local) o del bucket (S3-compatible).
 4. Si elegiste S3-compatible, completá además **Dirección del servicio** — la de tu proveedor, sin el nombre del bucket —, **Región** — dejala vacía salvo que tu proveedor la pida —, **Clave de acceso** y **Clave secreta**: los cuatro valores salen de la consola de tu proveedor, de donde lo dejaste en Antes de empezar.
-5. Tocá **Guardar**. Para que un almacén vuelva a usar el de por defecto, dejá **Proveedor** vacío y guardá.
+5. Tocá **Guardar**. Dejar **Proveedor** vacío y guardar borra lo que guardaste para ese almacén: vuelve a usar el que la instalación le configuró, y si no le configuró ninguno, el de por defecto.
 
 **La Clave secreta es de sólo escritura**: después de guardarla el campo vuelve vacío y debajo
 dice que ya hay una guardada, así que volver a guardar los otros campos la conserva. Sólo se
