@@ -19,9 +19,8 @@ public sealed class StorageSettings
 
     public string? Container { get; set; }
 
-    // The public half of the pair, kept beside the sealed one for the same reason ARCA keeps
-    // its certificate beside its key: they are one credential, and splitting the handling is
-    // how a save starts writing a shape the read no longer understands.
+    // The public half of the pair, kept beside the sealed one: they are one credential, and
+    // splitting the handling is how a save starts writing a shape the read no longer understands.
     public string? AccessKey { get; set; }
 
     // Sealed with the install's own key, so a settings row read straight out of the database
