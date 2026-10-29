@@ -43,5 +43,3 @@ está tipeado sin guardar.
 
 Tu proveedor te factura el espacio que ocupás y las lecturas y escrituras que hacés, según su
 propio plan. NSail no agrega ningún cargo por esto.
-
-**Revisado el 2026-10-25.**
