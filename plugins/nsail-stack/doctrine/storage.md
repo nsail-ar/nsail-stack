@@ -1,7 +1,7 @@
 # Storage
 
-The object store: put, get, list and delete a named object, with a provider per protocol behind
-it. It is infrastructure with no domain — no entity, no table, and nothing it knows about what it
+The object store: put, get, list and delete a named object, and say where one can be read,
+with a provider per protocol behind it. It is infrastructure with no domain — no entity, no table, and nothing it knows about what it
 holds — so it is the Stack's, and an archive, an attachment, an export or an uploaded file that
 needs somewhere to land uses the same door.
 
@@ -12,7 +12,7 @@ needs somewhere to land uses the same door.
 | Project | Holds |
 |---|---|
 | `NSail.Storage.Sdk` | the settings screen's messages and models — nothing about objects |
-| `NSail.Storage.WebApi` | `StorageManager` (the outward API), `IStorageProvider` (the seam), the sealed `StorageSettings` |
+| `NSail.Storage.WebApi` | `StorageManager` (the outward API), `AddStore`, `IStorageProvider` (the seam), the sealed `StorageSettings` |
 | `NSail.Storage.Shared` | the settings screen |
 | `NSail.Storage.FileSystem` | a directory on the host's own disk |
 | `NSail.Storage.S3` | anything speaking the S3 REST API |
@@ -37,10 +37,21 @@ row. The proof is `test/Stack/Storage/NSail.Storage.WebApi.Tests`, which needs n
 - **`AddStorageWebApi` registers no provider.** Where a host may write is the app's decision,
   asked for by name (`AddFileSystemStorage`, `AddS3Storage`), so a product that must never write
   to a disk does not compose the one that can.
-- **A business's own target is a row; the install's default is configuration.** The settings
-  row wins wherever it names a provider, and `StorageCredentialProvider` falls back to
-  `StorageOptions` — one object, loaded by the host and passed to `AddStorageWebApi` — wherever
-  it names none. That fallback is the one seam, so every caller inherits it, and a business that
+- **Stores have names, and `default` is the one every install has.** A kit that keeps its
+  objects apart (reports in one place, backups in another) names its store with a constant and
+  declares it with `AddStore`; its code takes `[FromKeyedServices(name)] StorageManager`, and
+  the unkeyed manager is the default's. A name is a keyed service and not a type per store:
+  .NET's own keyed services are the standard, and a typed store can be built on a name, never
+  the other way. A name the host never declared is refused on the wire (`StorageNotDeclared`),
+  because the settings row keeps a slot per declared name and an undeclared slot is one no
+  consumer reads.
+- **A business's own target is a row; the install's is configuration.** One `StorageSettings`
+  row holds every store: its own fields are the default's, so a row saved before stores had
+  names still reads as the default, and `Stores` holds each other name's. A store resolves most
+  specific first — its own row slot, its own `StorageOptions` (`Storage:{name}`, passed to
+  `AddStore`), then the default's row and the default's `StorageOptions` (`Storage`, passed to
+  `AddStorageWebApi`). `StorageCredentialProvider` is that one seam, so every caller inherits
+  it, a name with no target of its own writes where the default writes, and a business that
   never opened the settings screen still uploads a logo. An install that passes no options
   stores nowhere until a row says otherwise; an app whose floor is the host's own disk says so by
   name, with `AddFileSystemStorage`'s `OnDisk`, and names the directory its deploy mounts a
@@ -56,6 +67,10 @@ row. The proof is `test/Stack/Storage/NSail.Storage.WebApi.Tests`, which needs n
   right: those hosts are one container per tenant already. Each kind that writes keys says its
   shape in one place, and a scope that can name no tenant stores nothing rather than keying it
   under nobody.
+- **A provider says where an object can be read, or that it cannot.** `Link` is computed from
+  the target and the key with no call to the store — S3 answers the path-style address,
+  the filesystem answers null — and whether a reader is let in there is the store's own
+  access policy, not Storage's.
 - **The provider contract may still change.** It freezes after the provider that follows S3,
   the rule `IStorageProvider` carries — one provider teaches you its own shape, not the
   abstraction's.
@@ -107,7 +122,10 @@ deployed instance, and nothing smaller.
 ## The settings screen
 
 `Configuración > Almacenamiento`, under Integraciones, wherever `AddStorageComponents()` is
-called (a product's Wasm composition root). A product parks the screen out of sight by leaving
+called (a product's Wasm composition root). It lists one row per declared store name
+(`ListStorageStores`), the default first, each with the target it resolves to now and whether
+that is the default's; a row opens that name's own form (`StorageStorePage`), where clearing
+Proveedor sends the name back to the default. A product parks the screen out of sight by leaving
 that one call out of both composition roots, which takes the route, the strings and the
 settings leaf with it, and keeps `AddStorageWebApi` for everything that still writes objects.
 The provider picker decides whether the address, the region and the key pair are asked for at
@@ -116,8 +134,8 @@ back: the read says only that one exists, and an empty field on save means "unch
 "clear it".
 
 The test action writes a small probe, reads it back, checks the bytes, lists it and removes
-it — against the **saved** target, because testing what the form currently holds would prove
-a configuration that exists in one browser.
+it — against the name's **saved** target, because testing what the form currently holds would
+prove a configuration that exists in one browser.
 
 **A probe that fails is a refusal and answers nothing.** It carries no "did it work" flag: the
 install storing nowhere and a provider nobody composed are refused on `Provider`, which the
