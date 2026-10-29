@@ -29,7 +29,7 @@ route — **no dynamic form engine, no settings shell**. Abstraction in `NSail.S
   via `NavMenuItem.Merge(collapseSingleChildGroups: true)`. Each page is an ordinary
   `NsPage` gated by its own save message (`[Authorize<SaveThemeSettings>]`) and moving
   its POCO with its own `Get`/`Save` pair. Reference: `StorageSettingsContributor` +
-  `StorageSettingsPage`.
+  `StorageStorePage`.
 - **Every User-scoped setting surfaces under Mi Cuenta → Preferencias** — never a standalone
   door of its own, and never the Settings group, which is the company's. The next per-user
   setting anyone builds is born there, and more personal items are expected to move under that
