@@ -91,10 +91,9 @@ public sealed class StorageSettingsTests
         Assert.Empty(await storage.List("nsail-storage-test/"));
     }
 
-    /// <summary>nsail#2006: this used to come back as Succeeded: false with a sentence in Detail,
-    /// and the screen drew it as a toast that faded — over a form rendering the very field the
-    /// reason names. A failed probe is a refusal, and this one is anchored, so the screen marks
-    /// Proveedor with it.</summary>
+    // A failed probe is a refusal, not a Succeeded flag with a sentence in Detail: a toast would
+    // fade over a form rendering the very field the reason names. This one is anchored, so the
+    // screen marks Proveedor with it.
     [Fact]
     public async Task RefusesOnProveedorWhenTheInstallStoresNowhere()
     {

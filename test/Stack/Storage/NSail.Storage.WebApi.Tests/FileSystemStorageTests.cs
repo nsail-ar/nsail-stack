@@ -22,7 +22,7 @@ public sealed class FileSystemStorageTests
     {
         using var container = new Container();
 
-        var payload = Encoding.UTF8.GetBytes("the archive nsail#326 will write");
+        var payload = Encoding.UTF8.GetBytes("an archive the provider uploads");
 
         using (var content = new MemoryStream(payload))
         {

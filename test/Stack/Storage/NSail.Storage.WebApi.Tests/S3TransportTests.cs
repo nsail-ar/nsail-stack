@@ -11,9 +11,8 @@ using System.Text;
 
 namespace NSail.Storage.Tests;
 
-// What the provider puts on the wire, offline — the MetaTokensTests shape (a stub
-// HttpMessageHandler behind a one-client IHttpClientFactory). What needs a real bucket is
-// whether a store ACCEPTS the signature; what the provider BUILDS — the address, the payload
+// What the provider puts on the wire, offline: a stub HttpMessageHandler behind a one-client
+// IHttpClientFactory (Transport, below). What needs a real bucket is whether a store ACCEPTS the signature; what the provider BUILDS — the address, the payload
 // hash it declares, the body that follows it, the pages it walks, the refusal it reads back —
 // owes no credential and is answered here. The signature's own arithmetic is S3SignatureTests'
 // job, against AWS's published vectors.
@@ -21,7 +20,7 @@ public sealed class S3TransportTests
 {
     const string Secret = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
 
-    static readonly byte[] Payload = Encoding.UTF8.GetBytes("the archive nsail#326 will write");
+    static readonly byte[] Payload = Encoding.UTF8.GetBytes("an archive the provider uploads");
 
     // storage.md's first documented upload shape: over TLS the transport carries the integrity,
     // so the body is read once and the signature says so.
@@ -38,9 +37,9 @@ public sealed class S3TransportTests
         Assert.Equal(S3Signature.UnsignedPayload, transport.Last.Header("x-amz-content-sha256"));
     }
 
-    // The other documented shape, and the one round 1 found asserted by a comment and held by
-    // nothing: a plaintext endpoint gets no integrity from the transport, so the signature has
-    // to bind the body itself. The body arriving whole is the rewind, proven rather than read.
+    // The other documented shape: a plaintext endpoint gets no integrity from the transport, so
+    // the signature has to bind the body itself. The body arriving whole is the rewind, proven
+    // rather than read.
     [Fact]
     public async Task PutOverAPlaintextEndpointHashesTheBodyAndStillSendsIt()
     {
@@ -164,8 +163,8 @@ public sealed class S3TransportTests
 
     // The registration, not the wire, but the same failure it prevents: HttpClient's 100-second
     // default covers the whole body, so it decides how large an object may be just as surely as
-    // the 5 GiB cap does. Left in a comment it walks back on the next edit and the suite stays
-    // green, which is the shape of round 1's finding here.
+    // the 5 GiB cap does. Held only by a comment, it walks back on the next edit with the suite
+    // still green.
     [Fact]
     public void TheRegisteredClientCarriesNoWallClockCeiling()
     {

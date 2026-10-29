@@ -11,7 +11,7 @@ namespace NSail.Storage.Settings;
 //
 // It answers nothing either. A probe that worked has no fact to report beyond having worked, and
 // a probe that failed is a refusal — so an answer with room for "it did not work" in it is a
-// second way to say no, next to the one the screen already draws (nsail#2006).
+// second way to say no, next to the one the screen already draws.
 [Http(Post, "api/storage/test")]
 public class TestStorageTarget : IMessage
 {

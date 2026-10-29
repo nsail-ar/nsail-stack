@@ -14,8 +14,8 @@ namespace NSail.Storage.Settings;
 // against a bucket the install cannot read from, and one that left its probe behind would
 // litter the container it just proved.
 //
-// A probe that fails is a REFUSAL and answers like one — nothing is caught into a Succeeded flag
-// (nsail#2006). The anchored refusals underneath travel untouched: StorageManager already names
+// A probe that fails is a REFUSAL and answers like one — nothing is caught into a Succeeded flag.
+// The anchored refusals underneath travel untouched: StorageManager already names
 // Proveedor when the install stores nowhere, which is a field this screen renders, so the "no"
 // lands on it instead of in a toast. The probe's own verdicts name no field and fall to the foot
 // of the form, each under a rule of its own so each is worded in the install's language.

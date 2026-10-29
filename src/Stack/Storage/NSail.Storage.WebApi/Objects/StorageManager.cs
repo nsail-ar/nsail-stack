@@ -52,8 +52,8 @@ public sealed class StorageManager
     }
 
     // Whether a Put would get as far as the provider, asked before there is anything to put: a
-    // caller that queues the writing for later (a request a job fulfils) would otherwise accept the
-    // ask, read a whole database and fail on its last line. It answers false for both refusals
+    // caller that queues the writing for later (a request a job fulfils) would otherwise accept
+    // the ask, read a whole database and fail on its last line. It answers false for both refusals
     // Resolve raises — an install storing nowhere and a provider no host composed — because a
     // caller at the door can do nothing different about either.
     public async Task<bool> IsConfigured(CancellationToken cancelToken = default)
