@@ -23,78 +23,6 @@ NuGet packages.
 > **Status: pre-release (0.x).** Every merge to `main` ships a new version. The API still moves;
 > pin a version and read the changes before you bump it.
 
-## What a feature looks like
-
-A message names its route, carries its validation, and says what it answers:
-
-```csharp
-[Http(Post, "api/sample/contacts")]
-public class CreateContact : IMessage
-{
-    public required Guid Id { get; set; }
-
-    [Required]
-    [MaxLength(100)]
-    public string Name { get; set; } = string.Empty;
-
-    [Range(0, 100)]
-    public int Rating { get; set; }
-}
-
-[Http(Get, "api/sample/contacts")]
-public class ListContacts : PagedMessage, IMessage<DataPage<ContactRow>>
-{
-    [SearchTerm]
-    public string? Search { get; set; }
-}
-```
-
-A handler answers it. Nothing registers the handler or maps the endpoint by hand — the source
-generator does both:
-
-```csharp
-[Injectable]
-public sealed class ContactHandler : IHandler<CreateContact>, IHandler<ListContacts, DataPage<ContactRow>>
-{
-    public async Task Handle(CreateContact message, CancellationToken cancellationToken = default) { ... }
-
-    public async Task<DataPage<ContactRow>> Handle(ListContacts message, CancellationToken cancellationToken = default) { ... }
-}
-```
-
-A Blazor page sends the same type — over HTTP from WebAssembly, in process on the server — and
-the form validates it with the message's own annotations, on both sides:
-
-```razor
-@page "/contacts/new"
-@attribute [Authorize<CreateContact>]
-@inherits NsPage
-
-<NsForm TModel="CreateContact" Model="_model" OnSubmit="OnSubmit">
-    <NsPanel>
-        <Content>
-            <NsTextField @bind-Value="_model.Name" AutoFocus />
-            <NsNumericField TValue="int" @bind-Value="_model.Rating" />
-        </Content>
-        <Footer>
-            <NsSubmit />
-        </Footer>
-    </NsPanel>
-</NsForm>
-```
-
-And a React client imports the TypeScript the build writes from those same messages:
-
-```tsx
-import { useMediator } from "@nsail/stack";
-import { DeleteContact } from "../sdk";
-
-await mediator.send(DeleteContact, { id: row.id });
-```
-
-Labels, field names and refusals come from one string catalog keyed by the message, so the two
-clients and the server say the same words.
-
 ## Start here
 
 - **[Getting started](docs/getting-started.md)** — an app from nuget.org and npm, step by step: a
@@ -105,26 +33,28 @@ clients and the server say the same words.
   [sending](docs/sending.md), [events](docs/events.md), [permissions](docs/permissions.md),
   [mapping](docs/mapping.md), [principles](docs/principles.md).
 
-## Try it: the Sample
+## AI first
 
-[`src/Stack/Sample`](src/Stack/Sample/docs/sample.md) is a contacts app — one API, a Blazor
-client and a React client over it — built from the Stack alone. It touches every field kind a
-form draws and every way a save is refused: client validation, server validation, not found, and
-a concurrency conflict.
-
-You need the [.NET 10 SDK](https://dotnet.microsoft.com/download), Node.js with npm, and a
-PostgreSQL server on `localhost` (user `postgres`, password in `PGPASSWORD`).
+The Stack is built with [Claude Code](https://claude.com/claude-code) and written so an agent can
+follow it. The architecture is strict and it is written down as doctrine — how a message is
+shaped, how data is mapped, how tenancy filters, how a screen places its actions and its refusals
+([start at the principles](plugins/nsail-stack/doctrine/principles.md); the
+[routing table](plugins/nsail-stack/skills/doctrine/SKILL.md) says which page answers which area).
+The same pages ship as a plugin, with skills for the everyday work (`new-message`, `new-mapping`,
+`new-icon`, `convert-to-nsload`, `test-harness`), so an agent building on the Stack reads the same
+rules a person does:
 
 ```bash
-npm install
-dotnet build src/Stack/Sample/NSail.Sample.Web
-dotnet run --project src/Stack/Sample/NSail.Sample.Web --launch-profile http
+claude plugin marketplace add nsail-ar/nsail-stack
+claude plugin install nsail-stack@nsail
 ```
 
-Open <http://localhost:4001> for Blazor and <http://localhost:4001/react> for React. The first
-run creates the database.
+Pin the plugin at the same tag as your packages, so the pages describe the code you compile
+against. For one session from a checkout: `claude --plugin-dir <checkout>/plugins/nsail-stack`.
+This repository is developed the same way: [CLAUDE.md](CLAUDE.md) is what an agent reads before it
+edits anything.
 
-## The Stack, by area
+## The Stack
 
 Each area has its own README with its packages, its registration calls and every option it
 reads. Start with [Getting started](docs/getting-started.md); come here when you need the detail.
@@ -197,7 +127,7 @@ The error model, paging, the wire's JSON contract and the small value types ever
 `NSail.Types` · `NSail.BclExtensions` · `NSail.Injection.Annotations`
 → [Types](src/Stack/Types/README.md)
 
-## Use it in your app
+### Install
 
 Every Stack project is a package on [nuget.org](https://www.nuget.org/profiles/NSail). Pin one
 version for all of them, and reference the source generator as an analyzer that does not flow to
@@ -219,26 +149,96 @@ The published versions are this repository's `v*` tags. The React packages are o
 same version as the NuGet packages; pin them together. They ship ES modules for a bundler (Vite,
 webpack), with their types.
 
-## The doctrine, and a Claude Code plugin
+## What a feature looks like
 
-The architecture is strict and it is written down: how a message is shaped, how data is mapped,
-how tenancy filters, how a screen places its actions and its refusals. The pages live in
-[`plugins/nsail-stack/doctrine`](plugins/nsail-stack/doctrine) — start at
-[principles.md](plugins/nsail-stack/doctrine/principles.md), and the
-[routing table](plugins/nsail-stack/skills/doctrine/SKILL.md) says which page answers which
-area.
+A message names its route, carries its validation, and says what it answers:
 
-They ship as a [Claude Code](https://claude.com/claude-code) plugin, with skills for the
-everyday work (`new-message`, `new-mapping`, `new-icon`, `convert-to-nsload`, `test-harness`), so
-an agent building on the Stack reads the same rules a person does:
+```csharp
+[Http(Post, "api/sample/contacts")]
+public class CreateContact : IMessage
+{
+    public required Guid Id { get; set; }
 
-```bash
-claude plugin marketplace add nsail-ar/nsail-stack
-claude plugin install nsail-stack@nsail
+    [Required]
+    [MaxLength(100)]
+    public string Name { get; set; } = string.Empty;
+
+    [Range(0, 100)]
+    public int Rating { get; set; }
+}
+
+[Http(Get, "api/sample/contacts")]
+public class ListContacts : PagedMessage, IMessage<DataPage<ContactRow>>
+{
+    [SearchTerm]
+    public string? Search { get; set; }
+}
 ```
 
-Or for one session from a checkout: `claude --plugin-dir <checkout>/plugins/nsail-stack`. Pin the
-plugin at the same tag as your packages, so the pages describe the code you compile against.
+A handler answers it. Nothing registers the handler or maps the endpoint by hand — the source
+generator does both:
+
+```csharp
+[Injectable]
+public sealed class ContactHandler : IHandler<CreateContact>, IHandler<ListContacts, DataPage<ContactRow>>
+{
+    public async Task Handle(CreateContact message, CancellationToken cancellationToken = default) { ... }
+
+    public async Task<DataPage<ContactRow>> Handle(ListContacts message, CancellationToken cancellationToken = default) { ... }
+}
+```
+
+A Blazor page sends the same type — over HTTP from WebAssembly, in process on the server — and
+the form validates it with the message's own annotations, on both sides:
+
+```razor
+@page "/contacts/new"
+@attribute [Authorize<CreateContact>]
+@inherits NsPage
+
+<NsForm TModel="CreateContact" Model="_model" OnSubmit="OnSubmit">
+    <NsPanel>
+        <Content>
+            <NsTextField @bind-Value="_model.Name" AutoFocus />
+            <NsNumericField TValue="int" @bind-Value="_model.Rating" />
+        </Content>
+        <Footer>
+            <NsSubmit />
+        </Footer>
+    </NsPanel>
+</NsForm>
+```
+
+And a React client imports the TypeScript the build writes from those same messages:
+
+```tsx
+import { useMediator } from "@nsail/stack";
+import { DeleteContact } from "../sdk";
+
+await mediator.send(DeleteContact, { id: row.id });
+```
+
+Labels, field names and refusals come from one string catalog keyed by the message, so the two
+clients and the server say the same words.
+
+## Try it: the Sample
+
+[`src/Stack/Sample`](src/Stack/Sample/docs/sample.md) is a contacts app — one API, a Blazor
+client and a React client over it — built from the Stack alone. It touches every field kind a
+form draws and every way a save is refused: client validation, server validation, not found, and
+a concurrency conflict.
+
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download), Node.js with npm, and a
+PostgreSQL server on `localhost` (user `postgres`, password in `PGPASSWORD`).
+
+```bash
+npm install
+dotnet build src/Stack/Sample/NSail.Sample.Web
+dotnet run --project src/Stack/Sample/NSail.Sample.Web --launch-profile http
+```
+
+Open <http://localhost:4001> for Blazor and <http://localhost:4001/react> for React. The first
+run creates the database.
 
 ## Repository layout
 
