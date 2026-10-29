@@ -99,6 +99,12 @@ public class FileSystemStorageProvider : IStorageProvider
         return Task.CompletedTask;
     }
 
+    // A directory on the host has no address anyone outside the host could read it at.
+    public Uri? Link(StorageTarget target, string key)
+    {
+        return null;
+    }
+
     static string Root(StorageTarget target)
     {
         return Path.GetFullPath(target.Container);

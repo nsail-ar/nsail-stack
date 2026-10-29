@@ -4,6 +4,7 @@
 using NSail.Injection.Annotations;
 using NSail.Security;
 using NSail.Settings;
+using NSail.Storage.Objects;
 using NSail.Storage.Providers;
 using System.Security.Cryptography;
 
@@ -17,34 +18,52 @@ public sealed class StorageCredentialProvider
 {
     readonly SettingsManager _settings;
     readonly KeyProtector _keys;
-    readonly StorageOptions _install;
+    readonly StorageStores _stores;
 
-    public StorageCredentialProvider(SettingsManager settings, KeyProtector keys, StorageOptions install)
+    public StorageCredentialProvider(SettingsManager settings, KeyProtector keys, StorageStores stores)
     {
         _settings = settings;
         _keys = keys;
-        _install = install;
+        _stores = stores;
     }
 
-    public async Task<StorageTarget> Get(CancellationToken cancellationToken = default)
+    // The one seam a store falls back at, so every caller inherits it, most specific first: the
+    // name's own row, the install's target for the name, then the default store's row and the
+    // install's default (StorageOptions). An install that named none of them is still
+    // StorageTarget.None.
+    public async Task<StorageTarget> Get(string name, CancellationToken cancellationToken = default)
     {
         var settings = await _settings.Get<StorageSettings>(cancellationToken);
 
-        if (settings.Provider is not { Length: > 0 })
+        return Own(settings, name) ?? Own(settings, StorageNames.Default) ?? StorageTarget.None;
+    }
+
+    // Whether the name writes to a target of its own rather than falling to the default store.
+    public async Task<bool> HasOwn(string name, CancellationToken cancellationToken = default)
+    {
+        var settings = await _settings.Get<StorageSettings>(cancellationToken);
+
+        return Own(settings, name) is not null;
+    }
+
+    StorageTarget? Own(StorageSettings settings, string name)
+    {
+        var row = settings.For(name);
+
+        if (row.Provider is { Length: > 0 })
         {
-            // The one seam a default falls back at, so every caller inherits it: a business that
-            // named no target of its own writes where the install writes (StorageOptions), and
-            // an install that named none either is still StorageTarget.None.
-            return _install.Target();
+            return new StorageTarget(
+                row.Provider.Trim(),
+                row.Endpoint?.Trim() ?? "",
+                row.Region?.Trim() ?? "",
+                row.Container?.Trim() ?? "",
+                row.AccessKey?.Trim() ?? "",
+                Unprotect(row.SecretKey));
         }
 
-        return new StorageTarget(
-            settings.Provider.Trim(),
-            settings.Endpoint?.Trim() ?? "",
-            settings.Region?.Trim() ?? "",
-            settings.Container?.Trim() ?? "",
-            settings.AccessKey?.Trim() ?? "",
-            Unprotect(settings.SecretKey));
+        var install = _stores.Install(name)?.Target();
+
+        return install is { Provider.Length: > 0 } ? install : null;
     }
 
     public string? Protect(string? secret)

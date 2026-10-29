@@ -7,8 +7,8 @@ namespace NSail.Storage.Providers;
 // it is frozen. One provider teaches you its own shape, not the abstraction's.
 //
 // Every operation takes the target rather than reading the settings itself: a provider is a
-// stateless translator of these four verbs into one protocol, and the install's configuration
-// is resolved once, by StorageManager, for whichever provider answers.
+// stateless translator of these verbs into one protocol, and the store's configuration is
+// resolved once, by StorageManager, for whichever provider answers.
 public interface IStorageProvider
 {
     string Type { get; }
@@ -31,4 +31,9 @@ public interface IStorageProvider
 
     // Deleting what is not there succeeds: the caller asked for the object to be gone.
     Task Delete(StorageTarget target, string key, CancellationToken cancelToken = default);
+
+    // The address the object can be read at, computed from the target and the key with no call
+    // to the store; null where the provider has no address to give (a directory on the host).
+    // Whether a reader is let in at that address is the store's own access policy.
+    Uri? Link(StorageTarget target, string key);
 }
