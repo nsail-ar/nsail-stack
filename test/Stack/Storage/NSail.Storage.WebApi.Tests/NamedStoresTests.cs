@@ -111,6 +111,27 @@ public sealed class NamedStoresTests : IDisposable
         Assert.Equal("reports-secret", (await scope.ServiceProvider.GetRequiredService<StorageCredentialProvider>().Get(Reports)).SecretKey);
     }
 
+    // MemorySettings never serializes, so the row's stored shape is read here: the default's
+    // fields stay flat beside Stores, and that is what lets a row saved before stores had names
+    // read as the default.
+    [Fact]
+    public void ARowSavedBeforeStoresHadNamesReadsAsTheDefault()
+    {
+        var stored = System.Text.Json.JsonSerializer.Deserialize<StorageSettings>("""{"Provider":"file","Container":"/data/storage"}""")!;
+
+        Assert.Equal("file", stored.For(StorageNames.Default).Provider);
+        Assert.Equal("/data/storage", stored.For(StorageNames.Default).Container);
+        Assert.Null(stored.For(Reports).Provider);
+
+        stored.Set(Reports, new StorageTargetSettings { Provider = "s3", Container = "reports" });
+
+        var written = System.Text.Json.Nodes.JsonNode.Parse(System.Text.Json.JsonSerializer.Serialize(stored))!;
+
+        Assert.Equal("file", (string?)written["Provider"]);
+        Assert.Equal("/data/storage", (string?)written["Container"]);
+        Assert.Equal("s3", (string?)written["Stores"]![Reports]!["Provider"]);
+    }
+
     [Fact]
     public async Task ListsOneRowPerDeclaredNameTheDefaultFirst()
     {
