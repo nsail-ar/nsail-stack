@@ -41,7 +41,7 @@ violation as `<Section>.<Member>: <message>`. An absent section is not an error:
 `T` apply, so mark what must be present with `[Required]`.
 
 The options types the Stack itself loads (`LanguageOptions`, `SecurityOptions`, `TenancyOptions`,
-`TelemetryOptions`) live in their own areas, each with its own keys; the options of a kit or an
+`TelemetryOptions`, `StorageOptions`) live in their own areas, each with its own keys; the options of a kit or an
 app live in that kit or app.
 
 ## How it fits

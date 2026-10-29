@@ -12,8 +12,9 @@ using System.Text;
 namespace NSail.Storage.Tests;
 
 // What the provider puts on the wire, offline: a stub HttpMessageHandler behind a one-client
-// IHttpClientFactory (Transport, below). What needs a real bucket is whether a store ACCEPTS the signature; what the provider BUILDS — the address, the payload
-// hash it declares, the body that follows it, the pages it walks, the refusal it reads back —
+// IHttpClientFactory (Transport, below). What needs a real bucket is whether a store ACCEPTS
+// the signature; what the provider BUILDS — the address, the payload hash it declares, the
+// body that follows it, the pages it walks, the refusal it reads back —
 // owes no credential and is answered here. The signature's own arithmetic is S3SignatureTests'
 // job, against AWS's published vectors.
 public sealed class S3TransportTests
