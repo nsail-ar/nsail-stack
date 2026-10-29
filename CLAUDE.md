@@ -56,4 +56,5 @@ The data tests need PostgreSQL on `localhost`, user `postgres`, password in `PGP
 
 Every merge to `main` publishes every Stack project to nuget.org and tags the commit `v<version>`
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)); a product takes a change by bumping its
-pin. Pull requests build, test and pack, and publish nothing.
+pin. Pull requests build, test and pack, and publish nothing; one that changes only `.md` files
+reports the check without building, and a push of only `.md` files to `main` does not release.
