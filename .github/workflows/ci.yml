@@ -66,6 +66,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      # The build is a required check, so it must report; a pull request that changes only
+      # markdown reports without building. A push to main already skips markdown (paths-ignore).
+      - name: Scope
+        id: scope
+        if: github.event_name == 'pull_request'
+        run: |
+          files=$(git diff --name-only HEAD^1 HEAD)
+          if [ -n "$files" ] && ! echo "$files" | grep -qv '\.md$'; then
+            echo "docs=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Version
         run: |
@@ -76,48 +89,58 @@ jobs:
           fi
 
       - uses: actions/setup-dotnet@v6
+        if: steps.scope.outputs.docs != 'true'
         with:
           global-json-file: global.json
 
       - uses: actions/setup-node@v5
+        if: steps.scope.outputs.docs != 'true'
         with:
           node-version: 24
           cache: npm
 
       # The sample's host builds its React client during the .NET build.
       - name: npm install
+        if: steps.scope.outputs.docs != 'true'
         run: npm ci
 
       # The plugin is a deliverable of the same tag as the packages: a manifest that does not
       # load would reach every product's builder silently.
       - name: Validate the plugin
+        if: steps.scope.outputs.docs != 'true'
         run: |
           npx --yes @anthropic-ai/claude-code@latest plugin validate .claude-plugin/marketplace.json
           npx --yes @anthropic-ai/claude-code@latest plugin validate plugins/nsail-stack
 
       - name: Restore
+        if: steps.scope.outputs.docs != 'true'
         run: dotnet restore NSail.sln
 
       - name: Build
+        if: steps.scope.outputs.docs != 'true'
         run: dotnet build NSail.sln --configuration Release --no-restore -p:Version=$VERSION
 
       # After the build: the sample's sdk.ts is generated from the .NET Sdk assembly and is not
       # committed.
       - name: npm typecheck and test
+        if: steps.scope.outputs.docs != 'true'
         run: |
           npm run typecheck
           npm test
 
       - name: Test
+        if: steps.scope.outputs.docs != 'true'
         run: dotnet test NSail.sln --configuration Release --no-build
 
       - name: Pack
+        if: steps.scope.outputs.docs != 'true'
         run: dotnet pack NSail.sln --configuration Release --no-build -p:Version=$VERSION --output artifacts
 
       # The React packages ship at the NuGet version, and @nsail/ui names @nsail/stack at that
       # same version: the checkout keeps 0.1.0, the workspace's own number, which only this run
       # replaces.
       - name: Pack npm
+        if: steps.scope.outputs.docs != 'true'
         run: |
           npm pkg set version=$VERSION --workspace=@nsail/stack --workspace=@nsail/ui
           npm pkg set "dependencies.@nsail/stack=$VERSION" --workspace=@nsail/ui
@@ -127,6 +150,7 @@ jobs:
           npm pack --workspace=@nsail/stack --workspace=@nsail/ui --pack-destination artifacts/npm
 
       - uses: actions/upload-artifact@v5
+        if: steps.scope.outputs.docs != 'true'
         with:
           name: packages
           path: artifacts/*
