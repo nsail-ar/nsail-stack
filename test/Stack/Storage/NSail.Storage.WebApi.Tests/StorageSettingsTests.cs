@@ -146,7 +146,7 @@ public sealed class StorageSettingsTests
     }
 
     // An install that named nothing stores nowhere, which is what keeps the refusal above
-    // meaning something: the default is an opt-in and not a floor the kit invents.
+    // meaning something: the default is an opt-in and not a floor Storage invents.
     [Fact]
     public async Task AnInstallThatNamedNoDefaultStoresNowhere()
     {

@@ -9,7 +9,7 @@ namespace NSail.Storage.FileSystem;
 public static class Api
 {
     // Composing this grants the host the right to write to its own disk, which is why it is
-    // asked for by name rather than shipped with the kit.
+    // asked for by name rather than shipped with Storage.
     public static void AddFileSystemStorage(this IServiceCollection services)
     {
         services.AddScoped<IStorageProvider, FileSystemStorageProvider>();
@@ -18,7 +18,7 @@ public static class Api
     // The install default of an app whose floor is the host's own disk, filled in only where the
     // install's own configuration named nothing: a business that never opened the settings screen
     // still uploads a logo. It lives here because the provider's name is this project's, which is
-    // what keeps the kit's core free of any provider it does not compose.
+    // what keeps Storage's core free of any provider it does not compose.
     //
     // A deploy that only names the directory it mounted gets the provider from here; one that
     // names an S3-compatible bucket instead names the provider and the key pair with it, and

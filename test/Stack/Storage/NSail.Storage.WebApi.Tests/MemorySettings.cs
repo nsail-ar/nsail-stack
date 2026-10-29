@@ -5,8 +5,8 @@ using NSail.Settings;
 
 namespace NSail.Storage.Tests;
 
-// The settings kit's store, minus the database: the kit reads and writes one row through
-// SettingsManager, and what these tests are about is what the kit puts IN that row.
+// The settings store, minus the database: Storage reads and writes one row through
+// SettingsManager, and what these tests are about is what Storage puts IN that row.
 sealed class MemorySettings : SettingsManager
 {
     readonly Dictionary<Type, object> _values = [];

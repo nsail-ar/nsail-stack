@@ -29,7 +29,7 @@ public class FileSystemStorageProvider : IStorageProvider
         get { return "Local folder"; }
     }
 
-    // Material Symbols folder, carried here rather than named from NsIcons: a kit's server
+    // Material Symbols folder, carried here rather than named from NsIcons: a server
     // assembly does not reference the component library.
     public Glyph Icon
     {

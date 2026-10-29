@@ -10,7 +10,7 @@ namespace NSail.Storage.S3;
 
 // AWS Signature Version 4, written here rather than taken from a vendor SDK: the whole of what
 // an S3-compatible store asks of a caller is this signature, and every S3-compatible service
-// speaks it — pulling a vendor's client in would tie the kit to one of them to avoid ninety
+// speaks it — pulling a vendor's client in would tie Storage to one of them to avoid ninety
 // lines of HMAC.
 static class S3Signature
 {

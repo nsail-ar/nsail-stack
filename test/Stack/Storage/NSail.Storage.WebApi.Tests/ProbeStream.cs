@@ -5,7 +5,7 @@ namespace NSail.Storage.Tests;
 
 // An object bigger than anything a test wants to hold, produced a chunk at a time and never
 // existing whole anywhere: not seekable, no Length, and it reports how far it has got on every
-// read. That last part is what makes "the kit streams" an assertion instead of a claim — the
+// read. That last part is what makes "Storage streams" an assertion instead of a claim — the
 // destination can be measured WHILE the source is still producing.
 sealed class ProbeStream : Stream
 {

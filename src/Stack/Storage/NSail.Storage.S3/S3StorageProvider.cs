@@ -43,7 +43,7 @@ public class S3StorageProvider : IStorageProvider
         get { return "S3-compatible"; }
     }
 
-    // Material Symbols cloud, carried here rather than named from NsIcons: a kit's server
+    // Material Symbols cloud, carried here rather than named from NsIcons: a server
     // assembly does not reference the component library.
     public Glyph Icon
     {

@@ -14,7 +14,7 @@ public static class Api
         // body, so a PUT anywhere near the 5 GiB ceiling storage.md writes down dies
         // half-written at the far end — the very outcome the non-seekable refusal exists to
         // prevent — and a get streaming under ResponseHeadersRead dies while the caller is
-        // still copying. A transfer of unbounded size has no wall clock this kit could guess:
+        // still copying. A transfer of unbounded size has no wall clock Storage could guess:
         // the deadline is the CancellationToken the four verbs already carry.
         services.AddHttpClient(S3StorageProvider.ClientName, client =>
         {
