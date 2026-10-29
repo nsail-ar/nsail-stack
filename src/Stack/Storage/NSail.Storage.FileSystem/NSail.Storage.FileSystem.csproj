@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>NSail.Storage</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- A provider implements the provider contract, so it references the WebApi and nothing
+		     else of Storage. -->
+		<ProjectReference Include="..\NSail.Storage.WebApi\NSail.Storage.WebApi.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Generation\NSail.SourceGenerator\NSail.SourceGenerator.csproj">
+			<OutputItemType>Analyzer</OutputItemType>
+			<PrivateAssets>all</PrivateAssets>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
+	</ItemGroup>
+
+</Project>

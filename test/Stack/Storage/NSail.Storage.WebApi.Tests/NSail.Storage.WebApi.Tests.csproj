@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="coverlet.collector" Version="10.0.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+        <PackageReference Include="xunit" Version="2.9.3" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\..\src\Stack\Storage\NSail.Storage.WebApi\NSail.Storage.WebApi.csproj" />
+        <!-- Both providers, because what this suite proves is the contract as a provider actually
+             honours it: the filesystem one round-trips real bytes through a real disk, and the S3
+             one's signature answers a published vector. Storage owns no database, so nothing
+             here needs one. -->
+        <ProjectReference Include="..\..\..\..\src\Stack\Storage\NSail.Storage.FileSystem\NSail.Storage.FileSystem.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Storage\NSail.Storage.S3\NSail.Storage.S3.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+</Project>
