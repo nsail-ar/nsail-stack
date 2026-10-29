@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using NSail.Icons;
 using NSail.Problems;
 using NSail.Storage.Providers;
 
@@ -27,11 +26,6 @@ public class FileSystemStorageProvider : IStorageProvider
     public string DisplayName
     {
         get { return "Local folder"; }
-    }
-
-    public Glyph Icon
-    {
-        get { return StorageIcons.Folder; }
     }
 
     public bool IsRemote

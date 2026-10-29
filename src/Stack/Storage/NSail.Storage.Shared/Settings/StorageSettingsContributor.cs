@@ -15,7 +15,7 @@ public sealed class StorageSettingsContributor : ISettingsContributor
             new SettingsItem
             {
                 Name = "Storage",
-                Icon = StorageIcons.Cloud,
+                Icon = NsIcons.Storage,
                 PageType = typeof(StorageSettingsPage),
                 Group = "Integrations",
                 GroupIcon = NsIcons.Integration,

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using NSail.Icons;
 using NSail.Problems;
 using NSail.Storage.Providers;
 using System.Globalization;
@@ -41,11 +40,6 @@ public class S3StorageProvider : IStorageProvider
     public string DisplayName
     {
         get { return "S3-compatible"; }
-    }
-
-    public Glyph Icon
-    {
-        get { return StorageIcons.Cloud; }
     }
 
     public bool IsRemote

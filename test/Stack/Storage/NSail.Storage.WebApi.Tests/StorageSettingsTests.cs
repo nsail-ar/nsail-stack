@@ -72,7 +72,6 @@ public sealed class StorageSettingsTests
 
         Assert.Equal(FileSystemStorageProvider.ProviderType, local.Type);
         Assert.False(local.IsRemote);
-        Assert.NotEmpty(local.Icon.Markup);
     }
 
     /// <summary>A probe that worked answers nothing at all: it has no fact to report beyond

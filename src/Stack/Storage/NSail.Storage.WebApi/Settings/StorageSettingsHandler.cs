@@ -81,7 +81,6 @@ public class StorageSettingsHandler :
             {
                 Type = provider.Type,
                 DisplayName = provider.DisplayName,
-                Icon = provider.Icon,
                 IsRemote = provider.IsRemote,
             })
             .OrderBy(provider => provider.DisplayName, StringComparer.OrdinalIgnoreCase)

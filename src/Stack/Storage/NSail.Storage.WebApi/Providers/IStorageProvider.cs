@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using NSail.Icons;
-
 namespace NSail.Storage.Providers;
 
 // The contract may change until the second real vendor lands; after the one that follows S3,
@@ -16,8 +14,6 @@ public interface IStorageProvider
     string Type { get; }
 
     string DisplayName { get; }
-
-    Glyph Icon { get; }
 
     // Whether the target lives behind an address and a credential — what the settings screen
     // reads to know which fields to ask for.
