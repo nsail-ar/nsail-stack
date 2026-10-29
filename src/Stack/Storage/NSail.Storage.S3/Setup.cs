@@ -6,7 +6,7 @@ using NSail.Storage.Providers;
 
 namespace NSail.Storage.S3;
 
-public static class Api
+public static class Setup
 {
     public static void AddS3Storage(this IServiceCollection services)
     {

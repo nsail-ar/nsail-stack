@@ -6,7 +6,7 @@ using NSail.Storage.Providers;
 
 namespace NSail.Storage.FileSystem;
 
-public static class Api
+public static class Setup
 {
     // Composing this grants the host the right to write to its own disk, which is why it is
     // asked for by name rather than shipped with Storage.
