@@ -193,22 +193,57 @@ public sealed class NsTableCompactTests : BunitContext, IAsyncLifetime
         Assert.Equal("Reading", columns.Lead);
     }
 
-    /// <summary>Wherever a row open for editing frees cells — the column mode's release of a
-    /// hidden column, the container card's lines — the rule that keeps an Only cell off outranks
-    /// it, by specificity or by a tie it wins later in the file. bUnit runs no stylesheet, so the
-    /// rules are what is read.</summary>
+    /// <summary>Every rule outside the compact block that draws a table cell — a breakpoint rung
+    /// coming back, the column mode freeing a hidden column while a row is open, the container
+    /// card's lines — is outranked by the one rule that keeps an Only cell off, by specificity
+    /// alone, so no order of the file and no rule added later in it can draw that cell on another
+    /// face. bUnit runs no stylesheet, so the rules are what is read.</summary>
     [Fact]
-    public void The_rule_keeping_an_only_cell_off_outranks_every_open_row_release()
+    public void No_rule_outside_the_compact_line_outranks_the_one_keeping_an_only_cell_off()
     {
-        var css = ReadStylesheet();
+        var rules = Rules(ReadStylesheet()).ToList();
 
-        var release = css.IndexOf(".ns-table.ns-table-editing .mud-table-cell.d-c-none {", StringComparison.Ordinal);
-        var off = css.IndexOf(".ns-table .mud-table-row .mud-table-cell.ns-compact-only {", StringComparison.Ordinal);
+        var off = rules.Single(rule => rule.Selector.EndsWith(".ns-compact-only", StringComparison.Ordinal) && rule.Display == "none");
 
-        Assert.True(release > 0);
-        Assert.True(off > release, "the rule keeping an Only cell off ties the column mode's release and has to come after it.");
-        Assert.Contains("display: none;", css[off..css.IndexOf('}', off)], StringComparison.Ordinal);
-        Assert.DoesNotContain(".ns-table .mud-table-cell.ns-compact-only {", css, StringComparison.Ordinal);
+        var drawing = rules
+            .Where(rule => rule.Display != "none")
+            .Where(rule => rule.Selector.Contains("mud-table-cell", StringComparison.Ordinal) || rule.Selector.StartsWith(".d-c-", StringComparison.Ordinal))
+            .Where(rule => !rule.Selector.Contains("ns-table-compact", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.NotEmpty(drawing);
+        Assert.All(drawing, rule => Assert.True(
+            Specificity(rule.Selector) < Specificity(off.Selector),
+            $"{rule.Selector} draws a cell at {Specificity(rule.Selector)} classes, not under the {Specificity(off.Selector)} of {off.Selector}."));
+    }
+
+    // Each selector of each rule that declares a display, comments stripped; an at-rule's own
+    // braces nest, so the innermost block is the one holding the declaration.
+    static IEnumerable<(string Selector, string Display)> Rules(string css)
+    {
+        var bare = System.Text.RegularExpressions.Regex.Replace(css, @"/\*.*?\*/", "", System.Text.RegularExpressions.RegexOptions.Singleline);
+
+        foreach (System.Text.RegularExpressions.Match rule in System.Text.RegularExpressions.Regex.Matches(bare, @"([^{}]+)\{([^{}]*)\}"))
+        {
+            var display = System.Text.RegularExpressions.Regex.Match(rule.Groups[2].Value, @"(?:^|[;\s])display\s*:\s*([^;]+)");
+
+            if (!display.Success)
+            {
+                continue;
+            }
+
+            foreach (var selector in rule.Groups[1].Value.Split(','))
+            {
+                yield return (selector.Trim(), display.Groups[1].Value.Trim());
+            }
+        }
+    }
+
+    // Classes and pseudo-classes, the only weights these selectors carry; :not() itself weighs
+    // nothing and its argument counts.
+    static int Specificity(string selector)
+    {
+        return System.Text.RegularExpressions.Regex.Matches(selector.Replace(":not(", "(", StringComparison.Ordinal), @"[.:][A-Za-z_-]").Count;
     }
 
     static string ReadStylesheet()

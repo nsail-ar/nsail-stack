@@ -916,11 +916,12 @@
    being drawn here by definition. Rows only: the foot keeps the card, and a table with a row
    open keeps the form its editor needs.
 
-   The base rule outranks every rule that frees a cell while a row is open — the column mode's
-   d-c-none release above, at its own specificity and earlier in the file, and the container
-   card's display below, one class lighter — so an Only cell stays off wherever the line is
-   not drawn. */
-.ns-table .mud-table-row .mud-table-cell.ns-compact-only {
+   The base rule is one class heavier than every rule outside the compact block that draws a
+   cell — the breakpoint rungs coming back, the column mode freeing a hidden column while a row
+   is open, the container card's lines and their own rungs — so it wins whatever the order of
+   the file, and an Only cell stays off wherever the line is not drawn. Only the compact block's
+   own rules, heavier still, draw it. */
+.ns-table .mud-table-root .mud-table-row .mud-table-cell.ns-compact-only {
     display: none;
 }
 
