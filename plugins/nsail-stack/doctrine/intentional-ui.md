@@ -887,8 +887,9 @@ universally-read icons, not obscure domain actions — on touch a collapsed butt
 ([ui/actions.md](ui/actions.md), cases).
 
 **Columns declare importance and breakpoints hide the rest.** Declared once, on the header
-(`NsTh`), against the *container*; the stacked mobile layout honors the same declaration. The
-mechanism, and the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
+(`NsTh`), against the *container*; the stacked mobile layout honors the same declaration, and so
+does the compact line a list read to reach a person opts into. The mechanism, the compact form and
+the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
 
 ### Grids: column importance, the action cell, and state
 

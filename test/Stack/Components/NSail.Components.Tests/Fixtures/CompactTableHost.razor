@@ -1,0 +1,35 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+@* A contact list's shape: the name that leads the row, a number the row's own act carries
+   (Hidden), the act drawn on the compact row only, and the action column. *@
+<NsTable TRow="TestModel" Rows="Page" Compact="Compact" OnRowClick="RowClicked">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+        <NsTh For="() => context.Age" Compact="NsCompact.Hidden" />
+        <NsTh />
+        <TableColumnsProbe />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd For="() => row.Age">@row.Age</NsTd>
+        <NsTd Compact="NsCompact.Only" DataLabel="Reading"><span id="reading">Owes 5</span></NsTd>
+        <NsTd Compact="NsCompact.Only"><NsLink Href="@($"tel:{row.Age}")" Label="Call" Class="call" /></NsTd>
+        <NsTd />
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    [Parameter]
+    public bool Compact { get; set; }
+
+    [Parameter]
+    public EventCallback<TestModel> RowClicked { get; set; }
+
+    DataPage<TestModel> Page { get; } = DataPage<TestModel>.From([new TestModel { Name = "Ana", Age = 3 }]);
+}

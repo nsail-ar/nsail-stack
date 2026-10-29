@@ -20,8 +20,9 @@
    prevented anywhere on its way up is prevented for the whole event. The anchor keeps its href
    either way, so the address stays copyable and deep-linkable; only how the click stacks
    changes.
-   A link that leaves the page renders no wrapper at all — a bare anchor Blazor pushes, with
-   no handler to dispatch to the server on every ordinary click in the app.
+   A link that leaves the page keeps no handler of its own — an anchor Blazor pushes, with
+   nothing to dispatch to the server on every ordinary click in the app — and only its wrapper's
+   stopPropagation flag, below.
    The prevention itself is not written here: a markup `@onclick:preventDefault` is decided
    when the element renders, and whether a click deserves preventing is a property of the
    CLICK — ctrl+click and middle-click are the user asking the browser for the address, which
@@ -50,7 +51,11 @@
     }
     else
     {
-        @Chrome
+        @* A link the browser follows itself — a tel:, a new tab — owes the row under it the same
+           guard: the tap is the link's, and a row's OnRowClick opening its record too would leave
+           the reader somewhere else when the call ends. A flag and no handler, so an ordinary
+           click still dispatches nothing to the server. *@
+        <span class="ns-link-leaves" @onclick:stopPropagation="true">@Chrome</span>
     }
 </CascadingValue>
 
