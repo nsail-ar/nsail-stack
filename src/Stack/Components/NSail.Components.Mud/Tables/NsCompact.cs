@@ -9,6 +9,8 @@ namespace NSail.Components;
 /// rest.</summary>
 public enum NsCompact
 {
+    /// <summary>Drawn on every face, the compact line included — unless its column's
+    /// Breakpoint hides it there, as it hides it on the card.</summary>
     Shown,
 
     /// <summary>Declared, and so a column of the exported file, but not drawn on the compact

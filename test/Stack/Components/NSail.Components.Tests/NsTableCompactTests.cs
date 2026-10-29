@@ -152,4 +152,66 @@ public sealed class NsTableCompactTests : BunitContext, IAsyncLifetime
         Assert.Equal(NsCompact.Hidden, columns.CompactFor("Phone"));
         Assert.Equal(NsCompact.Shown, columns.CompactFor("Unknown"));
     }
+
+    /// <summary>A column its Breakpoint hides is off the compact line (no container under the
+    /// tablet's width reaches a rung), so a lead there would leave the line with none.</summary>
+    [Fact]
+    public void The_lead_skips_a_column_its_breakpoint_hides()
+    {
+        var columns = new TableColumns();
+
+        columns.BeginPass();
+        columns.Declare("Code", NsSize.Md, NsCompact.Shown);
+        columns.Declare("Name", NsSize.None, NsCompact.Shown);
+
+        Assert.Equal("Name", columns.Lead);
+    }
+
+    [Fact]
+    public void A_column_drawn_only_on_the_line_can_lead_it_whatever_its_breakpoint()
+    {
+        var columns = new TableColumns();
+
+        columns.BeginPass();
+        columns.Declare("Reading", NsSize.Sm, NsCompact.Only);
+        columns.Declare("Name", NsSize.None, NsCompact.Shown);
+
+        Assert.Equal("Reading", columns.Lead);
+    }
+
+    /// <summary>The container-stacked card an open row turns a desktop grid into draws every cell
+    /// as a line, later in the file than the rule that keeps an Only cell off — so that card says
+    /// it again, the way it says it for a hidden column. bUnit runs no stylesheet, so the rule is
+    /// what is read.</summary>
+    [Fact]
+    public void The_open_rows_card_keeps_a_cell_drawn_only_on_the_compact_line_off()
+    {
+        var css = ReadStylesheet();
+
+        var card = css.IndexOf(".ns-table.ns-table-editing .mud-table-cell {", StringComparison.Ordinal);
+        var off = css.IndexOf(".ns-table.ns-table-editing .mud-table-cell.ns-compact-only {", StringComparison.Ordinal);
+
+        Assert.True(card > 0);
+        Assert.True(off > card, "the open row's card has no rule keeping an Only cell off after it draws every cell.");
+        Assert.Contains("display: none;", css[off..css.IndexOf('}', off)], StringComparison.Ordinal);
+    }
+
+    static string ReadStylesheet()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
+            {
+                return File.ReadAllText(Path.Combine(
+                    directory.FullName,
+                    "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException($"NSail.sln was not found above {AppContext.BaseDirectory}.");
+    }
 }

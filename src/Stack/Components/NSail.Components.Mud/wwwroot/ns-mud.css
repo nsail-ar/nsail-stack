@@ -1087,6 +1087,13 @@
                 display: flex;
             }
         }
+
+        /* A cell drawn only on the compact line (NsCompact.Only) stays off this card too: the
+           compact line is a phone's and this card is a desktop container's, and the base rule
+           that keeps the cell off everywhere else loses to the display above on source order. */
+        .ns-table.ns-table-editing .mud-table-cell.ns-compact-only {
+            display: none;
+        }
     }
 }
 

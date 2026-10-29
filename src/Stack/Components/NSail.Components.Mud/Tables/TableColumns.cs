@@ -22,17 +22,17 @@ public sealed class TableColumns
     readonly Dictionary<string, NsCompact> _compact = [];
     readonly List<TableColumn> _declared = [];
 
-    public void Declare(string key, NsSize breakpoint)
-    {
-        Declare(key, breakpoint, NsCompact.Shown);
-    }
-
     public void Declare(string key, NsSize breakpoint, NsCompact compact)
     {
         _breakpoints[key] = breakpoint;
         _compact[key] = compact;
 
-        if (Lead is null && compact != NsCompact.Hidden)
+        // A column its Breakpoint hides is off the compact line as it is off the card — no
+        // container under the tablet's width reaches any rung — so only an unhidden column, or
+        // one drawn there alone, can open the line.
+        var drawn = compact == NsCompact.Only || (compact == NsCompact.Shown && breakpoint == NsSize.None);
+
+        if (Lead is null && drawn)
         {
             Lead = key;
         }
@@ -43,7 +43,7 @@ public sealed class TableColumns
     public bool Compact { get; set; }
 
     /// <summary>The column a compact row opens with: the first one the header declared that the
-    /// row draws. Every other surviving cell follows it on the row's second line.</summary>
+    /// row draws — neither Hidden nor hidden by its Breakpoint. Every other surviving cell follows it on the row's second line.</summary>
     public string? Lead { get; private set; }
 
     /// <summary>Where a column is drawn on the compact row; Shown for a column that declared
