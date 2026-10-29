@@ -20,7 +20,7 @@ public sealed class BrandingTabsTests : BunitContext
     public BrandingTabsTests()
     {
         Services.AddMudServices();
-        Services.AddScoped<MudBlazor.IKeyInterceptorService, Fixtures.NoopKeyInterceptorService>();
+        Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();
         Services.AddSingleton<MetadataProvider>();

@@ -34,12 +34,14 @@
 		<Content Remove="strings*.json" />
 	</ItemGroup>
 
-	<!-- Every bUnit test assembly compiles the shared CI wait-timeout widener; the
-	     condition keys on the package reference itself, so no project opts in by name.
-	     This lives in .targets because PackageReference items do not exist yet when
-	     .props is evaluated. -->
+	<!-- Every bUnit test assembly compiles the shared CI wait-timeout widener and the
+	     key-interceptor stand-in MudBlazor needs under bUnit; the condition keys on the package
+	     reference itself, so no project opts in by name. This lives in .targets because
+	     PackageReference items do not exist yet when .props is evaluated. -->
 	<ItemGroup Condition="@(PackageReference->WithMetadataValue('Identity', 'bunit')->Count()) &gt; 0">
 		<Compile Include="$(MSBuildThisFileDirectory)test\Shared\BunitWaitTimeout.cs" Link="Fixtures\BunitWaitTimeout.cs" />
+		<Compile Include="$(MSBuildThisFileDirectory)test\Shared\NoopKeyInterceptorService.cs" Link="Fixtures\NoopKeyInterceptorService.cs" />
+		<Using Include="NSail.Testing" />
 	</ItemGroup>
 
 </Project>

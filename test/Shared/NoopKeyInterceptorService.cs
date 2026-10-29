@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 using MudBlazor.Services;
 
-namespace NSail.Components.Tests.Fixtures;
+namespace NSail.Testing;
 
 /// <summary>MudBlazor's own KeyInterceptorService only implements IAsyncDisposable, which
 /// bUnit's synchronous test-class teardown cannot dispose — this stub, registered last so
