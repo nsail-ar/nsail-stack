@@ -82,6 +82,7 @@
             .Add("ns-cell-editing", RowEdit is not null)
             .Add("ns-actions", unnamed && Foot is null)
             .Add("ns-foot-label", unnamed && Foot is not null)
+            .Add("ns-col-numeric", Columns?.IsNumericFor(_key) ?? false)
             .Add(NsResponsive.CompactClass(compact, drawn))
             .Add("ns-compact-lead", drawn && _key is not null && _key == Columns?.Lead)
             .ToString();

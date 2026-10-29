@@ -60,6 +60,7 @@
             {
                 <NsButton Icon="@NsIcons.Tune"
                           Label="@FilterLabel"
+                          Expanded="FilterOpenValue"
                           OnClick="ToggleFilter" />
             }
 
@@ -190,7 +191,8 @@
     public bool ArrivalFocus { get; set; } = true;
 
     /// <summary>How many advanced filters are currently set — the page computes it (only it
-    /// knows), shown as a badge so filters aren't invisibly applied with the panel closed.</summary>
+    /// knows), folded into the toggle's own word ("Filtros (2)") so filters aren't invisibly
+    /// applied with the panel closed.</summary>
     [Parameter]
     public int FilterCount { get; set; }
 

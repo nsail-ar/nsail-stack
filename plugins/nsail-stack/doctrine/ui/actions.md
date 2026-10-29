@@ -39,11 +39,12 @@ like is the intention's business:
 - **`Inline` in that state is the flat glyph** — the vendor's bare icon button, which is what
   a grid row's actions, a title bar's utilities, the header X, `NsHelp` and `NsHint` wear.
 - **`NsLink` alone also draws a third `Inline` face no other primitive has**: a bare `<a>`
-  carrying both an `Icon` and a word, the two laid out as one row (`ns-link-iconed`) rather
-  than a box. An `Inline` link handed an `Icon`, a `Label` and any `Breakpoint` but `Never`
-  draws it — that combination IS the face, which is the whole of what reaches it. It takes no
-  part in the icon-only state above; `Breakpoint` has no effect on it at all (below), and the
-  touch floor does not reach it either — it has no box to grow.
+  carrying both an `Icon` and a word, the two laid out as one row (`ns-link-iconed`) on the
+  same box every worded Inline face gets (below), rather than wherever the browser's own
+  inline flow would drop them. An `Inline` link handed an `Icon`, a `Label` and any
+  `Breakpoint` but `Never` draws it — that combination IS the face, which is the whole of what
+  reaches it. It takes no part in the icon-only state above; `Breakpoint` has no effect on it
+  at all.
 - **Every intention with a fill is a SQUARE**, carrying its own fill and shadow — never a
   rectangle: the vendor's button carries a 64px floor and side padding for a label that is not
   coming. The geometry is [styling.md](styling.md)'s.
@@ -74,8 +75,9 @@ complaint the rule answers: a phone's title row came out three different heights
   already 44px by construction (12px around the Md glyph), so the floor leaves it exactly as
   it is. It is a `min-height` for that reason — a square whose box this grew would be the
   rectangle again.
-- **The flat worded anchor is out.** It draws no box at all (the `ns-link-iconed` face above),
-  so there is no target to grow; the rule is worded *every intention that draws a box*.
+- **The flat worded anchor gets its own box.** A bare `<a>` has none to grow, so `NsLink`'s
+  Inline face wears `ns-link` (`ns-mud.css`) for exactly that — `inline-flex`, nothing a plain
+  word needed to change — and the floor reaches it there instead of through `.mud-button`.
 
 ## The six components
 
@@ -446,3 +448,14 @@ visible — are the core doc's. How the cell composes:
   - **Unset is "the rest"**, which is the whole reason contributions need no change: a kit that
     knows nothing about the host's families lands on the far side of the rule by declaring
     nothing.
+- **The row's door defaults to `NsIcons.ChevronRight`, decided by the toolbar, not the page.**
+  A `Constant` made by `GetLink<TPage>()` with no glyph draws the chevron, disabled or not, and
+  an `NsCard` `Door` wears the same one, so no page names it and one line changes every grid. A
+  glyph passed is drawn as passed: the lápiz of a row with no ficha stays. The magnifier is
+  `NsAs.Filter`'s glyph; one glyph never means both "run the filter" and "open the row". A
+  `Constant` that carries its own `Content` (an avatar) keeps it.
+- **The verb that destroys never sits at the plain `gap-1` from its neighbour.** The toolbar
+  reads this off the glyph (`item.Icon == NsIcons.Delete`), not a flag a contributor sets: every
+  `GetAction(Delete, row, NsIcons.Delete)` already passes the house's one Delete icon, so the
+  separation reaches every row that calls it today, nothing to change at the call site. Skipped
+  when the act is the row's only visible one — there is nothing beside it to separate from.

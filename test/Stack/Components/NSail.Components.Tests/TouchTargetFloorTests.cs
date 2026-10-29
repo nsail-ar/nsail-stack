@@ -23,20 +23,23 @@ public sealed class TouchTargetFloorTests
         Assert.Equal(1, lines.Count(line => line == Floor));
 
         // The selector it is written against, and the query it is written inside. .mud-button is
-        // the chromed face and nothing else wears it — NsButton, NsLink, NsSubmit, NsClose and
-        // NsMenu's labelled trigger all render one — so one declaration reaches every container
-        // a finger meets it in, rather than the per-caller branch principles.md refuses.
-        Assert.Equal(".mud-button {", lines[Preceding(lines, Floor, line => line.EndsWith('{'))]);
+        // the chromed face NsButton, NsSubmit, NsClose and NsMenu's labelled trigger all render;
+        // NsLink's own Inline face draws no `.mud-button` at all (a bare anchor), so it reaches
+        // the same floor through .ns-link in the one declaration instead of a second of its own
+        // — one declaration reaches every container a finger meets it in, rather than the
+        // per-caller branch principles.md refuses.
+        Assert.Equal(".mud-button, .ns-link {", lines[Preceding(lines, Floor, line => line.EndsWith('{'))]);
         Assert.Equal("@media (pointer: coarse) {", lines[Query(lines, Floor)]);
     }
 
     // min-height and not height: the icon-only square already measures 44 by construction (12px
     // around the Md glyph) and a box this GREW would be the vendor's rectangle again, the very
     // shape ns-square exists to refuse. So the floor leaves it exactly as it is, which is the
-    // AC's "an icon-only action keeps its own box under either pointer". The flat worded anchor
-    // is out of the rule for the other reason: it draws no box, so there is nothing to grow.
+    // AC's "an icon-only action keeps its own box under either pointer" — and the same min-height
+    // is what lets the worded anchor's own box (ns-link, NsLinkIconedAnchorTests) grow from
+    // nothing to the floor without a second declaration of its own.
     [Fact]
-    public void The_floor_sets_no_height_and_reaches_no_bare_anchor()
+    public void The_floor_sets_no_height_on_the_box_it_grows()
     {
         var lines = ReadStylesheet();
 
@@ -44,7 +47,6 @@ public sealed class TouchTargetFloorTests
 
         Assert.Contains(block, line => line == Floor);
         Assert.DoesNotContain(block, line => line.StartsWith("height:", StringComparison.Ordinal));
-        Assert.DoesNotContain(block, line => line.Contains("ns-link-iconed", StringComparison.Ordinal));
     }
 
     /// <summary>The nearest line above a declaration that satisfies <paramref name="opens"/> —

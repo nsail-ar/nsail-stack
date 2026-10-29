@@ -59,9 +59,18 @@
        have. *@
     RenderFragment<ActionItem> icon = item =>
         @<text>
+            @{
+                var destructive = IsDestructive(item) ? "ns-action-destructive" : null;
+            }
             @if (item.Severity is { } severity)
             {
-                <span class="ns-status-text @NsSeverityMapper.ToStatusClass(severity) d-inline-flex align-center">
+                <span class="ns-status-text @NsSeverityMapper.ToStatusClass(severity) d-inline-flex align-center @destructive">
+                    @chrome(item)
+                </span>
+            }
+            else if (destructive is not null)
+            {
+                <span class="@destructive d-inline-flex align-center">
                     @chrome(item)
                 </span>
             }
@@ -210,7 +219,7 @@
         // counted, so the visible slice would spend slots on nothing and the remainder would
         // open a kebab with nothing in it.
         _items = leading.OrderBy(item => item.Weight).Concat(Actions).Where(Offers).ToList();
-        _constant = Constant is not null && Offers(Constant) && await Allows(Constant) ? Constant : null;
+        _constant = Constant is not null && Offers(Constant) && await Allows(Constant) ? WithDoorGlyph(Constant) : null;
     }
 
     async Task<List<ActionItem>> Allowed(IReadOnlyList<ActionItem> items)
@@ -245,6 +254,43 @@
     string GetName(ActionItem item)
     {
         return item.GetLabel(Strings, Metadata);
+    }
+
+    // The row's door is the one link the house draws the same everywhere: a page-link constant
+    // handed no glyph wears the chevron, so no page names it; a glyph passed is drawn as passed
+    // (the lápiz of a row with no ficha). A Content (an avatar) is the door's own face.
+    static ActionItem WithDoorGlyph(ActionItem item)
+    {
+        if (item.PageType is null || item.Icon is not null || item.Content is not null)
+        {
+            return item;
+        }
+
+        return new ActionItem
+        {
+            Name = item.Name,
+            Icon = NsIcons.ChevronRight,
+            PageType = item.PageType,
+            Parameters = item.Parameters,
+            Target = item.Target,
+            OnClick = item.OnClick,
+            Menu = item.Menu,
+            Weight = item.Weight,
+            Group = item.Group,
+            Disabled = item.Disabled,
+            Writes = item.Writes,
+            Severity = item.Severity,
+        };
+    }
+
+    // Read off the glyph rather than asked of the contributor: every Delete across the house
+    // already passes NsIcons.Delete (GetAction(Delete, row, NsIcons.Delete)), which is the
+    // house's own catalog entry and not a per-page decision — so the row below reaches every
+    // existing call site with nothing to change in it, the opposite of a flag a page would have
+    // to remember to set (ui/actions.md).
+    static bool IsDestructive(ActionItem item)
+    {
+        return item.Icon == NsIcons.Delete;
     }
 
     IEnumerable<ActionItem> Visible()

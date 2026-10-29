@@ -379,7 +379,7 @@ The comfort curve reads per width — the phone shows the optimal 2–3 and a wi
 
 ## The action cell's hole, and the Roles zigzag
 
-Markup beside the outlet left the slot reserve stranded mid-cell — a hole before the lupa, and a
+Markup beside the outlet left the slot reserve stranded mid-cell — a hole before the door, and a
 zigzag on the Roles grid when two row shapes each aligned themselves. Hence: the cell
 right-aligns, the toolbar packs to its own trailing edge, and a page's own row actions travel as
 `ActionItem`s into the same toolbar.

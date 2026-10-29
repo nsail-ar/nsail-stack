@@ -243,12 +243,19 @@
     text-decoration: underline;
 }
 
-/* The same bare anchor, once its caller also hands it an Icon: MudIcon has no gap or shared
-   baseline of its own to offer a plain text node, so the anchor lays its own children out as a
-   row once it carries one. */
-.ns-link-iconed {
+/* Every worded Inline face (NsLink.razor) wears this, icon or not: a bare anchor is one text
+   node with no box of its own, which is also why the coarse-pointer floor below has nothing to
+   grow without it. inline-flex costs the plain word nothing it did not already have (a single
+   child centers on itself) and gives the iconed face its row for free. */
+.ns-link {
     display: inline-flex;
     align-items: center;
+}
+
+/* The same anchor, once its caller also hands it an Icon: MudIcon has no gap or shared baseline
+   of its own to offer a plain text node, so the row above gets space between its children once
+   there is more than one. */
+.ns-link-iconed {
     gap: 0.25rem;
 }
 
@@ -479,6 +486,17 @@
     margin: 0;
 }
 
+/* A figure reads right-aligned, digit against digit, so two rows disagree at a glance — the
+   one column type NsTh/NsTd derive on their own from a member's Format (Number, Money,
+   Percent), never asked of the screen. The header keeps the alignment so the word sits over
+   the figures it names, and a foot cell carries the same class through the one thing it
+   shares with its column: the same key (TableColumns.IsNumericFor). Tabular figures keep a
+   changing amount from re-flowing the column as its digit count does. */
+.ns-table .ns-col-numeric {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+}
+
 /* NsLink wraps a link it drives itself (a surface move, which replaces its history entry
    instead of pushing one) so it has an element to catch the click on — and a class the
    document listener that decides whether to prevent that click's default answers on (ns.js).
@@ -576,6 +594,38 @@
     justify-content: flex-end;
 }
 
+/* The actions column's own icon button (below) stands 1.875rem tall (3px padding either side
+   of a 1.5rem glyph), and the cell it sits in adds the dense table's own 6px top and bottom
+   (MudBlazor's `.mud-table-dense .mud-table-cell`, unmodified here) on top of that — 2.625rem
+   border-box. A row with no actions (a system row with nothing in that column) is shorter by
+   exactly the gap between that and its own padded text line, so the floor has to be the
+   PADDED cell's height, not the bare button's: a floor under what the box already measures
+   changes no pixel (box-sizing: border-box counts the padding INTO the number this declares,
+   so 1.875rem here was already smaller than every row it was meant to raise). The floor is
+   stated on every body cell, not only the actions one, so every row in the grid shares one
+   height whether or not its own row draws a button. Under a coarse pointer the same button's
+   padding grows (below), and so does this number, or a tablet above the 960px stacking floor
+   would read the two kinds of row apart again.
+
+   `height`, not `min-height`: the cell this targets is `display: table-cell` in every regime
+   this rule is scoped to, and CSS 2.1 §10.7 leaves `min-height`/`max-height` on a table cell
+   undefined — engines differ on whether it reaches the row at all. §17.5.3's auto table layout
+   DOES define a cell's specified `height` as a per-cell minimum the row's own height is the max
+   of, which is the floor this rule exists to state.
+
+   Inside the query and not keyed off the absence of mud-sm-table: that class is what Breakpoint="Sm"
+   stamps on the ROOT at every width (NsTable.razor), so a rule excluding it matches no cell at
+   all. Below 960px (the vendor's own max-width) MudTable stacks every row into a card where
+   this cell is `display: flex` instead of `table-cell` — there the same declaration would be a
+   HEIGHT on every line of a tall one, which the stacked card's own rules answer on their own
+   terms. The open row's own stacked form (.ns-table-editing under its @container, below)
+   resets it by specificity. */
+@media (min-width: 960.02px) {
+    .ns-table .mud-table-body .mud-table-row .mud-table-cell {
+        height: 2.625rem;
+    }
+}
+
 /* Every icon in the column is one slot, whoever put it there. A grid's own row links are
    plain markup beside the outlet and were each expected to remember the presenter's compact
    chrome; the ones that did not rendered a medium button next to the contributed small ones,
@@ -602,6 +652,34 @@
 
 .ns-table .ns-actions .mud-icon-root {
     font-size: 1.5rem;
+}
+
+/* The one verb that destroys never sits at the toolbar's own gap-1 from its neighbour — a
+   mis-tap there deletes instead of editing. only-child is excluded on purpose: a row whose
+   only visible act is Delete has nothing beside it to separate from, and the extra room would
+   only widen that row's slot past the others' (NsActionToolbar.razor, IsDestructive — read off
+   NsIcons.Delete, so every existing call site gets this without declaring anything).
+
+   Both sides, not just the leading one: the toolbar draws Visible() before Constant
+   (NsActionToolbar.razor), so a row whose Constant is its edit and whose only contributed verb
+   is Delete (the Stack's own Sample, ContactsPage) has Delete FIRST, not last — a single
+   margin-inline-start would sit on the edge nothing is beside and never reach the Constant
+   that comes after it.
+
+   One side each, not both on every Delete: the toolbar packs to its own trailing edge (above),
+   so whichever control is LAST is the one sitting on the cell's fixed right border, and a
+   margin on that side pushes the glyph 8px inside it — the exact raggedness this column
+   exists to end, the moment Delete itself closes the row (Leading = [Edit, Delete], Constant
+   nil). :not(:last-child) pays the trailing gap only when something sits past Delete to
+   separate from; :not(:first-child) pays the leading one only when something sits before it;
+   a Delete in the middle of the strip earns both, same as before, and either side it costs
+   nothing beyond its own neighbour's edge, never the grid's. */
+.ns-action-toolbar .ns-action-destructive:not(:last-child) {
+    margin-inline-end: 0.5rem;
+}
+
+.ns-action-toolbar .ns-action-destructive:not(:first-child) {
+    margin-inline-start: 0.5rem;
 }
 
 /* The mark an outlet shows while its contributors answer stands in the slot their first verb
@@ -634,7 +712,11 @@
    min-width above is a calc over the variable and needs no restatement.
 
    Not a breakpoint: a phone held in landscape is still a finger, and a touchscreen laptop
-   reports its mouse as the primary pointer, so the desktop grid is untouched by measure. */
+   reports its mouse as the primary pointer, so the desktop grid is untouched by measure.
+
+   The row floor above grows here too: it is the dense cell's own 6+6px padding plus this
+   button's new 3rem (12+24+12), 3.75rem border-box, or the floor would stay at the fine
+   pointer's number while the actions cell it is matched against grew past it. */
 @media (pointer: coarse) {
     .ns-table .ns-actions {
         --ns-action-slot: 3.25rem;
@@ -643,6 +725,12 @@
     .ns-table .ns-actions .mud-icon-button,
     .ns-table .ns-actions .ns-action-mark {
         padding: 12px;
+    }
+
+    @media (min-width: 960.02px) {
+        .ns-table .mud-table-body .mud-table-row .mud-table-cell {
+            height: 3.75rem;
+        }
     }
 }
 
@@ -662,11 +750,12 @@
    Unscoped by container on purpose. A height that changes with what the face is drawn inside
    would be the per-caller branch principles.md refuses: a title bar, a toolbar, a form's footer
    and a composer all put the same button under the same finger. It reaches the worded face
-   wherever the house draws one — NsButton, NsLink, NsSubmit, NsClose, NsMenu's labelled trigger
-   — because .mud-button is that face and nothing else wears it; the flat worded anchor draws no
-   box at all (NsLink's Inline face) and is left alone, there being no target to grow. */
+   wherever the house draws one — NsButton, NsSubmit, NsClose, NsMenu's labelled trigger —
+   through .mud-button, that face and nothing else wears, and NsLink's own Inline face too —
+   a bare anchor that draws no `.mud-button` at all — through `.ns-link` beside it in the same
+   declaration, one floor stated once for both. */
 @media (pointer: coarse) {
-    .mud-button {
+    .mud-button, .ns-link {
         min-height: 44px;
     }
 }
@@ -1033,6 +1122,14 @@
             border: none;
             padding: 6px 16px;
             text-align: start;
+        }
+
+        /* The row floor (above) is four classes; this five-class selector, the fifth being
+           .ns-table-editing itself, wins on specificity. Unanswered, every line of this flex box would stand as tall as the floor meant for a
+           whole dense row: 42px per line here, where this card's own padding (above) already
+           answers for the row's height. */
+        .ns-table.ns-table-editing .mud-table-body .mud-table-row .mud-table-cell {
+            height: auto;
         }
 
         /* The cells above dropped every border to stack, so the line between two records is

@@ -59,4 +59,35 @@ public sealed class NsLinkIconedAnchorTests : BunitContext
 
         Assert.Empty(anchor.QuerySelectorAll(".mud-icon-root"));
     }
+
+    // nsail#2696 — a bare anchor has no box a touch-target floor could grow, which is what left
+    // it out of the 44px rule actions.md otherwise states for every worded act. ns-link is the
+    // box (ns-mud.css); every worded Inline face wears it whether or not it also carries an
+    // Icon, which is what keeps the two faces answering the same question.
+    [Fact]
+    public void TheWordOnlyAnchorCarriesTheTouchTargetClass()
+    {
+        var anchor = Render<NsLink>(p => p
+            .Add(x => x.Href, "directory/parties/1")
+            .Add(x => x.Label, "Perfil")).Find("a");
+
+        Assert.Contains("ns-link", anchor.ClassList);
+    }
+
+    // bUnit renders no media query, so the floor the class earns is read off the stylesheet
+    // itself (HouseStylesheet) rather than measured.
+    [Fact]
+    public void TheStylesheetFloorsTheClassUnderACoarsePointer()
+    {
+        var css = HouseStylesheet.Read();
+
+        // The file carries a second @media (pointer: coarse) block above this one, so the search
+        // is keyed off the full compound selector, not the media query.
+        var start = css.IndexOf(".mud-button, .ns-link {", StringComparison.Ordinal);
+        Assert.True(start >= 0, "the .ns-link touch-target floor was not found in the stylesheet.");
+
+        var end = css.IndexOf('}', start);
+
+        Assert.Contains("min-height: 44px;", css[start..end], StringComparison.Ordinal);
+    }
 }

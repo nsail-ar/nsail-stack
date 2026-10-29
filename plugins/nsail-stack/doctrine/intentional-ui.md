@@ -897,13 +897,19 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   wrong (it should have been a list); **2–3** is optimal; **4** tolerable; **5** the limit;
   **6+** means something must hide behind a breakpoint. The curve says *how many* survive at
   each size, the importance declaration *which* ([ui/hosts.md](ui/hosts.md)).
+- **A figure reads right-aligned, digit against digit, never a word's own `start`.** A column
+  whose `Format` is Number, Money or Percent aligns itself, header, cell and `tfoot` alike —
+  derived from the member the column already names, never a screen's own CSS
+  ([ui/hosts.md](ui/hosts.md)).
 - **One action cell per row, and that cell is ONE `NsActionToolbar`** — transition verbs and all,
   never a second cell for verbs, never a strip of hand-written icons around the presenter.
 - **The constant goes LAST among the VERBS and is always visible, and the kebab closes the
-  row**: the lupa where the row has a ficha, the lápiz where it does not, neither where it has
-  neither — **a destructive verb is never promoted to the fixed edge**. The kebab is the one
-  box whose presence is conditional, so it is the one that moves rather than shoving the
-  constant sideways ([ui/actions.md](ui/actions.md)).
+  row**: a link made with `GetLink<TPage>()` and no glyph draws the chevron
+  (`NsIcons.ChevronRight`), a glyph passed is drawn as passed (the lápiz where the row has no
+  ficha), and the magnifier is the filter's glyph, never a row's door. **A destructive verb is
+  never promoted to the fixed edge.** The kebab is the one box whose presence is conditional,
+  so it is the one that moves rather than shoving the constant sideways
+  ([ui/actions.md](ui/actions.md)).
 - **Three verbs visible, the rest in the kebab** — the cap that makes contribution scale, so a
   kit contributing a rare action never widens a row ([ui/actions.md](ui/actions.md)).
 - **State paints its text; condition washes the row.** Two channels, apart by default: the
