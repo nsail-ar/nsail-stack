@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.Extensions.DependencyInjection;
 using NSail.Injection.Annotations;
 using NSail.Messaging;
 using NSail.Problems;
 using NSail.Storage.Objects;
-using NSail.Storage.Providers;
 using System.Text;
 
 namespace NSail.Storage.Settings;
@@ -24,14 +24,12 @@ namespace NSail.Storage.Settings;
 public class StorageTestHandler : IHandler<TestStorageTarget>
 {
     readonly StorageStores _stores;
-    readonly StorageCredentialProvider _credentials;
-    readonly IEnumerable<IStorageProvider> _providers;
+    readonly IServiceProvider _services;
 
-    public StorageTestHandler(StorageStores stores, StorageCredentialProvider credentials, IEnumerable<IStorageProvider> providers)
+    public StorageTestHandler(StorageStores stores, IServiceProvider services)
     {
         _stores = stores;
-        _credentials = credentials;
-        _providers = providers;
+        _services = services;
     }
 
     public async Task Handle(TestStorageTarget message, CancellationToken cancellationToken = default)
@@ -39,8 +37,9 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
         ArgumentNullException.ThrowIfNull(message);
 
         // The name's own manager, so the probe lands where that name's consumer writes — its own
-        // target, or the default's where it has none.
-        var storage = new StorageManager(_stores.Require(message.Name), _credentials, _providers);
+        // target, or the default's where it has none. The name arrives at runtime, so the keyed
+        // manager is asked for here rather than injected.
+        var storage = _services.GetRequiredKeyedService<StorageManager>(_stores.Require(message.Name));
         var key = $"nsail-storage-test/{Guid.NewGuid():N}.txt";
         var payload = Encoding.UTF8.GetBytes($"NSail storage test {DateTimeOffset.UtcNow:O}");
 

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.Extensions.DependencyInjection;
 using NSail.Problems;
 using NSail.Security;
+using NSail.Settings;
 using NSail.Storage;
 using NSail.Storage.FileSystem;
 using NSail.Storage.Objects;
@@ -165,9 +167,17 @@ public sealed class StorageSettingsTests
         return new StorageManager(StorageNames.Default, Credentials(), _providers);
     }
 
+    // Composed the way a host composes it, since the handler asks DI for the name's manager.
     StorageTestHandler Test()
     {
-        return new StorageTestHandler(Stores(null), Credentials(), _providers);
+        var services = new ServiceCollection();
+
+        services.AddSingleton<SettingsManager>(_settings);
+        services.AddSingleton(_keys);
+        services.AddStorageWebApi();
+        services.AddFileSystemStorage();
+
+        return services.BuildServiceProvider().CreateScope().ServiceProvider.GetRequiredService<StorageTestHandler>();
     }
 
     // An install that named no default of its own, so the row is the only thing that can answer
