@@ -95,13 +95,15 @@ await mediator.send(DeleteContact, { id: row.id });
 Labels, field names and refusals come from one string catalog keyed by the message, so the two
 clients and the server say the same words.
 
-## The guide
+## Start here
 
-[docs/](docs/README.md) explains the Stack for a person: a
-[getting-started walkthrough](docs/getting-started.md) that builds an app from nuget.org, and the
-ideas underneath — [messages](docs/messages.md), [sending](docs/sending.md) and the unit of work,
-[events](docs/events.md), [permissions](docs/permissions.md), [mapping](docs/mapping.md) and the
-[principles](docs/principles.md).
+- **[Getting started](docs/getting-started.md)** — an app from nuget.org and npm, step by step: a
+  message, its handler and endpoint, an entity with its mapper, a Blazor screen and a React
+  client.
+- **[The Sample](src/Stack/Sample/docs/sample.md)** — the same shape, running, in a checkout.
+- **[The guide](docs/README.md)** — the ideas underneath: [messages](docs/messages.md),
+  [sending](docs/sending.md), [events](docs/events.md), [permissions](docs/permissions.md),
+  [mapping](docs/mapping.md), [principles](docs/principles.md).
 
 ## Try it: the Sample
 
@@ -122,6 +124,79 @@ dotnet run --project src/Stack/Sample/NSail.Sample.Web --launch-profile http
 Open <http://localhost:4001> for Blazor and <http://localhost:4001/react> for React. The first
 run creates the database.
 
+## The Stack, by area
+
+Each area has its own README with its packages, its registration calls and every option it
+reads. Start with [Getting started](docs/getting-started.md); come here when you need the detail.
+
+### Messaging
+
+An operation is a message; one door, `Mediator`, sends it; a handler answers it. Events
+(`Publish`/`Subscribe`), a durable queue (`[Queue]`), server push over SignalR or SSE, and the
+HTTP endpoints and clients all ride that seam.
+`NSail.Messaging` · `.Annotations` · `.Runtime` · `.Http` · `.WebApi` · `.SignalR` · `.Sse` · `.Queue`
+→ [Messaging](src/Stack/Messaging/README.md) · [Injection](src/Stack/Injection/README.md)
+
+### Generation
+
+What can be derived is never written: DI registrations, endpoints, typed clients, permission
+handlers, entity mappers and the TypeScript contract all come from a partial method marked
+`[Generated(...)]`.
+`NSail.Messaging.SourceGenerator` (the analyzer) · `NSail.TypeScriptGenerator` · `NSail.SourceGeneration.Annotations` · `.Testing`
+→ [Generation](src/Stack/Generation/README.md)
+
+### Data and mapping
+
+EF Core over PostgreSQL, configured once for the whole model: row version, audit stamps, tenancy
+and the org filter. The mapper writes message graphs onto entities and projects entities into
+rows, generated at compile time with the semantics of Detached Mapper.
+`NSail.Data` · `NSail.Data.Testing` · `NSail.Mapping` · `NSail.Mapping.Annotations`
+→ [Data](src/Stack/Data/README.md) · [Mapping](src/Stack/Mapping/README.md)
+
+### Security
+
+Policies over messages: may this caller send this message with these values? Absence is denial.
+`NSail.Security` · `NSail.Security.Annotations`
+→ [Security](src/Stack/Security/README.md)
+
+### UI and components
+
+Blazor components that say what the user means (`NsTextField`, `NsSubmit`), with MudBlazor
+underneath and never in your API; labels and validation derive from the message a screen binds.
+For React, `@nsail/stack` and `@nsail/ui` speak the same messages from the TypeScript the build
+writes.
+`NSail.Components` · `.Mud` · `.DaisyUI` · [`@nsail/stack`](https://www.npmjs.com/package/@nsail/stack) · [`@nsail/ui`](https://www.npmjs.com/package/@nsail/ui)
+→ [Components](src/Stack/Components/README.md) · [React](src/Stack/React/README.md)
+
+### Hosting
+
+One call on the builder and one on the app give a host the runtime, error handling, telemetry,
+tenant walls, throttling and Swagger.
+`NSail.BaseServices.WebApi` · `.WebApp` · `.Wasm` · `NSail.Configuration` · `NSail.Telemetry`
+→ [BaseServices](src/Stack/BaseServices/README.md) · [Configuration](src/Stack/Configuration/README.md) · [Telemetry](src/Stack/Telemetry/README.md)
+
+### Services
+
+- **Localization and Metadata** — texts per language, keyed from the namespace.
+  → [Localization](src/Stack/Localization/README.md) · [Metadata](src/Stack/Metadata/README.md)
+- **Settings** — typed settings read and saved through one manager.
+  → [Settings](src/Stack/Settings/README.md)
+- **Background** — recurring jobs and deferred work.
+  → [Background](src/Stack/Background/README.md)
+- **Backup** — attended backup and restore of a whole install.
+  → [Backup](src/Stack/Backup/README.md)
+- **Exporting** — a list read out as a file.
+  → [Exporting](src/Stack/Exporting/README.md)
+- **Storage** — put, get, list and delete an object, on the host's disk or an S3-compatible
+  bucket, with its settings screen.
+  → [Storage](src/Stack/Storage/README.md)
+
+### Foundations
+
+The error model, paging, the wire's JSON contract and the small value types every area shares.
+`NSail.Types` · `NSail.BclExtensions` · `NSail.Injection.Annotations`
+→ [Types](src/Stack/Types/README.md)
+
 ## Use it in your app
 
 Every Stack project is a package on [nuget.org](https://www.nuget.org/profiles/NSail). Pin one
@@ -140,25 +215,9 @@ your consumers:
 </ItemGroup>
 ```
 
-The published versions are this repository's `v*` tags.
-
-| Area | Packages |
-|---|---|
-| Messaging | `NSail.Messaging`, `.Annotations`, `.Runtime`, `.Http`, `.WebApi`, `.SignalR` |
-| Generation | `NSail.Messaging.SourceGenerator` (the analyzer), `NSail.TypeScriptGenerator`, `NSail.SourceGeneration.Annotations` |
-| Data | `NSail.Data`, `NSail.Mapping`, `NSail.Mapping.Annotations` |
-| Hosting | `NSail.BaseServices.WebApi`, `NSail.BaseServices.WebApp`, `NSail.BaseServices.Wasm` |
-| UI | `NSail.Components`, `NSail.Components.Mud`, `NSail.Components.DaisyUI` |
-| Security | `NSail.Security`, `NSail.Security.Annotations` |
-| Storage | `NSail.Storage.Sdk`, `.WebApi`, `.Shared`, `.FileSystem`, `.S3` |
-| Services | `NSail.Background`, `NSail.Backup`, `NSail.Caching`, `NSail.Configuration`, `NSail.Localization`, `NSail.Metadata`, `NSail.Settings`, `NSail.Telemetry` |
-| Foundations | `NSail.Types`, `NSail.BclExtensions`, `NSail.Injection.Annotations` |
-| Testing | `NSail.Data.Testing`, `NSail.SourceGeneration.Testing` |
-
-The React packages, [`@nsail/stack`](https://www.npmjs.com/package/@nsail/stack) and
-[`@nsail/ui`](https://www.npmjs.com/package/@nsail/ui), are on npm at the same version as the
-NuGet packages; pin them together. They ship ES modules for a bundler (Vite, webpack), with
-their types.
+The published versions are this repository's `v*` tags. The React packages are on npm at the
+same version as the NuGet packages; pin them together. They ship ES modules for a bundler (Vite,
+webpack), with their types.
 
 ## The doctrine, and a Claude Code plugin
 
