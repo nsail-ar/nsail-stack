@@ -92,7 +92,7 @@ public sealed class StorageSettingsPageTests : BunitContext, IAsyncLifetime
         Navigation.NavigateTo("/settings/storage?aside=settings%2Fstorage%2Freports");
         app.WaitForAssertion(() => Assert.Equal("reports", Field(app, "Container").GetAttribute("value")));
 
-        Field(app, "Container").Input("reports-archive");
+        await app.InvokeAsync(() => Field(app, "Container").Input("reports-archive"));
         await app.InvokeAsync(() => app.Find("form").Submit());
 
         Assert.Contains("reports-archive", app.FindAll("tbody tr")[1].TextContent);
