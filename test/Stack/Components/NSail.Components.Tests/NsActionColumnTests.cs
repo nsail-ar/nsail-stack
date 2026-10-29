@@ -266,26 +266,42 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void TheRowsDoorIsDrawnWithTheOpenGlyphWhateverThePageHandedIn()
+    public void ADoorHandedNoGlyphDrawsTheChevron()
     {
         var cut = Render<ActionColumnHost>(p => p
-            .Add(x => x.Constant, new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage), Icon = NsIcons.Search }));
+            .Add(x => x.Constant, new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage) }));
 
         var door = cut.Find(".ns-action-toolbar a");
 
-        Assert.Contains(PathOf(NsIcons.Open), door.InnerHtml);
-        Assert.DoesNotContain(PathOf(NsIcons.Search), door.InnerHtml);
+        Assert.Contains(PathOf(NsIcons.ChevronRight), door.InnerHtml);
+    }
+
+    [Fact]
+    public void ADisabledDoorHandedNoGlyphDrawsTheChevron()
+    {
+        var cut = Render<ActionColumnHost>(p => p
+            .Add(x => x.Constant, new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage), Disabled = true }));
+
+        var door = cut.Find(".ns-action-toolbar");
+
+        Assert.Contains(PathOf(NsIcons.ChevronRight), door.InnerHtml);
+    }
+
+    [Fact]
+    public void ADoorHandedAGlyphDrawsItAsPassed()
+    {
+        var cut = Render<ActionColumnHost>(p => p
+            .Add(x => x.Constant, new ActionItem { Name = "Editar", PageType = typeof(ProbeOtherPage), Icon = NsIcons.Edit }));
+
+        var door = cut.Find(".ns-action-toolbar a");
+
+        Assert.Contains(PathOf(NsIcons.Edit), door.InnerHtml);
+        Assert.DoesNotContain(PathOf(NsIcons.ChevronRight), door.InnerHtml);
     }
 
     static string PathOf(Glyph glyph)
     {
         return System.Text.RegularExpressions.Regex.Match(glyph.Markup, "d=\"([^\"]+)\"").Groups[1].Value;
-    }
-
-    [Fact]
-    public void TheOpenGlyphIsNotTheFiltersMagnifier()
-    {
-        Assert.NotEqual(NsIcons.Search, NsIcons.Open);
     }
 
     [Fact]
@@ -604,8 +620,6 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     {
         var css = HouseStylesheet.Read();
 
-        Assert.DoesNotContain(":not(.mud-sm-table)", css, StringComparison.Ordinal);
-
         var query = css.IndexOf("@media (min-width: 960.02px) {", StringComparison.Ordinal);
         Assert.True(query >= 0, "the column-mode row-height query was not found in the stylesheet.");
 
@@ -615,6 +629,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         var end = css.IndexOf('}', start);
         Assert.Contains("height: 2.625rem;", css[start..end], StringComparison.Ordinal);
         Assert.DoesNotContain("min-height:", css[start..end], StringComparison.Ordinal);
+        Assert.DoesNotContain(":not(.mud-sm-table)", css[query..end], StringComparison.Ordinal);
     }
 
     // The actions icon button grows under a coarse pointer (--ns-action-slot: 3.25rem), so the
