@@ -79,11 +79,14 @@
     // A header that names no field and shows no text is the action column: it is the one
     // column with nothing to key on, which is already why it never hides. Deriving it here
     // is what lets the column's width belong to the column instead of to every grid.
+    //
+    // No heading is on the compact line — the stacked regimes hide the head row — so the one
+    // compact marker a heading carries is the one that keeps an Only column off every other face.
     string GetClasses()
     {
         return new NsClassBuilder(NsResponsive.CellClasses(Breakpoint))
             .Add("ns-actions", For is null && ChildContent is null)
-            .Add(NsResponsive.CompactClass(Compact, Columns?.Compact ?? false))
+            .Add("ns-compact-only", Compact == NsCompact.Only)
             .ToString();
     }
 

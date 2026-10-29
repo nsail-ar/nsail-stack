@@ -63,11 +63,10 @@ public sealed class NsTableCompactTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void A_hidden_column_is_left_off_the_compact_row_header_and_cell()
+    public void A_hidden_column_is_left_off_the_compact_row()
     {
         var cut = Render<CompactTableHost>(p => p.Add(x => x.Compact, true));
 
-        Assert.Contains("ns-compact-hidden", cut.FindAll("thead th")[1].ClassList);
         Assert.Contains("ns-compact-hidden", cut.FindAll("tbody td")[1].ClassList);
     }
 
@@ -80,6 +79,21 @@ public sealed class NsTableCompactTests : BunitContext, IAsyncLifetime
 
         Assert.Contains("ns-compact-only", cell.ClassList);
         Assert.Equal("tel:3", cut.Find("a.call").GetAttribute("href"));
+    }
+
+    /// <summary>A reading drawn only on the line names itself, and so is a cell of the second line;
+    /// the act with nothing to say of itself is the action column, beside the lead.</summary>
+    [Fact]
+    public void An_only_reading_that_names_itself_is_not_the_action_column()
+    {
+        var cut = Render<CompactTableHost>(p => p.Add(x => x.Compact, true));
+
+        var reading = cut.Find("#reading").Closest("td")!;
+        var act = cut.Find("a.call").Closest("td")!;
+
+        Assert.Contains("ns-compact-only", reading.ClassList);
+        Assert.DoesNotContain("ns-actions", reading.ClassList);
+        Assert.Contains("ns-actions", act.ClassList);
     }
 
     /// <summary>A row's own act that leaves the app — Call's tel: — is the tap's whole answer:
@@ -179,21 +193,22 @@ public sealed class NsTableCompactTests : BunitContext, IAsyncLifetime
         Assert.Equal("Reading", columns.Lead);
     }
 
-    /// <summary>The container-stacked card an open row turns a desktop grid into draws every cell
-    /// as a line, later in the file than the rule that keeps an Only cell off — so that card says
-    /// it again, the way it says it for a hidden column. bUnit runs no stylesheet, so the rule is
-    /// what is read.</summary>
+    /// <summary>Wherever a row open for editing frees cells — the column mode's release of a
+    /// hidden column, the container card's lines — the rule that keeps an Only cell off outranks
+    /// it, by specificity or by a tie it wins later in the file. bUnit runs no stylesheet, so the
+    /// rules are what is read.</summary>
     [Fact]
-    public void The_open_rows_card_keeps_a_cell_drawn_only_on_the_compact_line_off()
+    public void The_rule_keeping_an_only_cell_off_outranks_every_open_row_release()
     {
         var css = ReadStylesheet();
 
-        var card = css.IndexOf(".ns-table.ns-table-editing .mud-table-cell {", StringComparison.Ordinal);
-        var off = css.IndexOf(".ns-table.ns-table-editing .mud-table-cell.ns-compact-only {", StringComparison.Ordinal);
+        var release = css.IndexOf(".ns-table.ns-table-editing .mud-table-cell.d-c-none {", StringComparison.Ordinal);
+        var off = css.IndexOf(".ns-table .mud-table-row .mud-table-cell.ns-compact-only {", StringComparison.Ordinal);
 
-        Assert.True(card > 0);
-        Assert.True(off > card, "the open row's card has no rule keeping an Only cell off after it draws every cell.");
+        Assert.True(release > 0);
+        Assert.True(off > release, "the rule keeping an Only cell off ties the column mode's release and has to come after it.");
         Assert.Contains("display: none;", css[off..css.IndexOf('}', off)], StringComparison.Ordinal);
+        Assert.DoesNotContain(".ns-table .mud-table-cell.ns-compact-only {", css, StringComparison.Ordinal);
     }
 
     static string ReadStylesheet()

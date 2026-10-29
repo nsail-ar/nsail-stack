@@ -43,7 +43,8 @@ public sealed class TableColumns
     public bool Compact { get; set; }
 
     /// <summary>The column a compact row opens with: the first one the header declared that the
-    /// row draws — neither Hidden nor hidden by its Breakpoint. Every other surviving cell follows it on the row's second line.</summary>
+    /// row draws — neither Hidden nor hidden by its Breakpoint. Every other surviving cell follows
+    /// it on the row's second line.</summary>
     public string? Lead { get; private set; }
 
     /// <summary>Where a column is drawn on the compact row; Shown for a column that declared

@@ -17,6 +17,7 @@
     <RowTemplate Context="row">
         <NsTd For="() => row.Name">@row.Name</NsTd>
         <NsTd For="() => row.Age">@row.Age</NsTd>
+        <NsTd Compact="NsCompact.Only" DataLabel="Reading"><span id="reading">Owes 5</span></NsTd>
         <NsTd Compact="NsCompact.Only"><NsLink Href="@($"tel:{row.Age}")" Label="Call" Class="call" /></NsTd>
         <NsTd />
     </RowTemplate>

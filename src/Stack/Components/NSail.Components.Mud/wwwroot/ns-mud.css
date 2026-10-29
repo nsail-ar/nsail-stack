@@ -914,8 +914,13 @@
    sit under, and off in the stacked card. A Hidden cell is left off the line. A cell hidden by
    its column's Breakpoint stays hidden, as it does on the card; an Only cell wins over that,
    being drawn here by definition. Rows only: the foot keeps the card, and a table with a row
-   open keeps the form its editor needs. */
-.ns-table .mud-table-cell.ns-compact-only {
+   open keeps the form its editor needs.
+
+   The base rule outranks every rule that frees a cell while a row is open — the column mode's
+   d-c-none release above, at its own specificity and earlier in the file, and the container
+   card's display below, one class lighter — so an Only cell stays off wherever the line is
+   not drawn. */
+.ns-table .mud-table-row .mud-table-cell.ns-compact-only {
     display: none;
 }
 
@@ -1086,13 +1091,6 @@
             .ns-table.ns-table-editing .mud-table-cell.d-c-sm-table-cell {
                 display: flex;
             }
-        }
-
-        /* A cell drawn only on the compact line (NsCompact.Only) stays off this card too: the
-           compact line is a phone's and this card is a desktop container's, and the base rule
-           that keeps the cell off everywhere else loses to the display above on source order. */
-        .ns-table.ns-table-editing .mud-table-cell.ns-compact-only {
-            display: none;
         }
     }
 }

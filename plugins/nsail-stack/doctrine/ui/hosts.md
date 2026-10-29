@@ -105,7 +105,9 @@ a list whose rows are read whole (orders, documents, tickets) keeps the card.
   the line competes with it; a column hidden by its `Breakpoint` stays off the line as it does off
   the card, and a reading the row needs below that width is an `Only` cell that says it.
 - **The line carries no `data-label`**, so a value that needs its word ("Debe $ 5.000") writes it
-  in its own `Only` cell.
+  in its own `Only` cell — which names itself with `DataLabel`, as a computed column does (below):
+  a cell with no `For` and no `DataLabel` is the action column, and on the line it is drawn with
+  the acts beside the lead, not under it.
 
 **Every column a header declares is also a column of the FILE the list exports, and the same
 `For` expression is the whole declaration** — its key, its heading, what its values are and how to
