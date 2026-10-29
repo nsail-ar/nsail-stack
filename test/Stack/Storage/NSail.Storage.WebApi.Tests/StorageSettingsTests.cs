@@ -36,7 +36,7 @@ public sealed class StorageSettingsTests
         Assert.NotEqual(Secret, stored.SecretKey);
         Assert.Equal(Secret, _keys.Unprotect(stored.SecretKey!));
 
-        var model = (await handler.Handle(new GetStorageSettings())).Value;
+        var model = (await handler.Handle(new GetStorageSettings { Name = StorageNames.Default })).Value;
 
         Assert.True(model.HasSecretKey);
         Assert.Equal(container.Path, model.Container);
@@ -56,6 +56,7 @@ public sealed class StorageSettingsTests
 
         await handler.Handle(new SaveStorageSettings
         {
+            Name = StorageNames.Default,
             Provider = FileSystemStorageProvider.ProviderType,
             Container = container.Path,
         });
@@ -85,7 +86,7 @@ public sealed class StorageSettingsTests
 
         var storage = Storage();
 
-        await new StorageTestHandler(storage).Handle(new TestStorageTarget());
+        await Test().Handle(new TestStorageTarget { Name = StorageNames.Default });
 
         Assert.Empty(await storage.List("nsail-storage-test/"));
     }
@@ -97,7 +98,7 @@ public sealed class StorageSettingsTests
     public async Task RefusesOnProveedorWhenTheInstallStoresNowhere()
     {
         var error = await Assert.ThrowsAsync<BusinessException>(
-            () => new StorageTestHandler(Storage()).Handle(new TestStorageTarget()));
+            () => Test().Handle(new TestStorageTarget { Name = StorageNames.Default }));
 
         var issue = Assert.Single(error.Issues);
 
@@ -108,10 +109,10 @@ public sealed class StorageSettingsTests
     [Fact]
     public async Task RefusesOnProveedorWhenTheTargetNamesAProviderNobodyComposed()
     {
-        await Settings().Handle(new SaveStorageSettings { Provider = "s3", Container = "somewhere" });
+        await Settings().Handle(new SaveStorageSettings { Name = StorageNames.Default, Provider = "s3", Container = "somewhere" });
 
         var error = await Assert.ThrowsAsync<BusinessException>(
-            () => new StorageTestHandler(Storage()).Handle(new TestStorageTarget()));
+            () => Test().Handle(new TestStorageTarget { Name = StorageNames.Default }));
 
         var issue = Assert.Single(error.Issues);
 
@@ -134,13 +135,13 @@ public sealed class StorageSettingsTests
             Container = Path.Combine(container.Path, "install"),
         };
 
-        var credentials = new StorageCredentialProvider(_settings, _keys, install);
+        var credentials = new StorageCredentialProvider(_settings, _keys, Stores(install));
 
-        Assert.Equal(install.Container, (await credentials.Get()).Container);
+        Assert.Equal(install.Container, (await credentials.Get(StorageNames.Default)).Container);
 
         await Settings().Handle(Save(container));
 
-        Assert.Equal(container.Path, (await credentials.Get()).Container);
+        Assert.Equal(container.Path, (await credentials.Get(StorageNames.Default)).Container);
     }
 
     // An install that named nothing stores nowhere, which is what keeps the refusal above
@@ -148,7 +149,7 @@ public sealed class StorageSettingsTests
     [Fact]
     public async Task AnInstallThatNamedNoDefaultStoresNowhere()
     {
-        var target = await Credentials().Get();
+        var target = await Credentials().Get(StorageNames.Default);
 
         Assert.False(target.IsConfigured);
         Assert.Equal(StorageTarget.None, target);
@@ -156,25 +157,36 @@ public sealed class StorageSettingsTests
 
     StorageSettingsHandler Settings()
     {
-        return new StorageSettingsHandler(_settings, Credentials(), _providers);
+        return new StorageSettingsHandler(_settings, Credentials(), Stores(null), _providers);
     }
 
     StorageManager Storage()
     {
-        return new StorageManager(Credentials(), _providers);
+        return new StorageManager(StorageNames.Default, Credentials(), _providers);
+    }
+
+    StorageTestHandler Test()
+    {
+        return new StorageTestHandler(Stores(null), Credentials(), _providers);
     }
 
     // An install that named no default of its own, so the row is the only thing that can answer
     // and "stores nowhere" is still reachable.
     StorageCredentialProvider Credentials()
     {
-        return new StorageCredentialProvider(_settings, _keys, new StorageOptions());
+        return new StorageCredentialProvider(_settings, _keys, Stores(null));
+    }
+
+    static StorageStores Stores(StorageOptions? install)
+    {
+        return new StorageStores([new StorageDeclaration(StorageNames.Default, install)]);
     }
 
     static SaveStorageSettings Save(Container container)
     {
         return new SaveStorageSettings
         {
+            Name = StorageNames.Default,
             Provider = FileSystemStorageProvider.ProviderType,
             Container = container.Path,
             AccessKey = "an-access-key",
