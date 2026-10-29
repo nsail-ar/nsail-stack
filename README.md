@@ -150,6 +150,7 @@ The published versions are this repository's `v*` tags.
 | Hosting | `NSail.BaseServices.WebApi`, `NSail.BaseServices.WebApp`, `NSail.BaseServices.Wasm` |
 | UI | `NSail.Components`, `NSail.Components.Mud`, `NSail.Components.DaisyUI` |
 | Security | `NSail.Security`, `NSail.Security.Annotations` |
+| Storage | `NSail.Storage.Sdk`, `.WebApi`, `.Shared`, `.FileSystem`, `.S3` |
 | Services | `NSail.Background`, `NSail.Backup`, `NSail.Caching`, `NSail.Configuration`, `NSail.Localization`, `NSail.Metadata`, `NSail.Settings`, `NSail.Telemetry` |
 | Foundations | `NSail.Types`, `NSail.BclExtensions`, `NSail.Injection.Annotations` |
 | Testing | `NSail.Data.Testing`, `NSail.SourceGeneration.Testing` |
