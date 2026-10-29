@@ -127,9 +127,10 @@ called (a product's Wasm composition root). It lists one row per declared store 
 (`ListStorageStores`), the default first, each with the target it resolves to now and whether
 that is the default's; a row opens that name's own form (`StorageStorePage`), where clearing
 Proveedor clears the name's row slot and nothing else — the name then resolves to its own
-`StorageOptions` when the host gave it one, and to the default only when it did not. A product parks the screen out of sight by leaving
-that one call out of both composition roots, which takes the route, the strings and the
-settings leaf with it, and keeps `AddStorageWebApi` for everything that still writes objects.
+`StorageOptions` when the host gave it one, and to the default only when it did not. A product
+parks the screen out of sight by leaving that one call out of both composition roots, which
+takes the route, the strings and the settings leaf with it, and keeps `AddStorageWebApi` for
+everything that still writes objects.
 The provider picker decides whether the address, the region and the key pair are asked for at
 all — `StorageProviderRef.IsRemote` is what the screen reads. The secret key is never answered
 back: the read says only that one exists, and an empty field on save means "unchanged", never
