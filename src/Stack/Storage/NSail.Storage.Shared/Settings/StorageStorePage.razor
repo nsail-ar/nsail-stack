@@ -13,7 +13,7 @@
 
 <NsPanel>
     <Header>
-        <NsTitleBar Title="@($"{GetTitle()}: {StorageSettingsPage.Display(Name, Translate("Storage.DefaultStore"))}")" />
+        <NsTitleBar Title="@($"{GetTitle()}: {StorageNames.Display(Name, Translate("Storage.DefaultStore"))}")" />
     </Header>
     <Content>
         <NsForm @key="Name" TModel="SaveStorageSettings" OnLoad="Load" OnSubmit="OnSubmit">

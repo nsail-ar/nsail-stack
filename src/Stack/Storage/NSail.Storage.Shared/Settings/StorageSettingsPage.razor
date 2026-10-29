@@ -26,7 +26,7 @@
                     <NsTh />
                 </HeaderContent>
                 <RowTemplate Context="row">
-                    <NsTd For="() => row.Name">@Display(row.Name, Translate("Storage.DefaultStore"))</NsTd>
+                    <NsTd For="() => row.Name">@StorageNames.Display(row.Name, Translate("Storage.DefaultStore"))</NsTd>
                     <NsTd For="() => row.Provider">@ProviderName(row.Provider)</NsTd>
                     <NsTd For="() => row.Container">@row.Container</NsTd>
                     <NsTd For="() => row.UsesDefault">@(row.UsesDefault ? "✓" : "")</NsTd>
@@ -56,12 +56,6 @@
     {
         _providers = await Send(new LookupStorageProviders(), args.CancellationToken);
         _stores = await Send(new ListStorageStores(), args.CancellationToken);
-    }
-
-    // The default store is the one name with words of its own; a kit's name is its constant.
-    internal static string Display(string name, string defaultStore)
-    {
-        return name == StorageNames.Default ? defaultStore : name;
     }
 
     string? ProviderName(string? type)

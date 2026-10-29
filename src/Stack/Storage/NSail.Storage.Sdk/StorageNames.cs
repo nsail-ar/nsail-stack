@@ -8,4 +8,10 @@ namespace NSail.Storage;
 public static class StorageNames
 {
     public const string Default = "default";
+
+    // The default store is the one name with words of its own; a kit's name is its constant.
+    public static string Display(string name, string defaultStore)
+    {
+        return name == Default ? defaultStore : name;
+    }
 }
