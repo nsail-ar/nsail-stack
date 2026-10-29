@@ -2,6 +2,14 @@ Guardar los archivos que la instalación sube en tu propio destino: una carpeta 
 tu propio bucket S3-compatible (AWS, Cloudflare R2, Backblaze, MinIO, ...), con tu propia factura
 del proveedor. La pantalla es **Configuración > Integraciones > Almacenamiento**.
 
+## Los almacenes
+
+La pantalla lista un almacén por fila. **Por defecto** es donde se guarda todo lo que no tiene
+un almacén propio; las demás filas son las que declara cada parte de la instalación que guarda
+archivos (por ejemplo, los reportes contables en un lado y los backups en otro). Una fila marcada
+**Usa el de por defecto** todavía no tiene destino propio y guarda donde guarda Por defecto;
+configurarla le da el suyo, en el mismo proveedor o en otro.
+
 ## Antes de empezar
 
 Si vas a guardar en una **carpeta del servidor**, no necesitás nada de afuera.
@@ -14,11 +22,11 @@ buckets (o "object storage") y la de claves de acceso (o "API keys" / "access ke
 
 ## Configurar
 
-1. Entrá a **Configuración > Integraciones > Almacenamiento**.
+1. Entrá a **Configuración > Integraciones > Almacenamiento** y abrí el almacén que vas a configurar.
 2. En **Proveedor**, elegí **Local folder** para una carpeta del servidor, o **S3-compatible** para tu propio bucket.
 3. Completá **Contenedor** con el nombre de la carpeta (local) o del bucket (S3-compatible).
 4. Si elegiste S3-compatible, completá además **Dirección del servicio** — la de tu proveedor, sin el nombre del bucket —, **Región** — dejala vacía salvo que tu proveedor la pida —, **Clave de acceso** y **Clave secreta**: los cuatro valores salen de la consola de tu proveedor, de donde lo dejaste en Antes de empezar.
-5. Tocá **Guardar**.
+5. Tocá **Guardar**. Para que un almacén vuelva a usar el de por defecto, dejá **Proveedor** vacío y guardá.
 
 **La Clave secreta es de sólo escritura**: después de guardarla el campo vuelve vacío y debajo
 dice que ya hay una guardada, así que volver a guardar los otros campos la conserva. Sólo se

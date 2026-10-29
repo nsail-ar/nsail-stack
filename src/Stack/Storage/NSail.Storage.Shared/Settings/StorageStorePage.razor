@@ -1,0 +1,124 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/settings/storage/{Name}"
+@namespace NSail.Storage.Settings
+
+@using NSail.Storage
+@using NSail.Storage.Settings
+@using NSail.Storage.Settings.Models
+
+@attribute [Authorize<SaveStorageSettings>]
+@inherits NsPage
+
+<NsPanel>
+    <Header>
+        <NsTitleBar Title="@($"{GetTitle()}: {StorageSettingsPage.Display(Name, Translate("Storage.DefaultStore"))}")" />
+    </Header>
+    <Content>
+        <NsForm @key="Name" TModel="SaveStorageSettings" OnLoad="Load" OnSubmit="OnSubmit">
+            <NsFormGrid>
+                <NsFormGridItem>
+                    <NsSelect TItem="StorageProviderRef" TValue="string?"
+                              @bind-Value="context.Provider"
+                              Items="_providers"
+                              ItemValue="provider => provider.Type"
+                              ItemText="provider => provider.DisplayName"
+                              Clearable />
+                </NsFormGridItem>
+                <NsFormGridItem Grow>
+                    <NsTextField @bind-Value="context.Container" Helper="@ContainerHelper(context)" />
+                </NsFormGridItem>
+                @if (IsRemote(context))
+                {
+                    <NsFormGridItem Grow>
+                        <NsTextField @bind-Value="context.Endpoint" Helper="@Translate("EndpointHint")" />
+                    </NsFormGridItem>
+                    <NsFormGridItem>
+                        <NsTextField @bind-Value="context.Region" Helper="@Translate("RegionHint")" />
+                    </NsFormGridItem>
+                    <NsFormGridItem Grow>
+                        <NsTextField @bind-Value="context.AccessKey" />
+                    </NsFormGridItem>
+                    <NsFormGridItem Grow>
+                        <NsPasswordField @bind-Value="context.SecretKey" IsStored="_hasSecretKey" Autocomplete="new-password" />
+                    </NsFormGridItem>
+                }
+            </NsFormGrid>
+            <NsStack Horizontal Gap="Sm" Justify="End" Align="Center">
+                <NsHelp Key="Storage.StorageStorePage.TestHelp" />
+                @* The probe reaches the target with what is typed and writes nothing back, so
+                   it stands on a form that refuses writes (ActionItem.Writes). *@
+                <NsAction Action="@GetAction(TestTarget, NsIcons.Sync, writes: false)" Breakpoint="NsBreakpoint.Always" />
+                <NsSubmit />
+            </NsStack>
+        </NsForm>
+    </Content>
+</NsPanel>
+
+@code {
+
+    [Parameter]
+    public string Name { get; set; } = StorageNames.Default;
+
+    // The provider list fills the select's options, not the document the form submits, so it
+    // stays the page's read.
+    List<StorageProviderRef> _providers = [];
+
+    bool _hasSecretKey;
+
+    protected override async Task OnCreatedAsync()
+    {
+        _providers = await Send(new LookupStorageProviders(), CancellationToken);
+    }
+
+    async Task Load(LoadEventArgs<SaveStorageSettings> args)
+    {
+        var stored = await Send(new GetStorageSettings { Name = Name }, args.CancellationToken);
+        var settings = stored.Value;
+
+        _hasSecretKey = settings.HasSecretKey;
+
+        // The secret key is deliberately absent from what the read answers, so the field starts
+        // empty on every visit and an untouched save keeps whatever is stored.
+        args.Model = new SaveStorageSettings
+        {
+            Name = Name,
+            Version = stored.Version,
+            Provider = settings.Provider,
+            Endpoint = settings.Endpoint,
+            Region = settings.Region,
+            Container = settings.Container,
+            AccessKey = settings.AccessKey,
+        };
+    }
+
+    bool IsRemote(SaveStorageSettings model)
+    {
+        return _providers.FirstOrDefault(provider => provider.Type == model.Provider)?.IsRemote ?? false;
+    }
+
+    string ContainerHelper(SaveStorageSettings model)
+    {
+        return Translate(IsRemote(model) ? "ContainerBucketHint" : "ContainerFolderHint");
+    }
+
+    async Task OnSubmit(SubmitEventArgs<SaveStorageSettings> args)
+    {
+        await Send(args.Model, args.CancellationToken);
+        await Publish(new StorageStoreSaved { Name = Name }, args.CancellationToken);
+
+        Notify(Translate("Common.Saved"), NsSeverity.Success);
+    }
+
+    // A probe that fails refuses, and the refusal is drawn by the form this act stands inside —
+    // under Proveedor where that is what is wrong, at the foot of the form otherwise. Nothing is
+    // caught here: a page that drew the failure itself would be drawing it as a toast that fades
+    // while the field it names is on screen.
+    async Task TestTarget()
+    {
+        await Send(new TestStorageTarget { Name = Name }, CancellationToken);
+
+        Notify(Translate("TestSucceeded"), NsSeverity.Success);
+    }
+}
