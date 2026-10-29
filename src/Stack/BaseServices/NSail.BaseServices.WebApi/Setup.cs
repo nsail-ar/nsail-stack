@@ -3,10 +3,12 @@
 
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.OpenApi;
 using NSail.Backup;
 using NSail.Configuration;
 using NSail.Data;
+using NSail.Messaging.Queue;
 using NSail.Messaging.Runtime;
 using NSail.Messaging.WebApi.Push;
 using NSail.Messaging.WebApi;
@@ -26,11 +28,15 @@ public static class Setup
         // AddSecurityEnforcement registers after this, and SendPipeline chains in
         // registration order, so a refusal falls inside the span instead of before it.
         //
-        // The second wall's instrument is named from here and not from inside AddTelemetry: an
-        // arrow from the telemetry module to the data module would put the OTLP exporter behind
-        // every host with a store and EF Core behind every host that exports a span. This
-        // composition has both modules already.
-        builder.AddTelemetry(TenantPolicies.MeterName);
+        // The second wall's instrument and the durable queue's are named from here and not from
+        // inside AddTelemetry: an arrow from the telemetry module to either of those would put
+        // the OTLP exporter behind every host with a store and EF Core behind every host that
+        // exports a span. This composition has all three modules already.
+        //
+        // Named whether or not this host composes the queue, because a meter nobody emits on
+        // costs a subscription and nothing else, while the reverse — naming it where AddQueue
+        // runs — would need the exporter packages inside NSail.Messaging.Queue.
+        builder.AddTelemetry(TenantPolicies.MeterName, QueueMetrics.MeterName);
 
         builder.Services.AddMessaging();
         builder.Services.AddMessagingJson();
@@ -54,6 +60,23 @@ public static class Setup
         // composition that calls AddSecurity first leaves it last, so either order resolves the
         // install's value and not the default.
         builder.Services.AddSingleton(builder.Configuration.Load<SecurityOptions>());
+
+        // Ahead of AddSecurity's own TryAdd, for the same reason as the push audience below: the
+        // bag a message's feature mark is gated against is what the install records about this
+        // tenant, and only a composition that has the store can read it.
+        builder.Services.AddScoped<FeatureProvider, TenantStateFeatureProvider>();
+
+        // Beside it, and TryAdd so AddSecurity's own call leaves it standing: the catalog is what
+        // turns a bag's silence about a key into the key owner's declared default, and a host
+        // that composes no kit — which is every host of this suite's own shape — still has to
+        // resolve the provider above.
+        builder.Services.TryAddSingleton<Features>();
+
+        // And what that catalog says, published to the install's own table for whoever operates
+        // the fleet to read — the one write this composition owes outwards, and here for the same
+        // reason as the provider above: it is the composition that has both the catalog and the
+        // store.
+        builder.Services.AddHostedService<FeaturePublisher>();
 
         // Ahead of AddPush's own TryAdd: a push reaches the tenant it was published in, and a
         // connection joins the tenant the edge resolved for it.

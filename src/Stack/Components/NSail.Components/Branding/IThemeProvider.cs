@@ -4,8 +4,9 @@
 namespace NSail.Components;
 
 /// <summary>
-/// Supplies the active <see cref="ThemeSettings"/>. The default follows the brand;
-/// a product with stored settings replaces it with one that reads them.
+/// Supplies the active <see cref="ThemeSettings"/>. The default follows the OS colour scheme
+/// (<see cref="ThemeSettings.DarkMode"/>); a product with stored settings replaces it with one
+/// that reads them.
 /// </summary>
 public interface IThemeProvider
 {

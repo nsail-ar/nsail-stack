@@ -16,10 +16,20 @@ comes before whatever a screen marks, so the marker would lose the one time it m
 `NsArrivalFocus` (replacing `FocusOnNavigate` in `NsRouter`) checks the marker on its own first,
 and falls back to `FallbackSelector` ("h1", so a screen reader still hears the page's title)
 only where there is none — **the marker always wins when it exists.** `AutoFocus` — the
-parameter every `NsFieldBase` field already carries — is one source of it: `true` writes
-`data-ns-arrival-focus` on the field's own input (`NsFieldBase.SetInputAttributes`), the same way
-it already writes `data-ns-field` for the Enter policy. Nothing else needs to spell the
-attribute by hand.
+parameter every `NsFieldBase` field and every `NsPickerBase` picker carries — is its one source:
+`true` writes `data-ns-arrival-focus` on the field's own input (`NsFieldBase.SetInputAttributes`),
+the same way it already writes `data-ns-field` for the Enter policy. Nothing else needs to spell
+the attribute by hand.
+
+**`AutoFocus` is that marker and nothing else** — it hands the vendor's input no focus of its
+own, and that is what makes the rules below keepable: a field focusing itself at its first render
+reads no pointer and no arrival, so a list marked for the arrival would raise a phone's keyboard
+anyway, whatever the arrival's own pass decided (*Touch*, below). The vendor's half has a name of
+its own where a box genuinely needs it: **`FocusOnRender`**, on the typed box alone
+(`NsTextFieldBase`) and for the cursor coming BACK into a box a hand is already working in, never
+for an arrival. A value that arrives whole from a pick, an upload, a checkbox carries no such
+parameter: there is no entry to re-arm there, and a knob those fields could not keep is one a
+page would write and never get.
 
 ## The fallback is a heading something has to draw
 
@@ -52,8 +62,8 @@ cover:
 - **An element rendered after the first paint** — a list still reading, a tab's panel — is not
   a lost cause: not finding the marker right away starts a `MutationObserver` (bounded by a
   timeout that falls back to the screen's name) instead of giving up on the spot, which is what
-  left the vendor's own first-render-only `AutoFocus` unable to reach it (the Notes on
-  nsail#2338: a field inside a panel not yet shown).
+  left a focus fired at the box's own first render (`FocusOnRender`) unable to reach it (the
+  Notes on nsail#2338: a field inside a panel not yet shown).
 - **A navigation between two pages sharing a layout** (the same routed component, new
   parameters) still fires: the arrival is read off the address, not off the page type or the
   component's identity.
@@ -94,9 +104,15 @@ to the screen's name — the exact place the link was pressed to get away from.
   form for the first typable control outright, not for the marker, and a repeated inline editor
   (`PriceListItemAdder`) already turns it off on its own terms.
 - **A repeated act with one working box** — `ProductScanField`'s barcode field, a sale's
-  "Buscar producto" — marks itself with `AutoFocus` directly and re-arms every scan by changing
-  its own `@key`, which is a first-render trick entirely its own and not the router's concern:
-  it already works today and stays exactly as it is.
+  "Buscar producto", a receiving screen's scan box, a ticket's composer — says the two halves
+  separately, because they answer different questions. It marks itself with `AutoFocus` where it
+  is THE working box of its screen (the arrival's question, which a card's slot gives up: N
+  marked boxes would take the cursor off the one that matters), and it re-arms every entry with
+  `FocusOnRender` on a box keyed by the entry's own count — a first-render trick entirely its
+  own and not the router's concern. The re-arm fires on every pointer: a thumb that just scanned
+  is already in that box with the keyboard open, so the cursor coming back costs it nothing,
+  and a reader firing its next burst at a box nobody focused is this kind of screen's one
+  unseeable failure.
 - **A dialog or a drawer keeps the form's own rule**: the first field of what just opened, and
   the vendor's focus trap hands the cursor back to whatever opened it the moment it closes — no
   line written for either end. **A dialog with nothing to type into — a yes/no question — opens
@@ -127,7 +143,21 @@ only hovers (a mouse, a trackpad), never pays. That cost belongs to the BOX, so 
 name takes the cursor, because a heading raises no keyboard and a person reading a phone with a
 screen reader is owed the name of the page they just landed on.
 
+**A rule about an arrival can only be kept by the mechanism the arrival runs**, which is why
+`AutoFocus` writes the marker and nothing else: a field focusing itself at its first render
+raises the keyboard behind the pass that skipped, and no media query reaches it there — the
+vendor fires that focus from C#, with no selector and no pointer in the question.
+`FocusOnRender` is the one focus that does fire on a coarse pointer, and it is the opposite
+gesture — the cursor returning to the box a hand has been working in, where the keyboard already
+stands open.
+
+The cost this chooses, deliberately: **where a marked box is the only thing that would ever
+focus a screen, a coarse pointer takes one tap to begin** — a stock count's scan box, which
+nothing re-arms until the first entry. One tap to start counting is the trade the rule above was
+written to make; the screen the mostrador works at pays nothing, because a sale's box is focused
+by an explicit call (`ProductScanField.Focus`), not by an arrival.
+
 This is the arrival marker's rule alone. A create form's first-field focus (forms.md) is a
-different mechanism — `NsForm.focusFirst`, not `arrivalFocus` — and is not part of this story:
-changing it is a separate call, with its own cost to weigh (a sheet being filled in is the one
-thing on screen, not a list the keyboard would cover).
+different mechanism — `NsForm.focusFirst`, not `arrivalFocus` — and is not part of it: changing
+it is a separate call, with its own cost to weigh (a sheet being filled in is the one thing on
+screen, not a list the keyboard would cover).

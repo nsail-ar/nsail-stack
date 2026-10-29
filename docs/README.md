@@ -38,3 +38,4 @@ explanation in front of it.
 - [The Sample](../src/Stack/Sample/docs/sample.md) — one API, a Blazor client and a React client
 - [The doctrine](../plugins/nsail-stack/doctrine) — every rule, area by area ([routing table](../plugins/nsail-stack/skills/doctrine/SKILL.md))
 - [Packages on nuget.org](https://www.nuget.org/profiles/NSail)
+- [The Stack by area](../README.md#the-stack) — each area's packages, registration calls and options

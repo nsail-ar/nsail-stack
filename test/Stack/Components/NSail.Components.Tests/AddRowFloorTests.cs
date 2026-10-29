@@ -32,10 +32,12 @@ public sealed class AddRowFloorTests
     {
         var css = HouseStylesheet.Read();
 
+        // The row's two open items — the article's Grow basis and the bounded picker's — read one
+        // token between them, so the sum below is what the line is asked for whichever of the two
+        // the surplus above the floor ends up in.
         var claim = Basis(css, ".ns-select-gutter")
             + Token(css, "--ns-money-slot")
-            + Declared(css, "--ns-field-grow-basis")
-            + Declared(css, "--ns-field-width")
+            + (2 * Token(css, "--ns-add-row-field"))
             + Token(css, "--ns-add-row-act")
             + Gaps;
 
@@ -69,27 +71,68 @@ public sealed class AddRowFloorTests
     }
 
     // Keyed off the act itself rather than a class of the row's own: the act is what makes the
-    // row wide enough to wrap, so no row can be given one without the floor that affords it.
+    // row wide enough to wrap, so no row can be given one without the floor that affords it. And
+    // the floor is one figure declared on that grid — both of the row's open items read it from
+    // there, the open-ended one through the family's own basis property and the bounded one by
+    // inheritance — so nothing outside the row can be left spending a stale copy of it. A :root
+    // token is what a figure the mirror's OTHER end has to read becomes, which is the act's cell
+    // and only it.
     [Fact]
-    public void TheFloorIsKeyedOffTheActTheRowCarries()
+    public void TheFloorIsKeyedOffTheActTheRowCarriesAndDeclaredOnThatGrid()
     {
         var css = HouseStylesheet.Read();
 
         Assert.Contains(
             """
             .ns-grid:has(> * > .ns-row-submit) {
-                --ns-field-width: 7rem;
-                --ns-field-grow-basis: 7rem;
+                --ns-add-row-field: 7rem;
+                --ns-field-grow-basis: var(--ns-add-row-field);
+            }
+            """,
+            css,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            """
+            :root {
+                --ns-add-row-act: 9rem;
             }
             """,
             css,
             StringComparison.Ordinal);
     }
 
+    // The floor is what the WRAP is decided on, and a flex line is seated on the BASIS: so the
+    // row spends it there and a bounded item grows back to the width it declares for itself out
+    // of whatever the line has over the floor. Declared as a width instead, it would narrow the
+    // item at every window above the band too — where the row already fitted and the narrowing
+    // buys nothing but an unreadable field (Vigía, nsail#2127: a unit picker at 7rem showing the
+    // tail of "Esf -1.00 / Cil -0.75" at 1600px of window).
+    [Fact]
+    public void TheFloorIsTheBasisTheLineIsSeatedOnAndNeverTheItemsWidth()
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Contains(
+            """
+            .ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
+                flex: 1 1 var(--ns-add-row-field);
+                max-width: var(--ns-field-width, 14rem);
+            }
+            """,
+            css,
+            StringComparison.Ordinal);
+
+        Assert.DoesNotContain("--ns-field-width", Row(css), StringComparison.Ordinal);
+    }
+
     // And released below the window the mirror itself is dropped at — the same boundary
     // .ns-select-gutter is hidden at and the reserve goes back to auto. There the row is a stack
     // of lines with no column to line up with, so a width answering a desktop band's arithmetic
-    // would only be narrowing a phone's fields for nothing.
+    // would only be narrowing a phone's fields for nothing. Each of the three releases exactly
+    // what its own selector declares above: the grid the basis, the act's cell the width, the
+    // bounded item the family's own flex. A release of a property its selector never declares
+    // reads as a rule that is still there.
     [Fact]
     public void TheFloorIsReleasedBelowTheWindowTheMirrorIsDroppedAt()
     {
@@ -98,10 +141,17 @@ public sealed class AddRowFloorTests
         Assert.Contains(
             """
             @media (max-width: 960px) {
-                .ns-grid:has(> * > .ns-row-submit),
+                .ns-grid:has(> * > .ns-row-submit) {
+                    --ns-field-grow-basis: initial;
+                }
+
                 .ns-grid > *:has(> .ns-row-submit) {
                     --ns-field-width: initial;
-                    --ns-field-grow-basis: initial;
+                }
+
+                .ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
+                    flex: 0 1 auto;
+                    max-width: 100%;
                 }
             }
             """,
@@ -115,15 +165,18 @@ public sealed class AddRowFloorTests
         return Read(css, $@"{Regex.Escape(token)}:\s*([\d.]+)rem;", token);
     }
 
-    /// <summary>The rem the add row's own grid hands one of the field family's properties — the
-    /// two widths it spends on itself, which are declared where they are spent rather than as
-    /// tokens, since nothing outside the row reads them.</summary>
-    static double Declared(string css, string property)
+    /// <summary>What the add row's own grid hands the field family — the block keyed off the act
+    /// the row carries, and nothing the cells inside it declare for themselves.</summary>
+    static string Row(string css)
     {
-        return Read(
+        var found = Regex.Match(
             css,
-            $@"\.ns-grid:has\(> \* > \.ns-row-submit\) \{{[^}}]*?{Regex.Escape(property)}:\s*([\d.]+)rem;",
-            property);
+            @"\.ns-grid:has\(> \* > \.ns-row-submit\) \{(?<body>[^}]*)\}",
+            RegexOptions.Singleline);
+
+        Assert.True(found.Success, "the stylesheet keys no floor off the act the add row carries.");
+
+        return found.Groups["body"].Value;
     }
 
     /// <summary>The rem a flex shorthand declares as its basis — a bare item's own width, which

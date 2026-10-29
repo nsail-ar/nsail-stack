@@ -278,4 +278,24 @@ public sealed class NsAutocompleteSearchTests : BunitContext, IAsyncLifetime
 
         Shows(cut, "Caja en pesos");
     }
+
+    /// <summary>nsail#2695: the same term, into a box NOBODY IS IN. A keystroke redraws this
+    /// field — the vendor's own text event is dispatched into it — and the vendor refreshes the
+    /// box from the value it holds on every parent redraw it is not focused for, so the
+    /// half-typed term left with the redraw and the debounced search went out empty, which is
+    /// the one search a Lazy lookup answers with nothing: no send, no list. The house had paid
+    /// for it twice by focusing the box first (nsail#2442, an E2E fill; nsail#2686, 33 bUnit
+    /// inputs). Both halves are asserted, because rows alone could be an older term's: the term
+    /// reached the sender, and the rows on screen are that term's own.</summary>
+    [Fact]
+    public async Task ATermGivenToALazyLookupNobodyIsInStillReachesTheSearch()
+    {
+        var cut = Mount(lazy: true);
+
+        await Type(cut, "Caja");
+
+        cut.WaitForAssertion(() => Assert.Equal("Caja", cut.Instance.Asked[^1]), TimeSpan.FromSeconds(5));
+
+        Shows(cut, "Caja en pesos");
+    }
 }

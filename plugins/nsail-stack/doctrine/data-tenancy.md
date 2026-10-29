@@ -91,7 +91,8 @@ refused rather than stored.
 - **Which tables: the tenant-scoped set, asked by the marker and never by the column.**
   `TenantPolicies.Tables` reads a built model for the entities the tenant pass put the column
   on, minus `IInstallScoped` — so `TenantStates`, which names the tenant it is ABOUT in a column
-  of its own, owes no policy, exactly as `TenantStamp` skips it by the marker.
+  of its own, owes no policy, exactly as `TenantStamp` skips it by the marker; and so does
+  `DeclaredFeatures`, which names no tenant at all.
 - **The DDL lives in each product's own migration chain** (`migrationBuilder.AddTenantPolicies`),
   never in a startup pass: a chain is what CI applies to an empty database, so schema written
   outside it is schema no test ever sees. The tables are NAMED there, because a migration's own
@@ -148,7 +149,8 @@ so one planted row answers every tenant, and a scope that resolved none reads it
 entities wear it: org-map.md (the codebase's own map; in nsail, `plugins/nsail-kits/doctrine/org-map.md`), Shared. The
 Stack's own `TenantState` wears it too, and is the one marked entity that names a tenant in a
 column of its own — it is the install's record ABOUT a customer rather than reference data (The
-install's own record, below).
+install's own record, below). So does `DeclaredFeature`, which names no tenant at all: it is what
+the install declares about ITSELF (What this build declares, below).
 
 **An entity a tenant can WRITE is the tenant's**: the editor's existence is the classification.
 Under a per-tenant database the customer already edits such rows freely, so marking one
@@ -308,12 +310,13 @@ slug. So **provisioning a tenant is writing the Caddy block; nothing else exists
 
 - **The seed is a chain, and the tenant has a history of it.** `ITenantSeed` is an ordered list
   of named `TenantSeedStep`s and each touch runs the ones this tenant has not, so a step added
-  after a tenant existed still reaches it. `AppliedSeedStep` is that history and one of the Stack's
-  two tables (`TenantState` is the other): one row per step per tenant, written in the SAME transaction as the step's rows, so a
-  step that throws is not recorded and is tried again. It has rows only where rows are a
-  tenant's; under `None` and `MultiDb` the install's EF chain is the truth and the table stays
-  empty. **The memo is per process on purpose**: a deploy restarts the process, so a step that
-  deploy added runs on the first touch after it.
+  after a tenant existed still reaches it. `AppliedSeedStep` is that history and one of the
+  Stack's three tables (`TenantState` and `DeclaredFeature` are the others): one row per step per
+  tenant, written in the SAME transaction as the step's rows, so a step that throws is not
+  recorded and is tried again. It has rows only where rows are a tenant's; under `None` and
+  `MultiDb` the install's EF chain is the truth and the table stays empty. **The memo is per
+  process on purpose**: a deploy restarts the process, so a step that deploy added runs on the
+  first touch after it.
 - **A step's name is frozen the day it ships**, like a migration id: the history stores it, so
   renaming one makes every tenant run it again. Append, never edit.
 - **What a process holds of a tenant's rows in memory is that tenant's, and the touch empties
@@ -416,12 +419,13 @@ alphanumerics and the hyphen, case folded, **anything else refused rather than r
 stripping a character folds two words onto one tenant, which is the leak, not the fix. A
 composed name Postgres would truncate at 63 bytes is refused for the same reason.
 
-## The install's own record of a tenant: its state and its plan
+## The install's own record of a tenant: its state, its plan and what the plan includes
 
 Everything above is a tenant's own rows. **`TenantState` is the install's record ABOUT a
-tenant** — whether it is served at all, why, until when, and which plan it is on — and that is the whole of why
-it is the Stack's and not a product's: the state of a customer is identical in every product,
-and answered twice it would be answered differently. It is the second and last table the Stack
+tenant** — whether it is served at all, why, until when, which plan it is on and what that plan
+includes — and that is the whole of why it is the Stack's and not a product's: the state of a
+customer is identical in every product, and answered twice it would be answered differently.
+It is the second of the three tables the Stack
 owns (`DbContextExtensions.ApplySetups`, beside the seed history, for the same reason: a
 product that forgot to compose it would serve a suspended customer).
 
@@ -434,6 +438,8 @@ the contract and the Stack only reads:
 | `TenantId` | `uuid`, primary key | The tenant's `RowKey`: `TenantKey.For(slug)` where the wall is the tenant column, `Guid.Empty` where it is the connection or there are no tenants — exactly what the shadow column carries on every other table |
 | `Status` | `varchar(32)`, not null | `Active` or `Suspended`. Compared, never parsed |
 | `Plan` | `varchar(32)`, null | The plan's word, carried and not interpreted — **the Stack names no plan and knows none** |
+| `Entitlements` | `jsonb`, null | What that plan includes: one key against a flag or a number — **the Stack names no key and knows none** either. `jsonb` and not text because this writer amends ONE key of the bag in plain SQL |
+| `EntitlementsUpdatedAt` | `timestamptz`, null | When the bag was last written. "Has my write landed" is a real question asked of this row, and the memo below is why the answer is not immediate |
 | `Reason` | `varchar(32)`, null | Why it is paused: `Maintenance` (a deploy, a big change, a maintenance stop), `Move` (between rings or servers), `Payment`. Compared, never parsed — it changes nothing about whether the tenant is served, only the words its page gets |
 | `SuspendedFrom` | `timestamptz`, null | When the pause opens. No `SuspendedFrom`, no window |
 | `SuspendedUntil` | `timestamptz`, null | When it closes, or null for a window with no end. It is also what the page says the service comes back at |
@@ -472,6 +478,45 @@ the contract and the Stack only reads:
   expires, and so does a restoration. Suspending for abuse is therefore not instant; an install
   that needs it closer shortens the setting, and whoever writes the row waits the window out
   rather than watching for an effect that has not arrived.
+- **What the plan includes is read permissively, and refused in the gate.** `Entitlements.Read`
+  (`NSail.Security`) turns the bag into flags and ceilings, and **every answer it does not find
+  positively written is the permissive one**: no bag, an empty bag, a key nobody wrote, a value
+  of the other kind and text no parser can read all come back "enabled" and "no ceiling". The
+  fleet's bags are empty the day the column ships, so a restrictive default would cut paying
+  customers off on deploy day — the same rule an unknown `Status` is read by, for the same
+  reason. What a key's own default is belongs to whoever declared the key; the Stack reads the
+  bag and nothing else.
+  - **Who declares a key: the module that enforces it, never a central list.** A kit contributes
+    its keys through `IFeatureContributor` — the shape of `ISettingsContributor` and the same
+    reason — registered with `AddFeatures<T>`, and the Stack gathers them into `Features`. Each
+    entry states the key, its `FeatureKind` (`Flag` or `Limit`) and **its default**, and
+    `Features.IsEnabled`/`Features.Limit` are what turn a bag's silence into that default. A key
+    nobody declared is open and uncapped: a mark naming one is a defect for the suite that reads
+    the composed products to catch, not a door to close on a running install. Each install
+    publishes the set its own build declares, so whoever writes the bag can type against it (What
+    this build declares, below).
+  - A message declares the feature it belongs to with `[RequiresFeature("key")]`
+    (`NSail.Security.Annotations`), and `SecurityManager` refuses it **ahead of every policy**
+    when the bag says the feature is off: `AuthorizationResult.FeatureOff` names it and the gate
+    answers `SecurityProblem.FeatureUnavailable` — 403, but **not** the permission refusal.
+    No grant widens a feature nobody bought, so a caller told "you do not have permission" would
+    be sent to an administrator who cannot help them. `PreAuthorize` reads the same bag, which is
+    how the page, the menu entry and the row action stop being offered at all
+    ([permissions.md](permissions.md)).
+  - The bag reaches the gate through `FeatureProvider`, permissive in the base
+    (`Entitlements.Unrestricted`) exactly as `RelationProvider` is, and answered off the row by
+    `TenantStateFeatureProvider`, which `AddBaseWebApi` registers. A mode that resolves no tenant
+    registers no `TenantStates`, and a client has none either: both keep the permissive base,
+    which is also why an install nobody wrote a bag for behaves as it did before the bag existed.
+  - **A ceiling never blocks the work.** A limit that is reached is stated — how much of it is
+    used, beside the figure — and the next act still succeeds; nothing is suspended by a number.
+    A flag is the hard half and a ceiling is the soft one, and nothing reading this table may
+    swap them.
+  - **A flag off closes a road; it never hides what already went down it.** What the tenant's own
+    rows record of a feature stays readable where it was read before. And a flag answers a
+    PRESSED send: what the system sends on its own passes no gate (`AmbientPublish`), so whatever
+    carries those sends is what has to find the road shut.
+
 - **A suspended tenant's requests answer the suspended page** (`TenantStateMiddleware`,
   immediately behind `TenancyMiddleware`): 503 and the page to a browser, 503 and the `Suspended`
   problem to a program — the same `Accept` negotiation the error handler makes, asked through the
@@ -499,6 +544,48 @@ the contract and the Stack only reads:
   `Tenancy:SupportContact`. The contact is the **install's**, because it is the operator and not
   the tenant that lifts a pause; empty means no line, and a tenant that wants its own words puts
   them in `Message`.
+
+## What this build declares, published for the writer of that row to read
+
+The table above is written from outside and read here. **`DeclaredFeature` is the one that runs
+the other way**: the entitlement keys the build composed into THIS install declares, written by
+the install at startup and read by whoever operates the fleet. It is the third and last table the
+Stack owns, and the only one the app writes outwards.
+
+The reason is the gap between the two programs. A key exists because a module enforces it
+(`IFeatureContributor`, above), so what can be sold on an install is a fact of the build running
+*there* — and the program that writes the bags is one program for a whole fleet, often a version
+ahead of the install it is writing to. Without this table that program would have to offer its
+operator the keys *its own* build knows, which is a different list the moment a cell runs behind.
+
+| Column | Type | Written as |
+|---|---|---|
+| `Key` | `varchar(128)`, primary key | The key as the module that enforces it spells it, under the model's case-insensitive collation — which is `Features`' own rule for two spellings of one key |
+| `Kind` | `varchar(16)`, not null | The `FeatureKind` word, `Flag` or `Limit`. Text and not an enum because the reader is outside this codebase: a word it does not know must leave it reading the rest of the row |
+| `Enabled` | `boolean`, not null | What a flag answers where a tenant's bag is silent |
+| `Limit` | `numeric`, null | What a ceiling answers there, or null for no ceiling at all |
+
+- **Rewritten whole at startup, which is the only moment it can change.** The catalog is gathered
+  from the modules composed into the process, so what a build declares is a compile-time fact and
+  a deploy is the one event that moves it (`FeaturePublisher`, `NSail.BaseServices.WebApi` — the
+  one composition that reaches both the catalog and the context, since `NSail.Data` references no
+  `NSail.Security`). The table then says what THIS build declares: a key that left the build
+  leaves the table with it, and the same build twice says the same thing.
+- **Amended, never emptied and refilled.** A program outside this process reads it, and a
+  delete-then-insert would show it empty to whoever read between the two.
+- **An empty table is an honest answer and the reader owes it no entry.** A build that composes no
+  module owning a key publishes nothing, and so does an install older than the table itself —
+  nothing can tell those apart, and what a reader shows for either is *not reported*, never an
+  empty list of keys and never a zero.
+- **Two compositions have nowhere to publish to**, and neither is a failure: a host with no store
+  composes no context at all, and a mode that connects PER TENANT has no database of its own —
+  there the table rides each tenant's database, where the process holds no connection until a
+  request names one.
+- **It is `IInstallScoped` for the plainest of the reasons**: a key is the install's and no tenant
+  holds a copy. No tenant column is stamped on it, no filter hides it, and it owes no row-level
+  policy — a policy there would hide from the install what the install itself published.
+- **Nothing in the app reads it.** The app's own answer about a key is `Features`, which this
+  table is written from; a second reader here would be one question answered twice.
 
 ## The credential is stamped, and checked on every request
 
@@ -568,9 +655,18 @@ reads nothing and cannot write at all.
 
 - **The runner acts on it and the job never does.** For a per-tenant job `BackgroundJobRunner`
   opens **one scope per tenant** and enters it before resolving the job, so `Run` is written as
-  if there were one tenant in the world. **One tenant per scope** is mandatory: `Enter` pins onto
+  if there were one tenant in the world. The durable queue's drain is one of those jobs and not
+  a loop of its own, so a `[Queue]` command is delivered in the tenant its send was made in
+  (messaging.md, The durable queue). **One tenant per scope** is mandatory: `Enter` pins onto
   the scope and refuses a second tenant, because a context built on the first keeps its
   connection.
+- **A job is constructible with no tenant.** Its `Interval` and `Tenancy` are read once, before
+  the first tick, from a scope that has entered none — so the constructor must not ask for
+  anything that needs one, a `DbContext` above all: its factory asks the scope for a connection,
+  and under `MultiDb` there is nothing to answer with. What a pass needs is resolved inside
+  `Run`, from the scope's own provider, which is the one the runner did enter a tenant on.
+  Getting this wrong is silent: the runner logs the loop as unstartable, returns, and that job
+  never runs again in the life of the process.
 - **A tenant that fails costs its own pass.** The catch is per pass, not per tick; the log line
   names the tenant and the sweep continues with the next one.
 - **A suspended tenant is not swept at all.** The runner asks the install's record once the

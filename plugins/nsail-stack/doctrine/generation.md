@@ -65,6 +65,8 @@ Defined in `NSail.SourceGeneration.Annotations`:
 | `[Generated(Http.InProcess)]` | `Http.InProcess` | `ISender<TMessage[, TResult]> → InProcessSender<...>` for `[Http]` messages |
 | `[Generated(Push.Publishers)]` | `Push.Publishers` | `IPublisher<TMessage> → PushPublisher<TMessage>` for `[Pushed]` messages |
 | `[Generated(Push.Clients)]` | `Push.Clients` | a `PushedMessage<TMessage>` entry per `[Pushed]` message, the closed list a client's feed publishes from |
+| `[Generated(Queue.Producers)]` | `Queue.Producers` | `ISender<TMessage> → QueueSender<TMessage>` for `[Queue]` messages (the durable send side) |
+| `[Generated(Queue.Consumers)]` | `Queue.Consumers` | a `QueueConsumer<TMessage>` entry per `[Queue]` message, the closed list the drain delivers from |
 | `[Generated(Mappers.Entities)]` | `Mappers.Entities` | an `IEntityMapper<TSource, TEntity>` per `[MapFrom]` and an `IProjection<TEntity, TRow>` per `[MapTo]` in scope |
 
 Each transport groups its artifacts in one enum. For HTTP: `Clients` is the remote send side, `Endpoints` the receive side, and `InProcess` the local counterpart of `Clients` — same `[Http]` contract, dispatched directly to the handler in the host that exposes the endpoints.
@@ -99,8 +101,21 @@ compilation — so it is a tool an Sdk's build runs after its compile: the same 
 with `HttpModelFactory`, beside the `[Generated(Http.Clients)]` holder whose messages it
 carries ([react.md](react.md)).
 
-**Planned but not implemented:** `MassTransit.Consumers`, `MassTransit.Producers`. Do not use
-these until generators exist.
+For the durable queue, the same pair over `[Queue]`, from one walk so what one host stored the
+other can name: `Producers` is the send side and `Consumers` the receive side. The producer
+writes a row through the operation's own `DbContext`, so a queued send commits with the
+operation that made it; the consumer entry is what turns the stored type name back into a
+message, which is why the list is closed. `Queue.Producers` sits beside `Http.Endpoints` in the
+WebApi `Endpoints.cs`, `Queue.Consumers` beside it in the host that drains, both with
+`[Source(Assembly = "NSail.{Kit}.Sdk")]` where the messages are declared. Both holders compose
+the queue's own services first, the shape `Add{Kit}PushPublishers` already uses, so a
+composition that mounts the kit alone resolves what it registers — which is why **the project
+declaring either holder takes a `PackageReference` to `NSail.Messaging.Queue`**: the emitted
+line names `AddQueue` / `AddQueueDelivery`, so without it the first adoption fails to compile
+before it reaches this page. Two refusals are build errors: **NSG014** for `[Queue]` on a
+message that returns a result, **NSG015** for `[Queue]` beside `[Http]`; both are reported from
+the `Producers` end alone, so an assembly holding both holders is told once.
+Runtime semantics: [messaging.md](messaging.md) (The durable queue).
 
 ---
 
@@ -279,6 +294,8 @@ same thing.
 | `NSG011` | Warning | A `[MapFrom]` source member is written to no member of the entity — the caller sends it and every save drops it (data.md, Mapping). |
 | `NSG012` | Warning | A settable `[MapTo]` target member is read from no member of the entity — every row reaches the caller with it empty. |
 | `NSG013` | Error | An `Ignore` entry on a `[MapFrom]` or `[MapTo]` names a member the type does not declare, so it silences nothing. |
+| `NSG014` | Error | A `[Queue]` message implements `IMessage<T>` — a durable send answers "accepted" and never the outcome, so there is no result to hand back. |
+| `NSG015` | Error | A `[Queue]` message also carries `[Http]` — each registers an `ISender`, so every send would meet `MultipleSenders` at runtime. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only
@@ -348,5 +365,4 @@ Use `NSail.SourceGeneration.Testing.CompilationUnitBuilder` to build Roslyn comp
   `Add{Kit}HttpClients`.
 - Server hosts that render components (prerender) need `Http.InProcess` wired via
   `Add{Kit}WebApi` — without it `Mediator.Send` fails with `SenderNotFound`.
-- Never use the unimplemented `Generated` values (MassTransit).
 - Kits and apps compose through setup chains.

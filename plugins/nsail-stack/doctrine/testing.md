@@ -188,6 +188,10 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
 - `HandlerHost.Start(prefix, contextFactory, compose)` — ephemeral database per
   collection on the real local Postgres; the design-time factory migrates it with the
   composing app's chain (a hand-typed setup list rots the day a kit joins one app only).
+- `HandlerHost.Redeploy(host, compose)` — the same database again under a second composition
+  that has never seen it, which is the only shape a test can give "the process died and
+  another one picked the work up". It migrates nothing and owns nothing: dispose it before the
+  host it was built beside.
 - Every unique value embeds a fresh Guid: the collection shares one database, so a
   literal reused across tests collides with a unique index.
 - The composition registers a **flat wide policy** ("any authenticated session, so the

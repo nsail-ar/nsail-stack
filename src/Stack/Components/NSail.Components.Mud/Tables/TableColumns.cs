@@ -3,10 +3,10 @@
 
 namespace NSail.Components;
 
-/// <summary>What one table's columns are: the per-column breakpoints, and the columns themselves
-/// in the order the header declared them. NsTh declares, NsTd reads, and the two find each other
-/// through the localization key both already derive from their For expression — so a column is
-/// declared once, in the header, and its cells follow.
+/// <summary>What one table's columns are: the per-column breakpoints and compact placements, and
+/// the columns themselves in the order the header declared them. NsTh declares, NsTd reads, and
+/// the two find each other through the localization key both already derive from their For
+/// expression — so a column is declared once, in the header, and its cells follow.
 /// <para>Read during render, so it assumes the header renders before the body (it does: thead
 /// precedes tbody in the tree) and that a column's breakpoint is markup, not state.</para>
 /// <para>The declared half is what an export is built from, and it is rebuilt on every header
@@ -19,13 +19,46 @@ namespace NSail.Components;
 public sealed class TableColumns
 {
     readonly Dictionary<string, NsSize> _breakpoints = [];
+    readonly Dictionary<string, NsCompact> _compact = [];
     readonly Dictionary<string, bool> _numeric = [];
     readonly List<TableColumn> _declared = [];
 
-    public void Declare(string key, NsSize breakpoint, bool numeric)
+    public void Declare(string key, NsSize breakpoint, NsCompact compact, bool numeric)
     {
         _breakpoints[key] = breakpoint;
+        _compact[key] = compact;
         _numeric[key] = numeric;
+
+        // A column its Breakpoint hides is off the compact line as it is off the card — no
+        // container under the tablet's width reaches any rung — so only an unhidden column, or
+        // one drawn there alone, can open the line.
+        var drawn = compact == NsCompact.Only || (compact == NsCompact.Shown && breakpoint == NsSize.None);
+
+        if (Lead is null && drawn)
+        {
+            Lead = key;
+        }
+    }
+
+    /// <summary>Whether the table draws its compact phone form, said by the table itself so the
+    /// cells under it can say which part of the line they are.</summary>
+    public bool Compact { get; set; }
+
+    /// <summary>The column a compact row opens with: the first one the header declared that the
+    /// row draws — neither Hidden nor hidden by its Breakpoint. Every other surviving cell follows
+    /// it on the row's second line.</summary>
+    public string? Lead { get; private set; }
+
+    /// <summary>Where a column is drawn on the compact row; Shown for a column that declared
+    /// nothing.</summary>
+    public NsCompact CompactFor(string? key)
+    {
+        if (key is null || !_compact.TryGetValue(key, out var compact))
+        {
+            return NsCompact.Shown;
+        }
+
+        return compact;
     }
 
     /// <summary>The width a column appears from; None (never hidden) for a column that
@@ -52,12 +85,15 @@ public sealed class TableColumns
 
     /// <summary>Called by the table as it renders its header row, before the headers in it set
     /// their own parameters: it is the pass boundary, and the only thing that can tell this
-    /// render's column set from the last one's. Nothing reads <see cref="Declared"/> during a
-    /// render — only a gesture does — so the list standing momentarily empty is not observable.
-    /// </summary>
+    /// render's column set from the last one's. What reads <see cref="Declared"/> reads a pass
+    /// that has LANDED — a gesture, or the export act a surface announces, which waits for the
+    /// pass where it finds nothing declared yet (NsTable, Declaring) — so the list standing
+    /// momentarily empty between this call and the declarations that follow it is not
+    /// observable.</summary>
     public void BeginPass()
     {
         _declared.Clear();
+        Lead = null;
     }
 
     public void Declare(TableColumn column)

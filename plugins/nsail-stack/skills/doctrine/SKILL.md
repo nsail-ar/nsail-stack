@@ -23,6 +23,7 @@ read your row. Every page is a file of this plugin, under `${CLAUDE_PLUGIN_ROOT}
 | `Program.cs`, `Setup.cs`, host bootstrap | `${CLAUDE_PLUGIN_ROOT}/doctrine/baseservices.md` |
 | `Problem`, paging, shared primitives | `${CLAUDE_PLUGIN_ROOT}/doctrine/types.md` |
 | A list that exports, the table model, a writer, a column's format | `${CLAUDE_PLUGIN_ROOT}/doctrine/exporting.md` |
+| An object to put, get, list or delete, a storage provider, the storage settings screen | `${CLAUDE_PLUGIN_ROOT}/doctrine/storage.md` |
 | A test, a harness, a `*.Tests` project | `${CLAUDE_PLUGIN_ROOT}/doctrine/testing.md` (the `test-harness` skill walks it) |
 | A React client, an `@nsail/*` package, `sdk.ts` | `${CLAUDE_PLUGIN_ROOT}/doctrine/react.md` |
 | A glyph a screen needs that no catalog carries | the `new-icon` skill |

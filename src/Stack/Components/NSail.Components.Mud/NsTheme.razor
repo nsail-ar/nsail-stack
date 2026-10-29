@@ -2,13 +2,14 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
+@using NSail.Tones
 
 @* The one place a Brand becomes the --mud-palette-* variables every surface reads its colour
    from: the vendor stylesheet ships no :root defaults, so those variables are UNSET until this
    mounts and anything drawn without it paints from nothing. Two callers -- NsSetup, above the
    app, and a document rendered with no app around it (NsProblemDocument, the page a request
    that died before render answers with). *@
-<MudThemeProvider Theme="@_theme" IsDarkMode="@_dark" />
+<MudThemeProvider @ref="_provider" Theme="@_theme" IsDarkMode="@_dark" />
 <style>@_variables</style>
 
 @code {
@@ -20,10 +21,22 @@
     // purple, and it would hold for the whole round-trip.
     static readonly Brand Fallback = Neutral();
 
+    MudThemeProvider? _provider;
     Brand? _painted;
     MudTheme _theme = BrandMudTheme.From(Fallback);
     bool _dark = Fallback.DefaultDark;
     string _variables = Variables(Fallback, Fallback.DefaultDark);
+
+    // What the OS last reported, read once on the client (GetSystemDarkModeAsync) and kept
+    // current by the vendor's own change watcher (WatchSystemDarkModeAsync, Observe
+    // SystemDarkModeChange defaulting to true). Null until a client answers — a prerender, or a
+    // request with no circuit at all, never asks — which is the one case brand.DefaultDark is
+    // still for.
+    bool? _systemDark;
+
+    // The light-only tint's weight toward Info (--ns-alert-info-bg below); internal so the
+    // contrast sweep measures this value rather than a second copy of it.
+    internal const double AlertInfoTintWeight = 0.12;
 
     /// <summary>The brand painted. Null is "nothing resolved one", which paints the neutral
     /// grey rather than a guess — never a default <see cref="Brand"/>, which the eye reads as
@@ -31,7 +44,8 @@
     [Parameter]
     public Brand? Brand { get; set; }
 
-    /// <summary>The reader's own dark-mode preference; null takes the brand's own default.</summary>
+    /// <summary>The reader's own dark-mode preference; null follows the OS scheme (live), falling
+    /// back to the brand's own default until a client has one to report.</summary>
     [Parameter]
     public bool? Dark { get; set; }
 
@@ -47,21 +61,89 @@
             _theme = BrandMudTheme.From(brand);
         }
 
-        _dark = Dark ?? brand.DefaultDark;
+        Recompute(brand);
+    }
+
+    // The OS query is a client fact (window.matchMedia), so it is asked exactly once, after the
+    // first interactive render — never during a prerender, which has no window to ask and keeps
+    // the brand's own default. The live watcher rides the vendor's default
+    // ObserveSystemDarkModeChange rather than a second one of our own: WatchSystemDarkModeAsync
+    // only subscribes to what that watcher already reports. Unconditional on Dark's own value:
+    // OnSystemDarkModeChanged's own guard (Dark ?? _systemDark ?? brand.DefaultDark) is what
+    // keeps a saved Claro/Oscuro from ever repainting over this, so a later switch to
+    // Automático (Dark turning null on an already-mounted NsTheme) still has a current
+    // reading to fall back on instead of the brand's guess.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _provider is null)
+        {
+            return;
+        }
+
+        await _provider.WatchSystemDarkModeAsync(OnSystemDarkModeChanged);
+
+        await OnSystemDarkModeChanged(await _provider.GetSystemDarkModeAsync());
+    }
+
+    // One arrival, one loading: a reading that agrees with what is already painted costs no
+    // second render, which is what keeps an explicit Claro/Oscuro — or an OS that happens to
+    // agree with the brand's own guess — at the single render NsSetupBrandTests pins for the
+    // brand-handoff case. Only a reading that actually changes what the screen shows earns one.
+    async Task OnSystemDarkModeChanged(bool isDark)
+    {
+        _systemDark = isDark;
+
+        var brand = _painted ?? Fallback;
+        var next = Dark ?? _systemDark ?? brand.DefaultDark;
+
+        if (next == _dark)
+        {
+            return;
+        }
+
+        _dark = next;
+        _variables = Variables(brand, _dark);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    void Recompute(Brand brand)
+    {
+        _dark = Dark ?? _systemDark ?? brand.DefaultDark;
         _variables = Variables(brand, _dark);
     }
 
     // The vendor emits the palette of the scheme that is lit and nothing else, so the NSail
     // variables a stylesheet cannot compute ride beside it, for that same scheme: the accent as
     // INK is a decision about the accent's own luminance, and color-mix has no way to see how
-    // bright a colour is. Two of them, because the accent is read on two kinds of ground — the
-    // content's fixed surfaces, and the freely picked chrome the drawer wears — and one value
-    // over both would be a light chrome's ink chosen against a dark scheme's card. Everything
-    // else stays in ns-mud.css, where a wash mixed against transparent belongs.
+    // bright a colour is. Two of them for that reason, because the accent is read on two kinds
+    // of ground — the content's fixed surfaces, and the freely picked chrome the drawer wears —
+    // and one value over both would be a light chrome's ink chosen against a dark scheme's
+    // card. Everything else stays in ns-mud.css, where a wash mixed against transparent
+    // belongs, EXCEPT the three below, which are not about luminance but about which of the
+    // two schemes is lit — the one thing MudThemeProvider answers by swapping a palette's worth
+    // of --mud-palette-* variables in place, with no lasting selector of its own a stylesheet
+    // rule could key off (ns-mud.css's own note on .ns-drawer). A card's elevation ring
+    // (BrandMudTheme.BuildElevations) and the content aside's own box-shadow both read
+    // --ns-elevation-ring; a filled info alert, the one severity with no loud news to carry,
+    // reads the other two as a light-only tint — dark's pair restates the vendor's own flat
+    // fill so nothing there moves (nsail#2744).
     static string Variables(Brand brand, bool dark)
     {
         var scheme = dark ? brand.Dark : brand.Light;
-        var variables = $":root{{--ns-accent-ink:{scheme.AccentInk};--ns-accent-on-chrome:{scheme.AccentOnChrome};}}";
+
+        var elevationRing = dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.08)";
+        var alertInfoBg = dark ? scheme.Info : BrandTone.Mix(scheme.Surface, scheme.Info, AlertInfoTintWeight);
+        var alertInfoBorder = dark ? "transparent" : scheme.Info;
+        var alertInfoInk = dark ? scheme.TextOnInfo : scheme.TextPrimary;
+
+        var variables = $":root{{"
+            + $"--ns-accent-ink:{scheme.AccentInk};"
+            + $"--ns-accent-on-chrome:{scheme.AccentOnChrome};"
+            + $"--ns-elevation-ring:{elevationRing};"
+            + $"--ns-alert-info-bg:{alertInfoBg};"
+            + $"--ns-alert-info-border:{alertInfoBorder};"
+            + $"--ns-alert-info-ink:{alertInfoInk};"
+            + "}";
 
         return variables + FontFace(brand.Typeface);
     }

@@ -73,7 +73,7 @@
                the surface lives, and a cached answer would flap or stick past its own page. *@
             @if (Surface?.ClaimsExport(this) == true && Surface.Export is { } export)
             {
-                @export
+                @export.Trigger
             }
 
             @Actions

@@ -34,6 +34,9 @@ here, and a page about the products' own entities (the org map) lives with them.
   [structure.md](plugins/nsail-stack/doctrine/structure.md).
 - **Method bodies use braces, never `=>`.** Properties may keep `=>`.
 - **No vendor types in a public NSail API.** A page never names a `Mud*` type.
+- **An area's README is its configuration reference** (`src/Stack/<Area>/README.md`, linked from
+  the root README): a change to a package's registration calls or options changes it in the same
+  pull request.
 - **Nothing is written that can be derived** — routes, localization keys and URLs come from the
   route table and `MetadataProvider`.
 - **No product in the Stack.** Nothing here references a kit or an app, or names one in code.
@@ -53,4 +56,5 @@ The data tests need PostgreSQL on `localhost`, user `postgres`, password in `PGP
 
 Every merge to `main` publishes every Stack project to nuget.org and tags the commit `v<version>`
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)); a product takes a change by bumping its
-pin. Pull requests build, test and pack, and publish nothing.
+pin. Pull requests build, test and pack, and publish nothing; one that changes only `.md` files
+reports the check without building, and a push of only `.md` files to `main` does not release.

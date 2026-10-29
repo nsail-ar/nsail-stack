@@ -49,7 +49,6 @@
                  Required="IsRequired"
                  Disabled="IsDisabled"
                  ReadOnly="IsReadOnly"
-                 AutoFocus="AutoFocus"
                  Clearable="Clearable"
                  Variant="Variant.Outlined"
                  Margin="Margin.Dense"
@@ -61,6 +60,7 @@
                  OpenOnFocus="@(!_refocusIsStale)"
                  OpenChanged="OnOpenChanged"
                  OnKeyDown="OnBoxKeyDown"
+                 Text="@_typed"
                  TextChanged="OnBoxText"
                  ShowProgressIndicator="@IsBusy"
                  ProgressIndicatorColor="Color.Primary"
@@ -175,6 +175,15 @@
     // was asked for the text under it — the vendor debounces its own, and a reader is done
     // typing in a fraction of that. The same reason a debounced box holds its own typed value
     // rather than reading it back off the binding (NsTextFieldBase.HoldTyped).
+    //
+    // It is also handed BACK as the vendor's Text, which is what carries a half-typed term
+    // across a redraw (nsail#2695). The vendor refreshes its own box from the value it holds on
+    // every parameter set it is not focused for — and a keystroke redraws this field, because
+    // the text event above is dispatched into it — so a term given to a box nobody is in left
+    // with the first redraw and the debounced search went out empty, which is the one search a
+    // Lazy lookup answers with nothing. With a Text in the parameter view that refresh is the
+    // vendor's no longer, in either direction: what writes the box is this field, and Show is
+    // where every item it resolves writes the reading the refresh used to write.
     string? _typed;
 
     IEnumerable<TItem> _results = [];
@@ -514,6 +523,26 @@
         _typed = text;
     }
 
+    // An item the FIELD resolved, and the box's own reading of it: the vendor wrote that reading
+    // itself while Text was a parameter it did not get, and holds back now that it does (_typed).
+    // It is the same string either way — the vendor's refresh converts the value through the very
+    // ToStringFunc GetItemText is.
+    //
+    // Only where the item CHANGES, which is what keeps this off what is being typed — the write
+    // NsDateField refuses to make. Every redraw of a field holding no answer passes through here
+    // (OnParametersSet), the one a keystroke causes included, and a term in the box is not an
+    // item: unchanged, the box is left reading whatever was typed into it.
+    void Show(TItem? item)
+    {
+        if (EqualityComparer<TItem?>.Default.Equals(_selectedItem, item))
+        {
+            return;
+        }
+
+        _selectedItem = item;
+        _typed = item is null ? null : GetItemText(item);
+    }
+
     // THE READER'S OWN KEYSTROKE. A reader is a keyboard: it types the whole code and ends it
     // with Enter, in one burst — and a Lazy box's list is a round trip behind the vendor's own
     // debounce, so the key lands before any search was even asked. The vendor picks the option
@@ -659,7 +688,8 @@
 
         if (Value is null || EqualityComparer<TValue>.Default.Equals(Value, default!))
         {
-            _selectedItem = default;
+            Show(default);
+
             return;
         }
 
@@ -668,7 +698,7 @@
             return;
         }
 
-        _selectedItem = Resolve(Value);
+        Show(Resolve(Value));
 
         // Belt: a value that lands here from outside a pick — the create flow's own
         // saved-event assignment, any other external ValueChanged — never went through
@@ -717,7 +747,8 @@
             return;
         }
 
-        _selectedItem = args.Item;
+        Show(args.Item);
+
         _loadedItem = args.Item;
     }
 
@@ -759,7 +790,7 @@
         // which is the only discoverability a Lazy field has.
         _refocusIsStale = item is not null;
 
-        _selectedItem = item;
+        Show(item);
 
         StateHasChanged();
 
@@ -767,7 +798,7 @@
 
         if (item is null || !EqualityComparer<TValue>.Default.Equals(GetItemValue(item), Value!))
         {
-            _selectedItem = Resolve(Value);
+            Show(Resolve(Value));
         }
     }
 

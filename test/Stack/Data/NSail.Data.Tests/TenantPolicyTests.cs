@@ -28,6 +28,19 @@ public class TenantPolicyTests
         Assert.DoesNotContain("TenantStates", TenantPolicies.Tables(context.Model));
     }
 
+    // The third of the three tables the Stack owns, and the only one the install writes: the keys
+    // this build declares are the install's own and no tenant holds a copy, so it takes no tenant
+    // column at all — and a policy over it would hide from the install what the install itself
+    // published.
+    [Fact]
+    public void ThePublishedKeysOweNoneAndTakeNoTenantColumn()
+    {
+        using var context = Model();
+
+        Assert.Null(context.Model.FindEntityType(typeof(DeclaredFeature))!.FindProperty("TenantId"));
+        Assert.DoesNotContain("DeclaredFeatures", TenantPolicies.Tables(context.Model));
+    }
+
     // An owned type's columns are its owner's row, which already carries the tenant, so there is
     // no second table to wall — and that premise is the whole reason it owes no policy.
     [Fact]

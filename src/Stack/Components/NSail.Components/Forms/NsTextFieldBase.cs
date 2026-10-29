@@ -40,6 +40,22 @@ public abstract class NsTextFieldBase<TValue> : NsFieldBase<TValue>
     [Parameter]
     public EventCallback<TValue?> OnEnterCommit { get; set; }
 
+    /// <summary>Whether the box takes the cursor the moment it renders — the vendor input's own
+    /// focus, fired at the FIRST render of that box and never again. It is what a repeated act
+    /// runs on: a box thrown away and re-made per entry — a `@key` the entry's own count
+    /// changes, which is what a scan box and a thread's composer are built on — is a first
+    /// render each time, so the cursor comes back with no click and ten scans are ten entries
+    /// (ui/focus.md, *By kind of screen*). It reads no pointer, deliberately, and that is why it
+    /// is not the arrival's marker (NsFieldBase.AutoFocus): the cursor returning to the box a
+    /// hand is already working in costs a phone nothing, while an arrival landing in one raises
+    /// the keyboard over the list the person came to see.
+    ///
+    /// On the typed family alone: a value that arrives whole from a pick has no entry to re-arm,
+    /// and the vendors of the rest — an upload, a checkbox, a radio group — offer no such focus,
+    /// so a page writing it there would get nothing.</summary>
+    [Parameter]
+    public bool FocusOnRender { get; set; }
+
     /// <summary>Whether Enter ends the entry. True for every box with one line; false where
     /// Enter is itself text, which is the textarea's newline.</summary>
     protected virtual bool CommitsOnEnter => true;

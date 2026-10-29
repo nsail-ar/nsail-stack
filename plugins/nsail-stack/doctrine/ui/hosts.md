@@ -80,10 +80,34 @@ because a control out of the layout is how the keystroke reads "this collection 
 ### Columns and widths
 
 **Which columns survive to which width.** Xl shows every column; md keeps the 2–4 important
-ones; sm falls to the vendor's stacked form-mode and shows the phone's 2–3 — the important ones
-survive (a work order's Estado is *where the order is*, core, not hideable), the less-important
-hide. **The phone's 2–3 is a default, not a cap: 4–5 there is allowed with a justification** —
-the burden is naming why, not staying under three. The comfort curve itself is the core doc's.
+ones; sm falls to the vendor's stacked form-mode (or, opted in, the compact line below) and shows
+the phone's 2–3 — the important ones survive (a work order's Estado is *where the order is*, core,
+not hideable), the less-important hide. **The phone's 2–3 is a default, not a cap: 4–5 there is
+allowed with a justification** — the burden is naming why, not staying under three. The comfort
+curve itself is the core doc's.
+
+**A list read to reach a person takes the compact phone form (`NsTable Compact`).** Where the
+stacked card is a record read field by field, a contact list on a phone is scanned for a name and
+left by a call or a message: one line per row — the lead column, the action cell beside it, the
+other surviving cells under them, no labels — shows several times as many people per screen. It
+replaces the card only under the tablet's width; at the tablet and above the table reads as one
+that did not opt in. Opt in where that is what the phone is for (a patient list), never by default:
+a list whose rows are read whole (orders, documents, tickets) keeps the card.
+
+- **`NsCompact` places a cell on that line**, declared on `NsTh` like `Breakpoint` and followed by
+  its cells: `Hidden` leaves a column off the line — still declared, so still a column of the file
+  (a phone number the row's own call act carries) — and `Only` draws a cell there and nowhere
+  else, which is how a row gains one-tap acts without the column and tablet faces changing. A cell
+  with no column behind it says `Only` on its own `NsTd`. Such an act is an `NsLink` or
+  `NsPageLink`, and every one of them — a `tel:` the browser follows itself included — keeps its
+  tap from the row's own `OnRowClick`, so the row does not open its record under the call.
+- **The lead is the first column the header declares that the line draws**, and nothing else on
+  the line competes with it; a column hidden by its `Breakpoint` stays off the line as it does off
+  the card, and a reading the row needs below that width is an `Only` cell that says it.
+- **The line carries no `data-label`**, so a value that needs its word ("Debe $ 5.000") writes it
+  in its own `Only` cell — which names itself with `DataLabel`, as a computed column does (below):
+  a cell with no `For` and no `DataLabel` is the action column, and on the line it is drawn with
+  the acts beside the lead, not under it.
 
 **Every column a header declares is also a column of the FILE the list exports, and the same
 `For` expression is the whole declaration** — its key, its heading, what its values are and how to

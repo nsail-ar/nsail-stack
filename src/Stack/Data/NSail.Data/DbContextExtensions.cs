@@ -1,6 +1,7 @@
 ﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
@@ -10,15 +11,17 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using NSail.Messaging.Runtime.Pipelines;
 using NSail.Messaging.Runtime.UnitOfWork;
+using NSail.Privacy;
 
 namespace NSail.Data;
 
 public static class DbContextExtensions
 {
-    /// <summary>Applies every kit's model configuration, the Stack's own two tables — the seed
-    /// history and the tenant state — and then
-    /// the four rules the Stack sets over the whole model: the row version, the case-insensitive
-    /// collation, the tenant column with the filter that rides it, and the org filter over what
+    /// <summary>Applies every kit's model configuration, the Stack's own three tables — the seed
+    /// history, the tenant state and the keys this build declares — and then
+    /// the five rules the Stack sets over the whole model: the row version, the case-insensitive
+    /// collation, the personal-data comment each declaration carries to its column, the tenant
+    /// column with the filter that rides it, and the org filter over what
     /// the map classifies as having happened at a branch. The context is a parameter because
     /// both filters have to reach the scope of whichever context runs the query — see
     /// <see cref="ITenanted"/> and <see cref="IHasOrgScope"/>.</summary>
@@ -37,8 +40,10 @@ public static class DbContextExtensions
 
         ApplySeedHistory(modelBuilder);
         ApplyTenantState(modelBuilder);
+        ApplyDeclaredFeatures(modelBuilder);
         ApplyRowVersion(modelBuilder);
         ApplyCaseInsensitiveText(modelBuilder);
+        ApplyPersonalData(modelBuilder);
         TenantColumn.Apply(modelBuilder.Model, context);
         OrgFilter.Apply(modelBuilder.Model, context);
     }
@@ -56,7 +61,7 @@ public static class DbContextExtensions
         configurationBuilder.Conventions.Remove(typeof(ForeignKeyIndexConvention));
     }
 
-    // The tenant's own migration history, one of the two tables the Stack owns. It is configured
+    // The tenant's own migration history, one of the three tables the Stack owns. It is configured
     // here rather than contributed as an IDbContextSetup because a product that forgot to
     // compose it would have a seed chain nothing records — every step re-running on every touch —
     // and the whole point of the pass over the model is that no composition can forget a rule.
@@ -100,6 +105,13 @@ public static class DbContextExtensions
             entity.Property(row => row.Plan)
                 .HasMaxLength(32);
 
+            // jsonb, which is the one place in this table where the type is more than storage:
+            // the writer outside this codebase has to read and amend ONE key of the bag in plain
+            // SQL, and that is what Postgres' own key/value type is for. No length, because
+            // what bounds it is the set of keys somebody declared.
+            entity.Property(row => row.Entitlements)
+                .HasColumnType("jsonb");
+
             entity.Property(row => row.Reason)
                 .HasMaxLength(32);
 
@@ -107,6 +119,31 @@ public static class DbContextExtensions
             // what it feeds is one paragraph of a document with no app behind it.
             entity.Property(row => row.Message)
                 .HasMaxLength(500);
+        });
+    }
+
+    // What this build says it can be sold, beside the two above and for the third turn of the
+    // same reason: a product that forgot to compose it would leave whoever writes the bags typing
+    // keys from memory. It is the only one of the three the app WRITES and never reads — the
+    // catalog it is written from is the app's own answer — so the contract runs outwards here,
+    // and the install-scoped marker keeps the tenant column and its filter off a row that is the
+    // install's (data-tenancy.md, What this build declares).
+    static void ApplyDeclaredFeatures(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<DeclaredFeature>(entity =>
+        {
+            entity.ToTable("DeclaredFeatures");
+            entity.HasKey(row => row.Key);
+
+            // Long enough for a dotted key a module composes out of its own name
+            // ("organizations.max"), and bounded because what bounds the set is a declaration in
+            // code: a key no build declares cannot reach this table at all.
+            entity.Property(row => row.Key)
+                .HasMaxLength(128);
+
+            entity.Property(row => row.Kind)
+                .HasMaxLength(16)
+                .IsRequired();
         });
     }
 
@@ -151,12 +188,48 @@ public static class DbContextExtensions
                     continue;
                 }
 
+                // A string the model stores as something that is not text at all — a jsonb bag
+                // (TenantState.Entitlements) — takes no collation: Postgres refuses one on such a
+                // type and the migration that adds the column would not apply. Every other named
+                // type still gets the rule (Collations.Collatable).
+                if (!Collations.Collatable(property.GetColumnType()))
+                {
+                    continue;
+                }
+
                 if (property.PropertyInfo?.IsDefined(typeof(CaseSensitiveAttribute), inherit: true) == true)
                 {
                     continue;
                 }
 
                 property.SetCollation(Collations.CaseInsensitive);
+            }
+        }
+    }
+
+    // A program outside the app has to be able to tell which columns hold a person's datum: the
+    // fleet runner that copies a tenant's rows into somewhere people and agents walk knows no
+    // product, no kit and no entity, and reads only the catalog. So the declaration the property
+    // wears rides the model into Postgres's own col_description, set once over the whole model
+    // for the reason the collation is — a per-kit fluent call is one a kit can forget, and this
+    // is the rule nobody may forget. Only the personal declaration writes: a column with no
+    // comment holds no personal datum, and what makes the declaration unforgettable is the sweep
+    // that demands one (NotPersonalAttribute).
+    static void ApplyPersonalData(ModelBuilder modelBuilder)
+    {
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entity.GetProperties())
+            {
+                var declaration = property.PropertyInfo?
+                    .GetCustomAttribute<PersonalAttribute>(inherit: true);
+
+                if (declaration is null)
+                {
+                    continue;
+                }
+
+                property.SetComment(PersonalDataComment.For(declaration.Kind));
             }
         }
     }
