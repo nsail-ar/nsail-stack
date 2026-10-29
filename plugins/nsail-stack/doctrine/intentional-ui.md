@@ -904,8 +904,8 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
 - **One action cell per row, and that cell is ONE `NsActionToolbar`** — transition verbs and all,
   never a second cell for verbs, never a strip of hand-written icons around the presenter.
 - **The constant goes LAST among the VERBS and is always visible, and the kebab closes the
-  row**: the lupa where the row has a ficha, the lápiz where it does not, neither where it has
-  neither — **a destructive verb is never promoted to the fixed edge**. The kebab is the one
+  row**: the chevron (`NsIcons.Open`) where the row has a ficha, the lápiz where it does not,
+  neither where it has neither — the magnifier is the filter's glyph and never a row's door; **a destructive verb is never promoted to the fixed edge**. The kebab is the one
   box whose presence is conditional, so it is the one that moves rather than shoving the
   constant sideways ([ui/actions.md](ui/actions.md)).
 - **Three verbs visible, the rest in the kebab** — the cap that makes contribution scale, so a

@@ -604,7 +604,7 @@
    so 1.875rem here was already smaller than every row it was meant to raise). The floor is
    stated on every body cell, not only the actions one, so every row in the grid shares one
    height whether or not its own row draws a button. Under a coarse pointer the same button's
-   padding grows (below), and so does this number, or a tablet above the 960px container floor
+   padding grows (below), and so does this number, or a tablet above the 960px stacking floor
    would read the two kinds of row apart again.
 
    `height`, not `min-height`: the cell this targets is `display: table-cell` in every regime
@@ -613,14 +613,17 @@
    DOES define a cell's specified `height` as a per-cell minimum the row's own height is the max
    of, which is the floor this rule exists to state.
 
-   :not(.mud-sm-table): below 960px MudTable stacks every row into a card
-   (.mud-sm-table, the vendor's own breakpoint) where this cell is `display: flex` instead of
-   `table-cell` — a regime where this same declaration is no longer a floor under a short row
-   but a HEIGHT on every line of a tall one, which the stacked card's own rules below answer
-   on their own terms. The open row's own stacked form (.ns-table-editing under its
-   @container, below) is excluded there, for the same reason. */
-.ns-table:not(.mud-sm-table) .mud-table-body .mud-table-row .mud-table-cell {
-    height: 2.625rem;
+   Inside the query and not keyed off the absence of mud-sm-table: that class is what Breakpoint="Sm"
+   stamps on the ROOT at every width (NsTable.razor), so a rule excluding it matches no cell at
+   all. Below 960px (the vendor's own max-width) MudTable stacks every row into a card where
+   this cell is `display: flex` instead of `table-cell` — there the same declaration would be a
+   HEIGHT on every line of a tall one, which the stacked card's own rules answer on their own
+   terms. The open row's own stacked form (.ns-table-editing under its @container, below)
+   resets it by specificity. */
+@media (min-width: 960.02px) {
+    .ns-table .mud-table-body .mud-table-row .mud-table-cell {
+        height: 2.625rem;
+    }
 }
 
 /* Every icon in the column is one slot, whoever put it there. A grid's own row links are
@@ -724,8 +727,10 @@
         padding: 12px;
     }
 
-    .ns-table:not(.mud-sm-table) .mud-table-body .mud-table-row .mud-table-cell {
-        height: 3.75rem;
+    @media (min-width: 960.02px) {
+        .ns-table .mud-table-body .mud-table-row .mud-table-cell {
+            height: 3.75rem;
+        }
     }
 }
 
@@ -1119,11 +1124,8 @@
             text-align: start;
         }
 
-        /* The row floor (above, excluding .mud-sm-table) is stated on the same compound
-           selector's own four classes and lands first in the file, so an equal-specificity
-           five-class selector here — the fifth being .ns-table-editing itself — wins on source
-           order alone, the same tie the column-visibility rules below settle the same way.
-           Unanswered, every line of this flex box would stand as tall as the floor meant for a
+        /* The row floor (above) is four classes; this five-class selector, the fifth being
+           .ns-table-editing itself, wins on specificity. Unanswered, every line of this flex box would stand as tall as the floor meant for a
            whole dense row: 42px per line here, where this card's own padding (above) already
            answers for the row's height. */
         .ns-table.ns-table-editing .mud-table-body .mud-table-row .mud-table-cell {

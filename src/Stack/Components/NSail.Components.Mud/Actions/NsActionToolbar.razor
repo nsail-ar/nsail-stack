@@ -35,7 +35,7 @@
             {
                 <NsLink As="@NsAs.Inline"
                         Breakpoint="@(Breakpoint ?? NsBreakpoint.Never)"
-                        Icon="@item.Icon"
+                        Icon="@GlyphOf(item)"
                         Content="@item.Content"
                         Size="@(Size ?? NsSize.Md)"
                         Label="@GetName(item)"
@@ -254,6 +254,13 @@
     string GetName(ActionItem item)
     {
         return item.GetLabel(Strings, Metadata);
+    }
+
+    // The row's door is the one link the house draws the same everywhere: the Stack decides its
+    // glyph here, so no page names it and a change of mind is one line (ui/actions.md).
+    Glyph? GlyphOf(ActionItem item)
+    {
+        return ReferenceEquals(item, _constant) && item.PageType is not null && item.Content is null ? NsIcons.Open : item.Icon;
     }
 
     // Read off the glyph rather than asked of the contributor: every Delete across the house

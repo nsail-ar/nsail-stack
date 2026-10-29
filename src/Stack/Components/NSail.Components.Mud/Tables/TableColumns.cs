@@ -23,7 +23,7 @@ public sealed class TableColumns
     readonly Dictionary<string, bool> _numeric = [];
     readonly List<TableColumn> _declared = [];
 
-    public void Declare(string key, NsSize breakpoint, NsCompact compact, bool numeric)
+    public void Declare(string key, NsSize breakpoint, NsCompact compact, bool numeric = false)
     {
         _breakpoints[key] = breakpoint;
         _compact[key] = compact;

@@ -448,6 +448,11 @@ visible — are the core doc's. How the cell composes:
   - **Unset is "the rest"**, which is the whole reason contributions need no change: a kit that
     knows nothing about the host's families lands on the far side of the rule by declaring
     nothing.
+- **The row's door draws `NsIcons.Open`, decided by the toolbar, not the page.** A `Constant`
+  that is a page link is drawn with the chevron whatever glyph `GetLink<TPage>` was handed, and
+  an `NsCard` `Door` wears the same one, so no page names it and one line changes every grid.
+  The magnifier is `NsAs.Filter`'s glyph; one glyph never means both "run the filter" and
+  "open the row". A `Constant` that carries its own `Content` (an avatar) keeps it.
 - **The verb that destroys never sits at the plain `gap-1` from its neighbour.** The toolbar
   reads this off the glyph (`item.Icon == NsIcons.Delete`), not a flag a contributor sets: every
   `GetAction(Delete, row, NsIcons.Delete)` already passes the house's one Delete icon, so the

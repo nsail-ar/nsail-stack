@@ -266,6 +266,29 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void TheRowsDoorIsDrawnWithTheOpenGlyphWhateverThePageHandedIn()
+    {
+        var cut = Render<ActionColumnHost>(p => p
+            .Add(x => x.Constant, new ActionItem { Name = "Ficha", PageType = typeof(ProbeOtherPage), Icon = NsIcons.Search }));
+
+        var door = cut.Find(".ns-action-toolbar a");
+
+        Assert.Contains(PathOf(NsIcons.Open), door.InnerHtml);
+        Assert.DoesNotContain(PathOf(NsIcons.Search), door.InnerHtml);
+    }
+
+    static string PathOf(Glyph glyph)
+    {
+        return System.Text.RegularExpressions.Regex.Match(glyph.Markup, "d=\"([^\"]+)\"").Groups[1].Value;
+    }
+
+    [Fact]
+    public void TheOpenGlyphIsNotTheFiltersMagnifier()
+    {
+        Assert.NotEqual(NsIcons.Search, NsIcons.Open);
+    }
+
+    [Fact]
     public void ThreeActionsShowThreeIconsAndNoKebab()
     {
         var cut = Grid(3);
@@ -537,7 +560,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     // bUnit renders no box model, so the margin the class earns is read off the stylesheet
-    // itself. One side each, not margin-inline on both (nsail#2696, review round 3): the
+    // itself. One side each, not margin-inline on both: the
     // toolbar packs to its own trailing edge, so whichever control is last sits on the cell's
     // fixed right border — a margin on THAT side pushes it inside the border the moment
     // Delete itself closes the row (Leading = [Edit, Delete], Constant nil), which is the
@@ -557,7 +580,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         Assert.True(start >= 0, "the leading separation rule was not found in the stylesheet.");
         Assert.Contains("margin-inline-start:", css[start..css.IndexOf('}', start)], StringComparison.Ordinal);
 
-        // The shape review round 3 found: margin-inline (both sides at once) on :only-child's
+        // The shape to avoid: margin-inline (both sides at once) on :only-child's
         // own exclusion, which costs the side sitting on the grid's own fixed edge when
         // Delete itself closes the row.
         Assert.DoesNotContain(".ns-action-toolbar .ns-action-destructive:not(:only-child) {", css, StringComparison.Ordinal);
@@ -570,18 +593,23 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     // already measures changes no pixel. Stated for every body cell, not only the actions one,
     // so a row's height never depends on whether its own row draws a button.
     //
-    // `height`, not `min-height` (review round 3): the cell this targets is `display:
-    // table-cell` in column mode, where CSS 2.1 §10.7 leaves min-height/max-height undefined —
-    // engines differ on whether it ever reaches the row. And :not(.mud-sm-table), or the same
-    // declaration lands on the phone card's own `display: flex` cell as a HEIGHT on every
-    // stacked line, not a floor under a short row — the exact regime the story asks this not
-    // to touch (list toolbar and phone layout, "cards are 157-440px tall today").
+    // `height`, not `min-height`: the cell this targets is `display: table-cell` in column
+    // mode, where CSS 2.1 §10.7 leaves min-height/max-height undefined — engines differ on
+    // whether it ever reaches the row. The regime is the query, never the class: the root wears
+    // mud-sm-table at every width (TheStackedLayoutIsReachedThroughTheTablesOwnElement), so a
+    // rule excluding it by :not() would match no cell at all, and a stacked phone card would be
+    // handed a HEIGHT on every line.
     [Fact]
-    public void TheStylesheetFloorsEveryBodyCellToThePaddedActionsCellHeightInColumnModeOnly()
+    public void TheStylesheetFloorsEveryBodyCellToThePaddedActionsCellHeightAboveTheStackingWidth()
     {
         var css = HouseStylesheet.Read();
 
-        var start = css.IndexOf(".ns-table:not(.mud-sm-table) .mud-table-body .mud-table-row .mud-table-cell {", StringComparison.Ordinal);
+        Assert.DoesNotContain(":not(.mud-sm-table)", css, StringComparison.Ordinal);
+
+        var query = css.IndexOf("@media (min-width: 960.02px) {", StringComparison.Ordinal);
+        Assert.True(query >= 0, "the column-mode row-height query was not found in the stylesheet.");
+
+        var start = css.IndexOf(".ns-table .mud-table-body .mud-table-row .mud-table-cell {", query, StringComparison.Ordinal);
         Assert.True(start >= 0, "the column-mode row-height floor was not found in the stylesheet.");
 
         var end = css.IndexOf('}', start);
@@ -589,11 +617,9 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         Assert.DoesNotContain("min-height:", css[start..end], StringComparison.Ordinal);
     }
 
-    // The actions icon button grows under a coarse pointer (ns-mud.css, --ns-action-slot:
-    // 3.25rem), so the row floor has to grow with it or a tablet above the 960px container
-    // floor reads the two kinds of row apart again, in the very regime the story's 44px ask
-    // is about. Scoped off .mud-sm-table for the same reason as the fine-pointer floor above —
-    // a touchscreen phone is both stacked AND coarse (review round 3).
+    // The actions icon button grows under a coarse pointer (--ns-action-slot: 3.25rem), so the
+    // row floor grows with it or a tablet above the stacking width reads the two kinds of row
+    // apart again, in the very regime the story's 44px ask is about.
     [Fact]
     public void TheStylesheetGrowsTheColumnModeRowFloorUnderACoarsePointer()
     {
@@ -602,7 +628,10 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         var coarse = css.IndexOf("--ns-action-slot: 3.25rem;", StringComparison.Ordinal);
         Assert.True(coarse >= 0, "the coarse-pointer action-slot rule was not found in the stylesheet.");
 
-        var start = css.IndexOf(".ns-table:not(.mud-sm-table) .mud-table-body .mud-table-row .mud-table-cell {", coarse, StringComparison.Ordinal);
+        var query = css.IndexOf("@media (min-width: 960.02px) {", coarse, StringComparison.Ordinal);
+        Assert.True(query >= 0, "the coarse-pointer column-mode row-height query was not found in the stylesheet.");
+
+        var start = css.IndexOf(".ns-table .mud-table-body .mud-table-row .mud-table-cell {", query, StringComparison.Ordinal);
         Assert.True(start >= 0, "the coarse-pointer column-mode row-height floor was not found in the stylesheet.");
 
         var end = css.IndexOf('}', start);
@@ -612,9 +641,9 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
 
     // The open row's own stacked form (.ns-table-editing under its @container, "the open row
     // stacks where its container cannot seat it") goes through the same flex cell as the phone
-    // card, so the column-mode floor above — excluded there by class but not by that
-    // @container condition — has to be taken back inside it, or every line of a card being
-    // edited in a narrow aside stands as tall as a whole dense row (review round 3).
+    // card, so the column-mode floor above — gated by the viewport, which that @container
+    // condition does not narrow — has to be taken back inside it, or every line of a card being
+    // edited in a narrow aside stands as tall as a whole dense row.
     [Fact]
     public void TheStylesheetTakesTheRowFloorBackInTheOpenRowsStackedForm()
     {

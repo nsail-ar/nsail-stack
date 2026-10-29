@@ -111,6 +111,10 @@ public static class NsIcons
     public static readonly Glyph ChevronRight =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="M522-480 333-669l51-51 240 240-240 240-51-51 189-189Z"/></g>""");
 
+    /// <summary>The way into a record or a screen — a row's
+    /// constant and a card's door. Search is the filter's glyph, never this one's.</summary>
+    public static Glyph Open => ChevronRight;
+
     /// <summary>Material Symbols <c>chevron_left</c>.</summary>
     public static readonly Glyph ChevronLeft =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="M576-240 336-480l240-240 51 51-189 189 189 189-51 51Z"/></g>""");
