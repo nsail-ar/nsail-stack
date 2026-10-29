@@ -117,6 +117,9 @@ tenant walls, throttling and Swagger.
   → [Backup](src/Stack/Backup/README.md)
 - **Exporting** — a list read out as a file.
   → [Exporting](src/Stack/Exporting/README.md)
+- **Storage** — put, get, list and delete an object, on the host's disk or an S3-compatible
+  bucket, with its settings screen.
+  → [Storage](src/Stack/Storage/README.md)
 
 ### Foundations
 

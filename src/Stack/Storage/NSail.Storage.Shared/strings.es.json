@@ -1,0 +1,42 @@
+{
+  "Actions.TestTarget": "Probar",
+
+  "NavMenu.Storage": "Almacenamiento",
+
+  "Guide.Storage": "Almacenamiento",
+
+  "Storage.StorageSettingsPage.Title": "Almacenamiento",
+  "Storage.StorageSettingsPage.ContainerFolderHint": "La carpeta de este servidor donde se escriben los objetos.",
+  "Storage.StorageSettingsPage.ContainerBucketHint": "El bucket donde se escriben los objetos.",
+  "Storage.StorageSettingsPage.EndpointHint": "La dirección del servicio compatible con S3, sin el bucket.",
+  "Storage.StorageSettingsPage.RegionHint": "Dejala vacía salvo que el servicio pida una región.",
+  "Storage.StorageSettingsPage.TestHelp": "La prueba escribe un objeto chico, lo vuelve a leer, lo lista y lo borra — contra lo que está GUARDADO acá, así que guardá primero si acabás de cambiar algo.",
+  "Storage.StorageSettingsPage.TestSucceeded": "El destino respondió: se escribió un objeto, se leyó y se borró.",
+
+  "Storage.SaveStorageSettings.Provider": "Proveedor",
+  "Storage.SaveStorageSettings.Container": "Contenedor",
+  "Storage.SaveStorageSettings.Endpoint": "Dirección del servicio",
+  "Storage.SaveStorageSettings.Region": "Región",
+  "Storage.SaveStorageSettings.AccessKey": "Clave de acceso",
+  "Storage.SaveStorageSettings.SecretKey": "Clave secreta",
+
+  "Storage.Settings.GetStorageSettings.Permission": "Ver configuración de Almacenamiento",
+  "Storage.Settings.SaveStorageSettings.Permission": "Editar configuración de Almacenamiento",
+  "Storage.Settings.LookupStorageProviders.Permission": "Consultar proveedores de almacenamiento",
+  "Storage.Settings.TestStorageTarget.Permission": "Probar el destino de almacenamiento",
+
+  "Permissions.Area.Storage": "Almacenamiento",
+  "Permissions.Feature.Storage.Settings": "Configuración",
+
+  "Problems.NoStorageConfigured": "Esta instalación todavía no guarda en ningún lado. Elegí un proveedor de almacenamiento y un contenedor en Configuración.",
+  "Problems.StorageProviderNotComposed": "Este host no compone ningún proveedor de almacenamiento con ese nombre.",
+  "Problems.StorageEndpointRequired": "Un destino S3 necesita la dirección del servicio donde vive.",
+  "Problems.RuleViolation.ContentNotSeekable": "Un destino S3 necesita saber cuánto pesa lo que recibe, así que el contenido tiene que ser un stream con posición.",
+  "Problems.RuleViolation.InvalidObjectKey": "'{key}' no es una clave de objeto válida.",
+  "Problems.RuleViolation.KeyOutsideContainer": "'{key}' cae fuera del contenedor configurado.",
+  "Problems.RuleViolation.StorageRefused": "El servicio de almacenamiento respondió {status}: {detail}",
+  "Problems.RuleViolation.StorageTestNotReadBack": "El objeto de prueba se escribió pero no se pudo volver a leer.",
+  "Problems.RuleViolation.StorageTestContentDiffers": "El objeto de prueba que se leyó no coincide con lo que se escribió.",
+  "Problems.RuleViolation.StorageTestNotListed": "El objeto de prueba se escribió pero no aparece al listar el contenedor.",
+  "Problems.RuleViolation.StorageTestFailed": "No se pudo usar el destino de almacenamiento: {reason}"
+}

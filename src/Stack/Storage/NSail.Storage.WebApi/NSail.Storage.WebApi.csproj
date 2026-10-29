@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<RootNamespace>NSail.Storage</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Messaging\NSail.Messaging.WebApi\NSail.Messaging.WebApi.csproj" />
+		<ProjectReference Include="..\..\Security\NSail.Security\NSail.Security.csproj" />
+		<ProjectReference Include="..\..\Settings\NSail.Settings\NSail.Settings.csproj" />
+		<ProjectReference Include="..\NSail.Storage.Sdk\NSail.Storage.Sdk.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\Generation\NSail.SourceGenerator\NSail.SourceGenerator.csproj">
+			<OutputItemType>Analyzer</OutputItemType>
+			<PrivateAssets>all</PrivateAssets>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
+	</ItemGroup>
+
+</Project>
