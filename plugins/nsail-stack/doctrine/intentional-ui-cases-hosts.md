@@ -240,7 +240,7 @@ unless it declares it changes nothing the form holds** (`ActionItem.Writes`, def
 **The blunt gate — every act under a form's cascade goes dark — was refused, not on taste.**
 `NsForm` cascades `Disabled || IsRunning`, so the gate fires on every submit of every screen, not
 just on read-only screens. The census of acts under a form is small and three of them are not
-ways in — `StorageSettingsPage`'s `TestTarget` probes and writes nothing back, `ChannelsEditor`'s
+ways in — `StorageStorePage`'s `TestTarget` probes and writes nothing back, `ChannelsEditor`'s
 `Contact` opens WhatsApp, and a toolbar's view links go somewhere. All three would blink away
 once per save, forever.
 

@@ -173,6 +173,13 @@ public class S3StorageProvider : IStorageProvider
         await Ensure(response, cancelToken);
     }
 
+    // The path-style address the object is put at, unsigned: whether a reader is let in there is
+    // the bucket's own policy.
+    public Uri? Link(StorageTarget target, string key)
+    {
+        return new Uri(Address(target, key));
+    }
+
     // UNSIGNED-PAYLOAD leans on TLS to bind the signature to the body it travels with; an
     // endpoint the administrator pointed at plain http gets none of that from the transport, so
     // the payload is hashed instead — the one extra pass a seekable stream can afford. Put has

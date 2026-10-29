@@ -1,27 +1,35 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using NSail.Injection.Annotations;
 using NSail.Problems;
 using NSail.Storage.Providers;
 using NSail.Storage.Settings;
 
 namespace NSail.Storage.Objects;
 
-// Storage's whole outward API: put, get, list and delete a named object. Nothing here knows a
-// vendor — it resolves the install's target once and hands it to whichever provider answers to
-// the target's own name.
-[Injectable]
+// Storage's whole outward API: put, get, list and delete a named object, and say where one can
+// be read. Nothing here knows a vendor — it resolves its store's target once and hands it to
+// whichever provider answers to the target's own name.
+//
+// One manager per store name, resolved as a keyed service: a consumer takes
+// [FromKeyedServices(TheKitsStore.Name)] StorageManager, and the unkeyed one is the default
+// store's. Registered by AddStorageWebApi and AddStore, never by the generator, because the
+// name is a constructor argument no container could guess.
 public sealed class StorageManager
 {
     readonly StorageCredentialProvider _credentials;
     readonly IEnumerable<IStorageProvider> _providers;
 
-    public StorageManager(StorageCredentialProvider credentials, IEnumerable<IStorageProvider> providers)
+    public StorageManager(string name, StorageCredentialProvider credentials, IEnumerable<IStorageProvider> providers)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        Name = name;
         _credentials = credentials;
         _providers = providers;
     }
+
+    public string Name { get; }
 
     public async Task Put(string key, Stream content, string? contentType = null, CancellationToken cancelToken = default)
     {
@@ -51,6 +59,15 @@ public sealed class StorageManager
         await provider.Delete(target, Guard(key), cancelToken);
     }
 
+    // The address the object can be read at, or null where the store's provider has none to give.
+    // Computed, not checked: it says where the object would be, whether or not it is there.
+    public async Task<Uri?> Link(string key, CancellationToken cancelToken = default)
+    {
+        var (provider, target) = await Resolve(cancelToken);
+
+        return provider.Link(target, Guard(key));
+    }
+
     // Whether a Put would get as far as the provider, asked before there is anything to put: a
     // caller that queues the writing for later (a request a job fulfils) would otherwise accept
     // the ask, read a whole database and fail on its last line. It answers false for both refusals
@@ -58,14 +75,14 @@ public sealed class StorageManager
     // caller at the door can do nothing different about either.
     public async Task<bool> IsConfigured(CancellationToken cancelToken = default)
     {
-        var target = await _credentials.Get(cancelToken);
+        var target = await _credentials.Get(Name, cancelToken);
 
         return target.IsConfigured && _providers.Any(candidate => candidate.Type == target.Provider);
     }
 
     async Task<(IStorageProvider Provider, StorageTarget Target)> Resolve(CancellationToken cancelToken = default)
     {
-        var target = await _credentials.Get(cancelToken);
+        var target = await _credentials.Get(Name, cancelToken);
 
         if (!target.IsConfigured)
         {

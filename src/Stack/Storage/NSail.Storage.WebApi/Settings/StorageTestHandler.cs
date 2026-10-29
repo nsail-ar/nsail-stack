@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.Extensions.DependencyInjection;
 using NSail.Injection.Annotations;
 using NSail.Messaging;
 using NSail.Problems;
@@ -22,15 +23,23 @@ namespace NSail.Storage.Settings;
 [Injectable]
 public class StorageTestHandler : IHandler<TestStorageTarget>
 {
-    readonly StorageManager _storage;
+    readonly StorageStores _stores;
+    readonly IServiceProvider _services;
 
-    public StorageTestHandler(StorageManager storage)
+    public StorageTestHandler(StorageStores stores, IServiceProvider services)
     {
-        _storage = storage;
+        _stores = stores;
+        _services = services;
     }
 
     public async Task Handle(TestStorageTarget message, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(message);
+
+        // The name's own manager, so the probe lands where that name's consumer writes — its own
+        // target, or the default's where it has none. The name arrives at runtime, so the keyed
+        // manager is asked for here rather than injected.
+        var storage = _services.GetRequiredKeyedService<StorageManager>(_stores.Require(message.Name));
         var key = $"nsail-storage-test/{Guid.NewGuid():N}.txt";
         var payload = Encoding.UTF8.GetBytes($"NSail storage test {DateTimeOffset.UtcNow:O}");
 
@@ -38,10 +47,10 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
         {
             using (var content = new MemoryStream(payload))
             {
-                await _storage.Put(key, content, "text/plain", cancellationToken);
+                await storage.Put(key, content, "text/plain", cancellationToken);
             }
 
-            using var stored = await _storage.Get(key, cancellationToken);
+            using var stored = await storage.Get(key, cancellationToken);
 
             if (stored is null)
             {
@@ -60,7 +69,7 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
                     "The object read back does not match what was written."));
             }
 
-            var listed = await _storage.List("nsail-storage-test/", cancellationToken);
+            var listed = await storage.List("nsail-storage-test/", cancellationToken);
 
             if (!listed.Any(entry => entry.Key == key))
             {
@@ -69,14 +78,14 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
                     "The object was written but does not appear when the container is listed."));
             }
 
-            await _storage.Delete(key, cancellationToken);
+            await storage.Delete(key, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // Swept whatever the verdict was, so a target that half-worked is not left holding the
             // probe — and the refusal goes on up: a BusinessException from underneath already says
             // what is wrong and where (StorageManager), and anything else is this rule saying it.
-            await Sweep(key, cancellationToken);
+            await Sweep(storage, key, cancellationToken);
 
             if (exception is BusinessException)
             {
@@ -90,11 +99,11 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
         }
     }
 
-    async Task Sweep(string key, CancellationToken cancellationToken)
+    static async Task Sweep(StorageManager storage, string key, CancellationToken cancellationToken)
     {
         try
         {
-            await _storage.Delete(key, cancellationToken);
+            await storage.Delete(key, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

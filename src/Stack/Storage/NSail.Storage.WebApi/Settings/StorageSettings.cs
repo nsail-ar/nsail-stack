@@ -5,11 +5,46 @@ using NSail.Settings;
 
 namespace NSail.Storage.Settings;
 
-// Storage only, and server-side only on purpose: it holds the secret key that opens this
-// install's object store, so the type is not in the Sdk the browser gets. The wire shape is
+// Storage only, and server-side only on purpose: it holds the secret keys that open this
+// install's object stores, so the type is not in the Sdk the browser gets. The wire shape is
 // StorageSettingsModel, which has no secret to carry.
+//
+// One row for every store: its own fields are the default store's target, so a row saved before
+// stores had names still reads as the default, and Stores holds each other declared name's own.
 [SystemSettings]
-public sealed class StorageSettings
+public sealed class StorageSettings : StorageTargetSettings
+{
+    public Dictionary<string, StorageTargetSettings> Stores { get; set; } = [];
+
+    public StorageTargetSettings For(string name)
+    {
+        if (name == StorageNames.Default)
+        {
+            return this;
+        }
+
+        return Stores.GetValueOrDefault(name) ?? new StorageTargetSettings();
+    }
+
+    public void Set(string name, StorageTargetSettings target)
+    {
+        if (name != StorageNames.Default)
+        {
+            Stores[name] = target;
+
+            return;
+        }
+
+        Provider = target.Provider;
+        Endpoint = target.Endpoint;
+        Region = target.Region;
+        Container = target.Container;
+        AccessKey = target.AccessKey;
+        SecretKey = target.SecretKey;
+    }
+}
+
+public class StorageTargetSettings
 {
     public string? Provider { get; set; }
 

@@ -20,7 +20,7 @@ public sealed class NsTabLabelTests : BunitContext
     public NsTabLabelTests()
     {
         Services.AddMudServices();
-        Services.AddScoped<MudBlazor.IKeyInterceptorService, Fixtures.NoopKeyInterceptorService>();
+        Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([new FixedStrings(new Dictionary<string, string>
         {
             ["Directory.Party.Identity"] = "Identidad"

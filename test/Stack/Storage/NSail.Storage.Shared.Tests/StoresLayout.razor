@@ -1,0 +1,20 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Storage.Tests
+@inherits LayoutComponentBase
+
+@using NSail.Components
+
+@* The shape a product's MainLayout has: the routed page in the shell's content and the aside
+   surface beside it, hosting its own routed page — where a store's form opens. *@
+<NsMainLayout>
+    <Content>
+        @Body
+    </Content>
+    <Aside>
+        <NsSurface Name="@Surfaces.Aside" Context="routeData">
+            <RouteView RouteData="@routeData" />
+        </NsSurface>
+    </Aside>
+</NsMainLayout>
