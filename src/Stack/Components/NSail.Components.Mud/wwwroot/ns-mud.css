@@ -1470,6 +1470,15 @@
     gap: 8px;
 }
 
+/* Every row ends at the same right edge. The vendor sets a nested entry's end padding to
+   unset (zero) from the second level down, and chains a selector per depth to do it, so a
+   count in Soporte > Tickets sat against the drawer's edge while the group chevrons above
+   kept 16px. Restated with !important because no single selector outranks that chain at
+   every depth. */
+.ns-nav-drawer .mud-nav-link {
+    padding-inline-end: 16px !important;
+}
+
 /* How many things are waiting behind an entry. Pushed to the far edge of the row by its own
    auto margin rather than by a spacer element, so the label still owns the whole line and the
    number never pulls the word off the glyph it sits beside. Solid, the same pair the submit
