@@ -30,7 +30,9 @@ public sealed class NsConfirmFocusTests : BunitContext, IAsyncLifetime
             ["Common.Confirm"] = "Confirmar",
             ["Common.ConfirmSend"] = "¿Confirmás esta acción?",
             ["Common.Yes"] = "Sí",
-            ["Common.No"] = "No"
+            ["Common.No"] = "No",
+            ["Common.Delete"] = "Eliminar",
+            ["Common.Cancel"] = "Cancelar"
         })]));
 
         // Registered last so DI resolves it in place of MudBlazor's own KeyInterceptorService,
@@ -85,13 +87,19 @@ public sealed class NsConfirmFocusTests : BunitContext, IAsyncLifetime
 
     /// <summary>The two faces, in the order the house has always drawn them — the way out first,
     /// the act second — which is what makes "the first child" and "the last child" the two
-    /// answers below mean something.</summary>
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void AConfirmation_DrawsTheWayOutBeforeTheAct(bool destroys)
+    /// answers below mean something. An ordinary confirmation keeps the bare Sí/No; a destructive
+    /// one wears the act itself on its face, "Eliminar", the generic word honest because Destroys
+    /// is read off that same verb (NsPartial.Destroys).</summary>
+    [Fact]
+    public void AnOrdinaryConfirmation_DrawsTheWayOutBeforeTheAct()
     {
-        Assert.Equal(["No", "Sí"], Faces(Ask(destroys)));
+        Assert.Equal(["No", "Sí"], Faces(Ask(destroys: false)));
+    }
+
+    [Fact]
+    public void ADestructiveConfirmation_DrawsTheWayOutBeforeTheAct()
+    {
+        Assert.Equal(["Cancelar", "Eliminar"], Faces(Ask(destroys: true)));
     }
 
     /// <summary>An ordinary confirmation offers its own act: the cursor stands on it, so Enter
@@ -145,6 +153,20 @@ public sealed class NsConfirmFocusTests : BunitContext, IAsyncLifetime
 
         Assert.Contains("¿Eliminar este Color?", host.Find(".mud-dialog-content").TextContent);
         Assert.Contains("Confirmar", host.Find(".mud-dialog-title").TextContent);
+    }
+
+    /// <summary>A question has no grid to fit and no field to size, so the vendor's own
+    /// width-to-content is wrong for it the same way it would be for a real form: a reasonable,
+    /// fixed width (MudDialogManager's own _confirmOptions) reads as a dialog, not a tooltip
+    /// shrink-wrapped to one sentence.</summary>
+    [Fact]
+    public void AConfirmation_OpensAtAFixedWidth()
+    {
+        var host = Ask(destroys: true);
+        var dialogClass = host.Find(".mud-dialog").ClassList;
+
+        Assert.Contains("mud-dialog-width-sm", dialogClass);
+        Assert.Contains("mud-dialog-width-full", dialogClass);
     }
 
     /// <summary>Pressing a face answers the opener, which is the whole contract a screen holds
