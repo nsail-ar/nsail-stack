@@ -22,7 +22,7 @@ public class StorageOptions : IValidatableObject
     public string Region { get; set; } = "";
 
     // The container inside the target: a directory on the host's disk for the filesystem
-    // provider, a bucket for an S3 one.
+    // provider, a bucket for an S3 one, a repository path for a Git one.
     public string Container { get; set; } = "";
 
     public string AccessKey { get; set; } = "";

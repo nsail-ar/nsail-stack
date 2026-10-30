@@ -28,6 +28,12 @@ sealed class Container : IDisposable
     {
         if (Directory.Exists(Path))
         {
+            // Git marks its object files read-only, which Windows will not delete.
+            foreach (var file in new DirectoryInfo(Path).EnumerateFiles("*", SearchOption.AllDirectories))
+            {
+                file.Attributes = FileAttributes.Normal;
+            }
+
             Directory.Delete(Path, recursive: true);
         }
     }

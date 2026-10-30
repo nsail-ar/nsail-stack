@@ -33,12 +33,13 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   leaves the delete pending until the read is disposed, and until then the key still
   answers `List` and a `Put` on it still fails.
 - **No vendor word in the API.** `StorageTarget` is one flat vendor-free shape — address,
-  region, container, key pair, and a repository's branch and link template — and a provider reads what it needs. That is what keeps the
+  region, container, key pair, and a repository's branch and link template — and a provider
+  reads what it needs. That is what keeps the
   settings screen ONE form instead of one per vendor, and it is a deliberate trade against a
   sealed opaque blob per provider, which would have cost an Sdk and a Shared assembly each.
 - **`AddStorageWebApi` registers no provider.** Where a host may write is the app's decision,
-  asked for by name (`AddFileSystemStorage`, `AddS3Storage`, `AddGitStorage`), so a product that must never write
-  to a disk does not compose the one that can.
+  asked for by name (`AddFileSystemStorage`, `AddS3Storage`, `AddGitStorage`), so a product that must never
+  write to a disk does not compose the one that can.
 - **Stores have names, and `default` is the one every install has.** A kit that keeps its
   objects apart (reports in one place, backups in another) names its store with a constant and
   declares it with `AddStore`; its code takes `[FromKeyedServices(name)] StorageManager`, and
@@ -71,11 +72,11 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   under nobody.
 - **A provider says where an object can be read, or that it cannot.** `Link` is computed from
   the target and the key with no call to the store — S3 answers the path-style address,
-  the git provider answers its template, the filesystem null — and whether a reader is let in there is the store's own
-  access policy, not Storage's.
-- **The provider contract may still change.** It freezes after the provider that follows S3,
-  the rule `IStorageProvider` carries — one provider teaches you its own shape, not the
-  abstraction's.
+  the git provider answers its template, the filesystem null — and whether a reader is let in there is the store's
+  own access policy, not Storage's.
+- **The provider contract is frozen.** S3 and Git, the two vendors after the filesystem, have
+  shaped it; a change to `IStorageProvider` is a change to every provider and to the screen
+  that reads it.
 - **A key never escapes its container.** `StorageManager.Guard` is the one door every key
   comes through, and the filesystem provider checks the RESOLVED path behind it.
 - **`IsConfigured` answers the refusal before there is anything to put.** A caller that
@@ -147,7 +148,8 @@ parks the screen out of sight by leaving that one call out of both composition r
 takes the route, the strings and the settings leaf with it, and keeps `AddStorageWebApi` for
 everything that still writes objects.
 The provider picker decides whether the address, the region and the key pair are asked for at
-all — `StorageProviderRef.IsRemote` is what the screen reads. The secret key is never answered
+all — `StorageProviderRef.IsRemote` is what the screen reads, and `IsRepository` for the branch and
+the link template. The secret key is never answered
 back: the read says only that one exists, and an empty field on save means "unchanged", never
 "clear it".
 

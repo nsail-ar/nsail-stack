@@ -60,7 +60,7 @@ public class GitStorageProvider : IStorageProvider
                 await content.CopyToAsync(file, 81920, cancelToken);
             }
 
-            if (!await clone.Commit($"Put {key}", key, cancelToken) || await clone.Push(cancelToken))
+            if (!await clone.Commit($"Put {key}", cancelToken) || await clone.Push(cancelToken))
             {
                 return;
             }
@@ -87,9 +87,17 @@ public class GitStorageProvider : IStorageProvider
         // Copied out of the clone, which goes with this call, into a file that goes with the read.
         var copy = new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
 
-        await using (var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true))
+        try
         {
+            await using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+
             await source.CopyToAsync(copy, 81920, cancelToken);
+        }
+        catch
+        {
+            await copy.DisposeAsync();
+
+            throw;
         }
 
         copy.Position = 0;
@@ -110,9 +118,11 @@ public class GitStorageProvider : IStorageProvider
             return [];
         }
 
+        // Every object carries the date of the branch's last commit: a per-file date would cost a
+        // `git log` per key.
         var modifiedAt = DateTimeOffset.Parse((await clone.Run(cancelToken, "log", "-1", "--format=%cI")).Trim());
 
-        return clone.Files()
+        return (await clone.Files(cancelToken))
             .Where(entry => prefix is not { Length: > 0 } || entry.Key.StartsWith(prefix, StringComparison.Ordinal))
             .Select(entry => new StoredObject
             {
@@ -138,7 +148,7 @@ public class GitStorageProvider : IStorageProvider
 
             File.Delete(path);
 
-            if (!await clone.Commit($"Delete {key}", key, cancelToken) || await clone.Push(cancelToken))
+            if (!await clone.Commit($"Delete {key}", cancelToken) || await clone.Push(cancelToken))
             {
                 return;
             }
@@ -218,10 +228,11 @@ public class GitStorageProvider : IStorageProvider
         {
             var path = Path.GetFullPath(Path.Combine(_root, key));
 
-            // The second lock on the door StorageManager.Guard closed, and the repository's own
-            // metadata is no object either.
+            // The second lock on the door StorageManager.Guard closed. Git's own metadata is no
+            // object either, at any depth and in any case: git skips a `.git` component wherever
+            // it is.
             if (!path.StartsWith(_root + Path.DirectorySeparatorChar, StringComparison.Ordinal)
-                || key.Split('/')[0] == ".git")
+                || key.Split('/', '\\').Any(segment => segment.Equals(".git", StringComparison.OrdinalIgnoreCase)))
             {
                 throw new BusinessException(BusinessProblem.RuleViolation(
                     "KeyOutsideContainer",
@@ -238,17 +249,35 @@ public class GitStorageProvider : IStorageProvider
 
             var address = $"{_target.Endpoint.TrimEnd('/')}/{_target.Container.Trim('/')}";
 
+            // The address and the branch are typed on a settings screen: neither may read as an
+            // option to git.
+            if (address.StartsWith('-') || _branch.StartsWith('-'))
+            {
+                throw Refused("the address or the branch is not valid");
+            }
+
+            var reference = $"refs/heads/{_branch}";
+
             await Run(cancelToken, "init", "--quiet");
+            await Run(cancelToken, "check-ref-format", reference);
+
+            // The repository's own attributes must not reach the bytes: no line-ending
+            // conversion, no filter.
+            Directory.CreateDirectory(Path.Combine(_root, ".git", "info"));
+            await File.WriteAllTextAsync(Path.Combine(_root, ".git", "info", "attributes"), "* -text -eol -ident -filter -working-tree-encoding\n", cancelToken);
+
             await Run(cancelToken, "remote", "add", "origin", address);
 
-            var (code, _, error) = await Execute(cancelToken, "fetch", "--quiet", "--depth", "1", "origin", _branch);
+            // Exit code 2 is "no such ref": a new branch, or an empty repository.
+            var (code, _, error) = await Execute(cancelToken, "ls-remote", "--exit-code", "--heads", "origin", reference);
 
             if (code == 0)
             {
+                await Run(cancelToken, "fetch", "--quiet", "--depth", "1", "origin", reference);
                 await Run(cancelToken, "checkout", "--quiet", "-B", _branch, "FETCH_HEAD");
                 HasCommit = true;
             }
-            else if (error.Contains("couldn't find remote ref", StringComparison.OrdinalIgnoreCase))
+            else if (code == 2)
             {
                 await Run(cancelToken, "checkout", "--quiet", "--orphan", _branch);
             }
@@ -259,9 +288,10 @@ public class GitStorageProvider : IStorageProvider
         }
 
         // False when the tree already holds what was asked: nothing to commit, nothing to push.
-        public async Task<bool> Commit(string message, string key, CancellationToken cancelToken)
+        // `--force` because the repository's own .gitignore must not drop an object unannounced.
+        public async Task<bool> Commit(string message, CancellationToken cancelToken)
         {
-            await Run(cancelToken, "add", "--all");
+            await Run(cancelToken, "add", "--all", "--force");
 
             if ((await Run(cancelToken, "status", "--porcelain")).Length == 0)
             {
@@ -284,7 +314,8 @@ public class GitStorageProvider : IStorageProvider
                 return true;
             }
 
-            if (error.Contains("rejected", StringComparison.OrdinalIgnoreCase) || error.Contains("fetch first", StringComparison.OrdinalIgnoreCase))
+            // The two reasons git gives for a branch that moved; a hook's refusal is not one.
+            if (error.Contains("(fetch first)", StringComparison.Ordinal) || error.Contains("(non-fast-forward)", StringComparison.Ordinal))
             {
                 return false;
             }
@@ -292,9 +323,9 @@ public class GitStorageProvider : IStorageProvider
             throw Refused(Describe(error));
         }
 
-        public IEnumerable<(string Key, long Length)> Files()
+        public async Task<IEnumerable<(string Key, long Length)>> Files(CancellationToken cancelToken)
         {
-            return Run(CancellationToken.None, "ls-tree", "-r", "-l", "-z", "HEAD").GetAwaiter().GetResult()
+            return (await Run(cancelToken, "ls-tree", "-r", "-l", "-z", "HEAD"))
                 .Split('\0', StringSplitOptions.RemoveEmptyEntries)
                 .Select(line =>
                 {
@@ -339,14 +370,34 @@ public class GitStorageProvider : IStorageProvider
             info.Environment["GIT_TERMINAL_PROMPT"] = "0";
             info.Environment["GIT_CONFIG_NOSYSTEM"] = "1";
 
+            // Git's messages are read by code in one place, so they are read in one language.
+            info.Environment["LC_ALL"] = "C";
+            info.Environment["LANGUAGE"] = "C";
+
+            // The address is typed on a settings screen: only the transports that move bytes,
+            // never a helper that runs a command (`ext::`, `fd::`).
+            info.Environment["GIT_ALLOW_PROTOCOL"] = "file:http:https:ssh:git";
+
+            var config = new List<(string Key, string Value)>
+            {
+                ("protocol.ext.allow", "never"),
+                ("core.autocrlf", "false"),
+            };
+
             // The credential rides the environment of this one process, never its command line.
             if (_target.SecretKey.Length > 0)
             {
                 var basic = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_target.AccessKey}:{_target.SecretKey}"));
 
-                info.Environment["GIT_CONFIG_COUNT"] = "1";
-                info.Environment["GIT_CONFIG_KEY_0"] = "http.extraHeader";
-                info.Environment["GIT_CONFIG_VALUE_0"] = $"Authorization: Basic {basic}";
+                config.Add(("http.extraHeader", $"Authorization: Basic {basic}"));
+            }
+
+            info.Environment["GIT_CONFIG_COUNT"] = config.Count.ToString();
+
+            for (var index = 0; index < config.Count; index++)
+            {
+                info.Environment[$"GIT_CONFIG_KEY_{index}"] = config[index].Key;
+                info.Environment[$"GIT_CONFIG_VALUE_{index}"] = config[index].Value;
             }
 
             Process process;

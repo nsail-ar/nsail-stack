@@ -121,6 +121,57 @@ public sealed class GitStorageTests : IDisposable
     }
 
     [Fact]
+    public async Task StoresWhatTheRepositoryIgnoresAndConvertsNothing()
+    {
+        var seed = Path.Combine(_remote.Path, "seed");
+
+        Git(_remote.Path, "init", "--quiet", "--initial-branch=main", "seed");
+        File.WriteAllText(Path.Combine(seed, ".gitignore"), "*.csv\n");
+        File.WriteAllText(Path.Combine(seed, ".gitattributes"), "* text eol=crlf\n");
+        Git(seed, "add", "--all");
+        Git(seed, "-c", "user.name=t", "-c", "user.email=t@t.invalid", "commit", "--quiet", "-m", "seed");
+        Git(seed, "push", "--quiet", Path.Combine(_remote.Path, "store.git"), "main");
+
+        var payload = "line\nline\n"u8.ToArray();
+
+        await Put("reports/ledger.csv", payload);
+
+        using var stored = await _provider.Get(Target, "reports/ledger.csv");
+
+        Assert.NotNull(stored);
+
+        using var readBack = new MemoryStream();
+        await stored.Content.CopyToAsync(readBack);
+
+        Assert.Equal(payload, readBack.ToArray());
+    }
+
+    [Theory]
+    [InlineData("a/.git/config")]
+    [InlineData(".GIT/x")]
+    public async Task RefusesAKeyThatNamesGitMetadataAtAnyDepth(string key)
+    {
+        using var content = new MemoryStream("x"u8.ToArray());
+
+        await Assert.ThrowsAsync<BusinessException>(() => _provider.Put(Target, key, content, null));
+    }
+
+    [Theory]
+    [InlineData("--upload-pack=touch x")]
+    [InlineData("a..b")]
+    public async Task RefusesABranchGitCouldReadAsAnOption(string branch)
+    {
+        await Assert.ThrowsAsync<BusinessException>(() => _provider.List(Target with { Branch = branch }, null));
+    }
+
+    [Fact]
+    public async Task RefusesAnAddressThatRunsACommand()
+    {
+        await Assert.ThrowsAsync<BusinessException>(
+            () => _provider.List(Target with { Endpoint = "ext::sh -c 'exit 0'", Container = "x" }, null));
+    }
+
+    [Fact]
     public void LinksThroughTheTemplateWithEachSegmentEscaped()
     {
         Assert.Equal(

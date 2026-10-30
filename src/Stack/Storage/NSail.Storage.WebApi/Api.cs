@@ -16,7 +16,7 @@ public static class Api
     // writes. An install that passes none stores nowhere until a row names a target.
     //
     // No provider is registered here. Which places a host may write to is the app's
-    // decision, made by name — AddFileSystemStorage, AddS3Storage — so a product that must
+    // decision, made by name — AddFileSystemStorage, AddS3Storage, AddGitStorage — so a product that must
     // never write to a disk simply does not compose the one that can.
     public static void AddStorageWebApi(this IServiceCollection services, StorageOptions? install = null)
     {

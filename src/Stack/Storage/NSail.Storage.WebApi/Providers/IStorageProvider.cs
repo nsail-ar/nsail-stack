@@ -3,8 +3,7 @@
 
 namespace NSail.Storage.Providers;
 
-// The contract may change until the second real vendor lands; after the one that follows S3,
-// it is frozen. One provider teaches you its own shape, not the abstraction's.
+// The contract is frozen: S3 and Git shaped it, and a change reaches every provider.
 //
 // Every operation takes the target rather than reading the settings itself: a provider is a
 // stateless translator of these verbs into one protocol, and the store's configuration is
