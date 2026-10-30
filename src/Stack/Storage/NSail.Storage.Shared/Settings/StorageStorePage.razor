@@ -53,7 +53,7 @@
                         <NsTextField @bind-Value="context.AccessKey" Helper="@(IsRepository(context) ? Translate("UserHint") : null)" />
                     </NsFormGridItem>
                     <NsFormGridItem Grow>
-                        <NsPasswordField @bind-Value="context.SecretKey" IsStored="_hasSecretKey" Helper="@(IsRepository(context) ? Translate("TokenHint") : null)" Autocomplete="new-password" />
+                        <NsPasswordField @bind-Value="context.SecretKey" IsStored="_hasSecretKey" Helper="@(IsRepository(context) && !_hasSecretKey ? Translate("TokenHint") : null)" Autocomplete="new-password" />
                     </NsFormGridItem>
                 }
             </NsFormGrid>

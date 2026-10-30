@@ -25,6 +25,8 @@ sealed class StoresServer :
 
     public int Lists { get; private set; }
 
+    public bool HasSecretKey { get; set; }
+
     public Task<List<StorageStoreRow>> Send(ListStorageStores message, CancellationToken cancellationToken)
     {
         Lists++;
@@ -55,7 +57,7 @@ sealed class StoresServer :
 
         StoredSettings<StorageSettingsModel> stored = store.UsesDefault
             ? new StorageSettingsModel()
-            : new StorageSettingsModel { Provider = store.Provider, Container = store.Container };
+            : new StorageSettingsModel { Provider = store.Provider, Container = store.Container, HasSecretKey = HasSecretKey };
 
         return Task.FromResult(stored);
     }
