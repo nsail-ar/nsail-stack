@@ -36,9 +36,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # The build and the publish take most of half an hour, and the wait for nuget.org up to
+    # The build and the publish take most of half an hour, compiling the monorepo before its
+    # bump some twenty minutes, and the wait for nuget.org up to
     # 45 minutes more (0.1.300 died at 30 inside the wait, 2026-10-22).
-    timeout-minutes: 80
+    timeout-minutes: 110
 
     permissions:
       contents: write
@@ -203,24 +204,45 @@ jobs:
 
       # The monorepo pins the version every restore takes (its Directory.Build.props), and
       # this is the one hand that moves it: a complete release reaches every kit and app with
-      # nobody bumping anything (Leonardo, 2026-10-22), and a Stack change that breaks one
-      # reds the bump's own CI run. Only forward: a slower run never moves it back.
+      # nobody bumping anything. The monorepo is compiled at the new version first, so a bump
+      # never turns its main red: one that does not compile is not pushed, and the story that
+      # released it is told, whose monorepo PR moves the pin together with the adaptation.
+      # Only forward: a slower run, or a PR that moved the pin already, is left alone.
       - name: Bump the monorepo
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.NSAIL_CREW_PAT }}
         run: |
+          STORY=$(git log -1 --format=%s | sed -n 's/^nsail#\([0-9]*\):.*/\1/p')
+          cd "$RUNNER_TEMP"
           git clone --quiet --depth 20 "https://x-access-token:${GH_TOKEN}@github.com/nsail-ar/nsail.git" mono
           cd mono
           git config user.name "release"
           git config user.email "release@nsail.ar"
+          behind() {
+            current=$(sed -n 's:.*<NSailStackVersion>\(.*\)</NSailStackVersion>.*:\1:p' Directory.Build.props)
+            [ "$current" != "$VERSION" ] && [ "$(printf '%s\n%s\n' "$current" "$VERSION" | sort -V | tail -1)" = "$VERSION" ]
+          }
+          move() {
+            sed -i "s:<NSailStackVersion>$current</NSailStackVersion>:<NSailStackVersion>$VERSION</NSailStackVersion>:" Directory.Build.props
+          }
+          behind || { echo "the monorepo is at $current already - nothing to move"; exit 0; }
+          move
+          if ! dotnet build NSail.sln --configuration Release -p:NuGetAudit=false > ../mono-build.log 2>&1; then
+            FAILED=$(grep -E ': error [A-Z]+[0-9]+:' ../mono-build.log | sed 's:^.*/mono/::; s: \[.*$::' | sort -u | head -20 || true)
+            [ -n "$FAILED" ] || FAILED=$(tail -20 ../mono-build.log)
+            echo "::warning::the monorepo does not compile at v$VERSION - the bump is not pushed"
+            echo "$FAILED"
+            if [ -n "$STORY" ]; then
+              printf 'Stack `v%s` is on nuget.org, but the monorepo does not compile at it, so the bump was not pushed. The monorepo PR of this story (or of the earlier release that broke it) moves `NSailStackVersion` to this version together with the adaptation:\n\n```\n%s\n```\n' "$VERSION" "$FAILED" > ../bump-red.md
+              gh issue comment "$STORY" -R nsail-ar/nsail --body-file ../bump-red.md
+            fi
+            exit 0
+          fi
           for attempt in 1 2 3 4 5; do
             git fetch --quiet origin main && git reset --quiet --hard origin/main
-            current=$(sed -n 's:.*<NSailStackVersion>\(.*\)</NSailStackVersion>.*:\1:p' Directory.Build.props)
-            if [ "$(printf '%s\n%s\n' "$current" "$VERSION" | sort -V | tail -1)" != "$VERSION" ] || [ "$current" = "$VERSION" ]; then
-              echo "the monorepo is at $current already - nothing to move"; exit 0
-            fi
-            sed -i "s:<NSailStackVersion>$current</NSailStackVersion>:<NSailStackVersion>$VERSION</NSailStackVersion>:" Directory.Build.props
+            behind || { echo "the monorepo is at $current already - nothing to move"; exit 0; }
+            move
             git commit --quiet -m "stack: v$VERSION is on nuget.org" -- Directory.Build.props
             git push --quiet origin HEAD:main && { echo "the monorepo moved $current -> $VERSION"; exit 0; }
             sleep $((attempt * 5))
