@@ -11,6 +11,10 @@
 
     <NsTitleBar Title="@Title" Icon="@Icon">
         @Caption
+        @if (_exportBesideGuide && Surface?.Export is { } lone)
+        {
+            @lone.Trigger
+        }
         @if (!string.IsNullOrWhiteSpace(Guide))
         {
             <NsGuideLink Topic="@Guide" />
@@ -71,7 +75,7 @@
                row's room, and a page with nothing to export draws nothing in its place. Asked
                from the render and not cached, like ClaimsRow: what claims it can change while
                the surface lives, and a cached answer would flap or stick past its own page. *@
-            @if (Surface?.ClaimsExport(this) == true && Surface.Export is { } export)
+            @if (!_exportBesideGuide && Surface?.ClaimsExport(this) == true && Surface.Export is { } export)
             {
                 @export.Trigger
             }
@@ -210,7 +214,17 @@
     [Parameter]
     public bool FilterAlwaysOpen { get; set; }
 
-    bool _hasToolBar => Lead is not null || Search is not null || SearchTextChanged.HasDelegate || Filter is not null || Actions is not null || (Surface?.ClaimsExport(this) == true && Surface.Export is not null);
+    // Controls the toolbar would hold besides Exportar. A Filter that is always open draws no
+    // toggle, so it is no control; Search takes the toggle's place whether or not it is drawn.
+    bool _hasControls => Lead is not null || Search is not null || SearchTextChanged.HasDelegate || (Filter is not null && !FilterAlwaysOpen) || Actions is not null;
+
+    bool _hasExport => Surface?.ClaimsExport(this) == true && Surface.Export is not null;
+
+    // Exportar alone: it rides the title row beside the guide's door instead of opening a row of
+    // its own. Asked from the render, like the claim itself.
+    bool _exportBesideGuide => !_hasControls && _hasExport;
+
+    bool _hasToolBar => _hasControls || (_hasExport && !_exportBesideGuide);
 
     bool FilterOpenValue => FilterOpen ?? _filterOpen;
 

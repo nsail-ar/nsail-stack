@@ -104,6 +104,51 @@ public sealed class TableExportHeaderTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void ExportarAloneSitsBesideTheGuideWithNoToolbarRow()
+    {
+        var surface = Setup();
+
+        var cut = Render<ExportHeaderHost>(p => p
+            .Add(x => x.Surface, surface)
+            .Add(x => x.WithActions, false));
+
+        var header = cut.FindComponent<NsPageHeader>();
+
+        Assert.Single(header.FindAll(".ns-table-export"));
+        Assert.Empty(header.FindComponents<NsToolBar>());
+        Assert.Empty(cut.FindComponent<NsTable<ExportRowModel>>().FindAll(".ns-table-export"));
+    }
+
+    [Fact]
+    public void AnAlwaysOpenFilterIsNoControlSoExportarAloneLeavesNoEmptyToolbar()
+    {
+        var surface = Setup();
+
+        var cut = Render<ExportHeaderHost>(p => p
+            .Add(x => x.Surface, surface)
+            .Add(x => x.WithActions, false)
+            .Add(x => x.WithAlwaysOpenFilter, true));
+
+        var header = cut.FindComponent<NsPageHeader>();
+
+        Assert.Single(header.FindAll(".ns-table-export"));
+        Assert.Empty(header.FindComponents<NsToolBar>());
+        Assert.NotEmpty(header.FindAll(".test-filter"));
+    }
+
+    [Fact]
+    public void ExportarKeepsTheToolbarWhenAnotherControlStandsInIt()
+    {
+        var surface = Setup();
+
+        var cut = Render<ExportHeaderHost>(p => p.Add(x => x.Surface, surface));
+
+        var header = cut.FindComponent<NsPageHeader>();
+
+        Assert.Single(header.FindComponent<NsToolBar>().FindAll(".ns-table-export"));
+    }
+
+    [Fact]
     public void AnEmbeddedGridWithNoHeaderKeepsItsOwnExportar()
     {
         var surface = Setup();
