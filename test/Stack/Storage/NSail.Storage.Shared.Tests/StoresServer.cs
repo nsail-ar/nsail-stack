@@ -45,6 +45,7 @@ sealed class StoresServer :
         {
             new() { Type = "file", DisplayName = "Local folder" },
             new() { Type = "s3", DisplayName = "S3-compatible", IsRemote = true },
+            new() { Type = "git", DisplayName = "Git repository", IsRemote = true, IsRepository = true },
         });
     }
 

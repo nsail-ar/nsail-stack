@@ -164,6 +164,17 @@ public sealed class GitStorageTests : IDisposable
         await Assert.ThrowsAsync<BusinessException>(() => _provider.List(Target with { Branch = branch }, null));
     }
 
+    [Theory]
+    [InlineData("a branch")]
+    [InlineData("feat..x")]
+    [InlineData("release/")]
+    public async Task NamesTheBranchFieldWhenTheBranchIsNotAName(string branch)
+    {
+        var failure = await Assert.ThrowsAsync<BusinessException>(() => _provider.List(Target with { Branch = branch }, null));
+
+        Assert.Contains(failure.Issues, issue => issue.Code.Contains("StorageGitBranchInvalid"));
+    }
+
     [Fact]
     public async Task RefusesAnAddressThatRunsACommand()
     {

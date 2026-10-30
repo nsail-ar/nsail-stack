@@ -32,7 +32,7 @@
                 @if (IsRemote(context))
                 {
                     <NsFormGridItem Grow>
-                        <NsTextField @bind-Value="context.Endpoint" Helper="@Translate("EndpointHint")" />
+                        <NsTextField @bind-Value="context.Endpoint" Helper="@EndpointHelper(context)" />
                     </NsFormGridItem>
                     @if (IsRepository(context))
                     {
@@ -50,10 +50,10 @@
                         </NsFormGridItem>
                     }
                     <NsFormGridItem Grow>
-                        <NsTextField @bind-Value="context.AccessKey" />
+                        <NsTextField @bind-Value="context.AccessKey" Helper="@(IsRepository(context) ? Translate("UserHint") : null)" />
                     </NsFormGridItem>
                     <NsFormGridItem Grow>
-                        <NsPasswordField @bind-Value="context.SecretKey" IsStored="_hasSecretKey" Autocomplete="new-password" />
+                        <NsPasswordField @bind-Value="context.SecretKey" IsStored="_hasSecretKey" Helper="@(IsRepository(context) ? Translate("TokenHint") : null)" Autocomplete="new-password" />
                     </NsFormGridItem>
                 }
             </NsFormGrid>
@@ -115,6 +115,11 @@
     bool IsRepository(SaveStorageSettings model)
     {
         return _providers.FirstOrDefault(provider => provider.Type == model.Provider)?.IsRepository ?? false;
+    }
+
+    string EndpointHelper(SaveStorageSettings model)
+    {
+        return Translate(IsRepository(model) ? "EndpointRepositoryHint" : "EndpointHint");
     }
 
     string ContainerHelper(SaveStorageSettings model)

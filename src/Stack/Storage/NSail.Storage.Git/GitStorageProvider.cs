@@ -4,6 +4,7 @@
 using NSail.Problems;
 using NSail.Storage.Providers;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 
 namespace NSail.Storage.Git;
@@ -120,7 +121,7 @@ public class GitStorageProvider : IStorageProvider
 
         // Every object carries the date of the branch's last commit: a per-file date would cost a
         // `git log` per key.
-        var modifiedAt = DateTimeOffset.Parse((await clone.Run(cancelToken, "log", "-1", "--format=%cI")).Trim());
+        var modifiedAt = DateTimeOffset.Parse((await clone.Run(cancelToken, "log", "-1", "--format=%cI")).Trim(), CultureInfo.InvariantCulture);
 
         return (await clone.Files(cancelToken))
             .Where(entry => prefix is not { Length: > 0 } || entry.Key.StartsWith(prefix, StringComparison.Ordinal))
@@ -209,6 +210,11 @@ public class GitStorageProvider : IStorageProvider
             new Dictionary<string, string> { ["detail"] = detail }));
     }
 
+    static BusinessException Invalid(string key, string property, string message)
+    {
+        return new BusinessException(BusinessProblem.RuleViolation(key, property, message));
+    }
+
     // One working directory holding the branch's last commit, deleted with it.
     sealed class Checkout : IDisposable
     {
@@ -251,15 +257,25 @@ public class GitStorageProvider : IStorageProvider
 
             // The address and the branch are typed on a settings screen: neither may read as an
             // option to git.
-            if (address.StartsWith('-') || _branch.StartsWith('-'))
+            if (address.StartsWith('-'))
             {
-                throw Refused("the address or the branch is not valid");
+                throw Invalid("StorageGitAddressInvalid", nameof(StorageTarget.Endpoint), "The address of the repository is not valid.");
+            }
+
+            if (_branch.StartsWith('-'))
+            {
+                throw Invalid("StorageGitBranchInvalid", nameof(StorageTarget.Branch), "The branch name is not valid.");
             }
 
             var reference = $"refs/heads/{_branch}";
 
             await Run(cancelToken, "init", "--quiet");
-            await Run(cancelToken, "check-ref-format", reference);
+
+            // check-ref-format says nothing on stderr when it refuses.
+            if ((await Execute(cancelToken, "check-ref-format", reference)).Code != 0)
+            {
+                throw Invalid("StorageGitBranchInvalid", nameof(StorageTarget.Branch), "The branch name is not valid.");
+            }
 
             // The repository's own attributes must not reach the bytes: no line-ending
             // conversion, no filter.
@@ -330,10 +346,13 @@ public class GitStorageProvider : IStorageProvider
                 .Select(line =>
                 {
                     var tab = line.IndexOf('\t');
-                    var size = line[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries)[3];
+                    var columns = line[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-                    return (line[(tab + 1)..], long.Parse(size));
-                });
+                    // `-` in the size column: not a blob (a submodule), so not an object.
+                    return (Key: line[(tab + 1)..], Size: columns[3], Mode: columns[0]);
+                })
+                .Where(entry => entry.Mode != "160000")
+                .Select(entry => (entry.Key, long.Parse(entry.Size, CultureInfo.InvariantCulture)));
         }
 
         public async Task<string> Run(CancellationToken cancelToken, params string[] arguments)

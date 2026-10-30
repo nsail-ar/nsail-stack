@@ -49,7 +49,7 @@ está tipeado sin guardar.
 - **El objeto se escribió pero no se pudo volver a leer**: la clave de acceso puede escribir pero no leer en ese bucket — revisá los permisos de la clave en la consola de tu proveedor.
 - **El objeto que se leyó no coincide con el que se escribió**: algo entre la escritura y la lectura alteró el contenido — a esto no lo arregla una clave distinta; es un destino que no se puede usar tal como está.
 - **El objeto se escribió pero no aparece al listar el contenedor**: falta el permiso de listar — agregalo en la consola de tu proveedor.
-- **git answered ...**, con el motivo de git: el repositorio no existe, el token no puede hacer push, o la rama está protegida.
+- **git respondió: ...**, con el motivo de git: el repositorio no existe, el token no puede hacer push, o la rama está protegida.
 - **No se pudo usar el destino de almacenamiento**, con el motivo de tu proveedor a continuación: un endpoint mal escrito, una clave vencida, un bucket que no existe con ese nombre — el motivo es el que contesta tu proveedor, no uno que invente NSail.
 
 ## Quién lo factura
