@@ -3,8 +3,7 @@
 
 namespace NSail.Storage.Providers;
 
-// The contract may change until the second real vendor lands; after the one that follows S3,
-// it is frozen. One provider teaches you its own shape, not the abstraction's.
+// The contract is frozen: S3 and Git shaped it, and a change reaches every provider.
 //
 // Every operation takes the target rather than reading the settings itself: a provider is a
 // stateless translator of these verbs into one protocol, and the store's configuration is
@@ -18,6 +17,13 @@ public interface IStorageProvider
     // Whether the target lives behind an address and a credential — what the settings screen
     // reads to know which fields to ask for.
     bool IsRemote { get; }
+
+    // Whether the target is a repository, which the settings screen reads to ask for a branch
+    // and a link template.
+    bool IsRepository
+    {
+        get { return false; }
+    }
 
     // Streams both ways and never materializes an object: content is read from the caller's
     // stream as it is written, so an archive larger than memory costs a buffer, not a copy.

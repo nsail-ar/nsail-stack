@@ -22,12 +22,18 @@ public class StorageOptions : IValidatableObject
     public string Region { get; set; } = "";
 
     // The container inside the target: a directory on the host's disk for the filesystem
-    // provider, a bucket for an S3 one.
+    // provider, a bucket for an S3 one, a repository path for a Git one.
     public string Container { get; set; } = "";
 
     public string AccessKey { get; set; } = "";
 
     public string SecretKey { get; set; } = "";
+
+    // The ref a repository provider commits to; empty is the provider's own default.
+    public string Branch { get; set; } = "";
+
+    // The address pattern a repository's objects are read at, `{key}` standing for the object.
+    public string LinkTemplate { get; set; } = "";
 
     public StorageTarget Target()
     {
@@ -42,7 +48,9 @@ public class StorageOptions : IValidatableObject
             Region.Trim(),
             Container.Trim(),
             AccessKey.Trim(),
-            SecretKey.Trim());
+            SecretKey.Trim(),
+            Branch.Trim(),
+            LinkTemplate.Trim());
     }
 
     // A destination half typed would have every tenant with no settings row of its own refused

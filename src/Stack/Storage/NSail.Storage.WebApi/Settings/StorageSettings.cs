@@ -41,6 +41,8 @@ public sealed class StorageSettings : StorageTargetSettings
         Container = target.Container;
         AccessKey = target.AccessKey;
         SecretKey = target.SecretKey;
+        Branch = target.Branch;
+        LinkTemplate = target.LinkTemplate;
     }
 }
 
@@ -61,4 +63,8 @@ public class StorageTargetSettings
     // Sealed with the install's own key, so a settings row read straight out of the database
     // opens nothing at the far end.
     public string? SecretKey { get; set; }
+
+    public string? Branch { get; set; }
+
+    public string? LinkTemplate { get; set; }
 }

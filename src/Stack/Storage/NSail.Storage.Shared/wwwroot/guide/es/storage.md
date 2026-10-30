@@ -1,6 +1,6 @@
-Guardar los archivos que la instalación sube en tu propio destino: una carpeta del servidor, o
-tu propio bucket S3-compatible (AWS, Cloudflare R2, Backblaze, MinIO, ...), con tu propia factura
-del proveedor. La pantalla es **Configuración > Integraciones > Almacenamiento**.
+Guardar los archivos que la instalación sube en tu propio destino: una carpeta del servidor,
+tu propio bucket S3-compatible (AWS, Cloudflare R2, Backblaze, MinIO, ...) o un repositorio git,
+con tu propia factura del proveedor. La pantalla es **Configuración > Integraciones > Almacenamiento**.
 
 ## Los almacenes
 
@@ -14,6 +14,9 @@ configurarla le da el suyo, en el mismo proveedor o en otro.
 
 Si vas a guardar en una **carpeta del servidor**, no necesitás nada de afuera.
 
+Si vas a guardar en un **repositorio git**, necesitás uno ya creado, con una rama (si la rama no
+existe, el primer objeto la crea) y un usuario con un token que pueda hacer push.
+
 Si vas a guardar en tu propio **bucket**, necesitás, ya creados en la consola de tu proveedor:
 un bucket, y una clave de acceso con permiso de escribir, leer, listar y borrar objetos dentro de
 él. Cada proveedor tiene su propia consola y la cambia sin avisar, así que esta guía no numera
@@ -23,9 +26,10 @@ buckets (o "object storage") y la de claves de acceso (o "API keys" / "access ke
 ## Configurar
 
 1. Entrá a **Configuración > Integraciones > Almacenamiento** y abrí el almacén que vas a configurar.
-2. En **Proveedor**, elegí **Local folder** para una carpeta del servidor, o **S3-compatible** para tu propio bucket.
-3. Completá **Contenedor** con el nombre de la carpeta (local) o del bucket (S3-compatible).
+2. En **Proveedor**, elegí **Local folder** para una carpeta del servidor, **S3-compatible** para tu propio bucket, o **Git repository** para un repositorio.
+3. Completá **Contenedor** con el nombre de la carpeta (local) o del bucket (S3-compatible), o el camino del repositorio bajo la dirección del servicio (Git).
 4. Si elegiste S3-compatible, completá además **Dirección del servicio** — la de tu proveedor, sin el nombre del bucket —, **Región** — dejala vacía salvo que tu proveedor la pida —, **Clave de acceso** y **Clave secreta**: los cuatro valores salen de la consola de tu proveedor, de donde lo dejaste en Antes de empezar.
+   Si elegiste Git repository, completá **Dirección del servicio** (por ejemplo `https://github.com`), **Rama** — vacía usa `main` —, **Clave de acceso** (el usuario), **Clave secreta** (el token) y **Plantilla de link**: la dirección donde se lee un objeto, con `{key}` en lugar de su nombre. Usá `https`: con `http` la credencial viaja sin cifrar.
 5. Tocá **Guardar**. Dejar **Proveedor** vacío y guardar borra lo que guardaste para ese almacén: vuelve a usar el que la instalación le configuró, y si no le configuró ninguno, el de por defecto.
 
 **La Clave secreta es de sólo escritura**: después de guardarla el campo vuelve vacío y debajo
@@ -45,6 +49,7 @@ está tipeado sin guardar.
 - **El objeto se escribió pero no se pudo volver a leer**: la clave de acceso puede escribir pero no leer en ese bucket — revisá los permisos de la clave en la consola de tu proveedor.
 - **El objeto que se leyó no coincide con el que se escribió**: algo entre la escritura y la lectura alteró el contenido — a esto no lo arregla una clave distinta; es un destino que no se puede usar tal como está.
 - **El objeto se escribió pero no aparece al listar el contenedor**: falta el permiso de listar — agregalo en la consola de tu proveedor.
+- **git respondió: ...**, con el motivo de git: el repositorio no existe, el token no puede hacer push, o la rama está protegida.
 - **No se pudo usar el destino de almacenamiento**, con el motivo de tu proveedor a continuación: un endpoint mal escrito, una clave vencida, un bucket que no existe con ese nombre — el motivo es el que contesta tu proveedor, no uno que invente NSail.
 
 ## Quién lo factura

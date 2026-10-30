@@ -27,6 +27,9 @@
              here needs one. -->
         <ProjectReference Include="..\..\..\..\src\Stack\Storage\NSail.Storage.FileSystem\NSail.Storage.FileSystem.csproj" />
         <ProjectReference Include="..\..\..\..\src\Stack\Storage\NSail.Storage.S3\NSail.Storage.S3.csproj" />
+        <!-- The git one is proven against a bare repository on the local disk, the remote git
+             itself speaks to with no server. -->
+        <ProjectReference Include="..\..\..\..\src\Stack\Storage\NSail.Storage.Git\NSail.Storage.Git.csproj" />
         <!-- The host loads StorageOptions through Load<T>, the door that validates it. -->
         <ProjectReference Include="..\..\..\..\src\Stack\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
     </ItemGroup>

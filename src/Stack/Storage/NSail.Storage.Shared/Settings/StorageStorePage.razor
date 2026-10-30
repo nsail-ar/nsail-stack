@@ -32,16 +32,28 @@
                 @if (IsRemote(context))
                 {
                     <NsFormGridItem Grow>
-                        <NsTextField @bind-Value="context.Endpoint" Helper="@Translate("EndpointHint")" />
+                        <NsTextField @bind-Value="context.Endpoint" Helper="@EndpointHelper(context)" />
                     </NsFormGridItem>
-                    <NsFormGridItem>
-                        <NsTextField @bind-Value="context.Region" Helper="@Translate("RegionHint")" />
+                    @if (IsRepository(context))
+                    {
+                        <NsFormGridItem>
+                            <NsTextField @bind-Value="context.Branch" Helper="@Translate("BranchHint")" />
+                        </NsFormGridItem>
+                        <NsFormGridItem Grow>
+                            <NsTextField @bind-Value="context.LinkTemplate" Helper="@Translate("LinkTemplateHint")" />
+                        </NsFormGridItem>
+                    }
+                    else
+                    {
+                        <NsFormGridItem>
+                            <NsTextField @bind-Value="context.Region" Helper="@Translate("RegionHint")" />
+                        </NsFormGridItem>
+                    }
+                    <NsFormGridItem Grow>
+                        <NsTextField @bind-Value="context.AccessKey" Helper="@(IsRepository(context) ? Translate("UserHint") : null)" />
                     </NsFormGridItem>
                     <NsFormGridItem Grow>
-                        <NsTextField @bind-Value="context.AccessKey" />
-                    </NsFormGridItem>
-                    <NsFormGridItem Grow>
-                        <NsPasswordField @bind-Value="context.SecretKey" IsStored="_hasSecretKey" Autocomplete="new-password" />
+                        <NsPasswordField @bind-Value="context.SecretKey" IsStored="_hasSecretKey" Helper="@(IsRepository(context) && !_hasSecretKey ? Translate("TokenHint") : null)" Autocomplete="new-password" />
                     </NsFormGridItem>
                 }
             </NsFormGrid>
@@ -90,6 +102,8 @@
             Region = settings.Region,
             Container = settings.Container,
             AccessKey = settings.AccessKey,
+            Branch = settings.Branch,
+            LinkTemplate = settings.LinkTemplate,
         };
     }
 
@@ -98,8 +112,23 @@
         return _providers.FirstOrDefault(provider => provider.Type == model.Provider)?.IsRemote ?? false;
     }
 
+    bool IsRepository(SaveStorageSettings model)
+    {
+        return _providers.FirstOrDefault(provider => provider.Type == model.Provider)?.IsRepository ?? false;
+    }
+
+    string EndpointHelper(SaveStorageSettings model)
+    {
+        return Translate(IsRepository(model) ? "EndpointRepositoryHint" : "EndpointHint");
+    }
+
     string ContainerHelper(SaveStorageSettings model)
     {
+        if (IsRepository(model))
+        {
+            return Translate("ContainerRepositoryHint");
+        }
+
         return Translate(IsRemote(model) ? "ContainerBucketHint" : "ContainerFolderHint");
     }
 

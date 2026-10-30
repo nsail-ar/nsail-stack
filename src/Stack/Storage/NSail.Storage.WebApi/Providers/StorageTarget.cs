@@ -6,14 +6,17 @@ namespace NSail.Storage.Providers;
 // Where the install stores, unsealed: the one shape every provider reads, and deliberately
 // vendor-free — an address, the place inside it, and the pair that opens it. A provider takes
 // what it needs and ignores the rest, which is why there is one target instead of a settings
-// type per provider the screen would have to grow a form for.
+// type per provider the screen would have to grow a form for. Branch and LinkTemplate are a
+// repository's: the ref objects are committed to, and the address pattern they are read at.
 public sealed record StorageTarget(
     string Provider,
     string Endpoint,
     string Region,
     string Container,
     string AccessKey,
-    string SecretKey)
+    string SecretKey,
+    string Branch = "",
+    string LinkTemplate = "")
 {
     public static readonly StorageTarget None = new("", "", "", "", "", "");
 

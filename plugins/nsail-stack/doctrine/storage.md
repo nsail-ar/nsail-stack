@@ -16,6 +16,7 @@ attachment, an export or an uploaded file that needs somewhere to land uses the 
 | `NSail.Storage.Shared` | the settings screen |
 | `NSail.Storage.FileSystem` | a directory on the host's own disk |
 | `NSail.Storage.S3` | anything speaking the S3 REST API |
+| `NSail.Storage.Git` | a git repository |
 
 No `.Data` project: Storage keeps no entity of its own and the target rides a `NSail.Settings`
 row. The proof is `test/Stack/Storage/NSail.Storage.WebApi.Tests`, which needs no database, and the
@@ -32,12 +33,13 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   leaves the delete pending until the read is disposed, and until then the key still
   answers `List` and a `Put` on it still fails.
 - **No vendor word in the API.** `StorageTarget` is one flat vendor-free shape — address,
-  region, container, key pair — and a provider reads what it needs. That is what keeps the
-  settings screen ONE form instead of one per vendor, and it is a deliberate trade against a
-  sealed opaque blob per provider, which would have cost an Sdk and a Shared assembly each.
+  region, container, key pair, and a repository's branch and link template — and a provider
+  reads what it needs. That is what keeps the settings screen ONE form instead of one per
+  vendor, and it is a deliberate trade against a sealed opaque blob per provider, which would
+  have cost an Sdk and a Shared assembly each.
 - **`AddStorageWebApi` registers no provider.** Where a host may write is the app's decision,
-  asked for by name (`AddFileSystemStorage`, `AddS3Storage`), so a product that must never write
-  to a disk does not compose the one that can.
+  asked for by name (`AddFileSystemStorage`, `AddS3Storage`, `AddGitStorage`), so a product
+  that must never write to a disk does not compose the one that can.
 - **Stores have names, and `default` is the one every install has.** A kit that keeps its
   objects apart (reports in one place, backups in another) names its store with a constant and
   declares it with `AddStore`; its code takes `[FromKeyedServices(name)] StorageManager`, and
@@ -69,14 +71,16 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   shape in one place, and a scope that can name no tenant stores nothing rather than keying it
   under nobody.
 - **A provider says where an object can be read, or that it cannot.** `Link` is computed from
-  the target and the key with no call to the store — S3 answers the path-style address,
-  the filesystem answers null — and whether a reader is let in there is the store's own
-  access policy, not Storage's.
-- **The provider contract may still change.** It freezes after the provider that follows S3,
-  the rule `IStorageProvider` carries — one provider teaches you its own shape, not the
-  abstraction's.
+  the target and the key with no call to the store — S3 answers the path-style address, the
+  git provider answers its template, the filesystem null — and whether a reader is let in
+  there is the store's own access policy, not Storage's.
+- **The provider contract is frozen.** S3 and Git, the two vendors after the filesystem, have
+  shaped it; a change to `IStorageProvider` is a change to every provider and to the screen
+  that reads it.
 - **A key never escapes its container.** `StorageManager.Guard` is the one door every key
-  comes through, and the filesystem provider checks the RESOLVED path behind it.
+  comes through, and the filesystem and git providers check the RESOLVED path behind it. The
+  git provider also refuses a `.git` segment at any depth and in any case: git skips it, so
+  the object would be dropped without a word.
 - **`IsConfigured` answers the refusal before there is anything to put.** A caller that
   queues the writing for later — a request filed now and written by a job — would otherwise
   accept the ask, read a whole database and fail on its last line. It is false for both of
@@ -120,6 +124,20 @@ real store ACCEPTS what is built: that the socket connects, the TLS completes an
 MinIO answers the signature with a 200. Closing that needs a bucket and a credential from a
 deployed instance, and nothing smaller.
 
+## The Git provider
+
+The repository is `Endpoint/Container`, as S3's is, so one target names the server and the
+store names the repository. An object is a file at its key: a put or a delete is a commit pushed
+to `Branch`, a get or a list reads that branch's tree, and `Link` is the target's template with
+`{key}` replaced. It runs the host's `git` executable rather than carrying a library with a native
+binary, so composing it grants the host that executable and the remotes it can reach.
+
+Each verb works in a throwaway one-commit clone and keeps nothing between calls, so two hosts
+never share a checkout. A push the remote rejected because the branch moved is fetched and
+committed again a few times before it is refused. The credential travels in the environment of
+the one process, as an HTTP basic header, and never on a command line. Its proof is
+`GitStorageTests`, against a bare repository on the local disk.
+
 ## The settings screen
 
 `Configuración > Almacenamiento`, under Integraciones, wherever `AddStorageComponents()` is
@@ -132,9 +150,9 @@ parks the screen out of sight by leaving that one call out of both composition r
 takes the route, the strings and the settings leaf with it, and keeps `AddStorageWebApi` for
 everything that still writes objects.
 The provider picker decides whether the address, the region and the key pair are asked for at
-all — `StorageProviderRef.IsRemote` is what the screen reads. The secret key is never answered
-back: the read says only that one exists, and an empty field on save means "unchanged", never
-"clear it".
+all — `StorageProviderRef.IsRemote` is what the screen reads, and `IsRepository` for the
+branch and the link template. The secret key is never answered back: the read says only that
+one exists, and an empty field on save means "unchanged", never "clear it".
 
 The test action writes a small probe, reads it back, checks the bytes, lists it and removes
 it — against the name's **saved** target, because testing what the form currently holds would

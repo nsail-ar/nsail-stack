@@ -19,5 +19,9 @@ public class StorageSettingsModel
 
     public string? AccessKey { get; set; }
 
+    public string? Branch { get; set; }
+
+    public string? LinkTemplate { get; set; }
+
     public bool HasSecretKey { get; set; }
 }

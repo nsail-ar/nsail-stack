@@ -62,7 +62,9 @@ public sealed class StorageCredentialProvider
                 row.Region?.Trim() ?? "",
                 row.Container?.Trim() ?? "",
                 row.AccessKey?.Trim() ?? "",
-                Unprotect(row.SecretKey));
+                Unprotect(row.SecretKey),
+                row.Branch?.Trim() ?? "",
+                row.LinkTemplate?.Trim() ?? "");
         }
 
         var install = _stores.Install(name)?.Target();

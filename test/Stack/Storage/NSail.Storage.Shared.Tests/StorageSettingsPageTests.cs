@@ -99,6 +99,29 @@ public sealed class StorageSettingsPageTests : BunitContext, IAsyncLifetime
         Assert.Equal(2, _server.Lists);
     }
 
+    // A write-only token never travels back, so the one line that says it is on file must keep
+    // showing for a repository; the hint about what to paste is only for an empty box.
+    [Theory]
+    [InlineData(false, "The access token with permission to push.", "Stored. Leave this empty to keep it.")]
+    [InlineData(true, "Stored. Leave this empty to keep it.", "The access token with permission to push.")]
+    public void ARepositoryStoreSaysWhetherATokenIsOnFile(bool hasSecretKey, string shown, string hidden)
+    {
+        _server.Stores[1].Provider = "git";
+        _server.HasSecretKey = hasSecretKey;
+
+        var app = RenderApp();
+
+        app.WaitForAssertion(() => Assert.Equal(3, app.FindAll("tbody tr").Count));
+
+        Navigation.NavigateTo("/settings/storage?aside=settings%2Fstorage%2Freports");
+        app.WaitForAssertion(() => Assert.Contains("Branch", app.FindAll("form label").Select(label => label.TextContent)));
+
+        var form = app.Find("form").TextContent;
+
+        Assert.Contains(shown, form);
+        Assert.DoesNotContain(hidden, form);
+    }
+
     static AngleSharp.Dom.IElement Field(IRenderedComponent<NsRouter> app, string label)
     {
         var id = app.FindAll("form label").Single(element => element.TextContent == label).GetAttribute("for");
