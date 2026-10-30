@@ -19,11 +19,18 @@
 <CascadingValue Value="Surface" IsFixed="true">
     @if (ShowHeader)
     {
-        <NsPageHeader Title="Personas" Icon="@NsIcons.Directory">
-            <Actions>
-                <NsButton Label="Nuevo" />
-            </Actions>
-        </NsPageHeader>
+        @if (WithActions)
+        {
+            <NsPageHeader Title="Personas" Icon="@NsIcons.Directory">
+                <Actions>
+                    <NsButton Label="Nuevo" />
+                </Actions>
+            </NsPageHeader>
+        }
+        else
+        {
+            <NsPageHeader Title="Personas" Icon="@NsIcons.Directory" />
+        }
     }
 
     <NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="OnQuery">
@@ -45,6 +52,9 @@
 
     [Parameter]
     public bool ShowHeader { get; set; } = true;
+
+    [Parameter]
+    public bool WithActions { get; set; } = true;
 
     Task OnQuery(QueryEventArgs args)
     {
