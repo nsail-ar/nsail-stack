@@ -19,6 +19,13 @@ public interface IStorageProvider
     // reads to know which fields to ask for.
     bool IsRemote { get; }
 
+    // Whether the target is a repository, which the settings screen reads to ask for a branch
+    // and a link template.
+    bool IsRepository
+    {
+        get { return false; }
+    }
+
     // Streams both ways and never materializes an object: content is read from the caller's
     // stream as it is written, so an archive larger than memory costs a buffer, not a copy.
     Task Put(StorageTarget target, string key, Stream content, string? contentType, CancellationToken cancelToken = default);

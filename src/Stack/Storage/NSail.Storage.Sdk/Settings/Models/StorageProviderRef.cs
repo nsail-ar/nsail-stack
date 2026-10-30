@@ -14,4 +14,7 @@ public class StorageProviderRef
     // region, key pair — or it writes where the host already is, and no third shape exists to
     // describe.
     public bool IsRemote { get; set; }
+
+    // Whether the target is a repository, so the screen also asks for its branch and link template.
+    public bool IsRepository { get; set; }
 }

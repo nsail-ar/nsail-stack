@@ -14,6 +14,7 @@ targets a business configures are a settings row, and the install's are configur
 | `NSail.Storage.Shared` | The settings screen, its strings and its guide chapter | The client composition roots that show the screen |
 | `NSail.Storage.FileSystem` | A directory on the host's own disk (provider `file`) | The host that may write to its disk |
 | `NSail.Storage.S3` | Any store speaking the S3 REST API, path-style, SigV4 (provider `s3`) | The host that writes to a bucket |
+| `NSail.Storage.Git` | A git repository: an object is a file committed and pushed (provider `git`); runs the host's `git` executable | The host that writes to a repository |
 
 ## Use it
 
@@ -21,6 +22,7 @@ targets a business configures are a settings row, and the install's are configur
 <PackageReference Include="NSail.Storage.WebApi" Version="$(NSailStackVersion)" />
 <PackageReference Include="NSail.Storage.FileSystem" Version="$(NSailStackVersion)" />
 <PackageReference Include="NSail.Storage.S3" Version="$(NSailStackVersion)" />
+<PackageReference Include="NSail.Storage.Git" Version="$(NSailStackVersion)" />
 ```
 
 On the server, the install's default store, then the providers it may write through, by name:
@@ -31,6 +33,7 @@ var install = builder.Configuration.Load<StorageOptions>();   // section Storage
 services.AddStorageWebApi(install.OnDisk("/data/storage"));   // OnDisk: optional floor
 services.AddFileSystemStorage();
 services.AddS3Storage();
+services.AddGitStorage();
 ```
 
 A kit that writes to a store of its own names it with a constant and declares it; the host may
@@ -77,11 +80,13 @@ anywhere stores nowhere.
 
 | Member | Meaning |
 |---|---|
-| `Provider` | `file` or `s3`. Empty: the install stores nowhere until a row names a target. |
-| `Container` | The directory (`file`) or the bucket (`s3`). Required once `Provider` is named; refused at startup otherwise. |
-| `Endpoint` | The store's address (`s3`). |
+| `Provider` | `file`, `s3` or `git`. Empty: the install stores nowhere until a row names a target. |
+| `Container` | The directory (`file`), the bucket (`s3`) or the repository under `Endpoint` (`git`). Required once `Provider` is named; refused at startup otherwise. |
+| `Endpoint` | The store's address (`s3`); the address the repository lives under (`git`), so the remote is `Endpoint/Container`. |
 | `Region` | The signing region (`s3`); defaults to `auto`. |
-| `AccessKey`, `SecretKey` | The key pair (`s3`). |
+| `AccessKey`, `SecretKey` | The key pair (`s3`); the user and the token, sent as an HTTP basic header (`git`). |
+| `Branch` | The branch objects are committed to (`git`); defaults to `main`. |
+| `LinkTemplate` | Where an object is read (`git`), `{key}` standing for its path, e.g. a private repository's raw address. No template, no link. |
 
 | Call | Meaning |
 |---|---|
@@ -89,10 +94,11 @@ anywhere stores nowhere.
 | `AddStore(name, install)` | Declares a store: a keyed `StorageManager` under `name`, and a row on the settings screen. `install` is optional; declared again with one, the last target wins. |
 | `AddFileSystemStorage()` | The `file` provider. |
 | `AddS3Storage()` | The `s3` provider and its `HttpClient`, with no wall-clock timeout; the caller's `CancellationToken` is the deadline. |
+| `AddGitStorage()` | The `git` provider. |
 | `StorageOptions.OnDisk(directory)` | The `file` provider at `directory` when the install named no provider; a named one is kept. |
 | `AddStorageComponents()` | The settings screen (Settings, Integrations), its strings and its guide chapter. |
 | `StorageManager.IsConfigured()` | Whether a put would be refused for want of a target, before anything is read to put. |
-| `StorageManager.Link(key)` | The address the object can be read at — the S3 provider's path-style URL, none for a directory — computed, not checked. |
+| `StorageManager.Link(key)` | The address the object can be read at — the S3 provider's path-style URL, the git provider's template, none for a directory — computed, not checked. |
 
 Every key passes `StorageManager.Guard`, which refuses one that would climb out of its container.
 A key is `<kind>/<tenant:N>/<leaf>`.

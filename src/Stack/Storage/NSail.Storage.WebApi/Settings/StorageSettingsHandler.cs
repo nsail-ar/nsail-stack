@@ -67,6 +67,8 @@ public class StorageSettingsHandler :
                 Region = settings.Region,
                 Container = settings.Container,
                 AccessKey = settings.AccessKey,
+                Branch = settings.Branch,
+                LinkTemplate = settings.LinkTemplate,
                 HasSecretKey = settings.SecretKey is { Length: > 0 },
             },
         };
@@ -88,6 +90,8 @@ public class StorageSettingsHandler :
             Region = message.Region?.Trim(),
             Container = message.Container?.Trim(),
             AccessKey = message.AccessKey?.Trim(),
+            Branch = message.Branch?.Trim(),
+            LinkTemplate = message.LinkTemplate?.Trim(),
             // The screen never receives the key, so an empty field is "unchanged", never
             // "clear it" — otherwise every edit of the container would silently take the
             // store offline.
@@ -107,6 +111,7 @@ public class StorageSettingsHandler :
                 Type = provider.Type,
                 DisplayName = provider.DisplayName,
                 IsRemote = provider.IsRemote,
+                IsRepository = provider.IsRepository,
             })
             .OrderBy(provider => provider.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList());

@@ -29,6 +29,12 @@ public class StorageOptions : IValidatableObject
 
     public string SecretKey { get; set; } = "";
 
+    // The ref a repository provider commits to; empty is the provider's own default.
+    public string Branch { get; set; } = "";
+
+    // The address pattern a repository's objects are read at, `{key}` standing for the object.
+    public string LinkTemplate { get; set; } = "";
+
     public StorageTarget Target()
     {
         if (Provider.Trim() is not { Length: > 0 } provider)
@@ -42,7 +48,9 @@ public class StorageOptions : IValidatableObject
             Region.Trim(),
             Container.Trim(),
             AccessKey.Trim(),
-            SecretKey.Trim());
+            SecretKey.Trim(),
+            Branch.Trim(),
+            LinkTemplate.Trim());
     }
 
     // A destination half typed would have every tenant with no settings row of its own refused

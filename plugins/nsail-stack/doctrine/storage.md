@@ -16,6 +16,7 @@ attachment, an export or an uploaded file that needs somewhere to land uses the 
 | `NSail.Storage.Shared` | the settings screen |
 | `NSail.Storage.FileSystem` | a directory on the host's own disk |
 | `NSail.Storage.S3` | anything speaking the S3 REST API |
+| `NSail.Storage.Git` | a git repository |
 
 No `.Data` project: Storage keeps no entity of its own and the target rides a `NSail.Settings`
 row. The proof is `test/Stack/Storage/NSail.Storage.WebApi.Tests`, which needs no database, and the
@@ -32,11 +33,11 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   leaves the delete pending until the read is disposed, and until then the key still
   answers `List` and a `Put` on it still fails.
 - **No vendor word in the API.** `StorageTarget` is one flat vendor-free shape — address,
-  region, container, key pair — and a provider reads what it needs. That is what keeps the
+  region, container, key pair, and a repository's branch and link template — and a provider reads what it needs. That is what keeps the
   settings screen ONE form instead of one per vendor, and it is a deliberate trade against a
   sealed opaque blob per provider, which would have cost an Sdk and a Shared assembly each.
 - **`AddStorageWebApi` registers no provider.** Where a host may write is the app's decision,
-  asked for by name (`AddFileSystemStorage`, `AddS3Storage`), so a product that must never write
+  asked for by name (`AddFileSystemStorage`, `AddS3Storage`, `AddGitStorage`), so a product that must never write
   to a disk does not compose the one that can.
 - **Stores have names, and `default` is the one every install has.** A kit that keeps its
   objects apart (reports in one place, backups in another) names its store with a constant and
@@ -70,7 +71,7 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   under nobody.
 - **A provider says where an object can be read, or that it cannot.** `Link` is computed from
   the target and the key with no call to the store — S3 answers the path-style address,
-  the filesystem answers null — and whether a reader is let in there is the store's own
+  the git provider answers its template, the filesystem null — and whether a reader is let in there is the store's own
   access policy, not Storage's.
 - **The provider contract may still change.** It freezes after the provider that follows S3,
   the rule `IStorageProvider` carries — one provider teaches you its own shape, not the
@@ -119,6 +120,20 @@ a one-client `IHttpClientFactory` and no credential anywhere. What is NOT proven
 real store ACCEPTS what is built: that the socket connects, the TLS completes and AWS, R2 or
 MinIO answers the signature with a 200. Closing that needs a bucket and a credential from a
 deployed instance, and nothing smaller.
+
+## The Git provider
+
+The repository is `Endpoint/Container`, as S3's is, so one target names the server and the
+store names the repository. An object is a file at its key: a put or a delete is a commit pushed
+to `Branch`, a get or a list reads that branch's tree, and `Link` is the target's template with
+`{key}` replaced. It runs the host's `git` executable rather than carrying a library with a native
+binary, so composing it grants the host that executable and the remotes it can reach.
+
+Each verb works in a throwaway one-commit clone and keeps nothing between calls, so two hosts
+never share a checkout. A push the remote rejected because the branch moved is fetched and
+committed again a few times before it is refused. The credential travels in the environment of
+the one process, as an HTTP basic header, and never on a command line. Its proof is
+`GitStorageTests`, against a bare repository on the local disk.
 
 ## The settings screen
 
