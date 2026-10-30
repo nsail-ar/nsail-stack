@@ -19,18 +19,9 @@
 <CascadingValue Value="Surface" IsFixed="true">
     @if (ShowHeader)
     {
-        @if (WithActions)
-        {
-            <NsPageHeader Title="Personas" Icon="@NsIcons.Directory">
-                <Actions>
-                    <NsButton Label="Nuevo" />
-                </Actions>
-            </NsPageHeader>
-        }
-        else
-        {
-            <NsPageHeader Title="Personas" Icon="@NsIcons.Directory" />
-        }
+        <NsPageHeader Title="Personas" Icon="@NsIcons.Directory"
+                      Filter="@(WithAlwaysOpenFilter ? _filter : null)" FilterAlwaysOpen="WithAlwaysOpenFilter"
+                      Actions="@(WithActions ? _actions : null)" />
     }
 
     <NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="OnQuery">
@@ -45,6 +36,10 @@
 
 @code {
 
+    RenderFragment _actions = @<NsButton Label="Nuevo" />;
+
+    RenderFragment _filter = @<div class="test-filter">Filters</div>;
+
     DataPage<ExportRowModel> _rows = DataPage<ExportRowModel>.Empty();
 
     [Parameter, EditorRequired]
@@ -52,6 +47,9 @@
 
     [Parameter]
     public bool ShowHeader { get; set; } = true;
+
+    [Parameter]
+    public bool WithAlwaysOpenFilter { get; set; }
 
     [Parameter]
     public bool WithActions { get; set; } = true;

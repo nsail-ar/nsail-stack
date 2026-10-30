@@ -93,7 +93,8 @@ it hands its export up to its `SurfaceContext` instead (`AnnounceExport`, the sa
 table's own control), and `NsPageHeader` draws that export's trigger in its toolbar, before
 `Actions`, where it claims the slot (`SurfaceContext.ClaimsExport`, asked from its own render,
 first header wins). When Exportar is all the toolbar would hold (no `Lead`, search, filter toggle
-or `Actions`), the header draws it in the title row ahead of the guide's `?` and no toolbar row opens. An unnamed grid whose surface has no header to claim the slot — an embedded
+or `Actions`), the header draws it in the title row ahead of the guide's `?` and no toolbar row
+opens. An unnamed grid whose surface has no header to claim the slot — an embedded
 grid, a dialog — keeps drawing its own, same as a named one. First unnamed, exportable grid to
 announce on a surface wins the slot the same way (`SurfaceContext.AnnounceExport`): a second
 grid's render, exportable or not, is simply not read while another grid holds it, and a grid's

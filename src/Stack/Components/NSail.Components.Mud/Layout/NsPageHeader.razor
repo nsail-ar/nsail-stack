@@ -224,7 +224,7 @@
     // its own. Asked from the render, like the claim itself.
     bool _exportBesideGuide => !_hasControls && _hasExport;
 
-    bool _hasToolBar => _hasControls || Filter is not null || (_hasExport && !_exportBesideGuide);
+    bool _hasToolBar => _hasControls || (_hasExport && !_exportBesideGuide);
 
     bool FilterOpenValue => FilterOpen ?? _filterOpen;
 
