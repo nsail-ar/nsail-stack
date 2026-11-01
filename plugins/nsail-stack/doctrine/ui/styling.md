@@ -485,7 +485,7 @@ purpose**: what it hosts is a routed page composing `NsPanel` (cases).
 The exception the rule above allows, and its whole extent: **whether the nav drawer is docked or
 behind the hamburger is a window fact** (`MudDrawer`'s `Breakpoint.Md`, `NsMainLayout`), so
 anything that trades places with the drawer flips on that same edge and on no other — chrome that
-stands in for it while it is hidden (the title row's hamburger), and content that moves *into* it while
+stands in for it while it is hidden (the title row's hamburger and brand), and content that moves *into* it while
 it is (the guide's index rail). Two helpers say it, and a window decision is written with them or
 it is not written:
 

@@ -56,8 +56,9 @@
                 </span>
                 @* The install's brand, where the drawer that owns it is shut behind the toggle
                    above: what rides under its name then reads without opening the menu. Open,
-                   the drawer's own header draws it, so it is never on screen twice. *@
-                @if (LayoutState!.Brand is { } brand && !LayoutState.DrawerIsOpen)
+                   the drawer's own header draws it, so a class hides this copy: drawn, never
+                   mounted and unmounted, or the brand's load would re-run on every toggle. *@
+                @if (LayoutState!.Brand is { } brand)
                 {
                     <div class="@GetBrandClasses()">@brand</div>
                 }
@@ -254,6 +255,7 @@ else if (!Hoisted)
     {
         return new NsClassBuilder(NsResponsive.ShownBelowWindow(NsSize.Md))
             .Add("align-center flex-shrink-0 mr-3")
+            .Add("d-none", LayoutState!.DrawerIsOpen)
             .ToString();
     }
 

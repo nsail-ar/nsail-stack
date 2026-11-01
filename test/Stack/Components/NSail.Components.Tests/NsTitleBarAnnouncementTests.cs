@@ -155,8 +155,8 @@ public sealed class NsTitleBarAnnouncementTests : BunitContext, IAsyncLifetime
 
         await cut.InvokeAsync(() => state.DrawerIsOpen = true);
 
-        // Open, the drawer's own header draws it: never twice.
-        Assert.Empty(bar.FindAll("#brand"));
+        // Open, the drawer's own header draws it: this copy stays mounted and is hidden.
+        Assert.Contains("d-none", bar.Find("#brand").ParentElement!.ClassList);
     }
 
     /// <summary>nsail#1460: this row is drawn inside whatever the page wrapped its panel in, and

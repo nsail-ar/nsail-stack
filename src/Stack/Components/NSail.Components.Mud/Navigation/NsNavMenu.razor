@@ -31,9 +31,9 @@
     <Header>
         @if (Brand is not null)
         {
-            @* The drawer owns the brand, always — full height on desktop, the header of
-               the temporary sheet on mobile (Leonardo, nsail#378). One place shows it, so
-               no viewport can show it twice. *@
+            @* The drawer draws the brand — full height on desktop, the header of the
+               temporary sheet on mobile. Shut behind the hamburger, the title row draws it
+               too (NsLayoutState.Brand), and each hides while the other shows. *@
             <div class="d-flex align-center px-4 ns-nav-brand">
                 @Brand
             </div>

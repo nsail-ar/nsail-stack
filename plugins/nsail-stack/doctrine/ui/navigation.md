@@ -41,7 +41,10 @@ highlight. The app layout just places `<NsNavMenu />`.
 - **The brand follows the drawer's state.** `NsNavMenu.Brand` is the install's name and whatever
   rides under it; shut behind the hamburger, the screen's title row (`NsTitleBar`) draws it
   beside the toggle through `NsLayoutState.Brand`, so it reads without opening the menu. Open,
-  only the drawer draws it.
+  only the drawer draws it — the row's copy is hidden by a class, never unmounted, so the
+  brand's own load does not re-run on every toggle. The fragment reads on two grounds: the
+  rail's graphite (dark in both schemes) and the page's `Surface`; a mark drawn for one ground
+  only is the product's to make readable on the other.
 - **The mechanism for the group order is weight bands**, so contributors compose without
   coordinating: domain groups 10–50, system groups 80+.
 - **A page missing from the route table throws at startup** rather than 404-ing on click
