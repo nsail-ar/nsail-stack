@@ -2,22 +2,30 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Net;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSail.Data;
+using NSail.Messaging.Runtime.Publishing;
 using NSail.Messaging.WebApi;
+using NSail.Security;
 
 namespace NSail.BaseServices.WebApi.Tests;
 
 /// <summary>nsail#3002: a tenant's request budget, read through <see cref="RequestBudgetProvider"/>
 /// and refused past it with 429 and <c>Retry-After</c>. The provider is stubbed because the figure
 /// is the product's to read — the Stack names no entitlement key; the clock is stubbed so the
-/// seconds left are an exact figure; and the tenant is stubbed off a header because what is under
-/// test is the partition, not how a tenant is resolved. The pipeline is the real one, as in
+/// seconds left are an exact figure; and the tenant and the signed-in caller are stubbed off
+/// headers because what is under test is the partition and what counts, not how a tenant is
+/// resolved or a ticket read. The pipeline is the real one, as in
 /// <see cref="ThrottleTests"/>.</summary>
 public sealed class RequestBudgetTests
 {
@@ -97,6 +105,44 @@ public sealed class RequestBudgetTests
         }
     }
 
+    // A public door's anonymous flood is the internet's, not the tenant's: it spends nothing of
+    // the budget the tenant's own users send against.
+    [Fact]
+    public async Task An_anonymous_request_spends_nothing_of_the_budget()
+    {
+        await using var host = await BudgetHost.Start(PerMinute);
+
+        for (var attempt = 0; attempt < PerMinute * 3; attempt++)
+        {
+            using var anonymous = await host.Get("acme", signedIn: false);
+
+            Assert.Equal(HttpStatusCode.OK, anonymous.StatusCode);
+        }
+
+        using var signedIn = await host.Get("acme");
+
+        Assert.Equal(HttpStatusCode.OK, signedIn.StatusCode);
+    }
+
+    // The push feed names no message, so a storm of reconnections after a deploy is not work the
+    // budget counts.
+    [Fact]
+    public async Task The_push_feed_spends_nothing_of_the_budget()
+    {
+        await using var host = await BudgetHost.Start(PerMinute);
+
+        for (var attempt = 0; attempt < PerMinute * 3; attempt++)
+        {
+            using var negotiated = await host.Negotiate("acme");
+
+            Assert.Equal(HttpStatusCode.OK, negotiated.StatusCode);
+        }
+
+        using var sent = await host.Get("acme");
+
+        Assert.Equal(HttpStatusCode.OK, sent.StatusCode);
+    }
+
     static async Task<string> Code(HttpResponseMessage response)
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -138,6 +184,47 @@ sealed class HeaderTenancy : TenancyProvider
     }
 }
 
+// Signs the caller in when the header is present, so the session the middleware reads is the
+// one authentication produced, as Iam's adapter does.
+sealed class HeaderSignIn : AuthenticationHandler<AuthenticationSchemeOptions>
+{
+    public const string Name = "Probe";
+    public const string Header = "X-Probe-Signed-In";
+
+    public HeaderSignIn(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+        : base(options, logger, encoder)
+    {
+    }
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        if (!Request.Headers.ContainsKey(Header))
+        {
+            return Task.FromResult(AuthenticateResult.NoResult());
+        }
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "probe")], Name));
+
+        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, Name)));
+    }
+}
+
+sealed class PrincipalSession : SessionProvider
+{
+    readonly IHttpContextAccessor _http;
+
+    public PrincipalSession(IHttpContextAccessor http)
+    {
+        _http = http;
+    }
+
+    public override Session Session
+    {
+        get { return new Session { IsAuthenticated = _http.HttpContext?.User.Identity?.IsAuthenticated == true }; }
+        set { base.Session = value; }
+    }
+}
+
 sealed class BudgetHost : IAsyncDisposable
 {
     readonly WebApplication _app;
@@ -162,8 +249,10 @@ sealed class BudgetHost : IAsyncDisposable
         builder.AddBaseWebApi();
 
         builder.Services.AddSingleton<TimeProvider>(clock);
-        builder.Services.AddAuthentication();
+        builder.Services.AddAuthentication(HeaderSignIn.Name)
+            .AddScheme<AuthenticationSchemeOptions, HeaderSignIn>(HeaderSignIn.Name, null);
         builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<SessionProvider, PrincipalSession>();
         builder.Services.AddScoped<RequestBudgetProvider>(_ => new StubBudget(perMinute));
         builder.Services.AddScoped<TenancyProvider, HeaderTenancy>();
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Uncapped), Uncapped.Path));
@@ -177,11 +266,26 @@ sealed class BudgetHost : IAsyncDisposable
         return new BudgetHost(app, app.GetTestClient(), clock);
     }
 
-    public Task<HttpResponseMessage> Get(string tenant)
+    public Task<HttpResponseMessage> Get(string tenant, bool signedIn = true)
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, new Uri($"https://localhost/{Uncapped.Path}"));
+        return Send(HttpMethod.Get, Uncapped.Path, tenant, signedIn);
+    }
+
+    public Task<HttpResponseMessage> Negotiate(string tenant)
+    {
+        return Send(HttpMethod.Post, $"{PushFeed.Path}/negotiate?negotiateVersion=1", tenant, signedIn: true);
+    }
+
+    Task<HttpResponseMessage> Send(HttpMethod method, string path, string tenant, bool signedIn)
+    {
+        var request = new HttpRequestMessage(method, new Uri($"https://localhost/{path}"));
 
         request.Headers.Add(HeaderTenancy.Header, tenant);
+
+        if (signedIn)
+        {
+            request.Headers.Add(HeaderSignIn.Header, "1");
+        }
 
         return _client.SendAsync(request);
     }

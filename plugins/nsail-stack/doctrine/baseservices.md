@@ -83,8 +83,8 @@ its own, the words of the one page this project draws without the app (the suspe
   permission question, and a flood is refused before any policy evaluation. It reads
   `[Throttled(perMinute)]` off the message the matched route names, so an endpoint whose
   message declares none passes untouched; see messaging.md.
-- `RequestBudgetMiddleware` — a tenant's whole volume, beside the throttle: the message sends
-  of each tenant per minute, against the figure `RequestBudgetProvider` answers (none in the
+- `RequestBudgetMiddleware` — a tenant's whole volume, beside the throttle: the authenticated
+  message sends of each tenant per minute, against the figure `RequestBudgetProvider` answers (none in the
   base; the Stack names no key), refused past it with 429 and `Retry-After`. The one ceiling
   that refuses; see
   [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-and-what-the-plan-includes).

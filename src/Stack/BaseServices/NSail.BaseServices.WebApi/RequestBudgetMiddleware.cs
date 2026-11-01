@@ -6,6 +6,7 @@ using System.Globalization;
 using NSail.Data;
 using NSail.Messaging.WebApi;
 using NSail.Problems;
+using NSail.Security;
 
 namespace NSail.BaseServices.WebApi;
 
@@ -15,12 +16,14 @@ namespace NSail.BaseServices.WebApi;
 /// (data-tenancy.md): a rate defers the work rather than losing it, and one tenant's flood would
 /// otherwise be spent out of every other tenant's share of the install.
 ///
-/// <para>Only a request that sends a message counts — the matched route names one, as it does
-/// for <see cref="ThrottleMiddleware"/> — because a page load is dozens of assets and none of
-/// them is work. A tenant whose provider answers null passes untouched, and so does one it
-/// answers zero or less for: a figure that would refuse every request is a suspension, and
-/// suspending is the state row's word (<see cref="TenantStateMiddleware"/>), never a
-/// number's.</para>
+/// <para>Only an authenticated request that sends a message counts. The matched route names the
+/// message, as it does for <see cref="ThrottleMiddleware"/>, because a page load is dozens of
+/// assets and none of them is work; and the caller is signed in, because a public door's
+/// anonymous flood is the internet's and not the tenant's, and spending it out of the tenant's
+/// budget would refuse the tenant's own users for it. A tenant whose provider answers null passes
+/// untouched, and so does one it answers zero or less for: a figure that would refuse every
+/// request is a suspension, and suspending is the state row's word
+/// (<see cref="TenantStateMiddleware"/>), never a number's.</para>
 ///
 /// <para>The window is counted here rather than by <c>System.Threading.RateLimiting</c>, whose
 /// fixed window answers a refused lease's retry-after with the whole window and not what is left
@@ -42,10 +45,10 @@ public sealed class RequestBudgetMiddleware : IMiddleware
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(next);
 
-        if (await Budget(context) is var (tenant, perMinute, message)
-            && Spend(tenant, perMinute) is { } retryAfter)
+        if (await Budget(context) is { } budget
+            && Spend(budget.Tenant, budget.PerMinute) is { } retryAfter)
         {
-            await Refuse(context, retryAfter, message);
+            await Refuse(context, retryAfter, budget.Message);
 
             return;
         }
@@ -60,7 +63,10 @@ public sealed class RequestBudgetMiddleware : IMiddleware
         var message = context.GetEndpoint()?.Metadata.GetMetadata<MessageEndpointMetadata>()?.MessageType;
         var services = context.RequestServices;
 
+        // Optional, as for CredentialMiddleware: a host that registered no SessionProvider has
+        // nobody signed in, and nothing it serves is counted.
         if (message is null
+            || services.GetService<SessionProvider>()?.Session is not { IsAuthenticated: true }
             || services.GetService<RequestBudgetProvider>() is not { } provider
             || await provider.PerMinute(context.RequestAborted) is not { } perMinute
             || perMinute < 1)
