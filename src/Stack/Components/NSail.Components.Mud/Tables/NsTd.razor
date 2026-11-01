@@ -48,8 +48,9 @@
     [Parameter]
     public NsCompact Compact { get; set; } = NsCompact.Shown;
 
-    /// <summary>Keeps this cell's value on one line. Shown follows the column's own NsTh; a cell
-    /// with no column behind it — a computed one, named by DataLabel — says it here.</summary>
+    /// <summary>Keeps this cell's value on one line. The cell adds to what the column's NsTh
+    /// declared, never removes it; a cell with no column behind it — a computed one, named by
+    /// DataLabel — says it here.</summary>
     [Parameter]
     public bool Whole { get; set; }
 

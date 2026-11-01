@@ -73,4 +73,23 @@ public sealed class NsTableWholeColumnTests : BunitContext, IAsyncLifetime
 
         Assert.Contains("white-space: nowrap;", block, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void TheStackedLabelStillWraps()
+    {
+        var block = Rule(HouseStylesheet.Read(), ".ns-table.mud-sm-table .ns-col-whole::before {");
+
+        Assert.Contains("white-space: normal;", block, StringComparison.Ordinal);
+    }
+
+    static string Rule(string css, string selector)
+    {
+        var start = css.IndexOf(selector, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"'{selector}' was not found in the stylesheet.");
+
+        var end = css.IndexOf('}', start);
+        Assert.True(end >= 0, $"'{selector}' has no closing brace.");
+
+        return css[start..end];
+    }
 }
