@@ -29,8 +29,8 @@ public sealed class ArrangedDeniedProbePage : ComponentBase;
 /// renamed door can still be found by the name the reader can see.</summary>
 public sealed class NsNavMenuArrangedLabelTests : BunitContext, IAsyncLifetime
 {
-    // The drawer draws a tooltip now (the "?" door), and the vendor's popover service behind one
-    // is IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    // The vendor's popover service AddMudServices registers is IAsyncDisposable only — a
+    // synchronous dispose of the container throws on it.
     Task IAsyncLifetime.InitializeAsync()
     {
         return Task.CompletedTask;
@@ -44,9 +44,6 @@ public sealed class NsNavMenuArrangedLabelTests : BunitContext, IAsyncLifetime
     IRenderedComponent<NsNavMenu> RenderMenu()
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
-        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
-        // renders it composes one.
-        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog(
             [new TwoLanguageStrings("NavMenu.Scheduling", "Scheduling", "Agenda")]));

@@ -36,7 +36,6 @@ public sealed class NsNavMenuExternalEntryTests : BunitContext, IAsyncLifetime
     IRenderedComponent<NsNavMenu> RenderMenu(NavMenuItem entry)
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
-        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();

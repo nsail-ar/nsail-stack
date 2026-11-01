@@ -35,9 +35,6 @@ public sealed class NsNavMenuSearchTests : BunitContext, IAsyncLifetime
     public NsNavMenuSearchTests()
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
-        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
-        // renders it composes one.
-        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();
