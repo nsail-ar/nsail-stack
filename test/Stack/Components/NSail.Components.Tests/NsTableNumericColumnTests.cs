@@ -67,7 +67,7 @@ public sealed class NsTableNumericColumnTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void OnlyAMoneyHeaderSharesTheMoneySlotEdge()
+    public void OnlyAMoneyColumnEndsOnItsOwnEdge()
     {
         var cut = Render<ExportTableHost>();
 
@@ -76,6 +76,18 @@ public sealed class NsTableNumericColumnTests : BunitContext, IAsyncLifetime
         Assert.Contains("ns-col-money", headers[2].ClassList); // Total: Money
         Assert.DoesNotContain("ns-col-money", headers[1].ClassList); // Count: Number
         Assert.DoesNotContain("ns-col-money", headers[3].ClassList); // Share: Percent
+    }
+
+    [Fact]
+    public void AMoneyCellCarriesTheHeadersEdgeClass()
+    {
+        var cut = Render<ExportTableHost>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("tbody tr td")));
+        var body = cut.FindAll("tbody tr")[0].QuerySelectorAll("td");
+
+        Assert.Contains("ns-col-money", body[2].ClassList);
+        Assert.DoesNotContain("ns-col-money", body[1].ClassList);
     }
 
     [Fact]
@@ -136,6 +148,15 @@ public sealed class NsTableNumericColumnTests : BunitContext, IAsyncLifetime
 
         Assert.Contains(".ns-table td.ns-col-money {", block, StringComparison.Ordinal);
         Assert.Contains("padding-inline-end: 0;", block, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ALastMoneyColumnOfTheMirrorEndsOnTheFieldsEdge()
+    {
+        var css = HouseStylesheet.Read();
+        var block = Rule(css, ".ns-table.ns-row-submit-gutter thead th.ns-col-money:last-child,");
+
+        Assert.Contains("padding-inline-end: calc(var(--ns-add-row-act) + 1rem);", block, StringComparison.Ordinal);
     }
 
     static string Rule(string css, string selector)

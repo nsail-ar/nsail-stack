@@ -429,8 +429,8 @@
         // never need to do: a number box steps its own value on these two keys and it does that
         // from its own handler rather than as the keydown's default action, so preventing the
         // default alone left the row it was leaving incremented by one. Capture plus this is
-        // what keeps the key from reaching the box at all. A spinner's arrows are still on the
-        // box for a pointer; inside a grid the keys are the grid's.
+        // what keeps the key from reaching the box at all. A numeric or percent box's spinner
+        // arrows are still there for a pointer; inside a grid the keys are the grid's.
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();

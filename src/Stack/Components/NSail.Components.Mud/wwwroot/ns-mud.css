@@ -3866,9 +3866,11 @@ div.mud-input-slot.mud-input-root::placeholder {
 
 /* A money column's header and figures end on one edge, the column's own: neither keeps the
    vendor's end padding the other lacks. */
-.ns-table th.ns-col-money,
-.ns-table td.ns-col-money {
-    padding-inline-end: 0;
+@media (min-width: 960.02px) {
+    .ns-table th.ns-col-money,
+    .ns-table td.ns-col-money {
+        padding-inline-end: 0;
+    }
 }
 
 /* A row laid out beside a table that selects (NsTable's own .ns-select, width:1%) rather than
@@ -4007,6 +4009,16 @@ div.mud-input-slot.mud-input-root::placeholder {
 .ns-table.ns-row-submit-gutter thead th:last-child,
 .ns-table.ns-row-submit-gutter tbody td:last-child {
     width: calc(var(--ns-money-slot) + 1rem + var(--ns-add-row-act) + 1rem);
+}
+
+/* The reserved last column holds the price field, then the act and a gap: a money column that
+   is last ends its figures on the field's right edge by keeping that reserve as end padding, so
+   its content box is exactly the slot. */
+@media (min-width: 960.02px) {
+    .ns-table.ns-row-submit-gutter thead th.ns-col-money:last-child,
+    .ns-table.ns-row-submit-gutter tbody td.ns-col-money:last-child {
+        padding-inline-end: calc(var(--ns-add-row-act) + 1rem);
+    }
 }
 
 @media (max-width: 960px) {
