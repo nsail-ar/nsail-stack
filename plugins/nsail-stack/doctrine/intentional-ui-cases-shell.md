@@ -294,7 +294,9 @@ there the key is the character the hand meant.
 
 - `container-type: inline-size` stops the element sizing itself from its content — safe on
   `NsPanel`/`NsCard` (flex columns taking width from the parent), exactly what would break a
-  `fit-content` element. Pick the node deliberately.
+  `fit-content` element. Pick the node deliberately — a vendor node most of all: the pager's
+  `.mud-table-pagination-toolbar` is one, safe because it is a block child of
+  `.mud-table-pagination` and already took its parent's width.
 - The stacked mobile layout outranking hidden columns is specificity, measured (WorkOrdersPage's
   saldos): `.mud-{bp}-table .mud-table-cell { display: flex }` (0-2-0) beats `.d-c-none`
   (0-1-0), so a hidden column reappeared as a card line. Fixed at the specificity the card needs,
@@ -302,10 +304,11 @@ there the key is the character the hand meant.
   (0-4-0), off by default once stacked, and a matching `.d-c-{bp}-table-cell` selector at the
   same weight nested in the same `@container` thresholds — written second, so it wins exactly when
   its own condition matches.
-- `MudTable.Breakpoint` is pure vendor CSS (`mud-sm-table` + a 960px media query), so *when the
-  table stacks* stays viewport-bound — porting those rules to `@container` means owning a copy of
-  vendor CSS. That copy is taken only for the case that has no other answer: a table with a row
-  OPEN, whose inputs never hide ([cases: hosts](intentional-ui-cases-hosts.md), *The open row
-  stacks where its container cannot seat it*). A table nobody is editing stacks by viewport alone.
+- `MudTable.Breakpoint` is pure vendor CSS (`mud-sm-table` + a 960px media query), so the
+  vendor's *when the table stacks* is viewport-bound — answering a container means owning a copy
+  of vendor CSS. That copy is taken, once, for every table on a wide window: hiding columns cannot
+  seat every list in an aside, and an open row's inputs never hide at all
+  ([cases: hosts](intentional-ui-cases-hosts.md), *A table stacks where its container cannot seat
+  it*).
 - No fallback needed: container queries ship in every browser since 2022–23; a browser without
   them ignores the rule and leaves labels visible.

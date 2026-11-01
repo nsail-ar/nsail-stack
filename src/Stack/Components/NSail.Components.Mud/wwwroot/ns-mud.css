@@ -295,15 +295,11 @@
    arrows) rendered cut off at the bottom of the list, not just the container's rows.
 
    Catálogo's NsTable (like every NsTable in this codebase — none sets Mode explicitly)
-   resolves Mode="Auto", which answers Scroll only at Xs/Sm breakpoints once the viewport is
-   known (NsTable.razor's Scrolls); everything else — a phone in landscape included, and the
-   prerendered window before that first breakpoint resolves — stays on the Page branch, the
-   real MudTablePager. Rows do not exist in that prerendered window (MudTable's ServerData
-   runs from OnAfterRenderAsync, which static SSR never reaches), so the squeeze this rule
-   guards against is not that window — it needs the Page branch hydrated, with real rows, in a
-   box too short to hold rows and pager both. A phone screen is short exactly like that whenever
-   its width keeps Auto out of Scroll, landscape being the ordinary way that happens; the
-   pager clipped against real rows is what Leonardo's screenshot caught.
+   resolves Mode="Auto", which answers Scroll only on a phone (NsTable.razor's Scrolls, asking
+   IDeviceProvider); everything else — a tablet, a desktop window dragged short, a host with no
+   device seam — stays on the Page branch, the real MudTablePager. The squeeze this rule guards
+   against needs that branch hydrated, with real rows, in a box too short to hold rows and
+   pager both.
 
    The vendor's own .mud-table-pagination carries overflow: auto (for a WIDE table's
    horizontal pager scroll), and a flex item whose overflow is not visible in an axis takes
@@ -546,8 +542,8 @@
    eight-column row, asks 856px of a 934px table and clears it by 78px. Below md the demand is
    not safe — at a 712px container the asiento's row has 103px of slack while the comprobante's
    is already 52px past its own table — and it is no longer needed either: there the open row
-   stops being a row of columns at all and every field takes its own card line (nsail#1614, the
-   stacked-by-container block below). A preference is what this rule used to hand a narrow row
+   stops being a row of columns at all and every field takes its own card line (the container
+   block below, where a table stacks). A preference is what this rule used to hand a narrow row
    instead, 192px out of its own surplus (nsail#1242); the stack gives the same cell 654px in the
    same 688px aside, so the word that was only ever the best of a bad width is gone rather than
    left to decide nothing. */
@@ -618,8 +614,8 @@
    all. Below 960px (the vendor's own max-width) MudTable stacks every row into a card where
    this cell is `display: flex` instead of `table-cell` — there the same declaration would be a
    HEIGHT on every line of a tall one, which the stacked card's own rules answer on their own
-   terms. The open row's own stacked form (.ns-table-editing under its @container, below)
-   resets it by specificity. */
+   terms. The container's stacked form (.mud-sm-table under its @container, below) resets
+   it by specificity. */
 @media (min-width: 960.02px) {
     .ns-table .mud-table-body .mud-table-row .mud-table-cell {
         height: 2.625rem;
@@ -768,8 +764,8 @@
    what keeps the counts equal — the header comes back with its cells, and no row is left
    matching a different count.
 
-   What that reaches is the band between md and a column's own threshold. An open row stacks
-   wherever its container cannot seat it (the nsail#1614 block below), so a table still laid
+   What that reaches is the band between md and a column's own threshold. A table stacks
+   wherever its container cannot seat it (the container block below), so a table still laid
    out in columns has a container of 960px or more, and the only columns hidden that far up
    are the ones a grid declared Lg or Xl — EditorRowColumnModeTests measures it in a 1000px
    container, on the comprobante's Lg column.
@@ -990,10 +986,12 @@
     }
 }
 
-/* THE COMPACT PHONE FORM (NsTable Compact): under the tablet's width an opted-in table draws
-   each row as one line instead of the stacked card, so a list read to find a person shows
-   several times as many of them. The lead cell (ns-compact-lead, the first column the header
-   declared that the row draws) opens the first line with the action cell packed after it; the
+/* THE COMPACT PHONE FORM (NsTable Compact): in a container under the tablet's width an opted-in
+   table draws each row as one line instead of the stacked card, so a list read to find a person
+   shows several times as many of them. The container alone asks: a table that narrow is stacked
+   at any window, by the vendor below 960px and by the container block below above it. The lead
+   cell (ns-compact-lead, the first column the header declared that the row draws) opens the
+   first line with the action cell packed after it; the
    row's pseudo is a full-width break, and every other surviving cell follows on the second line,
    receding, with no data-label — a reading that needs its word says it in its own cell. The
    lead wraps rather than ellipsizes: the name is what the line is scanned for, and two people
@@ -1014,108 +1012,97 @@
     display: none;
 }
 
-@media (max-width: 960px) {
-    @container (max-width: 599.98px) {
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body {
-            display: block;
-        }
+@container (max-width: 599.98px) {
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body {
+        display: block;
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-row {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            column-gap: 8px;
-            padding: 4px 16px;
-            border-bottom: 1px solid var(--mud-palette-table-lines);
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        column-gap: 8px;
+        padding: 4px 16px;
+        border-bottom: 1px solid var(--mud-palette-table-lines);
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-row::after {
-            content: "";
-            order: 1;
-            flex-basis: 100%;
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-row::after {
+        content: "";
+        order: 1;
+        flex-basis: 100%;
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell {
-            display: block;
-            order: 2;
-            padding: 0;
-            border: none;
-            color: var(--mud-palette-text-secondary);
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell {
+        display: block;
+        order: 2;
+        padding: 0;
+        border: none;
+        color: var(--mud-palette-text-secondary);
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell::before {
-            display: none;
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell::before {
+        display: none;
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell:empty {
-            display: none;
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell:empty {
+        display: none;
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-lead {
-            order: 0;
-            flex: 1 1 0;
-            overflow-wrap: break-word;
-            color: var(--mud-palette-text-primary);
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-lead {
+        order: 0;
+        flex: 1 1 0;
+        overflow-wrap: break-word;
+        color: var(--mud-palette-text-primary);
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-actions,
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-select {
-            display: flex;
-            order: 0;
-            flex: none;
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-actions,
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-select {
+        display: flex;
+        order: 0;
+        flex: none;
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.d-c-none,
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-hidden {
-            display: none;
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.d-c-none,
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-hidden {
+        display: none;
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-only {
-            display: block;
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-only {
+        display: block;
+    }
 
-        .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-only.ns-actions {
-            display: flex;
-        }
+    .ns-table.ns-table-compact.mud-sm-table:not(.ns-table-editing) .mud-table-body .mud-table-cell.ns-compact-only.ns-actions {
+        display: flex;
     }
 }
 
-/* THE OPEN ROW STACKS WHERE ITS CONTAINER CANNOT SEAT IT (nsail#1614 — Leonardo, Nueva Orden
-   de Compra in the 720px aside: Precio unitario was a 47px box against a 110px reading, so
-   125.430,50 read "50").
+/* A TABLE STACKS WHERE ITS CONTAINER CANNOT SEAT IT, not only where the window cannot. The
+   vendor's stack asks the viewport (.mud-sm-table under max-width: 960px), so a list in an aside
+   on a wide screen stays a table of columns squeezed into the aside's width: column hiding takes
+   the read columns away one rung at a time, and what is left still outgrows the box — the cells
+   overlap or the row scrolls sideways. The open row is the sharpest case (an edit input never
+   hides, and four of them need over 950px to show the values they hold in a 688px aside), but a
+   row being read has the same answer: a card, the phone's own shape.
 
-   An edit input never hides (nsail#480) while a read column does, so the open row is the one
-   thing in a grid that cannot be narrowed — and hiding is measured per CONTAINER while the
-   vendor's stack is measured per VIEWPORT, which leaves the row being typed into as the only
-   thing in the tree with no answer for a narrow container on a wide screen. It is not an
-   arithmetic anyone can win: measured in the 688px container that aside leaves, the six cells
-   read 192/122/106/96/70/100 with 232px of that the vendor's own dense cell padding, while
-   the four inputs need over 950px between them to show the values they hold. A preference
-   moves width between columns and a floor demands it; neither invents any, and the row's
-   answer here is 654px of box per field, which only the stack has.
+   THE SHAPE IS THE PHONE'S, not a second one — the same card lines, the same receding label,
+   the same right-packed action strip, the foot kept as its own card, the open row's label above
+   its field. Only the question differs: this asks the container. Gated under a wide VIEWPORT so
+   the two regimes never both answer: below 960px the vendor's stack holds and the block above
+   corrects it. They meet at exactly 960px, where both fire and say the same thing — an overlap of
+   one pixel is worth less than the fractional gap a min-width complementing a max-width leaves.
 
-   THE SHAPE IS THE PHONE'S, not a second one — the same card lines, the same label above the
-   field on the open row (nsail#1492), the same right-packed confirm/cancel. What differs is
-   the QUESTION: the vendor asks the viewport and stacks the table always, this asks the
-   container and only while a row is open. A table nobody is editing goes on hiding columns
-   per container, which is the answer a row being READ already has.
-
-   Gated under a wide VIEWPORT so the two regimes are never both a table's answer: below
-   960px the vendor's own stack holds and the block above is what corrects it. They meet at
-   exactly 960px, where both fire and say the same thing — the fractional gap a min-width
-   complementing a max-width would have left is worth less than an overlap of one pixel.
-
-   The vendor's base is COPIED here (display, the label pseudo, the dense stacked padding, the
-   body's own top line and the row's separator) rather than reached for: .mud-sm-table is the
-   viewport's word and nothing may put it on. It is the price of the question being a different
-   one, and it is paid once, here, for every editor in the tree. */
+   The vendor's base is COPIED here (the hidden head, display, the label pseudo, the dense stacked
+   padding, the body's top line and the row's separator) rather than reached for: the vendor's own
+   rules are a media query nothing can put on. The selectors are the phone block's own —
+   .mud-sm-table rides the root at every width (Breakpoint="Sm", NsTable.razor) — so the same
+   specificities settle the same ties. */
 @media (min-width: 960px) {
     @container (max-width: 959.98px) {
-        .ns-table.ns-table-editing .mud-table-head .mud-table-row {
+        .ns-table.mud-sm-table .mud-table-head .mud-table-row {
             display: none;
         }
 
-        .ns-table.ns-table-editing .mud-table-cell {
+        .ns-table.mud-sm-table .mud-table-cell {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -1124,109 +1111,114 @@
             text-align: start;
         }
 
-        /* The row floor (above) is four classes; this five-class selector, the fifth being
-           .ns-table-editing itself, wins on specificity. Unanswered, every line of this flex box would stand as tall as the floor meant for a
-           whole dense row: 42px per line here, where this card's own padding (above) already
-           answers for the row's height. */
-        .ns-table.ns-table-editing .mud-table-body .mud-table-row .mud-table-cell {
+        /* Five classes against the column-mode row floor's four: a line of a card is not a
+           row, and the floor would stand every line of it as tall as a whole dense row. */
+        .ns-table.mud-sm-table .mud-table-body .mud-table-row .mud-table-cell {
             height: auto;
         }
 
-        /* The cells above dropped every border to stack, so the line between two records is
-           drawn back on the card's own last cell, and the first card needs the one the vendor's
-           own stack draws above the body — the head row that used to close the table off the
-           content above it is gone. */
-        .ns-table.ns-table-editing .mud-table-body {
+        /* The line between two records is drawn on each card's last cell, and the first card
+           takes the one the head row drew before it was hidden. */
+        .ns-table.mud-sm-table .mud-table-body {
             border-top: 1px solid var(--mud-palette-table-lines);
         }
 
-        .ns-table.ns-table-editing .mud-table-row .mud-table-cell:last-child {
+        .ns-table.mud-sm-table .mud-table-row .mud-table-cell:last-child {
             border-bottom: 1px solid var(--mud-palette-table-lines);
         }
 
-        /* The label the column header no longer draws, receding so the datum leads — the
-           stacked block above and its ruling (Leonardo, 2026-08-12). */
-        .ns-table.ns-table-editing .mud-table-cell::before {
+        .ns-table.mud-sm-table .mud-table-cell::before {
             content: attr(data-label);
             color: var(--mud-palette-text-secondary);
             font-weight: 400;
             padding-inline-end: 16px;
         }
 
-        .ns-table.ns-table-editing .mud-table-cell.ns-cell-editing {
+        .ns-table.mud-sm-table .mud-table-cell.ns-cell-editing {
             flex-direction: column;
             align-items: stretch;
             row-gap: 2px;
         }
 
-        .ns-table.ns-table-editing .ns-actions {
+        .ns-table.mud-sm-table .ns-actions {
             width: auto;
             justify-content: flex-end;
         }
 
-        .ns-table.ns-table-editing .ns-actions::before {
+        .ns-table.mud-sm-table .ns-actions::before,
+        .ns-table.mud-sm-table .ns-foot-label::before {
             display: none;
         }
 
-        .ns-table.ns-table-editing .ns-action-toolbar {
+        .ns-table.mud-sm-table .ns-action-toolbar {
             min-width: 0;
         }
 
-        /* And the rows being READ go on hiding what the grid ruled unimportant, exactly as
-           they do stacked on a phone: freeing the whole table (the ns-table-editing rule
-           above) is column arithmetic — it keeps the header and the open row owning the same
-           boxes — and there is no header and no column left to keep in step here.
+        .ns-table.mud-sm-table .mud-table-foot .mud-table-cell:empty {
+            display: none;
+        }
 
-           ONE pair, not the four the block above generates: inside a container under 960px
-           the md, lg and xl thresholds cannot match, so their halves would be rules no width
-           can reach. Same specificity as the base, later in the file, which is the tie-break
-           the pair above already leans on. */
-        .ns-table.ns-table-editing .mud-table-cell.d-c-none {
+        /* A paged grid stacked as cards grows to its rows (the block at the top of the grid's
+           rules), so its pager lands under the last card rather than pinned over it. */
+        .ns-table.ns-table-pages.mud-sm-table,
+        .ns-table-loading-host:has(> .ns-table-pages.mud-sm-table) {
+            min-height: auto;
+        }
+
+        /* The rows go on hiding what the grid ruled unimportant, as they do stacked on a phone.
+           ONE pair, not the four the phone block generates: inside a container under 960px the
+           md, lg and xl thresholds cannot match. Later in the file than the open row's own
+           column-mode release at the same weight, which is the tie-break that takes it back. */
+        .ns-table.mud-sm-table .mud-table-cell.d-c-none {
             display: none;
         }
 
         @container (min-width: 600px) {
-            .ns-table.ns-table-editing .mud-table-cell.d-c-sm-table-cell {
+            .ns-table.mud-sm-table .mud-table-cell.d-c-sm-table-cell {
                 display: flex;
             }
         }
     }
 }
 
-/* The pager row at phone width (nsail#225 — Leonardo, on the Personas grid: the nav arrows sit
-   clipped at the right edge). Every box in MudTablePager's toolbar declares flex-shrink: 0 —
-   the "Rows per page" caption, the size select (min-width 52px plus 10px of margin each side),
-   the row counter, the actions strip — and the toolbar itself is nowrap above the vendor's own
-   416px query. The row's width is therefore a constant, measured at 392px with the Spanish
-   caption, while the box it sits in is the viewport LESS the page's own lateral padding: a
-   428px phone hands it about 380. And .mud-table-pagination carries overflow: auto, so the
-   difference becomes a horizontal scroll nobody looks for rather than a wrap — the arrows end
-   up past the visible edge. (Under 416px the vendor wraps instead, and holds 100px of footer
-   for a row that is two lines there.)
+/* THE PAGER ROW COMPACTS BY ITS OWN WIDTH, not the window's. Every box in MudTablePager's
+   toolbar declares flex-shrink: 0 — the "Rows per page" caption, the size select (min-width
+   52px plus 10px of margin each side), the row counter, the actions strip — so the row's width
+   is a constant, measured at 392px with the Spanish caption plus the first and last page
+   arrows, and the toolbar wraps whatever it cannot seat to a second line. A phone's content box
+   is narrower than that, and so is an aside's on a wide screen (480px less its padding): a
+   window query compacts the first and leaves the second wrapping. So the toolbar is the
+   container its own boxes ask — it takes its width from the table, never from its content.
 
-   The caption is what goes, and only the one naming the page size: it sits inside
-   .mud-table-pagination-display (the select's own box), while the row counter is its own
-   sibling caption and survives. A select showing 10 beside the arrows reads as the page size
-   without the word, and there is no label association to lose — the vendor renders that
-   caption as a plain div, never a <label> bound to the combobox, so the control is exactly as
-   named to a screen reader after this as before.
+   What goes is the caption naming the page size and the first/last arrows, the two the
+   vendor's own stacked pager drops. The caption sits inside .mud-table-pagination-display (the
+   select's own box), while the row counter is its own sibling caption and survives: a select
+   showing 10 beside the arrows reads as the page size without the word, and the vendor renders
+   that caption as a plain div, never a <label> bound to the combobox, so the control is exactly
+   as named to a screen reader after this as before. Previous and next stay, which is what a
+   page is walked with.
 
-   Wrapping is the floor under it rather than the fix: a long counter ("1-100 de 12345") in a
-   narrow enough box still outgrows the row, and the toolbar's fixed 52px height would clip the
-   second line, so the height becomes a minimum here. That also undoes the 100px reserve the
-   vendor's 416px query holds for a wrap that no longer has anything to do.
+   599.98px is MudBlazor's own sm and the line this file draws for a phone: the width where the
+   row stops fitting with room to spare, not where the table stacks (960px) — a stacked card
+   list with room for the label keeps it. */
+.ns-table .mud-table-pagination .mud-table-pagination-toolbar {
+    container-type: inline-size;
+}
 
-   599.98px is MudBlazor's own sm and the line this file already draws for a phone: the width
-   where the row stops fitting, not where the table stacks (960px) — a tablet's stacked cards
-   have room for the label and keep it. */
-@media (max-width: 599.98px) {
-    .ns-table .mud-table-pagination .mud-table-pagination-display .mud-table-pagination-caption {
+@container (max-width: 599.98px) {
+    .ns-table .mud-table-pagination .mud-table-pagination-display .mud-table-pagination-caption,
+    .ns-table .mud-table-pagination .mud-table-pagination-actions .mud-button-root:first-child,
+    .ns-table .mud-table-pagination .mud-table-pagination-actions .mud-button-root:last-child {
         display: none;
     }
+}
 
+/* Under 416px of window the vendor raises the toolbar's min-height to 100px and adds 16px of top
+   padding for a row it expects to wrap (its height is auto at every width, so a min-height is
+   all that holds the reserve); the compacted row above no longer wraps, so the toolbar keeps its
+   one-line floor. */
+@media (max-width: 416px) {
     .ns-table .mud-table-pagination .mud-table-pagination-toolbar {
-        flex-wrap: wrap;
-        height: auto;
         min-height: 52px;
         padding-top: 0;
     }
@@ -3884,6 +3876,16 @@ div.mud-input-slot.mud-input-root::placeholder {
     }
 }
 
+/* And where the table stacks by its container on a wide window (the container block beside the
+   table's own stacked rules), which every mirror below drops at too. */
+@media (min-width: 960px) {
+    @container (max-width: 959.98px) {
+        .ns-grid > .ns-select-gutter {
+            display: none !important;
+        }
+    }
+}
+
 /* THE ADD ROW'S OWN FLOOR (nsail#2127). .ns-grid wraps before anything in it shrinks, so the
    items of a row laid out beside a table declare a sum the line either seats or breaks: once the
    window stops affording it the act drops to a second line, which leaves the last FIELD at the
@@ -3974,6 +3976,23 @@ div.mud-input-slot.mud-input-root::placeholder {
     }
 }
 
+@media (min-width: 960px) {
+    @container (max-width: 959.98px) {
+        .ns-grid:has(> * > .ns-row-submit) {
+            --ns-field-grow-basis: initial;
+        }
+
+        .ns-grid > *:has(> .ns-row-submit) {
+            --ns-field-width: initial;
+        }
+
+        .ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
+            flex: 0 1 auto;
+            max-width: 100%;
+        }
+    }
+}
+
 /* The same mirror at the OTHER end of the row (nsail#1820). An add row laid out beside the table
    ends in its own act -- .ns-row-submit in a grid cell of the field family's own width -- where
    the rows below it end in their last cell's padding, so the add row's last FIELD and the last
@@ -3994,9 +4013,10 @@ div.mud-input-slot.mud-input-root::placeholder {
    same way, which is what lines the fields up at every width instead of at the one that happened
    to be measured.
 
-   Dropped below the window width NsTable stacks at, the boundary .ns-select-gutter is hidden at
-   and the row's own floor is released at: a stack of cards has no column left to mirror, and the
-   reserve would be a card's whole width of padding inside a phone's. */
+   Dropped wherever NsTable stacks — below its window width or its container's — the boundary
+   .ns-select-gutter is hidden at and the row's own floor is released at: a stack of cards has no
+   column left to mirror, and the reserve would be a card's whole width of padding inside a
+   phone's. */
 .ns-table.ns-row-submit-gutter thead th:last-child,
 .ns-table.ns-row-submit-gutter tbody td:last-child {
     width: calc(var(--ns-money-slot) + 1rem + var(--ns-add-row-act) + 1rem);
@@ -4006,6 +4026,15 @@ div.mud-input-slot.mud-input-root::placeholder {
     .ns-table.ns-row-submit-gutter thead th:last-child,
     .ns-table.ns-row-submit-gutter tbody td:last-child {
         width: auto;
+    }
+}
+
+@media (min-width: 960px) {
+    @container (max-width: 959.98px) {
+        .ns-table.ns-row-submit-gutter thead th:last-child,
+        .ns-table.ns-row-submit-gutter tbody td:last-child {
+            width: auto;
+        }
     }
 }
 
@@ -4040,25 +4069,30 @@ div.mud-input-slot.mud-input-root::placeholder {
     min-height: 2.75rem;
 }
 
-/* NsRecordState (nsail#213): every other field in a row draws the same chrome (label and
-   outline), so the row's own flex-start leaves them flush at the top with nothing to
-   notice -- but the switch renders none of it, so it is shorter than a
-   labeled outline neighbour (New Product's Type) and floats high instead of reading as its
-   row partner. Centered on the CELL the switch's own class marks, not the grid's
-   align-items: a row where every field is a switch, or an unrelated row entirely, keeps its
-   flex-start untouched. Leonardo's "grow" hunch was the width parameter (NsFormGridItem.Grow)
-   -- unrelated to this cross-axis mismatch.
+/* NsRecordState (nsail#213) and NsCheckBox (nsail#2004) in a row of fields: every other field
+   draws a label gutter and an outline, so the row's own flex-start leaves them flush at the top
+   -- but a boolean control draws neither, is shorter than its labeled neighbour, and would
+   float high beside it ("Usar cotización manual" beside the Cotización manual it gates).
 
-   NsCheckBox (nsail#2004) is the same shape and earns the same line: a boolean check draws no
-   label gutter and no outline either, so "Usar cotización manual" read high beside the
-   Cotización manual it gates. Two marks rather than one selector over the vendor's boolean
-   class, because each component says for itself that its control rides a row of fields -- a
-   check laid out somewhere other than a grid item is nobody's row partner and is left alone.
-   Both are DIRECT children: a check nested in an NsStack beside an NsHelp owns its line
-   already. */
+   The line is the neighbour's INPUT, not the row: a field with a hint stands its helper text
+   under the box, so the row's centre falls below the input's. The control takes the field's own
+   geometry -- the 8px label gutter above (the vendor's outlined-with-label margin) and a 40px
+   box it is centred in -- whatever the row's height. The grid's align-items stays flex-start;
+   only the cell of a boolean control pays the gutter.
+
+   Two marks rather than one selector over the vendor's boolean class, because each component
+   says for itself that its control rides a row of fields -- a check laid out somewhere other
+   than a grid item is nobody's row partner and is left alone. Both are DIRECT children: a check
+   nested in an NsStack beside an NsHelp owns its line already. */
 .ns-grid > *:has(> .ns-record-state),
 .ns-grid > *:has(> .ns-form-check) {
-    align-self: center;
+    padding-top: 0.5rem;
+}
+
+.ns-grid > * > .ns-record-state,
+.ns-grid > * > .ns-form-check {
+    min-height: 2.5rem;
+    justify-content: center;
 }
 
 /* A submit act sharing a line with labeled fields instead of owning the form's own footer
