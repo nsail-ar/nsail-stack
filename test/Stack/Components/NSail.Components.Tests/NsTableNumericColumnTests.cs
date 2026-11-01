@@ -156,6 +156,7 @@ public sealed class NsTableNumericColumnTests : BunitContext, IAsyncLifetime
         var css = HouseStylesheet.Read();
         var block = Rule(css, ".ns-table.ns-row-submit-gutter thead th.ns-col-money:last-child,");
 
+        Assert.Contains(".ns-table.ns-row-submit-gutter tfoot td.ns-col-money:last-child", block, StringComparison.Ordinal);
         Assert.Contains("padding-inline-end: calc(var(--ns-add-row-act) + 1rem);", block, StringComparison.Ordinal);
     }
 

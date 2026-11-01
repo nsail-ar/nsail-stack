@@ -119,9 +119,11 @@ rides the page's header and why a list is the only grid offered one.
 **A figure's column aligns itself, right against right, from the same `Format`** — Number, Money
 and Percent read as `ns-col-numeric` on the header and on every cell under it, a screen asks
 nothing. A `tfoot` cell carries it the way it carries a `Breakpoint`: through the column's own key,
-never declared twice. A Money column also wears `ns-col-money` on both, which drops the end
-padding so figures and header share the column's edge (see [styling.md](styling.md)). A date's own digits are a position on a calendar rather than a quantity to
-compare at a glance, so `Format.Date` stays left, with everything else that is read as a word.
+never declared twice. A Money column also wears `ns-col-money` on the header and on every cell,
+the `tfoot` included, which drops the end padding so figures and header share the column's edge
+(see [styling.md](styling.md)). A date's own digits are a position on a calendar rather than a
+quantity to compare at a glance, so `Format.Date` stays left, with everything else that is read as
+a word.
 
 **`Breakpoint` on `NsTh`** (`NsSize`, default `None`) reads *"the column appears from this
 container width up"*. A six-column grid gives up its least important columns one at a time

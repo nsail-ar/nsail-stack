@@ -4016,7 +4016,8 @@ div.mud-input-slot.mud-input-root::placeholder {
    its content box is exactly the slot. */
 @media (min-width: 960.02px) {
     .ns-table.ns-row-submit-gutter thead th.ns-col-money:last-child,
-    .ns-table.ns-row-submit-gutter tbody td.ns-col-money:last-child {
+    .ns-table.ns-row-submit-gutter tbody td.ns-col-money:last-child,
+    .ns-table.ns-row-submit-gutter tfoot td.ns-col-money:last-child {
         padding-inline-end: calc(var(--ns-add-row-act) + 1rem);
     }
 }
