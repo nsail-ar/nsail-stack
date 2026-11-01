@@ -498,8 +498,8 @@
 }
 
 /* A column that declared Whole keeps each value on one line (NsTh Whole; the cells follow through
-   the key, TableColumns.IsWholeFor, or say NsTd Whole themselves): a code such as ARM-TEST-01 would otherwise break at its
-   hyphens when an aside narrows the list. The cell's min-content becomes the whole value, so the
+   the key, TableColumns.IsWholeFor, or say NsTd Whole themselves): a code such as ARM-TEST-01
+   would otherwise break at its hyphens when an aside narrows the list. The cell's min-content becomes the whole value, so the
    table gives the column its width instead of wrapping inside it. */
 .ns-table .ns-col-whole {
     white-space: nowrap;
