@@ -6,7 +6,7 @@ using NSail.Localization;
 
 namespace NSail.Components;
 
-/// <summary>The frame's own Help group, last on the map, opening with Atajos de teclado: the
+/// <summary>The frame's own Help group, last on the map, opening with Atajos de Teclado: the
 /// one door the Stack plants, because the "?" sheet is the frame's and no kit or app owns it.
 /// An app hangs its own help under it by naming <see cref="Group"/> as a Parent — a guide, a
 /// way to reach support — and moves or hides the group as it would any kit's.</summary>

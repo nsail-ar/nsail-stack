@@ -38,7 +38,7 @@
         @* The app's "go anywhere" is this box and not a palette beside it: what Ctrl+K can
            reach is the menu, which is the one list of where a session may go, and a second
            source would be a second thing to keep in step with it. The chord rides the box
-           itself (NsSearchField's Map); "?" rides the Help group's Atajos de teclado entry
+           itself (NsSearchField's Map); "?" rides the Help group's Atajos de Teclado entry
            (HelpMenu). Both keys are the FRAME's — a screen that draws no header of its own
            still has them, and a phone, where the drawer is closed, has neither.
            ns-nav-find is also the hook the Enter policy answers on: Enter in this box opens the
@@ -260,6 +260,7 @@
         var merged = await Menu.GetItems(AuthenticationState);
 
         _hidden.Clear();
+        _claims.Clear();
 
         foreach (var item in merged)
         {
@@ -365,12 +366,20 @@
         return string.IsNullOrWhiteSpace(_search) ? null : _search;
     }
 
-    // Held per entry rather than rebuilt per render, for NsKeys.Declare's reason.
+    // Held per entry rather than rebuilt per render, for NsKeys.Declare's reason. A chorded row
+    // whispers its word and key as a chorded NsButton does (intentional-ui-cases-shell.md): the
+    // word is on screen, the key is not.
     Dictionary<string, object> Claims(NavMenuItem item)
     {
         if (!_claims.TryGetValue(item, out var claims))
         {
             claims = NsKeys.Declare(item.Chord);
+
+            if (item.Chord is { Length: > 0 } chord)
+            {
+                claims["data-ns-whisper"] = $"{GetName(item)} ({chord})";
+            }
+
             _claims[item] = claims;
         }
 

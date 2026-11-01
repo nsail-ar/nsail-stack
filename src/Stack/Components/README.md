@@ -63,7 +63,7 @@ is guarded by the message it sends, and binds messages:
 
 | Call | Registers |
 |---|---|
-| `AddComponentServices()` (Mud) | MudBlazor services (snackbar bottom-center), `AddRouteTable()`, `DialogManager`, `ProblemManager`, `DeviceMemory`, `IDeviceProvider`, `PageGate`, `NavMenu`, the frame's `HelpMenu` contributor (the *Help* group with Atajos de teclado), `Companion`, this assembly's strings, `AddSettings()`, a default `IBrandProvider` and `IThemeProvider` (`TryAdd`) |
+| `AddComponentServices()` (Mud) | MudBlazor services (snackbar bottom-center), `AddRouteTable()`, `DialogManager`, `ProblemManager`, `DeviceMemory`, `IDeviceProvider`, `PageGate`, `NavMenu`, the frame's `HelpMenu` contributor (the *Help* group with Atajos de Teclado), `Companion`, this assembly's strings, `AddSettings()`, a default `IBrandProvider` and `IThemeProvider` (`TryAdd`) |
 | `AddRoutesFromAssembly(assembly?)` | An `IRouteContributor`; typed URLs come from `GetUrl<TPage>` |
 | `AddMessagePolicies()` | `[Authorize<TMessage>]` support; both hosts call it |
 | `AddNavMenu<T>()`, `AddNavMenuCount<T>()`, `AddNavMenuSearch<T>()`, `AddNavMenuArrangement<T>()` | Menu entries, counts behind an entry, drawer search results, an install's order/label/visibility |

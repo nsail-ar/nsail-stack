@@ -15,7 +15,7 @@ using NSail.Metadata;
 namespace NSail.Components.Tests;
 
 /// <summary>A contributor's entry naming a Command instead of a destination: a row that runs an
-/// act in place — the frame's Atajos de teclado is the first — found by the drawer's search and
+/// act in place — the frame's Atajos de Teclado is the first — found by the drawer's search and
 /// gated like any other entry, and the Stack's own Help group that holds it.</summary>
 public sealed class NsNavMenuCommandEntryTests : BunitContext, IAsyncLifetime
 {
@@ -132,6 +132,21 @@ public sealed class NsNavMenuCommandEntryTests : BunitContext, IAsyncLifetime
         Assert.Equal("Question", control.GetAttribute("aria-keyshortcuts"));
     }
 
+    // The word is on screen and the key is not, so the row whispers both, as a chorded NsButton
+    // does; a chordless row with its word on screen says nothing.
+    [Fact]
+    public void AChordedEntryWhispersItsWordAndKey()
+    {
+        var menu = RenderMenu(
+            new NavMenuItem { Name = "Probe", Command = () => Task.CompletedTask, Chord = NsKeys.Help },
+            new NavMenuItem { Name = "Other", Command = () => Task.CompletedTask });
+
+        var rows = menu.FindAll(".ns-nav-command button");
+
+        Assert.Equal($"Probe ({NsKeys.Help})", rows.Single(row => row.TextContent.Contains("Probe")).GetAttribute("data-ns-whisper"));
+        Assert.Null(rows.Single(row => row.TextContent.Contains("Other")).GetAttribute("data-ns-whisper"));
+    }
+
     [Fact]
     public void AHiddenCommandTakesItsChordWithIt()
     {
@@ -147,7 +162,7 @@ public sealed class NsNavMenuCommandEntryTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void TheFrameNoLongerDrawsAKeyboardButtonBesideTheBox()
+    public void TheSearchRowDrawsNoButtonOfTheFramesOwn()
     {
         var menu = RenderMenu(new NavMenuItem { Name = "Probe", Command = () => Task.CompletedTask });
 
