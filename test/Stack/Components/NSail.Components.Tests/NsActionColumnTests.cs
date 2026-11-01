@@ -654,21 +654,20 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
         Assert.DoesNotContain("min-height:", css[start..end], StringComparison.Ordinal);
     }
 
-    // The open row's own stacked form (.ns-table-editing under its @container, "the open row
-    // stacks where its container cannot seat it") goes through the same flex cell as the phone
-    // card, so the column-mode floor above — gated by the viewport, which that @container
-    // condition does not narrow — has to be taken back inside it, or every line of a card being
-    // edited in a narrow aside stands as tall as a whole dense row.
+    // The container's stacked form ("a table stacks where its container cannot seat it") goes
+    // through the same flex cell as the phone card, so the column-mode floor above — gated by
+    // the viewport, which that @container condition does not narrow — has to be taken back
+    // inside it, or every line of a card in a narrow aside stands as tall as a whole dense row.
     [Fact]
-    public void TheStylesheetTakesTheRowFloorBackInTheOpenRowsStackedForm()
+    public void TheStylesheetTakesTheRowFloorBackInTheContainersStackedForm()
     {
         var css = HouseStylesheet.Read();
 
         var container = css.IndexOf("@container (max-width: 959.98px) {", StringComparison.Ordinal);
-        Assert.True(container >= 0, "the open row's stacked-form container query was not found in the stylesheet.");
+        Assert.True(container >= 0, "the stacked-form container query was not found in the stylesheet.");
 
-        var start = css.IndexOf(".ns-table.ns-table-editing .mud-table-body .mud-table-row .mud-table-cell {", container, StringComparison.Ordinal);
-        Assert.True(start >= 0, "the stacked-editing row-height reset was not found inside the container query.");
+        var start = css.IndexOf(".ns-table.mud-sm-table .mud-table-body .mud-table-row .mud-table-cell {", container, StringComparison.Ordinal);
+        Assert.True(start >= 0, "the stacked row-height reset was not found inside the container query.");
 
         var end = css.IndexOf('}', start);
         Assert.Contains("height: auto;", css[start..end], StringComparison.Ordinal);

@@ -10,7 +10,12 @@ namespace NSail.Messaging.Annotations;
 /// <para>A message declares it when its endpoint is reachable by somebody the install never
 /// authenticated — a door opened by a token in a URL, a webhook. A message behind a policy is
 /// already bounded by who holds the grant, and a limit there would only ever refuse a customer
-/// mid-work.</para></summary>
+/// mid-work.</para>
+///
+/// <para>The one ceiling over a message behind a policy is the tenant's request budget, which
+/// counts every authenticated send of the tenant rather than one message's: it is a rate the
+/// product sells, so the work it refuses is deferred rather than lost, and without it one
+/// tenant's flood is spent out of every other tenant's share of the install.</para></summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 public sealed class ThrottledAttribute : Attribute
 {

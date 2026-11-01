@@ -85,16 +85,20 @@ public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
     // that ONE declaration: the container's own overflow stays, because a box whose height is its
     // rows' has nothing to scroll and the two axes cannot be set apart (measured, nsail#2595).
     // Read off the file the app ships, like NsTablePagerShrinkTests, since bUnit paints nothing.
+    // Two queries stack a table — the vendor's window and, on a wide one, the container — so
+    // the release sits in each and nowhere else.
     [Fact]
-    public void TheStylesheetReleasesTheStackedPagedGridOnlyUnderTheVendorsStackingQuery()
+    public void TheStylesheetReleasesTheStackedPagedGridOnlyUnderTheStackingQueries()
     {
         var rules = StackedPagedRules(HouseStylesheet.Read());
 
-        var rule = Assert.Single(rules);
+        Assert.Equal(["@media (max-width: 960px)", "@container (max-width: 959.98px)"], rules.Select(rule => rule.Query));
 
-        Assert.Equal("@media (max-width: 960px)", rule.Query);
-        Assert.Contains("min-height: auto;", rule.Body, StringComparison.Ordinal);
-        Assert.DoesNotContain("overflow", rule.Body, StringComparison.Ordinal);
+        foreach (var rule in rules)
+        {
+            Assert.Contains("min-height: auto;", rule.Body, StringComparison.Ordinal);
+            Assert.DoesNotContain("overflow", rule.Body, StringComparison.Ordinal);
+        }
     }
 
     /// <summary>Every rule whose selector names the stacked paged grid, each with the at-rule it

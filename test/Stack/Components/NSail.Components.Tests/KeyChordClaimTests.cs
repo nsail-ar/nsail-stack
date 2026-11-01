@@ -181,6 +181,22 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
             ReadStylesheet().Replace("\r\n", "\n", StringComparison.Ordinal), StringComparison.Ordinal);
     }
 
+    // Typed text takes the box's full width up to the clear button: the mark goes, and the
+    // reserve with it.
+    [Fact]
+    public async Task ASearchBox_GivesBackTheMarksRoomOnceSomethingIsTyped()
+    {
+        var host = Mount();
+
+        await host.InvokeAsync(() => host.Find(PageBox).Input("lentes"));
+
+        var wrapper = host.Find("form .ns-search-box");
+
+        Assert.Empty(host.FindAll("form .ns-search-box .ns-search-key"));
+        Assert.DoesNotContain("ns-search-keyed", wrapper.ClassList);
+        Assert.Null(wrapper.GetAttribute("style"));
+    }
+
     // The door a screen offers onto a record takes the edit key the desktop spends on it, on
     // both faces a link has — and the bubble says the word and the key, exactly as a button's
     // does. The worded anchor carries NO aria-label: its word is its whole accessible name, and
