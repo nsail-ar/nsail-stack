@@ -78,6 +78,9 @@ complaint the rule answers: a phone's title row came out three different heights
 - **The flat worded anchor gets its own box.** A bare `<a>` has none to grow, so `NsLink`'s
   Inline face wears `ns-link` (`ns-mud.css`) for exactly that — `inline-flex`, nothing a plain
   word needed to change — and the floor reaches it there instead of through `.mud-button`.
+- **A link inside a sentence is outside the floor.** The worded anchor the floor reaches stands
+  alone; one set in running text is a word of the sentence, and a box grown around it would
+  break the line it sits in.
 
 ## The six components
 
