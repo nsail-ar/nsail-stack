@@ -810,12 +810,22 @@
             }
             else if (item.Url is null && item.Command is not null)
             {
-                @* An act and not a place: no Href, so nothing for the vendor to match or mark,
-                   and the row's own control is what Enter in the box presses (ns.js) and what
-                   the entry's chord activates. *@
-                <MudNavLink OnClick="@(() => item.Command())" Icon="@(item.Icon?.Markup)" Class="ns-nav-entry ns-nav-command" UserAttributes="@Claims(item)">
-                    @GetName(item)
-                </MudNavLink>
+                @* An act and not a place, so a BUTTON wearing the vendor's row rather than the
+                   vendor's link: given no Href, MudNavLink draws a focusable div that no key
+                   presses and nothing names as a control. The vendor's own reset of a button
+                   and its nav-link row already lay this out, as they do a group's header row,
+                   which is a button too. The button is what Enter in the box
+                   presses (ns.js), what the entry's chord activates, and what Space and Enter
+                   press when it has the focus. *@
+                <div class="mud-nav-item ns-nav-entry ns-nav-command">
+                    <button type="button" class="mud-nav-link mud-ripple" @onclick="item.Command" @attributes="Claims(item)">
+                        @if (item.Icon is { } icon)
+                        {
+                            <MudIcon Icon="@icon.Markup" Class="mud-nav-link-icon mud-nav-link-icon-default" />
+                        }
+                        <div class="mud-nav-link-text">@GetName(item)</div>
+                    </button>
+                </div>
             }
         };
     }

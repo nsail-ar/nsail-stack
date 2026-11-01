@@ -125,6 +125,9 @@ public sealed class NsNavMenuCommandEntryTests : BunitContext, IAsyncLifetime
 
         var control = menu.Find($".ns-nav-command [{NsKeys.Attribute}]");
 
+        Assert.Equal("BUTTON", control.TagName);
+        Assert.Equal("button", control.GetAttribute("type"));
+
         Assert.Equal(NsKeys.Help, control.GetAttribute(NsKeys.Attribute));
         Assert.Equal("Question", control.GetAttribute("aria-keyshortcuts"));
     }
