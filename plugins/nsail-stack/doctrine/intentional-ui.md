@@ -322,8 +322,8 @@ holds. The industry's own name for it is the companion pane.
   on opening over the page, to the companion's left. Below the drawer's own breakpoint it fills
   the screen, with an X and Escape back to the page.
 - **The door is the app's, and it goes on the drawer's header row** (`NsNavMenu.Tools`), beside
-  the search box and the frame's "?"; the drawer's no-match entry (`NsNavMenu.NoMatch`) is the
-  other way in, carrying what was typed — [ui/navigation.md](ui/navigation.md).
+  the search box; the drawer's no-match entry (`NsNavMenu.NoMatch`) is the other way in,
+  carrying what was typed — [ui/navigation.md](ui/navigation.md).
 
 ### Addresses
 

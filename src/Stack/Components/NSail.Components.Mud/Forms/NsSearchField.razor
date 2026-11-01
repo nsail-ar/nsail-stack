@@ -41,9 +41,9 @@
     @* Only while the box is empty: that is the one moment the key is a reminder rather than
        clutter over what somebody is reading, and the moment the vendor's own clear button is
        not standing in the same corner. *@
-    @if (Hint is { Length: > 0 } hint && string.IsNullOrEmpty(Value))
+    @if (IsKeyed)
     {
-        <span class="ns-search-key" aria-hidden="true">@hint</span>
+        <span class="ns-search-key" aria-hidden="true">@Hint</span>
     }
 </div>
 <NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
@@ -92,18 +92,24 @@
     // two different ones.
     string? Hint => Chords.FirstOrDefault(chord => chord is { Length: > 0 });
 
+    // The mark stands over the input's trailing edge, so the input gives up that much room
+    // while it is drawn: a placeholder is a sentence in whatever language the install reads, and
+    // without the reserve a long one runs under the key (ns-mud.css, .ns-search-keyed).
+    bool IsKeyed => Hint is { Length: > 0 } && string.IsNullOrEmpty(Value);
+
     string GetBoxClasses()
     {
-        return new NsClassBuilder("ns-search-box").Add(GrowClass).ToString();
+        return new NsClassBuilder("ns-search-box")
+            .Add(GrowClass)
+            .Add("ns-search-keyed", IsKeyed)
+            .ToString();
     }
 
-    // The mark's length, which the stylesheet turns into the trailing room the input gives up
-    // for it: CSS cannot measure the mark, and the key is the one thing that sizes it.
+    // How many characters the mark is, which is all the reserve depends on: the stylesheet turns
+    // it into a width at the mark's own size.
     string? GetBoxStyle()
     {
-        return Hint is { Length: > 0 } hint && string.IsNullOrEmpty(Value)
-            ? $"--ns-search-key-chars: {hint.Length}"
-            : null;
+        return IsKeyed ? $"--ns-search-key-chars: {Hint!.Length}" : null;
     }
 
     string? GetPlaceholder()

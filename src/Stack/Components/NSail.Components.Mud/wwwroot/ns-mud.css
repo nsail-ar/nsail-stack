@@ -4590,6 +4590,16 @@ div.mud-input-slot.mud-input-root::placeholder {
     pointer-events: none;
 }
 
+/* The room the mark takes, given up by the input while the mark is drawn: the mark's right
+   offset, its padding and border, a gap, and its characters at the mark's own size — so a
+   placeholder in any language ends before the key instead of running under it, and is cut
+   with an ellipsis where the box is narrower than the sentence. Five classes and the element,
+   to outrank the vendor's adorned-start padding on the same input. */
+.ns-search-box.ns-search-keyed .mud-input-control input.mud-input-slot.mud-input-root {
+    padding-inline-end: calc(28px + var(--ns-search-key-chars, 2) * .45rem);
+    text-overflow: ellipsis;
+}
+
 /* The drawer's own search field (NsNavMenu's Map box) draws this same mark, and the rule above
    carries no region of its own: left as the content's text-secondary, the hint flips with the
    scheme on the rail's fixed ground exactly the way ui/branding.md's ".ns-text-muted"
@@ -4607,20 +4617,6 @@ div.mud-input-slot.mud-input-root::placeholder {
     top: auto;
     bottom: 10px;
     transform: none;
-}
-
-/* The mark stands over the input, so the input gives up its trailing room for it while it is
-   drawn — or the placeholder runs under the key and the two read as one smudged string
-   (nsail#3006). CSS cannot measure the mark, so NsSearchField hands over its length in
-   characters and the room is that many of a generous average glyph (.55em of the mark's
-   .6875rem) plus its padding and border (12px), its offset (10px) and a gap (4px): never short
-   of the mark, at the cost of a few pixels on a narrow key. A placeholder longer than what is left
-   ends in an ellipsis before the mark rather than under it. Typing removes the mark, and with
-   it the reservation, so typed text keeps the box's full width up to the clear button.
-   The selector outranks the vendor's own adorned-start padding on the same input. */
-.ns-search-box:has(> .ns-search-key) .mud-input-control .mud-input > input.mud-input-slot.mud-input-root {
-    padding-inline-end: calc(var(--ns-search-key-chars, 6) * .378rem + 26px);
-    text-overflow: ellipsis;
 }
 
 /* THE "?" SHEET (NsKeySheet), hosted as an ordinary dialog: the keys that are claimed on the

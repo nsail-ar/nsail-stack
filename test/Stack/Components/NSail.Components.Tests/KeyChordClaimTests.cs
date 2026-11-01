@@ -163,26 +163,26 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         Assert.DoesNotContain(key, host.Find($"{box} input").GetAttribute("placeholder") ?? string.Empty, StringComparison.Ordinal);
     }
 
-    // The mark stands over the input, so the input owes it its trailing room or the placeholder
-    // runs under the key (nsail#3006). CSS cannot measure the mark: the box hands over the key's
-    // length, and the stylesheet's reservation is keyed off the mark being there at all — the
-    // geometry itself is the browser suites'.
+    // The mark stands over the input's trailing edge, so the input gives up that room while the
+    // mark is drawn — sized by the key's own length — and a placeholder in any language ends
+    // before it rather than running under it.
     [Theory]
-    [InlineData(".ns-nav-drawer .ns-search-box", 6)]
-    [InlineData("form .ns-search-box", 2)]
-    public void ASearchBox_HandsTheMarksLengthToTheRoomItsInputReserves(string box, int chars)
+    [InlineData(".ns-nav-drawer .ns-search-box", "Ctrl+K")]
+    [InlineData(".ns-search-box", "F3")]
+    public void ASearchBox_ReservesTheRoomItsMarkTakes(string box, string key)
     {
         var host = Mount();
 
-        Assert.Equal($"--ns-search-key-chars: {chars}", host.Find(box).GetAttribute("style"));
-        Assert.Contains(
-            ".ns-search-box:has(> .ns-search-key) .mud-input-control .mud-input > input.mud-input-slot.mud-input-root {\n"
-            + "    padding-inline-end: calc(var(--ns-search-key-chars, 6) * .378rem + 26px);\n"
-            + "    text-overflow: ellipsis;",
-            ReadStylesheet());
+        var wrapper = host.Find(box);
+
+        Assert.Contains("ns-search-keyed", wrapper.ClassList);
+        Assert.Equal($"--ns-search-key-chars: {key.Length}", wrapper.GetAttribute("style"));
+        Assert.Contains(".ns-search-keyed .mud-input-control input.mud-input-slot.mud-input-root {\n    padding-inline-end:",
+            ReadStylesheet().Replace("\r\n", "\n", StringComparison.Ordinal), StringComparison.Ordinal);
     }
 
-    // Typed text takes the box's full width: the mark goes, and the reservation with it.
+    // Typed text takes the box's full width up to the clear button: the mark goes, and the
+    // reserve with it.
     [Fact]
     public void ASearchBox_GivesBackTheMarksRoomOnceSomethingIsTyped()
     {
@@ -190,8 +190,11 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
 
         host.Find(PageBox).Input("lentes");
 
+        var wrapper = host.Find("form .ns-search-box");
+
         Assert.Empty(host.FindAll("form .ns-search-box .ns-search-key"));
-        Assert.Null(host.Find("form .ns-search-box").GetAttribute("style"));
+        Assert.DoesNotContain("ns-search-keyed", wrapper.ClassList);
+        Assert.Null(wrapper.GetAttribute("style"));
     }
 
     // The door a screen offers onto a record takes the edit key the desktop spends on it, on
@@ -340,6 +343,14 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         // themselves, through the guard the X goes through, and a second dispatcher would close
         // them twice.
         Assert.DoesNotContain($"chord: \"{NsKeys.Close}\"", layer, StringComparison.Ordinal);
+    }
+
+    // Enter in the map's box presses the first entry shown, and a command entry's control is a
+    // button rather than a link: the policy has to name both shapes or Enter skips the entry.
+    [Fact]
+    public void TheEnterPolicy_PressesACommandEntryAsItPressesALink()
+    {
+        Assert.Contains(".ns-nav-command button", ReadKeyboardLayer(), StringComparison.Ordinal);
     }
 
     // WCAG 2.1.4 is about a chord somebody could be in the middle of TYPING, which is the two

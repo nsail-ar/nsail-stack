@@ -8,7 +8,6 @@
 @using NSail.Localization
 @using NSail.Messaging.Runtime
 @using NSail.Text
-@using Microsoft.JSInterop
 @using System.Security.Claims
 
 @implements IDisposable
@@ -19,8 +18,6 @@
 @inject NavigationManager Navigation
 @inject PageGate Gate
 @inject Mediator Mediator
-@inject DialogManager Dialogs
-@inject IJSRuntime Js
 
 @* The drawer is a surface like any other, so it wears the house's panel anatomy rather than
    a flat pile the host scrolls whole: the search field stays put in the Header, the entries
@@ -41,9 +38,9 @@
         @* The app's "go anywhere" is this box and not a palette beside it: what Ctrl+K can
            reach is the menu, which is the one list of where a session may go, and a second
            source would be a second thing to keep in step with it. The chord rides the box
-           itself (NsSearchField's Map), and the "?" door stands next to it because both keys
-           are the FRAME's — a screen that draws no header of its own still has them, and a
-           phone, where the drawer is closed, has neither.
+           itself (NsSearchField's Map); "?" rides the Help group's Atajos de Teclado entry
+           (HelpMenu). Both keys are the FRAME's — a screen that draws no header of its own
+           still has them, and a phone, where the drawer is closed, has neither.
            ns-nav-find is also the hook the Enter policy answers on: Enter in this box opens the
            first entry still shown (ns.js). *@
         <div class="pa-2 d-flex align-center gap-1 ns-nav-find">
@@ -55,12 +52,6 @@
             {
                 @Tools
             }
-            <NsButton As="NsAs.Inline"
-                      Breakpoint="NsBreakpoint.Never"
-                      Icon="@NsIcons.Keyboard"
-                      Label="@Strings.Translate("Common.Shortcuts")"
-                      Chord="@NsKeys.Help"
-                      OnClick="ShowKeys" />
         </div>
     </Header>
     <Content>
@@ -156,6 +147,8 @@
 
     string _counted = string.Empty;
 
+    readonly Dictionary<NavMenuItem, Dictionary<string, object>> _claims = [];
+
     [CascadingParameter]
     public Task<AuthenticationState>? AuthenticationState { get; set; }
 
@@ -178,8 +171,8 @@
     [Parameter]
     public RenderFragment? Session { get; set; }
 
-    /// <summary>The app's own doors on the drawer's header row, beside the search box and the
-    /// frame's "?" — a companion's, nothing else today. Empty draws nothing.</summary>
+    /// <summary>The app's own doors on the drawer's header row, beside the search box — a
+    /// companion's, nothing else today. Empty draws nothing.</summary>
     [Parameter]
     public RenderFragment? Tools { get; set; }
 
@@ -282,6 +275,7 @@
         var merged = await Menu.GetItems(AuthenticationState);
 
         _hidden.Clear();
+        _claims.Clear();
 
         foreach (var item in merged)
         {
@@ -387,16 +381,24 @@
         return string.IsNullOrWhiteSpace(_search) ? null : _search;
     }
 
-    // What the sheet lists is read off the DOM BEFORE it opens, so it is the screen as it stands
-    // and not the screen with the sheet on top of it: a dialog does not unmount the page behind
-    // it, and the sheet's own chrome claims a chord of its own.
-    async Task ShowKeys()
+    // Held per entry rather than rebuilt per render, for NsKeys.Declare's reason. A chorded row
+    // whispers its word and key as a chorded NsButton does (intentional-ui-cases-shell.md): the
+    // word is on screen, the key is not.
+    Dictionary<string, object> Claims(NavMenuItem item)
     {
-        var claimed = await Js.InvokeAsync<NsChordsOnScreen>("nsapp.chords");
+        if (!_claims.TryGetValue(item, out var claims))
+        {
+            claims = NsKeys.Declare(item.Chord);
 
-        await Dialogs.Open<NsKeySheet>(
-            Strings.Translate("Common.Shortcuts"),
-            new Dictionary<string, object?> { [nameof(NsKeySheet.Claimed)] = claimed });
+            if (item.Chord is { Length: > 0 } chord)
+            {
+                claims["data-ns-whisper"] = $"{GetName(item)} ({chord})";
+            }
+
+            _claims[item] = claims;
+        }
+
+        return claims;
     }
 
     IEnumerable<NavMenuItem> Visible(IEnumerable<NavMenuItem> items)
@@ -737,6 +739,11 @@
         {
             hidden = !await Gate.Allows(item.PageType, user);
         }
+        else if (item.Url is null && item.Command is not null)
+        {
+            // An act names no page either, and Permission already stood in front of it above.
+            hidden = false;
+        }
         else
         {
             // An external destination names no page for the Gate to ask about, and Permission
@@ -824,6 +831,25 @@
                 <MudNavLink Href="@item.Url" Target="@Surfaces.Blank.Name" Icon="@(item.Icon?.Markup)" Class="ns-nav-entry">
                     @GetName(item)
                 </MudNavLink>
+            }
+            else if (item.Url is null && item.Command is not null)
+            {
+                @* An act and not a place, so a BUTTON wearing the vendor's row rather than the
+                   vendor's link: given no Href, MudNavLink draws a focusable div that no key
+                   presses and nothing names as a control. The vendor's own reset of a button
+                   and its nav-link row already lay this out, as they do a group's header row,
+                   which is a button too. The button is what Enter in the box
+                   presses (ns.js), what the entry's chord activates, and what Space and Enter
+                   press when it has the focus. *@
+                <div class="mud-nav-item ns-nav-entry ns-nav-command">
+                    <button type="button" class="mud-nav-link mud-ripple" @onclick="item.Command" @attributes="Claims(item)">
+                        @if (item.Icon is { } icon)
+                        {
+                            <MudIcon Icon="@icon.Markup" Class="mud-nav-link-icon mud-nav-link-icon-default" />
+                        }
+                        <div class="mud-nav-link-text">@GetName(item)</div>
+                    </button>
+                </div>
             }
         };
     }
