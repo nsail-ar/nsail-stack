@@ -171,3 +171,34 @@ The toolbar's own overflow kebab is the other rider — the same `NsMenu` and `N
 the items the cap pushed out of the row. Both of the toolbar's menus declare `Writes="false"`:
 what a form withholds fell out where authorization did, before the cap, so a second filter at
 the face could only take away what already passed one.
+
+---
+
+## `NsDropdown`: a panel the host opens
+
+A menu opens from its own trigger; `NsDropdown` is opened by its host from code — results hung
+from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is the only state;
+`Anchor` is the field and `ChildContent` the panel, rendered only while open.
+
+- **The panel is the vendor's popover, not a box inside the wrapper.** Drawn inside, it is
+  clipped by the nearest scrolling ancestor (`NsPanel`'s content) and grows that scrollable area
+  for as long as it shows. As a popover it hangs from the anchor's bottom-left edge, at least as
+  wide as it, stops at the same measure a menu does and scrolls past it, and is turned over
+  where the room under the field runs out.
+- **The wrapper is transparent to layout.** It is the flex item the field was and can shrink
+  under its content, so the field's `Grow` still pays.
+- **The panel writes no role; the wrapper marks the list open.** The rows are the host's, so a
+  role written here could only disagree with them. A plain field cannot be handed
+  `role="combobox"`, so while open the wrapper carries `data-ns-dropdown-open` and `ns.js` reads
+  it as it reads `aria-expanded`: Enter over the panel never submits the form, and inside
+  `.ns-cells` the arrows are not the cell cursor's ([fields.md](fields.md)). The field must
+  carry `data-ns-field` (every `Ns*` field does).
+- **It stands on both sides of the portal, so it carries across what a row asks of the page.**
+  The panel renders under the popover provider, where nothing cascaded from the page reaches:
+  the dropdown re-cascades the surface, `ParentDisabled`, `ParentReadOnly` and the
+  `EditContext`, as `NsMenu` does, so an `NsLink` with a `Target` resolves from the surface the
+  field stands on and an act inside a read-only form is withdrawn.
+- **Closing is the dropdown's.** A click outside lands on an overlay one tier under the popover
+  (as `NsHelp`'s), and Escape from the wrapper or from inside the panel does the same: both set
+  `Open` false and tell the host through `OpenChanged`. The overlay covers the field while the
+  panel shows, so a click on the field closes it.

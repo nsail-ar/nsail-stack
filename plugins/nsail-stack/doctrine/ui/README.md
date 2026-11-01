@@ -14,7 +14,7 @@ placing.
 | [hosts.md](hosts.md) | `NsTable`/`NsTh`/`NsTd`, `NsTabs`/`NsTab`, `NsListEditor`, `NsTimeGrid`/`NsTimeBlock`, `NsDashboard`/`NsSubjectDashboard`, `NsLoad` |
 | [styling.md](styling.md) | `NsFormGrid`/`NsFormGridItem`, `NsStack`, `NsCard`, `NsPanel`, `NsPaper`, `NsExpander`, `NsText`, `NsRemoteImage`, `NsTooltip`, `NsSince`, `NsMeter`, `NsStatusText`/`NsStatusDot`, `ns-mud.css`, container queries |
 | [surfaces.md](surfaces.md) | The base chain, and the query, size, stacking and announce seams |
-| [menus.md](menus.md) | `NsMenu`, `NsMenuItem`, `NsMenuBlock`, `NsMenuDivider`, `ActionItem.Menu` |
+| [menus.md](menus.md) | `NsMenu`, `NsMenuItem`, `NsMenuBlock`, `NsMenuDivider`, `ActionItem.Menu`, `NsDropdown` |
 | [navigation.md](navigation.md) | `NavMenuItem`, `INavMenuContributor`, `INavMenuCount`, `INavMenuSearch`/`NavMenuResult`, `NavMenuCountsChanged`, `NsNavMenu` |
 | [wizard.md](wizard.md) | `NsWizard`, `WizardContext`, `IRouteGate`, `NsFullLayout` |
 | [settings.md](settings.md) | `SettingsManager`, `ISettingsContributor`, `SettingsItem`/`SettingsMenu`, `DeviceMemory` |

@@ -1707,6 +1707,20 @@
     line-height: var(--mud-typography-body2-lineheight);
 }
 
+/* NsDropdown's wrapper is the popover's anchor and stays the flex or grid item the field was:
+   it takes the room the field's Grow would have taken and can shrink under its content, the
+   way a menu's activator does above. The panel is the vendor's popover, as wide as the
+   lookup list's measure at most (.ns-lookup-list below). */
+.ns-dropdown {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ns-dropdown-panel {
+    max-width: 28rem;
+    overflow-y: auto;
+}
+
 /* nsail#660: the ? is an icon, not slack for the row it sits in to spend -- a flex row's
    default flex-shrink would otherwise squeeze it before the field it stands beside gives up
    any width. */
