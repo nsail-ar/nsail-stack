@@ -16,7 +16,7 @@ public sealed class ContainerStackTests
 
     static string StackBlock(string css)
     {
-        var start = css.IndexOf(Query + "        .ns-table.mud-sm-table .mud-table-head .mud-table-row,", StringComparison.Ordinal);
+        var start = css.IndexOf(Query + "        .ns-table.mud-sm-table .mud-table-head .mud-table-row {", StringComparison.Ordinal);
         Assert.True(start >= 0, "the container's stacked block was not found in the stylesheet.");
 
         var end = css.IndexOf("\n}\n", start, StringComparison.Ordinal);

@@ -993,8 +993,9 @@
 /* THE COMPACT PHONE FORM (NsTable Compact): in a container under the tablet's width an opted-in
    table draws each row as one line instead of the stacked card, so a list read to find a person
    shows several times as many of them. The container alone asks: a table that narrow is stacked
-   at any window, by the vendor below 960px and by the container block below above it. The lead cell (ns-compact-lead, the first column the header
-   declared that the row draws) opens the first line with the action cell packed after it; the
+   at any window, by the vendor below 960px and by the container block below above it. The lead
+   cell (ns-compact-lead, the first column the header declared that the row draws) opens the
+   first line with the action cell packed after it; the
    row's pseudo is a full-width break, and every other surviving cell follows on the second line,
    receding, with no data-label — a reading that needs its word says it in its own cell. The
    lead wraps rather than ellipsizes: the name is what the line is scanned for, and two people
@@ -1101,8 +1102,7 @@
    specificities settle the same ties. */
 @media (min-width: 960px) {
     @container (max-width: 959.98px) {
-        .ns-table.mud-sm-table .mud-table-head .mud-table-row,
-        .ns-table.mud-sm-table .mud-table-root colgroup {
+        .ns-table.mud-sm-table .mud-table-head .mud-table-row {
             display: none;
         }
 
@@ -1217,9 +1217,10 @@
     }
 }
 
-/* Under 416px of window the vendor holds 100px of footer and 16px of top padding for a row it
-   expects to wrap; the compacted row above no longer does, so the toolbar keeps its one-line
-   floor. */
+/* Under 416px of window the vendor raises the toolbar's min-height to 100px and adds 16px of top
+   padding for a row it expects to wrap (its height is auto at every width, so a min-height is
+   all that holds the reserve); the compacted row above no longer wraps, so the toolbar keeps its
+   one-line floor. */
 @media (max-width: 416px) {
     .ns-table .mud-table-pagination .mud-table-pagination-toolbar {
         min-height: 52px;
@@ -4017,8 +4018,9 @@ div.mud-input-slot.mud-input-root::placeholder {
    to be measured.
 
    Dropped wherever NsTable stacks — below its window width or its container's — the boundary
-   .ns-select-gutter is hidden at and the row's own floor is released at: a stack of cards has no column left to mirror, and the
-   reserve would be a card's whole width of padding inside a phone's. */
+   .ns-select-gutter is hidden at and the row's own floor is released at: a stack of cards has no
+   column left to mirror, and the reserve would be a card's whole width of padding inside a
+   phone's. */
 .ns-table.ns-row-submit-gutter thead th:last-child,
 .ns-table.ns-row-submit-gutter tbody td:last-child {
     width: calc(var(--ns-money-slot) + 1rem + var(--ns-add-row-act) + 1rem);
