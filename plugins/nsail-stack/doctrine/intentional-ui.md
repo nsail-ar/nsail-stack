@@ -508,7 +508,7 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
     worth the page's only grid. **A document's footer row is the third of this family** and gives
     the same answer, with the seated refusal as the child that gives (important acts sit at the
     bottom with text).
-  - **The drawer owns the brand wherever it is on screen, and the session too**: a sticky chip
+  - **The drawer owns the brand, and the session too**: a sticky chip
     at its foot — avatar, name, current organization — anchors the session menu. Sidebar is
     identity, the title row is context: the nav drawer runs the full viewport height, shows the brand
     at the top of its header, and **wears one palette in both themes — a dark gray derived from
@@ -520,9 +520,10 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
     *is* is the brand's business, and those stay accents for data (states, badges). It wears it
     as the band's INK (`--ns-rail-accent`) and not at full strength: a free pick painted as a
     word on a chrome the brand had no say in is the least readable word in the gutter
-    ([ui/branding.md](ui/branding.md), The accent as ink). **Below the drawer's breakpoint the drawer — and so the brand — is behind the
-    hamburger**: one place owns it and no viewport shows it twice. The brand's other place is
-    the splash.
+    ([ui/branding.md](ui/branding.md), The accent as ink). **Below the drawer's breakpoint the drawer is behind the
+    hamburger**, and the brand rides the title row beside it while the drawer is shut
+    ([ui/navigation.md](ui/navigation.md)); opened by the person, only the drawer draws it. The brand's other
+    place is the splash.
 - **Containers belong to layouts, not pages**: the app layout wraps `@Body` in one
   `<NsContainer>`, and the drawer and the dialog are their own chrome. **Pages never render an
   `NsContainer`.**
