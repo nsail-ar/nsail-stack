@@ -214,8 +214,8 @@ and the bubble is drawn nowhere near the control, so there is nothing on the ele
 computation to fold in at all. This is not the double cartel either: that rule is one string shown
 twice, and the key is a second fact the visible word never carried — which is why a chorded
 control whispers where the word stays on screen (`NsSubmit`'s hero, the worded `NsClose`'s
-Cancelar, a chromed `NsButton` claiming a chord of its own) and a chordless one with its word on
-screen says nothing. Their word is a string via `NsSubmit.Label`/`NsClose.Label` (`ChildContent`
+Cancelar, a chromed `NsButton` claiming a chord of its own, a menu entry carrying a `Chord`) and
+a chordless one with its word on screen says nothing. Their word is a string via `NsSubmit.Label`/`NsClose.Label` (`ChildContent`
 cannot give one back) or `NsButton.Label` directly; the claim in `aria-keyshortcuts` is unchanged,
 so a reader announcing the chord once is still exactly once. `NsLink` and `NsPageLink` carry the
 same `Chord` for the door a screen offers (F2 on a record's Editar), and the worded ANCHOR carries
@@ -249,7 +249,7 @@ the entry are both inside it, and a chord no live control declares does nothing.
   there first — plus what a module answered the term with (`INavMenuSearch`, under the matches
   and marked as entries: the records a session is looking FOR, which the map was never the list
   of) — plus, for a question neither lists an answer to, whatever the app put at the end of it.
-- **"?" presses *Ayuda > Atajos de teclado*** — a command entry of the Stack's own Help group
+- **"?" presses *Ayuda > Atajos de Teclado*** — a command entry of the Stack's own Help group
   (`HelpMenu`, ui/navigation.md), not a glyph on the box's row: a door the map can list is an
   entry, so the search finds it and an app's own help stands beside it. A collapsed group hides
   its rows without taking them out of layout, so the chord still answers with the group shut.

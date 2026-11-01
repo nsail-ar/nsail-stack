@@ -93,14 +93,15 @@ public sealed class NavMenuItem
     /// is a string an app registers after the kit's and never a field here.
     ///
     /// A kit plants its menu and the app arranges it: Weight, Icon, Parent, Visible and
-    /// Permission take the LAST non-null value contributed, so a contributor registered after the kits emits
-    /// the same Name carrying only the fields it wants to change and leaves the rest as the
-    /// kit put them. PageType, Parameters, Url, Command and Chord go the other way — the first non-null wins —
-    /// because they are what the entry IS, not where it sits. Parent moves the entry under
-    /// the named group, where it merges with whatever already answers to its Name; Visible
-    /// false takes it and its branch out of the drawer without taking it out of the tree.
-    /// A separator is exempt from all of it: it carries no name to merge on, so it passes
-    /// through by identity and takes its place among the merged entries by Weight alone.</summary>
+    /// Permission take the LAST non-null value contributed, so a contributor registered after
+    /// the kits emits the same Name carrying only the fields it wants to change and leaves the
+    /// rest as the kit put them. PageType, Parameters, Url, Command and Chord go the other way —
+    /// the first non-null wins — because they are what the entry IS, not where it sits. Parent
+    /// moves the entry under the named group, where it merges with whatever already answers to
+    /// its Name; Visible false takes it and its branch out of the drawer without taking it out
+    /// of the tree. A separator is exempt from all of it: it carries no name to merge on, so it
+    /// passes through by identity and takes its place among the merged entries by Weight
+    /// alone.</summary>
     /// <param name="collapseSingleChildGroups">Whether a group left holding exactly one child
     /// gives up its level to that child. The SETTINGS tree asks for it, and only it: a
     /// settings group is a list of screens, so a fold around a single screen is empty

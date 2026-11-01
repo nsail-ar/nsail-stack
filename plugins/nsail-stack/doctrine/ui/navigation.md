@@ -28,10 +28,11 @@ leaves, `Items` for groups, plus the four fields an override carries — `Weight
 `Visible`, `Permission`; **no Razor**. `Url` is the leaf whose destination the route table
 resolves nothing for, so it carries no `Parameters` and is never tracked as the active route
 (below, "A leaf naming a `Url` instead of a page"); `Command` is the leaf that runs an act in
-place (below, "A leaf running a `Command`"). A kit implements `INavMenuContributor` (async, re-asked whenever the authentication state changes) and registers
-it in `Add<Kit>Menu()`. `NavMenu` (same folder, scoped) asks the mounted contributors and merges
-in registration order; `NsNavMenu` renders that tree and prefix matching drives the active
-highlight. The app layout just places `<NsNavMenu />`.
+place (below, "A leaf running a `Command`"). A kit implements `INavMenuContributor` (async,
+re-asked whenever the authentication state changes) and registers it in `Add<Kit>Menu()`.
+`NavMenu` (same folder, scoped) asks the mounted contributors and merges in registration order;
+`NsNavMenu` renders that tree and prefix matching drives the active highlight. The app layout
+just places `<NsNavMenu />`.
 
 - **The drawer is the frame's one gutter, and the app's map is not always alone in it.** Below
   the drawer's own breakpoint `NsNavMenu` also draws whatever the surface's page announced as its
@@ -45,10 +46,9 @@ highlight. The app layout just places `<NsNavMenu />`.
 - **The gate is the destination page's own authorize attributes** (cases). A page with no gate
   stays visible — the floor is "signed in"; stacked attributes all apply; a group goes when
   every one of its children went, bottom-up, and a leaf naming no `PageType`, no navigable
-  `Url` and no `Command` counts as gone (below, "A leaf naming a `Url` instead of a page"). A
-  `Url` or `Command` leaf has no page to ask, so `Permission` and `Visible` are its whole gate.
-  The menu is rebuilt on
-  every change of the cascaded authentication state; asked before the session
+  `Url` and no `Command` counts as gone (below, "A leaf naming a `Url` instead of a page" and "A
+  leaf running a `Command`"). A `Url` or `Command` leaf has no page to ask, so `Permission` and
+  `Visible` are its whole gate. The menu is rebuilt on every change of the cascaded authentication state; asked before the session
   resolves, every entry answers "denied". **`PageGate` remembers each verdict for the session
   that earned it**, because every caller asks from inside a render and none can remember on its
   own — a gated link re-asks on every parameter set, so one pass over a full list of rows asks
@@ -350,8 +350,8 @@ app unable to remove the one it did not ask for.
   their place among the merged entries by `Weight`.
 - **Nothing gates a separator** — `Merge` keeps every line it was given — but the render below
   still refuses to draw one with nothing on a side of it. `Hide` reads a leaf naming no
-  `PageType`, `Url` or `Command` as denied, and a separator is not a leaf; it also cannot be what keeps a
-  group alive. `Leaves()` and `NavMenuItem.Find` ignore it for free, both keying on `PageType`.
+  `PageType`, `Url` or `Command` as denied, and a separator is not a leaf; it also cannot be
+  what keeps a group alive. `Leaves()` and `NavMenuItem.Find` ignore it for free, both keying on `PageType`.
 - **A separator goes while the drawer's search box is filtering.** A filtered drawer is a list
   of matches and not the map, so the two families the line stood between are gone; keeping it
   draws a rule between nothing and nothing.
@@ -411,10 +411,12 @@ wins where an entry names both.
   `Href` the vendor draws a focusable div that no key presses and nothing names as a control.
   Enter in the box presses it like the first link (`ns.js` names `.ns-nav-command button`).
 - **`Chord` is claimed on that button** (`NsKeys.Declare`), so the key runs what the click runs
-  and leaves with the row wherever the gate or `Visible` takes it.
+  and leaves with the row wherever the gate or `Visible` takes it. The row's word is on screen
+  and its key is not, so it whispers `Word (Keys)` as a chorded `NsButton` does
+  ([intentional-ui-cases-shell.md](../intentional-ui-cases-shell.md), the whisper).
 - **The frame's own Help group is the Stack's one contribution** (`HelpMenu`, registered by
   `AddComponentServices` ahead of every kit's and app's contributor): *Help* last on the map,
-  opening with *Atajos de teclado* — the "?" sheet, a `Command` carrying `NsKeys.Help`. An app
+  opening with *Atajos de Teclado* — the "?" sheet, a `Command` carrying `NsKeys.Help`. An app
   hangs its own help under it by naming `HelpMenu.Group` as a `Parent` (a guide, a way to
   support) and arranges or hides the group as it would any kit's.
 - **`NavMenu.Help` and `NavMenu.Shortcuts` repeat `Common.Help` and `Common.Shortcuts` on
