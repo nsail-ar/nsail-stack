@@ -214,8 +214,8 @@ and the bubble is drawn nowhere near the control, so there is nothing on the ele
 computation to fold in at all. This is not the double cartel either: that rule is one string shown
 twice, and the key is a second fact the visible word never carried — which is why a chorded
 control whispers where the word stays on screen (`NsSubmit`'s hero, the worded `NsClose`'s
-Cancelar, a chromed `NsButton` claiming a chord of its own) and a chordless one with its word on
-screen says nothing. Their word is a string via `NsSubmit.Label`/`NsClose.Label` (`ChildContent`
+Cancelar, a chromed `NsButton` claiming a chord of its own, a menu entry carrying a `Chord`) and
+a chordless one with its word on screen says nothing. Their word is a string via `NsSubmit.Label`/`NsClose.Label` (`ChildContent`
 cannot give one back) or `NsButton.Label` directly; the claim in `aria-keyshortcuts` is unchanged,
 so a reader announcing the chord once is still exactly once. `NsLink` and `NsPageLink` carry the
 same `Chord` for the door a screen offers (F2 on a record's Editar), and the worded ANCHOR carries
@@ -228,13 +228,16 @@ trailing edge (`.ns-search-key`, `aria-hidden`, and only while the box is empty)
 the convention every application that spends a chord on a search box follows. Never in the
 PLACEHOLDER — a placeholder is an input's name FALLBACK, so a key written there lands in the
 accessible name, nsail#2259 one layer up, and it moves a string every browser walk reaches the
-box by.
+box by. **While the mark is drawn the input gives up its room** (`.ns-search-keyed`, sized by
+the key's own length), so a placeholder in any language ends before the key and is cut with an
+ellipsis where the box is narrower than the sentence — which is also why the default is one word,
+`Common.Search`.
 
-## Ctrl+K is the drawer's own search, and "?" the door beside it
+## Ctrl+K is the drawer's own search, and "?" its Help group's first entry
 
 Both chords are the FRAME's and not a page's (nsail#2207): a screen that draws no header of its
 own still answers them, and a phone, where the drawer is closed, answers neither — the box and
-the door are both inside it, and a chord no live control declares does nothing.
+the entry are both inside it, and a chord no live control declares does nothing.
 
 - **Ctrl+K lands in the menu's search** (`NsSearchField.Map`, planted by `NsNavMenu`), and there
   is no second palette: the menu is the one list of where a session may go, permission gate
@@ -246,7 +249,11 @@ the door are both inside it, and a chord no live control declares does nothing.
   there first — plus what a module answered the term with (`INavMenuSearch`, under the matches
   and marked as entries: the records a session is looking FOR, which the map was never the list
   of) — plus, for a question neither lists an answer to, whatever the app put at the end of it.
-- **"?" opens a sheet of the claims on screen** (`NsKeySheet`, hosted through
+- **"?" presses *Ayuda > Atajos de Teclado*** — a command entry of the Stack's own Help group
+  (`HelpMenu`, ui/navigation.md), not a glyph on the box's row: a door the map can list is an
+  entry, so the search finds it and an app's own help stands beside it. A collapsed group hides
+  its rows without taking them out of layout, so the chord still answers with the group shut.
+- **The sheet lists the claims on screen** (`NsKeySheet`, hosted through
   `DialogManager.Open`, so Escape and the X close it through the guard everything else goes
   through). Its lines are read off the DOM at the instant the door is pressed (`nsapp.chords`) —
   each line the declaring control's own word, already in the install's language — and the three
