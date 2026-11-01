@@ -1,0 +1,31 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+<MudPopoverProvider />
+
+<NsTable TRow="TestModel" Rows="Page" Mode="NsTableMode.Page" OnQuery="Query">
+    <HeaderContent>
+        <NsTh For="() => context.Name" Whole="true" />
+        <NsTh For="() => context.Age" />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+        <NsTd For="() => row.Age">@row.Age</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    readonly List<TestModel> _rows = [new TestModel { Name = "ARM-TEST-01", Age = 3 }];
+
+    DataPage<TestModel> Page => DataPage<TestModel>.From(_rows);
+
+    EventCallback<QueryEventArgs> Query => EventCallback.Factory.Create<QueryEventArgs>(this, () => { });
+}

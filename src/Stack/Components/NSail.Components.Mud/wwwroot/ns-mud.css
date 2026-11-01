@@ -497,6 +497,14 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* A column that declared Whole keeps each value on one line (NsTh Whole; the cells follow through
+   the key, TableColumns.IsWholeFor): a code such as ARM-TEST-01 would otherwise break at its
+   hyphens when an aside narrows the list. The cell's min-content becomes the whole value, so the
+   table gives the column its width instead of wrapping inside it. */
+.ns-table .ns-col-whole {
+    white-space: nowrap;
+}
+
 /* NsLink wraps a link it drives itself (a surface move, which replaces its history entry
    instead of pushing one) so it has an element to catch the click on — and a class the
    document listener that decides whether to prevent that click's default answers on (ns.js).

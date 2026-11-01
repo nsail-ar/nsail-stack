@@ -122,6 +122,10 @@ nothing. A `tfoot` cell carries it the way it carries a `Breakpoint`: through th
 never declared twice. A date's own digits are a position on a calendar rather than a quantity to
 compare at a glance, so `Format.Date` stays left, with everything else that is read as a word.
 
+**`Whole` on `NsTh`** keeps a column's values on one line — no break at a hyphen or a space, for a
+code such as `ARM-TEST-01` — also when an aside narrows the list. Declared once, on the header; the
+cells follow through the column's key (`ns-col-whole`).
+
 **`Breakpoint` on `NsTh`** (`NsSize`, default `None`) reads *"the column appears from this
 container width up"*. A six-column grid gives up its least important columns one at a time
 (Parties keeps `DisplayName` always, brings `TaxId` back at `sm`, `Kind` at `md`,
