@@ -6,10 +6,9 @@ using NSail.Icons;
 namespace NSail.Components;
 
 /// <summary>Flat navigation entry: a leaf names its destination page or the Command it runs, a
-/// group has Items. An
-/// internal destination's URL is resolved from PageType through the RouteTable, never written;
-/// Url is the one written address, for a leaf whose destination the route table does not
-/// hold.</summary>
+/// group has Items. An internal destination's URL is resolved from PageType through the
+/// RouteTable, never written; Url is the one written address, for a leaf whose destination the
+/// route table does not hold.</summary>
 public sealed class NavMenuItem
 {
     public required string Name { get; init; }
