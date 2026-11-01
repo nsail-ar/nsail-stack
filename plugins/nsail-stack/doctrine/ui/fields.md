@@ -165,8 +165,8 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   out of range (measured, `NsMoneyFieldBoundsTests`). The field words nothing — the refusal's
   sentence is the sender's, from its own kit's strings, and the server refuses the same range for
   every other caller.
-- **`NsMoneyField HideSpinButtons`** drops the vendor's spin buttons, which cover the right end of
-  the text in a slot as narrow as `.ns-money-slot`. Off by default: a stepped field keeps them.
+- **`NsMoneyField` draws no spin buttons.** A price has no step, and the vendor's buttons cover the
+  right end of the text in a slot as narrow as `.ns-money-slot`.
 - **A figure in the install's own currency wears no code.** `NsMoneyField` renders `N2` in the
   reader's grouping — character for character what every total, saldo and list cell writes
   beside it — and shows a code only when its `Currency` is set; a figure written as text takes

@@ -3864,10 +3864,10 @@ div.mud-input-slot.mud-input-root::placeholder {
     min-width: 8rem;
 }
 
-/* A money column's header ends where the field under it ends: the slot's right edge, not the
-   cell padding's. */
-.ns-table th.ns-col-money {
-    min-width: var(--ns-money-slot);
+/* A money column's header and figures end on one edge, the column's own: neither keeps the
+   vendor's end padding the other lacks. */
+.ns-table th.ns-col-money,
+.ns-table td.ns-col-money {
     padding-inline-end: 0;
 }
 

@@ -87,7 +87,7 @@
         return new NsClassBuilder(NsResponsive.CellClasses(Breakpoint))
             .Add("ns-actions", For is null && ChildContent is null)
             .Add("ns-col-numeric", Columns?.IsNumericFor(_key) ?? false)
-            .Add("ns-col-money", _column?.Format == ExportFormat.Money)
+            .Add("ns-col-money", Columns?.IsMoneyFor(_key) ?? false)
             .Add("ns-compact-only", Compact == NsCompact.Only)
             .ToString();
     }
@@ -111,7 +111,7 @@
         // reason an export needs nothing from the screen.
         _column = TableColumn.Of(field.Type, field.Member, _label ?? _key, _key, Format, Strings);
 
-        Columns?.Declare(_key, Breakpoint, Compact, IsNumeric(_column?.Format));
+        Columns?.Declare(_key, Breakpoint, Compact, IsNumeric(_column?.Format), _column?.Format == ExportFormat.Money);
 
         if (_column is { } column)
         {

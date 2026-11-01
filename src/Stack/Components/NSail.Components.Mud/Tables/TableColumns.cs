@@ -21,13 +21,15 @@ public sealed class TableColumns
     readonly Dictionary<string, NsSize> _breakpoints = [];
     readonly Dictionary<string, NsCompact> _compact = [];
     readonly Dictionary<string, bool> _numeric = [];
+    readonly Dictionary<string, bool> _money = [];
     readonly List<TableColumn> _declared = [];
 
-    public void Declare(string key, NsSize breakpoint, NsCompact compact, bool numeric = false)
+    public void Declare(string key, NsSize breakpoint, NsCompact compact, bool numeric = false, bool money = false)
     {
         _breakpoints[key] = breakpoint;
         _compact[key] = compact;
         _numeric[key] = numeric;
+        _money[key] = money;
 
         // A column its Breakpoint hides is off the compact line as it is off the card — no
         // container under the tablet's width reaches any rung — so only an unhidden column, or
@@ -81,6 +83,13 @@ public sealed class TableColumns
     public bool IsNumericFor(string? key)
     {
         return key is not null && _numeric.TryGetValue(key, out var numeric) && numeric;
+    }
+
+    /// <summary>Whether this column's values are Money, so the header and every cell under it
+    /// end on the same edge (<c>.ns-col-money</c>).</summary>
+    public bool IsMoneyFor(string? key)
+    {
+        return key is not null && _money.TryGetValue(key, out var money) && money;
     }
 
     /// <summary>Called by the table as it renders its header row, before the headers in it set

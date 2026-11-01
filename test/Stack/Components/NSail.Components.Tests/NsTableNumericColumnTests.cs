@@ -128,6 +128,16 @@ public sealed class NsTableNumericColumnTests : BunitContext, IAsyncLifetime
         Assert.Contains("font-variant-numeric: tabular-nums;", block, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheStylesheetEndsAMoneyHeaderAndItsCellsOnOneEdge()
+    {
+        var css = HouseStylesheet.Read();
+        var block = Rule(css, ".ns-table th.ns-col-money,");
+
+        Assert.Contains(".ns-table td.ns-col-money {", block, StringComparison.Ordinal);
+        Assert.Contains("padding-inline-end: 0;", block, StringComparison.Ordinal);
+    }
+
     static string Rule(string css, string selector)
     {
         var start = css.IndexOf(selector, StringComparison.Ordinal);

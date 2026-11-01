@@ -20,7 +20,7 @@
                  ReadOnly="IsReadOnly"
                  AutoFocus="FocusOnRender"
                  Immediate="true"
-                 HideSpinButtons="HideSpinButtons"
+                 HideSpinButtons="true"
                  OnBlur="Leaving"
                  OnKeyDown="Pressing"
                  @attributes="BoundsAttributes"
@@ -79,12 +79,6 @@
     /// total and saldo beside it: the figure alone, in the reader's grouping.</summary>
     [Parameter]
     public string? Currency { get; set; }
-
-    /// <summary>Drops the vendor's spin buttons, which sit over the right end of the text in a
-    /// slot as narrow as <c>.ns-money-slot</c>. Off by default: a field that is stepped keeps
-    /// them.</summary>
-    [Parameter]
-    public bool HideSpinButtons { get; set; }
 
     Dictionary<string, object>? BoundsAttributes
     {
