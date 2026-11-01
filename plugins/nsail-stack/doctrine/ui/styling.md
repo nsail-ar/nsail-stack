@@ -47,8 +47,8 @@ marked *(cases)* has its story there.
     a persistent add row laid out beside the table rather than inside it — so the row's fields
     start under the table's own columns instead of its leading edge. Hidden wherever `NsTable`
     itself stacks — below its window width (`Breakpoint.Sm`) or its container's — where there is
-    no checkbox column left to mirror. `.ns-row-submit` marks a submit act that shares that same row with labeled fields
-    instead of sitting in a form's own footer, so `align-items: flex-start` would otherwise
+    no checkbox column left to mirror. `.ns-row-submit` marks a submit act that shares that same
+    row with labeled fields instead of sitting in a form's own footer, so `align-items: flex-start` would otherwise
     leave it floating on the fields' label gutter rather than reading as their row partner.
     **`.ns-row-submit-gutter` is the mirror at the other end**, and goes on the `NsTable`: the
     add row ends in that act where the rows below it end in a cell's padding, so the table's
@@ -499,7 +499,7 @@ CSS cannot decide — a vendor *parameter*, `NsDrawer` picking its variant — s
 `IBrowserViewportService`, and that is the only reason left to.
 
 **One media query in `ns-mud.css` is not a design measuring the window but a rule staying out of
-the vendor's way**: the stacked-by-container block for a table with a row open is wrapped in
+the vendor's way**: the stacked-by-container block is wrapped in
 `@media (min-width: 960px)` because below that width MudBlazor's own stack is already the answer,
 and two regimes answering for one table is what the wrapper prevents (cases). It names the
 vendor's own number for the same reason the helpers above do.

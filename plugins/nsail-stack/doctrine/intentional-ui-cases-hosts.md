@@ -465,8 +465,8 @@ any window, so it asks the container alone (`ContainerStackTests`).
 - **The vendor's base is copied** — the hidden head, display, the `::before` on `data-label`, the
   dense stacked padding, the body's top line and the row's separator — because the vendor's rules
   are a media query nothing can put on. The selectors are the phone block's own: `.mud-sm-table`
-  rides the root at every width, so the same specificities settle the same ties. That is the vendor-CSS-copy cost named in
-  *Container queries: the measured facts* ([cases: shell](intentional-ui-cases-shell.md)); the
+  rides the root at every width, so the same specificities settle the same ties. That is the
+  vendor-CSS-copy cost named in *Container queries: the measured facts* ([cases: shell](intentional-ui-cases-shell.md)); the
   alternative is a row that cannot be typed into.
 - **One pair of hide/re-enable rules, not four.** Inside a container under 960px the `md`, `lg`
   and `xl` thresholds cannot match, so only the `sm` half is reachable; the other three would be

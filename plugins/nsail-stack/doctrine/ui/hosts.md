@@ -91,8 +91,9 @@ stacked card is a record read field by field, a contact list on a phone is scann
 left by a call or a message: one line per row — the lead column, the action cell beside it, the
 other surviving cells under them, no labels — shows several times as many people per screen. It
 replaces the card only in a container under the tablet's width — a phone's, or a narrow aside's
-on a wide screen; wider, the table reads as one that did not opt in. Opt in where that is what the phone is for (a patient list), never by default:
-a list whose rows are read whole (orders, documents, tickets) keeps the card.
+on a wide screen; wider, the table reads as one that did not opt in. Opt in where that is what
+the phone is for (a patient list), never by default: a list whose rows are read whole (orders,
+documents, tickets) keeps the card.
 
 - **`NsCompact` places a cell on that line**, declared on `NsTh` like `Breakpoint` and followed by
   its cells: `Hidden` leaves a column off the line — still declared, so still a column of the file
@@ -294,14 +295,13 @@ are asked in that same breath, for the reason and through the walk the list's ar
   floor is column arithmetic and below `md` there is no column to do it in: the open row stacks
   (next bullet) and a card line is already the widest a field can be, so there is nothing left to
   ask for and nothing to take back (cases).
-- **A table with a row open stacks where its container is under `md`, whatever the window is
-  doing.** An edit input never hides, so the open row is the one thing in a grid that cannot be
-  narrowed, and under `md` it does not fit any line editor in the tree: in the 688px container a
-  `Lg` aside leaves, four inputs that need over 950px between them were handed 104, 74, 57 and 47,
-  and "125.430,50" read "50". The shape is the phone's — same card lines, same label above the
-  field — and only the QUESTION differs: the vendor's stack asks the viewport, this asks the
-  container. **A table nobody is editing is untouched**: a row being read already answers a
-  narrow container by hiding columns.
+- **An open row stacks with its table where the container is under `md`, whatever the window is
+  doing** — the container rule of *Columns and widths*, and the row that most needs it. An edit
+  input never hides, so the open row is the one thing in a grid that cannot be narrowed, and under
+  `md` it does not fit any line editor in the tree: in the 688px container a `Lg` aside leaves,
+  four inputs that need over 950px between them were handed 104, 74, 57 and 47, and "125.430,50"
+  read "50". The shape is the phone's — same card lines, same label above the field — and only
+  the QUESTION differs: the vendor's stack asks the viewport, this asks the container.
 - **In column mode the whole table stops hiding while a row is open**, header and read rows with
   it (`ns-table-editing`). A `display: none` cell generates no box, so a freed editor row would
   otherwise own more columns than the header does and drop every input one column off. That is
@@ -315,8 +315,9 @@ are asked in that same breath, for the reason and through the walk the list's ar
 - **`Mode` (`NsTableMode`, default `Auto`) decides whether an arriving page replaces the rows on
   screen or joins them.** `Page` is the pager. `Scroll` appends: the rows accumulate, reaching the
   bottom asks for the next page, and there is no pager row at all. `Auto` reads the viewport and
-  resolves to `Scroll` at sm and below, `Page` above — the same threshold stacking answers at, so
-  the phone that reads a row as a card also reads the list as one list. **Nothing about the
+  resolves to `Scroll` at sm and below, `Page` above — the window threshold the vendor stacks at,
+  so the phone that reads a row as a card also reads the list as one list; an aside's stacked
+  list keeps its pager. **Nothing about the
   server contract moves**: the same `OnQuery`, the same page asked for and answered, so no grid
   is edited to get any of it.
 - **`Auto` answers `Page` until a browser has reported a width.** A bUnit render and a server
