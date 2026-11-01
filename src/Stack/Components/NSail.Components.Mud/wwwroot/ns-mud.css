@@ -4590,6 +4590,16 @@ div.mud-input-slot.mud-input-root::placeholder {
     pointer-events: none;
 }
 
+/* The room the mark takes, given up by the input while the mark is drawn: the mark's right
+   offset, its padding and border, a gap, and its characters at the mark's own size — so a
+   placeholder in any language ends before the key instead of running under it, and is cut
+   with an ellipsis where the box is narrower than the sentence. Five classes and the element,
+   to outrank the vendor's adorned-start padding on the same input. */
+.ns-search-box.ns-search-keyed .mud-input-control input.mud-input-slot.mud-input-root {
+    padding-inline-end: calc(28px + var(--ns-search-key-chars, 2) * .45rem);
+    text-overflow: ellipsis;
+}
+
 /* The drawer's own search field (NsNavMenu's Map box) draws this same mark, and the rule above
    carries no region of its own: left as the content's text-secondary, the hint flips with the
    scheme on the rail's fixed ground exactly the way ui/branding.md's ".ns-text-muted"
