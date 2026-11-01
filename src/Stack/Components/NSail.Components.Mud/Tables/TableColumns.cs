@@ -22,10 +22,20 @@ public sealed class TableColumns
     readonly Dictionary<string, NsCompact> _compact = [];
     readonly Dictionary<string, bool> _numeric = [];
     readonly Dictionary<string, bool> _money = [];
+    readonly HashSet<string> _whole = [];
     readonly List<TableColumn> _declared = [];
 
-    public void Declare(string key, NsSize breakpoint, NsCompact compact, bool numeric = false, bool money = false)
+    public void Declare(string key, NsSize breakpoint, NsCompact compact, bool numeric = false, bool money = false, bool whole = false)
     {
+        if (whole)
+        {
+            _whole.Add(key);
+        }
+        else
+        {
+            _whole.Remove(key);
+        }
+
         _breakpoints[key] = breakpoint;
         _compact[key] = compact;
         _numeric[key] = numeric;
@@ -90,6 +100,14 @@ public sealed class TableColumns
     public bool IsMoneyFor(string? key)
     {
         return key is not null && _money.TryGetValue(key, out var money) && money;
+    }
+
+    /// <summary>Whether this column's values are never broken across lines — a code such as
+    /// <c>ARM-TEST-01</c> — declared on its header and followed by every cell under it. False for
+    /// a column that declared nothing.</summary>
+    public bool IsWholeFor(string? key)
+    {
+        return key is not null && _whole.Contains(key);
     }
 
     /// <summary>Called by the table as it renders its header row, before the headers in it set

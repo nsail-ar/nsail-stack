@@ -493,6 +493,14 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* A column that declared Whole keeps each value on one line (NsTh Whole; the cells follow through
+   the key, TableColumns.IsWholeFor, or say NsTd Whole themselves): a code such as ARM-TEST-01
+   would otherwise break at its hyphens when an aside narrows the list. The cell's min-content becomes the whole value, so the
+   table gives the column its width instead of wrapping inside it. */
+.ns-table .ns-col-whole {
+    white-space: nowrap;
+}
+
 /* NsLink wraps a link it drives itself (a surface move, which replaces its history entry
    instead of pushing one) so it has an element to catch the click on — and a class the
    document listener that decides whether to prevent that click's default answers on (ns.js).
@@ -872,6 +880,13 @@
         font-weight: 400;
     }
 
+    /* The label is the column header, and white-space is inherited from the cell: a Whole cell
+       must not stop the label from wrapping, or label and value both refuse to shrink and the
+       card scrolls sideways. */
+    .ns-table.mud-sm-table .ns-col-whole::before {
+        white-space: normal;
+    }
+
     /* THE FOOT SURVIVES THE STACK, which is the whole reason a totals row may live in the table
        at all: the vendor hides it outright here (.mud-sm-table .mud-table-root .mud-table-foot
        { display: none }, 0-3-0) together with the head row it stacks the table by replacing — a
@@ -1132,6 +1147,11 @@
             color: var(--mud-palette-text-secondary);
             font-weight: 400;
             padding-inline-end: 16px;
+        }
+
+        /* A Whole cell's label still wraps, as on the phone card above. */
+        .ns-table.mud-sm-table .ns-col-whole::before {
+            white-space: normal;
         }
 
         .ns-table.mud-sm-table .mud-table-cell.ns-cell-editing {
