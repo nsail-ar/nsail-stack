@@ -45,9 +45,9 @@ marked *(cases)* has its story there.
     not the whole card's business).
   - `.ns-select-gutter` mirrors a selecting `NsTable`'s own checkbox column width, by hand, on
     a persistent add row laid out beside the table rather than inside it — so the row's fields
-    start under the table's own columns instead of its leading edge. Hidden below the width
-    `NsTable` itself stacks at (`Breakpoint.Sm`), where there is no checkbox column left to
-    mirror. `.ns-row-submit` marks a submit act that shares that same row with labeled fields
+    start under the table's own columns instead of its leading edge. Hidden wherever `NsTable`
+    itself stacks — below its window width (`Breakpoint.Sm`) or its container's — where there is
+    no checkbox column left to mirror. `.ns-row-submit` marks a submit act that shares that same row with labeled fields
     instead of sitting in a form's own footer, so `align-items: flex-start` would otherwise
     leave it floating on the fields' label gutter rather than reading as their row partner.
     **`.ns-row-submit-gutter` is the mirror at the other end**, and goes on the `NsTable`: the
@@ -97,9 +97,11 @@ marked *(cases)* has its story there.
     only narrow a phone's fields for nothing.
     A **boolean control** is the same mismatch and takes the same answer: it draws neither the
     label gutter nor the outline its row partners draw, so `NsRecordState` and `NsCheckBox` mark
-    their own control (`ns-record-state`, `ns-form-check`) and the grid centres that cell. The
-    mark is on the component, not on the grid — a row of nothing but booleans keeps its
-    flex-start — and the selector reaches a DIRECT child only, so a check nested in a stack
+    their own control (`ns-record-state`, `ns-form-check`) and the grid lines it up with the
+    neighbour's INPUT, not the row: the field's own 8px label gutter above and a 40px box the
+    control is centred in, so a neighbour with a hint under its box — which makes the row taller
+    than the input — does not pull the check low. The mark is on the component, not on the grid,
+    and the selector reaches a DIRECT child only, so a check nested in a stack
     beside an `NsHelp` owns its line already and is left alone.
   - A field cell whose content draws nothing (`StoreSelect HideLone`) collapses.
 - **`Gap` and `Margin` read off one `NsSize` scale** — room *between* children and room *around*

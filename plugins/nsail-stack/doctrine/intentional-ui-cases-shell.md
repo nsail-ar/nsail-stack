@@ -295,10 +295,11 @@ there the key is the character the hand meant.
   (0-4-0), off by default once stacked, and a matching `.d-c-{bp}-table-cell` selector at the
   same weight nested in the same `@container` thresholds — written second, so it wins exactly when
   its own condition matches.
-- `MudTable.Breakpoint` is pure vendor CSS (`mud-sm-table` + a 960px media query), so *when the
-  table stacks* stays viewport-bound — porting those rules to `@container` means owning a copy of
-  vendor CSS. That copy is taken only for the case that has no other answer: a table with a row
-  OPEN, whose inputs never hide ([cases: hosts](intentional-ui-cases-hosts.md), *The open row
-  stacks where its container cannot seat it*). A table nobody is editing stacks by viewport alone.
+- `MudTable.Breakpoint` is pure vendor CSS (`mud-sm-table` + a 960px media query), so the
+  vendor's *when the table stacks* is viewport-bound — answering a container means owning a copy
+  of vendor CSS. That copy is taken, once, for every table on a wide window: hiding columns cannot
+  seat every list in an aside, and an open row's inputs never hide at all
+  ([cases: hosts](intentional-ui-cases-hosts.md), *A table stacks where its container cannot seat
+  it*).
 - No fallback needed: container queries ship in every browser since 2022–23; a browser without
   them ignores the rule and leaves labels visible.

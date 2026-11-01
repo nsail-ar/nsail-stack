@@ -384,15 +384,20 @@ zigzag on the Roles grid when two row shapes each aligned themselves. Hence: the
 right-aligns, the toolbar packs to its own trailing edge, and a page's own row actions travel as
 `ActionItem`s into the same toolbar.
 
-## The pager row at phone width
+## The pager row compacts by its own width
 
 Measured: every box in `MudTablePager`'s toolbar is `flex-shrink: 0`, so the row has one width
-at every screen — 392px with the Spanish caption — while a 428px phone's content box is about
-380; `.mud-table-pagination` carries `overflow: auto`, turning the difference into a horizontal
-scroll nobody looks for. The page-size caption is a plain `div`, never a `<label>` bound to the
-combobox, so dropping it loses nothing to a screen reader. The threshold is 599.98px, not the
-960px the table stacks at: the defect is width, and a stacked tablet has the room. The test pins
-the DOM shape those selectors depend on, so a vendor that moves the captions is caught.
+at every screen — 392px with the Spanish caption and all four arrows — while a 428px phone's
+content box is about 380, and a default (`Md`, 480px) aside's is narrower still once its padding
+is spent; the vendor's toolbar wraps what it cannot seat to a second line. A window query
+compacts the phone and leaves the aside wrapping, so the toolbar is its own `inline-size`
+container (it takes its width from the table, never from its content) and the compaction asks
+it. What goes is the page-size caption and the first/last arrows — the pair the vendor's own
+stacked pager drops; previous and next walk the pages. The caption is a plain `div`, never a
+`<label>` bound to the combobox, so dropping it loses nothing to a screen reader. The threshold is
+599.98px, not the 960px the table stacks at: the defect is width, and a stacked list with the
+room keeps the label. `PagerFooterTests` pins the DOM shape those selectors depend on and the rule
+itself, so a vendor that moves the captions or the arrows is caught.
 
 ## The stacked open row is a form
 
@@ -420,7 +425,7 @@ rows — `PurchaseOrderLinesEditor`, `SaleLinesEditor`, `VoucherLinesEditor`, `P
 measured in a phone-shaped browser at 375px (`StackedEditorRowTests`); bUnit can pin the class
 contract, never an edge.
 
-## The open row stacks where its container cannot seat it
+## A table stacks where its container cannot seat it
 
 Nueva Orden de Compra in a `Lg` aside: Producto 104px, Descripción 74, Cantidad 57, **Precio
 unitario 47**, where "125430,50" read "50". Editar Orden de Compra, at `Xl` (1160px), read the same
@@ -441,16 +446,26 @@ aside. What kept it off this screen is that the vendor's stack asks the VIEWPORT
 under its own `max-width: 960px`) while hiding asks the container, so a 720px panel on a 1600px
 screen fell between the two. So `ns-mud.css` asks the container as well, under
 `@media (min-width: 960px)` — a wide viewport, where the vendor's stack is not already the
-answer — and only while a row is open (`ns-table-editing`). A table nobody is editing is
-untouched: a row being read already answers a narrow container by hiding columns.
+answer.
+
+**And for every table, not only one with a row open.** Hiding columns is not an answer a row
+being read can always reach: a list whose surviving columns still outgrow the aside overlaps its
+cells or scrolls sideways, at 1280px with any aside open. The card is the phone's answer to the
+same width, so it is the aside's — the same card lines and receding label, the action strip packed
+right with its reserve gone, the foot kept as its own card without blank lines, a paged grid
+growing to its cards so the pager lands under the last one instead of pinned over it, and the add
+row's mirrors (`.ns-select-gutter`, `.ns-row-submit-gutter`, the row's own floor) dropped with the
+columns they mirror. The compact line follows by itself: a container under 600px is stacked at
+any window, so it asks the container alone (`ContainerStackTests`).
 
 - **The gate is an overlap, not a complement.** The two regimes meet at exactly 960px, where both
   fire and say the same thing. Complementing `max-width: 960px` with `min-width: 960.02px` would
   leave a fractional gap where neither does — the trap the `ns-table-editing` rule above the
   block already documents for its own pair.
-- **The vendor's base is copied** — display, the `::before` on `data-label`, the dense stacked
-  padding, the body's top line and the row's separator — because `.mud-sm-table` is the
-  viewport's word and nothing may put it on. That is the vendor-CSS-copy cost named in
+- **The vendor's base is copied** — the hidden head, display, the `::before` on `data-label`, the
+  dense stacked padding, the body's top line and the row's separator — because the vendor's rules
+  are a media query nothing can put on. The selectors are the phone block's own: `.mud-sm-table`
+  rides the root at every width, so the same specificities settle the same ties. That is the vendor-CSS-copy cost named in
   *Container queries: the measured facts* ([cases: shell](intentional-ui-cases-shell.md)); the
   alternative is a row that cannot be typed into.
 - **One pair of hide/re-enable rules, not four.** Inside a container under 960px the `md`, `lg`

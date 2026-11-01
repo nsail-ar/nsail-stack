@@ -90,8 +90,8 @@ curve itself is the core doc's.
 stacked card is a record read field by field, a contact list on a phone is scanned for a name and
 left by a call or a message: one line per row — the lead column, the action cell beside it, the
 other surviving cells under them, no labels — shows several times as many people per screen. It
-replaces the card only under the tablet's width; at the tablet and above the table reads as one
-that did not opt in. Opt in where that is what the phone is for (a patient list), never by default:
+replaces the card only in a container under the tablet's width — a phone's, or a narrow aside's
+on a wide screen; wider, the table reads as one that did not opt in. Opt in where that is what the phone is for (a patient list), never by default:
 a list whose rows are read whole (orders, documents, tickets) keeps the card.
 
 - **`NsCompact` places a cell on that line**, declared on `NsTh` like `Breakpoint` and followed by
@@ -145,13 +145,16 @@ looks up its own. No `<NsColumn>`, no `<NsTr>`.
 - **The stacked mobile layout honors the same declaration** — a hidden column's cell stays gone
   as a card line too, at the same container threshold. A card has vertical room a table does not,
   but that room is not a reason to show what the grid already ruled unimportant (cases).
-- **When a table with no row open stacks is still viewport-bound** — columns degrade per
-  container, and only the open row's stack answers the container too (below, cases).
-- **Under 600px the pager drops its page-size label and keeps everything else.** The vendor's
-  pager row is one shrink-proof width at every screen, wider than a phone's content box, so the
-  arrows would end up past the edge; the select, the row counter and the arrows stay, and the row
-  is allowed to wrap under them. A stacked tablet has room for the label and keeps it — the line
-  is the width, not the stack (cases).
+- **A table stacks where its container cannot seat it, not only where the window cannot.** The
+  vendor stacks by viewport, so on a wide screen a list in an aside would stay a table of columns
+  squeezed into the aside — cells overlapping, the row scrolling sideways. Under a container of
+  960px the rows are the phone's cards, read row or open row alike, column importance still
+  hiding (cases).
+- **The pager compacts by its own width.** Under 600px of pager it drops its page-size label and
+  the first/last arrows and keeps the select, the row counter and previous/next, so the row stays
+  one line on a phone and in an aside alike. The vendor's row is one shrink-proof width, and a
+  window query cannot see an aside's box; a stacked list with room for the label keeps it — the
+  line is the width, not the stack (cases).
 
 ### Order (`NsTh Sortable`)
 
