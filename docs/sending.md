@@ -83,7 +83,7 @@ A refusal is a `Problem`: a code, a title, and issues that name the fields they 
 | `NotFound` | 404 | a handler, or the mapper on a missing row |
 | `Conflict` | 409 | a save against a stale `Version` |
 | `AlreadyExists` | 409 | a handler's uniqueness guard |
-| `TooManyRequests` | 429 | `[Throttled]` on a public door |
+| `TooManyRequests` | 429 | `[Throttled]` on a public door, or a tenant past its request budget (with `Retry-After`) |
 
 The client receives the same `Problem` it would have built itself, and the form draws it in one
 place: under the field it names, or in the form's own strip. A user never reads an internal id —

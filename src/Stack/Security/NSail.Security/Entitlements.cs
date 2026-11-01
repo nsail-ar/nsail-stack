@@ -101,7 +101,10 @@ public sealed class Entitlements
     /// <summary>The ceiling written for this key, or null for no ceiling — which is what an
     /// absent key, a key written as a flag and an unreadable bag all answer. <b>A ceiling
     /// never blocks the work</b>: what reads this states how much of it is used and carries on
-    /// (the story that declares the key).</summary>
+    /// (the story that declares the key). The one declared exception is a request budget, a
+    /// rate rather than an allowance: refusing past it defers the work instead of losing it, and
+    /// one tenant's flood would otherwise be spent out of every other tenant's share of the
+    /// install (data-tenancy.md).</summary>
     public decimal? Limit(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);

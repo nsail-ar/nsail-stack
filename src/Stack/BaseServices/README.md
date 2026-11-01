@@ -61,11 +61,11 @@ A host that offers `backup` and `restore` calls `InstallConsole.Requested(args)`
 ## What each call does
 
 `AddBaseWebApi` registers telemetry (`AddTelemetry`), the messaging runtime, the error handler,
-the middleware below, `SecurityOptions` (from `Security`), the tenant feature provider and a
-hosted service that publishes the declared features, the push server end with the tenant as its
-audience, authorization, metadata, Swagger with schema ids derived from `MetadataProvider`, and
-a DataProtection key ring persisted under `<content root>/data/keyring` (so a backup carries it).
-It sets `RouteHandlerOptions.ThrowOnBadRequest` in every environment so a binding failure takes
+the middleware below, the permissive `RequestBudgetProvider`, `SecurityOptions` (from
+`Security`), the tenant feature provider and a hosted service that publishes the declared
+features, the push server end with the tenant as its audience, authorization, metadata, Swagger
+with schema ids derived from `MetadataProvider`, and a DataProtection key ring persisted under
+`<content root>/data/keyring` (so a backup carries it). It sets `RouteHandlerOptions.ThrowOnBadRequest` in every environment so a binding failure takes
 the same exception path everywhere.
 
 `UseBaseWebApi` builds the pipeline in this order:
@@ -81,11 +81,14 @@ the same exception path everywhere.
    `Security:TicketEpoch` (0 refuses nothing).
 8. `ThrottleMiddleware`: a per-caller, per-message fixed window of one minute, read from the
    message's `[Throttled(perMinute)]` attribute; messages without it pass.
-9. `CredentialMiddleware`: asks `CredentialProvider` whether the ticket still names a live party and signs the caller out and challenges if not (the default provider holds every ticket).
-10. `EndpointGateMiddleware`: the security gate, ahead of model binding; a no-op unless a kit called
+9. `RequestBudgetMiddleware`: a per-tenant fixed window of one minute over every authenticated message send,
+   against `RequestBudgetProvider.PerMinute` (the base answers null, no budget; a product
+   registers its own, before or after `AddBaseWebApi`). Past it: 429 and `Retry-After`.
+10. `CredentialMiddleware`: asks `CredentialProvider` whether the ticket still names a live party and signs the caller out and challenges if not (the default provider holds every ticket).
+11. `EndpointGateMiddleware`: the security gate, ahead of model binding; a no-op unless a kit called
     `AddSecurityEnforcement`.
-11. Swagger UI in Development, HSTS otherwise.
-12. `MapEndpoints()` and `MapPush()`.
+12. Swagger UI in Development, HSTS otherwise.
+13. `MapEndpoints()` and `MapPush()`.
 
 `AddBaseWebApp` registers Razor components with server and WebAssembly render modes, the
 `TenancyCircuit` that carries the tenant onto the circuit, `AddMessagePolicies` (so a page's

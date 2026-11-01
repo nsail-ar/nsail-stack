@@ -68,7 +68,8 @@ public class FeatureProvider
     }
 
     /// <summary>The ceiling in force for this key, or null for none. <b>It never blocks the
-    /// work</b>: what reads it states how much of the allowance is used and carries on.</summary>
+    /// work</b>: what reads it states how much of the allowance is used and carries on — save a
+    /// request budget, the declared exception <see cref="Entitlements.Limit"/> names.</summary>
     public async Task<decimal?> Limit(string key, CancellationToken cancellationToken = default)
     {
         var bag = await Current(cancellationToken).ConfigureAwait(false);
