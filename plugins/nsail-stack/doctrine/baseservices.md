@@ -84,9 +84,9 @@ its own, the words of the one page this project draws without the app (the suspe
   `[Throttled(perMinute)]` off the message the matched route names, so an endpoint whose
   message declares none passes untouched; see messaging.md.
 - `RequestBudgetMiddleware` — a tenant's whole volume, beside the throttle: the authenticated
-  message sends of each tenant per minute, against the figure `RequestBudgetProvider` answers (none in the
-  base; the Stack names no key), refused past it with 429 and `Retry-After`. The one ceiling
-  that refuses; see
+  message sends of each tenant per minute, against the figure `RequestBudgetProvider` answers
+  (none in the base; the Stack names no key), refused past it with 429 and `Retry-After`. The
+  one ceiling that refuses; see
   [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-and-what-the-plan-includes).
 - `CredentialMiddleware` — the wall between a signed ticket and the rows it names. A credential
   outlives them (a party merged away, a user disabled or deleted), and until it is asked the

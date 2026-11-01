@@ -212,6 +212,7 @@ sealed class HeaderSignIn : AuthenticationHandler<AuthenticationSchemeOptions>
 sealed class PrincipalSession : SessionProvider
 {
     readonly IHttpContextAccessor _http;
+    Session? _session;
 
     public PrincipalSession(IHttpContextAccessor http)
     {
@@ -220,7 +221,11 @@ sealed class PrincipalSession : SessionProvider
 
     public override Session Session
     {
-        get { return new Session { IsAuthenticated = _http.HttpContext?.User.Identity?.IsAuthenticated == true }; }
+        get
+        {
+            return Assigned
+                ?? (_session ??= new Session { IsAuthenticated = _http.HttpContext?.User.Identity?.IsAuthenticated == true });
+        }
         set { base.Session = value; }
     }
 }

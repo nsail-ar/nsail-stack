@@ -47,7 +47,8 @@ public sealed class ThrottleTests
 
     // A message that declares no ceiling is not throttled at all: everything behind a policy is
     // already bounded by who holds the grant, and a limit there would only refuse a customer
-    // in the middle of their work.
+    // in the middle of their work. The one ceiling that reaches it is the tenant's request
+    // budget, a rate over every send of the tenant (RequestBudgetTests).
     [Fact]
     public async Task An_endpoint_whose_message_declares_nothing_is_never_refused()
     {
