@@ -153,10 +153,17 @@ public sealed class NsTitleBarAnnouncementTests : BunitContext, IAsyncLifetime
 
         Assert.Contains("d-md-none", bar.Find("#brand").ParentElement!.ClassList);
 
+        // The layout's initial open state is not a sheet over the row.
         await cut.InvokeAsync(() => state.DrawerIsOpen = true);
+        Assert.Contains("d-md-none", bar.Find("#brand").ParentElement!.ClassList);
 
-        // Open, the drawer's own header draws it: this copy stays mounted and is hidden.
-        Assert.Contains("d-none", bar.Find("#brand").ParentElement!.ClassList);
+        await cut.InvokeAsync(() => state.DrawerIsOpen = false);
+        await cut.InvokeAsync(state.ToggleDrawer);
+
+        // Summoned, the drawer's own header draws it: this copy stays mounted, with one face.
+        var classes = bar.Find("#brand").ParentElement!.ClassList;
+        Assert.Contains("d-none", classes);
+        Assert.DoesNotContain("d-flex", classes);
     }
 
     /// <summary>nsail#1460: this row is drawn inside whatever the page wrapped its panel in, and

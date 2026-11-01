@@ -9,6 +9,8 @@ public class NsLayoutState
 {
     bool _open;
 
+    bool _summoned;
+
     public bool DrawerIsOpen
     {
         get => _open;
@@ -17,10 +19,16 @@ public class NsLayoutState
             if (_open != value)
             {
                 _open = value;
+                _summoned &= value;
                 Changed?.Invoke();
             }
         }
     }
+
+    /// <summary>Whether the person opened the drawer over the page. The layout starts the
+    /// drawer open so the docked variant stands from the first frame, which on a phone is
+    /// not a drawer over anything: only this says the sheet is up and covers the title row.</summary>
+    public bool DrawerIsSummoned => _summoned;
 
     public event Action? Changed;
 
@@ -46,6 +54,13 @@ public class NsLayoutState
 
     public void ToggleDrawer()
     {
-        DrawerIsOpen = !DrawerIsOpen;
+        if (_open)
+        {
+            DrawerIsOpen = false;
+            return;
+        }
+
+        _summoned = true;
+        DrawerIsOpen = true;
     }
 }

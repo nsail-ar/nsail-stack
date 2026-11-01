@@ -60,6 +60,7 @@
                    mounted and unmounted, or the brand's load would re-run on every toggle. *@
                 @if (LayoutState!.Brand is { } brand)
                 {
+                    _readsLayout = true;
                     <div class="@GetBrandClasses()">@brand</div>
                 }
             }
@@ -119,6 +120,11 @@ else if (!Hoisted)
 
     Glyph? _derivedIcon;
     bool _resolved;
+
+    // What the last render read of the layout's state: the brand and whether the sheet covers
+    // this row. A row that drew neither has no reason to redraw when the drawer moves.
+    bool _readsLayout;
+    bool _drewSummoned;
 
     /// <summary>The panel's title row: title on the left, actions then the close icon on
     /// the right. Goes inside NsPanel/NsCard's Header slot — not inside page content,
@@ -207,8 +213,8 @@ else if (!Hoisted)
 
         if (LayoutState is not null)
         {
-            LayoutState.BrandChanged += OnSurfaceStateChanged;
-            LayoutState.Changed += OnSurfaceStateChanged;
+            LayoutState.BrandChanged += OnBrandChanged;
+            LayoutState.Changed += OnDrawerChanged;
         }
     }
 
@@ -251,11 +257,14 @@ else if (!Hoisted)
             .ToString();
     }
 
+    // One face or the other, never both: the vendor's d-flex and d-none are plain utilities of
+    // one specificity, and the later declaration wins.
     string GetBrandClasses()
     {
-        return new NsClassBuilder(NsResponsive.ShownBelowWindow(NsSize.Md))
-            .Add("align-center flex-shrink-0 mr-3")
-            .Add("d-none", LayoutState!.DrawerIsOpen)
+        _drewSummoned = LayoutState!.DrawerIsSummoned;
+
+        return new NsClassBuilder(_drewSummoned ? "d-none" : NsResponsive.ShownBelowWindow(NsSize.Md))
+            .Add("align-center flex-shrink-0 mr-3", !_drewSummoned)
             .ToString();
     }
 
@@ -287,6 +296,22 @@ else if (!Hoisted)
         return NavMenuItem.GlyphFor(await Menu.GetItems(AuthenticationState), Routes, path);
     }
 
+    void OnBrandChanged()
+    {
+        if (_readsLayout)
+        {
+            OnSurfaceStateChanged();
+        }
+    }
+
+    void OnDrawerChanged()
+    {
+        if (_readsLayout && _drewSummoned != LayoutState!.DrawerIsSummoned)
+        {
+            OnSurfaceStateChanged();
+        }
+    }
+
     void OnSurfaceStateChanged()
     {
         _ = InvokeAsync(StateHasChanged);
@@ -296,8 +321,8 @@ else if (!Hoisted)
     {
         if (LayoutState is not null)
         {
-            LayoutState.BrandChanged -= OnSurfaceStateChanged;
-            LayoutState.Changed -= OnSurfaceStateChanged;
+            LayoutState.BrandChanged -= OnBrandChanged;
+            LayoutState.Changed -= OnDrawerChanged;
         }
 
         if (Surface is not null)

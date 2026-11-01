@@ -8,8 +8,8 @@ using NSail.Components.Tests.Fixtures;
 
 namespace NSail.Components.Tests;
 
-/// <summary>A chip names a value; given a severity it names a state, tinted and not filled,
-/// and given an Href the whole chip is its link.</summary>
+/// <summary>A chip names a value; given a severity it names a state, tinted — or filled when
+/// Solid — and given an Href the whole chip is its link.</summary>
 public sealed class NsChipTests : BunitContext
 {
     public NsChipTests()

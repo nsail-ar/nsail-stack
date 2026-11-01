@@ -40,9 +40,12 @@ highlight. The app layout just places `<NsNavMenu />`.
   The guide is today's one such screen ([guide.md](guide.md)).
 - **The brand follows the drawer's state.** `NsNavMenu.Brand` is the install's name and whatever
   rides under it; shut behind the hamburger, the screen's title row (`NsTitleBar`) draws it
-  beside the toggle through `NsLayoutState.Brand`, so it reads without opening the menu. Open,
-  only the drawer draws it — the row's copy is hidden by a class, never unmounted, so the
-  brand's own load does not re-run on every toggle. The fragment reads on two grounds: the
+  beside the toggle through `NsLayoutState.Brand`, so it reads without opening the menu. Opened by
+  the person, only the drawer draws it — the row's copy swaps its display class for `d-none`
+  (never both: the vendor's two utilities tie and declaration order picks) and is never
+  unmounted, so the brand's own load does not re-run on every toggle. The cue is
+  `NsLayoutState.DrawerIsSummoned`, not `DrawerIsOpen`, which starts true for the docked
+  variant and would hide the brand in a phone's first frame. The fragment reads on two grounds: the
   rail's graphite (dark in both schemes) and the page's `Surface`; a mark drawn for one ground
   only is the product's to make readable on the other.
 - **The mechanism for the group order is weight bands**, so contributors compose without

@@ -191,8 +191,8 @@ over the backdrop MudBlazor paints for it — the mobile degradation, not a leak
 
 On the main surface the page's title bar draws its own row and announces it. `NsTitleBar` — and
 `NsPageHeader`, which composes it — decides by where it lives: on main (`Surface.IsMain`) it draws
-the hamburger and the install's brand (below the drawer's breakpoint, the brand while the drawer is shut), the glyph/spinner slot, the title and the
-utilities, with no X, and announces its title, its derived glyph and its utility-actions
+the hamburger and, below the drawer's breakpoint, the install's brand while the drawer is
+shut, the glyph/spinner slot, the title and the utilities, with no X, and announces its title, its derived glyph and its utility-actions
 fragment to its surface (`SurfaceContext.Announce`). **Pages are unchanged** — the component
 decides by where it lives.
 
