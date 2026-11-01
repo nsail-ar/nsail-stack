@@ -80,7 +80,7 @@ because a control out of the layout is how the keystroke reads "this collection 
 ### Columns and widths
 
 **Which columns survive to which width.** Xl shows every column; md keeps the 2–4 important
-ones; sm falls to the vendor's stacked form-mode (or, opted in, the compact line below) and shows
+ones; sm falls to the stacked form-mode (or, opted in, the compact line below) and shows
 the phone's 2–3 — the important ones survive (a work order's Estado is *where the order is*, core,
 not hideable), the less-important hide. **The phone's 2–3 is a default, not a cap: 4–5 there is
 allowed with a justification** — the burden is naming why, not staying under three. The comfort
@@ -90,9 +90,10 @@ curve itself is the core doc's.
 stacked card is a record read field by field, a contact list on a phone is scanned for a name and
 left by a call or a message: one line per row — the lead column, the action cell beside it, the
 other surviving cells under them, no labels — shows several times as many people per screen. It
-replaces the card only under the tablet's width; at the tablet and above the table reads as one
-that did not opt in. Opt in where that is what the phone is for (a patient list), never by default:
-a list whose rows are read whole (orders, documents, tickets) keeps the card.
+replaces the card only in a container under the tablet's width — a phone's, or a narrow aside's
+on a wide screen; wider, the table reads as one that did not opt in. Opt in where that is what
+the phone is for (a patient list), never by default: a list whose rows are read whole (orders,
+documents, tickets) keeps the card.
 
 - **`NsCompact` places a cell on that line**, declared on `NsTh` like `Breakpoint` and followed by
   its cells: `Hidden` leaves a column off the line — still declared, so still a column of the file
@@ -119,8 +120,11 @@ rides the page's header and why a list is the only grid offered one.
 **A figure's column aligns itself, right against right, from the same `Format`** — Number, Money
 and Percent read as `ns-col-numeric` on the header and on every cell under it, a screen asks
 nothing. A `tfoot` cell carries it the way it carries a `Breakpoint`: through the column's own key,
-never declared twice. A date's own digits are a position on a calendar rather than a quantity to
-compare at a glance, so `Format.Date` stays left, with everything else that is read as a word.
+never declared twice. A Money column also wears `ns-col-money` on the header and on every cell,
+the `tfoot` included, which drops the end padding so figures and header share the column's edge
+(see [styling.md](styling.md)). A date's own digits are a position on a calendar rather than a
+quantity to compare at a glance, so `Format.Date` stays left, with everything else that is read as
+a word.
 
 **`Whole` on `NsTh`** keeps a column's values on one line — no break at a hyphen or a space, for a
 code such as `ARM-TEST-01` — also when an aside narrows the list. Declared once, on the header; the
@@ -151,13 +155,16 @@ looks up its own. No `<NsColumn>`, no `<NsTr>`.
 - **The stacked mobile layout honors the same declaration** — a hidden column's cell stays gone
   as a card line too, at the same container threshold. A card has vertical room a table does not,
   but that room is not a reason to show what the grid already ruled unimportant (cases).
-- **When a table with no row open stacks is still viewport-bound** — columns degrade per
-  container, and only the open row's stack answers the container too (below, cases).
-- **Under 600px the pager drops its page-size label and keeps everything else.** The vendor's
-  pager row is one shrink-proof width at every screen, wider than a phone's content box, so the
-  arrows would end up past the edge; the select, the row counter and the arrows stay, and the row
-  is allowed to wrap under them. A stacked tablet has room for the label and keeps it — the line
-  is the width, not the stack (cases).
+- **A table stacks where its container cannot seat it, not only where the window cannot.** The
+  vendor stacks by viewport, so on a wide screen a list in an aside would stay a table of columns
+  squeezed into the aside — cells overlapping, the row scrolling sideways. Under a container of
+  960px the rows are the phone's cards, read row or open row alike, column importance still
+  hiding (cases).
+- **The pager compacts by its own width.** Under 600px of pager it drops its page-size label and
+  the first/last arrows and keeps the select, the row counter and previous/next, so the row stays
+  one line on a phone and in an aside alike. The vendor's row is one shrink-proof width, and a
+  window query cannot see an aside's box; a stacked list with room for the label keeps it — the
+  line is the width, not the stack (cases).
 
 ### Order (`NsTh Sortable`)
 
@@ -195,6 +202,8 @@ own word is the control's name, so there is no string, no glyph and no handler a
 - **An order and the list's own filter do not reach each other**: both narrow the same rows in
   hand, so a filter press keeps the order and a heading press keeps the filter.
 - **The file Exportar writes is the order on screen** ([exporting.md](../exporting.md)).
+- **Stacked, the list has no headings to press**: a card draws no header row, on a phone or in
+  a container under 960px alike, so the order offered there is the one already in effect.
 
 ### Inline editing (`RowEditor`)
 
@@ -297,14 +306,13 @@ are asked in that same breath, for the reason and through the walk the list's ar
   floor is column arithmetic and below `md` there is no column to do it in: the open row stacks
   (next bullet) and a card line is already the widest a field can be, so there is nothing left to
   ask for and nothing to take back (cases).
-- **A table with a row open stacks where its container is under `md`, whatever the window is
-  doing.** An edit input never hides, so the open row is the one thing in a grid that cannot be
-  narrowed, and under `md` it does not fit any line editor in the tree: in the 688px container a
-  `Lg` aside leaves, four inputs that need over 950px between them were handed 104, 74, 57 and 47,
-  and "125.430,50" read "50". The shape is the phone's — same card lines, same label above the
-  field — and only the QUESTION differs: the vendor's stack asks the viewport, this asks the
-  container. **A table nobody is editing is untouched**: a row being read already answers a
-  narrow container by hiding columns.
+- **An open row stacks with its table where the container is under `md`, whatever the window is
+  doing** — the container rule of *Columns and widths*, and the row that most needs it. An edit
+  input never hides, so the open row is the one thing in a grid that cannot be narrowed, and under
+  `md` it does not fit any line editor in the tree: in the 688px container a `Lg` aside leaves,
+  four inputs that need over 950px between them were handed 104, 74, 57 and 47, and "125.430,50"
+  read "50". The shape is the phone's — same card lines, same label above the field — and only
+  the QUESTION differs: the vendor's stack asks the viewport, this asks the container.
 - **In column mode the whole table stops hiding while a row is open**, header and read rows with
   it (`ns-table-editing`). A `display: none` cell generates no box, so a freed editor row would
   otherwise own more columns than the header does and drop every input one column off. That is
@@ -317,15 +325,16 @@ are asked in that same breath, for the reason and through the walk the list's ar
 
 - **`Mode` (`NsTableMode`, default `Auto`) decides whether an arriving page replaces the rows on
   screen or joins them.** `Page` is the pager. `Scroll` appends: the rows accumulate, reaching the
-  bottom asks for the next page, and there is no pager row at all. `Auto` reads the viewport and
-  resolves to `Scroll` at sm and below, `Page` above — the same threshold stacking answers at, so
-  the phone that reads a row as a card also reads the list as one list. **Nothing about the
-  server contract moves**: the same `OnQuery`, the same page asked for and answered, so no grid
-  is edited to get any of it.
-- **`Auto` answers `Page` until a browser has reported a width.** A bUnit render and a server
-  prerender have no viewport, and MudBlazor's immediate notification classifies an unmeasured
-  size as the *smallest* breakpoint — taking that answer would drop the pager out of every
-  server-rendered grid before a browser ever disagreed.
+  bottom asks for the next page, and there is no pager row at all. `Auto` asks the device, never
+  a width: `Scroll` on a phone, `Page` everywhere else (`IDeviceProvider.IsPhone`). The endless
+  list is a touch gesture, not an answer to narrow columns, so a phone held sideways scrolls, a
+  desktop window dragged small pages, and a list stacked in an aside keeps its pager. **Nothing
+  about the server contract moves**: the same `OnQuery`, the same page asked for and answered,
+  so no grid is edited to get any of it.
+- **`Auto`'s answer is in hand on the first render.** The device rides in on the request and
+  is handed from the prerender to the WebAssembly client (`DeviceProvider`), so no browser has
+  to be measured and no grid swaps branches after it paints; a host with no device seam (a
+  component test) answers `Page`, as a desktop does.
 - **Scrolling keeps `Cargar más` under the rows.** A first page shorter than the viewport never
   produces a scroll event to ask for the second, and a keyboard has no floor gesture at all; the
   control disappears only when the list is exhausted.

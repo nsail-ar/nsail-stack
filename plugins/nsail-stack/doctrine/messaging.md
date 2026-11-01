@@ -753,8 +753,15 @@ recognise a refusal by status number alone.
 - **Who declares one**: a message whose endpoint is reachable by somebody the install never
   authenticated — a door opened by a token in a URL (`Channels.Replies.*`), a webhook. A
   message behind a policy is already bounded by who holds the grant; a ceiling there would
-  only refuse a customer mid-work. The budget is per message, not shared, so a flood on one
+  only refuse a customer mid-work. The ceiling is per message, not shared, so a flood on one
   public door cannot close the others.
+- **The one exception is the tenant's request budget**, and it is not a `[Throttled]`: it
+  counts every authenticated send of a tenant, whatever the message, against the figure the
+  product sells (`RequestBudgetMiddleware`, baseservices.md). It refuses behind a policy because
+  it is a rate: the work it refuses is deferred rather than lost, and without it one tenant's
+  flood is spent out of every other tenant's share of the install
+  ([data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-and-what-the-plan-includes)).
+  An anonymous send never counts against it, so a public door spends only its own ceiling.
 - **An in-process `Send` spends nothing.** The middleware reads the attribute of the message
   the *request* names, so a door that relays a message somebody else chose — the Assistant's
   confirm (assistant.md) — would carry a metered one past its own ceiling. Such a door refuses

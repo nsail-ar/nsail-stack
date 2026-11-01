@@ -296,8 +296,8 @@ and a two-column row was pulled back from 305px to 192. Not enough: in a 688px a
 unitario sat in a 56px box against 110px of "125.430,50" with every column already at its share.
 **An edit row has to fit** — hiding is per container but an input never hides (ui/hosts.md), so
 the open row is the widest thing a grid draws — and what fits under `md` is the stack
-([cases: hosts](intentional-ui-cases-hosts.md), *The open row stacks where its container cannot
-seat it*).
+([cases: hosts](intentional-ui-cases-hosts.md), *A table stacks where its container cannot seat
+it*).
 
 **Reach of the floor** (column mode, `md` and up): the product lookups in `SaleLinesEditor`,
 `PurchaseOrderLinesEditor`, `VoucherLinesEditor` and `PriceRulesEditor`, the `RoleLookup` in

@@ -524,14 +524,12 @@ else
     // flex container (inert otherwise) and keeps the pager pinned at the bottom
     // (see .ns-table rules in ns-mud.css).
     //
-    // ns-table-editing says a row is open, and ns-mud.css asks it two things. In column mode it
-    // is the other half of "an edit input never hides": the editor's cells drop their hide
-    // classes, and a table still laid out as a table would then have more cells in that row than
-    // in its header, which lands the inputs under the wrong columns — so the WHOLE table stops
-    // hiding while a row is open, header and read rows with it, and the counts stay equal. Under
-    // md it is what stacks the table by CONTAINER instead (nsail#1614): no arithmetic seats an
-    // open row in a container that narrow, so it becomes the form a phone already reads, where
-    // there is no header and no count to match.
+    // ns-table-editing says a row is open. In column mode it is the other half of "an edit input
+    // never hides": the editor's cells drop their hide classes, and a table still laid out as a
+    // table would then have more cells in that row than in its header, which lands the inputs
+    // under the wrong columns — so the WHOLE table stops hiding while a row is open, header and
+    // read rows with it, and the counts stay equal. Under md the table stacks by its container
+    // whether or not a row is open (ns-mud.css), and there is no header and no count to match.
     //
     // ns-cells says the rows of this grid are TYPED INTO, which is what gives Enter its meaning
     // inside one: confirm the row and keep going down the column, never submit the document the
@@ -542,11 +540,11 @@ else
     // hand to the surface's own scroll once they stack as cards (ns-mud.css): the branch under it
     // reads the container's own scroll to fetch the next page, and there is no third answer a
     // class could be read as. Said in C# because only this component knows which branch rendered
-    // — whether the grid STACKED is the vendor's own breakpoint call, which is why the CSS rule
-    // needs both.
+    // — whether the grid STACKED is a query's call (the window's or the container's), which is
+    // why the CSS rule needs both.
     //
-    // ns-table-compact says this grid opted into the compact phone form: under the tablet's
-    // width the stacked card becomes one line per row (ns-mud.css, the compact block).
+    // ns-table-compact says this grid opted into the compact phone form: in a container under
+    // the tablet's width the stacked card becomes one line per row (ns-mud.css, the compact block).
     string GetClasses()
     {
         return new NsClassBuilder("ns-table d-flex flex-column min-h-0")

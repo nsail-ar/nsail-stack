@@ -11,11 +11,13 @@ using NSail.Metadata;
 
 namespace NSail.Components.Tests;
 
-/// <summary>nsail#225, the pager row at phone width. The correction is CSS (ns-mud.css, the
-/// max-width: 599.98px block) and bUnit lays nothing out, so what is pinned here is the DOM
-/// shape those selectors depend on: the page-size caption reachable inside the select's own
-/// box, the row counter reachable outside it, and the toolbar the height rule names — the
-/// vendor is free to restyle its pager, but if it moves these the rule stops matching and
+/// <summary>The pager row compacts by its own width — on a phone and in an aside on a wide
+/// screen alike. The correction is CSS (ns-mud.css: the toolbar is the container, and its
+/// max-width: 599.98px query drops the page-size caption and the first/last arrows) and bUnit
+/// lays nothing out, so what is pinned here is the DOM shape those selectors depend on: the
+/// page-size caption reachable inside the select's own box, the row counter reachable outside
+/// it, the arrows inside the toolbar that measures them, and the rule itself read off the file
+/// — the vendor is free to restyle its pager, but if it moves these the rule stops matching and
 /// these tests are what says so.</summary>
 public sealed class PagerFooterTests : BunitContext, IAsyncLifetime
 {
@@ -101,5 +103,50 @@ public sealed class PagerFooterTests : BunitContext, IAsyncLifetime
         // shrink-proof widths add up past a phone, and the reason the row is allowed to wrap.
         Assert.Equal(2, toolbar.QuerySelectorAll(".mud-table-pagination-caption").Length);
         Assert.Single(toolbar.QuerySelectorAll(".mud-table-pagination-actions"));
+    }
+
+    /// <summary>Four arrows, and the first and last are what the compacted row drops: previous and
+    /// next stay, which is what a page is walked with. Both sit inside the toolbar, the box the
+    /// query measures.</summary>
+    [Fact]
+    public void TheArrowsTheCompactedRowDropsAreTheStripsFirstAndLast()
+    {
+        var cut = Render<PagerFooterHost>();
+
+        var toolbar = cut.Find(".mud-table-pagination-toolbar");
+        var arrows = toolbar.QuerySelectorAll(".mud-table-pagination-actions > .mud-button-root");
+
+        Assert.Equal(4, arrows.Length);
+        Assert.NotNull(toolbar.QuerySelector(".mud-table-pagination-display .mud-table-pagination-caption"));
+    }
+
+    /// <summary>A window query would compact the phone's pager and leave an aside's wrapping on a
+    /// wide screen: the toolbar is the container and the compaction asks it, never the
+    /// viewport.</summary>
+    [Fact]
+    public void TheStylesheetCompactsThePagerByTheToolbarsOwnWidth()
+    {
+        var css = HouseStylesheet.Read();
+
+        var container = Rule(css, ".ns-table .mud-table-pagination .mud-table-pagination-toolbar {");
+        Assert.Contains("container-type: inline-size;", container, StringComparison.Ordinal);
+
+        var query = css.IndexOf("@container (max-width: 599.98px) {\n    .ns-table .mud-table-pagination .mud-table-pagination-display .mud-table-pagination-caption,", StringComparison.Ordinal);
+        Assert.True(query >= 0, "the pager's compaction was not found under a container query.");
+
+        var block = css[query..css.IndexOf('}', query)];
+        Assert.Contains(".mud-table-pagination-actions .mud-button-root:first-child,", block, StringComparison.Ordinal);
+        Assert.Contains(".mud-table-pagination-actions .mud-button-root:last-child {", block, StringComparison.Ordinal);
+        Assert.Contains("display: none;", block, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("@media (max-width: 599.98px) {\n    .ns-table .mud-table-pagination", css, StringComparison.Ordinal);
+    }
+
+    static string Rule(string css, string selector)
+    {
+        var start = css.IndexOf(selector, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"'{selector}' was not found in the stylesheet.");
+
+        return css[start..css.IndexOf('}', start)];
     }
 }

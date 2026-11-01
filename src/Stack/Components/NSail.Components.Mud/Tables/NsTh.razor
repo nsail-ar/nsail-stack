@@ -62,8 +62,9 @@
 
     /// <summary>Keeps each value of the column on one line, never broken at a hyphen or a space —
     /// for a code such as <c>ARM-TEST-01</c>, also when an aside narrows the list. Declared here
-    /// like Breakpoint, and the cells below follow. The heading itself still wraps. A column that
-    /// names no field has no key for its cells to follow: they say Whole themselves.</summary>
+    /// like Breakpoint, and the cells below follow. The heading itself still wraps, also as a stacked
+    /// card's label. A column that names no field has no key for its cells to follow: they say
+    /// Whole themselves.</summary>
     [Parameter]
     public bool Whole { get; set; }
 
@@ -94,6 +95,7 @@
         return new NsClassBuilder(NsResponsive.CellClasses(Breakpoint))
             .Add("ns-actions", For is null && ChildContent is null)
             .Add("ns-col-numeric", Columns?.IsNumericFor(_key) ?? false)
+            .Add("ns-col-money", Columns?.IsMoneyFor(_key) ?? false)
             .Add("ns-compact-only", Compact == NsCompact.Only)
             .ToString();
     }
@@ -117,7 +119,7 @@
         // reason an export needs nothing from the screen.
         _column = TableColumn.Of(field.Type, field.Member, _label ?? _key, _key, Format, Strings);
 
-        Columns?.Declare(_key, Breakpoint, Compact, IsNumeric(_column?.Format), Whole);
+        Columns?.Declare(_key, Breakpoint, Compact, IsNumeric(_column?.Format), _column?.Format == ExportFormat.Money, Whole);
 
         if (_column is { } column)
         {
