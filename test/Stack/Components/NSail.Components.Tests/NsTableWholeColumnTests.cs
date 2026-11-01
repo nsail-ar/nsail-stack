@@ -38,12 +38,20 @@ public sealed class NsTableWholeColumnTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void TheHeaderAndItsCellsCarryTheMark()
+    public void TheCellsCarryTheMarkAndTheHeadingStillWraps()
     {
         var cut = Render<WholeColumnTableHost>();
 
-        Assert.Contains("ns-col-whole", cut.FindAll("thead tr th")[0].ClassList);
+        Assert.DoesNotContain("ns-col-whole", cut.FindAll("thead tr th")[0].ClassList);
         Assert.Contains("ns-col-whole", cut.FindAll("tbody tr")[0].QuerySelectorAll("td")[0].ClassList);
+    }
+
+    [Fact]
+    public void AComputedColumnSaysItOnItsOwnCell()
+    {
+        var cut = Render<WholeColumnTableHost>();
+
+        Assert.Contains("ns-col-whole", cut.FindAll("tbody tr")[0].QuerySelectorAll("td")[2].ClassList);
     }
 
     [Fact]
@@ -51,7 +59,6 @@ public sealed class NsTableWholeColumnTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<WholeColumnTableHost>();
 
-        Assert.DoesNotContain("ns-col-whole", cut.FindAll("thead tr th")[1].ClassList);
         Assert.DoesNotContain("ns-col-whole", cut.FindAll("tbody tr")[0].QuerySelectorAll("td")[1].ClassList);
     }
 

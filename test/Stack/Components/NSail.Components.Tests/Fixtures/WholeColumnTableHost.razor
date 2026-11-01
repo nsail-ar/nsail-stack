@@ -14,10 +14,12 @@
     <HeaderContent>
         <NsTh For="() => context.Name" Whole="true" />
         <NsTh For="() => context.Age" />
+        <NsTh>Comprobante</NsTh>
     </HeaderContent>
     <RowTemplate Context="row">
         <NsTd For="() => row.Name">@row.Name</NsTd>
         <NsTd For="() => row.Age">@row.Age</NsTd>
+        <NsTd DataLabel="Comprobante" Whole="true">A-0001-00000123</NsTd>
     </RowTemplate>
 </NsTable>
 

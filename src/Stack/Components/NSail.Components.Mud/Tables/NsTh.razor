@@ -62,7 +62,8 @@
 
     /// <summary>Keeps each value of the column on one line, never broken at a hyphen or a space —
     /// for a code such as <c>ARM-TEST-01</c>, also when an aside narrows the list. Declared here
-    /// like Breakpoint, and the cells below follow.</summary>
+    /// like Breakpoint, and the cells below follow. The heading itself still wraps. A column that
+    /// names no field has no key for its cells to follow: they say Whole themselves.</summary>
     [Parameter]
     public bool Whole { get; set; }
 
@@ -93,7 +94,6 @@
         return new NsClassBuilder(NsResponsive.CellClasses(Breakpoint))
             .Add("ns-actions", For is null && ChildContent is null)
             .Add("ns-col-numeric", Columns?.IsNumericFor(_key) ?? false)
-            .Add("ns-col-whole", Whole)
             .Add("ns-compact-only", Compact == NsCompact.Only)
             .ToString();
     }

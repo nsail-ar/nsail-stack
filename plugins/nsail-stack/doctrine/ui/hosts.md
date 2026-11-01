@@ -124,7 +124,8 @@ compare at a glance, so `Format.Date` stays left, with everything else that is r
 
 **`Whole` on `NsTh`** keeps a column's values on one line — no break at a hyphen or a space, for a
 code such as `ARM-TEST-01` — also when an aside narrows the list. Declared once, on the header; the
-cells follow through the column's key (`ns-col-whole`).
+cells follow through the column's key (`ns-col-whole`); the heading itself still wraps, so a long
+heading buys no width. A computed column has no key to follow: its `NsTd` says `Whole` itself.
 
 **`Breakpoint` on `NsTh`** (`NsSize`, default `None`) reads *"the column appears from this
 container width up"*. A six-column grid gives up its least important columns one at a time
