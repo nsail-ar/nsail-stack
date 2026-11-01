@@ -54,6 +54,13 @@
                                        OnClick="LayoutState!.ToggleDrawer" />
                     </CascadingValue>
                 </span>
+                @* The install's brand, where the drawer that owns it is shut behind the toggle
+                   above: what rides under its name then reads without opening the menu. Open,
+                   the drawer's own header draws it, so it is never on screen twice. *@
+                @if (LayoutState!.Brand is { } brand && !LayoutState.DrawerIsOpen)
+                {
+                    <div class="@GetBrandClasses()">@brand</div>
+                }
             }
             <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center">
                 @* The page's glyph and the loading indicator share ONE slot, never two — see the
@@ -196,6 +203,12 @@ else if (!Hoisted)
         {
             Surface.StateChanged += OnSurfaceStateChanged;
         }
+
+        if (LayoutState is not null)
+        {
+            LayoutState.BrandChanged += OnSurfaceStateChanged;
+            LayoutState.Changed += OnSurfaceStateChanged;
+        }
     }
 
     protected override async Task OnParametersSetAsync()
@@ -237,6 +250,13 @@ else if (!Hoisted)
             .ToString();
     }
 
+    string GetBrandClasses()
+    {
+        return new NsClassBuilder(NsResponsive.ShownBelowWindow(NsSize.Md))
+            .Add("align-center flex-shrink-0 mr-3")
+            .ToString();
+    }
+
     // Only one caller (NsPageHeader) forwards an override, so the derivation itself lives
     // here once instead of being duplicated at every place a title bar is used.
     Glyph? GetIcon()
@@ -272,6 +292,12 @@ else if (!Hoisted)
 
     public void Dispose()
     {
+        if (LayoutState is not null)
+        {
+            LayoutState.BrandChanged -= OnSurfaceStateChanged;
+            LayoutState.Changed -= OnSurfaceStateChanged;
+        }
+
         if (Surface is not null)
         {
             Surface.StateChanged -= OnSurfaceStateChanged;

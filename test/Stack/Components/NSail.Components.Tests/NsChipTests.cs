@@ -42,6 +42,19 @@ public sealed class NsChipTests : BunitContext
     }
 
     [Fact]
+    public void A_solid_chip_wears_its_severity_as_the_filled_face()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo de prueba")
+            .Add(c => c.Severity, NsSeverity.Warning)
+            .Add(c => c.Solid, true));
+
+        Assert.Contains("mud-chip-filled", cut.Markup);
+        Assert.Contains("mud-chip-color-warning", cut.Markup);
+        Assert.DoesNotContain("mud-chip-text", cut.Markup);
+    }
+
+    [Fact]
     public void A_chip_with_an_href_is_an_anchor_to_it()
     {
         var cut = Render<NsChip>(p => p

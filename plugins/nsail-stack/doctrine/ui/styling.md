@@ -339,6 +339,10 @@ string is the palette-in-a-screen these exist to end. `NsStatusText` takes `NsTe
 cell's word alike. **On the glyph, null is the ordinary icon and not the neutral paint** the dot
 takes: an icon that reports no state is the ink of whatever it names.
 
+**`NsChip Severity` is the soft tint; `Solid` is its filled face** — the severity's fill with the
+`TextOn*` ink picked to read on it ([branding.md](branding.md)) — for a state that has to read
+from across the screen. No white override: no one ink serves every fill.
+
 **Colour goes on the datum, never on the container.** A card is never tinted as a whole — a
 permanently coloured tile is an alarm nobody sees by Thursday — so what carries the tone is the
 number, the name or the dot beside it, and only while it has something to say: *Vencidas* reads

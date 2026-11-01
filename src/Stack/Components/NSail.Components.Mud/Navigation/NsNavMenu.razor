@@ -164,7 +164,12 @@
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
 
-    /// <summary>The install's own name and logo, always at the top of the drawer header.</summary>
+    [CascadingParameter]
+    NsLayoutState? LayoutState { get; set; }
+
+    /// <summary>The install's own name and logo, always at the top of the drawer header — and,
+    /// where the drawer is closed behind the phone's app bar, in that bar, so what rides under
+    /// the name reads without opening the menu.</summary>
     [Parameter]
     public RenderFragment? Brand { get; set; }
 
@@ -222,6 +227,11 @@
 
         _recount?.Dispose();
 
+        if (LayoutState is not null)
+        {
+            LayoutState.Brand = null;
+        }
+
         if (Surface is not null)
         {
             Surface.IndexChanged -= HandleIndexChanged;
@@ -244,6 +254,11 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        if (LayoutState is not null)
+        {
+            LayoutState.Brand = Brand;
+        }
+
         // What is drawn is a function of two things: the tree NavMenu holds, and the session the
         // permission gate reads it against. A parameter set is a signal that neither changed —
         // a RenderFragment parameter never compares equal to itself, so every render of whatever

@@ -45,6 +45,13 @@ else
     [Parameter]
     public NsSeverity? Severity { get; set; }
 
+    /// <summary>With a Severity, wears it as the filled face — the severity's own fill and the
+    /// ink picked to read on it (branding.md's TextOn*) — instead of the soft tint. For a state
+    /// that has to read from across the screen; the tint stays the list value's. No effect
+    /// without a Severity.</summary>
+    [Parameter]
+    public bool Solid { get; set; }
+
     /// <summary>Makes the whole chip a link. The caller derives it from the route table, the
     /// way NsPageLink does; a chip never takes a literal address.</summary>
     [Parameter]
@@ -64,7 +71,7 @@ else
 
     Variant GetVariant()
     {
-        return Severity is null ? Variant.Filled : Variant.Text;
+        return Severity is null || Solid ? Variant.Filled : Variant.Text;
     }
 
     Size GetSize()

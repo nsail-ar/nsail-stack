@@ -38,6 +38,10 @@ highlight. The app layout just places `<NsNavMenu />`.
   index (`SurfaceContext.AnnounceIndex`), above the map and never instead of it — that is where a
   screen whose rail cannot stand beside its content collapses to, exactly as the nav itself does.
   The guide is today's one such screen ([guide.md](guide.md)).
+- **The brand follows the drawer's state.** `NsNavMenu.Brand` is the install's name and whatever
+  rides under it; shut behind the hamburger, the screen's title row (`NsTitleBar`) draws it
+  beside the toggle through `NsLayoutState.Brand`, so it reads without opening the menu. Open,
+  only the drawer draws it.
 - **The mechanism for the group order is weight bands**, so contributors compose without
   coordinating: domain groups 10–50, system groups 80+.
 - **A page missing from the route table throws at startup** rather than 404-ing on click
