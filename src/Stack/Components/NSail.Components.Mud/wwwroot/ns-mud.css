@@ -295,15 +295,11 @@
    arrows) rendered cut off at the bottom of the list, not just the container's rows.
 
    Catálogo's NsTable (like every NsTable in this codebase — none sets Mode explicitly)
-   resolves Mode="Auto", which answers Scroll only at Xs/Sm breakpoints once the viewport is
-   known (NsTable.razor's Scrolls); everything else — a phone in landscape included, and the
-   prerendered window before that first breakpoint resolves — stays on the Page branch, the
-   real MudTablePager. Rows do not exist in that prerendered window (MudTable's ServerData
-   runs from OnAfterRenderAsync, which static SSR never reaches), so the squeeze this rule
-   guards against is not that window — it needs the Page branch hydrated, with real rows, in a
-   box too short to hold rows and pager both. A phone screen is short exactly like that whenever
-   its width keeps Auto out of Scroll, landscape being the ordinary way that happens; the
-   pager clipped against real rows is what Leonardo's screenshot caught.
+   resolves Mode="Auto", which answers Scroll only on a phone (NsTable.razor's Scrolls, asking
+   IDeviceProvider); everything else — a tablet, a desktop window dragged short, a host with no
+   device seam — stays on the Page branch, the real MudTablePager. The squeeze this rule guards
+   against needs that branch hydrated, with real rows, in a box too short to hold rows and
+   pager both.
 
    The vendor's own .mud-table-pagination carries overflow: auto (for a WIDE table's
    horizontal pager scroll), and a flex item whose overflow is not visible in an axis takes
@@ -4073,27 +4069,21 @@ div.mud-input-slot.mud-input-root::placeholder {
     min-height: 2.75rem;
 }
 
-/* NsRecordState (nsail#213): every other field in a row draws the same chrome (label and
-   outline), so the row's own flex-start leaves them flush at the top with nothing to
-   notice -- but the switch renders none of it, so it is shorter than a
-   labeled outline neighbour (New Product's Type) and floats high instead of reading as its
-   row partner. Centered on the CELL the switch's own class marks, not the grid's
-   align-items: a row where every field is a switch, or an unrelated row entirely, keeps its
-   flex-start untouched. Leonardo's "grow" hunch was the width parameter (NsFormGridItem.Grow)
-   -- unrelated to this cross-axis mismatch.
-
-   NsCheckBox (nsail#2004) is the same shape and earns the same line: a boolean check draws no
-   label gutter and no outline either, so "Usar cotización manual" read high beside the
-   Cotización manual it gates. Two marks rather than one selector over the vendor's boolean
-   class, because each component says for itself that its control rides a row of fields -- a
-   check laid out somewhere other than a grid item is nobody's row partner and is left alone.
-   Both are DIRECT children: a check nested in an NsStack beside an NsHelp owns its line
-   already.
+/* NsRecordState (nsail#213) and NsCheckBox (nsail#2004) in a row of fields: every other field
+   draws a label gutter and an outline, so the row's own flex-start leaves them flush at the top
+   -- but a boolean control draws neither, is shorter than its labeled neighbour, and would
+   float high beside it ("Usar cotización manual" beside the Cotización manual it gates).
 
    The line is the neighbour's INPUT, not the row: a field with a hint stands its helper text
-   under the box, so a row's centre falls below the input's and a check centred on the row reads
-   low. The check takes the field's own geometry instead — the 8px label gutter above (the vendor's
-   outlined-with-label margin) and a 40px box it is centred in — whatever the row's height. */
+   under the box, so the row's centre falls below the input's. The control takes the field's own
+   geometry -- the 8px label gutter above (the vendor's outlined-with-label margin) and a 40px
+   box it is centred in -- whatever the row's height. The grid's align-items stays flex-start;
+   only the cell of a boolean control pays the gutter.
+
+   Two marks rather than one selector over the vendor's boolean class, because each component
+   says for itself that its control rides a row of fields -- a check laid out somewhere other
+   than a grid item is nobody's row partner and is left alone. Both are DIRECT children: a check
+   nested in an NsStack beside an NsHelp owns its line already. */
 .ns-grid > *:has(> .ns-record-state),
 .ns-grid > *:has(> .ns-form-check) {
     padding-top: 0.5rem;

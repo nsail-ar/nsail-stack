@@ -80,7 +80,7 @@ because a control out of the layout is how the keystroke reads "this collection 
 ### Columns and widths
 
 **Which columns survive to which width.** Xl shows every column; md keeps the 2–4 important
-ones; sm falls to the vendor's stacked form-mode (or, opted in, the compact line below) and shows
+ones; sm falls to the stacked form-mode (or, opted in, the compact line below) and shows
 the phone's 2–3 — the important ones survive (a work order's Estado is *where the order is*, core,
 not hideable), the less-important hide. **The phone's 2–3 is a default, not a cap: 4–5 there is
 allowed with a justification** — the burden is naming why, not staying under three. The comfort
@@ -193,6 +193,8 @@ own word is the control's name, so there is no string, no glyph and no handler a
 - **An order and the list's own filter do not reach each other**: both narrow the same rows in
   hand, so a filter press keeps the order and a heading press keeps the filter.
 - **The file Exportar writes is the order on screen** ([exporting.md](../exporting.md)).
+- **Stacked, the list has no headings to press**: a card draws no header row, on a phone or in
+  a container under 960px alike, so the order offered there is the one already in effect.
 
 ### Inline editing (`RowEditor`)
 
@@ -314,16 +316,16 @@ are asked in that same breath, for the reason and through the walk the list's ar
 
 - **`Mode` (`NsTableMode`, default `Auto`) decides whether an arriving page replaces the rows on
   screen or joins them.** `Page` is the pager. `Scroll` appends: the rows accumulate, reaching the
-  bottom asks for the next page, and there is no pager row at all. `Auto` reads the viewport and
-  resolves to `Scroll` at sm and below, `Page` above — the window threshold the vendor stacks at,
-  so the phone that reads a row as a card also reads the list as one list; an aside's stacked
-  list keeps its pager. **Nothing about the
-  server contract moves**: the same `OnQuery`, the same page asked for and answered, so no grid
-  is edited to get any of it.
-- **`Auto` answers `Page` until a browser has reported a width.** A bUnit render and a server
-  prerender have no viewport, and MudBlazor's immediate notification classifies an unmeasured
-  size as the *smallest* breakpoint — taking that answer would drop the pager out of every
-  server-rendered grid before a browser ever disagreed.
+  bottom asks for the next page, and there is no pager row at all. `Auto` asks the device, never
+  a width: `Scroll` on a phone, `Page` everywhere else (`IDeviceProvider.IsPhone`). The endless
+  list is a touch gesture, not an answer to narrow columns, so a phone held sideways scrolls, a
+  desktop window dragged small pages, and a list stacked in an aside keeps its pager. **Nothing
+  about the server contract moves**: the same `OnQuery`, the same page asked for and answered,
+  so no grid is edited to get any of it.
+- **`Auto`'s answer is in hand on the first render.** The device rides in on the request and
+  is handed from the prerender to the WebAssembly client (`DeviceProvider`), so no browser has
+  to be measured and no grid swaps branches after it paints; a host with no device seam (a
+  component test) answers `Page`, as a desktop does.
 - **Scrolling keeps `Cargar más` under the rows.** A first page shorter than the viewport never
   produces a scroll event to ask for the second, and a keyboard has no floor gesture at all; the
   control disappears only when the list is exhausted.
