@@ -57,6 +57,16 @@ public sealed class NsMoneyFieldCurrencyTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void HideSpinButtons_drops_the_spin_buttons()
+    {
+        var shown = Render<NsMoneyField<decimal>>(ps => ps.Add(p => p.Value, 1m));
+        var hidden = Render<NsMoneyField<decimal>>(ps => ps.Add(p => p.Value, 1m).Add(p => p.HideSpinButtons, true));
+
+        Assert.NotEmpty(shown.FindAll(".mud-input-numeric-spin"));
+        Assert.Empty(hidden.FindAll(".mud-input-numeric-spin"));
+    }
+
+    [Fact]
     public void A_read_only_field_reads_the_same()
     {
         var cut = Render<NsMoneyField<decimal?>>(ps => ps

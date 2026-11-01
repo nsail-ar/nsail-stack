@@ -87,6 +87,7 @@
         return new NsClassBuilder(NsResponsive.CellClasses(Breakpoint))
             .Add("ns-actions", For is null && ChildContent is null)
             .Add("ns-col-numeric", Columns?.IsNumericFor(_key) ?? false)
+            .Add("ns-col-money", _column?.Format == ExportFormat.Money)
             .Add("ns-compact-only", Compact == NsCompact.Only)
             .ToString();
     }

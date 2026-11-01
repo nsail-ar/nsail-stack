@@ -38,7 +38,9 @@ marked *(cases)* has its story there.
     level.
   - `.ns-money-slot` holds a price at `--ns-money-slot`'s 10rem beside the article it prices in
     a horizontal `NsStack` — a token because a sheet's add row ends in that slot and the column
-    reserved under it spends the same figure from outside the row (the mirror, below).
+    reserved under it spends the same figure from outside the row (the mirror, below). An
+    `NsTh` with `Format=ExportFormat.Money` wears `.ns-col-money`: the slot's width and no end
+    padding, so the header and the field under it share one right edge.
     `.ns-field-slot` is the other half of that row — a field laid out by hand reading the same
     `--ns-field-width` the grid's items read, so `ns-field-wide` means 20rem
     wherever a field is placed (a job card's Armazón, which spans the whole card's row and is

@@ -3864,6 +3864,13 @@ div.mud-input-slot.mud-input-root::placeholder {
     min-width: 8rem;
 }
 
+/* A money column's header ends where the field under it ends: the slot's right edge, not the
+   cell padding's. */
+.ns-table th.ns-col-money {
+    min-width: var(--ns-money-slot);
+    padding-inline-end: 0;
+}
+
 /* A row laid out beside a table that selects (NsTable's own .ns-select, width:1%) rather than
    inside it -- a persistent add row over a selectable sheet -- takes the same leading width by
    hand, so its fields start under the table's columns instead of the table's own leading edge.

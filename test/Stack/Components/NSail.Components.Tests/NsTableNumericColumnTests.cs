@@ -67,6 +67,18 @@ public sealed class NsTableNumericColumnTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void OnlyAMoneyHeaderSharesTheMoneySlotEdge()
+    {
+        var cut = Render<ExportTableHost>();
+
+        var headers = cut.FindAll("thead tr th");
+
+        Assert.Contains("ns-col-money", headers[2].ClassList); // Total: Money
+        Assert.DoesNotContain("ns-col-money", headers[1].ClassList); // Count: Number
+        Assert.DoesNotContain("ns-col-money", headers[3].ClassList); // Share: Percent
+    }
+
+    [Fact]
     public void ACellCarriesTheSameAlignmentAsItsHeader()
     {
         var cut = Render<FooterRowTableHost>();
