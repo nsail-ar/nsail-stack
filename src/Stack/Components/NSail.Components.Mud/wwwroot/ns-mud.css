@@ -1715,6 +1715,28 @@
     line-height: var(--mud-typography-body2-lineheight);
 }
 
+/* NsDropdown: the panel hangs from the wrapper's bottom-left edge, never narrower than the
+   anchor, bounded by the viewport as well as a fixed measure so a long list scrolls instead of
+   running off the screen. */
+.ns-dropdown {
+    position: relative;
+}
+
+.ns-dropdown-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 100%;
+    max-width: 80vw;
+    max-height: min(20rem, 50vh);
+    overflow-y: auto;
+    z-index: var(--mud-zindex-popover, 1200);
+    background-color: var(--mud-palette-surface);
+    box-shadow: var(--mud-elevation-8);
+    border-radius: var(--mud-default-borderradius);
+    text-align: left;
+}
+
 /* nsail#660: the ? is an icon, not slack for the row it sits in to spend -- a flex row's
    default flex-shrink would otherwise squeeze it before the field it stands beside gives up
    any width. */

@@ -103,6 +103,15 @@ opens a list of withheld rows is a button that does nothing.
 
 ---
 
+## `NsDropdown`: a panel the host opens
+
+A menu opens from its own trigger; `NsDropdown` is opened by its host from code — results hung
+from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is the only state;
+`Anchor` is the field and `ChildContent` the panel, rendered only while open. The panel sits
+under the anchor, left edge to left edge, at least as wide as it, bounded in height and
+scrolling past the bound. Escape inside the wrapper asks the host to close through
+`OpenChanged`; clicking away is the host's to detect, since only it knows what counts as away.
+
 ## The list stays the trigger's, and Escape and Tab dismiss it
 
 - **The list stops at a measure, the same one a long lookup list stops at.** A list left to

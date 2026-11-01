@@ -1,0 +1,48 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* The host decides when it is open (a field typed into, a key pressed); the panel hangs under
+   the anchor, left edge to left edge, in the anchor's own width at least, and scrolls past its
+   bound. It is positioned inside the wrapper rather than portaled, so it follows the field
+   through scroll and layout with nothing to measure. *@
+<div class="ns-dropdown @Class" @onkeydown="OnKeyDown">
+    @Anchor
+
+    @if (Open)
+    {
+        <div class="ns-dropdown-panel" role="listbox">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The field the panel hangs under.</summary>
+    [Parameter]
+    public RenderFragment? Anchor { get; set; }
+
+    /// <summary>What the panel holds, rendered only while open.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (Open && args.Key == "Escape")
+        {
+            Open = false;
+            await OpenChanged.InvokeAsync(false);
+        }
+    }
+}
