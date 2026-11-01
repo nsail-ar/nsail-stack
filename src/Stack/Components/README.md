@@ -63,7 +63,7 @@ is guarded by the message it sends, and binds messages:
 
 | Call | Registers |
 |---|---|
-| `AddComponentServices()` (Mud) | MudBlazor services (snackbar bottom-center), `AddRouteTable()`, `DialogManager`, `ProblemManager`, `DeviceMemory`, `IDeviceProvider`, `PageGate`, `NavMenu`, `Companion`, this assembly's strings, `AddSettings()`, a default `IBrandProvider` and `IThemeProvider` (`TryAdd`) |
+| `AddComponentServices()` (Mud) | MudBlazor services (snackbar bottom-center), `AddRouteTable()`, `DialogManager`, `ProblemManager`, `DeviceMemory`, `IDeviceProvider`, `PageGate`, `NavMenu`, the frame's `HelpMenu` contributor (the *Help* group with Atajos de teclado), `Companion`, this assembly's strings, `AddSettings()`, a default `IBrandProvider` and `IThemeProvider` (`TryAdd`) |
 | `AddRoutesFromAssembly(assembly?)` | An `IRouteContributor`; typed URLs come from `GetUrl<TPage>` |
 | `AddMessagePolicies()` | `[Authorize<TMessage>]` support; both hosts call it |
 | `AddNavMenu<T>()`, `AddNavMenuCount<T>()`, `AddNavMenuSearch<T>()`, `AddNavMenuArrangement<T>()` | Menu entries, counts behind an entry, drawer search results, an install's order/label/visibility |
@@ -105,7 +105,7 @@ follows the OS).
 | Hosts of many things | `NsTable`/`NsTh`/`NsTd` (`Rows`, `OnQuery`, `RowTemplate`, `RowEditor`, `Mode`, `Exportable`), `NsTabs`/`NsTab`, `NsListEditor`, `NsTree`, `NsTimeGrid`/`NsTimeBlock`, `NsDashboard`/`NsSubjectDashboard`, `NsLoad` (`OnLoad`: loading, content, failure with retry) | [hosts.md](../../../plugins/nsail-stack/doctrine/ui/hosts.md) |
 | Layout and styling | `NsPanel`, `NsPageHeader`, `NsTitleBar`, `NsToolBar`, `NsFormGrid`/`NsFormGridItem`, `NsStack`, `NsCard`, `NsPaper`, `NsExpander`, `NsAlert`, `NsText`, `NsChip`, `NsStatusText`/`NsStatusDot`, `NsMeter`, `NsTooltip`, `NsSince`, `NsRemoteImage`, `NsIcon` | [styling.md](../../../plugins/nsail-stack/doctrine/ui/styling.md) |
 | Shell and surfaces | `NsRouter`, `NsMainLayout`, `NsContainer`, `NsSurface` (`Surfaces.Aside`, `Modal`, `Dialog`), `NsDrawer`, `NsDialog`, `NsCompanion`, `NsErrorBoundary`, `NsPageNotFound`, `NsPageError`, `DialogManager` | [surfaces.md](../../../plugins/nsail-stack/doctrine/ui/surfaces.md), [focus.md](../../../plugins/nsail-stack/doctrine/ui/focus.md) |
-| Navigation | `NavMenuItem` (`Name`, `Icon`, `PageType`, `Weight`, `Permission`, ...), `INavMenuContributor`, `NsNavMenu` | [navigation.md](../../../plugins/nsail-stack/doctrine/ui/navigation.md) |
+| Navigation | `NavMenuItem` (`Name`, `Icon`, `PageType`, `Url`, `Command`, `Chord`, `Weight`, `Permission`, ...), `INavMenuContributor`, `HelpMenu`, `NsNavMenu` | [navigation.md](../../../plugins/nsail-stack/doctrine/ui/navigation.md) |
 | Guided flows | `NsWizard`, `WizardContext`, `NsFullLayout`, `IRouteGate`; `NsGuide`, `NsGuideLink`; `ISkillContributor` | [wizard.md](../../../plugins/nsail-stack/doctrine/ui/wizard.md), [guide.md](../../../plugins/nsail-stack/doctrine/ui/guide.md), [skills.md](../../../plugins/nsail-stack/doctrine/ui/skills.md) |
 | Branding and settings | `Brand`, `BrandTheme`, `IBrandProvider`, `IThemeProvider`, `LanguageSettings`, `DeviceMemory` | [branding.md](../../../plugins/nsail-stack/doctrine/ui/branding.md), [settings.md](../../../plugins/nsail-stack/doctrine/ui/settings.md) |
 

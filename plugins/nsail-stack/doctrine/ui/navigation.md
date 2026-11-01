@@ -23,11 +23,13 @@ messages; where the app's own drawer and its own home open is the app's word, ki
 never all-or-nothing.
 
 `NavMenuItem` (`NSail.Components/Navigation/`) is a flat model — `Name`, `Icon` (a `Glyph`),
-`PageType` (+ optional `Parameters`) **or** `Url` for leaves, `Items` for groups, plus the four
+`PageType` (+ optional `Parameters`) **or** `Url` **or** `Command` (+ optional `Chord`) for
+leaves, `Items` for groups, plus the four
 fields an override carries — `Weight`, `Parent`, `Visible`, `Permission`; **no Razor**. `Url` is
 the leaf whose destination the route table resolves nothing for, so it
 carries no `Parameters` and is never tracked as the active route (below, "A leaf naming a `Url`
-instead of a page"). A kit implements
+instead of a page"); `Command` is the leaf that runs an act in place (below, "A leaf running a
+`Command`"). A kit implements
 `INavMenuContributor` (async, re-asked whenever the authentication state changes) and registers
 it in `Add<Kit>Menu()`. `NavMenu` (same folder, scoped) asks the mounted contributors and merges
 in registration order; `NsNavMenu` renders that tree and prefix matching drives the active
@@ -82,7 +84,7 @@ highlight. The app layout just places `<NsNavMenu />`.
 `NsNavMenu` draws the map; four slots are the app's — `Brand` and `Session` at the drawer's two
 ends, and these two, which are where an app reaches past the map:
 
-- **`Tools` is the header row beside the search box and the "?" door**, for a door of the app's
+- **`Tools` is the header row beside the search box**, for a door of the app's
   own that belongs to the FRAME rather than to a page — the companion region's is the one there
   is ([intentional-ui.md](../intentional-ui.md), *A companion is not a surface*). Empty draws
   nothing. It is not where a destination goes: something a session may navigate to is an entry,
@@ -318,7 +320,7 @@ module's by being mounted early.
   kit's group is the supported case; naming it at a first-level entry that already has a route
   is the defect. **`PageType`, `Parameters` and `Url` are the three that stay first-non-null**:
   they are what the entry IS, not where it sits, so an override that names no page and no `Url`
-  keeps the kit's. The two destinations are not mutually exclusive on a merged entry — a
+  keeps the kit's — `Command` and `Chord` with them, for the same reason. The two destinations are not mutually exclusive on a merged entry — a
   contribution naming both leaves `PageType` to win silently, the leaf a plain route — so a kit
   offering `Url` writes no `PageType` beside it.
   The key is per level and not global on purpose — *Calendario* the agenda and *Calendario* under
@@ -395,3 +397,23 @@ other end, the surface this session was on would be gone and no route brings it 
   `NavMenuResult.Url` — a finder resolved it, the drawer did not derive it either — and for the
   markdown renderer over a document's own links ([guide.md](guide.md)): one rule, because a
   second copy of it is a second answer.
+
+## A leaf running a `Command`
+
+**An entry may be an act instead of a place**: `Command` is a `Func<Task>` the contributor
+closes over its own services, run where the person stands — a sheet, a dialog — and the drawer
+draws it as one more row of the map, so the search finds it by the name on screen, `Permission`
+gates it and `Visible` hides it exactly as any leaf's. It names no page, so like a `Url` leaf it
+is never the active route, never asked of the `PageGate`, and carries no count; a destination
+wins where an entry names both.
+
+- **It is a BUTTON wearing the vendor's row** (`.ns-nav-command`), not `MudNavLink`: given no
+  `Href` the vendor draws a focusable div that no key presses and nothing names as a control.
+  Enter in the box presses it like the first link (`ns.js` names `.ns-nav-command button`).
+- **`Chord` is claimed on that button** (`NsKeys.Declare`), so the key runs what the click runs
+  and leaves with the row wherever the gate or `Visible` takes it.
+- **The frame's own Help group is the Stack's one contribution** (`HelpMenu`, registered by
+  `AddComponentServices` ahead of every kit's and app's contributor): *Help* last on the map,
+  opening with *Atajos de teclado* — the "?" sheet, a `Command` carrying `NsKeys.Help`. An app
+  hangs its own help under it by naming `HelpMenu.Group` as a `Parent` (a guide, a way to
+  support) and arranges or hides the group as it would any kit's.

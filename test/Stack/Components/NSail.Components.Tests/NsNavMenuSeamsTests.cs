@@ -54,8 +54,8 @@ public sealed class NsNavMenuSeamsTests : BunitContext, IAsyncLifetime
         AddAuthorization().SetAuthorized("seams-probe");
     }
 
-    // The drawer draws a tooltip (the "?" door), and the vendor's popover service behind one is
-    // IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    // The vendor's popover service AddMudServices registers is IAsyncDisposable only — a
+    // synchronous dispose of the container throws on it.
     Task IAsyncLifetime.InitializeAsync()
     {
         return Task.CompletedTask;

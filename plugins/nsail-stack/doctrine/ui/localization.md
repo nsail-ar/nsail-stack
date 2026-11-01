@@ -45,8 +45,9 @@ the method name; buttons without content from `Common.{As}`.
   `Translate(Issue)` resolves it before filling `{entity}`, falling back to the key's last segment
   (types.md). An entity a problem can name owes its bare key in `en` and `es`, and
   `ProblemEntityStringTests` fails the build without it.
-- **A search box hints itself.** `NsSearchField` falls back to `Common.Search`; a caller wanting
-  different words sets the inherited `Placeholder`.
+- **A search box hints itself.** `NsSearchField` falls back to `Common.Search` — one word, *Buscar*,
+  so it fits beside the box's key mark in every language; a caller wanting different words sets
+  the inherited `Placeholder`.
 - **The base language loads first and the current one overlays it**, so gaps fall back to
   English.
 - Suffix conventions (`.Plural`, `.Short`) reserved.
