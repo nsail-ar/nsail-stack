@@ -184,11 +184,11 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
     // Typed text takes the box's full width up to the clear button: the mark goes, and the
     // reserve with it.
     [Fact]
-    public void ASearchBox_GivesBackTheMarksRoomOnceSomethingIsTyped()
+    public async Task ASearchBox_GivesBackTheMarksRoomOnceSomethingIsTyped()
     {
         var host = Mount();
 
-        host.Find(PageBox).Input("lentes");
+        await host.InvokeAsync(() => host.Find(PageBox).Input("lentes"));
 
         var wrapper = host.Find("form .ns-search-box");
 
