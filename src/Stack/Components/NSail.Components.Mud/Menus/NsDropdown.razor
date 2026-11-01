@@ -4,21 +4,33 @@
 @namespace NSail.Components
 
 @* The host decides when it is open (a field typed into, a key pressed); the panel hangs under
-   the anchor, left edge to left edge, in the anchor's own width at least, and scrolls past its
-   bound. It is positioned inside the wrapper rather than portaled, so it follows the field
-   through scroll and layout with nothing to measure. *@
+   the anchor in the anchor's own width at least, and scrolls past its bound. It is the vendor's
+   popover and not a box inside the wrapper: drawn inside, it would be clipped by NsPanel's
+   scrolling content and grow its scrollable area, and nothing would turn it over where the
+   room under the field runs out. The panel writes no role — the rows are the host's, and so is
+   marking its field a combobox with aria-expanded, which is what ns.js reads to leave Enter and
+   the arrows to the list. *@
 <div class="ns-dropdown @Class" @onkeydown="OnKeyDown">
     @Anchor
 
     @if (Open)
     {
-        <div class="ns-dropdown-panel" role="listbox">
+        <MudPopover Open="true"
+                    AnchorOrigin="@Origin.BottomLeft"
+                    TransformOrigin="@Origin.TopLeft"
+                    RelativeWidth="DropdownWidth.Adaptive"
+                    OverflowBehavior="OverflowBehavior.FlipOnOpen"
+                    MaxHeight="Measure"
+                    Class="ns-dropdown-panel">
             @ChildContent
-        </div>
+        </MudPopover>
     }
 </div>
 
 @code {
+
+    // The measure a long lookup list stops at, in px (NsMenu's too).
+    const int Measure = 300;
 
     [Parameter]
     public bool Open { get; set; }

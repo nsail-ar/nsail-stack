@@ -103,15 +103,6 @@ opens a list of withheld rows is a button that does nothing.
 
 ---
 
-## `NsDropdown`: a panel the host opens
-
-A menu opens from its own trigger; `NsDropdown` is opened by its host from code — results hung
-from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is the only state;
-`Anchor` is the field and `ChildContent` the panel, rendered only while open. The panel sits
-under the anchor, left edge to left edge, at least as wide as it, bounded in height and
-scrolling past the bound. Escape inside the wrapper asks the host to close through
-`OpenChanged`; clicking away is the host's to detect, since only it knows what counts as away.
-
 ## The list stays the trigger's, and Escape and Tab dismiss it
 
 - **The list stops at a measure, the same one a long lookup list stops at.** A list left to
@@ -180,3 +171,25 @@ The toolbar's own overflow kebab is the other rider — the same `NsMenu` and `N
 the items the cap pushed out of the row. Both of the toolbar's menus declare `Writes="false"`:
 what a form withholds fell out where authorization did, before the cap, so a second filter at
 the face could only take away what already passed one.
+
+---
+
+## `NsDropdown`: a panel the host opens
+
+A menu opens from its own trigger; `NsDropdown` is opened by its host from code — results hung
+from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is the only state;
+`Anchor` is the field and `ChildContent` the panel, rendered only while open.
+
+- **The panel is the vendor's popover, not a box inside the wrapper.** Drawn inside, it is
+  clipped by the nearest scrolling ancestor (`NsPanel`'s content) and grows that scrollable area
+  for as long as it shows. As a popover it hangs from the anchor's bottom-left edge, at least as
+  wide as it, stops at the same measure a menu does and scrolls past it, and is turned over
+  where the room under the field runs out.
+- **The wrapper is transparent to layout.** It is the flex item the field was and can shrink
+  under its content, so the field's `Grow` still pays.
+- **The panel writes no role, and the host marks its field.** The rows are the host's, so a role
+  written here could only disagree with them. The field is the one that must be a combobox
+  with `aria-expanded` while the panel shows: `ns.js` reads exactly that to give Enter and the
+  arrows to the list ([fields.md](fields.md)).
+- **Escape inside the wrapper asks the host to close** through `OpenChanged`; clicking away is
+  the host's to detect, since only it knows what counts as away.

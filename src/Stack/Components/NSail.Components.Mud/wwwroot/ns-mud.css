@@ -1715,25 +1715,17 @@
     line-height: var(--mud-typography-body2-lineheight);
 }
 
-/* NsDropdown: the panel hangs from the wrapper's bottom-left edge, never narrower than the
-   anchor, bounded by the viewport as well as a fixed measure so a long list scrolls instead of
-   running off the screen. */
+/* NsDropdown's wrapper is the popover's anchor and stays the flex or grid item the field was:
+   it takes the room the field's Grow would have taken and can shrink under its content, the
+   way a menu's activator does above. The panel itself is the vendor's popover. */
 .ns-dropdown {
-    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .ns-dropdown-panel {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    min-width: 100%;
     max-width: 80vw;
-    max-height: min(20rem, 50vh);
     overflow-y: auto;
-    z-index: var(--mud-zindex-popover, 1200);
-    background-color: var(--mud-palette-surface);
-    box-shadow: var(--mud-elevation-8);
-    border-radius: var(--mud-default-borderradius);
     text-align: left;
 }
 

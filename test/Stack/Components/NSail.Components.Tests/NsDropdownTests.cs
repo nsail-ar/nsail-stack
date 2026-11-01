@@ -4,13 +4,37 @@
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using MudBlazor.Services;
+using NSail.Components.Tests.Fixtures;
 
 namespace NSail.Components.Tests;
 
-public sealed class NsDropdownTests : BunitContext
+public sealed class NsDropdownTests : BunitContext, IAsyncLifetime
 {
+    public NsDropdownTests()
+    {
+        Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
+        JSInterop.Mode = JSRuntimeMode.Loose;
+    }
+
+    Task IAsyncLifetime.InitializeAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    async Task IAsyncLifetime.DisposeAsync()
+    {
+        await DisposeAsync();
+    }
+
+    // The panel is the vendor's popover, drawn by its provider and not inside the wrapper.
+    IRenderedComponent<MudBlazor.MudPopoverProvider> _provider = default!;
+
     IRenderedComponent<NsDropdown> Render(bool open, Action<bool>? changed = null)
     {
+        _provider = Render<MudBlazor.MudPopoverProvider>();
+
         return Render<NsDropdown>(p => p
             .Add(x => x.Open, open)
             .Add(x => x.OpenChanged, EventCallback.Factory.Create<bool>(this, changed ?? (_ => { })))
@@ -24,7 +48,7 @@ public sealed class NsDropdownTests : BunitContext
         var cut = Render(open: false);
 
         Assert.NotEmpty(cut.FindAll(".ns-dropdown > .field"));
-        Assert.Empty(cut.FindAll(".ns-dropdown-panel"));
+        Assert.Empty(_provider.FindAll(".ns-dropdown-panel"));
     }
 
     [Fact]
@@ -32,9 +56,10 @@ public sealed class NsDropdownTests : BunitContext
     {
         var cut = Render(open: true);
 
-        Assert.Equal("one", cut.Find(".ns-dropdown-panel .row").TextContent);
-        Assert.Equal("listbox", cut.Find(".ns-dropdown-panel").GetAttribute("role"));
+        Assert.Equal("one", _provider.Find(".ns-dropdown-panel .row").TextContent);
+        Assert.Null(_provider.Find(".ns-dropdown-panel").GetAttribute("role"));
         Assert.Equal("field", cut.Find(".ns-dropdown").Children[0].ClassName);
+        Assert.Contains("max-height:300px", _provider.Find(".ns-dropdown-panel").GetAttribute("style"));
     }
 
     [Fact]
@@ -44,7 +69,7 @@ public sealed class NsDropdownTests : BunitContext
 
         cut.Render(p => p.Add(x => x.Open, false));
 
-        Assert.Empty(cut.FindAll(".ns-dropdown-panel"));
+        Assert.Empty(_provider.FindAll(".ns-dropdown-panel"));
     }
 
     [Fact]
@@ -56,28 +81,17 @@ public sealed class NsDropdownTests : BunitContext
         cut.Find(".ns-dropdown").KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
         Assert.False(seen);
-        Assert.Empty(cut.FindAll(".ns-dropdown-panel"));
+        Assert.Empty(_provider.FindAll(".ns-dropdown-panel"));
     }
 
     [Fact]
-    public void ThePanelIsBoundedAndScrolls()
+    public void TheWrapperIsTheFlexItemTheFieldWas()
     {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (!File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
-        {
-            directory = directory.Parent!;
-        }
-
-        var css = File.ReadAllText(Path.Combine(
-            directory.FullName,
-            "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
-        var rule = css[css.IndexOf(".ns-dropdown-panel {", StringComparison.Ordinal)..];
+        var css = HouseStylesheet.Read();
+        var rule = css[css.IndexOf(".ns-dropdown {", StringComparison.Ordinal)..];
         rule = rule[..rule.IndexOf('}', StringComparison.Ordinal)];
 
-        Assert.Contains("max-height", rule, StringComparison.Ordinal);
-        Assert.Contains("overflow-y: auto", rule, StringComparison.Ordinal);
-        Assert.Contains("top: 100%", rule, StringComparison.Ordinal);
-        Assert.Contains("left: 0", rule, StringComparison.Ordinal);
+        Assert.Contains("flex: 1 1 auto", rule, StringComparison.Ordinal);
+        Assert.Contains("min-width: 0", rule, StringComparison.Ordinal);
     }
 }
