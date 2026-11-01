@@ -82,6 +82,21 @@ public sealed class NsTableWholeColumnTests : BunitContext, IAsyncLifetime
         Assert.Contains("white-space: normal;", block, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheContainersStackedLabelStillWraps()
+    {
+        const string Query = "@media (min-width: 960px) {\n    @container (max-width: 959.98px) {\n";
+        const string Selector = ".ns-table.mud-sm-table .ns-col-whole::before {";
+        var css = HouseStylesheet.Read();
+
+        var at = css.LastIndexOf(Selector, StringComparison.Ordinal);
+        var query = css.IndexOf(Query, StringComparison.Ordinal);
+        Assert.True(at > query && query >= 0, "the label rule is not inside the container's stacking query.");
+        Assert.True(css.IndexOf("\n}\n", query, StringComparison.Ordinal) > at,
+            "the label rule is not inside the container's stacking query.");
+        Assert.Contains("white-space: normal;", Rule(css[at..], Selector), StringComparison.Ordinal);
+    }
+
     static string Rule(string css, string selector)
     {
         var start = css.IndexOf(selector, StringComparison.Ordinal);
