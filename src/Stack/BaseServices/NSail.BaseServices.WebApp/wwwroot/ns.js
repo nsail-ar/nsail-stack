@@ -138,6 +138,18 @@
     // way they always were -- and a form that IS the question -- a sign-in, a filter bar, a box
     // standing alone -- keeps the implicit submission, which is what the last read below
     // measures by asking the form how many fields it renders.
+    // A box owns an open list when it is a combobox the vendor marks expanded, or when it stands
+    // inside an NsDropdown that is open (the host's plain field cannot be handed the attribute).
+    // Scoped to the box itself for the combobox, so a button carrying aria-expanded keeps its
+    // own Enter.
+    function ownsOpenList(target) {
+        if (target.getAttribute("role") === "combobox" && target.getAttribute("aria-expanded") === "true")
+            return true;
+
+        return target.getAttribute("data-ns-field") === "true"
+            && target.closest("[data-ns-dropdown-open='true']") !== null;
+    }
+
     function onDocumentKeyDown(e) {
         if (e.defaultPrevented || e.key !== "Enter")
             return;
@@ -170,7 +182,7 @@
         // Scoped to the combobox ITSELF, never to whatever is expanded around it: an expander's
         // chevron and a menu's face are buttons that carry the same attribute, and a button's
         // Enter IS its activation -- preventing that would cost them the keyboard.
-        if (target.getAttribute("role") === "combobox" && target.getAttribute("aria-expanded") === "true") {
+        if (ownsOpenList(target)) {
             e.preventDefault();
             return;
         }
@@ -422,7 +434,7 @@
         if (!field || target.tagName === "TEXTAREA")
             return;
 
-        if (target.getAttribute("role") === "combobox" && target.getAttribute("aria-expanded") === "true")
+        if (ownsOpenList(target))
             return;
 
         // The keystroke is taken OUTRIGHT, propagation and all, which the two listeners above

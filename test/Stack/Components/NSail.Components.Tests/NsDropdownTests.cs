@@ -85,6 +85,52 @@ public sealed class NsDropdownTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void Open_HangsUnderTheAnchorAtLeastAsWideAsIt()
+    {
+        var cut = Render(open: true);
+
+        var popover = cut.FindComponent<MudBlazor.MudPopover>().Instance;
+
+        Assert.Equal(MudBlazor.Origin.BottomLeft, popover.AnchorOrigin);
+        Assert.Equal(MudBlazor.Origin.TopLeft, popover.TransformOrigin);
+        Assert.Equal(MudBlazor.DropdownWidth.Adaptive, popover.RelativeWidth);
+    }
+
+    [Fact]
+    public void Open_MarksTheWrapperForTheKeyboardPolicy()
+    {
+        var cut = Render(open: true);
+
+        Assert.Equal("true", cut.Find(".ns-dropdown").GetAttribute("data-ns-dropdown-open"));
+
+        cut.Render(p => p.Add(x => x.Open, false));
+
+        Assert.Null(cut.Find(".ns-dropdown").GetAttribute("data-ns-dropdown-open"));
+    }
+
+    [Fact]
+    public void Escape_InsideThePanelAsksTheHostToClose()
+    {
+        bool? seen = null;
+        Render(open: true, v => seen = v);
+
+        _provider.Find(".ns-dropdown-body").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        Assert.False(seen);
+    }
+
+    [Fact]
+    public void AClickOutside_AsksTheHostToClose()
+    {
+        bool? seen = null;
+        Render(open: true, v => seen = v);
+
+        _provider.Find(".mud-overlay").Click();
+
+        Assert.False(seen);
+    }
+
+    [Fact]
     public void TheWrapperIsTheFlexItemTheFieldWas()
     {
         var css = HouseStylesheet.Read();

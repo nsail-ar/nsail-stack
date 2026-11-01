@@ -684,6 +684,8 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   since the guard reads the element the keystroke landed on. The same rule covers `NsSelect` and
   `NsMultiSelect`: the vendor stamps both words on their own input too, so nothing in the guard
   names a component (`NsComboboxExpandedMarkTests` holds all three).
+  A plain field under an open `NsDropdown` has no such attribute: the dropdown's wrapper carries
+  `data-ns-dropdown-open`, which the guard reads the same way ([menus.md](menus.md)).
 - **A SEARCH-FIRST box answers its own Enter, because the reader's code arrives before any list
   does.** A reader is a keyboard: it types the whole code and ends it with Enter inside a fraction
   of the vendor's own debounce, so at that instant no search has been asked, the list is closed

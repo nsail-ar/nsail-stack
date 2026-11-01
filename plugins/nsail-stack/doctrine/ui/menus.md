@@ -187,9 +187,18 @@ from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is
   where the room under the field runs out.
 - **The wrapper is transparent to layout.** It is the flex item the field was and can shrink
   under its content, so the field's `Grow` still pays.
-- **The panel writes no role, and the host marks its field.** The rows are the host's, so a role
-  written here could only disagree with them. The field is the one that must be a combobox
-  with `aria-expanded` while the panel shows: `ns.js` reads exactly that to give Enter and the
-  arrows to the list ([fields.md](fields.md)).
-- **Escape inside the wrapper asks the host to close** through `OpenChanged`; clicking away is
-  the host's to detect, since only it knows what counts as away.
+- **The panel writes no role; the wrapper marks the list open.** The rows are the host's, so a
+  role written here could only disagree with them. A plain field cannot be handed
+  `role="combobox"`, so while open the wrapper carries `data-ns-dropdown-open` and `ns.js` reads
+  it as it reads `aria-expanded`: Enter over the panel never submits the form, and inside
+  `.ns-cells` the arrows are not the cell cursor's ([fields.md](fields.md)). The field must
+  carry `data-ns-field` (every `Ns*` field does).
+- **It stands on both sides of the portal, so it carries across what a row asks of the page.**
+  The panel renders under the popover provider, where nothing cascaded from the page reaches:
+  the dropdown re-cascades the surface, `ParentDisabled`, `ParentReadOnly` and the
+  `EditContext`, as `NsMenu` does, so an `NsLink` with a `Target` resolves from the surface the
+  field stands on and an act inside a read-only form is withdrawn.
+- **Closing is the dropdown's.** A click outside lands on an overlay one tier under the popover
+  (as `NsHelp`'s), and Escape from the wrapper or from inside the panel does the same: both set
+  `Open` false and tell the host through `OpenChanged`. The overlay covers the field while the
+  panel shows, so a click on the field closes it.
