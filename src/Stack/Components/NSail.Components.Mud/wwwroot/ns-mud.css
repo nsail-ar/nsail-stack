@@ -4609,6 +4609,20 @@ div.mud-input-slot.mud-input-root::placeholder {
     transform: none;
 }
 
+/* The mark stands over the input, so the input gives up its trailing room for it while it is
+   drawn — or the placeholder runs under the key and the two read as one smudged string
+   (nsail#3006). CSS cannot measure the mark, so NsSearchField hands over its length in
+   characters and the room is that many of a generous average glyph (.55em of the mark's
+   .6875rem) plus its padding and border (12px), its offset (10px) and a gap (4px): never short
+   of the mark, at the cost of a few pixels on a narrow key. A placeholder longer than what is left
+   ends in an ellipsis before the mark rather than under it. Typing removes the mark, and with
+   it the reservation, so typed text keeps the box's full width up to the clear button.
+   The selector outranks the vendor's own adorned-start padding on the same input. */
+.ns-search-box:has(> .ns-search-key) .mud-input-control .mud-input > input.mud-input-slot.mud-input-root {
+    padding-inline-end: calc(var(--ns-search-key-chars, 6) * .378rem + 26px);
+    text-overflow: ellipsis;
+}
+
 /* THE "?" SHEET (NsKeySheet), hosted as an ordinary dialog: the keys that are claimed on the
    screen behind it, grouped by where the claiming control stands. The one place a key is DRAWN
    as a key — kbd, which is what the element is for — because here the key is the subject and

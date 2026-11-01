@@ -225,7 +225,11 @@ outrank.
 **A search box is the one control that draws its key.** It has no word to hover, so there is no
 bubble to carry one: `NsSearchField` paints the first key it claims inside the box at the
 trailing edge (`.ns-search-key`, `aria-hidden`, and only while the box is empty), which is also
-the convention every application that spends a chord on a search box follows. Never in the
+the convention every application that spends a chord on a search box follows. While the mark is
+drawn the input gives up its trailing room for it, sized from the key's length (the field hands
+it to the stylesheet as `--ns-search-key-chars`, since CSS cannot measure the mark), and a
+placeholder too long for what is left ends in an ellipsis before the mark, never under it.
+Typing removes the mark and the reservation with it. Never in the
 PLACEHOLDER — a placeholder is an input's name FALLBACK, so a key written there lands in the
 accessible name, nsail#2259 one layer up, and it moves a string every browser walk reaches the
 box by.

@@ -163,6 +163,37 @@ public sealed class KeyChordClaimTests : BunitContext, IAsyncLifetime
         Assert.DoesNotContain(key, host.Find($"{box} input").GetAttribute("placeholder") ?? string.Empty, StringComparison.Ordinal);
     }
 
+    // The mark stands over the input, so the input owes it its trailing room or the placeholder
+    // runs under the key (nsail#3006). CSS cannot measure the mark: the box hands over the key's
+    // length, and the stylesheet's reservation is keyed off the mark being there at all — the
+    // geometry itself is the browser suites'.
+    [Theory]
+    [InlineData(".ns-nav-drawer .ns-search-box", 6)]
+    [InlineData("form .ns-search-box", 2)]
+    public void ASearchBox_HandsTheMarksLengthToTheRoomItsInputReserves(string box, int chars)
+    {
+        var host = Mount();
+
+        Assert.Equal($"--ns-search-key-chars: {chars}", host.Find(box).GetAttribute("style"));
+        Assert.Contains(
+            ".ns-search-box:has(> .ns-search-key) .mud-input-control .mud-input > input.mud-input-slot.mud-input-root {\n"
+            + "    padding-inline-end: calc(var(--ns-search-key-chars, 6) * .378rem + 26px);\n"
+            + "    text-overflow: ellipsis;",
+            ReadStylesheet());
+    }
+
+    // Typed text takes the box's full width: the mark goes, and the reservation with it.
+    [Fact]
+    public void ASearchBox_GivesBackTheMarksRoomOnceSomethingIsTyped()
+    {
+        var host = Mount();
+
+        host.Find(PageBox).Input("lentes");
+
+        Assert.Empty(host.FindAll("form .ns-search-box .ns-search-key"));
+        Assert.Null(host.Find("form .ns-search-box").GetAttribute("style"));
+    }
+
     // The door a screen offers onto a record takes the edit key the desktop spends on it, on
     // both faces a link has — and the bubble says the word and the key, exactly as a button's
     // does. The worded anchor carries NO aria-label: its word is its whole accessible name, and

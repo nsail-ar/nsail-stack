@@ -13,7 +13,7 @@
    The wrapper is a plain block div carrying whatever width class the field itself carried, so
    the field keeps the box it always had — it is here only to be the mark's positioned
    ancestor. *@
-<div class="@GetBoxClasses()">
+<div class="@GetBoxClasses()" style="@GetBoxStyle()">
     <MudTextField T="string"
                   Value="Value"
                   ValueChanged="SetValue"
@@ -95,6 +95,15 @@
     string GetBoxClasses()
     {
         return new NsClassBuilder("ns-search-box").Add(GrowClass).ToString();
+    }
+
+    // The mark's length, which the stylesheet turns into the trailing room the input gives up
+    // for it: CSS cannot measure the mark, and the key is the one thing that sizes it.
+    string? GetBoxStyle()
+    {
+        return Hint is { Length: > 0 } hint && string.IsNullOrEmpty(Value)
+            ? $"--ns-search-key-chars: {hint.Length}"
+            : null;
     }
 
     string? GetPlaceholder()
