@@ -97,12 +97,12 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void ARecordStateItem_isADirectChildOfTheGrid_soItsCenteringSelectorMatches()
+    public void ARecordStateItem_isADirectChildOfTheGrid_soItsAlignmentSelectorMatches()
     {
-        // nsail#213: the CSS centers a switch's cell with `.ns-grid > *:has(> .ns-record-state)`
-        // -- a selector that only fires if ns-record-state is a direct child of the item the
-        // grid itself parents. This pins that structural assumption; whether align-self actually
-        // moves the switch to mid-height beside a taller neighbour is the Architect's pixel probe.
+        // nsail#213: the CSS gives a switch's cell the field's label gutter with
+        // `.ns-grid > *:has(> .ns-record-state)` -- a selector that only fires if ns-record-state
+        // is a direct child of the item the grid itself parents. This pins that structural
+        // assumption; where the switch lands beside a taller neighbour is a browser's to measure.
         var cut = Render<NsFormGridItem>(p => p.AddChildContent<NsRecordState>());
 
         var item = cut.Find("div");
@@ -112,7 +112,7 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void ACheckBoxItem_isADirectChildOfTheGrid_soItsCenteringSelectorMatches()
+    public void ACheckBoxItem_isADirectChildOfTheGrid_soItsAlignmentSelectorMatches()
     {
         // nsail#2004: the same selector, the other boolean control --
         // `.ns-grid > *:has(> .ns-form-check)`. NsCheckBox renders a second child (NsFieldHelper,
@@ -129,9 +129,9 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
     [Fact]
     public void ABooleanControlLinesUpWithItsNeighboursInputNotTheRow()
     {
-        // A neighbour with a hint is taller than its input, so a check centred on the row reads
-        // low. The check takes the field's own geometry instead: the 8px label gutter and a 40px
-        // box it is centred in — the vendor's input control, a flex column, is that box.
+        // A neighbour with a hint is taller than its input, so the row's centre is not the
+        // input's. The check takes the field's own geometry: the 8px label gutter and a 40px box
+        // it is centred in — the vendor's input control, a flex column, is that box.
         var cut = Render<NsFormGridItem>(p => p.AddChildContent<NsCheckBox<bool>>());
 
         var check = cut.Find("div").Children.Single(child => child.ClassList.Contains("ns-form-check"));
