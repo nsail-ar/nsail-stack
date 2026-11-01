@@ -512,6 +512,16 @@ the contract and the Stack only reads:
     used, beside the figure — and the next act still succeeds; nothing is suspended by a number.
     A flag is the hard half and a ceiling is the soft one, and nothing reading this table may
     swap them.
+  - **The one declared exception is a request budget**, because it is a rate and not an
+    allowance: refused past it, the work is deferred rather than lost, and without it one
+    tenant's flood is spent out of every other tenant's share of the install.
+    `RequestBudgetMiddleware` (`NSail.BaseServices.WebApi`) counts the message sends of each
+    tenant — keyed by slug, since under `MultiDb` every row key is the install's — in a window of
+    a minute, and past the figure answers 429, the `TooManyRequests` problem and `Retry-After` in
+    the seconds left in the window. The figure is asked of `RequestBudgetProvider`, whose base
+    has none: **the Stack names no key**, so a product that sells a budget overrides it, reading
+    the key it declared through `FeatureProvider.Limit`. A figure of zero or less is no budget —
+    refusing every request is a suspension, and that is the state row's word, never a number's.
   - **A flag off closes a road; it never hides what already went down it.** What the tenant's own
     rows record of a feature stays readable where it was read before. And a flag answers a
     PRESSED send: what the system sends on its own passes no gate (`AmbientPublish`), so whatever
