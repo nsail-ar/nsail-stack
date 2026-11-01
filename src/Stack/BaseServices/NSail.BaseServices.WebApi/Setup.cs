@@ -47,6 +47,12 @@ public static class Setup
         // one built per request would count to one and cap nothing.
         builder.Services.AddSingleton<ThrottleMiddleware>();
 
+        // The tenant's budget counts the same way, and asks its figure of a provider whose base
+        // has none: TryAdd, so a product that reads its plan registers its own either side of
+        // this call.
+        builder.Services.AddSingleton<RequestBudgetMiddleware>();
+        builder.Services.TryAddScoped<RequestBudgetProvider>();
+
         builder.Services.AddSingleton<BuildVersionMiddleware>();
 
         builder.Services.AddScoped<TenancyMiddleware>();
@@ -196,6 +202,10 @@ public static class Setup
         // evaluation on it. Like the gate, it reads the message off the matched route, so it
         // needs routing to have run and nothing else.
         app.UseMiddleware<ThrottleMiddleware>();
+
+        // Beside the throttle and for the same reason, a tenant's whole volume rather than one
+        // caller's on one door: refused before the credential wall buys its query.
+        app.UseMiddleware<RequestBudgetMiddleware>();
 
         // Behind the throttle, because asking the database whether a ticket still names anybody
         // costs a query and a flood must be refused before it buys one; ahead of the gate and of
