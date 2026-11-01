@@ -8,8 +8,8 @@ using NSail.Components.Tests.Fixtures;
 
 namespace NSail.Components.Tests;
 
-/// <summary>A chip names a value; given a severity it names a state, tinted and not filled,
-/// and given an Href the whole chip is its link.</summary>
+/// <summary>A chip names a value; given a severity it names a state, tinted — or filled when
+/// Solid — and given an Href the whole chip is its link.</summary>
 public sealed class NsChipTests : BunitContext
 {
     public NsChipTests()
@@ -39,6 +39,19 @@ public sealed class NsChipTests : BunitContext
         Assert.Contains("mud-chip-text", cut.Markup);
         Assert.Contains("mud-chip-color-error", cut.Markup);
         Assert.DoesNotContain("mud-chip-filled", cut.Markup);
+    }
+
+    [Fact]
+    public void A_solid_chip_wears_its_severity_as_the_filled_face()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo de prueba")
+            .Add(c => c.Severity, NsSeverity.Warning)
+            .Add(c => c.Solid, true));
+
+        Assert.Contains("mud-chip-filled", cut.Markup);
+        Assert.Contains("mud-chip-color-warning", cut.Markup);
+        Assert.DoesNotContain("mud-chip-text", cut.Markup);
     }
 
     [Fact]

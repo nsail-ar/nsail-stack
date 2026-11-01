@@ -19,9 +19,9 @@ namespace NSail.Components.Tests;
 public sealed class SeamsPartiesProbePage : ComponentBase;
 
 /// <summary>The two seams an app reaches the drawer's own header and its empty result through
-/// (nsail#2420): Tools, where a door of the app's stands beside the search box and the frame's
-/// "?", and NoMatch, the one entry drawn where the typing left nothing at all — no map entry and
-/// no contributed result (nsail#2590) — given the text, so the app can carry the question on
+/// (nsail#2420): Tools, where a door of the app's stands beside the search box, and
+/// NoMatch, the one entry drawn where the typing left nothing at all — no map entry and no
+/// contributed result (nsail#2590) — given the text, so the app can carry the question on
 /// somewhere else.
 ///
 /// <para>That entry is pressed by the same Enter the first entry is, and the keystroke itself is
@@ -33,9 +33,6 @@ public sealed class NsNavMenuSeamsTests : BunitContext, IAsyncLifetime
     public NsNavMenuSeamsTests()
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
-        // The drawer opens the "?" sheet through the manager (nsail#2207), so a harness that
-        // renders it composes one.
-        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();
@@ -54,8 +51,8 @@ public sealed class NsNavMenuSeamsTests : BunitContext, IAsyncLifetime
         AddAuthorization().SetAuthorized("seams-probe");
     }
 
-    // The drawer draws a tooltip (the "?" door), and the vendor's popover service behind one is
-    // IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    // The vendor's popover service AddMudServices registers is IAsyncDisposable only — a
+    // synchronous dispose of the container throws on it.
     Task IAsyncLifetime.InitializeAsync()
     {
         return Task.CompletedTask;

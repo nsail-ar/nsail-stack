@@ -23,30 +23,42 @@ messages; where the app's own drawer and its own home open is the app's word, ki
 never all-or-nothing.
 
 `NavMenuItem` (`NSail.Components/Navigation/`) is a flat model — `Name`, `Icon` (a `Glyph`),
-`PageType` (+ optional `Parameters`) **or** `Url` for leaves, `Items` for groups, plus the four
-fields an override carries — `Weight`, `Parent`, `Visible`, `Permission`; **no Razor**. `Url` is
-the leaf whose destination the route table resolves nothing for, so it
-carries no `Parameters` and is never tracked as the active route (below, "A leaf naming a `Url`
-instead of a page"). A kit implements
-`INavMenuContributor` (async, re-asked whenever the authentication state changes) and registers
-it in `Add<Kit>Menu()`. `NavMenu` (same folder, scoped) asks the mounted contributors and merges
-in registration order; `NsNavMenu` renders that tree and prefix matching drives the active
-highlight. The app layout just places `<NsNavMenu />`.
+`PageType` (+ optional `Parameters`) **or** `Url` **or** `Command` (+ optional `Chord`) for
+leaves, `Items` for groups, plus the four fields an override carries — `Weight`, `Parent`,
+`Visible`, `Permission`; **no Razor**. `Url` is the leaf whose destination the route table
+resolves nothing for, so it carries no `Parameters` and is never tracked as the active route
+(below, "A leaf naming a `Url` instead of a page"); `Command` is the leaf that runs an act in
+place (below, "A leaf running a `Command`"). A kit implements `INavMenuContributor` (async,
+re-asked whenever the authentication state changes) and registers it in `Add<Kit>Menu()`.
+`NavMenu` (same folder, scoped) asks the mounted contributors and merges in registration order;
+`NsNavMenu` renders that tree and prefix matching drives the active highlight. The app layout
+just places `<NsNavMenu />`.
 
 - **The drawer is the frame's one gutter, and the app's map is not always alone in it.** Below
   the drawer's own breakpoint `NsNavMenu` also draws whatever the surface's page announced as its
   index (`SurfaceContext.AnnounceIndex`), above the map and never instead of it — that is where a
   screen whose rail cannot stand beside its content collapses to, exactly as the nav itself does.
   The guide is today's one such screen ([guide.md](guide.md)).
+- **The brand follows the drawer's state.** `NsNavMenu.Brand` is the install's name and whatever
+  rides under it; shut behind the hamburger, the screen's title row (`NsTitleBar`) draws it
+  beside the toggle through `NsLayoutState.Brand`, so it reads without opening the menu. Opened by
+  the person, only the drawer draws it — the row's copy swaps its display class for `d-none`
+  (never both: the vendor's two utilities tie and declaration order picks) and is never
+  unmounted, so the brand's own load does not re-run on every toggle. The cue is
+  `NsLayoutState.DrawerIsSummoned`, not `DrawerIsOpen`, which starts true for the docked
+  variant and would hide the brand in a phone's first frame. The fragment reads on two grounds: the
+  rail's graphite (dark in both schemes) and the page's `Surface`; a mark drawn for one ground
+  only is the product's to make readable on the other.
 - **The mechanism for the group order is weight bands**, so contributors compose without
   coordinating: domain groups 10–50, system groups 80+.
 - **A page missing from the route table throws at startup** rather than 404-ing on click
   (cases).
 - **The gate is the destination page's own authorize attributes** (cases). A page with no gate
   stays visible — the floor is "signed in"; stacked attributes all apply; a group goes when
-  every one of its children went, bottom-up, and a leaf naming neither a `PageType` nor a `Url`
-  counts as gone (below, "A leaf naming a `Url` instead of a page"). The menu is rebuilt on
-  every change of the cascaded authentication state; asked before the session
+  every one of its children went, bottom-up, and a leaf naming no `PageType`, no navigable
+  `Url` and no `Command` counts as gone (below, "A leaf naming a `Url` instead of a page" and "A
+  leaf running a `Command`"). A `Url` or `Command` leaf has no page to ask, so `Permission` and
+  `Visible` are its whole gate. The menu is rebuilt on every change of the cascaded authentication state; asked before the session
   resolves, every entry answers "denied". **`PageGate` remembers each verdict for the session
   that earned it**, because every caller asks from inside a render and none can remember on its
   own — a gated link re-asks on every parameter set, so one pass over a full list of rows asks
@@ -82,9 +94,9 @@ highlight. The app layout just places `<NsNavMenu />`.
 `NsNavMenu` draws the map; four slots are the app's — `Brand` and `Session` at the drawer's two
 ends, and these two, which are where an app reaches past the map:
 
-- **`Tools` is the header row beside the search box and the "?" door**, for a door of the app's
-  own that belongs to the FRAME rather than to a page — the companion region's is the one there
-  is ([intentional-ui.md](../intentional-ui.md), *A companion is not a surface*). Empty draws
+- **`Tools` is the header row beside the search box**, for a door of the app's own that
+  belongs to the FRAME rather than to a page — the companion region's is the one there is
+  ([intentional-ui.md](../intentional-ui.md), *A companion is not a surface*). Empty draws
   nothing. It is not where a destination goes: something a session may navigate to is an entry,
   the map being the one list of those.
 - **`NoMatch` is the one entry drawn where the search found nothing at all** — neither an entry
@@ -316,11 +328,11 @@ module's by being mounted early.
   `NsNavMenu` renders a group the moment `Items` is non-empty — the route is silently dropped,
   and `Hide` gates the item by its children alone. A contributor naming its leaf into another
   kit's group is the supported case; naming it at a first-level entry that already has a route
-  is the defect. **`PageType`, `Parameters` and `Url` are the three that stay first-non-null**:
-  they are what the entry IS, not where it sits, so an override that names no page and no `Url`
-  keeps the kit's. The two destinations are not mutually exclusive on a merged entry — a
-  contribution naming both leaves `PageType` to win silently, the leaf a plain route — so a kit
-  offering `Url` writes no `PageType` beside it.
+  is the defect. **`PageType`, `Parameters`, `Url`, `Command` and `Chord` stay
+  first-non-null**: they are what the entry IS, not where it sits, so an override that names
+  none of them keeps the kit's. The kinds are not mutually exclusive on a merged entry — a
+  contribution naming two leaves `PageType` to win silently over `Url`, and either over
+  `Command` — so a kit writes one kind per leaf.
   The key is per level and not global on purpose — *Calendario* the agenda and *Calendario* under
   Mi Cuenta > Preferencias are two doors, and only a `Parent` naming one of them explicitly
   crosses a level.
@@ -347,9 +359,9 @@ app unable to remove the one it did not ask for.
   of them would fold into one and a line would vanish; they pass through by identity and take
   their place among the merged entries by `Weight`.
 - **Nothing gates a separator** — `Merge` keeps every line it was given — but the render below
-  still refuses to draw one with nothing on a side of it. `Hide` reads a leaf naming neither a
-  `PageType` nor a `Url` as denied, and a separator is not a leaf; it also cannot be what keeps a
-  group alive. `Leaves()` and `NavMenuItem.Find` ignore it for free, both keying on `PageType`.
+  still refuses to draw one with nothing on a side of it. `Hide` reads a leaf naming no
+  `PageType`, `Url` or `Command` as denied, and a separator is not a leaf; it also cannot be
+  what keeps a group alive. `Leaves()` and `NavMenuItem.Find` ignore it for free, both keying on `PageType`.
 - **A separator goes while the drawer's search box is filtering.** A filtered drawer is a list
   of matches and not the map, so the two families the line stood between are gone; keeping it
   draws a rule between nothing and nothing.
@@ -395,3 +407,28 @@ other end, the surface this session was on would be gone and no route brings it 
   `NavMenuResult.Url` — a finder resolved it, the drawer did not derive it either — and for the
   markdown renderer over a document's own links ([guide.md](guide.md)): one rule, because a
   second copy of it is a second answer.
+
+## A leaf running a `Command`
+
+**An entry may be an act instead of a place**: `Command` is a `Func<Task>` the contributor
+closes over its own services, run where the person stands — a sheet, a dialog — and the drawer
+draws it as one more row of the map, so the search finds it by the name on screen, `Permission`
+gates it and `Visible` hides it exactly as any leaf's. It names no page, so like a `Url` leaf it
+is never the active route, never asked of the `PageGate`, and carries no count; a destination
+wins where an entry names both.
+
+- **It is a BUTTON wearing the vendor's row** (`.ns-nav-command`), not `MudNavLink`: given no
+  `Href` the vendor draws a focusable div that no key presses and nothing names as a control.
+  Enter in the box presses it like the first link (`ns.js` names `.ns-nav-command button`).
+- **`Chord` is claimed on that button** (`NsKeys.Declare`), so the key runs what the click runs
+  and leaves with the row wherever the gate or `Visible` takes it. The row's word is on screen
+  and its key is not, so it whispers `Word (Keys)` as a chorded `NsButton` does
+  ([intentional-ui-cases-shell.md](../intentional-ui-cases-shell.md), the whisper).
+- **The frame's own Help group is the Stack's one contribution** (`HelpMenu`, registered by
+  `AddComponentServices` ahead of every kit's and app's contributor): *Help* last on the map,
+  opening with *Atajos de Teclado* — the "?" sheet, a `Command` carrying `NsKeys.Help`. An app
+  hangs its own help under it by naming `HelpMenu.Group` as a `Parent` (a guide, a way to
+  support) and arranges or hides the group as it would any kit's.
+- **`NavMenu.Help` and `NavMenu.Shortcuts` repeat `Common.Help` and `Common.Shortcuts` on
+  purpose**: an entry's label is `NavMenu.{Name}`, the sheet's title and the help button's label
+  are the `Common.` keys, and folding either pair into the other breaks one of the two sites.
