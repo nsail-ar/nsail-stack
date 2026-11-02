@@ -133,10 +133,17 @@ to `Branch`, a get or a list reads that branch's tree, and `Link` is the target'
 binary, so composing it grants the host that executable and the remotes it can reach.
 
 Each verb works in a throwaway one-commit clone and keeps nothing between calls, so two hosts
-never share a checkout. A push the remote rejected because the branch moved is fetched and
-committed again a few times before it is refused. The credential travels in the environment of
-the one process, as an HTTP basic header, and never on a command line. Its proof is
-`GitStorageTests`, against a bare repository on the local disk.
+never share a checkout. A write checks the branch out; a read fetches the tree without its files
+and then only the files it answers with — the key's for a get, those under the prefix for a list,
+whose lengths need them — so a small object costs no more in a large repository. A server that
+does not filter sends every file instead: slower, still right. A push the remote rejected because
+the branch moved is fetched and committed again a few times before it is refused.
+
+The credential travels in the environment of the one process, as an HTTP basic header scoped to
+the repository's origin, and never on a command line. git would carry that header on to wherever
+a redirect moved the address, so with a credential a redirect is refused, not followed: the call
+fails rather than hand the credential to an origin nobody configured. Its proof is
+`GitStorageTests`, against a bare repository on the local disk and loopback HTTP servers.
 
 ## The settings screen
 
