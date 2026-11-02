@@ -82,6 +82,7 @@ public class GitStorageProvider : IStorageProvider
     {
         using var clone = await Clone(target, Reach.Tree, cancelToken);
 
+        // The guard alone: a key outside the container or into `.git` is refused before git reads it.
         clone.Resolve(key);
 
         var blob = await clone.Blob(key, cancelToken);
@@ -427,10 +428,23 @@ public class GitStorageProvider : IStorageProvider
 
             await Fetch(blobs, cancelToken);
 
-            return (await Feed(cancelToken, string.Join('\n', blobs.Distinct()) + "\n", "cat-file", "--batch-check=%(objectname) %(objectsize)"))
-                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                .Select(line => line.Split(' '))
-                .ToDictionary(columns => columns[0], columns => long.Parse(columns[1], CultureInfo.InvariantCulture), StringComparer.Ordinal);
+            var checks = await Feed(cancelToken, string.Join('\n', blobs.Distinct()) + "\n", "cat-file", "--batch-check=%(objectname) %(objectsize)");
+            var lengths = new Dictionary<string, long>(StringComparer.Ordinal);
+
+            foreach (var line in checks.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var columns = line.Split(' ');
+
+                // A file the fetch did not bring answers `<id> missing`.
+                if (!long.TryParse(columns[1], NumberStyles.None, CultureInfo.InvariantCulture, out var length))
+                {
+                    throw Refused($"the file {columns[0]} could not be fetched");
+                }
+
+                lengths[columns[0]] = length;
+            }
+
+            return lengths;
         }
 
         // The file's bytes as the commit holds them: `cat-file` applies no attribute, filter or
@@ -555,7 +569,7 @@ public class GitStorageProvider : IStorageProvider
 
                     await process.WaitForExitAsync(cancelToken);
                 }
-                catch (OperationCanceledException)
+                catch (Exception)
                 {
                     process.Kill(entireProcessTree: true);
 
@@ -563,6 +577,8 @@ public class GitStorageProvider : IStorageProvider
 
                     throw;
                 }
+
+                await Task.WhenAll(output, error);
 
                 return (process.ExitCode, await output, await error);
             }
@@ -576,7 +592,7 @@ public class GitStorageProvider : IStorageProvider
         }
 
         // Both reads end with the killed process, faulted or cancelled: awaited here, so neither
-        // is left unobserved behind the cancellation this call throws.
+        // is left unobserved behind the cancellation, or the failed write, this call throws.
         static async Task Observe(params Task[] reads)
         {
             try

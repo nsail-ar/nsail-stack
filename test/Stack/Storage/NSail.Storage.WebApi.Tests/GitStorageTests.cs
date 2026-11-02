@@ -10,7 +10,8 @@ using System.Text;
 namespace NSail.Storage.Tests;
 
 // The provider against a bare repository on the local disk — the remote git speaks to with no
-// server — so what is proven is the real executable committing and pushing, not a fake of it.
+// server — so what is proven is the real executable committing and pushing, not a fake of it. What
+// git sends over HTTP, a credential and a cancelled read, is proven against loopback servers.
 public sealed class GitStorageTests : IDisposable
 {
     readonly Container _remote = new();
@@ -280,13 +281,19 @@ public sealed class GitStorageTests : IDisposable
 
         try
         {
-            using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            using var cancel = new CancellationTokenSource();
+            var listing = _provider.List(Credentialed(silent), null, cancel.Token);
+
+            // Cut once the server holds git's request, so what is cancelled is a read off the network.
+            await silent.Held.WaitAsync(TimeSpan.FromSeconds(60));
+
             var clock = Stopwatch.StartNew();
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _provider.List(Credentialed(silent), null, cancel.Token));
+            cancel.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => listing);
 
             Assert.True(clock.Elapsed < TimeSpan.FromSeconds(30), $"the call outlived its cancellation by {clock.Elapsed}");
-            Assert.NotEmpty(silent.Requests);
 
             GC.Collect();
             GC.WaitForPendingFinalizers();

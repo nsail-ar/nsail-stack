@@ -18,6 +18,7 @@ sealed class Loopback : IDisposable
     readonly Func<Request, string>? _answer;
     readonly ConcurrentBag<TcpClient> _connections = [];
     readonly CancellationTokenSource _stop = new();
+    readonly TaskCompletionSource _held = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public Loopback(Func<Request, string>? answer)
     {
@@ -31,6 +32,12 @@ sealed class Loopback : IDisposable
     public string Origin { get; }
 
     public ConcurrentQueue<Request> Requests { get; } = new();
+
+    // Completes once the server has read a request it will never answer: a line it holds.
+    public Task Held
+    {
+        get { return _held.Task; }
+    }
 
     // An empty repository as git's smart HTTP protocol, version 2, serves one: a capability
     // advertisement, then a ref listing that holds no ref.
@@ -89,6 +96,8 @@ sealed class Loopback : IDisposable
 
             if (_answer is null)
             {
+                _held.TrySetResult();
+
                 return;
             }
 
