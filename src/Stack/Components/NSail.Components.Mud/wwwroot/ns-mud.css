@@ -4158,6 +4158,17 @@ div.mud-input-slot.mud-input-root::placeholder {
     margin-top: 0.609rem;
 }
 
+/* A list's filter submit (NsSubmit As="Filter", nsail#3038) beside the fields it applies: the same
+   row partner as .ns-row-submit and the same arithmetic onto the neighbour's INPUT, but its own
+   mark, because .ns-row-submit also keys the add row's floor and would resize the filter's
+   fields. Its cell is the button's own width rather than a field's 14rem: a field's basis is what
+   the line wraps on, so a filter row with room for the button would push it alone onto a line
+   of its own. */
+.ns-grid > *:has(> .ns-filter-submit) {
+    --ns-field-width: auto;
+    margin-top: 0.609rem;
+}
+
 /* NsPanel's scroll shadow (intentional-ui, Refusal placement's neighbour — Leonardo,
    Nueva Receta dialog: "a veces no se nota que hay más cosas abajo"; ruled a SHADOW, not
    a chevron). The scrolling-shadows technique (Lea Verou): two SOLID "cover" bands pinned

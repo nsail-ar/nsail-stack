@@ -54,6 +54,10 @@ marked *(cases)* has its story there.
     no checkbox column left to mirror. `.ns-row-submit` marks a submit act that shares that same
     row with labeled fields instead of sitting in a form's own footer, so `align-items: flex-start` would otherwise
     leave it floating on the fields' label gutter rather than reading as their row partner.
+    A list's filter submit (`NsSubmit As="Filter"`) is the same partner with its own mark,
+    `ns-filter-submit`, put there by the component: `.ns-row-submit` also keys the add row's
+    floor and would resize the filter's fields. Its cell is the button's own width, not a field's,
+    so it wraps only when the line truly has no room for it.
     **`.ns-row-submit-gutter` is the mirror at the other end**, and goes on the `NsTable`: the
     add row ends in that act where the rows below it end in a cell's padding, so the table's
     **last column** is pinned to what the add row spends from the trailing edge inward — the
