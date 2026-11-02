@@ -6,6 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
+using NSail.Localization;
+using NSail.Metadata;
 
 namespace NSail.Components.Tests;
 
@@ -27,6 +29,12 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
         // The aside fixture renders a real NsDrawer, whose docked/overlay decision reads the
         // viewport service — JS-backed, and bUnit's loose interop answers it with nothing.
         Services.AddScoped<IBrowserViewportService>(_ => new FixedBreakpointViewportService(Breakpoint.Lg));
+
+        // NsSubmit's words.
+        Services.AddSingleton(new StringCatalog([]));
+        Services.AddSingleton<LanguageProvider>();
+        Services.AddSingleton<MetadataProvider>();
+        Services.AddSingleton<StringManager>();
     }
 
     Task IAsyncLifetime.InitializeAsync()
@@ -124,6 +132,30 @@ public sealed class NsFormGridTests : BunitContext, IAsyncLifetime
 
         Assert.Contains("ns-form-field", item.ClassList);
         Assert.Contains(item.Children, child => child.ClassList.Contains("ns-form-check"));
+    }
+
+    [Fact]
+    public void AFilterSubmitItem_isADirectChildOfTheGrid_soItsAlignmentSelectorMatches()
+    {
+        // nsail#3038: `.ns-grid > *:has(> .ns-filter-submit)` lines a list's filter submit up with
+        // its partner's input, and fires only if the mark rides the button the item parents. The
+        // form's own submit wears no mark: it owns a footer, not a row of fields.
+        var filter = Render<NsFormGridItem>(p => p.AddChildContent<NsSubmit>(s => s.Add(x => x.As, NsAs.Filter)));
+        var submit = Render<NsFormGridItem>(p => p.AddChildContent<NsSubmit>());
+
+        Assert.Contains(filter.Find("div").Children, child => child.ClassList.Contains("ns-filter-submit"));
+        Assert.DoesNotContain(submit.Find("div").Children, child => child.ClassList.Contains("ns-filter-submit"));
+
+        var css = HouseStylesheet.Read();
+
+        var item = css.IndexOf(".ns-grid > *:has(> .ns-filter-submit) {", StringComparison.Ordinal);
+        Assert.True(item >= 0, "the filter submit's item rule was not found in the stylesheet.");
+        Assert.Contains("margin-top: 0.609rem;", css[item..css.IndexOf('}', item)], StringComparison.Ordinal);
+        Assert.Contains("--ns-field-width: auto;", css[item..css.IndexOf('}', item)], StringComparison.Ordinal);
+
+        // The add row's own mark keys the floor its fields shrink to; the filter row must not
+        // reach it.
+        Assert.DoesNotContain("ns-row-submit", filter.Markup, StringComparison.Ordinal);
     }
 
     [Fact]
