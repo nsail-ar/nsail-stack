@@ -264,50 +264,7 @@ public sealed class GitStorageTests : IDisposable
         Assert.IsType<BusinessException>(failure);
     }
 
-    [Fact]
-    public async Task ACancelledCallKillsGitAndLeavesNoReadUnobserved()
-    {
-        using var silent = new Loopback(null);
-        var unobserved = new List<Exception>();
-        EventHandler<UnobservedTaskExceptionEventArgs> record = (_, args) =>
-        {
-            lock (unobserved)
-            {
-                unobserved.Add(args.Exception);
-            }
-        };
-
-        TaskScheduler.UnobservedTaskException += record;
-
-        try
-        {
-            using var cancel = new CancellationTokenSource();
-            var listing = _provider.List(Credentialed(silent), null, cancel.Token);
-
-            // Cut once the server holds git's request, so what is cancelled is a read off the network.
-            await silent.Held.WaitAsync(TimeSpan.FromSeconds(60));
-
-            var clock = Stopwatch.StartNew();
-
-            cancel.Cancel();
-
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => listing);
-
-            Assert.True(clock.Elapsed < TimeSpan.FromSeconds(30), $"the call outlived its cancellation by {clock.Elapsed}");
-
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-
-            Assert.Empty(unobserved);
-        }
-        finally
-        {
-            TaskScheduler.UnobservedTaskException -= record;
-        }
-    }
-
-    static StorageTarget Credentialed(Loopback server)
+    internal static StorageTarget Credentialed(Loopback server)
     {
         return new StorageTarget("git", server.Origin, "", "store.git", "user", "token", "", "");
     }
