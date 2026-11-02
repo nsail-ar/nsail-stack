@@ -82,9 +82,9 @@ anywhere stores nowhere.
 |---|---|
 | `Provider` | `file`, `s3` or `git`. Empty: the install stores nowhere until a row names a target. |
 | `Container` | The directory (`file`), the bucket (`s3`) or the repository under `Endpoint` (`git`). Required once `Provider` is named; refused at startup otherwise. |
-| `Endpoint` | The store's address (`s3`); the address the repository lives under (`git`), so the remote is `Endpoint/Container`. |
+| `Endpoint` | The store's address (`s3`); the address the repository lives under (`git`), so the remote is `Endpoint/Container`; with a credential it must be the address that answers, since a redirect is refused. |
 | `Region` | The signing region (`s3`); defaults to `auto`. |
-| `AccessKey`, `SecretKey` | The key pair (`s3`); the user and the token, sent as an HTTP basic header (`git`). |
+| `AccessKey`, `SecretKey` | The key pair (`s3`); the user and the token, sent as an HTTP basic header to the repository's origin only (`git`). |
 | `Branch` | The branch objects are committed to (`git`); defaults to `main`. |
 | `LinkTemplate` | Where an object is read (`git`), `{key}` standing for its path, e.g. a private repository's raw address. No template, no link. |
 

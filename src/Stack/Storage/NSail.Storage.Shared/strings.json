@@ -12,7 +12,7 @@
   "Storage.StorageStorePage.ContainerBucketHint": "The bucket objects are written to.",
   "Storage.StorageStorePage.EndpointHint": "The address of the S3-compatible service, without the bucket.",
   "Storage.StorageStorePage.RegionHint": "Leave empty unless the service asks for a region.",
-  "Storage.StorageStorePage.EndpointRepositoryHint": "The address the repositories live under, for example https://github.com.",
+  "Storage.StorageStorePage.EndpointRepositoryHint": "The address the repositories live under, for example https://github.com. With a token saved, a redirect is refused: the repository has to answer at this address under its current name.",
   "Storage.StorageStorePage.UserHint": "The user the token belongs to.",
   "Storage.StorageStorePage.TokenHint": "The access token with permission to push.",
   "Storage.StorageStorePage.ContainerRepositoryHint": "The repository the objects are committed to, under the address above.",

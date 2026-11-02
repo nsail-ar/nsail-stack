@@ -12,10 +12,13 @@ namespace NSail.Storage.Git;
 // A repository as the store: an object is a file at its key, a put or a delete is a commit
 // pushed to the branch, and a get or a list reads the branch's tree. The repository is
 // `Endpoint/Container`, the way S3 is `Endpoint/Container` with a bucket, and the credential is
-// sent as an HTTP basic header (AccessKey the user, SecretKey the token).
+// sent as an HTTP basic header (AccessKey the user, SecretKey the token) to the repository's
+// origin only.
 //
 // It runs the git executable the host has and holds nothing between calls: each verb works in a
-// throwaway one-commit clone, so no state outlives it and two hosts never share a checkout.
+// throwaway one-commit clone, so no state outlives it and two hosts never share a checkout. A
+// write checks the branch out to commit in it; a read fetches the tree without its files and then
+// only the files it answers with, so a small object costs no more in a large repository.
 public class GitStorageProvider : IStorageProvider
 {
     public const string ProviderType = "git";
@@ -51,7 +54,7 @@ public class GitStorageProvider : IStorageProvider
 
         for (var attempt = 1; ; attempt++)
         {
-            using var clone = await Clone(target, cancelToken);
+            using var clone = await Clone(target, Reach.WorkingTree, cancelToken);
             var path = clone.Resolve(key);
 
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -77,22 +80,26 @@ public class GitStorageProvider : IStorageProvider
 
     public async Task<ObjectContent?> Get(StorageTarget target, string key, CancellationToken cancelToken = default)
     {
-        using var clone = await Clone(target, cancelToken);
-        var path = clone.Resolve(key);
+        using var clone = await Clone(target, Reach.Tree, cancelToken);
 
-        if (!File.Exists(path))
+        // The guard alone: a key outside the container or into `.git` is refused before git reads it.
+        clone.Resolve(key);
+
+        var blob = await clone.Blob(key, cancelToken);
+
+        if (blob is null)
         {
             return null;
         }
+
+        await clone.Fetch([blob], cancelToken);
 
         // Copied out of the clone, which goes with this call, into a file that goes with the read.
         var copy = new FileStream(Path.GetTempFileName(), FileMode.Create, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.DeleteOnClose | FileOptions.Asynchronous);
 
         try
         {
-            await using var source = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
-
-            await source.CopyToAsync(copy, 81920, cancelToken);
+            await clone.Read(blob, copy, cancelToken);
         }
         catch
         {
@@ -112,7 +119,8 @@ public class GitStorageProvider : IStorageProvider
 
     public async Task<IReadOnlyList<StoredObject>> List(StorageTarget target, string? prefix, CancellationToken cancelToken = default)
     {
-        using var clone = await Clone(target, cancelToken);
+        // A length needs its file: with a prefix, only the files under it are fetched.
+        using var clone = await Clone(target, prefix is { Length: > 0 } ? Reach.Tree : Reach.Files, cancelToken);
 
         if (!clone.HasCommit)
         {
@@ -123,12 +131,17 @@ public class GitStorageProvider : IStorageProvider
         // `git log` per key.
         var modifiedAt = DateTimeOffset.Parse((await clone.Run(cancelToken, "log", "-1", "--format=%cI")).Trim(), CultureInfo.InvariantCulture);
 
-        return (await clone.Files(cancelToken))
+        var entries = (await clone.Blobs(cancelToken))
             .Where(entry => prefix is not { Length: > 0 } || entry.Key.StartsWith(prefix, StringComparison.Ordinal))
+            .ToList();
+
+        var lengths = await clone.Lengths(entries.Select(entry => entry.Blob).ToList(), cancelToken);
+
+        return entries
             .Select(entry => new StoredObject
             {
                 Key = entry.Key,
-                Length = entry.Length,
+                Length = lengths[entry.Blob],
                 ModifiedAt = modifiedAt,
             })
             .OrderBy(stored => stored.Key, StringComparer.Ordinal)
@@ -139,7 +152,7 @@ public class GitStorageProvider : IStorageProvider
     {
         for (var attempt = 1; ; attempt++)
         {
-            using var clone = await Clone(target, cancelToken);
+            using var clone = await Clone(target, Reach.WorkingTree, cancelToken);
             var path = clone.Resolve(key);
 
             if (!File.Exists(path))
@@ -176,7 +189,7 @@ public class GitStorageProvider : IStorageProvider
             : null;
     }
 
-    static async Task<Checkout> Clone(StorageTarget target, CancellationToken cancelToken)
+    static async Task<Checkout> Clone(StorageTarget target, Reach reach, CancellationToken cancelToken)
     {
         if (target.Endpoint is not { Length: > 0 })
         {
@@ -190,7 +203,7 @@ public class GitStorageProvider : IStorageProvider
 
         try
         {
-            await clone.Open(cancelToken);
+            await clone.Open(reach, cancelToken);
 
             return clone;
         }
@@ -215,6 +228,15 @@ public class GitStorageProvider : IStorageProvider
         return new BusinessException(BusinessProblem.RuleViolation(key, property, message));
     }
 
+    // What a verb needs of the branch's last commit: its tree alone, its tree with every file, or
+    // a working tree to commit in.
+    enum Reach
+    {
+        Tree,
+        Files,
+        WorkingTree,
+    }
+
     // One working directory holding the branch's last commit, deleted with it.
     sealed class Checkout : IDisposable
     {
@@ -229,6 +251,11 @@ public class GitStorageProvider : IStorageProvider
         }
 
         public bool HasCommit { get; private set; }
+
+        string Address
+        {
+            get { return $"{_target.Endpoint.TrimEnd('/')}/{_target.Container.Trim('/')}"; }
+        }
 
         public string Resolve(string key)
         {
@@ -249,11 +276,11 @@ public class GitStorageProvider : IStorageProvider
             return path;
         }
 
-        public async Task Open(CancellationToken cancelToken)
+        public async Task Open(Reach reach, CancellationToken cancelToken)
         {
             Directory.CreateDirectory(_root);
 
-            var address = $"{_target.Endpoint.TrimEnd('/')}/{_target.Container.Trim('/')}";
+            var address = Address;
 
             // The address and the branch are typed on a settings screen: neither may read as an
             // option to git.
@@ -287,10 +314,19 @@ public class GitStorageProvider : IStorageProvider
             // Exit code 2 is "no such ref": a new branch, or an empty repository.
             var (code, _, error) = await Execute(cancelToken, "ls-remote", "--exit-code", "--heads", "origin", reference);
 
-            if (code == 0)
+            if (code == 0 && reach == Reach.WorkingTree)
             {
                 await Run(cancelToken, "fetch", "--quiet", "--depth", "1", "origin", reference);
                 await Run(cancelToken, "checkout", "--quiet", "-B", _branch, "FETCH_HEAD");
+                HasCommit = true;
+            }
+            else if (code == 0)
+            {
+                // A server that does not filter sends every file instead: slower, still right.
+                await Run(cancelToken, reach == Reach.Tree
+                    ? ["fetch", "--quiet", "--depth", "1", "--filter=blob:none", "origin", reference]
+                    : ["fetch", "--quiet", "--depth", "1", "origin", reference]);
+                await Run(cancelToken, "update-ref", "HEAD", "FETCH_HEAD");
                 HasCommit = true;
             }
             else if (code == 2)
@@ -339,25 +375,98 @@ public class GitStorageProvider : IStorageProvider
             throw Refused(Describe(error));
         }
 
-        public async Task<IEnumerable<(string Key, long Length)>> Files(CancellationToken cancelToken)
+        // Every file of the tree and the id of its content, read from the tree alone: asking for
+        // sizes here would make git fetch every file.
+        public async Task<IEnumerable<(string Key, string Blob)>> Blobs(CancellationToken cancelToken)
         {
-            return (await Run(cancelToken, "ls-tree", "-r", "-l", "-z", "HEAD"))
-                .Split('\0', StringSplitOptions.RemoveEmptyEntries)
-                .Select(line =>
-                {
-                    var tab = line.IndexOf('\t');
-                    var columns = line[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-                    // `-` in the size column: not a blob (a submodule), so not an object.
-                    return (Key: line[(tab + 1)..], Size: columns[3], Mode: columns[0]);
-                })
-                .Where(entry => entry.Mode != "160000")
-                .Select(entry => (entry.Key, long.Parse(entry.Size, CultureInfo.InvariantCulture)));
+            return Entries(await Run(cancelToken, "ls-tree", "-r", "-z", "HEAD"));
         }
 
-        public async Task<string> Run(CancellationToken cancelToken, params string[] arguments)
+        // The id of the file at the key, or null: a key that names a directory or a submodule is
+        // no object.
+        public async Task<string?> Blob(string key, CancellationToken cancelToken)
         {
-            var (code, output, error) = await Execute(cancelToken, arguments);
+            if (!HasCommit)
+            {
+                return null;
+            }
+
+            var listed = await Run(cancelToken, "--literal-pathspecs", "ls-tree", "-z", "HEAD", "--", key);
+
+            return Entries(listed)
+                .Where(entry => entry.Key == key)
+                .Select(entry => entry.Blob)
+                .FirstOrDefault();
+        }
+
+        // The files a filtered fetch left out, fetched by id in one request, the way git fetches
+        // what a partial clone is missing.
+        public async Task Fetch(IReadOnlyCollection<string> blobs, CancellationToken cancelToken)
+        {
+            var present = (await Run(cancelToken, "cat-file", "--batch-all-objects", "--batch-check=%(objectname)"))
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .ToHashSet(StringComparer.Ordinal);
+
+            var missing = blobs.Where(blob => !present.Contains(blob)).Distinct().ToList();
+
+            if (missing.Count == 0)
+            {
+                return;
+            }
+
+            await Feed(cancelToken, string.Join('\n', missing) + "\n",
+                "-c", "fetch.negotiationAlgorithm=noop", "fetch", "--quiet", "--no-tags", "--no-write-fetch-head",
+                "--recurse-submodules=no", "--filter=blob:none", "--stdin", "origin");
+        }
+
+        public async Task<Dictionary<string, long>> Lengths(IReadOnlyCollection<string> blobs, CancellationToken cancelToken)
+        {
+            if (blobs.Count == 0)
+            {
+                return [];
+            }
+
+            await Fetch(blobs, cancelToken);
+
+            var checks = await Feed(cancelToken, string.Join('\n', blobs.Distinct()) + "\n", "cat-file", "--batch-check=%(objectname) %(objectsize)");
+            var lengths = new Dictionary<string, long>(StringComparer.Ordinal);
+
+            foreach (var line in checks.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var columns = line.Split(' ');
+
+                // A file the fetch did not bring answers `<id> missing`.
+                if (!long.TryParse(columns[1], NumberStyles.None, CultureInfo.InvariantCulture, out var length))
+                {
+                    throw Refused($"the file {columns[0]} could not be fetched");
+                }
+
+                lengths[columns[0]] = length;
+            }
+
+            return lengths;
+        }
+
+        // The file's bytes as the commit holds them: `cat-file` applies no attribute, filter or
+        // line-ending conversion.
+        public async Task Read(string blob, Stream destination, CancellationToken cancelToken)
+        {
+            var (code, _, error) = await Execute(cancelToken, null, destination, "cat-file", "blob", blob);
+
+            if (code != 0)
+            {
+                throw Refused(Describe(error));
+            }
+        }
+
+        public Task<string> Run(CancellationToken cancelToken, params string[] arguments)
+        {
+            return Feed(cancelToken, null, arguments);
+        }
+
+        async Task<string> Feed(CancellationToken cancelToken, string? input, params string[] arguments)
+        {
+            var (code, output, error) = await Execute(cancelToken, input, null, arguments);
 
             if (code != 0)
             {
@@ -367,7 +476,14 @@ public class GitStorageProvider : IStorageProvider
             return output;
         }
 
-        async Task<(int Code, string Output, string Error)> Execute(CancellationToken cancelToken, params string[] arguments)
+        Task<(int Code, string Output, string Error)> Execute(CancellationToken cancelToken, params string[] arguments)
+        {
+            return Execute(cancelToken, null, null, arguments);
+        }
+
+        // `input` goes to git's standard input; with a `sink`, the output is copied there as bytes
+        // instead of read as text.
+        async Task<(int Code, string Output, string Error)> Execute(CancellationToken cancelToken, string? input, Stream? sink, params string[] arguments)
         {
             var info = new ProcessStartInfo("git")
             {
@@ -375,6 +491,7 @@ public class GitStorageProvider : IStorageProvider
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 RedirectStandardInput = true,
+                StandardInputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };
@@ -403,12 +520,16 @@ public class GitStorageProvider : IStorageProvider
                 ("core.autocrlf", "false"),
             };
 
-            // The credential rides the environment of this one process, never its command line.
-            if (_target.SecretKey.Length > 0)
+            // The credential rides the environment of this one process, never its command line,
+            // and goes to the repository's origin only. git resolves the header once, for the
+            // address it started with, and would carry it on to wherever a redirect moved that
+            // address: so a redirect is refused, not followed.
+            if (_target.SecretKey.Length > 0 && Origin(Address) is { } origin)
             {
                 var basic = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_target.AccessKey}:{_target.SecretKey}"));
 
-                config.Add(("http.extraHeader", $"Authorization: Basic {basic}"));
+                config.Add(($"http.{origin}.extraHeader", $"Authorization: Basic {basic}"));
+                config.Add(($"http.{origin}.followRedirects", "false"));
             }
 
             info.Environment["GIT_CONFIG_COUNT"] = config.Count.ToString();
@@ -432,24 +553,79 @@ public class GitStorageProvider : IStorageProvider
 
             using (process)
             {
-                process.StandardInput.Close();
-
-                var output = process.StandardOutput.ReadToEndAsync(cancelToken);
+                var output = sink is null
+                    ? process.StandardOutput.ReadToEndAsync(cancelToken)
+                    : Copy(process.StandardOutput.BaseStream, sink, cancelToken);
                 var error = process.StandardError.ReadToEndAsync(cancelToken);
 
                 try
                 {
+                    if (input is not null)
+                    {
+                        await process.StandardInput.WriteAsync(input.AsMemory(), cancelToken);
+                    }
+
+                    process.StandardInput.Close();
+
                     await process.WaitForExitAsync(cancelToken);
                 }
-                catch (OperationCanceledException)
+                catch (Exception)
                 {
                     process.Kill(entireProcessTree: true);
+
+                    await Observe(output, error);
 
                     throw;
                 }
 
+                await Task.WhenAll(output, error);
+
                 return (process.ExitCode, await output, await error);
             }
+        }
+
+        static async Task<string> Copy(Stream source, Stream sink, CancellationToken cancelToken)
+        {
+            await source.CopyToAsync(sink, 81920, cancelToken);
+
+            return "";
+        }
+
+        // Both reads end with the killed process, faulted or cancelled: awaited here, so neither
+        // is left unobserved behind the cancellation, or the failed write, this call throws.
+        static async Task Observe(params Task[] reads)
+        {
+            try
+            {
+                await Task.WhenAll(reads);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        // `scheme://host[:port]/`, which git matches against the address and every path under it.
+        static string? Origin(string address)
+        {
+            return Uri.TryCreate(address, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+                ? $"{uri.Scheme}://{uri.Authority}/"
+                : null;
+        }
+
+        // `ls-tree` lines are `<mode> <type> <id>\t<path>`; a submodule's type is `commit`.
+        static IEnumerable<(string Key, string Blob)> Entries(string listed)
+        {
+            return listed
+                .Split('\0', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line =>
+                {
+                    var tab = line.IndexOf('\t');
+                    var columns = line[..tab].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                    return (Key: line[(tab + 1)..], Type: columns[1], Blob: columns[2]);
+                })
+                .Where(entry => entry.Type == "blob")
+                .Select(entry => (entry.Key, entry.Blob));
         }
 
         public void Dispose()
@@ -469,7 +645,7 @@ public class GitStorageProvider : IStorageProvider
         }
 
         // The credential never reaches an error: git does not echo headers, and what it echoes
-        // of the address is the address the host configured.
+        // of an address is the one the host configured or the one a refused redirect named.
         static string Describe(string error)
         {
             var text = error.Trim();

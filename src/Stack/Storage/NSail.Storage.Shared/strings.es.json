@@ -12,7 +12,7 @@
   "Storage.StorageStorePage.ContainerBucketHint": "El bucket donde se escriben los objetos.",
   "Storage.StorageStorePage.EndpointHint": "La dirección del servicio compatible con S3, sin el bucket.",
   "Storage.StorageStorePage.RegionHint": "Dejala vacía salvo que el servicio pida una región.",
-  "Storage.StorageStorePage.EndpointRepositoryHint": "La dirección bajo la que viven los repositorios, por ejemplo https://github.com.",
+  "Storage.StorageStorePage.EndpointRepositoryHint": "La dirección bajo la que viven los repositorios, por ejemplo https://github.com. Con un token guardado se rechaza toda redirección: el repositorio tiene que contestar en esta dirección y con su nombre actual.",
   "Storage.StorageStorePage.UserHint": "El usuario al que pertenece el token.",
   "Storage.StorageStorePage.TokenHint": "El token de acceso con permiso para hacer push.",
   "Storage.StorageStorePage.ContainerRepositoryHint": "El repositorio donde se commitean los objetos, bajo la dirección de arriba.",

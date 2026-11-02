@@ -10,7 +10,8 @@ using System.Text;
 namespace NSail.Storage.Tests;
 
 // The provider against a bare repository on the local disk — the remote git speaks to with no
-// server — so what is proven is the real executable committing and pushing, not a fake of it.
+// server — so what is proven is the real executable committing and pushing, not a fake of it. What
+// git sends over HTTP, a credential and a cancelled read, is proven against loopback servers.
 public sealed class GitStorageTests : IDisposable
 {
     readonly Container _remote = new();
@@ -194,6 +195,98 @@ public sealed class GitStorageTests : IDisposable
     public void HasNoLinkWithoutATemplate()
     {
         Assert.Null(_provider.Link(Target with { LinkTemplate = "" }, "a.txt"));
+    }
+
+    // A file whose content the remote no longer holds fails any fetch that asks for it, so a read
+    // that still answers proves it never asked.
+    [Fact]
+    public async Task GetsAnObjectWithoutFetchingAnyOtherFile()
+    {
+        var payload = "the one asked for"u8.ToArray();
+
+        await Put("reports/ledger.csv", payload);
+        await Put("backups/large.zip", "never fetched"u8.ToArray());
+        ServeFilteredFetches();
+        Lose("backups/large.zip");
+
+        using var stored = await _provider.Get(Target, "reports/ledger.csv");
+
+        Assert.NotNull(stored);
+
+        using var readBack = new MemoryStream();
+        await stored.Content.CopyToAsync(readBack);
+
+        Assert.Equal(payload, readBack.ToArray());
+        Assert.Null(await _provider.Get(Target, "reports/never.csv"));
+        Assert.Null(await _provider.Get(Target, "reports"));
+    }
+
+    [Fact]
+    public async Task ListsAPrefixWithoutFetchingAFileOutsideIt()
+    {
+        await Put("reports/a.csv", "12345"u8.ToArray());
+        await Put("reports/b.csv", "1"u8.ToArray());
+        await Put("backups/c.zip", "never fetched"u8.ToArray());
+        ServeFilteredFetches();
+        Lose("backups/c.zip");
+
+        var listed = await _provider.List(Target, "reports/");
+
+        Assert.Equal(["reports/a.csv", "reports/b.csv"], listed.Select(stored => stored.Key));
+        Assert.Equal([5L, 1L], listed.Select(stored => stored.Length));
+    }
+
+    [Fact]
+    public async Task ReadsEveryLengthFromAServerThatFiltersAndOneThatDoesNot()
+    {
+        await Put("reports/a.csv", "12345"u8.ToArray());
+        await Put("backups/c.zip", "123"u8.ToArray());
+
+        var unfiltered = await _provider.List(Target, "reports/");
+
+        ServeFilteredFetches();
+
+        Assert.Equal([5L], unfiltered.Select(stored => stored.Length));
+        Assert.Equal([5L], (await _provider.List(Target, "reports/")).Select(stored => stored.Length));
+        Assert.Equal([3L, 5L], (await _provider.List(Target, null)).Select(stored => stored.Length));
+    }
+
+    [Fact]
+    public async Task SendsTheCredentialToNoOriginARedirectNames()
+    {
+        using var elsewhere = new Loopback(Loopback.EmptyRepository);
+        using var configured = new Loopback(request => Loopback.Redirect($"{elsewhere.Origin}{request.Path}"));
+
+        var failure = await Record.ExceptionAsync(() => _provider.List(Credentialed(configured), null));
+
+        Assert.DoesNotContain(elsewhere.Requests, request => request.Authorization is not null);
+        Assert.Contains(configured.Requests, request => request.Authorization is not null);
+        Assert.IsType<BusinessException>(failure);
+    }
+
+    internal static StorageTarget Credentialed(Loopback server)
+    {
+        return new StorageTarget("git", server.Origin, "", "store.git", "user", "token", "", "");
+    }
+
+    // The bare remote answers a filtered fetch and a fetch by id, as a hosted one does.
+    void ServeFilteredFetches()
+    {
+        var bare = Path.Combine(_remote.Path, "store.git");
+
+        Git(bare, "config", "uploadpack.allowFilter", "true");
+        Git(bare, "config", "uploadpack.allowAnySHA1InWant", "true");
+    }
+
+    // A small push arrives as loose objects, one file per object.
+    void Lose(string key)
+    {
+        var bare = Path.Combine(_remote.Path, "store.git");
+        var blob = Git(bare, "rev-parse", $"main:{key}").Trim();
+        var file = Path.Combine(bare, "objects", blob[..2], blob[2..]);
+
+        File.SetAttributes(file, FileAttributes.Normal);
+        File.Delete(file);
     }
 
     async Task Put(string key, byte[] payload)
