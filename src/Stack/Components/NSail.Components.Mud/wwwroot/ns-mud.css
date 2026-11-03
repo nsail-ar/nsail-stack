@@ -1424,6 +1424,14 @@
     color: var(--ns-rail-text);
 }
 
+/* A chip that wears its own fill reads its own ink, which its icon inherits: the rail's ink is
+   chosen against the rail's ground, not against the chip's. Outlined chips carry no fill and
+   stay on the rail's ink. */
+.ns-nav-drawer .mud-chip-filled .mud-icon-root,
+.ns-nav-drawer .mud-chip-text .mud-icon-root {
+    color: inherit;
+}
+
 /* The muted rank survives the rail. .ns-text-muted alone is one class and loses to the
    rule above, so the rank is restated at the same weight and after it — and against the
    rail's fixed ground, not the theme's text-secondary, which flips with the lights. */
