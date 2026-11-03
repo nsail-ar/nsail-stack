@@ -131,6 +131,22 @@ public sealed class AccentInkTests : BunitContext
             Stylesheet());
     }
 
+    // A chip with its own fill is the one thing in the drawer whose ground is not the rail's: the
+    // rail's icon rule (one class and an element-free selector) would repaint its glyph in the
+    // rail's ink, so the chip's icon is handed back to the chip's text colour, at a weight above it.
+    [Fact]
+    public void AFilledChipInsideTheDrawerKeepsItsIconsInk()
+    {
+        var css = Stylesheet();
+
+        Assert.Contains(
+            ".ns-nav-drawer .mud-chip-filled .mud-icon-root,\n.ns-nav-drawer .mud-chip-text .mud-icon-root {\n    color: inherit;",
+            css);
+        Assert.True(
+            css.IndexOf(".ns-nav-drawer .mud-icon-root {", StringComparison.Ordinal)
+                < css.IndexOf(".ns-nav-drawer .mud-chip-filled .mud-icon-root", StringComparison.Ordinal));
+    }
+
     // The band's token is the chrome's answer and the rail is where it becomes a rail word, the
     // same way every other slot in that block renames a theme value into the vocabulary the rules
     // under it read. The fallback is the band's own ink: a theme that never mounted leaves the
