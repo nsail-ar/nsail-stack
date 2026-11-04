@@ -551,10 +551,10 @@
    not safe — at a 712px container the asiento's row has 103px of slack while the comprobante's
    is already 52px past its own table — so between 740px and md the open row seats its fields
    in the row's own width, and under 740px it stops being a row of columns at all and every
-   field takes its own card line (the container block below, where a table stacks). A preference is what this rule used to hand a narrow row
-   instead, 192px out of its own surplus (nsail#1242); the stack gives the same cell 654px in the
-   same 688px aside, so the word that was only ever the best of a bad width is gone rather than
-   left to decide nothing. */
+   field takes its own card line (the container block below, where a table stacks). A
+   preference is what this rule used to hand a narrow row instead, 192px out of its own
+   surplus (nsail#1242); the stack gives the same cell 654px in the same 688px aside, so the
+   word that was only ever the best of a bad width is gone rather than left to decide nothing. */
 @container (min-width: 960px) {
     .ns-table .mud-table-cell:has(.mud-autocomplete .mud-input-control.flex-1) {
         min-width: var(--ns-field-grow-basis, 12rem);
@@ -775,8 +775,8 @@
    What that reaches is the band between md and a column's own threshold. A table stacks
    wherever its container cannot seat it (the container block below), so a table still laid
    out in columns has a container of 740px or more, and the only columns hidden that far up
-   are the ones a grid declared Md (under a 960px container), Lg or Xl — EditorRowColumnModeTests measures it in a 1000px
-   container, on the comprobante's Lg column.
+   are the ones a grid declared Md (under a 960px container), Lg or Xl —
+   EditorRowColumnModeTests measures it in a 1000px container, on the comprobante's Lg column.
 
    Deliberately NOT scoped by a media query of its own: complementing the vendor's
    max-width:960px with a min-width would leave a fractional gap between the two, so this
@@ -1108,8 +1108,9 @@
    the same right-packed action strip, the foot kept as its own card, the open row's label above
    its field. Only the question differs: this asks the container. Gated under a wide VIEWPORT so
    the two regimes never both answer: below 960px the vendor's stack holds and the block above
-   corrects it. They meet at exactly 960px, where both fire and say the same thing — an overlap of
-   one pixel is worth less than the fractional gap a min-width complementing a max-width leaves.
+   corrects it. The window gates meet at exactly 960px, where both fire and say the same thing —
+   an overlap of one pixel is worth less than the fractional gap a min-width complementing a
+   max-width leaves.
 
    The vendor's base is COPIED here (the hidden head, display, the label pseudo, the dense stacked
    padding, the body's top line and the row's separator) rather than reached for: the vendor's own

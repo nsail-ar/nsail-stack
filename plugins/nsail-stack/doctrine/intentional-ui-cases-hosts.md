@@ -462,9 +462,10 @@ any window, so it asks the container alone (`ContainerStackTests`).
   not the main page's. The widest aside is `NsDrawer` `Lg` at 720px; the narrowest surface a
   desktop gives a main page's list is around 760px. Between the two, an aside is cards and a
   default `Md` main page is a table of columns, its `Md` columns hidden by their own 960px rung
-  until its container reaches it. A threshold at the window's 960px would catch every main list
-  on a desktop (a `Md` page seats its table in about 928px), which is a list read as cards
-  where it has room for a table.
+  until its container reaches it. `Xl` is no aside's width but the surface's own, so it is never
+  the case: a list in one reads as the main page's does. A threshold at the window's 960px would
+  catch every main list on a desktop (a `Md` page seats its table in about 928px), which is a
+  list read as cards where it has room for a table.
 - **The gate is an overlap, not a complement.** The window regimes meet at exactly 960px, where
   both fire and say the same thing. Complementing `max-width: 960px` with `min-width: 960.02px` would
   leave a fractional gap where neither does — the trap the `ns-table-editing` rule above the
@@ -482,7 +483,7 @@ any window, so it asks the container alone (`ContainerStackTests`).
   anonymous table-row and cell, which lands in column 1 and takes that column's width — the whole
   table is what stacks, in the vendor's rules and in these.
 
-What the column-mode rule keeps is the band between `md` and a column's own threshold: a 1000px
+What the column-mode rule keeps is the band between 740px and a column's own threshold: a 1000px
 container hides Nuevo Comprobante's `Lg` column and frees it again while the row is open
 (`EditorRowColumnModeTests`). The geometry itself is in `OpenRowFitsItsContainerTests` — the
 aside walked through its own door, and the other three line editors at the same container width —

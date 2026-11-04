@@ -289,15 +289,18 @@ that could not pay loses its own Confirmar. Below `md` one number cannot tell ro
 712px container Nuevo Asiento's row has 103px of slack while Nuevo Comprobante's is 52px past
 its table.
 
-**Below `md` the open row stacks; a width preference was rejected.** A `width` preference moves
+**Below `md` the open row seats its fields in its own width, and under 740px it stacks; a width
+preference was rejected.** A `width` preference moves
 the column's max-content, never the table's min-content, so the row grants the basis out of its
 surplus: Cuenta went from a 35px box to 106px against a 76px account code, Producto stayed put,
 and a two-column row was pulled back from 305px to 192. Not enough: in a 688px aside Precio
 unitario sat in a 56px box against 110px of "125.430,50" with every column already at its share.
 **An edit row has to fit** — hiding is per container but an input never hides (ui/hosts.md), so
-the open row is the widest thing a grid draws — and what fits under `md` is the stack
+the open row is the widest thing a grid draws — and what fits an aside is the stack
 ([cases: hosts](intentional-ui-cases-hosts.md), *A table stacks where its container cannot seat
-it*).
+it*). Between 740px and `md` the row stays a row of columns with no floor: that is a main page's
+list, whose line editor is handed the row's own width rather than a minimum one row could not
+pay.
 
 **Reach of the floor** (column mode, `md` and up): the product lookups in `SaleLinesEditor`,
 `PurchaseOrderLinesEditor`, `VoucherLinesEditor` and `PriceRulesEditor`, the `RoleLookup` in

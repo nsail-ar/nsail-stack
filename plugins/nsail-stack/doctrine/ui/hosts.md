@@ -305,21 +305,22 @@ are asked in that same breath, for the reason and through the walk the list's ar
   (`ns-cell-editing`) and `ns-mud.css` shapes them, so no editor lays its own row out and every
   stacked editor reads the same way (cases).
 - **A growing lookup's cell asks for its width floor from `md` up and for nothing below it.** The
-  floor is column arithmetic and below `md` there is no column to do it in: the open row stacks
-  (next bullet) and a card line is already the widest a field can be, so there is nothing left to
-  ask for and nothing to take back (cases).
-- **An open row stacks with its table where the container is under `md`, whatever the window is
+  floor is column arithmetic, and below `md` one number cannot tell rows apart: one row has slack
+  where another is already past its table. Between 740px and `md` the open row seats its fields
+  in the row's own width; under 740px it stacks (next bullet) and a card line is already the
+  widest a field can be, so there is nothing left to ask for and nothing to take back (cases).
+- **An open row stacks with its table where the container is under 740px, whatever the window is
   doing** — the container rule of *Columns and widths*, and the row that most needs it. An edit
-  input never hides, so the open row is the one thing in a grid that cannot be narrowed, and under
-  `md` it does not fit any line editor in the tree: in the 688px container a `Lg` aside leaves,
+  input never hides, so the open row is the one thing in a grid that cannot be narrowed, and in
+  an aside it does not fit any line editor in the tree: in the 688px container a `Lg` aside leaves,
   four inputs that need over 950px between them were handed 104, 74, 57 and 47, and "125.430,50"
   read "50". The shape is the phone's — same card lines, same label above the field — and only
   the QUESTION differs: the vendor's stack asks the viewport, this asks the container.
 - **In column mode the whole table stops hiding while a row is open**, header and read rows with
   it (`ns-table-editing`). A `display: none` cell generates no box, so a freed editor row would
   otherwise own more columns than the header does and drop every input one column off. That is
-  the band between `md` and a column's own threshold — under `md` the row has stopped being a row
-  of columns — and it is still no phone's case: a 1000px container on a laptop hides a `Lg`
+  the band between 740px and a column's own threshold — under 740px the row has stopped being a
+  row of columns — and it is still no phone's case: a 1000px container on a laptop hides a `Lg`
   column from a row it frees. **The reading list only stays shorter where nothing is being
   aligned**: stacked, a cell is a card line and the read rows go on hiding.
 

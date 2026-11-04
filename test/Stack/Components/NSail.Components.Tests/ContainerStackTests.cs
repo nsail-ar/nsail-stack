@@ -8,8 +8,9 @@ namespace NSail.Components.Tests;
 /// <summary>A list narrowed by an aside on a wide screen stacks its rows as cards: the vendor's
 /// stack asks the viewport, so the house's own copy asks the container, under
 /// <c>@media (min-width: 960px) { @container (max-width: 739.98px) }</c>: past the widest aside
-/// (720px), short of the narrowest main surface. bUnit runs no query, so what is pinned is the stylesheet itself — every
-/// table reached, not only one with a row open — and the readers that drop with the stack.</summary>
+/// (720px), short of the narrowest main surface. bUnit runs no query, so what is pinned is the
+/// stylesheet itself — every table reached, not only one with a row open — and the readers that
+/// drop with the stack.</summary>
 public sealed class ContainerStackTests
 {
     const string Query = "@media (min-width: 960px) {\n    @container (max-width: 739.98px) {\n";
