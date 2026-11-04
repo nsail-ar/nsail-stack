@@ -1,0 +1,124 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
+
+using System.Text;
+using System.Text.Json;
+using NSail.Harness.Lanes;
+
+namespace NSail.Harness.Jobs;
+
+// What a seat reads about its story, laid on disk by the harness before the seat starts: the
+// seat never asks the board itself, so it spends no turns on it, holds no token for it, and reads
+// every word as data. `prs.md` is the story's PRs with their files, reviews and gate verdicts;
+// `runs.md` is how the story's last jobs on this machine ended, for a seat reading why it died.
+public sealed class StoryDossier(JobContext ctx, JobHistory history)
+{
+    // The story itself: its words as filed or ruled, where it stands, what it wears, and every
+    // comment on it, oldest first.
+    public async Task WriteStory(int story, string outDir, CancellationToken ct)
+    {
+        var board = ctx.Board;
+        var (title, body, _) = await board.Story(story, ct);
+        var text = new StringBuilder();
+        text.AppendLine($"# {ctx.Names.Ref(story)} — {title}");
+        text.AppendLine();
+        text.AppendLine($"Stage: {await board.StageOf(story, ct)} · Labels: {string.Join(", ", (await board.Labels(story, ct)).Order(StringComparer.Ordinal))}");
+        text.AppendLine();
+        text.AppendLine("## Body");
+        text.AppendLine();
+        text.AppendLine(body.Trim());
+        text.AppendLine();
+        text.AppendLine("## Thread");
+        foreach (var c in await board.Comments(story, ct))
+        {
+            text.AppendLine();
+            text.AppendLine($"--- {c.Author} {c.At:O}");
+            text.AppendLine(c.Body.Trim());
+        }
+        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), text.ToString(), ct);
+    }
+
+    public async Task WritePrs(int story, string outDir, CancellationToken ct)
+    {
+        var text = new StringBuilder();
+        foreach (var which in new[] { "open", "merged" })
+        {
+            foreach (var pr in await ctx.Repos.PrsOf(story, which, ct))
+            {
+                text.AppendLine($"## {(pr.Repo == ctx.Repo.Name ? "" : pr.Repo.Split('/')[1] + " ")}PR #{pr.Number} — {which}{(pr.MergedAt is { } m ? $" {m:O}" : "")}");
+                text.AppendLine($"Title: {pr.Title}");
+                text.AppendLine($"Branch: {pr.Head}");
+                // Each PR is read from its own repository: a story built in another repository has its reviews on that repository's PR.
+                var repo = ctx.Repos.Of(pr.Repo);
+                var description = (await repo.Pr(pr.Number, ct)).Body.Trim();
+                if (description.Length > 0)
+                {
+                    text.AppendLine("Description:");
+                    text.AppendLine(description);
+                }
+                text.AppendLine("Files:");
+                foreach (var f in await repo.Files(pr.Number, ct)) text.AppendLine($"- {f}");
+                text.AppendLine();
+                foreach (var (at, body) in await repo.Thread(pr.Number, ct))
+                {
+                    text.AppendLine($"--- {at:O}");
+                    text.AppendLine(body.Trim());
+                    text.AppendLine();
+                }
+            }
+        }
+        await File.WriteAllTextAsync(Path.Combine(outDir, "prs.md"), text.Length == 0 ? "(no PR for this story)\n" : text.ToString(), ct);
+    }
+
+    public async Task WriteRuns(int story, string outDir, CancellationToken ct)
+    {
+        var text = new StringBuilder();
+        foreach (var job in history.Jobs().Where(j => j.Story == story && j.Ended is not null).TakeLast(4))
+        {
+            text.AppendLine($"## {job.Work} — {job.Outcome} ({job.Started:O} → {job.Ended:O})");
+            text.AppendLine(Tail(job.LogPath));
+            text.AppendLine();
+        }
+        await File.WriteAllTextAsync(Path.Combine(outDir, "runs.md"), text.Length == 0 ? "(no job of this story on this machine)\n" : text.ToString(), ct);
+    }
+
+    // A job's log is the agent's stream plus the harness's own lines: what it said last, and the
+    // plain lines around its end, are what tell how it died.
+    internal static string Tail(string path)
+    {
+        if (!File.Exists(path)) return "(log gone)";
+        var plain = new List<string>();
+        var said = new List<string>();
+        foreach (var line in File.ReadLines(path))
+        {
+            if (!line.StartsWith('{'))
+            {
+                plain.Add(line);
+                continue;
+            }
+            try
+            {
+                using var doc = JsonDocument.Parse(line);
+                var e = doc.RootElement;
+                var type = e.TryGetProperty("type", out var t) ? t.GetString() : null;
+                if (type == "result" && e.TryGetProperty("result", out var r) && r.ValueKind == JsonValueKind.String) said.Add($"[result] {r.GetString()}");
+                if (type == "assistant" && e.TryGetProperty("message", out var msg) && msg.TryGetProperty("content", out var content))
+                {
+                    foreach (var c in content.EnumerateArray())
+                    {
+                        if (c.TryGetProperty("type", out var ct) && ct.GetString() == "text" && c.TryGetProperty("text", out var tx)) said.Add(tx.GetString() ?? "");
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+            }
+        }
+        var tail = new StringBuilder();
+        tail.AppendLine("Last words:");
+        foreach (var s in said.TakeLast(3)) tail.AppendLine(s.Length > 1500 ? s[..1500] + " …" : s);
+        tail.AppendLine("Last plain lines:");
+        foreach (var p in plain.TakeLast(25)) tail.AppendLine(p);
+        return tail.ToString();
+    }
+}

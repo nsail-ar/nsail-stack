@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# jq built for Windows ends every line it prints with CRLF, and the monorepo's scripts read its
+# lines as issue numbers and shas: a `2718\r` is no issue, and a QA drain once walked a whole
+# pile and wrote nothing back. Put first on a lane's PATH by the NSail Harness; -b keeps LF.
+set -u
+
+here="$(cd "$(dirname "$0")" && pwd)"
+real="$(PATH="${PATH//$here:/}" command -v jq || true)"
+[ -n "$real" ] || { echo "nsail: no jq on the PATH" >&2; exit 127; }
+
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) exec "$real" -b "$@" ;;
+  *) exec "$real" "$@" ;;
+esac

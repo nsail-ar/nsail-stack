@@ -105,6 +105,13 @@ tenant walls, throttling and Swagger.
 `NSail.BaseServices.WebApi` · `.WebApp` · `.Wasm` · `NSail.Configuration` · `NSail.Telemetry`
 → [BaseServices](src/Stack/BaseServices/README.md) · [Configuration](src/Stack/Configuration/README.md) · [Telemetry](src/Stack/Telemetry/README.md)
 
+### Harness
+
+A local dispatcher for an AI crew: it reads a board, plans the next work finishing before
+starting, and runs analysts, builders, reviewers, releases and QA walkers on the machine.
+`NSail.Harness` · `.Sdk` · `.GitHub` · `.Claude` · `.Hosting`
+→ [Harness](src/Stack/Harness/README.md)
+
 ### Services
 
 - **Localization and Metadata** — texts per language, keyed from the namespace.

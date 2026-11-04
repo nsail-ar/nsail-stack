@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
+
+using NSail.Harness.Board;
+
+namespace NSail.Harness.Planning;
+
+public sealed record BoardSnapshot(
+    IReadOnlyList<Issue> Issues,
+    IReadOnlyList<StoryPr> Prs,
+    Flight Flight,
+    IReadOnlyList<ReleaseCandidate> Releases,
+    DateTimeOffset? LastQaAt,
+    DateTimeOffset? LastCutAt,
+    IReadOnlyDictionary<(int Story, string Label), TimeSpan> LockAges,
+    DateTimeOffset ReadAt,
+    string Repo)
+{
+    // The holder of each story's lock: a harness's machine.
+    public IReadOnlyDictionary<int, string> LockHolders { get; init; } = new Dictionary<int, string>();
+
+    // The release buttons whose day's cut is due on this machine's clock (Steps.Release).
+    public IReadOnlyList<string> DueReleases { get; init; } = [];
+
+    // main's head, and the last head of main this machine's gate judged (null: none yet).
+    public string? MainSha { get; init; }
+    public string? MainGated { get; init; }
+
+    // The stories In-Progress with no open PR whose PR has merged (FilterOptions.PrMerged).
+    public IReadOnlySet<int> MergedStories { get; init; } = new HashSet<int>();
+
+    // Per product (lowercase), its newest published release whose stories are not walked yet.
+    public IReadOnlyDictionary<string, string> Unshipped { get; init; } = new Dictionary<string, string>();
+}
