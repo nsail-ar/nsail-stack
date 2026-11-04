@@ -31,7 +31,7 @@ public class ConfigurationTests
         Assert.True(o.Gate);
         Assert.Equal(".github/builder-prompt.md", o.Seats[o.Workers["develop"].Seat!].PromptFile);
         Assert.Equal("${vars:QA_USER}", o.Workers["test"].Variables["QA_USER"]);
-        Assert.Equal(1, config.GetSection(ClaudeOptions.Section).Get<ClaudeOptions>()!.Plugins.Count);
+        Assert.Single(config.GetSection(ClaudeOptions.Section).Get<ClaudeOptions>()!.Plugins);
 
         var board = config.GetSection("Harness:Board").Get<GitHubBoardOptions>()!;
         Assert.Equal(("acme/app", 1, "Status"), (board.Repository, board.Project, board.StatusField));

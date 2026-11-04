@@ -21,24 +21,99 @@ public class MappedBoardTests
             return Task.FromResult(stories);
         }
 
-        public Task<string> StageOf(int story, CancellationToken ct = default) => Task.FromResult(Column);
-        public Task SetStage(int story, string stage, CancellationToken ct = default) { Column = stage; return Task.CompletedTask; }
-        public Task<bool> TrySetStage(int story, string stage, ILogger log, CancellationToken ct = default) { Column = stage; return Task.FromResult(true); }
-        public Task<IReadOnlySet<string>> Labels(int story, CancellationToken ct = default) => Task.FromResult<IReadOnlySet<string>>(Worn.ToHashSet());
-        public Task AddLabels(int story, params string[] labels) { Worn.UnionWith(labels); return Task.CompletedTask; }
-        public Task RemoveLabel(int story, string label) { Worn.Remove(label); return Task.CompletedTask; }
-        public Task<StoryText> Story(int story, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<string>> KnownLabels(CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlyDictionary<string, DateTimeOffset>> LabeledAt(int story, IReadOnlyCollection<string> labels, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<DateTimeOffset?> LastLift(int story, IReadOnlyCollection<string> labels, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task Comment(int story, string body) => throw new NotSupportedException();
-        public Task<IReadOnlyList<StoryComment>> Comments(int story, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task UpdateBody(int story, string body, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task Close(int story, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<int> CreateStory(string title, string body, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<int?> FindOpen(string title, bool exact = true, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<int> Children(int story, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<IReadOnlyList<(int Number, string Stage)>> ClosedSince(DateTimeOffset since, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<string> StageOf(int story, CancellationToken ct = default)
+        {
+            return Task.FromResult(Column);
+        }
+
+        public Task SetStage(int story, string stage, CancellationToken ct = default)
+        {
+            Column = stage;
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> TrySetStage(int story, string stage, ILogger log, CancellationToken ct = default)
+        {
+            Column = stage;
+            return Task.FromResult(true);
+        }
+
+        public Task<IReadOnlySet<string>> Labels(int story, CancellationToken ct = default)
+        {
+            return Task.FromResult<IReadOnlySet<string>>(Worn.ToHashSet());
+        }
+
+        public Task AddLabels(int story, params string[] labels)
+        {
+            Worn.UnionWith(labels);
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveLabel(int story, string label)
+        {
+            Worn.Remove(label);
+            return Task.CompletedTask;
+        }
+
+        public Task<StoryText> Story(int story, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IReadOnlyList<string>> KnownLabels(CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IReadOnlyDictionary<string, DateTimeOffset>> LabeledAt(int story, IReadOnlyCollection<string> labels, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<DateTimeOffset?> LastLift(int story, IReadOnlyCollection<string> labels, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task Comment(int story, string body)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IReadOnlyList<StoryComment>> Comments(int story, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task UpdateBody(int story, string body, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task Close(int story, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> CreateStory(string title, string body, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int?> FindOpen(string title, bool exact = true, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<int> Children(int story, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<IReadOnlyList<(int Number, string Stage)>> ClosedSince(DateTimeOffset since, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 
     static readonly Dictionary<string, string> Columns = new() { [Stages.InProgress] = "Doing", [Stages.Ready] = "To do" };

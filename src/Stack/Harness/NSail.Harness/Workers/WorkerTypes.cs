@@ -32,11 +32,30 @@ public static class WorkerTypes
     // The holds a story waits under for someone's word; locks (a job's own labels) are the engine's.
     static readonly List<string> Holds = ["!ruling", "!stalled", "!blocked", "!hand"];
 
-    static ActionOptions MoveTo(string stage) => new() { MoveTo = stage };
-    static ActionOptions Add(string labels) => new() { AddLabel = labels };
-    static ActionOptions Remove(string labels) => new() { RemoveLabel = labels };
-    static ActionOptions Say(string comment) => new() { Comment = comment };
-    static ActionOptions Close() => new() { Close = true };
+    static ActionOptions MoveTo(string stage)
+    {
+        return new() { MoveTo = stage };
+    }
+
+    static ActionOptions Add(string labels)
+    {
+        return new() { AddLabel = labels };
+    }
+
+    static ActionOptions Remove(string labels)
+    {
+        return new() { RemoveLabel = labels };
+    }
+
+    static ActionOptions Say(string comment)
+    {
+        return new() { Comment = comment };
+    }
+
+    static ActionOptions Close()
+    {
+        return new() { Close = true };
+    }
 
     // A bug's comment carries the marker the next walk counts (BugAgain).
     public const string QaBugMarker = "<!-- qa-bug -->";
