@@ -38,8 +38,8 @@
         @* The app's "go anywhere" is this box and not a palette beside it: what Ctrl+K can
            reach is the menu, which is the one list of where a session may go, and a second
            source would be a second thing to keep in step with it. The chord rides the box
-           itself (NsSearchField's Map); "?" rides the Help group's Atajos de Teclado entry
-           (HelpMenu). Both keys are the FRAME's — a screen that draws no header of its own
+           itself (NsSearchField's Map); "?" runs the Help group's Atajos de Teclado entry
+           (HelpMenu), claimed below the box. Both keys are the FRAME's — a screen that draws no header of its own
            still has them, and a phone, where the drawer is closed, has neither.
            ns-nav-find is also the hook the Enter policy answers on: Enter in this box opens the
            first entry still shown (ns.js). *@
@@ -53,6 +53,16 @@
                 @Tools
             }
         </div>
+        @* Where a command entry's chord is claimed: outside every group and every filter, so a
+           term left in the box — Enter opened its first match and the box keeps the text — does
+           not take the frame's "?" with the row it filtered out. Undrawn rather than display:none,
+           which would read as not live (ns.js); the row stays the door a person sees, and it is
+           the one that announces the key. Outside .ns-nav-find, whose clicks and Enter are the
+           box's own. *@
+        @foreach (var item in Chorded(_items))
+        {
+            <button type="button" class="ns-nav-claim" tabindex="-1" aria-hidden="true" @onclick="item.Command" @attributes="Claims(item)">@GetName(item)</button>
+        }
     </Header>
     <Content>
         @* The page's own index, above the app's map and never instead of it. The drawer is the
@@ -148,6 +158,8 @@
     string _counted = string.Empty;
 
     readonly Dictionary<NavMenuItem, Dictionary<string, object>> _claims = [];
+
+    readonly Dictionary<NavMenuItem, Dictionary<string, object>> _announced = [];
 
     [CascadingParameter]
     public Task<AuthenticationState>? AuthenticationState { get; set; }
@@ -276,6 +288,7 @@
 
         _hidden.Clear();
         _claims.Clear();
+        _announced.Clear();
 
         foreach (var item in merged)
         {
@@ -383,7 +396,7 @@
 
     // Held per entry rather than rebuilt per render, for NsKeys.Declare's reason. A chorded row
     // whispers its word and key as a chorded NsButton does (intentional-ui-cases-shell.md): the
-    // word is on screen, the key is not.
+    // word is on screen, the key is not. The claim's whisper is what the "?" sheet names it by.
     Dictionary<string, object> Claims(NavMenuItem item)
     {
         if (!_claims.TryGetValue(item, out var claims))
@@ -399,6 +412,41 @@
         }
 
         return claims;
+    }
+
+    // The row's half of the same claim: the key it announces and whispers, without the attribute
+    // the layer dispatches on, which the undrawn claim in the header carries instead.
+    Dictionary<string, object> Announced(NavMenuItem item)
+    {
+        if (!_announced.TryGetValue(item, out var announced))
+        {
+            announced = new Dictionary<string, object>(Claims(item));
+            announced.Remove(NsKeys.Attribute);
+
+            _announced[item] = announced;
+        }
+
+        return announced;
+    }
+
+    // Every command entry the gate and Visible left that carries a chord, wherever it sits on the
+    // map and whatever the search shows: the same test Render's command branch draws a row by.
+    IEnumerable<NavMenuItem> Chorded(IEnumerable<NavMenuItem> items)
+    {
+        foreach (var item in Visible(items))
+        {
+            if (item.Items.Count > 0)
+            {
+                foreach (var chorded in Chorded(item.Items))
+                {
+                    yield return chorded;
+                }
+            }
+            else if (item.PageType is null && item.Url is null && item.Command is not null && item.Chord is { Length: > 0 })
+            {
+                yield return item;
+            }
+        }
     }
 
     IEnumerable<NavMenuItem> Visible(IEnumerable<NavMenuItem> items)
@@ -839,10 +887,10 @@
                    presses and nothing names as a control. The vendor's own reset of a button
                    and its nav-link row already lay this out, as they do a group's header row,
                    which is a button too. The button is what Enter in the box
-                   presses (ns.js), what the entry's chord activates, and what Space and Enter
-                   press when it has the focus. *@
+                   presses (ns.js) and what Space and Enter press when it has the focus; its
+                   chord is claimed in the header (Chorded). *@
                 <div class="mud-nav-item ns-nav-entry ns-nav-command">
-                    <button type="button" class="mud-nav-link mud-ripple" @onclick="item.Command" @attributes="Claims(item)">
+                    <button type="button" class="mud-nav-link mud-ripple" @onclick="item.Command" @attributes="Announced(item)">
                         @if (item.Icon is { } icon)
                         {
                             <MudIcon Icon="@icon.Markup" Class="mud-nav-link-icon mud-nav-link-icon-default" />

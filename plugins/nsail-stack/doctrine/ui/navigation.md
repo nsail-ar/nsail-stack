@@ -420,9 +420,13 @@ wins where an entry names both.
 - **It is a BUTTON wearing the vendor's row** (`.ns-nav-command`), not `MudNavLink`: given no
   `Href` the vendor draws a focusable div that no key presses and nothing names as a control.
   Enter in the box presses it like the first link (`ns.js` names `.ns-nav-command button`).
-- **`Chord` is claimed on that button** (`NsKeys.Declare`), so the key runs what the click runs
-  and leaves with the row wherever the gate or `Visible` takes it. The row's word is on screen
-  and its key is not, so it whispers `Word (Keys)` as a chorded `NsButton` does
+- **`Chord` is claimed off the map, on an undrawn button running the same `Command`**
+  (`.ns-nav-claim` in the drawer's header, `NsKeys.Declare`), so the key runs what the click
+  runs and leaves with the row wherever the gate or `Visible` takes it — but not where the
+  search does: a term left in the box (Enter opened its first match) filters the row out, and
+  the key is the frame's, not the filter's. The row keeps `aria-keyshortcuts` and not
+  `data-ns-keys`, so one control answers the chord. Its word is on screen and its key is not,
+  so it whispers `Word (Keys)` as a chorded `NsButton` does
   ([intentional-ui-cases-shell.md](../intentional-ui-cases-shell.md), the whisper).
 - **The frame's own Help group is the Stack's one contribution** (`HelpMenu`, registered by
   `AddComponentServices` ahead of every kit's and app's contributor): *Help* last on the map,

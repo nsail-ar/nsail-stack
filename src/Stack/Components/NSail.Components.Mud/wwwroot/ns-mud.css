@@ -1484,6 +1484,20 @@
     margin: 6px 0;
 }
 
+/* A command entry's chord, claimed off the map (NsNavMenu, Chorded). Clipped near zero and out
+   of flow, as .ns-cells-add-undrawn is: display:none would read as no claim at all (ns.js,
+   live). */
+.ns-nav-claim {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+}
+
 /* The vendor's label wrapper (.mud-nav-link-text) is a plain div, not a row, so a count
    riding inside it has no flex line to auto-margin against. This is that row, scoped to the
    drawer AND to a wrapper that actually holds a count, so .ns-nav-count's own margin-left:
