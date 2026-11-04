@@ -12,7 +12,7 @@ namespace NSail.Components.Tests;
 
 /// <summary>A numeric box draws spin buttons only where its value has a step: a percent is a
 /// fraction, so the vendor's step of 1 would move it a hundred points, while a numeric field's
-/// caller sets the Step its buttons take.</summary>
+/// caller sets the Step its buttons take and a duration's figure steps by the hour.</summary>
 public sealed class NsNumericSpinButtonsTests : BunitContext, IAsyncLifetime
 {
     public NsNumericSpinButtonsTests()
@@ -58,5 +58,20 @@ public sealed class NsNumericSpinButtonsTests : BunitContext, IAsyncLifetime
         cut.FindAll(".mud-input-numeric-spin button")[0].Click();
 
         Assert.Equal(1.25m, stepped);
+    }
+
+    [Fact]
+    public void A_duration_field_steps_its_spin_buttons_by_an_hour()
+    {
+        TimeSpan? stepped = null;
+        var cut = Render<NsDurationField<TimeSpan>>(ps => ps
+            .Add(p => p.Value, TimeSpan.FromHours(2))
+            .Add(p => p.ValueChanged, value => stepped = value));
+
+        Assert.NotEmpty(cut.FindAll(".mud-input-numeric-spin"));
+
+        cut.FindAll(".mud-input-numeric-spin button")[0].Click();
+
+        Assert.Equal(TimeSpan.FromHours(3), stepped);
     }
 }

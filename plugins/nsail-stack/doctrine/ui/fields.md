@@ -169,8 +169,10 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   `NsPercentField` draw none: a price has no step, a percent is a fraction under `Format="P"` so
   the vendor's default step of 1 would move it a hundred points, and in a slot as narrow as
   `.ns-money-slot` or a grid column the buttons cover the right end of the figure. `NsNumericField`
-  keeps them because its caller sets the `Step` they take (a diopter steps by 0.25). Inside a grid
-  the arrow keys are the grid's either way — the buttons answer only a pointer.
+  keeps them because its caller sets the `Step` they take (a diopter steps by 0.25), and
+  `NsDurationField` because its figure is a count of hours, so the vendor's step of 1 is one
+  hour. Inside a grid the arrow keys are the grid's either way — the buttons answer only a
+  pointer.
 - **A figure in the install's own currency wears no code.** `NsMoneyField` renders `N2` in the
   reader's grouping — character for character what every total, saldo and list cell writes
   beside it — and shows a code only when its `Currency` is set; a figure written as text takes
