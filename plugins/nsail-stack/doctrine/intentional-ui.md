@@ -936,9 +936,11 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   rule — the long form of what the cell already says, never the only copy — so a fact with no
   word in the cell rides `NsHint`, whose glyph is that word.
 - **A status cell is one state**: quiet text (`NsStatusText`, still no chip), and that state's
-  detail — when it began, what it reported — on its whisper (`NsTooltip`), never a second line.
+  detail on its whisper (`NsTooltip`), never a second line. The detail is the long form of the
+  word — why it failed, what it waits for — so the whisper stays the second copy; a fact the
+  row shows nowhere else, such as what a task reported, is a disclosure of its own (`NsHint`).
 - **A product cell shows the product's own logo beside its name**, the mark a reader already
   scans for; the name stays, since an image is never the only signal.
 - **A running act is disabled and its icon turns**, for as long as its work goes on and not
-  only for the click: `ActionItem.Running`, drawn by every presenter of the item
-  ([ui/actions.md](ui/actions.md)). A page never hand-builds that face.
+  only for the click: `ActionItem.Running`, drawn by `NsAction`, the toolbar row and a kebab
+  row ([ui/actions.md](ui/actions.md)). A page never hand-builds that face.

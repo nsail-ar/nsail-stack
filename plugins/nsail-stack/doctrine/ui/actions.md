@@ -88,7 +88,7 @@ complaint the rule answers: a phone's title row came out three different heights
 | Component | Behavior | `As` |
 |---|---|---|
 | `NsButton` | plain command button — `OnClick`/`Icon`/`Label`/`Breakpoint`, plus `Submits` for the one that drives a form's `Submit()` (below) | `Default` (default), `Main`, `Important`, `Danger`, `Inline` |
-| `NsAction` | wraps `NsButton` with an `ActionItem` (`@GetAction(Delete, row, NsIcons.Delete)`): click, icon and label (`"Actions.{Method}"`) in one call. **Withholds itself inside a form that refuses writes** unless the item declares it writes nothing. **Holds `NsIcons.Progress` in the item's own glyph slot for as long as `OnClick` is in flight**, greyed out, and returns to whatever the item's own face is once the call ends — the row's re-render decides what that is, never this component | same as `NsButton`, default `Inline` at `Never` — an act that wants its word writes `Breakpoint="NsBreakpoint.Always"` |
+| `NsAction` | wraps `NsButton` with an `ActionItem` (`@GetAction(Delete, row, NsIcons.Delete)`): click, icon and label (`"Actions.{Method}"`) in one call. **Withholds itself inside a form that refuses writes** unless the item declares it writes nothing. **Holds `NsIcons.Progress` in the item's own glyph slot for as long as `OnClick` is in flight or the item is `Running`**, greyed out and deaf to a press, and returns to whatever the item's own face is once both end — the row's re-render decides what that is, never this component | same as `NsButton`, default `Inline` at `Never` — an act that wants its word writes `Breakpoint="NsBreakpoint.Always"` |
 | `NsLink` | plain navigation link (a real `<a>`) — `Href`/`Target`/`Fragment`/`Icon`/`Label`/`Breakpoint`; greyed by a disabled form, never by one that is merely saving (below) | `Inline` (default), `Default`, `Main`, `Important` |
 | `NsPageLink` | wraps `NsLink` for a destination page (`TPage=`/`Parameters=`): `Href` from the route table, `Label` from the page's own `Title` | same as `NsLink` |
 | `NsSubmit` | submits the form (`type=submit`, native Enter — except over an open lookup or select, where Enter picks the option and the form never sees it, [fields.md](fields.md)); greys out until the cascaded `FormTracked` reports changes (an `Untracked` form never gates); words itself through `ChildContent`, `Label` restating that word as a string (below) | hero (the accent), label pinned (`Breakpoint` `Always`); `Filter` = quiet search-bar look; `Send` = same hero chrome, paper-airplane glyph and `Enviar` as its own default word, for a submit that sends words rather than saves a document — the composer draws it ([forms.md](forms.md), *The composer*) |
@@ -345,13 +345,14 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   ordinary ink, which is every act that reports no state.
 - **`Running` is the act's work still going, by the page's own state** — a task still on the box
   long after the click returned. Beside `Disabled` because it is state the page sets on the
-  item, and every presenter honours it: `NsAction` draws the face of a click in flight
-  (`NsIcons.Progress` turning, the loading word, disabled, and a press never reaches `OnClick`),
-  the toolbar carries it to its leading items and its constant (a running link draws that
-  command face, not an anchor), and a kebab row turns its glyph and is disabled. The page hands
-  a new item with `Running` false when its state says the work ended. **It is not the click's
-  own moment**: `NsAction` holds that by itself, for as long as `OnClick` runs, and a page sets
-  nothing for it.
+  item, and every presenter that draws it as an act honours it: `NsAction` draws the face of a
+  click in flight (`NsIcons.Progress` turning, the loading word, disabled, and a press never
+  reaches `OnClick`), the toolbar carries it to its leading items and its constant (a running
+  link draws that command face, not an anchor), and a kebab row turns its glyph and is
+  disabled. An item with a `Menu` is drawn as that menu and ignores it: a menu offers a choice
+  and starts no work. The page hands a new item with `Running` false when its state says the
+  work ended. **It is not the click's own moment**: `NsAction` holds that by itself, for as long
+  as `OnClick` runs, and a page sets nothing for it.
 - **Link actions are gated by the destination page's own authorize attributes**, through the
   same single gate the nav menu and a lookup's create entry use, so a hidden menu entry, a
   hidden create entry and a hidden row action never disagree. **Command actions carry no gate**;

@@ -507,4 +507,5 @@ the rest behind a disclosure that opens on a tap too.
   paragraph is one tap away.
 - **A running act** was a page's own work: a backup whose task is still on the box redrew its
   verb by hand, with a glyph of the product's and `Disabled`. `ActionItem.Running` is that face
-  in the Stack, the one a click in flight already wears, so every presenter of the item draws it.
+  in the Stack, the one a click in flight already wears, so every presenter that draws the item
+  as an act draws it.
