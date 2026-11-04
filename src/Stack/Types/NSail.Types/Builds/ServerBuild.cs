@@ -28,7 +28,7 @@ public sealed class ServerBuild
     public void Answered(string? version)
     {
         if (string.IsNullOrWhiteSpace(version)
-            || string.Equals(version, BuildVersion.Current, StringComparison.Ordinal))
+            || string.Equals(Release(version), Release(BuildVersion.Current), StringComparison.Ordinal))
         {
             return;
         }
@@ -39,5 +39,15 @@ public sealed class ServerBuild
         }
 
         Changed?.Invoke();
+    }
+
+    // Build metadata (`+<revision>`) is ignored when versions are compared (SemVer 2.0, 10), so
+    // two words that differ only in it are the same build; a different version, older included,
+    // still moves.
+    static string Release(string version)
+    {
+        var plus = version.IndexOf('+', StringComparison.Ordinal);
+
+        return plus < 0 ? version : version[..plus];
     }
 }
