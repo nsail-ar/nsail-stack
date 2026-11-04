@@ -12,8 +12,8 @@ namespace NSail.Components;
 // persisting callbacks run together, so one card mounted twice in a document (a layout that draws
 // the brand in two places) would otherwise empty every handoff of the page. The prerender writes
 // each key once, whichever instance read it last; the client takes each key once and hands the
-// answer to each instance's first ask, for as long as one of them is mounted — a card that mounts
-// after they are all gone reads afresh.
+// answer to each instance's first ask, for as long as one of them is mounted and none has read
+// again — a card that mounts after that reads afresh.
 sealed class HandoffLedger
 {
     static readonly ConditionalWeakTable<PersistentComponentState, HandoffLedger> Ledgers = new();
@@ -66,6 +66,10 @@ sealed class HandoffLedger
 
     public void Remember<TResult>(string key, object holder, TResult result)
     {
+        // A real read outdates the arrival's answer: a copy mounted after it asks rather than
+        // adopting what a sibling already read past.
+        _taken.Remove(key);
+
         // Registered once per state and never by a component, with the render mode named: the
         // reading happens at the END of the prerender, and a component that read on the way to a
         // screen it does not reach is gone by then. AuthorizeRouteView draws its Authorizing

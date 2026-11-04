@@ -341,7 +341,8 @@ public abstract class NsPartial : NsComponent
     /// dashboards already key their cells by it) and the message type names the read, so a card
     /// with two reads hands both over. Scope is what tells two instances of one card type apart
     /// on the same page: a subject card passes its subject. Two instances under one key — one
-    /// card drawn twice — share one answer, persisted once and adopted by both.</summary>
+    /// card drawn twice — share one answer, persisted once and adopted by each on its first read.
+    /// An instance asking again sends, and once any copy has sent, a copy mounted later sends too.</summary>
     protected async Task<TResult> Handoff<TResult>(
         IMessage<TResult> message, object? scope = null, CancellationToken? cancellationToken = null)
     {

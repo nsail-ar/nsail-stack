@@ -142,6 +142,27 @@ public sealed class NsPartialHandoffTests : BunitContext
         Assert.Equal(1, _mediator.Sends);
     }
 
+    /// <summary>A copy that read again has outdated the arrival's answer: a copy mounted after it
+    /// sends rather than adopting what its sibling already read past.</summary>
+    [Fact]
+    public async Task ACardMountedAfterACopyReReadSendsToo()
+    {
+        Services.AddSingleton((await Handoff.Carrying(Key, new ProbeAnswer { Count = 42 })).State);
+
+        var pair = Render<HandoffProbePair>();
+        var copy = pair.FindComponents<HandoffProbeCard>()[0];
+
+        copy.Render();
+
+        copy.WaitForAssertion(() => Assert.Equal("7", copy.Find("#figure").TextContent));
+
+        var cut = Render<HandoffProbeCard>();
+
+        cut.WaitForAssertion(() => Assert.Equal("7", cut.Find("#figure").TextContent));
+
+        Assert.Equal(2, _mediator.Sends);
+    }
+
     /// <summary>The shared answer lives as long as a copy holds it: a card mounted after every
     /// copy is gone reads afresh rather than adopting the arrival's answer.</summary>
     [Fact]
