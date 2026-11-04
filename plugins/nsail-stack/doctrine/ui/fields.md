@@ -491,6 +491,10 @@ words land under it and the label then travels off them.
 - **Not CSS.** `ns-mud.css` restates the vendor's shrink geometry once, under
   `:-webkit-autofill`, and that is for a state C# genuinely cannot see: the browser writing a
   saved credential straight into the DOM. A state the component knows is declared in C#.
+- **A box that ends on a key can draw it: `NsTextField.KeyHint`.** The key cap sits at the
+  trailing edge while the box is empty — the mark `NsSearchField` draws for its chord, same
+  classes — aria-hidden and never in the placeholder, which is the input's name fallback. It
+  is a reminder, not a claim: Enter is answered by `OnCommit` whether or not it is drawn.
 - **A permanent suffix is the one shape the derivation cannot reach, and it floats the label
   regardless of value, text or focus.** A `Suffix` or unit prints exactly where a long label
   would otherwise rest at empty, unfocused rest, and no value is coming to lift it. Two shapes

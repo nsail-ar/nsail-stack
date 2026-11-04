@@ -4,26 +4,47 @@
 @namespace NSail.Components
 @inherits NsTextFieldBase<string>
 
-<MudTextField T="string"
-              Value="@GetDisplay()"
-              ValueChanged="OnTextChanged"
-              Mask="@GetMask()"
-              Label="@GetLabel()"
-              Placeholder="@Placeholder"
-              Required="IsRequired"
-              Disabled="IsDisabled"
-              ReadOnly="IsReadOnly"
-              AutoFocus="FocusOnRender"
-              Immediate="true"
-              MaxLength="@MaxTypedLength"
-              OnBlur="Leaving"
-              OnKeyDown="Pressing"
-              ShrinkLabel="ShrinkLabel"
-              Adornment="@(Suffix is { Length: > 0 } ? Adornment.End : Adornment.None)"
-              AdornmentText="@Suffix"
-              Variant="Variant.Outlined"
-              Margin="Margin.Dense"
-              Error="@HasError()"
-              ErrorText="@GetErrorText()"
-              UserAttributes="InputAttributes" />
+@if (KeyHint is { Length: > 0 })
+{
+    @* The key that commits the box, drawn inside it the way NsSearchField draws its chord and
+       never written into the placeholder, which is the input's name fallback. Decoration only:
+       aria-hidden, and only while the box is empty. *@
+    <div class="@GetBoxClasses()" style="@GetBoxStyle()">
+        @Field
+        @if (IsKeyed)
+        {
+            <span class="ns-search-key" aria-hidden="true">@KeyHint</span>
+        }
+    </div>
+}
+else
+{
+    @Field
+}
 <NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+
+@code {
+
+    RenderFragment Field => @<MudTextField T="string"
+                                           Value="@GetDisplay()"
+                                           ValueChanged="OnTextChanged"
+                                           Mask="@GetMask()"
+                                           Label="@GetLabel()"
+                                           Placeholder="@Placeholder"
+                                           Required="IsRequired"
+                                           Disabled="IsDisabled"
+                                           ReadOnly="IsReadOnly"
+                                           AutoFocus="FocusOnRender"
+                                           Immediate="true"
+                                           MaxLength="@MaxTypedLength"
+                                           OnBlur="Leaving"
+                                           OnKeyDown="Pressing"
+                                           ShrinkLabel="ShrinkLabel"
+                                           Adornment="@(Suffix is { Length: > 0 } ? Adornment.End : Adornment.None)"
+                                           AdornmentText="@Suffix"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           Error="@HasError()"
+                                           ErrorText="@GetErrorText()"
+                                           UserAttributes="InputAttributes" />;
+}

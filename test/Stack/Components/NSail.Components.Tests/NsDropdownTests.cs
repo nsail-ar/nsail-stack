@@ -130,6 +130,20 @@ public sealed class NsDropdownTests : BunitContext, IAsyncLifetime
         Assert.False(seen);
     }
 
+    // The catcher sits one tier under the popover ceiling; the panel names the ceiling itself, or
+    // the vendor seats it at its default tier, under the catcher, and a click on a row closes it.
+    [Fact]
+    public void ThePanel_SitsAboveItsCatcher()
+    {
+        Render(open: true);
+
+        var panel = _provider.Find(".ns-dropdown-panel").GetAttribute("style") ?? string.Empty;
+        var catcher = _provider.Find(".mud-overlay").GetAttribute("style") ?? string.Empty;
+
+        Assert.Contains($"z-index:{SurfaceContext.VendorZIndex}", panel.Replace(" ", string.Empty), StringComparison.Ordinal);
+        Assert.Contains($"z-index:{SurfaceContext.VendorZIndex - 1}", catcher.Replace(" ", string.Empty), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void TheWrapperIsTheFlexItemTheFieldWas()
     {

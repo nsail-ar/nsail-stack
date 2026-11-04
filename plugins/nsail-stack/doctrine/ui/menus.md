@@ -198,6 +198,11 @@ from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is
   the dropdown re-cascades the surface, `ParentDisabled`, `ParentReadOnly` and the
   `EditContext`, as `NsMenu` does, so an `NsLink` with a `Target` resolves from the surface the
   field stands on and an act inside a read-only form is withdrawn.
+- **The panel names its own tier, one above its catcher.** The click-outside catcher sits one
+  tier under the popover ceiling (`SurfaceContext.VendorZIndex - 1`), and the vendor script seats
+  a popover from a tier it reads before the theme writes it — under the catcher, where the first
+  click on a row would close the panel instead. So the panel carries `z-index` at the ceiling
+  itself; `NsHelp` and `NsHint` build the same pair and do the same.
 - **Closing is the dropdown's.** A click outside lands on an overlay one tier under the popover
   (as `NsHelp`'s), and Escape from the wrapper or from inside the panel does the same: both set
   `Open` false and tell the host through `OpenChanged`. The overlay covers the field while the

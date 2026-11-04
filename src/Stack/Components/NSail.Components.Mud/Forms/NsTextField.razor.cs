@@ -44,6 +44,27 @@ public partial class NsTextField
     [Parameter]
     public bool ShrinkLabel { get; set; }
 
+    /// <summary>The key that commits what was typed, drawn as a key cap at the box's trailing
+    /// edge while it is empty ("Enter" on a box a reader or a person ends with Enter). A reminder,
+    /// not a claim: the field answers the key through OnCommit whether or not it is drawn.</summary>
+    [Parameter]
+    public string? KeyHint { get; set; }
+
+    bool IsKeyed => KeyHint is { Length: > 0 } && string.IsNullOrEmpty(GetDisplay());
+
+    string GetBoxClasses()
+    {
+        return new NsClassBuilder("ns-search-box")
+            .Add(GrowClass)
+            .Add("ns-search-keyed", IsKeyed)
+            .ToString();
+    }
+
+    string? GetBoxStyle()
+    {
+        return IsKeyed ? $"--ns-search-key-chars: {KeyHint!.Length}" : null;
+    }
+
     IMask? GetMask()
     {
         // Rebuilt only when the pattern itself changes: the vendor compares its Mask
