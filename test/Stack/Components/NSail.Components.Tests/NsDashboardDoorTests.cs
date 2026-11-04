@@ -243,8 +243,35 @@ public sealed class NsDashboardDoorTests : BunitContext, IAsyncLifetime
 
         var door = cut.Find(".ns-card-header .mud-card-header-actions a");
 
-        Assert.Contains(PathOf(NsIcons.ChevronRight), door.InnerHtml);
-        Assert.DoesNotContain(PathOf(NsIcons.Search), door.InnerHtml);
+        Assert.Contains(GlyphPath.Of(NsIcons.ChevronRight), door.InnerHtml);
+        Assert.DoesNotContain(GlyphPath.Of(NsIcons.Search), door.InnerHtml);
+    }
+
+    /// <summary>The header compacts its block padding around the door rather than the door
+    /// (ns-mud.css, ONE ROW FOR A HEADER'S ACTS). bUnit lays nothing out, so what is pinned is the
+    /// three things the compaction rests on: the header still wears the vendor's padding class,
+    /// the vendor's rule on that selector is the one being corrected, and the house's correction
+    /// shipped on the same selector, which ties it on specificity and wins on load order.</summary>
+    [Fact]
+    public void TheHeaderCompactsItsBlockPaddingOnTheVendorsOwnSelector()
+    {
+        var auth = SetupFor();
+        auth.SetAuthorized("someone");
+
+        Services.AddSingleton<IDashboardContributor>(new TestContributor(
+            new DashboardItem { Name = "HasDoor", CardType = typeof(DoorlessTestCard), PageType = typeof(OpenDoorTestPage) }));
+
+        var cut = Render<NsDashboard>();
+
+        Assert.Contains("mud-card-header-padding", cut.Find(".ns-card-header").ClassList);
+
+        Assert.Contains(".mud-card-header.mud-card-header-padding{padding:16px}", VendorStylesheet.Read(), StringComparison.Ordinal);
+
+        var css = HouseStylesheet.Read();
+        var start = css.IndexOf(".ns-card-header.mud-card-header-padding {", StringComparison.Ordinal);
+
+        Assert.True(start >= 0, "The header's padding rule was not found in the stylesheet.");
+        Assert.Contains("padding-block: 8px;", css[start..css.IndexOf('}', start)], StringComparison.Ordinal);
     }
 
     /// <summary>A card nested inside another card's content draws no second door: the cascade
@@ -262,10 +289,5 @@ public sealed class NsDashboardDoorTests : BunitContext, IAsyncLifetime
         var cut = Render<NsDashboard>();
 
         Assert.Single(cut.FindAll(".ns-card-header .mud-card-header-actions"));
-    }
-
-    static string PathOf(NSail.Icons.Glyph glyph)
-    {
-        return System.Text.RegularExpressions.Regex.Match(glyph.Markup, "d=\"([^\"]+)\"").Groups[1].Value;
     }
 }

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using System.Text.RegularExpressions;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Components.Tests.Fixtures;
@@ -42,9 +41,9 @@ public sealed class NsSubmitIntentionTests : BunitContext, IAsyncLifetime
         var send = Render<NsSubmit>(p => p.Add(x => x.As, NsAs.Send));
         var submit = Render<NsSubmit>();
 
-        Assert.Contains(PathOf(NsIcons.Send), Paths(send));
-        Assert.DoesNotContain(PathOf(NsIcons.Check), Paths(send));
-        Assert.Contains(PathOf(NsIcons.Check), Paths(submit));
+        Assert.Contains(GlyphPath.Of(NsIcons.Send), Paths(send));
+        Assert.DoesNotContain(GlyphPath.Of(NsIcons.Check), Paths(send));
+        Assert.Contains(GlyphPath.Of(NsIcons.Check), Paths(submit));
 
         Assert.Contains("mud-button-filled-primary", send.Find("button").ClassName, StringComparison.Ordinal);
     }
@@ -52,14 +51,5 @@ public sealed class NsSubmitIntentionTests : BunitContext, IAsyncLifetime
     static IEnumerable<string?> Paths(IRenderedComponent<NsSubmit> button)
     {
         return button.FindAll("path").Select(path => path.GetAttribute("d"));
-    }
-
-    static string PathOf(Glyph glyph)
-    {
-        var match = Regex.Match(glyph.Markup, "d=\"([^\"]+)\"");
-
-        Assert.True(match.Success);
-
-        return match.Groups[1].Value;
     }
 }
