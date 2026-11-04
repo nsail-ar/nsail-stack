@@ -532,16 +532,19 @@ a card without `Eligible` at all already has to.
 
 **A card reads through `NsPartial.Handoff`, never `Send`** — the prerender resolves the read and
 persists the answer, the WebAssembly client adopts it, and the page load costs one query per card
-instead of two. A subject card passes its subject as the scope. **The handoff is take-once, so
-where the card reads matters as much as how**: a card with no subject reads once on mount —
-inside `NsLoad`'s `OnLoad` where it has a region, in `OnInitializedAsync` where it does not — and
-a subject card keeps `OnParametersSetAsync` but guards on the subject a read has STARTED for,
-claimed before the await. Both hosts rebuild the parameter dictionary on every render, so
-anything else asks twice anyway (cases). **A card shows nothing until its read has answered**: a
-zero, an "empty" or a "clear" painted while the read is in flight is a claim, and a false one —
-the region below is what holds that for a card that has one, and the header holds the cell
-meanwhile. Held by an architecture test (`CardHandoffTests`), whose exemption list is one card
-that defers deliberately (cases).
+instead of two. A subject card passes its subject as the scope. **One key is one answer per
+document**: a card drawn twice (a title bar drawing the brand beside the drawer's own copy) is
+persisted once and adopted by both copies — the state takes one write per key, and the second one
+throwing would empty every handoff of the page; the guard is `NsPartial`'s, so a host mounts what
+it likes. **The handoff is take-once, so where the card reads matters as much as how**: a card
+with no subject reads once on mount — inside `NsLoad`'s `OnLoad` where it has a region, in
+`OnInitializedAsync` where it does not — and a subject card keeps `OnParametersSetAsync` but
+guards on the subject a read has STARTED for, claimed before the await. Both hosts rebuild the
+parameter dictionary on every render, so anything else asks twice anyway (cases). **A card shows
+nothing until its read has answered**: a zero, an "empty" or a "clear" painted while the read is
+in flight is a claim, and a false one — the region below is what holds that for a card that has
+one, and the header holds the cell meanwhile. Held by an architecture test (`CardHandoffTests`),
+whose exemption list is one card that defers deliberately (cases).
 
 **A card RE-READS when what it shows is saved somewhere else** — `Subscribe<TEvent>` in
 `OnInitialized`, reloading its own region (`TillCard` is the shape). A card is the surface that
