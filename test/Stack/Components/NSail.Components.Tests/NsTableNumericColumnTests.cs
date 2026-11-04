@@ -160,6 +160,19 @@ public sealed class NsTableNumericColumnTests : BunitContext, IAsyncLifetime
         Assert.Contains("padding-inline-end: calc(var(--ns-add-row-act) + 1rem);", block, StringComparison.Ordinal);
     }
 
+    // nsail#3096 — a cell that saves its own entry seats its glyph (1.25rem) at the stack's gap-1
+    // (0.25rem) beside the slot: both come back as end margin, into the reserve's end padding, so
+    // the field keeps the whole slot and the figures still end on its edge.
+    [Fact]
+    public void ALastMoneyCellsSaveGlyphSitsInTheEndPaddingNotTheSlot()
+    {
+        var css = HouseStylesheet.Read();
+        var block = Rule(css, ".ns-table.ns-row-submit-gutter tbody td.ns-col-money:last-child .ns-money-slot + .ns-title-icon-slot {");
+
+        Assert.Contains("margin-inline-end: calc(-1 * (1.25rem + 0.25rem));", block, StringComparison.Ordinal);
+        Assert.Contains("width: 1.25rem;", Rule(css, ".ns-title-icon-slot {"), StringComparison.Ordinal);
+    }
+
     static string Rule(string css, string selector)
     {
         var start = css.IndexOf(selector, StringComparison.Ordinal);
