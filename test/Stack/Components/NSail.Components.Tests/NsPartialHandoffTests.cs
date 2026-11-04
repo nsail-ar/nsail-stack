@@ -104,7 +104,7 @@ public sealed class NsPartialHandoffTests : BunitContext
 
         var cut = Render<HandoffProbePair>();
 
-        cut.WaitForAssertion(() => Assert.All(cut.FindAll("#figure"), figure => Assert.Equal("7", figure.TextContent)));
+        cut.WaitForAssertion(() => Assert.Equal(["7", "7"], cut.FindAll("#figure").Select(figure => figure.TextContent)));
 
         await handoff.Manager.PersistStateAsync(handoff, Renderer);
 
@@ -122,6 +122,24 @@ public sealed class NsPartialHandoffTests : BunitContext
 
         Assert.Equal(0, _mediator.Sends);
         Assert.Equal(["42", "42"], cut.FindAll("#figure").Select(figure => figure.TextContent));
+    }
+
+    /// <summary>An instance adopts once: asking again under the same key — a Reload, a Retry, a
+    /// saved event — is a re-read and sends, whatever another copy still holds.</summary>
+    [Fact]
+    public async Task ACardAskingAgainReadsForReal()
+    {
+        Services.AddSingleton((await Handoff.Carrying(Key, new ProbeAnswer { Count = 42 })).State);
+
+        var cut = Render<HandoffProbeCard>();
+
+        Assert.Equal("42", cut.Find("#figure").TextContent);
+
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal("7", cut.Find("#figure").TextContent));
+
+        Assert.Equal(1, _mediator.Sends);
     }
 
     /// <summary>The shared answer lives as long as a copy holds it: a card mounted after every

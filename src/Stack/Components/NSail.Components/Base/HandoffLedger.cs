@@ -12,7 +12,7 @@ namespace NSail.Components;
 // persisting callbacks run together, so one card mounted twice in a document (a layout that draws
 // the brand in two places) would otherwise empty every handoff of the page. The prerender writes
 // each key once, whichever instance read it last; the client takes each key once and hands the
-// answer to every instance asking, for as long as one of them is mounted — a card that mounts
+// answer to each instance's first ask, for as long as one of them is mounted — a card that mounts
 // after they are all gone reads afresh.
 sealed class HandoffLedger
 {
@@ -33,30 +33,33 @@ sealed class HandoffLedger
         return Ledgers.GetValue(state, static state => new HandoffLedger(state));
     }
 
+    // Adopted once per instance: an instance asking again under a key it already adopted is a
+    // re-read (a Reload, a Retry, a saved event) and has to send.
     public bool TryAdopt<TResult>(string key, object holder, out TResult value)
     {
-        if (!_taken.TryGetValue(key, out var taken))
+        if (_taken.TryGetValue(key, out var taken))
         {
-            if (!_state.TryTakeFromJson<TResult>(key, out var handed) || handed is null)
+            if (taken.Value is TResult shared && taken.Holders.Add(holder))
             {
-                value = default!;
+                value = shared;
 
-                return false;
+                return true;
             }
 
-            taken = (handed, []);
-            _taken[key] = taken;
+            value = default!;
+
+            return false;
         }
 
-        if (taken.Value is not TResult typed)
+        if (!_state.TryTakeFromJson<TResult>(key, out var handed) || handed is null)
         {
             value = default!;
 
             return false;
         }
 
-        taken.Holders.Add(holder);
-        value = typed;
+        _taken[key] = (handed, [holder]);
+        value = handed;
 
         return true;
     }
