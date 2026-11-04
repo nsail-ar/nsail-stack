@@ -158,8 +158,10 @@ looks up its own. No `<NsColumn>`, no `<NsTr>`.
 - **A table stacks where its container cannot seat it, not only where the window cannot.** The
   vendor stacks by viewport, so on a wide screen a list in an aside would stay a table of columns
   squeezed into the aside — cells overlapping, the row scrolling sideways. Under a container of
-  960px the rows are the phone's cards, read row or open row alike, column importance still
-  hiding (cases).
+  740px the rows are the phone's cards, read row or open row alike, column importance still
+  hiding (cases). The line sits past the widest aside (`NsDrawer` `Lg`, 720px) and short of the
+  narrowest main surface, so an aside stacks and a list on a main page reads as a table on a
+  desktop.
 - **The pager compacts by its own width.** Under 600px of pager it drops its page-size label and
   the first/last arrows and keeps the select, the row counter and previous/next, so the row stays
   one line on a phone and in an aside alike. The vendor's row is one shrink-proof width, and a
@@ -203,7 +205,7 @@ own word is the control's name, so there is no string, no glyph and no handler a
   hand, so a filter press keeps the order and a heading press keeps the filter.
 - **The file Exportar writes is the order on screen** ([exporting.md](../exporting.md)).
 - **Stacked, the list has no headings to press**: a card draws no header row, on a phone or in
-  a container under 960px alike, so the order offered there is the one already in effect.
+  a container under 740px alike, so the order offered there is the one already in effect.
 
 ### Inline editing (`RowEditor`)
 

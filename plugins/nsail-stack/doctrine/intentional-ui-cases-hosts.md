@@ -395,7 +395,7 @@ container (it takes its width from the table, never from its content) and the co
 it. What goes is the page-size caption and the first/last arrows — the pair the vendor's own
 stacked pager drops; previous and next walk the pages. The caption is a plain `div`, never a
 `<label>` bound to the combobox, so dropping it loses nothing to a screen reader. The threshold is
-599.98px, not the 960px the table stacks at: the defect is width, and a stacked list with the
+599.98px, not the 740px the table stacks at: the defect is width, and a stacked list with the
 room keeps the label. `PagerFooterTests` pins the DOM shape those selectors depend on and the rule
 itself, so a vendor that moves the captions or the arrows is caught.
 
@@ -458,8 +458,15 @@ row's mirrors (`.ns-select-gutter`, `.ns-row-submit-gutter`, the row's own floor
 columns they mirror. The compact line follows by itself: a container under 600px is stacked at
 any window, so it asks the container alone (`ContainerStackTests`).
 
-- **The gate is an overlap, not a complement.** The two regimes meet at exactly 960px, where both
-  fire and say the same thing. Complementing `max-width: 960px` with `min-width: 960.02px` would
+- **The container stacks under 740px** (`@container (max-width: 739.98px)`), the aside's line and
+  not the main page's. The widest aside is `NsDrawer` `Lg` at 720px; the narrowest surface a
+  desktop gives a main page's list is around 760px. Between the two, an aside is cards and a
+  default `Md` main page is a table of columns, its `Md` columns hidden by their own 960px rung
+  until its container reaches it. A threshold at the window's 960px would catch every main list
+  on a desktop (a `Md` page seats its table in about 928px), which is a list read as cards
+  where it has room for a table.
+- **The gate is an overlap, not a complement.** The window regimes meet at exactly 960px, where
+  both fire and say the same thing. Complementing `max-width: 960px` with `min-width: 960.02px` would
   leave a fractional gap where neither does — the trap the `ns-table-editing` rule above the
   block already documents for its own pair.
 - **The vendor's base is copied** — the hidden head, display, the `::before` on `data-label`, the
@@ -468,7 +475,7 @@ any window, so it asks the container alone (`ContainerStackTests`).
   rides the root at every width, so the same specificities settle the same ties. That is the
   vendor-CSS-copy cost named in *Container queries: the measured facts* ([cases: shell](intentional-ui-cases-shell.md)); the
   alternative is a row that cannot be typed into.
-- **One pair of hide/re-enable rules, not four.** Inside a container under 960px the `md`, `lg`
+- **One pair of hide/re-enable rules, not four.** Inside a container under 740px the `md`, `lg`
   and `xl` thresholds cannot match, so only the `sm` half is reachable; the other three would be
   rules no width can reach.
 - **Per-row stacking is not available.** A `tr` that is not a table-row is wrapped in an
