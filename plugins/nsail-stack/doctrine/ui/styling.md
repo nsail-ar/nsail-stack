@@ -42,7 +42,9 @@ marked *(cases)* has its story there.
     column with `Format=ExportFormat.Money` wears `.ns-col-money` on its `NsTh` and `NsTd`: no end
     padding, so the header and the figures under it share one right edge, the column's. In a
     mirror's last column that edge is the price field's: the reserve beside the slot (the act and
-    a gap) stays as end padding.
+    a gap) stays as end padding, and a cell that saves its own entry seats its save glyph
+    (`.ns-title-icon-slot` after the `.ns-money-slot`) inside that padding, so the field keeps
+    the whole slot.
     `.ns-field-slot` is the other half of that row — a field laid out by hand reading the same
     `--ns-field-width` the grid's items read, so `ns-field-wide` means 20rem
     wherever a field is placed (a job card's Armazón, which spans the whole card's row and is

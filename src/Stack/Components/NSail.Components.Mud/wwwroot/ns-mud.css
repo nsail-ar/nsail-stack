@@ -4111,6 +4111,13 @@ div.mud-input-slot.mud-input-root::placeholder {
     .ns-table.ns-row-submit-gutter tfoot td.ns-col-money:last-child {
         padding-inline-end: calc(var(--ns-add-row-act) + 1rem);
     }
+
+    /* A cell that saves its own entry seats the save glyph beside the field (ns-title-icon-slot,
+       at the cell stack's gap-1): the glyph and that gap are given back as a negative end margin,
+       so they sit in the end padding and the field keeps the whole slot. */
+    .ns-table.ns-row-submit-gutter tbody td.ns-col-money:last-child .ns-money-slot + .ns-title-icon-slot {
+        margin-inline-end: calc(-1 * (1.25rem + 0.25rem));
+    }
 }
 
 @media (max-width: 960px) {
