@@ -2126,9 +2126,18 @@ div.mud-input-slot.mud-input-root::placeholder {
    on the row and inset on the header's own padding line, one gap apart.
 
    min-width on the content box is what makes a long title give way rather than push the door
-   off the card: a flex item's floor is its content, and a title has no reason to hold it. */
+   off the card: a flex item's floor is its content, and a title has no reason to hold it.
+
+   The block padding is halved from the vendor's 16px: a header that carries a 44px square
+   would otherwise run 32px taller than its act. The padding compacts, never the square
+   (ui/actions.md) — the touch floor above refuses a button whose box changes with what it is
+   drawn inside — and the inline padding stays, so the title keeps the content's own line. */
 .ns-card-header {
     gap: 8px;
+}
+
+.ns-card-header.mud-card-header-padding {
+    padding-block: 8px;
 }
 
 .ns-card-header .mud-card-header-content {

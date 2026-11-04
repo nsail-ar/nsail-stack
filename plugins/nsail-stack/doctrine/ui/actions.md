@@ -110,7 +110,8 @@ belongs to the document the browser lands on, whichever surface draws it. Today'
 alike, at the same box. The door is not the card's markup: the host that placed the card
 cascades a `CardDoor` (`Href`, the destination's own title, and the `Target` it mints — `Main`
 for every card, no exception) and `NsCard` draws it at the end of `MudCardHeader`'s row, `Default`
-at `Never` ([hosts.md](hosts.md)). **Nothing is positioned absolutely against a card.**
+at `Never` ([hosts.md](hosts.md)). **Nothing is positioned absolutely against a card.** The header
+compacts its own block padding around those squares, never their box ([styling.md](styling.md)).
 
 Labels of an `NsAction` resolve as `Actions.{Name}`; `NsPartial.GetAction` derives that name from
 the method group it is handed ([localization.md](localization.md)).

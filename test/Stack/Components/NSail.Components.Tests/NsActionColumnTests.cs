@@ -273,7 +273,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
 
         var door = cut.Find(".ns-action-toolbar a");
 
-        Assert.Contains(PathOf(NsIcons.ChevronRight), door.InnerHtml);
+        Assert.Contains(GlyphPath.Of(NsIcons.ChevronRight), door.InnerHtml);
     }
 
     [Fact]
@@ -284,7 +284,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
 
         var door = cut.Find(".ns-action-toolbar");
 
-        Assert.Contains(PathOf(NsIcons.ChevronRight), door.InnerHtml);
+        Assert.Contains(GlyphPath.Of(NsIcons.ChevronRight), door.InnerHtml);
     }
 
     [Fact]
@@ -295,13 +295,8 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
 
         var door = cut.Find(".ns-action-toolbar a");
 
-        Assert.Contains(PathOf(NsIcons.Edit), door.InnerHtml);
-        Assert.DoesNotContain(PathOf(NsIcons.ChevronRight), door.InnerHtml);
-    }
-
-    static string PathOf(Glyph glyph)
-    {
-        return System.Text.RegularExpressions.Regex.Match(glyph.Markup, "d=\"([^\"]+)\"").Groups[1].Value;
+        Assert.Contains(GlyphPath.Of(NsIcons.Edit), door.InnerHtml);
+        Assert.DoesNotContain(GlyphPath.Of(NsIcons.ChevronRight), door.InnerHtml);
     }
 
     [Fact]

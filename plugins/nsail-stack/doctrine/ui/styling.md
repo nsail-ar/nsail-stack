@@ -165,7 +165,10 @@ marked *(cases)* has its story there.
     from a cascaded `CardDoor`, in the vendor's own header-actions slot and opening on `Main`, the
     one target every door carries ([actions.md](actions.md), [hosts.md](hosts.md)); **nothing is
     positioned absolutely against a card**: the door is a button among the card's own, and it
-    wears its own intention's ink.
+    wears its own intention's ink. **The header compacts its block padding, never its acts** —
+    `.ns-card-header` halves the vendor's block padding on every card (`ns-mud.css`), so a header
+    sits close to its square rather than doubling it; the squares keep the `Md` box and the touch
+    floor, and the inline padding keeps the title in line with the content.
   - **A card with no title draws no header at all** — `NsCard` renders the box only while
     `Header` (or `Door`) is non-null, so a titleless card never pays for a near-empty row above
     the content for its lone act. The act rides the content instead, as the sibling of whatever
