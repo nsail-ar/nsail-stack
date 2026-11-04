@@ -96,6 +96,8 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         }, ct);
 
         var tools = step.Worker.Mcp.Keys.Select(k => $"mcp__{k}__*").Concat(step.Worker.Tools).ToList();
+        // The agent opens this same log to append to it, and a second writer is refused while this one is open.
+        await w.DisposeAsync();
         var result = await ctx.Agent.Run(new AgentRun(
             prompt, dir, ctx.ModelOf(labels, seat),
             Access: AgentAccess.Walker,
@@ -109,7 +111,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         // A walker whose browser is not there still writes a verdict from the story alone: the walk is void, and loud.
         if (File.Exists(logPath) && (await File.ReadAllTextAsync(logPath, ct)).Contains(NoBrowser, StringComparison.Ordinal))
         {
-            await w.WriteLineAsync($"{ctx.Names.Ref(n)} — the walker had no browser: walk void");
+            await File.AppendAllTextAsync(logPath, $"{ctx.Names.Ref(n)} — the walker had no browser: walk void{Environment.NewLine}", ct);
             return new JobOutcome("walk void: the walker's browser is not installed on this machine (npx @playwright/mcp install-browser chromium)", Event: "NoVerdict", Failed: true, Report: "");
         }
         var quota = result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : (DateTimeOffset?)null;
@@ -122,7 +124,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         // A story waiting on a person is asked once: a walker that asks again, or doubts again, is still waiting.
         if (evt is "Asked" or "Doubt" && asked.Length > 0)
         {
-            await w.WriteLineAsync($"{ctx.Names.Ref(n)} — {evt} again while waiting on the first ask: waiting");
+            await File.AppendAllTextAsync(logPath, $"{ctx.Names.Ref(n)} — {evt} again while waiting on the first ask: waiting{Environment.NewLine}", ct);
             return new JobOutcome("walked: Waiting", quota, Event: "Waiting", Report: "");
         }
         report = $"{report}\n\n{await Evidence(n, dir, shots, started, ct)}\n\nLog: {Path.GetFileName(logPath)} on {ctx.Options.Machine}".Trim();
