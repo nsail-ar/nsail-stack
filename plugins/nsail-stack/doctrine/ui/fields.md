@@ -165,8 +165,14 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   out of range (measured, `NsMoneyFieldBoundsTests`). The field words nothing — the refusal's
   sentence is the sender's, from its own kit's strings, and the server refuses the same range for
   every other caller.
-- **`NsMoneyField` draws no spin buttons.** A price has no step, and the vendor's buttons cover the
-  right end of the text in a slot as narrow as `.ns-money-slot`.
+- **A numeric box draws spin buttons only where its value has a step.** `NsMoneyField` and
+  `NsPercentField` draw none: a price has no step, a percent is a fraction under `Format="P"` so
+  the vendor's default step of 1 would move it a hundred points, and in a slot as narrow as
+  `.ns-money-slot` or a grid column the buttons cover the right end of the figure. `NsNumericField`
+  keeps them because its caller sets the `Step` they take (a diopter steps by 0.25), and
+  `NsDurationField` because its figure is a count of hours, so the vendor's step of 1 is one
+  hour. Inside a grid the arrow keys are the grid's either way — the buttons answer only a
+  pointer.
 - **A figure in the install's own currency wears no code.** `NsMoneyField` renders `N2` in the
   reader's grouping — character for character what every total, saldo and list cell writes
   beside it — and shows a code only when its `Currency` is set; a figure written as text takes
