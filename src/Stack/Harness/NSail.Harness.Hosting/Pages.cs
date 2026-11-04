@@ -6,7 +6,7 @@ using NSail.Harness.Planning;
 
 namespace NSail.Harness.Hosting;
 
-// What a person opens in a browser: the status page, the jobs (/jobs: filtered, a page at a time), one
+// What a person opens in a browser: the status page, the plan and what it holds (/plan) and the jobs (/jobs): each searched and a page at a time, one
 // job and its log (/jobs/{id}), and a log as plain text (/jobs/{id}/log). The API is the
 // Sdk's messages (/api/harness/*, /scalar).
 public static class Pages
@@ -16,8 +16,11 @@ public static class Pages
         app.MapGet("/", (HarnessLoop loop, HarnessOptions o, JobHistory history, BuildLeases leases, JobStats stats, LoadSamples load, Agents.IAgent agent, string? range) =>
             Results.Content(StatusPage.Render(loop, o, history, leases, stats, load, agent, range), "text/html; charset=utf-8"))
             .ExcludeFromDescription();
-        app.MapGet("/jobs", (HarnessOptions o, JobHistory history, string? role, string? result, int? story, int? page) =>
-            Results.Content(JobsPage.List(o, history, role, result, story, page), "text/html; charset=utf-8"))
+        app.MapGet("/jobs", (HarnessOptions o, JobHistory history, string? role, string? result, int? story, int? page, string? q) =>
+            Results.Content(JobsPage.List(o, history, role, result, story, page, q), "text/html; charset=utf-8"))
+            .ExcludeFromDescription();
+        app.MapGet("/plan", (HarnessLoop loop, HarnessOptions o, string? q, string? tier, int? page, int? held) =>
+            Results.Content(PlanPage.List(o, loop.Last?.Plan, q, tier, page, held), "text/html; charset=utf-8"))
             .ExcludeFromDescription();
         app.MapGet("/jobs/{id}", (string id, HarnessOptions o, JobHistory history, int? tail) =>
             JobsPage.One(o, history, id, tail) is { } html ? Results.Content(html, "text/html; charset=utf-8") : Results.NotFound())

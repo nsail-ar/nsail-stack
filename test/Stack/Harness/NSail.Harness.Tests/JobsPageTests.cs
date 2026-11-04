@@ -63,6 +63,24 @@ public class JobsPageTests : IDisposable
     }
 
     [Fact]
+    public void TheListSearchesTheWorkAndTheOutcome()
+    {
+        var history = History(
+            Job(1, "dev #5", 5, "pushed the branch", "ok"),
+            Job(2, "review #7", 7, "findings: a missing test", "failed"),
+            Job(3, "dev #8", 8, "failed: boom", "broke"));
+
+        var byWork = JobsPage.List(_options, history, null, null, null, null, "review");
+        var byOutcome = JobsPage.List(_options, history, null, null, null, null, "missing test");
+        var none = JobsPage.List(_options, history, null, null, null, null, "zzz");
+
+        Assert.Contains("1 job<", byWork);
+        Assert.Contains("/jobs/job-2\"", byWork);
+        Assert.Contains("/jobs/job-2\"", byOutcome);
+        Assert.Contains("No job matches.", none);
+    }
+
+    [Fact]
     public void TheListPagesTwentyFiveAtATimeAndClampsThePage()
     {
         var history = History([.. Enumerable.Range(1, 60).Select(n => Job(n, "dev #5", 5, "pushed", "ok"))]);
