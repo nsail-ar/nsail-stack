@@ -10,7 +10,7 @@ namespace NSail.Components.Tests;
 /// file can answer.</summary>
 public sealed partial class SearchPlaceholderLiteralTests
 {
-    [GeneratedRegex("""<(?:NsSearchField\b[^>]*?\bPlaceholder|(?:NsPageHeader|NsNavMenu|NsTree)\b[^>]*?\bSearchPlaceholder)\s*=\s*"[^@"][^"]*"[^>]*>""", RegexOptions.Singleline)]
+    [GeneratedRegex("""<(?:NsSearchField\b(?:=>|"[^"]*"|[^>])*?\bPlaceholder|(?:NsPageHeader|NsNavMenu|NsTree)\b(?:=>|"[^"]*"|[^>])*?\bSearchPlaceholder)\s*=\s*"[^@"][^"]*"[^>]*>""", RegexOptions.Singleline)]
     private static partial Regex LiteralOnSearchField();
 
     static string Root()
@@ -51,6 +51,11 @@ public sealed partial class SearchPlaceholderLiteralTests
     [InlineData("""<NsNavMenu SearchPlaceholder="Buscar" />""", true)]
     [InlineData("""<NsTree Items="x" SearchPlaceholder="Buscar" />""", true)]
     [InlineData("""<NsTree SearchPlaceholder="@Translate("A.B")" />""", false)]
+    [InlineData("""<NsTree Items="x" Children="@(n => n.Children)" SearchPlaceholder="Sucursal" />""", true)]
+    [InlineData("""<NsPageHeader SearchTextChanged="@(v => Set(v))" SearchPlaceholder="Pedido" />""", true)]
+    [InlineData("""<NsSearchField ValueChanged="@((string s) => Set(s))" Placeholder="Buscar" />""", true)]
+    [InlineData("""<NsSearchField Value="@(new List<int>())" Placeholder="Buscar" />""", true)]
+    [InlineData("""<NsTree Children="@(n => n.Children)" SearchPlaceholder="@Translate("A.B")" />""", false)]
     public void TheScanSeesALiteralAndNothingElse(string markup, bool literal)
     {
         Assert.Equal(literal, LiteralOnSearchField().IsMatch(markup));
