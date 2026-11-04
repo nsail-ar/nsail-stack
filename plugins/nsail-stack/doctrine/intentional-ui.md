@@ -930,3 +930,17 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   same tone** where the cell has no room for a word — `ActionItem.Severity`, the state the act
   is about — still that one vocabulary, never an `As`: an act is `Danger` because it destroys
   something ([ui/actions.md](ui/actions.md)).
+- **A cell holds one word, a figure or a chip.** Anything longer — a note, a result, a warning, a
+  log — is a disclosure: a whisper (`NsTooltip`, `NsChip Tooltip`) for a short detail, and
+  `NsHint` for a paragraph, which opens on a tap as well as a hover. The whisper keeps its own
+  rule — the long form of what the cell already says, never the only copy — so a fact with no
+  word in the cell rides `NsHint`, whose glyph is that word.
+- **A status cell is one state**: quiet text (`NsStatusText`, still no chip), and that state's
+  detail on its whisper (`NsTooltip`), never a second line. The detail is the long form of the
+  word — why it failed, what it waits for — so the whisper stays the second copy; a fact the
+  row shows nowhere else, such as what a task reported, is a disclosure of its own (`NsHint`).
+- **A product cell shows the product's own logo beside its name**, the mark a reader already
+  scans for; the name stays, since an image is never the only signal.
+- **A running act is disabled and its icon turns**, for as long as its work goes on and not
+  only for the click: `ActionItem.Running`, drawn by `NsAction`, the toolbar row and a kebab
+  row ([ui/actions.md](ui/actions.md)). A page never hand-builds that face.
