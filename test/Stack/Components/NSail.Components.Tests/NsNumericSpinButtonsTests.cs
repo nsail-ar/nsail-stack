@@ -61,6 +61,17 @@ public sealed class NsNumericSpinButtonsTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void A_compact_numeric_field_draws_no_spin_buttons_and_wears_the_compact_class()
+    {
+        var cut = Render<NsNumericField<decimal>>(ps => ps
+            .Add(p => p.Value, 1m)
+            .Add(p => p.Compact, true));
+
+        Assert.Empty(cut.FindAll(".mud-input-numeric-spin"));
+        Assert.NotEmpty(cut.FindAll(".ns-numeric-compact.mud-input-control .mud-input-control-input-container input.mud-input-root"));
+    }
+
+    [Fact]
     public void A_duration_field_steps_its_spin_buttons_by_an_hour()
     {
         TimeSpan? stepped = null;

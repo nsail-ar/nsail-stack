@@ -23,6 +23,8 @@
                  OnBlur="Leaving"
                  OnKeyDown="Pressing"
                  @attributes="StepAttribute"
+                 HideSpinButtons="Compact"
+                 Class="@(Compact ? "ns-numeric-compact" : null)"
                  Format="@(Format ?? NsQuantityText.Format)"
                  Culture="@FigureCulture"
                  Converter="_figures"
@@ -48,6 +50,12 @@
     /// the text it wrote back into the binding when the field is left.</summary>
     [Parameter]
     public string? Format { get; set; }
+
+    /// <summary>The figure between a stepper's own − and + buttons: narrow enough for a few
+    /// digits, centered, and without the vendor's spin buttons, which would be a second way to
+    /// step it beside the caller's. Typing still writes the value.</summary>
+    [Parameter]
+    public bool Compact { get; set; }
 
     /// <summary>The spin/keyboard increment (the vendor's own Step knob, never named in a
     /// page). Unset keeps the vendor's default (1) — the sentinel is whether the parameter was

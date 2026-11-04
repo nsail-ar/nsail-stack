@@ -4815,3 +4815,14 @@ div.mud-input-slot.mud-input-root::placeholder {
     font-size: .75rem;
     white-space: nowrap;
 }
+
+/* THE FIGURE OF A STEPPER (NsNumericField Compact): sized for a few digits and centered between
+   the caller's own − and + buttons, never stretched to whatever the cell offers. */
+.ns-numeric-compact.mud-input-control {
+    flex: 0 0 auto;
+    width: 5rem;
+}
+
+.ns-numeric-compact .mud-input-control-input-container input.mud-input-root {
+    text-align: center;
+}
