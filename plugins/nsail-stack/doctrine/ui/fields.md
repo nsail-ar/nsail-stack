@@ -494,6 +494,9 @@ words land under it and the label then travels off them.
 - **A search box reads `Common.Search` by default (*Buscar* / *Search*).** `NsSearchField.Placeholder`
   replaces it; `NsPageHeader`, `NsNavMenu` and `NsTree`, which draw one, forward
   `SearchPlaceholder`. The text comes from a key, never a literal.
+- **A stepper's figure is `NsNumericField.Compact`.** Between a caller's own − and + buttons the
+  box is sized for a few digits, centered, and draws no spin buttons of its own — two ways to
+  step one value side by side is one too many. Typing still writes it.
 - **A box that ends on a key can draw it: `NsTextField.KeyHint`.** The key cap sits at the
   trailing edge while the box is empty — the mark `NsSearchField` draws for its chord, same
   classes — aria-hidden and never in the placeholder, which is the input's name fallback. It
