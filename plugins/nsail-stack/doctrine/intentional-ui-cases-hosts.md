@@ -490,3 +490,21 @@ container hides Nuevo Comprobante's `Lg` column and frees it again while the row
 aside walked through its own door, and the other three line editors at the same container width —
 and the failing reading is an input's box against its own value (`Ui.ClippedFields`): a cell
 holding a shrunken field is not clipped itself, which is how a green suite kept missing it.
+
+## A tool's grid row stays one line tall
+
+Seen on the Ops grids, where a row is a machine or a task and its data runs long: a node's note, a
+task's result, its warnings. Written into the cell, one row wraps to five lines and the next stays
+at one, so the column a reader scans down is no longer a line of equals; and a phone, which has no
+hover, cannot read what a whisper alone carries. Hence one word, a figure or a chip per cell, and
+the rest behind a disclosure that opens on a tap too.
+
+- **The Servers grid** (Máquinas, `ServersPage`) is the status cell: one word, with the state's
+  detail on its whisper. It is cited for that shape; its chip goes against the status rule above
+  (*State paints its text*) and is not the example.
+- **The Tareas grid** (`ServerTaskList`) is the rest of the rule: the state as `NsStatusText`, the
+  note, a failure's words and the result each behind an `NsHint`, so the row is a line and every
+  paragraph is one tap away.
+- **A running act** was a page's own work: a backup whose task is still on the box redrew its
+  verb by hand, with a glyph of the product's and `Disabled`. `ActionItem.Running` is that face
+  in the Stack, the one a click in flight already wears, so every presenter of the item draws it.
