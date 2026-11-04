@@ -159,9 +159,9 @@ looks up its own. No `<NsColumn>`, no `<NsTr>`.
   vendor stacks by viewport, so on a wide screen a list in an aside would stay a table of columns
   squeezed into the aside — cells overlapping, the row scrolling sideways. Under a container of
   740px the rows are the phone's cards, read row or open row alike, column importance still
-  hiding (cases). The line sits past the widest aside (`NsDrawer` `Lg`, 720px) and short of the
-  narrowest main surface, so an aside stacks and a list on a main page reads as a table on a
-  desktop.
+  hiding (cases). The line sits past the widest aside that cannot seat a table (`NsDrawer` `Lg`,
+  720px; `Xl` and `Xxl` seat one) and short of the narrowest main surface, so such an aside
+  stacks and a list on a main page reads as a table on a desktop.
 - **The pager compacts by its own width.** Under 600px of pager it drops its page-size label and
   the first/last arrows and keeps the select, the row counter and previous/next, so the row stays
   one line on a phone and in an aside alike. The vendor's row is one shrink-proof width, and a

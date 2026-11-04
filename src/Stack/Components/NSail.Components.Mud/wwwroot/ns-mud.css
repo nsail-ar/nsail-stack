@@ -772,7 +772,7 @@
    what keeps the counts equal — the header comes back with its cells, and no row is left
    matching a different count.
 
-   What that reaches is the band between md and a column's own threshold. A table stacks
+   What that reaches is the band between 740px and a column's own threshold. A table stacks
    wherever its container cannot seat it (the container block below), so a table still laid
    out in columns has a container of 740px or more, and the only columns hidden that far up
    are the ones a grid declared Md (under a 960px container), Lg or Xl —
@@ -1099,10 +1099,10 @@
    hides, and four of them need over 950px to show the values they hold in a 688px aside), but a
    row being read has the same answer: a card, the phone's own shape.
 
-   740px IS THE ASIDE'S LINE, not the main page's. It clears the widest aside (NsDrawer Lg,
-   720px) and stays under the narrowest main surface a desktop gives a list (about 760px), so an
-   aside stacks and a list on a main page keeps its columns, its Md ones hidden by their own
-   960px rung below that width.
+   740px IS THE ASIDE'S LINE, not the main page's. It clears the widest aside that cannot seat
+   a table (NsDrawer Lg, 720px; Xl and Xxl seat one) and stays under the narrowest main surface
+   a desktop gives a list (about 760px), so an aside stacks and a list on a main page keeps its
+   columns, its Md ones hidden by their own 960px rung below that width.
 
    THE SHAPE IS THE PHONE'S, not a second one — the same card lines, the same receding label,
    the same right-packed action strip, the foot kept as its own card, the open row's label above

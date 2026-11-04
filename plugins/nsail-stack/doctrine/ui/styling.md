@@ -515,6 +515,6 @@ the window but a rule staying out of the vendor's way**: the card stack and the 
 gutters it releases each sit in that wrapper because below that width MudBlazor's own stack is
 already the answer, and two regimes answering for one table is what the wrapper prevents (cases).
 It names the vendor's own number for the same reason the helpers above do. The container
-query inside it has a number of its own, 740px: past the widest aside (`NsDrawer` `Lg`, 720px)
-and short of the narrowest main surface, so an aside stacks and a main page's list keeps its
-columns (cases).
+query inside it has a number of its own, 740px: past the widest aside that cannot seat a table
+(`NsDrawer` `Lg`, 720px) and short of the narrowest main surface, so that aside stacks and a main
+page's list keeps its columns (cases).

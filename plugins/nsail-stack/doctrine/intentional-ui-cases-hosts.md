@@ -459,17 +459,18 @@ columns they mirror. The compact line follows by itself: a container under 600px
 any window, so it asks the container alone (`ContainerStackTests`).
 
 - **The container stacks under 740px** (`@container (max-width: 739.98px)`), the aside's line and
-  not the main page's. The widest aside is `NsDrawer` `Lg` at 720px; the narrowest surface a
-  desktop gives a main page's list is around 760px. Between the two, an aside is cards and a
-  default `Md` main page is a table of columns, its `Md` columns hidden by their own 960px rung
-  until its container reaches it. `Xl` is no aside's width but the surface's own, so it is never
-  the case: a list in one reads as the main page's does. A threshold at the window's 960px would
-  catch every main list on a desktop (a `Md` page seats its table in about 928px), which is a
-  list read as cards where it has room for a table.
+  not the main page's. The widest aside that cannot seat a table is `NsDrawer` `Lg` at 720px;
+  the narrowest surface a desktop gives a main page's list is around 760px. Between the two, an
+  aside is cards and a default `Md` main page is a table of columns, its `Md` columns hidden by
+  their own 960px rung until its container reaches it. `Xl` (the surface's own width) and `Xxl`
+  (1140px) are asides wide enough to seat a table, so they are never the case: a list in one
+  keeps its columns, as a main page's does. A threshold at the window's 960px would catch every
+  main list on a desktop (a `Md` page seats its table in about 928px), which is a list read as
+  cards where it has room for a table.
 - **The gate is an overlap, not a complement.** The window regimes meet at exactly 960px, where
-  both fire and say the same thing. Complementing `max-width: 960px` with `min-width: 960.02px` would
-  leave a fractional gap where neither does — the trap the `ns-table-editing` rule above the
-  block already documents for its own pair.
+  both fire and say the same thing. Complementing `max-width: 960px` with `min-width: 960.02px`
+  would leave a fractional gap where neither does — the trap the `ns-table-editing` rule above
+  the block already documents for its own pair.
 - **The vendor's base is copied** — the hidden head, display, the `::before` on `data-label`, the
   dense stacked padding, the body's top line and the row's separator — because the vendor's rules
   are a media query nothing can put on. The selectors are the phone block's own: `.mud-sm-table`

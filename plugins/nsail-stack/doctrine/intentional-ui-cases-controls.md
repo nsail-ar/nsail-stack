@@ -290,9 +290,8 @@ that could not pay loses its own Confirmar. Below `md` one number cannot tell ro
 its table.
 
 **Below `md` the open row seats its fields in its own width, and under 740px it stacks; a width
-preference was rejected.** A `width` preference moves
-the column's max-content, never the table's min-content, so the row grants the basis out of its
-surplus: Cuenta went from a 35px box to 106px against a 76px account code, Producto stayed put,
+preference was rejected.** A `width` preference moves the column's max-content, never the table's
+min-content, so the row grants the basis out of its surplus: Cuenta went from a 35px box to 106px against a 76px account code, Producto stayed put,
 and a two-column row was pulled back from 305px to 192. Not enough: in a 688px aside Precio
 unitario sat in a 56px box against 110px of "125.430,50" with every column already at its share.
 **An edit row has to fit** — hiding is per container but an input never hides (ui/hosts.md), so
