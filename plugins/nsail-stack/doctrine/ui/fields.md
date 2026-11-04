@@ -491,6 +491,9 @@ words land under it and the label then travels off them.
 - **Not CSS.** `ns-mud.css` restates the vendor's shrink geometry once, under
   `:-webkit-autofill`, and that is for a state C# genuinely cannot see: the browser writing a
   saved credential straight into the DOM. A state the component knows is declared in C#.
+- **A search box reads `Common.Search` by default (*Buscar* / *Search*).** `NsSearchField.Placeholder`
+  replaces it; `NsPageHeader`, `NsNavMenu` and `NsTree`, which draw one, forward
+  `SearchPlaceholder`. The text comes from a key, never a literal.
 - **A box that ends on a key can draw it: `NsTextField.KeyHint`.** The key cap sits at the
   trailing edge while the box is empty — the mark `NsSearchField` draws for its chord, same
   classes — aria-hidden and never in the placeholder, which is the input's name fallback. It

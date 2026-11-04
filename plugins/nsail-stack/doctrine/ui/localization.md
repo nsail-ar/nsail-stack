@@ -47,7 +47,8 @@ the method name; buttons without content from `Common.{As}`.
   `ProblemEntityStringTests` fails the build without it.
 - **A search box hints itself.** `NsSearchField` falls back to `Common.Search` — one word, *Buscar*,
   so it fits beside the box's key mark in every language; a caller wanting different words sets
-  the inherited `Placeholder`. `Common.Filter`, a filter's submit, reads the same word and stays
+  the inherited `Placeholder`, or `SearchPlaceholder` on `NsPageHeader`, `NsNavMenu` and `NsTree`,
+  which draw one — always a translated text, never a literal (`SearchPlaceholderLiteralTests`). `Common.Filter`, a filter's submit, reads the same word and stays
   a key of its own: a placeholder and a button's label are two sites that may come to differ.
 - **The base language loads first and the current one overlays it**, so gaps fall back to
   English.

@@ -53,7 +53,7 @@
                     }
                     else
                     {
-                        <NsSearchField Value="@SearchText" ValueChanged="SearchTextChanged" OnEnterCommit="SearchCommitted" Debounce="300" Grow AutoFocus="ArrivalFocus" />
+                        <NsSearchField Value="@SearchText" ValueChanged="SearchTextChanged" OnEnterCommit="SearchCommitted" Debounce="300" Placeholder="@SearchPlaceholder" Grow AutoFocus="ArrivalFocus" />
                     }
                 </div>
             }
@@ -193,6 +193,10 @@
     /// too slowly for a box to search nothing in while it does.</summary>
     [Parameter]
     public bool ArrivalFocus { get; set; } = true;
+
+    /// <summary>The built-in search box's hint. Absent reads Common.Search.</summary>
+    [Parameter]
+    public string? SearchPlaceholder { get; set; }
 
     /// <summary>How many advanced filters are currently set — the page computes it (only it
     /// knows), folded into the toggle's own word ("Filtros (2)") so filters aren't invisibly
