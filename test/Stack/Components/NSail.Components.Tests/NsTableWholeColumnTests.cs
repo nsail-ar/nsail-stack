@@ -85,7 +85,7 @@ public sealed class NsTableWholeColumnTests : BunitContext, IAsyncLifetime
     [Fact]
     public void TheContainersStackedLabelStillWraps()
     {
-        const string Query = "@media (min-width: 960px) {\n    @container (max-width: 959.98px) {\n";
+        const string Query = "@media (min-width: 960px) {\n    @container (max-width: 739.98px) {\n";
         const string Selector = ".ns-table.mud-sm-table .ns-col-whole::before {";
         var css = HouseStylesheet.Read();
 

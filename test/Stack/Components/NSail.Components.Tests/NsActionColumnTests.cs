@@ -663,7 +663,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     {
         var css = HouseStylesheet.Read();
 
-        var container = css.IndexOf("@container (max-width: 959.98px) {", StringComparison.Ordinal);
+        var container = css.IndexOf("@container (max-width: 739.98px) {", StringComparison.Ordinal);
         Assert.True(container >= 0, "the stacked-form container query was not found in the stylesheet.");
 
         var start = css.IndexOf(".ns-table.mud-sm-table .mud-table-body .mud-table-row .mud-table-cell {", container, StringComparison.Ordinal);
