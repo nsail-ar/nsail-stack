@@ -20,8 +20,8 @@
    where the form refuses writes, and the kit that drew the menu names nothing. *@
 @if (_allowed && Offers(Action))
 {
-    <MudMenuItem Icon="@(Action.Icon?.Markup)"
-                 Disabled="@Action.Disabled"
+    <MudMenuItem Icon="@(Action.Running ? NsIcons.Progress.Markup : Action.Icon?.Markup)"
+                 Disabled="@(Action.Disabled || Action.Running)"
                  Class="@(Selected == true ? "ns-menu-item ns-menu-item-selected" : "ns-menu-item")"
                  UserAttributes="@Choice"
                  OnClick="Run">

@@ -31,7 +31,7 @@
                     @item.Menu
                 </NsMenu>
             }
-            else if (item.PageType is not null && !item.Disabled)
+            else if (item.PageType is not null && !item.Disabled && !item.Running)
             {
                 <NsLink As="@NsAs.Inline"
                         Breakpoint="@(Breakpoint ?? NsBreakpoint.Never)"
@@ -278,6 +278,7 @@
             Weight = item.Weight,
             Group = item.Group,
             Disabled = item.Disabled,
+            Running = item.Running,
             Writes = item.Writes,
             Severity = item.Severity,
         };

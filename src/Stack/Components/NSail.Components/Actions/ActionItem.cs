@@ -59,6 +59,13 @@ public sealed class ActionItem
 
     public bool Disabled { get; init; }
 
+    /// <summary>Whether the work this act starts is still going, by the page's own state — a
+    /// task still on the box, long after the click returned. The act wears the face of a click
+    /// in flight (the turning glyph, the loading word) and refuses presses until the page hands
+    /// a new item with this false. The click's own moment needs nothing here: NsAction holds
+    /// it.</summary>
+    public bool Running { get; init; }
+
     /// <summary>Whether this act changes what the form around it holds. True is the default and
     /// covers every deed, so an act drawn under an NsForm that refuses writes — ReadOnly,
     /// Disabled, or frozen for the length of a submit — is withheld without the screen that drew
