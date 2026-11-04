@@ -491,6 +491,9 @@ words land under it and the label then travels off them.
 - **Not CSS.** `ns-mud.css` restates the vendor's shrink geometry once, under
   `:-webkit-autofill`, and that is for a state C# genuinely cannot see: the browser writing a
   saved credential straight into the DOM. A state the component knows is declared in C#.
+- **A search box reads `Common.Search` by default (*Buscar* / *Search*).** `NsSearchField.Placeholder`
+  replaces it; `NsPageHeader`, `NsNavMenu` and `NsTree`, which draw one, forward
+  `SearchPlaceholder`. The text comes from a key, never a literal.
 - **A stepper's figure is `NsNumericField.Compact`.** Between a caller's own − and + buttons the
   box is sized for a few digits, centered, and draws no spin buttons of its own — two ways to
   step one value side by side is one too many. Typing still writes it.

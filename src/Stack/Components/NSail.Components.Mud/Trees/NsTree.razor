@@ -7,7 +7,7 @@
 @if (Searchable)
 {
     <div class="pb-2">
-        <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Grow />
+        <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Placeholder="@SearchPlaceholder" Grow />
     </div>
 }
 
@@ -87,6 +87,10 @@
     /// rows to be findable.</summary>
     [Parameter]
     public bool Searchable { get; set; }
+
+    /// <summary>The search box's hint. Absent reads Common.Search.</summary>
+    [Parameter]
+    public string? SearchPlaceholder { get; set; }
 
     protected override void OnParametersSet()
     {

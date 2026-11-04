@@ -44,7 +44,7 @@
            ns-nav-find is also the hook the Enter policy answers on: Enter in this box opens the
            first entry still shown (ns.js). *@
         <div class="pa-2 d-flex align-center gap-1 ns-nav-find">
-            <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Grow Map />
+            <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Placeholder="@SearchPlaceholder" Grow Map />
             @* Where an app places a door of its own beside the frame's two keys — the companion
                region's (NsMainLayout). Empty draws nothing: what is left is the box and what the
                frame itself owns. *@
@@ -187,6 +187,10 @@
     /// companion's, nothing else today. Empty draws nothing.</summary>
     [Parameter]
     public RenderFragment? Tools { get; set; }
+
+    /// <summary>The search box's hint. Absent reads Common.Search.</summary>
+    [Parameter]
+    public string? SearchPlaceholder { get; set; }
 
     /// <summary>The one entry drawn where the typing left nothing at all — no map entry and no
     /// result a module contributed through INavMenuSearch — given the text that was
