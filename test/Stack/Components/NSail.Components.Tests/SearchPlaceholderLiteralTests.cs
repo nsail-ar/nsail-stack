@@ -10,7 +10,7 @@ namespace NSail.Components.Tests;
 /// file can answer.</summary>
 public sealed partial class SearchPlaceholderLiteralTests
 {
-    [GeneratedRegex("""<(?:NsSearchField\b(?:=>|"[^"]*"|[^>])*?\bPlaceholder|(?:NsPageHeader|NsNavMenu|NsTree)\b(?:=>|"[^"]*"|[^>])*?\bSearchPlaceholder)\s*=\s*"[^@"][^"]*"[^>]*>""", RegexOptions.Singleline)]
+    [GeneratedRegex("""<(?:NsSearchField\b(?:=>|=|"[^"]*"|[^>"=])*?\bPlaceholder|(?:NsPageHeader|NsNavMenu|NsTree)\b(?:=>|=|"[^"]*"|[^>"=])*?\bSearchPlaceholder)\s*=\s*"[^@"][^"]*"[^>]*>""", RegexOptions.Singleline)]
     private static partial Regex LiteralOnSearchField();
 
     static string Root()
