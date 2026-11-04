@@ -228,9 +228,28 @@ public sealed class NsDashboardDoorTests : BunitContext, IAsyncLifetime
         Assert.DoesNotContain("ns-important", door.ClassList);
     }
 
+    /// <summary>The door draws the chevron a grid row's door draws, never the magnifier: it
+    /// opens the card's list, and a magnifier reads as search.</summary>
+    [Fact]
+    public void TheDoorDrawsTheChevron()
+    {
+        var auth = SetupFor();
+        auth.SetAuthorized("someone");
+
+        Services.AddSingleton<IDashboardContributor>(new TestContributor(
+            new DashboardItem { Name = "HasDoor", CardType = typeof(DoorlessTestCard), PageType = typeof(OpenDoorTestPage) }));
+
+        var cut = Render<NsDashboard>();
+
+        var door = cut.Find(".ns-card-header .mud-card-header-actions a");
+
+        Assert.Contains(PathOf(NsIcons.ChevronRight), door.InnerHtml);
+        Assert.DoesNotContain(PathOf(NsIcons.Search), door.InnerHtml);
+    }
+
     /// <summary>A card nested inside another card's content draws no second door: the cascade
     /// belongs to the card whose header carries it, and NsCard hands its content a null one.
-    /// Without that, a composed card would sprout a lupa in the middle of another card.</summary>
+    /// Without that, a composed card would sprout a door in the middle of another card.</summary>
     [Fact]
     public void ACardNestedInsideAnothersContent_DrawsNoSecondDoor()
     {
@@ -243,5 +262,10 @@ public sealed class NsDashboardDoorTests : BunitContext, IAsyncLifetime
         var cut = Render<NsDashboard>();
 
         Assert.Single(cut.FindAll(".ns-card-header .mud-card-header-actions"));
+    }
+
+    static string PathOf(NSail.Icons.Glyph glyph)
+    {
+        return System.Text.RegularExpressions.Regex.Match(glyph.Markup, "d=\"([^\"]+)\"").Groups[1].Value;
     }
 }
