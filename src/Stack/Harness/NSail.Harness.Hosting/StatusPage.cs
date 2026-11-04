@@ -70,7 +70,7 @@ static class StatusPage
         {
             html.Append($"<p class=muted style=\"font-size:12px\">Last pass {Local(pass.At):HH:mm:ss}, {pass.Took.TotalSeconds:F1}s</p>");
             if (pass.Error is not null) html.Append($"<p style=\"color:var(--bad)\">The pass failed: {Esc(pass.Error)}</p>");
-            if (pass.Plan is { } plan) Plan(html, o, plan);
+            if (pass.Plan is { } plan) PlanPage.Summary(html, o, plan);
         }
 
         var ended = history.Jobs().Where(j => j.Ended is not null).ToList();
@@ -234,22 +234,6 @@ static class StatusPage
         html.Append($"<div class=row><span>Dev rounds per story</span><span>{(t.DevRoundsPerStory is { } rounds ? rounds.ToString("F1", CultureInfo.InvariantCulture) : "—")}</span></div>");
         html.Append($"<div class=row><span>Reviews with findings</span><span>{(t.Reviews == 0 ? "—" : $"{100.0 * t.ReviewsWithFindings / t.Reviews:F0}% ({t.ReviewsWithFindings} of {t.Reviews})")}</span></div>");
         html.Append("</div></div>");
-    }
-
-    static void Plan(StringBuilder html, HarnessOptions o, Plan plan)
-    {
-        html.Append($"<h2>Plan ({plan.Items.Count})</h2>");
-        if (plan.Items.Count > 0)
-        {
-            html.Append("<table class=r><tr><th class=n>#</th><th>Tier</th><th>Work</th></tr>");
-            var i = 0;
-            foreach (var item in plan.Items)
-            {
-                html.Append($"<tr><td class=n>{++i}</td><td><span class=b>{Esc(item.Tier)}</span></td><td>{Linked(o, item.ToString())}</td></tr>");
-            }
-            html.Append("</table>");
-        }
-        foreach (var n in plan.Notes) html.Append($"<p class=muted style=\"font-size:12px\">{Esc(n)}</p>");
     }
 
     // A duration as a person reads it: 45 s, 12 m, 3 h 40 m.

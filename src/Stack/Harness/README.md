@@ -108,6 +108,8 @@ The API is the Sdk's messages, under `/api/harness/` — browsable at `/scalar`,
 new stories on or off, a job sent by hand (`POST runs {"kind":"Dev","story":N}`), the build
 turns the lanes' shim takes and gives back, and the crew's count (`stats?range=`). For a browser:
 `GET /` is the status page (`?range=24h|7d|30d`: the crew's jobs by role as plain SVG, their
-outcomes and times, the agent's quota and the rework, then what runs, the plan and the last ten
-jobs), `GET /jobs` every job this machine remembers (filtered by role, result and story, 25 a page),
+outcomes and times, the agent's quota and the rework, then what runs, ten rows of the plan and of
+what it holds, and the last ten jobs; a list that can grow shows a few rows and a link to its own
+page), `GET /plan` the whole plan and every held story (searched, filtered by tier, 25 a page each),
+`GET /jobs` every job this machine remembers (searched, filtered by role, result and story, 25 a page),
 `GET /jobs/{id}` one job and its log, and `GET /jobs/{id}/log?tail=` its log as plain text.

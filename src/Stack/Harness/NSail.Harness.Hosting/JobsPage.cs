@@ -68,7 +68,7 @@ static class JobsPage
         return $"<span class=\"b {css}\">{label}</span>";
     }
 
-    public static string List(HarnessOptions o, JobHistory history, string? role, string? result, int? story, int? page)
+    public static string List(HarnessOptions o, JobHistory history, string? role, string? result, int? story, int? page, string? q = null)
     {
         var now = DateTimeOffset.UtcNow;
         var all = history.Jobs().OrderByDescending(j => j.Started).Select(RowOf).ToList();
@@ -76,17 +76,18 @@ static class JobsPage
             .Where(r => string.IsNullOrEmpty(role) || StatusPage.RoleOfWork(r.Work) == role)
             .Where(r => string.IsNullOrEmpty(result) || r.Result == result)
             .Where(r => story is null || r.Story == story)
+            .Where(r => PlanPage.Matches(q, r.Work, r.Outcome, r.Id))
             .ToList();
-        var pages = Math.Max(1, (rows.Count + PageSize - 1) / PageSize);
-        var at = Math.Clamp(page ?? 1, 1, pages);
+        var at = Pager.Clamp(page, rows.Count, PageSize);
 
         var html = Head("Jobs");
         html.Append($"<p class=muted style=\"font-size:13px\"><a href=\"/\">← Status</a></p><h1>Jobs <small class=muted>{StatusPage.Esc(o.Machine)} · the newest {all.Count} this machine ran</small></h1>");
         html.Append("<form class=filters method=get action=\"/jobs\">");
         html.Append(Select("role", "Every role", JobStats.Roles.Select(r => (r, StatusPage.Title(r))), role));
         html.Append(Select("result", "Every result", Results.Select(r => (r, r == "quiet" ? "nothing to do" : r)), result));
-        html.Append($"<input name=story inputmode=numeric placeholder=\"Story #\" size=8 value=\"{story}\"><button>Filter</button>");
-        if (!string.IsNullOrEmpty(role) || !string.IsNullOrEmpty(result) || story is not null) html.Append("<a href=\"/jobs\">Clear</a>");
+        html.Append($"<input name=story inputmode=numeric placeholder=\"Story #\" size=8 value=\"{story}\">");
+        html.Append($"<input name=q placeholder=\"Search work or outcome\" size=24 value=\"{StatusPage.Esc(q ?? "")}\"><button>Filter</button>");
+        if (!string.IsNullOrEmpty(role) || !string.IsNullOrEmpty(result) || story is not null || !string.IsNullOrEmpty(q)) html.Append("<a href=\"/jobs\">Clear</a>");
         html.Append("</form>");
 
         if (rows.Count == 0)
@@ -95,11 +96,7 @@ static class JobsPage
             return html.ToString();
         }
         Table(html, o, rows.Skip((at - 1) * PageSize).Take(PageSize), now);
-        html.Append("<div class=pager>");
-        html.Append(at > 1 ? $"<a href=\"{Query(role, result, story, at - 1)}\">‹ Newer</a>" : "<span></span>");
-        html.Append($"<span class=muted>page {at} of {pages} · {rows.Count} job{(rows.Count == 1 ? "" : "s")}</span>");
-        html.Append(at < pages ? $"<a href=\"{Query(role, result, story, at + 1)}\">Older ›</a>" : "<span></span>");
-        html.Append("</div>");
+        Pager.Render(html, at, rows.Count, PageSize, "job", p => Query(role, result, story, p, q));
         return html.ToString();
     }
 
@@ -137,7 +134,7 @@ static class JobsPage
         return string.Join('\n', reader.ReadToEnd().Split('\n').TakeLast(lines));
     }
 
-    static StringBuilder Head(string title, bool refresh = false)
+    internal static StringBuilder Head(string title, bool refresh = false)
     {
         var html = new StringBuilder();
         html.Append("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">");
@@ -146,19 +143,20 @@ static class JobsPage
         return html;
     }
 
-    static string Select(string name, string every, IEnumerable<(string Value, string Label)> options, string? chosen)
+    internal static string Select(string name, string every, IEnumerable<(string Value, string Label)> options, string? chosen)
     {
         var html = new StringBuilder($"<select name={name}><option value=\"\">{every}</option>");
         foreach (var (value, label) in options) html.Append($"<option value=\"{value}\"{(value == chosen ? " selected" : "")}>{StatusPage.Esc(label)}</option>");
         return html.Append("</select>").ToString();
     }
 
-    static string Query(string? role, string? result, int? story, int page)
+    static string Query(string? role, string? result, int? story, int page, string? q)
     {
         var parts = new List<string>();
         if (!string.IsNullOrEmpty(role)) parts.Add($"role={Uri.EscapeDataString(role)}");
         if (!string.IsNullOrEmpty(result)) parts.Add($"result={Uri.EscapeDataString(result)}");
         if (story is { } s) parts.Add($"story={s}");
+        if (!string.IsNullOrEmpty(q)) parts.Add($"q={Uri.EscapeDataString(q)}");
         parts.Add($"page={page}");
         return "/jobs?" + string.Join("&amp;", parts);
     }
