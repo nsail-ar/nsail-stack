@@ -1,6 +1,6 @@
 ---
 name: new-icon
-description: Add an icon to an NSail icon catalog (NsIcons, a kit's like ProductsIcons, an app's like OpticalIcons, or a Stack library's own like ExportingIcons) from a Material Symbols path. Use when a screen, menu entry, button or field needs a glyph no catalog carries yet, instead of reaching for Icons.Material.*, or when a pasted icon renders as nothing or a dot. Covers the 20px asset, the 960-grid viewBox transform, catalog choice, one drawing per entry and icon sizing.
+description: Add an icon to an NSail icon catalog (NsIcons, a kit's or app's like ProductsIcons or OpticalIcons, a Stack library's own) from a Material Symbols path. Use when a screen, menu entry, button or field needs a glyph no catalog has, instead of Icons.Material.*, or when a pasted icon renders as nothing or a dot. Covers the 960-grid viewBox transform, catalog choice and sizing.
 ---
 
 # Adding an icon
