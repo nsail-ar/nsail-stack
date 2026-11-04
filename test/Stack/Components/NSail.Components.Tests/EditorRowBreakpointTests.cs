@@ -103,9 +103,9 @@ public sealed class EditorRowBreakpointTests : BunitContext, IAsyncLifetime
 
     /// <summary>The column-mode half. A display:none cell generates no box, so a freed editor row
     /// laid out as a real table would own more columns than its header and drop every input one
-    /// column off — the band between md and a column's own threshold, since an open row stacks
-    /// below that (nsail#1614) and only an Lg or Xl column is still hidden above it
-    /// (EditorRowColumnModeTests). The table itself is marked for as long as a row is open, which is
+    /// column off — the band between 740px and a column's own threshold, since an open row stacks
+    /// below that (nsail#1614) and only an Md (under a 960px container), Lg or Xl column is still
+    /// hidden above it (EditorRowColumnModeTests). The table itself is marked for as long as a row is open, which is
     /// what lets ns-mud.css stop the whole table from hiding; the cells keep their hooks, so the
     /// stacked rules that key on them are untouched.</summary>
     [Fact]

@@ -92,7 +92,7 @@ public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
     {
         var rules = StackedPagedRules(HouseStylesheet.Read());
 
-        Assert.Equal(["@media (max-width: 960px)", "@container (max-width: 959.98px)"], rules.Select(rule => rule.Query));
+        Assert.Equal(["@media (max-width: 960px)", "@container (max-width: 739.98px)"], rules.Select(rule => rule.Query));
 
         foreach (var rule in rules)
         {

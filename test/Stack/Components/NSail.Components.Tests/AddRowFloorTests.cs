@@ -159,6 +159,36 @@ public sealed class AddRowFloorTests
             StringComparison.Ordinal);
     }
 
+    // And where the table stacks by its container on a wide window: an add row over a list in an
+    // aside has no columns under it either, and a desktop window would otherwise keep the floor.
+    [Fact]
+    public void TheFloorIsReleasedWhereTheTableStacksByItsContainer()
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Contains(
+            """
+            @media (min-width: 960px) {
+                @container (max-width: 739.98px) {
+                    .ns-grid:has(> * > .ns-row-submit) {
+                        --ns-field-grow-basis: initial;
+                    }
+
+                    .ns-grid > *:has(> .ns-row-submit) {
+                        --ns-field-width: initial;
+                    }
+
+                    .ns-grid:has(> * > .ns-row-submit) > .ns-form-field:not(:has(> .ns-row-submit)) {
+                        flex: 0 1 auto;
+                        max-width: 100%;
+                    }
+                }
+            }
+            """,
+            css,
+            StringComparison.Ordinal);
+    }
+
     /// <summary>The rem a token is declared at, wherever the sheet declares it.</summary>
     static double Token(string css, string token)
     {

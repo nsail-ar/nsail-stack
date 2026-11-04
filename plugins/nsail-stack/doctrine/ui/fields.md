@@ -666,10 +666,11 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   and a minimum a row cannot pay for is *added* to the table rather than redistributed inside
   it — which takes the row's own confirm past the edge. So the cell **demands** the basis from
   `md` up (a `min-width`, which the container can always pay for there and which keeps the
-  column growing past the basis with the surplus) and **asks for nothing below it**, where the
-  open row is no longer a row of columns at all: it stacks, and a card line is already the
-  widest a field can be ([hosts.md](hosts.md)). The container picks whether the cell asks; it
-  never decides what the row is made of (cases).
+  column growing past the basis with the surplus) and **asks for nothing below it**: between
+  740px and `md` the open row seats its fields in its own width, since one minimum cannot tell a
+  row with slack from one already past its table, and under 740px it stacks, where a card line
+  is already the widest a field can be ([hosts.md](hosts.md)). The container picks whether the
+  cell asks; it never decides what the row is made of (cases).
 - **Enter over an open list belongs to the list, and the form never sees it.** A text box inside
   a form implicitly submits it on Enter — the browser's own default action, on the KEYDOWN — and
   the vendor picks the highlighted option from the keyup after it, so without a guard every

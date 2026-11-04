@@ -158,8 +158,10 @@ looks up its own. No `<NsColumn>`, no `<NsTr>`.
 - **A table stacks where its container cannot seat it, not only where the window cannot.** The
   vendor stacks by viewport, so on a wide screen a list in an aside would stay a table of columns
   squeezed into the aside — cells overlapping, the row scrolling sideways. Under a container of
-  960px the rows are the phone's cards, read row or open row alike, column importance still
-  hiding (cases).
+  740px the rows are the phone's cards, read row or open row alike, column importance still
+  hiding (cases). The line sits past the widest aside that cannot seat a table (`NsDrawer` `Lg`,
+  720px; `Xl` and `Xxl` seat one) and short of the narrowest main surface, so such an aside
+  stacks and a list on a main page reads as a table on a desktop.
 - **The pager compacts by its own width.** Under 600px of pager it drops its page-size label and
   the first/last arrows and keeps the select, the row counter and previous/next, so the row stays
   one line on a phone and in an aside alike. The vendor's row is one shrink-proof width, and a
@@ -203,7 +205,7 @@ own word is the control's name, so there is no string, no glyph and no handler a
   hand, so a filter press keeps the order and a heading press keeps the filter.
 - **The file Exportar writes is the order on screen** ([exporting.md](../exporting.md)).
 - **Stacked, the list has no headings to press**: a card draws no header row, on a phone or in
-  a container under 960px alike, so the order offered there is the one already in effect.
+  a container under 740px alike, so the order offered there is the one already in effect.
 
 ### Inline editing (`RowEditor`)
 
@@ -303,21 +305,22 @@ are asked in that same breath, for the reason and through the walk the list's ar
   (`ns-cell-editing`) and `ns-mud.css` shapes them, so no editor lays its own row out and every
   stacked editor reads the same way (cases).
 - **A growing lookup's cell asks for its width floor from `md` up and for nothing below it.** The
-  floor is column arithmetic and below `md` there is no column to do it in: the open row stacks
-  (next bullet) and a card line is already the widest a field can be, so there is nothing left to
-  ask for and nothing to take back (cases).
-- **An open row stacks with its table where the container is under `md`, whatever the window is
+  floor is column arithmetic, and below `md` one number cannot tell rows apart: one row has slack
+  where another is already past its table. Between 740px and `md` the open row seats its fields
+  in the row's own width; under 740px it stacks (next bullet) and a card line is already the
+  widest a field can be, so there is nothing left to ask for and nothing to take back (cases).
+- **An open row stacks with its table where the container is under 740px, whatever the window is
   doing** — the container rule of *Columns and widths*, and the row that most needs it. An edit
-  input never hides, so the open row is the one thing in a grid that cannot be narrowed, and under
-  `md` it does not fit any line editor in the tree: in the 688px container a `Lg` aside leaves,
+  input never hides, so the open row is the one thing in a grid that cannot be narrowed, and in
+  an aside it does not fit any line editor in the tree: in the 688px container a `Lg` aside leaves,
   four inputs that need over 950px between them were handed 104, 74, 57 and 47, and "125.430,50"
   read "50". The shape is the phone's — same card lines, same label above the field — and only
   the QUESTION differs: the vendor's stack asks the viewport, this asks the container.
 - **In column mode the whole table stops hiding while a row is open**, header and read rows with
   it (`ns-table-editing`). A `display: none` cell generates no box, so a freed editor row would
   otherwise own more columns than the header does and drop every input one column off. That is
-  the band between `md` and a column's own threshold — under `md` the row has stopped being a row
-  of columns — and it is still no phone's case: a 1000px container on a laptop hides a `Lg`
+  the band between 740px and a column's own threshold — under 740px the row has stopped being a
+  row of columns — and it is still no phone's case: a 1000px container on a laptop hides a `Lg`
   column from a row it frees. **The reading list only stays shorter where nothing is being
   aligned**: stacked, a cell is a card line and the read rows go on hiding.
 
