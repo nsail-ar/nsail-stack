@@ -26,6 +26,7 @@
                     RelativeWidth="DropdownWidth.Adaptive"
                     OverflowBehavior="OverflowBehavior.FlipOnOpen"
                     MaxHeight="NsMenu.Measure"
+                    Style="@($"z-index:{SurfaceContext.VendorZIndex}")"
                     Class="ns-dropdown-panel">
             @* The popover renders under the provider, a sibling of the router, and a
                CascadingValue provides where it RENDERS: this is the one component standing on
@@ -44,7 +45,10 @@
         </MudPopover>
 
         @* The popover draws no catcher of its own, and anything that opens owes a click
-           elsewhere a way back out; one tier under the popover ceiling, as NsHelp pairs it. *@
+           elsewhere a way back out; one tier under the popover ceiling, as NsHelp pairs it. The
+           panel names its own tier: the vendor script reads the popover tier before the theme
+           writes it and seats the panel at its default, under this catcher, where the first
+           click on a row lands on the catcher and closes the panel instead. *@
         <MudOverlay Visible="true"
                     LockScroll="false"
                     ZIndex="@(SurfaceContext.VendorZIndex - 1)"
