@@ -111,25 +111,80 @@ public sealed class NsNavMenuCommandEntryTests : BunitContext, IAsyncLifetime
         });
     }
 
-    // The chord rides the control the click lands on, so the keyboard layer's activate() presses
-    // exactly what a hand does.
+    // One claim per chord, on a button running the entry's own command, so the keyboard layer's
+    // activate() presses exactly what a hand on the row does — and off the map, so nothing the
+    // map does to the row takes the key with it.
     [Fact]
-    public void ItsChordIsClaimedOnTheControlItRuns()
+    public void ItsChordIsClaimedOnceOffTheMapAndRunsTheCommand()
     {
+        var runs = 0;
+
         var menu = RenderMenu(new NavMenuItem
         {
             Name = "Probe",
-            Command = () => Task.CompletedTask,
+            Command = () =>
+            {
+                runs++;
+
+                return Task.CompletedTask;
+            },
             Chord = NsKeys.Help
         });
 
-        var control = menu.Find($".ns-nav-command [{NsKeys.Attribute}]");
+        var control = Assert.Single(menu.FindAll($"[{NsKeys.Attribute}=\"{NsKeys.Help}\"]"));
 
         Assert.Equal("BUTTON", control.TagName);
         Assert.Equal("button", control.GetAttribute("type"));
+        Assert.Null(control.Closest(".mud-navmenu"));
+        Assert.Null(control.Closest(".ns-nav-find"));
+        Assert.Equal($"Probe ({NsKeys.Help})", control.GetAttribute("data-ns-whisper"));
 
-        Assert.Equal(NsKeys.Help, control.GetAttribute(NsKeys.Attribute));
-        Assert.Equal("Question", control.GetAttribute("aria-keyshortcuts"));
+        control.Click();
+
+        Assert.Equal(1, runs);
+    }
+
+    // The row is the door a person sees, so it is the one that tells a screen reader the key.
+    [Fact]
+    public void TheRowAnnouncesTheKeyItDoesNotDispatch()
+    {
+        var menu = RenderMenu(new NavMenuItem { Name = "Probe", Command = () => Task.CompletedTask, Chord = NsKeys.Help });
+
+        var row = menu.Find(".ns-nav-command button");
+
+        Assert.Equal("Question", row.GetAttribute("aria-keyshortcuts"));
+        Assert.False(row.HasAttribute(NsKeys.Attribute));
+    }
+
+    // nsail#3095: Enter in the box opens the first match and the box keeps the term, which
+    // filters Atajos de Teclado off the map — and "?" is the frame's key, not the filter's.
+    [Fact]
+    public void ATermThatFiltersTheRowAwayKeepsItsChord()
+    {
+        var menu = RenderMenu(
+            new NavMenuItem { Name = "Probe", Command = () => Task.CompletedTask, Chord = NsKeys.Help },
+            new NavMenuItem { Name = "Other", Command = () => Task.CompletedTask });
+
+        menu.Find("input").Input("oth");
+
+        menu.WaitForAssertion(() =>
+        {
+            Assert.DoesNotContain(menu.FindAll(".ns-nav-command"), row => row.TextContent.Contains("Probe"));
+            Assert.Single(menu.FindAll($"[{NsKeys.Attribute}=\"{NsKeys.Help}\"]"));
+        });
+    }
+
+    // nsail#3095: with Ayuda shut, "?" still opens the sheet.
+    [Fact]
+    public void WithTheHelpGroupCollapsedTheChordOpensTheSheet()
+    {
+        var menu = RenderMenu(services => services.AddScoped<INavMenuContributor, HelpMenu>());
+
+        Assert.Equal("false", menu.Find(".mud-nav-group > button").GetAttribute("aria-expanded"));
+
+        menu.Find($"[{NsKeys.Attribute}=\"{NsKeys.Help}\"]").Click();
+
+        menu.WaitForAssertion(() => Assert.Equal(typeof(NsKeySheet), Assert.Single(Dialogs.Opens).Component));
     }
 
     // The word is on screen and the key is not, so the row whispers both, as a chorded NsButton

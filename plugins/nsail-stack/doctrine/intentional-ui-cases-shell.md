@@ -251,8 +251,9 @@ the entry are both inside it, and a chord no live control declares does nothing.
   of) — plus, for a question neither lists an answer to, whatever the app put at the end of it.
 - **"?" presses *Ayuda > Atajos de Teclado*** — a command entry of the Stack's own Help group
   (`HelpMenu`, ui/navigation.md), not a glyph on the box's row: a door the map can list is an
-  entry, so the search finds it and an app's own help stands beside it. A collapsed group hides
-  its rows without taking them out of layout, so the chord still answers with the group shut.
+  entry, so the search finds it and an app's own help stands beside it. The chord is claimed
+  outside the groups and the filter (ui/navigation.md, a leaf running a `Command`), so it answers
+  with the group shut and with a term in the box that filtered the entry away.
 - **The sheet lists the claims on screen** (`NsKeySheet`, hosted through
   `DialogManager.Open`, so Escape and the X close it through the guard everything else goes
   through). Its lines are read off the DOM at the instant the door is pressed (`nsapp.chords`) —

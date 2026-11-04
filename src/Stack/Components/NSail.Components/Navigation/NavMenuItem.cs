@@ -36,9 +36,10 @@ public sealed class NavMenuItem
     /// both, the same first-non-null as PageType and Url (Merge).</summary>
     public Func<Task>? Command { get; init; }
 
-    /// <summary>The chord that presses a Command entry (NsKeys), claimed on the drawn row the
-    /// way a button claims one, so the key runs exactly what the click runs and leaves with the
-    /// row wherever the gate or a Visible false takes it.</summary>
+    /// <summary>The chord that presses a Command entry (NsKeys), claimed by the drawer outside
+    /// its groups and its search filter, so the key runs exactly what the click runs, answers
+    /// whether or not the row is drawn, and leaves with the entry wherever the gate or a Visible
+    /// false takes it.</summary>
     public string? Chord { get; init; }
 
     public IReadOnlyList<NavMenuItem> Items { get; init; } = [];
