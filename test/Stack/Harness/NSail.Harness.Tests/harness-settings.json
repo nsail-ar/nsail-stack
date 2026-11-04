@@ -1,0 +1,113 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "System.Net.Http.HttpClient": "Warning"
+    }
+  },
+  "Urls": "http://127.0.0.1:6190",
+  "Harness": {
+    "Mode": "Debug",
+    "Board": { "Provider": "GitHub", "Key": "app", "Repository": "acme/app", "Project": 1, "StatusField": "Status" },
+    "Repositories": [
+      { "Provider": "GitHub", "Name": "acme/app",
+        "Build": { "Kind": "DotNet", "Solution": "App.sln", "Roots": [ "src", "test" ], "TestFilter": "FullyQualifiedName!~.E2E.", "RestoreArgs": [ "--no-http-cache" ] } },
+      { "Provider": "GitHub", "Name": "acme/framework", "BranchPrefix": "stack", "Label": "area:stack",
+        "Pin": { "File": "Directory.Build.props", "Pattern": "<NSailStackVersion>([^<]+)</NSailStackVersion>", "Ref": "v{version}" } }
+    ],
+    "Agents": 5,
+    "Builds": 3,
+    "Browsers": 1,
+    "UnrunnableDrivers": [ "codex", "gemini" ],
+    "Variables": {
+      "LC_ALL": "C.UTF-8",
+      "PGHOST": "localhost",
+      "PGPORT": "5434",
+      "PGPASSWORD": "ci"
+    },
+    "CommitName": "NSail",
+    "CommitEmail": "bot@example.com",
+    "Prepare": [
+      { "Run": "dotnet", "Args": [ "nuget", "locals", "http-cache", "--clear" ] },
+      { "Run": ".github/plugin.sh" }
+    ],
+    "Seats": {
+      "analyst":  { "Signature": "— Analyst", "Model": "opus",   "PromptFile": ".github/analyst-prompt.md", "RuledLabel": "analyst-ruled" },
+      "builder":   { "Signature": "— Builder",  "Model": "sonnet", "PromptFile": ".github/builder-prompt.md" },
+      "reviewer": { "Signature": "— Reviewer",       "Model": "opus",   "PromptFile": ".github/reviewer-prompt.md", "NarrowPromptFile": ".github/reviewer-narrow.md" },
+      "walker": { "Signature": "— Reviewer",    "Model": "sonnet", "PromptFile": "prompts/qa-walk.md" }
+    },
+    "Products": {
+      "shop": { "Name": "Shop", "Labels": [ "area:shop" ], "Default": true, "Tenant": "https://test.shop.example.com",
+                   "UserVariable": "QA_USER", "PasswordVariable": "QA_PASSWORD_SHOP", "Live": { "Tag": "shop/v" } },
+      "clinic": { "Name": "Clinic", "Labels": [ "area:clinic" ], "Tenant": "https://test.clinic.example.com",
+                   "UserVariable": "QA_USER", "PasswordVariable": "QA_PASSWORD_CLINIC", "Live": { "Tag": "clinic/v" } },
+      "admin":     { "Name": "Admin", "Labels": [ "area:admin" ], "Tenant": "https://test.admin.example.com",
+                   "UserVariable": "QA_USER", "PasswordVariable": "QA_PASSWORD_ADMIN", "Live": { "Tag": "admin/v", "Header": "X-App-Version" } }
+    },
+    "Conditions": {
+      "db-up":      { "Reachable": [ "localhost:5434" ] },
+      "quota-5h":   { "Usage": { "Window": "five_hour", "Below": 98 } },
+      "quota-week": { "Usage": { "Window": "seven_day", "Below": 98 } }
+    },
+    "Workers": {
+      "release-shop": { "Type": "Release", "Priority": 10, "Enabled": false, "Product": "Shop", "Workflow": "release-shop.yml", "Paths": ".github/products/shop.paths",
+                           "Suite": "test/Apps/{Product}/NSail.{Product}.E2E/NSail.{Product}.E2E.csproj", "Variables": { "NSAIL_TESTDB_CONCURRENCY": "8" }, "When": { "Use": [ "db-up" ], "Schedule": { "Start": "0 2 * * *", "TimeZone": "America/Argentina/Buenos_Aires" } } },
+      "release-clinic": { "Type": "Release", "Priority": 11, "Enabled": false, "Product": "Clinic", "Workflow": "release-clinic.yml", "Paths": ".github/products/clinic.paths",
+                           "Suite": "test/Apps/{Product}/NSail.{Product}.E2E/NSail.{Product}.E2E.csproj", "Variables": { "NSAIL_TESTDB_CONCURRENCY": "8" }, "When": { "Use": [ "db-up" ], "Schedule": { "Start": "0 2 * * *", "TimeZone": "America/Argentina/Buenos_Aires" } } },
+      "release-admin":     { "Type": "Release", "Priority": 12, "Enabled": false, "Product": "Admin", "Workflow": "release-admin.yml", "Paths": ".github/products/admin.paths",
+                           "Suite": "test/Apps/{Product}/NSail.{Product}.E2E/NSail.{Product}.E2E.csproj", "Variables": { "NSAIL_TESTDB_CONCURRENCY": "8" }, "When": { "Use": [ "db-up" ], "Schedule": { "Start": "0 2 * * *", "TimeZone": "America/Argentina/Buenos_Aires" } } },
+      "verify-main":     { "Type": "Verify",  "Priority": 20, "Target": "main", "When": { "Use": [ "db-up" ] } },
+      "verify-pr":       { "Type": "Verify",  "Priority": 30, "When": { "Use": [ "db-up" ] } },
+      "review":          { "Type": "Review",  "Priority": 40, "Seat": "reviewer", "When": { "Use": [ "quota-5h", "quota-week" ] } },
+      "round":           { "Type": "Develop", "Priority": 50, "Seat": "builder", "When": { "Use": [ "quota-5h", "quota-week" ] },
+                           "Filter": { "Status": "Ready|In-Progress|Analyze|Merged", "Pr": "open", "Checks": "red|conflict|read" } },
+      "test":            { "Type": "Test",    "Priority": 60, "Seat": "walker", "When": { "Use": [ "quota-5h", "quota-week" ] },
+                           "Mcp": { "playwright": { "Run": "npx", "Args": [ "-y", "@playwright/mcp@0.0.84", "--browser", "chromium", "--headless", "--isolated", "--no-sandbox", "--allowed-origins", "{origins}", "--output-dir", "{shots}" ] } },
+                           "Tools": [ "Bash(.github/qa-mail.sh:*)" ],
+                           "Variables": { "QA_USER": "${vars:QA_USER}", "QA_PASSWORD_SHOP": "${vars:QA_PASSWORD_SHOP}",
+                                          "QA_PASSWORD_CLINIC": "${vars:QA_PASSWORD_CLINIC}", "QA_PASSWORD_ADMIN": "${vars:QA_PASSWORD_ADMIN}" } },
+      "test-asked":      { "Type": "Test",    "Priority": 61, "Seat": "walker", "When": { "Use": [ "quota-5h", "quota-week" ] }, "Recheck": 1440,
+                           "Filter": { "Status": "QA", "InVersion": true, "Labels": [ "qa-asked", "!ruling", "!stalled", "!blocked", "!hand" ] },
+                           "Mcp": { "playwright": { "Run": "npx", "Args": [ "-y", "@playwright/mcp@0.0.84", "--browser", "chromium", "--headless", "--isolated", "--no-sandbox", "--allowed-origins", "{origins}", "--output-dir", "{shots}" ] } },
+                           "Tools": [ "Bash(.github/qa-mail.sh:*)" ],
+                           "Variables": { "QA_USER": "${vars:QA_USER}", "QA_PASSWORD_SHOP": "${vars:QA_PASSWORD_SHOP}",
+                                          "QA_PASSWORD_CLINIC": "${vars:QA_PASSWORD_CLINIC}", "QA_PASSWORD_ADMIN": "${vars:QA_PASSWORD_ADMIN}" } },
+      "analyze-stalled": { "Type": "Analyze", "Priority": 70, "Seat": "analyst", "When": { "Use": [ "quota-5h", "quota-week" ] },
+                           "Filter": { "Status": "Ready|In-Progress|Analyze", "Pr": "any", "Labels": [ "stalled", "!ruling", "!blocked", "!hand" ] },
+                           "On": { "Starting": [ { "MoveTo": "Analyze" } ] } },
+      "analyze":         { "Type": "Analyze", "Priority": 80, "Seat": "analyst", "When": { "Use": [ "quota-5h", "quota-week" ] } },
+      "develop":         { "Type": "Develop", "Priority": 90, "Seat": "builder", "When": { "Use": [ "quota-5h", "quota-week" ] } },
+
+      "no-column":       { "Type": "UpdateBoard", "Priority": 100,
+                           "Filter": { "Status": "none", "SubIssues": "0" },
+                           "On": { "Executed": [ { "MoveTo": "Backlog" } ] } },
+      "unblock-backlog": { "Type": "UpdateBoard", "Priority": 110,
+                           "Filter": { "Status": "Backlog|none", "Labels": [ "blocked" ], "Blockers": ">0", "Unblocked": true },
+                           "On": { "Executed": [ { "RemoveLabel": "blocked" }, { "MoveTo": "Analyze" } ] } },
+      "unblock":         { "Type": "UpdateBoard", "Priority": 111,
+                           "Filter": { "Status": "!Backlog|none", "Labels": [ "blocked" ], "Blockers": ">0", "Unblocked": true },
+                           "On": { "Executed": [ { "RemoveLabel": "blocked" } ] } },
+      "epics-start":     { "Type": "UpdateBoard", "Priority": 120,
+                           "Filter": { "Status": "Backlog|Analyze|Ready|none", "SubIssues": ">0", "EpicStarted": true },
+                           "On": { "Executed": [ { "MoveTo": "In-Progress" } ] } },
+      "orphans-new":     { "Type": "UpdateBoard", "Priority": 130, "Enabled": false,
+                           "Filter": { "Status": "In-Progress", "SubIssues": "0", "Pr": "none", "PrMerged": false, "Labels": [ "!hand", "!blocked", "!ruling", "!stalled" ] },
+                           "On": { "Executed": [ { "MoveTo": "Ready" }, { "Comment": "In-Progress with no open PR and no job on it: back to Ready." } ] } },
+      "orphans-built":   { "Type": "UpdateBoard", "Priority": 131, "Enabled": false,
+                           "Filter": { "Status": "In-Progress", "SubIssues": "0", "Pr": "none", "PrMerged": true, "Labels": [ "!hand", "!blocked", "!ruling", "!stalled" ] },
+                           "On": { "Executed": [ { "MoveTo": "Analyze" }, { "Comment": "In-Progress with no open PR, no job on it and a PR merged: the analyst reads whether it is done." } ] } }
+    },
+    "RedLabels": [ "p1", "claude:opus" ],
+    "ReviewMarker": "reviewer"
+  },
+  "Telemetry": {
+    "Endpoint": "https://telemetry.example.com/api/default",
+    "ServiceName": "harness"
+  },
+  "Claude": {
+    "Plugins": [ "doctrine@app" ],
+    "SettingsFile": "claude-settings.json"
+  }
+}

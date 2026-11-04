@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# The doorman of a machine's build turns, put first on a lane's PATH by the harness.
+# A `dotnet build|test|publish|restore|pack|msbuild|ef` waits for a turn from the harness
+# (served by priority, not arrival) before it runs and gives it back when it ends, so however
+# many lanes sail, only a few compile at once. Anything else goes straight through. The same
+# script serves Git Bash on Windows and bash on Linux and macOS.
+set -u
+
+real="${HARNESS_REAL_DOTNET:-}"
+if [ -z "$real" ]; then
+  here="$(cd "$(dirname "$0")" && pwd)"
+  real="$(PATH="${PATH//$here:/}" command -v dotnet || true)"
+fi
+[ -n "$real" ] || { echo "harness: no dotnet on the PATH" >&2; exit 127; }
+
+case "${1:-}" in
+  build|test|publish|restore|pack|msbuild|ef) ;;
+  *) exec "$real" "$@" ;;
+esac
+
+# MSBuild starts a node per core, and a test run a host per project at once: two builds on a
+# sixteen-core box were thirty-odd processes. A lane's build gets HARNESS_BUILD_NODES of them,
+# unless the command names its own.
+case "$1" in
+  build|test|publish|pack|msbuild)
+    case " $* " in
+      *" -m"*|*" -maxcpucount"*|*" /m"*|*" -- "*) ;;
+      *) [ -n "${HARNESS_BUILD_NODES:-}" ] && set -- "$@" "-maxcpucount:$HARNESS_BUILD_NODES" ;;
+    esac ;;
+esac
+if [ -z "${HARNESS_URL:-}" ] || [ -n "${HARNESS_LEASE_HELD:-}" ]; then
+  exec "$real" "$@"
+fi
+
+holder="${HARNESS_HOLDER:-lane}"
+asked=$(date +%s)
+# The answer is the lease id as a JSON string.
+lease="$(curl -fsS --max-time 7200 -X POST -H "Content-Type: application/json" \
+  -d"{\"holder\":\"$holder\",\"rank\":${HARNESS_RANK:-9}}" "$HARNESS_URL/api/harness/leases" 2>/dev/null)" || {
+  echo "harness: the harness gave no build turn (${HARNESS_URL}) — running without one" >&2
+  exec "$real" "$@"
+}
+
+waited=$(( $(date +%s) - asked ))
+lease="${lease//\"/}"
+[ "$waited" -ge 10 ] && echo "harness: waited ${waited}s for a build turn (other builds held the machine's turns)" >&2
+
+release() {
+  curl -fsS -X DELETE "$HARNESS_URL/api/harness/leases/$lease" >/dev/null 2>&1 || true
+}
+trap release EXIT
+trap 'exit 130' INT TERM
+
+# A dotnet this one starts (an E2E fixture publishing its host) rides the turn already held.
+export HARNESS_LEASE_HELD=1
+"$real" "$@"
+exit $?
