@@ -10,7 +10,7 @@ namespace NSail.Components.Tests;
 /// file can answer.</summary>
 public sealed partial class SearchPlaceholderLiteralTests
 {
-    [GeneratedRegex("""<NsSearchField\b[^>]*?\bPlaceholder\s*=\s*"[^@"][^"]*"[^>]*>""", RegexOptions.Singleline)]
+    [GeneratedRegex("""<(?:NsSearchField\b[^>]*?\bPlaceholder|(?:NsPageHeader|NsNavMenu|NsTree)\b[^>]*?\bSearchPlaceholder)\s*=\s*"[^@"][^"]*"[^>]*>""", RegexOptions.Singleline)]
     private static partial Regex LiteralOnSearchField();
 
     static string Root()
@@ -27,13 +27,18 @@ public sealed partial class SearchPlaceholderLiteralTests
     [Fact]
     public void NoSearchFieldCarriesAPlaceholderLiteral()
     {
-        var offenders = Directory.EnumerateFiles(Path.Combine(Root(), "src"), "*.razor", SearchOption.AllDirectories)
+        var files = Directory.EnumerateFiles(Path.Combine(Root(), "src"), "*.razor", SearchOption.AllDirectories)
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+            .ToList();
+
+        Assert.Contains(files, file => File.ReadAllText(file).Contains("<NsSearchField"));
+
+        var offenders = files
             .Where(file => LiteralOnSearchField().IsMatch(File.ReadAllText(file)))
             .Select(file => Path.GetRelativePath(Root(), file))
             .ToList();
 
-        Assert.True(offenders.Count == 0, $"NsSearchField with a Placeholder literal: {string.Join(", ", offenders)}");
+        Assert.True(offenders.Count == 0, $"A search box with a placeholder literal: {string.Join(", ", offenders)}");
     }
 
     [Theory]
@@ -42,6 +47,10 @@ public sealed partial class SearchPlaceholderLiteralTests
     [InlineData("""<NsSearchField Placeholder="@Hint" />""", false)]
     [InlineData("""<NsSearchField Value="x" />""", false)]
     [InlineData("""<NsTextField Placeholder="Buscar" />""", false)]
+    [InlineData("""<NsPageHeader Title="x" SearchPlaceholder="Buscar" />""", true)]
+    [InlineData("""<NsNavMenu SearchPlaceholder="Buscar" />""", true)]
+    [InlineData("""<NsTree Items="x" SearchPlaceholder="Buscar" />""", true)]
+    [InlineData("""<NsTree SearchPlaceholder="@Translate("A.B")" />""", false)]
     public void TheScanSeesALiteralAndNothingElse(string markup, bool literal)
     {
         Assert.Equal(literal, LiteralOnSearchField().IsMatch(markup));
