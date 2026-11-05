@@ -76,7 +76,8 @@
   "Common.Retry": "Retry",
   "Common.NewVersion": "A new version is available.",
 
-  "Components.NsPasswordField.Stored": "Stored. Leave this empty to keep it.",
+  "Components.NsPasswordField.Stored": "•••••••• Stored",
+  "Components.NsPasswordField.StoredHint": "Stored. Leave this empty to keep it.",
 
   "Components.NsSince.Moments": "moments ago",
   "Components.NsSince.Minutes": "{0} min ago",

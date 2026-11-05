@@ -247,13 +247,15 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   and giving it one reaches `SetPassword`, the invitation flow and every seeded account.
 - **`NsPasswordField` says a secret is on file behind `IsStored`.** A write-only credential never
   travels back, so the box opens empty on every visit and "nothing is stored" looks exactly like
-  "the secret is stored and not shown": the flag fills the hint with the Stack's own
-  `Components.NsPasswordField.Stored`, which says both that there is one and that leaving the box
-  alone keeps it. **False renders no helper node at all**, never an empty one, and an explicit
-  `Helper` still wins — the flag only fills a hint the caller wrote none of. It is one boolean
-  rather than a per-screen string so no screen copies the sentence by hand; the server side of
-  the same contract is a derived `HasXxx` on the settings type ([settings.md](settings.md),
-  *A secret is write-only*) and a save that reads a blank field as "unchanged".
+  "the secret is stored and not shown". While the box is empty the flag floats the label and
+  fills the placeholder with the Stack's own `Components.NsPasswordField.Stored` (a word), and
+  a check icon at the end carries `Components.NsPasswordField.StoredHint` (the whole sentence,
+  including that leaving the box alone keeps it) as its accessible name. It takes **no row**
+  under the box, which a narrow settings grid has no room for; typing removes both, and an
+  explicit `Placeholder` still wins. It is one boolean rather than a per-screen string so no
+  screen copies the sentence by hand; the server side of the same contract is a derived
+  `HasXxx` on the settings type ([settings.md](settings.md), *A secret is write-only*) and a
+  save that reads a blank field as "unchanged".
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
   6-digit hex — no alpha channel — matching what every caller already stores; text that
   isn't a color never reaches the model. *Accepted debt: the box itself keeps showing the
