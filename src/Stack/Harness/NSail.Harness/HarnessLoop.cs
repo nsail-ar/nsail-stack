@@ -47,8 +47,9 @@ public sealed class HarnessLoop(
     readonly ConcurrentDictionary<string, TimeSpan> _waited = new();
     volatile int _stalled;
 
-    // When this machine last walked each story: a walk that left it where a walk takes it (a tenant not
-    // running its code yet, a walk that could not be done) is not walked again before the next cut.
+    // When this machine last walked each story: a walk that left it where a walk takes it (a walk that
+    // could not be done) is not walked again before the next cut. A tenant not running its code yet
+    // is asked again after QaJob.NotLiveRecheck instead.
     readonly ConcurrentDictionary<int, DateTimeOffset> _walked = new();
     readonly CancellationTokenSource _jobsStop = new();
     Pass? _last;
@@ -511,7 +512,11 @@ public sealed class HarnessLoop(
             var result = await job.Run(running.Slot, running.LogPath, _jobsStop.Token);
             outcome = result.Summary;
             ended = result;
-            if (running.Item is { Kind: WorkKind.Qa, Story: { } walked }) _walked[walked] = DateTimeOffset.UtcNow;
+            if (running.Item is { Kind: WorkKind.Qa, Story: { } walked })
+            {
+                if (QaJob.WaitsForTheCut(result)) _walked[walked] = DateTimeOffset.UtcNow;
+                else _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + QaJob.NotLiveRecheck;
+            }
             if (result.Idle) _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + Backoff;
             if (result.QuotaUntil is { } until)
             {

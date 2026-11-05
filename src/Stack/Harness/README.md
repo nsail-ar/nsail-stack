@@ -49,7 +49,8 @@ the files it leaves.
     published is no release, so a cut that died never reads as the last one. A Test walks one story with its seat in a fresh browser
     (its `Mcp` servers; `Tools` adds what the walker may call): the harness lays down the story, its
     PRs and what QA already asked, and which build each of `Products` runs (the newest `Live.Tag`, or
-    a tenant's `Live.Header`) — a story its tenant does not run yet is not walked — and attaches
+    a tenant's `Live.Header`) — a story its tenant does not run yet is not walked, and is asked again
+    after `QaJob.NotLiveRecheck` rather than at the next cut, because a deploy lands after its cut — and attaches
     the walk's shots to the board (on GitHub, the attachments a pasted file becomes). A story waiting
     on its ask is asked once, and walked again only when someone wrote on it or after `Recheck` minutes. The walker writes
     `VERDICT: ok|n/a|bug|asked|waiting|not-live|doubt` and its report: the verdict is the event, and
