@@ -528,8 +528,14 @@ dies in the browser over a 200.
   unconfigured name is covered, and so is the **non-2xx** path, which leaves `HttpSender`
   through `HandleError` without returning a response.
 - **The comparison is one rule in one place**, `ServerBuild.Answered` (`NSail.Builds`,
-  types.md): a missing header, a blank one, and this process's own build are all silence.
-  **Nothing stamps a version outside the container build** (`deploy/Dockerfile` passes
+  types.md): a missing header, a blank one, and this process's own build are all silence, and
+  so is the same version under another `+revision` — build metadata is ignored when versions
+  are compared (SemVer 2.0, 10), while a different version, an older one included, still moves.
+  **A response a cache can replay is not read at all** (`Cache-Control` with `max-age` above
+  zero, or `immutable`): a browser hands it back with the build word of the day it was
+  stored, so an `immutable` image fetched before a deploy told every later boot that the server
+  had moved. Responses that must be revalidated, and the API's own, are answered live and are
+  read. **Nothing stamps a version outside the container build** (`deploy/Dockerfile` passes
   `InformationalVersion` to the whole publish, client assembly included), so at a developer's
   desk both halves read the same default and compare equal.
 - **It fires once, and offers**: the chrome above every page raises a non-blocking bar and
