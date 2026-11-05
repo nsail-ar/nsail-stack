@@ -1782,7 +1782,8 @@
    own min-content collapses because a percentage-width child contributes nothing to it. A
    control with a help icon at its side sizes to its content; lone controls keep the vendor
    width, since nothing sits beside them to crush. */
-.ns-form .mud-input-control:has(+ .ns-help) {
+.ns-form .mud-input-control:has(+ .ns-help),
+.ns-form .ns-stored-box:has(+ .ns-help) {
     flex: 1 1 auto;
     min-width: 0;
     width: auto;
@@ -4701,6 +4702,28 @@ div.mud-input-slot.mud-input-root::placeholder {
     background-color: var(--ns-alert-info-bg, var(--mud-palette-info));
     border: 1px solid var(--ns-alert-info-border, transparent);
     color: var(--ns-alert-info-ink, var(--mud-palette-info-text)) !important;
+}
+
+/* THE CHECK A STORED SECRET DRAWS INSIDE ITS BOX (NsPasswordField IsStored): the placeholder says
+   "Guardado" and the check carries the whole sentence as a whisper, so it takes the pointer;
+   the input gives up the check's room so the placeholder is cut with an ellipsis
+   before it, never under it. */
+.ns-stored-box {
+    position: relative;
+}
+
+.ns-stored-mark {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    display: inline-flex;
+    line-height: 0;
+}
+
+.ns-stored-box.ns-stored .mud-input-control input.mud-input-slot.mud-input-root {
+    padding-inline-end: 36px;
+    text-overflow: ellipsis;
 }
 
 /* THE KEY A SEARCH BOX ANSWERS, drawn inside the box at its trailing edge (NsSearchField) —

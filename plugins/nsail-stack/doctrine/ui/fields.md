@@ -245,15 +245,19 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   bar is hidden while the field is empty, and it moves on the keystroke because every box in
   the family does. **It is advice and never a gate** — NSail has no password policy,
   and giving it one reaches `SetPassword`, the invitation flow and every seeded account.
-- **`NsPasswordField` says a secret is on file behind `IsStored`.** A write-only credential never
-  travels back, so the box opens empty on every visit and "nothing is stored" looks exactly like
-  "the secret is stored and not shown": the flag fills the hint with the Stack's own
-  `Components.NsPasswordField.Stored`, which says both that there is one and that leaving the box
-  alone keeps it. **False renders no helper node at all**, never an empty one, and an explicit
-  `Helper` still wins — the flag only fills a hint the caller wrote none of. It is one boolean
-  rather than a per-screen string so no screen copies the sentence by hand; the server side of
-  the same contract is a derived `HasXxx` on the settings type ([settings.md](settings.md),
-  *A secret is write-only*) and a save that reads a blank field as "unchanged".
+- **`NsPasswordField` says a secret is on file behind `IsStored`, inside the box.** A write-only
+  credential never travels back, so the box opens empty on every visit and "nothing is stored"
+  looks exactly like "the secret is stored and not shown". While the flag is on and the box is
+  empty, the label stays floated, the placeholder reads `Components.NsPasswordField.Stored` (short)
+  and a check at the end of the box carries `Components.NsPasswordField.StoredHint` (the whole
+  sentence, leave it empty to keep it) as its whisper (`NsTooltip`) and its label; the glyph takes
+  the field's ink, since the status ink is a list's channel ([styling.md](styling.md)). There is no helper row, so a narrow settings
+  grid keeps its row height; the placeholder alone cannot hold the sentence and an icon alone is
+  invisible at a glance. An explicit `Helper` or `Placeholder` still wins, and once something is
+  typed both go. It is one boolean rather than a per-screen string so no screen copies the
+  sentence by hand; the server side of the same contract is a derived `HasXxx` on the settings
+  type ([settings.md](settings.md), *A secret is write-only*) and a save that reads a blank field
+  as "unchanged".
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
   6-digit hex — no alpha channel — matching what every caller already stores; text that
   isn't a color never reaches the model. *Accepted debt: the box itself keeps showing the

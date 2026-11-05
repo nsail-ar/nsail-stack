@@ -76,7 +76,8 @@
   "Common.Retry": "Reintentar",
   "Common.NewVersion": "Hay una versión nueva.",
 
-  "Components.NsPasswordField.Stored": "Guardado. Vacío para conservarlo.",
+  "Components.NsPasswordField.Stored": "•••••••• Guardado",
+  "Components.NsPasswordField.StoredHint": "Guardado. Vacío para conservarlo.",
 
   "Components.NsSince.Moments": "hace instantes",
   "Components.NsSince.Minutes": "hace {0} min",

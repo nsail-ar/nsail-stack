@@ -9,11 +9,9 @@ using NSail.Localization;
 
 namespace NSail.Components.Tests;
 
-/// <summary>nsail#1468: a write-only credential never travels back, so the box opens empty on
-/// every visit and "nothing is stored" and "the secret is stored and not shown" look identical.
-/// IsStored is the one line that tells them apart, and it says in the same breath that leaving
-/// the box alone keeps what is there. It lives on the field rather than in each screen's own
-/// string because five screens were copying the sentence by hand.
+/// <summary>A write-only credential never travels back, so the box opens empty on every visit
+/// and "nothing is stored" and "the secret is stored and not shown" look identical. IsStored
+/// tells them apart inside the box: a short placeholder and an icon carrying the sentence.
 ///
 /// The catalog is the assembly's own shipped strings, not a fixture dictionary: the words are
 /// the whole feature, so a test over made-up text would pass while the screen read a key.</summary>
@@ -37,47 +35,72 @@ public sealed class NsPasswordFieldStoredTests : BunitContext, IAsyncLifetime
         await DisposeAsync();
     }
 
-    IRenderedComponent<NsPasswordField> Render(string language, bool isStored, string? helper = null)
+    IRenderedComponent<NsPasswordField> Render(
+        string language, bool isStored, string? helper = null, string? placeholder = null, string? value = null)
     {
         Services.GetRequiredService<LanguageProvider>().Current = language;
 
         return Render<NsPasswordField>(ps => ps
             .Add(p => p.Label, "App Secret")
             .Add(p => p.IsStored, isStored)
-            .Add(p => p.Helper, helper));
+            .Add(p => p.Helper, helper)
+            .Add(p => p.Placeholder, placeholder)
+            .Add(p => p.Value, value));
     }
 
     [Theory]
-    [InlineData("es", "Guardado. Vacío para conservarlo.")]
-    [InlineData("en", "Stored. Leave this empty to keep it.")]
-    public void AStoredSecret_SaysSoUnderTheBoxAndSaysHowToKeepIt(string language, string words)
+    [InlineData("es", "•••••••• Guardado", "Guardado. Vacío para conservarlo.")]
+    [InlineData("en", "•••••••• Saved", "Saved. Leave empty to keep it.")]
+    public void AStoredSecret_SaysSoInsideTheBoxAndCarriesTheSentenceOnAnIcon(string language, string placeholder, string sentence)
     {
         var cut = Render(language, isStored: true);
 
-        Assert.Equal(words, Assert.Single(cut.FindAll(".ns-field-helper")).TextContent);
+        Assert.Equal(placeholder, cut.Find("input").GetAttribute("placeholder"));
+        var mark = cut.Find(".ns-stored-mark");
+        Assert.Equal(sentence, mark.QuerySelector(".ns-whisper-host")!.GetAttribute("data-ns-whisper"));
+        Assert.Equal(sentence, mark.GetAttribute("aria-label"));
+        Assert.Empty(cut.FindAll(".ns-field-helper"));
     }
 
-    /// <summary>Off renders no helper node at all, never an empty one — the fourteen fields that
-    /// pass nothing (sign-in, recover, set-password, onboarding, CalDav) have to draw exactly
-    /// what they drew before, and a reserved empty box under every password box is not that.
+    /// <summary>Off renders no helper node and no placeholder or icon — the fields that pass
+    /// nothing (sign-in, recover, set-password, onboarding, CalDav) draw what they always drew.
     /// </summary>
     [Fact]
-    public void NothingStored_DrawsNoHelperNodeAtAll()
+    public void NothingStored_DrawsNoHelperPlaceholderOrIcon()
     {
         var cut = Render("es", isStored: false);
 
         Assert.Empty(cut.FindAll(".ns-field-helper"));
+        Assert.Null(cut.Find("input").GetAttribute("placeholder"));
+        Assert.Empty(cut.FindAll(".ns-stored-mark"));
+        Assert.DoesNotContain("Guardado", cut.Markup);
     }
 
-    /// <summary>A screen with something more specific to say still says it: the flag only fills
-    /// a hint the caller wrote none of.</summary>
     [Fact]
-    public void AnExplicitHelperWinsOverTheStoredLine()
+    public void TypingHidesThePlaceholderAndTheIcon()
+    {
+        var cut = Render("es", isStored: true, value: "hunter2");
+
+        Assert.Null(cut.Find("input").GetAttribute("placeholder"));
+        Assert.Empty(cut.FindAll(".ns-stored-mark"));
+        Assert.DoesNotContain("Guardado", cut.Markup);
+    }
+
+    [Fact]
+    public void AnExplicitHelperWinsOverTheStoredState()
     {
         var cut = Render("es", isStored: true, helper: "Pegá el token del usuario del sistema.");
 
         Assert.Equal(
             "Pegá el token del usuario del sistema.",
             Assert.Single(cut.FindAll(".ns-field-helper")).TextContent);
+    }
+
+    [Fact]
+    public void AnExplicitPlaceholderWinsOverTheStoredOne()
+    {
+        var cut = Render("es", isStored: true, placeholder: "Token");
+
+        Assert.Equal("Token", cut.Find("input").GetAttribute("placeholder"));
     }
 }
