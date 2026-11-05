@@ -56,7 +56,10 @@ public sealed class NsPasswordFieldStoredTests : BunitContext, IAsyncLifetime
         var cut = Render(language, isStored: true);
 
         Assert.Equal(placeholder, cut.Find("input").GetAttribute("placeholder"));
-        Assert.Contains(sentence, cut.Markup);
+        var mark = cut.Find(".ns-stored-mark");
+        Assert.Equal(sentence, mark.GetAttribute("data-ns-whisper"));
+        Assert.Equal(sentence, mark.GetAttribute("aria-label"));
+        Assert.Contains("ns-status-success", mark.InnerHtml);
         Assert.Empty(cut.FindAll(".ns-field-helper"));
     }
 
@@ -70,6 +73,7 @@ public sealed class NsPasswordFieldStoredTests : BunitContext, IAsyncLifetime
 
         Assert.Empty(cut.FindAll(".ns-field-helper"));
         Assert.Null(cut.Find("input").GetAttribute("placeholder"));
+        Assert.Empty(cut.FindAll(".ns-stored-mark"));
         Assert.DoesNotContain("Guardado", cut.Markup);
     }
 
@@ -79,6 +83,7 @@ public sealed class NsPasswordFieldStoredTests : BunitContext, IAsyncLifetime
         var cut = Render("es", isStored: true, value: "hunter2");
 
         Assert.Null(cut.Find("input").GetAttribute("placeholder"));
+        Assert.Empty(cut.FindAll(".ns-stored-mark"));
         Assert.DoesNotContain("Guardado", cut.Markup);
     }
 

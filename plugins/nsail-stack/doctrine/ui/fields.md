@@ -249,8 +249,9 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   credential never travels back, so the box opens empty on every visit and "nothing is stored"
   looks exactly like "the secret is stored and not shown". While the flag is on and the box is
   empty, the label stays floated, the placeholder reads `Components.NsPasswordField.Stored` (short)
-  and a check at the end of the box carries `Components.NsPasswordField.StoredHint` — the whole
-  sentence, leave it empty to keep it — as its label. There is no helper row, so a narrow settings
+  and a check at the end of the box, drawn by the house in the status ink (not the vendor's
+  adornment, which neither whispers nor takes that ink), carries `Components.NsPasswordField.StoredHint`
+  — the whole sentence, leave it empty to keep it — as its whisper and its label. There is no helper row, so a narrow settings
   grid keeps its row height; the placeholder alone cannot hold the sentence and an icon alone is
   invisible at a glance. An explicit `Helper` or `Placeholder` still wins, and once something is
   typed both go. It is one boolean rather than a per-screen string so no screen copies the
