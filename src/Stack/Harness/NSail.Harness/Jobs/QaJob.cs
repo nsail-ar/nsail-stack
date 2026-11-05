@@ -184,6 +184,17 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     }
 
     // The product a story is walked on: the one its labels name, else the default.
+    // A walk that found the tenant not running the story yet is asked again on a short clock, not
+    // at the next cut: a deploy lands after its cut (a ring follows the registry, a hand installs),
+    // so the cut that made the story live has always already passed when the tenant takes it.
+    public static readonly TimeSpan NotLiveRecheck = TimeSpan.FromMinutes(15);
+
+    // Whether a walk keeps its story until the next cut: every verdict but NotLive does.
+    internal static bool WaitsForTheCut(JobOutcome outcome)
+    {
+        return outcome.Event != "NotLive";
+    }
+
     internal static ProductOptions? ProductOf(IReadOnlySet<string> labels, IReadOnlyDictionary<string, ProductOptions> products)
     {
         return products.Values.FirstOrDefault(p => p.Labels.Any(labels.Contains)) ?? products.Values.FirstOrDefault(p => p.Default);

@@ -55,6 +55,19 @@ public class QaWalkTests
     }
 
     [Fact]
+    public void ANotLiveWalkIsAskedAgainOnItsClockAndEveryOtherVerdictWaitsForTheCut()
+    {
+        Assert.False(QaJob.WaitsForTheCut(new JobOutcome("walked: NotLive", Event: "NotLive")));
+
+        foreach (var verdict in new[] { "Ok", "Bug", "Asked", "Doubt", "NoVerdict" })
+        {
+            Assert.True(QaJob.WaitsForTheCut(new JobOutcome($"walked: {verdict}", Event: verdict)));
+        }
+
+        Assert.InRange(QaJob.NotLiveRecheck, TimeSpan.FromMinutes(5), TimeSpan.FromHours(1));
+    }
+
+    [Fact]
     public void ATenantsBuildIsTheCommitItsMetadataCarriesElseItsTag()
     {
         Assert.Equal("9b206cccb3479b464369556b9f34f93119351d21", QaJob.BuildRef("1.0.0+9b206cccb3479b464369556b9f34f93119351d21", "admin/v"));
