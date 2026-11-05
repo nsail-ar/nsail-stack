@@ -76,6 +76,8 @@
   "Common.Retry": "Reintentar",
   "Common.NewVersion": "Hay una versión nueva.",
 
+  "Components.NsPasswordField.Show": "Mostrar contraseña",
+  "Components.NsPasswordField.Hide": "Ocultar contraseña",
   "Components.NsPasswordField.Stored": "•••••••• Guardado",
   "Components.NsPasswordField.StoredHint": "Guardado. Vacío para conservarlo.",
 

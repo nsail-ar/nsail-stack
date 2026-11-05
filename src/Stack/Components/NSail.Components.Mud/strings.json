@@ -76,6 +76,8 @@
   "Common.Retry": "Retry",
   "Common.NewVersion": "A new version is available.",
 
+  "Components.NsPasswordField.Show": "Show password",
+  "Components.NsPasswordField.Hide": "Hide password",
   "Components.NsPasswordField.Stored": "•••••••• Saved",
   "Components.NsPasswordField.StoredHint": "Saved. Leave empty to keep it.",
 

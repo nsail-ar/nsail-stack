@@ -258,6 +258,13 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   sentence by hand; the server side of the same contract is a derived `HasXxx` on the settings
   type ([settings.md](settings.md), *A secret is write-only*) and a save that reads a blank field
   as "unchanged".
+- **`NsPasswordField` draws an eye that reveals what is typed.** A pasted secret is long and a box of
+  dots cannot be checked before it is saved, so every password box carries an end button that
+  flips it between password and text (`Components.NsPasswordField.Show` / `.Hide` as its label).
+  It reveals **only what is typed**: a stored secret never travels back, so an empty box under
+  `IsStored` has nothing to show and keeps its check, and the eye comes with the first character;
+  a disabled or read-only box draws none. The reveal is the field's own state, never a parameter
+  and never kept past the page.
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
   6-digit hex — no alpha channel — matching what every caller already stores; text that
   isn't a color never reaches the model. *Accepted debt: the box itself keeps showing the
