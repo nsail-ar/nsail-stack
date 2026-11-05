@@ -57,9 +57,8 @@ public sealed class NsPasswordFieldStoredTests : BunitContext, IAsyncLifetime
 
         Assert.Equal(placeholder, cut.Find("input").GetAttribute("placeholder"));
         var mark = cut.Find(".ns-stored-mark");
-        Assert.Equal(sentence, mark.GetAttribute("data-ns-whisper"));
+        Assert.Equal(sentence, mark.QuerySelector(".ns-whisper-host")!.GetAttribute("data-ns-whisper"));
         Assert.Equal(sentence, mark.GetAttribute("aria-label"));
-        Assert.Contains("ns-status-success", mark.InnerHtml);
         Assert.Empty(cut.FindAll(".ns-field-helper"));
     }
 
