@@ -78,7 +78,7 @@
 
   "Components.NsPasswordField.Show": "Show password",
   "Components.NsPasswordField.Hide": "Hide password",
-  "Components.NsPasswordField.Stored": "•••••••• Saved",
+  "Components.NsPasswordField.Stored": "••••••••",
   "Components.NsPasswordField.StoredHint": "Saved. Leave empty to keep it.",
 
   "Components.NsSince.Moments": "moments ago",
