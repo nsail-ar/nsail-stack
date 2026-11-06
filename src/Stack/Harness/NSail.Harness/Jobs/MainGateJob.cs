@@ -19,6 +19,12 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
 
     JobStep Step => ctx.StepOf(Item);
 
+    // How long its build and tests may run once it holds its build turn: twice a PR gate's minutes.
+    internal static TimeSpan Timeout(JobStep step)
+    {
+        return TimeSpan.FromMinutes(step.Minutes * 2);
+    }
+
     public async Task<JobOutcome> Run(int slot, string logPath, CancellationToken ct)
     {
         var dir = await ctx.Workspace.Prepare(slot);
@@ -35,14 +41,16 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
         ShellResult result;
         try
         {
+            // The log moves as the turn comes: its silence while in line is not the build's (JobActivity).
+            await w.WriteLineAsync("== build turn taken");
             var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(Step.Minutes), Item, Step, ct);
             env["HARNESS_LEASE_HELD"] = "1";
             env["GATE_WORK"] = Path.Combine(ctx.Options.WorkRoot, "gate", $"slot-{slot}");
             Directory.CreateDirectory(env["GATE_WORK"]);
             string[] args = green is null ? [] : [green];
             result = Step.Command is { } command
-                ? await ctx.Run(command, args, dir, env, TimeSpan.FromMinutes(Step.Minutes * 2), w, ct)
-                : await ctx.Builder!.Gate(dir, green, env, TimeSpan.FromMinutes(Step.Minutes * 2), w, ct);
+                ? await ctx.Run(command, args, dir, env, Timeout(Step), w, ct)
+                : await ctx.Builder!.Gate(dir, green, env, Timeout(Step), w, ct);
         }
         finally
         {

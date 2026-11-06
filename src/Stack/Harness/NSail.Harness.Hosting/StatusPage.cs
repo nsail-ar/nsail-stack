@@ -61,10 +61,7 @@ static class StatusPage
         Stats(html, view);
         Sides(html, view, o, agent, now);
 
-        var running = loop.Running;
-        html.Append($"<h2>Running ({running.Count})</h2>");
-        if (running.Count == 0) html.Append("<p class=muted>Nothing runs now.</p>");
-        else JobsPage.Table(html, o, running.OrderBy(r => r.Started).Select(r => new JobsPage.Row(r.Id, r.Started, r.Item.ToString(), r.Item.Story, "running", $"slot {r.Slot}", Time((now - r.Started).TotalSeconds))), now);
+        Running(html, o, loop.Running, now);
 
         if (loop.Last is { } pass)
         {
@@ -77,6 +74,13 @@ static class StatusPage
         html.Append($"<div class=logbar><h2>Recent jobs</h2><a href=\"/jobs\" style=\"font-size:13px\">All {ended.Count} jobs, with filters ›</a></div>");
         JobsPage.Table(html, o, ended.OrderByDescending(j => j.Started).Take(10).Select(JobsPage.RowOf), now);
         return html.ToString();
+    }
+
+    internal static void Running(StringBuilder html, HarnessOptions o, IReadOnlyCollection<RunningJob> running, DateTimeOffset now)
+    {
+        html.Append($"<h2>Running ({running.Count})</h2>");
+        if (running.Count == 0) html.Append("<p class=muted>Nothing runs now.</p>");
+        else JobsPage.Table(html, o, running.OrderBy(r => r.Started).Select(r => new JobsPage.Row(r.Id, r.Started, r.Item.ToString(), r.Item.Story, "running", $"slot {r.Slot}", Time((now - r.Started).TotalSeconds), r)), now);
     }
 
     internal static string Swatch(string role)

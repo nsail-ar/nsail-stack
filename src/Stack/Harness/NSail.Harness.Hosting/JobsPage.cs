@@ -3,6 +3,7 @@
 
 using System.Text;
 using NSail.Harness.Lanes;
+using NSail.Harness.Planning;
 
 namespace NSail.Harness.Hosting;
 
@@ -17,7 +18,8 @@ static class JobsPage
     static readonly int[] Tails = [200, 1000, 0];
 
     // A row as the table shows it: a job running or ended.
-    internal sealed record Row(string Id, DateTimeOffset Started, string Work, int? Story, string Result, string Outcome, string? Took);
+    // Live is a running job's activity: its Running row says what it is doing and when it last wrote.
+    internal sealed record Row(string Id, DateTimeOffset Started, string Work, int? Story, string Result, string Outcome, string? Took, RunningJob? Live = null);
 
     internal static Row RowOf(JobRecord j)
     {
@@ -45,14 +47,28 @@ static class JobsPage
             var role = StatusPage.RoleOfWork(r.Work);
             var line = r.Outcome.Split('\n', 2)[0].Trim();
             html.Append($"<tr><td class=when>{when}</td><td class=role>{StatusPage.Swatch(role)}{StatusPage.Esc(StatusPage.Title(role))}</td>");
-            html.Append($"<td>{StatusPage.Linked(o, r.Work)}</td><td>{Pill(r.Result)}</td>");
-            html.Append($"<td class=out title=\"{StatusPage.Esc(r.Outcome)}\">{StatusPage.Esc(line)}</td><td class=\"n took\">{StatusPage.Esc(r.Took ?? "")}</td>");
+            html.Append($"<td>{StatusPage.Linked(o, r.Work)}</td>");
+            if (r.Live is { } live) Live(html, live, r.Outcome, now);
+            else html.Append($"<td>{Pill(r.Result)}</td><td class=out title=\"{StatusPage.Esc(r.Outcome)}\">{StatusPage.Esc(line)}</td>");
+            html.Append($"<td class=\"n took\">{StatusPage.Esc(r.Took ?? "")}</td>");
             html.Append($"<td class=n><a class=icon href=\"/jobs/{Uri.EscapeDataString(r.Id)}\" aria-label=\"The job and its log\" title=\"The job and its log\">{Info}</a></td></tr>");
         }
         html.Append("</table>");
     }
 
     const string Info = "<svg width=16 height=16 viewBox=\"0 0 24 24\" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round aria-hidden=true><circle cx=12 cy=12 r=9 /><path d=\"M12 11v5\" /><path d=\"M12 8h.01\" /></svg>";
+
+    // A running job's result and outcome cells: running or stale with how long ago its log last
+    // moved, then its slot and what it is doing. An agent's line is its own words, and says so.
+    static void Live(StringBuilder html, RunningJob live, string slot, DateTimeOffset now)
+    {
+        var ago = live.LastWrote is { } wrote ? $"wrote {StatusPage.Time(Math.Max(0, (now - wrote).TotalSeconds))} ago" : "—";
+        var limit = live.SilenceLimit is { } l ? $", stale past {StatusPage.Time(l.TotalSeconds)} silent" : "";
+        html.Append($"<td>{Pill(live.StaleAt(now) ? "stale" : "running")} <span class=\"muted quiet\" title=\"its log last moved{StatusPage.Esc(limit)}\">{StatusPage.Esc(ago)}</span></td>");
+        var doing = live.Doing ?? "—";
+        var whose = live.Doing is not null && live.Item.Kind is not (WorkKind.Gate or WorkKind.Main) ? "its last words, not a verified state: " : "";
+        html.Append($"<td class=\"out doing\" title=\"{StatusPage.Esc(whose + doing)}\">{StatusPage.Esc(slot)} · {StatusPage.Esc(doing)}</td>");
+    }
 
     static string Pill(string result)
     {
@@ -63,6 +79,7 @@ static class JobsPage
             "broke" => ("bad", "broke"),
             "quiet" => ("", "nothing to do"),
             "running" => ("acc", "running"),
+            "stale" => ("bad", "stale"),
             _ => ("", "—"),
         };
         return $"<span class=\"b {css}\">{label}</span>";

@@ -19,4 +19,8 @@ public interface IAgent
 
     // The account's quota windows as the newest run reported them; empty until one has.
     IReadOnlyList<UsageWindow> Usage => [];
+
+    // The longest one command of the agent may run in the foreground: a job silent past it has no
+    // command left that could still be running. Null where the agent sets none.
+    TimeSpan? LongestCommand => null;
 }
