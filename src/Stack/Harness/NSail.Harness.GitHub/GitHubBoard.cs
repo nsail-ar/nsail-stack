@@ -321,4 +321,28 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         var created = await gh.Send(HttpMethod.Post, $"repos/{repo}/milestones", new { title }, ct);
         return created.GetProperty("number").GetInt32();
     }
+
+    public async Task<IReadOnlyList<FiledStory>> Labelled(string label, CancellationToken ct = default)
+    {
+        var all = await gh.GetAll($"repos/{repo}/issues?labels={Uri.EscapeDataString(label)}&state=all&per_page=100", ct: ct);
+        return all.Where(i => !i.TryGetProperty("pull_request", out _))
+            .Select(i => new FiledStory(i.GetProperty("number").GetInt32(), i.GetProperty("title").GetString() ?? "",
+                i.TryGetProperty("body", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString()! : "",
+                i.TryGetProperty("closed_at", out var c) && c.ValueKind == JsonValueKind.String ? c.GetDateTimeOffset() : null,
+                i.TryGetProperty("state_reason", out var r) && r.GetString() == "not_planned"))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<int>> BlockedBy(int story, CancellationToken ct = default)
+    {
+        var all = await gh.GetAll($"repos/{repo}/issues/{story}/dependencies/blocked_by?per_page=100", ct: ct);
+        return all.Select(i => i.GetProperty("number").GetInt32()).ToList();
+    }
+
+    // GitHub links a blocker by its issue id, not its number.
+    public async Task Block(int story, int blocker, CancellationToken ct = default)
+    {
+        var id = (await gh.Get($"repos/{repo}/issues/{blocker}", ct)).GetProperty("id").GetInt64();
+        await gh.Send(HttpMethod.Post, $"repos/{repo}/issues/{story}/dependencies/blocked_by", new { issue_id = id }, ct);
+    }
 }

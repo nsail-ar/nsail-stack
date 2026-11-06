@@ -162,4 +162,19 @@ public sealed class MappedBoard(IBoard board, IReadOnlyDictionary<string, string
     {
         return board.CloseVersion(version, ct);
     }
+
+    public Task<IReadOnlyList<FiledStory>> Labelled(string label, CancellationToken ct = default)
+    {
+        return board.Labelled(LabelOut(label), ct);
+    }
+
+    public Task<IReadOnlyList<int>> BlockedBy(int story, CancellationToken ct = default)
+    {
+        return board.BlockedBy(story, ct);
+    }
+
+    public Task Block(int story, int blocker, CancellationToken ct = default)
+    {
+        return board.Block(story, blocker, ct);
+    }
 }

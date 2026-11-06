@@ -32,6 +32,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness\NSail.Harness.csproj" />
     <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.GitHub\NSail.Harness.GitHub.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.OpenObserve\NSail.Harness.OpenObserve.csproj" />
     <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.Claude\NSail.Harness.Claude.csproj" />
     <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.Hosting\NSail.Harness.Hosting.csproj" />
   </ItemGroup>

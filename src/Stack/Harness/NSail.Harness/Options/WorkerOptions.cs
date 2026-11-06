@@ -4,7 +4,7 @@
 namespace NSail.Harness;
 
 // A worker: one kind of work the harness takes, by its Type (Analyze, Develop, Review, Verify, Test,
-// Release, UpdateBoard), over the stories its Filter matches, when its When holds. Workers live in a
+// Release, Watch, UpdateBoard), over the stories its Filter matches, when its When holds. Workers live in a
 // dictionary by name, so a machine's appsettings.Local.json changes one by its name; Priority orders
 // them (lower first), because a configuration's keys come back sorted, not in the order written.
 // What a Type does by default — its filter, its conditions, its events — is the type's own
@@ -50,6 +50,17 @@ public sealed class WorkerOptions
     // A Test's story waiting on a person is walked again when someone wrote on it since its last
     // walk, or after these minutes (an answer on the tenant leaves no comment); none, six hours.
     public int? Recheck { get; set; }
+
+    // Watch: the log source it reads (a provider's Name), every how many minutes (none, an hour),
+    // how many hours its first pass reads back (none, a day), the most stories one pass opens (none,
+    // five), the area label a service the source names takes when no product (Harness:Products) has
+    // that name, and the suffixes of a cell's name that are not production (none: test, qa, canary).
+    public string? Source { get; set; }
+    public int? Every { get; set; }
+    public int? Lookback { get; set; }
+    public int? MaxStories { get; set; }
+    public Dictionary<string, string> Areas { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<string>? NotProd { get; set; }
 
     // The job is cut at this age; none takes the type's.
     public int? Minutes { get; set; }

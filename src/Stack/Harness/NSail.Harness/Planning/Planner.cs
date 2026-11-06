@@ -35,6 +35,7 @@ public static class Planner
     {
         return tier switch
         {
+            "bug" => -1,
             "release" or "manual" => 0,
             "red" => 1,
             "round" => 2,

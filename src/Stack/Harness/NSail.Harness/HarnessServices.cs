@@ -73,8 +73,12 @@ public static class HarnessServices
                 o,
                 sp.GetServices<ILaneEnvironment>(),
                 sp.GetRequiredService<ILoggerFactory>(),
-                sp.GetRequiredService<BuildLeases>());
+                sp.GetRequiredService<BuildLeases>())
+            {
+                LogSources = sp.GetServices<Watching.ILogSource>().ToList(),
+            };
         });
+        services.AddSingleton(sp => new Watching.WatchState(sp.GetRequiredService<HarnessOptions>().WorkRoot));
         services.AddSingleton(sp => sp.GetRequiredService<JobContext>().Workspace);
         services.AddSingleton<HarnessMetrics>();
         // The load a worker may ask about over the longest window it may ask for.

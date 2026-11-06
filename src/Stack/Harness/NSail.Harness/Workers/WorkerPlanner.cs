@@ -9,9 +9,10 @@ namespace NSail.Harness.Workers;
 
 // The order of the work, as the workers say it. One pass:
 //   1. the board keepers (UpdateBoard): every story their filter matches gets their actions;
-//   2. the workers that run on their own (a release, main's verification, a QA drain), by Priority;
-//   3. the workers over stories, by Priority, over the p1 stories only;
-//   4. the same workers over every other story.
+//   2. the workers over stories, by Priority, over the `bug` stories only;
+//   3. the workers that run on their own (a release, main's verification, a QA drain), by Priority;
+//   4. the workers over stories, by Priority, over the p1 stories (and a red main's or suite's);
+//   5. the same workers over every other story.
 // Inside a worker, stories go by the configured Order (epic progress, then age). A story gets one
 // job per pass: the first worker that takes it. Locks (a job's own labels), a story already worked
 // here and a driver this machine cannot run hold it below any filter.
@@ -49,11 +50,6 @@ public static class WorkerPlanner
         }
 
         var items = new List<WorkItem>();
-        foreach (var w in workers.Where(w => w.Kind is not null && !w.OverStories && may(w)))
-        {
-            items.AddRange(OnItsOwn(w, board, issues, options));
-        }
-
         var taken = new HashSet<int>();
         var wip = prsByStory.Keys.Where(n => issues.FirstOrDefault(i => i.Number == n) is { } i && Planner.HoldOf(i, options) is not (Labels.Ruling or Labels.Blocked or Labels.Hand or Labels.Stalled))
             .Union(flight.DevStories).Distinct().Count();
@@ -64,13 +60,24 @@ public static class WorkerPlanner
             .SelectMany(i => i.Labels.Where(l => l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal)))
             .ToHashSet();
 
-        foreach (var p1 in new[] { true, false })
+        // A bug goes before everything: the workers on their own (a release, main's gate) wait behind it,
+        // and the WIP limit does not hold it.
+        Sweep(i => i.Has(Labels.Bug), bug: true);
+        foreach (var w in workers.Where(w => w.Kind is not null && !w.OverStories && may(w)))
+        {
+            items.AddRange(OnItsOwn(w, board, issues, options));
+        }
+        // A red main's or red suite's story is swept with the p1 ones, whatever its labels.
+        Sweep(i => !i.Has(Labels.Bug) && (i.Has(Labels.P1) || Red(i, options)), bug: false);
+        Sweep(i => !i.Has(Labels.Bug) && !i.Has(Labels.P1) && !Red(i, options), bug: false);
+        return new Plan(items, chores, notes);
+
+        void Sweep(Func<Issue, bool> which, bool bug)
         {
             foreach (var w in workers.Where(w => w.Kind is not null && w.OverStories && may(w)))
             {
-                if (w.TakesNew && full) continue;
-                // A red main's or red suite's story is swept with the p1 ones, whatever its labels.
-                var stories = Ordered(issues.Where(i => (i.Has(Labels.P1) || Red(i, options)) == p1), w, options);
+                if (w.TakesNew && full && !bug) continue;
+                var stories = Ordered(issues.Where(which), w, options);
                 // Lanes in different parts of the tree conflict less: a new story in an area no lane
                 // builds goes first.
                 if (w.TakesNew) stories = stories.Where(i => !sea.Any(i.Has)).Concat(stories.Where(i => sea.Any(i.Has))).ToList();
@@ -86,7 +93,6 @@ public static class WorkerPlanner
                 }
             }
         }
-        return new Plan(items, chores, notes);
     }
 
     // A red main's or red suite's story first, whatever the worker; then oldest first, and a worker
@@ -167,6 +173,9 @@ public static class WorkerPlanner
                     yield return new WorkItem(WorkKind.Release, null, null, "release", "the day's cut", wf, Worker: w.Name, ProductName: w.Options.Product);
                 }
                 break;
+            case WorkKind.Watch when board.DueWatches.Contains(w.Name):
+                yield return new WorkItem(WorkKind.Watch, null, null, "watch", "due", Worker: w.Name);
+                break;
             // main moved past what the gate last judged: it is judged before anything is built on it.
             case WorkKind.Main when options.Gate && board.MainSha is { } head && head != board.MainGated && !flight.MainGating:
                 yield return new WorkItem(WorkKind.Main, null, null, "red", "main moved", Sha: head, Worker: w.Name);
@@ -177,15 +186,16 @@ public static class WorkerPlanner
     static WorkItem ItemOf(Worker w, Issue i, StoryPr? pr, string? state, BoardSnapshot board, PlannerOptions options)
     {
         var red = Red(i, options);
+        var bug = i.Has(Labels.Bug);
         if (pr is not null)
         {
             var home = pr.Repo == board.Repo;
             var where = home ? $"PR #{pr.Number}" : $"{pr.Repo.Split('/')[1]} PR #{pr.Number}";
             return w.Kind switch
             {
-                WorkKind.Gate => new WorkItem(WorkKind.Gate, i.Number, pr.Number, red ? "red" : "gate", "no gate at this head", Worker: w.Name),
-                WorkKind.Review => new WorkItem(WorkKind.Review, i.Number, pr.Number, red ? "red" : "review", "green, unread", Worker: w.Name),
-                _ => new WorkItem(w.Kind!.Value, i.Number, pr.Number, red ? "red" : "round", state switch
+                WorkKind.Gate => new WorkItem(WorkKind.Gate, i.Number, pr.Number, bug ? "bug" : red ? "red" : "gate", "no gate at this head", Worker: w.Name),
+                WorkKind.Review => new WorkItem(WorkKind.Review, i.Number, pr.Number, bug ? "bug" : red ? "red" : "review", "green, unread", Worker: w.Name),
+                _ => new WorkItem(w.Kind!.Value, i.Number, pr.Number, bug ? "bug" : red ? "red" : "round", state switch
                 {
                     "red" when home && options.Gate => $"round ({where}: gate red)",
                     "red" => $"round ({where}: CI red)",
@@ -198,9 +208,9 @@ public static class WorkerPlanner
         if (w.Kind == WorkKind.Analyze)
         {
             var stalled = i.Has(Labels.Stalled);
-            return new WorkItem(WorkKind.Analyze, i.Number, null, stalled ? "stalled" : "analyze", stalled ? "stalled" : "analyze", Worker: w.Name);
+            return new WorkItem(WorkKind.Analyze, i.Number, null, bug ? "bug" : stalled ? "stalled" : "analyze", stalled ? "stalled" : "analyze", Worker: w.Name);
         }
-        var tier = red ? "red" : i.Has(Labels.P1) ? "p1" : i.ParentPercent > 0 ? "epic" : "rest";
+        var tier = bug ? "bug" : red ? "red" : i.Has(Labels.P1) ? "p1" : i.ParentPercent > 0 ? "epic" : "rest";
         return new WorkItem(w.Kind!.Value, i.Number, null, tier, tier, Worker: w.Name);
     }
 
