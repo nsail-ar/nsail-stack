@@ -11,7 +11,7 @@ namespace NSail.Components.Tests;
 
 /// <summary>A write-only credential never travels back, so the box opens empty on every visit
 /// and "nothing is stored" and "the secret is stored and not shown" look identical. IsStored
-/// tells them apart inside the box: a short placeholder and an icon carrying the sentence.
+/// tells them apart inside the box: the mask as placeholder and an icon carrying the sentence.
 ///
 /// The catalog is the assembly's own shipped strings, not a fixture dictionary: the words are
 /// the whole feature, so a test over made-up text would pass while the screen read a key.</summary>
@@ -49,13 +49,18 @@ public sealed class NsPasswordFieldStoredTests : BunitContext, IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("es", "•••••••• Guardado", "Guardado. Vacío para conservarlo.")]
-    [InlineData("en", "•••••••• Saved", "Saved. Leave empty to keep it.")]
+    [InlineData("es", "••••••••", "Guardado. Vacío para conservarlo.")]
+    [InlineData("en", "••••••••", "Saved. Leave empty to keep it.")]
     public void AStoredSecret_SaysSoInsideTheBoxAndCarriesTheSentenceOnAnIcon(string language, string placeholder, string sentence)
     {
         var cut = Render(language, isStored: true);
 
-        Assert.Equal(placeholder, cut.Find("input").GetAttribute("placeholder"));
+        var input = cut.Find("input");
+        var rendered = input.GetAttribute("placeholder");
+        Assert.Equal(placeholder, rendered);
+        Assert.DoesNotContain("Guardado", rendered);
+        Assert.DoesNotContain("Saved", rendered);
+        Assert.Equal(sentence, input.GetAttribute("aria-description"));
         var mark = cut.Find(".ns-stored-mark");
         Assert.Equal(sentence, mark.QuerySelector(".ns-whisper-host")!.GetAttribute("data-ns-whisper"));
         Assert.Equal(sentence, mark.GetAttribute("aria-label"));
@@ -72,6 +77,7 @@ public sealed class NsPasswordFieldStoredTests : BunitContext, IAsyncLifetime
 
         Assert.Empty(cut.FindAll(".ns-field-helper"));
         Assert.Null(cut.Find("input").GetAttribute("placeholder"));
+        Assert.Null(cut.Find("input").GetAttribute("aria-description"));
         Assert.Empty(cut.FindAll(".ns-stored-mark"));
         Assert.DoesNotContain("Guardado", cut.Markup);
     }

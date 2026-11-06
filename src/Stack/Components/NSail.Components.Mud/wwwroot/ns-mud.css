@@ -4704,8 +4704,8 @@ div.mud-input-slot.mud-input-root::placeholder {
     color: var(--ns-alert-info-ink, var(--mud-palette-info-text)) !important;
 }
 
-/* THE CHECK A STORED SECRET DRAWS INSIDE ITS BOX (NsPasswordField IsStored): the placeholder says
-   "Guardado" and the check carries the whole sentence as a whisper, so it takes the pointer;
+/* THE CHECK A STORED SECRET DRAWS INSIDE ITS BOX (NsPasswordField IsStored): the placeholder is the mask
+   and the check carries the whole sentence as a whisper, so it takes the pointer;
    the input gives up the check's room so the placeholder is cut with an ellipsis
    before it, never under it. */
 .ns-stored-box {
