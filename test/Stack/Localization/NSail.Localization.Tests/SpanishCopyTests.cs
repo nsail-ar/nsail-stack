@@ -11,7 +11,7 @@ public sealed class SpanishCopyTests
 {
     private static readonly string[] Slang =
     [
-        "plata", "guita", "laburo", "laburar", "un toque", "dale", "chequear", "chequeá", "chequeo",
+        "plata", "guita", @"labur\p{L}*", "un toque", "dale", @"cheque(a|á|ar|o)\p{L}*",
         "bárbaro", "quilombo", "mango", "pibe", "boludo", "re lindo",
     ];
 
@@ -28,7 +28,7 @@ public sealed class SpanishCopyTests
 
     static bool Contains(string text, string word)
     {
-        return Regex.IsMatch(text, $@"(?<![\p{{L}}]){Regex.Escape(word)}(?![\p{{L}}])", RegexOptions.IgnoreCase);
+        return Regex.IsMatch(text, $@"(?<![\p{{L}}])(?:{word})(?![\p{{L}}])", RegexOptions.IgnoreCase);
     }
 
     [Fact]
@@ -54,6 +54,9 @@ public sealed class SpanishCopyTests
     [InlineData("platales", false)]
     [InlineData("Dale, seguí", true)]
     [InlineData("Validale", false)]
+    [InlineData("Deshabilitá y chequealo", true)]
+    [InlineData("estás chequeando", true)]
+    [InlineData("laburás", true)]
     public void TheScanMatchesWholeWords(string text, bool slang)
     {
         Assert.Equal(slang, Slang.Any(word => Contains(text, word)));
