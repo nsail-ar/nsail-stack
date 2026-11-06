@@ -64,4 +64,23 @@ public sealed class NsThemeSchemeVariablesTests : BunitContext
         // light would be invisible on the canvas rather than merely loud.
         Assert.DoesNotContain($"--ns-alert-info-bg:{light.Info};", cut.Markup);
     }
+
+    [Fact]
+    public void TheColorSchemeFollowsTheLitSchemeAndFlipsWithIt()
+    {
+        JSInterop.Setup<bool>("mudThemeProvider.isDarkMode", _ => true).SetResult(false);
+
+        var cut = Render<NsTheme>(p => p
+            .Add(x => x.Brand, TwoSchemeBrand)
+            .Add(x => x.Dark, true));
+
+        Assert.Contains("color-scheme:dark;", cut.Markup);
+
+        cut.Render(p => p
+            .Add(x => x.Brand, TwoSchemeBrand)
+            .Add(x => x.Dark, false));
+
+        Assert.Contains("color-scheme:light;", cut.Markup);
+        Assert.DoesNotContain("color-scheme:dark;", cut.Markup);
+    }
 }

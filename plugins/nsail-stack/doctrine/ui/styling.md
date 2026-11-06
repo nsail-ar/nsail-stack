@@ -239,7 +239,9 @@ marked *(cases)* has its story there.
     `NsTable`) **and** by the vendor's own stacking query in the stylesheet — `.mud-sm-table`
     rides the root at every width, so a rule keyed off it alone reaches the desktop grid too.
 - **A scroll box INSIDE a surface wears the house's own bar** (`.ns-scroll-thin`): thin, the
-  theme's line colour, no track. The shell's own scrollbars stay the platform's.
+  theme's line colour, no track. The shell's own scrollbars stay the platform's, and
+  `NsTheme` declares `color-scheme` on `:root` for the lit scheme so the platform's scrollbars and
+  native controls follow it.
 
 ---
 
