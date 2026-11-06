@@ -84,6 +84,22 @@ public class JobActivityTests : IDisposable
     }
 
     [Fact]
+    public void AQaScriptsAgentSaysItsLineUnderItsStepsMinutes()
+    {
+        var log = Log("== qa #42 on box slot 2", Text("Walking the invoice screen."), ToolUse("dotnet test"));
+
+        var script = JobActivity.Read(Job(WorkKind.Qa, log), Step(180, command: true), Ceiling, waitingTurn: false);
+        var seat = JobActivity.Read(Job(WorkKind.Qa, log), Step(180), Ceiling, waitingTurn: false);
+        var devWithCommand = JobActivity.Read(Job(WorkKind.Dev, log), Step(240, command: true), Ceiling, waitingTurn: false);
+
+        Assert.Equal("Walking the invoice screen.", script.Doing);
+        Assert.Equal(TimeSpan.FromMinutes(180), script.SilenceLimit);
+        Assert.Equal(Ceiling, seat.SilenceLimit);
+        Assert.Equal("Walking the invoice screen.", devWithCommand.Doing);
+        Assert.Equal(Ceiling, devWithCommand.SilenceLimit);
+    }
+
+    [Fact]
     public void ALongLineIsCutAtTheCapWithAnEllipsis()
     {
         var log = Log(Text(new string('a', 150) + " " + new string('b', 150)));
@@ -112,10 +128,10 @@ public class JobActivityTests : IDisposable
         File.AppendAllText(gate.LogPath, "> dotnet test affected-tests.slnf --no-build\n  Passed Some.Test [12 ms]\n");
         var testing = JobActivity.Read(gate, Step(60, command: true), Ceiling, leases.Waits(holder));
 
-        Assert.Equal(JobActivity.Waiting, inLine.Doing);
-        Assert.Equal(JobActivity.Building, building.Doing);
-        Assert.Equal(JobActivity.Testing, testing.Doing);
-        Assert.Equal(JobActivity.Testing, JobActivity.BuildStep(["Build succeeded.", "Test run for /w/bin/App.Tests.dll (.NETCoreApp,Version=v10.0)"]));
+        Assert.Equal(RunningJob.WaitingForTurn, inLine.Doing);
+        Assert.Equal(RunningJob.Building, building.Doing);
+        Assert.Equal(RunningJob.Testing, testing.Doing);
+        Assert.Equal(RunningJob.Testing, JobActivity.BuildStep(["Build succeeded.", "Test run for /w/bin/App.Tests.dll (.NETCoreApp,Version=v10.0)"]));
     }
 
     [Fact]
@@ -188,7 +204,7 @@ public class JobActivityTests : IDisposable
     {
         var now = DateTimeOffset.UtcNow;
         var fresh = Job(WorkKind.Dev, "x.log") with { Doing = "Both E2E walks pass.", LastWrote = now.AddMinutes(-3), SilenceLimit = Ceiling };
-        var stale = Job(WorkKind.Gate, "y.log") with { Id = "job-2", Doing = JobActivity.Testing, LastWrote = now.AddMinutes(-70), SilenceLimit = TimeSpan.FromMinutes(60) };
+        var stale = Job(WorkKind.Gate, "y.log") with { Id = "job-2", Doing = RunningJob.Testing, LastWrote = now.AddMinutes(-70), SilenceLimit = TimeSpan.FromMinutes(60) };
         var running = new StringBuilder();
         StatusPage.Running(running, Options, [fresh, stale], now);
         var recent = new StringBuilder();

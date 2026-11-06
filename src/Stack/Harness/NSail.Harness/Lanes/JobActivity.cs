@@ -14,14 +14,12 @@ namespace NSail.Harness.Lanes;
 public static class JobActivity
 {
     public const int LineCap = 200;
-    public const string Waiting = "waiting for its build turn";
-    public const string Building = "building";
-    public const string Testing = "testing";
 
     // Only the log's end is read: a dev log runs to megabytes and the status page refreshes often.
     const int Window = 1 << 20;
 
-    // The job's kind of work: an agent's (a seat with no command), a build's (a gate), or another.
+    // The job's kind of work: an agent's (dev, analyze, review, QA — a QA script drives an agent and
+    // its stream lands in the same log), a build's (a gate), or another.
     public enum Shape
     {
         Agent,
@@ -29,24 +27,25 @@ public static class JobActivity
         Other,
     }
 
-    public static Shape ShapeOf(WorkItem item, JobStep? step)
+    public static Shape ShapeOf(WorkItem item)
     {
         if (item.Kind is WorkKind.Gate or WorkKind.Main) return Shape.Build;
-        if (item.Kind is WorkKind.Dev or WorkKind.Analyze or WorkKind.Review or WorkKind.Qa && step is { Command: null }) return Shape.Agent;
+        if (item.Kind is WorkKind.Dev or WorkKind.Analyze or WorkKind.Review or WorkKind.Qa) return Shape.Agent;
         return Shape.Other;
     }
 
     // The limit is the one the job already runs under: an agent's longest foreground command (its
-    // step's minutes where the agent sets none), a build's step timeout once it holds its turn, any
-    // other job's step timeout. A build waiting for its turn is a queue, never stale.
+    // step's minutes where the agent sets none, or for a QA script, which drives the agent outside
+    // that ceiling), a build's step timeout once it holds its turn, any other job's step timeout. A build
+    // waiting for its turn is a queue, never stale.
     public static RunningJob Read(RunningJob job, JobStep? step, TimeSpan? longestCommand, bool waitingTurn)
     {
-        var shape = ShapeOf(job.Item, step);
+        var shape = ShapeOf(job.Item);
         var (lines, wrote) = Tail(job.LogPath);
         string? doing = shape switch
         {
             Shape.Agent => lines is null ? null : LastWords(lines),
-            Shape.Build => waitingTurn ? Waiting : lines is null ? null : BuildStep(lines),
+            Shape.Build => waitingTurn ? RunningJob.WaitingForTurn : lines is null ? null : BuildStep(lines),
             _ => null,
         };
         return job with { Doing = doing, LastWrote = wrote, SilenceLimit = Limit(job.Item, shape, step, longestCommand, waitingTurn) };
@@ -57,7 +56,7 @@ public static class JobActivity
         if (step is null) return null;
         return shape switch
         {
-            Shape.Agent => longestCommand ?? TimeSpan.FromMinutes(step.Minutes),
+            Shape.Agent when !(item.Kind == WorkKind.Qa && step.Command is not null) && longestCommand is { } ceiling => ceiling,
             Shape.Build when waitingTurn => null,
             Shape.Build => item.Kind == WorkKind.Main ? MainGateJob.Timeout(step) : GateJob.Timeout(step),
             _ => TimeSpan.FromMinutes(step.Minutes),
@@ -136,9 +135,9 @@ public static class JobActivity
         for (var i = lines.Count - 1; i >= 0; i--)
         {
             var line = lines[i];
-            if (line.StartsWith("> dotnet test", StringComparison.Ordinal) || line.Contains("Test run for ", StringComparison.Ordinal)) return Testing;
-            if (line.StartsWith("> dotnet ", StringComparison.Ordinal)) return Building;
+            if (line.StartsWith("> dotnet test", StringComparison.Ordinal) || line.Contains("Test run for ", StringComparison.Ordinal)) return RunningJob.Testing;
+            if (line.StartsWith("> dotnet ", StringComparison.Ordinal)) return RunningJob.Building;
         }
-        return Building;
+        return RunningJob.Building;
     }
 }

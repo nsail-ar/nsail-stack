@@ -7,6 +7,11 @@ namespace NSail.Harness;
 
 public sealed record RunningJob(string Id, WorkItem Item, int Slot, DateTimeOffset Started, string LogPath)
 {
+    // A build's steps, as Doing carries them.
+    public const string WaitingForTurn = "waiting for its build turn";
+    public const string Building = "building";
+    public const string Testing = "testing";
+
     // What it is doing now, read off its log: an agent's last words (its own, not a verified state),
     // a build's step. Null where the log says nothing or cannot be read.
     public string? Doing { get; init; }

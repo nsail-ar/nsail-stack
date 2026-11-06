@@ -130,11 +130,12 @@ page), `GET /plan` the whole plan and every held story (searched, filtered by ti
 
 A running job (`RunningJob`, in the status, the jobs and the report to Ops) says what it is doing
 and when its log last moved, read off the log at each look (`JobActivity`): an agent's job (dev,
-analyze, review, a QA walk) its last words — the last text it said itself in its stream, never a
-command or a tool's input or output, its first line cut to `JobActivity.LineCap` with «…» — and a
-gate its step (waiting for its build turn, building, testing). `Doing` is the agent's own word, not
-a verified state. `LastWrote` is an instant, not an age, beside `SilenceLimit`, the limit the job
-already runs under: an agent's longest foreground command (`IAgent.LongestCommand`), a gate's build
-timeout once it holds its turn, any other job's step minutes; a gate waiting for its turn has none
-and is never stale. A reader measures `StaleAt` against its own moment. A log that cannot be read
-leaves `Doing` and `LastWrote` empty; the Running table draws a dash.
+analyze, review, QA by seat or by script) its last words — the last text it said itself in its
+stream, never a command or a tool's input or output, its first line cut to `JobActivity.LineCap`
+with «…» — and a gate its step (`RunningJob.WaitingForTurn`, `Building`, `Testing`). `Doing` is the
+agent's own word, not a verified state. `LastWrote` is an instant, not an age, beside
+`SilenceLimit`, the limit the job already runs under: an agent's longest foreground command
+(`IAgent.LongestCommand`), a QA script's step minutes (the script runs outside that ceiling), a
+gate's build timeout once it holds its turn, any other job's step minutes; a gate waiting for its
+turn has none and is never stale. A reader measures `StaleAt` against its own moment. A log that
+cannot be read leaves `Doing` and `LastWrote` empty; the Running table draws a dash.
