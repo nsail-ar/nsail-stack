@@ -1410,6 +1410,13 @@
        rail. */
     --ns-panel-surface: var(--ns-rail-ground);
 
+    /* The house bar (:root below) mixes the content's ink; the rail's panel scrolls on the
+       band, so its thumb mixes the band's. scrollbar-color is restated because the inherited
+       value was resolved against :root's variables. */
+    --ns-scrollbar-thumb: color-mix(in srgb, var(--mud-palette-drawer-text) 40%, transparent);
+    --ns-scrollbar-thumb-hover: color-mix(in srgb, var(--mud-palette-drawer-text) 70%, transparent);
+    scrollbar-color: var(--ns-scrollbar-thumb) transparent;
+
     background-color: var(--ns-rail-ground);
     color: var(--ns-rail-text);
 }

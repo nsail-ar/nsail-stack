@@ -28,6 +28,15 @@ public sealed class HouseScrollbarTests
     }
 
     [Fact]
+    public void TheRailsThumbIsMixedFromTheBandsInkNotTheContents()
+    {
+        var rail = Body(@"\.ns-nav-drawer\.mud-drawer");
+
+        Assert.Matches(@"--ns-scrollbar-thumb:\s*color-mix\(in srgb, var\(--mud-palette-drawer-text\) \d+%, transparent\);", rail);
+        Assert.Matches(@"scrollbar-color:\s*var\(--ns-scrollbar-thumb\)\s+transparent;", rail);
+    }
+
+    [Fact]
     public void EveryElementDrawsTheThinBar()
     {
         Assert.Contains("scrollbar-width: thin;", Body(@"\*"));
