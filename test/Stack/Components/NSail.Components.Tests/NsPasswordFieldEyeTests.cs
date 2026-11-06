@@ -117,4 +117,16 @@ public sealed class NsPasswordFieldEyeTests : BunitContext, IAsyncLifetime
 
         Assert.Empty(cut.FindAll(EyeSelector));
     }
+
+    /// <summary>Known red (keyboard.md, Known reds): the vendor draws its input adornment button
+    /// with tabindex=-1 and offers no parameter for it, so Tab skips the eye. This pins what the
+    /// vendor does today: the day an upgrade changes it, this fails and the row goes.</summary>
+    [Fact]
+    public void TheEyeIsAButtonTheVendorKeepsOutOfTheTabOrder()
+    {
+        var eye = Render().Find(EyeSelector);
+
+        Assert.Equal("button", eye.LocalName);
+        Assert.Equal("-1", eye.GetAttribute("tabindex"));
+    }
 }
