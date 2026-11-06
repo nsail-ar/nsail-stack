@@ -81,7 +81,7 @@ public sealed class NsTimeGridDayTests : BunitContext
     }
 
     /// <summary>The window survives as the visible height: the component owns a vertical scroll
-    /// of its own, sized by the framed hours and wearing the house's thin scrollbar.</summary>
+    /// of its own, sized by the framed hours and wearing the house bar every scroller wears.</summary>
     [Fact]
     public void TheWindow_BecomesTheVisibleHeightOfTheComponentsOwnScroll()
     {
@@ -93,7 +93,7 @@ public sealed class NsTimeGridDayTests : BunitContext
 
         var scroll = cut.Find(".ns-time-grid-scroll");
 
-        Assert.Contains("ns-scroll-thin", scroll.GetAttribute("class"));
+        Assert.DoesNotContain("ns-scroll-thin", scroll.GetAttribute("class"));
         Assert.Contains("--ns-time-window: 12", cut.Find(".ns-time-grid").GetAttribute("style"));
     }
 

@@ -238,10 +238,14 @@ marked *(cases)* has its story there.
     rows draws no pager to pin over anything. Scoped by the branch in C# (`.ns-table-pages`,
     `NsTable`) **and** by the vendor's own stacking query in the stylesheet — `.mud-sm-table`
     rides the root at every width, so a rule keyed off it alone reaches the desktop grid too.
-- **A scroll box INSIDE a surface wears the house's own bar** (`.ns-scroll-thin`): thin, the
-  theme's line colour, no track. The shell's own scrollbars stay the platform's, and
-  `NsTheme` declares `color-scheme` on `:root` for the lit scheme so the platform's scrollbars and
-  native controls follow it.
+- **The house draws one scrollbar, on every scroller, in dark and in light** (`ns-mud.css`): thin,
+  no track, the thumb a low-alpha mix of the lit palette's secondary ink — on the nav rail, of the
+  band's own ink, since the chrome is a free pick that can sit light under a dark scheme
+  ([branding.md](branding.md)). The platform's bar is
+  unreadable-bright on a dark surface, so the standard `scrollbar-color` / `scrollbar-width` come
+  first and `::-webkit-scrollbar` is only the fallback, under `@supports not (scrollbar-color:
+  auto)`. `NsTheme` declares `color-scheme` on `:root` for the lit scheme so native controls,
+  and any bar the house's does not reach, follow it.
 
 ---
 

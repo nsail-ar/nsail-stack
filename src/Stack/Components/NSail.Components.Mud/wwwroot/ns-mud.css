@@ -1410,6 +1410,13 @@
        rail. */
     --ns-panel-surface: var(--ns-rail-ground);
 
+    /* The house bar (:root below) mixes the content's ink; the rail's panel scrolls on the
+       band, so its thumb mixes the band's. scrollbar-color is restated because the inherited
+       value was resolved against :root's variables. */
+    --ns-scrollbar-thumb: color-mix(in srgb, var(--mud-palette-drawer-text) 40%, transparent);
+    --ns-scrollbar-thumb-hover: color-mix(in srgb, var(--mud-palette-drawer-text) 70%, transparent);
+    scrollbar-color: var(--ns-scrollbar-thumb) transparent;
+
     background-color: var(--ns-rail-ground);
     color: var(--ns-rail-text);
 }
@@ -4353,33 +4360,41 @@ div.mud-input-slot.mud-input-root::placeholder {
     overflow-x: hidden;
 }
 
-/* The house's own scrollbar, for a scroll box INSIDE a surface rather than at its edge — the
-   agenda's day sheet is the first. The shell's scrollbars stay the platform's: a user's
-   pointer settings own the bar they drag all day. This one is thin and the theme's line color
-   so it reads as part of the sheet, and it is declared twice on purpose — scrollbar-width /
-   scrollbar-color is the standard property Firefox honors, ::-webkit-scrollbar is what
-   Chromium and Safari still answer to; neither one covers both. */
-.ns-scroll-thin {
+/* The house's one scrollbar, on every scroller: the platform's bar is unreadable-bright on a
+   dark surface, so the thumb is the theme's secondary ink mixed thin against transparent and
+   follows Claro/Oscuro as the --mud-palette-* variables swap. scrollbar-color inherits, so
+   :root reaches every scroller; scrollbar-width does not, so it rides on every element. The
+   standard properties have no hover state; the stronger thumb on hover is the WebKit
+   fallback's, which applies only where scrollbar-color is not understood. */
+:root {
+    --ns-scrollbar-thumb: color-mix(in srgb, var(--mud-palette-text-secondary) 40%, transparent);
+    --ns-scrollbar-thumb-hover: color-mix(in srgb, var(--mud-palette-text-secondary) 70%, transparent);
+    scrollbar-color: var(--ns-scrollbar-thumb) transparent;
+}
+
+* {
     scrollbar-width: thin;
-    scrollbar-color: var(--mud-palette-lines-default) transparent;
 }
 
-.ns-scroll-thin::-webkit-scrollbar {
-    width: 0.5rem;
-    height: 0.5rem;
-}
+@supports not (scrollbar-color: auto) {
+    ::-webkit-scrollbar {
+        width: 0.5rem;
+        height: 0.5rem;
+    }
 
-.ns-scroll-thin::-webkit-scrollbar-track {
-    background: transparent;
-}
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-corner {
+        background: transparent;
+    }
 
-.ns-scroll-thin::-webkit-scrollbar-thumb {
-    background-color: var(--mud-palette-lines-default);
-    border-radius: 999px;
-}
+    ::-webkit-scrollbar-thumb {
+        background-color: var(--ns-scrollbar-thumb);
+        border-radius: 999px;
+    }
 
-.ns-scroll-thin:hover::-webkit-scrollbar-thumb {
-    background-color: var(--mud-palette-text-secondary);
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: var(--ns-scrollbar-thumb-hover);
+    }
 }
 
 /* NsMenuBlock: what a menu says rather than offers. It gets the item padding written here
