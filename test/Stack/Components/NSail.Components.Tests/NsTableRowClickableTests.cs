@@ -140,6 +140,18 @@ public sealed class NsTableRowClickableTests : BunitContext, IAsyncLifetime
         Assert.Equal([".mud-table-row-clickable"], rules);
     }
 
+    /// <summary>Known red (keyboard.md, Known reds): a clickable row is a bare tr with a click
+    /// handler, so Tab does not reach it and Enter does not open it. This pins what is drawn
+    /// today: the day a row gains a tab stop, this fails and the row goes.</summary>
+    [Fact]
+    public void AClickableRowIsNotATabStopYet()
+    {
+        var cut = Render<RowClickTableHost>(parameters => parameters
+            .Add(p => p.RowClicked, EventCallback.Factory.Create<TestModel>(this, _ => { })));
+
+        Assert.All(Rows(cut), row => Assert.Null(row.GetAttribute("tabindex")));
+    }
+
     static IReadOnlyList<IElement> Rows(IRenderedComponent<RowClickTableHost> cut)
     {
         return cut.FindAll(".ns-table .mud-table-body tr");

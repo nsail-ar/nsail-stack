@@ -61,6 +61,21 @@ public sealed class NsTableOrderTests : BunitContext, IAsyncLifetime
         await DisposeAsync();
     }
 
+    /// <summary>A sortable heading is a native button, so Tab reaches it and Enter and Space press
+    /// it (keyboard.md).</summary>
+    [Fact]
+    public void ASortableHeadingIsANativeButtonInTheTabOrder()
+    {
+        var cut = Render<OrderTableHost>();
+
+        Assert.All(cut.FindAll(".ns-th-order"), control =>
+        {
+            Assert.Equal("button", control.LocalName);
+            Assert.NotEqual("-1", control.GetAttribute("tabindex"));
+            Assert.Null(control.GetAttribute("disabled"));
+        });
+    }
+
     /// <summary>The offer is the column's own, never the grid's: a heading that asked for it is a
     /// control, the one beside it that did not is the text it always was, and the actions header
     /// — which declares no column and cannot — is silent however it is marked.</summary>

@@ -30,7 +30,7 @@ number, in the product that walks; nothing is silenced.
 | `NsDateField`, `NsDateTimeField`, `NsTimeField` | typed in the box; the picker opens from the keyboard and Esc returns the cursor to the box |
 | `NsTable` | a sortable heading, a row action and a pager control are buttons or links, never a bare element with a click handler; a clickable row has a key for what the click does |
 | `NsMenu`, `NsNavMenu` | the trigger is a tab stop; Enter, Space or Arrow Down opens; a menu opened by key is dismissed by Esc and Tab from inside its list; one opened by a click, from the span around the trigger ([menus.md](menus.md)) |
-| Dialogs, drawers, `NsWizard` | focus lands inside on open, stays inside, and returns to what opened it on close ([forms.md](forms.md), *Focus on open*) |
+| Dialogs, drawers, `NsWizard` | focus lands inside on open, stays inside, and returns to what opened it on close ([forms.md](forms.md), *Focus on open*; [focus.md](focus.md) for the return) |
 | `NsTabs` | the tab strip is one tab stop; arrows move between tabs |
 | Toggles (`NsCheckBox`) | Space toggles |
 | `NsPasswordField` | the eye is a button in the tab order and Enter / Space reveal |
@@ -40,9 +40,9 @@ reached by Tab and does not answer Enter.
 
 ## Walked where it can be
 
-The Stack proves in bUnit what the DOM expresses: the keys a component handles itself
+The Stack proves in bUnit what the DOM expresses: the keys the vendor binds in Blazor
 (`KeyboardContractLookupTests`), and the structure a Tab stop needs — a native element, no
-`tabindex="-1"`, not disabled (`KeyboardContractSelectTests`, `NsPasswordFieldEyeTests`). A key
+`tabindex="-1"`, not disabled (`KeyboardContractSelectTests`, `NsPasswordFieldEyeTests`, the sortable heading in `NsTableOrderTests`, the toggle in `NsCheckBoxDirtyTrackingTests`). A key
 the vendor reads through its JS key interceptor never reaches bUnit; those keys, the visible
 ring and the whole-page order are the browser walk's, in each product.
 
@@ -50,11 +50,12 @@ ring and the whole-page order are the browser walk's, in each product.
 
 | Control | What | Why it stays |
 |---|---|---|
-| `NsPasswordField` | the eye is outside the tab order | the vendor draws its adornment button with `tabindex="-1"` and offers no parameter for it; the test is skipped and names this row |
+| `NsPasswordField` | the eye is outside the tab order | the vendor draws its adornment button with `tabindex="-1"` and offers no parameter for it; a test pins the vendor's `tabindex="-1"` and fails the day it changes; the `p1` story's number goes here |
+| `NsTable` | a clickable row is a bare `tr` with a click handler: Tab does not reach it, Enter does not open it | the row click is the vendor's; a test pins the row without a tab stop; the `p1` story's number goes here |
 
 ## Owed
 
 Not red, not yet proved: Arrow Down / Enter / Space / Esc on `NsSelect` and `NsMultiSelect`
-(the vendor's JS interceptor), and the rows for the date and time fields, `NsTable`, menus,
-dialogs and wizards, tabs and toggles. Each is the browser walk's or a bUnit case still to
+(the vendor's JS interceptor), and the rows for the date and time fields, the other `NsTable` rows (row action, pager), menus,
+dialogs and wizards, tabs. Each is the browser walk's or a bUnit case still to
 write; none is claimed by the tests above.
