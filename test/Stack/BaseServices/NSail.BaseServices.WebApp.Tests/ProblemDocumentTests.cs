@@ -52,7 +52,7 @@ public sealed class ProblemDocumentTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
         Assert.Contains("id=\"ns-page-error\"", body, StringComparison.Ordinal);
-        Assert.Contains("Something broke.", body, StringComparison.Ordinal);
+        Assert.Contains("An error occurred.", body, StringComparison.Ordinal);
         Assert.DoesNotContain("\"code\":\"NotFound\"", body, StringComparison.Ordinal);
     }
 

@@ -28,7 +28,7 @@ buckets (o "object storage") y la de claves de acceso (o "API keys" / "access ke
 1. Entrá a **Configuración > Integraciones > Almacenamiento** y abrí el almacén que vas a configurar.
 2. En **Proveedor**, elegí **Local folder** para una carpeta del servidor, **S3-compatible** para tu propio bucket, o **Git repository** para un repositorio.
 3. Completá **Contenedor** con el nombre de la carpeta (local) o del bucket (S3-compatible), o el camino del repositorio bajo la dirección del servicio (Git).
-4. Si elegiste S3-compatible, completá además **Dirección del servicio** — la de tu proveedor, sin el nombre del bucket —, **Región** — dejala vacía salvo que tu proveedor la pida —, **Clave de acceso** y **Clave secreta**: los cuatro valores salen de la consola de tu proveedor, de donde lo dejaste en Antes de empezar. Si elegiste Git repository, completá **Dirección del servicio** (por ejemplo `https://github.com`) — con un token guardado, la dirección y el repositorio tienen que ser los que contestan, porque una redirección se rechaza —, **Rama** — vacía usa `main` —, **Clave de acceso** (el usuario), **Clave secreta** (el token) y **Plantilla de link**: la dirección donde se lee un objeto, con `{key}` en lugar de su nombre. Usá `https`: con `http` la credencial viaja sin cifrar.
+4. Si elegiste S3-compatible, completá además **Dirección del servicio** — la de tu proveedor, sin el nombre del bucket —, **Región** — vacía salvo que tu proveedor la pida —, **Clave de acceso** y **Clave secreta**: los cuatro valores salen de la consola de tu proveedor, de donde lo dejaste en Antes de empezar. Si elegiste Git repository, completá **Dirección del servicio** (por ejemplo `https://github.com`) — con un token guardado, la dirección y el repositorio tienen que ser los que contestan, porque una redirección se rechaza —, **Rama** — vacía usa `main` —, **Clave de acceso** (el usuario), **Clave secreta** (el token) y **Plantilla de link**: la dirección donde se lee un objeto, con `{key}` en lugar de su nombre. Usá `https`: con `http` la credencial viaja sin cifrar.
 5. Tocá **Guardar**. Dejar **Proveedor** vacío y guardar borra lo que guardaste para ese almacén: vuelve a usar el que la instalación le configuró, y si no le configuró ninguno, el de por defecto.
 
 **La Clave secreta es de sólo escritura**: después de guardarla el campo vuelve vacío y debajo
@@ -37,14 +37,14 @@ escribe para reemplazarla.
 
 ## Probar
 
-Al pie de la pantalla, el botón **Probar** escribe un objeto chico contra lo que está
+Al pie de la pantalla, el botón **Probar** escribe un objeto pequeño contra lo que está
 **guardado**, lo vuelve a leer, lo lista y lo borra. Si los cuatro pasos salen bien, avisa que el
 destino respondió; si acabás de cambiar algo, guardalo primero — prueba lo guardado, no lo que
 está tipeado sin guardar.
 
 ## Si la prueba falla
 
-- **"Esta instalación todavía no guarda en ningún lado"**, debajo de **Proveedor**: no elegiste ninguno — elegí uno y completá Contenedor antes de guardar.
+- **"Esta instalación no tiene almacenamiento"**, debajo de **Proveedor**: no elegiste ninguno — elegí uno y completá Contenedor antes de guardar.
 - **El objeto se escribió pero no se pudo volver a leer**: la clave de acceso puede escribir pero no leer en ese bucket — revisá los permisos de la clave en la consola de tu proveedor.
 - **El objeto que se leyó no coincide con el que se escribió**: algo entre la escritura y la lectura alteró el contenido — a esto no lo arregla una clave distinta; es un destino que no se puede usar tal como está.
 - **El objeto se escribió pero no aparece al listar el contenedor**: falta el permiso de listar — agregalo en la consola de tu proveedor.

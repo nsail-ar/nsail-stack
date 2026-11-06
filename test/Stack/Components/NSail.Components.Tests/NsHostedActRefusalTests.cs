@@ -69,7 +69,7 @@ public sealed class NsHostedActRefusalTests : BunitContext, IAsyncLifetime
         return new(
             code: "InvalidModel",
             title: "One or more fields contain invalid data",
-            issues: [new Issue("NoStorageConfigured", "This install stores nowhere yet.", source)],
+            issues: [new Issue("NoStorageConfigured", "This install has no storage.", source)],
             status: 400);
     }
 
@@ -129,7 +129,7 @@ public sealed class NsHostedActRefusalTests : BunitContext, IAsyncLifetime
 
         await Press(host, "act-inside");
 
-        Assert.Equal(["This install stores nowhere yet.", null], FieldErrors(host));
+        Assert.Equal(["This install has no storage.", null], FieldErrors(host));
         Assert.Empty(Dialogs.Notices);
         Assert.Equal(string.Empty, Foot(host));
     }
@@ -159,7 +159,7 @@ public sealed class NsHostedActRefusalTests : BunitContext, IAsyncLifetime
         host.Render();
         await host.InvokeAsync(() => host.Find("input").Input("typed after the refusal"));
 
-        Assert.Equal("This install stores nowhere yet.", FieldErrors(host)[0]);
+        Assert.Equal("This install has no storage.", FieldErrors(host)[0]);
     }
 
     /// <summary>The act that WORKS reports nothing at all, so its silence can only be read at the
@@ -172,7 +172,7 @@ public sealed class NsHostedActRefusalTests : BunitContext, IAsyncLifetime
 
         await Press(host, "act-inside");
 
-        Assert.Equal("This install stores nowhere yet.", FieldErrors(host)[0]);
+        Assert.Equal("This install has no storage.", FieldErrors(host)[0]);
 
         host.Render(p => p.Add(x => x.Refusal, null));
 
@@ -240,7 +240,7 @@ public sealed class NsHostedActRefusalTests : BunitContext, IAsyncLifetime
 
         await Press(host, "act-inside");
 
-        Assert.Equal("This install stores nowhere yet.", FieldErrors(host)[0]);
+        Assert.Equal("This install has no storage.", FieldErrors(host)[0]);
 
         await Save(host);
 
@@ -269,7 +269,7 @@ public sealed class NsHostedActRefusalTests : BunitContext, IAsyncLifetime
 
         await PressHelp(host);
 
-        Assert.Equal("This install stores nowhere yet.", FieldErrors(host)[0]);
+        Assert.Equal("This install has no storage.", FieldErrors(host)[0]);
         Assert.Equal(1, host.Instance.Page!.Probes);
     }
 }

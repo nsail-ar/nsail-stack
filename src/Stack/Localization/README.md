@@ -9,8 +9,10 @@ and a key with no text renders as itself, so a missing translation is visible in
 | Package | What it is | Referenced by |
 |---|---|---|
 | `NSail.Localization` | `StringManager`, `StringCatalog`, `IStringSource`, `LanguageProvider`, `LanguageOptions`, `Languages`, `AddLocalization()`, `AddStringsFromAssembly()` | Web, client; reached through `NSail.Components` and `NSail.BaseServices.WebApi` |
+| `NSail.Localization.Testing` | `SpanishCopy`: the slang list and the sweep over every `strings.es.json` under a root (`Offenders(root)`, `Find(text)`); assistant-profile keys are skipped | test projects |
 
-It depends on `NSail.Metadata` and `NSail.Types` (for `Issue` and `Problem`).
+It depends on `NSail.Metadata` and `NSail.Types` (for `Issue` and `Problem`). `NSail.Localization.Testing`
+depends on nothing: a test asserts `SpanishCopy.Offenders(root)` is empty.
 
 ## Use it
 

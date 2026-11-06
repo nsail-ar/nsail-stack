@@ -43,7 +43,7 @@ public static class SecurityProblem
             {
                 new Issue(
                     code: "TooManyRequests",
-                    message: $"Too many requests for {action}. Wait a moment and try again",
+                    message: $"Too many requests for {action}. Wait a moment and retry",
                     source: action)
             },
             status: 429);
