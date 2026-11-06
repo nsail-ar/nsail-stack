@@ -87,9 +87,22 @@ public class ConfigurationTests
         var repos = new RepositorySet([(home, new RepositoryOptions { Name = home.Name }), (stack, new RepositoryOptions { Name = stack.Name, BranchPrefix = "stack", Label = "area:stack" })]);
 
         Assert.Same(stack, repos.RoutedBy(["area:stack", "p1"]));
-        Assert.Same(home, repos.RoutedBy(["area:stack", "area:shop"]));
+        Assert.Same(stack, repos.RoutedBy(["area:stack", "p1"], new HashSet<string> { stack.Name }));
+        Assert.Same(home, repos.RoutedBy(["area:shop"]));
         Assert.Same(home, repos.RoutedBy([]));
         Assert.Same(home, repos.Of("someone/else"));
+    }
+
+    [Fact]
+    public void ATwoHalfStoryBuildsItsRoutedHalfFirstThenTheDefault()
+    {
+        var names = new StoryNames("app", ["story", "stack"]);
+        var home = new GitHubRepository(null!, new RepositoryOptions { Name = "acme/app" }, names, "t");
+        var stack = new GitHubRepository(null!, new RepositoryOptions { Name = "acme/framework", BranchPrefix = "stack" }, names, "t");
+        var repos = new RepositorySet([(home, new RepositoryOptions { Name = home.Name }), (stack, new RepositoryOptions { Name = stack.Name, BranchPrefix = "stack", Label = "area:stack" })]);
+
+        Assert.Same(stack, repos.RoutedBy(["area:stack", "area:shop"], new HashSet<string>()));
+        Assert.Same(home, repos.RoutedBy(["area:stack", "area:shop"], new HashSet<string> { stack.Name }));
     }
 
     [Theory]

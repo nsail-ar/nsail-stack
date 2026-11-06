@@ -118,13 +118,14 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     }
 
     // A round of a PR builds where the PR lives. A story with open PRs all in one repository builds
-    // there; a new one where its only area label routes it, else in the default repository.
+    // there; a new one where its area labels route it (RepositorySet.RoutedBy), a two-half story's
+    // routed half first.
     async Task<IRepository> RepositoryOf(int n, IReadOnlySet<string> labels, CancellationToken ct)
     {
         if (Item.PrRepo is { } r) return ctx.Repos.Of(r);
         var open = (await ctx.Repos.PrsOf(n, "open", ct)).Select(p => p.Repo).Distinct().ToList();
         if (open.Count == 1) return ctx.Repos.Of(open[0]);
-        return open.Count > 1 ? ctx.Repo : ctx.Repos.RoutedBy(labels);
+        return open.Count > 1 ? ctx.Repo : await ctx.Repos.RoutedBy(n, labels, ct);
     }
 
     // The dossier never rides a commit: the clone's own exclude list hides it, in whatever repository.
@@ -251,7 +252,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     async Task<bool> Landed(int n, DateTimeOffset? since, CancellationToken ct)
     {
         if ((await ctx.Repos.PrsOf(n, "open", ct)).Count > 0) return false;
-        var repo = ctx.Repos.RoutedBy(await ctx.Board.Labels(n, ct));
+        var repo = await ctx.Repos.RoutedBy(n, await ctx.Board.Labels(n, ct), ct);
         return (await repo.PrsOf(n, "merged", ct)).Any(p => since is null || p.MergedAt >= since);
     }
 

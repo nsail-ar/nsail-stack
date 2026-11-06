@@ -26,6 +26,8 @@ the files it leaves.
   - `Board` and `Repositories`, each naming its `Provider`. One harness runs one board; two boards
     are two harnesses (their limits split by hand on a shared machine). The repository
     without a `Label` is the default; a story whose only area label is another's is built there.
+    A story with that label beside other areas has two halves: it builds in the labelled repository
+    until a PR of it merged there, then in the default one.
     A board that names its columns or labels otherwise maps them (`Stages`, `Labels`); a repository
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
     seed projects, the `Everything` files that build it all, the `Tests` and their `TestFilter`): the

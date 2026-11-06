@@ -41,7 +41,7 @@ public static class Landing
     {
         var open = await repos.PrsOf(story, "open", ct);
         if (open.Count > 0) return null;
-        var repo = repos.RoutedBy(labels);
+        var repo = await repos.RoutedBy(story, labels, ct);
         var merged = await repo.PrsOf(story, "merged", ct);
         if (merged.Count == 0) return null;
         var ahead = (await repo.PushTimes(story, ct)).Count;
