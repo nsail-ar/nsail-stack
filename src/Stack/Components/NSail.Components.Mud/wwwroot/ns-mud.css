@@ -4851,6 +4851,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* NsBarChart: every stroke and fill is a palette variable, so both schemes read. */
+.ns-bar-chart-key { display: inline-flex; align-items: center; }
 .ns-bar-chart-grid { stroke: var(--mud-palette-lines-default); stroke-width: 1; }
 .ns-bar-chart-baseline { stroke: var(--mud-palette-text-secondary); stroke-width: 1; }
 .ns-bar-chart-marker { stroke: var(--mud-palette-text-secondary); stroke-width: 1; }

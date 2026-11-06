@@ -8,17 +8,17 @@
 @inject StringManager Strings
 
 @* Stacked bars over ordered buckets, drawn as plain SVG: no script, no library. Every colour is a
-   --mud-palette-* variable, so both schemes read. The hover is the SVG's own <title>, which is
-   also what a screen reader says. *@
+   --mud-palette-* variable, so both schemes read. The hover is the SVG's own <title>. The <g>
+   around each <text> is there because Razor does not open markup with <text> inside a code block. *@
 <div class="ns-bar-chart">
-    <svg viewBox="0 0 @N(W) @N(H)" width="100%" role="img" aria-label="@AriaLabel">
+    <svg viewBox="0 0 @N(W) @N(H)" width="100%" role="group" aria-label="@AriaLabel">
         @foreach (var tick in Ticks())
         {
             var y = Y(tick);
             <line x1="@N(Left)" x2="@N(W - 6)" y1="@N(y)" y2="@N(y)" class="ns-bar-chart-grid" />
-            <g><text x="@N(Left - 6)" y="@N(y + 4)" text-anchor="end" class="ns-bar-chart-axis">@N(tick)</text></g>
+            <g><text x="@N(Left - 6)" y="@N(y + 4)" text-anchor="end" class="ns-bar-chart-axis">@tick.ToString("0.##", CultureInfo.CurrentCulture)</text></g>
         }
-        @if (Buckets.Count == 0)
+        @if (_max <= 0)
         {
             <g><text x="@N(W / 2)" y="@N((Top + Bottom) / 2)" text-anchor="middle" class="ns-bar-chart-empty">@Strings.Translate("Components.NsBarChart.NoData")</text></g>
         }
@@ -103,29 +103,28 @@
         }
     }
 
-    double Max
-    {
-        get
-        {
-            var max = Buckets.Count == 0 ? 0 : Buckets.Max(b => Series.Sum(s => Math.Max(0, Value(b, s))));
-            return max <= 0 ? 1 : max;
-        }
-    }
+    double _max;
+    double _ceiling = 2;
 
-    // A round ceiling, so the gridlines fall on numbers a person would say.
-    double Ceiling
+    protected override void OnParametersSet()
     {
-        get
+        _max = Buckets.Count == 0 ? 0 : Buckets.Max(b => Series.Sum(s => Math.Max(0, Value(b, s))));
+        if (_max <= 0)
         {
-            var magnitude = Math.Pow(10, Math.Floor(Math.Log10(Max)));
-            var step = new[] { 1d, 2, 5, 10 }.First(m => m * magnitude >= Max / 4) * magnitude;
-            return Math.Ceiling(Max / step) * step;
+            _ceiling = 2;
+            return;
         }
+
+        // A whole step of at least 1, and a ceiling of two of them: the middle gridline is a
+        // number a person would say, and a count never reads 0.5.
+        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(_max)));
+        var step = Math.Max(1, new[] { 1d, 2, 5, 10 }.First(m => m * magnitude >= _max / 4) * magnitude);
+        _ceiling = Math.Ceiling(_max / (2 * step)) * 2 * step;
     }
 
     IEnumerable<double> Ticks()
     {
-        var ceiling = Ceiling;
+        var ceiling = _ceiling;
         yield return 0;
         yield return ceiling / 2;
         yield return ceiling;
@@ -133,7 +132,7 @@
 
     double Y(double value)
     {
-        return Bottom - value / Ceiling * (Bottom - Top);
+        return Bottom - value / _ceiling * (Bottom - Top);
     }
 
     static double Value(NsBarBucket bucket, NsBarSeries series)
@@ -143,7 +142,7 @@
 
     static string Palette(NsChartColor color)
     {
-        return color.ToString().ToLowerInvariant();
+        return color == NsChartColor.Neutral ? "text-secondary" : color.ToString().ToLowerInvariant();
     }
 
     // SVG coordinates are always invariant: a machine that writes 1,5 breaks every one.

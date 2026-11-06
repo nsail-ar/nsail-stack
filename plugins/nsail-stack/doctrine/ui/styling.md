@@ -321,8 +321,11 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   (label and a value per series key), `Series` (key, translated name, `NsChartColor`), `Markers`
   (a vertical line at a bucket index with its hover text) and `AriaLabel`. Use it for counts over
   time; lines, pies and zoom are not in it. Colours are palette slots, never a hex, so both schemes
-  read; the hover is the segment's `<title>` and the legend sits under the chart. Empty data
-  draws the axis and a "no data" line, never a blank box.
+  read — only slots of a different hue (`Primary`, `Info`, `Success`, `Error`, `Neutral`), since
+  the theme's Primary, Secondary and Tertiary are one accent. The hover is the segment's
+  `<title>` and the legend sits under the chart; the exact value living only on a hover is the
+  one deliberate exception to the tooltip rule above. Nothing to draw (no buckets, or all zero)
+  keeps the axis and says "no data", never a blank box.
 - `NsSince` is how long ago something happened, said in the one unit a person would say it in
   ("hace 5 min", "3 d ago") with the exact moment on the whisper — `At`, `Missing`, `StaleAfter`,
   `Format`, and nothing else. Days is as coarse as it gets: a cell dumped three weeks ago and one

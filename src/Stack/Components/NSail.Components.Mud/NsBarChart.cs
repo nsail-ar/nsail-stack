@@ -4,16 +4,15 @@
 namespace NSail.Components;
 
 /// <summary>A series' colour as a theme palette slot: the call site never writes a hex, so
-/// the segment reads on whichever scheme is lit.</summary>
+/// the segment reads on whichever scheme is lit. Only slots of a different hue are offered: the
+/// theme maps Primary, Secondary and Tertiary to states of one accent.</summary>
 public enum NsChartColor
 {
     Primary,
-    Secondary,
-    Tertiary,
     Info,
     Success,
-    Warning,
-    Error
+    Error,
+    Neutral
 }
 
 /// <summary>One stacked series: <paramref name="Key"/> matches the keys of each bucket's values,

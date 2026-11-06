@@ -13,7 +13,7 @@ public sealed class NsBarChartTests : BunitContext
     static readonly NsBarSeries[] Series =
     [
         new("a", "Alpha", NsChartColor.Primary),
-        new("b", "Beta", NsChartColor.Warning)
+        new("b", "Beta", NsChartColor.Info)
     ];
 
     public NsBarChartTests()
@@ -58,7 +58,7 @@ public sealed class NsBarChartTests : BunitContext
 
         var keys = cut.FindAll(".ns-bar-chart-key").Select(k => k.TextContent).ToList();
         Assert.Equal(["Alpha", "Beta"], keys);
-        Assert.Contains("var(--mud-palette-warning)", cut.FindAll(".ns-bar-chart-swatch")[1].GetAttribute("style"));
+        Assert.Contains("var(--mud-palette-info)", cut.FindAll(".ns-bar-chart-swatch")[1].GetAttribute("style"));
     }
 
     [Fact]
@@ -80,5 +80,26 @@ public sealed class NsBarChartTests : BunitContext
         Assert.Empty(cut.FindAll("rect"));
         Assert.NotEmpty(cut.FindAll(".ns-bar-chart-grid"));
         Assert.Equal("No data", cut.Find(".ns-bar-chart-empty").TextContent);
+    }
+
+    [Fact]
+    public void BucketsWithNothingInThemStillSayNoData()
+    {
+        var cut = Render<NsBarChart>(p => p
+            .Add(c => c.Series, Series)
+            .Add(c => c.Buckets, new[] { Bucket("10h", 0, 0), Bucket("11h", 0, 0) }));
+
+        Assert.Empty(cut.FindAll("rect"));
+        Assert.Equal("No data", cut.Find(".ns-bar-chart-empty").TextContent);
+    }
+
+    [Fact]
+    public void AxisLabelsOfWholeCountsAreWhole()
+    {
+        var cut = Render<NsBarChart>(p => p
+            .Add(c => c.Series, Series)
+            .Add(c => c.Buckets, new[] { Bucket("10h", 1, 0) }));
+
+        Assert.Equal(["0", "1", "2"], cut.FindAll(".ns-bar-chart-axis").Take(3).Select(t => t.TextContent).ToList());
     }
 }
