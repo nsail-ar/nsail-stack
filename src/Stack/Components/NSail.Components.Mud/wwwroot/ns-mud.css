@@ -1978,13 +1978,13 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* The browser paints its autofill tint and ink on the <input> alone, with !important in its own
-   stylesheet, so an adornment beside it (NsPasswordField's eye) kept the box's surface and read
-   as a second box. The tint is a value of the browser that CSS cannot read and no sibling can
-   match, so the input keeps the field's own surface instead: a transition delayed past any
-   session holds its background where it was, and the text-fill colour is the one author rule
-   that outranks the browser's ink — on a page with no color-scheme, the light scheme's dark,
-   which vanishes on the dark theme. An outlined input is transparent over a card on one screen and the page on another, so
-   no inset paint of a single token stands in for it. */
+   stylesheet, so an adornment beside it (NsPasswordField's eye) keeps the box's surface and
+   would read as a second box. The tint is a value of the browser that CSS cannot read and no
+   sibling can match, so the input keeps the field's own surface instead: a transition delayed
+   past any session holds its background where it was. The browser's ink is its FieldText, not
+   the field's text colour, and the text-fill colour is the one author rule that outranks it. An
+   outlined input is transparent over a card on one screen and the page on another, so no inset
+   paint of a single token stands in for it. */
 .mud-input > input.mud-input-root:-webkit-autofill {
     transition: background-color 0s 600000s;
     -webkit-text-fill-color: var(--mud-palette-text-primary);
