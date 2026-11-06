@@ -147,6 +147,16 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         return StageIn(data.GetProperty("repository").GetProperty("issue"), options.Project);
     }
 
+    async Task<(JsonElement Issue, string? Item)> ItemOf(int story, int project, CancellationToken ct)
+    {
+        var issue = (await gh.GraphQl(IssueStageQuery, new { o = Owner, n = RepoName, i = story, sf = options.StatusField }, ct)).GetProperty("repository").GetProperty("issue");
+        var item = issue.GetProperty("projectItems").GetProperty("nodes").EnumerateArray()
+            .Where(i => i.GetProperty("project").GetProperty("number").GetInt32() == project)
+            .Select(i => i.GetProperty("id").GetString())
+            .FirstOrDefault();
+        return (issue, item);
+    }
+
     // The story's column; the issue joins the project if it is not in it yet.
     public async Task SetStage(int story, string stage, CancellationToken ct = default)
     {
@@ -156,16 +166,22 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         {
             throw new InvalidOperationException($"project {number}'s {options.StatusField} has no column {stage} ({string.Join(", ", ids.Options.Keys)})");
         }
-        var issue = (await gh.GraphQl(IssueStageQuery, new { o = Owner, n = RepoName, i = story, sf = options.StatusField }, ct)).GetProperty("repository").GetProperty("issue");
-        var item = issue.GetProperty("projectItems").GetProperty("nodes").EnumerateArray()
-            .Where(i => i.GetProperty("project").GetProperty("number").GetInt32() == number)
-            .Select(i => i.GetProperty("id").GetString())
-            .FirstOrDefault();
+        var (issue, item) = await ItemOf(story, number, ct);
         if (item is null)
         {
-            var added = await gh.GraphQl("mutation($p:ID!,$c:ID!){addProjectV2ItemById(input:{projectId:$p,contentId:$c}){item{id}}}",
-                new { p = ids.Project, c = issue.GetProperty("id").GetString() }, ct);
-            item = added.GetProperty("addProjectV2ItemById").GetProperty("item").GetProperty("id").GetString();
+            try
+            {
+                var added = await gh.GraphQl("mutation($p:ID!,$c:ID!){addProjectV2ItemById(input:{projectId:$p,contentId:$c}){item{id}}}",
+                    new { p = ids.Project, c = issue.GetProperty("id").GetString() }, ct);
+                item = added.GetProperty("addProjectV2ItemById").GetProperty("item").GetProperty("id").GetString();
+            }
+            // A story just created is added by the project's own workflow while this adds it too: the
+            // item is there, read it again.
+            catch (GitHubException e) when (e.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+            {
+                item = (await ItemOf(story, number, ct)).Item;
+                if (item is null) throw;
+            }
         }
         await gh.GraphQl("mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{singleSelectOptionId:$o}}){projectV2Item{id}}}",
             new { p = ids.Project, i = item, f = ids.Field, o = option }, ct);

@@ -67,7 +67,7 @@ public sealed class JobContext(
     // The name a job's build turns are held under, so they all come back when the job ends.
     public static string HolderOf(WorkItem item)
     {
-        return $"{item.Kind.ToString().ToLowerInvariant()}-{item.Story?.ToString(CultureInfo.InvariantCulture) ?? item.Product ?? (item.Kind == WorkKind.Main ? "head" : "drain")}";
+        return $"{item.Kind.ToString().ToLowerInvariant()}-{item.Story?.ToString(CultureInfo.InvariantCulture) ?? item.Product ?? (item.Kind == WorkKind.Main ? "head" : item.Kind == WorkKind.Watch ? item.Worker ?? "watch" : "drain")}";
     }
 
     public string LogPath(WorkItem item, DateTimeOffset at)
