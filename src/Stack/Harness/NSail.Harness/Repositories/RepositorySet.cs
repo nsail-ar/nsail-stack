@@ -27,12 +27,29 @@ public sealed class RepositorySet(IReadOnlyList<(IRepository Repository, Reposit
         return repositories.Single(r => r.Repository == repository).Options;
     }
 
-    // Where a new story is built: the repository its only area label routes it to, else the default.
-    public IRepository RoutedBy(IEnumerable<string> labels)
+    // Where a new story is built. Its only area label routes it to that label's repository. A story
+    // whose area labels name a routed repository beside other areas has two halves, the routed one
+    // first: it builds there until a PR of it merged there (`landedIn`), then in the default repository.
+    public IRepository RoutedBy(IEnumerable<string> labels, IReadOnlySet<string>? landedIn = null)
     {
         var areas = labels.Where(l => l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal)).ToList();
-        if (areas.Count != 1) return Default;
-        return repositories.FirstOrDefault(r => r.Options.Label == areas[0]).Repository ?? Default;
+        var routed = repositories.Where(r => r.Options.Label is { } l && areas.Contains(l)).Select(r => r.Repository).ToList();
+        if (routed.Count == 0) return Default;
+        if (areas.Count == 1) return routed[0];
+        return routed.FirstOrDefault(r => landedIn is null || !landedIn.Contains(r.Name)) ?? Default;
+    }
+
+    // RoutedBy, reading which routed repositories already hold a merge of the story.
+    public async Task<IRepository> RoutedBy(int story, IEnumerable<string> labels, CancellationToken ct = default)
+    {
+        var areas = labels.ToList();
+        var landed = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (repository, options) in repositories)
+        {
+            if (options.Label is null || !areas.Contains(options.Label)) continue;
+            if ((await repository.PrsOf(story, "merged", ct)).Count > 0) landed.Add(repository.Name);
+        }
+        return RoutedBy(areas, landed);
     }
 
     // The story's PRs in this state across every repository, the default first.
