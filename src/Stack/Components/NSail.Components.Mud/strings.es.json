@@ -87,6 +87,8 @@
   "Components.NsSince.Days": "hace {0} día",
   "Components.NsSince.Days.Plural": "hace {0} días",
 
+  "Components.NsBarChart.NoData": "Sin datos",
+
   "Components.PasswordStrength.Weak": "Débil",
   "Components.PasswordStrength.Medium": "Media",
   "Components.PasswordStrength.Strong": "Fuerte",

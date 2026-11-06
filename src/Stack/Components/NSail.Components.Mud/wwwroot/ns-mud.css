@@ -4849,3 +4849,12 @@ div.mud-input-slot.mud-input-root::placeholder {
 .ns-numeric-compact .mud-input-control-input-container input.mud-input-root {
     text-align: center;
 }
+
+/* NsBarChart: every stroke and fill is a palette variable, so both schemes read. */
+.ns-bar-chart-grid { stroke: var(--mud-palette-lines-default); stroke-width: 1; }
+.ns-bar-chart-baseline { stroke: var(--mud-palette-text-secondary); stroke-width: 1; }
+.ns-bar-chart-marker { stroke: var(--mud-palette-text-secondary); stroke-width: 1; }
+.ns-bar-chart-axis { font-size: 11px; fill: var(--mud-palette-text-secondary); }
+.ns-bar-chart-empty { font-size: 13px; fill: var(--mud-palette-text-secondary); }
+.ns-bar-chart-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--mud-palette-text-secondary); }
+.ns-bar-chart-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-inline-end: 4px; }
