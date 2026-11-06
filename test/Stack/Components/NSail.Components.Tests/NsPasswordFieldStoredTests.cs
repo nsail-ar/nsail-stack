@@ -55,9 +55,12 @@ public sealed class NsPasswordFieldStoredTests : BunitContext, IAsyncLifetime
     {
         var cut = Render(language, isStored: true);
 
-        Assert.Equal(placeholder, cut.Find("input").GetAttribute("placeholder"));
-        Assert.DoesNotContain("Guardado", placeholder);
-        Assert.DoesNotContain("Saved", placeholder);
+        var input = cut.Find("input");
+        var rendered = input.GetAttribute("placeholder");
+        Assert.Equal(placeholder, rendered);
+        Assert.DoesNotContain("Guardado", rendered);
+        Assert.DoesNotContain("Saved", rendered);
+        Assert.Equal(sentence, input.GetAttribute("aria-description"));
         var mark = cut.Find(".ns-stored-mark");
         Assert.Equal(sentence, mark.QuerySelector(".ns-whisper-host")!.GetAttribute("data-ns-whisper"));
         Assert.Equal(sentence, mark.GetAttribute("aria-label"));
@@ -74,6 +77,7 @@ public sealed class NsPasswordFieldStoredTests : BunitContext, IAsyncLifetime
 
         Assert.Empty(cut.FindAll(".ns-field-helper"));
         Assert.Null(cut.Find("input").GetAttribute("placeholder"));
+        Assert.Null(cut.Find("input").GetAttribute("aria-description"));
         Assert.Empty(cut.FindAll(".ns-stored-mark"));
         Assert.DoesNotContain("Guardado", cut.Markup);
     }

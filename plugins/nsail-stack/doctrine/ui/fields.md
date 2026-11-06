@@ -250,7 +250,9 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   looks exactly like "the secret is stored and not shown". While the flag is on and the box is
   empty, the label stays floated, the placeholder reads `Components.NsPasswordField.Stored` (the mask alone, no word)
   and a check at the end of the box carries `Components.NsPasswordField.StoredHint` (the whole
-  sentence, leave it empty to keep it) as its whisper (`NsTooltip`) and its label; the glyph takes
+  sentence, leave it empty to keep it) as its whisper (`NsTooltip`) and its label, and the input
+  carries the same sentence as `aria-description`, since the check is a sibling no reference from
+  the input reaches; the glyph takes
   the field's ink, since the status ink is a list's channel ([styling.md](styling.md)). There is no helper row, so a narrow settings
   grid keeps its row height; the mask alone cannot hold the sentence and an icon alone is
   invisible at a glance. An explicit `Helper` or `Placeholder` still wins, and once something is
