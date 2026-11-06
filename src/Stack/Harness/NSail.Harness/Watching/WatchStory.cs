@@ -38,6 +38,8 @@ public static partial class WatchStory
     public static string Title(ErrorGroup g, string product)
     {
         var what = OneLine(g.Template);
+        // One template logs several bugs (`{Item} failed`): the exception's own name tells their titles apart.
+        if (g.ExceptionType is { } type) what = $"{what} ({type[(type.LastIndexOf('.') + 1)..]})";
         if (what.Length > TitleLength) what = what[..(TitleLength - 1)].TrimEnd() + "…";
         return $"telemetry({product}): {what}";
     }

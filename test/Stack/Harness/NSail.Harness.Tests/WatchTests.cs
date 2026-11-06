@@ -87,6 +87,7 @@ public class WatchTests
         Assert.Equal("Analyze", card.Stage);
         Assert.Equal(["area:optical", "telemetry"], card.Labels.Order());
         Assert.StartsWith("telemetry(optical): Background job {Job} failed", card.Title);
+        Assert.EndsWith("(InvalidOperationException)", card.Title);
         Assert.Contains("AC1", card.Body);
         Assert.Contains("2 times", card.Body);
         Assert.NotNull(WatchStory.FingerprintIn(card.Body));
