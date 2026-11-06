@@ -67,14 +67,14 @@ public sealed class AutofillSurfaceTests : BunitContext, IAsyncLifetime
     }
 
     // An outlined input is transparent over a card on sign-in and over the page on a settings
-    // screen, so a paint of one token — a background, or the inset shadow that fakes one — is
+    // screen, so a paint of one token — a background, a gradient, or the inset shadow that fakes one — is
     // wrong on one of them and draws the seam again beside the adornment.
     [Fact]
     public void NoAutofillRulePaintsTheInput()
     {
         var painters = Rules(HouseStylesheet.Read())
             .Where(rule => rule.Selectors.Any(selector => selector.Contains(":-webkit-autofill")))
-            .Where(rule => Regex.IsMatch(rule.Body, @"(?<![-\w])(background(-color)?|(-webkit-)?box-shadow)\s*:"))
+            .Where(rule => Regex.IsMatch(rule.Body, @"(?<![-\w])(background(-color|-image)?|(-webkit-)?box-shadow)\s*:"))
             .Select(rule => string.Join(", ", rule.Selectors))
             .ToArray();
 
@@ -84,7 +84,7 @@ public sealed class AutofillSurfaceTests : BunitContext, IAsyncLifetime
     // The rule keys on the browser's state and nothing else, so focus does not narrow it; what
     // could is the eye flipping the type, which must leave the input the selector names in place.
     [Fact]
-    public void ThePasswordInputMatchesTheRuleWhicheverWayTheEyeIsSet()
+    public async Task ThePasswordInputMatchesTheRuleWhicheverWayTheEyeIsSet()
     {
         var cut = Render<NsPasswordField>(ps => ps
             .Add(p => p.Label, "Contraseña")
@@ -92,12 +92,12 @@ public sealed class AutofillSurfaceTests : BunitContext, IAsyncLifetime
 
         AssertReached(cut.Find("input"));
 
-        cut.Find(".mud-input-adornment button").Click();
+        await cut.InvokeAsync(() => cut.Find(".mud-input-adornment button").Click());
 
         Assert.Equal("text", cut.Find("input").GetAttribute("type"));
         AssertReached(cut.Find("input"));
 
-        cut.Find(".mud-input-adornment button").Click();
+        await cut.InvokeAsync(() => cut.Find(".mud-input-adornment button").Click());
 
         Assert.Equal("password", cut.Find("input").GetAttribute("type"));
         AssertReached(cut.Find("input"));
