@@ -1977,6 +1977,20 @@ div.mud-input-slot.mud-input-root::placeholder {
     padding: 0 5px;
 }
 
+/* The browser paints its autofill tint and ink on the <input> alone, with !important in its own
+   stylesheet, so an adornment beside it (NsPasswordField's eye) keeps the box's surface and
+   would read as a second box. The tint is a value of the browser that CSS cannot read and no
+   sibling can match, so the input keeps the field's own surface instead: a transition delayed
+   past any session holds its background where it was. The browser's ink is its FieldText, not
+   the field's text colour, and the text-fill colour is the one author rule that outranks it. An
+   outlined input is transparent over a card on one screen and the page on another, so no inset
+   paint of a single token stands in for it. */
+.mud-input > input.mud-input-root:-webkit-autofill {
+    transition: background-color 0s 600000s;
+    -webkit-text-fill-color: var(--mud-palette-text-primary);
+    caret-color: var(--mud-palette-text-primary);
+}
+
 /* The spin behind NsIcons.Progress. fill-box puts the origin at the centre of the shape
    itself, so it keeps spinning true whatever viewBox the icon is rendered into. Reduced
    motion slows it rather than stopping it — a frozen spinner still claims to be working. */

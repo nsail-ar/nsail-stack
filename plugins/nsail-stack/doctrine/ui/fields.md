@@ -504,6 +504,11 @@ words land under it and the label then travels off them.
 - **Not CSS.** `ns-mud.css` restates the vendor's shrink geometry once, under
   `:-webkit-autofill`, and that is for a state C# genuinely cannot see: the browser writing a
   saved credential straight into the DOM. A state the component knows is declared in C#.
+- **An autofilled field keeps its own surface and ink.** The browser paints its tint on the
+  `<input>` alone, so an adornment beside it (the password's eye) would read as a second box;
+  the tint is the browser's own value and no sibling can match it. One `:-webkit-autofill` rule
+  in `ns-mud.css`, beside the geometry, paints nothing: it holds the input's background where it
+  was and writes its text in the field's ink, for every Ns `<input>` the browser fills.
 - **A search box reads `Common.Search` by default (*Buscar* / *Search*).** `NsSearchField.Placeholder`
   replaces it; `NsPageHeader`, `NsNavMenu` and `NsTree`, which draw one, forward
   `SearchPlaceholder`. The text comes from a key, never a literal.
