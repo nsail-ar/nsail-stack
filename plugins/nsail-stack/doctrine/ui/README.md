@@ -22,6 +22,7 @@ placing.
 | [skills.md](skills.md) | `ISkillContributor`, `SkillItem`, `EmbeddedSkillBody`, `SkillItem.Verify` |
 | [branding.md](branding.md) | `Brand`, `BrandTheme`, `IBrandProvider` |
 | [localization.md](localization.md) | `StringManager`, `IStringSource`, the derived keys, culture negotiation |
+| [copy.md](copy.md) | The Spanish copy: neutral words, one word per concept, the slang sweep |
 
 Not on the shelf, because nothing but the layout composes them: `NsDialog`, `NsOpenDialog`,
 `NsConfirmDialog` (the yes/no question `DialogManager.Confirm` opens, and where its cursor lands
