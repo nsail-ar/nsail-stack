@@ -23,6 +23,10 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
 
     public string Driver => "claude";
 
+    static readonly TimeSpan Foreground = TimeSpan.FromMinutes(30);
+
+    public TimeSpan? LongestCommand => Foreground;
+
     public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
     {
         var command = options.Resolve();
@@ -35,10 +39,10 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         {
             ["CLAUDE_CONFIG_DIR"] = config,
             // Headless, a turn that ends is the job ending: nothing may go to the background,
-            // and a long command runs in the foreground up to half an hour.
+            // and a long command runs in the foreground up to Foreground.
             ["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] = "1",
             ["BASH_DEFAULT_TIMEOUT_MS"] = "900000",
-            ["BASH_MAX_TIMEOUT_MS"] = "1800000",
+            ["BASH_MAX_TIMEOUT_MS"] = ((long)Foreground.TotalMilliseconds).ToString(System.Globalization.CultureInfo.InvariantCulture),
         };
         if (options.Token() is { } token) env["CLAUDE_CODE_OAUTH_TOKEN"] = token;
         if (GitBash() is { } gitBash) env["CLAUDE_CODE_GIT_BASH_PATH"] = gitBash;

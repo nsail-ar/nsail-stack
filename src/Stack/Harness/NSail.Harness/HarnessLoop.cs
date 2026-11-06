@@ -86,7 +86,22 @@ public sealed class HarnessLoop(
         }
     }
 
-    public IReadOnlyCollection<RunningJob> Running => _running.Values.ToList();
+    // What runs, each with what it is doing now and when its log last moved (JobActivity).
+    public IReadOnlyCollection<RunningJob> Running => _running.Values.Select(Activity).ToList();
+
+    RunningJob Activity(RunningJob job)
+    {
+        JobStep? step;
+        try
+        {
+            step = jobs.StepOf(job.Item);
+        }
+        catch (Exception e) when (e is InvalidOperationException or KeyNotFoundException)
+        {
+            step = null;
+        }
+        return JobActivity.Read(job, step, jobs.Agent.LongestCommand, leases.Waits(JobContext.HolderOf(job.Item)));
+    }
 
     // The stories labelled stalled on the last board read.
     public int Stalled => _stalled;

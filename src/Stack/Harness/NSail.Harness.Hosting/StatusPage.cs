@@ -57,14 +57,12 @@ static class StatusPage
         html.Append($"<style>{Style}</style>");
         var version = view.Starts.LastOrDefault()?.Version;
         html.Append($"<h1>Harness <small class=muted>{Esc(o.DefaultRepository.Name)} · {Esc(o.Machine)} · {o.Mode}{(version is null ? "" : $" · {Esc(version)}")}</small></h1>");
-        Badges(html, loop, history, leases, load, now);
+        var running = loop.Running;
+        Badges(html, loop, running.Count, history, leases, load, now);
         Stats(html, view);
         Sides(html, view, o, agent, now);
 
-        var running = loop.Running;
-        html.Append($"<h2>Running ({running.Count})</h2>");
-        if (running.Count == 0) html.Append("<p class=muted>Nothing runs now.</p>");
-        else JobsPage.Table(html, o, running.OrderBy(r => r.Started).Select(r => new JobsPage.Row(r.Id, r.Started, r.Item.ToString(), r.Item.Story, "running", $"slot {r.Slot}", Time((now - r.Started).TotalSeconds))), now);
+        Running(html, o, running, now);
 
         if (loop.Last is { } pass)
         {
@@ -77,6 +75,13 @@ static class StatusPage
         html.Append($"<div class=logbar><h2>Recent jobs</h2><a href=\"/jobs\" style=\"font-size:13px\">All {ended.Count} jobs, with filters ›</a></div>");
         JobsPage.Table(html, o, ended.OrderByDescending(j => j.Started).Take(10).Select(JobsPage.RowOf), now);
         return html.ToString();
+    }
+
+    internal static void Running(StringBuilder html, HarnessOptions o, IReadOnlyCollection<RunningJob> running, DateTimeOffset now)
+    {
+        html.Append($"<h2>Running ({running.Count})</h2>");
+        if (running.Count == 0) html.Append("<p class=muted>Nothing runs now.</p>");
+        else JobsPage.Table(html, o, running.OrderBy(r => r.Started).Select(r => new JobsPage.Row(r.Id, r.Started, r.Item.ToString(), r.Item.Story, "running", $"slot {r.Slot}", Time((now - r.Started).TotalSeconds), r)), now);
     }
 
     internal static string Swatch(string role)
@@ -117,12 +122,12 @@ static class StatusPage
         });
     }
 
-    static void Badges(StringBuilder html, HarnessLoop loop, JobHistory history, BuildLeases leases, LoadSamples load, DateTimeOffset now)
+    static void Badges(StringBuilder html, HarnessLoop loop, int running, JobHistory history, BuildLeases leases, LoadSamples load, DateTimeOffset now)
     {
         html.Append("<div class=badges>");
         if (loop.Paused is { } why) html.Append($"<span class=\"b warn\">paused: {Esc(why)}</span>");
         if (loop.AgentsOffUntil is { } wall) html.Append($"<span class=\"b warn\">agents off: out of quota until {Local(wall):HH:mm}; builds go on</span>");
-        html.Append($"<span class=\"b acc\">{loop.Running.Count} running</span>");
+        html.Append($"<span class=\"b acc\">{running} running</span>");
         if (loop.Last is { Plan: { } plan } pass) html.Append($"<span class=b>{Math.Max(0, plan.Items.Count - pass.Started.Count)} waiting</span>");
         html.Append(loop.Stalled > 0 ? $"<span class=\"b warn\">{loop.Stalled} stalled</span>" : "<span class=b>0 stalled</span>");
         if (history.Jobs().LastOrDefault(j => j.Work.StartsWith("gate main", StringComparison.Ordinal) && j.Outcome is not null) is { } main)

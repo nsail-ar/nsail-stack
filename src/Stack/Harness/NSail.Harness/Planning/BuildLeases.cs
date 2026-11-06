@@ -44,6 +44,12 @@ public sealed class BuildLeases(int limit)
         get { lock (_gate) return _waiting.Count; }
     }
 
+    // Whether this holder stands in line for a turn now.
+    public bool Waits(string holder)
+    {
+        lock (_gate) return _waiting.Any(w => w.Holder == holder);
+    }
+
     public IReadOnlyList<BuildLease> Holders()
     {
         lock (_gate) return _held.Values.OrderBy(l => l.At).ToList();
