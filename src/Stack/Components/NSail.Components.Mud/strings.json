@@ -49,7 +49,7 @@
   "Common.GuideMissing": "This chapter of the guide could not be read.",
   "Common.Saved": "Saved",
   "Common.RowsPerPage": "Rows per page",
-  "Common.UnsavedChanges": "You have unsaved changes. Are you sure you want to leave?",
+  "Common.UnsavedChanges": "You have unsaved changes. Leave anyway?",
   "Common.UnsavedChangesTitle": "Unsaved changes",
   "Common.ConfirmSend": "Confirm this action?",
   "Common.InUse": "This record is in use and cannot be deleted. Disable it to hide it.",

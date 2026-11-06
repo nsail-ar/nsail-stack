@@ -5,7 +5,7 @@ Where strings come from, how a key is derived, and how the culture is chosen.
 The rules a screen writes by — a key missing everywhere renders as itself, entity names
 capitalized inside a label, menu entries and titles in Title Case, the blank `Label` — stay in
 [intentional-ui.md](../intentional-ui.md). Key composition itself is
-[metadata.md](../metadata.md). The record is in
+[metadata.md](../metadata.md). The words a Spanish string uses are [copy.md](copy.md). The record is in
 [intentional-ui-cases-shell.md](../intentional-ui-cases-shell.md) under *Localization*; a rule marked
 *(cases)* has its story there.
 

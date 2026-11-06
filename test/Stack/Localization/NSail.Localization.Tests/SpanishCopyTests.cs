@@ -38,9 +38,30 @@ public sealed class SpanishCopyTests
     [InlineData("Deshabilitá y chequealo", true)]
     [InlineData("estás chequeando", true)]
     [InlineData("laburás", true)]
+    [InlineData("pibes", true)]
+    [InlineData("mangos", true)]
+    [InlineData("guitas", true)]
+    [InlineData("barbara", true)]
+    [InlineData("Bárbaros", true)]
+    [InlineData("re lindas", true)]
+    [InlineData("boludas", true)]
+    [InlineData("quilombos", true)]
+    [InlineData("un toque", true)]
+    [InlineData("chequeé", true)]
+    [InlineData("plataforma", false)]
+    [InlineData("manguera", false)]
+    [InlineData("guitarra", false)]
+    [InlineData("un cheque, dos cheques", false)]
+    [InlineData("toque la pantalla", false)]
     public void TheScanMatchesWholeWords(string text, bool slang)
     {
         Assert.Equal(slang, SpanishCopy.Find(text).Count > 0);
+    }
+
+    [Fact]
+    public void TheScanNamesTheWordAsWritten()
+    {
+        Assert.Equal(["Chequealo", "bárbaras"], SpanishCopy.Find("Chequealo, son bárbaras 🎉 las ideas"));
     }
 
     [Fact]

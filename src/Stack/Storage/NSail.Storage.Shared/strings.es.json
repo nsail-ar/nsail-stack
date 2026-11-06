@@ -16,7 +16,7 @@
   "Storage.StorageStorePage.UserHint": "El usuario al que pertenece el token.",
   "Storage.StorageStorePage.TokenHint": "El token de acceso con permiso para hacer push.",
   "Storage.StorageStorePage.ContainerRepositoryHint": "El repositorio donde se guardan los objetos, bajo la dirección de arriba.",
-  "Storage.StorageStorePage.BranchHint": "La rama donde se guardan los objetos. Vacía para main.",
+  "Storage.StorageStorePage.BranchHint": "La rama donde se guardan los objetos. Dejala vacía para main.",
   "Storage.StorageStorePage.LinkTemplateHint": "Dónde se lee un objeto, con {key} para su ruta — por ejemplo https://raw.githubusercontent.com/org/repo/main/{key}.",
   "Storage.StorageStorePage.TestHelp": "La prueba escribe un objeto pequeño, lo lee, lo lista y lo borra, contra lo GUARDADO. Si cambiaste algo, guardá primero.",
   "Storage.StorageStorePage.TestSucceeded": "El destino respondió: se escribió un objeto, se leyó y se borró.",

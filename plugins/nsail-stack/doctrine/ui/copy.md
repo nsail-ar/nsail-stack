@@ -7,8 +7,10 @@ The word a string uses for a thing, so the next string follows it. Voice is vose
   `de una [cosa]`). A word that reads as slang or a typo is said by what it means. The banned
   list is `SpanishCopy.Slang` in the `NSail.Localization.Testing` package; the Stack's
   Localization tests and a product's Architecture suite both fail the build on any
-  `strings.es.json` that carries one, inflections included (`chequealo`, `laburando`). A word,
-  or an exception for a legitimate use (a silver colour, La Plata), is added there, nowhere else.
+  `strings.es.json` that carries one, inflections included (`pibes`, `bárbara`, `chequealo`).
+  An entry is the word with its bounded endings (`pib[ea]s?`), never an open stem, and the match
+  is whole-word with accents folded, so `plataforma` and `manguera` pass. A word, or an exception
+  for a legitimate use (a silver colour, La Plata), is added there, nowhere else.
 - **One word per concept.** Money in general is *dinero*; a received payment is *cobro*; an
   amount on a document is *importe*; a payment request is *Link de pago*; a customer's balance is
   *cuenta corriente*. A new string picks the pair's word.
