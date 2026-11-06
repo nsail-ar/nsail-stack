@@ -725,8 +725,10 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   resolved to nothing and the hand was holding a reader that did not work. So a `Lazy` lookup
   reads that keystroke itself and answers it the way the scan box over a grid answers one
   (`ProductScanField`): **one** answer is taken, with no arrow-down; **several** are left in the
-  list to choose from, because an exact code that also spells other articles is a choice and not a
-  match; **none** leaves the box exactly as it was, which is what the caller's own offer and the
+  list to choose from — **open, with the first row highlighted and the focus still in the box**,
+  so arrow-down walks it and Enter picks (the vendor takes its highlighted row on the Enter's key
+  UP, so the field withholds that key-up from it), because an exact code that also spells other
+  articles is a choice and not a match; **none** leaves the box exactly as it was, which is what the caller's own offer and the
   create entry quote. **The one answer it takes closes the list, whichever side of the pick that
   list is on** — the pick promise above read on the one path the vendor cannot keep it on, since it
   was never told a selection happened. Where the key WAITED for its answer the list opened on the

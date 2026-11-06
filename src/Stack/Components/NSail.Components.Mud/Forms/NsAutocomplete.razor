@@ -592,6 +592,11 @@
         // the vendor's own search is about to open; none is the text the offer quotes.
         if (rows.Count != 1)
         {
+            if (rows.Count > 1)
+            {
+                SkipEnterKeyUp?.SetValue(_autocomplete, true);
+            }
+
             return;
         }
 
@@ -608,6 +613,13 @@
         // for a mark to be read on.
         await Take(rows[0]);
     }
+
+    // The vendor takes the option it highlights on the Enter's key UP, and its own flag is the one
+    // way to hand that Enter back: the key the field answered with a choice must not also pick
+    // the first row of the list it left open, or the next arrow has nothing to walk. The flag is
+    // private, so it is written through reflection; NsAutocompleteReaderEnterTests pins the name.
+    static readonly System.Reflection.FieldInfo? SkipEnterKeyUp =
+        typeof(MudBlazor.MudAutocomplete<TItem>).GetField("_skipNextEnterKeyUp", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
     // What the box's text answers, from a search that is already out wherever there is one: the
     // keystroke this field answers is the END of the burst the vendor's own debounce is still

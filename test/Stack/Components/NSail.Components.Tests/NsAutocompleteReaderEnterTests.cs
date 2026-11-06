@@ -160,6 +160,42 @@ public sealed class NsAutocompleteReaderEnterTests : BunitContext, IAsyncLifetim
         Assert.Equal(Guid.Empty, _picked);
     }
 
+    /// <summary>Enter on a term several articles answer is a choice, and the key that left it
+    /// must not also be the vendor's pick of the first row on its key UP: the list stays open, the
+    /// arrow walks it from the first row, and Enter takes the one it highlights (nsail#3242).</summary>
+    [Fact]
+    public async Task EnterOnSeveralAnswersLeavesTheListToWalkByKeyboard()
+    {
+        var cut = Mount();
+
+        var entered = await Burst(cut, "Vulk");
+
+        Release("Vulk");
+
+        await entered;
+
+        var input = cut.Find("input");
+
+        await input.KeyUpAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        cut.WaitForAssertion(() => Assert.Equal(2, Options(cut).Length), TimeSpan.FromSeconds(5));
+
+        Assert.Equal(Guid.Empty, _picked);
+        Assert.Equal("true", cut.Find("input").GetAttribute("aria-expanded"));
+        Assert.Equal(["true", "false"], cut.FindAll(".mud-list-item").Select(item => item.GetAttribute("aria-selected")));
+
+        await input.KeyDownAsync(new KeyboardEventArgs { Key = "ArrowDown" });
+
+        Assert.Equal(["false", "true"], cut.FindAll(".mud-list-item").Select(item => item.GetAttribute("aria-selected")));
+
+        await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+        await input.KeyUpAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        cut.WaitForAssertion(
+            () => Assert.Equal(Guid.Parse("33333333-3333-3333-3333-333333333333"), _picked),
+            TimeSpan.FromSeconds(5));
+    }
+
     [Fact]
     public async Task AReaderBurstThatNamesNothingLeavesTheBoxAsItWas()
     {
