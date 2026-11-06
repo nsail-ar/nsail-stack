@@ -38,7 +38,7 @@
                 var top = Y(running + value);
                 var height = Y(running) - top;
                 running += value;
-                <rect x="@N(x + 2)" y="@N(top + 1)" width="@N(Math.Max(1, Slot - 4))" height="@N(Math.Max(0, height - 2))" rx="2" fill="var(--mud-palette-@Palette(series.Color))"><title>@(bucket.Title ?? bucket.Label) · @series.Name: @value.ToString("0.##", CultureInfo.CurrentCulture)</title></rect>
+                <rect x="@N(x + 2)" y="@N(top + 1)" width="@N(Math.Max(1, Slot - 4))" height="@N(Math.Max(1, height - 2))" rx="2" fill="var(--mud-palette-@Palette(series.Color))"><title>@(bucket.Title ?? bucket.Label) · @series.Name: @value.ToString("0.##", CultureInfo.CurrentCulture)</title></rect>
             }
             @if (i % LabelEvery == 0)
             {

@@ -115,13 +115,23 @@ public sealed class NsBarChartTests : BunitContext
     }
 
     [Fact]
+    public void ASmallSegmentIsStillDrawn()
+    {
+        var cut = Render<NsBarChart>(p => p
+            .Add(c => c.Series, Series)
+            .Add(c => c.Buckets, new[] { Bucket("10h", 80, 0), Bucket("11h", 1, 0) }));
+
+        Assert.All(cut.FindAll("rect"), r => Assert.True(double.Parse(r.GetAttribute("height")!, CultureInfo.InvariantCulture) >= 1));
+    }
+
+    [Fact]
     public void FractionalDataKeepsAFinerAxis()
     {
         var cut = Render<NsBarChart>(p => p
             .Add(c => c.Series, Series)
             .Add(c => c.Buckets, new[] { Bucket("10h", 0.5, 0) }));
 
-        Assert.Equal(["0", "0.25", "0.5"], cut.FindAll(".ns-bar-chart-axis").Take(3).Select(t => t.TextContent).ToList());
+        Assert.Equal([0.ToString("0.##", CultureInfo.CurrentCulture), 0.25.ToString("0.##", CultureInfo.CurrentCulture), 0.5.ToString("0.##", CultureInfo.CurrentCulture)], cut.FindAll(".ns-bar-chart-axis").Take(3).Select(t => t.TextContent).ToList());
     }
 
     [Fact]

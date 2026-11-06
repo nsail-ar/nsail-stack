@@ -4855,26 +4855,32 @@ div.mud-input-slot.mud-input-root::placeholder {
     display: inline-flex;
     align-items: center;
 }
+
 .ns-bar-chart-grid {
     stroke: var(--mud-palette-lines-default);
     stroke-width: 1;
 }
+
 .ns-bar-chart-baseline {
     stroke: var(--mud-palette-text-secondary);
     stroke-width: 1;
 }
+
 .ns-bar-chart-marker {
     stroke: var(--mud-palette-text-secondary);
     stroke-width: 1;
 }
+
 .ns-bar-chart-axis {
     font-size: 11px;
     fill: var(--mud-palette-text-secondary);
 }
+
 .ns-bar-chart-empty {
     font-size: 13px;
     fill: var(--mud-palette-text-secondary);
 }
+
 .ns-bar-chart-legend {
     display: flex;
     flex-wrap: wrap;
@@ -4882,6 +4888,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     font-size: 0.75rem;
     color: var(--mud-palette-text-secondary);
 }
+
 .ns-bar-chart-swatch {
     display: inline-block;
     width: 10px;
