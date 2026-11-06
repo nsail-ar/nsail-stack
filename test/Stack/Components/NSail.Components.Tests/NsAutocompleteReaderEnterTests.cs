@@ -197,6 +197,31 @@ public sealed class NsAutocompleteReaderEnterTests : BunitContext, IAsyncLifetim
     }
 
     [Fact]
+    public async Task AKeyUpThatLandsBeforeTheAnswerStillLeavesTheListToWalk()
+    {
+        var cut = Mount();
+
+        var entered = await Burst(cut, "Vulk");
+        var input = cut.Find("input");
+
+        await input.KeyUpAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        Release("Vulk");
+
+        await entered;
+
+        cut.WaitForAssertion(() => Assert.Equal(2, Options(cut).Length), TimeSpan.FromSeconds(5));
+
+        await input.KeyDownAsync(new KeyboardEventArgs { Key = "ArrowDown" });
+        await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+        await input.KeyUpAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        cut.WaitForAssertion(
+            () => Assert.Equal(Guid.Parse("33333333-3333-3333-3333-333333333333"), _picked),
+            TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public async Task AReaderBurstThatNamesNothingLeavesTheBoxAsItWas()
     {
         var cut = Mount();

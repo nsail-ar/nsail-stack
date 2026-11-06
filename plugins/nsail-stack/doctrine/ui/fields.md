@@ -727,9 +727,10 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   (`ProductScanField`): **one** answer is taken, with no arrow-down; **several** are left in the
   list to choose from — **open, with the first row highlighted and the focus still in the box**,
   so arrow-down walks it and Enter picks (the vendor takes its highlighted row on the Enter's key
-  UP, so the field withholds that key-up from it), because an exact code that also spells other
-  articles is a choice and not a match; **none** leaves the box exactly as it was, which is what the caller's own offer and the
-  create entry quote. **The one answer it takes closes the list, whichever side of the pick that
+  UP, so the field withholds that key-up from it, raising the withholding before it awaits the
+  answer because the key-up does not wait), because an exact code that also spells other articles
+  is a choice and not a match; **none** leaves the box exactly as it was, which is what the
+  caller's own offer and the create entry quote. **The one answer it takes closes the list, whichever side of the pick that
   list is on** — the pick promise above read on the one path the vendor cannot keep it on, since it
   was never told a selection happened. Where the key WAITED for its answer the list opened on the
   way in and is already up at the pick; where the key BEAT the vendor's interval nothing is open
@@ -741,6 +742,8 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   started for it (`NsTextFieldBase.HoldTyped`'s reason). Derived from the posture and never a
   parameter: a browsed lookup has its whole set on screen from the focus, so the vendor answers
   off the list already open.
+- **A lookup is complete only when it is keyboard-complete.** Type, Enter, Arrow Down/Up, Enter
+  picks, Esc closes — with no mouse, on every `NsAutocomplete` and every box built over one.
 - **That held text is also what the field hands the vendor BACK as its `Text`, and it is what
   carries a half-typed term across a redraw.** The vendor refreshes its own box from the value it
   holds on every parameter set it is not FOCUSED for, and the text event above is dispatched into
