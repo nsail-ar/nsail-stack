@@ -37,8 +37,10 @@ public interface IRepository
 
     Task ClosePr(int pr, string why, CancellationToken ct = default);
 
-    // Pushes the checked-out work to this branch of the remote, as the harness (never as a seat).
-    Task Push(string workDir, string branch, CancellationToken ct = default);
+    // Pushes the checked-out work to this branch of the remote, as the harness (never as a seat),
+    // replacing the head it started from (null: the branch is new) and refused if the remote moved
+    // past it: a rewritten branch goes up, work the voyage never saw is never overwritten.
+    Task Push(string workDir, string branch, string? startedAt, CancellationToken ct = default);
 
     // Squash-merges and deletes the head branch; once the merge went through, nothing after it throws.
     Task Merge(int pr, CancellationToken ct = default);

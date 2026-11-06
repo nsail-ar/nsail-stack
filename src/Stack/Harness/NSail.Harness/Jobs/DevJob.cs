@@ -87,7 +87,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         var home = repo == ctx.Repo;
         var work = home ? dir : await ctx.WorkspaceOf(repo).Prepare(slot);
         var branch = Item.Pr is { } round ? (await repo.Pr(round, ct)).HeadRef : ctx.Names.Branch(ctx.Repos.OptionsOf(repo).BranchPrefix, n);
-        await Checkout(work, branch, ctx.WorkspaceOf(repo).Tip);
+        var startedAt = await Checkout(work, branch, ctx.WorkspaceOf(repo).Tip);
         await Exclude(work, Voyage);
         var voyage = Path.Combine(work, Voyage);
         if (Directory.Exists(voyage)) Directory.Delete(voyage, recursive: true);
@@ -120,7 +120,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             LogPath: logPath,
             Marketplace: doctrine), ct);
 
-        var ending = await Deliver(n, title, repo, work, branch, claimedAt, result, log, ct);
+        var ending = await Deliver(n, title, repo, work, branch, startedAt, claimedAt, result, log, ct);
         return ending.Outcome(result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : null);
     }
 
@@ -161,17 +161,19 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     }
 
     // The branch as the remote holds it, or a new one off the default branch. A slot an earlier job left on it does
-    // not hold it: the story's lock already says only one job builds it at a time.
-    static async Task Checkout(string dir, string branch, string tip)
+    // not hold it: the story's lock already says only one job builds it at a time. Returns the remote head the
+    // voyage starts from, null for a new branch: what its push expects to replace.
+    static async Task<string?> Checkout(string dir, string branch, string tip)
     {
         var remote = await Shell.Run("git", ["rev-parse", "-q", "--verify", $"refs/remotes/origin/{branch}"], dir);
-        var from = remote.ExitCode == 0 ? $"origin/{branch}" : tip;
+        var from = remote.ExitCode == 0 ? remote.Output.Trim() : tip;
         await Shell.Git(dir, "checkout", "-q", "--ignore-other-worktrees", "-B", branch, from);
+        return remote.ExitCode == 0 ? from : null;
     }
 
     // What the builder committed goes up first, whatever its ending: work is never lost to the axe.
     // Then its ending, exactly one: a PR's words, a ruling, a hand-off; none is a dead voyage.
-    async Task<Ending> Deliver(int n, string title, IRepository repo, string dir, string branch, DateTimeOffset claimedAt, AgentResult result, ILogger log, CancellationToken ct)
+    async Task<Ending> Deliver(int n, string title, IRepository repo, string dir, string branch, string? startedAt, DateTimeOffset claimedAt, AgentResult result, ILogger log, CancellationToken ct)
     {
         var board = ctx.Board;
         string Out(string file)
@@ -181,12 +183,12 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         }
 
         var remote = await Shell.Run("git", ["rev-parse", "-q", "--verify", $"refs/remotes/origin/{branch}"], dir);
-        var since = remote.ExitCode == 0 ? $"origin/{branch}" : ctx.WorkspaceOf(repo).Tip;
+        var since = startedAt ?? ctx.WorkspaceOf(repo).Tip;
         var ahead = int.Parse((await Shell.Git(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
         var pushed = false;
         if (ahead > 0)
         {
-            await repo.Push(dir, branch, ct);
+            await repo.Push(dir, branch, startedAt, ct);
             pushed = true;
         }
 

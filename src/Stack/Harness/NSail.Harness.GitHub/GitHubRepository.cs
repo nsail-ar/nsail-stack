@@ -154,11 +154,13 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
     }
 
     // gh is the credential with the harness's own token; the empty helper first resets the list, so no
-    // machine-wide helper (a window waiting for a click) is asked.
-    public async Task Push(string workDir, string branch, CancellationToken ct = default)
+    // machine-wide helper (a window waiting for a click) is asked. The lease names its expected head
+    // outright: the remote-tracking refs live in a clone other slots fetch into.
+    public async Task Push(string workDir, string branch, string? startedAt, CancellationToken ct = default)
     {
         var env = new Dictionary<string, string> { ["GH_TOKEN"] = token, ["GIT_TERMINAL_PROMPT"] = "0" };
-        var result = await Lanes.Shell.Run("git", ["-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential", "push", "origin", $"HEAD:refs/heads/{branch}"],
+        var result = await Lanes.Shell.Run("git", ["-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential", "push",
+            $"--force-with-lease=refs/heads/{branch}:{startedAt}", "origin", $"HEAD:refs/heads/{branch}"],
             workDir, env, TimeSpan.FromMinutes(10), ct: ct);
         if (result.ExitCode != 0) throw new InvalidOperationException($"push to {branch} refused: {result.Output.Trim()}");
     }
