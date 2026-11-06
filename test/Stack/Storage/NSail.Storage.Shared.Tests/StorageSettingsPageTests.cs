@@ -102,8 +102,8 @@ public sealed class StorageSettingsPageTests : BunitContext, IAsyncLifetime
     // A write-only token never travels back, so the one line that says it is on file must keep
     // showing for a repository; the hint about what to paste is only for an empty box.
     [Theory]
-    [InlineData(false, "The access token with permission to push.", "•••••••• Saved")]
-    [InlineData(true, "•••••••• Saved", "The access token with permission to push.")]
+    [InlineData(false, "The access token with permission to push.", "••••••••")]
+    [InlineData(true, "••••••••", "The access token with permission to push.")]
     public void ARepositoryStoreSaysWhetherATokenIsOnFile(bool hasSecretKey, string shown, string hidden)
     {
         _server.Stores[1].Provider = "git";
