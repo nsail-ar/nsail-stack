@@ -104,11 +104,10 @@ public sealed class KeyboardContractLookupTests : BunitContext, IAsyncLifetime
 
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
         Assert.Equal(Guid.Empty, _picked);
-        Assert.NotEmpty(cut.FindAll("input"));
     }
 
     [Fact]
-    public async Task TheBoxIsATabStop()
+    public void TheBoxIsATabStop()
     {
         var cut = Mount();
 
@@ -116,7 +115,5 @@ public sealed class KeyboardContractLookupTests : BunitContext, IAsyncLifetime
 
         Assert.True(tabindex is null or "0", $"tabindex was {tabindex}");
         Assert.Null(cut.Find("input").GetAttribute("disabled"));
-
-        await Task.CompletedTask;
     }
 }

@@ -12,8 +12,8 @@ namespace NSail.Components.Tests;
 
 /// <summary>The keyboard contract of a closed list (keyboard.md): the box is a tab stop and a
 /// combobox. The vendor reads Arrow Down, Enter, Space and Esc through its JS key interceptor,
-/// which bUnit cannot drive, so those keys are the browser walk's (keyboard.md, *Walked in the
-/// browser*).</summary>
+/// which bUnit cannot drive, so those keys are the browser walk's (keyboard.md, *Walked where it
+/// can be*).</summary>
 public sealed class KeyboardContractSelectTests : BunitContext, IAsyncLifetime
 {
     public KeyboardContractSelectTests()
@@ -56,6 +56,23 @@ public sealed class KeyboardContractSelectTests : BunitContext, IAsyncLifetime
     public void TheBoxIsATabStopWithTheComboboxRole()
     {
         var input = Mount().Find("input.mud-select-input");
+
+        Assert.Equal("combobox", input.GetAttribute("role"));
+        Assert.NotEqual("-1", input.GetAttribute("tabindex"));
+        Assert.Null(input.GetAttribute("disabled"));
+    }
+
+    [Fact]
+    public void TheMultiSelectBoxIsATabStopWithTheComboboxRole()
+    {
+        var cut = Render<MultiSelectValueHost<SelectRef, Guid>>(p => p
+            .Add(x => x.Items, new[] { Alpha, Beta })
+            .Add(x => x.ItemValue, item => item.Id)
+            .Add(x => x.ItemText, item => item.DisplayName)
+            .Add(x => x.Label, "Recursos")
+            .Add(x => x.Value, []));
+
+        var input = cut.Find("input.mud-select-input");
 
         Assert.Equal("combobox", input.GetAttribute("role"));
         Assert.NotEqual("-1", input.GetAttribute("tabindex"));
