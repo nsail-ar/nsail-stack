@@ -89,7 +89,7 @@ public sealed class StorageManager
             throw new BusinessException(BusinessProblem.RuleViolation(
                 "NoStorageConfigured",
                 nameof(StorageSettings.Provider),
-                "This install stores nowhere yet. Choose a storage provider and a container in Settings."));
+                "This install has no storage. Choose a provider and a container in Settings."));
         }
 
         var provider = _providers.FirstOrDefault(candidate => candidate.Type == target.Provider);

@@ -21,6 +21,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\..\..\src\Stack\Localization\NSail.Localization\NSail.Localization.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Localization\NSail.Localization.Testing\NSail.Localization.Testing.csproj" />
     </ItemGroup>
 
     <ItemGroup>
