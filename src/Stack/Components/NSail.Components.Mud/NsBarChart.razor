@@ -11,7 +11,7 @@
    --mud-palette-* variable, so both schemes read. The hover is the SVG's own <title>. The <g>
    around each <text> is there because Razor does not open markup with <text> inside a code block. *@
 <div class="ns-bar-chart">
-    <svg viewBox="0 0 @N(W) @N(H)" width="100%" role="group" aria-label="@AriaLabel">
+    <svg viewBox="0 0 @N(W) @N(H)" width="100%" role="img" aria-label="@AriaLabel">
         @foreach (var tick in Ticks())
         {
             var y = Y(tick);
@@ -38,7 +38,7 @@
                 var top = Y(running + value);
                 var height = Y(running) - top;
                 running += value;
-                <rect x="@N(x + 2)" y="@N(top)" width="@N(Math.Max(1, Slot - 4))" height="@N(height)" rx="2" fill="var(--mud-palette-@Palette(series.Color))" data-series="@series.Key"><title>@(bucket.Title ?? bucket.Label) · @series.Name: @value.ToString("0.##", CultureInfo.CurrentCulture)</title></rect>
+                <rect x="@N(x + 2)" y="@N(top + 1)" width="@N(Math.Max(1, Slot - 4))" height="@N(Math.Max(0, height - 2))" rx="2" fill="var(--mud-palette-@Palette(series.Color))"><title>@(bucket.Title ?? bucket.Label) · @series.Name: @value.ToString("0.##", CultureInfo.CurrentCulture)</title></rect>
             }
             @if (i % LabelEvery == 0)
             {
@@ -108,18 +108,22 @@
 
     protected override void OnParametersSet()
     {
-        _max = Buckets.Count == 0 ? 0 : Buckets.Max(b => Series.Sum(s => Math.Max(0, Value(b, s))));
+        var totals = Buckets.Select(b => Series.Sum(s => Math.Max(0, Value(b, s)))).ToList();
+        _max = totals.Count == 0 ? 0 : totals.Max();
         if (_max <= 0)
         {
             _ceiling = 2;
             return;
         }
 
-        // A whole step of at least 1, and a ceiling of two of them: the middle gridline is a
-        // number a person would say, and a count never reads 0.5.
-        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(_max)));
-        var step = Math.Max(1, new[] { 1d, 2, 5, 10 }.First(m => m * magnitude >= _max / 4) * magnitude);
-        _ceiling = Math.Ceiling(_max / (2 * step)) * 2 * step;
+        // Counts get a whole half-ceiling, so the middle gridline is a number a person would say;
+        // fractional data may use fractional steps.
+        var whole = Buckets.All(b => Series.All(s => Value(b, s) % 1 == 0));
+        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(_max / 2)));
+        var half = new[] { 1d, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10 }
+            .Select(m => m * magnitude)
+            .FirstOrDefault(h => h * 2 >= _max && (!whole || h % 1 == 0), Math.Ceiling(_max / 2));
+        _ceiling = half * 2;
     }
 
     IEnumerable<double> Ticks()
@@ -137,7 +141,7 @@
 
     static double Value(NsBarBucket bucket, NsBarSeries series)
     {
-        return bucket.Values.TryGetValue(series.Key, out var value) ? value : 0;
+        return bucket.Values.TryGetValue(series.Key, out var value) && double.IsFinite(value) ? value : 0;
     }
 
     static string Palette(NsChartColor color)

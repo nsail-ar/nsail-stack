@@ -28,7 +28,8 @@ public sealed class NsBarChartTests : BunitContext
 
     static double Height(AngleSharp.Dom.IElement rect)
     {
-        return double.Parse(rect.GetAttribute("height")!, CultureInfo.InvariantCulture);
+        // Each segment is drawn a pixel short at both ends so neighbours do not touch.
+        return double.Parse(rect.GetAttribute("height")!, CultureInfo.InvariantCulture) + 2;
     }
 
     [Fact]
@@ -101,5 +102,35 @@ public sealed class NsBarChartTests : BunitContext
             .Add(c => c.Buckets, new[] { Bucket("10h", 1, 0) }));
 
         Assert.Equal(["0", "1", "2"], cut.FindAll(".ns-bar-chart-axis").Take(3).Select(t => t.TextContent).ToList());
+    }
+
+    [Fact]
+    public void AllNanBucketsDrawNothingInsteadOfThrowing()
+    {
+        var cut = Render<NsBarChart>(p => p
+            .Add(c => c.Series, Series)
+            .Add(c => c.Buckets, new[] { Bucket("10h", double.NaN, double.NaN) }));
+
+        Assert.Empty(cut.FindAll("rect"));
+    }
+
+    [Fact]
+    public void FractionalDataKeepsAFinerAxis()
+    {
+        var cut = Render<NsBarChart>(p => p
+            .Add(c => c.Series, Series)
+            .Add(c => c.Buckets, new[] { Bucket("10h", 0.5, 0) }));
+
+        Assert.Equal(["0", "0.25", "0.5"], cut.FindAll(".ns-bar-chart-axis").Take(3).Select(t => t.TextContent).ToList());
+    }
+
+    [Fact]
+    public void WarningIsAPaletteSlot()
+    {
+        var cut = Render<NsBarChart>(p => p
+            .Add(c => c.Series, new[] { new NsBarSeries("a", "Alpha", NsChartColor.Warning) })
+            .Add(c => c.Buckets, new[] { Bucket("10h", 1, 0) }));
+
+        Assert.Contains("var(--mud-palette-warning)", cut.Find("rect").GetAttribute("fill"));
     }
 }

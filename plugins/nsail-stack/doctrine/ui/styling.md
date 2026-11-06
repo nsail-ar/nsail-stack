@@ -321,8 +321,9 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   (label and a value per series key), `Series` (key, translated name, `NsChartColor`), `Markers`
   (a vertical line at a bucket index with its hover text) and `AriaLabel`. Use it for counts over
   time; lines, pies and zoom are not in it. Colours are palette slots, never a hex, so both schemes
-  read — only slots of a different hue (`Primary`, `Info`, `Success`, `Error`, `Neutral`), since
-  the theme's Primary, Secondary and Tertiary are one accent. The hover is the segment's
+  read. `Info`, `Success`, `Warning`, `Error` and `Neutral` are scheme constants and always tell
+  apart; `Primary` is the install's accent and can land on one of them. Secondary and Tertiary
+  are states of that accent and are not offered. The hover is the segment's
   `<title>` and the legend sits under the chart; the exact value living only on a hover is the
   one deliberate exception to the tooltip rule above. Nothing to draw (no buckets, or all zero)
   keeps the axis and says "no data", never a blank box.

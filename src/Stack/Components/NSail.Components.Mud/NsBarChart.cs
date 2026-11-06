@@ -4,13 +4,15 @@
 namespace NSail.Components;
 
 /// <summary>A series' colour as a theme palette slot: the call site never writes a hex, so
-/// the segment reads on whichever scheme is lit. Only slots of a different hue are offered: the
-/// theme maps Primary, Secondary and Tertiary to states of one accent.</summary>
+/// the segment reads on whichever scheme is lit. Info, Success, Warning, Error and Neutral are
+/// scheme constants and always tell apart; Primary is the install's accent, so it can land on
+/// one of them. Secondary and Tertiary are states of that accent and are not offered.</summary>
 public enum NsChartColor
 {
     Primary,
     Info,
     Success,
+    Warning,
     Error,
     Neutral
 }
