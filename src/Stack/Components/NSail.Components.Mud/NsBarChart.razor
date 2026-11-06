@@ -1,0 +1,157 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+@using System.Globalization
+@using NSail.Localization
+
+@inject StringManager Strings
+
+@* Stacked bars over ordered buckets, drawn as plain SVG: no script, no library. Every colour is a
+   --mud-palette-* variable, so both schemes read. The hover is the SVG's own <title>. The <g>
+   around each <text> is there because Razor does not open markup with <text> inside a code block. *@
+<div class="ns-bar-chart">
+    <svg viewBox="0 0 @N(W) @N(H)" width="100%" role="img" aria-label="@AriaLabel">
+        @foreach (var tick in Ticks())
+        {
+            var y = Y(tick);
+            <line x1="@N(Left)" x2="@N(W - 6)" y1="@N(y)" y2="@N(y)" class="ns-bar-chart-grid" />
+            <g><text x="@N(Left - 6)" y="@N(y + 4)" text-anchor="end" class="ns-bar-chart-axis">@tick.ToString("0.##", CultureInfo.CurrentCulture)</text></g>
+        }
+        @if (_max <= 0)
+        {
+            <g><text x="@N(W / 2)" y="@N((Top + Bottom) / 2)" text-anchor="middle" class="ns-bar-chart-empty">@Strings.Translate("Components.NsBarChart.NoData")</text></g>
+        }
+        @for (var i = 0; i < Buckets.Count; i++)
+        {
+            var bucket = Buckets[i];
+            var x = Left + i * Slot;
+            var running = 0d;
+            @foreach (var series in Series)
+            {
+                var value = Value(bucket, series);
+                if (value <= 0)
+                {
+                    continue;
+                }
+
+                var top = Y(running + value);
+                var height = Y(running) - top;
+                running += value;
+                <rect x="@N(x + 2)" y="@N(top + 1)" width="@N(Math.Max(1, Slot - 4))" height="@N(Math.Max(1, height - 2))" rx="2" fill="var(--mud-palette-@Palette(series.Color))"><title>@(bucket.Title ?? bucket.Label) · @series.Name: @value.ToString("0.##", CultureInfo.CurrentCulture)</title></rect>
+            }
+            @if (i % LabelEvery == 0)
+            {
+                <g><text x="@N(x + Slot / 2)" y="@N(Bottom + 16)" text-anchor="middle" class="ns-bar-chart-axis">@bucket.Label</text></g>
+            }
+        }
+        @foreach (var marker in Markers)
+        {
+            if (marker.Bucket < 0 || marker.Bucket >= Buckets.Count)
+            {
+                continue;
+            }
+
+            var mx = Left + marker.Bucket * Slot;
+            <line x1="@N(mx)" x2="@N(mx)" y1="@N(Top - 6)" y2="@N(Bottom)" class="ns-bar-chart-marker" stroke-dasharray="3 3"><title>@marker.Text</title></line>
+        }
+        <line x1="@N(Left)" x2="@N(W - 6)" y1="@N(Bottom)" y2="@N(Bottom)" class="ns-bar-chart-baseline" />
+    </svg>
+    <div class="ns-bar-chart-legend">
+        @foreach (var series in Series)
+        {
+            <span class="ns-bar-chart-key"><span class="ns-bar-chart-swatch" style="background:var(--mud-palette-@Palette(series.Color))"></span>@series.Name</span>
+        }
+    </div>
+</div>
+
+@code {
+
+    const double W = 720;
+    const double H = 200;
+    const double Left = 40;
+    const double Top = 12;
+    const double Bottom = 170;
+
+    [Parameter]
+    public IReadOnlyList<NsBarBucket> Buckets { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<NsBarSeries> Series { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<NsBarMarker> Markers { get; set; } = [];
+
+    /// <summary>The chart's accessible name, translated by the caller.</summary>
+    [Parameter]
+    public string? AriaLabel { get; set; }
+
+    double Slot
+    {
+        get
+        {
+            return (W - 6 - Left) / Math.Max(1, Buckets.Count);
+        }
+    }
+
+    // Enough labels to read, never so many they touch.
+    int LabelEvery
+    {
+        get
+        {
+            return Math.Max(1, (int)Math.Ceiling(Buckets.Count / 16d));
+        }
+    }
+
+    double _max;
+    double _ceiling = 2;
+
+    protected override void OnParametersSet()
+    {
+        var totals = Buckets.Select(b => Series.Sum(s => Math.Max(0, Value(b, s)))).ToList();
+        _max = totals.Count == 0 ? 0 : totals.Max();
+        if (_max <= 0)
+        {
+            _ceiling = 2;
+            return;
+        }
+
+        // Counts get a whole half-ceiling, so the middle gridline is a number a person would say;
+        // fractional data may use fractional steps.
+        var whole = Buckets.All(b => Series.All(s => Value(b, s) % 1 == 0));
+        var magnitude = Math.Pow(10, Math.Floor(Math.Log10(_max / 2)));
+        var half = new[] { 1d, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10 }
+            .Select(m => m * magnitude)
+            .FirstOrDefault(h => h * 2 >= _max && (!whole || h % 1 == 0), Math.Ceiling(_max / 2));
+        _ceiling = half * 2;
+    }
+
+    IEnumerable<double> Ticks()
+    {
+        var ceiling = _ceiling;
+        yield return 0;
+        yield return ceiling / 2;
+        yield return ceiling;
+    }
+
+    double Y(double value)
+    {
+        return Bottom - value / _ceiling * (Bottom - Top);
+    }
+
+    static double Value(NsBarBucket bucket, NsBarSeries series)
+    {
+        return bucket.Values.TryGetValue(series.Key, out var value) && double.IsFinite(value) ? value : 0;
+    }
+
+    static string Palette(NsChartColor color)
+    {
+        return color == NsChartColor.Neutral ? "text-secondary" : color.ToString().ToLowerInvariant();
+    }
+
+    // SVG coordinates are always invariant: a machine that writes 1,5 breaks every one.
+    static string N(double value)
+    {
+        return value.ToString("0.##", CultureInfo.InvariantCulture);
+    }
+}
