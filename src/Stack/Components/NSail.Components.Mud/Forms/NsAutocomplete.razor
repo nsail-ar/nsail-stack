@@ -5,6 +5,7 @@
 @typeparam TItem
 @typeparam TValue
 @using System.Diagnostics.CodeAnalysis
+@using System.Reflection
 @using Microsoft.AspNetCore.Components.Routing
 @inherits NsAsyncFieldBase<TValue>
 
@@ -83,10 +84,8 @@
     // to hand that Enter back, so the key this field answers with a choice does not also pick the
     // first row of the list it leaves open. The flag is private, so it is written through
     // reflection; NsAutocompleteReaderEnterTests pins the name.
-    static readonly System.Reflection.FieldInfo? SkipEnterKeyUp =
-        typeof(MudBlazor.MudAutocomplete<TItem>).GetField(
-            "_skipNextEnterKeyUp",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+    static readonly FieldInfo? SkipEnterKeyUp =
+        typeof(MudAutocomplete<TItem>).GetField("_skipNextEnterKeyUp", BindingFlags.Instance | BindingFlags.NonPublic);
 
     [Parameter]
     public IEnumerable<TItem>? Items { get; set; }
@@ -607,6 +606,8 @@
         {
             if (rows.Count == 0)
             {
+                // Nothing is highlighted to pick, so a key-up held or not changes nothing; lowered
+                // only so the flag does not outlive the answer.
                 SkipEnterKeyUp?.SetValue(_autocomplete, false);
             }
 
