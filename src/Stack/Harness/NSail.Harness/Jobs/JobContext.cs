@@ -37,6 +37,9 @@ public sealed class JobContext(
     public ILoggerFactory Logs { get; } = logs;
     public BuildLeases Leases { get; } = leases;
 
+    // The log sources a Watch worker reads, by Name: the host's providers (AddOpenObserve, ...).
+    public IReadOnlyList<Watching.ILogSource> LogSources { get; init; } = [];
+
     // How the default repository builds and tests, when it says (Repositories[].Build).
     public IBuilder? Builder { get; } = Builders.For(options.DefaultRepository.Build, options.BuildNodes);
 

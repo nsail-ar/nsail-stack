@@ -21,8 +21,14 @@ public static class Labels
     // QA asked a person for something and waits for the answer.
     public const string QaAsked = "qa-asked";
 
-    // First in the queue.
+    // Broken where a customer runs: before everything, a release and any finishing work included.
+    public const string Bug = "bug";
+
+    // The next important story: first among the rest.
     public const string P1 = "p1";
+
+    // A story the telemetry watch opened from an error the fleet logged.
+    public const string Telemetry = "telemetry";
 
     // A story's product area: `area:{name}`.
     public const string AreaPrefix = "area:";

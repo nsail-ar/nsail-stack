@@ -29,6 +29,7 @@ public sealed class HarnessLoop(
     IOptions<HarnessOptions> options,
     IHostApplicationLifetime lifetime,
     HarnessMetrics metrics,
+    Watching.WatchState watches,
     ILogger<HarnessLoop> log) : BackgroundService
 {
     // A job that found nothing to do (a story closed, held, already landed) is not sent again
@@ -239,6 +240,15 @@ public sealed class HarnessLoop(
             .Select(w => w.Options.Workflow!).ToList();
     }
 
+    // A Watch worker's pass is due its period after the last one read, and never twice at once.
+    IReadOnlyList<string> DueWatches(DateTimeOffset now)
+    {
+        var running = _running.Values.Where(r => r.Item.Kind == WorkKind.Watch).Select(r => r.Item.Worker).ToHashSet();
+        return _workers.Where(w => w.Kind == WorkKind.Watch && !running.Contains(w.Name)
+                && watches.Due(w.Name, TimeSpan.FromMinutes(w.Options.Every ?? 60), now))
+            .Select(w => w.Name).ToList();
+    }
+
     // A job a hand sends (POST /run): it skips the workers' order, filters and the machine's limits,
     // not the story's lock. It runs as the first enabled worker of its kind (a release: of its product).
     public Task<string?> Force(WorkItem item)
@@ -304,6 +314,7 @@ public sealed class HarnessLoop(
             var snapshot = await reader.Read(OwnFlight(), stop) with
             {
                 DueReleases = DueReleases(marks, DateTimeOffset.UtcNow),
+                DueWatches = DueWatches(DateTimeOffset.UtcNow),
                 // A red main whose failures this harness does not hold (it restarted since) is judged
                 // again, once: a PR's gate tells main's red from its own by them.
                 MainGated = StatusMark.Newest(marks, Markers.GateContext) is { } gated && (gated.Ok || MainGateJob.RedAt(gated.Sha) is not null) ? gated.Sha : null,
@@ -490,6 +501,7 @@ public sealed class HarnessLoop(
             WorkKind.Qa => new QaJob(item, jobs, history),
             WorkKind.Release => new ReleaseJob(item, jobs),
             WorkKind.Ship => new ShipJob(item, jobs),
+            WorkKind.Watch => new WatchJob(item, jobs, watches),
             _ => new AnalyzeJob(item, jobs, history),
         };
         var running = new RunningJob(id, item, slot, DateTimeOffset.UtcNow, jobs.LogPath(item, DateTimeOffset.UtcNow));

@@ -83,4 +83,23 @@ public interface IBoard
     {
         return Task.CompletedTask;
     }
+
+    // Every story wearing the label, open or closed, with its body: how a watcher finds the story it
+    // already filed. A board that cannot list them answers none, and the watcher files again.
+    Task<IReadOnlyList<FiledStory>> Labelled(string label, CancellationToken ct = default)
+    {
+        return Task.FromResult<IReadOnlyList<FiledStory>>([]);
+    }
+
+    // The stories the board links as blocking this one, open or closed.
+    Task<IReadOnlyList<int>> BlockedBy(int story, CancellationToken ct = default)
+    {
+        return Task.FromResult<IReadOnlyList<int>>([]);
+    }
+
+    // Links the blocker as blocking the story, where the board keeps such links.
+    Task Block(int story, int blocker, CancellationToken ct = default)
+    {
+        return Task.CompletedTask;
+    }
 }

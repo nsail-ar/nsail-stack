@@ -5,6 +5,7 @@
 @typeparam TItem
 @typeparam TValue
 @using System.Diagnostics.CodeAnalysis
+@using System.Reflection
 @using Microsoft.AspNetCore.Components.Routing
 @inherits NsAsyncFieldBase<TValue>
 
@@ -78,6 +79,13 @@
     TItem? _selectedItem;
 
     MudAutocomplete<TItem>? _autocomplete;
+
+    // The vendor takes the option it highlights on the Enter's key UP; its own flag is the one way
+    // to hand that Enter back, so the key this field answers with a choice does not also pick the
+    // first row of the list it leaves open. The flag is private, so it is written through
+    // reflection; NsAutocompleteReaderEnterTests pins the name.
+    static readonly FieldInfo? SkipEnterKeyUp =
+        typeof(MudAutocomplete<TItem>).GetField("_skipNextEnterKeyUp", BindingFlags.Instance | BindingFlags.NonPublic);
 
     [Parameter]
     public IEnumerable<TItem>? Items { get; set; }
@@ -586,14 +594,27 @@
             return;
         }
 
+        // Raised before the await: the key UP of this Enter does not wait for the answer, and a
+        // flag written after it would miss that key and wait armed for the next one.
+        SkipEnterKeyUp?.SetValue(_autocomplete, true);
+
         var rows = await Answered(typed);
 
         // One answer is the only one this key can take. Several are a choice, which is the list
         // the vendor's own search is about to open; none is the text the offer quotes.
         if (rows.Count != 1)
         {
+            if (rows.Count == 0)
+            {
+                // Nothing is highlighted to pick, so a key-up held or not changes nothing; lowered
+                // only so the flag does not outlive the answer.
+                SkipEnterKeyUp?.SetValue(_autocomplete, false);
+            }
+
             return;
         }
+
+        SkipEnterKeyUp?.SetValue(_autocomplete, false);
 
         // Take, and not OnItemChanged: the list the answer this key read opened on the way landed
         // while the keystroke was waiting for that answer, so it is already up by the time the
