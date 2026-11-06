@@ -149,7 +149,9 @@ public sealed class NsTableRowClickableTests : BunitContext, IAsyncLifetime
         var cut = Render<RowClickTableHost>(parameters => parameters
             .Add(p => p.RowClicked, EventCallback.Factory.Create<TestModel>(this, _ => { })));
 
-        Assert.All(Rows(cut), row => Assert.Null(row.GetAttribute("tabindex")));
+        var rows = Rows(cut);
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, row => Assert.Null(row.GetAttribute("tabindex")));
     }
 
     static IReadOnlyList<IElement> Rows(IRenderedComponent<RowClickTableHost> cut)

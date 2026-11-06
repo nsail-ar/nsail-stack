@@ -25,7 +25,7 @@ number, in the product that walks; nothing is silenced.
 
 | Control | Keys |
 |---|---|
-| `NsAutocomplete` and every lookup | the box is a tab stop; focus opens the list; where it has rows (not `Lazy`, which shows the create entry alone until something is typed) the first is highlighted; Arrow Down / Arrow Up move the highlight; Enter picks it and closes the list; Esc closes it and picks nothing; the cursor staying in the box is the browser walk's |
+| `NsAutocomplete` and every lookup | the box is a tab stop; a browsed lookup opens its list with the first row highlighted, a `Lazy` one shows the create entry alone until something is typed; Arrow Down / Arrow Up move the highlight; Enter picks the highlighted row and closes the list, except on a `Lazy` term with several answers, where the first Enter leaves the list open to walk and the next one picks (one answer is taken by the first Enter); Esc closes it and picks nothing; the cursor staying in the box is the browser walk's ([fields.md](fields.md), *keyboard-complete*) |
 | `NsSelect`, `NsMultiSelect` | the readonly box is a tab stop with `role="combobox"`; Arrow Down, Enter and Space open the list, Esc closes it |
 | `NsDateField`, `NsDateTimeField`, `NsTimeField` | typed in the box; the picker opens from the keyboard and Esc returns the cursor to the box |
 | `NsTable` | a sortable heading, a row action and a pager control are buttons or links, never a bare element with a click handler; a clickable row has a key for what the click does |
@@ -41,10 +41,13 @@ reached by Tab and does not answer Enter.
 ## Walked where it can be
 
 The Stack proves in bUnit what the DOM expresses: the keys the vendor binds in Blazor
-(`KeyboardContractLookupTests`), and the structure a Tab stop needs — a native element, no
-`tabindex="-1"`, not disabled (`KeyboardContractSelectTests`, `NsPasswordFieldEyeTests`, the sortable heading in `NsTableOrderTests`, the toggle in `NsCheckBoxDirtyTrackingTests`). A key
-the vendor reads through its JS key interceptor never reaches bUnit; those keys, the visible
-ring and the whole-page order are the browser walk's, in each product.
+(`KeyboardContractLookupTests` for a browsed lookup, `NsAutocompleteReaderEnterTests` for the
+`Lazy` one), and the structure a Tab stop needs — a native element, no `tabindex="-1"`, not
+disabled (`KeyboardContractSelectTests`, the sortable heading in `NsTableOrderTests`, the toggle
+in `NsCheckBoxDirtyTrackingTests`). The controls that lack that structure are the Known reds
+below, each pinned as it is. A key the vendor reads through its JS key interceptor never reaches
+bUnit; those keys, the visible ring and the whole-page order are the browser walk's, in each
+product.
 
 ## Known reds
 
@@ -56,6 +59,6 @@ ring and the whole-page order are the browser walk's, in each product.
 ## Owed
 
 Not red, not yet proved: Arrow Down / Enter / Space / Esc on `NsSelect` and `NsMultiSelect`
-(the vendor's JS interceptor), and the rows for the date and time fields, the other `NsTable` rows (row action, pager), menus,
-dialogs and wizards, tabs. Each is the browser walk's or a bUnit case still to
-write; none is claimed by the tests above.
+(the vendor's JS interceptor), and the rows for the date and time fields, the other `NsTable`
+rows (row action, pager), menus, dialogs and wizards, tabs. Each is the browser walk's or a bUnit
+case still to write; none is claimed by the tests above.

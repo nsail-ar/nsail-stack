@@ -68,7 +68,9 @@ public sealed class NsTableOrderTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<OrderTableHost>();
 
-        Assert.All(cut.FindAll(".ns-th-order"), control =>
+        var controls = cut.FindAll(".ns-th-order");
+        Assert.Equal(2, controls.Count);
+        Assert.All(controls, control =>
         {
             Assert.Equal("button", control.LocalName);
             Assert.NotEqual("-1", control.GetAttribute("tabindex"));
