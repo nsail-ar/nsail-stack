@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using NSail.Harness.Agents;
+using NSail.Harness.Board;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 
@@ -127,10 +128,12 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                     }
                 }
                 await Post();
+                await WrittenBlockers.Link(board, n, $"{Read("body.md")}\n{comment}", ctx.Names.Key, ct);
                 // The move is the Ready event's (WorkerTypes), once the lock is off.
                 return new Ending("Ready", "Ready");
             case "VERDICT: ruling" when comment.Trim().Length > 0:
                 await Post();
+                await WrittenBlockers.Link(board, n, comment, ctx.Names.Key, ct);
                 return new Ending("ruling", "Ruling");
             case "VERDICT: done" when comment.Trim().Length > 0:
                 await Post();

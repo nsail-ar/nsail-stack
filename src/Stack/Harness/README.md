@@ -12,9 +12,10 @@ the files it leaves.
 | Project | |
 |---|---|
 | `NSail.Harness.Sdk` | the API's contract: its messages (`Api/`, NSail Stack messaging with `[Http]` routes) and models, and a generated typed client (`AddHarnessHttpClients`) for whoever drives the harness from elsewhere |
-| `NSail.Harness` | the core: planner, loop, jobs, the API's handlers, and the seams every outside system plugs into — `IBoard`, `IRepository`, `IStoryLock`, `IAgent`, `ILaneEnvironment` |
+| `NSail.Harness` | the core: planner, loop, jobs, the API's handlers, and the seams every outside system plugs into — `IBoard`, `IRepository`, `IStoryLock`, `IAgent`, `ILaneEnvironment`, `ILogSource` |
 | `NSail.Harness.GitHub` | the `GitHub` provider: a board (issues, each in a column of a project), the code host and the story lock (`AddGitHub`) |
 | `NSail.Harness.Claude` | Claude Code as the seats' agent (`AddClaude`) |
+| `NSail.Harness.OpenObserve` | OpenObserve as the `OpenObserve` log source a Watch worker reads (`AddOpenObserve`; `OpenObserve:Endpoint`, `Organization`, `Stream`, and a reader's `Username`/`Password`, each also as a `...File`) |
 | `NSail.Harness.Hosting` | what every host is, added to a plain `WebApplication`: `builder.AddHarness()` and `app.MapHarness()` (service or daemon, machine-local settings, the log file, the API and its reference, the status page) and the build-turn shim |
 
 - **The order** is the workers' (`Workers/WorkerPlanner.cs`, one pure function) with its tests over
@@ -37,7 +38,7 @@ the files it leaves.
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):
     a release holds that repository's merges when the version its tag pins does.
   - `Workers` (by name, ordered by `Priority`): everything the harness takes.
-    Each has a `Type` (Analyze, Develop, Review, Verify, Test, Release, UpdateBoard) whose defaults
+    Each has a `Type` (Analyze, Develop, Review, Verify, Test, Release, Watch, UpdateBoard) whose defaults
     (`Workers/WorkerTypes.cs`: filter, events, what each event does on the board, minutes) it changes only
     where it says: `Filter` (status, labels `x`/`!x`/`a|b`, PR and its checks, sub-issues,
     blockers, title), `When` (schedule, CPU, memory, quota, reachable endpoints, named
@@ -54,13 +55,22 @@ the files it leaves.
     a tenant's `Live.Header`) — a story its tenant does not run yet is not walked, and is asked again
     after `QaJob.NotLiveRecheck` rather than at the next cut, because a deploy lands after its cut — and attaches
     the walk's shots to the board (on GitHub, the attachments a pasted file becomes). A story waiting
+    A Watch reads its `Source` (a log source by name) every `Every` minutes, from where it last read
+    (`Lookback` hours the first time), groups the error lines by service, logger, message template and
+    exception type, and files a story per new group in Analyze (`telemetry`, the service's area — a
+    product of that name, or its `Areas` entry — and `bug` when a cell outside `NotProd` logged it), at
+    most `MaxStories` a pass; an open one gets the count, once a day; one closed and logged again after
+    is filed anew naming it (it broke twice); one closed as not planned mutes its error.
     on its ask is asked once, and walked again only when someone wrote on it or after `Recheck` minutes. The walker writes
     `VERDICT: ok|n/a|bug|asked|waiting|not-live|doubt` and its report: the verdict is the event, and
     the board is the harness's. Every verdict leaves the story where a walk reads it again: Released,
     or QA wearing `qa-asked` (a doubt is an ask) — a story in QA with neither is a planner note. A seat's `PromptFile` beside the harness's configuration (`prompts/`)
     is the harness's, for every repository; any other is the repository's. A pass: the UpdateBoard keepers,
-    the workers on their own, then every story worker over the p1 stories, then over the rest; one
-    job per story per pass. A machine's Local changes or disables (`Enabled: false`) one by name.
+    every story worker over the `bug` stories (broken where a customer runs: before a release too, and
+    past the WIP limit), the workers on their own, then every story worker over the p1 stories, then
+    over the rest; one job per story per pass. A story whose body or refinery comment names a blocker
+    in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
+    its analysis and before its first voyage (`Board/WrittenBlockers.cs`). A machine's Local changes or disables (`Enabled: false`) one by name.
     A reading not taken yet (no CPU samples, no quota read since its reset) stops no worker.
   - `Seats` (signature, model, `Prompt` or `PromptFile`) and `Conditions` (named Whens: a crew's
     `db-up` the test database answering, `quota-5h`/`quota-week` the agent's quota walls).
@@ -96,6 +106,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddHarness();
 builder.Services.AddGitHub(builder.Configuration);
 builder.Services.AddClaude(builder.Configuration);
+builder.Services.AddOpenObserve(builder.Configuration);
 var app = builder.Build();
 app.MapHarness();
 app.Run();

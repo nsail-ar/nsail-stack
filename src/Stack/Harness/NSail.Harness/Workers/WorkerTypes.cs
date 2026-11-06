@@ -126,6 +126,8 @@ public static class WorkerTypes
                 ["NoVerdict"] = [Say("QA terminó sin veredicto.\n\n{report}")],
             }, Minutes: 60),
         ["Release"] = new("Release", WorkKind.Release, false, false, new FilterOptions(), WorkerType.BaseEvents, None, Minutes: 150),
+        // Reads a log source for errors and files a story per new one (Watching): no agent, no story of its own.
+        ["Watch"] = new("Watch", WorkKind.Watch, false, false, new FilterOptions(), WorkerType.BaseEvents, None, Minutes: 10),
         ["UpdateBoard"] = new("UpdateBoard", null, true, false, new FilterOptions(), ["Executed"], None, Minutes: 0),
     };
 

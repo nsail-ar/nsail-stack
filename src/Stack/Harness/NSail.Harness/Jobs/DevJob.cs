@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using NSail.Harness.Agents;
+using NSail.Harness.Board;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 using NSail.Harness.Repositories;
@@ -31,7 +32,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         var board = ctx.Board;
         var log = ctx.Logs.CreateLogger($"dev#{n}");
 
-        var (title, _, open) = await board.Story(n, ct);
+        var (title, body, open) = await board.Story(n, ct);
         if (!open) return new JobOutcome("closed — nothing to build", Idle: true);
         if (await board.Children(n, ct) > 0) return new JobOutcome("an epic — a spine is built through its children", Idle: true);
 
@@ -46,6 +47,18 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
 
         var labels = await board.Labels(n, ct);
         var model = ctx.ModelOf(labels, Seat);
+
+        // A new voyage on a story whose body or refinery comment names a blocker in words waits for it as
+        // if the board linked it: the link is made, and the story held while the blocker is open.
+        if (Item.Pr is null)
+        {
+            var waiting = await WrittenBlockers.Link(board, n, $"{body}\n{await RefineryComment(n, ct)}", ctx.Names.Key, ct);
+            if (waiting.Count > 0)
+            {
+                await board.RemoveLabel(n, Labels.Claimed);
+                return new JobOutcome($"waits on {string.Join(", ", waiting.Select(w => $"#{w}"))} — linked and blocked", Idle: true);
+            }
+        }
 
         var tries = await DeadVoyages(n, ct);
         if (tries >= 2)
@@ -109,6 +122,15 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
 
         var ending = await Deliver(n, title, repo, work, branch, claimedAt, result, log, ct);
         return ending.Outcome(result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : null);
+    }
+
+    // The analyst's last comment on the story: the one signed by a seat an Analyze worker sits.
+    async Task<string> RefineryComment(int n, CancellationToken ct)
+    {
+        var signatures = ctx.Options.Workers.Values.Where(w => w.Type == "Analyze" && w.Seat is not null)
+            .Select(w => ctx.Options.Seats.TryGetValue(w.Seat!, out var s) ? s.Signature : "").Where(s => s.Length > 0).ToList();
+        if (signatures.Count == 0) return "";
+        return (await ctx.Board.Comments(n, ct)).LastOrDefault(c => signatures.Any(s => c.Body.Contains(s, StringComparison.Ordinal)))?.Body ?? "";
     }
 
     // What the harness says about a voyage on the story: marked, so the next voyage can count them.

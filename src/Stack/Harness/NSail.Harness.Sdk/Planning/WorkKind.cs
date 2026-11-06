@@ -3,4 +3,4 @@
 
 namespace NSail.Harness.Planning;
 
-public enum WorkKind { Release, Dev, Review, Analyze, Qa, Gate, Main, Ship }
+public enum WorkKind { Release, Dev, Review, Analyze, Qa, Gate, Main, Ship, Watch }

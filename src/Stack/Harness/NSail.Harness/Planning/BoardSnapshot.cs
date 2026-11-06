@@ -22,6 +22,9 @@ public sealed record BoardSnapshot(
     // The release buttons whose day's cut is due on this machine's clock (Steps.Release).
     public IReadOnlyList<string> DueReleases { get; init; } = [];
 
+    // The Watch workers whose next pass is due and that run nowhere here.
+    public IReadOnlyList<string> DueWatches { get; init; } = [];
+
     // main's head, and the last head of main this machine's gate judged (null: none yet).
     public string? MainSha { get; init; }
     public string? MainGated { get; init; }
