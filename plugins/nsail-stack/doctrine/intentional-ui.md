@@ -11,7 +11,7 @@ hold what building a screen does not need:
   section names; a rule marked *(cases)* has its story there. Read it before proposing to
   *change* a rule, never before building a screen.
 - **A component's API** is the [`ui/` shelf](ui/README.md), one page per thing you place:
-  [fields](ui/fields.md), [actions](ui/actions.md), [forms](ui/forms.md), [hosts](ui/hosts.md),
+  [fields](ui/fields.md), [actions](ui/actions.md), [forms](ui/forms.md), [keyboard](ui/keyboard.md), [hosts](ui/hosts.md),
   [styling](ui/styling.md), [navigation](ui/navigation.md), [menus](ui/menus.md),
   [wizard](ui/wizard.md), [settings](ui/settings.md), [guide](ui/guide.md),
   [skills](ui/skills.md), [branding](ui/branding.md), [localization](ui/localization.md),

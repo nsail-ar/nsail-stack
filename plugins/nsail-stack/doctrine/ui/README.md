@@ -11,6 +11,7 @@ placing.
 | [actions.md](actions.md) | `NsButton`, `NsLink`, `NsAction`, `NsPageLink`, `NsSubmit`, `NsClose`, `NsActionOutlet`, `NsActionToolbar`, `ActionItem`, the contribution mechanism, a grid row's action cell |
 | [forms.md](forms.md) | `NsForm`: the read half (`OnLoad`, `Document`, the three states), tracking, the exit guard, closing, `ApplyProblem`, the Enter policy, `NsSendMessage` (the composer) |
 | [focus.md](focus.md) | Where a navigation's arrival hands the cursor — `NsArrivalFocus`, the marker `AutoFocus` writes and the typed box's own `FocusOnRender`, which is not it, `NsPageHeader.ArrivalFocus`, the screen's name as the focusable `h1`, the touch rule |
+| [keyboard.md](keyboard.md) | The keyboard contract per control, the walk a screen is done by, and the known reds |
 | [hosts.md](hosts.md) | `NsTable`/`NsTh`/`NsTd`, `NsTabs`/`NsTab`, `NsListEditor`, `NsTimeGrid`/`NsTimeBlock`, `NsDashboard`/`NsSubjectDashboard`, `NsLoad` |
 | [styling.md](styling.md) | `NsFormGrid`/`NsFormGridItem`, `NsStack`, `NsCard`, `NsPanel`, `NsPaper`, `NsExpander`, `NsText`, `NsRemoteImage`, `NsTooltip`, `NsSince`, `NsBarChart`, `NsMeter`, `NsStatusText`/`NsStatusDot`, `ns-mud.css`, container queries |
 | [surfaces.md](surfaces.md) | The base chain, and the query, size, stacking and announce seams |
