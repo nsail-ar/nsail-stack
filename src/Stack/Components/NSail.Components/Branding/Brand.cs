@@ -16,6 +16,8 @@ public sealed class Brand
     /// scheme.</summary>
     public string? Typeface { get; set; }
 
+    /// <summary>The brand's own scheme, for what has no reader to follow (an installed app's
+    /// system bar). Never a screen's: an unset preference follows the device.</summary>
     public bool DefaultDark { get; set; } = true;
 
     public BrandTheme Light { get; set; } = BrandTheme.DefaultLight();

@@ -837,9 +837,9 @@ The contribution model, the scopes and the storage: [ui/settings.md](ui/settings
 
 Branding is a vendor-agnostic, serializable `Brand` in `NSail.Components`, supplied by
 `IBrandProvider`. **Components never read Mud palette types from app code — change the `Brand`,
-not the theme.** Default look: dark, warm grays with orange `#F68E1E`. **The prerender hands the
-brand over; the client does not resolve it again** — a brand arriving after the paint is the
-flash the one-arrival rule forbids.
+not the theme.** Default look: warm grays with orange `#F68E1E`, in the device's scheme until the
+reader picks one. **The prerender hands the brand over; the client does not resolve it again** —
+a brand arriving after the paint is the flash the one-arrival rule forbids.
 
 The `Brand` shape, the meaning of a null answer and the neutral fallback:
 [ui/branding.md](ui/branding.md).
