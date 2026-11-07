@@ -23,8 +23,18 @@ sealed class VendorPalette : MudThemeProvider
 
         new VendorPalette(theme, dark).GenerateTheme(css);
 
-        return css.ToString()
+        var declarations = css.ToString()
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
+
+        // NsTheme re-scopes these under its own :root, which is only right while the generator
+        // emits bare custom-property declarations; a selector of its own would be re-scoped
+        // silently.
+        if (declarations.Find(line => !line.StartsWith("--", StringComparison.Ordinal) || !line.EndsWith(';')) is { } stray)
+        {
+            throw new InvalidOperationException($"The vendor's theme generator emitted '{stray}', not a custom-property declaration.");
+        }
+
+        return declarations;
     }
 }

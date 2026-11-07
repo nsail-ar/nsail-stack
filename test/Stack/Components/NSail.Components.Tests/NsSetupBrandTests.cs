@@ -105,6 +105,9 @@ public sealed class NsSetupBrandTests : BunitContext, IAsyncLifetime
 
         var cut = Render<NsSetup>();
 
+        // Unset preference, unanswered device: the grey's light scheme is lit and its dark one
+        // waits in the prefers-color-scheme block.
+        Assert.Contains(NeutralLight, cut.Markup);
         Assert.Contains(NeutralDark, cut.Markup);
         Assert.DoesNotContain(Organization, cut.Markup);
         Assert.DoesNotContain(FrameworkDefault, cut.Markup);

@@ -11,14 +11,12 @@ using NSail.Components.Tests.Fixtures;
 
 namespace NSail.Components.Tests;
 
-/// <summary>nsail#2744 (folded from #2730): a page with no saved preference — an anonymous
-/// visitor, or a signed-in reader who never touched Mi Cuenta's Apariencia — used to paint the
-/// brand's own <see cref="BrandTheme.IsDark"/> rather than the visitor's own OS scheme, because
-/// NsTheme only ever read <see cref="NsTheme.Dark"/> (null) against that default. The OS query is
-/// a client fact (<c>window.matchMedia</c>), so it is asked once after the first interactive
-/// render and kept current by the vendor's own change watcher — a saved Claro/Oscuro still wins
-/// outright, and until a client answers the stylesheet reads the device itself
-/// (<c>prefers-color-scheme</c>), whatever <see cref="Brand.DefaultDark"/> says (nsail#3005).</summary>
+/// <summary>A page with no saved preference — an anonymous visitor, or a signed-in reader who
+/// never touched Mi Cuenta's Apariencia — paints the device's scheme, never the brand's
+/// <see cref="Brand.DefaultDark"/>. Until a client answers, the stylesheet reads the device
+/// itself (<c>prefers-color-scheme</c>); the OS query (<c>window.matchMedia</c>) is asked once
+/// after the first interactive render and kept current by the vendor's own change watcher. A
+/// saved Claro/Oscuro wins outright.</summary>
 public sealed class NsThemeSystemPreferenceTests : BunitContext
 {
     static readonly Brand TwoSchemeBrand = new();
@@ -39,7 +37,8 @@ public sealed class NsThemeSystemPreferenceTests : BunitContext
             .Add(x => x.Brand, TwoSchemeBrand)
             .Add(x => x.Dark, (bool?)null));
 
-        cut.WaitForAssertion(() => Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultLight().AccentInk};", cut.Markup));
+        cut.WaitForAssertion(() => Assert.DoesNotContain("prefers-color-scheme", cut.Markup));
+        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultLight().AccentInk};", cut.Markup);
     }
 
     [Fact]

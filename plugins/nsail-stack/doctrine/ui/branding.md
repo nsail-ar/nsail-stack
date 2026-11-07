@@ -15,8 +15,9 @@ Branding is a vendor-agnostic, **serializable** object in `NSail.Components` (`B
 per-scheme `Logo`, the accent and its states, the surface ladder, text, `Lines`, `LinesInputs`
 and status colors, **hex strings only**. `IBrandProvider` (async) supplies the active brand, the
 async contract existing so a provider can resolve branding per organization. **Components never read
-Mud palette types from app code.** Default look: dark, a near-black surface in the house
-chrome's warm hue, with orange `#F68E1E`.
+Mud palette types from app code.** Default look: warm grays in the house chrome's hue —
+near-black in dark — with orange `#F68E1E`, in the device's scheme until the reader picks one
+(`DefaultDark` names the brand's own scheme, never a screen's).
 
 **`Typeface` is a key into `Typefaces`' catalog, never a scheme pick** — one family for both
 light and dark, like `Name`, so it sits on `Brand` and not on `BrandTheme`. `Typefaces` is a
@@ -275,7 +276,8 @@ dark one under `@media (prefers-color-scheme: dark)`, the vendor's declarations 
 ones. After that the OS is asked once (`MudThemeProvider.GetSystemDarkModeAsync`) and kept live
 (`WatchSystemDarkModeAsync`), and the answer is the media query's own reading, so nothing on
 screen moves. **`Brand.DefaultDark` never decides the scheme of a screen:** a guess about a reader
-the device already answers for is the flash.
+the device already answers for is the flash. It decides only what has no reader to follow — an
+installed app's system bar (`theme-color`), which no screen paints.
 
 **Every saver announces in place; nothing reloads to repaint.** `BrandChanged` is the event —
 published after a successful `CreateBranding`/`UpdateBranding` — and `NsSetup` (theme),
