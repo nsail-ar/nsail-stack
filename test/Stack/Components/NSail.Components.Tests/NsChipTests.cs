@@ -99,7 +99,31 @@ public sealed class NsChipTests : BunitContext
             .Add(c => c.Tooltip, tooltip));
 
         Assert.False(cut.Find(".mud-chip").HasAttribute("aria-label"));
+        Assert.False(cut.Find(".mud-chip").HasAttribute("role"));
         Assert.Equal("Rol", cut.Find(".mud-chip").TextContent.Trim());
+    }
+
+    /// <summary>A name on the vendor's bare div is one no browser computes: with no Href the
+    /// chip is a group, the role that takes it; an anchor is a link and keeps its own.</summary>
+    [Fact]
+    public void A_chip_with_no_href_is_a_group_so_its_name_is_computed()
+    {
+        var plain = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo prueba")
+            .Add(c => c.Tooltip, "Modo prueba: los cobros no son reales"))
+            .Find(".mud-chip");
+
+        var linked = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo prueba")
+            .Add(c => c.Tooltip, "Modo prueba: los cobros no son reales")
+            .Add(c => c.Href, "/settings/test-mode"))
+            .Find(".mud-chip");
+
+        Assert.Equal("DIV", plain.TagName);
+        Assert.Equal("group", plain.GetAttribute("role"));
+        Assert.Equal("Modo prueba: los cobros no son reales", plain.GetAttribute("aria-label"));
+        Assert.Equal("A", linked.TagName);
+        Assert.False(linked.HasAttribute("role"));
     }
 
     [Fact]
@@ -110,5 +134,38 @@ public sealed class NsChipTests : BunitContext
             .Add(c => c.Tooltip, "Modo prueba: los cobros no son reales"));
 
         Assert.True(cut.Find(".mud-chip").HasAttribute("data-ns-whisper-tap"));
+    }
+
+    /// <summary>The stylesheet's half of the tap, which no render can show: the tapped bubble
+    /// alone takes hits, so its link can be reached, and the link fills the bubble, so a finger
+    /// in its padding reaches the link rather than closing the sentence.</summary>
+    [Fact]
+    public void The_stylesheet_lets_the_tapped_bubble_alone_take_a_finger()
+    {
+        var css = ReadStylesheet().ReplaceLineEndings("\n");
+
+        Assert.Contains(".ns-whisper {", css);
+        Assert.Contains("    pointer-events: none;\n    z-index: var(--mud-zindex-tooltip);", css);
+        Assert.Contains(".ns-whisper.ns-whisper-tap {\n    pointer-events: auto;", css);
+        Assert.Contains(".ns-whisper-tap a {\n    display: flex;\n    align-items: center;\n    margin: -4px -8px;\n    padding: 4px 8px;", css);
+    }
+
+    static string ReadStylesheet()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
+            {
+                return File.ReadAllText(Path.Combine(
+                    directory.FullName,
+                    "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException($"NSail.sln was not found above {AppContext.BaseDirectory}.");
     }
 }

@@ -14,12 +14,12 @@
 @if (OnClose is null)
 {
     <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
-             Size="@GetSize()" Href="@Href" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" aria-label="@GetName()">@Text</MudChip>
+             Size="@GetSize()" Href="@Href" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()">@Text</MudChip>
 }
 else
 {
     <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
-             Size="@GetSize()" Href="@Href" OnClose="Close" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" aria-label="@GetName()">@Text</MudChip>
+             Size="@GetSize()" Href="@Href" OnClose="Close" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()">@Text</MudChip>
 }
 
 @code {
@@ -65,13 +65,22 @@ else
     string? GetName()
     {
         var sentence = Tooltip?.Trim();
+        var text = (Text ?? "").Trim();
 
-        if (string.IsNullOrEmpty(sentence) || string.Equals(sentence, Text.Trim(), StringComparison.CurrentCultureIgnoreCase))
+        if (string.IsNullOrEmpty(sentence) || string.Equals(sentence, text, StringComparison.OrdinalIgnoreCase))
         {
             return null;
         }
 
-        return sentence.StartsWith(Text.Trim(), StringComparison.CurrentCultureIgnoreCase) ? sentence : $"{Text}: {sentence}";
+        return sentence.StartsWith(text, StringComparison.OrdinalIgnoreCase) ? sentence : $"{text}: {sentence}";
+    }
+
+    // With no Href the vendor's root is a bare div, a generic that ARIA forbids a name and the
+    // browsers drop it from; a group takes the name and keeps the close button inside it
+    // reachable. An anchor is a link and is named as it is.
+    string? GetRole()
+    {
+        return string.IsNullOrEmpty(Href) && GetName() is not null ? "group" : null;
     }
 
     Color GetColor()

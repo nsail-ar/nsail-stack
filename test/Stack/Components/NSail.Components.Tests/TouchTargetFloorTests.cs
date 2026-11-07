@@ -25,10 +25,11 @@ public sealed class TouchTargetFloorTests
         // The selector it is written against, and the query it is written inside. .mud-button is
         // the chromed face NsButton, NsSubmit, NsClose and NsMenu's labelled trigger all render;
         // NsLink's own Inline face draws no `.mud-button` at all (a bare anchor), so it reaches
-        // the same floor through .ns-link in the one declaration instead of a second of its own
-        // — one declaration reaches every container a finger meets it in, rather than the
-        // per-caller branch principles.md refuses.
-        Assert.Equal(".mud-button, .ns-link {", lines[Preceding(lines, Floor, line => line.EndsWith('{'))]);
+        // the same floor through .ns-link in the one declaration instead of a second of its own,
+        // and so does the link a tapped chip's whisper carries (.ns-whisper-tap a) — one
+        // declaration reaches every container a finger meets it in, rather than the per-caller
+        // branch principles.md refuses.
+        Assert.Equal(".mud-button, .ns-link, .ns-whisper-tap a {", lines[Preceding(lines, Floor, line => line.EndsWith('{'))]);
         Assert.Equal("@media (pointer: coarse) {", lines[Query(lines, Floor)]);
     }
 
