@@ -67,8 +67,10 @@ public sealed class ProblemDocumentTests : IAsyncLifetime
 
         var body = await response.Content.ReadAsStringAsync();
 
-        // The same grey NsSetupBrandTests pins as NeutralDark, in the form it reaches the
-        // browser in — a brand's own colour here would mean the document guessed one.
+        // The same grey NsSetupBrandTests pins as NeutralLight and NeutralDark, in the form it
+        // reaches the browser in: light lit, dark under the device's prefers-color-scheme. A
+        // brand's own colour here would mean the document guessed one.
+        Assert.Contains("--mud-palette-primary: rgba(117,114,109,1);", body, StringComparison.Ordinal);
         Assert.Contains("--mud-palette-primary: rgba(138,135,130,1);", body, StringComparison.Ordinal);
         Assert.Contains("--mud-palette-background:", body, StringComparison.Ordinal);
     }
