@@ -24,6 +24,17 @@ public sealed class MudDialogManager(IDialogService dialogs, ISnackbar snackbar,
         MaxWidth = MaxWidth.Medium
     };
 
+    // A question has no grid to lay out and no field to fit, so the vendor's own width-to-content
+    // (bug report: a 179x153 box floating mid-page) is wrong for it the same way it would be for a
+    // real form — a reasonable, fixed width reads as a dialog from the first frame instead of a
+    // shrink-wrapped tooltip. Only the width is this door's to set: Escape and a backdrop click
+    // stay the provider's own, unset here, same as when Ask() passed no options at all.
+    static readonly DialogOptions _confirmOptions = new()
+    {
+        FullWidth = true,
+        MaxWidth = MaxWidth.Small
+    };
+
     public override Task<bool> Confirm(string message, string? title = null)
     {
         return Ask(message, title, destroys: false);
@@ -48,7 +59,8 @@ public sealed class MudDialogManager(IDialogService dialogs, ISnackbar snackbar,
 
         var reference = await dialogs.ShowAsync<NsConfirmDialog>(
             title ?? strings.Translate("Common.Confirm"),
-            parameters);
+            parameters,
+            _confirmOptions);
 
         var result = await reference.Result;
 
