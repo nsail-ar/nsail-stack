@@ -105,13 +105,25 @@ public partial class NsDateField<TValue>
     // non-nullable binding takes default(DateOnly), which is 0001-01-01 and looks like a date all
     // the way to the server. Left alone, the model keeps what it held and the refusal below
     // stops the submit, so the screen and the saved row cannot disagree.
+    //
+    // An echo of the value already held is the vendor's and nobody's pick (SetPicked), so it
+    // places no bet either.
     async Task OnDateChanged(DateTime? value)
     {
+        var date = ConvertFromDateTime(value);
+
+        if (_text.Refused is null && Echoes(date))
+        {
+            NotifyOwnProblemChanged();
+
+            return;
+        }
+
         TakePending(value);
 
         if (_text.Refused is null)
         {
-            await SetValue(ConvertFromDateTime(value));
+            await SetPicked(date);
         }
 
         NotifyOwnProblemChanged();

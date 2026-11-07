@@ -12,9 +12,24 @@
 <MudPopoverProvider />
 
 <EditForm EditContext="_editContext">
-    <NsDateField TValue="DateOnly" Value="Model.DateOnlyValue"
-                 ValueChanged="OnValueChanged"
-                 ValueExpression="() => Model.DateOnlyValue" />
+    @switch (Picker)
+    {
+        case PickerKind.Time:
+            <NsTimeField TValue="TimeSpan?" Value="Model.Time"
+                         ValueChanged="OnTimeChanged"
+                         ValueExpression="() => Model.Time" />
+            break;
+        case PickerKind.DateTime:
+            <NsDateTimeField TValue="DateTime?" Value="Model.Moment"
+                             ValueChanged="OnMomentChanged"
+                             ValueExpression="() => Model.Moment" />
+            break;
+        default:
+            <NsDateField TValue="DateOnly" Value="Model.DateOnlyValue"
+                         ValueChanged="OnValueChanged"
+                         ValueExpression="() => Model.DateOnlyValue" />
+            break;
+    }
 </EditForm>
 
 @code {
@@ -24,7 +39,21 @@
     [Parameter, EditorRequired]
     public FieldProbeModel Model { get; set; } = default!;
 
+    public enum PickerKind
+    {
+        Date,
+        Time,
+        DateTime,
+    }
+
+    [Parameter]
+    public PickerKind Picker { get; set; }
+
     public int Notifications { get; private set; }
+
+    // What reached the page through ValueChanged, which is what a page that reads on every
+    // change of its field reads on (nsail#2891).
+    public int Changes { get; private set; }
 
     public List<string> Fields { get; } = [];
 
@@ -40,12 +69,27 @@
 
     void OnValueChanged(DateOnly value)
     {
+        Changes++;
         Model.DateOnlyValue = value;
+    }
+
+    void OnTimeChanged(TimeSpan? value)
+    {
+        Changes++;
+        Model.Time = value;
+    }
+
+    void OnMomentChanged(DateTime? value)
+    {
+        Changes++;
+        Model.Moment = value;
     }
 
     public void FillInPlace()
     {
         Model.DateOnlyValue = new DateOnly(2026, 4, 8);
+        Model.Time = new TimeSpan(14, 30, 0);
+        Model.Moment = new DateTime(2026, 4, 8, 14, 30, 0);
 
         StateHasChanged();
     }

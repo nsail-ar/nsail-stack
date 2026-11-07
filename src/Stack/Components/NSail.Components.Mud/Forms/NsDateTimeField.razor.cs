@@ -116,13 +116,24 @@ public partial class NsDateTimeField<TValue>
     // is worse: Combine below falls back to DateTime.Today for a missing date, so writing the
     // refusal through would move the appointment to TODAY at the hour already chosen — a real
     // date, in range, that nobody asked for.
+    //
+    // An echo of the value already held places no bet, NsDateField's own reason.
     async Task OnDateChanged(DateTime? value)
     {
+        var combined = Combine(value, ConvertToDateTime(Value)?.TimeOfDay ?? TimeSpan.Zero);
+
+        if (_text.Refused is null && Echoes(combined))
+        {
+            NotifyOwnProblemChanged();
+
+            return;
+        }
+
         TakePending(value?.Date);
 
         if (_text.Refused is null)
         {
-            await SetValue(Combine(value, ConvertToDateTime(Value)?.TimeOfDay ?? TimeSpan.Zero));
+            await SetPicked(combined);
         }
 
         NotifyOwnProblemChanged();
@@ -146,7 +157,7 @@ public partial class NsDateTimeField<TValue>
     // The date already held with the picked TIME — this half was always right.
     Task OnTimeChanged(TimeSpan? value)
     {
-        return SetValue(Combine(ConvertToDateTime(Value), value ?? TimeSpan.Zero));
+        return SetPicked(Combine(ConvertToDateTime(Value), value ?? TimeSpan.Zero));
     }
 
     static DateTime? ConvertToDateTime(TValue? value)

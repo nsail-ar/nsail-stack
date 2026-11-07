@@ -22,6 +22,8 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     ValidationMessageStore? _ownMessages;
     string? _posted;
     bool _asked;
+    TValue? _handed;
+    TValue? _said;
 
     [Inject]
     protected StringManager Strings { get; init; } = default!;
@@ -322,6 +324,12 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
     protected override void OnParametersSet()
     {
+        if (!EqualityComparer<TValue?>.Default.Equals(Value, _handed))
+        {
+            _handed = Value;
+            _said = Value;
+        }
+
         _for = For ?? ValueExpression;
 
         _fieldIdentifier = _for is null
@@ -449,8 +457,10 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     // got a field notification nobody caused, and the form reported unsaved changes on
     // arrival with the guard firing on the way out. An echo carries the value the field is
     // ALREADY displaying; a user edit carries a different one, and that is the whole
-    // difference between them. ValueChanged still runs either way, so two-way binding is
-    // untouched: only the change notification is withheld.
+    // difference between them. Here ValueChanged still runs either way, because a field bound by
+    // Value alone (a text box, NsTextFieldBase) is never handed its own keystroke back, so
+    // equality with Value proves nothing for it: only the change notification is withheld. The
+    // pickers withhold ValueChanged too, through SetPicked.
     protected virtual async Task SetValue(TValue? value)
     {
         var edited = !EqualityComparer<TValue?>.Default.Equals(Value, value);
@@ -461,6 +471,30 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         {
             NotifyEdited();
         }
+    }
+
+    /// <summary>Whether a picker's callback is only its vendor handing back the value this field
+    /// last said or was handed — an echo, and no change of anybody's.</summary>
+    protected bool Echoes(TValue? value)
+    {
+        return EqualityComparer<TValue?>.Default.Equals(value, _said);
+    }
+
+    /// <summary>SetValue for the vendor pickers, which raise their callback for a value pushed
+    /// into them as well as for one picked: an echo raises no ValueChanged, so a page that reads
+    /// on every change of its field reads once for a value it set itself. Compared against what
+    /// the field last said rather than against Value, so a second pick inside the first one's
+    /// round trip, back to the value the page still holds, is still the person's.</summary>
+    protected Task SetPicked(TValue? value)
+    {
+        if (Echoes(value))
+        {
+            return Task.CompletedTask;
+        }
+
+        _said = value;
+
+        return SetValue(value);
     }
 
     protected string? GetLabel()

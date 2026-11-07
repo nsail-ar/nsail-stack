@@ -9,7 +9,7 @@ public partial class NsTimeField<TValue>
 
     Task OnTimeChanged(TimeSpan? value)
     {
-        return SetValue(ConvertFromTimeSpan(value));
+        return SetPicked(ConvertFromTimeSpan(value));
     }
 
     static TimeSpan? ConvertToTimeSpan(TValue? value)
