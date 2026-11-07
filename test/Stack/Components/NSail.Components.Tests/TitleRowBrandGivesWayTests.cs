@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Text.RegularExpressions;
 using NSail.Components.Tests.Fixtures;
 
 namespace NSail.Components.Tests;
@@ -9,10 +10,11 @@ namespace NSail.Components.Tests;
 /// first and to nothing, its name elided on one line. Read off the stylesheet, which is where the
 /// whole behaviour lives — bUnit lays out no box model, so a render proves the wrapper's class
 /// and not what the class does. The geometry at a phone's width is a browser walk's. Each block
-/// is quoted from column zero, so a block moved inside an at-rule no longer matches.</summary>
+/// is quoted from column zero, so a block moved inside an at-rule no longer matches, and its
+/// selector opens no other block, so a later copy cannot win by order.</summary>
 public sealed class TitleRowBrandGivesWayTests
 {
-    static readonly string Sheet = HouseStylesheet.Read().ReplaceLineEndings("\n");
+    static readonly string Sheet = HouseStylesheet.Read();
 
     // The leading box is held to its row, or the brand would have nothing to give way to.
     [Fact]
@@ -79,6 +81,11 @@ public sealed class TitleRowBrandGivesWayTests
 
     static void AssertBlock(string block)
     {
-        Assert.Contains("\n" + block.ReplaceLineEndings("\n") + "\n", Sheet);
+        block = block.ReplaceLineEndings("\n");
+        Assert.Contains("\n" + block + "\n", Sheet);
+
+        var selector = block[..block.IndexOf('{')].TrimEnd();
+        var opened = Regex.Matches(Sheet, @"(?m)^[ \t]*" + Regex.Escape(selector) + @"\s*\{");
+        Assert.Single(opened);
     }
 }

@@ -167,10 +167,11 @@ public sealed class NsTitleBarAnnouncementTests : BunitContext, IAsyncLifetime
         Assert.DoesNotContain("d-flex", classes);
     }
 
-    // The fragment sits in the brand's fit box, inside the wrapper that carries the display swap.
+    // Found through the caller's fragment, so a row that stops drawing it cannot pass: the fragment
+    // sits in the brand's fit box, inside the wrapper that carries the display swap.
     static AngleSharp.Dom.IElement BrandWrapper(IRenderedComponent<NsTitleBar> bar)
     {
-        return bar.Find(".ns-title-brand-fit").ParentElement!;
+        return bar.Find(".ns-title-brand-fit > #brand").ParentElement!.ParentElement!;
     }
 
     /// <summary>nsail#1460: this row is drawn inside whatever the page wrapped its panel in, and
