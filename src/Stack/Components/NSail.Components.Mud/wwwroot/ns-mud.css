@@ -2117,7 +2117,8 @@ div.mud-input-slot.mud-input-root::placeholder {
    answers a min-content of zero and a max-content of the whole name, and the shell's content
    column is a flex item that grows to the min-content of everything inside it, so a name that
    could not wrap would otherwise widen the page past the viewport. It sits inside the wrapper
-   because the wrapper's own display is the d-flex/d-none swap.
+   because the wrapper's own display is the d-flex/d-none swap, and it carries the gap to the
+   title so that the gap is clipped with the brand: a brand that takes no width takes no margin.
    The fragment is the product's, so the ellipsis is reached through what every fragment is made
    of (a flex row and the vendor's typography), and only here: the drawer draws the same
    fragment on its own ground and keeps it whole. */
@@ -2135,6 +2136,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     display: grid;
     grid-template-columns: minmax(0, max-content);
     min-width: 0;
+    margin-inline-end: 0.75rem;
 }
 
 .ns-title-brand .d-flex {
