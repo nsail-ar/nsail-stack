@@ -71,7 +71,8 @@ the files it leaves.
     over the rest; one job per story per pass. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
     its analysis and before its first voyage (`Board/WrittenBlockers.cs`); a `Waits` line that answers
-    `nothing`, `none`, `nada`, `ninguna` or `ninguno` names no blocker, whatever else it mentions. A machine's Local changes or disables (`Enabled: false`) one by name.
+    `nothing`, `none`, `nada`, `ninguna` or `ninguno` names no blocker, whatever else it mentions. A
+    machine's Local changes or disables (`Enabled: false`) one by name.
     A reading not taken yet (no CPU samples, no quota read since its reset) stops no worker.
   - `Seats` (signature, model, `Prompt` or `PromptFile`) and `Conditions` (named Whens: a crew's
     `db-up` the test database answering, `quota-5h`/`quota-week` the agent's quota walls).

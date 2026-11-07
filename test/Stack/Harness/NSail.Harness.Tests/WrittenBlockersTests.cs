@@ -32,7 +32,9 @@ public class WrittenBlockersTests
 
     // The refinery comment's own form, as the analysis wrote it on stories it then held.
     [Theory]
-    [InlineData("**Waits** — nothing. #3263 (how long reports are kept) touches the same reports but not this read")]
+    [InlineData("**Waits** — nothing. #3263 (retention) is independent: this story deletes nothing.")]
+    [InlineData("**Waits** — nothing. The Harness routes a story that wears `area:stack` beside another area to nsail-stack until its PR merges there, and only then to this repository (`.github/gru-prompt.md`). This repository's half moves `NSailStackVersion` first. Retention is #3263's, not this story's.")]
+    [InlineData("**Waits** — nothing. #3263 (how long reports are kept) touches the same reports but not this read.")]
     public void AWaitsLineThatAnswersNothingInTheAnalystsFormNamesNoBlocker(string line)
     {
         var comment = $"**Claim** — the read.\n\n{line}\n\n**Dev notes**\n- the seam.";
