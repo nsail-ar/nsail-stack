@@ -433,6 +433,35 @@ public class SecurityManager
         return false;
     }
 
+    /// <summary>Whether some policy that could allow this send admits this id in this field —
+    /// the party and organization axes' client-derived field state (permissions.md, The client
+    /// consumes policies). Optimistic only where the graph is needed: a no is a refusal the
+    /// gate would give.</summary>
+    public bool Permits(Type messageType, string field, Guid value, Session session)
+    {
+        ArgumentNullException.ThrowIfNull(messageType);
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (session.IsSystem)
+        {
+            return true;
+        }
+
+        var key = KeyFor(messageType);
+        var today = BusinessDate.Today;
+
+        foreach (var handler in Handlers())
+        {
+            if (handler.AppliesTo(key, session, today) && handler.Permits(field, value, session))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>The policies that could ever apply to this session — audience and validity
     /// matched, message key untouched. It is what the client is given: filtering by audience
     /// here is what lets the client's check collapse to a key lookup, so no evaluator logic

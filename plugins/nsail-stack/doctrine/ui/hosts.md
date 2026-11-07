@@ -528,7 +528,8 @@ with no `SecurityManager`/`Session`**, so an `Eligible` on a subject-dashboard i
 by the permissive default (`security is null || session is null || …`, every existing `Eligible`
 lambda's own guard) and never actually narrows anything there — today no subject-dashboard
 contributor declares one; a card that means to needs its own field check inside the card, the way
-a card without `Eligible` at all already has to.
+a card without `Eligible` at all already has to: `NsPartial.CanSend<T>(field, subjectId)`, which
+answers no when no grant can admit that subject (permissions.md, The client consumes policies).
 
 **A card reads through `NsPartial.Handoff`, never `Send`** — the prerender resolves the read and
 persists the answer, the WebAssembly client adopts it, and the page load costs one query per card
