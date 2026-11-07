@@ -13,11 +13,45 @@ public class WrittenBlockersTests
     [InlineData("depends on #9 — then the screen", new[] { 9 })]
     [InlineData("**Waits:** #3198, #3201", new[] { 3198, 3201 })]
     [InlineData("Waits: nothing", new int[0])]
+    [InlineData("**Waits** — nothing. #3263 (how long reports are kept) touches the same reports but not this read", new int[0])]
+    [InlineData("Waits: none", new int[0])]
+    [InlineData("Waits — nada", new int[0])]
+    [InlineData("**Waits:** None.", new int[0])]
+    [InlineData("Waits — ninguna", new int[0])]
+    [InlineData("WAITS: Ninguno, though it depends on #7 and is blocked by #8", new int[0])]
+    [InlineData("**Waits** — nothing. #3263 is near.\nThis is blocked by #12.", new[] { 12 })]
+    [InlineData("Waits — #12 (its seam)", new[] { 12 })]
+    [InlineData("Waits on #12 and #14", new[] { 12, 14 })]
+    [InlineData("Waits — #12, though nothing else", new[] { 12 })]
     [InlineData("See #12 for context; it is not blocked.", new int[0])]
     [InlineData("blocked by other#12 and acme/app#13", new int[0])]
     public void TheBlockersAStoryNamesInWordsAreRead(string text, int[] named)
     {
         Assert.Equal(named, WrittenBlockers.Named(text, "app"));
+    }
+
+    // The refinery comment's own form, as the analysis wrote it on stories it then held.
+    [Theory]
+    [InlineData("**Waits** — nothing. #3263 (retention) is independent: this story deletes nothing.")]
+    [InlineData("**Waits** — nothing. The Harness routes a story that wears `area:stack` beside another area to nsail-stack until its PR merges there, and only then to this repository (`.github/gru-prompt.md`). This repository's half moves `NSailStackVersion` first. Retention is #3263's, not this story's.")]
+    [InlineData("**Waits** — nothing. #3263 (how long reports are kept) touches the same reports but not this read.")]
+    public void AWaitsLineThatAnswersNothingInTheAnalystsFormNamesNoBlocker(string line)
+    {
+        var comment = $"**Claim** — the read.\n\n{line}\n\n**Dev notes**\n- the seam.";
+
+        Assert.Empty(WrittenBlockers.Named(comment, "nsail"));
+    }
+
+    [Fact]
+    public async Task AWaitsLineThatAnswersNothingLinksNoStoryAndHoldsNothing()
+    {
+        var board = new MemoryBoard();
+        board.Add(1, body: "**Waits** — nothing. #2 touches the same reports, and depends on #2 for nothing here.");
+        board.Add(2, stage: "Ready");
+
+        Assert.Empty(await WrittenBlockers.Link(board, 1, board.Cards[1].Body, "app"));
+        Assert.Empty(board.Cards[1].Blockers);
+        Assert.DoesNotContain("blocked", board.Cards[1].Labels);
     }
 
     [Fact]
