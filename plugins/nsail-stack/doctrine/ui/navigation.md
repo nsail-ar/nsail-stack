@@ -41,7 +41,9 @@ just places `<NsNavMenu />`.
   The guide is today's one such screen ([guide.md](guide.md)).
 - **The brand follows the drawer's state.** `NsNavMenu.Brand` is the install's name and whatever
   rides under it; shut behind the hamburger, the screen's title row (`NsTitleBar`) draws it
-  beside the toggle through `NsLayoutState.Brand`, so it reads without opening the menu. Opened by
+  beside the toggle through `NsLayoutState.Brand`, so it reads without opening the menu where the
+  row has room — the row's copy gives way to the title, elided and down to nothing
+  ([intentional-ui.md](../intentional-ui.md), "The page name never gives way"). Opened by
   the person, only the drawer draws it — the row's copy swaps its display class for `d-none`
   (never both: the vendor's two utilities tie and declaration order picks) and is never
   unmounted, so the brand's own load does not re-run on every toggle. The cue is
