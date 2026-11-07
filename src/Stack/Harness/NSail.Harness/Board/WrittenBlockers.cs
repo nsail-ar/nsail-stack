@@ -8,8 +8,9 @@ namespace NSail.Harness.Board;
 
 // The blockers a story names in words: only a link the board keeps holds a story, so one written in
 // prose — `blocked by #12`, `waits on #12`, `waits for #12`, `depends on #12`, or a `Waits:` line —
-// would let it be built before what it needs has landed. A reference to another repository
-// (`other#12`) is not this board's to link.
+// would let it be built before what it needs has landed. A `Waits` line that answers nothing
+// (`nothing`, `none`, `nada`, `ninguna`, `ninguno`) names no blocker, whatever else it mentions. A
+// reference to another repository (`other#12`) is not this board's to link.
 public static partial class WrittenBlockers
 {
     // The rest of the clause after the phrase holds its references.
@@ -19,14 +20,22 @@ public static partial class WrittenBlockers
     [GeneratedRegex(@"^\W*waits\b(?<refs>.*)$", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex WaitsLine();
 
+    [GeneratedRegex(@"^\W*waits\W*(?:nothing|none|nada|ninguna|ninguno)\b.*$", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex NothingLine();
+
     [GeneratedRegex(@"(?<![\w/#])(?<key>[\w.-]*)#(?<n>\d+)\b", RegexOptions.CultureInvariant)]
     private static partial Regex Reference();
 
     // The stories the text names as blockers, once each, in order: those with no key or this board's.
     public static IReadOnlyList<int> Named(string text, string key)
     {
-        var refs = Phrase().Matches(text).Select(m => m.Groups["refs"].Value)
-            .Concat(WaitsLine().Matches(text).Select(m => m.Groups["refs"].Value));
+        var nothing = NothingLine().Matches(text).ToList();
+        bool OffANothingLine(Match m)
+        {
+            return !nothing.Any(n => m.Index >= n.Index && m.Index < n.Index + n.Length);
+        }
+        var refs = Phrase().Matches(text).Where(OffANothingLine).Select(m => m.Groups["refs"].Value)
+            .Concat(WaitsLine().Matches(text).Where(OffANothingLine).Select(m => m.Groups["refs"].Value));
         return refs.SelectMany(r => Reference().Matches(r))
             .Where(m => m.Groups["key"].Value.Length == 0 || string.Equals(m.Groups["key"].Value, key, StringComparison.OrdinalIgnoreCase))
             .Select(m => int.Parse(m.Groups["n"].Value, CultureInfo.InvariantCulture))
