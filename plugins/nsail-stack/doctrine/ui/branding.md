@@ -268,11 +268,14 @@ unset ones. `NsSetup` mounts it above the app; a document rendered with no app a
 (`NsProblemDocument`) mounts it alone.
 
 **`NsTheme.Dark` resolves the same way `GetBrand` does — a live fact, never a guess held past
-its welcome.** An explicit Claro/Oscuro always wins; unset, it follows the OS scheme, asked once
-after the first interactive render (`MudThemeProvider.GetSystemDarkModeAsync`) and kept live
-(`WatchSystemDarkModeAsync`), and `Brand.DefaultDark` is the hold only until a client has an
-answer to give — a prerender, or a document with no circuit at all, the same case `GetBrand`'s
-own null is for.
+its welcome.** An explicit Claro/Oscuro always wins; unset, it follows the device's scheme from
+the first paint. Until a client answers — a prerender, a document with no circuit at all, a WASM
+boot's first render — the stylesheet reads the device itself: the light scheme under `:root`, the
+dark one under `@media (prefers-color-scheme: dark)`, the vendor's declarations beside the NSail
+ones. After that the OS is asked once (`MudThemeProvider.GetSystemDarkModeAsync`) and kept live
+(`WatchSystemDarkModeAsync`), and the answer is the media query's own reading, so nothing on
+screen moves. **`Brand.DefaultDark` never decides the scheme of a screen:** a guess about a reader
+the device already answers for is the flash.
 
 **Every saver announces in place; nothing reloads to repaint.** `BrandChanged` is the event —
 published after a successful `CreateBranding`/`UpdateBranding` — and `NsSetup` (theme),

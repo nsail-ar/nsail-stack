@@ -24,14 +24,15 @@
     MudThemeProvider? _provider;
     Brand? _painted;
     MudTheme _theme = BrandMudTheme.From(Fallback);
-    bool _dark = Fallback.DefaultDark;
-    string _variables = Variables(Fallback, Fallback.DefaultDark);
+    string _deviceDark = string.Empty;
+    bool _dark;
+    string _variables = string.Empty;
 
     // What the OS last reported, read once on the client (GetSystemDarkModeAsync) and kept
     // current by the vendor's own change watcher (WatchSystemDarkModeAsync, Observe
     // SystemDarkModeChange defaulting to true). Null until a client answers — a prerender, or a
-    // request with no circuit at all, never asks — which is the one case brand.DefaultDark is
-    // still for.
+    // request with no circuit at all, never asks — and an unset preference is then painted by
+    // the stylesheet's own reading of the device (DeviceDark).
     bool? _systemDark;
 
     // The light-only tint's weight toward Info (--ns-alert-info-bg below); internal so the
@@ -44,8 +45,8 @@
     [Parameter]
     public Brand? Brand { get; set; }
 
-    /// <summary>The reader's own dark-mode preference; null follows the OS scheme (live), falling
-    /// back to the brand's own default until a client has one to report.</summary>
+    /// <summary>The reader's own dark-mode preference; null follows the device's scheme, from the
+    /// first paint and live.</summary>
     [Parameter]
     public bool? Dark { get; set; }
 
@@ -59,20 +60,20 @@
         {
             _painted = brand;
             _theme = BrandMudTheme.From(brand);
+            _deviceDark = DeviceDark(brand, _theme);
         }
 
-        Recompute(brand);
+        (_dark, _variables) = Resolve(brand);
     }
 
     // The OS query is a client fact (window.matchMedia), so it is asked exactly once, after the
-    // first interactive render — never during a prerender, which has no window to ask and keeps
-    // the brand's own default. The live watcher rides the vendor's default
+    // first interactive render — never during a prerender, which has no window to ask and
+    // leaves the device's scheme to the stylesheet. The live watcher rides the vendor's default
     // ObserveSystemDarkModeChange rather than a second one of our own: WatchSystemDarkModeAsync
     // only subscribes to what that watcher already reports. Unconditional on Dark's own value:
-    // OnSystemDarkModeChanged's own guard (Dark ?? _systemDark ?? brand.DefaultDark) is what
-    // keeps a saved Claro/Oscuro from ever repainting over this, so a later switch to
-    // Automático (Dark turning null on an already-mounted NsTheme) still has a current
-    // reading to fall back on instead of the brand's guess.
+    // Resolve's own order (Dark before _systemDark) is what keeps a saved Claro/Oscuro from ever
+    // repainting over this, so a later switch to Automático (Dark turning null on an
+    // already-mounted NsTheme) still has a current reading to paint.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender || _provider is null)
@@ -85,31 +86,54 @@
         await OnSystemDarkModeChanged(await _provider.GetSystemDarkModeAsync());
     }
 
-    // One arrival, one loading: a reading that agrees with what is already painted costs no
-    // second render, which is what keeps an explicit Claro/Oscuro — or an OS that happens to
-    // agree with the brand's own guess — at the single render NsSetupBrandTests pins for the
-    // brand-handoff case. Only a reading that actually changes what the screen shows earns one.
+    // A reading that leaves the markup as it is costs no render, which keeps an explicit
+    // Claro/Oscuro at the one it had. The first answer under an unset preference always costs
+    // NsTheme one, and the eye sees none of it: the scheme it settles on is the one the
+    // stylesheet's media query already lit.
     async Task OnSystemDarkModeChanged(bool isDark)
     {
         _systemDark = isDark;
 
-        var brand = _painted ?? Fallback;
-        var next = Dark ?? _systemDark ?? brand.DefaultDark;
+        var (dark, variables) = Resolve(_painted ?? Fallback);
 
-        if (next == _dark)
+        if (dark == _dark && variables == _variables)
         {
             return;
         }
 
-        _dark = next;
-        _variables = Variables(brand, _dark);
+        _dark = dark;
+        _variables = variables;
         await InvokeAsync(StateHasChanged);
     }
 
-    void Recompute(Brand brand)
+    // The brand never picks the scheme. Until the device has answered (a prerender, a document
+    // with no circuit, a WASM boot's first render) an unset preference paints light under a
+    // prefers-color-scheme block that relights it dark: the same media feature matchMedia reads,
+    // so the first paint already wears the scheme the answer will confirm.
+    (bool Dark, string Variables) Resolve(Brand brand)
     {
-        _dark = Dark ?? _systemDark ?? brand.DefaultDark;
-        _variables = Variables(brand, _dark);
+        var dark = Dark ?? _systemDark;
+
+        if (dark is null)
+        {
+            return (false, Root(brand, dark: false) + _deviceDark + FontFace(brand.Typeface));
+        }
+
+        return (dark.Value, Root(brand, dark.Value) + FontFace(brand.Typeface));
+    }
+
+    // The vendor's own declarations for the dark scheme, kept to the ones light's disagree with,
+    // beside the NSail ones: what the provider would have emitted with IsDarkMode on.
+    static string DeviceDark(Brand brand, MudTheme theme)
+    {
+        var dark = VendorPalette.Declarations(theme, dark: true);
+        var light = VendorPalette.Declarations(theme, dark: false).ToHashSet(StringComparer.Ordinal);
+        var differing = string.Concat(dark.Where(declaration => !light.Contains(declaration)));
+
+        return "@media (prefers-color-scheme: dark){"
+            + Root(brand, dark: true)
+            + $":root{{{differing}}}"
+            + "}";
     }
 
     // The vendor emits the palette of the scheme that is lit and nothing else, so the NSail
@@ -128,7 +152,7 @@
     // reads the other two as a light-only tint — dark's pair restates the vendor's own flat
     // fill so nothing there moves (nsail#2744). color-scheme is the same fact for the browser:
     // its native controls, and any scrollbar the house's bar does not reach, paint from it.
-    static string Variables(Brand brand, bool dark)
+    static string Root(Brand brand, bool dark)
     {
         var scheme = dark ? brand.Dark : brand.Light;
 
@@ -137,7 +161,7 @@
         var alertInfoBorder = dark ? "transparent" : scheme.Info;
         var alertInfoInk = dark ? scheme.TextOnInfo : scheme.TextPrimary;
 
-        var variables = $":root{{"
+        return $":root{{"
             + $"color-scheme:{(dark ? "dark" : "light")};"
             + $"--ns-accent-ink:{scheme.AccentInk};"
             + $"--ns-accent-on-chrome:{scheme.AccentOnChrome};"
@@ -146,8 +170,6 @@
             + $"--ns-alert-info-border:{alertInfoBorder};"
             + $"--ns-alert-info-ink:{alertInfoInk};"
             + "}";
-
-        return variables + FontFace(brand.Typeface);
     }
 
     // The one place a Brand's typeface becomes loadable: BrandMudTheme already put its name on
