@@ -258,8 +258,7 @@ public abstract class PolicyHandler
     }
 
     /// <summary>A relationship joins two parties, so a relatedAs grant never reaches the caller's
-    /// own: an edge of a party to itself — a psychologist who is also her own patient — would
-    /// otherwise hand her, as herself, what the grant meant for the people she serves.</summary>
+    /// own, whatever edge the graph holds.</summary>
     static bool ReachesOther(Session session, Guid id)
     {
         return session.PartyId is { } party && party != id;

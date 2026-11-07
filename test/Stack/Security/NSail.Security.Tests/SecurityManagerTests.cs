@@ -707,13 +707,7 @@ public sealed class SecurityManagerTests
 
     static Policy Pinning(PolicyConstraint constraint)
     {
-        return new Policy
-        {
-            Name = "the exception is a grant",
-            Messages = [Key],
-            Audience = new() { HasRole = "medico" },
-            Fields = new Dictionary<string, PolicyConstraint> { ["Exceptional"] = constraint },
-        };
+        return Pinning("Exceptional", constraint);
     }
 
     // Universal quantification: the constraint holds for every element or the message is
@@ -911,9 +905,6 @@ public sealed class SecurityManagerTests
         Assert.False((await manager.Authorize(new TestMessage { PartyId = Other }, Doctor())).Allowed);
     }
 
-    // A relation joins two parties: the psychologist who is also a patient is not her own
-    // patient, whatever edge the graph holds, so the grant meant for the people she serves
-    // never hands her her own record.
     [Fact]
     public async Task RelatedAs_never_reaches_the_callers_own_party_even_when_the_graph_says_related()
     {
@@ -921,8 +912,18 @@ public sealed class SecurityManagerTests
         var manager = Manager(relations, RelatedOnly());
 
         Assert.False((await manager.Authorize(new TestMessage { PartyId = Me }, Doctor())).Allowed);
-        Assert.False((await manager.Authorize(new TestMessage { AttendeePartyIds = [Other, Me] }, Doctor())).Allowed);
         Assert.True((await manager.Authorize(new TestMessage { PartyId = Other }, Doctor())).Allowed);
+    }
+
+    [Fact]
+    public async Task RelatedAs_on_a_collection_never_reaches_the_callers_own_party_even_when_the_graph_says_related()
+    {
+        var relations = new FakeRelations { Related = true };
+        var manager = Manager(relations, Pinning("AttendeePartyIds", PolicyConstraint.RelatedAs("medico")));
+
+        Assert.False((await manager.Authorize(new TestMessage { AttendeePartyIds = [Other, Me] }, Doctor())).Allowed);
+        Assert.False((await manager.Authorize(new TestMessage { AttendeePartyIds = [Me] }, Doctor())).Allowed);
+        Assert.True((await manager.Authorize(new TestMessage { AttendeePartyIds = [Other] }, Doctor())).Allowed);
     }
 
     [Fact]
@@ -1311,7 +1312,7 @@ public sealed class SecurityManagerTests
     {
         var literal = Manager(null, Pinning("PartyId", PolicyConstraint.Literal(Other)));
         var current = Manager(null, Pinning("OrganizationId", PolicyConstraint.Current));
-        var seated = new Session { IsAuthenticated = true, PartyId = Me, OrganizationId = Hospital, Roles = ["medico"] };
+        var seated = MemberOf(Hospital);
 
         Assert.True(literal.Permits(typeof(TestMessage), "PartyId", Other, Doctor()));
         Assert.False(literal.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));

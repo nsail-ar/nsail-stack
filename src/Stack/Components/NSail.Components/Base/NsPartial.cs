@@ -83,9 +83,7 @@ public abstract class NsPartial : NsComponent
 
     /// <summary>Whether the session could send this message naming this id in this party or
     /// organization field — the id twin of the flag check above. A card about one subject asks
-    /// it with the subject's id, so a grant that can never reach that subject (@me for someone
-    /// else, a relation for the caller herself) leaves the card undrawn rather than drawn and
-    /// refused; the server's gate stays the one that decides.</summary>
+    /// it with the subject's id; the server's gate stays the one that decides.</summary>
     protected bool CanSend<TMessage>(string field, Guid value)
     {
         var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;

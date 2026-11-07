@@ -434,12 +434,9 @@ public class SecurityManager
     }
 
     /// <summary>Whether some policy that could allow this send admits this id in this field —
-    /// the party and organization axes' client-derived field state (permissions.md). @me,
-    /// @current and literals are decided exactly, and so is the one thing a relatedAs knows
-    /// without the graph: it never reaches the caller's own party. So a card about the caller
-    /// whose only grant is a relation to others is not drawn instead of being drawn and
-    /// refused. Optimistic past that, like every other client-side check: it answers no only
-    /// when nothing could ever admit the id, and the gate still decides.</summary>
+    /// the party and organization axes' client-derived field state (permissions.md, The client
+    /// consumes policies). Optimistic only where the graph is needed: a no is a refusal the
+    /// gate would give.</summary>
     public bool Permits(Type messageType, string field, Guid value, Session session)
     {
         ArgumentNullException.ThrowIfNull(messageType);
