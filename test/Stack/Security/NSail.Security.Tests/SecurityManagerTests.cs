@@ -911,6 +911,20 @@ public sealed class SecurityManagerTests
         Assert.False((await manager.Authorize(new TestMessage { PartyId = Other }, Doctor())).Allowed);
     }
 
+    // A relation joins two parties: the psychologist who is also a patient is not her own
+    // patient, whatever edge the graph holds, so the grant meant for the people she serves
+    // never hands her her own record.
+    [Fact]
+    public async Task RelatedAs_never_reaches_the_callers_own_party_even_when_the_graph_says_related()
+    {
+        var relations = new FakeRelations { Related = true };
+        var manager = Manager(relations, RelatedOnly());
+
+        Assert.False((await manager.Authorize(new TestMessage { PartyId = Me }, Doctor())).Allowed);
+        Assert.False((await manager.Authorize(new TestMessage { AttendeePartyIds = [Other, Me] }, Doctor())).Allowed);
+        Assert.True((await manager.Authorize(new TestMessage { PartyId = Other }, Doctor())).Allowed);
+    }
+
     [Fact]
     public async Task Policies_OR_and_do_not_merge_fields()
     {
@@ -1243,6 +1257,89 @@ public sealed class SecurityManagerTests
         });
 
         Assert.False(manager.RequiresMe(typeof(TestMessage), "PartyId", Session.System()));
+    }
+
+    // The client's half of the self rule: a card about the caller whose only grant is a
+    // relation to others is not drawn, and the gate would refuse the same send.
+    [Fact]
+    public async Task Permits_answers_no_for_the_callers_own_party_under_a_relatedAs_only_policy()
+    {
+        var manager = Manager(new FakeRelations { Related = true }, RelatedOnly());
+
+        Assert.False(manager.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.False((await manager.Authorize(new TestMessage { PartyId = Me }, Doctor())).Allowed);
+    }
+
+    // The graph is not the client's, so a relation to someone else stays optimistic.
+    [Fact]
+    public void Permits_answers_yes_for_another_party_under_a_relatedAs_only_policy()
+    {
+        Assert.True(Manager(null, RelatedOnly()).Permits(typeof(TestMessage), "PartyId", Other, Doctor()));
+    }
+
+    [Fact]
+    public void Permits_answers_yes_for_the_callers_own_party_under_me_and_no_for_another()
+    {
+        var manager = Manager(null, Pinning("PartyId", PolicyConstraint.Me));
+
+        Assert.True(manager.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.False(manager.Permits(typeof(TestMessage), "PartyId", Other, Doctor()));
+    }
+
+    [Fact]
+    public void Permits_answers_yes_for_anyone_under_a_free_field()
+    {
+        var flat = Manager(null, new Policy { Name = "staff", Messages = [Key], Audience = new() { HasRole = "medico" } });
+        var star = Manager(null, Pinning("PartyId", PolicyConstraint.Any));
+
+        Assert.True(flat.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.True(flat.Permits(typeof(TestMessage), "PartyId", Other, Doctor()));
+        Assert.True(star.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+    }
+
+    // Policies OR: the patient's own @me row gives back what the relation cannot reach.
+    [Fact]
+    public void Permits_answers_yes_for_the_callers_own_party_when_a_second_policy_pins_it_to_me()
+    {
+        var manager = Manager(null, RelatedOnly(), Pinning("PartyId", PolicyConstraint.Me));
+
+        Assert.True(manager.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+    }
+
+    [Fact]
+    public void Permits_answers_literals_and_the_current_organization_exactly()
+    {
+        var literal = Manager(null, Pinning("PartyId", PolicyConstraint.Literal(Other)));
+        var current = Manager(null, Pinning("OrganizationId", PolicyConstraint.Current));
+        var seated = new Session { IsAuthenticated = true, PartyId = Me, OrganizationId = Hospital, Roles = ["medico"] };
+
+        Assert.True(literal.Permits(typeof(TestMessage), "PartyId", Other, Doctor()));
+        Assert.False(literal.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.True(current.Permits(typeof(TestMessage), "OrganizationId", Hospital, seated));
+        Assert.False(current.Permits(typeof(TestMessage), "OrganizationId", Elsewhere, seated));
+    }
+
+    [Fact]
+    public void Permits_answers_no_when_no_policy_covers_the_message_and_yes_for_the_system()
+    {
+        Assert.False(Manager().Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.True(Manager().Permits(typeof(TestMessage), "PartyId", Me, Session.System()));
+    }
+
+    static Policy RelatedOnly()
+    {
+        return Pinning("PartyId", PolicyConstraint.RelatedAs("medico"));
+    }
+
+    static Policy Pinning(string field, PolicyConstraint constraint)
+    {
+        return new Policy
+        {
+            Name = $"{field} pinned to {constraint.Kind}",
+            Messages = [Key],
+            Audience = new() { HasRole = "medico" },
+            Fields = new Dictionary<string, PolicyConstraint> { [field] = constraint },
+        };
     }
 
     [Fact]

@@ -433,6 +433,38 @@ public class SecurityManager
         return false;
     }
 
+    /// <summary>Whether some policy that could allow this send admits this id in this field —
+    /// the party and organization axes' client-derived field state (permissions.md). @me,
+    /// @current and literals are decided exactly, and so is the one thing a relatedAs knows
+    /// without the graph: it never reaches the caller's own party. So a card about the caller
+    /// whose only grant is a relation to others is not drawn instead of being drawn and
+    /// refused. Optimistic past that, like every other client-side check: it answers no only
+    /// when nothing could ever admit the id, and the gate still decides.</summary>
+    public bool Permits(Type messageType, string field, Guid value, Session session)
+    {
+        ArgumentNullException.ThrowIfNull(messageType);
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (session.IsSystem)
+        {
+            return true;
+        }
+
+        var key = KeyFor(messageType);
+        var today = BusinessDate.Today;
+
+        foreach (var handler in Handlers())
+        {
+            if (handler.AppliesTo(key, session, today) && handler.Permits(field, value, session))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>The policies that could ever apply to this session — audience and validity
     /// matched, message key untouched. It is what the client is given: filtering by audience
     /// here is what lets the client's check collapse to a key lookup, so no evaluator logic

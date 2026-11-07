@@ -81,6 +81,21 @@ public abstract class NsPartial : NsComponent
             || security.Permits(typeof(TMessage), field, value, sessions.Session);
     }
 
+    /// <summary>Whether the session could send this message naming this id in this party or
+    /// organization field — the id twin of the flag check above. A card about one subject asks
+    /// it with the subject's id, so a grant that can never reach that subject (@me for someone
+    /// else, a relation for the caller herself) leaves the card undrawn rather than drawn and
+    /// refused; the server's gate stays the one that decides.</summary>
+    protected bool CanSend<TMessage>(string field, Guid value)
+    {
+        var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
+        var sessions = Services.GetService(typeof(SessionProvider)) as SessionProvider;
+
+        return security is null
+            || sessions is null
+            || security.Permits(typeof(TMessage), field, value, sessions.Session);
+    }
+
     /// <summary>Resolves a string trying "{Area}.{ComponentName}.{key}" first, then the key
     /// as-is, then the fallback (or the key itself).</summary>
     protected string Translate(string key, string? fallback = null)

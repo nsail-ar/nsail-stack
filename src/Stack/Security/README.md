@@ -82,7 +82,7 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 |---|---|
 | `Audience` | Who: `Is` (a party), `HasRole`, `MemberOf` (organization or `@current`, optional role, `Cascade`), `Authenticated`. All given conditions AND; none means anonymous |
 | `Messages` | Message keys or patterns (`Area.Feature.*`, `*`); one policy covers a use case's family |
-| `Fields` | `PolicyConstraint` per wire field name: `Any`, `Literal`, `Me`, `Current`, `RelatedAs(role)`, `MemberOf`, `MemberOfOrDescendant` |
+| `Fields` | `PolicyConstraint` per wire field name: `Any`, `Literal`, `Me`, `Current`, `RelatedAs(role)` (never the caller's own party), `MemberOf`, `MemberOfOrDescendant` |
 | validity | `PolicyBuilder.Between(from, to)` for temporary grants |
 | `EveryOrganization` | Reads the grant allows are not narrowed to the caller's branch (`AcrossEveryOrganization()`) |
 

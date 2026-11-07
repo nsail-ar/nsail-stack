@@ -215,8 +215,8 @@ public abstract class PolicyHandler
 
             PolicyConstraintKind.RelatedAs =>
                 kind == RestrictAs.Party
-                    && session.PartyId is { } party
-                    && await relations.IsRelated(party, id, constraint.Role!, cancellationToken).ConfigureAwait(false),
+                    && ReachesOther(session, id)
+                    && await relations.IsRelated(session.PartyId!.Value, id, constraint.Role!, cancellationToken).ConfigureAwait(false),
 
             PolicyConstraintKind.MemberOf =>
                 kind == RestrictAs.Organization
@@ -230,6 +230,39 @@ public abstract class PolicyHandler
 
             _ => false
         };
+    }
+
+    /// <summary>The share of Satisfies the Session decides alone, for one id in one field: the
+    /// client's question before it sends (SecurityManager.Permits). Optimistic only where the
+    /// answer needs the graph — a relation to someone else, a membership — and exact
+    /// everywhere else, so a no here is a refusal the gate would give.</summary>
+    public bool Permits(string field, Guid id, Session session)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (ConstraintOn(field) is not { } constraint)
+        {
+            return true;
+        }
+
+        return constraint.Kind switch
+        {
+            PolicyConstraintKind.Literal => constraint.Values.Contains(id),
+            PolicyConstraintKind.Me => session.PartyId == id,
+            PolicyConstraintKind.Current => session.OrganizationId == id,
+            PolicyConstraintKind.RelatedAs => ReachesOther(session, id),
+            PolicyConstraintKind.MemberOf or PolicyConstraintKind.MemberOfOrDescendant => true,
+            _ => false
+        };
+    }
+
+    /// <summary>A relationship joins two parties, so a relatedAs grant never reaches the caller's
+    /// own: an edge of a party to itself — a psychologist who is also her own patient — would
+    /// otherwise hand her, as herself, what the grant meant for the people she serves.</summary>
+    static bool ReachesOther(Session session, Guid id)
+    {
+        return session.PartyId is { } party && party != id;
     }
 
     /// <summary>"*", "Area.Feature.*" prefixes, or the exact key. Used at load to expand a
