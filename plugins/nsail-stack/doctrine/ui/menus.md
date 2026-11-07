@@ -118,8 +118,19 @@ opens a list of withheld rows is a button that does nothing.
   answered anywhere. The span (`ns-menu-keys`, `display: contents`, so it is not a box) is the
   first ancestor on the bubble the house owns. Tab belongs there beside Escape because leaving
   the trigger IS a dismissal: the next field takes the cursor, and a list still standing over it
-  answers for nothing. **Nothing is stopped** — the same Escape still reaches the surface
-  behind, exactly as it does today past an open lookup list ([surfaces.md](surfaces.md)).
+  answers for nothing.
+- **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
+  surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
+  make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint` and
+  `NsExpander` stop the key's propagation on their own wrapper **only while open**
+  (`@onkeydown:stopPropagation` bound to their state); closed, they let it through. That stop cuts
+  every key bubbling to a Blazor ancestor, not only Escape, which is harmless because the house's
+  other keys (the dropdown's Enter and arrows) are ns.js's native listeners. Inside a hosted
+  dialog the dialog's Escape is the vendor's native listener, which no Blazor stop reaches, so the
+  four report their open state up and `NsOpenDialog` withdraws `CloseOnEscapeKey` while any is
+  open ([actions.md](actions.md)). **A menu the pointer opened is the one exception**: the vendor
+  publishes no open state to bind the stop to and a flag of the house's own would drift from it,
+  so its Escape closes the list and still reaches the surface behind.
 - **An outside click is already the vendor's**, through the overlay it draws for an open menu;
   the house adds nothing there.
 - **`Disabled` is the menu offered and not yet answerable**, for a list with nothing to say YET
@@ -205,5 +216,6 @@ from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is
   itself; `NsHelp` and `NsHint` build the same pair and do the same.
 - **Closing is the dropdown's.** A click outside lands on an overlay one tier under the popover
   (as `NsHelp`'s), and Escape from the wrapper or from inside the panel does the same: both set
-  `Open` false and tell the host through `OpenChanged`. The overlay covers the field while the
+  `Open` false and tell the host through `OpenChanged`, and neither reaches the surface around the
+  field while the list was open. The overlay covers the field while the
   panel shows, so a click on the field closes it.

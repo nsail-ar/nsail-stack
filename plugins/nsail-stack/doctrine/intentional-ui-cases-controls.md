@@ -50,7 +50,8 @@ a footer Cancelar that went grey, and a press mid-save closes a surface whose sa
 running. The X's word travels up through the surface and back down into the title row
 (`SurfaceContext.FormRefuses` on its own `RefusalChanged`, `NsDialogExit`); Escape — the vendor's
 own handler, which never reaches `Surface.Close()` — is withdrawn for the length of the save by
-flipping `CloseOnEscapeKey` on the live dialog. **Escape answers the save, not the standing
+flipping `CloseOnEscapeKey` on the live dialog, and while something open inside answers Escape
+itself ([menus.md](ui/menus.md)). **Escape answers the save, not the standing
 refusal, on purpose**: the X greys for a merely `Disabled` form too, and a dialog has no backdrop
 click and no Back, so withdrawing Escape for a refusal with no end would leave no exit at all.
 Neither exit asks the unsaved-changes question: a dialog closes through its host, not a
