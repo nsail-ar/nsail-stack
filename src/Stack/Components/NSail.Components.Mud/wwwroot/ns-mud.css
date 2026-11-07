@@ -3850,8 +3850,11 @@ div.mud-input-slot.mud-input-root::placeholder {
    otherwise refuse to shrink the label below its own content (the ns-wizard-rail-title
    trick, restated because a flex ROW's shrink axis is what needs it here). The full value
    still reaches an assistive reader from the button's own aria-label (NsLink sets it from
-   the same Label on every chromed As, not only Icon). */
+   the same Label on every chromed As, not only Icon). The label is a value the person reads
+   and copies, not a verb, so it keeps its own case: the vendor's uppercase would print an
+   e-mail other than the one on file. */
 .ns-contact-channel .ns-button-label {
+    text-transform: none;
     display: inline-block;
     min-width: 0;
     max-width: 100%;
@@ -4608,7 +4611,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     transform: rotate(90deg);
 }
 
-/* The one place a button's face is a SENTENCE and not a verb: "Ya tengo una clave privada" is
+/* A button's face that is a SENTENCE and not a verb: "Ya tengo una clave privada" is
    something the person is telling the form, and the vendor's uppercase — right for Guardar, right
    for Facturar — shouts a line that is read rather than pressed. Sentence case is also what the
    guide chapter prints it as, and a label a manual quotes has to be quotable. */
