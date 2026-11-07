@@ -1020,9 +1020,9 @@
     // The tap itself. The click is where it is read, not the press, so a finger that starts a
     // scroll opens nothing. A keyboard's click says pointerType "" and is never a tap; any
     // other takes its own word or its press's, for an engine that reports a tap's click as a
-    // mouse's or reports no pointerType at all. Stopped here, in the capture
-    // phase at the document, the click reaches neither the chip's own anchor nor Blazor's
-    // router; a click on the bubble's link runs first and closes the bubble after it.
+    // mouse's or reports no pointerType at all. Stopped here, in the capture phase at the
+    // document, the click reaches neither the chip's own anchor nor Blazor's router; a click on
+    // the bubble's link runs first and closes the bubble after it.
     document.addEventListener("click", e => {
         if (inWhisper(e.target)) {
             setTimeout(closeWhisper);
@@ -1053,8 +1053,9 @@
         openWhisper(chip, true);
     }, true);
 
-    // Every other exit, and these are all of them: a press (what was pressed is opening, and the
-    // name of what pressed it is not what anyone is reading), a key, a scroll ANYWHERE -- the
+    // Every other exit, and with the press and the click above these are all of them: a press
+    // (what was pressed is opening, and the name of what pressed it is not what anyone is
+    // reading), a key, a scroll ANYWHERE -- the
     // bubble is placed against a rectangle that just moved, and a tooltip that follows a scroll
     // is a tooltip nobody asked for a second time -- and the window losing the pointer or
     // changing size.
