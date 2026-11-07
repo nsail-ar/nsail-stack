@@ -766,7 +766,7 @@ recognise a refusal by status number alone.
   product sells (`RequestBudgetMiddleware`, baseservices.md). It refuses behind a policy because
   it is a rate: the work it refuses is deferred rather than lost, and without it one tenant's
   flood is spent out of every other tenant's share of the install
-  ([data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-and-what-the-plan-includes)).
+  ([data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-what-the-plan-includes-and-what-it-is-born-with)).
   An anonymous send never counts against it, so a public door spends only its own ceiling.
 - **An in-process `Send` spends nothing.** The middleware reads the attribute of the message
   the *request* names, so a door that relays a message somebody else chose — the Assistant's

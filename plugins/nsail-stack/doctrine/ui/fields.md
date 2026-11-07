@@ -42,6 +42,16 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   `*` either, everything else a literal), presentation only — the bound value stays raw. The
   patterns are the consuming kit's knowledge (`PartyMasks`). **A date field wears none**, and
   that is a rule rather than an omission: see the typing contract below.
+- **`NsTextField` copies its value behind `Copy`** — one boolean, for a value shown once and
+  carried elsewhere by hand (a generated password, a token, a link). An end button writes the
+  bound value — raw, as a `Mask` leaves it — through `navigator.clipboard.writeText` and is
+  named `Components.NsTextField.Copy`; once pressed it turns into the check, named
+  `Components.NsTextField.Copied`, until the value changes. The answer sits where the press was,
+  never a toast. The box stays typeable and an empty box draws no button, like the password's
+  eye. A browser that refuses the clipboard (an http origin, a `Permissions-Policy`) leaves the
+  button unchecked and the page standing: the value shown once must not go with an exception,
+  and the box selects it on focus for a copy by hand. The button takes the end slot a `Suffix`
+  would print in, so a box with both and a value draws the button.
 - **`NsHelp` takes one parameter, `Key`** — a **global** localization key, because the
   component cannot see the page whose prefix would scope it.
 

@@ -54,6 +54,7 @@ product.
 | Control | What | Why it stays |
 |---|---|---|
 | `NsPasswordField` | the eye is outside the tab order | the vendor draws its adornment button with `tabindex="-1"` and offers no parameter for it; a test pins the vendor's `tabindex="-1"` and fails the day it changes; the `p1` story's number goes here |
+| `NsTextField` with `Copy` | the copy button is outside the tab order | the same vendor adornment as the eye; the box selects its whole value on focus, so Tab then Ctrl+C copies it; a test pins the vendor's `tabindex="-1"` |
 | `NsTable` | a clickable row is a bare `tr` with a click handler: Tab does not reach it, Enter does not open it | the row click is the vendor's; a test pins the row without a tab stop; the `p1` story's number goes here |
 
 ## Owed

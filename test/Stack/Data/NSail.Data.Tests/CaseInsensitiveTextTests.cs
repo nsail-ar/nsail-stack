@@ -36,13 +36,14 @@ public class CaseInsensitiveTextTests
         Assert.DoesNotContain("COLLATE", Column(nameof(TextNote.Bag)), StringComparison.Ordinal);
     }
 
-    /// <summary>The entitlements bag is the Stack's own instance of it, beside the plan's word
-    /// that goes through the same pass.</summary>
+    /// <summary>The entitlements bag and the birth request are the Stack's own instances of it,
+    /// beside the plan's word that goes through the same pass.</summary>
     [Fact]
-    public void TheInstallsRecordAboutATenantIsTextExceptItsBag()
+    public void TheInstallsRecordAboutATenantIsTextExceptItsBags()
     {
         Assert.Contains(Collations.CaseInsensitive, Column(nameof(TenantState.Plan)), StringComparison.Ordinal);
         Assert.DoesNotContain("COLLATE", Column(nameof(TenantState.Entitlements)), StringComparison.Ordinal);
+        Assert.DoesNotContain("COLLATE", Column(nameof(TenantState.Bootstrap)), StringComparison.Ordinal);
     }
 
     [Fact]

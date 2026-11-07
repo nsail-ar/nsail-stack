@@ -3,14 +3,23 @@
 
 using System.Text;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 using MudBlazor;
 
 namespace NSail.Components;
 
 public partial class NsTextField
 {
+    const string CopyKey = "Components.NsTextField.Copy";
+    const string CopiedKey = "Components.NsTextField.Copied";
+
     IMask? _mask;
     string? _built;
+    string? _copied;
+
+    [Inject]
+    IJSRuntime JS { get; init; } = default!;
 
     // Text is the mostrador family (Story: "los campos se seleccionan al recibir foco") — a
     // masked field (a CUIT, a DNI) opts in too: the raw characters are what select() grabs,
@@ -35,6 +44,15 @@ public partial class NsTextField
     [Parameter]
     public string? Suffix { get; set; }
 
+    /// <summary>Draws a button at the box's end that puts the value on the clipboard — for a value
+    /// shown once and carried elsewhere by hand (a generated password, a token, a link). The box
+    /// stays typeable. The button turns into a check once the value is copied and back when the
+    /// value changes, so the answer sits where the press was, never a toast. An empty box draws
+    /// none. It takes the slot a <see cref="Suffix"/> would print in, so a box with both and a
+    /// value draws the button.</summary>
+    [Parameter]
+    public bool Copy { get; set; }
+
     /// <summary>Floats the label always, whether or not there is text or focus. Off by default —
     /// the vendor already floats the label the moment either arrives, which is right for a plain
     /// field. A caller opts in only where the resting label itself is the problem —
@@ -49,6 +67,47 @@ public partial class NsTextField
     /// not a claim: the field answers the key through OnCommit whether or not it is drawn.</summary>
     [Parameter]
     public string? KeyHint { get; set; }
+
+    bool CanCopy => Copy && !string.IsNullOrEmpty(Value);
+
+    bool IsCopied => CanCopy && _copied == Value;
+
+    EventCallback<MouseEventArgs> CopyClick => CanCopy ? EventCallback.Factory.Create<MouseEventArgs>(this, CopyValue) : default;
+
+    string? GetCopyIcon()
+    {
+        if (!CanCopy)
+        {
+            return null;
+        }
+
+        return IsCopied ? NsIcons.Check.Markup : NsIcons.ContentCopy.Markup;
+    }
+
+    string? GetCopyLabel()
+    {
+        return CanCopy ? Strings.Translate(IsCopied ? CopiedKey : CopyKey) : null;
+    }
+
+    async Task CopyValue()
+    {
+        if (!CanCopy)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Value);
+            _copied = Value;
+        }
+        catch (Exception failure) when (failure is JSException or InvalidOperationException or ObjectDisposedException)
+        {
+            // A browser that refuses the clipboard (an http origin that is not localhost, a
+            // Permissions-Policy) must not take the page and the value shown once with it: the
+            // button stays unchecked and the box, which selects its value on focus, still copies.
+        }
+    }
 
     bool IsKeyed => KeyHint is { Length: > 0 } && string.IsNullOrEmpty(GetDisplay());
 
