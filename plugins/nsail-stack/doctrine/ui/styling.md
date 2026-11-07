@@ -314,8 +314,9 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   ceiling that bites takes the drawn mark down with it; it never clips one side alone.
   **An inlined mark is drawn to its artwork, never to its file's viewBox** (`nsapp.fitMark`,
   `ns.js`): a logo's viewBox often carries unpainted margin, and the box would draw it as space.
-  After the markup is in the DOM, the root's `viewBox` becomes the artwork's `getBBox()` padded
-  by half the widest stroke, as far as its miter or square cap reaches, so no painted pixel is cut; an SVG with no `viewBox` gets one. The fit is
+  After the markup is in the DOM, the root's `viewBox` becomes the ink's measured extent (the
+  union of the rendered children's client rects, strokes, caps and joins included), so no
+  painted pixel is cut and no margin is added; an SVG with no `viewBox` gets one. The fit is
   the brand mark's alone — a product's picture keeps its file's own box.
   `NsSplash` draws its own markup rather than `NsRemoteImage`, fits the same artwork in the same
   task that inlines it (one resize, not two), and sizes the opposite way — width,

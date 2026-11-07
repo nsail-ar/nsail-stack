@@ -54,10 +54,10 @@
 
     // Draws an inlined SVG mark to its artwork instead of its viewBox: a logo's file often
     // carries an unpainted margin (a square viewBox around a wide drawing) that the box then
-    // draws as space. getBBox() is the geometry alone and leaves strokes out, so the box
-    // is padded by half the widest stroke, in the root's units, reaching as far as a miter
-    // can (its limit) or a square cap (the diagonal) -- a fitted box never cuts a painted pixel. An SVG with no viewBox
-    // gets one here; one that cannot be measured keeps what it has.
+    // draws as space. The ink is measured, not estimated: the union of the rendered
+    // children's client rects, which carry strokes, caps and joins that getBBox() leaves
+    // out, taken back into the root's units. An SVG with no viewBox gets one here; one that
+    // cannot be measured keeps what it has.
     function fitMark(target) {
         var host = typeof target === "string" ? document.querySelector(target) : target;
         var svg = host instanceof SVGSVGElement ? host : host && host.querySelector(":scope > svg");
@@ -72,28 +72,31 @@
         if (!(box.width > 0 && box.height > 0))
             return;
         var rootScreen = svg.getScreenCTM();
-        var pad = 0;
+        var left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
         if (rootScreen) {
             var toRoot = rootScreen.inverse();
             svg.querySelectorAll("*").forEach(function (el) {
-                if (!(el instanceof SVGGeometryElement))
+                if (!(el instanceof SVGGraphicsElement) || el.closest("defs, clipPath, mask, marker, pattern, symbol"))
                     return;
-                var style = getComputedStyle(el);
-                var width = parseFloat(style.strokeWidth);
-                if (style.stroke === "none" || !(width > 0))
+                var r = el.getBoundingClientRect();
+                if (!(r.width > 0 || r.height > 0))
                     return;
-                var screen = el.getScreenCTM();
-                if (!screen)
-                    return;
-                var m = toRoot.multiply(screen);
-                var scale = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c));
-                var reach = style.strokeLinecap === "square" ? Math.SQRT2 : 1;
-                if (style.strokeLinejoin === "miter")
-                    reach = Math.max(reach, parseFloat(style.strokeMiterlimit) || 4);
-                pad = Math.max(pad, width / 2 * scale * reach);
+                [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom]].forEach(function (c) {
+                    var p = new DOMPoint(c[0], c[1]).matrixTransform(toRoot);
+                    left = Math.min(left, p.x);
+                    top = Math.min(top, p.y);
+                    right = Math.max(right, p.x);
+                    bottom = Math.max(bottom, p.y);
+                });
             });
         }
-        svg.setAttribute("viewBox", [box.x - pad, box.y - pad, box.width + 2 * pad, box.height + 2 * pad].join(" "));
+        if (!(right > left && bottom > top)) {
+            left = box.x;
+            top = box.y;
+            right = box.x + box.width;
+            bottom = box.y + box.height;
+        }
+        svg.setAttribute("viewBox", [left, top, right - left, bottom - top].join(" "));
     }
 
     // Where an anchor lands: the element carrying that id, brought into whatever box actually
