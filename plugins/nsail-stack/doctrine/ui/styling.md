@@ -244,7 +244,8 @@ marked *(cases)* has its story there.
   ([branding.md](branding.md)). The platform's bar is
   unreadable-bright on a dark surface, so the standard `scrollbar-color` / `scrollbar-width` come
   first and `::-webkit-scrollbar` is only the fallback, under `@supports not (scrollbar-color:
-  auto)`. `NsTheme` declares `color-scheme` on `:root` for the lit scheme so native controls,
+  auto)`. `NsTheme` turns the vendor's own scrollbar block off: its `html, body *` grey
+  out-matches what every scroller inherits from `:root`. `NsTheme` declares `color-scheme` on `:root` for the lit scheme so native controls,
   and any bar the house's does not reach, follow it.
 
 ---
