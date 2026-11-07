@@ -1,0 +1,64 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+@* One thing that answers Escape, inside the wrapper a routed surface and the companion region
+   take Escape from. Closes stands for the companion region; Surface, when given, for a routed
+   non-main surface whose own Close() is the way out. *@
+<MudPopoverProvider />
+
+<CascadingValue Value="Surface" IsFixed="true">
+    <NsCloseOnEscape Closes="Closes">
+        @switch (Inner)
+        {
+            case "dropdown":
+                <NsDropdown @bind-Open="DropdownOpen">
+                    <Anchor><input class="field" /></Anchor>
+                    <ChildContent><div class="row">one</div></ChildContent>
+                </NsDropdown>
+                break;
+            case "help":
+                <NsHelp Key="Common.Help" />
+                break;
+            case "hint":
+                <NsHint Icon="@NsIcons.Warning" Text="Solo quedan 2" />
+                break;
+            case "expander":
+                <NsExpander>
+                    <Summary><span class="strip">Total</span></Summary>
+                    <Detail><input class="working" /></Detail>
+                </NsExpander>
+                break;
+            case "menu":
+                <NsMenu Icon="@NsIcons.More" Label="Session">
+                    <NsMenuItem Action="@Item" Label="Alpha" Selected="false" />
+                </NsMenu>
+                break;
+            default:
+                <input class="plain" />
+                break;
+        }
+    </NsCloseOnEscape>
+</CascadingValue>
+
+@code {
+
+    /// <summary>dropdown, help, hint, expander, menu, or anything else for a bare field.</summary>
+    [Parameter]
+    public string Inner { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool DropdownOpen { get; set; }
+
+    [Parameter]
+    public EventCallback Closes { get; set; }
+
+    [Parameter]
+    public SurfaceContext? Surface { get; set; }
+
+    ActionItem Item => new() { Name = "Alpha", OnClick = () => Task.CompletedTask };
+}
