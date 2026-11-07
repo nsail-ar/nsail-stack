@@ -3,6 +3,7 @@
 
 using System.Text;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using MudBlazor;
 
@@ -46,8 +47,9 @@ public partial class NsTextField
     /// <summary>Draws a button at the box's end that puts the value on the clipboard — for a value
     /// shown once and carried elsewhere by hand (a generated password, a token, a link). The box
     /// stays typeable. The button turns into a check once the value is copied and back when the
-    /// value changes, so the answer sits where the press was, never a toast. It takes the slot a
-    /// <see cref="Suffix"/> would print in, so a box with both draws the button.</summary>
+    /// value changes, so the answer sits where the press was, never a toast. An empty box draws
+    /// none. It takes the slot a <see cref="Suffix"/> would print in, so a box with both and a
+    /// value draws the button.</summary>
     [Parameter]
     public bool Copy { get; set; }
 
@@ -66,11 +68,15 @@ public partial class NsTextField
     [Parameter]
     public string? KeyHint { get; set; }
 
-    bool IsCopied => Copy && _copied is not null && _copied == Value;
+    bool CanCopy => Copy && !string.IsNullOrEmpty(Value);
+
+    bool IsCopied => CanCopy && _copied == Value;
+
+    EventCallback<MouseEventArgs> CopyClick => CanCopy ? EventCallback.Factory.Create<MouseEventArgs>(this, CopyValue) : default;
 
     string? GetCopyIcon()
     {
-        if (!Copy)
+        if (!CanCopy)
         {
             return null;
         }
@@ -80,18 +86,27 @@ public partial class NsTextField
 
     string? GetCopyLabel()
     {
-        return Copy ? Strings.Translate(IsCopied ? CopiedKey : CopyKey) : null;
+        return CanCopy ? Strings.Translate(IsCopied ? CopiedKey : CopyKey) : null;
     }
 
     async Task CopyValue()
     {
-        if (!Copy || string.IsNullOrEmpty(Value))
+        if (!CanCopy)
         {
             return;
         }
 
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", Value);
-        _copied = Value;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Value);
+            _copied = Value;
+        }
+        catch (Exception failure) when (failure is JSException or InvalidOperationException or ObjectDisposedException)
+        {
+            // A browser that refuses the clipboard (an http origin that is not localhost, a
+            // Permissions-Policy) must not take the page and the value shown once with it: the
+            // button stays unchecked and the box, which selects its value on focus, still copies.
+        }
     }
 
     bool IsKeyed => KeyHint is { Length: > 0 } && string.IsNullOrEmpty(GetDisplay());

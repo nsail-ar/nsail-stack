@@ -74,13 +74,42 @@ public sealed class NsTextFieldCopyTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void AnEmptyBoxCopiesNothing()
+    public void AnEmptyBoxDrawsNoButton()
     {
         var cut = Render(null);
 
+        Assert.Empty(cut.FindAll(ButtonSelector));
+
+        cut.Render(ps => ps.Add(p => p.Value, "Kq7-mW2p"));
+
+        Assert.Single(cut.FindAll(ButtonSelector));
+    }
+
+    /// <summary>An http origin that is not localhost has no clipboard: the press must leave the
+    /// page and the value shown once standing, with the button still offering the copy.</summary>
+    [Fact]
+    public void AClipboardTheBrowserRefusesLeavesTheBoxAndTheButtonAsTheyWere()
+    {
+        JSInterop.SetupVoid("navigator.clipboard.writeText", _ => true)
+            .SetException(new Microsoft.JSInterop.JSException("Cannot read properties of undefined (reading 'writeText')"));
+        var cut = Render("Kq7-mW2p");
+
         cut.Find(ButtonSelector).Click();
 
-        Assert.DoesNotContain(JSInterop.Invocations, invocation => invocation.Identifier == "navigator.clipboard.writeText");
+        Assert.Equal("Copiar", cut.Find(ButtonSelector).GetAttribute("aria-label"));
+        Assert.Equal("Kq7-mW2p", cut.Find("input").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void ASuffixedBoxThatDoesNotAskKeepsItsSuffixAndNoButton()
+    {
+        var cut = Render<NsTextField>(ps => ps
+            .Add(p => p.Label, "Precio")
+            .Add(p => p.Suffix, "ARS")
+            .Add(p => p.Value, "120"));
+
+        Assert.Contains("ARS", cut.Find(".mud-input-adornment").TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(ButtonSelector));
     }
 
     [Fact]
