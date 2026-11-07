@@ -54,9 +54,9 @@
 
     // Draws an inlined SVG mark to its artwork instead of its viewBox: a logo's file often
     // carries an unpainted margin (a square viewBox around a wide drawing) that the box then
-    // draws as space. getBBox() is the fill's own geometry and leaves strokes out, so the box
-    // is padded by half the widest stroke, in the root's units, and square caps or mitered
-    // joins by the diagonal -- a fitted box never cuts a painted pixel. An SVG with no viewBox
+    // draws as space. getBBox() is the geometry alone and leaves strokes out, so the box
+    // is padded by half the widest stroke, in the root's units, reaching as far as a miter
+    // can (its limit) or a square cap (the diagonal) -- a fitted box never cuts a painted pixel. An SVG with no viewBox
     // gets one here; one that cannot be measured keeps what it has.
     function fitMark(target) {
         var host = typeof target === "string" ? document.querySelector(target) : target;
@@ -87,7 +87,9 @@
                     return;
                 var m = toRoot.multiply(screen);
                 var scale = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c));
-                var reach = style.strokeLinejoin === "miter" || style.strokeLinecap === "square" ? Math.SQRT2 : 1;
+                var reach = style.strokeLinecap === "square" ? Math.SQRT2 : 1;
+                if (style.strokeLinejoin === "miter")
+                    reach = Math.max(reach, parseFloat(style.strokeMiterlimit) || 4);
                 pad = Math.max(pad, width / 2 * scale * reach);
             });
         }

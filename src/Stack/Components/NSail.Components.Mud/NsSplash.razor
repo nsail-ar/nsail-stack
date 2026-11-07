@@ -151,8 +151,8 @@
         // logo drawn with currentColor renders black. Inlining is the only way it takes the
         // primary the container carries -- and only an SVG is inlined, so a raster logo keeps
         // its own baked colours through the <img> that is already here. Sized the same as the
-        // <img> fallback above (the block's own width, height following the ratio) or the two
-        // paths draw the mark at two different sizes depending on which one answers.
+        // <img> fallback above (the block's own width, height following the ratio), then fitted
+        // to its artwork in this same task so the block lays out once.
         fetch(host.dataset.logo, { credentials: "same-origin" })
             .then(response => {
                 const type = (response.headers.get("content-type") || "").split(";")[0].trim();
