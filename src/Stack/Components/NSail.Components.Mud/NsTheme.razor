@@ -8,8 +8,10 @@
    from: the vendor stylesheet ships no :root defaults, so those variables are UNSET until this
    mounts and anything drawn without it paints from nothing. Two callers -- NsSetup, above the
    app, and a document rendered with no app around it (NsProblemDocument, the page a request
-   that died before render answers with). *@
-<MudThemeProvider @ref="_provider" Theme="@_theme" IsDarkMode="@_dark" />
+   that died before render answers with). The vendor's own scrollbar block stays off
+   (DefaultScrollbar): its html, body * rule out-matches the bar every scroller inherits from
+   ns-mud.css's :root, and paints a literal grey in both schemes. *@
+<MudThemeProvider @ref="_provider" Theme="@_theme" IsDarkMode="@_dark" DefaultScrollbar="true" />
 <style>@_variables</style>
 
 @code {
