@@ -792,9 +792,10 @@
     // scroll box to grow, and it is over every dialog and drawer without naming a z-index that
     // has to outrank theirs.
     //
-    // THE DELAY IS THE WHOLE OF THE BUBBLE'S TIMING, here and nowhere else: a name that opens
-    // on the way past is noise, so it opens only after a steady dwell and closes the instant
-    // anything else happens. pointerenter does not bubble, so the capture phase is the only way
+    // THE DELAY IS THE WHOLE OF THE BUBBLE'S TIMING under a pointer or a keyboard, here and
+    // nowhere else: a name that opens on the way past is noise, so it opens only after a steady
+    // dwell and closes the instant anything else happens. A finger's tap on a chip is the one
+    // exception (THE TAP, below). pointerenter does not bubble, so the capture phase is the only way
     // one document listener reaches every trigger; focusin bubbles and answers for the keyboard,
     // with :focus-visible telling a keyboard's focus from the one a press left behind.
     const WHISPER_DELAY = 2500;
@@ -1006,8 +1007,10 @@
             closeWhisper();
     }, true);
 
-    // A press inside a tapped bubble is its link being reached, and a touch press on the chip
-    // whose bubble is open is the second tap, which the click closes: neither is "outside".
+    // Any press closes the bubble -- what was pressed is opening, and the name of what pressed
+    // it is not what anyone is reading -- save two that are not "outside": a press inside a
+    // tapped bubble is its link being reached, and a touch press on the chip whose bubble is
+    // open is the second tap, which the click closes.
     document.addEventListener("pointerdown", e => {
         pressedByTouch = e.pointerType === "touch";
 
@@ -1053,12 +1056,10 @@
         openWhisper(chip, true);
     }, true);
 
-    // Every other exit, and with the press and the click above these are all of them: a press
-    // (what was pressed is opening, and the name of what pressed it is not what anyone is
-    // reading), a key, a scroll ANYWHERE -- the
-    // bubble is placed against a rectangle that just moved, and a tooltip that follows a scroll
-    // is a tooltip nobody asked for a second time -- and the window losing the pointer or
-    // changing size.
+    // Every other exit, and with the press and the click above these are all of them: a key, a
+    // scroll ANYWHERE -- the bubble is placed against a rectangle that just moved, and a tooltip
+    // that follows a scroll is a tooltip nobody asked for a second time -- and the window losing
+    // the pointer or changing size.
     for (const exit of ["pointercancel", "keydown", "wheel"])
         document.addEventListener(exit, closeWhisper, true);
 
