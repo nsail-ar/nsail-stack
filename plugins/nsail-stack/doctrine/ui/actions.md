@@ -70,7 +70,8 @@ complaint the rule answers: a phone's title row came out three different heights
 - **Stated once, for every container.** A height that changed with what the face is drawn
   inside would be the per-caller branch [principles.md](../principles.md) refuses — one
   declaration in `ns-mud.css`, reaching the worded face wherever the house draws one
-  (`NsButton`, `NsLink`, `NsSubmit`, `NsClose`, `NsMenu`'s labelled trigger).
+  (`NsButton`, `NsLink`, `NsSubmit`, `NsClose`, `NsMenu`'s labelled trigger) and the link a
+  tapped `NsChip`'s bubble carries.
 - **The icon-only square keeps its own box at every width and under either pointer**: it is
   already 44px by construction (12px around the Md glyph), so the floor leaves it exactly as
   it is. It is a `min-height` for that reason — a square whose box this grew would be the
