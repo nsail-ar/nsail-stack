@@ -150,7 +150,27 @@ public sealed class NsChipTests : BunitContext
         Assert.Contains(".ns-whisper-tap a {\n    display: flex;\n    align-items: center;\n    margin: -4px -8px;\n    padding: 4px 8px;", css);
     }
 
+    /// <summary>The script's half of the tap, which no render can run: touch is the press's
+    /// pointerType, a finger's enter never arms the dwell, the close button is never the tap,
+    /// and the tap asks the same double-cartel rule the dwell asks.</summary>
+    [Fact]
+    public void The_script_reads_the_tap_from_the_press_and_never_from_the_close_button()
+    {
+        var script = ReadSource("src/Stack/BaseServices/NSail.BaseServices.WebApp/wwwroot/ns.js").ReplaceLineEndings("\n");
+
+        Assert.Contains("const WHISPER_TAP_SELECTOR = \"[data-ns-whisper-tap]\";", script);
+        Assert.Contains("target.closest(\".mud-chip-close-button\"))\n            return null;", script);
+        Assert.Contains("return text.length > 0 && whisperAdds(el, text) ? el : null;", script);
+        Assert.Contains("if (e.pointerType !== \"touch\")\n            armWhisper(e.target, false);", script);
+        Assert.Contains("pressedByTouch = e.pointerType === \"touch\";", script);
+    }
+
     static string ReadStylesheet()
+    {
+        return ReadSource("src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css");
+    }
+
+    static string ReadSource(string path)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
 
@@ -158,9 +178,7 @@ public sealed class NsChipTests : BunitContext
         {
             if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
             {
-                return File.ReadAllText(Path.Combine(
-                    directory.FullName,
-                    "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
+                return File.ReadAllText(Path.Combine(directory.FullName, path));
             }
 
             directory = directory.Parent;
