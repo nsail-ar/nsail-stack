@@ -23,7 +23,8 @@ namespace NSail.Data;
 ///
 /// <para>A named file that cannot be read whole refuses the whole answer rather than returning
 /// the part it has: a sweep that silently enters a subset of the install, or a request served
-/// for a slug nobody could confirm, is the failure this roster exists to make visible.</para></summary>
+/// for a slug nobody could confirm, is the failure this roster exists to make
+/// visible.</para></summary>
 public sealed class TenantRoster
 {
     // One grammar for both declarations: a file is one slug per line, and a line holding a
@@ -61,13 +62,26 @@ public sealed class TenantRoster
         }
     }
 
+    /// <summary>Whether the declared roster names this tenant. A request asks it, so it compares
+    /// slugs and derives no key. A named file is read even when <c>Tenancy:Tenants</c> names the
+    /// slug: a cell whose file cannot be read serves nobody.</summary>
     public async Task<bool> Holds(Tenant tenant, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(tenant);
 
-        var tenants = await Tenants(cancellationToken).ConfigureAwait(false);
+        if (_databases is not null)
+        {
+            return false;
+        }
 
-        return tenants.Any(declared => string.Equals(declared.Slug, tenant.Slug, StringComparison.Ordinal));
+        var file = _tenancy.TenantsFile;
+
+        var filed = string.IsNullOrWhiteSpace(file)
+            ? []
+            : Slugs(await Read(file, cancellationToken).ConfigureAwait(false), $"Tenancy:TenantsFile ('{file}')");
+
+        return filed.Contains(tenant.Slug, StringComparer.Ordinal)
+            || _declared.Any(declared => string.Equals(declared.Slug, tenant.Slug, StringComparison.Ordinal));
     }
 
     public async Task<IReadOnlyList<Tenant>> Tenants(CancellationToken cancellationToken = default)
@@ -103,6 +117,11 @@ public sealed class TenantRoster
 
     static IReadOnlyList<Tenant> Named(string? declaration, string source)
     {
+        return Slugs(declaration, source).Select(Tenant.For).ToList();
+    }
+
+    static IReadOnlyList<string> Slugs(string? declaration, string source)
+    {
         var slugs = (declaration ?? string.Empty).Split(Separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         return slugs
@@ -110,7 +129,6 @@ public sealed class TenantRoster
                 ?? throw new InvalidOperationException(
                     $"{source} names '{slug}', which cannot be a tenant. The roster is the slugs the proxy sends, in lowercase alphanumerics and hyphens, one per line or separated by commas."))
             .Distinct(StringComparer.Ordinal)
-            .Select(Tenant.For)
             .ToList();
     }
 

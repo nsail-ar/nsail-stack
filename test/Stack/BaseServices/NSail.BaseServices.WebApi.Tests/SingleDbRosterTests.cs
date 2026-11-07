@@ -100,19 +100,28 @@ public sealed class SingleDbRosterTests : IAsyncLifetime
             bootstraps: true,
             tenantsFile: Path.Combine(_directory, "missing"));
 
-        // The test server rethrows what the pipeline did not handle, and a host behind Kestrel
-        // turns the same throw into a 500: either way, no answer the slug was known by.
-        try
-        {
-            using var response = await _host.Client.SendAsync(_host.Get("/notes", "lumina"));
+        // The error handler stands ahead of tenancy, so the refusal is a 500, never an answer the
+        // slug was known by.
+        using var response = await _host.Client.SendAsync(_host.Get("/notes", "lumina"));
 
-            Assert.False(response.IsSuccessStatusCode);
-        }
-        catch (InvalidOperationException refusal)
-        {
-            Assert.Contains("Tenancy:TenantsFile", refusal.Message, StringComparison.Ordinal);
-        }
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(0, await RowsOf("lumina"));
+    }
 
+    // The configured slugs are no way around an unreadable file: the roster is the union, and
+    // half of it is unknown.
+    [Fact]
+    public async Task ASlugTheKeyNamesFailsTooWhileTheFileCannotBeRead()
+    {
+        _host = await TenancyHost.Start(
+            TenancyMode.SingleDb,
+            bootstraps: true,
+            tenants: "lumina",
+            tenantsFile: Path.Combine(_directory, "missing"));
+
+        using var response = await _host.Client.SendAsync(_host.Get("/notes", "lumina"));
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         Assert.Equal(0, await RowsOf("lumina"));
     }
 
@@ -126,6 +135,7 @@ public sealed class SingleDbRosterTests : IAsyncLifetime
     }
 
     // Past EF, because the filter would hide another tenant's rows from any scope that could ask.
+    // A touch writes the seed's rows and its history in one transaction: both are counted.
     async Task<int> RowsOf(string tenant)
     {
         await using var connection = new NpgsqlConnection(
@@ -133,7 +143,10 @@ public sealed class SingleDbRosterTests : IAsyncLifetime
 
         await connection.OpenAsync();
 
-        await using var query = new NpgsqlCommand("SELECT count(*) FROM \"Notes\" WHERE \"TenantId\" = @tenant", connection);
+        await using var query = new NpgsqlCommand(
+            "SELECT (SELECT count(*) FROM \"Notes\" WHERE \"TenantId\" = @tenant)"
+            + " + (SELECT count(*) FROM \"AppliedSeedSteps\" WHERE \"TenantId\" = @tenant)",
+            connection);
 
         query.Parameters.AddWithValue("tenant", Tenant.For(tenant).RowKey);
 

@@ -58,7 +58,7 @@ public sealed class TenancyMiddleware : IMiddleware
         }
 
         // And the shared one's own first touch: the schema is already there, what a new slug
-        // has none of is rows. Onboarding a tenant here is the proxy's block plus this.
+        // has none of is rows.
         if (services.GetService<TenantBootstrap>() is { } bootstrap)
         {
             await bootstrap.TouchCurrent(context.RequestAborted);
