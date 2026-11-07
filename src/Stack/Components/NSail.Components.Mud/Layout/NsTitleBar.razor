@@ -32,11 +32,12 @@
    min-w-0 on either box and no text-truncate on the title: a flex item with a zero floor
    shrinks to nothing before a row ever considers wrapping, which hands the heading's word to
    the icon boxes beside it. Both faces below carry the rule, and the wrap costs the row
-   nothing where both boxes already fit. *@
+   nothing where both boxes already fit. The brand beside the toggle is the one tenant of the
+   title's box that does give way (ns-title-brand, ns-mud.css). *@
 @if (OnMain)
 {
     <NsStack Horizontal Wrap Align="NsAlign.Center" Justify="NsAlign.SpaceBetween">
-        <div class="d-flex align-center">
+        <div class="d-flex align-center ns-title-lead">
             @if (OwnsToggle)
             {
                 <span class="@GetToggleClasses()">
@@ -61,7 +62,7 @@
                 @if (LayoutState!.Brand is { } brand)
                 {
                     _readsLayout = true;
-                    <div class="@GetBrandClasses()">@brand</div>
+                    <div class="@GetBrandClasses()"><div class="ns-title-brand-fit">@brand</div></div>
                 }
             }
             <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center">
@@ -264,7 +265,7 @@ else if (!Hoisted)
         _drewSummoned = LayoutState!.DrawerIsSummoned;
 
         return new NsClassBuilder(_drewSummoned ? "d-none" : NsResponsive.ShownBelowWindow(NsSize.Md))
-            .Add("align-center flex-shrink-0 mr-3", !_drewSummoned)
+            .Add("align-center ns-title-brand mr-3", !_drewSummoned)
             .ToString();
     }
 

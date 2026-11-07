@@ -493,6 +493,9 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
     and the title keeps its own content width; it is never elided and never shortened. Both of
     the bar's faces hold it, the main surface's and an overlay's. A title row that shrinks its
     heading to a zero floor so the chrome can keep its full width has the trade backwards.
+    Beside the toggle on a phone, the install's brand shares the title's box, and **the brand is
+    what gives way**: it shrinks first, its name elided on one line, down to nothing where the
+    title needs the whole row. Only the title row's copy does; the drawer's keeps the brand whole.
   - **Nor does a tool, so the toolbar row under it wraps too.** Where the tools do not all fit,
     **the row grows a line** and each control keeps its own content width, still at the trailing
     edge: a row that cannot wrap has only shrink left, and a shrunk worded button wraps its own
