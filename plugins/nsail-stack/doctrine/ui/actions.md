@@ -305,7 +305,9 @@ breakpoint anyway. There is no second knob.
   anonymous to a screen reader: **`NsSubmit` names itself with its CONTENT and must stay at
   `Always`** until it is given a name it can restate.
 - The honest cost: hover is a pointer's, so on touch a collapsed button is still a bare glyph
-  — **it suits universally-read icons, not obscure domain actions** (cases).
+  — **it suits universally-read icons, not obscure domain actions** (cases). **`NsChip` is the
+  one exception**: a touch tap on a chip with a `Tooltip` opens its whisper at once, through the
+  same bubble, its sentence a link to the chip's `Href` where it has one (cases).
 
 ---
 

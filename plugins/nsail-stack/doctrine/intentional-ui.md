@@ -935,7 +935,8 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   something ([ui/actions.md](ui/actions.md)).
 - **A cell holds one word, a figure or a chip.** Anything longer — a note, a result, a warning, a
   log — is a disclosure: a whisper (`NsTooltip`, `NsChip Tooltip`) for a short detail, and
-  `NsHint` for a paragraph, which opens on a tap as well as a hover. The whisper keeps its own
+  `NsHint` for a paragraph, which opens on a tap as well as a hover. Of the whispers only
+  `NsChip Tooltip` opens on a tap. The whisper keeps its own
   rule — the long form of what the cell already says, never the only copy — so a fact with no
   word in the cell rides `NsHint`, whose glyph is that word.
 - **A status cell is one state**: quiet text (`NsStatusText`, still no chip), and that state's

@@ -190,6 +190,20 @@ not the CSS's: a disabled control receives hover and never a press, a focus or a
 response that would have outlived both is the vendor's ripple, a document-level `pointerdown` over
 whatever carries its class, so **a refused face declares no ripple**.
 
+**On touch, an `NsChip`'s sentence opens on the tap.** A finger has no hover, so the dwell is a
+pointer's and a tap is not one: a chip declares `data-ns-whisper-tap`, and a tap on it opens the
+same bubble at once — the toggletip (WAI-ARIA APG), where the first touch shows what a hover
+would. Touch is the press's own `pointerType`, never `(pointer: coarse)`, so a touchscreen laptop
+driven by a mouse keeps the dwell. When the chip has an `Href`, the first tap does not navigate —
+the sentence would go before it was read — and the bubble's sentence is a link to that `Href`,
+which is the one bubble that takes hits. A second tap on the chip or one outside closes it, as do
+a key, a scroll and a resize; a tap on the bubble's link runs it first. The chip's close button is
+never the tap, and the double cartel gates the tap as it gates the dwell: a chip whose sentence is
+its text navigates as it always did. Because a bubble is never the only copy, the chip's
+accessible name says it too — the visible `Text`, then the sentence (WCAG 2.5.3, Label in Name),
+or the sentence alone where it already opens with the text. The tap is `NsChip`'s alone: every
+other face keeps "hover is a pointer's" ([ui/actions.md](ui/actions.md)).
+
 What is left to `ns-mud.css` is the look, once (`.ns-whisper`), read from the vendor tooltip's own
 variables so the bubble is the tooltip the house always had to the eye. A render test sees the
 declaration and no more: whether the browser paints it where it should is a browser's question,
