@@ -57,7 +57,9 @@
                 </CascadingValue>
             </TitleContent>
             <DialogContent>
-                <DynamicComponent Type="ComponentType" Parameters="ResolvedParameters" />
+                <CascadingValue Value="_holds" IsFixed="true">
+                    <DynamicComponent Type="ComponentType" Parameters="ResolvedParameters" />
+                </CascadingValue>
             </DialogContent>
         </MudDialog>
     </NsSurfaceContext>
@@ -66,6 +68,10 @@
 @code {
 
     bool? _granted;
+
+    bool _saving;
+
+    EscapeHolds _holds = default!;
 
     [CascadingParameter]
     IMudDialogInstance MudDialog { get; set; } = default!;
@@ -88,20 +94,29 @@
         // What the opener asked for, read once: the restore below must hand back that answer and not
         // a second literal of it, and null is its own answer there — the provider's global decides.
         _granted = MudDialog.Options.CloseOnEscapeKey;
+        _holds = new EscapeHolds(ApplyEscape);
+    }
+
+    Task WithdrawEscape(bool saving)
+    {
+        _saving = saving;
+
+        return ApplyEscape();
     }
 
     // Escape is the VENDOR's own handler and it closes this instance directly, reaching neither
     // Surface.Close() nor the refusal the X draws. With BackdropClick off the X and Escape are the
     // only two ways out (MudDialogManager), so greying one while the other walks out mid-save closes
-    // one of two: the key is withdrawn for the length of the save and handed back after it. The
-    // option is the whole answer here — rolling our own key handler would take a document-level
-    // interceptor's reach down to one element's focus and miss every key pressed with a select's
-    // popover open.
-    Task WithdrawEscape(bool saving)
+    // one of two: the key is withdrawn for the length of the save and handed back after it. It is
+    // withdrawn too while something open inside answers Escape itself (EscapeHolds), so one Escape
+    // closes that thing and the next one the dialog. The option is the whole answer here — rolling
+    // our own key handler would take a document-level interceptor's reach down to one element's
+    // focus and miss every key pressed with a select's popover open.
+    Task ApplyEscape()
     {
         return MudDialog.SetOptionsAsync(MudDialog.Options with
         {
-            CloseOnEscapeKey = saving ? false : _granted
+            CloseOnEscapeKey = _saving || _holds.Any ? false : _granted
         });
     }
 }
