@@ -9,7 +9,8 @@ using NSail.Components.Tests.Fixtures;
 namespace NSail.Components.Tests;
 
 /// <summary>A chip names a value; given a severity it names a state, tinted — or filled when
-/// Solid — and given an Href the whole chip is its link.</summary>
+/// Solid — and given an Href the whole chip is its link; given a Tooltip its name says the
+/// sentence after the text.</summary>
 public sealed class NsChipTests : BunitContext
 {
     public NsChipTests()
@@ -62,5 +63,52 @@ public sealed class NsChipTests : BunitContext
             .Add(c => c.Href, "/settings/test-mode"));
 
         Assert.Equal("/settings/test-mode", cut.Find("a").GetAttribute("href"));
+    }
+
+    [Fact]
+    public void A_chip_with_a_tooltip_is_named_by_its_text_and_then_the_sentence()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Rol")
+            .Add(c => c.Tooltip, "Asignado por el administrador")
+            .Add(c => c.Href, "/roles"));
+
+        Assert.Equal("Rol: Asignado por el administrador", cut.Find("a").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void A_sentence_that_opens_with_the_text_is_the_whole_name()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo prueba")
+            .Add(c => c.Tooltip, "Modo prueba: los cobros, las facturas y los mensajes no son reales")
+            .Add(c => c.OnClose, () => { }));
+
+        Assert.Equal("Modo prueba: los cobros, las facturas y los mensajes no son reales",
+            cut.Find(".mud-chip").GetAttribute("aria-label"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Rol")]
+    public void A_chip_with_no_sentence_beyond_its_text_keeps_its_bare_text_as_its_name(string? tooltip)
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Rol")
+            .Add(c => c.Tooltip, tooltip));
+
+        Assert.False(cut.Find(".mud-chip").HasAttribute("aria-label"));
+        Assert.Equal("Rol", cut.Find(".mud-chip").TextContent.Trim());
+    }
+
+    [Fact]
+    public void A_chip_declares_that_a_tap_opens_its_whisper()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo prueba")
+            .Add(c => c.Tooltip, "Modo prueba: los cobros no son reales"));
+
+        Assert.True(cut.Find(".mud-chip").HasAttribute("data-ns-whisper-tap"));
     }
 }
