@@ -3259,7 +3259,8 @@ div.mud-input-slot.mud-input-root::placeholder {
 /* THE WHISPER: a control says in full what it only half says on screen — the name of a button
    that gave up its word to the container, the name of a glyph that never had one, the key a
    worded button answers. A touch device has no hover and still relies on the glyph, so nothing
-   rides here that is only here (NsTooltip's own note).
+   rides here that is only here (NsTooltip's own note) — save an NsChip's sentence, which a tap
+   opens at once (ns.js, THE TAP) and whose name carries it anyway.
 
    ONE ELEMENT, IN THE TOP LAYER, PLACED FROM ns.js, and it has to be: a bubble drawn inside the
    control it names is clipped by the nearest scrolling ancestor (NsPanel's content box), grows
@@ -3304,6 +3305,18 @@ div.mud-input-slot.mud-input-root::placeholder {
    hidden, and this is the whole of its display. */
 .ns-whisper.ns-whisper-open {
     display: block;
+}
+
+/* THE TAPPED BUBBLE is the one that takes hits: its sentence may be a link to the chip's own
+   Href, reached by a second tap, so the hover bubble's pass-through is undone for it alone. The
+   link wears the bubble's ink and says it is one by its underline. */
+.ns-whisper.ns-whisper-tap {
+    pointer-events: auto;
+}
+
+.ns-whisper a {
+    color: inherit;
+    text-decoration: underline;
 }
 
 /* NsTooltip's own wrapper, the one caller that names something other than a control: it wraps
