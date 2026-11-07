@@ -135,7 +135,7 @@ a data migration that must touch tenants' rows. Scaffold migrations with the Dat
 startup project.
 
 **Stack tables.** `ApplySetups` also maps `AppliedSeedSteps`, `TenantStates` (status, plan,
-entitlements, suspension window; written from outside the app) and `DeclaredFeatures`, so a
+entitlements, the request a tenant is born with, suspension window; written from outside the app) and `DeclaredFeatures`, so a
 migration for them lands in your app's chain.
 
 **Tests** (`NSail.Data.Testing`). `TestDatabase` connects to `Host=localhost;Username=postgres` and

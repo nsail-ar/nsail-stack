@@ -50,6 +50,17 @@ public sealed class PersonalDataTests : IClassFixture<PersonalSchema>
         Assert.Null(comments["TenantId"]);
     }
 
+    // The Stack's own instance on a column that is not text: what a tenant is born with names a
+    // login and a customer, so a copy of the install's record has to fake it like any note.
+    [Fact]
+    public void The_request_a_tenant_is_born_with_is_personal_and_its_plan_is_not()
+    {
+        var comments = _schema.Comments("TenantStates");
+
+        Assert.Equal("personal:free-text", comments[nameof(TenantState.Bootstrap)]);
+        Assert.Null(comments[nameof(TenantState.Entitlements)]);
+    }
+
     // The declaration is inherited, so a base class answering for its own property answers for
     // every entity built on it.
     [Fact]
@@ -82,7 +93,7 @@ public sealed class PersonalSchema : IAsyncLifetime
             await schema.Database.EnsureCreatedAsync();
         }
 
-        foreach (var table in new[] { "People", "Pets" })
+        foreach (var table in new[] { "People", "Pets", "TenantStates" })
         {
             _tables[table] = await Read(_database.ConnectionString, table);
         }

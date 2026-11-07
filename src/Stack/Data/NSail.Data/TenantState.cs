@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Privacy;
+
 namespace NSail.Data;
 
 /// <summary>What the INSTALL records about a tenant: whether it is served at all, why, until
-/// when, which plan it is on and what that plan includes. One row per tenant, written from
-/// outside the app by whoever operates the fleet and read by every product the same way — the
-/// state of a customer is not a product's question and must not be answered twice. Its mirror is
+/// when, which plan it is on, what that plan includes and what the tenant is to be born with.
+/// One row per tenant, written from outside the app by whoever operates the fleet and read by
+/// every product the same way — the state of a customer is not a product's question and must not
+/// be answered twice. Its mirror is
 /// <see cref="DeclaredFeature"/>, which runs the other way: what this build declares, published
 /// for that writer to read.
 ///
@@ -82,6 +85,16 @@ public class TenantState : IInstallScoped
     /// this process, so "has my write landed" is a real question an operator asks of the row —
     /// and the memo in front of the read is why the answer is not immediate.</summary>
     public DateTime? EntitlementsUpdatedAt { get; set; }
+
+    /// <summary>What the tenant is to be born with, as the bag was written: a JSON object the
+    /// product's own first-touch seed step reads when it plants the tenant's identity (its first
+    /// user, the house login's password hash). Carried and not interpreted, like
+    /// <see cref="Entitlements"/> — <b>the Stack names no key and knows none</b> — and read once:
+    /// a tenant already planted ignores it, so it stays on the row as what was asked. Null is the
+    /// tenant born as every product seeds it with nothing asked. Personal because what it asks for
+    /// is a person: a login name and a customer's name ride in it.</summary>
+    [Personal(PersonalData.FreeText)]
+    public string? Bootstrap { get; set; }
 
     /// <summary>Why the tenant is paused, a word of <see cref="Reasons"/> — compared and never
     /// parsed, like <see cref="Status"/>. It changes nothing about whether the tenant is served:

@@ -422,8 +422,8 @@ composed name Postgres would truncate at 63 bytes is refused for the same reason
 ## The install's own record of a tenant: its state, its plan and what the plan includes
 
 Everything above is a tenant's own rows. **`TenantState` is the install's record ABOUT a
-tenant** — whether it is served at all, why, until when, which plan it is on and what that plan
-includes — and that is the whole of why it is the Stack's and not a product's: the state of a
+tenant** — whether it is served at all, why, until when, which plan it is on, what that plan
+includes and what the tenant is to be born with — and that is the whole of why it is the Stack's and not a product's: the state of a
 customer is identical in every product, and answered twice it would be answered differently.
 It is the second of the three tables the Stack
 owns (`DbContextExtensions.ApplySetups`, beside the seed history, for the same reason: a
@@ -440,6 +440,7 @@ the contract and the Stack only reads:
 | `Plan` | `varchar(32)`, null | The plan's word, carried and not interpreted — **the Stack names no plan and knows none** |
 | `Entitlements` | `jsonb`, null | What that plan includes: one key against a flag or a number — **the Stack names no key and knows none** either. `jsonb` and not text because this writer amends ONE key of the bag in plain SQL |
 | `EntitlementsUpdatedAt` | `timestamptz`, null | When the bag was last written. "Has my write landed" is a real question asked of this row, and the memo below is why the answer is not immediate |
+| `Bootstrap` | `jsonb`, null, `personal:free-text` | What the tenant is to be born with — its first user, the house login's password hash — read by the product's own first-touch seed step. **The Stack names no key and knows none**: the bag is the writer's contract with the product, carried here like `Entitlements`. Written before the tenant's first request, because a tenant already planted reads it no more; it stays on the row afterwards as what was asked, and a move carries it with the rest. Null is the tenant every product seeds with nothing asked |
 | `Reason` | `varchar(32)`, null | Why it is paused: `Maintenance` (a deploy, a big change, a maintenance stop), `Move` (between rings or servers), `Payment`. Compared, never parsed — it changes nothing about whether the tenant is served, only the words its page gets |
 | `SuspendedFrom` | `timestamptz`, null | When the pause opens. No `SuspendedFrom`, no window |
 | `SuspendedUntil` | `timestamptz`, null | When it closes, or null for a window with no end. It is also what the page says the service comes back at |

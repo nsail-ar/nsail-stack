@@ -112,6 +112,11 @@ public static class DbContextExtensions
             entity.Property(row => row.Entitlements)
                 .HasColumnType("jsonb");
 
+            // jsonb for the same writer: the request a tenant is born with is a bag of its own
+            // that the Stack carries and the product's seed reads.
+            entity.Property(row => row.Bootstrap)
+                .HasColumnType("jsonb");
+
             entity.Property(row => row.Reason)
                 .HasMaxLength(32);
 
