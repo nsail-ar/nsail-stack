@@ -1,6 +1,6 @@
 ---
 name: test-harness
-description: Write or run tests against the NSail harnesses — which layer owes the proof (Architecture, Stack, kit WebApi.Tests on real Postgres, bUnit Shared.Tests, Apps, browser E2E), HandlerHost, the Release-build E2E host, Api.Send arrangement, culture and viewport. Use when writing or fixing a kit test, bUnit test or E2E test, deciding whether a fix earns a regression test, diagnosing a flaky or instantly-failing suite, or reporting test totals.
+description: Write or run tests against the NSail harnesses — which layer owes the proof (Architecture, Stack, kit WebApi.Tests on Postgres, bUnit, Apps, browser E2E), HandlerHost, the Release-build E2E host, Api.Send, culture and viewport. Use for a kit, bUnit or E2E test, deciding whether a fix earns a regression test, a flaky or instantly-failing suite, or reporting test totals.
 ---
 
 # Test harness

@@ -1,6 +1,6 @@
 ---
 name: convert-to-nsload
-description: Convert a screen's data read into an NsLoad region (OnLoad, Reload, Retry, NsPartial.Handoff for dashboard cards). Use whenever you touch a Blazor screen or card that still loads in OnCreatedAsync/OnParametersSetAsync/OnInitializedAsync — screens still read outside NsLoad and a screen touched for any reason converts — or when a load failure shows as a toast, a card reads twice, or an empty state lies about a failed read.
+description: Convert a screen's data read into an NsLoad region (OnLoad, Reload, Retry, NsPartial.Handoff for dashboard cards). Use whenever you touch a Blazor screen or card that loads in OnCreatedAsync, OnParametersSetAsync or OnInitializedAsync, or when a load failure shows as a toast, a card reads twice, or an empty state lies about a failed read.
 ---
 
 # Convert to NsLoad
