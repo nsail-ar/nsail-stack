@@ -87,7 +87,8 @@ public sealed class TenancyHost : IAsyncDisposable
     /// without waiting; <paramref name="contact"/> is who its suspended page names;
     /// <paramref name="logs"/> is what the install said on its way up;
     /// <paramref name="features"/> is the <c>IFeatureContributor</c> this build composes, which is
-    /// what the install publishes about itself.</summary>
+    /// what the install publishes about itself; <paramref name="tenants"/> and
+    /// <paramref name="tenantsFile"/> are the roster it declares.</summary>
     public static Task<TenancyHost> Start(
         TenancyMode mode,
         bool bootstraps = false,
@@ -99,7 +100,9 @@ public sealed class TenancyHost : IAsyncDisposable
         bool bypassable = false,
         bool provisions = true,
         ILoggerProvider? logs = null,
-        Type? features = null)
+        Type? features = null,
+        string? tenants = null,
+        string? tenantsFile = null)
     {
         return Start(
             mode,
@@ -113,7 +116,9 @@ public sealed class TenancyHost : IAsyncDisposable
             bypassable,
             provisions,
             logs,
-            features);
+            features,
+            tenants,
+            tenantsFile);
     }
 
     /// <summary>The same install again, carrying whatever chain that build carries — a deploy,
@@ -140,7 +145,9 @@ public sealed class TenancyHost : IAsyncDisposable
         bool bypassable = false,
         bool provisions = true,
         ILoggerProvider? logs = null,
-        Type? features = null)
+        Type? features = null,
+        string? tenants = null,
+        string? tenantsFile = null)
     {
         var owned = cell is null;
 
@@ -153,6 +160,8 @@ public sealed class TenancyHost : IAsyncDisposable
             Cell = cell,
             SupportContact = contact,
             RequireRowSecurity = requireWall,
+            Tenants = tenants,
+            TenantsFile = tenantsFile,
         };
 
         // The app connects as a role that is NEITHER a superuser NOR BYPASSRLS, because a

@@ -56,8 +56,9 @@ its own, the words of the one page this project draws without the app (the suspe
 - HTTPS redirection
 - `TenancyMiddleware` — **only where a tenant is resolved** (`host.ResolvesTenants()`: either
   switch), so under `Tenancy:Mode=None` the pipeline has no tenancy step. Before authentication
-  on purpose: under a per-tenant connection a slug that names no database answers 404 and
-  nothing about it is reachable by signing in. See [data-tenancy.md](data-tenancy.md#caddy-assigns-the-tenant-postgres-is-the-registry).
+  on purpose: under a per-tenant connection a slug that names no database answers 404, and
+  under `SingleDb` so does a slug off the roster a cell declares, and nothing about it is
+  reachable by signing in. See [data-tenancy.md](data-tenancy.md#caddy-assigns-the-tenant-postgres-is-the-registry).
 - `TenantStateMiddleware` — whether this install is serving this tenant at all, **only where a
   tenant is resolved**, immediately behind the step above: a customer the install has suspended is
   as unreachable as one that does not exist, so it is refused ahead of a cookie, a session, a

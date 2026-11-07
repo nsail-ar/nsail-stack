@@ -19,26 +19,27 @@ public class TenancyOptions
     public string? Cell { get; set; }
 
     /// <summary>The slugs this install holds, comma-separated — the roster
-    /// (<see cref="TenantRoster"/>) that work outside a request sweeps. Stated only where the
-    /// wall is the tenant column: there, nothing in the install knows who exists, because the
-    /// proxy's whitelist is the roster and the rows cannot be asked. A mode that connects per
-    /// tenant reads its databases instead and ignores this. Read once, at startup, so a slug the
-    /// install cannot name is refused there.</summary>
+    /// (<see cref="TenantRoster"/>) that work outside a request sweeps and that a request's slug
+    /// is checked against, off it a 404. Stated only where the wall is the tenant column: there,
+    /// nothing else in the install knows who exists, because the rows cannot be asked. A mode
+    /// that connects per tenant reads its databases instead and ignores this. Read once, at
+    /// startup, so a slug the install cannot name is refused there.</summary>
     public string? Tenants { get; set; }
 
     /// <summary>A file holding the same roster, one slug per line, unioned with
-    /// <see cref="Tenants"/> and read again on every sweep — so whoever provisions a tenant can
-    /// write it where this install reads it and have the next tick sweep it, with no restart. An
-    /// install that names none keeps <see cref="Tenants"/> alone and behaves as it always has,
-    /// and a mode that connects per tenant reads its databases instead and ignores both. An
-    /// install that names one <b>empties</b> <see cref="Tenants"/>: the union exists so that an
-    /// install nobody has re-composed keeps sweeping what it sweeps today, and a slug left in
-    /// both is pinned on the roster until a restart — which is how a tenant the file drops keeps
-    /// its jobs. A named file that cannot be read whole, or that holds an entry that cannot be a
-    /// slug, fails the sweep that asked for it instead of sweeping the part it could read — and
-    /// whoever writes it replaces it <b>atomically</b>, beside it and renamed over it, never
-    /// truncated and rewritten in place, because a sweep reading a half-written file would enter
-    /// a shortened roster, or a cut slug no tenant owns, in silence.</summary>
+    /// <see cref="Tenants"/> and read again on every sweep and every request — so whoever
+    /// provisions a tenant can write it where this install reads it and have its next visit served
+    /// and the next tick sweep it, with no restart. An install that names none keeps
+    /// <see cref="Tenants"/> alone and behaves as it always has, and a mode that connects per
+    /// tenant reads its databases instead and ignores both. An install that names one
+    /// <b>empties</b> <see cref="Tenants"/>: the union exists so that an install nobody has
+    /// re-composed keeps sweeping what it sweeps today, and a slug left in both is pinned on the
+    /// roster until a restart — which is how a tenant the file drops keeps its jobs. A named file
+    /// that cannot be read whole, or that holds an entry that cannot be a slug, fails the sweep or
+    /// the request that asked for it instead of answering from the part it could read — and whoever
+    /// writes it replaces it <b>atomically</b>, beside it and renamed over it, never truncated and
+    /// rewritten in place, because a sweep reading a half-written file would enter a shortened
+    /// roster, or a cut slug no tenant owns, in silence.</summary>
     public string? TenantsFile { get; set; }
 
     /// <summary>How long this process holds what it read about a tenant

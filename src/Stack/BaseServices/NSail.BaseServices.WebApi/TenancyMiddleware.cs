@@ -10,10 +10,13 @@ namespace NSail.BaseServices.WebApi;
 /// wildcard demo label and a custom domain arrive indistinguishable, two sources of one
 /// header. Under a per-tenant connection an unknown slug has no database, and no database is a
 /// 404 answered here, ahead of authentication, so nothing about an install that does not exist
-/// is reachable. Where the wall is the tenant column instead there is no registry to ask — the
-/// proxy's whitelist is the roster (data-tenancy.md) — so a well-formed slug IS the tenant and its key
-/// derives from it; a malformed one is still refused rather than repaired. Installed by every
-/// mode that resolves a tenant: under <c>None</c> no header is read at all.</summary>
+/// is reachable. Where the wall is the tenant column instead there is no database to find, so a
+/// slug's key derives from it and the install's declared roster (<see cref="TenantRoster"/>) is
+/// what it is checked against: off the roster is the same 404, before anything is planted for it,
+/// and a roster that cannot be read fails the request. A cell that declares none has only the
+/// proxy's whitelist, and a well-formed slug IS its tenant. A malformed one is refused in every
+/// mode rather than repaired. Installed by every mode that resolves a tenant: under
+/// <c>None</c> no header is read at all.</summary>
 public sealed class TenancyMiddleware : IMiddleware
 {
     public const string TenantHeader = "X-NSail-Tenant";
@@ -36,7 +39,7 @@ public sealed class TenancyMiddleware : IMiddleware
 
         var tenant = services.GetService<TenantDatabases>() is { } databases
             ? await databases.Resolve(slug, context.RequestAborted)
-            : Resolve(slug);
+            : await Resolve(slug, services.GetService<TenantRoster>(), context.RequestAborted);
 
         if (tenant is null)
         {
@@ -55,7 +58,7 @@ public sealed class TenancyMiddleware : IMiddleware
         }
 
         // And the shared one's own first touch: the schema is already there, what a new slug
-        // has none of is rows. Onboarding a tenant here is the proxy's block plus this.
+        // has none of is rows.
         if (services.GetService<TenantBootstrap>() is { } bootstrap)
         {
             await bootstrap.TouchCurrent(context.RequestAborted);
@@ -64,8 +67,22 @@ public sealed class TenancyMiddleware : IMiddleware
         await next(context);
     }
 
-    static Tenant? Resolve(string slug)
+    static async Task<Tenant?> Resolve(string slug, TenantRoster? roster, CancellationToken cancellationToken)
     {
-        return TenantSlug.Normalize(slug) is { } normalized ? Tenant.For(normalized) : null;
+        if (TenantSlug.Normalize(slug) is not { } normalized)
+        {
+            return null;
+        }
+
+        var tenant = Tenant.For(normalized);
+
+        // A site the proxy still routes here after its tenant moved away is the case this
+        // refuses: planted, it would be a second, empty copy of a tenant that lives elsewhere.
+        if (roster is { Declares: true } && !await roster.Holds(tenant, cancellationToken))
+        {
+            return null;
+        }
+
+        return tenant;
     }
 }

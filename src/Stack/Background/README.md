@@ -53,7 +53,7 @@ There is no options class. The runners read two things from the host:
 | Source | Used for |
 |---|---|
 | `Language:Default` | The culture every job pass and every deferred item runs in, since no request sets one. Absent configuration keeps the ambient culture. |
-| `Tenancy` (`NSail.Data`) | The roster a per-tenant job sweeps (`Tenancy:Tenants`, `Tenancy:TenantsFile`, or the provisioned databases under a per-tenant connection). |
+| `Tenancy` (`NSail.Data`) | The roster a per-tenant job sweeps (`Tenancy:Tenants`, `Tenancy:TenantsFile`, or the provisioned databases under a per-tenant connection). Under `SingleDb` a declared roster also refuses a request's slug off it with a 404 ([Data](../Data/README.md)). |
 
 **Jobs** (`IBackgroundJob`):
 
