@@ -757,9 +757,10 @@
    wherever the house draws one — NsButton, NsSubmit, NsClose, NsMenu's labelled trigger —
    through .mud-button, that face and nothing else wears, and NsLink's own Inline face too —
    a bare anchor that draws no `.mud-button` at all — through `.ns-link` beside it in the same
-   declaration, one floor stated once for both. */
+   declaration, and the link a tapped chip's bubble carries (THE TAPPED BUBBLE), one floor
+   stated once for all three. */
 @media (pointer: coarse) {
-    .mud-button, .ns-link {
+    .mud-button, .ns-link, .ns-whisper-tap a {
         min-height: 44px;
     }
 }
@@ -3259,7 +3260,8 @@ div.mud-input-slot.mud-input-root::placeholder {
 /* THE WHISPER: a control says in full what it only half says on screen — the name of a button
    that gave up its word to the container, the name of a glyph that never had one, the key a
    worded button answers. A touch device has no hover and still relies on the glyph, so nothing
-   rides here that is only here (NsTooltip's own note).
+   rides here that is only here (NsTooltip's own note) — save an NsChip's sentence, which a tap
+   opens at once (ns.js, THE TAP) and whose name carries it anyway.
 
    ONE ELEMENT, IN THE TOP LAYER, PLACED FROM ns.js, and it has to be: a bubble drawn inside the
    control it names is clipped by the nearest scrolling ancestor (NsPanel's content box), grows
@@ -3304,6 +3306,26 @@ div.mud-input-slot.mud-input-root::placeholder {
    hidden, and this is the whole of its display. */
 .ns-whisper.ns-whisper-open {
     display: block;
+}
+
+/* THE TAPPED BUBBLE is the one that takes hits: its sentence may be a link to the chip's own
+   Href, reached by a second tap, so the hover bubble's pass-through is undone for it alone. It
+   is read on a phone rather than glanced at by a mouse, so it takes the body's size, not the
+   name's. The link wears the bubble's ink, says it is one by its underline, and fills the whole
+   bubble: a finger that lands in the padding has reached the link, not closed the sentence. Its
+   height is the touch floor's (.ns-whisper-tap a beside .ns-link). */
+.ns-whisper.ns-whisper-tap {
+    pointer-events: auto;
+    font-size: 14px;
+}
+
+.ns-whisper-tap a {
+    display: flex;
+    align-items: center;
+    margin: -4px -8px;
+    padding: 4px 8px;
+    color: inherit;
+    text-decoration: underline;
 }
 
 /* NsTooltip's own wrapper, the one caller that names something other than a control: it wraps
