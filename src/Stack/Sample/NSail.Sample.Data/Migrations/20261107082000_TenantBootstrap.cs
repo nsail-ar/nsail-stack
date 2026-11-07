@@ -17,8 +17,7 @@ namespace NSail.Sample.Migrations
                 name: "Bootstrap",
                 table: "TenantStates",
                 type: "jsonb",
-                nullable: true,
-                comment: "personal:free-text");
+                nullable: true);
         }
 
         /// <inheritdoc />

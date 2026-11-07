@@ -79,8 +79,7 @@ namespace NSail.Sample.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Bootstrap")
-                        .HasColumnType("jsonb")
-                        .HasComment("personal:free-text");
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("Entitlements")
                         .HasColumnType("jsonb");

@@ -50,15 +50,15 @@ public sealed class PersonalDataTests : IClassFixture<PersonalSchema>
         Assert.Null(comments["TenantId"]);
     }
 
-    // The Stack's own instance on a column that is not text: what a tenant is born with names a
-    // login and a customer, so a copy of the install's record has to fake it like any note.
+    // The install's record carries two jsonb bags, and no kind fakes a jsonb object and keeps it
+    // one: a fake there would break the bag the product reads, so neither tells the runner to.
     [Fact]
-    public void The_request_a_tenant_is_born_with_is_personal_and_its_plan_is_not()
+    public void The_bags_on_the_installs_record_of_a_tenant_carry_no_comment()
     {
         var comments = _schema.Comments("TenantStates");
 
-        Assert.Equal("personal:free-text", comments[nameof(TenantState.Bootstrap)]);
         Assert.Null(comments[nameof(TenantState.Entitlements)]);
+        Assert.Null(comments[nameof(TenantState.Bootstrap)]);
     }
 
     // The declaration is inherited, so a base class answering for its own property answers for
