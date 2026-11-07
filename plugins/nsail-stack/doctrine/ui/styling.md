@@ -312,7 +312,13 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   transport to probe with — and the mark keeps its own proportion inside it, by
   `preserveAspectRatio` when it is inlined and by `object-fit` when it is a file. A width
   ceiling that bites takes the drawn mark down with it; it never clips one side alone.
-  `NsSplash` draws its own markup rather than `NsRemoteImage` and fits the opposite way — width,
+  **An inlined mark is drawn to its artwork, never to its file's viewBox** (`nsapp.fitMark`,
+  `ns.js`): a logo's viewBox often carries unpainted margin, and the box would draw it as space.
+  After the markup is in the DOM, the root's `viewBox` becomes the artwork's `getBBox()` padded
+  by the widest stroke, so no painted pixel is cut; an SVG with no `viewBox` gets one. The fit is
+  the brand mark's alone — a product's picture keeps its file's own box.
+  `NsSplash` draws its own markup rather than `NsRemoteImage`, fits the same artwork in the same
+  task that inlines it (one resize, not two), and sizes the opposite way — width,
   not height: its logo, its name and its progress bar all take the width its own script measures
   off the install's name, so the three read as one block instead of three widths of their own.
 - `NsTooltip` takes `Text` and wraps what it explains, declaring the whisper on a box of its own

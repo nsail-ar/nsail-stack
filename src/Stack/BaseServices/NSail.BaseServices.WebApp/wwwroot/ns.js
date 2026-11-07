@@ -52,6 +52,48 @@
         return Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
     }
 
+    // Draws an inlined SVG mark to its artwork instead of its viewBox: a logo's file often
+    // carries an unpainted margin (a square viewBox around a wide drawing) that the box then
+    // draws as space. getBBox() is the fill's own geometry and leaves strokes out, so the box
+    // is padded by half the widest stroke, in the root's units, and square caps or mitered
+    // joins by the diagonal -- a fitted box never cuts a painted pixel. An SVG with no viewBox
+    // gets one here; one that cannot be measured keeps what it has.
+    function fitMark(target) {
+        var host = typeof target === "string" ? document.querySelector(target) : target;
+        var svg = host instanceof SVGSVGElement ? host : host && host.querySelector(":scope > svg");
+        if (!svg)
+            return;
+        var box;
+        try {
+            box = svg.getBBox();
+        } catch (e) {
+            return;
+        }
+        if (!(box.width > 0 && box.height > 0))
+            return;
+        var rootScreen = svg.getScreenCTM();
+        var pad = 0;
+        if (rootScreen) {
+            var toRoot = rootScreen.inverse();
+            svg.querySelectorAll("*").forEach(function (el) {
+                if (!(el instanceof SVGGeometryElement))
+                    return;
+                var style = getComputedStyle(el);
+                var width = parseFloat(style.strokeWidth);
+                if (style.stroke === "none" || !(width > 0))
+                    return;
+                var screen = el.getScreenCTM();
+                if (!screen)
+                    return;
+                var m = toRoot.multiply(screen);
+                var scale = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c));
+                var reach = style.strokeLinejoin === "miter" || style.strokeLinecap === "square" ? Math.SQRT2 : 1;
+                pad = Math.max(pad, width / 2 * scale * reach);
+            });
+        }
+        svg.setAttribute("viewBox", [box.x - pad, box.y - pad, box.width + 2 * pad, box.height + 2 * pad].join(" "));
+    }
+
     // Where an anchor lands: the element carrying that id, brought into whatever box actually
     // scrolls around it. The browser's own fragment handling cannot do this one -- the address
     // carries the anchor before the document it names has been fetched, so the element the
@@ -1359,5 +1401,5 @@
         setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, focusFirst, arrivalFocus, chords, recall, remember, download };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download };
 })();

@@ -174,6 +174,11 @@
                     // Same fallback as the <img> this replaces, kept here too for an SVG
                     // with no viewBox of its own to give the browser a ratio before this.
                     root.style.aspectRatio = "auto 1 / 1";
+
+                    // In the same task as the inlining, so the one layout the browser draws
+                    // is already the artwork's own: the band under the mark is the block's
+                    // gap and nothing else, and the fit adds no second resize.
+                    window.nsapp.fitMark(root);
                 }
             })
             .catch(() => { });
