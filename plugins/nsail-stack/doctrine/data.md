@@ -36,7 +36,7 @@ Infrastructure only. No domain entities, no shared DbContext type.
 | `DbContextExtensions.SetDefaultDbContext<T>` | `AddScoped<DbContext, T>()` for handler injection |
 | `Setup.AddDataAccess<T>` | The tenancy seam plus the app's context — what a host calls instead of `AddDbContext` |
 | `TenancyOptions` / `TenancyProvider` / `Tenant` / `ITenanted` | The seam itself — see Tenancy |
-| `TenantRoster` | Who the install's tenants are, for work outside a request — data-tenancy.md, Background jobs |
+| `TenantRoster` | Who the install's tenants are: what a sweep enters, and under `SingleDb` what a request's slug must be on — data-tenancy.md |
 | `IInstallScoped` / `ITenantSeed` | What a tenant does NOT own, and what it is born with — data-tenancy.md |
 | `TenantSeedStep` / `AppliedSeedStep` | One named step of that seed, and the tenant's history of which it has run — one of the Stack's three tables (data-tenancy.md, First touch bootstraps) |
 | `TenantState` / `TenantStates` / `TenantStateMemo` | What the install records ABOUT a tenant — whether it is served, why, until when, and which plan it is on, written from outside the app — the scoped reader of it, and what holds that reading for minutes: the second Stack table (data-tenancy.md, The install's own record) |
@@ -98,7 +98,7 @@ The rest lives in [data-tenancy.md](data-tenancy.md), under these headings:
 - **A frozen id is a row's NAME** — `TenancyProvider.Row`, `WellKnownRows`.
 - **A document is a caller too** — `TenancyProvider.Owned`, `PackLoader`.
 - **Caddy assigns the tenant, Postgres is the registry** — `X-NSail-Tenant`,
-  `TenancyMiddleware`, `TenantSlug.Normalize`.
+  `TenancyMiddleware`, `TenantSlug.Normalize`, and under `SingleDb` the declared roster.
 - **The credential is stamped, and checked on every request** — the `tenant` claim,
   `TenantClaimMiddleware`, `AmbientTenant`, `TenantMigrator`.
 - **The install's own record of a tenant** — `TenantState`, `TenantStates`, `TenantStateMemo`,

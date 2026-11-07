@@ -3,24 +3,27 @@
 
 namespace NSail.Data;
 
-/// <summary>Who the install's tenants are, for work that runs outside a request and therefore
-/// has no proxy to name one — a background sweep, a startup pass. Registered by the modes that
-/// resolve a tenant and by no other, so a host that asks for it and gets nothing is an install
-/// whose work runs once, for the install itself.
+/// <summary>Who the install's tenants are. Work that runs outside a request — a background
+/// sweep, a startup pass — has no proxy to name one and enters each tenant this answers; a
+/// request where the wall is the tenant column asks it whether the slug the proxy sent is one
+/// (<see cref="Declares"/>, <see cref="Holds"/>). Registered by the modes that resolve a tenant
+/// and by no other, so a host that asks for it and gets nothing is an install whose work runs
+/// once, for the install itself.
 ///
 /// <para>Each wall answers from its own truth and neither answer is a guess. Where the wall is
 /// the connection, the databases Postgres holds ARE the registry — the same truth a request
 /// resolves against, read whole. Where the wall is the tenant column there is no registry to
-/// read: the proxy's whitelist is the roster and a well-formed slug IS the tenant, so the
-/// install <b>declares</b> its own, in <c>Tenancy:Tenants</c> and in the file
+/// read, so the install <b>declares</b> its own, in <c>Tenancy:Tenants</c> and in the file
 /// <c>Tenancy:TenantsFile</c> names — the union of the two, the file read again on every call so
 /// that whoever provisions tenants can add one without a restart. Rows cannot answer that
 /// question — a query spanning tenants is exactly what the filter refuses — and a roster read
-/// off the data would name whoever happens to have written, never whoever exists.</para>
+/// off the data would name whoever happens to have written, never whoever exists. An install
+/// that declares neither has only the proxy's whitelist, and every well-formed slug is its
+/// tenant.</para>
 ///
 /// <para>A named file that cannot be read whole refuses the whole answer rather than returning
-/// the part it has: a sweep that silently enters a subset of the install is the failure this
-/// roster exists to make visible.</para></summary>
+/// the part it has: a sweep that silently enters a subset of the install, or a request served
+/// for a slug nobody could confirm, is the failure this roster exists to make visible.</para></summary>
 public sealed class TenantRoster
 {
     // One grammar for both declarations: a file is one slug per line, and a line holding a
@@ -44,6 +47,27 @@ public sealed class TenantRoster
         // cannot name is refused at startup — where a badly named product or cell is refused.
         // The file is not: a cell boots before whoever provisions its tenants has written it.
         _declared = databases is null ? Named(tenancy.Tenants, "Tenancy:Tenants") : [];
+    }
+
+    /// <summary>Whether this install states its tenants where the wall is the tenant column: a
+    /// <c>Tenancy:Tenants</c> that names one, or a <c>Tenancy:TenantsFile</c> at all — a file that
+    /// is named and empty declares nobody. Never true where the wall is the connection, whose
+    /// registry a request already resolves against.</summary>
+    public bool Declares
+    {
+        get
+        {
+            return _databases is null && (_declared.Count > 0 || !string.IsNullOrWhiteSpace(_tenancy.TenantsFile));
+        }
+    }
+
+    public async Task<bool> Holds(Tenant tenant, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(tenant);
+
+        var tenants = await Tenants(cancellationToken).ConfigureAwait(false);
+
+        return tenants.Any(declared => string.Equals(declared.Slug, tenant.Slug, StringComparison.Ordinal));
     }
 
     public async Task<IReadOnlyList<Tenant>> Tenants(CancellationToken cancellationToken = default)

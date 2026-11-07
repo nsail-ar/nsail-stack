@@ -411,8 +411,16 @@ a third runtime dependency buys nothing Caddy and Postgres are not already telli
   creating nothing. Only the database moves per tenant; server, user and password stay the
   install's.
 
-Under `SingleDb` there is no registry and no database name: a well-formed slug **is** the
-tenant, and `TenancyMiddleware` enters it. A malformed one is still 404, ahead of everything.
+Under `SingleDb` there is no registry and no database name, so the install's **declared roster**
+(`TenantRoster`, below) is the truth that a tenant exists: a cell that declares one — a
+`Tenancy:Tenants` naming a slug, or a `Tenancy:TenantsFile` at all — answers **404** to a slug the
+roster does not name, ahead of authentication and **before anything is planted for it**. A site
+the proxy still routes to a cell its tenant has left must not get a second, empty copy of that
+tenant there. The file is read again on every such request, so a tenant filed by whoever
+provisions it is served on its next visit with no restart; a named file that cannot be read
+**fails the request** — never served as if the slug were known. A cell that declares no roster
+has only the proxy's whitelist, and a well-formed slug **is** its tenant. A malformed one is 404
+in every mode, ahead of everything.
 
 `TenantSlug.Normalize` is the one gate between the header and a database name: lowercase
 alphanumerics and the hyphen, case folded, **anything else refused rather than repaired** —
@@ -697,7 +705,8 @@ reads nothing and cannot write at all.
   request. A host that configures none keeps the ambient culture, which is what
   `HandlerHost`'s inline drain leaves a fixture on — so the language a deferred send asks for is
   proven in `NSail.Background.Tests` and nowhere a fixture reaches.
-- **The roster is declared, never guessed** (`TenantRoster`). Where the wall is the connection,
+- **The roster is declared, never guessed** (`TenantRoster`), and under `SingleDb` it gates
+  requests as well as sweeps (the 404 above). Where the wall is the connection,
   the provisioned databases ARE the registry and are read whole — the same truth a request
   resolves against. Where the wall is the tenant column there is no registry: the proxy's
   whitelist is the roster, so the install states it — in **`Tenancy:Tenants`**, comma-separated,
@@ -716,8 +725,8 @@ reads nothing and cannot write at all.
   beside it and renamed over it, never truncated and rewritten in place, because the read takes
   no lock and a sweep landing inside that window would enter a shortened roster, or a cut slug
   no tenant owns, in silence. The cost is unchanged: a tenant has to appear in a second place
-  under `SingleDb`, and a slug in Caddy that is in neither of these serves requests and gets no
-  jobs — which is why an **empty roster under a tenant-scoped mode is logged at warning**, once
+  under `SingleDb`: on a cell that declares a roster a slug in Caddy that is not on it is a 404,
+  and on one that declares none it serves requests and gets no jobs — which is why an **empty roster under a tenant-scoped mode is logged at warning**, once
   per job, **and reported as a metric**.
 - **An install that names the file empties `Tenancy:Tenants`.** The two are unioned so that an
   install nobody has re-composed keeps sweeping exactly what it sweeps today: the key is
