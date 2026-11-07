@@ -267,6 +267,13 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   `IsStored` has nothing to show and keeps its check, and the eye comes with the first character;
   a disabled or read-only box draws none. The reveal is the field's own state, never a parameter
   and never kept past the page.
+- **`NsTextField` copies its value behind `Copy`** — one boolean, for a value shown once and
+  carried elsewhere by hand (a generated password, a token, a link). An end button writes exactly
+  what the box holds through `navigator.clipboard.writeText` and is named
+  `Components.NsTextField.Copy`; once pressed it turns into the check, named
+  `Components.NsTextField.Copied`, until the value changes. The answer sits where the press was,
+  never a toast. The box stays typeable, an empty box copies nothing, and the button takes the
+  end slot a `Suffix` would print in, so a box with both draws the button.
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
   6-digit hex — no alpha channel — matching what every caller already stores; text that
   isn't a color never reaches the model. *Accepted debt: the box itself keeps showing the

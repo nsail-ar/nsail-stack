@@ -76,6 +76,8 @@
   "Common.Retry": "Retry",
   "Common.NewVersion": "A new version is available.",
 
+  "Components.NsTextField.Copy": "Copy",
+  "Components.NsTextField.Copied": "Copied",
   "Components.NsPasswordField.Show": "Show password",
   "Components.NsPasswordField.Hide": "Hide password",
   "Components.NsPasswordField.Stored": "••••••••",
