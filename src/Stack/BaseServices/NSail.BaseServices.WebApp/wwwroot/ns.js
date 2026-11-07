@@ -52,6 +52,53 @@
         return Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
     }
 
+    // Draws an inlined SVG mark to its artwork instead of its viewBox: a logo's file often
+    // carries an unpainted margin (a square viewBox around a wide drawing) that the box then
+    // draws as space. The ink is measured, not estimated: the union of the rendered
+    // children's client rects, which carry strokes, caps and joins that getBBox() leaves
+    // out, taken back into the root's units. An SVG with no viewBox gets one here; one that
+    // cannot be measured keeps what it has.
+    function fitMark(target) {
+        var host = typeof target === "string" ? document.querySelector(target) : target;
+        var svg = host instanceof SVGSVGElement ? host : host && host.querySelector(":scope > svg");
+        if (!svg)
+            return;
+        var box;
+        try {
+            box = svg.getBBox();
+        } catch (e) {
+            return;
+        }
+        if (!(box.width > 0 && box.height > 0))
+            return;
+        var rootScreen = svg.getScreenCTM();
+        var left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+        if (rootScreen) {
+            var toRoot = rootScreen.inverse();
+            svg.querySelectorAll("*").forEach(function (el) {
+                if (!(el instanceof SVGGraphicsElement) || el.closest("defs, clipPath, mask, marker, pattern, symbol"))
+                    return;
+                var r = el.getBoundingClientRect();
+                if (!(r.width > 0 || r.height > 0))
+                    return;
+                [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom]].forEach(function (c) {
+                    var p = new DOMPoint(c[0], c[1]).matrixTransform(toRoot);
+                    left = Math.min(left, p.x);
+                    top = Math.min(top, p.y);
+                    right = Math.max(right, p.x);
+                    bottom = Math.max(bottom, p.y);
+                });
+            });
+        }
+        if (!(right > left && bottom > top)) {
+            left = box.x;
+            top = box.y;
+            right = box.x + box.width;
+            bottom = box.y + box.height;
+        }
+        svg.setAttribute("viewBox", [left, top, right - left, bottom - top].join(" "));
+    }
+
     // Where an anchor lands: the element carrying that id, brought into whatever box actually
     // scrolls around it. The browser's own fragment handling cannot do this one -- the address
     // carries the anchor before the document it names has been fetched, so the element the
@@ -1359,5 +1406,5 @@
         setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, focusFirst, arrivalFocus, chords, recall, remember, download };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download };
 })();

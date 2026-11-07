@@ -4,12 +4,13 @@
 @namespace NSail.Components
 @using System.Collections.Concurrent
 @using Microsoft.Extensions.DependencyInjection
+@using Microsoft.JSInterop
 
 @inject IServiceProvider Services
 
 @if (Url is { } url && _kind != RemoteImageKind.Unavailable)
 {
-    <span class="@GetClasses()" style="@GetStyle()">
+    <span @ref="_box" class="@GetClasses()" style="@GetStyle()">
         @if (_kind == RemoteImageKind.Svg && _markup is { } markup)
         {
             @((MarkupString)markup)
@@ -42,6 +43,8 @@
     RemoteImageKind? _kind;
     string? _markup;
     string? _probed;
+    string? _fitted;
+    ElementReference _box;
 
     /// <summary>A well-known route this component fetches and decides by content type --
     /// never an app- or kit-specific default, so Stack names no URL of its own. The route
@@ -87,6 +90,8 @@
     // until the content type says otherwise.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await Fit();
+
         if (Url is not { } url || _probed == url)
         {
             return;
@@ -109,6 +114,32 @@
         Build();
 
         StateHasChanged();
+    }
+
+    // The inlined mark is drawn to its artwork, not to the viewBox its file carries: getBBox
+    // needs the element in the DOM, so it runs on the render that put the markup there, once
+    // per URL. A host with no JS (prerendering) keeps the viewBox it was given.
+    async Task Fit()
+    {
+        if (Url is not { } url || _kind != RemoteImageKind.Svg || _markup is null || _fitted == url)
+        {
+            return;
+        }
+
+        if (Services.GetService<IJSRuntime>() is not { } js)
+        {
+            return;
+        }
+
+        _fitted = url;
+
+        try
+        {
+            await js.InvokeVoidAsync("nsapp.fitMark", _box);
+        }
+        catch (Exception e) when (e is InvalidOperationException or JSException or JSDisconnectedException)
+        {
+        }
     }
 
     static async Task<(RemoteImageKind Kind, string? Markup)> Probe(IHttpClientFactory clients, string url)

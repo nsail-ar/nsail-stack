@@ -38,8 +38,42 @@ public sealed class NsRemoteImageTests : BunitContext
     }
 
     [Fact]
+    public void FitsAnInlinedSvgToItsArtworkOnceAfterTheRenderThatInlinesIt()
+    {
+        JSInterop.SetupVoid("nsapp.fitMark", _ => true);
+
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+            SvgResponse("<svg viewBox=\"0 0 10 10\"><path d=\"M0 0h10v5H0z\"/></svg>")));
+
+        var cut = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/fit"));
+
+        cut.WaitForState(() => cut.Markup.Contains("<svg", StringComparison.Ordinal), TimeSpan.FromSeconds(2));
+        cut.WaitForAssertion(() => Assert.Single(JSInterop.Invocations["nsapp.fitMark"]));
+
+        cut.Render();
+
+        Assert.Single(JSInterop.Invocations["nsapp.fitMark"]);
+    }
+
+    [Fact]
+    public void NeverFitsARasterImage()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(RasterResponse));
+
+        var cut = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/no-fit"));
+
+        cut.WaitForState(() => cut.FindAll("img").Count > 0, TimeSpan.FromSeconds(2));
+
+        Assert.Empty(JSInterop.Invocations.Where(i => i.Identifier == "nsapp.fitMark"));
+    }
+
+    [Fact]
     public void InlinesAnSvgResponseSoItInheritsCurrentColor()
     {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
         Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
             SvgResponse("<svg viewBox=\"0 0 10 10\"><path fill=\"currentColor\" d=\"M0 0h10v10H0z\"/></svg>")));
 
