@@ -60,7 +60,10 @@ the files it leaves.
     exception type, and files a story per new group in Analyze (`telemetry`, the service's area — a
     product of that name, or its `Areas` entry — and `bug` when a cell outside `NotProd` logged it), at
     most `MaxStories` a pass; an open one gets the count, once a day; one closed and logged again after
-    is filed anew naming it (it broke twice); one closed as not planned mutes its error.
+    is filed anew naming it (it broke twice); one closed as not planned mutes its error. A failed pass
+    logs the call it was making, the provider's status and the rate limit it had left (numbers and an
+    enum, so they reach the log store; the provider's body stays in the console line), counts
+    `harness.passes{outcome=failed}` with that `status`, and the story filed for it names all three.
     on its ask is asked once, and walked again only when someone wrote on it or after `Recheck` minutes. The walker writes
     `VERDICT: ok|n/a|bug|asked|waiting|not-live|doubt` and its report: the verdict is the event, and
     the board is the harness's. Every verdict leaves the story where a walk reads it again: Released,
