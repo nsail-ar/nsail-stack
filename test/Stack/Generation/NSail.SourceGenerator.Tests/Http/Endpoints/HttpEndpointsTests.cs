@@ -104,6 +104,18 @@ public class HttpEndpointsTests
         Assert.Contains($"new[] {{ \"{verb}\" }}", source);
         Assert.DoesNotContain("builder.MapHead(", source);
         Assert.DoesNotContain("builder.MapOptions(", source);
+        Assert.Contains("[FromQuery] string? tag", source);
+    }
+
+    [Theory]
+    [InlineData("TestPutMessage", "MapPut")]
+    [InlineData("TestPatchMessage", "MapPatch")]
+    [InlineData("TestDeleteMessage", "MapDelete")]
+    public void HttpEndpoints_Map_the_remaining_verbs_through_their_own_method(string messageName, string method)
+    {
+        var source = GenerateEntry(messageName);
+
+        Assert.Contains($"builder.{method}(", source);
     }
 
     static string GenerateEntry(string messageName)

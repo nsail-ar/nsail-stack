@@ -32,3 +32,27 @@ public class TestHeaderMessage : IMessage<ExternalGetResult>
     [AsHeader]
     public required string Tenant { get; set; }
 }
+
+[Http(Put, "api/v1/probe/{id}/put")]
+public class TestPutMessage : IMessage
+{
+    public Guid Id { get; set; }
+
+    public string? Tag { get; set; }
+}
+
+[Http(Patch, "api/v1/probe/{id}/patch")]
+public class TestPatchMessage : IMessage
+{
+    public Guid Id { get; set; }
+
+    public string? Tag { get; set; }
+}
+
+[Http(Delete, "api/v1/probe/{id}/delete")]
+public class TestDeleteMessage : IMessage
+{
+    public Guid Id { get; set; }
+
+    public string? Tag { get; set; }
+}

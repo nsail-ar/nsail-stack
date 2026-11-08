@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Net.Http;
 using NSail.Messaging;
 using NSail.Messaging.Http;
 using NSail.Messaging.Runtime.Context;

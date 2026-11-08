@@ -168,7 +168,7 @@ public class GetPrescription : IMessage<Prescription>
 | `[AsHeader]` | Request header |
 | (default on POST/PUT) | JSON body |
 
-Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc.  Head and Options are mapped with `MapMethods`, and their members bind from the query string.
+Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Head and Options are mapped with `MapMethods`; their members bind from the query string (route tokens and `[AsRoute]`/`[AsHeader]` still win).
 
 Sdk projects import `static NSail.Messaging.Annotations.Method` via global usings.
 
