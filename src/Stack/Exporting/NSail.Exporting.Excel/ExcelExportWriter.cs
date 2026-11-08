@@ -57,7 +57,7 @@ public sealed class ExcelExportWriter : IExportWriter
                     columns.Add(new DynamicExcelColumn(keys[index])
                     {
                         Index = index,
-                        Name = column.Title,
+                        Name = ExportText.Defused(column.Title),
                         Format = PatternFor(column.Format, culture)
                     });
                 }
@@ -110,6 +110,7 @@ public sealed class ExcelExportWriter : IExportWriter
 
     // A date the sheet can hold is a DateTime: the serial number under the cell has no other
     // shape, and handing the vendor anything else leaves it to guess between a date and text.
+    // Whatever the vendor would write as a string (a Guid, a Uri, a char) is defused like one.
     static object? Cell(object? value)
     {
         return value switch
@@ -117,8 +118,11 @@ public sealed class ExcelExportWriter : IExportWriter
             DateOnly date => date.ToDateTime(TimeOnly.MinValue),
             DateTimeOffset offset => offset.LocalDateTime,
             TimeOnly time => time.ToTimeSpan(),
-            Enum word => word.ToString(),
-            _ => value
+            Enum word => ExportText.Defused(word.ToString()),
+            string text => ExportText.Defused(text),
+            null or bool or DateTime or TimeSpan => value,
+            _ when Type.GetTypeCode(value.GetType()) is >= TypeCode.SByte and <= TypeCode.Decimal => value,
+            _ => ExportText.Defused(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty)
         };
     }
 

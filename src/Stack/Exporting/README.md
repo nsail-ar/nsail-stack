@@ -66,7 +66,7 @@ The two writers differ on purpose:
 
 | | `.xlsx` | `.csv` |
 |---|---|---|
-| Cells | Typed values with a per-column number format (`#,##0.####`, `#,##0.00`, `0.00%`, the culture's short date) | Text in the culture's separators; a text cell starting with `=`, `+`, `-`, `@`, tab or CR gets a leading `'` so a spreadsheet does not run it |
+| Cells | Typed values with a per-column number format (`#,##0.####`, `#,##0.00`, `0.00%`, the culture's short date); a text cell starting with `=`, `+`, `-`, `@`, tab or CR gets a leading `'` that is part of the value, a typed number, date or time is untouched | Text in the culture's separators; a text cell starting with `=`, `+`, `-`, `@`, tab or CR gets a leading `'` so a spreadsheet does not run it |
 | Pages | One sheet per table (names cut to 31 characters), header row frozen, auto-filter on | Tables flattened in order with a blank line between them |
 | Encoding | OOXML | UTF-8 with a byte-order mark |
 | Separator | n/a | `;` where the culture's decimal mark is a comma, `,` otherwise; never configured |
