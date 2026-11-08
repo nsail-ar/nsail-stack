@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -143,17 +144,50 @@ public static class Setup
 
     public static void UseBaseWebApi(this WebApplication app)
     {
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("NSail.BaseServices.WebApi");
+
         if (app.Configuration.GetValue("ASPNETCORE_FORWARDEDHEADERS_ENABLED", false))
         {
-            var forwardedHeadersOptions = new ForwardedHeadersOptions
+            var trusted = app.Services.GetRequiredService<SecurityOptions>().TrustedProxies;
+
+            if (trusted.Length == 0)
             {
-                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-            };
+                // Two empty lists make the framework skip the peer check and believe everyone,
+                // so with nobody named the middleware is not installed at all.
+                logger.LogWarning("ASPNETCORE_FORWARDEDHEADERS_ENABLED is on but Security:TrustedProxies is empty: no forwarded header is believed. Behind a proxy every caller shares the proxy's address and every request reads as http, so HSTS is not sent and HTTPS redirection can loop. Name the proxy in Security:TrustedProxies.");
+            }
+            else
+            {
+                var forwardedHeadersOptions = new ForwardedHeadersOptions
+                {
+                    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+                };
 
-            forwardedHeadersOptions.KnownIPNetworks.Clear();
-            forwardedHeadersOptions.KnownProxies.Clear();
+                // Only the proxies the install names are believed; the framework's loopback
+                // default goes too, so the list is the whole trust.
+                forwardedHeadersOptions.KnownIPNetworks.Clear();
+                forwardedHeadersOptions.KnownProxies.Clear();
 
-            app.UseForwardedHeaders(forwardedHeadersOptions);
+                foreach (var entry in trusted)
+                {
+                    if (entry.Contains('/'))
+                    {
+                        forwardedHeadersOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(entry));
+                    }
+                    else
+                    {
+                        forwardedHeadersOptions.KnownProxies.Add(IPAddress.Parse(entry));
+                    }
+                }
+
+                app.UseForwardedHeaders(forwardedHeadersOptions);
+            }
+        }
+        else if (!app.Environment.IsDevelopment())
+        {
+            // Development runs on the machine itself, with no proxy in front, so the warning
+            // would only be noise there.
+            logger.LogWarning("Forwarded headers are off: behind a proxy every caller shares the proxy's address, so one flood closes every public door for everyone. Set ASPNETCORE_FORWARDEDHEADERS_ENABLED and Security:TrustedProxies.");
         }
 
         // Outermost, so the build that answered rides on every answer this host gives — a

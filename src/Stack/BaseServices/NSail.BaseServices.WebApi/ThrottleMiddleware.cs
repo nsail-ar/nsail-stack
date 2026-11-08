@@ -2,6 +2,8 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Collections.Concurrent;
+using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Threading.RateLimiting;
 using NSail.Messaging.Annotations;
@@ -82,12 +84,34 @@ public sealed class ThrottleMiddleware : IMiddleware, IDisposable
     }
 
     // The connection's address, which UseForwardedHeaders has already rewritten to the real
-    // client where the install states it runs behind a proxy. A request with no address at all
-    // — an in-memory test server — is one caller rather than none: a partition key that varied
-    // would hand every request a budget of its own and cap nothing.
+    // client where the install states it runs behind a proxy. An IPv6 client owns a whole /64,
+    // so the network is the caller: keyed by the full address it would rotate to a fresh budget
+    // on every request. A request with no address at all — an in-memory test server — is one
+    // caller rather than none: a partition key that varied would hand every request a budget of
+    // its own and cap nothing.
     static string Caller(HttpContext context)
     {
-        return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        if (context.Connection.RemoteIpAddress is not { } address)
+        {
+            return "unknown";
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        if (address.AddressFamily != AddressFamily.InterNetworkV6)
+        {
+            return address.ToString();
+        }
+
+        Span<byte> bytes = stackalloc byte[16];
+
+        address.TryWriteBytes(bytes, out _);
+        bytes[8..].Clear();
+
+        return new IPAddress(bytes) + "/64";
     }
 
     static Type? Declared(HttpContext context)

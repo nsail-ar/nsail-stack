@@ -58,6 +58,7 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 | Key | Default | Meaning |
 |---|---|---|
 | `TicketEpoch` | `0` | The ticket generation this install honours. Raising it signs out everyone holding an older ticket and nobody else. `0` means never raised: nothing is stamped or refused. From `1` up, a ticket must carry exactly this generation |
+| `TrustedProxies` | `[]` | Proxies (addresses or CIDR networks) whose `X-Forwarded-*` headers are believed when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is on. Any other peer's are ignored; empty trusts nobody |
 
 **Registration**
 
