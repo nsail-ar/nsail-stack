@@ -48,7 +48,7 @@
   "Problems.StorageProviderNotComposed": "No storage provider by that name is composed in this host.",
   "Problems.StorageEndpointRequired": "An S3 target needs the address of the service it lives at.",
   "Problems.StorageContainerOutsideRoot": "The directory is not under a root this install allows.",
-  "Problems.StorageEndpointNotAllowed": "The address is not allowed here: it must be https and name a public host.",
+  "Problems.StorageEndpointNotAllowed": "The endpoint's scheme or host is not allowed by this install.",
   "Problems.StorageGitBranchInvalid": "The branch name is not valid.",
   "Problems.StorageGitAddressInvalid": "The address of the repository is not valid.",
   "Problems.StorageGitEndpointRequired": "A Git target needs the address its repositories live under.",

@@ -269,7 +269,7 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   typed both go. It is one boolean rather than a per-screen string so no screen copies the
   sentence by hand; the server side of the same contract is a derived `HasXxx` on the settings
   type ([settings.md](settings.md), *A secret is write-only*) and a save that reads a blank field
-  as "unchanged".
+  as "unchanged" (Storage: unless the target moved).
 - **`NsPasswordField` draws an eye that reveals what is typed.** A pasted secret is long and a box of
   dots cannot be checked before it is saved, so every password box carries an end button that
   flips it between password and text (`Components.NsPasswordField.Show` / `.Hide` as its label).

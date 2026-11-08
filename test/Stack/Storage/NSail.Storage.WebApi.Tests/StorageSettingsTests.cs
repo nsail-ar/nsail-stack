@@ -157,6 +157,52 @@ public sealed class StorageSettingsTests
         Assert.Equal(StorageTarget.None, target);
     }
 
+    [Fact]
+    public async Task RefusesToTestAStoredRowOutsideTheInstallsRoots()
+    {
+        await _settings.Save(new StorageSettings
+        {
+            Provider = FileSystemStorageProvider.ProviderType,
+            Container = "/",
+        }, 1);
+
+        var error = await Assert.ThrowsAsync<BusinessException>(
+            () => Test().Handle(new TestStorageTarget { Name = StorageNames.Default }));
+
+        Assert.Equal("StorageContainerOutsideRoot", Assert.Single(error.Issues).Code);
+    }
+
+    [Fact]
+    public async Task AnswersAFailedProbeWithAFixedMessage()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var blocker = Path.Combine(root, "blocker");
+
+        Directory.CreateDirectory(root);
+        await File.WriteAllTextAsync(blocker, "x");
+
+        try
+        {
+            await _settings.Save(new StorageSettings
+            {
+                Provider = FileSystemStorageProvider.ProviderType,
+                Container = blocker,
+            }, 1);
+
+            var error = await Assert.ThrowsAsync<BusinessException>(
+                () => Test().Handle(new TestStorageTarget { Name = StorageNames.Default }));
+
+            var issue = Assert.Single(error.Issues);
+
+            Assert.Equal("The storage target could not be used. The server log has the detail.", issue.Message);
+            Assert.DoesNotContain(blocker, issue.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
     static StorageGuardOptions Guard()
     {
         return new StorageGuardOptions { FileRoots = [Path.GetTempPath()] };

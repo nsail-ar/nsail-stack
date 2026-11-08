@@ -30,7 +30,7 @@ On the server, the install's default store, then the providers it may write thro
 ```csharp
 var install = builder.Configuration.Load<StorageOptions>();   // section Storage, validated
 
-services.AddStorageWebApi(install.OnDisk("/data/storage"));   // OnDisk: optional floor
+services.AddStorageWebApi(install.OnDisk("/data/storage"), guard);   // OnDisk: optional floor; guard: what settings may name
 services.AddFileSystemStorage();
 services.AddS3Storage();
 services.AddGitStorage();

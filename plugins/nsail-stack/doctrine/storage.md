@@ -58,7 +58,10 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   never opened the settings screen still uploads a logo. An install that passes no options
   stores nowhere until a row says otherwise; an app whose floor is the host's own disk says so by
   name, with `AddFileSystemStorage`'s `OnDisk`, and names the directory its deploy mounts a
-  volume at. A provider named with no container is refused at startup, where a person is
+  volume at. The install bounds what a row may name (`StorageGuardOptions`, passed to
+  `AddStorageWebApi`): a `file` container under its roots, an endpoint on its scheme and host
+  allow-list and off private addresses; save and test both refuse with a coded issue, and the
+  install's own targets are trusted. A provider named with no container is refused at startup, where a person is
   looking, not at the first upload.
 - **A key is `<kind>/<tenant:N>/<leaf>`, and no kind is outside it.** The kind leads so one
   container holds every kind without a collision; the tenant leads inside it because an object
@@ -159,7 +162,7 @@ everything that still writes objects.
 The provider picker decides whether the address, the region and the key pair are asked for at
 all — `StorageProviderRef.IsRemote` is what the screen reads, and `IsRepository` for the
 branch and the link template. The secret key is never answered back: the read says only that
-one exists, and an empty field on save means "unchanged", never "clear it".
+one exists, and an empty field on save keeps it only while Provider, Endpoint and Container stay as they were — a moved target drops the stored secret, so it never travels to an origin the person did not set it for.
 
 The test action writes a small probe, reads it back, checks the bytes, lists it and removes
 it — against the name's **saved** target, because testing what the form currently holds would

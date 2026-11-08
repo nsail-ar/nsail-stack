@@ -56,11 +56,16 @@ public sealed class StorageCredentialProvider
     {
         var settings = await _settings.Get<StorageSettings>(cancellationToken);
 
-        foreach (var candidate in new[] { name, StorageNames.Default })
+        foreach (var candidate in name == StorageNames.Default ? new[] { name } : new[] { name, StorageNames.Default })
         {
             if (settings.For(candidate) is { Provider.Length: > 0 } row)
             {
                 return row;
+            }
+
+            if (_stores.Install(candidate)?.Target() is { Provider.Length: > 0 })
+            {
+                return null;
             }
         }
 
