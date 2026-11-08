@@ -60,7 +60,7 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
     public async Task PickingADate_OnAnOffsetValue_KeepsTheInstantOfTheHourInTheLocalZone()
     {
         DateTimeOffset? captured = null;
-        var held = new DateTimeOffset(2026, 11, 6, 23, 30, 0, TimeSpan.Zero);
+        var held = new DateTimeOffset(2026, 11, 6, 23, 30, 0, TimeSpan.FromHours(-3));
 
         var cut = Render<DateTimeOffsetValueHost>(ps => ps
             .Add(p => p.Value, held)
