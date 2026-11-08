@@ -65,6 +65,9 @@ public class AddOrderLine : IMessage
     [RegularExpression(@"(?i)^[a-z]+$")]
     public string Slug { get; set; } = string.Empty;
 
+    [RegularExpression(@"^\++$")]
+    public string Plus { get; set; } = string.Empty;
+
     public long Batch { get; set; }
 
     public ulong? Serial { get; set; }

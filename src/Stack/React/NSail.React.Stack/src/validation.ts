@@ -17,8 +17,9 @@ const exact: Record<string, RegExp> = {
   decimal: /^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/,
 };
 
-// Compiled once per pattern, with `u` so \p{L} is a property class; a pattern `u` refuses (a
-// loose `\-` outside a class) is tried without it. A pattern JavaScript cannot compile is null: the server's rule alone judges it.
+// Compiled once per pattern, with `u` so \p{L} is a property class. A pattern `u` refuses is
+// retried without it only when that cannot change its meaning (no \p{}, \P{}, \u{}); one
+// JavaScript cannot compile is null: the server's rule alone judges it.
 const compiled = new Map<string, RegExp | null>();
 
 function build(pattern: string, flags: string): RegExp | null {
@@ -33,7 +34,7 @@ function compile(pattern: string): RegExp | null {
   let regex = compiled.get(pattern);
 
   if (regex === undefined) {
-    regex = build(pattern, "u") ?? build(pattern, "");
+    regex = build(pattern, "u") ?? (/\\[pPu]\{/.test(pattern) ? null : build(pattern, ""));
 
     compiled.set(pattern, regex);
   }

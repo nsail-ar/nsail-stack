@@ -79,6 +79,7 @@ public class TypeScriptWriterTests
 
         Assert.Contains("code: { kind: \"string\", key: \"Shop.AddOrderLine.Code\", binding: \"body\", pattern: \"^[A-Z]{2}-[0-9]{4}$\" }", text);
         Assert.Contains("slug: { kind: \"string\", key: \"Shop.AddOrderLine.Slug\", binding: \"body\", serverRules: [\"RegularExpression\"] }", text);
+        Assert.Contains("plus: { kind: \"string\", key: \"Shop.AddOrderLine.Plus\", binding: \"body\", pattern: \"^\\\\\\u002B\\u002B$\" }", text);
     }
 
     [Fact]

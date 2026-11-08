@@ -45,6 +45,10 @@ describe("validate", () => {
     expect(validateField(phone, "555-1234")).toEqual([]);
     expect(validateField(phone, "5551234").map((i) => i.code)).toEqual(["InvalidFormat"]);
     expect(validateField({ ...name, pattern: "(?<x" }, "anything")).toEqual([]);
+
+    const block = { ...name, pattern: "^[\\p{IsBasicLatin}]+$" };
+
+    expect(validateField(block, "Ana")).toEqual([]);
   });
 
   // The text input takes anything; what the server's parse would refuse is refused here first.
