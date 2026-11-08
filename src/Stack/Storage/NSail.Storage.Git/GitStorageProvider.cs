@@ -84,7 +84,7 @@ public class GitStorageProvider : IStorageProvider
     {
         using var clone = await Clone(target, Reach.Tree, cancelToken);
 
-        // The guard alone: a key outside the container or into `.git` is refused before git reads it.
+        // A key outside the container or into `.git` is refused before git reads it.
         clone.Resolve(key);
 
         await clone.RefuseLinks(key, cancelToken);
@@ -305,7 +305,8 @@ public class GitStorageProvider : IStorageProvider
 
             var listed = await Run(cancelToken, [.. arguments]);
 
-            if (listed.Split('\0', StringSplitOptions.RemoveEmptyEntries).Any(line => line.StartsWith("120000 ", StringComparison.Ordinal)))
+            if (listed.Split('\0', StringSplitOptions.RemoveEmptyEntries).Any(line => line.StartsWith("120000 ", StringComparison.Ordinal)
+                && paths.Contains(line[(line.IndexOf('\t') + 1)..], StringComparer.Ordinal)))
             {
                 throw new BusinessException(BusinessProblem.RuleViolation(
                     "KeyThroughSymlink",

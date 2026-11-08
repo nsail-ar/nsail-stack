@@ -80,7 +80,8 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
 - **A key never escapes its container.** `StorageManager.Guard` is the one door every key
   comes through, and the filesystem and git providers check the RESOLVED path behind it. The
   git provider also refuses a `.git` segment at any depth and in any case: git skips it, so
-  the object would be dropped without a word.
+  the object would be dropped without a word, and a key that is, or passes through, a symlink
+  the committed tree holds (`KeyThroughSymlink`), which would write outside the clone.
 - **`IsConfigured` answers the refusal before there is anything to put.** A caller that
   queues the writing for later — a request filed now and written by a job — would otherwise
   accept the ask, read a whole database and fail on its last line. It is false for both of
@@ -133,7 +134,8 @@ to `Branch`, a get or a list reads that branch's tree, and `Link` is the target'
 binary, so composing it grants the host that executable and the remotes it can reach.
 
 Each verb works in a throwaway one-commit clone and keeps nothing between calls, so two hosts
-never share a checkout. A write checks the branch out; a read fetches the tree without its files
+never share a checkout. Git runs with `core.symlinks=false`, so a checkout never materialises a
+link; the symlink check reads the committed tree, which holds on any platform. A write checks the branch out; a read fetches the tree without its files
 and then only the files it answers with — the key's for a get, those under the prefix for a list,
 whose lengths need them — so a small object costs no more in a large repository. A server that
 does not filter sends every file instead: slower, still right. A push the remote rejected because

@@ -157,6 +157,37 @@ public sealed class GitStorageTests : IDisposable
         await Assert.ThrowsAsync<BusinessException>(() => _provider.Put(Target, key, content, null));
     }
 
+    [Fact]
+    public async Task AllowsAKeyBesideASiblingSymlink()
+    {
+        var outside = Directory.CreateTempSubdirectory("nsail-outside-").FullName;
+        var seed = Directory.CreateTempSubdirectory("nsail-seed-").FullName;
+
+        try
+        {
+            var bare = Path.Combine(_remote.Path, "store.git");
+
+            Git(seed, "init", "--quiet", "--initial-branch=main");
+            Directory.CreateDirectory(Path.Combine(seed, "reports"));
+            File.CreateSymbolicLink(Path.Combine(seed, "reports", "legacy"), outside);
+            File.WriteAllText(Path.Combine(seed, "reports", "a.csv"), "1");
+            Git(seed, "add", "--all");
+            Git(seed, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "link");
+            Git(seed, "push", "--quiet", bare, "HEAD:refs/heads/main");
+
+            using var content = new MemoryStream("x"u8.ToArray());
+
+            await _provider.Put(Target, "reports/a.csv", content, null);
+
+            Assert.NotNull(await _provider.Get(Target, "reports/a.csv"));
+        }
+        finally
+        {
+            Directory.Delete(seed, recursive: true);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
     [Theory]
     [InlineData("a/f")]
     [InlineData("a")]
@@ -178,9 +209,14 @@ public sealed class GitStorageTests : IDisposable
 
             using var content = new MemoryStream("x"u8.ToArray());
 
-            await Assert.ThrowsAsync<BusinessException>(() => _provider.Put(Target, key, content, null));
-            await Assert.ThrowsAsync<BusinessException>(() => _provider.Get(Target, key));
-            await Assert.ThrowsAsync<BusinessException>(() => _provider.Delete(Target, key));
+            var failures = new[]
+            {
+                await Assert.ThrowsAsync<BusinessException>(() => _provider.Put(Target, key, content, null)),
+                await Assert.ThrowsAsync<BusinessException>(() => _provider.Get(Target, key)),
+                await Assert.ThrowsAsync<BusinessException>(() => _provider.Delete(Target, key)),
+            };
+
+            Assert.All(failures, failure => Assert.Contains(failure.Issues, issue => issue.Source == "KeyThroughSymlink"));
 
             Assert.Empty(Directory.GetFileSystemEntries(outside));
         }
