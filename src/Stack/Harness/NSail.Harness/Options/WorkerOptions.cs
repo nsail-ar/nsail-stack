@@ -98,7 +98,8 @@ public sealed class FilterOptions
 
     // The open PR's state at its head, any of: ungated (no verdict of the harness's own Verify),
     // pending, red, conflict, unread (green, no reviewer's word), read (green, a reviewer's word),
-    // elsewhere (green in another repository, whose own review reads it).
+    // elsewhere (green in another repository, whose own review reads it; unread past
+    // PlannerOptions.UnreadElsewhere, a plan's note).
     public string? Checks { get; set; }
 
     // `0`: no sub-issues (a story). `>0`: an epic.

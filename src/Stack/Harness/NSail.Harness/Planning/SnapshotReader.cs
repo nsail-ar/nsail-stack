@@ -94,7 +94,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
             var gate = home && options.Gate ? Markers.GateAt(bodies, pr.Sha, main) : null;
             var green = gate == CiState.Green || (gate is null && pr.Ci == CiState.Green);
             var word = green ? _markers.ReviewAt(bodies, pr.Sha) : null;
-            result.Add(new StoryPr(story, pr.Number, pr.Sha, pr.Ci, pr.Repo, word, gate));
+            result.Add(new StoryPr(story, pr.Number, pr.Sha, pr.Ci, pr.Repo, word, gate, pr.GreenAt));
         }
         return result;
     }

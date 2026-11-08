@@ -20,6 +20,10 @@ public sealed record PlannerOptions(bool Gate = false)
     // A lock with no job behind it for this long is a dispatch that never started.
     public TimeSpan StaleLock { get; init; } = TimeSpan.FromMinutes(10);
 
+    // A green head in another repository unread for this long has no review coming: the read its CI
+    // starts gives up by then (nsail-stack's .github/workflows/review.yml, timeout-minutes).
+    public TimeSpan UnreadElsewhere { get; init; } = TimeSpan.FromMinutes(60);
+
     // How many stories may be under way at once (an open PR nobody holds, or a voyage still
     // without one) before a new one leaves the queue: closing comes before starting. 0 is no limit.
     public int WipLimit { get; init; }

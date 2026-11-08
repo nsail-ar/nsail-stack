@@ -57,9 +57,11 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         return raw.Where(pr => !pr.GetProperty("isDraft").GetBoolean()).Select(pr =>
         {
             var sha = pr.GetProperty("headRefOid").GetString() ?? "";
-            var ci = pr.GetProperty("mergeable").GetString() == "CONFLICTING" ? CiState.Conflict : CiOf(bySha.GetValueOrDefault(sha));
+            var shaRuns = bySha.GetValueOrDefault(sha);
+            var ci = pr.GetProperty("mergeable").GetString() == "CONFLICTING" ? CiState.Conflict : CiOf(shaRuns);
             return new OpenPr(pr.GetProperty("number").GetInt32(), pr.GetProperty("title").GetString() ?? "",
-                pr.GetProperty("headRefName").GetString() ?? "", sha, ci, repo, pr.GetProperty("updatedAt").GetString() ?? "");
+                pr.GetProperty("headRefName").GetString() ?? "", sha, ci, repo, pr.GetProperty("updatedAt").GetString() ?? "",
+                ci == CiState.Green ? GreenAtOf(shaRuns) : null);
         }).ToList();
     }
 
@@ -211,12 +213,25 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             && r.GetProperty("event").GetString() is "pull_request" or "push").ToList());
     }
 
+    // The newest run per workflow at a head.
+    static IEnumerable<JsonElement> Latest(List<JsonElement> runs)
+    {
+        return runs
+            .GroupBy(r => r.GetProperty("workflow_id").GetInt64())
+            .Select(g => g.OrderBy(r => r.TryGetProperty("run_started_at", out var s) ? s.GetString() : "").Last());
+    }
+
+    // When a green head's last workflow finished: a run's updated_at is its completion once completed.
+    internal static DateTimeOffset? GreenAtOf(List<JsonElement>? runs)
+    {
+        if (runs is null || runs.Count == 0) return null;
+        return Latest(runs).Select(r => r.TryGetProperty("updated_at", out var u) && u.ValueKind == JsonValueKind.String ? u.GetDateTimeOffset() : (DateTimeOffset?)null).Max();
+    }
+
     internal static CiState CiOf(List<JsonElement>? runs)
     {
         if (runs is null || runs.Count == 0) return CiState.Pending;
-        var latest = runs
-            .GroupBy(r => r.GetProperty("workflow_id").GetInt64())
-            .Select(g => g.OrderBy(r => r.TryGetProperty("run_started_at", out var s) ? s.GetString() : "").Last());
+        var latest = Latest(runs);
         var pending = false;
         var red = false;
         foreach (var run in latest)

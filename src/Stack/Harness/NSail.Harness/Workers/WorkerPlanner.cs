@@ -49,6 +49,18 @@ public static class WorkerPlanner
             notes.Add($"#{i.Number}: in QA with no ask — no walk reads it again");
         }
 
+        // Another repository's review is its CI's to start; one that never came is said, not repaired.
+        foreach (var i in issues.Where(i => i.Stage == Stages.InProgress && Planner.HoldOf(i, options) is null))
+        {
+            foreach (var pr in prsByStory.GetValueOrDefault(i.Number) ?? [])
+            {
+                if (pr.GreenAt is not { } at || StateOf(pr, board, options) != "elsewhere") continue;
+                var waited = board.ReadAt - at;
+                if (waited <= options.UnreadElsewhere) continue;
+                notes.Add($"#{i.Number}: {pr.Repo.Split('/')[1]} PR #{pr.Number} green and unread for {(int)waited.TotalMinutes} min — its own review never read it");
+            }
+        }
+
         var items = new List<WorkItem>();
         var taken = new HashSet<int>();
         var wip = prsByStory.Keys.Where(n => issues.FirstOrDefault(i => i.Number == n) is { } i && Planner.HoldOf(i, options) is not (Labels.Ruling or Labels.Blocked or Labels.Hand or Labels.Stalled))
@@ -147,7 +159,8 @@ public static class WorkerPlanner
             }
         }
         if (pr.Word is not null) return "read";
-        // A green head in another repository is read by that repository's own review, which its CI starts.
+        // A green head in another repository is read by that repository's own review, which its CI
+        // starts; one unread past UnreadElsewhere is a plan's note.
         return home ? "unread" : "elsewhere";
     }
 

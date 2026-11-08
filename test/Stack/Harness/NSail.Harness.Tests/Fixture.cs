@@ -22,6 +22,7 @@ sealed class Fixture
     DateTimeOffset? _lastCut;
     readonly HashSet<int> _merged = [];
     readonly Dictionary<string, string> _unshipped = [];
+    readonly DateTimeOffset _now = DateTimeOffset.UtcNow;
 
     public Fixture Story(int n, string stage = "Ready", string labels = "", string? title = null,
         int subs = 0, int[]? blockers = null, double parentPercent = -1, int parent = 0, bool milestone = false, double ownPercent = 0, int? blockersTotal = null)
@@ -32,9 +33,9 @@ sealed class Fixture
         return this;
     }
 
-    public Fixture Pr(int story, int number, CiState ci = CiState.Green, string? word = null, string repo = Repo, string sha = "abcdef1234567890", CiState? gate = null)
+    public Fixture Pr(int story, int number, CiState ci = CiState.Green, string? word = null, string repo = Repo, string sha = "abcdef1234567890", CiState? gate = null, TimeSpan? greenFor = null)
     {
-        _prs.Add(new StoryPr(story, number, sha, ci, repo, word, gate));
+        _prs.Add(new StoryPr(story, number, sha, ci, repo, word, gate, _now - greenFor));
         return this;
     }
 
@@ -101,7 +102,7 @@ sealed class Fixture
 
     public BoardSnapshot Build()
     {
-        return new BoardSnapshot(_issues.OrderBy(i => i.Number).ToList(), _prs, _flight, _releases, _lastQa, _lastCut, _ages, DateTimeOffset.UtcNow, Repo)
+        return new BoardSnapshot(_issues.OrderBy(i => i.Number).ToList(), _prs, _flight, _releases, _lastQa, _lastCut, _ages, _now, Repo)
         {
             LockHolders = _holders,
             DueReleases = _due,
