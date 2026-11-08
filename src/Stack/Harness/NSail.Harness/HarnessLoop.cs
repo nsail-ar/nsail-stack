@@ -56,6 +56,7 @@ public sealed class HarnessLoop(
     Pass? _last;
     string? _paused;
     DateTimeOffset? _quotaUntil;
+    static readonly TimeSpan MaxLimitBackoff = TimeSpan.FromMinutes(10);
     TimeSpan? _limitedFor;
     volatile bool _restarting;
     DateTimeOffset? _pausedSince;
@@ -188,6 +189,12 @@ public sealed class HarnessLoop(
             lock (_gate) _last = pass;
             var idle = _running.IsEmpty && pass.WouldTake.Count == 0;
             var wait = TimeSpan.FromSeconds(idle || o.Mode == HarnessMode.Debug ? o.IdlePollSeconds : o.BusyFloorSeconds);
+            // The provider limited the pass: the next one waits out what it asked, up to a ceiling, and a wake still ends it.
+            if (_limitedFor is { } limited && limited > wait)
+            {
+                wait = limited < MaxLimitBackoff ? limited : MaxLimitBackoff;
+                log.LogWarning("provider rate limit — next pass in {Seconds:F0}s", wait.TotalSeconds);
+            }
             try
             {
                 await _wake.WaitAsync(wait, stop);
@@ -197,19 +204,6 @@ public sealed class HarnessLoop(
             catch (OperationCanceledException) when (stop.IsCancellationRequested)
             {
                 break;
-            }
-            // The provider limited the pass: the next one waits out what it asked.
-            if (_limitedFor is { } limited && limited > wait)
-            {
-                log.LogWarning("provider rate limit — next pass in {Seconds:F0}s", limited.TotalSeconds);
-                try
-                {
-                    await Task.Delay(limited - wait, stop);
-                }
-                catch (OperationCanceledException) when (stop.IsCancellationRequested)
-                {
-                    break;
-                }
             }
         }
     }

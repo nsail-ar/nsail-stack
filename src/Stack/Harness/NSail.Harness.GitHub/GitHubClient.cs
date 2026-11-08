@@ -14,7 +14,7 @@ namespace NSail.Harness.GitHub;
 public sealed partial class GitHubClient(HttpClient http)
 {
     // A limit's wait is honoured up to this; a longer one is thrown to the caller, whose pass backs off.
-    internal static readonly TimeSpan MaxWait = TimeSpan.FromSeconds(60);
+    static readonly TimeSpan MaxWait = TimeSpan.FromSeconds(60);
     const int Attempts = 3;
 
     internal Func<TimeSpan, CancellationToken, Task> Delay { get; init; } = (span, ct) => Task.Delay(span, ct);
@@ -31,7 +31,7 @@ public sealed partial class GitHubClient(HttpClient http)
 
     public async Task<JsonElement> Get(string path, CancellationToken ct = default)
     {
-        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Get, path), ct);
+        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Get, path), reads: true, ct);
         return await Read(response, ct);
     }
 
@@ -43,7 +43,7 @@ public sealed partial class GitHubClient(HttpClient http)
         string? next = path;
         for (var page = 0; next is not null && page < maxPages; page++)
         {
-            using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Get, next), ct);
+            using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Get, next), reads: true, ct);
             var body = await Read(response, ct);
             var items = select is null ? body : select(body);
             all.AddRange(items.EnumerateArray());
@@ -55,7 +55,7 @@ public sealed partial class GitHubClient(HttpClient http)
     public async Task<JsonElement> GraphQl(string query, object? variables = null, CancellationToken ct = default)
     {
         var payload = JsonSerializer.Serialize(new { query, variables });
-        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Post, "graphql") { Content = new StringContent(payload, Encoding.UTF8, "application/json") }, ct);
+        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Post, "graphql") { Content = new StringContent(payload, Encoding.UTF8, "application/json") }, !query.TrimStart().StartsWith("mutation", StringComparison.Ordinal), ct);
         var body = await Read(response, ct);
         if (body.TryGetProperty("errors", out var errors) && errors.GetArrayLength() > 0)
         {
@@ -67,7 +67,7 @@ public sealed partial class GitHubClient(HttpClient http)
     public async Task<JsonElement> Send(HttpMethod method, string path, object? body = null, CancellationToken ct = default)
     {
         var json = body is null ? null : JsonSerializer.Serialize(body);
-        using var response = await Dispatch(() => new HttpRequestMessage(method, path) { Content = json is null ? null : new StringContent(json, Encoding.UTF8, "application/json") }, ct);
+        using var response = await Dispatch(() => new HttpRequestMessage(method, path) { Content = json is null ? null : new StringContent(json, Encoding.UTF8, "application/json") }, reads: false, ct);
         return await Read(response, ct);
     }
 
@@ -81,8 +81,8 @@ public sealed partial class GitHubClient(HttpClient http)
     }
 
     // A rate-limited answer (403/429 with a wait) is waited out and sent again, a few times; a 5xx
-    // is sent again only when the call reads. What still fails is returned for Read to throw.
-    async Task<HttpResponseMessage> Dispatch(Func<HttpRequestMessage> build, CancellationToken ct)
+    // is sent again only when the call reads (a GET, a GraphQL query). What still fails is returned for Read to throw.
+    async Task<HttpResponseMessage> Dispatch(Func<HttpRequestMessage> build, bool reads, CancellationToken ct)
     {
         for (var attempt = 1; ; attempt++)
         {
@@ -94,7 +94,7 @@ public sealed partial class GitHubClient(HttpClient http)
             {
                 wait = LimitWait(response);
             }
-            else if ((int)response.StatusCode >= 500 && request.Method == HttpMethod.Get)
+            else if ((int)response.StatusCode >= 500 && reads)
             {
                 wait = TimeSpan.FromSeconds(attempt);
             }

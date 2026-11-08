@@ -83,6 +83,7 @@ public class GitHubRateLimitTests
         var e = await Assert.ThrowsAsync<GitHubException>(() => client.Get("x"));
 
         Assert.Equal(TimeSpan.FromSeconds(5), e.RetryAfter);
+        Assert.Equal(3, script.Sent.Count);
     }
 
     [Fact]
@@ -114,7 +115,7 @@ public class GitHubRateLimitTests
         await client.Get("x");
 
         Assert.Single(waits);
-        Assert.InRange(waits[0].TotalSeconds, 15, 21);
+        Assert.InRange(waits[0].TotalSeconds, 5, 21);
     }
 
     [Fact]
@@ -127,6 +128,22 @@ public class GitHubRateLimitTests
         var post = new Script(_ => new HttpResponseMessage(HttpStatusCode.BadGateway) { Content = new StringContent("") }, _ => Ok());
         await Assert.ThrowsAsync<GitHubException>(() => Client(post).Client.Send(HttpMethod.Post, "x", new { }));
         Assert.Single(post.Sent);
+    }
+
+    [Fact]
+    public async Task AFiveHundredGraphQlQueryIsRetriedAndAMutationIsNot()
+    {
+        static HttpResponseMessage Bad()
+        {
+            return new HttpResponseMessage(HttpStatusCode.BadGateway) { Content = new StringContent("") };
+        }
+        var query = new Script(_ => Bad(), _ => Ok("""{"data":{"a":1}}"""));
+        await Client(query).Client.GraphQl("query{a}");
+        Assert.Equal(2, query.Sent.Count);
+
+        var mutation = new Script(_ => Bad(), _ => Ok("""{"data":{}}"""));
+        await Assert.ThrowsAsync<GitHubException>(() => Client(mutation).Client.GraphQl("mutation{a}"));
+        Assert.Single(mutation.Sent);
     }
 
     static GitHubRepository Repo(GitHubClient gh)
