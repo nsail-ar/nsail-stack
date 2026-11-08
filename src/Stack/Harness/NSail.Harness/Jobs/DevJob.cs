@@ -128,7 +128,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             // A cancelled or crashed run never reaches Deliver: the slot's next Prepare resets it.
             try
             {
-                await Rescue(n, repo, work, startedAt ?? ctx.WorkspaceOf(repo).Tip, log, await ScreenOf(n));
+                await Rescue(n, repo, work, startedAt ?? ctx.WorkspaceOf(repo).Tip, log, await ScreenOf(ctx.Options, ctx.Board, n));
             }
             catch (Exception e)
             {
@@ -189,7 +189,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     }
 
     // Commits ahead of `since` go to a ref of their own, unleased and never the story's: a push that must
-    // survive a cancelled job or a refused lease. Returns the ref, null when nothing was ahead.
+    // survive a cancelled job or a refused lease. Returns the ref, null when nothing was ahead or the screen held the push.
     async Task<string?> Rescue(int n, IRepository repo, string dir, string since, ILogger log, IReadOnlyList<string> screen)
     {
         var name = $"rescue/{ctx.Names.Key}-{n}";
@@ -206,17 +206,17 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     }
 
     // The protected paths a rescue push screens for: none when a hand lifted the screen.
-    async Task<IReadOnlyList<string>> ScreenOf(int n)
+    internal static async Task<IReadOnlyList<string>> ScreenOf(HarnessOptions options, IBoard board, int n)
     {
-        if (ctx.Options.AllowProtectedPaths) return [];
+        if (options.AllowProtectedPaths) return [];
         try
         {
-            return (await ctx.Board.Labels(n, CancellationToken.None)).Contains(Labels.AllowProtected) ? [] : ctx.Options.ProtectedPaths;
+            return (await board.Labels(n, CancellationToken.None)).Contains(Labels.AllowProtected) ? [] : options.ProtectedPaths;
         }
         catch (Exception)
         {
             // The board may be down with the network; the strict screen needs no board.
-            return ctx.Options.ProtectedPaths;
+            return options.ProtectedPaths;
         }
     }
 
