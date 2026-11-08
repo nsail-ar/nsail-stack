@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Text.RegularExpressions;
+using NSail.Harness.Lanes;
 
 namespace NSail.Harness.Jobs;
 
@@ -14,6 +15,12 @@ public static class SeatOutput
         var set = known.ToHashSet(StringComparer.OrdinalIgnoreCase);
         return asked.Select(l => l.Trim()).Where(l => l.Length > 0 && set.Contains(l)
             && !Labels.SeatForbidden.Contains(l, StringComparer.OrdinalIgnoreCase)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    // Every path the commits since `since` touch, a rename's source too; -z because git quotes odd names otherwise.
+    public static async Task<IReadOnlyList<string>> Changed(string dir, string since)
+    {
+        return (await Shell.Git(dir, "diff", "--name-only", "-z", "--no-renames", $"{since}..HEAD")).Split('\0');
     }
 
     // The changed files that match a protected glob.

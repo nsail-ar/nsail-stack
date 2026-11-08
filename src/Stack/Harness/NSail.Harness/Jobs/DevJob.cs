@@ -190,7 +190,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         {
             var touched = ctx.Options.AllowProtectedPaths || (await board.Labels(n, ct)).Contains(Labels.AllowProtected)
                 ? []
-                : SeatOutput.Protected((await Shell.Git(dir, "-c", "core.quotePath=false", "diff", "--name-only", $"{since}..HEAD")).Split('\n'), ctx.Options.ProtectedPaths);
+                : SeatOutput.Protected(await SeatOutput.Changed(dir, since), ctx.Options.ProtectedPaths);
             if (touched.Count > 0)
             {
                 await board.RemoveLabel(n, Labels.Claimed);
@@ -211,7 +211,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             {
                 if (!(await repo.PrsOf(n, "open", ct)).Any(p => p.Number == dead))
                 {
-                    await board.Comment(n, JobContext.Signed(HarnessTexts.Fill(ctx.Texts.NotOwnPr, ("pr", dead)), Seat));
+                    await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.NotOwnPr, ("pr", dead))} {ctx.Texts.Signature}");
                 }
                 else await repo.ClosePr(dead, JobContext.Signed(lines.Length > 1 ? lines[1].Trim() : ctx.Texts.CannotContinue, Seat), ct);
             }

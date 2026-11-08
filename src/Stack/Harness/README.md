@@ -39,8 +39,10 @@ the files it leaves.
     a release holds that repository's merges when the version its tag pins does.
   - `ProtectedPaths` (default `.github/workflows/**`): a builder whose commits touch one is not pushed,
     since CI would run the changed workflow with the repository's secrets before review; `AllowProtectedPaths`
-    lifts it for the harness, the `allow-protected` label for one story; a refused story returns to Ready. Extend the list when a workflow runs scripts taken from the PR checkout. A seat's `close-pr.md` closes only
-    a PR of its own story, and an analyst's `labels.txt` sets only the board's `area:` and driver labels.
+    lifts it for the harness, the `allow-protected` label for one story; a refused story returns to Ready. Extend the list when a workflow runs
+    scripts taken from the PR checkout; configuration appends to the default, it does not replace it.
+  - A seat's `close-pr.md` closes only a PR of its own story, and an analyst's `labels.txt` sets only the
+    board's `area:` and driver labels.
   - `Workers` (by name, ordered by `Priority`): everything the harness takes.
     Each has a `Type` (Analyze, Develop, Review, Verify, Test, Release, Watch, UpdateBoard) whose defaults
     (`Workers/WorkerTypes.cs`: filter, events, what each event does on the board, minutes) it changes only
