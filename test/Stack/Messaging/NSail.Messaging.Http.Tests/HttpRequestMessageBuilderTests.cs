@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using NSail.Messaging.Http;
 
 namespace NSail.Messaging.Http.Tests;
@@ -42,5 +43,52 @@ public class HttpRequestMessageBuilderTests
             .Build();
 
         Assert.Equal("api/parties?kind=LegalEntity", request.RequestUri!.ToString());
+    }
+
+    [Theory]
+    [InlineData("a/b", "api/x/a%2Fb")]
+    [InlineData("../x", "api/x/..%2Fx")]
+    [InlineData("?x=1", "api/x/%3Fx%3D1")]
+    [InlineData("https://evil.test/", "api/x/https%3A%2F%2Fevil.test%2F")]
+    public void Route_value_is_one_escaped_segment(string value, string expected)
+    {
+        var request = new HttpRequestMessageBuilder()
+            .Method(HttpMethod.Get)
+            .Path($"api/x/{HttpRequestMessageBuilder.Segment(value)}")
+            .Build();
+
+        Assert.Equal(expected, request.RequestUri!.OriginalString);
+    }
+
+    [Theory]
+    [InlineData("es-AR")]
+    [InlineData("tr-TR")]
+    public void Values_are_invariant_under_any_culture(string culture)
+    {
+        var previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = new CultureInfo(culture);
+        try
+        {
+            var since = new DateTime(2026, 11, 6, 12, 34, 56, 789, DateTimeKind.Utc);
+            var request = new HttpRequestMessageBuilder()
+                .Method(HttpMethod.Get)
+                .Path($"api/x/{HttpRequestMessageBuilder.Segment(1.5m)}/{HttpRequestMessageBuilder.Segment(since)}")
+                .AddQuery("d", 1.5d)
+                .AddQuery("i", 1234567)
+                .AddQuery("since", since)
+                .AddQuery("at", new DateTimeOffset(since))
+                .AddQuery("time", new TimeOnly(12, 34, 56, 789))
+                .Build();
+
+            Assert.Equal(
+                "api/x/1.5/2026-11-06T12%3A34%3A56.7890000Z?d=1.5&i=1234567"
+                + "&since=2026-11-06T12%3A34%3A56.7890000Z&at=2026-11-06T12%3A34%3A56.7890000%2B00%3A00"
+                + "&time=12%3A34%3A56.7890000",
+                request.RequestUri!.OriginalString);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
     }
 }

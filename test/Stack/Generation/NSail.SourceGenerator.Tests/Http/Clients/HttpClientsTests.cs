@@ -69,4 +69,29 @@ public class HttpClientsTests
         Assert.Contains(": base(httpClientFactory, deliveries)", generated);
         Assert.DoesNotContain("X-NSail-", generated);
     }
+
+    [Fact]
+    public void A_generated_sender_writes_each_route_value_through_Segment()
+    {
+        var builder = new CompilationUnitBuilder()
+            .AddSourceFiles("./Http/Clients/Sources/**/*.cs")
+            .AddFrameworkReferences("net10.0")
+            .AddContainingAssembly<GeneratedAttribute>()
+            .AddContainingAssembly<TestGetMessage>()
+            .AddContainingAssembly<HttpAttribute>()
+            .AddContainingAssembly<IEndpointRouteBuilder>();
+
+        var compilation = builder.Build("HttpClientsTestAssembly");
+
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new HttpClientsSourceGenerator());
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+
+        var generated = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.Contains("api/v1/samples/external/{HttpRequestMessageBuilder.Segment(message.Id)}", generated);
+        Assert.DoesNotContain("{message.Id}", generated);
+    }
 }
