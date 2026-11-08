@@ -88,6 +88,9 @@ public sealed class HarnessOptions
     // repository's own reviewer writes the same one.
     public string ReviewMarker { get; set; } = "harness:review";
 
+    // Who may drive this harness (ControlOptions).
+    public ControlOptions Control { get; set; } = new();
+
     // The Ops this Harness reports to (OpsOptions).
     public OpsOptions Ops { get; set; } = new();
 

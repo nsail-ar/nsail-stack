@@ -35,7 +35,7 @@ fi
 holder="${HARNESS_HOLDER:-lane}"
 asked=$(date +%s)
 # The answer is the lease id as a JSON string.
-lease="$(curl -fsS --max-time 7200 -X POST -H "Content-Type: application/json" \
+lease="$(curl -fsS --max-time 7200 -X POST -H "Content-Type: application/json" -H "X-Harness-Token: ${HARNESS_LEASE_TOKEN:-}" \
   -d"{\"holder\":\"$holder\",\"rank\":${HARNESS_RANK:-9}}" "$HARNESS_URL/api/harness/leases" 2>/dev/null)" || {
   echo "harness: the harness gave no build turn (${HARNESS_URL}) — running without one" >&2
   exec "$real" "$@"
@@ -46,7 +46,7 @@ lease="${lease//\"/}"
 [ "$waited" -ge 10 ] && echo "harness: waited ${waited}s for a build turn (other builds held the machine's turns)" >&2
 
 release() {
-  curl -fsS -X DELETE "$HARNESS_URL/api/harness/leases/$lease" >/dev/null 2>&1 || true
+  curl -fsS -X DELETE -H "X-Harness-Token: ${HARNESS_LEASE_TOKEN:-}" "$HARNESS_URL/api/harness/leases/$lease" >/dev/null 2>&1 || true
 }
 trap release EXIT
 trap 'exit 130' INT TERM

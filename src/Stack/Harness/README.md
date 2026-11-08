@@ -124,7 +124,15 @@ app.MapHarness();
 app.Run();
 ```
 
-It listens on `127.0.0.1:6190` with no authentication, so it never binds beyond the loopback. The
+It listens on `127.0.0.1:6190`. Loopback is no boundary (a seat's process reaches it), so
+`Api/ControlGate.cs` guards it. A request whose `Host` is not loopback, the host of `PublicUrl` or one of
+`Harness:Control:Hosts` is refused (421). The routes that drive the harness (`restart`, `pause`, `resume`,
+`wake`, `take-new`, `runs`) and a job's transcript (`/jobs/{id}`, `/jobs/{id}/log`) need
+`Harness:Control:Token` or `TokenFile` (as `Authorization: Bearer` or `X-Harness-Token`); with none
+configured they answer 401. The build-turn routes (`POST leases`, `DELETE leases/{id}`) take the lease
+token (`Harness:Control:LeaseToken`, random per process when unset), which opens nothing else and is the
+only credential a lane's environment holds (`HARNESS_LEASE_TOKEN`, sent by the `dotnet` shim). The status
+pages and the `status`, `jobs` and `stats` reads stay open. The
 GitHub token is `GitHub:Token`, `GitHub:TokenFile` or `GH_TOKEN`, the workstation's `gh` login
 otherwise; a child never inherits it (see above), but a variable
 exported to the harness process stays in that process's initial environment, which a PR's code

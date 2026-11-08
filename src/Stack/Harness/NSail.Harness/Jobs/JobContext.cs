@@ -111,6 +111,7 @@ public sealed class JobContext(
         env["PATH"] = shims + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
         // The doorman first on the PATH: build-heavy commands wait for a turn (shims/).
         env["HARNESS_URL"] = Options.PublicUrl;
+        env["HARNESS_LEASE_TOKEN"] = Options.Control.ResolveLeaseToken();
         env["HARNESS_HOLDER"] = HolderOf(item);
         env["HARNESS_BUILD_NODES"] = Options.BuildNodes.ToString(CultureInfo.InvariantCulture);
         env["HARNESS_RANK"] = Planner.Rank(item.Tier).ToString(CultureInfo.InvariantCulture);
