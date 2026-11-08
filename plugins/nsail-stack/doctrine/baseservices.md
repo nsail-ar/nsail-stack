@@ -41,7 +41,10 @@ app.Run();
 `AddBaseWebApi(builder)` registers: telemetry (`AddTelemetry`, first — see below), messaging
 runtime (`AddMessaging`), error handler middleware, authorization services, Swagger/OpenAPI,
 and the push's server end — both transports, their two doors, and the tenant as its audience
-(`TenantPushAudience`; messaging.md, Pushed to clients). It also contributes a string catalog of
+(`TenantPushAudience`; messaging.md, Pushed to clients). It registers
+`TenantStateInterceptor`, the tenant-state wall on every send of a caller's, because an open
+circuit's sends never pass `TenantStateMiddleware` again; where no tenant is resolved there is no
+state to read and it asks nothing (data-tenancy.md, The install's own record). It also contributes a string catalog of
 its own, the words of the one page this project draws without the app (the suspended page, below).
 
 `UseBaseWebApi(app)` configures, in order:

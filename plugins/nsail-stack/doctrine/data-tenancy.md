@@ -549,6 +549,15 @@ the contract and the Stack only reads:
   one `RequestNegotiation.PrefersDocument`. 503 and not 403 because nothing is wrong with the
   caller or their credential and nothing they can do changes the answer. The refusal stands ahead
   of authentication, so a suspended tenant cannot mint a ticket either.
+- **What is not a request is asked too.** An open circuit's sends never pass the pipeline again,
+  so `TenantStateInterceptor` (registered by `AddBaseWebApi`) asks the same memoed state on every
+  send and answers the same 503 `Suspended`; a held push feed — an SSE line, a hub connection —
+  is asked once a second through `PushAudience.Watch` and is closed when the answer turns.
+  Both read the memo, so the bound is `Tenancy:StateCacheSeconds` (plus that second for a feed),
+  and a feed opens a scope only when the memo's window for its tenant has expired. A failed ask
+  is logged and asked again next tick: the watch never ends on an error, because a feed whose
+  watch ended keeps listening past every later suspension. A system session is exempt — the
+  runner has its own check, below.
 - **The page carries its own styling and links nothing.** Every asset of an install is an
   endpoint, and endpoints run behind every middleware — so a document that linked a stylesheet
   would be refused its own stylesheet and arrive bare. That is the design and not its cost: a
@@ -697,8 +706,9 @@ reads nothing and cannot write at all.
   names the tenant and the sweep continues with the next one.
 - **A suspended tenant is not swept at all.** The runner asks the install's record once the
   tenant is entered and before the job is resolved, so nothing of the job runs (The install's own
-  record, above) — the request edge's answer, applied to the one kind of work that has no
-  request. It is not a failed pass and not a pass: a failure is the job's problem, a suspension
+  record, above) — the request edge's answer, applied to work no caller started: an open
+  circuit and a held push feed have no request either, and are asked on the send and on the
+  feed (A suspended tenant's requests, above). It is not a failed pass and not a pass: a failure is the job's problem, a suspension
   is the install's answer about the customer.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as

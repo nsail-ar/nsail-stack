@@ -169,7 +169,10 @@ tenant's dead letters.
 - **Server:** `AddPush()` registers both transports and `PushAudience` (the install, or the tenant
   under `AddBaseWebApi`); `MapPush()` maps the hub at `api/push` and the event stream at
   `api/push/sse`, both behind authorization. `AddBaseWebApi`/`UseBaseWebApi` call both.
-  Per-kit publishers come from the `Push.Publishers` holder.
+  Per-kit publishers come from the `Push.Publishers` holder. A connection is authorized once, at
+  connect; `PushAudience.Watch()` is what a held line or hub connection asks again, once a second,
+  and the feed is closed when it answers false (the tenant's audience answers from the
+  tenant-state memo).
 - **Client:** the `Push.Clients` holder lists the events a feed may publish; the transport is the
   one project referenced, with `services.AddPush(origin)`. `NSail.Messaging.Sse` takes an optional
   `Action<SseOptions>` (`HttpMessageHandlerFactory`, `Headers`), `NSail.Messaging.SignalR` an

@@ -593,8 +593,8 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   the cookie went out with the 401. Bound: an interactive circuit built its session from the
   document request that started it and does not pass the pipeline again, so it picks this
   refusal up on its next document load. The epoch is the exception: `SecurityInterceptor` asks it
-  on every gated send, so a circuit meets a stale ticket as a 401 on its next send. Proof: `CredentialWallTests` (`NSail.Iam.WebApi.Tests`) on a real
-  host behind the real pipeline — a ticket is what the subject is, so no handler send can hold it
+  on every gated send, so a circuit meets a stale ticket as a 401 on its next send. Proof:
+  `CredentialWallTests` (`NSail.Iam.WebApi.Tests`) on a real host behind the real pipeline — a ticket is what the subject is, so no handler send can hold it
   — plus `SessionExpiryTests` and `AnonymousRedirectTests` for the two halves of the client arm.
 - `Session.System()` for background jobs; hand-built in tests; WASM builds its own from `GetSession` + effective policies.
 - **A system session bypasses evaluation entirely** (`SecurityManager` short-circuits
