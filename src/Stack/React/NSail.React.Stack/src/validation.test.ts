@@ -40,6 +40,10 @@ describe("validate", () => {
 
     expect(validateField(name, "Ana")).toEqual([]);
     expect(validateField(name, "A1").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    const phone = { ...name, pattern: "^\\d{3}\\-\\d{4}$" };
+
+    expect(validateField(phone, "555-1234")).toEqual([]);
+    expect(validateField(phone, "5551234").map((i) => i.code)).toEqual(["InvalidFormat"]);
     expect(validateField({ ...name, pattern: "(?<x" }, "anything")).toEqual([]);
   });
 

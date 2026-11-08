@@ -51,11 +51,13 @@ await mediator.send(CreateContact, { id, name });   // reads like the C# send
 - **The descriptor is what the runtime reads**: per member its wire kind, its localization
   key (`MetadataProvider.KeyFor`, so `Sample.CreateContact.Name` is the key Blazor would
   use), its binding (HttpModelFactory's rules, rule for rule) and the message's
-  DataAnnotations (`required`, `maxLength`, `minLength`, `min`/`max`, `format`, `pattern`).
+  DataAnnotations (`required`, `maxLength`, `minLength`, `min`/`max`, `format`, `pattern`; the client compiles each pattern once, with the `u` flag, and a pattern
+  JavaScript still refuses is left to the server).
   An attribute is read by constructing it from the arguments the source wrote, so a Stack
   subclass that fixes its own bound (`[SearchTerm]`) answers that bound. A rule that names
-  its own code (`ICodedValidation`), or one the tool cannot construct (a kit's own
-  attribute), is listed in `serverRules` and left to the server: drawing it locally under
+  its own code (`ICodedValidation`), one the tool cannot construct (a kit's own
+  attribute), or a `[RegularExpression]` using a .NET-only construct (`(?i)`, `\A`, atomic
+  groups, class subtraction; the build warns `NSTS002`), is listed in `serverRules` and left to the server: drawing it locally under
   the BCL rule it may subclass would show a sentence the server never answers.
 - **Models and enums travel too.** Every type a message reaches is emitted: a model as an
   interface plus a `defineModel` descriptor (keys and kinds for a table header and a cell),

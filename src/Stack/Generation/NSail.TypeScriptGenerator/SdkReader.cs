@@ -3,6 +3,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using NSail.SourceGenerator.Generation;
 using NSail.SourceGenerator.Generation.Http.Models;
@@ -162,10 +163,10 @@ static class SdkReader
     }
 
     // Constructs .NET reads and JavaScript does not: inline options, \A \z \Z \G anchors, atomic
-    // groups, possessive quantifiers, character-class subtraction.
-    static readonly System.Text.RegularExpressions.Regex DotNetOnly = new(
-        @"\(\?[imnsx-]+[:)]|\\[AzZG]|\(\?>|[*+?}]\+|-\[",
-        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    // groups, possessive quantifiers, character-class subtraction (a `-[` inside an open class).
+    static readonly Regex DotNetOnly = new(
+        @"\(\?[imnsx-]+[:)]|\\[AzZG]|\(\?>|[*+?}]\+|\[[^\]]*-\[",
+        RegexOptions.CultureInvariant);
 
     static FieldShape WithPattern(FieldShape field, INamedTypeSymbol message, IPropertySymbol property, string pattern, List<string> serverRules)
     {

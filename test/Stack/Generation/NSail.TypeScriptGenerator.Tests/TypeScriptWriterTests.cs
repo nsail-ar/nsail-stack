@@ -73,6 +73,15 @@ public class TypeScriptWriterTests
     }
 
     [Fact]
+    public void A_pattern_JavaScript_compiles_is_emitted_and_a_dotnet_only_one_is_left_to_the_server()
+    {
+        var text = Orders();
+
+        Assert.Contains("code: { kind: \"string\", key: \"Shop.AddOrderLine.Code\", binding: \"body\", pattern: \"^[A-Z]{2}-[0-9]{4}$\" }", text);
+        Assert.Contains("slug: { kind: \"string\", key: \"Shop.AddOrderLine.Slug\", binding: \"body\", serverRules: [\"RegularExpression\"] }", text);
+    }
+
+    [Fact]
     public void Int64_and_decimal_members_are_strings_of_their_own_kind()
     {
         var text = Orders();
