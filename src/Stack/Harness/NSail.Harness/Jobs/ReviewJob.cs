@@ -172,18 +172,18 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
         var now = await ctx.Repo.Pr(prNumber, ct);
         await board.RemoveLabel(story, Labels.Review);
         if (now.HeadSha != sha) return "clean, but the head moved during the read";
-        return await Land(prNumber, story, HarnessTexts.Fill(ctx.Texts.Merged, ("pr", prNumber), ("title", now.Title)), log, ct);
+        return await Land(prNumber, sha, story, HarnessTexts.Fill(ctx.Texts.Merged, ("pr", prNumber), ("title", now.Title)), log, ct);
     }
 
     // The whole green ending: merge, then say what landed; the move to Merged and the claim's release
     // are the Clean event's (WorkerTypes). A story with a half still open is StillOpen instead — back
     // to Ready: it rides main only when nothing of it is left open.
-    async Task<Ending> Land(int pr, int story, string what, ILogger log, CancellationToken ct)
+    async Task<Ending> Land(int pr, string sha, int story, string what, ILogger log, CancellationToken ct)
     {
         var board = ctx.Board;
         try
         {
-            await ctx.Repo.Merge(pr, ct);
+            await ctx.Repo.Merge(pr, sha, ct);
         }
         catch (ProviderException e)
         {

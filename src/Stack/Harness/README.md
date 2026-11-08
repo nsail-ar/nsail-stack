@@ -36,7 +36,9 @@ the files it leaves.
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
     seed projects, the `Everything` files that build it all, the `Tests` and their `TestFilter`): the
     gate builds and tests what a change affects through the solution's ProjectReference graph (a PR
-    red only where main's own gate is red waits for main to move: no round owes it), and a
+    red only where main's own gate is red waits for main to move: no round owes it; a gate that broke on infrastructure — git, the provider, the disk — writes
+    no verdict and no status, only an unmarked comment, and the head is gated again after the backoff; a malformed project or a
+    missing solution in the PR is its red), and a
     Release's `Suite` (a test project, `{Product}` its name) runs there — no script. Another repository
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):
     a release holds that repository's merges when the version its tag pins does.

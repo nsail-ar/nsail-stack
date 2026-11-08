@@ -9,9 +9,9 @@ namespace NSail.BaseServices.WebApi;
 /// <summary>The install's own cut across its sessions: a credential is honoured only while it
 /// carries the generation the install still honours (<see cref="SecurityOptions.TicketEpoch"/>),
 /// so raising that number signs out everyone holding an older ticket and nobody else.
-/// <para>It exists because the DataProtection key ring is the SERVER's, shared by every install
-/// on the box: there is no key to delete or revoke that would void one install's tickets without
-/// making every secret sealed anywhere on that box unreadable for good. This cut is the
+/// <para>It exists because no DataProtection key can be deleted or revoked to void tickets
+/// alone: the key ring is the install's, and deleting a key makes every secret it sealed
+/// unreadable for good. This cut is the
 /// install's alone and unseals nothing — which is what makes a tenancy-mode flip survivable,
 /// the one change that leaves every ticket decrypting perfectly and naming rows the row filter
 /// now hides.</para>

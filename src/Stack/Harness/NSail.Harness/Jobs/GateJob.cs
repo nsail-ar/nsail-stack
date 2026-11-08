@@ -36,12 +36,25 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         {
             return await Gate(prNumber, sha, slot, logPath, log, ct);
         }
+        catch (Exception e) when (!ct.IsCancellationRequested && IsOwnRed(e))
+        {
+            await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", ctx.Texts.GateRedTests)), e.Message, log);
+            return new JobOutcome($"red — {e.Message}", Failed: true);
+        }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
-            // A gate that broke says so on the head, so nobody reads its silence as a verdict.
-            await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateBroke, ("error", e.Message)), null, log);
+            // Infrastructure is not the PR's red: the comment carries no gate marker and no status is set,
+            // so the head stays ungated and the next pass gates it again.
+            await Broke(prNumber, sha, e.Message, log);
             throw;
         }
+    }
+
+    // The builder reads the PR's own files (solution, projects) before it builds: a malformed project or
+    // a missing solution is the PR's red; any other exception (git, provider, disk) is infrastructure.
+    internal static bool IsOwnRed(Exception e)
+    {
+        return e is System.Xml.XmlException or FileNotFoundException or DirectoryNotFoundException;
     }
 
     async Task<JobOutcome> Gate(int prNumber, string sha, int slot, string logPath, ILogger log, CancellationToken ct)
@@ -111,6 +124,20 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         {
             // The comment is the verdict; the status is a courtesy the token may not be allowed.
             log.LogDebug("no gate status on {Sha}: {Error}", sha[..8], e.Message);
+        }
+    }
+
+    async Task Broke(int pr, string sha, string error, ILogger log)
+    {
+        var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", "broke"), ("sha", sha[..8]), ("text", HarnessTexts.Fill(ctx.Texts.GateBroke, ("error", error))))
+            + $"\n\n{ctx.Texts.Signature}";
+        try
+        {
+            await ctx.Repo.Comment(pr, body);
+        }
+        catch (ProviderException e)
+        {
+            log.LogDebug("no gate-broke comment on {Sha}: {Error}", sha[..8], e.Message);
         }
     }
 

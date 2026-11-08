@@ -7,8 +7,9 @@ using NSail.Security;
 
 namespace NSail.Messaging.Queue.Tests;
 
-/// <summary>nsail#1930, the fourth criterion: a handler that keeps failing is retried with
-/// backoff and then dead-lettered, counted on a meter and never dropped in silence. The
+/// <summary>The delivery loop: a handler that keeps failing is retried with backoff and then
+/// dead-lettered, counted on a meter and never dropped in silence; a row of an unknown type
+/// waits; dead letters are requeued or purged. The
 /// figures are the install's — every number asserted here is read off <see
 /// cref="QueueOptions"/> and none of them is a constant in the loop.</summary>
 public sealed class QueueDeliveryLoopTests
@@ -120,5 +121,110 @@ public sealed class QueueDeliveryLoopTests
         await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None));
 
         Assert.Equal(1, meters.Finished(typeof(WriteLetter).FullName!, QueueMetrics.Succeeded));
+    }
+
+    static QueuedMessage Row(string type, DateTime now, DateTime? deadLettered = null)
+    {
+        return new QueuedMessage
+        {
+            Id = Guid.NewGuid(),
+            MessageType = type,
+            Body = "{}",
+            EnqueuedAt = now,
+            NextAttemptAt = now,
+            Attempts = deadLettered is null ? 0 : Options().MaxAttempts,
+            DeadLetteredAt = deadLettered,
+        };
+    }
+
+    [Fact]
+    public async Task A_row_of_a_type_this_process_does_not_know_stays_pending_and_backed_off()
+    {
+        var options = Options();
+        var clock = new TestClock();
+
+        await using var host = await HandlerHost.Start(
+            "queue_unknown_type", QueueHarness.Context, services => QueueHarness.Compose(services, options, clock));
+
+        var now = clock.GetUtcNow().UtcDateTime;
+
+        await host.Seed(db => db.Add(Row("Some.Other.Version.Message", now)));
+
+        for (var pass = 1; pass <= options.MaxAttempts + 2; pass++)
+        {
+            Assert.Equal(1, await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None)));
+
+            var row = Assert.Single(await host.Read(db => db.Set<QueuedMessage>().ToListAsync()));
+
+            Assert.Null(row.DeadLetteredAt);
+            Assert.True(row.NextAttemptAt > clock.GetUtcNow().UtcDateTime);
+            Assert.Contains("No consumer", row.LastError);
+
+            Assert.Equal(0, await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None)));
+
+            clock.Advance(options.Backoff * Math.Pow(2, options.MaxAttempts) + TimeSpan.FromSeconds(1));
+        }
+    }
+
+    [Fact]
+    public async Task A_deferred_row_that_later_finds_its_consumer_keeps_the_full_attempt_ladder()
+    {
+        var options = Options();
+        var clock = new TestClock();
+
+        using var meters = new QueueReadings();
+
+        await using var host = await HandlerHost.Start(
+            "queue_deferred_then_known", QueueHarness.Context, services => QueueHarness.Compose(services, options, clock));
+
+        var row = Row("Some.Other.Version.Message", clock.GetUtcNow().UtcDateTime);
+
+        await host.Seed(db => db.Add(row));
+
+        for (var pass = 0; pass < options.MaxAttempts + 1; pass++)
+        {
+            await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None));
+
+            clock.Advance(options.Backoff * Math.Pow(2, options.MaxAttempts) + TimeSpan.FromSeconds(1));
+        }
+
+        Assert.Equal(0, meters.Finished("Some.Other.Version.Message", QueueMetrics.Failed));
+
+        await host.Seed(db =>
+        {
+            db.Set<QueuedMessage>().Single(r => r.Id == row.Id).MessageType = typeof(AlwaysFails).FullName!;
+        });
+
+        await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None));
+
+        var after = Assert.Single(await host.Read(db => db.Set<QueuedMessage>().ToListAsync()));
+
+        Assert.Null(after.DeadLetteredAt);
+        Assert.Equal(1, after.Attempts);
+    }
+
+    [Fact]
+    public async Task Dead_letters_can_be_requeued_or_purged()
+    {
+        var clock = new TestClock();
+
+        await using var host = await HandlerHost.Start(
+            "queue_dead_letters", QueueHarness.Context, services => QueueHarness.Compose(services, Options(), clock));
+
+        var now = clock.GetUtcNow().UtcDateTime;
+        var requeued = Row("A", now, now);
+        var purged = Row("B", now, now);
+
+        await host.Seed(db => db.AddRange(requeued, purged));
+
+        Assert.Equal(1, await host.Use<QueueDeadLetters, int>(letters => letters.Requeue([requeued.Id], CancellationToken.None)));
+        Assert.Equal(1, await host.Use<QueueDeadLetters, int>(letters => letters.Purge(null, CancellationToken.None)));
+
+        var rows = await host.Read(db => db.Set<QueuedMessage>().ToListAsync());
+        var row = Assert.Single(rows);
+
+        Assert.Equal(requeued.Id, row.Id);
+        Assert.Null(row.DeadLetteredAt);
+        Assert.Equal(0, row.Attempts);
     }
 }

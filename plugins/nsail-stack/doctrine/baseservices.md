@@ -330,7 +330,7 @@ if (InstallConsole.Requested(args))
 ```
 
 ```
-optical backup [<file or directory>]
+optical backup [<file or directory>] [--encrypt]
 optical restore <archive> --confirm RESTORE
 ```
 
@@ -342,7 +342,16 @@ its own name.
   `keyring/*.xml`. The key ring lives in `<content root>/data/keyring`
   (`PersistKeysToFileSystem`, wired in `AddBaseWebApi`) rather than the framework default,
   which is machine-dependent and could not travel — without it every sealed secret in a
-  restored install is unreadable. That folder is git-ignored.
+  restored install is unreadable. That folder is git-ignored. The application name is the
+  host's `ApplicationName`, not the content-root path DataProtection would isolate by, so a
+  restore elsewhere reads the same secrets. The name is the first link of DataProtection's
+  purpose chain, so changing it — an assembly rename included — leaves everything sealed under
+  the previous one unreadable, archives and their dumps with it. Each install keeps its own
+  keys; what installs of a product share on a box is the name, not the ring.
+- **The archive is created `0600` and can be sealed.** `--encrypt` encrypts the dump and keys
+  under an operator passphrase (`NSAIL_BACKUP_PASSPHRASE` or a prompt, never an argument); the
+  manifest records `Encrypted`, and an unencrypted archive says so. Archives from before this
+  restore unchanged.
 - **`pg_dump`, not a structured export**: a backup returns an install to its exact state, byte
   for byte; an export that survives a schema change is a different feature. So the runtime
   image carries `postgres-client` at the production server's major.
@@ -356,7 +365,9 @@ its own name.
   affected: an archive's data lands before its policies do.
 - **A restore refuses before it writes.** `RestorePlan.For` throws `BackupFailure` on an
   archive whose schema this build does not know (newer), whose product is another product,
-  whose Postgres major differs, or whose archive format this build cannot read. Then it says
+  whose Postgres major differs, or whose archive format this build cannot read. An encrypted
+  archive adds a refusal `Restore` raises before it touches the database: no passphrase, a
+  wrong one, or a truncated entry. Then the plan says
   what it will overwrite — database and key ring — and stops unless the operator passes
   `--confirm RESTORE` (and types the word again when stdin is a terminal). Exit codes: `0`
   done, `2` usage, `3` not confirmed, `4` refused.

@@ -72,6 +72,7 @@ public sealed record RestorePlan
             $"  Archive      {Manifest.Product}, taken {Manifest.TakenAtUtc:u}",
             $"  Schema       {Manifest.SchemaVersion}",
             $"  PostgreSQL   {Manifest.PostgresVersion} (this install: {TargetPostgresVersion})",
+            $"  Encryption   {(Manifest.Encrypted ? "sealed with a passphrase" : "NONE — this archive is not encrypted")}",
             $"  Key ring     {(Manifest.HasKeyRing ? "carried by the archive" : "NOT in this archive — sealed secrets will stay unreadable")}",
             "",
             "WILL BE OVERWRITTEN:",

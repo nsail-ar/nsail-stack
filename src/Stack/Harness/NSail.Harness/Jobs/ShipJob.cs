@@ -91,6 +91,6 @@ public sealed class ShipJob(WorkItem item, JobContext ctx) : IJob
     // The stories a release's commit messages name (`{key}#{n}`), once each.
     internal static IReadOnlyList<int> Named(string log, string key)
     {
-        return Regex.Matches(log, $@"\b{Regex.Escape(key)}#(\d+)").Select(m => int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)).Distinct().Order().ToList();
+        return Regex.Matches(log, $@"\b{Regex.Escape(key)}#(\d+)").Select(m => int.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : 0).Where(n => n > 0).Distinct().Order().ToList();
     }
 }

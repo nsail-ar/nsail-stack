@@ -15,7 +15,7 @@ public class QueueOptions
     /// own story lands, so an install that writes one is told rather than served silence.</summary>
     public string? Transport { get; set; }
 
-    /// <summary>How many times a row is attempted before it is dead-lettered. Counted across
+    /// <summary>How many times a delivery may fail before the row is dead-lettered. Counted across
     /// passes and across restarts, because it is a column of the row and not a loop
     /// variable.</summary>
     public int MaxAttempts { get; set; } = 5;
@@ -27,6 +27,10 @@ public class QueueOptions
 
     /// <summary>How often the drain looks for due rows, per tenant.</summary>
     public TimeSpan Interval { get; set; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>How long a drain holds a row it claimed. Longer than the slowest delivery: a
+    /// row still in flight when it ends is claimed again by any drain and delivered twice.</summary>
+    public TimeSpan Lease { get; set; } = TimeSpan.FromMinutes(5);
 
     /// <summary>How many due rows one pass delivers. A bound and not a target: the next pass
     /// is one Interval away, and a pass that read the whole table would hold one tenant's

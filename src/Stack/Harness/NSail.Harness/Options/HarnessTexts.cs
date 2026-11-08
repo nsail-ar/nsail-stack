@@ -28,7 +28,7 @@ public sealed class HarnessTexts
     public string ReviewNoVerdict { get; set; } = "The review of PR #{pr} died without a verdict — `stalled`: the analyst reads why.";
     public string ReviewStoryCrack { get; set; } = "Reading PR #{pr}, the reviewer found a crack in the story's logic, not in the code. Back to Analyze to rule it; the branch `{branch}` stays.";
     public string ReviewFourthRead { get; set; } = "Fourth read with findings on PR #{pr} — `stalled` instead of another round: the analyst reads why it does not converge.";
-    public string MergeRefused { get; set; } = "The review came back clean but PR #{pr} did not merge (a conflict with main, or the API down). Back to Ready: the next round brings main in and asks for a review again.";
+    public string MergeRefused { get; set; } = "The review came back clean but PR #{pr} did not merge (the head moved after the review read it, a conflict with main, or the API down). Back to Ready: the next round brings main in and asks for a review again.";
     public string Merged { get; set; } = "Merged: PR #{pr} — {title}";
     public string StillOpen { get; set; } = "Still open for this story: {prs}. Back to **Ready** instead of Merged: the story rides main only when none is left.";
 
@@ -45,7 +45,7 @@ public sealed class HarnessTexts
     public string GateWaits { get; set; } = "red only where `main` is red at `{main}`: not this PR's round. It is gated again once `main` moves.";
     public string GateTimedOut { get; set; } = "passed the {minutes} min";
     public string GateConflict { get; set; } = "the head does not merge with `main`: there are conflicts. The next round brings `main` in and resolves them.";
-    public string GateBroke { get; set; } = "the gate could not run ({error})";
+    public string GateBroke { get; set; } = "the gate broke on infrastructure, not on this PR ({error}). The head is gated again after a short wait.";
 
     public string SuiteRedTitle { get; set; } = "Regression red on main ({product})";
     public string SuiteRed { get; set; } = "**{product}**'s browser suite went {why} on `{sha}` ({where}).\n\n**What went red:**\n```\n{failed}\n```\n\nThe run's log and evidence: `{log}` on {machine}.";
