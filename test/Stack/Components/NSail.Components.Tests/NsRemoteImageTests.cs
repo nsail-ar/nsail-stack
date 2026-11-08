@@ -56,6 +56,24 @@ public sealed class NsRemoteImageTests : BunitContext
     }
 
     [Fact]
+    public void InlinesNothingExecutableFromAHostileSvg()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+            SvgResponse("<svg viewBox=\"0 0 10 10\" onload=\"x()\"><script>y()</script><image href=\"z\" onerror=\"w()\"/><path d=\"M0 0h10v10H0z\"/></svg>")));
+
+        var cut = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/hostile"));
+
+        cut.WaitForState(() => cut.Markup.Contains("<path", StringComparison.Ordinal), TimeSpan.FromSeconds(2));
+
+        Assert.DoesNotContain("onload", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<script", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<image", cut.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("onerror", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NeverFitsARasterImage()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
