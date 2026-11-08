@@ -115,7 +115,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
         var range = since is null ? $"`{head}`" : $"`{since[..8]}..{head[..8]}`";
         var body = HarnessTexts.Fill(ctx.Texts.MainRed, ("why", why), ("sha", head), ("range", range), ("failed", failed), ("log", logPath), ("machine", ctx.Options.Machine))
             + $"\n\n{ctx.Texts.Signature}";
-        if (await ctx.Board.FindOpen(title, ctx.Options.RedLabels.ToArray(), exact: false) is { } n)
+        if (await ctx.Board.FindOpen(title, [], exact: false) is { } n)
         {
             await ctx.Board.Comment(n, body);
             var stage = await ctx.Board.StageOf(n);

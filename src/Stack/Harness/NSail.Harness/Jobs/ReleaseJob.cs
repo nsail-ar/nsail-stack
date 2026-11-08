@@ -217,7 +217,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         var body = HarnessTexts.Fill(ctx.Texts.SuiteRed, ("product", product), ("why", why), ("sha", sha), ("where", where), ("failed", failed), ("log", logPath), ("machine", ctx.Options.Machine))
             + $"\n\n{ctx.Texts.Signature}";
         if (FailedIn(failed) is { Count: > 0 } names) body += $"\n{FailedMarker} {string.Join('|', names)} -->";
-        if (await ctx.Board.FindOpen(title, ctx.Options.RedLabels.ToArray()) is { } n)
+        if (await ctx.Board.FindOpen(title, []) is { } n)
         {
             await ctx.Board.Comment(n, body);
             var stage = await ctx.Board.StageOf(n);
