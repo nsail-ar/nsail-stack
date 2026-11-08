@@ -29,8 +29,7 @@
         @if (Brand is not null)
         {
             @* The drawer draws the brand — full height on desktop, the header of the
-               temporary sheet on mobile. Shut behind the hamburger, the title row draws it
-               too (NsLayoutState.Brand), and each hides while the other shows. *@
+               temporary sheet on mobile. *@
             <div class="d-flex align-center px-4 ns-nav-brand">
                 @Brand
             </div>
@@ -169,13 +168,7 @@
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
 
-    [CascadingParameter]
-    NsLayoutState? LayoutState { get; set; }
-
-    /// <summary>The install's own name and logo, always at the top of the drawer header — and,
-    /// where the drawer is closed behind the phone's hamburger, in the title row beside it, so what rides under
-    /// the name reads without opening the menu. That copy gives way to the page's title: where the row runs
-    /// short its name is elided, and where the title needs the whole row it takes no width.</summary>
+    /// <summary>The install's own name and logo, at the top of the drawer header.</summary>
     [Parameter]
     public RenderFragment? Brand { get; set; }
 
@@ -237,11 +230,6 @@
 
         _recount?.Dispose();
 
-        if (LayoutState is not null)
-        {
-            LayoutState.Brand = null;
-        }
-
         if (Surface is not null)
         {
             Surface.IndexChanged -= HandleIndexChanged;
@@ -264,11 +252,6 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (LayoutState is not null)
-        {
-            LayoutState.Brand = Brand;
-        }
-
         // What is drawn is a function of two things: the tree NavMenu holds, and the session the
         // permission gate reads it against. A parameter set is a signal that neither changed —
         // a RenderFragment parameter never compares equal to itself, so every render of whatever

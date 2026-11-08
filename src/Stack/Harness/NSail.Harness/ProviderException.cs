@@ -4,8 +4,11 @@
 namespace NSail.Harness;
 
 // A board, a repository or a lock refused or failed a call: what a job may catch and carry on from.
-// Status is the provider's own code when it has one (an HTTP status for a web API).
-public class ProviderException(string message, int? status = null) : Exception(message)
+// Status is the provider's own code when it has one (an HTTP status for a web API); RateLimitRemaining
+// is the calls its rate limit still allowed when it answered, when it says.
+public class ProviderException(string message, int? status = null, long? rateLimitRemaining = null) : Exception(message)
 {
     public int? Status { get; } = status;
+
+    public long? RateLimitRemaining { get; } = rateLimitRemaining;
 }

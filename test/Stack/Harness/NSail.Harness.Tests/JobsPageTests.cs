@@ -63,6 +63,23 @@ public class JobsPageTests : IDisposable
     }
 
     [Fact]
+    public void AWatchJobReadsWatchAndTheRoleFilterFindsIt()
+    {
+        var history = History(
+            Job(1, "watch telemetry", null, "failed: 401", "broke"),
+            Job(2, "gate PR #9 (story #5)", 5, "green", "ok"));
+
+        var all = JobsPage.List(_options, history, null, null, null, null);
+        var byRole = JobsPage.List(_options, history, "watch", null, null, null);
+
+        Assert.Contains("<option value=\"watch\">Watch</option>", all);
+        Assert.Contains("1 job<", byRole);
+        Assert.Contains("/jobs/job-1\"", byRole);
+        Assert.Contains("<td class=role><span class=sw style=\"background:#0e9aa7\"></span>Watch</td>", byRole);
+        Assert.Contains("<th>Role</th><td><span class=sw style=\"background:#0e9aa7\"></span>Watch</td>", JobsPage.One(_options, history, "job-1", null)!);
+    }
+
+    [Fact]
     public void TheListSearchesTheWorkAndTheOutcome()
     {
         var history = History(

@@ -2109,51 +2109,6 @@ div.mud-input-slot.mud-input-root::placeholder {
     height: 1.25rem;
 }
 
-/* NsTitleBar's leading box (toggle, brand, title) is one row that never wraps, so on a phone it
-   is held to its own row's width and the brand is what gives way: it shrinks first and to zero,
-   and its name ends in an ellipsis on one line (nsail#3009). The page name never gives way.
-   The shrink factor is what puts the brand first: flex-shrink distributes by factor times base
-   size, and at 1 the title would wrap its words while the brand still kept most of its box.
-   The one-column grid is what lets the brand ask for nothing: its minmax(0, max-content) track
-   answers a min-content of zero and a max-content of the whole name, and the shell's content
-   column is a flex item that grows to the min-content of everything inside it, so a name that
-   could not wrap would otherwise widen the page past the viewport. It sits inside the wrapper
-   because the wrapper's own display is the d-flex/d-none swap, and it carries the gap to the
-   title so that the gap is clipped with the brand: a brand that takes no width takes no margin.
-   The fragment is the product's, so the ellipsis is reached through what every fragment is made
-   of (a flex row and the vendor's typography), and only here: the drawer draws the same
-   fragment on its own ground and keeps it whole. */
-.ns-title-lead {
-    max-width: 100%;
-}
-
-.ns-title-brand {
-    flex: 0 1000 auto;
-    min-width: 0;
-    overflow: hidden;
-}
-
-.ns-title-brand-fit {
-    display: grid;
-    grid-template-columns: minmax(0, max-content);
-    min-width: 0;
-    margin-inline-end: 0.75rem;
-}
-
-.ns-title-brand .d-flex {
-    min-width: 0;
-}
-
-.ns-title-brand img {
-    flex-shrink: 0;
-}
-
-.ns-title-brand .mud-typography {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
 /* nsail#1006: the guide door (NsGuideLink) is the title row's own trailing edge — NsPageHeader
    places it last, past every other utility — so its RIGHT edge is the one the toolbar row's own
    last action (NUEVO) is measured against. Its Inline face is the vendor's unmodified medium

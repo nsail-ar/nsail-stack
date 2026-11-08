@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Text;
+using NSail.Harness.Hosting;
 using NSail.Harness.Jobs;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
@@ -120,6 +122,68 @@ public class JobStatsTests
     public void AShipJobIsARelease()
     {
         Assert.Equal("release", JobStats.RoleOf(WorkKind.Ship));
+    }
+
+    [Fact]
+    public void EveryKindIsNamedAndOnlyThePrsAndMainsGatesAreGates()
+    {
+        Assert.All(Enum.GetValues<WorkKind>(), k => Assert.Contains(JobStats.RoleOf(k), JobStats.Roles));
+        Assert.Equal([WorkKind.Gate, WorkKind.Main], Enum.GetValues<WorkKind>().Where(k => JobStats.RoleOf(k) == "gate"));
+    }
+
+    [Fact]
+    public void AWatchIsCountedAsAWatchNotAGate()
+    {
+        var s = new JobStats(null, Utc);
+        End(s, WorkKind.Watch, null, TimeSpan.FromSeconds(20), null);
+
+        var view = s.View("24h", Now);
+
+        var watch = view.Roles.Single(r => r.Role == "watch");
+        Assert.Equal((1, 1), (watch.Jobs, watch.Broke));
+        Assert.Equal(0, view.Roles.Single(r => r.Role == "gate").Jobs);
+        Assert.Equal(1, view.Buckets[^1].Jobs.Single(j => j.Role == "watch").Count);
+        Assert.Equal(0, view.Buckets[^1].Jobs.Single(j => j.Role == "gate").Count);
+    }
+
+    [Fact]
+    public void TheStatusPageDrawsTheWatchInItsLegendChartAndTable()
+    {
+        var s = new JobStats(null, Utc);
+        End(s, WorkKind.Watch, null, TimeSpan.FromSeconds(20), null);
+        var html = new StringBuilder();
+
+        StatusPage.Stats(html, s.View("24h", Now));
+        StatusPage.RoleTable(html, s.View("24h", Now));
+        var quiet = new StringBuilder();
+        StatusPage.RoleTable(quiet, new JobStats(null, Utc).View("24h", Now));
+
+        var page = html.ToString();
+        Assert.Contains("</span>Watch</span>", page);
+        Assert.Contains("· Watch: 1</title>", page);
+        Assert.Contains("</span>Watch</td><td class=n>1</td>", page);
+        Assert.DoesNotContain("Watch", quiet.ToString());
+    }
+
+    [Fact]
+    public void AGateTallyAlreadyOnDiskStaysAGate()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"harness-stats-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(root);
+            File.WriteAllText(Path.Combine(root, "stats.json"),
+                """{"Hours":[{"At":"2026-10-29T15:00:00+00:00","Roles":{"gate":{"Broke":9,"Ok":70}}}]}""");
+
+            var view = new JobStats(root, Utc).View("24h", Now);
+
+            Assert.Equal((79, 9), (view.Roles.Single(r => r.Role == "gate").Jobs, view.Roles.Single(r => r.Role == "gate").Broke));
+            Assert.Equal(0, view.Roles.Single(r => r.Role == "watch").Jobs);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]

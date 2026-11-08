@@ -15,7 +15,7 @@ namespace NSail.Harness.Lanes;
 // history it is a log, never state: a file lost or unreadable starts the count again.
 public sealed class JobStats
 {
-    public static readonly string[] Roles = ["analyst", "dev", "gate", "reviewer", "qa", "release"];
+    public static readonly string[] Roles = ["analyst", "dev", "gate", "reviewer", "qa", "release", "watch"];
 
     // A histogram's upper edges in seconds: 15 s, each half again the one before, the last past
     // two days; one more bucket holds what passes it.
@@ -65,7 +65,9 @@ public sealed class JobStats
             WorkKind.Review => "reviewer",
             WorkKind.Qa => "qa",
             WorkKind.Release or WorkKind.Ship => "release",
-            _ => "gate",
+            WorkKind.Gate or WorkKind.Main => "gate",
+            WorkKind.Watch => "watch",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
     }
 

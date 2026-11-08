@@ -32,6 +32,10 @@ public static class Shell
             || n.StartsWith("LC_", StringComparison.Ordinal));
     }
 
+    // A seat shares the repository's common git directory, so what it plants there (a hook, a
+    // fsmonitor command) must never run in the harness's git: command-line config outranks the repository's.
+    static readonly string[] Hardened = ["-c", $"core.hooksPath={(OperatingSystem.IsWindows() ? "NUL" : "/dev/null")}", "-c", "core.fsmonitor=false", "-c", "protocol.ext.allow=never"];
+
     public static async Task<ShellResult> Run(
         string file, IEnumerable<string> args, string workDir, IDictionary<string, string>? env = null,
         TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false)
@@ -46,6 +50,10 @@ public static class Shell
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
         };
+        if (file == "git")
+        {
+            foreach (var a in Hardened) psi.ArgumentList.Add(a);
+        }
         foreach (var a in args) psi.ArgumentList.Add(a);
         psi.Environment.Clear();
         foreach (var name in Inherited(Environment.GetEnvironmentVariables().Keys.Cast<string>()))

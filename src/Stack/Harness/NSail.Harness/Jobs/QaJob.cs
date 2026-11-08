@@ -44,7 +44,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await w.WriteLineAsync($"== walk {ctx.Names.Ref(n)} on {ctx.Options.Machine} slot {slot}");
-        await Shell.Git(dir, "fetch", "-q", "--force", "origin", "+refs/tags/*:refs/tags/*");
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", ctx.Workspace.Url, "+refs/tags/*:refs/tags/*"]);
 
         var labels = await ctx.Board.Labels(n, ct);
         var product = ProductOf(labels, ctx.Options.Products);
@@ -98,7 +98,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var tools = step.Worker.Mcp.Keys.Select(k => $"mcp__{k}__*").Concat(step.Worker.Tools).ToList();
         // The agent opens this same log to append to it, and a second writer is refused while this one is open.
         await w.DisposeAsync();
-        var result = await ctx.Agent.Run(new AgentRun(
+        var result = await ctx.RunSeat(new AgentRun(
             prompt, dir, ctx.ModelOf(labels, seat),
             Access: AgentAccess.Walker,
             MaxTurns: 200,
