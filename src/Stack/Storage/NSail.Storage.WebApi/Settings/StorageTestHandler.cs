@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSail.Injection.Annotations;
 using NSail.Messaging;
 using NSail.Problems;
@@ -25,9 +26,20 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
 {
     readonly StorageStores _stores;
     readonly IServiceProvider _services;
+    readonly StorageCredentialProvider _credentials;
+    readonly StorageTargetPolicy _policy;
+    readonly ILogger<StorageTestHandler> _logger;
 
-    public StorageTestHandler(StorageStores stores, IServiceProvider services)
+    public StorageTestHandler(
+        StorageStores stores,
+        IServiceProvider services,
+        StorageCredentialProvider credentials,
+        StorageTargetPolicy policy,
+        ILogger<StorageTestHandler> logger)
     {
+        _credentials = credentials;
+        _policy = policy;
+        _logger = logger;
         _stores = stores;
         _services = services;
     }
@@ -39,7 +51,14 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
         // The name's own manager, so the probe lands where that name's consumer writes — its own
         // target, or the default's where it has none. The name arrives at runtime, so the keyed
         // manager is asked for here rather than injected.
-        var storage = _services.GetRequiredKeyedService<StorageManager>(_stores.Require(message.Name));
+        var name = _stores.Require(message.Name);
+
+        if (await _credentials.Row(name, cancellationToken) is { } row)
+        {
+            await _policy.Check(row.Provider, row.Container, row.Endpoint, cancellationToken);
+        }
+
+        var storage = _services.GetRequiredKeyedService<StorageManager>(name);
         var key = storage.Key("nsail-storage-test", $"{Guid.NewGuid():N}.txt");
         var payload = Encoding.UTF8.GetBytes($"NSail storage test {DateTimeOffset.UtcNow:O}");
 
@@ -92,10 +111,11 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
                 throw;
             }
 
+            _logger.LogWarning(exception, "The storage target of store {Store} failed its test.", name);
+
             throw new BusinessException(BusinessProblem.RuleViolation(
                 "StorageTestFailed",
-                $"The storage target could not be used: {exception.Message}",
-                new Dictionary<string, string> { ["reason"] = exception.Message }));
+                "The storage target could not be used. The server log has the detail."));
         }
     }
 

@@ -19,8 +19,9 @@ public static class Api
     // No provider is registered here. Which places a host may write to is the app's
     // decision, made by name — AddFileSystemStorage, AddS3Storage, AddGitStorage — so a product that must
     // never write to a disk simply does not compose the one that can.
-    public static void AddStorageWebApi(this IServiceCollection services, StorageOptions? install = null)
+    public static void AddStorageWebApi(this IServiceCollection services, StorageOptions? install = null, StorageGuardOptions? guard = null)
     {
+        services.AddSingleton(guard ?? new StorageGuardOptions());
         services.AddSingleton(new StorageDeclaration(StorageNames.Default, install));
         services.AddScoped(provider => Manager(provider, StorageNames.Default));
         services.AddKeyedScoped(StorageNames.Default, (provider, _) => Manager(provider, StorageNames.Default));

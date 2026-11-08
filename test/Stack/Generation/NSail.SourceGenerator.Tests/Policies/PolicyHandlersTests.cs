@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -179,5 +179,80 @@ public class PolicyHandlersTests
         // A message that declares nothing carries an empty list, not an absent property: the
         // evaluator reads every factory the same way.
         Assert.Contains("(typeof(global::Acme.Clinic.Prescriptions.LookupPatients), static policy => new LookupPatientsPolicyHandler(policy)) { Fields = new global::System.Collections.Generic.Dictionary<string, global::NSail.Security.Annotations.RestrictAs>(global::System.StringComparer.Ordinal) {  }, Requires = new global::System.Type[] {  } }", generated);
+    }
+
+    [Fact]
+    public void An_inherited_field_is_checked_and_an_override_is_read_once()
+    {
+        var builder = new CompilationUnitBuilder()
+            .AddSource("Messages.cs", """
+                using Microsoft.Extensions.DependencyInjection;
+                using NSail.Messaging;
+                using NSail.Security.Annotations;
+                using NSail.SourceGeneration.Annotations;
+
+                namespace Acme.Clinic.Prescriptions;
+
+                public abstract class OrganizationMessage : IMessage
+                {
+                    [PolicyField(RestrictAs.Organization)]
+                    public virtual System.Guid OrganizationId { get; set; }
+                }
+
+                public class ListPrescriptions : OrganizationMessage
+                {
+                }
+
+                public class ListAppointments : OrganizationMessage
+                {
+                    [PolicyField(RestrictAs.Organization)]
+                    public override System.Guid OrganizationId { get; set; }
+                }
+
+                public class ListVisits : OrganizationMessage
+                {
+                    public override System.Guid OrganizationId { get; set; }
+                }
+
+                public class ListVisitNotes : ListVisits
+                {
+                    public override System.Guid OrganizationId { get; set; }
+                }
+
+                public static partial class PolicyHandlers
+                {
+                    [Generated(Policies.Handlers)]
+                    public static partial void AddClinicPolicyHandlers(this IServiceCollection services);
+                }
+                """)
+            .AddFrameworkReferences("net10.0")
+            .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
+            .AddContainingAssembly<GeneratedAttribute>()
+            .AddContainingAssembly<IMessage>()
+            .AddContainingAssembly<Policy>()
+            .AddContainingAssembly<MessageRegistration>()
+            .AddContainingAssembly<NSail.Security.Annotations.PolicyFieldAttribute>();
+
+        var compilation = builder.Build("PolicyInheritedTestAssembly");
+
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new PolicyHandlersSourceGenerator());
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
+
+        var generated = Assert.Single(driver.GetRunResult().GeneratedTrees).ToString();
+
+        Assert.Contains("Satisfies(\"OrganizationId\", m.OrganizationId, global::NSail.Security.Annotations.RestrictAs.Organization", generated);
+        // One check per concrete message: an override adds no second, marked or not, at any depth.
+        foreach (var message in new[] { "ListPrescriptions", "ListAppointments", "ListVisits", "ListVisitNotes" })
+        {
+            var start = generated.IndexOf("class " + message + "PolicyHandler", StringComparison.Ordinal);
+            Assert.True(start >= 0, message);
+            var next = generated.IndexOf("internal sealed class", start + 1, StringComparison.Ordinal);
+            var body = next < 0 ? generated[start..] : generated[start..next];
+            Assert.Equal(1, body.Split("Satisfies(\"OrganizationId\", m.OrganizationId").Length - 1);
+        }
     }
 }

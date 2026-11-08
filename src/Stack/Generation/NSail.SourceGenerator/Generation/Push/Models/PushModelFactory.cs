@@ -43,7 +43,7 @@ public static class PushModelFactory
 
             // The body goes to every connection of the tenant, so a property on it is a row
             // crossing the org wall; the event says that something moved and nothing more.
-            foreach (var property in typeSymbol.GetMembers().OfType<IPropertySymbol>())
+            foreach (var property in typeSymbol.GetAllProperties())
             {
                 if (!property.IsStatic && property.DeclaredAccessibility == Accessibility.Public)
                 {

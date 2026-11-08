@@ -283,7 +283,7 @@ same thing.
 |---|---|---|
 | `NSG001` | Error | An `[Http]` route token has no route-bound property on the message. |
 | `NSG002` | Error | A `[Pushed]` type does not implement `IMessage` — only an event can be published, so nothing would ever be pushed. |
-| `NSG003` | Error | A `[Pushed]` event declares a public property — the body reaches every seat of the tenant, so a property is a row crossing the org wall. |
+| `NSG003` | Error | A `[Pushed]` event declares or inherits a public property — the body reaches every seat of the tenant, so a property is a row crossing the org wall. |
 | `NSG004` | Error | A `[MapFrom]` would write `OrganizationId` by name alone — moving a row between branches is a decision (org-map.md), so it is named on the member or `[MapIgnore]`d. |
 | `NSG005` | Error | A `[Primitive]` member's type differs from its source's — copied whole, it cannot be converted. |
 | `NSG006` | Error | A mapped member has no conversion from its source; for a projection, none a query can translate (no parsing). |

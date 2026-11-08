@@ -47,6 +47,8 @@
   "Problems.NoStorageConfigured": "This install has no storage. Choose a provider and a container in Settings.",
   "Problems.StorageProviderNotComposed": "No storage provider by that name is composed in this host.",
   "Problems.StorageEndpointRequired": "An S3 target needs the address of the service it lives at.",
+  "Problems.StorageContainerOutsideRoot": "The directory is not under a root this install allows.",
+  "Problems.StorageEndpointNotAllowed": "The endpoint's scheme or host is not allowed by this install.",
   "Problems.StorageGitBranchInvalid": "The branch name is not valid.",
   "Problems.StorageGitAddressInvalid": "The address of the repository is not valid.",
   "Problems.StorageGitEndpointRequired": "A Git target needs the address its repositories live under.",
@@ -59,7 +61,7 @@
   "Problems.RuleViolation.StorageTestNotReadBack": "The test object was written but could not be read back.",
   "Problems.RuleViolation.StorageTestContentDiffers": "The test object read back does not match what was written.",
   "Problems.RuleViolation.StorageTestNotListed": "The test object was written but does not appear when the container is listed.",
-  "Problems.RuleViolation.StorageTestFailed": "The storage target could not be used: {reason}",
+  "Problems.RuleViolation.StorageTestFailed": "The storage target could not be used. The server log has the detail.",
   "Problems.RuleViolation.ObjectKeyOutsideTenant": "'{key}' does not carry this tenant's segment.",
   "Problems.RuleViolation.NoTenantForStorage": "Storage in this scope needs a tenant and none resolved."
 }

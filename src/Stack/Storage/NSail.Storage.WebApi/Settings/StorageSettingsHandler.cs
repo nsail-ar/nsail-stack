@@ -21,13 +21,16 @@ public class StorageSettingsHandler :
     readonly StorageCredentialProvider _credentials;
     readonly StorageStores _stores;
     readonly IEnumerable<IStorageProvider> _providers;
+    readonly StorageTargetPolicy _policy;
 
     public StorageSettingsHandler(
         SettingsManager settings,
         StorageCredentialProvider credentials,
         StorageStores stores,
-        IEnumerable<IStorageProvider> providers)
+        IEnumerable<IStorageProvider> providers,
+        StorageTargetPolicy policy)
     {
+        _policy = policy;
         _settings = settings;
         _credentials = credentials;
         _stores = stores;
@@ -83,21 +86,34 @@ public class StorageSettingsHandler :
         // One row for every store, so a save of one carries every other back as it was read.
         var settings = await _settings.Get<StorageSettings>(cancellationToken);
 
+        var provider = message.Provider?.Trim();
+        var endpoint = message.Endpoint?.Trim();
+        var container = message.Container?.Trim();
+
+        await _policy.Check(provider, container, endpoint, cancellationToken);
+
+        var current = settings.For(name);
+
+        // The sealed secret opens one destination. A destination that moved takes it along only
+        // if the person typed a new one, or the stored token would travel to the new origin.
+        var moved = !string.Equals(current.Provider ?? "", provider ?? "", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(current.Endpoint ?? "", endpoint ?? "", StringComparison.Ordinal)
+            || !string.Equals(current.Container ?? "", container ?? "", StringComparison.Ordinal);
+
         settings.Set(name, new StorageTargetSettings
         {
-            Provider = message.Provider?.Trim(),
-            Endpoint = message.Endpoint?.Trim(),
+            Provider = provider,
+            Endpoint = endpoint,
             Region = message.Region?.Trim(),
-            Container = message.Container?.Trim(),
+            Container = container,
             AccessKey = message.AccessKey?.Trim(),
             Branch = message.Branch?.Trim(),
             LinkTemplate = message.LinkTemplate?.Trim(),
-            // The screen never receives the key, so an empty field is "unchanged", never
-            // "clear it" — otherwise every edit of the container would silently take the
-            // store offline.
+            // The screen never receives the key, so an empty field is "unchanged" for the same
+            // target — otherwise every edit of the region would silently take the store offline.
             SecretKey = message.SecretKey is { Length: > 0 }
                 ? _credentials.Protect(message.SecretKey.Trim())
-                : settings.For(name).SecretKey,
+                : moved ? null : current.SecretKey,
         });
 
         await _settings.Save(settings, message.Version, cancellationToken);
