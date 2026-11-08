@@ -352,7 +352,7 @@ public sealed class HarnessLoop(
             {
                 await SweepLocks(stop);
                 await SweepClosed(stop);
-                await DoChores(plan.Chores, stop);
+                await BoardChores.Do(board, plan.Chores, snapshot.Issues.DistinctBy(i => i.Number).ToDictionary(i => i.Number, i => i.Stage), o.Texts.Signature, log, stop);
                 if (Paused is null)
                 {
                     foreach (var item in take)
@@ -429,44 +429,6 @@ public sealed class HarnessLoop(
             SuiteRedPrefix = slot < 0 ? suite : suite[..slot],
             MainRedPrefix = o.Texts.MainRedTitle,
         };
-    }
-
-    // A story whose chore failed gets none of the rest this pass: a comment that follows a move must
-    // not be said every pass while the move keeps failing.
-    async Task DoChores(IReadOnlyList<Chore> chores, CancellationToken ct)
-    {
-        var failed = new HashSet<int>();
-        foreach (var c in chores)
-        {
-            if (failed.Contains(c.Story)) continue;
-            try
-            {
-                switch (c.Kind)
-                {
-                    case ChoreKind.Unlock:
-                        await board.RemoveLabel(c.Story, c.Value);
-                        break;
-                    case ChoreKind.MoveStage:
-                        await board.SetStage(c.Story, c.Value, ct);
-                        break;
-                    case ChoreKind.AddLabel:
-                        await board.AddLabels(c.Story, c.Value);
-                        break;
-                    case ChoreKind.Comment:
-                        await board.Comment(c.Story, $"{c.Value} {options.Value.Texts.Signature}");
-                        break;
-                    case ChoreKind.Close:
-                        await board.Close(c.Story, ct);
-                        break;
-                }
-                log.LogInformation("chore: {Kind} #{Story} {Value} — {Why}", c.Kind, c.Story, c.Value, c.Why);
-            }
-            catch (Exception e) when (!ct.IsCancellationRequested)
-            {
-                failed.Add(c.Story);
-                log.LogWarning("chore {Kind} #{Story} failed: {Error}", c.Kind, c.Story, e.Message);
-            }
-        }
     }
 
     async Task<string?> Start(WorkItem item, CancellationToken ct)
