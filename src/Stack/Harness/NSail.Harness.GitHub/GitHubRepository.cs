@@ -50,9 +50,12 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         }
         while (cursor is not null);
 
-        // CI on every PR head in one read: the newest run per workflow for each sha.
-        var runs = await gh.GetAll($"repos/{repo}/actions/runs?event=pull_request&per_page=100", b => b.GetProperty("workflow_runs"), maxPages: 1, ct: ct);
-        var bySha = runs.GroupBy(r => r.GetProperty("head_sha").GetString() ?? "").ToDictionary(g => g.Key, g => g.ToList());
+        // CI by each PR's head sha: the repository's newest runs say nothing of a PR that went quiet.
+        var bySha = new Dictionary<string, List<JsonElement>>();
+        foreach (var sha in raw.Where(pr => !pr.GetProperty("isDraft").GetBoolean()).Select(pr => pr.GetProperty("headRefOid").GetString() ?? "").Distinct())
+        {
+            bySha[sha] = await gh.GetAll($"repos/{repo}/actions/runs?head_sha={Uri.EscapeDataString(sha)}&event=pull_request&per_page=100", b => b.GetProperty("workflow_runs"), ct: ct);
+        }
 
         return raw.Where(pr => !pr.GetProperty("isDraft").GetBoolean()).Select(pr =>
         {
@@ -90,7 +93,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             result.Add(new PrRef(n, title, head, merged, repo, MergeSha(pr)));
         }
         // The search index lags a push by minutes: the plain head is read directly too.
-        var direct = await gh.GetAll($"repos/{repo}/pulls?state={(state == "open" ? "open" : "closed")}&head={Owner}:{names.Branch(prefix, story)}&per_page=20", maxPages: 1, ct: ct);
+        var direct = await gh.GetAll($"repos/{repo}/pulls?state={(state == "open" ? "open" : "closed")}&head={Owner}:{names.Branch(prefix, story)}&per_page=20", ct: ct);
         foreach (var pr in direct)
         {
             var n = pr.GetProperty("number").GetInt32();
@@ -168,7 +171,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
 
     public async Task<IReadOnlyList<string>> Files(int pr, CancellationToken ct = default)
     {
-        var files = await gh.GetAll($"repos/{repo}/pulls/{pr}/files?per_page=100", maxPages: 3, ct: ct);
+        var files = await gh.GetAll($"repos/{repo}/pulls/{pr}/files?per_page=100", maxPages: 30, ct: ct);
         return files.Select(f => $"{f.GetProperty("filename").GetString()} (+{f.GetProperty("additions").GetInt32()} -{f.GetProperty("deletions").GetInt32()})").ToList();
     }
 
@@ -234,7 +237,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
 
     public async Task<CiState> Ci(string branch, string sha, CancellationToken ct = default)
     {
-        var runs = await gh.GetAll($"repos/{repo}/actions/runs?branch={Uri.EscapeDataString(branch)}&per_page=20", b => b.GetProperty("workflow_runs"), maxPages: 1, ct: ct);
+        var runs = await gh.GetAll($"repos/{repo}/actions/runs?head_sha={Uri.EscapeDataString(sha)}&per_page=100", b => b.GetProperty("workflow_runs"), ct: ct);
         return CiOf(runs.Where(r => r.GetProperty("head_sha").GetString() == sha
             && r.GetProperty("event").GetString() is "pull_request" or "push").ToList());
     }
@@ -353,7 +356,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
 
     public async Task<IReadOnlyList<Release>> Releases(CancellationToken ct = default)
     {
-        var releases = await gh.GetAll($"repos/{repo}/releases?per_page=50", maxPages: 1, ct: ct);
+        var releases = await gh.GetAll($"repos/{repo}/releases?per_page=100", ct: ct);
         return releases
             .Where(r => !r.GetProperty("draft").GetBoolean() && r.TryGetProperty("published_at", out var p) && p.ValueKind == JsonValueKind.String)
             .Select(r => new Release(r.GetProperty("tag_name").GetString() ?? "", r.GetProperty("published_at").GetDateTimeOffset()))
