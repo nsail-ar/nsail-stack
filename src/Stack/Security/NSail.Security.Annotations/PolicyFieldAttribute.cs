@@ -25,7 +25,7 @@ public enum RestrictAs
 /// policies may restrict the values a caller passes in it. Unmarked fields are invisible
 /// to security. The attribute declares the field's nature; the rule lives in the policy
 /// (data, admin-editable).</summary>
-[AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
+[AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
 public sealed class PolicyFieldAttribute : Attribute
 {
     public PolicyFieldAttribute(RestrictAs kind)

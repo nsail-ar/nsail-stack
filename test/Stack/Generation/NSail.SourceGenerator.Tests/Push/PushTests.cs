@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -124,6 +124,34 @@ public class PushTests
         Assert.Equal(DiagnosticSeverity.Error, reported.Severity);
         Assert.Contains("Acme.Inbox.InboxRowMoved", reported.GetMessage());
         Assert.Contains("ConversationId", reported.GetMessage());
+    }
+
+    [Fact]
+    public void AnInheritedPropertyOnAPushedMessageIsABuildError()
+    {
+        var diagnostics = Diagnose(new PushPublishersSourceGenerator(), """
+            public abstract class RowEvent : IMessage
+            {
+                public System.Guid RowId { get; set; }
+            }
+
+            [Pushed]
+            public class InboxRowChanged : RowEvent
+            {
+            }
+
+            public static partial class Publishers
+            {
+                [Generated(Push.Publishers)]
+                public static partial void AddInboxPushPublishers(this IServiceCollection services);
+            }
+            """);
+
+        var reported = Assert.Single(diagnostics.Where(d => d.Id == "NSG003"));
+
+        Assert.Equal(DiagnosticSeverity.Error, reported.Severity);
+        Assert.Contains("RowId", reported.GetMessage());
+        Assert.Contains("Acme.Inbox.InboxRowChanged", reported.GetMessage());
     }
 
     static ImmutableArray<Diagnostic> Diagnose(IIncrementalGenerator generator, string holder)
