@@ -360,7 +360,7 @@ public sealed class HarnessLoop(
                 call = PassCall.Closed;
                 await SweepClosed(stop);
                 call = PassCall.Chores;
-                await BoardChores.Do(board, plan.Chores, BoardChores.ReadOf(snapshot.Issues), o.Texts.Signature, log, stop);
+                await BoardChores.Do(board, plan.Chores, BoardChores.ReadOf(snapshot.Issues), reader.OpenPrOf, o.Texts.Signature, log, stop);
                 call = PassCall.Start;
                 if (Paused is null)
                 {
@@ -451,6 +451,7 @@ public sealed class HarnessLoop(
         return new PlannerOptions(o.Gate)
         {
             WipLimit = o.WipLimit ?? agents ?? o.Agents,
+            OrphanGrace = TimeSpan.FromMinutes(o.OrphanGraceMinutes),
             UnrunnableDrivers = o.UnrunnableDrivers,
             SuiteRedPrefix = slot < 0 ? suite : suite[..slot],
             MainRedPrefix = o.Texts.MainRedTitle,

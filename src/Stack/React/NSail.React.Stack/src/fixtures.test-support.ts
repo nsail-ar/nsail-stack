@@ -48,3 +48,21 @@ export const UpdateOrder = defineMessage<UpdateOrder, void>({
     token: { kind: "string", key: "Shop.UpdateOrder.Token", nullable: true, binding: "header" },
   },
 });
+
+// Shaped as the generator writes a long and a decimal member: strings of their own kind.
+export interface RepriceOrder {
+  id: string;
+  price: string;
+}
+
+export const RepriceOrder = defineMessage<RepriceOrder, RepriceOrder>({
+  name: "RepriceOrder",
+  key: "Shop.RepriceOrder",
+  area: "Shop",
+  method: "POST",
+  path: "api/shop/orders/reprice",
+  fields: {
+    id: { kind: "bigint", key: "Shop.RepriceOrder.Id", binding: "body" },
+    price: { kind: "decimal", key: "Shop.RepriceOrder.Price", binding: "body" },
+  },
+});

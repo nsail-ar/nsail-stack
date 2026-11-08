@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.Logging;
 using NSail.Harness.Planning;
+using NSail.Harness.Repositories;
 
 namespace NSail.Harness.Tests;
 
@@ -30,15 +31,33 @@ public class BoardChoresTests
         }
     }
 
-    // The pass's read is the fixture; the board is what the chores find when they are written.
-    static async Task<Lines> Run(Fixture read, MemoryBoard board)
+    // The pass's read is the fixture; the board and the open PRs are what the chores find when they
+    // are written.
+    static async Task<Lines> Run(Fixture read, MemoryBoard board, params OpenPr[] opened)
     {
         var snapshot = read.Build();
         var plan = SampleWorkers.Plan(snapshot);
         var log = new Lines();
-        await BoardChores.Do(board, plan.Chores, BoardChores.ReadOf(snapshot.Issues), "— harness", log, CancellationToken.None);
+        var reader = new SnapshotReader(board, Repos(opened), null!, SampleWorkers.Options);
+        await BoardChores.Do(board, plan.Chores, BoardChores.ReadOf(snapshot.Issues), reader.OpenPrOf, "— harness", log, CancellationToken.None);
         return log;
     }
+
+    static RepositorySet Repos(OpenPr[] opened)
+    {
+        return new RepositorySet(SampleWorkers.Options.Repositories.Select(o => (Repository(o.Name, opened.Where(p => p.Repo == o.Name).ToList()), o)).ToList());
+    }
+
+    static IRepository Repository(string name, IReadOnlyList<OpenPr> open)
+    {
+        return Stub<IRepository>.Make(new Dictionary<string, Func<object?[], object?>>
+        {
+            ["get_Name"] = _ => name,
+            ["OpenPrs"] = _ => Task.FromResult(open),
+        });
+    }
+
+    static readonly TimeSpan Quiet = TimeSpan.FromMinutes(30);
 
     [Fact]
     public async Task AStoryAHandMovedSinceTheReadKeepsItsColumn()
@@ -84,11 +103,55 @@ public class BoardChoresTests
     {
         var board = new MemoryBoard();
         board.Add(7, stage: "In-Progress");
+        var other = new OpenPr(239, "app#8: another story", "stack/app-8", "sha", CiState.Green, Fixture.Stack, "now", HeadRepo: Fixture.Stack);
 
-        await Run(new Fixture().Story(7, "In-Progress"), board);
+        await Run(new Fixture().Story(7, "In-Progress", quiet: Quiet), board, other);
 
         Assert.Equal("Ready", board.Cards[7].Stage);
         Assert.Single(board.Cards[7].Comments);
+    }
+
+    [Fact]
+    public async Task AnOrphanWithAMergedPrGoesToTheAnalystWithItsComment()
+    {
+        var board = new MemoryBoard();
+        board.Add(7, stage: "In-Progress");
+
+        await Run(new Fixture().Story(7, "In-Progress", quiet: Quiet).MergedPr(7), board);
+
+        Assert.Equal("Analyze", board.Cards[7].Stage);
+        Assert.Single(board.Cards[7].Comments);
+    }
+
+    // The read saw no PR; by the write, the job that built the story elsewhere has opened one.
+    [Fact]
+    public async Task AStoryWhosePrOpenedAfterTheReadStaysInProgressWithNoComment()
+    {
+        var board = new MemoryBoard();
+        board.Add(7, stage: "In-Progress");
+        var opened = new OpenPr(239, "app#7: the fix", "stack/app-7", "sha", CiState.Pending, Fixture.Stack, "now", HeadRepo: Fixture.Stack);
+
+        var log = await Run(new Fixture().Story(7, "In-Progress", quiet: Quiet), board, opened);
+
+        Assert.Equal("In-Progress", board.Cards[7].Stage);
+        Assert.Empty(board.Cards[7].Comments);
+        var line = Assert.Single(log.Written, l => l.Contains("dropped"));
+        Assert.Contains("#7", line);
+        Assert.Contains($"{Fixture.Stack} PR #239", line);
+        Assert.Contains("Ready", line);
+        Assert.DoesNotContain(log.Written, l => l.StartsWith("chore:") && l.Contains("#7"));
+    }
+
+    [Fact]
+    public async Task AStoryWhoseJobJustEndedStaysInProgressWithNoComment()
+    {
+        var board = new MemoryBoard();
+        board.Add(7, stage: "In-Progress");
+
+        await Run(new Fixture().Story(7, "In-Progress", quiet: TimeSpan.FromSeconds(10)), board);
+
+        Assert.Equal("In-Progress", board.Cards[7].Stage);
+        Assert.Empty(board.Cards[7].Comments);
     }
 
     [Fact]

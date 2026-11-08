@@ -15,7 +15,10 @@ public static class JsonOptions
     /// directly — it owns its own options instance — so it copies these.</summary>
     public static IReadOnlyList<JsonConverter> Converters { get; } = new JsonConverter[]
     {
-        new JsonStringEnumConverter()
+        new JsonStringEnumConverter(),
+        new Int64StringConverter(),
+        new UInt64StringConverter(),
+        new DecimalStringConverter()
     };
 
     public static JsonSerializerOptions Wire { get; } = Create();

@@ -28,9 +28,9 @@ public class RouteModel
             }
             else if (segment.Type == SegmentType.Parameter)
             {
-                sb.Append("{message.");
+                sb.Append("{HttpRequestMessageBuilder.Segment(message.");
                 sb.Append(segment.Value);
-                sb.Append('}');
+                sb.Append(")}");
             }
         }
 

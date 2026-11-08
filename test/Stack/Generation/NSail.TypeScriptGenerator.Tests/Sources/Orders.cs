@@ -59,6 +59,10 @@ public class AddOrderLine : IMessage
     [NotNegative]
     public decimal Discount { get; set; }
 
+    public long Batch { get; set; }
+
+    public ulong? Serial { get; set; }
+
     [EmailAddress]
     public string? NotifyEmail { get; set; }
 

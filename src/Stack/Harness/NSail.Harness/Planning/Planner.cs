@@ -27,6 +27,11 @@ public sealed record PlannerOptions(bool Gate = false)
     // How many stories may be under way at once (an open PR nobody holds, or a voyage still
     // without one) before a new one leaves the queue: closing comes before starting. 0 is no limit.
     public int WipLimit { get; init; }
+
+    // A story In-Progress is moved by a keeper with no open PR (`Pr: none`) only once nothing touched
+    // it for this long: a job's ending (its label off, its PR opening) lands inside it. As long as
+    // StaleLock, the age a `claimed` with no job behind it is lifted at.
+    public TimeSpan OrphanGrace { get; init; } = TimeSpan.FromMinutes(10);
 }
 
 // What every planner shares: the urgency of a tier for whoever waits for a turn, the holds that
