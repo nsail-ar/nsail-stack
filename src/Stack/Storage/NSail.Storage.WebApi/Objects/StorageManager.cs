@@ -49,12 +49,24 @@ public sealed class StorageManager
     {
         var (provider, target) = await Resolve(cancelToken);
 
+        if (_tenancy.RowKey is null)
+        {
+            Guard(key);
+
+            return null;
+        }
+
         return await provider.Get(target, Scoped(key), cancelToken);
     }
 
     public async Task<IReadOnlyList<StoredObject>> List(string? prefix = null, CancellationToken cancelToken = default)
     {
         var (provider, target) = await Resolve(cancelToken);
+
+        if (_tenancy.RowKey is null)
+        {
+            return [];
+        }
 
         var tenant = TenantSegment();
         var listed = await provider.List(target, prefix, cancelToken);
@@ -115,10 +127,17 @@ public sealed class StorageManager
         return (provider, target);
     }
 
+    // A key in the shape the convention writes, <kind>/<tenant:N>/<leaf>, for the scope's own tenant
+    // (one zeroed guid where the wall is not the column).
+    public string Key(string kind, string leaf)
+    {
+        return $"{kind}/{TenantSegment() ?? Guid.Empty.ToString("N")}/{leaf}";
+    }
+
     // Where the wall is the tenant, a key is <kind>/<tenant:N>/<leaf> and the second segment must
     // be the scope's own tenant: a handler that forgets it, or names another's, is refused here
-    // rather than overwriting that tenant's object. A scope in no tenant under such a mode stores
-    // nothing. Where the wall is not the tenant (None, MultiDb) the segment is not checked.
+    // rather than overwriting that tenant's object. A scope in no tenant under such a mode reads
+    // nothing and stores nothing, as the data stamp does. Where the wall is not the tenant (None, MultiDb) the segment is not checked.
     string Scoped(string key)
     {
         var guarded = Guard(key);

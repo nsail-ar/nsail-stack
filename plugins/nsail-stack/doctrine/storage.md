@@ -65,8 +65,9 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   store is the INSTALL's, not a tenant's — Storage guards a key against climbing out of its
   container, and where the wall is the tenant column (SingleDb) it enforces the segment itself:
   a key whose tenant segment is not the scope's is refused (`ObjectKeyOutsideTenant`), a `List`
-  answers only the scope's own objects, and a scope in no tenant stores nothing
-  (`NoTenantForStorage`).
+  answers only the scope's own objects, and a scope in no tenant reads nothing (`Get` is null,
+  `List` empty) and writes, deletes or links nothing (`NoTenantForStorage`) — the data stamp's
+  rule. `StorageManager.Key(kind, leaf)` builds a key in that shape.
   One flat directory per tenant per kind, no deeper, so a copy that walks one level under
   `<kind>/<tenant:N>` brings across everything the convention wrote. Under a tenancy mode whose
   wall is not the column (MultiDb, None) the tenant segment is one zeroed guid, and that is

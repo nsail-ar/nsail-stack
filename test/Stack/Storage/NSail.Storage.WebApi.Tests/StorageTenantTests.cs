@@ -16,19 +16,14 @@ namespace NSail.Storage.Tests;
 // cannot read, overwrite, delete or list another's objects.
 public sealed class StorageTenantTests : IDisposable
 {
-    readonly string _directory = Path.Combine(Path.GetTempPath(), "nsail-storage-" + Guid.NewGuid().ToString("N"));
+    readonly Container _container = new();
     readonly MemorySettings _settings = new();
     readonly KeyProtector _keys = new("StorageTenantTests");
     readonly IStorageProvider[] _providers = [new FileSystemStorageProvider()];
 
-    public StorageTenantTests()
-    {
-        Directory.CreateDirectory(_directory);
-    }
-
     public void Dispose()
     {
-        Directory.Delete(_directory, true);
+        _container.Dispose();
     }
 
     [Fact]
@@ -66,11 +61,13 @@ public sealed class StorageTenantTests : IDisposable
     }
 
     [Fact]
-    public async Task AScopeInNoTenantStoresNothing()
+    public async Task AScopeInNoTenantReadsNothingAndStoresNothing()
     {
         var none = await Manager(Tenant.None, TenancyScope.Tenant);
 
-        await Assert.ThrowsAsync<BusinessException>(() => none.List());
+        Assert.Empty(await none.List());
+        Assert.Null(await none.Get("logos/x/logo.png"));
+        Assert.Throws<BusinessException>(() => none.Key("logos", "logo.png"));
         await Assert.ThrowsAsync<BusinessException>(() => Put(none, "logos/x/logo.png", 1));
     }
 
@@ -87,6 +84,16 @@ public sealed class StorageTenantTests : IDisposable
         Assert.Equal(2, (await install.List()).Count);
     }
 
+    [Fact]
+    public async Task KeyBuildsTheShapeTheDoorAccepts()
+    {
+        var a = await Manager(Tenant.For("alpha"));
+
+        await Put(a, a.Key("probe", "x.txt"), 1);
+
+        Assert.Single(await a.List("probe/"));
+    }
+
     static async Task Put(StorageManager manager, string key, byte value)
     {
         using var content = new MemoryStream([value]);
@@ -99,7 +106,7 @@ public sealed class StorageTenantTests : IDisposable
         await _settings.Save(new StorageSettings
         {
             Provider = FileSystemStorageProvider.ProviderType,
-            Container = _directory,
+            Container = _container.Path,
             AccessKey = "an-access-key",
             SecretKey = _keys.Protect("secret"),
         }, 0);

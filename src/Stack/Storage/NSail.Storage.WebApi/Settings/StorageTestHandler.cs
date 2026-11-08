@@ -40,7 +40,7 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
         // target, or the default's where it has none. The name arrives at runtime, so the keyed
         // manager is asked for here rather than injected.
         var storage = _services.GetRequiredKeyedService<StorageManager>(_stores.Require(message.Name));
-        var key = $"nsail-storage-test/{Guid.NewGuid():N}.txt";
+        var key = storage.Key("nsail-storage-test", $"{Guid.NewGuid():N}.txt");
         var payload = Encoding.UTF8.GetBytes($"NSail storage test {DateTimeOffset.UtcNow:O}");
 
         try
