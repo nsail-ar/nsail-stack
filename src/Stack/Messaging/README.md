@@ -150,7 +150,7 @@ throws `ClientNotConfigured` naming the client and the message.
 | Key | Default | Meaning |
 |---|---|---|
 | `Transport` | empty | Empty or `InProcess`: the durable row is the queue, drained by a background job of this process. `Postgres`, `RabbitMq`, `AmazonSqs`, `AzureServiceBus` are refused at startup |
-| `MaxAttempts` | `5` | Attempts before the row is dead-lettered |
+| `MaxAttempts` | `5` | Attempts before the row is dead-lettered; a row of a type this process has no consumer for is backed off and never dead-lettered |
 | `Backoff` | `00:00:30` | Wait before the first retry; doubles per attempt |
 | `Interval` | `00:00:10` | How often the drain looks for due rows, per tenant |
 | `BatchSize` | `50` | Rows delivered per pass |
@@ -160,7 +160,8 @@ throws `ClientNotConfigured` naming the client and the message.
 table (`QueuedMessages`). The project declaring either holder references `NSail.Messaging.Queue`.
 Every row the drain finishes is counted on the `nsail.queue.delivered` metric (meter
 `NSail.Messaging.Queue`, tagged by message and outcome); `QueueMetrics` names them. Delivery is
-at least once.
+at least once. `QueueDeadLetters` (scoped, registered by `AddQueueDelivery()`) requeues or purges the
+tenant's dead letters.
 
 ### Push to clients
 

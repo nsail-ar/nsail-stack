@@ -281,7 +281,11 @@ process over that database delivers it.
 - **Retry, backoff, dead letter — the Stack's own, and configuration.** `Queue:MaxAttempts`,
   `Queue:Backoff` (doubling per attempt), `Queue:Interval` and `Queue:BatchSize`. A row that
   fails its last attempt is dead-lettered: it stays, it is never attempted again, and it is
-  counted on `nsail.queue.delivered` tagged by message and outcome. A meter and not a log line
+  counted on `nsail.queue.delivered` tagged by message and outcome. A row whose type this process
+  has no consumer for is not a failure: it stays pending, backed off, and is never dead-lettered
+  for it — a rolling deploy or a moved namespace strands rows the next process can still
+  deliver. `QueueDeadLetters` requeues or purges dead letters (a kit's operator message calls
+  it). A meter and not a log line
   because `LogScrubber` drops the name out of an exported record — and the meter is subscribed
   for every server host by `AddBaseWebApi`, since a counter nothing exports is the same silence
   (baseservices.md, *Telemetry*).

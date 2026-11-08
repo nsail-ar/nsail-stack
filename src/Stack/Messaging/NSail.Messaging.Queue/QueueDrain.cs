@@ -88,12 +88,10 @@ public sealed class QueueDrain
     {
         if (_consumers.For(row.MessageType) is not { } consumer)
         {
-            // A row whose message this composition does not know is not a failure to retry:
-            // nothing here will ever grow a consumer for it, and attempting it on every pass
-            // would bury the rows that can still be delivered.
-            await Settle(row, new InvalidOperationException(
-                $"No consumer is registered for '{row.MessageType}'. The host that drains a queued command must compose the kit that declares it."),
-                attempts: _options.MaxAttempts, cancellationToken).ConfigureAwait(false);
+            // Unknown to this process, not failed: a rolling deploy drains rows the new version
+            // enqueued, and a moved namespace strands pending ones. The row waits, backed off,
+            // and is never dead-lettered for it.
+            await Defer(row, cancellationToken).ConfigureAwait(false);
 
             return;
         }
@@ -121,6 +119,23 @@ public sealed class QueueDrain
         {
             await Settle(row, exception, row.Attempts + 1, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    async Task Defer(QueuedMessage row, CancellationToken cancellationToken)
+    {
+        var now = _clock.GetUtcNow().UtcDateTime;
+
+        // Counted only up to MaxAttempts so the wait stops doubling there and the counter never
+        // reads as a dead letter.
+        row.Attempts = Math.Min(row.Attempts + 1, _options.MaxAttempts);
+        row.LastError = Truncate($"No consumer is registered for '{row.MessageType}'. The host that drains a queued command must compose the kit that declares it.");
+        row.NextAttemptAt = Due(now, row.Attempts);
+
+        _meter.Finished(row.MessageType, QueueMetrics.Failed);
+
+        _logger.LogWarning("A queued command of type {MessageType} has no consumer in this process; it stays pending until {NextAttemptAt:o}.", row.MessageType, row.NextAttemptAt);
+
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     async Task Settle(QueuedMessage row, Exception exception, int attempts, CancellationToken cancellationToken)
