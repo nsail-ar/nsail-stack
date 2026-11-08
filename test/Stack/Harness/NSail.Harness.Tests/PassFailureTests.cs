@@ -33,8 +33,21 @@ public class PassFailureTests
         var http = new HttpClient(new Answer(status, body, remaining));
         GitHubClient.Configure(http, "t");
         var o = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }] };
-        var repo = new GitHubRepository(new GitHubClient(http), o.Repositories[0], o.Names(), "t");
+        var repo = new GitHubRepository(new GitHubClient(http) { Delay = (_, _) => Task.CompletedTask }, o.Repositories[0], o.Names(), "t");
         return await Assert.ThrowsAsync<GitHubException>(() => repo.Statuses());
+    }
+
+    [Fact]
+    public void ALimitedPassWaitsWhatItWasAskedUpToTheCeiling()
+    {
+        var o = new HarnessOptions { Mode = HarnessMode.Live };
+        var busy = TimeSpan.FromSeconds(o.BusyFloorSeconds);
+
+        Assert.Equal(TimeSpan.FromSeconds(o.IdlePollSeconds), HarnessLoop.NextWait(true, o, null));
+        Assert.Equal(busy, HarnessLoop.NextWait(false, o, null));
+        Assert.Equal(TimeSpan.FromMinutes(8), HarnessLoop.NextWait(false, o, TimeSpan.FromMinutes(8)));
+        Assert.Equal(HarnessLoop.MaxLimitBackoff, HarnessLoop.NextWait(true, o, TimeSpan.FromMinutes(50)));
+        Assert.Equal(busy, HarnessLoop.NextWait(false, o, TimeSpan.FromSeconds(1)));
     }
 
     [Fact]
