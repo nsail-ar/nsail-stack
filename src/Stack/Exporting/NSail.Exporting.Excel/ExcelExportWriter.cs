@@ -57,7 +57,7 @@ public sealed class ExcelExportWriter : IExportWriter
                     columns.Add(new DynamicExcelColumn(keys[index])
                     {
                         Index = index,
-                        Name = column.Title,
+                        Name = ExportText.Defused(column.Title),
                         Format = PatternFor(column.Format, culture)
                     });
                 }
@@ -117,7 +117,8 @@ public sealed class ExcelExportWriter : IExportWriter
             DateOnly date => date.ToDateTime(TimeOnly.MinValue),
             DateTimeOffset offset => offset.LocalDateTime,
             TimeOnly time => time.ToTimeSpan(),
-            Enum word => word.ToString(),
+            Enum word => ExportText.Defused(word.ToString()),
+            string text => ExportText.Defused(text),
             _ => value
         };
     }

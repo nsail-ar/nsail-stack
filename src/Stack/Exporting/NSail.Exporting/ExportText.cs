@@ -41,6 +41,14 @@ public static class ExportText
             && value is IConvertible and not string and not bool;
     }
 
+    /// <summary>A spreadsheet runs a text cell that opens with one of these as a formula, so the
+    /// apostrophe makes it text. Everything but a figure: a negative one starts with a minus
+    /// and is a number.</summary>
+    public static string Defused(string text)
+    {
+        return text.Length > 0 && text[0] is '=' or '+' or '-' or '@' or '\t' or '\r' ? "'" + text : text;
+    }
+
     static string Figure(object value, string pattern, CultureInfo culture)
     {
         return Convert.ToDecimal(value, culture).ToString(pattern, culture);

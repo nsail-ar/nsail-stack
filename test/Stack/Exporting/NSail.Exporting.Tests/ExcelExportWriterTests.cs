@@ -76,6 +76,29 @@ public class ExcelExportWriterTests
         Assert.Equal(31, workbook.Worksheet(1).Name.Length);
     }
 
+    [Theory]
+    [InlineData("=1+1")]
+    [InlineData("+1")]
+    [InlineData("-1")]
+    [InlineData("@SUM(A1)")]
+    [InlineData("\tx")]
+    [InlineData("\rx")]
+    public async Task A_text_cell_that_a_spreadsheet_would_run_is_written_as_text(string text)
+    {
+        var column = new ExportColumn { Key = "Name", Title = "=Title" };
+        var book = ExportBook.Of("Lista", new ExportTable { Columns = [column], Rows = Books.Rows([[text], ["plain"], [-5m]]) });
+
+        using var stream = new MemoryStream(await Books.Write(new ExcelExportWriter(), book, Books.States));
+        using var workbook = new XLWorkbook(stream);
+        var sheet = workbook.Worksheet(1);
+
+        Assert.Equal("'=Title", sheet.Cell(1, 1).GetString());
+        Assert.Equal("'" + text.Replace('\r', '\n'), sheet.Cell(2, 1).GetString());
+        Assert.Equal("plain", sheet.Cell(3, 1).GetString());
+        Assert.Equal(XLDataType.Number, sheet.Cell(4, 1).Value.Type);
+        Assert.Equal(-5, sheet.Cell(4, 1).Value.GetNumber());
+    }
+
     static async Task<IXLWorksheet> Sheet(System.Globalization.CultureInfo culture)
     {
         var stream = new MemoryStream(await Books.Write(new ExcelExportWriter(), Books.One(), culture));

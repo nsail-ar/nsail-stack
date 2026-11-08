@@ -55,7 +55,7 @@ all, so it prints every figure in the reader's own separators.
 | Encoding | OOXML | UTF-8 **with a byte-order mark** |
 | Separator | — | derived from the decimal mark: `;` where it is a comma, `,` otherwise |
 
-**A CSV text cell is never a formula.** One that opens with `=`, `+`, `-`, `@`, tab or CR is written
+**A text cell is never a formula, in either writer.** In the `.xlsx` a string (or enum word) and a heading; in the CSV one that opens with `=`, `+`, `-`, `@`, tab or CR is written
 with a leading `'`; only a figure is not touched, since a negative one starts with a minus. A figure
 is a value in a Number, Money or Percent column that printed as a number: a string in such a column
 is text and is defused too.

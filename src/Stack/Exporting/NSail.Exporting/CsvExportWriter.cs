@@ -50,7 +50,7 @@ public sealed class CsvExportWriter : IExportWriter
 
                 first = false;
 
-                await text.WriteLineAsync(string.Join(separator, table.Columns.Select(column => Field(Defused(column.Title), separator))));
+                await text.WriteLineAsync(string.Join(separator, table.Columns.Select(column => Field(ExportText.Defused(column.Title), separator))));
 
                 await foreach (var row in table.Rows.WithCancellation(cancellationToken))
                 {
@@ -65,7 +65,7 @@ public sealed class CsvExportWriter : IExportWriter
                         var value = index < row.Values.Count ? row.Values[index] : null;
                         var cell = ExportText.Of(value, column.Format, culture);
 
-                        return Field(ExportText.IsFigure(value, column.Format) ? cell : Defused(cell), separator);
+                        return Field(ExportText.IsFigure(value, column.Format) ? cell : ExportText.Defused(cell), separator);
                     });
 
                     await text.WriteLineAsync(string.Join(separator, cells));
@@ -86,14 +86,6 @@ public sealed class CsvExportWriter : IExportWriter
         ArgumentNullException.ThrowIfNull(culture);
 
         return culture.NumberFormat.NumberDecimalSeparator == "," ? ';' : ',';
-    }
-
-    /// <summary>A spreadsheet runs a text cell that opens with one of these as a formula, so the
-    /// apostrophe makes it text. Everything but a figure: a negative one starts with a minus
-    /// and is a number.</summary>
-    static string Defused(string text)
-    {
-        return text.Length > 0 && text[0] is '=' or '+' or '-' or '@' or '\t' or '\r' ? "'" + text : text;
     }
 
     static string Field(string value, char separator)
