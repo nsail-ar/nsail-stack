@@ -60,6 +60,11 @@ A host that offers `backup` and `restore` calls `InstallConsole.Requested(args)`
 
 ## What each call does
 
+`AddTenantKeys` registers the `KeyProtector` that seals with the current tenant's key, one
+`{slug}.key` file per tenant under `Security:KeysDirectory`. A tenant with no file makes a seal
+or an open throw `MissingEncryptionKeyException`. Outside Development a host without the
+directory refuses to compose; Development without it seals under a fixed key.
+
 `AddBaseWebApi` registers telemetry (`AddTelemetry`), the messaging runtime, the error handler,
 the middleware below, the permissive `RequestBudgetProvider`, `SecurityOptions` (from
 `Security`), the tenant feature provider and a hosted service that publishes the declared
@@ -113,7 +118,7 @@ router render its NotFound (it leaves `/api` and file-looking paths alone).
 | Section | Keys | Read by |
 |---|---|---|
 | `Language` | `Base` (default `en`), `Default` (default `en`), `Offered` (default empty, meaning `Default` alone) | `UseBaseWebApp` request localization, the suspended page |
-| `Security` | `TicketEpoch` (int, default 0); `TrustedProxies` (addresses or CIDR networks, default none) | `TicketEpochMiddleware`; forwarded headers |
+| `Security` | `TicketEpoch` (int, default 0); `TrustedProxies` (addresses or CIDR networks, default none); `KeysDirectory` (the per-tenant key files) | `TicketEpochMiddleware`; forwarded headers; `AddTenantKeys` |
 | `Tenancy` | `Mode`, `StateCacheSeconds`, `SupportContact`, ... | the tenant steps; options are `TenancyOptions` in `NSail.Data` |
 | `Telemetry` | see [Telemetry](../Telemetry/README.md) | `AddBaseWebApi` |
 | `HttpClients` | `<Area>:BaseUrl`, `<Area>:TimeoutSeconds` | `AddHttpClients` (Wasm), from `NSail.Messaging.Http` |

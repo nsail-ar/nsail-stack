@@ -31,7 +31,7 @@ public class SecurityOptions
     public string[] TrustedProxies { get; set; } = [];
 
     /// <summary>The directory holding one <c>{slug}.key</c> file per tenant, which
-    /// <c>AddTenantKeys</c> reads to seal that tenant's stored secrets. Outside Development it is
-    /// required.</summary>
+    /// <c>AddTenantKeys</c> reads to seal that tenant's stored secrets. A host that calls
+    /// <c>AddTenantKeys</c> outside Development must set it.</summary>
     public string? KeysDirectory { get; set; }
 }

@@ -97,7 +97,7 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   caller at the door can do nothing different about either.
 - **The credential is sealed with the key of the tenant it belongs to** (`KeyProtector`,
   `NSail.Security`; `AddTenantKeys` reads one file per tenant, and a tenant without one makes the
-  seal throw). `AddStorageWebApi` does not register one — the key is the host's — so a host that composes
+  seal throw, and an open reads as "no secret", so the screen asks again). `AddStorageWebApi` does not register one — the key is the host's — so a host that composes
   Storage without it fails by name on first use rather than sealing under a key nobody chose.
 
 ## The S3 provider

@@ -26,6 +26,9 @@ public static class TenantKeys
         }
         else if (builder.Environment.IsDevelopment())
         {
+            // Justified divergence: a developer machine has no provisioner writing key files, and
+            // refusing to compose would stop every local run. The per-tenant path is the only one
+            // a cell runs, so it is exercised by tests, not by Development.
             source = new DevelopmentKeySource();
         }
         else

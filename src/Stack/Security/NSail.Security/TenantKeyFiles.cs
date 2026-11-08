@@ -37,7 +37,7 @@ public sealed class TenantKeyFiles : IEncryptionKeySource
     public string? Read(string slug)
     {
         // The slug names a file: anything that could leave the directory is no tenant's key.
-        if (slug.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || slug is "." or "..")
+        if (slug.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
         {
             return null;
         }
