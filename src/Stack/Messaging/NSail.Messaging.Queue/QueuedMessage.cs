@@ -44,8 +44,10 @@ public class QueuedMessage
 
     public DateTime EnqueuedAt { get; set; }
 
-    /// <summary>When the drain may next attempt it — the enqueue time on a fresh row, and the
-    /// backoff from the last failure afterwards.</summary>
+    /// <summary>When the drain may next attempt it — the enqueue time on a fresh row, the
+    /// backoff from the last failure afterwards, and while a drain is delivering the row the end
+    /// of its lease (<see cref="QueueOptions.Lease"/>): a future time with no failure recorded
+    /// is a delivery in flight.</summary>
     public DateTime NextAttemptAt { get; set; }
 
     public int Attempts { get; set; }

@@ -120,6 +120,35 @@ public sealed class AlwaysFails : IMessage
 {
 }
 
+[QueueAttribute]
+public sealed class LoseRowThenFail : IMessage
+{
+}
+
+/// <summary>What the test hands the handler that loses its own row: the act that makes another
+/// drain finish it, which only the test can run against the database.</summary>
+public sealed class RowThief
+{
+    public Func<Task> Steal { get; set; } = () => Task.CompletedTask;
+}
+
+sealed class LoseRowThenFailHandler : IHandler<LoseRowThenFail>
+{
+    readonly RowThief _thief;
+
+    public LoseRowThenFailHandler(RowThief thief)
+    {
+        _thief = thief;
+    }
+
+    public async Task Handle(LoseRowThenFail message, CancellationToken cancellationToken = default)
+    {
+        await _thief.Steal();
+
+        throw new InvalidOperationException("The vendor is down.");
+    }
+}
+
 sealed class WriteLetterHandler : IHandler<WriteLetter>
 {
     readonly DbContext _db;
@@ -258,6 +287,8 @@ public static class QueueHarness
 
     public const string WriteLetterAndQueueKey = "Messaging.Queue.WriteLetterAndQueue";
 
+    public const string LoseRowThenFailKey = "Messaging.Queue.LoseRowThenFail";
+
     public const string Clerk = "clerk";
 
     /// <summary>What a product's two generated holders would register, by hand: the suite is
@@ -281,8 +312,9 @@ public static class QueueHarness
         // Both registrations stand in for the Policies.Handlers generator, which emits the
         // factory and the registry entry from the same line.
         services.AddSingleton<SavePointProbe>();
+        services.AddSingleton<RowThief>();
 
-        foreach (var type in new[] { typeof(WriteLetter), typeof(AlwaysFails), typeof(WriteLetterThenFail), typeof(WriteLetterAndQueue) })
+        foreach (var type in new[] { typeof(WriteLetter), typeof(AlwaysFails), typeof(WriteLetterThenFail), typeof(WriteLetterAndQueue), typeof(LoseRowThenFail) })
         {
             services.AddSingleton(new PolicyHandlerFactory(type, policy => new FlatPolicyHandler(policy)));
             services.AddSingleton(new MessageRegistration(type));
@@ -291,20 +323,23 @@ public static class QueueHarness
         services.AddBuiltInPolicy(new Policy
         {
             Name = "Clerks queue their own work",
-            Messages = granted.Length > 0 ? granted : [WriteLetterKey, AlwaysFailsKey, WriteLetterThenFailKey, WriteLetterAndQueueKey],
+            Messages = granted.Length > 0 ? granted : [WriteLetterKey, AlwaysFailsKey, WriteLetterThenFailKey, WriteLetterAndQueueKey, LoseRowThenFailKey],
             Audience = new PolicyAudience { HasRole = Clerk },
         });
 
         services.AddScoped<ISender<WriteLetter>, QueueSender<WriteLetter>>();
         services.AddScoped<ISender<AlwaysFails>, QueueSender<AlwaysFails>>();
+        services.AddScoped<ISender<LoseRowThenFail>, QueueSender<LoseRowThenFail>>();
         services.AddScoped<ISender<WriteLetterThenFail>, InProcessSender<WriteLetterThenFail>>();
         services.AddScoped<ISender<WriteLetterAndQueue>, InProcessSender<WriteLetterAndQueue>>();
 
         services.AddSingleton<QueueConsumer>(new QueueConsumer<WriteLetter>());
         services.AddSingleton<QueueConsumer>(new QueueConsumer<AlwaysFails>());
+        services.AddSingleton<QueueConsumer>(new QueueConsumer<LoseRowThenFail>());
 
         services.AddScoped<IHandler<WriteLetter>, WriteLetterHandler>();
         services.AddScoped<IHandler<AlwaysFails>, AlwaysFailsHandler>();
+        services.AddScoped<IHandler<LoseRowThenFail>, LoseRowThenFailHandler>();
         services.AddScoped<IHandler<WriteLetterThenFail>, WriteLetterThenFailHandler>();
         services.AddScoped<IHandler<WriteLetterAndQueue>, WriteLetterAndQueueHandler>();
     }

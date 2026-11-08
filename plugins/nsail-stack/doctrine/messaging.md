@@ -279,7 +279,7 @@ process over that database delivers it.
   find changed therefore belongs in the handler, where a refusal is that handler's own failure
   and not a second verdict on a message already accepted.
 - **Retry, backoff, dead letter — the Stack's own, and configuration.** `Queue:MaxAttempts`,
-  `Queue:Backoff` (doubling per attempt), `Queue:Interval` and `Queue:BatchSize`. A row that
+  `Queue:Backoff` (doubling per attempt), `Queue:Interval`, `Queue:BatchSize` and `Queue:Lease`. A row that
   fails its last attempt is dead-lettered: it stays, it is never attempted again, and it is
   counted on `nsail.queue.delivered` tagged by message and outcome. A meter and not a log line
   because `LogScrubber` drops the name out of an exported record — and the meter is subscribed

@@ -38,4 +38,26 @@ public sealed class QueueDrainClaimTests
         Assert.Equal(rows, (await host.Read(db => db.Set<Letter>().ToListAsync())).Count);
         Assert.Empty(await host.Read(db => db.Set<QueuedMessage>().ToListAsync()));
     }
+
+    [Fact]
+    public async Task A_drain_whose_failing_row_was_finished_by_another_moves_on_to_the_next_row()
+    {
+        await using var host = await HandlerHost.Start(
+            "queue_claim_lost", QueueHarness.Context, services => QueueHarness.Compose(services, new QueueOptions { BatchSize = 10 }, new TestClock()));
+
+        await host.Send(new LoseRowThenFail(), Clerk());
+        await host.Send(new WriteLetter { Text = "behind the lost row" }, Clerk());
+
+        // The other drain finishing the row, as the database sees it, while this handler runs.
+        var thief = await host.Use<RowThief, RowThief>(found => Task.FromResult(found));
+        thief.Steal = () => host.Read(db => db.Set<QueuedMessage>()
+            .Where(row => row.MessageType == typeof(LoseRowThenFail).FullName)
+            .ExecuteDeleteAsync());
+
+        var handled = await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None));
+
+        Assert.Equal(2, handled);
+        Assert.Single(await host.Read(db => db.Set<Letter>().ToListAsync()));
+        Assert.Empty(await host.Read(db => db.Set<QueuedMessage>().ToListAsync()));
+    }
 }
