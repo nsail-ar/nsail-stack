@@ -551,8 +551,11 @@ the contract and the Stack only reads:
   of authentication, so a suspended tenant cannot mint a ticket either.
 - **What is not a request is asked too.** An open circuit's sends never pass the pipeline again,
   so `TenantStateInterceptor` (registered by `AddBaseWebApi`) asks the same memoed state on every
-  send and answers the same 503 `Suspended`; a held push feed — an SSE line, a hub connection —
-  is asked once a second through `PushAudience.Watch` and is closed when the answer turns.
+  send and answers the same 503 `Suspended`. The send's outermost scope is its own and never
+  the circuit's, so it reads the tenant from the flow: `TenancyCircuit` enters the circuit's
+  tenant on every inbound activity, which is also what the send's `DbContext` connects by. A
+  held push feed — an SSE line, a hub connection — is asked once a second through
+  `PushAudience.Watch` and is closed when the answer turns.
   Both read the memo, so the bound is `Tenancy:StateCacheSeconds` (plus that second for a feed),
   and a feed opens a scope only when the memo's window for its tenant has expired. A failed ask
   is logged and asked again next tick: the watch never ends on an error, because a feed whose
@@ -669,7 +672,9 @@ and a child scope that could not see the tenant would answer the refusal on a pa
 had already answered. Entering reaches every scope the request opens and no request beside it.
 **Work that outlives its request pins instead**: `ResolvedTenancyProvider.Enter` also fixes the
 tenant onto its own scope, and `TenancyCircuit` (`NSail.BaseServices.WebApp`) does that at
-circuit-open — the one moment a Blazor circuit's scope is still inside the connect request.
+circuit-open — the one moment a Blazor circuit's scope is still inside the connect request. The
+pin reaches the circuit's scope alone, and an event's outermost send runs in a scope of its own,
+so `TenancyCircuit` also enters that tenant on the flow of every inbound activity.
 
 **First touch migrates**, under `TenantMigrator`: a provisioned database carries no schema until
 the first request reaches it, and that request applies the chain. The lock is a Postgres
@@ -708,8 +713,8 @@ reads nothing and cannot write at all.
   tenant is entered and before the job is resolved, so nothing of the job runs (The install's own
   record, above) — the request edge's answer, applied to work no caller started: an open
   circuit and a held push feed have no request either, and are asked on the send and on the
-  feed (A suspended tenant's requests, above). It is not a failed pass and not a pass: a failure is the job's problem, a suspension
-  is the install's answer about the customer.
+  feed (A suspended tenant's requests, above). It is not a failed pass and not a pass: a
+  failure is the job's problem, a suspension is the install's answer about the customer.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as
   `UseRequestLanguage` does on a request; `LanguageProvider` then seeds itself with "es" instead

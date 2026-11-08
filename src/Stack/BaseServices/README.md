@@ -96,7 +96,7 @@ open circuit and a push line are not requests: a suspension reaches them within
 `Tenancy:StateCacheSeconds` plus that second, as the 503 or a closed feed. A system session is exempt.
 
 `AddBaseWebApp` registers Razor components with server and WebAssembly render modes, the
-`TenancyCircuit` that carries the tenant onto the circuit, `AddMessagePolicies` (so a page's
+`TenancyCircuit` that carries the tenant onto the circuit and onto every event's send, `AddMessagePolicies` (so a page's
 `[Authorize<TMessage>]` resolves), the per-request `IDeviceProvider` and the
 `IProblemDocumentProvider` that draws the error page for a document navigation.
 `UseBaseWebApp` adds request localization, antiforgery, `Cache-Control: no-cache` on every HTML

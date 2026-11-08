@@ -44,8 +44,9 @@ and the push's server end — both transports, their two doors, and the tenant a
 (`TenantPushAudience`; messaging.md, Pushed to clients). It registers
 `TenantStateInterceptor`, the tenant-state wall on every send of a caller's, because an open
 circuit's sends never pass `TenantStateMiddleware` again; where no tenant is resolved there is no
-state to read and it asks nothing (data-tenancy.md, The install's own record). It also contributes a string catalog of
-its own, the words of the one page this project draws without the app (the suspended page, below).
+state to read and it asks nothing (data-tenancy.md, The install's own record). It also
+contributes a string catalog of its own, the words of the one page this project draws without
+the app (the suspended page, below).
 
 `UseBaseWebApi(app)` configures, in order:
 
@@ -397,7 +398,9 @@ Entry component: `NsApp.razor`.
 
 - `AddBaseWebApp` registers `TenancyCircuit`, the `CircuitHandler` that pins the request's
   tenant onto the circuit's scope while the connect request is still on the stack — a circuit
-  outlives that request, and every later render runs in its own flow. It no-ops under
+  outlives that request, and every later render runs in its own flow — and enters it on the
+  flow of every inbound activity, so an event's send, whose scope is its own, connects and meets
+  the tenant-state wall in the circuit's tenant. It no-ops under
   `Tenancy:Mode=None`; see [data-tenancy.md](data-tenancy.md#the-credential-is-stamped-and-checked-on-every-request).
 - `AddBaseWebApp` also calls `AddMessagePolicies`, which lets a page's `[Authorize<TMessage>]`
   resolve. It lives here rather than in `AddBaseWebApi` because it serves pages: an API-only

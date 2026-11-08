@@ -57,7 +57,7 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 
 | Key | Default | Meaning |
 |---|---|---|
-| `TicketEpoch` | `0` | The ticket generation this install honours. Raising it signs out everyone holding an older ticket and nobody else: an HTTP request meets the 401 at once, and an open Blazor circuit meets it on its next send (the security gate asks again), where the client bounces to sign-in. What it cannot reach is a circuit that sends nothing, and a push feed, which are not asked until they act or reconnect. The value is read at startup, so a change takes a restart. `0` means never raised: nothing is stamped or refused. From `1` up, a ticket must carry exactly this generation |
+| `TicketEpoch` | `0` | The ticket generation this install honours. Raising it signs out everyone holding an older ticket and nobody else: an HTTP request meets the 401 at once, and an open Blazor circuit meets it as a 401 on its next send (the security gate asks again) and reaches the sign-in page on its next document load, where the request wall signs the ticket out. What it cannot reach is a circuit that sends nothing, and a push feed, which are not asked until they act or reconnect. The value is read at startup, so a change takes a restart. `0` means never raised: nothing is stamped or refused. From `1` up, a ticket must carry exactly this generation |
 
 **Registration**
 
