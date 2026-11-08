@@ -57,6 +57,25 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public async Task PickingADate_OnAnOffsetValue_KeepsTheInstantOfTheHourInTheLocalZone()
+    {
+        DateTimeOffset? captured = null;
+        var held = new DateTimeOffset(2026, 11, 6, 23, 30, 0, TimeSpan.Zero);
+
+        var cut = Render<DateTimeOffsetValueHost>(ps => ps
+            .Add(p => p.Value, held)
+            .Add(p => p.ValueChanged, v => captured = v));
+
+        var local = TimeZoneInfo.ConvertTime(held, TimeZoneInfo.Local);
+
+        await cut.InvokeAsync(() => cut.FindComponent<MudDatePicker>().Instance.DateChanged
+            .InvokeAsync(local.Date));
+
+        // Same day picked again: the instant is the one held, whatever the host's offset.
+        Assert.Equal(held, captured);
+    }
+
+    [Fact]
     public async Task PickingADate_KeepsTheHourAlreadyChosen()
     {
         DateTime? captured = null;

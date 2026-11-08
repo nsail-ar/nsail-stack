@@ -155,7 +155,7 @@ public partial class NsDateTimeField<TValue>
         {
             null => null,
             DateTime dateTime => dateTime,
-            DateTimeOffset dateTimeOffset => dateTimeOffset.DateTime,
+            DateTimeOffset dateTimeOffset => TimeZoneInfo.ConvertTime(dateTimeOffset, TimeZoneInfo.Local).DateTime,
             _ => null
         };
     }
@@ -177,14 +177,24 @@ public partial class NsDateTimeField<TValue>
 
         if (target == typeof(DateTimeOffset))
         {
-            return (TValue)(object)new DateTimeOffset(combined);
+            return (TValue)(object)LocalOffset(combined);
         }
 
         if (target == typeof(DateTimeOffset?))
         {
-            return (TValue)(object)new DateTimeOffset(combined);
+            return (TValue)(object)LocalOffset(combined);
         }
 
         return default;
+    }
+
+    // The wall clock the boxes show is the host's local one: an offset value is read in that zone
+    // and written back with the offset the zone had at that time, not the stored offset's wall
+    // clock nor whatever new DateTimeOffset(unspecified) happens to take.
+    static DateTimeOffset LocalOffset(DateTime value)
+    {
+        var unspecified = DateTime.SpecifyKind(value, DateTimeKind.Unspecified);
+
+        return new DateTimeOffset(unspecified, TimeZoneInfo.Local.GetUtcOffset(unspecified));
     }
 }

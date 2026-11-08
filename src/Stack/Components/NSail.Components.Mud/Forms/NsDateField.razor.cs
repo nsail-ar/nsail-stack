@@ -147,7 +147,7 @@ public partial class NsDateField<TValue>
             null => null,
             DateTime dateTime => dateTime.Date,
             DateOnly dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
-            DateTimeOffset dateTimeOffset => dateTimeOffset.DateTime.Date,
+            DateTimeOffset dateTimeOffset => TimeZoneInfo.ConvertTime(dateTimeOffset, TimeZoneInfo.Local).Date,
             _ => null
         };
     }
@@ -183,14 +183,24 @@ public partial class NsDateField<TValue>
 
         if (target == typeof(DateTimeOffset))
         {
-            return (TValue)(object)new DateTimeOffset(value.Value);
+            return (TValue)(object)LocalOffset(value.Value);
         }
 
         if (target == typeof(DateTimeOffset?))
         {
-            return (TValue)(object)new DateTimeOffset(value.Value);
+            return (TValue)(object)LocalOffset(value.Value);
         }
 
         return default;
+    }
+
+    // A date is a day on the host's local calendar, as BusinessDate.Today is: an offset value is
+    // read in that zone and written back with the offset the zone had that day, never the
+    // stored offset's wall clock or whatever new DateTimeOffset(unspecified) happens to take.
+    static DateTimeOffset LocalOffset(DateTime value)
+    {
+        var unspecified = DateTime.SpecifyKind(value, DateTimeKind.Unspecified);
+
+        return new DateTimeOffset(unspecified, TimeZoneInfo.Local.GetUtcOffset(unspecified));
     }
 }
