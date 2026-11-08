@@ -6,11 +6,14 @@ using System.Security.Cryptography;
 namespace NSail.Security;
 
 /// <summary>
-/// One-way password hashing based on PBKDF2. Format: "{iterations}.{salt}.{hash}" (base64).
+/// One-way password hashing based on PBKDF2-SHA256. Format: "{iterations}.{salt}.{hash}" (base64).
+/// A stored hash under <see cref="MinimumIterations"/> or over <see cref="MaximumIterations"/> is refused.
 /// </summary>
 public static class PasswordHash
 {
-    const int Iterations = 100_000;
+    public const int Iterations = 600_000;
+    public const int MinimumIterations = 100_000;
+    public const int MaximumIterations = 10_000_000;
     const int SaltSize = 16;
     const int HashSize = 32;
 
@@ -24,9 +27,22 @@ public static class PasswordHash
 
     public static bool Verify(string password, string hashed)
     {
+        return Verify(password, hashed, out _);
+    }
+
+    /// <summary>On success, <paramref name="needsRehash"/> says the stored hash has fewer iterations
+    /// than <see cref="Iterations"/> and should be rewritten with <see cref="Hash"/>.</summary>
+    public static bool Verify(string password, string hashed, out bool needsRehash)
+    {
+        needsRehash = false;
+
+        if (string.IsNullOrEmpty(hashed))
+            return false;
+
         var parts = hashed.Split('.');
 
-        if (parts.Length != 3 || !int.TryParse(parts[0], out var iterations))
+        if (parts.Length != 3 || !int.TryParse(parts[0], out var iterations)
+            || iterations < MinimumIterations || iterations > MaximumIterations)
             return false;
 
         byte[] salt;
@@ -42,8 +58,16 @@ public static class PasswordHash
             return false;
         }
 
+        if (expected.Length != HashSize || salt.Length != SaltSize)
+            return false;
+
         var actual = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, expected.Length);
 
-        return CryptographicOperations.FixedTimeEquals(actual, expected);
+        if (!CryptographicOperations.FixedTimeEquals(actual, expected))
+            return false;
+
+        needsRehash = iterations < Iterations;
+
+        return true;
     }
 }
