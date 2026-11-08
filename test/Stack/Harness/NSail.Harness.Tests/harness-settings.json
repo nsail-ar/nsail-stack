@@ -100,7 +100,8 @@
                            "On": { "Executed": [ { "MoveTo": "Analyze" }, { "Comment": "In-Progress with no open PR, no job on it and a PR merged: the analyst reads whether it is done." } ] } }
     },
     "RedLabels": [ "p1", "claude:opus" ],
-    "ReviewMarker": "reviewer"
+    "ReviewMarker": "reviewer",
+    "MarkerAuthors": [ "crew", "github-actions[bot]", "ana" ]
   },
   "Telemetry": {
     "Endpoint": "https://telemetry.example.com/api/default",

@@ -101,7 +101,8 @@ the files it leaves.
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, ...);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the
   story. A gate or review marker on a PR counts only as a whole HTML comment on its own line, written
-  by the login the harness runs as; the builder's `pr.md` is posted with any marker stripped.
+  by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
+  the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   Every harness on the board reads the same. What stays on the machine is its job history
   and its count of them.
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its

@@ -33,7 +33,7 @@ public sealed class JobContext(
     public HarnessOptions Options { get; } = options;
     public HarnessTexts Texts => Options.Texts;
     public StoryNames Names { get; } = options.Names();
-    public Markers Markers { get; } = new(options.ReviewMarker);
+    public Markers Markers { get; } = new(options.ReviewMarker, options.MarkerAuthors);
     public ILoggerFactory Logs { get; } = logs;
     public BuildLeases Leases { get; } = leases;
 

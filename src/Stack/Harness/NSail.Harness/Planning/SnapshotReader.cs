@@ -13,7 +13,7 @@ namespace NSail.Harness.Planning;
 public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock locks, HarnessOptions options)
 {
     readonly StoryNames _names = options.Names();
-    readonly Markers _markers = new(options.ReviewMarker);
+    readonly Markers _markers = new(options.ReviewMarker, options.MarkerAuthors);
 
     public async Task<BoardSnapshot> Read(Flight own, CancellationToken ct = default)
     {
@@ -117,10 +117,10 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
     // or every pass would cost two calls per open PR.
     static readonly ConcurrentDictionary<(string Repo, int Pr), (string UpdatedAt, List<string> Bodies)> BodiesByPr = new();
 
-    static async Task<List<string>> Bodies(IRepository repo, OpenPr pr, CancellationToken ct)
+    async Task<List<string>> Bodies(IRepository repo, OpenPr pr, CancellationToken ct)
     {
         if (BodiesByPr.TryGetValue((pr.Repo, pr.Number), out var hit) && hit.UpdatedAt == pr.UpdatedAt) return hit.Bodies;
-        var bodies = Markers.OwnBodies(await repo.Thread(pr.Number, ct), await repo.Login(ct)).ToList();
+        var bodies = _markers.Bodies(await repo.Thread(pr.Number, ct), await repo.Login(ct)).ToList();
         BodiesByPr[(pr.Repo, pr.Number)] = (pr.UpdatedAt, bodies);
         return bodies;
     }

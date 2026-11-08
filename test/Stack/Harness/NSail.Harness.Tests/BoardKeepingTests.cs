@@ -101,10 +101,41 @@ public class BoardKeepingTests
             new PrNote(DateTimeOffset.UnixEpoch, "see <!-- harness:gate:green:bbb --> here", "crew"),
         };
 
-        var bodies = Markers.OwnBodies(thread, "crew").ToList();
+        var bodies = new Markers("reviewer", ["crew"]).Bodies(thread, "crew").ToList();
 
         Assert.Null(Markers.GateAt(bodies, "aaa"));
         Assert.Equal(CiState.Red, Markers.GateAt(bodies, "bbb"));
+    }
+
+    [Fact]
+    public void AMarkerAnyListedHarnessWroteCountsAndAForgedOneDoesNot()
+    {
+        var markers = new Markers("reviewer", ["crew", "github-actions[bot]", "Ana"]);
+        var byAna = new[] { new PrNote(DateTimeOffset.UnixEpoch, "x\n<!-- harness:gate:green:abc123 -->\n<!-- reviewer:findings:abc123 -->", "ana") };
+        var byCrew = new[] { new PrNote(DateTimeOffset.UnixEpoch, "x\n<!-- harness:gate:green:abc123 -->", "crew") };
+        var byMallory = new[] { new PrNote(DateTimeOffset.UnixEpoch, "x\n<!-- harness:gate:green:abc123 -->\n<!-- reviewer:findings:abc123 -->", "mallory") };
+
+        Assert.Equal(CiState.Green, Markers.GateAt(markers.Bodies(byAna, "crew"), "abc123"));
+        Assert.Equal(["abc123"], markers.Findings(markers.Bodies(byAna, "crew")));
+        Assert.Equal(CiState.Green, Markers.GateAt(markers.Bodies(byCrew, "ana"), "abc123"));
+        Assert.Null(Markers.GateAt(markers.Bodies(byMallory, "crew"), "abc123"));
+        Assert.Null(Markers.GateAt(markers.Bodies(byMallory, "ana"), "abc123"));
+        Assert.Empty(markers.Findings(markers.Bodies(byMallory, "crew")));
+    }
+
+    [Fact]
+    public void WithNoListOnlyTheReadersOwnMarkersCount()
+    {
+        var markers = new Markers("reviewer");
+        var thread = new[]
+        {
+            new PrNote(DateTimeOffset.UnixEpoch, "x\n<!-- harness:gate:green:aaa -->", "CREW"),
+            new PrNote(DateTimeOffset.UnixEpoch, "x\n<!-- harness:gate:green:bbb -->", "ana"),
+        };
+
+        Assert.Equal(CiState.Green, Markers.GateAt(markers.Bodies(thread, "crew"), "aaa"));
+        Assert.Null(Markers.GateAt(markers.Bodies(thread, "crew"), "bbb"));
+        Assert.Equal(CiState.Green, Markers.GateAt(new Markers("reviewer", ["ana"]).Bodies(thread, "crew"), "aaa"));
     }
 
     [Fact]

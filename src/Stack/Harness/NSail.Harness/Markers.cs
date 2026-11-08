@@ -8,9 +8,12 @@ namespace NSail.Harness;
 
 // The harness's own protocol on a PR's thread, in HTML comments people do not see: the gate's verdict
 // at a head (`harness:gate:<green|red|void>:<sha>`, or `harness:gate:waits:<sha>:<main>`) and the reviewer's (`<review marker>:<clean|findings>:<sha>`).
-// A marker counts only as a whole HTML comment on its own line, written by the harness's own login.
-public sealed class Markers(string review)
+// A marker counts only as a whole HTML comment on its own line, written by the harness's own login or
+// by one of the fleet's (`authors`).
+public sealed class Markers(string review, IReadOnlyCollection<string>? authors = null)
 {
+    readonly IReadOnlyCollection<string> _authors = authors ?? [];
+
     // The commit statuses the harness keeps its verdicts in: the gate (on a PR head and on main), a
     // product's suite and its day's cut tried (on main's head), the last QA drain (on main's head).
     public const string GateContext = "harness/gate";
@@ -61,10 +64,10 @@ public sealed class Markers(string review)
         return $"<!-- {review}:{word}:{sha} -->";
     }
 
-    // The bodies on a thread that the harness itself wrote: a marker from anyone else is a forgery.
-    public static IEnumerable<string> OwnBodies(IEnumerable<PrNote> thread, string login)
+    // The bodies on a thread that this harness or another of the fleet wrote: a marker from anyone else is a forgery.
+    public IEnumerable<string> Bodies(IEnumerable<PrNote> thread, string login)
     {
-        return thread.Where(n => string.Equals(n.Author, login, StringComparison.OrdinalIgnoreCase)).Select(n => n.Body);
+        return thread.Where(n => string.Equals(n.Author, login, StringComparison.OrdinalIgnoreCase) || _authors.Contains(n.Author, StringComparer.OrdinalIgnoreCase)).Select(n => n.Body);
     }
 
     // A text with the protocol's markers taken out until none remains (removing one can join the halves of another), for words that are not the harness's own.
