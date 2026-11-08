@@ -26,6 +26,12 @@ public sealed class PushHub : Hub
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, _audience.Current, Context.ConnectionAborted);
 
+        // Authorized once, at connect; a right withdrawn since ends the connection.
+        if (_audience.Watch() is { } holds)
+        {
+            _ = PushWatch.Over(holds, Context.Abort, Context.ConnectionAborted);
+        }
+
         await base.OnConnectedAsync();
     }
 }

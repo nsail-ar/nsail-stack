@@ -90,6 +90,11 @@ the same exception path everywhere.
 12. Swagger UI in Development, HSTS otherwise.
 13. `MapEndpoints()` and `MapPush()`.
 
+The tenant-state wall also stands on every send (`TenantStateInterceptor`, registered by
+`AddBaseWebApi`) and on every held push feed (`PushAudience.Watch`, polled once a second), because an
+open circuit and a push line are not requests: a suspension reaches them within
+`Tenancy:StateCacheSeconds` plus that second, as the 503 or a closed feed. A system session is exempt.
+
 `AddBaseWebApp` registers Razor components with server and WebAssembly render modes, the
 `TenancyCircuit` that carries the tenant onto the circuit, `AddMessagePolicies` (so a page's
 `[Authorize<TMessage>]` resolves), the per-request `IDeviceProvider` and the

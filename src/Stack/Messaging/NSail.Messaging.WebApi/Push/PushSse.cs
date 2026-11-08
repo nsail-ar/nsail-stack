@@ -30,9 +30,15 @@ static class PushSse
         // first event rather than with it.
         await response.Body.FlushAsync(context.RequestAborted);
 
+        using var line = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+
+        var watch = audience.Watch() is { } holds
+            ? PushWatch.Over(holds, line.Cancel, line.Token)
+            : Task.CompletedTask;
+
         try
         {
-            await streams.Hold(audience.Current, (frame, cancellationToken) => Write(response, frame, cancellationToken), context.RequestAborted);
+            await streams.Hold(audience.Current, (frame, cancellationToken) => Write(response, frame, cancellationToken), line.Token);
         }
         catch (OperationCanceledException)
         {
@@ -41,6 +47,11 @@ static class PushSse
         }
         catch (IOException)
         {
+        }
+        finally
+        {
+            await line.CancelAsync();
+            await watch;
         }
     }
 

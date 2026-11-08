@@ -10,6 +10,7 @@ using NSail.Configuration;
 using NSail.Data;
 using NSail.Messaging.Queue;
 using NSail.Messaging.Runtime;
+using NSail.Messaging.Runtime.Pipelines;
 using NSail.Messaging.WebApi.Push;
 using NSail.Messaging.WebApi;
 using NSail.Localization;
@@ -59,6 +60,11 @@ public static class Setup
         builder.Services.AddScoped<TenantStateMiddleware>();
         builder.Services.AddScoped<TenantClaimMiddleware>();
         builder.Services.AddScoped<TicketEpochMiddleware>();
+
+        // The wall for what the middleware cannot reach: an open circuit's sends and the push
+        // feeds are not requests, so the suspension is asked again on every send.
+        builder.Services.AddScoped(typeof(IInterceptor<>), typeof(TenantStateInterceptor<>));
+        builder.Services.AddScoped(typeof(IInterceptor<,>), typeof(TenantStateInterceptor<,>));
         builder.Services.AddScoped<CredentialMiddleware>();
 
         // The install's own say over the credentials it mints, loaded here because this is where
