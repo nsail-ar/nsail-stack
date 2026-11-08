@@ -57,6 +57,7 @@
   "Problems.RuleViolation.StorageNotDeclared": "Este host no declara ningún almacén llamado '{name}'.",
   "Problems.RuleViolation.KeyOutsideContainer": "'{key}' cae fuera del contenedor configurado.",
   "Problems.RuleViolation.StorageRefused": "El servicio de almacenamiento respondió {status}: {detail}",
+  "Problems.RuleViolation.KeyThroughSymlink": "'{key}' pasa por un enlace simbólico del repositorio.",
   "Problems.RuleViolation.GitRefused": "git respondió: {detail}",
   "Problems.RuleViolation.StorageTestNotReadBack": "El objeto de prueba se escribió pero no se pudo volver a leer.",
   "Problems.RuleViolation.StorageTestContentDiffers": "El objeto de prueba que se leyó no coincide con lo que se escribió.",
