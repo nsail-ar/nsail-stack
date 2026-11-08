@@ -21,7 +21,7 @@ public class GateWaitsTests
     [Fact]
     public void AHeadWaitingOnMainIsPendingUntilMainMoves()
     {
-        string[] bodies = [$"red only where main is red {Markers.GateWaits("aaa", "c1")}"];
+        string[] bodies = [$"red only where main is red\n{Markers.GateWaits("aaa", "c1")}"];
 
         Assert.Equal(CiState.Pending, Markers.GateAt(bodies, "aaa", "c1"));
         Assert.Null(Markers.GateAt(bodies, "aaa", "c2"));

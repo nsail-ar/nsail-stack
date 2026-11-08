@@ -114,7 +114,9 @@ jobs:
           ISSUE=$(printf "%s" "${ISSUE:-}" | grep -oE "^[0-9]+" || true)
           # Earlier reads with findings, oldest first; the last one's sha is where a narrow
           # read starts.
-          MARKS='(.body // "") | scan("vigia:findings:([0-9a-f]+)") | "\($t) \(.[0])"'
+          # Only the two identities that write the marker count (the Actions bot, or the crew's
+          # login when the repository refuses its reviews), and only as a whole line.
+          MARKS='select(.user.login == "github-actions[bot]" or .user.login == "'"$CREW"'") | (.body // "") | scan("(?m)^<!-- vigia:findings:([0-9a-f]+) -->[ \\t]*\\r?$") | "\($t) \(.[0])"'
           PRIOR=$( { gh api "repos/$R/pulls/$PR/reviews" --paginate --jq ".[] | .submitted_at as \$t | $MARKS"; gh api "repos/$R/issues/$PR/comments" --paginate --jq ".[] | .created_at as \$t | $MARKS"; } 2>/dev/null \
             | sort | awk '!seen[$2]++' || true)
           READS=$(printf '%s\n' "$PRIOR" | grep -c . || true)
@@ -203,7 +205,7 @@ jobs:
               exit 1 ;;
           esac
           # The marker counts rounds; the body is what people read.
-          { tail -n +2 "$FINDINGS"; echo; echo "<!-- vigia:$KIND:$SHA -->"; } > /tmp/review-body.md
+          { tail -n +2 "$FINDINGS" | sed -E ':a;s/<!--[[:space:]]*(harness:gate|vigia):[^>]*-->//;ta'; echo; echo "<!-- vigia:$KIND:$SHA -->"; } > /tmp/review-body.md
 
           # A native review needs a second identity (the PAT opened the PR). If the repository
           # refuses Actions reviews, the same text lands as a comment.
@@ -223,8 +225,9 @@ jobs:
           fi
 
           if [ "$KIND" = "findings" ]; then
-            ROUNDS=$( { gh api "repos/$R/pulls/$PR/reviews" --paginate --jq '.[].body'; gh api "repos/$R/issues/$PR/comments" --paginate --jq '.[].body'; } 2>/dev/null \
-              | grep -oE 'vigia:findings:[0-9a-f]+' | sort -u | grep -c . || true)
+            OWN='.[] | select(.user.login == "github-actions[bot]" or .user.login == "'"$CREW"'") | (.body // "")'
+            ROUNDS=$( { gh api "repos/$R/pulls/$PR/reviews" --paginate --jq "$OWN"; gh api "repos/$R/issues/$PR/comments" --paginate --jq "$OWN"; } 2>/dev/null \
+              | grep -oE '^<!-- vigia:findings:[0-9a-f]+ -->[[:space:]]*$' | sort -u | grep -c . || true)
             if [ "$ROUNDS" -ge 4 ]; then
               stall "Cuarta lectura con hallazgos en PR #$PR de nsail-stack — \`stalled\` en vez de otra vuelta: una mano mira por qué no converge."
               exit 0
