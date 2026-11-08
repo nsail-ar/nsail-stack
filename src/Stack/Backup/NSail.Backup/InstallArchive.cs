@@ -147,14 +147,19 @@ public static class InstallArchive
                     return;
                 }
 
-                foreach (var stale in keyRing.GetFiles("*.xml"))
-                {
-                    stale.Delete();
-                }
+                // Moved in before the stale keys go, so the ring is never without a key.
+                var restored = new HashSet<string>(StringComparer.Ordinal);
 
                 foreach (var key in staging.GetFiles())
                 {
                     key.MoveTo(Path.Combine(keyRing.FullName, key.Name), overwrite: true);
+
+                    restored.Add(key.Name);
+                }
+
+                foreach (var stale in keyRing.GetFiles("*.xml").Where(stale => !restored.Contains(stale.Name)))
+                {
+                    stale.Delete();
                 }
             }
             finally
@@ -173,8 +178,7 @@ public static class InstallArchive
         }
     }
 
-    // Owner-only, like the workspace it replaces: the keys sit in it unsealed, and a restore
-    // killed midway leaves it behind.
+    // Owner-only: the keys sit in it unsealed, and a restore killed midway leaves it behind.
     static DirectoryInfo CreateStaging(DirectoryInfo keyRing)
     {
         var path = Path.Combine(keyRing.FullName, ".restore-" + Guid.NewGuid().ToString("N"));

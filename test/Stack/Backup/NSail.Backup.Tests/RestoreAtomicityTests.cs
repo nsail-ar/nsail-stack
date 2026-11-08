@@ -178,6 +178,91 @@ public sealed class RestoreAtomicityTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task AnEncryptedArchiveRestoresOnlyWithItsPassphrase()
+    {
+        var ring = Directory.CreateTempSubdirectory("nsail-ring");
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(ring.FullName, "key-a.xml"), "a");
+
+            await using var archive = new MemoryStream();
+
+            await InstallArchive.Create(Descriptor(ring), archive, "right passphrase");
+
+            await File.WriteAllTextAsync(Path.Combine(ring.FullName, "key-a.xml"), "changed");
+            await File.WriteAllTextAsync(Path.Combine(ring.FullName, "key-b.xml"), "b");
+
+            await Sql(Install, "UPDATE notes SET body = 'changed'");
+
+            archive.Position = 0;
+
+            await Assert.ThrowsAsync<BackupFailure>(() => InstallArchive.Restore(Descriptor(ring), archive, "wrong passphrase"));
+
+            Assert.Equal("changed", await Scalar("SELECT body FROM notes WHERE id = 1"));
+            Assert.Equal(["key-a.xml", "key-b.xml"], ring.GetFileSystemInfos().Select(entry => entry.Name).Order().ToArray());
+
+            archive.Position = 0;
+
+            await InstallArchive.Restore(Descriptor(ring), archive, "right passphrase");
+
+            Assert.Equal("before", await Scalar("SELECT body FROM notes WHERE id = 1"));
+            Assert.Equal(["key-a.xml"], ring.GetFileSystemInfos().Select(entry => entry.Name).ToArray());
+            Assert.Equal("a", await File.ReadAllTextAsync(Path.Combine(ring.FullName, "key-a.xml")));
+        }
+        finally
+        {
+            ring.Delete(recursive: true);
+        }
+    }
+
+    // A restore recreates the public schema, so the next backup is taken from one initdb did not
+    // make: its archive must restore just the same.
+    [Fact]
+    public async Task AnArchiveOfARestoredInstallRestores()
+    {
+        var ring = Directory.CreateTempSubdirectory("nsail-ring");
+
+        try
+        {
+            await using var first = new MemoryStream();
+
+            await InstallArchive.Create(Descriptor(ring), first);
+
+            first.Position = 0;
+
+            await InstallArchive.Restore(Descriptor(ring), first);
+
+            await using var second = new MemoryStream();
+
+            await InstallArchive.Create(Descriptor(ring), second);
+
+            await Sql(Install, "UPDATE notes SET body = 'changed'");
+
+            second.Position = 0;
+
+            await InstallArchive.Restore(Descriptor(ring), second);
+
+            Assert.Equal("before", await Scalar("SELECT body FROM notes WHERE id = 1"));
+        }
+        finally
+        {
+            ring.Delete(recursive: true);
+        }
+    }
+
+    InstallDescriptor Descriptor(DirectoryInfo ring)
+    {
+        return new InstallDescriptor
+        {
+            Product = "Test",
+            ConnectionString = Install,
+            KeyRingPath = ring.FullName,
+            SchemaVersion = "x"
+        };
+    }
+
     static async Task WriteManifest(System.IO.Compression.ZipArchive zip)
     {
         var manifest = new BackupManifest

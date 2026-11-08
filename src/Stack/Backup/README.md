@@ -54,6 +54,9 @@ There are no configuration keys. What the verbs use:
 - **Tools:** `pg_dump`, `pg_restore` and `psql` on the `PATH`, at the server's major version
   (`--format=custom`, `--no-owner`, `--no-privileges`). The password travels in `PGPASSWORD`,
   never as an argument.
+- **Temp space:** a restore extracts the dump into the process's temp directory and renders it
+  there as plain SQL for `psql`, so the temp volume needs room for the dump plus the whole
+  database uncompressed; short of it the restore fails before the database is touched.
 - **Key ring:** `<content root>/data/keyring` (`KeyRing.Home`). `AddBaseWebApi` persists the
   DataProtection keys there, so they travel in the archive; without them every sealed secret in a
   restored install is unreadable.

@@ -78,6 +78,7 @@ public sealed class RestorePlanTests
         Assert.Contains("optical_main on db.nsail.ar:5432", statement);
         Assert.Contains("/srv/optical/data/keyring", statement);
         Assert.DoesNotContain("s3cret", statement);
+        Assert.Contains("A restore that fails changes nothing", statement);
     }
 
     [Fact]

@@ -188,8 +188,12 @@ public static class Postgres
             throw new BackupFailure($"'{executable}' could not be started. The runtime image needs postgres-client.");
         }
 
+        // Both pipes drained at once: psql prints the rows of the dump's SELECTs, and a full
+        // stdout pipe would block it while the restore's transaction holds every lock.
+        var output = process.StandardOutput.ReadToEndAsync(cancelToken);
         var error = await process.StandardError.ReadToEndAsync(cancelToken);
 
+        await output;
         await process.WaitForExitAsync(cancelToken);
 
         if (process.ExitCode != 0)
