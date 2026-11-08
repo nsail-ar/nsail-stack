@@ -43,7 +43,7 @@ The binary's name is the product, taken from the context type (`SampleDbContext`
 There are no configuration keys. What the verbs use:
 
 - **Database:** the `DbContext`'s own connection string, so the database is the one the host runs on.
-- **Tools:** `pg_dump` and `pg_restore` on the `PATH`, at the server's major version
+- **Tools:** `pg_dump`, `pg_restore` and `psql` on the `PATH`, at the server's major version
   (`--format=custom`, `--no-owner`, `--no-privileges`). The password travels in `PGPASSWORD`,
   never as an argument.
 - **Key ring:** `<content root>/data/keyring` (`KeyRing.Home`). `AddBaseWebApi` persists the

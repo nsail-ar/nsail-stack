@@ -114,6 +114,18 @@ jobs:
           npx --yes @anthropic-ai/claude-code@latest plugin validate .claude-plugin/marketplace.json
           npx --yes @anthropic-ai/claude-code@latest plugin validate plugins/nsail-stack
 
+      # The backup tests run pg_dump, pg_restore and psql against the service, and pg_dump
+      # refuses a server of a newer major than its own: the runner's client is older than the
+      # service image. Put first on the PATH, because /usr/bin's wrapper picks the runner's own
+      # cluster for localhost.
+      - name: Postgres client
+        if: steps.scope.outputs.docs != 'true'
+        run: |
+          sudo apt-get install -y --no-install-recommends postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y --no-install-recommends postgresql-client-18
+          echo /usr/lib/postgresql/18/bin >> "$GITHUB_PATH"
+
       - name: Restore
         if: steps.scope.outputs.docs != 'true'
         run: dotnet restore NSail.sln
