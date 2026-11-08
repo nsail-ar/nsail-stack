@@ -1000,6 +1000,11 @@ else
 
     async Task Cancel(TRow item)
     {
+        if (IsRunning)
+        {
+            return;
+        }
+
         // A row that was never confirmed exists only because the user asked for one; backing
         // out of it leaves nothing to fall back to, so it goes.
         if (_editingIsNew)

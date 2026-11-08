@@ -316,6 +316,11 @@ else
 
     Task RaiseOnAdd()
     {
+        if (IsRunning)
+        {
+            return Task.CompletedTask;
+        }
+
         return Run(() => OnAdd.InvokeAsync());
     }
 
@@ -390,6 +395,11 @@ else
 
     async Task Cancel(TItem item)
     {
+        if (IsRunning)
+        {
+            return;
+        }
+
         var isNew = _editingIsNew;
 
         // The editor closes before the notification goes out, not after it: the row is off the
