@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.ComponentModel;
 using System.Diagnostics;
 using Npgsql;
 
@@ -102,26 +103,10 @@ public static class Postgres
             // No database connection: a corrupt dump fails here, with nothing yet dropped.
             await Run("pg_restore", ["--no-owner", "--no-privileges", $"--file={dataFilePath}", dumpFilePath], null, cancelToken);
 
-            var scriptFilePath = Path.Combine(workspace.FullName, "restore.sql");
-
-            await using (var script = File.Create(scriptFilePath))
-            await using (var writer = new StreamWriter(script))
-            {
-                await writer.WriteLineAsync(Prelude);
-                await writer.FlushAsync(cancelToken);
-
-                await using (var data = File.OpenRead(dataFilePath))
-                {
-                    await data.CopyToAsync(script, cancelToken);
-                }
-
-                await writer.WriteLineAsync();
-                await writer.WriteLineAsync(Epilogue);
-            }
-
             // Not pg_restore --clean: that drops only what the dump itself owns, so anything the
             // install grew after the backup would outlive the restore and the database would come
-            // back as a mixture of two moments.
+            // back as a mixture of two moments. --single-transaction wraps every -c and -f in one
+            // transaction, in order.
             await Run(
                 "psql",
                 [
@@ -133,7 +118,9 @@ public static class Postgres
                     $"--port={target.Port}",
                     $"--username={target.Username}",
                     $"--dbname={target.Database}",
-                    $"--file={scriptFilePath}"
+                    $"--command={Prelude}",
+                    $"--file={dataFilePath}",
+                    $"--command={Epilogue}"
                 ],
                 target.Password,
                 cancelToken);
@@ -190,9 +177,13 @@ public static class Postgres
             start.Environment["PGPASSWORD"] = password;
         }
 
-        using var process = Process.Start(start);
+        using var process = new Process { StartInfo = start };
 
-        if (process is null)
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception)
         {
             throw new BackupFailure($"'{executable}' could not be started. The runtime image needs postgres-client.");
         }

@@ -48,6 +48,25 @@ public sealed class RestoreAtomicityTests : IAsyncLifetime
         Assert.Equal("before", await Scalar("SELECT body FROM notes WHERE id = 1"));
     }
 
+    // The live audit table outgrew the dump's, so the epilogue's insert fails after the schema
+    // was dropped and the whole dump went in: only the single transaction brings the data back.
+    [Fact]
+    public async Task ARestoreThatFailsAfterTheDropLeavesTheDataIntact()
+    {
+        await Sql(Install, BackupAuditRow("in-the-dump"));
+
+        await Postgres.Dump(Install, _dumpFilePath);
+
+        await Sql(Install, $"ALTER TABLE {BackupAudit.TableName} ADD COLUMN later text");
+
+        await Sql(Install, "UPDATE notes SET body = 'changed'");
+
+        await Assert.ThrowsAsync<BackupFailure>(() => Postgres.Restore(Install, _dumpFilePath));
+
+        Assert.Equal("changed", await Scalar("SELECT body FROM notes WHERE id = 1"));
+        Assert.Equal("later", await Scalar($"SELECT attname FROM pg_attribute WHERE attrelid = 'public.{BackupAudit.TableName}'::regclass AND attname = 'later'"));
+    }
+
     [Fact]
     public async Task ARestoreKeepsTheAuditRowsWrittenAfterTheBackup()
     {

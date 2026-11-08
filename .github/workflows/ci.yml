@@ -121,10 +121,12 @@ jobs:
       - name: Postgres client
         if: steps.scope.outputs.docs != 'true'
         run: |
+          major=18  # the major of the postgres service image above
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends postgresql-common
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-          sudo apt-get install -y --no-install-recommends postgresql-client-18
-          echo /usr/lib/postgresql/18/bin >> "$GITHUB_PATH"
+          sudo apt-get install -y --no-install-recommends "postgresql-client-$major"
+          echo "/usr/lib/postgresql/$major/bin" >> "$GITHUB_PATH"
 
       - name: Restore
         if: steps.scope.outputs.docs != 'true'

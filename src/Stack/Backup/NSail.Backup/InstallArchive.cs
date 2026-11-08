@@ -97,8 +97,9 @@ public static class InstallArchive
         return await ReadManifest(archive, cancelToken);
     }
 
-    /// <summary>Replace, not merge: the database is rebuilt from the dump and the key ring
-    /// directory is emptied of the keys the archive replaces. <see cref="RestorePlan"/> raises the
+    /// <summary>Replace, not merge: the database is rebuilt from the dump, and the key ring's keys
+    /// are replaced by the archive's, staged first and swapped in only once the database
+    /// restored. <see cref="RestorePlan"/> raises the
     /// refusals the manifest decides; an encrypted archive's missing or wrong passphrase, and a
     /// truncated one, raise <see cref="BackupFailure"/> here, before the database is touched.</summary>
     public static async Task Restore(InstallDescriptor install, Stream source, string? passphrase = null, CancellationToken cancelToken = default)
@@ -130,7 +131,7 @@ public static class InstallArchive
             // failed extract fails here, with the install untouched.
             var keyRing = Directory.CreateDirectory(install.KeyRingPath);
 
-            var staging = keys.Count == 0 ? null : keyRing.CreateSubdirectory(".restore-" + Guid.NewGuid().ToString("N"));
+            var staging = keys.Count == 0 ? null : CreateStaging(keyRing);
 
             try
             {
@@ -146,12 +147,12 @@ public static class InstallArchive
                     return;
                 }
 
-                foreach (var stale in keyRing.EnumerateFiles("*.xml"))
+                foreach (var stale in keyRing.GetFiles("*.xml"))
                 {
                     stale.Delete();
                 }
 
-                foreach (var key in staging.EnumerateFiles())
+                foreach (var key in staging.GetFiles())
                 {
                     key.MoveTo(Path.Combine(keyRing.FullName, key.Name), overwrite: true);
                 }
@@ -170,6 +171,20 @@ public static class InstallArchive
         {
             workspace.Delete(recursive: true);
         }
+    }
+
+    // Owner-only, like the workspace it replaces: the keys sit in it unsealed, and a restore
+    // killed midway leaves it behind.
+    static DirectoryInfo CreateStaging(DirectoryInfo keyRing)
+    {
+        var path = Path.Combine(keyRing.FullName, ".restore-" + Guid.NewGuid().ToString("N"));
+
+        if (OperatingSystem.IsWindows())
+        {
+            return Directory.CreateDirectory(path);
+        }
+
+        return Directory.CreateDirectory(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }
 
     static ArchiveCipher DeriveCipher(BackupManifest manifest, string? passphrase)
