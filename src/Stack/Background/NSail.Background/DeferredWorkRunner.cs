@@ -22,8 +22,6 @@ namespace NSail.Background;
 /// everybody queued behind it.</para></summary>
 sealed class DeferredWorkRunner : BackgroundService
 {
-    static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
-
     readonly Meter _meter = new(DeferredWorkMetrics.MeterName);
     readonly Counter<long> _completed;
 
@@ -31,6 +29,7 @@ sealed class DeferredWorkRunner : BackgroundService
     readonly DeferredWork _queue;
     readonly ILogger<DeferredWorkRunner> _logger;
     readonly CultureInfo? _culture;
+    readonly TimeSpan _timeout;
 
     // The configuration is optional for the harness that composes no host; a host always has
     // one, and it is where the install's language lives.
@@ -44,6 +43,8 @@ sealed class DeferredWorkRunner : BackgroundService
         _queue = queue;
         _logger = logger;
         _culture = configuration is null ? null : CultureInfo.GetCultureInfo(configuration.Load<LanguageOptions>().Default);
+
+        _timeout = configuration is null ? new BackgroundOptions().DeferredTimeout : configuration.Load<BackgroundOptions>().DeferredTimeout;
 
         _completed = _meter.CreateCounter<long>(DeferredWorkMetrics.Completed, description: "Deferred work items handled, by kind and outcome.");
     }
@@ -67,7 +68,7 @@ sealed class DeferredWorkRunner : BackgroundService
     {
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
 
-        budget.CancelAfter(Timeout);
+        budget.CancelAfter(_timeout);
 
         // Exactly what the request edge does (UseRequestLanguage) and BackgroundJobRunner does
         // per loop, from the other place that has no request: a deferred item runs in the
@@ -89,7 +90,20 @@ sealed class DeferredWorkRunner : BackgroundService
 
             item.Enter(scope.ServiceProvider);
 
-            await item.Work(scope.ServiceProvider, budget.Token).ConfigureAwait(false);
+            var work = item.Work(scope.ServiceProvider, budget.Token);
+
+            try
+            {
+                // The token only asks: work that ignores it would hold this single consumer
+                // while the queue grows, so past the grace the item is abandoned.
+                await work.WaitAsync(_timeout + BackgroundOptions.Grace(_timeout), stoppingToken).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                _ = work.ContinueWith(static task => task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+
+                throw;
+            }
 
             Report(item.Kind, DeferredWorkMetrics.Succeeded);
         }
@@ -97,13 +111,13 @@ sealed class DeferredWorkRunner : BackgroundService
         {
             throw;
         }
-        catch (OperationCanceledException)
+        catch (Exception exception) when (exception is OperationCanceledException or TimeoutException)
         {
             // budget fired and not the host: the item ran past its own timeout, not past
             // shutdown.
             Report(item.Kind, DeferredWorkMetrics.TimedOut);
 
-            _logger.LogError("Deferred work timed out after {Timeout}; the queue continues with the next item.", Timeout);
+            _logger.LogError("Deferred work timed out after {Timeout}{Abandoned}; the queue continues with the next item.", _timeout, exception is TimeoutException ? " and ignored its token, so it was abandoned" : "");
         }
         catch (Exception exception)
         {
