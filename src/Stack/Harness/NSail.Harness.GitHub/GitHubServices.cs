@@ -19,8 +19,9 @@ public static class GitHubServices
         var token = new GitHubToken(options.ResolveToken());
         // The harness's own git (clone, fetch, push) reaches GitHub through `gh auth git-credential`,
         // which reads GH_TOKEN: it pushes as the harness's token, never as whoever is logged in to gh
-        // on the machine (and a machine with no login at all works the same).
-        Environment.SetEnvironmentVariable("GH_TOKEN", token.Value);
+        // on the machine (and a machine with no login at all works the same). Only git gets it, not
+        // the process environment every child would inherit.
+        Lanes.Shell.GitEnvironment = new Dictionary<string, string> { ["GH_TOKEN"] = token.Value };
         services.AddSingleton(token);
         // A connection idle across the wait between passes is closed by the far end (in WSL, at the
         // NAT) while the pool still holds it, and the next pass's first call reads "response ended

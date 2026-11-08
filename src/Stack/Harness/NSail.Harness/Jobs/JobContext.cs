@@ -78,9 +78,9 @@ public sealed class JobContext(
         return Path.Combine(dir, name);
     }
 
-    // The environment every lane's tools see: the providers' credentials, the harness's build-turn
+    // The environment every lane's tools see: the providers' credentials (a step that runs code, only if it declares them), the harness's build-turn
     // door, the clock, and the project's variables (HarnessOptions.Variables, then the worker's own).
-    public async Task<Dictionary<string, string>> LaneEnv(DateTimeOffset axe, WorkItem item, JobStep? step = null, CancellationToken ct = default)
+    public async Task<Dictionary<string, string>> LaneEnv(DateTimeOffset axe, WorkItem item, JobStep? step = null, CancellationToken ct = default, bool runsCode = false)
     {
         var shims = Path.Combine(AppContext.BaseDirectory, "shims");
         var env = await VariableReferences.Resolve(Options.Variables.Concat(step?.Variables ?? new Dictionary<string, string>()), RepositoryVariable, ct);
@@ -99,7 +99,9 @@ public sealed class JobContext(
         env["VOYAGE_AXE"] = axe.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
         env["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         env["DOTNET_NOLOGO"] = "1";
-        foreach (var e in environments) e.Lane(env);
+        // A step that runs a PR's or a branch's code holds a credential only where its Variables name one (GH_TOKEN).
+        var credentials = !runsCode || step?.Variables.ContainsKey("GH_TOKEN") == true;
+        foreach (var e in environments) e.Lane(env, credentials);
         return env;
     }
 

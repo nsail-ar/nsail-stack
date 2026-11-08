@@ -77,6 +77,10 @@ the files it leaves.
   - `Seats` (signature, model, `Prompt` or `PromptFile`) and `Conditions` (named Whens: a crew's
     `db-up` the test database answering, `quota-5h`/`quota-week` the agent's quota walls).
   - `Variables` for every lane, and a worker's own: literal, or `${vars:NAME}`, `${env:NAME}`, `${file:PATH}`.
+  - What a process the harness starts sees: the machine's own names (PATH, home, temp, locale; `Shell.Inherited`) plus
+    the lane's `Variables` — never the harness's credentials. A Gate or Release step, which runs a PR's or a branch's
+    code, gets `GH_TOKEN` only where its `Variables` list it; any other lane step keeps it. A seat gets none. The
+    harness's own git authenticates through `Shell.GitEnvironment`, not the process environment.
   - How a story is named (`{key}#{n}`, `{prefix}/{key}-{n}`) and the words the harness posts (`HarnessTexts`).
   - A provider's own settings sit in its section (`GitHub`, `Claude`: the seats' plugins live there, and
     `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository).

@@ -9,9 +9,10 @@ namespace NSail.Harness.GitHub;
 // A seat's gh reads an empty configuration instead: no login, so no git credential either.
 public sealed class GitHubLaneEnvironment(HarnessOptions options, string token) : ILaneEnvironment
 {
-    public void Lane(IDictionary<string, string> env)
+    public void Lane(IDictionary<string, string> env, bool credentials)
     {
-        env["GH_TOKEN"] = token;
+        if (credentials) env["GH_TOKEN"] = token;
+        else env.Remove("GH_TOKEN");
         env["R"] = options.DefaultRepository.Name;
     }
 
