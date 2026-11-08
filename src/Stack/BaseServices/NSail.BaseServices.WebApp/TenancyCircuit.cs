@@ -13,9 +13,16 @@ namespace NSail.BaseServices.WebApp;
 // is the one moment the ambient tenant is readable from here — so it is pinned onto the
 // circuit's own provider then, and every render the circuit goes on to do resolves the tenant
 // it was opened for.
+//
+// The pin reaches the circuit's scope and nothing beside it, and the outermost send of an event
+// runs in a scope of its own (the ambient unit of work): its DbContext and the tenant-state wall
+// on the send read the tenant from the flow. So every inbound activity — an event, a JS call, a
+// navigation — enters the circuit's tenant on its own flow before it runs.
 sealed class TenancyCircuit : CircuitHandler
 {
     readonly IServiceProvider _services;
+
+    Tenant? _tenant;
 
     public TenancyCircuit(IServiceProvider services)
     {
@@ -33,8 +40,25 @@ sealed class TenancyCircuit : CircuitHandler
             && _services.GetService<ResolvedTenancyProvider>() is { } tenancy)
         {
             tenancy.Enter(tenant);
+
+            _tenant = tenant;
         }
 
         return Task.CompletedTask;
+    }
+
+    public override Func<CircuitInboundActivityContext, Task> CreateInboundActivityHandler(
+        Func<CircuitInboundActivityContext, Task> next)
+    {
+        // Async so the write stays on the activity's own flow and never leaks to the caller's.
+        return async context =>
+        {
+            if (_tenant is { } tenant)
+            {
+                AmbientTenant.Enter(tenant);
+            }
+
+            await next(context);
+        };
     }
 }

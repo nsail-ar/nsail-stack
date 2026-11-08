@@ -426,8 +426,10 @@ same tenant**, published again through the client's own Mediator. A screen hears
   `UseBaseWebApi` under `api/` so an anonymous connect is a 401 and not a redirect to a
   sign-in page a feed cannot follow: `PushHub` (`[Authorize]`) joins each connection to its
   scope's `PushAudience`, and the event-stream endpoint (`RequireAuthorization`) holds its line
-  in the audience its own request resolved — a stream IS its request, so that answer stands for
-  as long as the line does. A publish reaches the same audience on both. The Stack's
+  in the audience its own request resolved — a stream IS its request. The answer is asked again
+  while the line is held: `PushAudience.Watch()` is the seam, and the hub and the stream end the
+  connection once it says the right to listen is gone (`TenantPushAudience`: the tenant is
+  suspended, within `Tenancy:StateCacheSeconds` plus the second it polls at). A publish reaches the same audience on both. The Stack's
   messaging knows no tenant, so the audience is a seam: the install's one by default, the
   tenant's under `AddBaseWebApi` (`TenantPushAudience`) — the tenant `TenancyMiddleware`
   resolved for the request, after `TenantClaimMiddleware` refused a ticket minted for another.

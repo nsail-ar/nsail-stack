@@ -21,6 +21,8 @@ namespace NSail.BaseServices.WebApi;
 /// upward the comparison is equality: a ticket stamped with any other generation, the unstamped
 /// one included, is one this install no longer honours, and deny by default reads the absence
 /// as an absence rather than as consent.</para>
+/// <para>A circuit already open never passes here again; the security gate asks the same question
+/// of every send it authorizes.</para>
 /// <para>Ahead of <see cref="CredentialMiddleware"/>, which re-mints a credential whose party
 /// moved: a renewal stamps the CURRENT generation, so a refusal that ran after it would be
 /// handed a ticket the cut had just made valid.</para></summary>

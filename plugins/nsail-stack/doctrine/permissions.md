@@ -554,6 +554,14 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   `Tenant` (Iam's `PrincipalFactory`, the `epoch` claim); the gate is installed under every
   tenancy mode, unlike the tenant wall's
   ([baseservices.md](baseservices.md#webapi-bootstrap)).
+  **It also stands on every send**, because an open circuit never passes the middleware again: the
+  next send of a session from another generation is a 401, drawn where it was asked. Nothing on a
+  server circuit turns that 401 into a navigation (`SessionInterceptor` is the WebAssembly arm's),
+  so the person reaches sign-in on the circuit's next document load, which the request wall
+  refuses and signs out. The bound that remains: a circuit that sends nothing is not asked, a push feed is not asked at all
+  (it is held by the tenant's state, not the ticket's), and `SecurityOptions` is read at startup, so
+  raising the number takes a restart. A tenant suspension is bounded by `Tenancy:StateCacheSeconds`
+  plus one second on circuits and push feeds alike (`TenantStateInterceptor`, `PushAudience.Watch`).
 - **`IsProvisional`** says the actor's own Party was founded by an external sign-up out of a
   provider's claims alone (`Party.IsProvisional`, Directory's, because Directory's own list and
   lookups are what must not show it). It is **not an authorization input** — no policy names it
@@ -585,9 +593,10 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   `NsNotAuthorized` puts `StaleParameter` on the address it bounces to. Without that the person
   lands on a door that looks like it forgot them and no later document load can say otherwise —
   the cookie went out with the 401. Bound: an interactive circuit built its session from the
-  document request that started it and does not pass the pipeline again, so it picks the refusal
-  up on its next document load. Proof: `CredentialWallTests` (`NSail.Iam.WebApi.Tests`) on a real
-  host behind the real pipeline — a ticket is what the subject is, so no handler send can hold it
+  document request that started it and does not pass the pipeline again, so it picks this
+  refusal up on its next document load. The epoch is the exception: `SecurityInterceptor` asks it
+  on every gated send, so a circuit meets a stale ticket as a 401 on its next send. Proof:
+  `CredentialWallTests` (`NSail.Iam.WebApi.Tests`) on a real host behind the real pipeline — a ticket is what the subject is, so no handler send can hold it
   — plus `SessionExpiryTests` and `AnonymousRedirectTests` for the two halves of the client arm.
 - `Session.System()` for background jobs; hand-built in tests; WASM builds its own from `GetSession` + effective policies.
 - **A system session bypasses evaluation entirely** (`SecurityManager` short-circuits

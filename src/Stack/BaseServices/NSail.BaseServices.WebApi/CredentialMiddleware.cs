@@ -28,7 +28,8 @@ namespace NSail.BaseServices.WebApi;
 /// <para>Bound worth knowing: an interactive circuit that is already open built its session
 /// from the document request that started it and does not pass through here again. It picks
 /// the refusal up on its next document load, which is also the first thing a 500 makes
-/// somebody do.</para></summary>
+/// somebody do. The ticket epoch and the tenant's suspension are the two walls that do reach it,
+/// on every send.</para></summary>
 public sealed class CredentialMiddleware : IMiddleware
 {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)

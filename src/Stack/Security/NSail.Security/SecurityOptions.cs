@@ -9,7 +9,8 @@ public class SecurityOptions
 {
     /// <summary>The generation of ticket this install honours. Sign-in stamps it into the
     /// credential and <c>TicketEpochMiddleware</c> compares it on every authenticated request,
-    /// so raising the number signs out everyone holding an older one — and nobody else.
+    /// so raising the number signs out everyone holding an older one — and nobody else. An open
+    /// circuit meets it on its next gated send, as the same 401.
     ///
     /// <para>It exists because no DataProtection key can be deleted or revoked to void
     /// tickets alone: the key ring is the install's, and deleting a key makes every secret it
