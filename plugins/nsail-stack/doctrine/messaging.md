@@ -292,6 +292,12 @@ process over that database delivers it.
   that half-built graph's own constraints at the send, not at its own save. Assemble first,
   queue last — or save what is tracked before the send, which is the same thing said in the
   handler where the reader can see it.
+- **A row is claimed before it is delivered.** One conditional update moves its
+  `NextAttemptAt` out by `Queue:Lease`, and only the drain whose update changed the row delivers
+  it, so drains over one database (a rolling deploy, a second replica) split the rows and a drain
+  that loses one moves on to the next. A drain that dies mid-delivery leaves a row due again when
+  the lease ends; a delivery slower than the lease can run twice, so the lease outlasts the
+  slowest handler.
 - **Delivery is at least once.** A process that dies between a handler's commit and the pass
   that deletes its row delivers that row again. The alternative — delete first — loses the
   work, which is the one thing a durable queue may not do.

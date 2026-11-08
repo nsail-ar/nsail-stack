@@ -153,6 +153,7 @@ throws `ClientNotConfigured` naming the client and the message.
 | `MaxAttempts` | `5` | Attempts before the row is dead-lettered |
 | `Backoff` | `00:00:30` | Wait before the first retry; doubles per attempt |
 | `Interval` | `00:00:10` | How often the drain looks for due rows, per tenant |
+| `Lease` | `00:05:00` | How long a drain holds a claimed row; longer than the slowest delivery |
 | `BatchSize` | `50` | Rows delivered per pass |
 
 `AddQueue()` (send side) and `AddQueueDelivery()` (drain) are called by the generated
