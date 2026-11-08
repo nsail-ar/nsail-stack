@@ -158,6 +158,39 @@ public sealed class GitStorageTests : IDisposable
     }
 
     [Theory]
+    [InlineData("a/f")]
+    [InlineData("a")]
+    public async Task RefusesAKeyThatPassesThroughASymlinkTheRepositoryHolds(string key)
+    {
+        var outside = Directory.CreateTempSubdirectory("nsail-outside-").FullName;
+
+        try
+        {
+            var seed = Directory.CreateTempSubdirectory("nsail-seed-").FullName;
+            var bare = Path.Combine(_remote.Path, "store.git");
+
+            Git(seed, "init", "--quiet", "--initial-branch=main");
+            File.CreateSymbolicLink(Path.Combine(seed, "a"), outside);
+            Git(seed, "add", "--all");
+            Git(seed, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "link");
+            Git(seed, "push", "--quiet", bare, "HEAD:refs/heads/main");
+            Directory.Delete(seed, recursive: true);
+
+            using var content = new MemoryStream("x"u8.ToArray());
+
+            await Assert.ThrowsAsync<BusinessException>(() => _provider.Put(Target, key, content, null));
+            await Assert.ThrowsAsync<BusinessException>(() => _provider.Get(Target, key));
+            await Assert.ThrowsAsync<BusinessException>(() => _provider.Delete(Target, key));
+
+            Assert.Empty(Directory.GetFileSystemEntries(outside));
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Theory]
     [InlineData("--upload-pack=touch x")]
     [InlineData("a..b")]
     public async Task RefusesABranchGitCouldReadAsAnOption(string branch)

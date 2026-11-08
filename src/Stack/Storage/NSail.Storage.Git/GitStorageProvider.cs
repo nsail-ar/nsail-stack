@@ -57,6 +57,8 @@ public class GitStorageProvider : IStorageProvider
             using var clone = await Clone(target, Reach.WorkingTree, cancelToken);
             var path = clone.Resolve(key);
 
+            await clone.RefuseLinks(key, cancelToken);
+
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
             await using (var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true))
@@ -84,6 +86,8 @@ public class GitStorageProvider : IStorageProvider
 
         // The guard alone: a key outside the container or into `.git` is refused before git reads it.
         clone.Resolve(key);
+
+        await clone.RefuseLinks(key, cancelToken);
 
         var blob = await clone.Blob(key, cancelToken);
 
@@ -154,6 +158,8 @@ public class GitStorageProvider : IStorageProvider
         {
             using var clone = await Clone(target, Reach.WorkingTree, cancelToken);
             var path = clone.Resolve(key);
+
+            await clone.RefuseLinks(key, cancelToken);
 
             if (!File.Exists(path))
             {
@@ -274,6 +280,38 @@ public class GitStorageProvider : IStorageProvider
             }
 
             return path;
+        }
+
+        // A symlink the repository holds, at the key or on its way, would send a write outside the
+        // clone: the key is refused. Read from the committed tree, so it holds on any platform.
+        public async Task RefuseLinks(string key, CancellationToken cancelToken)
+        {
+            if (!HasCommit)
+            {
+                return;
+            }
+
+            var segments = key.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
+            var paths = new List<string>();
+
+            for (var length = 1; length <= segments.Length; length++)
+            {
+                paths.Add(string.Join('/', segments.Take(length)));
+            }
+
+            var arguments = new List<string> { "--literal-pathspecs", "ls-tree", "-z", "HEAD", "--" };
+
+            arguments.AddRange(paths);
+
+            var listed = await Run(cancelToken, [.. arguments]);
+
+            if (listed.Split('\0', StringSplitOptions.RemoveEmptyEntries).Any(line => line.StartsWith("120000 ", StringComparison.Ordinal)))
+            {
+                throw new BusinessException(BusinessProblem.RuleViolation(
+                    "KeyThroughSymlink",
+                    $"'{key}' passes through a symbolic link of the repository.",
+                    new Dictionary<string, string> { ["key"] = key }));
+            }
         }
 
         public async Task Open(Reach reach, CancellationToken cancelToken)
@@ -518,6 +556,7 @@ public class GitStorageProvider : IStorageProvider
             {
                 ("protocol.ext.allow", "never"),
                 ("core.autocrlf", "false"),
+                ("core.symlinks", "false"),
             };
 
             // The credential rides the environment of this one process, never its command line,
