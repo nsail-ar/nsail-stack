@@ -28,7 +28,11 @@ Stack sets and no product writes:
 - **The write is stamped from the resolved identity**, in a `SaveChanges` interceptor
   registered by `AddDataAccess` — where the unit of work sits, never in a handler. A payload
   cannot name a tenant: the column is a shadow property, so no message and no entity carries
-  it. Even a caller that reached the change tracker itself is overwritten.
+  it. Even a caller that reached the change tracker itself is overwritten. A **Modified** entry
+  is never restamped, it is refused: a row's tenant is fixed when it is added, and an `UPDATE`
+  carries no tenant filter, so a `TenantId` marked modified (what `Update(detached)` does) or
+  tracked at a value other than the resolved tenant's throws `InvalidOperationException` naming
+  the entity. Load the row under its tenant and change its fields.
 - **Every index leads with the tenant**, foreign keys included, on every entity that has the
   column; an install-scoped entity keeps the plain indexes its own foreign keys earn, restored
   by the same pass. A filter is cheap only when its index leads with the tenant; otherwise the

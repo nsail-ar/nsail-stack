@@ -210,6 +210,65 @@ public sealed class SingleDbTenancyTests : IAsyncLifetime
         Assert.Equal(3, await unscoped.Set<NoteKind>().CountAsync());
     }
 
+    // An UPDATE carries no tenant filter, so an entity handed to Update detached would rewrite the
+    // row's tenant to its default. The save refuses, naming the entity, and the row stays put.
+    [Fact]
+    public async Task UpdatingADetachedEntityIsRefusedAndTheRowKeepsItsTenant()
+    {
+        await Write("lumina", "stays");
+
+        await using var scope = _host.Services.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For("lumina"));
+
+        var db = scope.ServiceProvider.GetRequiredService<DbContext>();
+        var id = (await db.Set<Note>().SingleAsync()).Id;
+
+        db.ChangeTracker.Clear();
+        db.Update(new Note { Id = id, Text = "rewritten" });
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
+
+        Assert.Contains(nameof(Note), refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("stays"));
+    }
+
+    [Fact]
+    public async Task ATenantsOwnTrackedEntityStillUpdates()
+    {
+        await Write("lumina", "before");
+
+        await using var scope = _host.Services.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For("lumina"));
+
+        var db = scope.ServiceProvider.GetRequiredService<DbContext>();
+        var note = await db.Set<Note>().SingleAsync();
+
+        note.Text = "after";
+
+        await db.SaveChangesAsync();
+
+        Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("after"));
+    }
+
+    [Fact]
+    public async Task AHandSetTenantOnATrackedModifiedEntryIsRefused()
+    {
+        await Write("lumina", "mine");
+
+        await using var scope = _host.Services.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For("lumina"));
+
+        var db = scope.ServiceProvider.GetRequiredService<DbContext>();
+        var note = await db.Set<Note>().SingleAsync();
+
+        db.Entry(note).Property("TenantId").CurrentValue = Tenant.For("vision").RowKey;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
+    }
+
     async Task Write(string tenant, string text)
     {
         using var response = await _host.Client.SendAsync(
