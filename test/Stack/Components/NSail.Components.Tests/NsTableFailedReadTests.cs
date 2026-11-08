@@ -103,5 +103,6 @@ public sealed class NsTableFailedReadTests : BunitContext, IAsyncLifetime
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-table-retry")));
         Assert.Equal(2, cut.Instance.Queries);
         Assert.Contains("Row 000", cut.Markup);
+        Assert.Contains("1-10 of 60", string.Join(" ", cut.FindAll(".mud-table-pagination-caption").Select(c => c.TextContent)));
     }
 }

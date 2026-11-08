@@ -30,8 +30,11 @@
     // on an answer nobody has yet — exactly the claim _hasLoaded exists to refuse. Null while
     // the overlay's own condition holds (IsRunning || !_hasLoaded) is the other face of
     // loadingOverlay below; once it is false either a real empty list draws here or rows do.
-    RenderFragment? pagedNoRecords = _failed ? null : noRecords;
     RenderFragment? scrollNoRecords = IsRunning || !_hasLoaded || _failed ? null : noRecords;
+
+    // Page mode draws NoRecordsContent with zero rows and no Loading, so a failed first read
+    // would print "No records" above the failure strip; _failed withholds it.
+    RenderFragment? pagedNoRecords = _failed ? null : noRecords;
 
     // Built once per render whether or not it draws here: a page header elsewhere on this
     // surface may be the one putting it on screen (ShowExportInline, Surface.Export), and
@@ -313,10 +316,10 @@
         @undrawnAdd
     </div>
 
+    @readFailed
     @* The floor the scroll listener aims at, and the way past it for anyone who cannot reach
        a floor: a first page shorter than the viewport never produces a scroll event, and a
        keyboard has no scroll gesture at all. *@
-    @readFailed
     @if (_hasLoaded && !_exhausted && !_failed)
     {
         <NsStack Horizontal Justify="NsAlign.Center" Class="pa-2 ns-table-more">
