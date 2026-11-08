@@ -99,6 +99,7 @@ public sealed class BackgroundJobSessionTests
         // No policies of any kind are registered: the manager hydrates nothing, so the only
         // thing that can let a send through is the system short-circuit.
         services.AddSecurityEnforcement();
+        services.AcceptPermissiveProviders();
 
         services.AddScoped<IHandler<Ping>, PingHandler>();
         services.AddScoped<ISender<Ping>, InProcessSender<Ping>>();

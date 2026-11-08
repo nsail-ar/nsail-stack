@@ -185,7 +185,7 @@ static class Harness
     /// assertions that follow read a counter nothing is still writing to.</summary>
     public static async Task Run(ServiceProvider provider, Task signal)
     {
-        var runner = provider.GetServices<IHostedService>().Single();
+        var runner = provider.GetServices<IHostedService>().Single(h => h.GetType().Name != "SecurityProviderCheck");
 
         await runner.StartAsync(CancellationToken.None);
 
@@ -202,7 +202,7 @@ static class Harness
     /// moved proves as little here as it does about a cadence.</summary>
     public static async Task Run(ServiceProvider provider, Func<bool> reached)
     {
-        var runner = provider.GetServices<IHostedService>().Single();
+        var runner = provider.GetServices<IHostedService>().Single(h => h.GetType().Name != "SecurityProviderCheck");
 
         await runner.StartAsync(CancellationToken.None);
 

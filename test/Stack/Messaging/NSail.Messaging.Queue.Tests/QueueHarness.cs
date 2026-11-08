@@ -356,8 +356,8 @@ public static class QueueHarness
 
         var bound = TimeSpan.FromSeconds(30);
 
-        // Every hosted service the composition holds, which is the runner and the transport
-        // guard: picking one by type would name a class NSail.Background keeps internal.
+        // Every hosted service the composition holds, which is the runner, the transport
+        // guard and the security provider check: picking one by type would name a class NSail.Background keeps internal.
         var reached = await host.Use<IEnumerable<IHostedService>, bool>(async hosted =>
         {
             var services = hosted.ToList();

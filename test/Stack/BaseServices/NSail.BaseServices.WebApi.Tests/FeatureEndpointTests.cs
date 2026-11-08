@@ -166,6 +166,7 @@ sealed class FeatureHost : IAsyncDisposable
         // The gate itself: without the enforcement marker the door lets everything past, which
         // is how a client composes the same pipeline.
         builder.Services.AddSecurityEnforcement();
+        builder.Services.AcceptPermissiveProviders();
 
         // After AddBaseWebApi's own registration, so the bag under test is the one answered
         // rather than the row's (there is no store here to hold a row).
