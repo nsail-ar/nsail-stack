@@ -253,6 +253,27 @@ public sealed class SingleDbTenancyTests : IAsyncLifetime
         Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("after"));
     }
 
+    // The queue's retry and the mapper's concurrency carrier mark the column modified at the
+    // resolved tenant's own value; the refusal judges the value, so that save passes.
+    [Fact]
+    public async Task AMarkedTenantColumnAtTheResolvedTenantsValueSaves()
+    {
+        await Write("lumina", "kept");
+
+        await using var scope = _host.Services.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For("lumina"));
+
+        var db = scope.ServiceProvider.GetRequiredService<DbContext>();
+        var note = await db.Set<Note>().SingleAsync();
+
+        db.Entry(note).State = EntityState.Modified;
+
+        await db.SaveChangesAsync();
+
+        Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("kept"));
+    }
+
     // The value half of the refusal: a tracked entry whose column was set to another tenant's key.
     [Fact]
     public async Task AHandSetTenantOnATrackedModifiedEntryIsRefused()
