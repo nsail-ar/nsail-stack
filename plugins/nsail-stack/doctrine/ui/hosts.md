@@ -534,8 +534,7 @@ answers no when no grant can admit that subject (permissions.md, The client cons
 **A card reads through `NsPartial.Handoff`, never `Send`** — the prerender resolves the read and
 persists the answer, the WebAssembly client adopts it, and the page load costs one query per card
 instead of two. A subject card passes its subject as the scope. **One key is one answer for the
-copies of a card**: a card drawn twice (a title bar drawing the brand beside the drawer's own
-copy) is persisted once and adopted by each copy on its first read, for as long as one copy stays
+copies of a card**: a card drawn twice (the same card in two hosts) is persisted once and adopted by each copy on its first read, for as long as one copy stays
 mounted — the state takes one write per key, and the second one throwing would empty every handoff
 of the page; the guard is `NsPartial`'s, so a host mounts what it likes. A copy that reads again
 sends, and its read outdates the arrival's answer: a copy mounted after it sends too, as does a
