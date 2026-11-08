@@ -291,7 +291,7 @@ public class GitStorageProvider : IStorageProvider
                 return;
             }
 
-            var segments = key.Split('/', '\\', StringSplitOptions.RemoveEmptyEntries);
+            var segments = key.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
             var paths = new List<string>();
 
             for (var length = 1; length <= segments.Length; length++)

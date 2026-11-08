@@ -191,6 +191,7 @@ public sealed class GitStorageTests : IDisposable
     [Theory]
     [InlineData("a/f")]
     [InlineData("a")]
+    [InlineData("a\\f")]
     public async Task RefusesAKeyThatPassesThroughASymlinkTheRepositoryHolds(string key)
     {
         var outside = Directory.CreateTempSubdirectory("nsail-outside-").FullName;
