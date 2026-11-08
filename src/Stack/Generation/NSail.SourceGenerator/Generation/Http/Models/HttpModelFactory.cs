@@ -59,7 +59,7 @@ public static class HttpModelFactory
                 var httpMethod = httpAttribute.GetConstructorValue<HttpMethodName>(0);
                 var httpPath = httpAttribute.GetConstructorValue<string>(1);
 
-                CheckThrottledIdentity(messageTypeSymbol, diagnostics);
+                CheckThrottledIdentity(messageTypeSymbol, httpMethod, httpPath, diagnostics);
 
                 var bindings = CreateBindings(messageTypeSymbol, httpMethod, httpPath, paramNamespace);
 
@@ -81,7 +81,7 @@ public static class HttpModelFactory
         return messages;
     }
 
-    static void CheckThrottledIdentity(INamedTypeSymbol messageTypeSymbol, List<Diagnostic> diagnostics)
+    static void CheckThrottledIdentity(INamedTypeSymbol messageTypeSymbol, HttpMethodName httpMethod, string httpPath, List<Diagnostic> diagnostics)
     {
         var throttled = messageTypeSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "NSail.Messaging.Annotations.ThrottledAttribute");
@@ -95,7 +95,9 @@ public static class HttpModelFactory
         {
             if (argument.Key == "Identity"
                 && argument.Value.Value is string name
-                && !messageTypeSymbol.GetAllMembers().OfType<IPropertySymbol>().Any(p => p.Name == name && p.DeclaredAccessibility == Accessibility.Public))
+                && !messageTypeSymbol.GetAllMembers().OfType<IPropertySymbol>().Any(p => p.Name == name
+                    && p.DeclaredAccessibility == Accessibility.Public
+                    && GetBindingSource(p, httpMethod, GetPropertiesFromPath(httpPath)) == BindingSource.Body))
             {
                 diagnostics.Add(Diagnostic.Create(
                     GeneratorDiagnostics.ThrottledIdentityNotFound,

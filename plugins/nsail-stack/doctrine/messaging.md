@@ -780,12 +780,15 @@ recognise a refusal by status number alone.
   from every address together (case and spaces folded, length bounded). The per-address ceiling
   stays, so a shared address is not penalized beyond it; a per-address ceiling alone is never met
   by a botnet or an IPv6 /64 rotating against one known account.
-- **Where the identity is read from is where the binder reads it.** A JSON body decides when the
-  send has one (a query value beside it is ignored by the binder, so it must not pick the
-  partition); the query is read only when there is no JSON body. A send whose identity cannot be
-  read — a body past 16 KB, not JSON, or without the property — is counted in one shared
-  partition rather than exempted, so padding or omitting the field is no way out of the cap.
-  The body is buffered in memory only, within that bound.
+- **The identity is a member of the JSON body.** The generated endpoint binds a body message's
+  members from the body, so that is the one place the cap and the handler agree on; NSG016
+  refuses an `Identity` that is a route, query or header member rather than reading it from a
+  place the binder may not. Where a name repeats in the body the last occurrence wins, as it
+  does when the binder assigns the members, so the sender cannot pick a partition apart from
+  the value the handler sees. A send whose identity cannot be read — a body past 16 KB, not
+  JSON, or without the property — is counted in one shared partition rather than exempted, so
+  padding or omitting the field is no way out of the cap. The body is buffered in memory only,
+  within that bound.
 - **The cap has a price**: a stranger can spend a known account's budget and leave its owner on
   429 from their own address for the rest of the minute. That is the trade for bounding guesses
   against one account; set `IdentityPerMinute` with it in mind.

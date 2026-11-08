@@ -249,6 +249,23 @@ public sealed class ThrottleTests
     }
 
     [Fact]
+    public async Task A_repeated_identity_name_is_read_as_the_binder_reads_it_last_wins()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            var json = attempt % 2 == 0
+                ? $"{{\"account\":\"decoy{attempt}\",\"account\":\"admin\"}}"
+                : $"{{\"Account\":\"decoy{attempt}\",\"account\":\"admin\"}}";
+
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", json));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"account\":\"admin\"}"));
+    }
+
+    [Fact]
     public async Task A_send_whose_identity_cannot_be_read_shares_one_budget()
     {
         await using var host = await ThrottleHost.Start();

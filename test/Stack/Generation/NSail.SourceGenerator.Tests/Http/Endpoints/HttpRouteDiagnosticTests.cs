@@ -71,6 +71,14 @@ public class HttpRouteDiagnosticTests
         Assert.Empty(Run(ThrottledSource("Login", "Login")).Where(d => d.Id == "NSG016"));
     }
 
+    [Fact]
+    public void A_throttled_identity_that_is_not_bound_from_the_body_is_a_build_error()
+    {
+        var source = ThrottledSource("Login", "Login").Replace("Method.Post", "Method.Get");
+
+        Assert.Single(Run(source).Where(d => d.Id == "NSG016"));
+    }
+
     static string ThrottledSource(string property, string identity)
     {
         return $$"""

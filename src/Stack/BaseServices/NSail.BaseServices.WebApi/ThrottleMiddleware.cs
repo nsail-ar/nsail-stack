@@ -128,33 +128,18 @@ public sealed class ThrottleMiddleware : IMiddleware, IDisposable
             });
     }
 
-    // The identity is read before the body is bound. A JSON body is where the generated endpoint
-    // binds a body-carrying message's members from, so it decides when present: a query value
-    // beside it is ignored by the binder and must not pick the partition. The query is read only
-    // when the send carries no JSON body. A body that cannot be read within the bound yields
-    // null, which the caller counts as Unread. Case and surrounding space are not a new account.
+    // The identity is read before the body is bound, from the JSON body: the generator refuses
+    // (NSG016) an Identity that is not a body member, so the binder reads the same place. A send
+    // that is not JSON yields null, which the caller counts as Unread. Case and surrounding
+    // space are not a new account.
     static async Task<string?> Identity(HttpContext context, string property)
     {
-        string? value;
-
-        if (context.Request.HasJsonContentType())
+        if (!context.Request.HasJsonContentType())
         {
-            value = await FromBody(context, property);
-        }
-        else
-        {
-            value = null;
-
-            foreach (var pair in context.Request.Query)
-            {
-                if (string.Equals(pair.Key, property, StringComparison.OrdinalIgnoreCase))
-                {
-                    value = pair.Value.ToString();
-                }
-            }
+            return null;
         }
 
-        value = value?.Trim().ToUpperInvariant();
+        var value = (await FromBody(context, property))?.Trim().ToUpperInvariant();
 
         if (string.IsNullOrEmpty(value))
         {
@@ -196,19 +181,23 @@ public sealed class ThrottleMiddleware : IMiddleware, IDisposable
 
             using var document = JsonDocument.Parse(buffer.AsMemory(0, read));
 
+            string? found = null;
+
             if (document.RootElement.ValueKind == JsonValueKind.Object)
             {
+                // The last occurrence wins, as it does when the binder assigns the members in
+                // order: a repeated name must not let the sender pick a partition apart from
+                // the value the handler receives.
                 foreach (var member in document.RootElement.EnumerateObject())
                 {
-                    if (member.Value.ValueKind == JsonValueKind.String
-                        && string.Equals(member.Name, property, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(member.Name, property, StringComparison.OrdinalIgnoreCase))
                     {
-                        return member.Value.GetString();
+                        found = member.Value.ValueKind == JsonValueKind.String ? member.Value.GetString() : null;
                     }
                 }
             }
 
-            return null;
+            return found;
         }
         catch (Exception exception) when (exception is JsonException or IOException or InvalidDataException)
         {
