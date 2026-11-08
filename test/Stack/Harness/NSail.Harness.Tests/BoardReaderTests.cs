@@ -111,4 +111,22 @@ public class BoardReaderTests
         Assert.True(issue.Has("p1"));
         Assert.False(issue.InVersion);
     }
+
+    // A comment or a label moves the issue's updatedAt; a column move moves only its project item's.
+    [Fact]
+    public void AStoryWasTouchedAtTheLatestOfItsIssueAndItsItemOnTheProject()
+    {
+        static Issue Parse(string issueAt, string itemAt)
+        {
+            return GitHubBoard.ParseIssue(JsonDocument.Parse($$$"""
+                {"number":5,"title":"t","milestone":null,"updatedAt":"{{{issueAt}}}",
+                 "labels":{"nodes":[]},"subIssuesSummary":{"total":0,"percentCompleted":0},"parent":null,"blockedBy":{"nodes":[]},
+                 "projectItems":{"nodes":[{"id":"i7","updatedAt":"2026-11-08T09:00:00Z","project":{"number":7},"fieldValueByName":null},
+                                          {"id":"i1","updatedAt":"{{{itemAt}}}","project":{"number":1},"fieldValueByName":{"name":"In-Progress"}}]}}
+                """).RootElement, 1);
+        }
+
+        Assert.Equal(DateTimeOffset.Parse("2026-11-08T07:48:00Z"), Parse("2026-11-08T07:48:00Z", "2026-11-08T07:30:00Z").TouchedAt);
+        Assert.Equal(DateTimeOffset.Parse("2026-11-08T07:47:30Z"), Parse("2026-11-08T07:30:00Z", "2026-11-08T07:47:30Z").TouchedAt);
+    }
 }

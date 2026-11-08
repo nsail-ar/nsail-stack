@@ -60,6 +60,10 @@ public sealed class HarnessOptions
     // Stories under way at once before a new one starts (Planner's WipLimit); unset is the agent count, 0 none.
     public int? WipLimit { get; set; }
 
+    // A story In-Progress a keeper with no open PR (`Pr: none`) would move must have been quiet this
+    // long (Planner's OrphanGrace): a job's ending and its PR's opening land inside it.
+    public int OrphanGraceMinutes { get; set; } = 10;
+
     // Drivers a story's label may ask for (`{driver}` or `{driver}:{model}`) that this machine cannot run: they hold it.
     public List<string> UnrunnableDrivers { get; set; } = [];
 
