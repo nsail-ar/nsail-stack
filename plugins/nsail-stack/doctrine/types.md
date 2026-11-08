@@ -72,16 +72,20 @@ explicit is the machine's answer.** See [baseservices.md](baseservices.md).
 ## Serialization
 
 `JsonOptions.Wire` is the JSON shape of every NSail wire payload — web defaults plus
-enums as names. The generated HTTP client serializes with it directly; a host owns its
-own options instance and copies `JsonOptions.Converters` instead. Nothing else should
-construct `JsonSerializerOptions` for message traffic.
+enums as names, and `long`, `ulong` and `decimal` as strings: a JavaScript reader parses a
+JSON number as a double and drops digits past 2^53 or about 15 (react.md). Reading accepts a
+number too, so a client that still writes one keeps working. The generated HTTP client
+serializes with it directly; a host owns its own options instance and copies
+`JsonOptions.Converters` instead. Nothing else should construct `JsonSerializerOptions` for
+message traffic — and a vendor's API is not message traffic: its client keeps its own
+options, or its numbers go out as strings.
 
 `WireSchema.For(type)` renders that contract as a JSON Schema for whoever authors a body
 from outside C# — a pack step, a tool call composed off the `MessageRegistry`
 (messaging.md, Naming a message). It speaks the wire (enum names, wire casing) and lists as
 `required` what a send would reject when absent: the C# `required` modifier and
 `[Required]` alike, since every send validates the message's DataAnnotations. It describes
-a well-formed body, not the reader's tolerance — a number is `integer`, never the
+a well-formed body, not the reader's tolerance — `long`, `ulong` and `decimal` are `string` and an `int` is `integer`, never the
 `["string", "integer"]` the lenient read admits. `MessageSchemaTests` renders every
 registered message's schema.
 
