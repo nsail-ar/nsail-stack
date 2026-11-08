@@ -164,9 +164,11 @@
 
             var clean = SvgSanitizer.Sanitize(markup);
 
-            return string.IsNullOrWhiteSpace(clean)
-                ? (RemoteImageKind.Unavailable, null)
-                : (RemoteImageKind.Svg, clean);
+            // Nothing drawable survives the allowlist: the file still shows as an image,
+            // which cannot execute in the app's origin.
+            return SvgSanitizer.HasDrawing(clean)
+                ? (RemoteImageKind.Svg, clean)
+                : (RemoteImageKind.Raster, null);
         }
         catch (HttpRequestException)
         {

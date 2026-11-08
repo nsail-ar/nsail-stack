@@ -82,4 +82,26 @@ public class SvgSanitizerTests
         Assert.DoesNotContain("onclick", built.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain("image", read.Markup, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void KeepsADocumentWithADoctype()
+    {
+        var svg = "<?xml version=\"1.0\"?><!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 9 9\"><path d=\"M0 0\"/></svg>";
+
+        Assert.True(SvgSanitizer.HasDrawing(SvgSanitizer.Sanitize(svg)));
+    }
+
+    [Fact]
+    public void AnEmbeddedRasterLeavesNothingDrawable()
+    {
+        var clean = SvgSanitizer.Sanitize("<svg viewBox=\"0 0 9 9\"><image href=\"data:image/png;base64,AA\"/></svg>");
+
+        Assert.False(SvgSanitizer.HasDrawing(clean));
+    }
+
+    [Fact]
+    public void ALabelMentioningDataStays()
+    {
+        Assert.True(SvgSanitizer.IsClean("<path d=\"M0 0\" aria-label=\"ver data: x\"/>"));
+    }
 }

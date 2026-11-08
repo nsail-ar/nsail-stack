@@ -27,6 +27,11 @@ public static class SvgSanitizer
         "title", "desc", "text", "tspan"
     };
 
+    static readonly HashSet<string> UrlAttributes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "fill", "stroke", "clip-path", "mask", "stop-color"
+    };
+
     static readonly HashSet<string> Attributes = new(StringComparer.OrdinalIgnoreCase)
     {
         "id", "class", "d", "transform", "viewBox", "width", "height", "x", "y", "x1", "y1", "x2", "y2",
@@ -40,10 +45,33 @@ public static class SvgSanitizer
 
     /// <summary>The element names the allowlist keeps — for a client that must apply the same
     /// list where C# cannot run (the splash, drawn before the app boots).</summary>
-    public static IReadOnlyCollection<string> AllowedElements => Elements;
+    public static IReadOnlyCollection<string> AllowedElements => Elements.ToArray();
+
+    /// <summary>The elements whose text content survives; see <see cref="AllowedElements"/>.</summary>
+    public static IReadOnlyCollection<string> AllowedTextElements => TextElements.ToArray();
+
+    /// <summary>Whether sanitized markup still draws something: a shape, not only the
+    /// wrapper. A file that sanitizes to nothing drawable is better shown as an image.</summary>
+    public static bool HasDrawing(string? clean)
+    {
+        if (string.IsNullOrWhiteSpace(clean) || !TryLoad($"<{WrapperName}>{clean}</{WrapperName}>", out var doc))
+        {
+            return false;
+        }
+
+        foreach (XmlElement e in doc!.DocumentElement!.GetElementsByTagName("*"))
+        {
+            if (e.LocalName is "path" or "circle" or "ellipse" or "rect" or "line" or "polyline" or "polygon" or "text")
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /// <summary>The attribute names the allowlist keeps; see <see cref="AllowedElements"/>.</summary>
-    public static IReadOnlyCollection<string> AllowedAttributes => Attributes;
+    public static IReadOnlyCollection<string> AllowedAttributes => Attributes.ToArray();
 
     /// <summary>The markup with everything outside the allowlist removed. A fragment (the
     /// inner content of an svg, as the icon catalogs carry) stays a fragment.</summary>
@@ -114,7 +142,7 @@ public static class SvgSanitizer
 
         try
         {
-            var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
+            var settings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore, XmlResolver = null };
 
             using var reader = XmlReader.Create(new StringReader(xml), settings);
             doc.Load(reader);
@@ -189,8 +217,7 @@ public static class SvgSanitizer
         writer.WriteFullEndElement();
     }
 
-    /// <summary>Whether <paramref name="name"/> is a data-* attribute, which is inert.</summary>
-    public static bool IsData(string name)
+    static bool IsData(string name)
     {
         return name.StartsWith("data-", StringComparison.OrdinalIgnoreCase);
     }
@@ -216,7 +243,7 @@ public static class SvgSanitizer
 
         // url(...) in paint and clip properties is the one place a value can reach out.
         return !value.Contains("javascript:", StringComparison.OrdinalIgnoreCase)
-            && !value.Contains("data:", StringComparison.OrdinalIgnoreCase)
+            && !(UrlAttributes.Contains(attribute.LocalName) && value.Contains("data:", StringComparison.OrdinalIgnoreCase))
             && (!value.Contains("url(", StringComparison.OrdinalIgnoreCase) || IsLocalUrl(value));
     }
 

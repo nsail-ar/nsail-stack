@@ -178,6 +178,7 @@
     // route's bytes never reach the DOM as markup: they are parsed, filtered node by node and
     // only the survivors are adopted.
     const svgElements = new Set(@((MarkupString)ToJson(SvgSanitizer.AllowedElements)));
+    const svgTextElements = new Set(@((MarkupString)ToJson(SvgSanitizer.AllowedTextElements)));
     const svgAttributes = new Set(@((MarkupString)ToJson(SvgSanitizer.AllowedAttributes)));
 
     function cleanSvg(source) {
@@ -212,7 +213,7 @@
             copy.setAttribute(attr.name, value);
         }
 
-        const textual = ["title", "desc", "text", "tspan"].includes(node.localName.toLowerCase());
+        const textual = svgTextElements.has(node.localName.toLowerCase());
 
         for (const child of node.childNodes) {
             if (child.nodeType === Node.TEXT_NODE && textual) {
@@ -257,19 +258,17 @@
 
                 host.replaceChildren(root);
 
-                if (root) {
-                    root.style.width = "100%";
-                    root.style.height = "auto";
-                    root.style.maxWidth = "100%";
-                    // Same fallback as the <img> this replaces, kept here too for an SVG
-                    // with no viewBox of its own to give the browser a ratio before this.
-                    root.style.aspectRatio = "auto 1 / 1";
+                root.style.width = "100%";
+                root.style.height = "auto";
+                root.style.maxWidth = "100%";
+                // Same fallback as the <img> this replaces, kept here too for an SVG
+                // with no viewBox of its own to give the browser a ratio before this.
+                root.style.aspectRatio = "auto 1 / 1";
 
-                    // In the same task as the inlining, so the one layout the browser draws
-                    // is already the artwork's own: the band under the mark is the block's
-                    // gap and nothing else, and the fit adds no second resize.
-                    window.nsapp.fitMark(root);
-                }
+                // In the same task as the inlining, so the one layout the browser draws
+                // is already the artwork's own: the band under the mark is the block's
+                // gap and nothing else, and the fit adds no second resize.
+                window.nsapp.fitMark(root);
             })
             .catch(() => { });
     })();
