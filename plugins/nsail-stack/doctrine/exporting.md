@@ -56,7 +56,7 @@ all, so it prints every figure in the reader's own separators.
 | Separator | — | derived from the decimal mark: `;` where it is a comma, `,` otherwise |
 
 **A CSV text cell is never a formula.** One that opens with `=`, `+`, `-`, `@`, tab or CR is written
-with a leading `'`; figures are not touched, since a negative one starts with a minus.
+with a leading `'`; only a figure is not touched, since a negative one starts with a minus — the column's format decides, never the value's type.
 
 **The CSV separator is derived and never configured.** A culture that writes `1.234,56` cannot
 separate fields with the comma inside its own figures; reading the separator off the region

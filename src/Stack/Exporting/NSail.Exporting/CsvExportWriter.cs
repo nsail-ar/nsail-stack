@@ -65,7 +65,7 @@ public sealed class CsvExportWriter : IExportWriter
                         var value = index < row.Values.Count ? row.Values[index] : null;
                         var cell = ExportText.Of(value, column.Format, culture);
 
-                        return Field(value is string ? Defused(cell) : cell, separator);
+                        return Field(ExportText.IsFigure(value, column.Format) ? cell : Defused(cell), separator);
                     });
 
                     await text.WriteLineAsync(string.Join(separator, cells));
@@ -89,8 +89,8 @@ public sealed class CsvExportWriter : IExportWriter
     }
 
     /// <summary>A spreadsheet runs a text cell that opens with one of these as a formula, so the
-    /// apostrophe makes it text. Only what the caller typed as text: a negative figure starts
-    /// with a minus and is a number.</summary>
+    /// apostrophe makes it text. Everything but a figure: a negative one starts with a minus
+    /// and is a number.</summary>
     static string Defused(string text)
     {
         return text.Length > 0 && text[0] is '=' or '+' or '-' or '@' or '\t' or '\r' ? "'" + text : text;

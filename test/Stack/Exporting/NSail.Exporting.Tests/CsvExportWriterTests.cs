@@ -103,6 +103,17 @@ public class CsvExportWriterTests
     }
 
     [Fact]
+    public async Task A_text_column_holding_a_value_that_is_not_a_string_is_prefixed()
+    {
+        var column = new ExportColumn { Key = "Delay", Title = "Delay" };
+        var book = ExportBook.Of("Lista", new ExportTable { Columns = [column], Rows = Books.Rows([[TimeSpan.FromHours(-1)]]) });
+
+        var file = Encoding.UTF8.GetString(await Books.Write(new CsvExportWriter(), book, Books.States));
+
+        Assert.Contains("'-01:00:00", file, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_negative_figure_is_not_prefixed()
     {
         var lines = await Lines(Books.Argentina);

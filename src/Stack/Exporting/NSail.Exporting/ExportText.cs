@@ -33,9 +33,17 @@ public static class ExportText
         };
     }
 
+    /// <summary>Whether <see cref="Of"/> prints the value as a figure — the only text that may
+    /// open with a minus and still be a number — rather than as words.</summary>
+    public static bool IsFigure(object? value, ExportFormat format)
+    {
+        return format is ExportFormat.Number or ExportFormat.Money or ExportFormat.Percent
+            && value is IConvertible and not string and not bool;
+    }
+
     static string Figure(object value, string pattern, CultureInfo culture)
     {
-        if (value is IConvertible and not string and not bool)
+        if (IsFigure(value, ExportFormat.Number))
         {
             return Convert.ToDecimal(value, culture).ToString(pattern, culture);
         }
