@@ -85,6 +85,39 @@ public class PlannerTests
         Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#7:", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void AStackPrGreenAndUnreadPastItsReviewsLimitIsSaidOutLoud()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(8, "In-Progress").Pr(8, 174, repo: Fixture.Stack, greenFor: TimeSpan.FromMinutes(61)).Build());
+
+        Assert.Contains(plan.Notes, n => n.StartsWith("#8: framework PR #174 green and unread", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AStackPrGreenForLessThanItsReviewsLimitIsNotSaid()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(8, "In-Progress").Pr(8, 174, repo: Fixture.Stack, greenFor: TimeSpan.FromMinutes(59)).Build());
+
+        Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#8:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AStackPrOfAStoryAHandHoldsIsNotSaid()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(8, "In-Progress", "hand").Pr(8, 142, repo: Fixture.Stack, greenFor: TimeSpan.FromMinutes(61)).Build());
+
+        Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#8:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AHomePrGreenAndUnreadIsReviewedHereNotSaid()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(8, "In-Progress").Pr(8, 140, greenFor: TimeSpan.FromMinutes(61)).Build());
+
+        Assert.Equal(["review PR #140 (story #8)"], plan.Items.Select(i => i.ToString()));
+        Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#8:", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("ruling")]
     [InlineData("blocked")]
