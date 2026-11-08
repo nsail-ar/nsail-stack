@@ -246,6 +246,13 @@ public class PolicyHandlersTests
 
         Assert.Contains("Satisfies(\"OrganizationId\", m.OrganizationId, global::NSail.Security.Annotations.RestrictAs.Organization", generated);
         // One check per concrete message: an override adds no second, marked or not, at any depth.
-        Assert.Equal(4, generated.Split("Satisfies(\"OrganizationId\", m.OrganizationId").Length - 1);
+        foreach (var message in new[] { "ListPrescriptions", "ListAppointments", "ListVisits", "ListVisitNotes" })
+        {
+            var start = generated.IndexOf("class " + message + "PolicyHandler", StringComparison.Ordinal);
+            Assert.True(start >= 0, message);
+            var next = generated.IndexOf("internal sealed class", start + 1, StringComparison.Ordinal);
+            var body = next < 0 ? generated[start..] : generated[start..next];
+            Assert.Equal(1, body.Split("Satisfies(\"OrganizationId\", m.OrganizationId").Length - 1);
+        }
     }
 }

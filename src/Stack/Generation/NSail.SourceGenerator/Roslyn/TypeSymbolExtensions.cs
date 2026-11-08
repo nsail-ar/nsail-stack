@@ -32,7 +32,7 @@ public static class TypeSymbolExtensions
         }
     }
 
-    /// <summary>The attribute on the property or, failing that, on the definition it overrides, as reflection inherits it.</summary>
+    /// <summary>The attribute on the property or, failing that, on the definition it overrides, as an inherited attribute (AttributeUsage.Inherited) is read by reflection.</summary>
     public static AttributeData? GetAttributeThroughOverrides(this IPropertySymbol property, string attributeFullName)
     {
         for (var current = property; current != null; current = current.OverriddenProperty)
