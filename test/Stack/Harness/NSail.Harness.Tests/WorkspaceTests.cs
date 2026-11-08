@@ -61,7 +61,7 @@ public class WorkspaceTests : IDisposable
 
         var slot = ws.SlotPath(1);
         await Shell.Git(slot, "checkout", "-q", "--detach", "-f", ws.Tip);
-        await Shell.Git(slot, "status", "-q");
+        await Shell.Git(slot, "status", "-s");
         await ws.Prepare(1);
 
         Assert.False(File.Exists(hook));
