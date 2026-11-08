@@ -84,11 +84,126 @@ public sealed class FileSystemStorageTests
         Assert.Null(await _provider.Get(container.Target, "backups/a.zip"));
     }
 
+    [Fact]
+    public async Task DeletesAKeyWhoseDirectoryDoesNotExist()
+    {
+        using var container = new Container();
+
+        await _provider.Delete(container.Target, "a/b.txt");
+
+        Assert.Null(await _provider.Get(container.Target, "a/b.txt"));
+    }
+
+    [Fact]
+    public async Task APutOverAnExistingKeyReplacesItsBytes()
+    {
+        using var container = new Container();
+
+        using (var first = new MemoryStream([1, 2, 3]))
+        {
+            await _provider.Put(container.Target, "a.bin", first, null);
+        }
+
+        using (var second = new MemoryStream([9, 8]))
+        {
+            await _provider.Put(container.Target, "a.bin", second, null);
+        }
+
+        using var stored = await _provider.Get(container.Target, "a.bin");
+
+        Assert.NotNull(stored);
+        Assert.Equal(2, stored.Length);
+        Assert.Equal([9, 8], await File.ReadAllBytesAsync(Path.Combine(container.Path, "a.bin")));
+        Assert.Single(Directory.EnumerateFiles(container.Path));
+    }
+
+    [Fact]
+    public async Task ListSkipsAStagingFileLeftBehind()
+    {
+        using var container = new Container();
+
+        using (var content = new MemoryStream([1]))
+        {
+            await _provider.Put(container.Target, "a.bin", content, null);
+        }
+
+        await File.WriteAllBytesAsync(Path.Combine(container.Path, ".put-" + Guid.NewGuid().ToString("N")), [1, 2]);
+
+        var all = await _provider.List(container.Target, null);
+
+        Assert.Equal(["a.bin"], all.Select(stored => stored.Key));
+    }
+
+    [Fact]
+    public async Task ListsAKeyThatOnlyStartsLikeAStagingFile()
+    {
+        using var container = new Container();
+
+        using (var content = new MemoryStream([1]))
+        {
+            await _provider.Put(container.Target, "logos/.put-report.pdf", content, null);
+        }
+
+        var all = await _provider.List(container.Target, null);
+
+        Assert.Equal(["logos/.put-report.pdf"], all.Select(stored => stored.Key));
+    }
+
+    [Fact]
+    public async Task ACancelledReplaceLeavesThePreviousObjectIntactAndNoPartialFile()
+    {
+        using var container = new Container();
+
+        using (var first = new MemoryStream([1, 2, 3]))
+        {
+            await _provider.Put(container.Target, "a.bin", first, null);
+        }
+
+        using var cancel = new CancellationTokenSource();
+        var source = new ProbeStream(Big, produced =>
+        {
+            if (produced >= Big / 2)
+            {
+                cancel.Cancel();
+            }
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => _provider.Put(container.Target, "a.bin", source, null, cancel.Token));
+
+        Assert.Equal([1, 2, 3], await File.ReadAllBytesAsync(Path.Combine(container.Path, "a.bin")));
+        Assert.Single(Directory.EnumerateFiles(container.Path));
+    }
+
+    [Fact]
+    public async Task AReplaceWhoseSourceThrowsLeavesThePreviousObjectIntact()
+    {
+        using var container = new Container();
+
+        using (var first = new MemoryStream([1, 2, 3]))
+        {
+            await _provider.Put(container.Target, "a.bin", first, null);
+        }
+
+        var source = new ProbeStream(Big, produced =>
+        {
+            if (produced >= Big / 2)
+            {
+                throw new IOException("source failed");
+            }
+        });
+
+        await Assert.ThrowsAsync<IOException>(() => _provider.Put(container.Target, "a.bin", source, null));
+
+        Assert.Equal([1, 2, 3], await File.ReadAllBytesAsync(Path.Combine(container.Path, "a.bin")));
+        Assert.Single(Directory.EnumerateFiles(container.Path));
+    }
+
     // The story's own claim, made measurable: an archive larger than memory is neither loaded
     // nor buffered whole. The source is not seekable and refuses to state its length, so nothing
-    // downstream could size a buffer even if it wanted to — and the destination is watched WHILE
-    // the source is still producing. Bytes on disk before the last chunk was read is the whole
-    // proof: a provider that materialized the object would leave an empty file until the end.
+    // downstream could size a buffer even if it wanted to — and the container is watched WHILE
+    // the source is still producing. Bytes in the staging file before the last chunk was read
+    // are the whole proof: a provider that materialized the object would leave it empty.
     [Fact]
     public async Task WritesWhileTheSourceIsStillProducing()
     {
@@ -99,9 +214,9 @@ public sealed class FileSystemStorageTests
 
         var source = new ProbeStream(Big, produced =>
         {
-            if (produced >= Big / 2 && landedEarly == 0 && File.Exists(path))
+            if (produced >= Big / 2 && landedEarly == 0)
             {
-                landedEarly = new FileInfo(path).Length;
+                landedEarly = Directory.EnumerateFiles(container.Path).Select(file => new FileInfo(file).Length).DefaultIfEmpty(0).Max();
             }
         });
 
@@ -109,7 +224,7 @@ public sealed class FileSystemStorageTests
 
         Assert.True(
             landedEarly > 0,
-            $"The destination held {landedEarly} bytes when half the source had been read; the object was buffered whole before anything was written.");
+            $"The container held {landedEarly} bytes when half the source had been read; the object was buffered whole before anything was written.");
 
         Assert.Equal(Big, new FileInfo(path).Length);
     }

@@ -90,6 +90,10 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   the object would be dropped without a word. It also refuses a key that is, or passes
   through, a symlink the committed tree holds (`KeyThroughSymlink`): it would write outside
   the clone.
+- **The filesystem provider replaces atomically.** A put is copied to `.put-<32 hex>` beside
+  the key and renamed over it, so a cancel or a throwing source leaves the previous object and
+  no partial file; `List` skips exactly that name form. A process killed mid-put leaves its
+  staging file behind: it is garbage and safe to delete.
 - **`IsConfigured` answers the refusal before there is anything to put.** A caller that
   queues the writing for later — a request filed now and written by a job — would otherwise
   accept the ask, read a whole database and fail on its last line. It is false for both of
