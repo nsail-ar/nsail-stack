@@ -3,7 +3,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace NSail.Harness;
+namespace NSail.Harness.Jobs;
 
 // What the harness trusts of the files a seat wrote: nothing it can check is taken on the seat's word.
 public static class SeatOutput
