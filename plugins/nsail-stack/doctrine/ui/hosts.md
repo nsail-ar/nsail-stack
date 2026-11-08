@@ -340,7 +340,8 @@ are asked in that same breath, for the reason and through the walk the list's ar
   component test) answers `Page`, as a desktop does.
 - **Scrolling keeps `Cargar más` under the rows.** A first page shorter than the viewport never
   produces a scroll event to ask for the second, and a keyboard has no floor gesture at all; the
-  control disappears only when the list is exhausted.
+  control disappears when the list is exhausted, or when a read failed: the failure strip with
+  Retry takes its place and scrolling asks for nothing until Retry.
 - **Reloading in scroll mode always starts the list over**, `first` or not: the accumulated rows
   *are* the position, so a search, a filter or a sort leaves no row of the previous result set on
   screen. A page still in flight is superseded (`RunOptions.Replace` plus a generation counter),
@@ -356,7 +357,9 @@ are asked in that same breath, for the reason and through the walk the list's ar
   instead is the answer already on screen, so a superseded read changes neither the rows nor the
   total the pager bounds itself against, and so not the page either. It cannot refuse by
   throwing: nothing in the vendor's grid catches, and the escape reaches `NsErrorBoundary`,
-  which wraps the whole screen.
+  which wraps the whole screen. A page whose read *failed* is no answer either: the pager goes
+  back to the page shown, answered from the rows in hand with no second query, and the failure
+  strip with Retry (which rereads the shown page) stands over them.
 
 ### Selection
 
@@ -607,6 +610,9 @@ about the data instead of an answer about the network.
   had none.
 - **The words are the sender's**, resolved through `ProblemManager.GetMessage` — the Stack
   invents no wording, so a reason that reads badly is fixed in its own kit's strings.
+- **NsTable's own page reads follow the same rule.** A page whose `OnQuery` failed or was cancelled
+  is not an answer: scroll mode appends nothing and does not advance, paged mode keeps the pager on
+  the page shown, and the grid draws a failure strip with Retry instead of "No records".
 - A failed read **replaces** the content rather than sitting above it: a filter that could not
   be applied leaves the previous filter's rows on screen, which is its own lie.
 
