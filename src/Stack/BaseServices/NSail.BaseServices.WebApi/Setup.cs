@@ -164,7 +164,7 @@ public static class Setup
             {
                 if (entry.Contains('/'))
                 {
-                    forwardedHeadersOptions.KnownIPNetworks.Add(IPNetwork.Parse(entry));
+                    forwardedHeadersOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(entry));
                 }
                 else
                 {
