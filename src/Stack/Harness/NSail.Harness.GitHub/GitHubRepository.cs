@@ -201,14 +201,14 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         if (result.ExitCode != 0) throw new InvalidOperationException($"push to {branch} refused: {result.Output.Trim()}");
     }
 
-    public async Task Merge(int pr, CancellationToken ct = default)
+    public async Task Merge(int pr, string sha, CancellationToken ct = default)
     {
         // The head is read before the merge: once the merge has gone through, nothing after it may
         // throw, or the caller would report a merged PR as refused.
         var read = await Pr(pr, ct);
         var head = read.HeadRef;
         var ownHead = string.Equals(read.HeadRepo, repo, StringComparison.OrdinalIgnoreCase);
-        await gh.Send(HttpMethod.Put, $"repos/{repo}/pulls/{pr}/merge", new { merge_method = "squash" }, ct);
+        await gh.Send(HttpMethod.Put, $"repos/{repo}/pulls/{pr}/merge", new { merge_method = "squash", sha }, ct);
         if (!ownHead) return;
         try
         {

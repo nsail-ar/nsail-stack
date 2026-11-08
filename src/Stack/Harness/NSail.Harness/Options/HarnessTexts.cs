@@ -26,7 +26,7 @@ public sealed class HarnessTexts
     public string ReviewNoVerdict { get; set; } = "The review of PR #{pr} died without a verdict — `stalled`: the analyst reads why.";
     public string ReviewStoryCrack { get; set; } = "Reading PR #{pr}, the reviewer found a crack in the story's logic, not in the code. Back to Analyze to rule it; the branch `{branch}` stays.";
     public string ReviewFourthRead { get; set; } = "Fourth read with findings on PR #{pr} — `stalled` instead of another round: the analyst reads why it does not converge.";
-    public string MergeRefused { get; set; } = "The review came back clean but PR #{pr} did not merge (a conflict with main, or the API down). Back to Ready: the next round brings main in and asks for a review again.";
+    public string MergeRefused { get; set; } = "The review came back clean but PR #{pr} did not merge (the head moved after the review read it, a conflict with main, or the API down). Back to Ready: the next round brings main in and asks for a review again.";
     public string Merged { get; set; } = "Merged: PR #{pr} — {title}";
     public string StillOpen { get; set; } = "Still open for this story: {prs}. Back to **Ready** instead of Merged: the story rides main only when none is left.";
 
