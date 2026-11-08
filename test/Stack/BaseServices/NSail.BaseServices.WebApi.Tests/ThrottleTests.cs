@@ -150,6 +150,20 @@ public sealed class ThrottleTests
         Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.2"));
     }
 
+    [Fact]
+    public async Task A_trusted_proxy_named_by_its_address_names_the_caller()
+    {
+        await using var host = await ThrottleHost.Start(forwarded: true, "10.1.2.3");
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.1"));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("10.1.2.3", Capped.Path, "198.51.100.1"));
+        Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.2"));
+    }
+
     static async Task<string> Code(HttpResponseMessage response)
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());

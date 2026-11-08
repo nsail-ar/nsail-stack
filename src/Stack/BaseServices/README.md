@@ -72,7 +72,9 @@ the same exception path everywhere.
 
 1. Forwarded headers, only when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is true (`X-Forwarded-For`
    and `X-Forwarded-Proto`), believed only from the peers in `Security:TrustedProxies`
-   (addresses or CIDR networks; empty trusts nobody and logs a warning). With the flag off outside
+   (addresses or CIDR networks). Empty trusts nobody and logs a warning: behind a proxy every
+   request then reads as `http`, so HSTS is not sent and HTTPS redirection can loop, and naming
+   the proxy is required to keep both. With the flag off outside
    Development, startup logs a warning that behind a proxy all callers share one address.
 2. `BuildVersionMiddleware`: `BuildVersion.Current` on every response as `X-NSail-Version`.
 3. Error handler, then HTTPS redirection.
