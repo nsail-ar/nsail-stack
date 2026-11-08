@@ -18,11 +18,11 @@ namespace NSail.Messaging.Queue;
 /// row again on the next pass. The alternative — delete first — loses the work instead, which
 /// is the one thing a durable queue may not do.</para>
 ///
-/// <para>Single instance is an assumption and not a property, the same one
-/// <see cref="Background.IBackgroundJob"/>'s runner already rests on: one container per tenant
-/// means nothing drains twice today, and a second replica would deliver every row twice with
-/// no error anywhere to say so. A Postgres advisory lock taken around the pass is the cheap fix
-/// the day that topology changes, and it is one fix for both loops.</para></summary>
+/// <para>A row is claimed before it is delivered: one conditional update moves its
+/// <c>NextAttemptAt</c> out by <see cref="QueueOptions.Lease"/>, and only the drain whose update
+/// changed the row delivers it. Drains over one database therefore split the rows instead of
+/// repeating them, with no column of its own; a drain that dies mid-delivery leaves a row that
+/// is due again when the lease ends.</para></summary>
 public sealed class QueueDrain
 {
     readonly DbContext _db;
@@ -55,7 +55,7 @@ public sealed class QueueDrain
     }
 
     /// <summary>Delivers every row that is due, up to <see cref="QueueOptions.BatchSize"/>, and
-    /// answers how many rows it visited, deferred ones included. The tenant is whoever the caller
+    /// answers how many rows it claimed, deferred ones included. The tenant is whoever the caller
     /// entered: the query filter is what makes this tenant's queue its own.</summary>
     public async Task<int> Run(CancellationToken cancellationToken)
     {
@@ -73,6 +73,12 @@ public sealed class QueueDrain
 
         foreach (var row in due)
         {
+            if (!await Claim(row, cancellationToken).ConfigureAwait(false))
+            {
+                // Another drain took it between the read and here: its row now, the next one ours.
+                continue;
+            }
+
             // Awaited one at a time, like the job runner's own sweep: the actor and the tenant
             // travel on the async flow, and two deliveries in flight on one flow would read
             // each other's.
@@ -82,6 +88,21 @@ public sealed class QueueDrain
         }
 
         return handled;
+    }
+
+    async Task<bool> Claim(QueuedMessage row, CancellationToken cancellationToken)
+    {
+        var id = row.Id;
+        var seen = row.NextAttemptAt;
+        // Read per row: the lease is owed from the claim, not from the start of the pass.
+        var leased = _clock.GetUtcNow().UtcDateTime + _options.Lease;
+
+        var claimed = await _db.Set<QueuedMessage>()
+            .Where(other => other.Id == id && other.NextAttemptAt == seen && other.DeadLetteredAt == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(other => other.NextAttemptAt, leased), cancellationToken)
+            .ConfigureAwait(false);
+
+        return claimed == 1;
     }
 
     async Task Deliver(QueuedMessage row, CancellationToken cancellationToken)
@@ -114,6 +135,10 @@ public sealed class QueueDrain
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            LeaseLost(row);
         }
         catch (Exception exception)
         {
@@ -171,7 +196,23 @@ public sealed class QueueDrain
             _db.Entry(row).State = EntityState.Modified;
         }
 
-        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            LeaseLost(row);
+        }
+    }
+
+    void LeaseLost(QueuedMessage row)
+    {
+        // The lease ran out mid-delivery and another drain took the row and finished it:
+        // there is nothing left here to delete or to settle.
+        _db.Entry(row).State = EntityState.Detached;
+
+        _logger.LogWarning("A queued command outlived its lease and was delivered by another drain; it may have run twice.");
     }
 
     DateTime Due(DateTime now, int attempts)

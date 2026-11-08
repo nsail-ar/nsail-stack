@@ -44,8 +44,12 @@ public class QueuedMessage
 
     public DateTime EnqueuedAt { get; set; }
 
-    /// <summary>When the drain may next attempt it — the enqueue time on a fresh row, and the
-    /// backoff from the last failure afterwards.</summary>
+    /// <summary>When the drain may next attempt it — the enqueue time on a fresh row, the
+    /// backoff from the last failure afterwards, the longest rung on a row whose type this
+    /// process has no consumer for (<see cref="LastError"/> says so, <see cref="Attempts"/> is
+    /// untouched), and while a drain delivers the row the end of its lease
+    /// (<see cref="QueueOptions.Lease"/>). A future time alone does not say which: a delivery in
+    /// flight has no <see cref="LastError"/> from this pass.</summary>
     public DateTime NextAttemptAt { get; set; }
 
     public int Attempts { get; set; }
@@ -55,7 +59,8 @@ public class QueuedMessage
     /// a dead letter is evidence, and it is purged on purpose, never silently.</summary>
     public DateTime? DeadLetteredAt { get; set; }
 
-    // An exception's own words, which quote the value that threw.
+    // An exception's own words, which quote the value that threw — or, on a deferred row of an
+    // unregistered type, the note that no consumer is registered; that row has not failed.
     [Personal(PersonalData.FreeText)]
     public string? LastError { get; set; }
 }

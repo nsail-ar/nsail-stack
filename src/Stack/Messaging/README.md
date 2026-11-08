@@ -153,6 +153,7 @@ throws `ClientNotConfigured` naming the client and the message.
 | `MaxAttempts` | `5` | Failed deliveries before the row is dead-lettered; a row of a type this process has no consumer for waits a long backoff, spends no attempt and is not dead-lettered; it is delivered once a process registers the name stored on the row, and a message renamed or moved leaves rows nothing reaches, so drain a `[Queue]` message's pending rows before renaming it |
 | `Backoff` | `00:00:30` | Wait before the first retry; doubles per attempt |
 | `Interval` | `00:00:10` | How often the drain looks for due rows, per tenant |
+| `Lease` | `00:05:00` | How long a drain holds a claimed row; longer than the slowest delivery |
 | `BatchSize` | `50` | Rows delivered per pass |
 
 `AddQueue()` (send side) and `AddQueueDelivery()` (drain) are called by the generated
