@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.Extensions.DependencyInjection;
+using NSail.Data;
 using NSail.Settings;
 using NSail.Storage.Objects;
 using NSail.Storage.Providers;
@@ -63,6 +64,7 @@ public static class Api
         return new StorageManager(
             name,
             provider.GetRequiredService<StorageCredentialProvider>(),
-            provider.GetServices<IStorageProvider>());
+            provider.GetServices<IStorageProvider>(),
+            provider.GetService<TenancyProvider>());
     }
 }
