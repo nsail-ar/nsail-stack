@@ -42,14 +42,22 @@ public class SeatOutputTests
             await Shell.Git(dir, "commit", "-q", "-m", "base");
             var since = (await Shell.Git(dir, "rev-parse", "HEAD")).Trim();
             await Shell.Git(dir, "mv", ".github/workflows/ci.yml", ".github/ci.yml");
-            await File.WriteAllTextAsync(Path.Combine(dir, ".github", "workflows", "caf\u00e9\"x.yml"), "a\n");
+            await File.WriteAllTextAsync(Path.Combine(dir, ".github", "workflows", "caf\u00e9x.yml"), "a\n");
+            if (!OperatingSystem.IsWindows())
+            {
+                await File.WriteAllTextAsync(Path.Combine(dir, ".github", "workflows", "q\"a\nb.yml"), "a\n");
+            }
             await Shell.Git(dir, "add", "-A");
             await Shell.Git(dir, "commit", "-q", "-m", "work");
 
             var touched = SeatOutput.Protected(await SeatOutput.Changed(dir, since), [".github/workflows/**"]);
 
             Assert.Contains(".github/workflows/ci.yml", touched);
-            Assert.Contains(".github/workflows/caf\u00e9\"x.yml", touched);
+            Assert.Contains(".github/workflows/caf\u00e9x.yml", touched);
+            if (!OperatingSystem.IsWindows())
+            {
+                Assert.Contains(touched, t => t.StartsWith(".github/workflows/q\"a", StringComparison.Ordinal));
+            }
         }
         finally
         {

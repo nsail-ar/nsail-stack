@@ -32,8 +32,9 @@ public static class SeatOutput
 
     static Regex Glob(string glob)
     {
+        // Singleline: a name may hold a line break, which `.` must cross.
         var g = glob.Trim().Replace('\\', '/').TrimStart('/');
         var rx = "^" + Regex.Escape(g).Replace(@"\*\*/", "(.*/)?").Replace(@"\*\*", ".*").Replace(@"\*", "[^/]*").Replace(@"\?", "[^/]") + "$";
-        return new Regex(rx, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return new Regex(rx, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline);
     }
 }
