@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -143,6 +144,8 @@ public static class Setup
 
     public static void UseBaseWebApi(this WebApplication app)
     {
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("NSail.BaseServices.WebApi");
+
         if (app.Configuration.GetValue("ASPNETCORE_FORWARDEDHEADERS_ENABLED", false))
         {
             var forwardedHeadersOptions = new ForwardedHeadersOptions
@@ -150,10 +153,35 @@ public static class Setup
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
             };
 
+            // Only the proxies the install names are believed; the framework's loopback default
+            // goes too, so the list is the whole trust.
             forwardedHeadersOptions.KnownIPNetworks.Clear();
             forwardedHeadersOptions.KnownProxies.Clear();
 
+            var trusted = app.Services.GetRequiredService<SecurityOptions>().TrustedProxies;
+
+            foreach (var entry in trusted)
+            {
+                if (entry.Contains('/'))
+                {
+                    forwardedHeadersOptions.KnownIPNetworks.Add(IPNetwork.Parse(entry));
+                }
+                else
+                {
+                    forwardedHeadersOptions.KnownProxies.Add(IPAddress.Parse(entry));
+                }
+            }
+
+            if (trusted.Length == 0)
+            {
+                logger.LogWarning("ASPNETCORE_FORWARDEDHEADERS_ENABLED is on but Security:TrustedProxies is empty: no forwarded header is believed, so every caller behind a proxy shares the proxy's address.");
+            }
+
             app.UseForwardedHeaders(forwardedHeadersOptions);
+        }
+        else if (!app.Environment.IsDevelopment())
+        {
+            logger.LogWarning("Forwarded headers are off: behind a proxy every caller shares the proxy's address, so one flood closes every public door for everyone. Set ASPNETCORE_FORWARDEDHEADERS_ENABLED and Security:TrustedProxies.");
         }
 
         // Outermost, so the build that answered rides on every answer this host gives — a

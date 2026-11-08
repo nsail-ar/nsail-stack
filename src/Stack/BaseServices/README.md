@@ -71,7 +71,9 @@ the same exception path everywhere.
 `UseBaseWebApi` builds the pipeline in this order:
 
 1. Forwarded headers, only when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is true (`X-Forwarded-For`
-   and `X-Forwarded-Proto`, any proxy trusted).
+   and `X-Forwarded-Proto`), believed only from the peers in `Security:TrustedProxies`
+   (addresses or CIDR networks; empty trusts nobody and logs a warning). With the flag off outside
+   Development, startup logs a warning that behind a proxy all callers share one address.
 2. `BuildVersionMiddleware`: `BuildVersion.Current` on every response as `X-NSail-Version`.
 3. Error handler, then HTTPS redirection.
 4. `TenancyMiddleware` and `TenantStateMiddleware`, only where the host resolves a tenant.
@@ -79,7 +81,7 @@ the same exception path everywhere.
 6. `TenantClaimMiddleware`, only where the host resolves a tenant.
 7. `TicketEpochMiddleware`, every host: refuses a ticket stamped with a generation other than
    `Security:TicketEpoch` (0 refuses nothing).
-8. `ThrottleMiddleware`: a per-caller, per-message fixed window of one minute, read from the
+8. `ThrottleMiddleware`: a per-caller (IPv4 address, or IPv6 /64), per-message fixed window of one minute, read from the
    message's `[Throttled(perMinute)]` attribute; messages without it pass.
 9. `RequestBudgetMiddleware`: a per-tenant fixed window of one minute over every authenticated message send,
    against `RequestBudgetProvider.PerMinute` (the base answers null, no budget; a product

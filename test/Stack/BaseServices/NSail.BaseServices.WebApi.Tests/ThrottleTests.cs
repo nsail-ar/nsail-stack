@@ -96,6 +96,47 @@ public sealed class ThrottleTests
         Assert.Equal(StatusCodes.Status200OK, await host.From("203.0.113.8", Capped.Path));
     }
 
+    [Fact]
+    public async Task Addresses_of_one_IPv6_64_share_a_budget_and_another_64_does_not()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From($"2001:db8:1:2::{attempt + 1}", Capped.Path));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("2001:db8:1:2:ffff::9", Capped.Path));
+        Assert.Equal(StatusCodes.Status200OK, await host.From("2001:db8:1:3::1", Capped.Path));
+    }
+
+    [Fact]
+    public async Task A_forwarded_header_from_a_peer_that_is_not_a_trusted_proxy_is_ignored()
+    {
+        await using var host = await ThrottleHost.Start(forwarded: true, "10.0.0.0/8");
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From("203.0.113.7", Capped.Path, $"198.51.100.{attempt + 1}"));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("203.0.113.7", Capped.Path, "198.51.100.99"));
+    }
+
+    [Fact]
+    public async Task A_forwarded_header_from_a_trusted_proxy_names_the_caller()
+    {
+        await using var host = await ThrottleHost.Start(forwarded: true, "10.0.0.0/8");
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.1"));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("10.1.2.3", Capped.Path, "198.51.100.1"));
+        Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.2"));
+    }
+
     static async Task<string> Code(HttpResponseMessage response)
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -139,9 +180,19 @@ sealed class ThrottleHost : IAsyncDisposable
 
     HttpClient Client { get; set; } = null!;
 
-    public static async Task<ThrottleHost> Start()
+    public static async Task<ThrottleHost> Start(bool forwarded = false, params string[] trustedProxies)
     {
         var builder = WebApplication.CreateBuilder();
+
+        if (forwarded)
+        {
+            builder.Configuration["ASPNETCORE_FORWARDEDHEADERS_ENABLED"] = "true";
+        }
+
+        for (var index = 0; index < trustedProxies.Length; index++)
+        {
+            builder.Configuration[$"Security:TrustedProxies:{index}"] = trustedProxies[index];
+        }
 
         builder.WebHost.UseTestServer();
 
@@ -175,7 +226,7 @@ sealed class ThrottleHost : IAsyncDisposable
     /// <summary>The same request from a named address. The client cannot state one — TestServer
     /// leaves the connection bare — so the context is built by hand, which is the only way the
     /// per-caller half of the partition can be asked at all.</summary>
-    public async Task<int> From(string address, string path)
+    public async Task<int> From(string address, string path, string? forwardedFor = null)
     {
         var context = await _app.GetTestServer().SendAsync(request =>
         {
@@ -184,6 +235,11 @@ sealed class ThrottleHost : IAsyncDisposable
             request.Request.Host = new HostString("localhost");
             request.Request.Path = "/" + path;
             request.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(address);
+
+            if (forwardedFor is not null)
+            {
+                request.Request.Headers["X-Forwarded-For"] = forwardedFor;
+            }
         });
 
         return context.Response.StatusCode;

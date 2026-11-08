@@ -761,7 +761,9 @@ anonymous-exception list to maintain.
 a message over HTTP. `ThrottleMiddleware` (`NSail.BaseServices.WebApi`) reads it off the same
 `MessageEndpointMetadata` the gate reads and partitions .NET's fixed-window limiter per
 **message and caller**, the caller being `Connection.RemoteIpAddress` (already rewritten by
-`UseForwardedHeaders` where the install runs behind a proxy). Refusal is a `Problem`,
+`UseForwardedHeaders` where the install runs behind a proxy) — an IPv4 address, or the /64 of
+an IPv6 one, because a client owns its whole /64 and a full-address key would hand it a fresh
+budget per request. Forwarded headers are believed only from `Security:TrustedProxies`. Refusal is a `Problem`,
 `SecurityProblem.TooManyRequests` — 429, code `TooManyRequests` — so a client never has to
 recognise a refusal by status number alone.
 
