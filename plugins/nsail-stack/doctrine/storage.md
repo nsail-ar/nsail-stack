@@ -95,8 +95,9 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   accept the ask, read a whole database and fail on its last line. It is false for both of
   `Resolve`'s refusals, an install storing nowhere and a provider no host composed, because a
   caller at the door can do nothing different about either.
-- **The credential is sealed with the install's own key** (`KeyProtector`, `NSail.Security`).
-  `AddStorageWebApi` does not register one — the key is the host's — so a host that composes
+- **The credential is sealed with the key of the tenant it belongs to** (`KeyProtector`,
+  `NSail.Security`; `AddTenantKeys` reads one file per tenant, and a tenant without one makes the
+  seal throw). `AddStorageWebApi` does not register one — the key is the host's — so a host that composes
   Storage without it fails by name on first use rather than sealing under a key nobody chose.
 
 ## The S3 provider
