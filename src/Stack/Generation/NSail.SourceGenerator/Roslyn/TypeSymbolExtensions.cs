@@ -17,4 +17,21 @@ public static class TypeSymbolExtensions
             }
         }
     }
+
+    /// <summary>Every property the type exposes, inherited ones included, an override once.</summary>
+    public static IEnumerable<IPropertySymbol> GetAllProperties(this ITypeSymbol type)
+    {
+        var overridden = new HashSet<IPropertySymbol>(SymbolEqualityComparer.Default);
+
+        foreach (var property in type.GetAllMembers().OfType<IPropertySymbol>())
+        {
+            if (overridden.Contains(property.OriginalDefinition))
+                continue;
+
+            if (property.OverriddenProperty is { } baseProperty)
+                overridden.Add(baseProperty.OriginalDefinition);
+
+            yield return property;
+        }
+    }
 }

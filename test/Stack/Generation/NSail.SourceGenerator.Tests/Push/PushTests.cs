@@ -126,6 +126,32 @@ public class PushTests
         Assert.Contains("ConversationId", reported.GetMessage());
     }
 
+    [Fact]
+    public void AnInheritedPropertyOnAPushedMessageIsABuildError()
+    {
+        var diagnostics = Diagnose(new PushPublishersSourceGenerator(), """
+            public abstract class RowEvent : IMessage
+            {
+                public System.Guid RowId { get; set; }
+            }
+
+            [Pushed]
+            public class InboxRowChanged : RowEvent
+            {
+            }
+
+            public static partial class Publishers
+            {
+                [Generated(Push.Publishers)]
+                public static partial void AddInboxPushPublishers(this IServiceCollection services);
+            }
+            """);
+
+        var reported = Assert.Single(diagnostics.Where(d => d.Id == "NSG003"));
+
+        Assert.Contains("RowId", reported.GetMessage());
+    }
+
     static ImmutableArray<Diagnostic> Diagnose(IIncrementalGenerator generator, string holder)
     {
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);

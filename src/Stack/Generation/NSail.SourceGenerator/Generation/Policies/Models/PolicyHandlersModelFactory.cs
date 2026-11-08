@@ -31,7 +31,7 @@ public static class PolicyHandlersModelFactory
 
             var fields = new List<PolicyFieldModel>();
 
-            foreach (var member in typeSymbol.GetMembers().OfType<IPropertySymbol>())
+            foreach (var member in typeSymbol.GetAllProperties())
             {
                 var attribute = member.GetAttribute(PolicyFieldAttributeName);
                 if (attribute is null)
