@@ -74,6 +74,10 @@ public sealed class JobTimeoutTests
 
         Assert.Equal(["beta"], swept.Slugs);
 
+        meters.Poll();
+
+        Assert.Equal(1, meters.Passes("HangingJob", BackgroundJobMetrics.Failed));
+
         var error = Assert.Single(logs.Entries, entry => entry.Level == LogLevel.Error);
 
         Assert.Contains("HangingJob", error.Message);

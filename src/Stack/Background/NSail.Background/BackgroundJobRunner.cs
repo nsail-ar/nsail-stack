@@ -202,10 +202,15 @@ sealed class BackgroundJobRunner : BackgroundService
     // about the customer and is not a pass at all.
     async Task<bool> Run(Type jobType, Tenant? tenant, CancellationToken stoppingToken)
     {
+        var scope = Scope();
+        var timeout = _options.TimeoutOf(jobType.Name);
+
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+
+        Task? abandoned = null;
+
         try
         {
-            await using var scope = Scope();
-
             if (tenant is not null)
             {
                 // Exactly what the request edge does (TenancyMiddleware), from the one place
@@ -226,10 +231,6 @@ sealed class BackgroundJobRunner : BackgroundService
                 }
             }
 
-            var timeout = _options.TimeoutOf(jobType.Name);
-
-            using var budget = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-
             budget.CancelAfter(timeout);
 
             // The token asks first; WaitAsync is what stops the sweep waiting for a job that
@@ -242,9 +243,7 @@ sealed class BackgroundJobRunner : BackgroundService
             }
             catch (TimeoutException)
             {
-                // Abandoned, not stopped: its eventual failure is observed so it does not
-                // surface as an unobserved task exception.
-                _ = pass.ContinueWith(static task => task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+                abandoned = pass;
 
                 throw;
             }
@@ -257,20 +256,20 @@ sealed class BackgroundJobRunner : BackgroundService
         {
             throw;
         }
-        catch (Exception exception) when (exception is TimeoutException or OperationCanceledException)
+        catch (Exception exception) when (abandoned is not null || (exception is OperationCanceledException && budget.IsCancellationRequested))
         {
-            // The budget fired, not the host: past it the pass is abandoned and counted failed
-            // so the sweep reaches the next tenant.
+            // The budget fired, not the host and not the job's own cancellation: the pass is
+            // counted failed so the sweep reaches the next tenant.
             _meter.Passed(jobType.Name, succeeded: false);
 
             if (tenant is null)
             {
-                _logger.LogError("Background job {Job} exceeded its budget of {Timeout} and was abandoned; the runner continues on its next tick.", jobType.Name, _options.TimeoutOf(jobType.Name));
+                _logger.LogError("Background job {Job} exceeded its budget of {Timeout} and was cut off; the runner continues on its next tick.", jobType.Name, _options.TimeoutOf(jobType.Name));
             }
             else
             {
                 _logger.LogError(
-                    "Background job {Job} exceeded its budget of {Timeout} for tenant {Tenant} and was abandoned; the sweep continues with the next tenant.",
+                    "Background job {Job} exceeded its budget of {Timeout} for tenant {Tenant} and was cut off; the sweep continues with the next tenant.",
                     jobType.Name,
                     _options.TimeoutOf(jobType.Name),
                     tenant.Slug);
@@ -300,6 +299,10 @@ sealed class BackgroundJobRunner : BackgroundService
             }
 
             return true;
+        }
+        finally
+        {
+            await Abandonment.Release(scope, abandoned).ConfigureAwait(false);
         }
     }
 

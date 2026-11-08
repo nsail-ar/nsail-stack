@@ -84,10 +84,12 @@ sealed class DeferredWorkRunner : BackgroundService
             CultureInfo.CurrentUICulture = culture;
         }
 
+        var scope = _scopes.CreateAsyncScope();
+
+        Task? abandoned = null;
+
         try
         {
-            await using var scope = _scopes.CreateAsyncScope();
-
             item.Enter(scope.ServiceProvider);
 
             var work = item.Work(scope.ServiceProvider, budget.Token);
@@ -100,7 +102,7 @@ sealed class DeferredWorkRunner : BackgroundService
             }
             catch (TimeoutException)
             {
-                _ = work.ContinueWith(static task => task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+                abandoned = work;
 
                 throw;
             }
@@ -111,19 +113,30 @@ sealed class DeferredWorkRunner : BackgroundService
         {
             throw;
         }
-        catch (Exception exception) when (exception is OperationCanceledException or TimeoutException)
+        catch (Exception exception) when (abandoned is not null || (exception is OperationCanceledException && budget.IsCancellationRequested))
         {
-            // budget fired and not the host: the item ran past its own timeout, not past
+            // The budget fired and not the host: the item ran past its own timeout, not past
             // shutdown.
             Report(item.Kind, DeferredWorkMetrics.TimedOut);
 
-            _logger.LogError("Deferred work timed out after {Timeout}{Abandoned}; the queue continues with the next item.", _timeout, exception is TimeoutException ? " and ignored its token, so it was abandoned" : "");
+            if (abandoned is null)
+            {
+                _logger.LogError("Deferred work timed out after {Timeout}; the queue continues with the next item.", _timeout);
+            }
+            else
+            {
+                _logger.LogError("Deferred work ignored its token and was abandoned after {Timeout}; the queue continues with the next item.", _timeout);
+            }
         }
         catch (Exception exception)
         {
             Report(item.Kind, DeferredWorkMetrics.Failed);
 
             _logger.LogError(exception, "Deferred work failed; the queue continues with the next item.");
+        }
+        finally
+        {
+            await Abandonment.Release(scope, abandoned).ConfigureAwait(false);
         }
     }
 
