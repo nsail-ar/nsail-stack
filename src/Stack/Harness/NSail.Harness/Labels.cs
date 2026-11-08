@@ -30,8 +30,14 @@ public static class Labels
     // A story the telemetry watch opened from an error the fleet logged.
     public const string Telemetry = "telemetry";
 
+    // A hand's word that the story's builder may touch the protected paths (HarnessOptions.ProtectedPaths).
+    public const string AllowProtected = "allow-protected";
+
     // A story's product area: `area:{name}`.
     public const string AreaPrefix = "area:";
+
+    // What a seat's labels.txt never sets: the machine's locks and holds, and a hand's priority.
+    public static readonly string[] SeatForbidden = [Claimed, Review, Analyzing, Walking, Ruling, Stalled, Blocked, Hand, P1, AllowProtected];
 
     public static readonly string[] Locks = [Claimed, Review, Analyzing, Walking];
 

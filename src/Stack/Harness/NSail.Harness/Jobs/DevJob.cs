@@ -188,6 +188,15 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         var pushed = false;
         if (ahead > 0)
         {
+            var touched = ctx.Options.AllowProtectedPaths || (await board.Labels(n, ct)).Contains(Labels.AllowProtected)
+                ? []
+                : SeatOutput.Protected((await Shell.Git(dir, "diff", "--name-only", $"{since}..HEAD")).Split('\n'), ctx.Options.ProtectedPaths);
+            if (touched.Count > 0)
+            {
+                await board.RemoveLabel(n, Labels.Claimed);
+                await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.ProtectedPaths, ("paths", string.Join(", ", touched.Select(f => $"`{f}`"))), ("label", Labels.AllowProtected))));
+                return new Ending("push refused — protected paths touched", Failed: true);
+            }
             await repo.Push(dir, branch, startedAt, ct);
             pushed = true;
         }
@@ -199,7 +208,11 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             var lines = close.Split('\n', 2);
             if (int.TryParse(lines[0].Trim().TrimStart('#'), out var dead))
             {
-                await repo.ClosePr(dead, JobContext.Signed(lines.Length > 1 ? lines[1].Trim() : ctx.Texts.CannotContinue, Seat), ct);
+                if (!(await repo.PrsOf(n, "open", ct)).Any(p => p.Number == dead))
+                {
+                    await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.NotOwnPr, ("pr", dead))));
+                }
+                else await repo.ClosePr(dead, JobContext.Signed(lines.Length > 1 ? lines[1].Trim() : ctx.Texts.CannotContinue, Seat), ct);
             }
         }
 
