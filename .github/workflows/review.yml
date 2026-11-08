@@ -54,6 +54,8 @@ jobs:
     env:
       R: ${{ github.repository }}
       Q: nsail-ar/nsail
+      # The crew's login: the one writer, beside the Actions bot, whose review markers count.
+      CREW: nsail-software
       STAGE_FIELD: "47730047"
       FINDINGS: .vigia-review.md
     steps:
