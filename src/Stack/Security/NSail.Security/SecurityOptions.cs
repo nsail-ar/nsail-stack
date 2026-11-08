@@ -23,4 +23,10 @@ public class SecurityOptions
     /// comparison is equality — a ticket stamped with ANY other generation, the unstamped one
     /// included, names a session this install no longer honours.</para></summary>
     public int TicketEpoch { get; set; }
+
+    /// <summary>The proxies whose <c>X-Forwarded-*</c> headers are believed when
+    /// <c>ASPNETCORE_FORWARDEDHEADERS_ENABLED</c> is on: addresses or CIDR networks
+    /// (<c>10.0.0.0/8</c>). A header from any other peer is ignored, so a caller who reaches the
+    /// app port directly cannot pick its own address. Empty trusts nobody.</summary>
+    public string[] TrustedProxies { get; set; } = [];
 }

@@ -71,7 +71,11 @@ the same exception path everywhere.
 `UseBaseWebApi` builds the pipeline in this order:
 
 1. Forwarded headers, only when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is true (`X-Forwarded-For`
-   and `X-Forwarded-Proto`, any proxy trusted).
+   and `X-Forwarded-Proto`), believed only from the peers in `Security:TrustedProxies`
+   (addresses or CIDR networks). Empty trusts nobody and logs a warning: behind a proxy every
+   request then reads as `http`, so HSTS is not sent and HTTPS redirection can loop, and naming
+   the proxy is required to keep both. With the flag off outside
+   Development, startup logs a warning that behind a proxy all callers share one address.
 2. `BuildVersionMiddleware`: `BuildVersion.Current` on every response as `X-NSail-Version`.
 3. Error handler, then HTTPS redirection.
 4. `TenancyMiddleware` and `TenantStateMiddleware`, only where the host resolves a tenant.
@@ -79,7 +83,7 @@ the same exception path everywhere.
 6. `TenantClaimMiddleware`, only where the host resolves a tenant.
 7. `TicketEpochMiddleware`, every host: refuses a ticket stamped with a generation other than
    `Security:TicketEpoch` (0 refuses nothing).
-8. `ThrottleMiddleware`: a per-caller, per-message fixed window of one minute, read from the
+8. `ThrottleMiddleware`: a per-caller (IPv4 address, or IPv6 /64), per-message fixed window of one minute, read from the
    message's `[Throttled(perMinute)]` attribute; messages without it pass.
 9. `RequestBudgetMiddleware`: a per-tenant fixed window of one minute over every authenticated message send,
    against `RequestBudgetProvider.PerMinute` (the base answers null, no budget; a product
@@ -109,7 +113,7 @@ router render its NotFound (it leaves `/api` and file-looking paths alone).
 | Section | Keys | Read by |
 |---|---|---|
 | `Language` | `Base` (default `en`), `Default` (default `en`), `Offered` (default empty, meaning `Default` alone) | `UseBaseWebApp` request localization, the suspended page |
-| `Security` | `TicketEpoch` (int, default 0) | `TicketEpochMiddleware` |
+| `Security` | `TicketEpoch` (int, default 0); `TrustedProxies` (addresses or CIDR networks, default none) | `TicketEpochMiddleware`; forwarded headers |
 | `Tenancy` | `Mode`, `StateCacheSeconds`, `SupportContact`, ... | the tenant steps; options are `TenancyOptions` in `NSail.Data` |
 | `Telemetry` | see [Telemetry](../Telemetry/README.md) | `AddBaseWebApi` |
 | `HttpClients` | `<Area>:BaseUrl`, `<Area>:TimeoutSeconds` | `AddHttpClients` (Wasm), from `NSail.Messaging.Http` |
@@ -117,7 +121,7 @@ router render its NotFound (it leaves `/api` and file-looking paths alone).
 ```json
 {
   "Language": { "Base": "en", "Default": "es", "Offered": ["es", "en"] },
-  "Security": { "TicketEpoch": 0 },
+  "Security": { "TicketEpoch": 0, "TrustedProxies": [] },
   "HttpClients": { "Tasks": { "BaseUrl": "{scheme}://{host}:{port}", "TimeoutSeconds": 30 } }
 }
 ```

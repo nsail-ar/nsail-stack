@@ -50,6 +50,9 @@ the app (the suspended page, below).
 
 `UseBaseWebApi(app)` configures, in order:
 
+- Forwarded headers, when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is on: believed only from the
+  proxies in `Security:TrustedProxies`; with none named the middleware is not installed, so
+  behind a proxy the scheme reads as `http` too (no HSTS, and HTTPS redirection can loop).
 - `BuildVersionMiddleware` — the build this host is running (`BuildVersion.Current`) on
   **every** response, under `X-NSail-Version`. Outermost, and stamped through
   `Response.OnStarting` rather than on the way in, because `ErrorMiddleware` clears the
