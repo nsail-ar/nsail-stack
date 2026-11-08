@@ -174,11 +174,15 @@ public sealed class Workspace
             await WriteConfig();
             await Shell.Git(Bare, [.. Guard, "fetch", "--prune", "-q", _repoUrl, "+refs/heads/*:refs/remotes/origin/*"]);
             // A local story branch left by an earlier job would shadow the remote one a
-            // later round must continue; every branch not checked out in a slot goes.
+            // later round must continue; every branch not checked out in a slot goes, unless it holds commits no remote has.
             var heads = await Shell.Git(Bare, "for-each-ref", "--format=%(refname:short)", "refs/heads");
             foreach (var head in heads.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                if (head != _branch) await Shell.Run("git", ["branch", "-D", head], Bare);
+                if (head == _branch) continue;
+                // A branch with commits no remote ref holds is unpushed work: it stays.
+                var unpushed = await Shell.Run("git", ["rev-list", "--count", $"refs/heads/{head}", "--not", "--remotes"], Bare);
+                if (unpushed.ExitCode == 0 && int.TryParse(unpushed.Output.Trim(), out var n) && n > 0) continue;
+                await Shell.Run("git", ["branch", "-D", head], Bare);
             }
 
             if (!Directory.Exists(Path.Combine(path, ".git")) && !File.Exists(Path.Combine(path, ".git")))

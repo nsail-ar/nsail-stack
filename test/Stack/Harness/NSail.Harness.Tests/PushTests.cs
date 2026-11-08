@@ -129,4 +129,29 @@ public class PushTests : IDisposable
 
         Assert.Equal(start, await RemoteHead(Branch));
     }
+
+    [Fact]
+    public async Task RescuePutsCommitsAheadOnARescueRefAndNeverOverwritesOne()
+    {
+        var (dir, _, start) = await Sailing();
+        var added = await Commit(dir, "B");
+
+        var first = await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1");
+        var later = await Commit(dir, "C");
+        var second = await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1");
+
+        Assert.Equal("rescue/oz-1", first);
+        Assert.Equal("rescue/oz-1-2", second);
+        Assert.Equal(added, await RemoteHead("rescue/oz-1"));
+        Assert.Equal(later, await RemoteHead("rescue/oz-1-2"));
+        Assert.Equal(start, await RemoteHead(Branch));
+    }
+
+    [Fact]
+    public async Task RescueWithNothingAheadPushesNothing()
+    {
+        var (dir, _, start) = await Sailing();
+
+        Assert.Null(await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1"));
+    }
 }

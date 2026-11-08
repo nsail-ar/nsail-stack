@@ -111,14 +111,31 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             ["BRANCH"] = branch,
         }, ct);
 
-        var result = await ctx.RunSeat(new AgentRun(
-            prompt, work, model,
-            Access: AgentAccess.Builder,
-            MaxTurns: 300,
-            Timeout: TimeSpan.FromMinutes(Step.Minutes),
-            Env: ctx.SeatEnv(env),
-            LogPath: logPath,
-            Marketplace: doctrine), ct);
+        AgentResult result;
+        try
+        {
+            result = await ctx.RunSeat(new AgentRun(
+                prompt, work, model,
+                Access: AgentAccess.Builder,
+                MaxTurns: 300,
+                Timeout: TimeSpan.FromMinutes(Step.Minutes),
+                Env: ctx.SeatEnv(env),
+                LogPath: logPath,
+                Marketplace: doctrine), ct);
+        }
+        catch
+        {
+            // A cancelled or crashed run never reaches Deliver: the slot's next Prepare resets it.
+            try
+            {
+                await Rescue(n, repo, work, startedAt ?? ctx.WorkspaceOf(repo).Tip, log);
+            }
+            catch (Exception e)
+            {
+                log.LogError(e, "#{Story}: the rescue push failed", n);
+            }
+            throw;
+        }
 
         var ending = await Deliver(n, title, repo, work, branch, startedAt, claimedAt, result, log, ct);
         return ending.Outcome(result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : null);
@@ -171,6 +188,34 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         return remote.ExitCode == 0 ? from : null;
     }
 
+    // Commits ahead of `since` go to a ref of their own, unleased and never the story's: a push that must
+    // survive a cancelled job or a refused lease. Returns the ref, null when nothing was ahead.
+    async Task<string?> Rescue(int n, IRepository repo, string dir, string since, ILogger log)
+    {
+        var name = $"rescue/{ctx.Names.Key}-{n}";
+        var rescued = await RescueRef(repo, dir, since, name);
+        if (rescued is not null) log.LogWarning("#{Story}: unpushed work rescued to {Ref}", n, rescued);
+        return rescued;
+    }
+
+    internal static async Task<string?> RescueRef(IRepository repo, string dir, string since, string name)
+    {
+        var ahead = int.Parse((await Shell.Git(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
+        if (ahead == 0) return null;
+        for (var i = 0; ; i++)
+        {
+            var candidate = i == 0 ? name : $"{name}-{i + 1}";
+            try
+            {
+                await repo.Push(dir, candidate, null, CancellationToken.None);
+                return candidate;
+            }
+            catch (InvalidOperationException) when (i < 20)
+            {
+            }
+        }
+    }
+
     // What the builder committed goes up first, unless it touches a protected path: work is never lost to the axe.
     // Then its ending, exactly one: a PR's words, a ruling, a hand-off; none is a dead voyage.
     async Task<Ending> Deliver(int n, string title, IRepository repo, string dir, string branch, string? startedAt, DateTimeOffset claimedAt, AgentResult result, ILogger log, CancellationToken ct)
@@ -198,8 +243,20 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
                 if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
                 return new Ending("push refused — protected paths touched", Failed: true);
             }
-            await repo.Push(dir, branch, startedAt, ct);
-            pushed = true;
+            try
+            {
+                await repo.Push(dir, branch, startedAt, ct);
+                pushed = true;
+            }
+            catch (InvalidOperationException refused)
+            {
+                log.LogWarning("#{Story}: {Refused}", n, refused.Message);
+                var rescue = await Rescue(n, repo, dir, since, log);
+                await board.RemoveLabel(n, Labels.Claimed);
+                await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.PushRefused, ("branch", branch), ("rescue", rescue))));
+                if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
+                return new Ending($"push refused — work on {rescue}", Failed: true);
+            }
         }
 
         await board.RemoveLabel(n, Labels.Claimed);
