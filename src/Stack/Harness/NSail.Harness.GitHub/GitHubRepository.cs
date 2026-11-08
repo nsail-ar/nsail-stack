@@ -50,14 +50,19 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         }
         while (cursor is not null);
 
-        // CI by each PR's head sha: the repository's newest runs say nothing of a PR that went quiet.
-        var bySha = new Dictionary<string, List<JsonElement>>();
-        foreach (var sha in raw.Where(pr => !pr.GetProperty("isDraft").GetBoolean()).Select(pr => pr.GetProperty("headRefOid").GetString() ?? "").Distinct())
+        var open = raw.Where(pr => !pr.GetProperty("isDraft").GetBoolean()).ToList();
+
+        // One wide read of the newest runs; a head it did not bring (a PR gone quiet) is read by its sha.
+        var window = await gh.Get($"repos/{repo}/actions/runs?event=pull_request&per_page=100", ct);
+        var bySha = window.GetProperty("workflow_runs").EnumerateArray()
+            .GroupBy(r => r.GetProperty("head_sha").GetString() ?? "")
+            .ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var sha in open.Select(pr => pr.GetProperty("headRefOid").GetString() ?? "").Distinct().Where(sha => !bySha.ContainsKey(sha)))
         {
             bySha[sha] = await gh.GetAll($"repos/{repo}/actions/runs?head_sha={Uri.EscapeDataString(sha)}&event=pull_request&per_page=100", b => b.GetProperty("workflow_runs"), ct: ct);
         }
 
-        return raw.Where(pr => !pr.GetProperty("isDraft").GetBoolean()).Select(pr =>
+        return open.Select(pr =>
         {
             var sha = pr.GetProperty("headRefOid").GetString() ?? "";
             var shaRuns = bySha.GetValueOrDefault(sha);
@@ -171,6 +176,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
 
     public async Task<IReadOnlyList<string>> Files(int pr, CancellationToken ct = default)
     {
+        // 30 pages of 100: GitHub lists no more than 3,000 files of a PR.
         var files = await gh.GetAll($"repos/{repo}/pulls/{pr}/files?per_page=100", maxPages: 30, ct: ct);
         return files.Select(f => $"{f.GetProperty("filename").GetString()} (+{f.GetProperty("additions").GetInt32()} -{f.GetProperty("deletions").GetInt32()})").ToList();
     }
@@ -356,7 +362,8 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
 
     public async Task<IReadOnlyList<Release>> Releases(CancellationToken ct = default)
     {
-        var releases = await gh.GetAll($"repos/{repo}/releases?per_page=100", ct: ct);
+        // The newest 100: every reader takes the head of the list.
+        var releases = (await gh.Get($"repos/{repo}/releases?per_page=100", ct)).EnumerateArray();
         return releases
             .Where(r => !r.GetProperty("draft").GetBoolean() && r.TryGetProperty("published_at", out var p) && p.ValueKind == JsonValueKind.String)
             .Select(r => new Release(r.GetProperty("tag_name").GetString() ?? "", r.GetProperty("published_at").GetDateTimeOffset()))

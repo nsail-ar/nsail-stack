@@ -77,4 +77,27 @@ public class GitHubPagingTests
         await repo.Ci("story/nsail-1", "abc123");
         Assert.Contains("head_sha=abc123", pages.Requests.Single());
     }
+
+    sealed class Routed(Func<string, string> answer) : HttpMessageHandler
+    {
+        public List<string> Requests { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Requests.Add(request.RequestUri!.PathAndQuery);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(answer(request.RequestUri.PathAndQuery), Encoding.UTF8, "application/json") });
+        }
+    }
+
+    [Fact]
+    public async Task AQuietPrIsReadByItsHeadShaWhenTheWideReadMissesIt()
+    {
+        var routed = new Routed(path => path.Contains("graphql")
+            ? """{"data":{"repository":{"pullRequests":{"nodes":[{"number":7,"title":"t","headRefName":"b","headRefOid":"old777","isDraft":false,"mergeable":"MERGEABLE","updatedAt":"2026-01-01T00:00:00Z"}],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}"""
+            : """{"workflow_runs":[]}""");
+        var client = new GitHubClient(new HttpClient(routed) { BaseAddress = new Uri("https://api.github.com/") });
+        var repo = new GitHubRepository(client, new RepositoryOptions { Name = "o/r" }, new StoryNames("app", ["story"]), "t");
+        await repo.OpenPrs();
+        Assert.Contains(routed.Requests, r => r.Contains("head_sha=old777"));
+    }
 }
