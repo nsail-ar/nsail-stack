@@ -32,12 +32,11 @@
    min-w-0 on either box and no text-truncate on the title: a flex item with a zero floor
    shrinks to nothing before a row ever considers wrapping, which hands the heading's word to
    the icon boxes beside it. Both faces below carry the rule, and the wrap costs the row
-   nothing where both boxes already fit. The brand beside the toggle is the one tenant of the
-   title's box that does give way (ns-title-brand, ns-mud.css). *@
+   nothing where both boxes already fit. *@
 @if (OnMain)
 {
     <NsStack Horizontal Wrap Align="NsAlign.Center" Justify="NsAlign.SpaceBetween">
-        <div class="d-flex align-center ns-title-lead">
+        <div class="d-flex align-center">
             @if (OwnsToggle)
             {
                 <span class="@GetToggleClasses()">
@@ -55,16 +54,6 @@
                                        OnClick="LayoutState!.ToggleDrawer" />
                     </CascadingValue>
                 </span>
-                @* The install's brand, where the drawer that owns it is shut behind the toggle
-                   above: what rides under its name then reads without opening the menu, as far
-                   as the title leaves it room (THE PAGE NAME NEVER GIVES WAY, above). Open,
-                   the drawer's own header draws it, so a class hides this copy: drawn, never
-                   mounted and unmounted, or the brand's load would re-run on every toggle. *@
-                @if (LayoutState!.Brand is { } brand)
-                {
-                    _readsLayout = true;
-                    <div class="@GetBrandClasses()"><div class="ns-title-brand-fit">@brand</div></div>
-                }
             }
             <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center">
                 @* The page's glyph and the loading indicator share ONE slot, never two — see the
@@ -122,11 +111,6 @@ else if (!Hoisted)
 
     Glyph? _derivedIcon;
     bool _resolved;
-
-    // What the last render read of the layout's state: the brand and whether the sheet covers
-    // this row. A row that drew neither has no reason to redraw when the drawer moves.
-    bool _readsLayout;
-    bool _drewSummoned;
 
     /// <summary>The panel's title row: title on the left, actions then the close icon on
     /// the right. Goes inside NsPanel/NsCard's Header slot — not inside page content,
@@ -212,12 +196,6 @@ else if (!Hoisted)
         {
             Surface.StateChanged += OnSurfaceStateChanged;
         }
-
-        if (LayoutState is not null)
-        {
-            LayoutState.BrandChanged += OnBrandChanged;
-            LayoutState.Changed += OnDrawerChanged;
-        }
     }
 
     protected override async Task OnParametersSetAsync()
@@ -259,17 +237,6 @@ else if (!Hoisted)
             .ToString();
     }
 
-    // One face or the other, never both: the vendor's d-flex and d-none are plain utilities of
-    // one specificity, and the later declaration wins.
-    string GetBrandClasses()
-    {
-        _drewSummoned = LayoutState!.DrawerIsSummoned;
-
-        return new NsClassBuilder(_drewSummoned ? "d-none" : NsResponsive.ShownBelowWindow(NsSize.Md))
-            .Add("align-center ns-title-brand", !_drewSummoned)
-            .ToString();
-    }
-
     // Only one caller (NsPageHeader) forwards an override, so the derivation itself lives
     // here once instead of being duplicated at every place a title bar is used.
     Glyph? GetIcon()
@@ -298,22 +265,6 @@ else if (!Hoisted)
         return NavMenuItem.GlyphFor(await Menu.GetItems(AuthenticationState), Routes, path);
     }
 
-    void OnBrandChanged()
-    {
-        if (_readsLayout)
-        {
-            OnSurfaceStateChanged();
-        }
-    }
-
-    void OnDrawerChanged()
-    {
-        if (_readsLayout && _drewSummoned != LayoutState!.DrawerIsSummoned)
-        {
-            OnSurfaceStateChanged();
-        }
-    }
-
     void OnSurfaceStateChanged()
     {
         _ = InvokeAsync(StateHasChanged);
@@ -321,12 +272,6 @@ else if (!Hoisted)
 
     public void Dispose()
     {
-        if (LayoutState is not null)
-        {
-            LayoutState.BrandChanged -= OnBrandChanged;
-            LayoutState.Changed -= OnDrawerChanged;
-        }
-
         if (Surface is not null)
         {
             Surface.StateChanged -= OnSurfaceStateChanged;

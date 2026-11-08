@@ -138,42 +138,6 @@ public sealed class NsTitleBarAnnouncementTests : BunitContext, IAsyncLifetime
         Assert.True(state.DrawerIsOpen);
     }
 
-    [Fact]
-    public async Task TheDrawersBrandRidesTheTitleRowWhileTheDrawerIsShut()
-    {
-        var surface = Setup();
-        var state = new NsLayoutState { Brand = b => b.AddMarkupContent(0, "<i id=\"brand\">Acme</i>") };
-
-        var cut = Render<MainSurfaceChromeHost>(p => p
-            .Add(x => x.Surface, surface)
-            .Add(x => x.LayoutState, state)
-            .Add(x => x.Title, "Personas"));
-
-        var bar = cut.FindComponent<NsTitleBar>();
-
-        Assert.Contains("d-md-none", BrandWrapper(bar).ClassList);
-        Assert.Contains("ns-title-brand", BrandWrapper(bar).ClassList);
-
-        // The layout's initial open state is not a sheet over the row.
-        await cut.InvokeAsync(() => state.DrawerIsOpen = true);
-        Assert.Contains("d-md-none", BrandWrapper(bar).ClassList);
-
-        await cut.InvokeAsync(() => state.DrawerIsOpen = false);
-        await cut.InvokeAsync(state.ToggleDrawer);
-
-        // Summoned, the drawer's own header draws it: this copy stays mounted, with one face.
-        var classes = BrandWrapper(bar).ClassList;
-        Assert.Contains("d-none", classes);
-        Assert.DoesNotContain("d-flex", classes);
-    }
-
-    // Found through the caller's fragment, so a row that stops drawing it cannot pass: the fragment
-    // sits in the brand's fit box, inside the wrapper that carries the display swap.
-    static AngleSharp.Dom.IElement BrandWrapper(IRenderedComponent<NsTitleBar> bar)
-    {
-        return bar.Find(".ns-title-brand-fit > #brand").ParentElement!.ParentElement!;
-    }
-
     /// <summary>nsail#1460: this row is drawn inside whatever the page wrapped its panel in, and
     /// that is usually an NsForm — whose cascade MudBaseButton reads for itself. The drawer is
     /// the shell's: reaching the menu writes nothing, so a save the hamburger has no part in must
