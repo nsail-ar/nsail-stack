@@ -50,6 +50,23 @@ public sealed class StorageCredentialProvider
             .ToList();
     }
 
+    // The settings row that answers for the name, or null where the install's own target does:
+    // only a row is written by someone the install does not control.
+    public async Task<StorageTargetSettings?> Row(string name, CancellationToken cancellationToken = default)
+    {
+        var settings = await _settings.Get<StorageSettings>(cancellationToken);
+
+        foreach (var candidate in new[] { name, StorageNames.Default })
+        {
+            if (settings.For(candidate) is { Provider.Length: > 0 } row)
+            {
+                return row;
+            }
+        }
+
+        return null;
+    }
+
     StorageTarget? Own(StorageSettings settings, string name)
     {
         var row = settings.For(name);

@@ -88,9 +88,23 @@ anywhere stores nowhere.
 | `Branch` | The branch objects are committed to (`git`); defaults to `main`. |
 | `LinkTemplate` | Where an object is read (`git`), `{key}` standing for its path, e.g. a private repository's raw address. No template, no link. |
 
+`StorageGuardOptions` is what the settings screen may point a store at; the install passes it as
+`AddStorageWebApi(install, guard)`, and save and test both refuse a target outside it with a coded
+issue. Install targets (`StorageOptions`) are trusted and not checked by it.
+
+| Member | Meaning |
+|---|---|
+| `FileRoots` | Directories a `file` container must be or sit under. Empty: settings cannot name a `file` container. |
+| `AllowedSchemes` | Endpoint schemes; default `https` only. |
+| `AllowedHosts` | When set, the endpoint's host is one of these or a subdomain. |
+| `AllowPrivateAddresses` | Default false: loopback, link-local, private and `.local`/`.internal` hosts are refused (literal addresses and what the name resolves to). |
+
+Saving a changed `Provider`, `Endpoint` or `Container` with no new secret clears the stored one.
+`TestStorageTarget` answers a failed probe with a fixed message and logs the detail.
+
 | Call | Meaning |
 |---|---|
-| `AddStorageWebApi(install)` | The default store's `StorageManager` (unkeyed, and keyed `StorageNames.Default`), the endpoints, in-process clients and permissions, and `AddSettings()`. Registers no provider and no `KeyProtector`: the host registers the key that seals the stored secrets. |
+| `AddStorageWebApi(install, guard)` | The default store's `StorageManager` (unkeyed, and keyed `StorageNames.Default`), the endpoints, in-process clients and permissions, and `AddSettings()`. Registers no provider and no `KeyProtector`: the host registers the key that seals the stored secrets. |
 | `AddStore(name, install)` | Declares a store: a keyed `StorageManager` under `name`, and a row on the settings screen. `install` is optional; declared again with one, the last target wins. |
 | `AddFileSystemStorage()` | The `file` provider. |
 | `AddS3Storage()` | The `s3` provider and its `HttpClient`, with no wall-clock timeout; the caller's `CancellationToken` is the deadline. |

@@ -191,7 +191,8 @@ public sealed class NamedStoresTests : IDisposable
 
         services.AddSingleton<SettingsManager>(_settings);
         services.AddSingleton(new KeyProtector("NamedStoresTests"));
-        services.AddStorageWebApi(OnDisk("default"));
+        services.AddLogging();
+        services.AddStorageWebApi(OnDisk("default"), new StorageGuardOptions { FileRoots = [_container.Path] });
         services.AddFileSystemStorage();
         services.AddS3Storage();
         services.AddScoped<IStorageProvider>(_ => _memory);

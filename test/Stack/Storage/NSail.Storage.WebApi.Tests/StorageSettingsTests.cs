@@ -157,9 +157,68 @@ public sealed class StorageSettingsTests
         Assert.Equal(StorageTarget.None, target);
     }
 
+    static StorageGuardOptions Guard()
+    {
+        return new StorageGuardOptions { FileRoots = [Path.GetTempPath()] };
+    }
+
+    [Fact]
+    public async Task RefusesAFileContainerOutsideTheInstallsRoots()
+    {
+        var error = await Assert.ThrowsAsync<BusinessException>(() => Settings().Handle(new SaveStorageSettings
+        {
+            Name = StorageNames.Default,
+            Provider = FileSystemStorageProvider.ProviderType,
+            Container = "/",
+        }));
+
+        Assert.Equal("StorageContainerOutsideRoot", Assert.Single(error.Issues).Code);
+    }
+
+    [Theory]
+    [InlineData("http://example.com")]
+    [InlineData("file:///etc")]
+    [InlineData("ssh://example.com")]
+    [InlineData("https://127.0.0.1")]
+    [InlineData("https://localhost:9000")]
+    [InlineData("https://169.254.169.254/latest")]
+    [InlineData("https://10.0.0.5")]
+    [InlineData("https://[::1]")]
+    public async Task RefusesAnEndpointOffTheAllowList(string endpoint)
+    {
+        var error = await Assert.ThrowsAsync<BusinessException>(() => Settings().Handle(new SaveStorageSettings
+        {
+            Name = StorageNames.Default,
+            Provider = "s3",
+            Container = "bucket",
+            Endpoint = endpoint,
+        }));
+
+        Assert.Equal("StorageEndpointNotAllowed", Assert.Single(error.Issues).Code);
+    }
+
+    [Fact]
+    public async Task ClearsTheStoredSecretWhenTheTargetMovesAndNoNewOneIsTyped()
+    {
+        using var container = new Container();
+        using var other = new Container();
+
+        var handler = Settings();
+
+        await handler.Handle(Save(container));
+        await handler.Handle(new SaveStorageSettings
+        {
+            Name = StorageNames.Default,
+            Provider = FileSystemStorageProvider.ProviderType,
+            Container = other.Path,
+        });
+
+        Assert.Null((await _settings.Read<StorageSettings>()).Value.SecretKey);
+    }
+
     StorageSettingsHandler Settings()
     {
-        return new StorageSettingsHandler(_settings, Credentials(), Stores(null), _providers);
+        return new StorageSettingsHandler(_settings, Credentials(), Stores(null), _providers, new StorageTargetPolicy(Guard()));
     }
 
     StorageManager Storage()
@@ -174,7 +233,8 @@ public sealed class StorageSettingsTests
 
         services.AddSingleton<SettingsManager>(_settings);
         services.AddSingleton(_keys);
-        services.AddStorageWebApi();
+        services.AddLogging();
+        services.AddStorageWebApi(null, Guard());
         services.AddFileSystemStorage();
 
         return services.BuildServiceProvider().CreateScope().ServiceProvider.GetRequiredService<StorageTestHandler>();

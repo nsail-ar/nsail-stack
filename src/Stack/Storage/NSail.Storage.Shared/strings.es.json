@@ -47,6 +47,8 @@
   "Problems.NoStorageConfigured": "Esta instalación no tiene almacenamiento. Elegí un proveedor y un contenedor en Configuración.",
   "Problems.StorageProviderNotComposed": "Este host no compone ningún proveedor de almacenamiento con ese nombre.",
   "Problems.StorageEndpointRequired": "Un destino S3 necesita la dirección del servicio donde vive.",
+  "Problems.StorageContainerOutsideRoot": "El directorio no está dentro de una raíz que esta instalación permita.",
+  "Problems.StorageEndpointNotAllowed": "La dirección no está permitida: debe ser https y apuntar a un host público.",
   "Problems.StorageGitBranchInvalid": "El nombre de la rama no es válido.",
   "Problems.StorageGitAddressInvalid": "La dirección del repositorio no es válida.",
   "Problems.StorageGitEndpointRequired": "Un destino Git necesita la dirección bajo la que viven sus repositorios.",
@@ -59,5 +61,5 @@
   "Problems.RuleViolation.StorageTestNotReadBack": "El objeto de prueba se escribió pero no se pudo volver a leer.",
   "Problems.RuleViolation.StorageTestContentDiffers": "El objeto de prueba que se leyó no coincide con lo que se escribió.",
   "Problems.RuleViolation.StorageTestNotListed": "El objeto de prueba se escribió pero no aparece al listar el contenedor.",
-  "Problems.RuleViolation.StorageTestFailed": "No se pudo usar el destino de almacenamiento: {reason}"
+  "Problems.RuleViolation.StorageTestFailed": "No se pudo usar el destino de almacenamiento. El detalle está en el log del servidor."
 }
