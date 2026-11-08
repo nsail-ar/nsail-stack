@@ -15,6 +15,8 @@ public sealed class HarnessTexts
     public string NothingPushed { get; set; } = "The voyage ended with nothing new pushed on PR #{pr}: the round did not advance. A second in a row goes to `stalled`.";
     public string DeadVoyage { get; set; } = "The voyage ended with no PR and no hand-off ({why}{pushed}): the story can be taken again. A second in a row with no progress goes to `stalled`.";
     public string WorkPushed { get; set; } = ", what it committed pushed";
+    public string NotOwnPr { get; set; } = "The builder asked to close PR #{pr}, which is not a PR of this story: nothing was closed.";
+    public string ProtectedPaths { get; set; } = "The builder's commits touch protected paths ({paths}): nothing was pushed. A hand lifts the screen with the `{label}` label.";
     public string CannotContinue { get; set; } = "This PR cannot be continued.";
     public string PrStory { get; set; } = "Story: {story}.";
     public string LandedNothingToBuild { get; set; } = "Nothing left to build: {evidence}. The voyage added nothing, so the story goes to **Merged** instead of back to a builder.";

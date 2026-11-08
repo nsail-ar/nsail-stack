@@ -117,7 +117,8 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
         {
             case "VERDICT: ready" when Read("body.md").Trim().Length > 0 && comment.Trim().Length > 0:
                 await ctx.Board.UpdateBody(n, Read("body.md"), ct);
-                foreach (var label in Read("labels.txt").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                var allowed = SeatOutput.AllowedLabels(Read("labels.txt").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), await KnownLabels(ct));
+                foreach (var label in allowed)
                 {
                     try
                     {
@@ -159,6 +160,6 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
 
     async Task<IEnumerable<string>> KnownLabels(CancellationToken ct)
     {
-        return (await ctx.Board.KnownLabels(ct)).Where(l => l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal) || l.StartsWith(ctx.Agent.Driver + ":", StringComparison.Ordinal) || l == Labels.P1);
+        return (await ctx.Board.KnownLabels(ct)).Where(l => l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal) || l.StartsWith(ctx.Agent.Driver + ":", StringComparison.Ordinal));
     }
 }

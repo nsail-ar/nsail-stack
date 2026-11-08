@@ -171,7 +171,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         return remote.ExitCode == 0 ? from : null;
     }
 
-    // What the builder committed goes up first, whatever its ending: work is never lost to the axe.
+    // What the builder committed goes up first, unless it touches a protected path: work is never lost to the axe.
     // Then its ending, exactly one: a PR's words, a ruling, a hand-off; none is a dead voyage.
     async Task<Ending> Deliver(int n, string title, IRepository repo, string dir, string branch, string? startedAt, DateTimeOffset claimedAt, AgentResult result, ILogger log, CancellationToken ct)
     {
@@ -188,6 +188,16 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         var pushed = false;
         if (ahead > 0)
         {
+            var touched = ctx.Options.AllowProtectedPaths || (await board.Labels(n, ct)).Contains(Labels.AllowProtected)
+                ? []
+                : SeatOutput.Protected(await SeatOutput.Changed(dir, since), ctx.Options.ProtectedPaths);
+            if (touched.Count > 0)
+            {
+                await board.RemoveLabel(n, Labels.Claimed);
+                await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.ProtectedPaths, ("paths", string.Join(", ", touched.Select(f => $"`{f}`"))), ("label", Labels.AllowProtected))));
+                if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
+                return new Ending("push refused — protected paths touched", Failed: true);
+            }
             await repo.Push(dir, branch, startedAt, ct);
             pushed = true;
         }
@@ -199,7 +209,11 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             var lines = close.Split('\n', 2);
             if (int.TryParse(lines[0].Trim().TrimStart('#'), out var dead))
             {
-                await repo.ClosePr(dead, JobContext.Signed(lines.Length > 1 ? lines[1].Trim() : ctx.Texts.CannotContinue, Seat), ct);
+                if (!(await repo.PrsOf(n, "open", ct)).Any(p => p.Number == dead))
+                {
+                    await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.NotOwnPr, ("pr", dead))} {ctx.Texts.Signature}");
+                }
+                else await repo.ClosePr(dead, JobContext.Signed(lines.Length > 1 ? lines[1].Trim() : ctx.Texts.CannotContinue, Seat), ct);
             }
         }
 
