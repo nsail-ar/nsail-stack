@@ -30,6 +30,7 @@ it. A policy with no audience matches anyone, signed in or not:
 
 ```csharp
 services.AddSecurityEnforcement();
+services.AcceptPermissiveProviders();   // no Iam here: relations and tickets stay permissive
 services.AddAppPermissions();
 services.AddBuiltInPolicy(new Policy
 {
@@ -65,7 +66,8 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 | Call | Does |
 |---|---|
 | `AddSecurity()` | TryAdds `SessionProvider`, `RelationProvider`, `FeatureProvider`, `CredentialProvider`, `RequestOrganizationProvider`, `SecurityManager` with permissive defaults (anonymous session, every relation true, every feature on). A host with sign-in and a policy store replaces them |
-| `AddSecurityEnforcement()` | `AddSecurity()` plus the `SecurityInterceptor` on every send: deny by default |
+| `AddSecurityEnforcement()` | `AddSecurity()` plus the `SecurityInterceptor` on every send: deny by default. The host refuses to start while `RelationProvider` or `CredentialProvider` is still the permissive default (every relation constraint would pass, stale tickets be honoured): Iam registers the DB-backed ones |
+| `AcceptPermissiveProviders()` | Says an enforcing host has no Iam (a fixture, a sample) and runs over the permissive providers on purpose |
 | `AddBuiltInPolicy(policy)` | A code-owned policy no stored row can delete or widen |
 | `AddFeatures<TContributor>()` | An `IFeatureContributor` declaring the entitlement keys a module owns |
 
@@ -95,9 +97,12 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 declared keys (`FeatureItem`: `Key`, `Kind` of `Flag` or `Limit`, default `Enabled`/`Limit`); a key
 nobody wrote about a tenant reads as on, with no ceiling.
 
-**Helpers.** `PasswordHash.Hash` / `Verify` (PBKDF2), `KeyProtector(key).Protect` / `Unprotect`
-(AES-GCM), `Jwt` (base64url and token splitting, not a JWT library), `SafeReturnTo` (guards a
-return address before a redirect), `SignInRoutes` (the sign-in address's query names).
+**Helpers.** `PasswordHash.Hash` / `Verify` (PBKDF2-SHA256; `Verify(…, out needsRehash)` flags a
+hash under the current count, and one outside the floor and ceiling is refused),
+`KeyProtector(key).Protect` / `Unprotect` (AES-GCM, a versioned payload with a per-payload salt; the
+earlier format still unseals), `Jwt` (base64url and token splitting, not a JWT library),
+`SafeReturnTo` (guards a return address before a redirect), `SignInRoutes` (the sign-in address's
+query names).
 
 ## How it fits
 

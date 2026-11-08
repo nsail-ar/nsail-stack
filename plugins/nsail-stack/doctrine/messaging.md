@@ -743,6 +743,9 @@ which `UseBaseWebApi` runs after authentication and ahead of `MapEndpoints`:
 - **Opt-in like the interceptor.** `AddSecurityEnforcement` registers the
   `SecurityEnforcement` marker; without it the middleware no-ops, so a client or Wasm host
   stays permissive and lets the server say 403.
+- **Enforcement over the permissive providers does not start.** `AddSecurityEnforcement` adds a
+  startup check: `RelationProvider` and `CredentialProvider` must have been replaced (Iam does),
+  or the host says `AcceptPermissiveProviders()`. `AddSecurity()` alone stays permissive.
 
 An authorized caller notices nothing: binding runs as before, and a malformed request gets
 the same `400`/`422`.

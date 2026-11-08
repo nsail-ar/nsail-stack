@@ -474,7 +474,7 @@ Optical fixture with no overriding wildcard, so the preset itself answers).
    `QueueIdentityTests` (`NSail.Messaging.Queue.Tests`) is the queue's twin of the first.
 
 Graph questions go through a **provider** (`RelationProvider` — Provider family, lives in NSail.Security, covers both edges: `IsRelated(partyA, partyB, role)` over Relationships, `IsMember(party, org, role)` over Memberships, plus `GetAncestors`/`GetDescendants` over the chart — in-query always; post-query filtering is banned: paging, counts, existence leaks). Two implementations:
-- **Optimistic default** (TryAdd, returns true) — serves the WASM client AND apps without Iam (the Null pattern). Client flow for `relatedAs`: the one part the client decides without the graph is that the id is not the caller's own (`SecurityManager.Permits`, below); past that the handler passes optimistically → UI attempts → server 403 → Forbidden toast. Few cases, acceptable UX.
+- **Optimistic default** (TryAdd, returns true) — serves the WASM client AND apps without Iam (the Null pattern); a host with the gate on (`AddSecurityEnforcement`) refuses to start over it unless Iam replaced it or the host says `AcceptPermissiveProviders()`. Client flow for `relatedAs`: the one part the client decides without the graph is that the id is not the caller's own (`SecurityManager.Permits`, below); past that the handler passes optimistically → UI attempts → server 403 → Forbidden toast. Few cases, acceptable UX.
 - **Iam registers the real DB-backed one** server-side.
 
 Consequences: **`Authorize` is async** (the graph is DB, even with policies preloaded). And no `WasmSecurityManager`/`WebSecurityManager` split: ONE SecurityManager — the environment difference is which provider and policy source get registered (composition, not class proliferation).
@@ -572,7 +572,7 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
 - **A credential is re-read against its own records on every request, and that is one place.**
   The ticket is signed, so nothing in it can go wrong — and everything it NAMES can: a party
   merged away, a user disabled, a user deleted, a user repointed at another party. `CredentialProvider`
-  (Stack, permissive floor; `DbCredentialProvider` in Iam) answers one lookup by primary key, and
+  (Stack, permissive floor that an enforcing host must replace or accept; `DbCredentialProvider` in Iam) answers one lookup by primary key, and
   `CredentialMiddleware` ([baseservices.md](baseservices.md#webapi-bootstrap)) acts on it: a user
   **repointed** has its credential re-issued and the request carries the new party, a user **gone
   or disabled** is signed out and challenged. **No validation interval**, and that is the point —

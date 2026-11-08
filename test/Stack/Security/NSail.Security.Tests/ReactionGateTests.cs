@@ -120,6 +120,7 @@ public sealed class ReactionGateTests
         }));
 
         services.AddSecurityEnforcement();
+        services.AcceptPermissiveProviders();
 
         // Both registrations stand in for the Policies.Handlers generator, which emits the
         // factory and the registry entry from the same line: the registry is what resolves the

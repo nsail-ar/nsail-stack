@@ -128,14 +128,14 @@ public sealed class MappedBoard(IBoard board, IReadOnlyDictionary<string, string
         return board.Close(story, ct);
     }
 
-    public Task<int> CreateStory(string title, string body, CancellationToken ct = default)
+    public Task<int> CreateStory(string title, string body, IReadOnlyCollection<string> labels, CancellationToken ct = default)
     {
-        return board.CreateStory(title, body, ct);
+        return board.CreateStory(title, body, labels.Select(LabelOut).ToList(), ct);
     }
 
-    public Task<int?> FindOpen(string title, bool exact = true, CancellationToken ct = default)
+    public Task<int?> FindOpen(string title, IReadOnlyCollection<string> labels, bool exact = true, CancellationToken ct = default)
     {
-        return board.FindOpen(title, exact, ct);
+        return board.FindOpen(title, labels.Select(LabelOut).ToList(), exact, ct);
     }
 
     public async Task<IReadOnlyList<(int Number, string Stage)>> ClosedSince(DateTimeOffset since, CancellationToken ct = default)
