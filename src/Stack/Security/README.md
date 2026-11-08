@@ -95,8 +95,8 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 declared keys (`FeatureItem`: `Key`, `Kind` of `Flag` or `Limit`, default `Enabled`/`Limit`); a key
 nobody wrote about a tenant reads as on, with no ceiling.
 
-**Helpers.** `PasswordHash.Hash` / `Verify` (PBKDF2), `KeyProtector(key).Protect` / `Unprotect`
-(AES-GCM), `Jwt` (base64url and token splitting, not a JWT library), `SafeReturnTo` (guards a
+**Helpers.** `PasswordHash.Hash` / `Verify` (PBKDF2-SHA256; `Verify(…, out needsRehash)` flags a hash under the current count, and one outside the floor and ceiling is refused), `KeyProtector(key).Protect` / `Unprotect`
+(AES-GCM, a versioned payload with a per-payload salt; the earlier format still unseals), `Jwt` (base64url and token splitting, not a JWT library), `SafeReturnTo` (guards a
 return address before a redirect), `SignInRoutes` (the sign-in address's query names).
 
 ## How it fits
