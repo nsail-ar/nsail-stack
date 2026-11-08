@@ -58,7 +58,7 @@ public static class PasswordHash
             return false;
         }
 
-        if (expected.Length == 0 || salt.Length == 0)
+        if (expected.Length != HashSize || salt.Length != SaltSize)
             return false;
 
         var actual = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, expected.Length);

@@ -15,6 +15,8 @@ namespace NSail.Security;
 /// </summary>
 public class KeyProtector
 {
+    static readonly byte[] Info = Encoding.UTF8.GetBytes("NSail.KeyProtector");
+
     const string Version = "v2.";
     const int SaltSize = 16;
 
@@ -67,7 +69,7 @@ public class KeyProtector
 
     byte[] Derive(byte[] salt)
     {
-        return HKDF.DeriveKey(HashAlgorithmName.SHA256, _secret, 32, salt, Encoding.UTF8.GetBytes("NSail.KeyProtector"));
+        return HKDF.DeriveKey(HashAlgorithmName.SHA256, _secret, 32, salt, Info);
     }
 
     static string Open(byte[] key, ReadOnlySpan<byte> payload)

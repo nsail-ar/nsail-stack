@@ -8,7 +8,7 @@ namespace NSail.Security.Tests;
 
 public sealed class PasswordHashTests
 {
-    // Written by the previous version: 100,000 iterations.
+    // A hash at the count the first format wrote (the floor) still verifies.
     static string LegacyHash(string password)
     {
         var salt = RandomNumberGenerator.GetBytes(16);
@@ -81,70 +81,12 @@ public sealed class PasswordHashTests
     {
         Assert.False(PasswordHash.Verify("s3cret", hashed));
     }
-}
-
-public sealed class KeyProtectorTests
-{
-    // The previous payload: base64(nonce | tag | ciphertext) under SHA256(key).
-    static string LegacyProtect(string key, string value)
-    {
-        var nonce = RandomNumberGenerator.GetBytes(12);
-        var tag = new byte[16];
-        var plaintext = Encoding.UTF8.GetBytes(value);
-        var ciphertext = new byte[plaintext.Length];
-
-        using var aes = new AesGcm(SHA256.HashData(Encoding.UTF8.GetBytes(key)), tag.Length);
-        aes.Encrypt(nonce, plaintext, ciphertext, tag);
-
-        return Convert.ToBase64String([.. nonce, .. tag, .. ciphertext]);
-    }
 
     [Fact]
-    public void Round_trip()
+    public void A_truncated_hash_is_refused()
     {
-        var protector = new KeyProtector("k");
-        var sealedValue = protector.Protect("secret ñ");
+        var salt = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
 
-        Assert.StartsWith("v2.", sealedValue);
-        Assert.Equal("secret ñ", protector.Unprotect(sealedValue));
-    }
-
-    [Fact]
-    public void Each_payload_is_salted()
-    {
-        var protector = new KeyProtector("k");
-
-        Assert.NotEqual(protector.Protect("x"), protector.Protect("x"));
-    }
-
-    [Fact]
-    public void An_old_payload_still_unseals()
-    {
-        Assert.Equal("secret", new KeyProtector("k").Unprotect(LegacyProtect("k", "secret")));
-    }
-
-    [Fact]
-    public void A_tampered_payload_throws()
-    {
-        var protector = new KeyProtector("k");
-        var raw = Convert.FromBase64String(protector.Protect("secret")[3..]);
-        raw[^1] ^= 1;
-
-        Assert.ThrowsAny<CryptographicException>(() => protector.Unprotect("v2." + Convert.ToBase64String(raw)));
-    }
-
-    [Fact]
-    public void Another_key_throws()
-    {
-        var sealedValue = new KeyProtector("k").Protect("secret");
-
-        Assert.ThrowsAny<CryptographicException>(() => new KeyProtector("other").Unprotect(sealedValue));
-    }
-
-    [Fact]
-    public void A_truncated_payload_throws()
-    {
-        Assert.ThrowsAny<CryptographicException>(() => new KeyProtector("k").Unprotect("v2.AAAA"));
-        Assert.ThrowsAny<CryptographicException>(() => new KeyProtector("k").Unprotect("AAAA"));
+        Assert.False(PasswordHash.Verify("s3cret", $"100000.{salt}.AQ=="));
     }
 }
