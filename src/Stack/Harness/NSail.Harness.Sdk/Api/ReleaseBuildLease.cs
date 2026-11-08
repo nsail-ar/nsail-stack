@@ -5,6 +5,7 @@ using NSail.Messaging;
 
 namespace NSail.Harness.Api;
 
+[HarnessAccess(HarnessAccess.Lease)]
 [Http(Delete, "api/harness/leases/{id}")]
 public class ReleaseBuildLease : IMessage
 {

@@ -88,6 +88,9 @@ public sealed class HarnessOptions
     // repository's own reviewer writes the same one.
     public string ReviewMarker { get; set; } = "harness:review";
 
+    // Who may drive this harness (ControlOptions).
+    public ControlOptions Control { get; set; } = new();
+
     // The logins whose gate and review markers on a PR count beside this harness's own: every
     // harness of the fleet, so one reads another's verdicts. The same list on every harness.
     public List<string> MarkerAuthors { get; set; } = [];
@@ -125,6 +128,10 @@ public sealed class HarnessOptions
             throw new InvalidOperationException("Harness:Repositories has an entry without a Name");
         }
         if (Workers.Count == 0) throw new InvalidOperationException("Harness:Workers names no worker: the harness would take nothing");
+        if (Control.ResolveToken() is { } control && control == Control.ResolveLeaseToken())
+        {
+            throw new InvalidOperationException("Harness:Control:Token and LeaseToken are the same: a seat holds the lease token, so it would hold the control one");
+        }
         _ = Harness.Workers.Worker.Compile(this);
     }
 }

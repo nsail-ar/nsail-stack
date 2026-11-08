@@ -6,7 +6,7 @@ machine: an analyst shapes a story, a developer builds it to a PR, the harness's
 and tests the PR, a reviewer reads it cold and lands it, a release cuts what landed — on a
 release branch: a red suite files a story the crew fixes on main, and its fix is cherry-picked
 onto the branch, where only what failed runs again before the cut; once the cut is published, its
-stories go to Released — and a QA walker checks it live. The seats hold no token: the harness hands each one its story on disk and acts on
+stories go to Released — and a QA walker checks it live. The seats hold no board or code-host token: the harness hands each one its story on disk and acts on
 the files it leaves.
 
 | Project | |
@@ -131,7 +131,19 @@ app.MapHarness();
 app.Run();
 ```
 
-It listens on `127.0.0.1:6190` with no authentication, so it never binds beyond the loopback. The
+It listens on `127.0.0.1:6190`. Loopback is no boundary (a seat's process reaches it), so
+`Api/ControlGate.cs` guards it. A request whose `Host` is not loopback, the host of `PublicUrl` or one of
+`Harness:Control:Hosts` is refused (421; the port is not looked at). The routes that drive the harness (`restart`, `pause`, `resume`,
+`wake`, `take-new`, `runs`) and a job's transcript (`/jobs/{id}`, `/jobs/{id}/log`) need
+`Harness:Control:Token` or `TokenFile` (as `Authorization: Bearer` or `X-Harness-Token`; a browser signs in once at `/login`,
+which keeps it in a cookie; the token never travels in a URL, which the log would record); with none configured they answer 401. A message route
+needs it unless its message carries `[HarnessAccess]` (the Sdk marks the build-turn routes `Lease` and the
+reads `Open`), and a page needs it only if it is mapped `ControlOnly`. The token and the lease token must
+differ (the start fails otherwise). Like `GH_TOKEN`, a token passed as an environment variable is readable
+by a seat's process (`/proc/<pid>/environ`): a deployment uses `TokenFile`, which is worth its permissions. The build-turn routes (`POST leases`, `DELETE leases/{id}`) take the lease
+token (`Harness:Control:LeaseToken`, random per process when unset), which opens nothing else and is the
+only credential a lane's environment holds (`HARNESS_LEASE_TOKEN`, sent by the `dotnet` shim). The status
+pages and the `status`, `jobs` and `stats` reads stay open. The
 GitHub token is `GitHub:Token`, `GitHub:TokenFile` or `GH_TOKEN`, the workstation's `gh` login
 otherwise; a child never inherits it (see above), but a variable
 exported to the harness process stays in that process's initial environment, which a PR's code
@@ -149,7 +161,7 @@ outcomes and times, the agent's quota and the rework, then what runs, ten rows o
 what it holds, and the last ten jobs; a list that can grow shows a few rows and a link to its own
 page), `GET /plan` the whole plan and every held story (searched, filtered by tier, 25 a page each),
 `GET /jobs` every job this machine remembers (searched, filtered by role, result and story, 25 a page),
-`GET /jobs/{id}` one job and its log, and `GET /jobs/{id}/log?tail=` its log as plain text.
+`GET /jobs/{id}` one job and its log, and `GET /jobs/{id}/log?tail=` its log as plain text (both need the control token: a header, or the `/login` cookie).
 
 A running job (`RunningJob`, in the status, the jobs and the report to Ops) says what it is doing
 and when its log last moved, read off the log at each look (`JobActivity`): an agent's job (dev,

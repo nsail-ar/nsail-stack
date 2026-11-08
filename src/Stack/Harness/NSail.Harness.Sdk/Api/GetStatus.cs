@@ -5,6 +5,7 @@ using NSail.Messaging;
 
 namespace NSail.Harness.Api;
 
+[HarnessAccess(HarnessAccess.Open)]
 [Http(Get, "api/harness/status")]
 public class GetStatus : IMessage<HarnessStatus>
 {

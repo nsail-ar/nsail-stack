@@ -7,6 +7,7 @@ namespace NSail.Harness.Api;
 
 // A lane's build waits here for a turn, served by rank (lower first); the answer is the lease to
 // give back when the build ends.
+[HarnessAccess(HarnessAccess.Lease)]
 [Http(Post, "api/harness/leases")]
 public class AcquireBuildLease : IMessage<Guid>
 {
