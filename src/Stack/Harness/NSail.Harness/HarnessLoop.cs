@@ -191,7 +191,7 @@ public sealed class HarnessLoop(
             lock (_gate) _last = pass;
             var idle = _running.IsEmpty && pass.WouldTake.Count == 0;
             var wait = NextWait(idle, o, _limitedFor);
-            if (_limitedFor is not null && wait > TimeSpan.FromSeconds(o.BusyFloorSeconds))
+            if (_limitedFor is not null && wait > NextWait(idle, o, null))
             {
                 log.LogWarning("provider rate limit — next pass in {Seconds:F0}s", wait.TotalSeconds);
             }
