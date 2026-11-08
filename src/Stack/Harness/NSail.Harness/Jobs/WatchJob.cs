@@ -75,11 +75,10 @@ public sealed class WatchJob(WorkItem item, JobContext ctx, WatchState state) : 
             }
             var prod = g.Cells.Any(c => ErrorGroup.IsProd(c, notProd));
             var area = AreaOf(g.Service, w.Areas);
-            var n = await board.CreateStory(WatchStory.Title(g, area?[Labels.AreaPrefix.Length..] ?? g.Service.ToLowerInvariant()), WatchStory.Body(g, prod, closed), ct);
             var labels = new List<string> { Labels.Telemetry };
             if (area is not null) labels.Add(area);
             if (prod) labels.Add(Labels.Bug);
-            await board.AddLabels(n, [.. labels]);
+            var n = await board.CreateStory(WatchStory.Title(g, area?[Labels.AreaPrefix.Length..] ?? g.Service.ToLowerInvariant()), WatchStory.Body(g, prod, closed), labels, ct);
             await board.TrySetStage(n, Stages.Analyze, log, ct);
             opened.Add(n);
             await file.WriteLineAsync($"#{n}: {g.Count}× {g.Template} ({string.Join(", ", g.Cells)}){(closed is not null ? $" — again after #{closed.Number}" : "")}");

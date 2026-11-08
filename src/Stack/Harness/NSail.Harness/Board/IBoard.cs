@@ -53,10 +53,12 @@ public interface IBoard
         return Task.FromResult<Uri?>(null);
     }
 
-    Task<int> CreateStory(string title, string body, CancellationToken ct = default);
+    // The labels travel in the create call: a cut after it leaves a story the next pass can find.
+    Task<int> CreateStory(string title, string body, IReadOnlyCollection<string> labels, CancellationToken ct = default);
 
-    // The open story titled exactly so (exact) or whose title starts so (the oldest), if any.
-    Task<int?> FindOpen(string title, bool exact = true, CancellationToken ct = default);
+    // The open story carrying all of labels, titled exactly so (exact) or whose title starts so (the oldest), if any;
+    // read through the list API, which is consistent where the search index lags.
+    Task<int?> FindOpen(string title, IReadOnlyCollection<string> labels, bool exact = true, CancellationToken ct = default);
 
     // The stories closed since this instant, with the stage each one stands in: one closed outside
     // the harness (a hand, a script) keeps whatever column it had until something moves it.
