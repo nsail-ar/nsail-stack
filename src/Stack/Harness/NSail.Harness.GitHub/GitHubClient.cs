@@ -83,7 +83,7 @@ public sealed partial class GitHubClient(HttpClient http)
         var text = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
-            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} {response.RequestMessage?.Method} {response.RequestMessage?.RequestUri?.PathAndQuery}: {Truncate(text)}");
+            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} {response.RequestMessage?.Method} {response.RequestMessage?.RequestUri?.PathAndQuery}: {Truncate(text)}", RateLimitRemaining(response));
         }
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -91,6 +91,12 @@ public sealed partial class GitHubClient(HttpClient http)
         }
         using var doc = JsonDocument.Parse(text);
         return doc.RootElement.Clone();
+    }
+
+    static long? RateLimitRemaining(HttpResponseMessage response)
+    {
+        return response.Headers.TryGetValues("x-ratelimit-remaining", out var values)
+            && long.TryParse(values.FirstOrDefault(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var left) ? left : null;
     }
 
     static string? NextLink(HttpResponseMessage response)

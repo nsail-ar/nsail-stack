@@ -212,5 +212,29 @@ public class WatchTests
         Assert.Null(line.TraceId);
         Assert.Equal(2026, line.At.Year);
         Assert.StartsWith("https://logs.example/web/logs?org_identifier=default", line.Link!.ToString());
+        Assert.Null(line.ProviderStatus);
+    }
+
+    // A failed pass's record carries what the provider answered; the story filed for it names it,
+    // so a revoked token reads apart from a 5xx and a rate limit.
+    [Fact]
+    public void AFailedPassesStoryNamesTheStatusAndTheCall()
+    {
+        var answer = JsonDocument.Parse($$"""
+            {"hits":[{"_timestamp":1793942052263069,"body":"{{HarnessLoop.FailedAnswered}}",
+              "service_name":"harness","instrumentation_library_name":"NSail.Harness.HarnessLoop","exception_type":"NSail.Harness.GitHub.GitHubException",
+              "exception_stacktrace":"   at X","nsail_tenant":"dev1","severity":"Error","providercall":"Statuses","ProviderStatus":401,"ratelimitremaining":"4999"}]}
+            """).RootElement;
+
+        var line = Assert.Single(OpenObserveLogSource.Rows(answer, "https://logs.example", new OpenObserveOptions()));
+        var body = WatchStory.Body(Assert.Single(ErrorGroup.Of([line])), prod: false, again: null);
+
+        Assert.Equal("Statuses", line.ProviderCall);
+        Assert.Equal(401, line.ProviderStatus);
+        Assert.Equal(4999L, line.RateLimitRemaining);
+        Assert.Contains("the provider answered `401` to `Statuses`, with `4999` calls left on its rate limit", body);
+        var title = WatchStory.Title(Assert.Single(ErrorGroup.Of([line])), "stack");
+        Assert.StartsWith("telemetry(stack): pass failed — nothing started", title);
+        Assert.EndsWith("… (GitHubException)", title);
     }
 }
