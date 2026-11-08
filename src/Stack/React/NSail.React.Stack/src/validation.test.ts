@@ -22,6 +22,14 @@ describe("validate", () => {
     expect(validateField(UpdateOrder.fields.number, "   ").map((i) => i.code)).toEqual(["Required"]);
   });
 
+  it("bounds an exact number carried as text", () => {
+    const price = { kind: "decimal" as const, key: "Shop.UpdateOrder.Price", min: 0, max: 10 };
+
+    expect(validateField(price, "9.999999999999999999").map((i) => i.code)).toEqual([]);
+    expect(validateField(price, "10.5").map((i) => i.code)).toEqual(["OutOfRange"]);
+    expect(validateField({ ...price, kind: "bigint" as const }, "-1").map((i) => i.code)).toEqual(["OutOfRange"]);
+  });
+
   it("bounds a query member like a body one", () => {
     expect(validate(ListOrders, { search: "x".repeat(11) })?.issues[0].code).toBe("MaxLength");
   });

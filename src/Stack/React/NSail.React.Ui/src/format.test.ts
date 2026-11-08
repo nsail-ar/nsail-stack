@@ -27,6 +27,11 @@ describe("display", () => {
     expect(display(strings, field("date"), "2026-01-01")).toBe(new Date(Date.UTC(2026, 0, 1)).toLocaleDateString("es", { timeZone: "UTC" }));
   });
 
+  it("keeps every digit of an exact number", () => {
+    expect(display(new Strings("en", stackStrings("en")), field("bigint"), "9007199254740993")).toBe("9,007,199,254,740,993");
+    expect(display(new Strings("en", stackStrings("en")), field("decimal"), "1234567890.123456789")).toBe("1,234,567,890.123456789");
+  });
+
   it("renders absent as nothing", () => {
     expect(display(strings, field("string"), null)).toBe("");
     expect(display(strings, field("integer"), undefined)).toBe("");

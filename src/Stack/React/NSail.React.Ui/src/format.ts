@@ -24,9 +24,11 @@ export function display(strings: Strings, field: Field, value: unknown): string 
       return new Date(String(value)).toLocaleString(strings.language, { dateStyle: "short", timeStyle: "short" });
     case "bigint":
       return BigInt(String(value)).toLocaleString(strings.language);
+    case "decimal":
+      // Intl formats a numeric string digit for digit; the ES2022 lib types only a number.
+      return new Intl.NumberFormat(strings.language, { maximumFractionDigits: 20 }).format(String(value) as unknown as number);
     case "integer":
     case "number":
-    case "decimal":
       return Number(value).toLocaleString(strings.language);
     default:
       return String(value);
