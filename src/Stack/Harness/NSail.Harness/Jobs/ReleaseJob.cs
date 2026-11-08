@@ -35,7 +35,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
 
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
-        await Shell.Git(dir, "fetch", "-q", "--force", "--prune", "origin", $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*");
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", "--prune", ctx.Workspace.Url, $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*"]);
         var head = await Shell.Git(dir, "rev-parse", "HEAD");
         await ctx.Repo.SetStatus(head, Markers.CutContext(p), "success", $"cut tried on {ctx.Options.Machine}", ct);
         var marks = await ctx.Repo.Statuses(ct: ct);
@@ -91,11 +91,11 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
     async Task<string> OpenBranch(string p, string dir, TextWriter w)
     {
         var branch = $"{BranchPrefix(p)}{DateTimeOffset.UtcNow:yyyyMMdd-HHmm}";
-        await Shell.Git(dir, "push", "-q", "origin", $"HEAD:refs/heads/{branch}");
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
         await w.WriteLineAsync($"opened {branch}");
         foreach (var old in (await Branches(p, dir)).Skip(BranchesKept))
         {
-            var gone = await Shell.Run("git", ["push", "-q", "origin", "--delete", old], dir);
+            var gone = await Shell.Run("git", [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, "--delete", old], dir);
             await w.WriteLineAsync(gone.ExitCode == 0 ? $"deleted {old}" : $"could not delete {old}: {gone.Output.Trim()}");
         }
         return branch;
@@ -171,7 +171,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
             return null;
         }
         var tip = await Shell.Git(dir, "rev-parse", "HEAD");
-        await Shell.Git(dir, "push", "-q", "origin", $"HEAD:refs/heads/{branch}");
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
         await w.WriteLineAsync($"carried {string.Join(", ", fixes.Select(f => f[..8]))} to {branch} at {tip[..8]}; again: {string.Join(", ", failed)}");
 
         var result = await Suite(product, Filter(failed), dir, step, w, ct);

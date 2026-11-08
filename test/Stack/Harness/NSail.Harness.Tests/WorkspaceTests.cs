@@ -77,6 +77,9 @@ public class WorkspaceTests : IDisposable
         await Shell.Git(Bare, "config", "alias.push", "!evil");
         await Shell.Git(Bare, "config", "--add", "credential.helper", "evil");
         await Shell.Git(Bare, "config", "user.name", "someone else");
+        await Shell.Git(Bare, "config", "core.symlinks", "false");
+        await Shell.Git(Bare, "config", "core.ignorecase", "true");
+        await Shell.Git(Bare, "config", "remote.origin.url", "ext::sh -c evil");
         Directory.CreateDirectory(Path.Combine(Bare, "hooks"));
         File.WriteAllText(Path.Combine(Bare, "hooks", "pre-push"), "x");
 

@@ -58,6 +58,30 @@ public sealed class JobContext(
         return new JobStep(w, agent, command, w.Minutes ?? WorkerTypes.All[w.Type].Minutes, w.Variables);
     }
 
+    // A seat's run, and the end of its reach: every clone it shared is rewritten as the harness wrote it
+    // before any other git runs there. A restore that fails costs nothing here: the next Prepare redoes it,
+    // and the work the seat left is still to be delivered.
+    public async Task<AgentResult> RunSeat(AgentRun run, CancellationToken ct)
+    {
+        try
+        {
+            return await Agent.Run(run, ct);
+        }
+        finally
+        {
+            foreach (var w in workspaces.Values)
+            {
+                try
+                {
+                    await w.Restore();
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
+                {
+                }
+            }
+        }
+    }
+
     // A repository's own slots: a story it holds is built and pushed there.
     public Workspace WorkspaceOf(IRepository repository)
     {

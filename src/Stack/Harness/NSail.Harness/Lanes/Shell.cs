@@ -12,7 +12,7 @@ public static class Shell
 {
     // A seat shares the repository's common git directory, so what it plants there (a hook, a
     // fsmonitor command) must never run in the harness's git: command-line config outranks the repository's.
-    static readonly string[] Hardened = ["-c", $"core.hooksPath={OperatingSystem.IsWindows() switch { true => "NUL", false => "/dev/null" }}", "-c", "core.fsmonitor=false"];
+    static readonly string[] Hardened = ["-c", $"core.hooksPath={(OperatingSystem.IsWindows() ? "NUL" : "/dev/null")}", "-c", "core.fsmonitor=false", "-c", "protocol.ext.allow=never"];
 
     public static async Task<ShellResult> Run(
         string file, IEnumerable<string> args, string workDir, IDictionary<string, string>? env = null,
