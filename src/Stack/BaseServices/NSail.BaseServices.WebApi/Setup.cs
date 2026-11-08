@@ -56,6 +56,14 @@ public static class Setup
         builder.Services.TryAddScoped<RequestBudgetProvider>();
 
         builder.Services.AddSingleton<BuildVersionMiddleware>();
+        builder.Services.AddSingleton<ResponseHeadersMiddleware>();
+
+        // Subdomains are tenants of the same install, all served over HTTPS; preload is left off
+        // because it is a one-way commitment for every subdomain of the registrable domain.
+        builder.Services.AddHsts(options =>
+        {
+            options.IncludeSubDomains = true;
+        });
 
         builder.Services.AddScoped<TenancyMiddleware>();
         builder.Services.AddScoped<TenantStateMiddleware>();
@@ -196,10 +204,11 @@ public static class Setup
             logger.LogWarning("Forwarded headers are off: behind a proxy every caller shares the proxy's address, so one flood closes every public door for everyone. Set ASPNETCORE_FORWARDEDHEADERS_ENABLED and Security:TrustedProxies.");
         }
 
-        // Outermost, so the build that answered rides on every answer this host gives — a
-        // refusal, a 404 and a redirect included. It only registers a callback, so nothing
-        // below it can drop the stamp by rewriting the response.
+        // Outermost, and both only register an OnStarting callback, so nothing below can drop
+        // the headers by rewriting the response. The build rides on a signed-in caller's
+        // answers, a refusal included, but not on one cut short before authentication.
         app.UseMiddleware<BuildVersionMiddleware>();
+        app.UseMiddleware<ResponseHeadersMiddleware>();
 
         app.UseErrorHandler();
         app.UseHttpsRedirection();
