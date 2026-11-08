@@ -299,6 +299,7 @@ same thing.
 | `NSG013` | Error | An `Ignore` entry on a `[MapFrom]` or `[MapTo]` names a member the type does not declare, so it silences nothing. |
 | `NSG014` | Error | A `[Queue]` message implements `IMessage<T>` — a durable send answers "accepted" and never the outcome, so there is no result to hand back. |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` — each registers an `ISender`, so every send would meet `MultipleSenders` at runtime. |
+| `NSG016` | Error | A `[Throttled]` `Identity` names a property the message does not declare — it would cap no account, silently, and go on doing so after a rename. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only

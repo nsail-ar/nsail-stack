@@ -221,18 +221,47 @@ public sealed class ThrottleTests
 
         for (var attempt = 0; attempt < Login.PerMinute; attempt++)
         {
-            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", $"{{\"login\":\"Admin\",\"password\":\"p{attempt}\"}}"));
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", $"{{\"account\":\"Admin\",\"password\":\"p{attempt}\"}}"));
         }
 
-        Assert.Equal(429, await host.Post("10.0.1.1", "{\"login\":\" admin \"}"));
-        Assert.Equal(200, await host.Post("10.0.1.1", "{\"login\":\"other\"}"));
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"account\":\" admin \"}"));
+        Assert.Equal(200, await host.Post("10.0.1.1", "{\"account\":\"other\"}"));
 
         for (var attempt = 0; attempt < Login.AddressPerMinute; attempt++)
         {
-            Assert.Equal(200, await host.Post("10.0.2.1", $"{{\"login\":\"u{attempt}\"}}"));
+            Assert.Equal(200, await host.Post("10.0.2.1", $"{{\"account\":\"u{attempt}\"}}"));
         }
 
-        Assert.Equal(429, await host.Post("10.0.2.1", "{\"login\":\"fresh\"}"));
+        Assert.Equal(429, await host.Post("10.0.2.1", "{\"account\":\"fresh\"}"));
+    }
+
+    [Fact]
+    public async Task A_query_value_beside_a_json_body_does_not_pick_the_partition()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", "{\"account\":\"admin\"}", $"?account=decoy{attempt}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"account\":\"admin\"}", "?account="));
+    }
+
+    [Fact]
+    public async Task A_send_whose_identity_cannot_be_read_shares_one_budget()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        var padded = "{\"pad\":\"" + new string('x', 20_000) + "\",\"account\":\"admin\"}";
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", attempt % 2 == 0 ? padded : "{\"password\":\"p\"}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", padded));
+        Assert.Equal(200, await host.Post("10.0.1.1", "{\"account\":\"admin\"}"));
     }
 
     static async Task<string> Code(HttpResponseMessage response)
@@ -255,7 +284,7 @@ public sealed class Capped : IMessage
 }
 
 [Http(Method.Post, Login.Path)]
-[Throttled(Login.AddressPerMinute, Identity = "Login", IdentityPerMinute = Login.PerMinute)]
+[Throttled(Login.AddressPerMinute, Identity = nameof(Login.Account), IdentityPerMinute = Login.PerMinute)]
 public sealed class Login : IMessage
 {
     public const string Path = "api/probe/login";
@@ -263,6 +292,8 @@ public sealed class Login : IMessage
     public const int PerMinute = 3;
 
     public const int AddressPerMinute = 6;
+
+    public string? Account { get; set; }
 }
 
 [Http(Method.Get, AlsoCapped.Path)]
@@ -368,7 +399,7 @@ sealed class ThrottleHost : IAsyncDisposable
         return context.Response.StatusCode;
     }
 
-    public async Task<int> Post(string address, string json)
+    public async Task<int> Post(string address, string json, string query = "")
     {
         var context = await _app.GetTestServer().SendAsync(request =>
         {
@@ -376,6 +407,7 @@ sealed class ThrottleHost : IAsyncDisposable
             request.Request.Method = HttpMethods.Post;
             request.Request.Host = new HostString("localhost");
             request.Request.Path = "/" + Login.Path;
+            request.Request.QueryString = new QueryString(query);
             request.Request.ContentType = "application/json";
             request.Request.Body = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
             request.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(address);

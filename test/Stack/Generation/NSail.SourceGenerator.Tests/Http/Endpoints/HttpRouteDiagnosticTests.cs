@@ -59,6 +59,44 @@ public class HttpRouteDiagnosticTests
         Assert.NotEmpty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
     }
 
+    [Fact]
+    public void A_throttled_identity_naming_no_property_is_a_build_error()
+    {
+        var diagnostics = Run(ThrottledSource("Login", "Missing"));
+
+        var reported = Assert.Single(diagnostics.Where(d => d.Id == "NSG016"));
+
+        Assert.Equal(DiagnosticSeverity.Error, reported.Severity);
+        Assert.Contains("Missing", reported.GetMessage());
+        Assert.Empty(Run(ThrottledSource("Login", "Login")).Where(d => d.Id == "NSG016"));
+    }
+
+    static string ThrottledSource(string property, string identity)
+    {
+        return $$"""
+            using Microsoft.Extensions.DependencyInjection;
+            using Microsoft.AspNetCore.Routing;
+            using NSail.Messaging;
+            using NSail.Messaging.Annotations;
+            using NSail.SourceGeneration.Annotations;
+
+            namespace Acme.Clinic.Access;
+
+            [Http(Method.Post, "api/sign-in")]
+            [Throttled(20, Identity = "{{identity}}")]
+            public class SignIn : IMessage
+            {
+                public string {{property}} { get; set; } = "";
+            }
+
+            public static partial class Endpoints
+            {
+                [Generated(NSail.SourceGeneration.Annotations.Http.Endpoints)]
+                public static partial void AddClinicEndpoints(this IServiceCollection services);
+            }
+            """;
+    }
+
     const string BoundTokenSource = """
         using Microsoft.Extensions.DependencyInjection;
         using Microsoft.AspNetCore.Routing;

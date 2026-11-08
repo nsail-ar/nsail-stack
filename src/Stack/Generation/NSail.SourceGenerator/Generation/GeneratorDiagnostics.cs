@@ -146,4 +146,13 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Two senders for one message is a refusal the send pipeline can only make at runtime; the declaration is where it is visible.");
+
+    public static readonly DiagnosticDescriptor ThrottledIdentityNotFound = new(
+        id: "NSG016",
+        title: "[Throttled] Identity names a property the message does not declare",
+        messageFormat: "'{0}' declares [Throttled(Identity = \"{1}\")], but it has no public property named '{1}'. Name the property that holds the account, with nameof.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A name that matches nothing caps no account, and goes on capping nothing after the property it meant is renamed.");
 }
