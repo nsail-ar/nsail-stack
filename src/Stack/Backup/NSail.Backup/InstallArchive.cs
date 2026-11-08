@@ -89,28 +89,49 @@ public static class InstallArchive
 
             dumpEntry.ExtractToFile(dumpFilePath, overwrite: true);
 
-            await Postgres.Restore(install.ConnectionString, dumpFilePath, cancelToken);
-
             var keys = archive.Entries
                 .Where(entry => entry.FullName.StartsWith(KeyRing.ArchiveFolder, StringComparison.Ordinal))
                 .Where(entry => Path.GetFileName(entry.FullName).Length > 0)
                 .ToList();
 
-            if (keys.Count == 0)
-            {
-                return;
-            }
-
+            // Inside the ring's own directory (a mount cannot be renamed, and a move across
+            // volumes is a copy): extracted whole before anything is replaced.
             var keyRing = Directory.CreateDirectory(install.KeyRingPath);
 
-            foreach (var stale in keyRing.EnumerateFiles("*.xml"))
-            {
-                stale.Delete();
-            }
+            var staging = keys.Count == 0 ? null : keyRing.CreateSubdirectory(".restore-" + Guid.NewGuid().ToString("N"));
 
-            foreach (var key in keys)
+            try
             {
-                key.ExtractToFile(Path.Combine(keyRing.FullName, Path.GetFileName(key.FullName)), overwrite: true);
+                foreach (var key in keys)
+                {
+                    key.ExtractToFile(Path.Combine(staging!.FullName, Path.GetFileName(key.FullName)), overwrite: true);
+                }
+
+                await Postgres.Restore(install.ConnectionString, dumpFilePath, cancelToken);
+
+                if (staging is null)
+                {
+                    return;
+                }
+
+                foreach (var stale in keyRing.EnumerateFiles("*.xml"))
+                {
+                    stale.Delete();
+                }
+
+                foreach (var key in staging.EnumerateFiles())
+                {
+                    key.MoveTo(Path.Combine(keyRing.FullName, key.Name), overwrite: true);
+                }
+            }
+            finally
+            {
+                staging?.Refresh();
+
+                if (staging?.Exists == true)
+                {
+                    staging.Delete(recursive: true);
+                }
             }
         }
         finally

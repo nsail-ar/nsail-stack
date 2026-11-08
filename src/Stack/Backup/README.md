@@ -67,8 +67,10 @@ version, last applied migration, time, whether keys travel), `database.dump` and
   major version.
 - **It then prints what it will overwrite** (database and key ring) and stops unless
   `--confirm RESTORE` is passed; at a terminal the word is typed a second time.
-- **Restore is replace, not merge:** the `public` schema is dropped and rebuilt from the dump, and
-  the key ring's keys are replaced by the archive's.
+- **Restore is replace, not merge:** the `public` schema is dropped and rebuilt from the dump in one
+  transaction (a dump that fails leaves the database as it was), and the key ring's keys are
+  staged first and replaced by the archive's only once the database restored. The audit rows
+  written before the restore are carried across it.
 - **Both verbs are audited** in `nsail_backup_audit` (who, when, product, versions, archive). The
   table is created by raw SQL if absent, because it must be writable into whatever schema the
   archive carried.

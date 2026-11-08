@@ -29,6 +29,29 @@ public static class Postgres
             AND NOT (SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user)
         """;
 
+    // The audit table lives in the schema the restore drops: its rows wait in a temp table and
+    // come back after the dump's own copy (if any) is in, so the trail keeps what the archive
+    // never saw. The epilogue runs after pg_restore's script has emptied the search_path.
+    const string Prelude = $$"""
+        do $$ begin
+            if to_regclass('public.{{BackupAudit.TableName}}') is not null then
+                create temp table nsail_audit_keep (like public.{{BackupAudit.TableName}} including all);
+                insert into pg_temp.nsail_audit_keep select * from public.{{BackupAudit.TableName}};
+            end if;
+        end $$;
+        drop schema public cascade;
+        create schema public;
+        """;
+
+    const string Epilogue = $$"""
+        do $$ begin
+            if to_regclass('pg_temp.nsail_audit_keep') is not null then
+                create table if not exists public.{{BackupAudit.TableName}} (like pg_temp.nsail_audit_keep including all);
+                insert into public.{{BackupAudit.TableName}} select * from pg_temp.nsail_audit_keep on conflict do nothing;
+            end if;
+        end $$;
+        """;
+
     public static async Task<string> ServerVersion(string connectionString, CancellationToken cancelToken = default)
     {
         await using var connection = new NpgsqlConnection(connectionString);
@@ -63,29 +86,62 @@ public static class Postgres
 
     /// <summary>Restore is replace, not merge: the schema is dropped whole and rebuilt from the
     /// dump, so neither a row deleted after the backup nor a table created after it survives
-    /// the restore.</summary>
+    /// the restore. The drop and the rebuild are one transaction: a dump that cannot be read is
+    /// refused before the database is touched, and one that fails midway leaves the database as
+    /// it was. The backup audit trail is carried across it.</summary>
     public static async Task Restore(string connectionString, string dumpFilePath, CancellationToken cancelToken = default)
     {
         var target = new NpgsqlConnectionStringBuilder(connectionString);
 
-        // Not pg_restore --clean: that drops only what the dump itself owns, so anything the
-        // install grew after the backup would outlive the restore and the database would come
-        // back as a mixture of two moments.
-        await Reset(connectionString, cancelToken);
+        var workspace = Directory.CreateTempSubdirectory("nsail-restore-script");
 
-        var arguments = new[]
+        try
         {
-            "--no-owner",
-            "--no-privileges",
-            "--single-transaction",
-            $"--host={target.Host}",
-            $"--port={target.Port}",
-            $"--username={target.Username}",
-            $"--dbname={target.Database}",
-            dumpFilePath
-        };
+            var dataFilePath = Path.Combine(workspace.FullName, "dump.sql");
 
-        await Run("pg_restore", arguments, target.Password, cancelToken);
+            // No database connection: a corrupt dump fails here, with nothing yet dropped.
+            await Run("pg_restore", ["--no-owner", "--no-privileges", $"--file={dataFilePath}", dumpFilePath], null, cancelToken);
+
+            var scriptFilePath = Path.Combine(workspace.FullName, "restore.sql");
+
+            await using (var script = File.Create(scriptFilePath))
+            await using (var writer = new StreamWriter(script))
+            {
+                await writer.WriteLineAsync(Prelude);
+                await writer.FlushAsync(cancelToken);
+
+                await using (var data = File.OpenRead(dataFilePath))
+                {
+                    await data.CopyToAsync(script, cancelToken);
+                }
+
+                await writer.WriteLineAsync();
+                await writer.WriteLineAsync(Epilogue);
+            }
+
+            // Not pg_restore --clean: that drops only what the dump itself owns, so anything the
+            // install grew after the backup would outlive the restore and the database would come
+            // back as a mixture of two moments.
+            await Run(
+                "psql",
+                [
+                    "--no-psqlrc",
+                    "--quiet",
+                    "--single-transaction",
+                    "--set=ON_ERROR_STOP=1",
+                    $"--host={target.Host}",
+                    $"--port={target.Port}",
+                    $"--username={target.Username}",
+                    $"--dbname={target.Database}",
+                    $"--file={scriptFilePath}"
+                ],
+                target.Password,
+                cancelToken);
+        }
+        finally
+        {
+            workspace.Delete(recursive: true);
+        }
     }
 
     // Only the dump: pg_restore writes an archive's data before it creates its policies, so a
@@ -105,17 +161,6 @@ public static class Postgres
 
         throw new BackupFailure(
             "This database's tenant tables force row-level security and this role is subject to them, so pg_dump — which reads with row_security off — is refused on the first of them. Take the backup as a role that is a superuser or carries BYPASSRLS.");
-    }
-
-    static async Task Reset(string connectionString, CancellationToken cancelToken)
-    {
-        await using var connection = new NpgsqlConnection(connectionString);
-
-        await connection.OpenAsync(cancelToken);
-
-        await using var command = new NpgsqlCommand("drop schema public cascade; create schema public", connection);
-
-        await command.ExecuteNonQueryAsync(cancelToken);
     }
 
     public static string MajorVersion(string version)
