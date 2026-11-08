@@ -12,7 +12,7 @@ namespace NSail.Backup;
 /// <c>length, tag, ciphertext</c>, ending in a chunk shorter than <see cref="ChunkSize"/> so a
 /// truncated entry fails instead of restoring short. The entry name is authenticated, so one
 /// sealed entry cannot be passed off as another.</summary>
-public sealed class ArchiveCipher
+internal sealed class ArchiveCipher
 {
     public const int ChunkSize = 64 * 1024;
 

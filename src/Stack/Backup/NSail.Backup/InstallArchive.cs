@@ -98,8 +98,9 @@ public static class InstallArchive
     }
 
     /// <summary>Replace, not merge: the database is rebuilt from the dump and the key ring
-    /// directory is emptied of the keys the archive replaces. Every refusal this can raise has
-    /// already been raised by <see cref="RestorePlan"/>; nothing here asks a question.</summary>
+    /// directory is emptied of the keys the archive replaces. <see cref="RestorePlan"/> raises the
+    /// refusals the manifest decides; an encrypted archive's missing or wrong passphrase, and a
+    /// truncated one, raise <see cref="BackupFailure"/> here, before the database is touched.</summary>
     public static async Task Restore(InstallDescriptor install, Stream source, string? passphrase = null, CancellationToken cancelToken = default)
     {
         var workspace = Directory.CreateTempSubdirectory("nsail-restore");
@@ -110,12 +111,7 @@ public static class InstallArchive
 
             var manifest = await ReadManifest(archive, cancelToken);
 
-            var cipher = manifest.Encrypted
-                ? ArchiveCipher.Derive(
-                    passphrase ?? throw new BackupFailure("This archive is encrypted and needs its passphrase."),
-                    Convert.FromBase64String(manifest.KeySalt),
-                    manifest.KeyIterations)
-                : null;
+            var cipher = manifest.Encrypted ? DeriveCipher(manifest, passphrase) : null;
 
             var dumpEntry = archive.GetEntry(Postgres.DumpEntryName)
                 ?? throw new BackupFailure($"The archive carries no '{Postgres.DumpEntryName}'.");
@@ -168,9 +164,30 @@ public static class InstallArchive
         }
     }
 
+    static ArchiveCipher DeriveCipher(BackupManifest manifest, string? passphrase)
+    {
+        if (passphrase is null)
+        {
+            throw new BackupFailure("This archive is encrypted and needs its passphrase.");
+        }
+
+        try
+        {
+            return ArchiveCipher.Derive(passphrase, Convert.FromBase64String(manifest.KeySalt), manifest.KeyIterations);
+        }
+        catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            throw new BackupFailure("This archive's manifest carries no usable encryption parameters.");
+        }
+    }
+
     static async Task AddFile(ZipArchive archive, string path, string entryName, ArchiveCipher? cipher, CancellationToken cancelToken)
     {
-        var entry = archive.CreateEntry(entryName, entryName == Postgres.DumpEntryName ? CompressionLevel.SmallestSize : CompressionLevel.Optimal);
+        // A sealed entry is incompressible.
+        var level = cipher is not null
+            ? CompressionLevel.NoCompression
+            : entryName == Postgres.DumpEntryName ? CompressionLevel.SmallestSize : CompressionLevel.Optimal;
+        var entry = archive.CreateEntry(entryName, level);
 
         await using var entryStream = entry.Open();
         await using var file = File.OpenRead(path);
