@@ -90,6 +90,46 @@ public sealed class FileSystemStorageTests
         using var container = new Container();
 
         await _provider.Delete(container.Target, "a/b.txt");
+
+        Assert.Null(await _provider.Get(container.Target, "a/b.txt"));
+    }
+
+    [Fact]
+    public async Task APutOverAnExistingKeyReplacesItsBytes()
+    {
+        using var container = new Container();
+
+        using (var first = new MemoryStream([1, 2, 3]))
+        {
+            await _provider.Put(container.Target, "a.bin", first, null);
+        }
+
+        using (var second = new MemoryStream([9, 8]))
+        {
+            await _provider.Put(container.Target, "a.bin", second, null);
+        }
+
+        using var stored = await _provider.Get(container.Target, "a.bin");
+
+        Assert.NotNull(stored);
+        Assert.Equal(2, stored.Length);
+        Assert.Equal([9, 8], await File.ReadAllBytesAsync(Path.Combine(container.Path, "a.bin")));
+        Assert.Single(Directory.EnumerateFiles(container.Path));
+    }
+
+    [Fact]
+    public async Task ListsAKeyThatOnlyStartsLikeAStagingFile()
+    {
+        using var container = new Container();
+
+        using (var content = new MemoryStream([1]))
+        {
+            await _provider.Put(container.Target, "logos/.put-report.pdf", content, null);
+        }
+
+        var all = await _provider.List(container.Target, null);
+
+        Assert.Equal(["logos/.put-report.pdf"], all.Select(stored => stored.Key));
     }
 
     [Fact]
@@ -144,8 +184,8 @@ public sealed class FileSystemStorageTests
 
     // The story's own claim, made measurable: an archive larger than memory is neither loaded
     // nor buffered whole. The source is not seekable and refuses to state its length, so nothing
-    // downstream could size a buffer even if it wanted to — and the destination is watched WHILE
-    // the source is still producing. Bytes on disk before the last chunk was read is the whole
+    // downstream could size a buffer even if it wanted to — and the container is watched WHILE
+    // the source is still producing. Bytes in the staging file before the last chunk was read is the whole
     // proof: a provider that materialized the object would leave an empty file until the end.
     [Fact]
     public async Task WritesWhileTheSourceIsStillProducing()
@@ -167,7 +207,7 @@ public sealed class FileSystemStorageTests
 
         Assert.True(
             landedEarly > 0,
-            $"The destination held {landedEarly} bytes when half the source had been read; the object was buffered whole before anything was written.");
+            $"The container held {landedEarly} bytes when half the source had been read; the object was buffered whole before anything was written.");
 
         Assert.Equal(Big, new FileInfo(path).Length);
     }

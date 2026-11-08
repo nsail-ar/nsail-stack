@@ -18,8 +18,12 @@ public class FileSystemStorageProvider : IStorageProvider
     // constructor overload that takes useAsync has no default to fall back on.
     const int BufferSize = 81920;
 
-    // Marks a Put still being copied; List never reports one.
+    // Marks a Put still being copied; List never reports one. Only this exact form is skipped
+    // (prefix plus the 32 hex digits of Guid "N"), so a key that merely starts with the prefix
+    // stays listable.
     const string StagingPrefix = ".put-";
+
+    const int StagingNameLength = 5 + 32;
 
     public string Type
     {
@@ -59,7 +63,14 @@ public class FileSystemStorageProvider : IStorageProvider
         }
         catch
         {
-            File.Delete(staging);
+            try
+            {
+                File.Delete(staging);
+            }
+            catch (IOException)
+            {
+                // The original failure is the one the caller must see.
+            }
 
             throw;
         }
@@ -97,7 +108,7 @@ public class FileSystemStorageProvider : IStorageProvider
 
         var objects = Directory
             .EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Where(path => !Path.GetFileName(path).StartsWith(StagingPrefix, StringComparison.Ordinal))
+            .Where(path => !IsStaging(Path.GetFileName(path)))
             .Select(path => new { Path = path, Key = Path.GetRelativePath(root, path).Replace('\\', '/') })
             .Where(entry => prefix is not { Length: > 0 } || entry.Key.StartsWith(prefix, StringComparison.Ordinal))
             .Select(entry => new StoredObject
@@ -129,6 +140,13 @@ public class FileSystemStorageProvider : IStorageProvider
     public Uri? Link(StorageTarget target, string key)
     {
         return null;
+    }
+
+    static bool IsStaging(string name)
+    {
+        return name.Length == StagingNameLength
+            && name.StartsWith(StagingPrefix, StringComparison.Ordinal)
+            && name.AsSpan(StagingPrefix.Length).IndexOfAnyExcept("0123456789abcdef") < 0;
     }
 
     static string Root(StorageTarget target)
