@@ -37,6 +37,9 @@ public sealed class HarnessLoop(
     // few seconds for nothing.
     static readonly TimeSpan Backoff = TimeSpan.FromMinutes(10);
 
+    // The longest a provider's rate-limit wait holds the next pass.
+    internal static readonly TimeSpan MaxLimitBackoff = TimeSpan.FromMinutes(10);
+
     readonly SemaphoreSlim _wake = new(0);
     readonly Lock _gate = new();
     readonly ConcurrentDictionary<string, RunningJob> _running = new();
@@ -56,6 +59,7 @@ public sealed class HarnessLoop(
     Pass? _last;
     string? _paused;
     DateTimeOffset? _quotaUntil;
+    TimeSpan? _limitedFor;
     volatile bool _restarting;
     DateTimeOffset? _pausedSince;
     readonly IReadOnlyList<Worker> _workers = Worker.Compile(options.Value);
@@ -182,10 +186,15 @@ public sealed class HarnessLoop(
 
         while (!stop.IsCancellationRequested)
         {
+            _limitedFor = null;
             var pass = await RunPass(o, stop);
             lock (_gate) _last = pass;
             var idle = _running.IsEmpty && pass.WouldTake.Count == 0;
-            var wait = TimeSpan.FromSeconds(idle || o.Mode == HarnessMode.Debug ? o.IdlePollSeconds : o.BusyFloorSeconds);
+            var wait = NextWait(idle, o, _limitedFor);
+            if (_limitedFor is not null && wait > NextWait(idle, o, null))
+            {
+                log.LogWarning("provider rate limit — next pass in {Seconds:F0}s", wait.TotalSeconds);
+            }
             try
             {
                 await _wake.WaitAsync(wait, stop);
@@ -378,8 +387,20 @@ public sealed class HarnessLoop(
         }
         catch (Exception e) when (!stop.IsCancellationRequested)
         {
+            if (e is ProviderException { RetryAfter: { } after }) _limitedFor = after;
             return Failed(log, metrics, e, call, started);
         }
+    }
+
+    // The provider limited the pass: the next one waits out what it asked, up to a ceiling; a wake still ends it.
+    internal static TimeSpan NextWait(bool idle, HarnessOptions o, TimeSpan? limited)
+    {
+        var wait = TimeSpan.FromSeconds(idle || o.Mode == HarnessMode.Debug ? o.IdlePollSeconds : o.BusyFloorSeconds);
+        if (limited is { } asked && asked > wait)
+        {
+            return asked < MaxLimitBackoff ? asked : MaxLimitBackoff;
+        }
+        return wait;
     }
 
     // A failed read starts nothing: a half board reads as an empty queue. A request that timed out
