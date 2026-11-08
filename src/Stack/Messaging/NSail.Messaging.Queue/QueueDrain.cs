@@ -55,7 +55,7 @@ public sealed class QueueDrain
     }
 
     /// <summary>Delivers every row that is due, up to <see cref="QueueOptions.BatchSize"/>, and
-    /// answers how many rows it visited, deferred ones included. The tenant is whoever the caller
+    /// answers how many rows it claimed, deferred ones included. The tenant is whoever the caller
     /// entered: the query filter is what makes this tenant's queue its own.</summary>
     public async Task<int> Run(CancellationToken cancellationToken)
     {
