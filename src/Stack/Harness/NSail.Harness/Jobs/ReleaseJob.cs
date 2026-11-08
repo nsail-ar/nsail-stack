@@ -250,7 +250,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
     {
         return log.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(l => l.Trim().Split(' ', 2))
-            .Where(p => p.Length == 2 && SquashOf().Match(p[1]) is { Success: true } m && prs.Contains(int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)))
+            .Where(p => p.Length == 2 && SquashOf().Match(p[1]) is { Success: true } m && int.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) && prs.Contains(n))
             .Select(p => p[0]).ToList();
     }
 

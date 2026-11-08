@@ -38,7 +38,8 @@ public static partial class WrittenBlockers
             .Concat(WaitsLine().Matches(text).Where(OffANothingLine).Select(m => m.Groups["refs"].Value));
         return refs.SelectMany(r => Reference().Matches(r))
             .Where(m => m.Groups["key"].Value.Length == 0 || string.Equals(m.Groups["key"].Value, key, StringComparison.OrdinalIgnoreCase))
-            .Select(m => int.Parse(m.Groups["n"].Value, CultureInfo.InvariantCulture))
+            .Select(m => int.TryParse(m.Groups["n"].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var n) ? n : 0)
+            .Where(n => n > 0)
             .Distinct()
             .ToList();
     }
