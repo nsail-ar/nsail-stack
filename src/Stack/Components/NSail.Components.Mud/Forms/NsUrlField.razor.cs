@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Text;
+
 namespace NSail.Components;
 
 public partial class NsUrlField
@@ -67,7 +69,16 @@ public partial class NsUrlField
     static bool Readable(string typed)
     {
         return Uri.TryCreate(typed, UriKind.Absolute, out var address)
-            && typed.StartsWith(address.Scheme + ':', StringComparison.OrdinalIgnoreCase);
+            && typed.StartsWith(address.Scheme + ':', StringComparison.OrdinalIgnoreCase)
+            && IsDoorScheme(address.Scheme);
+    }
+
+    // The scheme is the gate's (WebAddress.IsNavigable) and nothing else of it: a "javascript:"
+    // saved here is drawn as a link by whoever reads the value back. The gate's whitespace rule
+    // is not applied — a space in the path is taken above, on purpose.
+    static bool IsDoorScheme(string scheme)
+    {
+        return WebAddress.IsNavigable(scheme + (scheme.Equals("mailto", StringComparison.OrdinalIgnoreCase) ? ":x" : "://x"), withinApp: false);
     }
 
     // `scheme://` and anything after it: the text announced a domain, so whatever is unreadable

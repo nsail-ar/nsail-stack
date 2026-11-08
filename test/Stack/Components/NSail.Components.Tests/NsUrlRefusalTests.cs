@@ -117,6 +117,8 @@ public sealed class NsUrlRefusalTests : BunitContext, IAsyncLifetime
     [InlineData("https:")]
     [InlineData("https:/optica.example")]
     [InlineData("C:\\resenas\\optica")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("data:text/html,x")]
     public async Task AnAddressThatNamesNoDomain_IsRefusedAndSaysToWriteItWhole(string address)
     {
         var cut = await Refused(address);
