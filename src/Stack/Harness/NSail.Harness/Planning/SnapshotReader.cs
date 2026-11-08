@@ -87,6 +87,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         var result = new List<StoryPr>();
         foreach (var pr in await repo.OpenPrs(ct))
         {
+            if (!IsCrews(pr, repo)) continue;
             if (_names.StoryOf(pr.Title, pr.Head) is not { } story) continue;
             // The default repository's heads always need their threads (the gate's verdict lives there);
             // another's head only once its own CI is green.
@@ -97,6 +98,19 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
             result.Add(new StoryPr(story, pr.Number, pr.Sha, pr.Ci, pr.Repo, word, gate));
         }
         return result;
+    }
+
+    // A PR is the crew's only when its head lives in this repository (a fork's branch name is the
+    // fork's to choose) and, where the repository lists its authors, one of them opened it.
+    internal static bool IsCrews(OpenPr pr, string repoName, IReadOnlyCollection<string> authors)
+    {
+        if (!string.Equals(pr.HeadRepo, repoName, StringComparison.OrdinalIgnoreCase)) return false;
+        return authors.Count == 0 || authors.Contains(pr.Author, StringComparer.OrdinalIgnoreCase);
+    }
+
+    bool IsCrews(OpenPr pr, IRepository repo)
+    {
+        return IsCrews(pr, repo.Name, repos.OptionsOf(repo).Authors);
     }
 
     // A PR's thread only changes when the PR does: it is read again only when its updatedAt moves,

@@ -12,7 +12,7 @@ namespace NSail.Harness.GitHub;
 public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options, StoryNames names, string token) : IRepository
 {
     const string PrsQuery = """
-        query($o:String!,$n:String!,$c:String){repository(owner:$o,name:$n){pullRequests(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title headRefName headRefOid isDraft mergeable updatedAt}}}}
+        query($o:String!,$n:String!,$c:String){repository(owner:$o,name:$n){pullRequests(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title headRefName headRefOid isDraft mergeable updatedAt headRepository{nameWithOwner} author{login}}}}}
         """;
 
     const string StatusesQuery = """
@@ -59,8 +59,14 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             var sha = pr.GetProperty("headRefOid").GetString() ?? "";
             var ci = pr.GetProperty("mergeable").GetString() == "CONFLICTING" ? CiState.Conflict : CiOf(bySha.GetValueOrDefault(sha));
             return new OpenPr(pr.GetProperty("number").GetInt32(), pr.GetProperty("title").GetString() ?? "",
-                pr.GetProperty("headRefName").GetString() ?? "", sha, ci, repo, pr.GetProperty("updatedAt").GetString() ?? "");
+                pr.GetProperty("headRefName").GetString() ?? "", sha, ci, repo, pr.GetProperty("updatedAt").GetString() ?? "",
+                NestedString(pr, "headRepository", "nameWithOwner"), NestedString(pr, "author", "login"));
         }).ToList();
+    }
+
+    static string NestedString(JsonElement e, string obj, string name)
+    {
+        return e.TryGetProperty(obj, out var o) && o.ValueKind == JsonValueKind.Object && o.TryGetProperty(name, out var v) ? v.GetString() ?? "" : "";
     }
 
     public async Task<IReadOnlyList<PrRef>> PrsOf(int story, string state, CancellationToken ct = default)
@@ -110,7 +116,8 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         return new PullRequest(number, pr.GetProperty("title").GetString() ?? "", pr.GetProperty("state").GetString() == "open",
             head.GetProperty("ref").GetString() ?? "", head.GetProperty("sha").GetString() ?? "",
             pr.TryGetProperty("mergeable_state", out var ms) && ms.GetString() == "dirty",
-            pr.TryGetProperty("body", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString()! : "");
+            pr.TryGetProperty("body", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString()! : "",
+            head.TryGetProperty("repo", out var hr) && hr.ValueKind == JsonValueKind.Object ? hr.GetProperty("full_name").GetString() ?? "" : "");
     }
 
     public async Task<IReadOnlyList<PrNote>> Thread(int pr, CancellationToken ct = default)
@@ -169,8 +176,11 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
     {
         // The head is read before the merge: once the merge has gone through, nothing after it may
         // throw, or the caller would report a merged PR as refused.
-        var head = (await Pr(pr, ct)).HeadRef;
+        var read = await Pr(pr, ct);
+        var head = read.HeadRef;
+        var ownHead = string.Equals(read.HeadRepo, repo, StringComparison.OrdinalIgnoreCase);
         await gh.Send(HttpMethod.Put, $"repos/{repo}/pulls/{pr}/merge", new { merge_method = "squash" }, ct);
+        if (!ownHead) return;
         try
         {
             await gh.Send(HttpMethod.Delete, $"repos/{repo}/git/refs/heads/{head}", ct: ct);
