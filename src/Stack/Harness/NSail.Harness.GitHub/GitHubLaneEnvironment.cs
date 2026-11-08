@@ -5,7 +5,8 @@ using NSail.Harness.Lanes;
 
 namespace NSail.Harness.GitHub;
 
-// A lane's scripts reach GitHub as the harness (gh reads GH_TOKEN; R names the default repository).
+// A lane's scripts reach GitHub as the harness (gh reads GH_TOKEN; R names the default repository),
+// except a step that runs a PR's or a branch's code and declares no token.
 // A seat's gh reads an empty configuration instead: no login, so no git credential either.
 public sealed class GitHubLaneEnvironment(HarnessOptions options, string token) : ILaneEnvironment
 {

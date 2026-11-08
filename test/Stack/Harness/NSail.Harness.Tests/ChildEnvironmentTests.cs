@@ -46,8 +46,8 @@ public class ChildEnvironmentTests
         {
             var other = await Shell.Run("env", [], Path.GetTempPath());
             Assert.DoesNotContain("GH_TOKEN", other.Output);
-            var git = await Shell.Run("git", ["config", "--get", "nsail.none"], Path.GetTempPath());
-            Assert.NotEqual(0, git.ExitCode);
+            var git = await Shell.Run("git", ["-c", "alias.tok=!echo token=$GH_TOKEN", "tok"], Path.GetTempPath());
+            Assert.Contains("token=harness-token", git.Output);
         }
         finally
         {
@@ -67,6 +67,19 @@ public class ChildEnvironmentTests
 
         Assert.Equal("harness-token", declared["GH_TOKEN"]);
         Assert.DoesNotContain("GH_TOKEN", undeclared.Keys);
+    }
+
+    [Fact]
+    public void ASeatHoldsNoTokenTheLaneGave()
+    {
+        var work = Path.Combine(Path.GetTempPath(), "seat-" + Guid.NewGuid().ToString("N"));
+        var lane = new GitHubLaneEnvironment(new HarnessOptions { WorkRoot = work, Repositories = [new RepositoryOptions { Name = "acme/app" }] }, "harness-token");
+        var env = new Dictionary<string, string>();
+        lane.Lane(env, credentials: true);
+        lane.Seat(env);
+
+        Assert.DoesNotContain("GH_TOKEN", env.Keys);
+        Assert.Equal(Path.Combine(work, "no-gh"), env["GH_CONFIG_DIR"]);
     }
 
     static Held Held(params (string, string)[] vars)

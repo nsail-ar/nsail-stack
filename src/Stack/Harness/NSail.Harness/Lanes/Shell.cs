@@ -52,7 +52,10 @@ public static class Shell
         {
             psi.Environment[name] = Environment.GetEnvironmentVariable(name);
         }
-        if (file == "git") foreach (var (k, v) in GitEnvironment) psi.Environment[k] = v;
+        if (file == "git")
+        {
+            foreach (var (k, v) in GitEnvironment) psi.Environment[k] = v;
+        }
         if (env is not null)
         {
             foreach (var (k, v) in env) psi.Environment[k] = v;
