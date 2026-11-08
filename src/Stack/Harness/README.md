@@ -29,6 +29,9 @@ the files it leaves.
     without a `Label` is the default; a story whose only area label is another's is built there.
     A story with that label beside other areas has two halves: it builds in the labelled repository
     until a PR of it merged there, then in the default one.
+    `Authors` lists the logins whose PRs are the crew's there (none: any author; when listed, it
+    includes the login of the token that opens the harness's own PRs). A PR whose head lives in
+    another repository (a fork) is never matched, gated, reviewed or merged.
     A board that names its columns or labels otherwise maps them (`Stages`, `Labels`); a repository
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
     seed projects, the `Everything` files that build it all, the `Tests` and their `TestFilter`): the
