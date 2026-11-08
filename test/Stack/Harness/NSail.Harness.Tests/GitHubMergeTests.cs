@@ -31,7 +31,7 @@ public class GitHubMergeTests
         var gh = new GitHubClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.github.com/") });
         var repo = new GitHubRepository(gh, new RepositoryOptions { Name = "o/r" }, new StoryNames("app", ["story"]), "t");
 
-        await repo.Merge(1);
+        await repo.Merge(1, "abc");
 
         return handler.Sent;
     }
@@ -51,6 +51,36 @@ public class GitHubMergeTests
 
         Assert.Contains("PUT /repos/o/r/pulls/1/merge", sent);
         Assert.DoesNotContain(sent, s => s.StartsWith("DELETE"));
+    }
+
+    sealed class MovedHead : HttpMessageHandler
+    {
+        public List<string> Sent { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Sent.Add($"{request.Method} {request.RequestUri!.AbsolutePath}");
+            if (request.Method == HttpMethod.Put)
+            {
+                var sent = await request.Content!.ReadAsStringAsync(ct);
+                var status = sent.Contains("\"sha\":\"reviewed\"") ? HttpStatusCode.Conflict : HttpStatusCode.OK;
+                return new HttpResponseMessage(status) { Content = new StringContent("""{"message":"Head branch was modified."}""", Encoding.UTF8, "application/json") };
+            }
+            var pr = """{"title":"app#1: x","state":"open","head":{"ref":"story/app-1","sha":"moved","repo":{"full_name":"o/r"}}}""";
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(request.Method == HttpMethod.Get ? pr : "{}", Encoding.UTF8, "application/json") };
+        }
+    }
+
+    [Fact]
+    public async Task AMergeNamesTheReviewedHeadAndIsRefusedWhenTheHeadMoved()
+    {
+        var handler = new MovedHead();
+        var gh = new GitHubClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.github.com/") });
+        var repo = new GitHubRepository(gh, new RepositoryOptions { Name = "o/r" }, new StoryNames("app", ["story"]), "t");
+
+        await Assert.ThrowsAsync<GitHubException>(() => repo.Merge(1, "reviewed"));
+
+        Assert.DoesNotContain(handler.Sent, s => s.StartsWith("DELETE"));
     }
 
     sealed class Reads(string headRepo, string user) : HttpMessageHandler

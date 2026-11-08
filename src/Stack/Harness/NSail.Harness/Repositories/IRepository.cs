@@ -45,8 +45,9 @@ public interface IRepository
     // past it: a rewritten branch goes up, work the voyage never saw is never overwritten.
     Task Push(string workDir, string branch, string? startedAt, CancellationToken ct = default);
 
-    // Squash-merges and deletes the head branch; once the merge went through, nothing after it throws.
-    Task Merge(int pr, CancellationToken ct = default);
+    // Squash-merges the head the review read and deletes the head branch; the provider refuses when the
+    // head is no longer sha. Once the merge went through, nothing after it throws.
+    Task Merge(int pr, string sha, CancellationToken ct = default);
 
     // The story's newest merge onto the default branch, if it has one.
     Task<Merge?> MergeOf(int story, CancellationToken ct = default);
