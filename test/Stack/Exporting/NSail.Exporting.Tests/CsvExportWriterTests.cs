@@ -98,7 +98,7 @@ public class CsvExportWriterTests
 
         var file = Encoding.UTF8.GetString(await Books.Write(new CsvExportWriter(), book, Books.States));
 
-        Assert.StartsWith("'=Title\r\n", file.TrimStart('\uFEFF'), StringComparison.Ordinal);
+        Assert.StartsWith("'=Title\n", file.TrimStart('\uFEFF'), StringComparison.Ordinal);
         Assert.Contains("'" + text, file, StringComparison.Ordinal);
     }
 
