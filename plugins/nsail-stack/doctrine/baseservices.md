@@ -17,10 +17,11 @@ methods. BaseServices must not reference Kits or Apps.
 In app hosts:
 
 1. `AddBaseWebApi` / `AddBaseWebApp` / Wasm equivalents
-2. `AddHttpClients` (clients only)
-3. Kit setup (`AddIamWebApi`, etc.)
-4. App setup (`AddOpticalWebApi`, etc.)
-5. After `Build()`, the pipeline: `UseBaseWebApi`/`UseBaseWebApp`, and a Blazor host
+2. `AddTenantKeys`, in a host that composes Storage (the `KeyProtector` it seals with)
+3. `AddHttpClients` (clients only)
+4. Kit setup (`AddIamWebApi`, etc.)
+5. App setup (`AddOpticalWebApi`, etc.)
+6. After `Build()`, the pipeline: `UseBaseWebApi`/`UseBaseWebApp`, and a Blazor host
    closes with `app.MapRazorApp<App>()` — skip it and the host serves no page.
 
 ---

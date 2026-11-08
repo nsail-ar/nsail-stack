@@ -113,9 +113,9 @@ public sealed class StorageCredentialProvider
         catch (Exception exception) when (exception is FormatException or CryptographicException or MissingEncryptionKeyException)
         {
             // The secret was sealed under another key (a previous shared one, another tenant's)
-            // or the tenant has no key. Answering "no secret" makes the target refuse and the
-            // screen ask for it again, which is the only recovery there is; throwing would
-            // take every reader down with it. Sealing is the loud side.
+            // or the tenant has no key. It reads as an empty secret rather than throwing, which
+            // would take every reader down with it; the target is still accepted and a provider
+            // that signs with the secret refuses the write. Sealing is the loud side.
             return "";
         }
     }

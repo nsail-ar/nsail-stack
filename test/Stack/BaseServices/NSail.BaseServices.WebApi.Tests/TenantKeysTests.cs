@@ -4,6 +4,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Security.Cryptography;
 using NSail.Data;
 using NSail.Security;
 
@@ -61,7 +62,7 @@ public sealed class TenantKeysTests : IDisposable
 
         AmbientTenant.Enter(Tenant.For("juli", "juli-db"));
 
-        Assert.ThrowsAny<Exception>(() => keys.Unprotect(sealedByLumina));
+        Assert.ThrowsAny<CryptographicException>(() => keys.Unprotect(sealedByLumina));
     }
 
     [Fact]

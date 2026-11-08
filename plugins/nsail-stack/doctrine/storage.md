@@ -96,9 +96,12 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   `Resolve`'s refusals, an install storing nowhere and a provider no host composed, because a
   caller at the door can do nothing different about either.
 - **The credential is sealed with the key of the tenant it belongs to** (`KeyProtector`,
-  `NSail.Security`; `AddTenantKeys` reads one file per tenant, and a tenant without one makes the
-  seal throw, and an open reads as "no secret", so the screen asks again). `AddStorageWebApi` does not register one — the key is the host's — so a host that composes
-  Storage without it fails by name on first use rather than sealing under a key nobody chose.
+  `NSail.Security`; `AddTenantKeys` reads one file per tenant). A tenant without a key makes the
+  seal throw. An open that cannot happen reads as an empty secret: the target is still
+  configured and a provider that signs with the secret refuses the write, so a stored secret
+  that no longer opens must be saved again. `AddStorageWebApi` does not register a
+  `KeyProtector` — the key is the host's — so a host that composes Storage without one fails by
+  name on first use rather than sealing under a key nobody chose.
 
 ## The S3 provider
 
