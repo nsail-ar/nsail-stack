@@ -194,15 +194,30 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     {
         var name = $"rescue/{ctx.Names.Key}-{n}";
         var rescued = await RescueRef(repo, dir, since, name, screen);
-        if (rescued is not null) log.LogWarning("#{Story}: unpushed work rescued to {Ref}", n, rescued);
+        if (rescued is not null)
+        {
+            log.LogWarning("#{Story}: unpushed work rescued to {Ref}", n, rescued);
+        }
+        else if (int.Parse((await Shell.Git(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture) > 0)
+        {
+            log.LogWarning("#{Story}: commits touching a protected path were not pushed; they stay on the local branch until the story's next checkout resets it ({Label} lifts the screen)", n, Labels.AllowProtected);
+        }
         return rescued;
     }
 
     // The protected paths a rescue push screens for: none when a hand lifted the screen.
     async Task<IReadOnlyList<string>> ScreenOf(int n)
     {
-        var lifted = ctx.Options.AllowProtectedPaths || (await ctx.Board.Labels(n, CancellationToken.None)).Contains(Labels.AllowProtected);
-        return lifted ? [] : ctx.Options.ProtectedPaths;
+        if (ctx.Options.AllowProtectedPaths) return [];
+        try
+        {
+            return (await ctx.Board.Labels(n, CancellationToken.None)).Contains(Labels.AllowProtected) ? [] : ctx.Options.ProtectedPaths;
+        }
+        catch (Exception)
+        {
+            // The board may be down with the network; the strict screen needs no board.
+            return ctx.Options.ProtectedPaths;
+        }
     }
 
     // A rescue is a push like any other: commits touching a protected path stay local.
@@ -271,7 +286,9 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
                     log.LogError(e, "#{Story}: the rescue push failed", n);
                 }
                 await board.RemoveLabel(n, Labels.Claimed);
-                await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.PushRefused, ("branch", branch), ("rescue", rescue))));
+                await board.Comment(n, Said(rescue is null
+                    ? HarnessTexts.Fill(ctx.Texts.PushRefusedKept, ("branch", branch))
+                    : HarnessTexts.Fill(ctx.Texts.PushRefused, ("branch", branch), ("rescue", rescue))));
                 if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
                 return new Ending(rescue is null ? "push refused — work kept local" : $"push refused — work on {rescue}", Failed: true);
             }

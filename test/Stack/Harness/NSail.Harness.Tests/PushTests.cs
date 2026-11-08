@@ -169,12 +169,17 @@ public class PushTests : IDisposable
     }
 
     [Fact]
-    public async Task RescueToAnUnreachableRemoteFailsOnceAndTakesNoOtherName()
+    public async Task RescueRefusedForAnyReasonButAnExistingRefTriesOnce()
     {
         var (dir, _, start) = await Sailing();
         await Commit(dir, "B");
-        await Shell.Git(dir, "remote", "set-url", "origin", Path.Combine(_root, "gone.git"));
+        var tally = Path.Combine(_root, "tally");
+        var hook = Path.Combine(Remote, "hooks", "pre-receive");
+        await File.WriteAllTextAsync(hook, $"#!/bin/sh\necho x >> '{tally.Replace('\\', '/')}'\nexit 1\n");
+        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(hook, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
+
+        Assert.Single(await File.ReadAllLinesAsync(tally));
     }
 }
