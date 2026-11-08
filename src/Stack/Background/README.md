@@ -52,7 +52,7 @@ The runners read three things from the host:
 
 | Source | Used for |
 |---|---|
-| `Background` (`BackgroundOptions`) | `JobTimeout` (default 5 min) is the budget of one pass of a job, one tenant's for a per-tenant job; `JobTimeouts` overrides it per job, keyed by the job type's name; `DeferredTimeout` (default 30 s) is a deferred item's. |
+| `Background` (`BackgroundOptions`) | `JobTimeout` (default 5 min) is the budget of one pass of a job, one tenant's for a per-tenant job; `JobTimeouts` overrides it per job, keyed by the job type's name; `DeferredTimeout` (default 30 s) is a deferred item's. Each is 1 ms to 1 day; outside that the host does not start. |
 | `Language:Default` | The culture every job pass and every deferred item runs in, since no request sets one. Absent configuration keeps the ambient culture. |
 | `Tenancy` (`NSail.Data`) | The roster a per-tenant job sweeps (`Tenancy:Tenants`, `Tenancy:TenantsFile`, or the provisioned databases under a per-tenant connection). Under `SingleDb` a declared roster also refuses a request's slug off it with a 404 ([Data](../Data/README.md)). |
 

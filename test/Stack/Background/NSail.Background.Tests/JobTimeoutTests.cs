@@ -41,8 +41,64 @@ sealed class HangingJob : IBackgroundJob
     }
 }
 
+sealed class TickingHangingJob : IBackgroundJob
+{
+    readonly TenancyProvider _tenancy;
+    readonly Swept _swept;
+
+    public TickingHangingJob(TenancyProvider tenancy, Swept swept)
+    {
+        _tenancy = tenancy;
+        _swept = swept;
+    }
+
+    public TimeSpan Interval => TimeSpan.FromMilliseconds(50);
+
+    public TenancyScope Tenancy => TenancyScope.Tenant;
+
+    public Task Run(CancellationToken cancellationToken)
+    {
+        var slug = _tenancy.Current.Slug;
+
+        _swept.Add(slug);
+
+        return slug == "alfa" ? new TaskCompletionSource().Task : Task.CompletedTask;
+    }
+}
+
 public sealed class JobTimeoutTests
 {
+    [Fact]
+    public async Task A_tenant_whose_abandoned_pass_still_runs_is_skipped_and_the_others_keep_running()
+    {
+        var swept = new Swept();
+        var logs = new LogRecorder();
+
+        await using var provider = Harness.Build(
+            services =>
+            {
+                var tenancy = new TenancyOptions { Mode = TenancyMode.SingleDb, Tenants = "alfa,beta" };
+
+                services.AddSingleton(tenancy);
+                services.AddSingleton(new TenantRoster(tenancy));
+                services.AddScoped<ResolvedTenancyProvider>();
+                services.AddScoped<TenancyProvider>(p => p.GetRequiredService<ResolvedTenancyProvider>());
+                services.AddSingleton(swept);
+                services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string?> { ["Background:JobTimeouts:TickingHangingJob"] = "00:00:00.100" })
+                    .Build());
+                services.AddBackgroundJob<TickingHangingJob>();
+            },
+            logs);
+
+        var skipped = logs.Awaits(entry => entry.Level == LogLevel.Error && entry.Message.Contains("skipped tenant alfa"));
+
+        await Harness.Run(provider, skipped);
+
+        Assert.Equal(1, swept.Slugs.Count(slug => slug == "alfa"));
+        Assert.True(swept.Slugs.Count(slug => slug == "beta") >= 2);
+    }
+
     [Fact]
     public async Task A_pass_that_never_returns_is_abandoned_counted_failed_and_the_next_tenant_runs()
     {

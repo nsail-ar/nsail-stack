@@ -214,10 +214,17 @@ sealed class BackgroundJobRunner : BackgroundService
             {
                 _meter.Passed(jobType.Name, succeeded: false);
 
-                _logger.LogError(
-                    "Background job {Job} skipped tenant {Tenant}: its abandoned pass is still running.",
-                    jobType.Name,
-                    key.Item2);
+                if (tenant is null)
+                {
+                    _logger.LogError("Background job {Job} skipped its tick: its abandoned pass is still running.", jobType.Name);
+                }
+                else
+                {
+                    _logger.LogError(
+                        "Background job {Job} skipped tenant {Tenant}: its abandoned pass is still running.",
+                        jobType.Name,
+                        tenant.Slug);
+                }
 
                 return false;
             }
