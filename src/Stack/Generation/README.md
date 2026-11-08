@@ -133,6 +133,9 @@ GeneratorDriver driver = CSharpGeneratorDriver.Create(new ServiceRegistrationSou
 driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics);
 ```
 
+`AddFrameworkReferences` references every assembly the test host can load, not only those already
+loaded, so whether `output` compiles does not depend on which tests ran first.
+
 ## How it fits
 
 - [Messaging](../Messaging/README.md) owns the attributes the Http, Push and Queue targets read and

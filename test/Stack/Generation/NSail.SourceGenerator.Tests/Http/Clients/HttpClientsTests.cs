@@ -95,12 +95,15 @@ public class HttpClientsTests
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new HttpClientsSourceGenerator());
 
-        driver = driver.RunGeneratorsAndUpdateCompilation(builder.Build("HttpClientsTestAssembly"), out _, out _);
+        driver = driver.RunGeneratorsAndUpdateCompilation(builder.Build("HttpClientsTestAssembly"), out _, out var diagnostics);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
 
         var generated = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
 
         Assert.Contains(".AddHeader(\"trace\", message.Trace)", generated);
         Assert.Contains(".AddHeader(\"attempt\", message.Attempt)", generated);
+        Assert.Contains(".AddHeader(\"tenant\", message.Tenant)", generated);
         Assert.DoesNotContain(".AddHeader(message)", generated);
     }
 
