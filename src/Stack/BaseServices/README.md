@@ -90,7 +90,8 @@ directory refuses to compose; Development without it seals under a fixed key.
 7. `TicketEpochMiddleware`, every host: refuses a ticket stamped with a generation other than
    `Security:TicketEpoch` (0 refuses nothing).
 8. `ThrottleMiddleware`: a per-caller (IPv4 address, or IPv6 /64), per-message fixed window of one minute, read from the
-   message's `[Throttled(perMinute)]` attribute; messages without it pass.
+   message's `[Throttled(perMinute)]` attribute; messages without it pass. `Identity = nameof(Msg.Prop)` adds a second window per message and
+   submitted identity (`IdentityPerMinute`, default `PerMinute`), across all addresses. The property must be a public `string` of the body without `[JsonPropertyName]`; NSG016 refuses any other.
 9. `RequestBudgetMiddleware`: a per-tenant fixed window of one minute over every authenticated message send,
    against `RequestBudgetProvider.PerMinute` (the base answers null, no budget; a product
    registers its own, before or after `AddBaseWebApi`). Past it: 429 and `Retry-After`.

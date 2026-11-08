@@ -59,6 +59,64 @@ public class HttpRouteDiagnosticTests
         Assert.NotEmpty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
     }
 
+    [Fact]
+    public void A_throttled_identity_naming_no_property_is_a_build_error()
+    {
+        var diagnostics = Run(ThrottledSource("Login", "Missing"));
+
+        var reported = Assert.Single(diagnostics.Where(d => d.Id == "NSG016"));
+
+        Assert.Equal(DiagnosticSeverity.Error, reported.Severity);
+        Assert.Contains("Missing", reported.GetMessage());
+        Assert.Empty(Run(ThrottledSource("Login", "Login")).Where(d => d.Id == "NSG016"));
+    }
+
+    [Fact]
+    public void A_throttled_identity_that_is_not_bound_from_the_body_is_a_build_error()
+    {
+        var source = ThrottledSource("Login", "Login").Replace("Method.Post", "Method.Get");
+
+        Assert.Single(Run(source).Where(d => d.Id == "NSG016"));
+    }
+
+    [Fact]
+    public void A_throttled_identity_that_is_renamed_or_not_a_string_is_a_build_error()
+    {
+        var renamed = ThrottledSource("Login", "Login")
+            .Replace("public string Login", "[JsonPropertyName(\"u\")] public string Login")
+            + "\npublic sealed class JsonPropertyNameAttribute(string name) : System.Attribute;\n";
+        var number = ThrottledSource("Login", "Login").Replace("public string Login { get; set; } = \"\";", "public int Login { get; set; }");
+
+        Assert.Single(Run(renamed).Where(d => d.Id == "NSG016"));
+        Assert.Single(Run(number).Where(d => d.Id == "NSG016"));
+    }
+
+    static string ThrottledSource(string property, string identity)
+    {
+        return $$"""
+            using Microsoft.Extensions.DependencyInjection;
+            using Microsoft.AspNetCore.Routing;
+            using NSail.Messaging;
+            using NSail.Messaging.Annotations;
+            using NSail.SourceGeneration.Annotations;
+
+            namespace Acme.Clinic.Access;
+
+            [Http(Method.Post, "api/sign-in")]
+            [Throttled(20, Identity = "{{identity}}")]
+            public class SignIn : IMessage
+            {
+                public string {{property}} { get; set; } = "";
+            }
+
+            public static partial class Endpoints
+            {
+                [Generated(NSail.SourceGeneration.Annotations.Http.Endpoints)]
+                public static partial void AddClinicEndpoints(this IServiceCollection services);
+            }
+            """;
+    }
+
     const string BoundTokenSource = """
         using Microsoft.Extensions.DependencyInjection;
         using Microsoft.AspNetCore.Routing;

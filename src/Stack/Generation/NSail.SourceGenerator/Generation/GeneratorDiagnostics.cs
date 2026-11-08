@@ -146,4 +146,13 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Two senders for one message is a refusal the send pipeline can only make at runtime; the declaration is where it is visible.");
+
+    public static readonly DiagnosticDescriptor ThrottledIdentityNotFound = new(
+        id: "NSG016",
+        title: "[Throttled] Identity names no string body property the middleware can read",
+        messageFormat: "'{0}' declares [Throttled(Identity = \"{1}\")], but it has no public string property named '{1}' bound from the body and without [JsonPropertyName] (a route, query or header member, a non-string value or a renamed wire name is not read). Name the string property of the body that holds the account, with nameof.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The ceiling reads the JSON body; a name that matches nothing there caps no account, and goes on capping nothing after the property it meant is renamed.");
 }

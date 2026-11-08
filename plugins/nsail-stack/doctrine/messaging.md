@@ -772,6 +772,27 @@ budget per request. Forwarded headers are believed only from `Security:TrustedPr
 `SecurityProblem.TooManyRequests` — 429, code `TooManyRequests` — so a client never has to
 recognise a refusal by status number alone.
 
+- **A door that guesses a secret also caps the account.** `[Throttled(perMinute, Identity = nameof(SignIn.Login), IdentityPerMinute = n)]`
+  names the property that identifies the account (sign-in's login, a code request's address);
+  `nameof` because NSG016 refuses a name that matches no readable property, and a bare literal would
+  silence the cap after a rename. After the per-address window admits the send, the middleware
+  reads the identity before binding and chains a second fixed window per message and identity,
+  from every address together (case and spaces folded, length bounded). The per-address ceiling
+  stays, so a shared address is not penalized beyond it; a per-address ceiling alone is never met
+  by a botnet or an IPv6 /64 rotating against one known account.
+- **The identity is a member of the JSON body.** The generated endpoint binds a body message's
+  members from the body, so that is the one place the cap and the handler agree on; NSG016
+  refuses an `Identity` that is a route, query or header member, that is not a `string`, or that
+  carries `[JsonPropertyName]`: the middleware reads the string under the property's own name,
+  so a number or a renamed wire name would leave every send in the shared partition. Where a name repeats in the body the last occurrence wins, as it
+  does when the binder assigns the members, so the sender cannot pick a partition apart from
+  the value the handler sees. A send whose identity cannot be read — a body past 16 KB, not
+  JSON, or without the property — is counted in one shared partition rather than exempted, so
+  padding or omitting the field is no way out of the cap. The body is buffered in memory only,
+  within that bound.
+- **The cap has a price**: a stranger can spend a known account's budget and leave its owner on
+  429 from their own address for the rest of the minute. That is the trade for bounding guesses
+  against one account; set `IdentityPerMinute` with it in mind.
 - **The declaration rides the message, never a path**: the route is derived from the
   message, so a path-based declaration could only name an address that had moved.
 - **It stands in FRONT of the gate.** Volume is not a permission question; a flood is refused

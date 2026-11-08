@@ -108,7 +108,7 @@ public class ProductRule : IValidator<UpdateProduct>   // a Problem refuses, nul
 | `[AsRoute]` `[AsQuery]` `[AsHeader]` | property | Override where a member binds. A non-`required` query/header/body member is optional: absent leaves the message's own default |
 | `[Pushed]` | event | A server publish also reaches every open client of the tenant. The event may carry no public property |
 | `[Queue]` | command | The send is durable. Only `IMessage`, never `IMessage<T>`; never beside `[Http]` |
-| `[Throttled(perMinute)]` | class | Fixed-window cap per caller over HTTP, for a door reachable by someone never authenticated |
+| `[Throttled(perMinute)]` | class | Fixed-window cap per caller over HTTP, for a door reachable by someone never authenticated; `Identity`/`IdentityPerMinute` add a cap per submitted account across all addresses; `Identity` must be a public `string` body property without `[JsonPropertyName]` (NSG016) |
 | `[Unbounded(reason)]` | property | Records why a number or code declares no bound; read by a test, no runtime effect |
 
 Validation attributes in `NSail.Messaging.Runtime.Validation`: `[NotFuture]`, `[NotNegative]`,

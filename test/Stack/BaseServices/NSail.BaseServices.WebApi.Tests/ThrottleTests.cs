@@ -214,6 +214,73 @@ public sealed class ThrottleTests
         Assert.DoesNotContain(trail.Warnings, said => said.Contains("proxy", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task An_identity_is_capped_across_addresses_and_the_address_ceiling_stays()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", $"{{\"account\":\"Admin\",\"password\":\"p{attempt}\"}}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"account\":\" admin \"}"));
+        Assert.Equal(200, await host.Post("10.0.1.1", "{\"account\":\"other\"}"));
+
+        for (var attempt = 0; attempt < Login.AddressPerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post("10.0.2.1", $"{{\"account\":\"u{attempt}\"}}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.2.1", "{\"account\":\"fresh\"}"));
+    }
+
+    [Fact]
+    public async Task A_query_value_beside_a_json_body_does_not_pick_the_partition()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", "{\"account\":\"admin\"}", $"?account=decoy{attempt}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"account\":\"admin\"}", "?account="));
+    }
+
+    [Fact]
+    public async Task A_repeated_identity_name_is_read_as_the_binder_reads_it_last_wins()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            var json = attempt % 2 == 0
+                ? $"{{\"account\":\"decoy{attempt}\",\"account\":\"admin\"}}"
+                : $"{{\"Account\":\"decoy{attempt}\",\"account\":\"admin\"}}";
+
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", json));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"account\":\"admin\"}"));
+    }
+
+    [Fact]
+    public async Task A_send_whose_identity_cannot_be_read_shares_one_budget()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        var padded = "{\"pad\":\"" + new string('x', 20_000) + "\",\"account\":\"admin\"}";
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", attempt % 2 == 0 ? padded : "{\"password\":\"p\"}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", padded));
+        Assert.Equal(200, await host.Post("10.0.1.1", "{\"account\":\"admin\"}"));
+    }
+
     static async Task<string> Code(HttpResponseMessage response)
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -231,6 +298,19 @@ public sealed class Capped : IMessage
     public const string Path = "api/probe/capped";
 
     public const int PerMinute = 3;
+}
+
+[Http(Method.Post, Login.Path)]
+[Throttled(Login.AddressPerMinute, Identity = nameof(Login.Account), IdentityPerMinute = Login.PerMinute)]
+public sealed class Login : IMessage
+{
+    public const string Path = "api/probe/login";
+
+    public const int PerMinute = 3;
+
+    public const int AddressPerMinute = 6;
+
+    public string? Account { get; set; }
 }
 
 [Http(Method.Get, AlsoCapped.Path)]
@@ -294,6 +374,7 @@ sealed class ThrottleHost : IAsyncDisposable
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Capped), Capped.Path));
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(AlsoCapped), AlsoCapped.Path));
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Uncapped), Uncapped.Path));
+        builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Login), Login.Path, post: true));
 
         var app = builder.Build();
 
@@ -335,6 +416,23 @@ sealed class ThrottleHost : IAsyncDisposable
         return context.Response.StatusCode;
     }
 
+    public async Task<int> Post(string address, string json, string query = "")
+    {
+        var context = await _app.GetTestServer().SendAsync(request =>
+        {
+            request.Request.Scheme = "https";
+            request.Request.Method = HttpMethods.Post;
+            request.Request.Host = new HostString("localhost");
+            request.Request.Path = "/" + Login.Path;
+            request.Request.QueryString = new QueryString(query);
+            request.Request.ContentType = "application/json";
+            request.Request.Body = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+            request.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(address);
+        });
+
+        return context.Response.StatusCode;
+    }
+
     public async ValueTask DisposeAsync()
     {
         Client.Dispose();
@@ -350,18 +448,21 @@ sealed class Probe : IEndpointEntry
 {
     readonly Type _message;
     readonly string _path;
+    readonly bool _post;
 
-    public Probe(Type message, string path)
+    public Probe(Type message, string path, bool post = false)
     {
         _message = message;
         _path = path;
+        _post = post;
     }
 
     public void Configure(IEndpointRouteBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.MapGet(_path, () => Results.Ok())
-            .WithMetadata(new MessageEndpointMetadata(_message));
+        var route = _post ? builder.MapPost(_path, () => Results.Ok()) : builder.MapGet(_path, () => Results.Ok());
+
+        route.WithMetadata(new MessageEndpointMetadata(_message));
     }
 }
