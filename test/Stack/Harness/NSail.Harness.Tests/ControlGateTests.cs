@@ -62,19 +62,18 @@ public class ControlGateTests
     }
 
     [Fact]
-    public async Task AJobLogNeedsTheControlTokenFromAHeaderTheQueryOrTheCookie()
+    public async Task AJobLogNeedsTheControlTokenFromAHeaderOrTheCookie()
     {
         var e = Page(controlOnly: true);
         Assert.Equal(401, await Call(Options(), e, method: "GET"));
         Assert.Equal(401, await Call(Options(), e, "lease-secret", method: "GET"));
-        Assert.Equal(401, await Call(Options(), e, method: "GET", query: "?token=wrong"));
+        Assert.Equal(401, await Call(Options(), e, method: "GET", query: "?token=control-secret"));
         Assert.Equal(200, await Call(Options(), e, "control-secret", method: "GET"));
-        Assert.Equal(200, await Call(Options(), e, method: "GET", query: "?token=control-secret"));
         Assert.Equal(200, await Call(Options(), e, method: "GET", cookie: "control-secret"));
     }
 
     [Fact]
-    public async Task TheCookieAndTheQueryOpenNothingButAGet()
+    public async Task TheCookieOpensNothingButAGet()
     {
         Assert.Equal(401, await Call(Options(), Message(typeof(PauseHarness)), query: "?token=control-secret"));
         Assert.Equal(401, await Call(Options(), Message(typeof(PauseHarness)), cookie: "control-secret"));
@@ -140,6 +139,23 @@ public class ControlGateTests
         o.Validate();
         o.Control = new ControlOptions { Token = "same", LeaseToken = "same" };
         Assert.Contains("the same", Assert.Throws<InvalidOperationException>(o.Validate).Message);
+    }
+
+    [Fact]
+    public async Task ALaneHoldsTheLeaseTokenAndNeverTheControlToken()
+    {
+        var o = Options();
+        o.Repositories = [new RepositoryOptions { Name = "acme/app" }];
+        var repo = new NSail.Harness.GitHub.GitHubRepository(null!, o.Repositories[0], o.Names(), "t");
+        var ctx = new NSail.Harness.Jobs.JobContext(new MemoryBoard(), new RepositorySet([(repo, o.Repositories[0])]), new Dictionary<string, NSail.Harness.Lanes.Workspace>(), new NoAgent(), o, [],
+            Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance, new NSail.Harness.Planning.BuildLeases(1));
+        var item = new NSail.Harness.Planning.WorkItem(NSail.Harness.Planning.WorkKind.Dev, 1, null, "t", "r");
+        var lane = await ctx.LaneEnv(DateTimeOffset.UtcNow, item);
+        foreach (var env in new[] { lane, ctx.SeatEnv(lane) })
+        {
+            Assert.Equal("lease-secret", env["HARNESS_LEASE_TOKEN"]);
+            Assert.DoesNotContain("control-secret", env.Values);
+        }
     }
 
     [Fact]

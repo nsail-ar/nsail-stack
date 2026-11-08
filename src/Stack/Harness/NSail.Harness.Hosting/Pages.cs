@@ -17,6 +17,17 @@ public static class Pages
         app.MapGet("/", (HarnessLoop loop, HarnessOptions o, JobHistory history, BuildLeases leases, JobStats stats, LoadSamples load, Agents.IAgent agent, string? range) =>
             Results.Content(StatusPage.Render(loop, o, history, leases, stats, load, agent, range), "text/html; charset=utf-8"))
             .ExcludeFromDescription();
+        app.MapGet("/login", () =>
+            Results.Content("<form method=\"post\" action=\"/login\"><label>Control token <input type=\"password\" name=\"token\" autofocus></label> <button>Sign in</button></form>", "text/html; charset=utf-8"))
+            .ExcludeFromDescription();
+        app.MapPost("/login", async (HttpContext http, HarnessOptions o) =>
+        {
+            var form = await http.Request.ReadFormAsync();
+            var token = form["token"].ToString();
+            if (!ControlGate.IsControl(o, token)) return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            ControlGate.SignIn(http, token);
+            return Results.Redirect("/jobs");
+        }).ExcludeFromDescription();
         app.MapGet("/jobs", (HarnessOptions o, JobHistory history, string? role, string? result, int? story, int? page, string? q) =>
             Results.Content(JobsPage.List(o, history, role, result, story, page, q), "text/html; charset=utf-8"))
             .ExcludeFromDescription();

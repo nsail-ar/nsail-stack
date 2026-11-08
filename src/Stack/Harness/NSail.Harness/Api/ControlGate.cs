@@ -13,7 +13,7 @@ namespace NSail.Harness.Api;
 // Host is not one the harness listens on is refused; a message route needs the control token unless its
 // message says otherwise (HarnessAccess: the build-turn routes take the lease token, the status reads are
 // open); a page marked ControlOnly (a job's transcript) needs it too. A browser carries the token once
-// as ?token= on a GET and keeps it in a cookie.
+// by header, or once through the /login form that keeps it in a cookie (a token in a URL is logged).
 public sealed class ControlGate(RequestDelegate next, HarnessOptions options)
 {
     public const string Header = "X-Harness-Token";
@@ -32,16 +32,17 @@ public sealed class ControlGate(RequestDelegate next, HarnessOptions options)
             var control = options.Control.ResolveToken();
             var browser = HttpMethods.IsGet(context.Request.Method);
             var given = Given(context.Request, browser);
-            var ok = control is not null && Same(given.Token, control)
-                || need == HarnessAccess.Lease && Same(given.Token, options.Control.ResolveLeaseToken());
+            var ok = control is not null && Same(given, control)
+                || need == HarnessAccess.Lease && Same(given, options.Control.ResolveLeaseToken());
             if (!ok)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                if (browser)
+                {
+                    context.Response.ContentType = "text/html; charset=utf-8";
+                    await context.Response.WriteAsync("<p>The control token is needed: <a href=\"/login\">sign in</a>.</p>");
+                }
                 return;
-            }
-            if (given.FromQuery)
-            {
-                context.Response.Cookies.Append(Cookie, given.Token!, new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Strict, Path = "/" });
             }
         }
         await next(context);
@@ -64,14 +65,23 @@ public sealed class ControlGate(RequestDelegate next, HarnessOptions options)
         return options.Control.Hosts.Any(h => string.Equals(h, name, StringComparison.OrdinalIgnoreCase));
     }
 
-    static (string? Token, bool FromQuery) Given(HttpRequest request, bool browser)
+    // The cookie a successful sign-in sets; port-scoped harnesses on one host share a cookie jar, hence the token itself is what is checked.
+    public static void SignIn(HttpContext context, string token)
+    {
+        context.Response.Cookies.Append(Cookie, token, new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Strict, Secure = context.Request.IsHttps, Path = "/" });
+    }
+
+    public static bool IsControl(HarnessOptions options, string? given)
+    {
+        return options.Control.ResolveToken() is { } control && Same(given, control);
+    }
+
+    static string? Given(HttpRequest request, bool browser)
     {
         var auth = request.Headers.Authorization.ToString();
-        if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return (auth[7..].Trim(), false);
-        if (request.Headers[Header].FirstOrDefault() is { Length: > 0 } header) return (header.Trim(), false);
-        if (!browser) return (null, false);
-        if (request.Query["token"].FirstOrDefault() is { Length: > 0 } query) return (query, true);
-        return (request.Cookies[Cookie], false);
+        if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return auth[7..].Trim();
+        if (request.Headers[Header].FirstOrDefault() is { Length: > 0 } header) return header.Trim();
+        return browser ? request.Cookies[Cookie] : null;
     }
 
     static bool Same(string? given, string expected)
