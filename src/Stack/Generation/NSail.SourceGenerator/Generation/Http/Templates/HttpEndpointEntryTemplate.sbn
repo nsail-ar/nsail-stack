@@ -17,8 +17,14 @@ public class {{ MessageType.ClassName }}EndpointEntry : IEndpointEntry
 {
     public void Configure(IEndpointRouteBuilder builder)
     {
+        {{~ if HttpMethod == "Head" || HttpMethod == "Options" ~}}
+        builder.MapMethods(
+            "{{ Path }}",
+            new[] { "{{ HttpMethod | string.upcase }}" },
+        {{~ else ~}}
         builder.Map{{ HttpMethod }}(
             "{{ Path }}",
+        {{~ end ~}}
             async (
                 {{~ for binding in Bindings ~}}
                 [From{{ binding.BindingSource }}] {{ binding.Type }} {{ binding.Name }},

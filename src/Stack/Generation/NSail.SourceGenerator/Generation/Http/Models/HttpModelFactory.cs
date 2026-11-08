@@ -416,6 +416,8 @@ public static class HttpModelFactory
         {
             HttpMethodName.Get => BindingSource.Query,
             HttpMethodName.Delete => BindingSource.Query,
+            HttpMethodName.Head => BindingSource.Query,
+            HttpMethodName.Options => BindingSource.Query,
             HttpMethodName.Post => BindingSource.Body,
             HttpMethodName.Put => BindingSource.Body,
             HttpMethodName.Patch => BindingSource.Body,

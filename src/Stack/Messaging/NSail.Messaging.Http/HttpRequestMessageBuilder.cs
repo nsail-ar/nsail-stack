@@ -84,14 +84,40 @@ public sealed class HttpRequestMessageBuilder
         _query.Append(Uri.EscapeDataString(value));
     }
 
-    public HttpRequestMessageBuilder AddHeader(string name, string value)
+    /// <summary>A null value adds no header.</summary>
+    public HttpRequestMessageBuilder AddHeader(string name, string? value)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (string.IsNullOrWhiteSpace(name) || value is null)
         {
             return this;
         }
 
         _message.Headers.TryAddWithoutValidation(name, value);
+        return this;
+    }
+
+    public HttpRequestMessageBuilder AddHeader<T>(string name, T value)
+    {
+        if (value is null)
+        {
+            return this;
+        }
+
+        return AddHeader(name, Convert.ToString(value, CultureInfo.InvariantCulture));
+    }
+
+    public HttpRequestMessageBuilder AddHeader<T>(string name, IEnumerable<T>? values)
+    {
+        if (values is null)
+        {
+            return this;
+        }
+
+        foreach (var value in values)
+        {
+            AddHeader(name, value);
+        }
+
         return this;
     }
 

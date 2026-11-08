@@ -24,7 +24,18 @@ public class HttpClientsTests
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()
-            .AddContainingAssembly<IEndpointRouteBuilder>();
+            .AddContainingAssembly<IEndpointRouteBuilder>()
+            .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
+            .AddContainingAssembly<System.Net.Http.IHttpClientFactory>()
+            .AddContainingAssembly<NSail.Messaging.IMessage>()
+            .AddContainingAssembly<NSail.Messaging.Runtime.Sending.ISender<NSail.Messaging.IMessage>>()
+            .AddContainingAssembly<NSail.Messaging.Http.HttpSender<NSail.Messaging.IMessage>>()
+            .AddContainingAssembly<NSail.Messaging.Runtime.Pipelines.InProcessSendPipeline<NSail.Messaging.IMessage>>()
+            .AddContainingAssembly<NSail.Messaging.WebApi.IEndpointEntry>()
+            .AddContainingAssembly<NSail.Metadata.MetadataProvider>()
+            .AddContainingAssembly<Microsoft.AspNetCore.Mvc.FromQueryAttribute>()
+            .AddContainingAssembly<Microsoft.AspNetCore.Http.HttpContext>()
+            .AddContainingAssembly<System.Text.Json.JsonSerializerOptions>();
 
         var compilation = builder.Build("HttpClientsTestAssembly");
 
@@ -34,6 +45,7 @@ public class HttpClientsTests
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
         Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
 
         var runResult = driver.GetRunResult();
         var generatedTrees = runResult.GeneratedTrees;
@@ -68,5 +80,27 @@ public class HttpClientsTests
         Assert.Contains("IHttpClientFactory httpClientFactory, MessageContextAccessor deliveries", generated);
         Assert.Contains(": base(httpClientFactory, deliveries)", generated);
         Assert.DoesNotContain("X-NSail-", generated);
+    }
+
+    [Fact]
+    public void An_AsHeader_member_is_sent_as_a_named_header()
+    {
+        var builder = new CompilationUnitBuilder()
+            .AddSourceFiles("./Http/Clients/Sources/**/*.cs")
+            .AddFrameworkReferences("net10.0")
+            .AddContainingAssembly<GeneratedAttribute>()
+            .AddContainingAssembly<TestGetMessage>()
+            .AddContainingAssembly<HttpAttribute>()
+            .AddContainingAssembly<IEndpointRouteBuilder>();
+
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new HttpClientsSourceGenerator());
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(builder.Build("HttpClientsTestAssembly"), out _, out _);
+
+        var generated = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.Contains(".AddHeader(\"trace\", message.Trace)", generated);
+        Assert.Contains(".AddHeader(\"attempt\", message.Attempt)", generated);
+        Assert.DoesNotContain(".AddHeader(message)", generated);
     }
 }

@@ -31,7 +31,11 @@ public sealed class {{ MessageType.ClassName }}HttpSender : HttpSender<{{ Messag
 {{~ when "Body" ~}}
             .AddJsonContent(message)
 {{~ when "Header" ~}}
-            .AddHeader(message)
+{{~ if binding.IsCollection ~}}
+            .AddHeader("{{ binding.Name }}", (System.Collections.Generic.IEnumerable<{{ binding.ElementType }}>?)message.{{ binding.PropertyName }})
+{{~ else ~}}
+            .AddHeader("{{ binding.Name }}", message.{{ binding.PropertyName }})
+{{~ end ~}}
 {{~ end ~}}
 {{~ end ~}}
             .Build();
