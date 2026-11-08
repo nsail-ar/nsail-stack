@@ -56,6 +56,7 @@ public sealed class HarnessLoop(
     Pass? _last;
     string? _paused;
     DateTimeOffset? _quotaUntil;
+    TimeSpan? _limitedFor;
     volatile bool _restarting;
     DateTimeOffset? _pausedSince;
     readonly IReadOnlyList<Worker> _workers = Worker.Compile(options.Value);
@@ -182,6 +183,7 @@ public sealed class HarnessLoop(
 
         while (!stop.IsCancellationRequested)
         {
+            _limitedFor = null;
             var pass = await RunPass(o, stop);
             lock (_gate) _last = pass;
             var idle = _running.IsEmpty && pass.WouldTake.Count == 0;
@@ -195,6 +197,19 @@ public sealed class HarnessLoop(
             catch (OperationCanceledException) when (stop.IsCancellationRequested)
             {
                 break;
+            }
+            // The provider limited the pass: the next one waits out what it asked.
+            if (_limitedFor is { } limited && limited > wait)
+            {
+                log.LogWarning("provider rate limit — next pass in {Seconds:F0}s", limited.TotalSeconds);
+                try
+                {
+                    await Task.Delay(limited - wait, stop);
+                }
+                catch (OperationCanceledException) when (stop.IsCancellationRequested)
+                {
+                    break;
+                }
             }
         }
     }
@@ -378,6 +393,7 @@ public sealed class HarnessLoop(
         }
         catch (Exception e) when (!stop.IsCancellationRequested)
         {
+            if (e is ProviderException { RetryAfter: { } after }) _limitedFor = after;
             return Failed(log, metrics, e, call, started);
         }
     }

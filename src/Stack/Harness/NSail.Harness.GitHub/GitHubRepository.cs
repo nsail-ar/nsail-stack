@@ -298,7 +298,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
                 times.AddRange(cmp.GetProperty("commits").EnumerateArray()
                     .Select(c => c.GetProperty("commit").GetProperty("committer").GetProperty("date").GetDateTimeOffset()));
             }
-            catch (GitHubException)
+            catch (GitHubException e) when (e.HttpStatus == HttpStatusCode.NotFound)
             {
             }
         }
