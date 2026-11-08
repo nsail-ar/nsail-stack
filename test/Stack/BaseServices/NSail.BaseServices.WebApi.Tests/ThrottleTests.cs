@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NSail.Messaging;
 using NSail.Messaging.Annotations;
 using NSail.Messaging.WebApi;
@@ -164,6 +166,54 @@ public sealed class ThrottleTests
         Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.2"));
     }
 
+    // Behind a proxy with the flag off every caller is the proxy, and the Stack cannot see the
+    // proxy, so the warning is the only thing that tells the install its ceiling is shared.
+    [Fact]
+    public async Task With_forwarded_headers_off_outside_Development_startup_warns_that_callers_share_one_address()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await ThrottleHost.Start(Environments.Production, trail);
+
+        var warning = Assert.Single(trail.Warnings, said => said.Contains("shares the proxy's address", StringComparison.Ordinal));
+
+        Assert.Contains("ASPNETCORE_FORWARDEDHEADERS_ENABLED", warning, StringComparison.Ordinal);
+        Assert.Contains("Security:TrustedProxies", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task With_forwarded_headers_off_in_Development_startup_says_nothing()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await ThrottleHost.Start(Environments.Development, trail);
+
+        Assert.DoesNotContain(trail.Warnings, said => said.Contains("proxy", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task With_forwarded_headers_on_and_no_proxy_named_startup_warns_that_nothing_is_believed()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await ThrottleHost.Start(Environments.Production, trail, forwarded: true);
+
+        var warning = Assert.Single(trail.Warnings, said => said.Contains("proxy", StringComparison.Ordinal));
+
+        Assert.Contains("no forwarded header is believed", warning, StringComparison.Ordinal);
+        Assert.Contains("HSTS", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task With_a_proxy_named_startup_says_nothing()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await ThrottleHost.Start(Environments.Production, trail, forwarded: true, "10.0.0.0/8");
+
+        Assert.DoesNotContain(trail.Warnings, said => said.Contains("proxy", StringComparison.Ordinal));
+    }
+
     static async Task<string> Code(HttpResponseMessage response)
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -207,9 +257,22 @@ sealed class ThrottleHost : IAsyncDisposable
 
     HttpClient Client { get; set; } = null!;
 
-    public static async Task<ThrottleHost> Start(bool forwarded = false, params string[] trustedProxies)
+    public static Task<ThrottleHost> Start(bool forwarded = false, params string[] trustedProxies)
     {
-        var builder = WebApplication.CreateBuilder();
+        return Start(WebApplication.CreateBuilder(), forwarded, trustedProxies);
+    }
+
+    public static Task<ThrottleHost> Start(string environment, WallTrail logs, bool forwarded = false, params string[] trustedProxies)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
+
+        builder.Logging.AddProvider(logs);
+
+        return Start(builder, forwarded, trustedProxies);
+    }
+
+    static async Task<ThrottleHost> Start(WebApplicationBuilder builder, bool forwarded, string[] trustedProxies)
+    {
 
         if (forwarded)
         {
