@@ -25,9 +25,9 @@ public static class ExportText
 
         return format switch
         {
-            ExportFormat.Number => Figure(value, "0.##########", culture),
-            ExportFormat.Money => Figure(value, "0.00", culture),
-            ExportFormat.Percent => Figure(value, "0.00%", culture),
+            ExportFormat.Number when IsFigure(value, format) => Figure(value, "0.##########", culture),
+            ExportFormat.Money when IsFigure(value, format) => Figure(value, "0.00", culture),
+            ExportFormat.Percent when IsFigure(value, format) => Figure(value, "0.00%", culture),
             ExportFormat.Date => Moment(value, culture),
             _ => Word(value, culture)
         };
@@ -43,12 +43,7 @@ public static class ExportText
 
     static string Figure(object value, string pattern, CultureInfo culture)
     {
-        if (IsFigure(value, ExportFormat.Number))
-        {
-            return Convert.ToDecimal(value, culture).ToString(pattern, culture);
-        }
-
-        return Word(value, culture);
+        return Convert.ToDecimal(value, culture).ToString(pattern, culture);
     }
 
     static string Moment(object value, CultureInfo culture)
