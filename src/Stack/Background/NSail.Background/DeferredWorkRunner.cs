@@ -84,15 +84,16 @@ sealed class DeferredWorkRunner : BackgroundService
             CultureInfo.CurrentUICulture = culture;
         }
 
-        var scope = _scopes.CreateAsyncScope();
-
+        AsyncServiceScope? scope = null;
         Task? abandoned = null;
 
         try
         {
-            item.Enter(scope.ServiceProvider);
+            scope = _scopes.CreateAsyncScope();
 
-            var work = item.Work(scope.ServiceProvider, budget.Token);
+            item.Enter(scope.Value.ServiceProvider);
+
+            var work = item.Work(scope.Value.ServiceProvider, budget.Token);
 
             try
             {
@@ -100,7 +101,7 @@ sealed class DeferredWorkRunner : BackgroundService
                 // while the queue grows, so past the grace the item is abandoned.
                 await work.WaitAsync(_timeout + BackgroundOptions.Grace(_timeout), stoppingToken).ConfigureAwait(false);
             }
-            catch (TimeoutException)
+            catch (TimeoutException) when (!work.IsCompleted)
             {
                 abandoned = work;
 

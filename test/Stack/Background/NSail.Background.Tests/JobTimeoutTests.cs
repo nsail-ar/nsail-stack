@@ -120,4 +120,12 @@ public sealed class JobTimeoutTests
         Assert.Equal(1, meters.Items("Tests.After", DeferredWorkMetrics.Succeeded));
         Assert.Contains(logs.Entries, entry => entry.Level == LogLevel.Error && entry.Message.Contains("abandoned"));
     }
+
+    [Fact]
+    public void A_job_timeout_outside_its_bounds_is_refused()
+    {
+        var options = new BackgroundOptions { JobTimeouts = { ["X"] = TimeSpan.Zero } };
+
+        Assert.NotEmpty(options.Validate(new System.ComponentModel.DataAnnotations.ValidationContext(options)));
+    }
 }

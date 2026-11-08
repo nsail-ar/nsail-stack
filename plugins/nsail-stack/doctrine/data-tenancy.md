@@ -719,7 +719,8 @@ reads nothing and cannot write at all.
   returns (a dead socket, a lock) would stop every later tenant, so each pass gets
   `BackgroundOptions.JobTimeout`, overridable per job in `JobTimeouts`: the token is cancelled at
   the budget and, after a short grace, the runner stops waiting, counts the pass failed and logs
-  job and tenant. `DeferredWork` abandons an item that ignores its token the same way
+  job and tenant; while the abandoned pass runs, that tenant's later ticks are skipped (counted and
+  logged) so a hang holds one scope. `DeferredWork` abandons an item that ignores its token the same way
   (`DeferredTimeout`).
 - **A suspended tenant is not swept at all.** The runner asks the install's record once the
   tenant is entered and before the job is resolved, so nothing of the job runs (The install's own

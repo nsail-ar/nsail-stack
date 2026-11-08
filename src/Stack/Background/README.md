@@ -72,7 +72,10 @@ The runners read three things from the host:
   failure.
 - A pass past its budget has its token cancelled and, after a short grace, is abandoned: counted
   failed, logged with job and tenant, and the sweep goes on to the next tenant. A job that ignores
-  its token keeps running unobserved, with its scope held open until it ends, so honour it. A job
+  its token keeps running unobserved, with its scope held open until it ends, so honour it. While it runs, the
+  tenant's later ticks are skipped, each counted failed and logged, so a hang holds one scope, not
+  one per tick. Keep a job's budget below `Queue:Lease` (or the lease above the budget), or an
+  abandoned drain pass leaves rows another drain claims again. A job
   that stops on its own cancellation or timeout is logged as the failure it threw.
 - A job must be constructible with no tenant entered: anything that needs one (a `DbContext`) is
   resolved inside `Run`. A job that is not logs "could not be started" and never runs again in that

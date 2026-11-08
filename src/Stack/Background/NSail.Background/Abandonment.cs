@@ -9,23 +9,30 @@ static class Abandonment
 {
     // The scope is what the abandoned work still resolves from and holds a DbContext of, so it
     // is disposed when that work ends, not under it; the work's fault is observed there too.
-    internal static async ValueTask Release(AsyncServiceScope scope, Task? abandoned)
+    internal static async ValueTask Release(AsyncServiceScope? scope, Task? abandoned)
     {
+        if (scope is not { } held)
+        {
+            return;
+        }
+
         if (abandoned is null)
         {
-            await scope.DisposeAsync().ConfigureAwait(false);
+            await held.DisposeAsync().ConfigureAwait(false);
 
             return;
         }
 
         _ = abandoned.ContinueWith(
-            static async (task, state) =>
-            {
-                _ = task.Exception;
+                static async (task, state) =>
+                {
+                    _ = task.Exception;
 
-                await ((AsyncServiceScope)state!).DisposeAsync().ConfigureAwait(false);
-            },
-            scope,
-            TaskScheduler.Default);
+                    await ((AsyncServiceScope)state!).DisposeAsync().ConfigureAwait(false);
+                },
+                held,
+                TaskScheduler.Default)
+            .Unwrap()
+            .ContinueWith(static task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
     }
 }

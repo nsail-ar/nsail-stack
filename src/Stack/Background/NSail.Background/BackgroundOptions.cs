@@ -6,7 +6,7 @@ using System.ComponentModel.DataAnnotations;
 namespace NSail.Background;
 
 /// <summary>The <c>Background</c> section: the budgets of the job runner and the deferred queue.</summary>
-public class BackgroundOptions
+public class BackgroundOptions : IValidatableObject
 {
     /// <summary>How long one pass of a job (one tenant's, for a per-tenant job) may run before
     /// the runner abandons it, unless <see cref="JobTimeouts"/> names the job.</summary>
@@ -19,6 +19,17 @@ public class BackgroundOptions
     /// <summary>How long one deferred item may run before the queue stops waiting for it.</summary>
     [Range(typeof(TimeSpan), "00:00:00.001", "1.00:00:00")]
     public TimeSpan DeferredTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        foreach (var (job, timeout) in JobTimeouts)
+        {
+            if (timeout < TimeSpan.FromMilliseconds(1) || timeout > TimeSpan.FromDays(1))
+            {
+                yield return new ValidationResult($"JobTimeouts:{job} must be between 1 ms and 1 day.", [nameof(JobTimeouts)]);
+            }
+        }
+    }
 
     internal TimeSpan TimeoutOf(string job)
     {
