@@ -12,6 +12,7 @@
   "Common.New": "New",
   "Common.Quick": "Quick",
   "Common.Loading": "Loading",
+  "Common.LoadFailed": "Could not load the records.",
   "Common.Menu": "Menu",
   "Common.MoreActions": "More actions",
   "Common.ShowOptions": "Show options",

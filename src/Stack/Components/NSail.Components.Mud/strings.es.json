@@ -12,6 +12,7 @@
   "Common.New": "Nuevo",
   "Common.Quick": "Rápido",
   "Common.Loading": "Cargando",
+  "Common.LoadFailed": "No se pudieron cargar los registros.",
   "Common.Menu": "Menú",
   "Common.MoreActions": "Más acciones",
   "Common.ShowOptions": "Mostrar opciones",
