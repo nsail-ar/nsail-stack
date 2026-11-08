@@ -115,7 +115,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         var lease = await ctx.Leases.Acquire(JobContext.HolderOf(Item), Planner.Rank(Item.Tier), ct);
         try
         {
-            var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(step.Minutes), Item, step, ct);
+            var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(step.Minutes), Item, step, ct, runsCode: true);
             env["HARNESS_LEASE_HELD"] = "1";
             if (step.Command is { } command)
             {

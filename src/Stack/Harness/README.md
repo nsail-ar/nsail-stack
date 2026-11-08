@@ -81,6 +81,10 @@ the files it leaves.
   - `Seats` (signature, model, `Prompt` or `PromptFile`) and `Conditions` (named Whens: a crew's
     `db-up` the test database answering, `quota-5h`/`quota-week` the agent's quota walls).
   - `Variables` for every lane, and a worker's own: literal, or `${vars:NAME}`, `${env:NAME}`, `${file:PATH}`.
+  - What a process the harness starts sees: the machine's own names (PATH, home, temp, locale; `Shell.Inherited`) plus
+    the lane's `Variables` (a proxy or CA name — `HTTPS_PROXY`, `SSL_CERT_FILE` — is declared there too) — never the harness's credentials. A Gate (PR or main) or Release step, which runs a PR's or a branch's
+    code, gets `GH_TOKEN` only where its `Variables` list it; any other lane step keeps it. A seat gets none. The
+    harness's own git authenticates through `Shell.GitEnvironment`, not the process environment.
   - How a story is named (`{key}#{n}`, `{prefix}/{key}-{n}`) and the words the harness posts (`HarnessTexts`).
   - A provider's own settings sit in its section (`GitHub`, `Claude`: the seats' plugins live there, and
     `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository).
@@ -122,7 +126,11 @@ app.Run();
 
 It listens on `127.0.0.1:6190` with no authentication, so it never binds beyond the loopback. The
 GitHub token is `GitHub:Token`, `GitHub:TokenFile` or `GH_TOKEN`, the workstation's `gh` login
-otherwise. Machine-local settings go in `appsettings.Local.json` beside the binary (ignored); it
+otherwise; a child never inherits it (see above), but a variable
+exported to the harness process stays in that process's initial environment, which a PR's code
+running as the same user can read (`/proc/<pid>/environ`). `GH_TOKEN` is a workstation convenience;
+a deployment passes `GitHub:TokenFile`. A step's `GH_TOKEN` in `Variables` is a switch, not a value: it always
+gets the harness's token. Machine-local settings go in `appsettings.Local.json` beside the binary (ignored); it
 is read last, so it outranks the command line.
 
 The API is the Sdk's messages, under `/api/harness/` — browsable at `/scalar`, described at

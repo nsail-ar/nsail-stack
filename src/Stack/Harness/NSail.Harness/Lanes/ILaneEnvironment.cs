@@ -7,7 +7,8 @@ namespace NSail.Harness.Lanes;
 // its credentials, a seat gets none — and is fenced off from any it might find on the machine.
 public interface ILaneEnvironment
 {
-    void Lane(IDictionary<string, string> env);
+    // credentials: false for a step that runs a PR's or a branch's code and declares none.
+    void Lane(IDictionary<string, string> env, bool credentials);
 
     void Seat(IDictionary<string, string> env);
 
