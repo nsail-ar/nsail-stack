@@ -13,8 +13,8 @@ using NSail.Metadata;
 namespace NSail.Components.Tests;
 
 /// <summary>An address that arrives written is never trusted on its scheme: NsLink and NsChip
-/// draw javascript: and data: as inert text, an empty Href as a disabled link, and keep
-/// https:, mailto:, tel: and in-app routes as links.</summary>
+/// draw javascript:, data:, ftp: and file: as inert text, an empty Href as a disabled link, and
+/// keep https:, mailto:, tel:, otpauth: and in-app routes as links.</summary>
 public sealed class NsLinkSchemeTests : BunitContext
 {
     public NsLinkSchemeTests()
@@ -33,6 +33,8 @@ public sealed class NsLinkSchemeTests : BunitContext
     [Theory]
     [InlineData("javascript:alert(1)")]
     [InlineData("data:text/html,x")]
+    [InlineData("ftp://acme.com/x")]
+    [InlineData("file:///etc/passwd")]
     public void NsLinkDrawsAForbiddenSchemeWithNoHref(string href)
     {
         var cut = Render<NsLink>(p => p.Add(x => x.Href, href).Add(x => x.Label, "Sitio"));
@@ -44,6 +46,8 @@ public sealed class NsLinkSchemeTests : BunitContext
     [Theory]
     [InlineData("javascript:alert(1)")]
     [InlineData("data:text/html,x")]
+    [InlineData("ftp://acme.com/x")]
+    [InlineData("file:///etc/passwd")]
     public void NsChipDrawsAForbiddenSchemeWithNoHref(string href)
     {
         var cut = Render<NsChip>(p => p.Add(x => x.Text, "Sitio").Add(x => x.Href, href));
@@ -72,5 +76,24 @@ public sealed class NsLinkSchemeTests : BunitContext
         var cut = Render<NsLink>(p => p.Add(x => x.Href, href).Add(x => x.Label, "Sitio"));
 
         Assert.NotEmpty(cut.FindAll("a[href]"));
+    }
+
+    const string Authenticator = "otpauth://totp/example.test:tester?secret=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+    [Fact]
+    public void NsLinkKeepsAnOtpauthAddressAsWritten()
+    {
+        var cut = Render<NsLink>(p => p.Add(x => x.Href, Authenticator).Add(x => x.Label, "Sitio"));
+
+        Assert.Equal(Authenticator, cut.Find("a[href]").GetAttribute("href"));
+        Assert.Empty(cut.FindAll("[disabled]"));
+    }
+
+    [Fact]
+    public void NsChipKeepsAnOtpauthAddressAsWritten()
+    {
+        var cut = Render<NsChip>(p => p.Add(x => x.Text, "Sitio").Add(x => x.Href, Authenticator));
+
+        Assert.Equal(Authenticator, cut.Find("[href]").GetAttribute("href"));
     }
 }
