@@ -128,7 +128,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             // A cancelled or crashed run never reaches Deliver: the slot's next Prepare resets it.
             try
             {
-                await Rescue(n, repo, work, startedAt ?? ctx.WorkspaceOf(repo).Tip, log);
+                await Rescue(n, repo, work, startedAt ?? ctx.WorkspaceOf(repo).Tip, log, await ScreenOf(n));
             }
             catch (Exception e)
             {
@@ -190,18 +190,27 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
 
     // Commits ahead of `since` go to a ref of their own, unleased and never the story's: a push that must
     // survive a cancelled job or a refused lease. Returns the ref, null when nothing was ahead.
-    async Task<string?> Rescue(int n, IRepository repo, string dir, string since, ILogger log)
+    async Task<string?> Rescue(int n, IRepository repo, string dir, string since, ILogger log, IReadOnlyList<string> screen)
     {
         var name = $"rescue/{ctx.Names.Key}-{n}";
-        var rescued = await RescueRef(repo, dir, since, name);
+        var rescued = await RescueRef(repo, dir, since, name, screen);
         if (rescued is not null) log.LogWarning("#{Story}: unpushed work rescued to {Ref}", n, rescued);
         return rescued;
     }
 
-    internal static async Task<string?> RescueRef(IRepository repo, string dir, string since, string name)
+    // The protected paths a rescue push screens for: none when a hand lifted the screen.
+    async Task<IReadOnlyList<string>> ScreenOf(int n)
+    {
+        var lifted = ctx.Options.AllowProtectedPaths || (await ctx.Board.Labels(n, CancellationToken.None)).Contains(Labels.AllowProtected);
+        return lifted ? [] : ctx.Options.ProtectedPaths;
+    }
+
+    // A rescue is a push like any other: commits touching a protected path stay local.
+    internal static async Task<string?> RescueRef(IRepository repo, string dir, string since, string name, IReadOnlyList<string> screen)
     {
         var ahead = int.Parse((await Shell.Git(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
         if (ahead == 0) return null;
+        if (screen.Count > 0 && SeatOutput.Protected(await SeatOutput.Changed(dir, since), screen).Count > 0) return null;
         for (var i = 0; ; i++)
         {
             var candidate = i == 0 ? name : $"{name}-{i + 1}";
@@ -210,8 +219,9 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
                 await repo.Push(dir, candidate, null, CancellationToken.None);
                 return candidate;
             }
-            catch (InvalidOperationException) when (i < 20)
+            catch (InvalidOperationException refused) when (i < 20 && refused.Message.Contains("stale info", StringComparison.Ordinal))
             {
+                // Only a ref that already exists (the null lease says it must not) moves on to the next name.
             }
         }
     }
@@ -251,11 +261,19 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             catch (InvalidOperationException refused)
             {
                 log.LogWarning("#{Story}: {Refused}", n, refused.Message);
-                var rescue = await Rescue(n, repo, dir, since, log);
+                string? rescue = null;
+                try
+                {
+                    rescue = await Rescue(n, repo, dir, since, log, []);
+                }
+                catch (Exception e)
+                {
+                    log.LogError(e, "#{Story}: the rescue push failed", n);
+                }
                 await board.RemoveLabel(n, Labels.Claimed);
                 await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.PushRefused, ("branch", branch), ("rescue", rescue))));
                 if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
-                return new Ending($"push refused — work on {rescue}", Failed: true);
+                return new Ending(rescue is null ? "push refused — work kept local" : $"push refused — work on {rescue}", Failed: true);
             }
         }
 

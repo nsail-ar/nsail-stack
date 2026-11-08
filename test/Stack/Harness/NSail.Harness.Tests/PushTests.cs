@@ -136,9 +136,9 @@ public class PushTests : IDisposable
         var (dir, _, start) = await Sailing();
         var added = await Commit(dir, "B");
 
-        var first = await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1");
+        var first = await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []);
         var later = await Commit(dir, "C");
-        var second = await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1");
+        var second = await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []);
 
         Assert.Equal("rescue/oz-1", first);
         Assert.Equal("rescue/oz-1-2", second);
@@ -152,6 +152,29 @@ public class PushTests : IDisposable
     {
         var (dir, _, start) = await Sailing();
 
-        Assert.Null(await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1"));
+        Assert.Null(await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
+    }
+
+    [Fact]
+    public async Task RescueWithAProtectedPathStaysLocalUnlessTheScreenIsLifted()
+    {
+        var (dir, _, start) = await Sailing();
+        Directory.CreateDirectory(Path.Combine(dir, ".github", "workflows"));
+        await File.WriteAllTextAsync(Path.Combine(dir, ".github", "workflows", "ci.yml"), "on: push");
+        await Shell.Git(dir, "add", "-A");
+        await Commit(dir, "W");
+
+        Assert.Null(await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", [".github/workflows/**"]));
+        Assert.Equal("rescue/oz-1", await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
+    }
+
+    [Fact]
+    public async Task RescueToAnUnreachableRemoteFailsOnceAndTakesNoOtherName()
+    {
+        var (dir, _, start) = await Sailing();
+        await Commit(dir, "B");
+        await Shell.Git(dir, "remote", "set-url", "origin", Path.Combine(_root, "gone.git"));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
     }
 }

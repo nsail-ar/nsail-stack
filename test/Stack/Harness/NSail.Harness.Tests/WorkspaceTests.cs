@@ -113,6 +113,8 @@ public class WorkspaceTests : IDisposable
         await Shell.Git(slot, "checkout", "-q", "-B", "ahead", ws.Tip);
         await Shell.Git(slot, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "unpushed");
 
+        await Shell.Git(slot, "checkout", "-q", "--detach");
+
         await ws.Prepare(1);
 
         var heads = await Shell.Git(Bare, "for-each-ref", "--format=%(refname:short)", "refs/heads");
