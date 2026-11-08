@@ -84,6 +84,32 @@ public class CsvExportWriterTests
         Assert.True(stream.CanWrite);
     }
 
+    [Theory]
+    [InlineData("=1+1")]
+    [InlineData("+1")]
+    [InlineData("-1")]
+    [InlineData("@SUM(A1)")]
+    [InlineData("\tx")]
+    [InlineData("\rx")]
+    public async Task A_text_cell_that_a_spreadsheet_would_run_is_written_as_text(string text)
+    {
+        var column = new ExportColumn { Key = "Name", Title = "=Title" };
+        var book = ExportBook.Of("Lista", new ExportTable { Columns = [column], Rows = Books.Rows([[text]]) });
+
+        var file = Encoding.UTF8.GetString(await Books.Write(new CsvExportWriter(), book, Books.States));
+
+        Assert.StartsWith("'=Title\r\n", file.TrimStart('\uFEFF'), StringComparison.Ordinal);
+        Assert.Contains("'" + text, file, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_negative_figure_is_not_prefixed()
+    {
+        var lines = await Lines(Books.Argentina);
+
+        Assert.Equal("-7,00", Books.Fields(lines[2], ';')[2]);
+    }
+
     static async Task<string[]> Lines(System.Globalization.CultureInfo culture)
     {
         var text = Encoding.UTF8.GetString(await Books.Write(new CsvExportWriter(), Books.One(), culture));
