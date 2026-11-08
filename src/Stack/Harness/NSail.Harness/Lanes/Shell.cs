@@ -36,9 +36,12 @@ public static class Shell
     // fsmonitor command) must never run in the harness's git: command-line config outranks the repository's.
     static readonly string[] Hardened = ["-c", $"core.hooksPath={(OperatingSystem.IsWindows() ? "NUL" : "/dev/null")}", "-c", "core.fsmonitor=false", "-c", "protocol.ext.allow=never"];
 
+    // The names that say whose account a process runs in: under `runAs` the target's own sudo sets them.
+    static readonly string[] Identity = ["HOME", "USER", "USERNAME", "LOGNAME", "SHELL", "XDG_RUNTIME_DIR", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME"];
+
     public static async Task<ShellResult> Run(
         string file, IEnumerable<string> args, string workDir, IDictionary<string, string>? env = null,
-        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false)
+        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false, string? runAs = null)
     {
         var psi = new ProcessStartInfo(file)
         {
@@ -67,6 +70,18 @@ public static class Shell
         if (env is not null)
         {
             foreach (var (k, v) in env) psi.Environment[k] = v;
+        }
+
+        if (runAs is not null && !OperatingSystem.IsWindows())
+        {
+            // The process runs as another user, never with this one's home or keys: sudo (no prompt,
+            // the target's own HOME) carries only the names this method set.
+            foreach (var name in Identity) psi.Environment.Remove(name);
+            var inner = psi.ArgumentList.ToList();
+            psi.ArgumentList.Clear();
+            foreach (var a in new[] { "-n", "-H", "-u", runAs, $"--preserve-env={string.Join(',', psi.Environment.Keys)}", "--", file }) psi.ArgumentList.Add(a);
+            foreach (var a in inner) psi.ArgumentList.Add(a);
+            psi.FileName = "sudo";
         }
 
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };

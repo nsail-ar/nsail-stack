@@ -114,7 +114,9 @@ the files it leaves.
     harness's own git authenticates through `Shell.GitEnvironment`, not the process environment.
   - How a story is named (`{key}#{n}`, `{prefix}/{key}-{n}`) and the words the harness posts (`HarnessTexts`).
   - A provider's own settings sit in its section (`GitHub`, `Claude`: the seats' plugins live there, and
-    `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository).
+    `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository; `RunAs`, a Linux
+    account the seats run as through `sudo -n -u`, so a seat reads none of the harness user's `~/.ssh`, secrets file or docker
+    group: the account owns neither, writes the slots and `configRoot`, and the harness user's sudoers rule carries `SETENV`).
 - **Capacity is per resource, per machine**: agents, builds, browsers (`Agents`, `Builds`,
   `Browsers`). The plan is walked in order and every item whose resources are free is taken; a
   worker's `Max` caps its own jobs. Past the agent's quota wall (a refused run) only the agents stop.
