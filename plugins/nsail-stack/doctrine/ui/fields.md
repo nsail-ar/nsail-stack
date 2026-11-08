@@ -143,6 +143,13 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   rule it is: money's bound is the **caller's** (a range no annotation can express, said on the
   field), a date's is the **message's**, and a page that wrote it beside the declaration would be
   keeping a second copy of it.
+- **A `DateTimeOffset` binds as an instant read on the reader's clock.** Both date fields show the
+  day and hour of that instant in the host's local zone (`TimeZoneInfo.Local`, the zone
+  `BusinessDate.Today` and the `[NotFuture]` ceiling already use), never the wall clock of the
+  offset stored with it, and what they hand back is the picked local wall time with that zone's
+  offset — so an untouched value saves the same instant. A reader east of UTC therefore sees the
+  next day for a late-evening UTC value. A business date stays `DateOnly` (`data.md`): the
+  offset is for instants, not for dates.
 
 ### Numbers and money
 
