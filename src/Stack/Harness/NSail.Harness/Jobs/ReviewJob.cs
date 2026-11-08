@@ -79,7 +79,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
             await dossier.WritePrs(sd, voyage, ct);
         }
 
-        var result = await ctx.Agent.Run(new AgentRun(
+        var result = await ctx.RunSeat(new AgentRun(
             await Prompt(doctrine, prNumber, n, reads, last, ct),
             dir, Seat.Model,
             Access: AgentAccess.Reader,

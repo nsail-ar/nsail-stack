@@ -111,7 +111,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             ["BRANCH"] = branch,
         }, ct);
 
-        var result = await ctx.Agent.Run(new AgentRun(
+        var result = await ctx.RunSeat(new AgentRun(
             prompt, work, model,
             Access: AgentAccess.Builder,
             MaxTurns: 300,
