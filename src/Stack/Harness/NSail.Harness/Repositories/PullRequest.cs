@@ -3,4 +3,4 @@
 
 namespace NSail.Harness.Repositories;
 
-public sealed record PullRequest(int Number, string Title, bool Open, string HeadRef, string HeadSha, bool Conflicting, string Body = "");
+public sealed record PullRequest(int Number, string Title, bool Open, string HeadRef, string HeadSha, bool Conflicting, string Body = "", string HeadRepo = "");

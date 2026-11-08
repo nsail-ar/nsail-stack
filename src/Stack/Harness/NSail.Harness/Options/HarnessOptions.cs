@@ -91,6 +91,10 @@ public sealed class HarnessOptions
     // Who may drive this harness (ControlOptions).
     public ControlOptions Control { get; set; } = new();
 
+    // The logins whose gate and review markers on a PR count beside this harness's own: every
+    // harness of the fleet, so one reads another's verdicts. The same list on every harness.
+    public List<string> MarkerAuthors { get; set; } = [];
+
     // The Ops this Harness reports to (OpsOptions).
     public OpsOptions Ops { get; set; } = new();
 

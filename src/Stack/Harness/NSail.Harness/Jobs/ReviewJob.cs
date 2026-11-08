@@ -158,7 +158,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
             // Counted from the last time a hand lifted a hold: a story sent back gets its rounds anew,
             // or every rescue would stall again on its first read.
             var since = await board.LastLift(story, Labels.Lifts, ct);
-            var rounds = ctx.Markers.Findings(Markers.OwnBodies((await ctx.Repo.Thread(prNumber, ct)).Where(b => since is null || b.At > since), await ctx.Repo.Login(ct))).Count;
+            var rounds = ctx.Markers.Findings(ctx.Markers.Bodies((await ctx.Repo.Thread(prNumber, ct)).Where(b => since is null || b.At > since), await ctx.Repo.Login(ct))).Count;
             if (rounds >= 4)
             {
                 await Stall(story, HarnessTexts.Fill(ctx.Texts.ReviewFourthRead, ("pr", prNumber)), log, ct);
@@ -216,7 +216,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
     // Earlier reads with findings, oldest first; the last one's sha is where a narrow read starts.
     async Task<(int Reads, string? Last)> PriorReads(int pr, string dir, CancellationToken ct)
     {
-        var shas = ctx.Markers.Findings(Markers.OwnBodies(await ctx.Repo.Thread(pr, ct), await ctx.Repo.Login(ct)));
+        var shas = ctx.Markers.Findings(ctx.Markers.Bodies(await ctx.Repo.Thread(pr, ct), await ctx.Repo.Login(ct)));
         var last = shas.LastOrDefault();
         if (last is not null && (await Shell.Run("git", ["cat-file", "-e", $"{last}^{{commit}}"], dir)).ExitCode != 0) last = null;
         return (shas.Count, last);
@@ -227,7 +227,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
         if (pr.Conflicting) return CiState.Conflict;
         if (ctx.Options.Gate)
         {
-            var bodies = Markers.OwnBodies(await ctx.Repo.Thread(Item.Pr!.Value, ct), await ctx.Repo.Login(ct));
+            var bodies = ctx.Markers.Bodies(await ctx.Repo.Thread(Item.Pr!.Value, ct), await ctx.Repo.Login(ct));
             return Markers.GateAt(bodies, sha) ?? CiState.Pending;
         }
         return await ctx.Repo.Ci(branch, sha, ct);

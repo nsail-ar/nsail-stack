@@ -13,7 +13,7 @@ namespace NSail.Harness.Planning;
 public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock locks, HarnessOptions options)
 {
     readonly StoryNames _names = options.Names();
-    readonly Markers _markers = new(options.ReviewMarker);
+    readonly Markers _markers = new(options.ReviewMarker, options.MarkerAuthors);
 
     public async Task<BoardSnapshot> Read(Flight own, CancellationToken ct = default)
     {
@@ -87,6 +87,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         var result = new List<StoryPr>();
         foreach (var pr in await repo.OpenPrs(ct))
         {
+            if (!IsCrews(pr, repo)) continue;
             if (_names.StoryOf(pr.Title, pr.Head) is not { } story) continue;
             // The default repository's heads always need their threads (the gate's verdict lives there);
             // another's head only once its own CI is green.
@@ -99,14 +100,27 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         return result;
     }
 
+    // A PR is the crew's only when its head lives in this repository (a fork's branch name is the
+    // fork's to choose) and, where the repository lists its authors, one of them opened it.
+    internal static bool IsCrews(OpenPr pr, string repoName, IReadOnlyCollection<string> authors)
+    {
+        if (!string.Equals(pr.HeadRepo, repoName, StringComparison.OrdinalIgnoreCase)) return false;
+        return authors.Count == 0 || authors.Contains(pr.Author, StringComparer.OrdinalIgnoreCase);
+    }
+
+    bool IsCrews(OpenPr pr, IRepository repo)
+    {
+        return IsCrews(pr, repo.Name, repos.OptionsOf(repo).Authors);
+    }
+
     // A PR's thread only changes when the PR does: it is read again only when its updatedAt moves,
     // or every pass would cost two calls per open PR.
     static readonly ConcurrentDictionary<(string Repo, int Pr), (string UpdatedAt, List<string> Bodies)> BodiesByPr = new();
 
-    static async Task<List<string>> Bodies(IRepository repo, OpenPr pr, CancellationToken ct)
+    async Task<List<string>> Bodies(IRepository repo, OpenPr pr, CancellationToken ct)
     {
         if (BodiesByPr.TryGetValue((pr.Repo, pr.Number), out var hit) && hit.UpdatedAt == pr.UpdatedAt) return hit.Bodies;
-        var bodies = Markers.OwnBodies(await repo.Thread(pr.Number, ct), await repo.Login(ct)).ToList();
+        var bodies = _markers.Bodies(await repo.Thread(pr.Number, ct), await repo.Login(ct)).ToList();
         BodiesByPr[(pr.Repo, pr.Number)] = (pr.UpdatedAt, bodies);
         return bodies;
     }

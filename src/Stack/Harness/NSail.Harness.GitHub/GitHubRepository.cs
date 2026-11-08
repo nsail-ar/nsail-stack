@@ -12,7 +12,7 @@ namespace NSail.Harness.GitHub;
 public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options, StoryNames names, string token) : IRepository
 {
     const string PrsQuery = """
-        query($o:String!,$n:String!,$c:String){repository(owner:$o,name:$n){pullRequests(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title headRefName headRefOid isDraft mergeable updatedAt}}}}
+        query($o:String!,$n:String!,$c:String){repository(owner:$o,name:$n){pullRequests(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title headRefName headRefOid isDraft mergeable updatedAt headRepository{nameWithOwner} author{login}}}}}
         """;
 
     const string StatusesQuery = """
@@ -20,7 +20,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         """;
 
     const string MergedQuery = """
-        query($q:String!){search(query:$q,type:ISSUE,first:30){nodes{... on PullRequest{title headRefName mergedAt mergeCommit{oid}}}}}
+        query($q:String!){search(query:$q,type:ISSUE,first:30){nodes{... on PullRequest{title headRefName mergedAt mergeCommit{oid} headRepository{nameWithOwner} author{login}}}}}
         """;
 
     readonly string repo = options.Name;
@@ -61,8 +61,14 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             var ci = pr.GetProperty("mergeable").GetString() == "CONFLICTING" ? CiState.Conflict : CiOf(shaRuns);
             return new OpenPr(pr.GetProperty("number").GetInt32(), pr.GetProperty("title").GetString() ?? "",
                 pr.GetProperty("headRefName").GetString() ?? "", sha, ci, repo, pr.GetProperty("updatedAt").GetString() ?? "",
-                ci == CiState.Green ? GreenAtOf(shaRuns) : null);
+                ci == CiState.Green ? GreenAtOf(shaRuns) : null,
+                NestedString(pr, "headRepository", "nameWithOwner"), NestedString(pr, "author", "login"));
         }).ToList();
+    }
+
+    static string NestedString(JsonElement e, string obj, string name)
+    {
+        return e.TryGetProperty(obj, out var o) && o.ValueKind == JsonValueKind.Object && o.TryGetProperty(name, out var v) ? v.GetString() ?? "" : "";
     }
 
     public async Task<IReadOnlyList<PrRef>> PrsOf(int story, string state, CancellationToken ct = default)
@@ -77,6 +83,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             var title = pr.GetProperty("title").GetString() ?? "";
             var head = pr.GetProperty("head").GetProperty("ref").GetString() ?? "";
             if (names.StoryOf(title, head) != story) continue;
+            if (!IsOwnHead(pr)) continue;
             if (state == "open" && pr.GetProperty("state").GetString() != "open") continue;
             var merged = MergedAt(pr);
             if (state == "merged" && merged is null) continue;
@@ -87,12 +94,26 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         foreach (var pr in direct)
         {
             var n = pr.GetProperty("number").GetInt32();
-            if (result.Any(p => p.Number == n)) continue;
+            if (result.Any(p => p.Number == n) || !IsOwnHead(pr)) continue;
             var merged = MergedAt(pr);
             if (state == "merged" && merged is null) continue;
             result.Add(new PrRef(n, pr.GetProperty("title").GetString() ?? "", pr.GetProperty("head").GetProperty("ref").GetString() ?? "", merged, repo, MergeSha(pr)));
         }
         return result;
+    }
+
+    // The planner's own rule (SnapshotReader.IsCrews) over the REST shape.
+    bool IsOwnHead(JsonElement pr)
+    {
+        var head = pr.GetProperty("head");
+        var headRepo = head.TryGetProperty("repo", out var hr) && hr.ValueKind == JsonValueKind.Object && hr.TryGetProperty("full_name", out var fn) ? fn.GetString() ?? "" : "";
+        return IsCrews(headRepo, NestedString(pr, "user", "login"));
+    }
+
+    bool IsCrews(string headRepo, string author)
+    {
+        return string.Equals(headRepo, repo, StringComparison.OrdinalIgnoreCase)
+            && (options.Authors.Count == 0 || options.Authors.Contains(author, StringComparer.OrdinalIgnoreCase));
     }
 
     static DateTimeOffset? MergedAt(JsonElement pr)
@@ -112,7 +133,8 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         return new PullRequest(number, pr.GetProperty("title").GetString() ?? "", pr.GetProperty("state").GetString() == "open",
             head.GetProperty("ref").GetString() ?? "", head.GetProperty("sha").GetString() ?? "",
             pr.TryGetProperty("mergeable_state", out var ms) && ms.GetString() == "dirty",
-            pr.TryGetProperty("body", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString()! : "");
+            pr.TryGetProperty("body", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString()! : "",
+            head.TryGetProperty("repo", out var hr) && hr.ValueKind == JsonValueKind.Object ? hr.GetProperty("full_name").GetString() ?? "" : "");
     }
 
     public async Task<IReadOnlyList<PrNote>> Thread(int pr, CancellationToken ct = default)
@@ -183,8 +205,11 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
     {
         // The head is read before the merge: once the merge has gone through, nothing after it may
         // throw, or the caller would report a merged PR as refused.
-        var head = (await Pr(pr, ct)).HeadRef;
+        var read = await Pr(pr, ct);
+        var head = read.HeadRef;
+        var ownHead = string.Equals(read.HeadRepo, repo, StringComparison.OrdinalIgnoreCase);
         await gh.Send(HttpMethod.Put, $"repos/{repo}/pulls/{pr}/merge", new { merge_method = "squash" }, ct);
+        if (!ownHead) return;
         try
         {
             await gh.Send(HttpMethod.Delete, $"repos/{repo}/git/refs/heads/{head}", ct: ct);
@@ -199,6 +224,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         var data = await gh.GraphQl(MergedQuery, new { q = $"repo:{repo} is:pr is:merged {names.Ref(story)}" }, ct);
         var merge = data.GetProperty("search").GetProperty("nodes").EnumerateArray()
             .Where(n => n.TryGetProperty("title", out _))
+            .Where(n => IsCrews(NestedString(n, "headRepository", "nameWithOwner"), NestedString(n, "author", "login")))
             .Where(n => names.StoryOf(n.GetProperty("title").GetString() ?? "", n.GetProperty("headRefName").GetString() ?? "") == story)
             .OrderBy(n => n.GetProperty("mergedAt").GetString())
             .LastOrDefault();

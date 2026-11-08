@@ -29,6 +29,9 @@ the files it leaves.
     without a `Label` is the default; a story whose only area label is another's is built there.
     A story with that label beside other areas has two halves: it builds in the labelled repository
     until a PR of it merged there, then in the default one.
+    `Authors` lists the logins whose PRs are the crew's there (none: any author; when listed, it
+    includes the login of the token that opens the harness's own PRs). A PR whose head lives in
+    another repository (a fork) is never matched, gated, reviewed or merged.
     A board that names its columns or labels otherwise maps them (`Stages`, `Labels`); a repository
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
     seed projects, the `Everything` files that build it all, the `Tests` and their `TestFilter`): the
@@ -69,8 +72,11 @@ the files it leaves.
     repository; any other is the repository's. A pass: the UpdateBoard keepers, every story worker over
     the `bug` stories (broken where a customer runs: before a release too, and past the WIP limit), the
     workers on their own, then every story worker over the p1 stories, then over the rest; one job per
-    story per pass. A failed pass logs the call it was making, the provider's status and the rate limit
-    it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
+    story per pass. A keeper's (`On.Executed`) `MoveTo` is written only while the story's column is
+    still the one the pass read: one a hand set since stays, the pass logs the dropped move, and the
+    story gets no other chore that pass. A story worker's `On.Starting` `MoveTo` goes with its job and
+    is written as planned. A failed pass logs the call it was making, the provider's status and the
+    rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for
     it names all three. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
@@ -95,7 +101,8 @@ the files it leaves.
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, ...);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the
   story. A gate or review marker on a PR counts only as a whole HTML comment on its own line, written
-  by the login the harness runs as; the builder's `pr.md` is posted with any marker stripped.
+  by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
+  the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   Every harness on the board reads the same. What stays on the machine is its job history
   and its count of them.
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its
