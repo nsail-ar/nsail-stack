@@ -280,15 +280,14 @@ process over that database delivers it.
   and not a second verdict on a message already accepted.
 - **Retry, backoff, dead letter — the Stack's own, and configuration.** `Queue:MaxAttempts`,
   `Queue:Backoff` (doubling per attempt), `Queue:Interval` and `Queue:BatchSize`. A row that
-  fails its last attempt is dead-lettered: it stays, it is never attempted again, and it is
-  counted on `nsail.queue.delivered` tagged by message and outcome. A row whose type this process
-  has no consumer for is not a failure: it stays pending, backed off, and is never dead-lettered
-  for it — a rolling deploy or a moved namespace strands rows the next process can still
-  deliver. `QueueDeadLetters` requeues or purges dead letters (a kit's operator message calls
-  it). A meter and not a log line
-  because `LogScrubber` drops the name out of an exported record — and the meter is subscribed
-  for every server host by `AddBaseWebApi`, since a counter nothing exports is the same silence
-  (baseservices.md, *Telemetry*).
+  fails its last attempt is dead-lettered: it stays, unattempted until `QueueDeadLetters`
+  requeues or purges it (a kit's operator message calls it), and it is counted on
+  `nsail.queue.delivered` tagged by message and outcome — a meter and not a log line because
+  `LogScrubber` drops the name out of an exported record, subscribed for every server host by
+  `AddBaseWebApi`, since a counter nothing exports is the same silence. A row whose type this
+  process has no consumer for is not a failure: it stays pending, waits the longest rung, is not
+  metered and does not spend its attempts, so a rolling deploy or a moved namespace strands rows
+  the next process still delivers with the full ladder (baseservices.md, *Telemetry*).
 - **Queueing is a save point of the sending operation.** The producer writes its row with
   `SaveChangesAsync`, which saves the *context* and not one entity: everything the operation
   has tracked so far goes to the database with it, inside the operation's transaction. A

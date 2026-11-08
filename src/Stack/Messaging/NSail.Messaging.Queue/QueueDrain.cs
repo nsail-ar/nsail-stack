@@ -55,7 +55,7 @@ public sealed class QueueDrain
     }
 
     /// <summary>Delivers every row that is due, up to <see cref="QueueOptions.BatchSize"/>, and
-    /// answers how many it finished with. The tenant is whoever the caller entered: the query
+    /// answers how many rows it visited, deferred ones included. The tenant is whoever the caller entered: the query
     /// filter is what makes this tenant's queue its own.</summary>
     public async Task<int> Run(CancellationToken cancellationToken)
     {
@@ -125,13 +125,11 @@ public sealed class QueueDrain
     {
         var now = _clock.GetUtcNow().UtcDateTime;
 
-        // Counted only up to MaxAttempts so the wait stops doubling there and the counter never
-        // reads as a dead letter.
-        row.Attempts = Math.Min(row.Attempts + 1, _options.MaxAttempts);
+        // Attempts is the ladder of real failures and is left alone: a deferral that spent it
+        // would dead-letter the row on its first genuine failure once a consumer exists. The
+        // wait is the ladder's longest rung, and no outcome is metered: nothing failed.
         row.LastError = Truncate($"No consumer is registered for '{row.MessageType}'. The host that drains a queued command must compose the kit that declares it.");
-        row.NextAttemptAt = Due(now, row.Attempts);
-
-        _meter.Finished(row.MessageType, QueueMetrics.Failed);
+        row.NextAttemptAt = Due(now, _options.MaxAttempts);
 
         _logger.LogWarning("A queued command of type {MessageType} has no consumer in this process; it stays pending until {NextAttemptAt:o}.", row.MessageType, row.NextAttemptAt);
 

@@ -7,8 +7,9 @@ using NSail.Security;
 
 namespace NSail.Messaging.Queue.Tests;
 
-/// <summary>nsail#1930, the fourth criterion: a handler that keeps failing is retried with
-/// backoff and then dead-lettered, counted on a meter and never dropped in silence. The
+/// <summary>The delivery loop: a handler that keeps failing is retried with backoff and then
+/// dead-lettered, counted on a meter and never dropped in silence; a row of an unknown type
+/// waits; dead letters are requeued or purged. The
 /// figures are the install's — every number asserted here is read off <see
 /// cref="QueueOptions"/> and none of them is a constant in the loop.</summary>
 public sealed class QueueDeliveryLoopTests
@@ -163,6 +164,43 @@ public sealed class QueueDeliveryLoopTests
 
             clock.Advance(options.Backoff * Math.Pow(2, options.MaxAttempts) + TimeSpan.FromSeconds(1));
         }
+    }
+
+    [Fact]
+    public async Task A_deferred_row_that_later_finds_its_consumer_keeps_the_full_attempt_ladder()
+    {
+        var options = Options();
+        var clock = new TestClock();
+
+        using var meters = new QueueReadings();
+
+        await using var host = await HandlerHost.Start(
+            "queue_deferred_then_known", QueueHarness.Context, services => QueueHarness.Compose(services, options, clock));
+
+        var row = Row("Some.Other.Version.Message", clock.GetUtcNow().UtcDateTime);
+
+        await host.Seed(db => db.Add(row));
+
+        for (var pass = 0; pass < options.MaxAttempts + 1; pass++)
+        {
+            await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None));
+
+            clock.Advance(options.Backoff * Math.Pow(2, options.MaxAttempts) + TimeSpan.FromSeconds(1));
+        }
+
+        Assert.Equal(0, meters.Finished("Some.Other.Version.Message", QueueMetrics.Failed));
+
+        await host.Seed(db =>
+        {
+            db.Set<QueuedMessage>().Single(r => r.Id == row.Id).MessageType = typeof(AlwaysFails).FullName!;
+        });
+
+        await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None));
+
+        var after = Assert.Single(await host.Read(db => db.Set<QueuedMessage>().ToListAsync()));
+
+        Assert.Null(after.DeadLetteredAt);
+        Assert.Equal(1, after.Attempts);
     }
 
     [Fact]
