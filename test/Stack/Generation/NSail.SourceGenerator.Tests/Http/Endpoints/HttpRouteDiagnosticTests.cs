@@ -79,6 +79,18 @@ public class HttpRouteDiagnosticTests
         Assert.Single(Run(source).Where(d => d.Id == "NSG016"));
     }
 
+    [Fact]
+    public void A_throttled_identity_that_is_renamed_or_not_a_string_is_a_build_error()
+    {
+        var renamed = ThrottledSource("Login", "Login")
+            .Replace("public string Login", "[JsonPropertyName(\"u\")] public string Login")
+            + "\npublic sealed class JsonPropertyNameAttribute(string name) : System.Attribute;\n";
+        var number = ThrottledSource("Login", "Login").Replace("public string Login { get; set; } = \"\";", "public int Login { get; set; }");
+
+        Assert.Single(Run(renamed).Where(d => d.Id == "NSG016"));
+        Assert.Single(Run(number).Where(d => d.Id == "NSG016"));
+    }
+
     static string ThrottledSource(string property, string identity)
     {
         return $$"""

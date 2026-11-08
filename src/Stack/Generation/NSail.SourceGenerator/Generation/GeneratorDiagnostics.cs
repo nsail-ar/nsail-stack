@@ -149,8 +149,8 @@ public static class GeneratorDiagnostics
 
     public static readonly DiagnosticDescriptor ThrottledIdentityNotFound = new(
         id: "NSG016",
-        title: "[Throttled] Identity names no body property of the message",
-        messageFormat: "'{0}' declares [Throttled(Identity = \"{1}\")], but it has no public body-bound property named '{1}' (a route, query or header member is not read). Name the property of the body that holds the account, with nameof.",
+        title: "[Throttled] Identity names no string body property the middleware can read",
+        messageFormat: "'{0}' declares [Throttled(Identity = \"{1}\")], but it has no public string property named '{1}' bound from the body and without [JsonPropertyName] (a route, query or header member, a non-string value or a renamed wire name is not read). Name the string property of the body that holds the account, with nameof.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,

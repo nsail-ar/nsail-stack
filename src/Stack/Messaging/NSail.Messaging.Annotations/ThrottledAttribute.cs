@@ -33,7 +33,8 @@ public sealed class ThrottledAttribute : Attribute
     /// sign-in's login, a code request's address). When set, the send is also counted per
     /// that value, whatever address it comes from: a per-address ceiling alone is spent only by
     /// one address, so a botnet or a client rotating inside its IPv6 /64 would guess at one
-    /// known account without ever meeting it.</summary>
+    /// known account without ever meeting it. Must be a public string property read from the body
+    /// under its own name (no JsonPropertyName); NSG016 refuses any other.</summary>
     public string? Identity { get; init; }
 
     /// <summary>How many sends one identity gets inside a minute, from every address together.

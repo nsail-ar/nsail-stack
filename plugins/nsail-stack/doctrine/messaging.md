@@ -774,7 +774,7 @@ recognise a refusal by status number alone.
 
 - **A door that guesses a secret also caps the account.** `[Throttled(perMinute, Identity = nameof(SignIn.Login), IdentityPerMinute = n)]`
   names the property that identifies the account (sign-in's login, a code request's address);
-  `nameof` because NSG016 refuses a name that matches no property, and a bare literal would
+  `nameof` because NSG016 refuses a name that matches no readable property, and a bare literal would
   silence the cap after a rename. After the per-address window admits the send, the middleware
   reads the identity before binding and chains a second fixed window per message and identity,
   from every address together (case and spaces folded, length bounded). The per-address ceiling
@@ -782,8 +782,9 @@ recognise a refusal by status number alone.
   by a botnet or an IPv6 /64 rotating against one known account.
 - **The identity is a member of the JSON body.** The generated endpoint binds a body message's
   members from the body, so that is the one place the cap and the handler agree on; NSG016
-  refuses an `Identity` that is a route, query or header member rather than reading it from a
-  place the binder may not. Where a name repeats in the body the last occurrence wins, as it
+  refuses an `Identity` that is a route, query or header member, that is not a `string`, or that
+  carries `[JsonPropertyName]`: the middleware reads the string under the property's own name,
+  so a number or a renamed wire name would leave every send in the shared partition. Where a name repeats in the body the last occurrence wins, as it
   does when the binder assigns the members, so the sender cannot pick a partition apart from
   the value the handler sees. A send whose identity cannot be read — a body past 16 KB, not
   JSON, or without the property — is counted in one shared partition rather than exempted, so

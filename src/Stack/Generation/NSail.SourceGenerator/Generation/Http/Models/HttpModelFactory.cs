@@ -97,6 +97,8 @@ public static class HttpModelFactory
                 && argument.Value.Value is string name
                 && !messageTypeSymbol.GetAllMembers().OfType<IPropertySymbol>().Any(p => p.Name == name
                     && p.DeclaredAccessibility == Accessibility.Public
+                    && p.Type.SpecialType == SpecialType.System_String
+                    && !p.GetAttributes().Any(a => a.AttributeClass?.Name == "JsonPropertyNameAttribute")
                     && GetBindingSource(p, httpMethod, GetPropertiesFromPath(httpPath)) == BindingSource.Body))
             {
                 diagnostics.Add(Diagnostic.Create(
