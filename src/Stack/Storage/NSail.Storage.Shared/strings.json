@@ -62,5 +62,7 @@
   "Problems.RuleViolation.StorageTestNotReadBack": "The test object was written but could not be read back.",
   "Problems.RuleViolation.StorageTestContentDiffers": "The test object read back does not match what was written.",
   "Problems.RuleViolation.StorageTestNotListed": "The test object was written but does not appear when the container is listed.",
-  "Problems.RuleViolation.StorageTestFailed": "The storage target could not be used. The server log has the detail."
+  "Problems.RuleViolation.StorageTestFailed": "The storage target could not be used. The server log has the detail.",
+  "Problems.RuleViolation.ObjectKeyOutsideTenant": "'{key}' does not carry this tenant's segment.",
+  "Problems.RuleViolation.NoTenantForStorage": "Storage in this scope needs a tenant and none resolved."
 }

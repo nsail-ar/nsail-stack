@@ -5,6 +5,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\..\Data\NSail.Data\NSail.Data.csproj" />
 		<ProjectReference Include="..\..\Messaging\NSail.Messaging.WebApi\NSail.Messaging.WebApi.csproj" />
 		<ProjectReference Include="..\..\Security\NSail.Security\NSail.Security.csproj" />
 		<ProjectReference Include="..\..\Settings\NSail.Settings\NSail.Settings.csproj" />

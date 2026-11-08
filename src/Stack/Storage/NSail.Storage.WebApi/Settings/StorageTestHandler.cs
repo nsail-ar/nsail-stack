@@ -59,7 +59,7 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
         }
 
         var storage = _services.GetRequiredKeyedService<StorageManager>(name);
-        var key = $"nsail-storage-test/{Guid.NewGuid():N}.txt";
+        var key = storage.Key("nsail-storage-test", $"{Guid.NewGuid():N}.txt");
         var payload = Encoding.UTF8.GetBytes($"NSail storage test {DateTimeOffset.UtcNow:O}");
 
         try

@@ -62,5 +62,7 @@
   "Problems.RuleViolation.StorageTestNotReadBack": "El objeto de prueba se escribió pero no se pudo volver a leer.",
   "Problems.RuleViolation.StorageTestContentDiffers": "El objeto de prueba que se leyó no coincide con lo que se escribió.",
   "Problems.RuleViolation.StorageTestNotListed": "El objeto de prueba se escribió pero no aparece al listar el contenedor.",
-  "Problems.RuleViolation.StorageTestFailed": "No se pudo usar el destino de almacenamiento. El detalle está en el log del servidor."
+  "Problems.RuleViolation.StorageTestFailed": "No se pudo usar el destino de almacenamiento. El detalle está en el log del servidor.",
+  "Problems.RuleViolation.ObjectKeyOutsideTenant": "La clave '{key}' no lleva el segmento de este tenant.",
+  "Problems.RuleViolation.NoTenantForStorage": "El almacenamiento en este ámbito necesita un tenant y no se resolvió ninguno."
 }
