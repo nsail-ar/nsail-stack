@@ -5,6 +5,7 @@
 @using System.Collections.Concurrent
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.JSInterop
+@using NSail.Icons
 
 @inject IServiceProvider Services
 
@@ -47,17 +48,14 @@
     ElementReference _box;
 
     /// <summary>A well-known route this component fetches and decides by content type --
-    /// never an app- or kit-specific default, so Stack names no URL of its own. The route
-    /// must already serve sanitized SVG when it answers one: this component inlines the
-    /// response verbatim and has no sanitizer of its own to run it through (Stack cannot
-    /// depend on a Kit's), unlike NsImage, whose raw Assets route is unsanitized and so
-    /// sanitizes client-side.</summary>
+    /// never an app- or kit-specific default, so Stack names no URL of its own. An SVG
+    /// answer is inlined only after <see cref="SvgSanitizer"/>, whatever the route served.</summary>
     [Parameter]
     public string? Url { get; set; }
 
     /// <summary>Rendered on the &lt;img&gt; branch only. The inlined SVG branch carries
     /// whatever accessible name the served markup already baked in -- this component parses
-    /// nothing in that markup, sanitized or not, so it cannot stamp one on afterward.</summary>
+    /// nothing in that markup beyond the sanitizing, so it cannot stamp one on afterward.</summary>
     [Parameter]
     public string? Alt { get; set; }
 
@@ -164,9 +162,11 @@
 
             var markup = await response.Content.ReadAsStringAsync();
 
-            return string.IsNullOrWhiteSpace(markup)
+            var clean = SvgSanitizer.Sanitize(markup);
+
+            return string.IsNullOrWhiteSpace(clean)
                 ? (RemoteImageKind.Unavailable, null)
-                : (RemoteImageKind.Svg, markup);
+                : (RemoteImageKind.Svg, clean);
         }
         catch (HttpRequestException)
         {

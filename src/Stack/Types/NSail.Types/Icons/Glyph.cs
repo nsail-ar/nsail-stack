@@ -12,8 +12,17 @@ namespace NSail.Icons;
 /// except string, which turns a forgotten '@' into a compile error instead of a literal
 /// that renders itself.</summary>
 [JsonConverter(typeof(GlyphJsonConverter))]
-public readonly record struct Glyph(string Markup)
+public readonly record struct Glyph
 {
+    /// <summary>Always what <see cref="SvgSanitizer"/> keeps: every control draws it as raw
+    /// markup, so a value that came off the wire or out of a store is inert at every site.</summary>
+    public string Markup { get; }
+
+    public Glyph(string markup)
+    {
+        Markup = SvgSanitizer.Sanitize(markup);
+    }
+
     public override string ToString()
     {
         return Markup;

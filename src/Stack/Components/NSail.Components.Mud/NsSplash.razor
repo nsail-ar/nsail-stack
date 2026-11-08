@@ -2,6 +2,8 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
+@using System.Text.Json
+@using NSail.Icons
 @using NSail.Localization
 
 @inject StringManager Strings
@@ -172,6 +174,60 @@
         return window.matchMedia("(prefers-color-scheme: dark)").matches;
     }
 
+    // The same allowlist SvgSanitizer applies on the C# side, injected from it, so the logo
+    // route's bytes never reach the DOM as markup: they are parsed, filtered node by node and
+    // only the survivors are adopted.
+    const svgElements = new Set(@((MarkupString)ToJson(SvgSanitizer.AllowedElements)));
+    const svgAttributes = new Set(@((MarkupString)ToJson(SvgSanitizer.AllowedAttributes)));
+
+    function cleanSvg(source) {
+        const doc = new DOMParser().parseFromString(source, "image/svg+xml");
+        const root = doc.documentElement;
+
+        if (!root || root.localName.toLowerCase() !== "svg" || doc.getElementsByTagName("parsererror").length)
+            return null;
+
+        return cleanNode(root);
+    }
+
+    function localUrls(value) {
+        return [...value.matchAll(/url\(\s*['"]?\s*([^)'"\s]*)/gi)].every(m => m[1].startsWith("#"));
+    }
+
+    function cleanNode(node) {
+        if (node.namespaceURI !== "http://www.w3.org/2000/svg" || !svgElements.has(node.localName.toLowerCase()))
+            return null;
+
+        const copy = document.createElementNS("http://www.w3.org/2000/svg", node.localName);
+
+        for (const attr of node.attributes) {
+            const value = attr.value;
+
+            if (attr.name.startsWith("xmlns") || !(svgAttributes.has(attr.name.toLowerCase()) || attr.name.toLowerCase().startsWith("data-")))
+                continue;
+
+            if (attr.localName === "href" ? !value.startsWith("#") : /javascript:|data:/i.test(value) || !localUrls(value))
+                continue;
+
+            copy.setAttribute(attr.name, value);
+        }
+
+        const textual = ["title", "desc", "text", "tspan"].includes(node.localName.toLowerCase());
+
+        for (const child of node.childNodes) {
+            if (child.nodeType === Node.TEXT_NODE && textual) {
+                copy.appendChild(document.createTextNode(child.nodeValue));
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                const clean = cleanNode(child);
+
+                if (clean)
+                    copy.appendChild(clean);
+            }
+        }
+
+        return copy;
+    }
+
     (function () {
         const host = document.getElementById("ns-splash-logo");
 
@@ -194,9 +250,12 @@
                 if (!svg)
                     return;
 
-                host.innerHTML = svg;
+                const root = cleanSvg(svg);
 
-                const root = host.firstElementChild;
+                if (!root)
+                    return;
+
+                host.replaceChildren(root);
 
                 if (root) {
                     root.style.width = "100%";
@@ -229,12 +288,16 @@
 </script>
 
 @code {
+    static string ToJson(IEnumerable<string> names)
+    {
+        return JsonSerializer.Serialize(names.Select(n => n.ToLowerInvariant()));
+    }
+
     /// <summary>The app's own well-known logo route (Optical passes the Branding kit's
     /// anonymous "api/branding/logo", reachable before WASM boots and before any session
     /// exists) — a plain string, no coupling, and no default: a Stack component names no
     /// app-specific URL. An SVG response is inlined so it can inherit the splash's primary
-    /// colour, so the route it names must serve sanitized SVG (Branding's endpoint runs it
-    /// through <c>SvgSanitizer</c>'s allowlist); anything else stays an isolated
+    /// colour, which first passes the <see cref="SvgSanitizer"/> allowlist; anything else stays an isolated
     /// <c>&lt;img&gt;</c>.</summary>
     [Parameter]
     public string? LogoUrl { get; set; }
