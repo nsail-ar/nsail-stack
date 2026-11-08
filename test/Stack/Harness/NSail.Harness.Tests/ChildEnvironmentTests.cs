@@ -84,18 +84,25 @@ public class ChildEnvironmentTests
     }
 
     [Fact]
-    public void AddingGitHubRemovesTheTokenFromTheProcessEnvironment()
+    public void AddingGitHubGivesTheTokenToTheHarnessGitOnly()
     {
         using var _ = Held(("GH_TOKEN", "harness-token"));
-        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        var before = Shell.GitEnvironment;
+        try
         {
-            ["Harness:Repositories:0:Name"] = "o/r"
-        }).Build();
+            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Harness:Repositories:0:Name"] = "o/r"
+            }).Build();
 
-        new ServiceCollection().AddGitHub(configuration);
+            new ServiceCollection().AddGitHub(configuration);
 
-        Assert.Null(Environment.GetEnvironmentVariable("GH_TOKEN"));
-        Assert.Equal("harness-token", Shell.GitEnvironment!["GH_TOKEN"]);
+            Assert.Equal("harness-token", Shell.GitEnvironment!["GH_TOKEN"]);
+        }
+        finally
+        {
+            Shell.GitEnvironment = before;
+        }
     }
 
     static Held Held(params (string, string)[] vars)
