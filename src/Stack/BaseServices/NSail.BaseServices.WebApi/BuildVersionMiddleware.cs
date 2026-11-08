@@ -32,7 +32,8 @@ public sealed class BuildVersionMiddleware : IMiddleware
         var context = (HttpContext)state;
 
         // Only to a caller who signed in: the build is a fingerprint an anonymous probe has no
-        // business reading. The user is read when the response starts, after authentication ran.
+        // business reading. The user is read when the response starts; an answer cut short before authentication
+        // (redirect, unknown tenant, suspension page) has no user yet and carries none.
         if (context.User.Identity?.IsAuthenticated != true)
         {
             return Task.CompletedTask;

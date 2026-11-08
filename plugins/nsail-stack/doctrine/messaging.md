@@ -531,8 +531,9 @@ generated sender and endpoint over one real request; the halves are pinned in
 
 ### The answer says which build gave it
 
-**Every response carries `X-NSail-Version`**, the server's build (`BuildVersionMiddleware`,
-baseservices.md), and the client compares it against the build it booted with. Otherwise a
+**Every response to a signed-in caller carries `X-NSail-Version`**, the server's build
+(`BuildVersionMiddleware`, baseservices.md; an anonymous answer, or one given before
+authentication runs, carries none), and the client compares it against the build it booted with. Otherwise a
 tab opened before a release keeps calling the new API with old generated senders until a
 value that build cannot read arrives (an enum member added since, travelling as a string) and
 dies in the browser over a 200.

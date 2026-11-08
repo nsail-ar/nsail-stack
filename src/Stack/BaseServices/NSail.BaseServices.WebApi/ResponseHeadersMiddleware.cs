@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.Net.Http.Headers;
+
 namespace NSail.BaseServices.WebApi;
 
 /// <summary>Sets the browser-hardening headers on every response this host gives:
@@ -9,9 +11,9 @@ namespace NSail.BaseServices.WebApi;
 /// an endpoint or the proxy already set is left as it is.</summary>
 public sealed class ResponseHeadersMiddleware : IMiddleware
 {
-    public const string ReferrerPolicy = "strict-origin-when-cross-origin";
+    const string ReferrerPolicy = "strict-origin-when-cross-origin";
 
-    public const string PermissionsPolicy = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()";
+    const string PermissionsPolicy = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()";
 
     static readonly Func<object, Task> s_stamp = Stamp;
 
@@ -30,7 +32,7 @@ public sealed class ResponseHeadersMiddleware : IMiddleware
     {
         var headers = ((HttpContext)state).Response.Headers;
 
-        headers.TryAdd("X-Content-Type-Options", "nosniff");
+        headers.TryAdd(HeaderNames.XContentTypeOptions, "nosniff");
         headers.TryAdd("Referrer-Policy", ReferrerPolicy);
         headers.TryAdd("Permissions-Policy", PermissionsPolicy);
 

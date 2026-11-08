@@ -54,16 +54,16 @@ the app (the suspended page, below).
 - Forwarded headers, when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is on: believed only from the
   proxies in `Security:TrustedProxies`; with none named the middleware is not installed, so
   behind a proxy the scheme reads as `http` too (no HSTS, and HTTPS redirection can loop).
+- `BuildVersionMiddleware` — the build this host is running (`BuildVersion.Current`) under
+  `X-NSail-Version` on the response to a **signed-in caller**: an anonymous probe is not told
+  the build, and neither is an answer cut short before authentication (the HTTPS redirect, an
+  unknown tenant's 404, the suspension page). Stamped through `Response.OnStarting` rather
+  than on the way in, because `ErrorMiddleware` clears the response it rewrites — so a
+  signed-in caller's refusal still carries it. It is the whole server half of the handshake:
+  no endpoint, no polling. Client half: [messaging.md](messaging.md).
 - `ResponseHeadersMiddleware` — `X-Content-Type-Options: nosniff`, a `Referrer-Policy` and a
-  `Permissions-Policy` on every response, through `OnStarting` for the same reason as below; a
-  header already set is kept. `frame-ancestors` and cookie flags are not its business.
-- `BuildVersionMiddleware` — the build this host is running (`BuildVersion.Current`) on
-  every response **to a signed-in caller**, under `X-NSail-Version`: an anonymous probe is not
-  told the build. Outermost, and stamped through
-  `Response.OnStarting` rather than on the way in, because `ErrorMiddleware` clears the
-  response it rewrites — and a refusal is exactly the answer a client left open across a
-  deploy is likeliest to get. It is the whole server half of the handshake: no endpoint, no
-  polling. Client half: [messaging.md](messaging.md).
+  `Permissions-Policy` on every response, through `OnStarting` for the same reason; a header
+  already set is kept. `frame-ancestors` and cookie flags are not its business.
 - Error handler
 - HTTPS redirection
 - `TenancyMiddleware` — **only where a tenant is resolved** (`host.ResolvesTenants()`: either
