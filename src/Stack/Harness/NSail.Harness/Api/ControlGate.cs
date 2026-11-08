@@ -1,75 +1,87 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using NSail.Messaging.WebApi;
 
 namespace NSail.Harness.Api;
 
 // The door of the harness API. Loopback is no boundary: a seat's process reaches it. A request whose
-// Host is not one the harness listens on is refused; the routes that drive the harness or serve a
-// job's transcript need the control token, the build-turn routes the lease token (or the control
-// one); the reads the status pages and the Ops report use stay open.
+// Host is not one the harness listens on is refused; a message route needs the control token unless its
+// message says otherwise (HarnessAccess: the build-turn routes take the lease token, the status reads are
+// open); a page marked ControlOnly (a job's transcript) needs it too. A browser carries the token once
+// as ?token= on a GET and keeps it in a cookie.
 public sealed class ControlGate(RequestDelegate next, HarnessOptions options)
 {
     public const string Header = "X-Harness-Token";
+    public const string Cookie = "harness_token";
 
     public async Task InvokeAsync(HttpContext context)
     {
-        if (!HostAllowed(context.Request.Host.Host))
+        if (!HostAllowed(context.Request.Host))
         {
             context.Response.StatusCode = StatusCodes.Status421MisdirectedRequest;
             return;
         }
-        var need = Need(context.Request.Method, context.Request.Path);
-        if (need != Access.Open)
+        var need = Need(context.GetEndpoint());
+        if (need != HarnessAccess.Open)
         {
-            var given = Given(context.Request);
             var control = options.Control.ResolveToken();
-            var ok = control is not null && Same(given, control)
-                || need == Access.Lease && Same(given, options.Control.ResolveLeaseToken());
+            var browser = HttpMethods.IsGet(context.Request.Method);
+            var given = Given(context.Request, browser);
+            var ok = control is not null && Same(given.Token, control)
+                || need == HarnessAccess.Lease && Same(given.Token, options.Control.ResolveLeaseToken());
             if (!ok)
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 return;
             }
+            if (given.FromQuery)
+            {
+                context.Response.Cookies.Append(Cookie, given.Token!, new CookieOptions { HttpOnly = true, SameSite = SameSiteMode.Strict, Path = "/" });
+            }
         }
         await next(context);
     }
 
-    internal enum Access { Open, Lease, Control }
-
-    internal static Access Need(string method, PathString path)
+    internal static HarnessAccess Need(Endpoint? endpoint)
     {
-        var p = path.Value?.TrimEnd('/').ToLowerInvariant() ?? "";
-        if (p == "/api/harness/leases" && HttpMethods.IsPost(method)) return Access.Lease;
-        if (p.StartsWith("/api/harness/leases/", StringComparison.Ordinal) && HttpMethods.IsDelete(method)) return Access.Lease;
-        if (p.StartsWith("/api/harness/", StringComparison.Ordinal))
+        if (endpoint?.Metadata.GetMetadata<MessageEndpointMetadata>() is { } message)
         {
-            var read = HttpMethods.IsGet(method) || HttpMethods.IsHead(method);
-            return read && p is "/api/harness/status" or "/api/harness/jobs" or "/api/harness/stats" ? Access.Open : Access.Control;
+            return message.MessageType.GetCustomAttribute<HarnessAccessAttribute>()?.Access ?? HarnessAccess.Control;
         }
-        if (p.StartsWith("/jobs/", StringComparison.Ordinal)) return Access.Control;
-        return Access.Open;
+        return endpoint?.Metadata.GetMetadata<ControlOnlyAttribute>() is not null ? HarnessAccess.Control : HarnessAccess.Open;
     }
 
-    bool HostAllowed(string host)
+    bool HostAllowed(HostString host)
     {
-        if (host is "localhost" or "127.0.0.1" or "[::1]" or "::1") return true;
-        if (Uri.TryCreate(options.PublicUrl, UriKind.Absolute, out var u) && string.Equals(u.Host, host, StringComparison.OrdinalIgnoreCase)) return true;
-        return options.Control.Hosts.Any(h => string.Equals(h, host, StringComparison.OrdinalIgnoreCase));
+        var name = host.Host;
+        if (name is "localhost" or "127.0.0.1" or "[::1]" or "::1") return true;
+        if (Uri.TryCreate(options.PublicUrl, UriKind.Absolute, out var u) && string.Equals(u.Host, name, StringComparison.OrdinalIgnoreCase)) return true;
+        return options.Control.Hosts.Any(h => string.Equals(h, name, StringComparison.OrdinalIgnoreCase));
     }
 
-    static string? Given(HttpRequest request)
+    static (string? Token, bool FromQuery) Given(HttpRequest request, bool browser)
     {
         var auth = request.Headers.Authorization.ToString();
-        if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return auth[7..].Trim();
-        return request.Headers[Header].FirstOrDefault()?.Trim();
+        if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) return (auth[7..].Trim(), false);
+        if (request.Headers[Header].FirstOrDefault() is { Length: > 0 } header) return (header.Trim(), false);
+        if (!browser) return (null, false);
+        if (request.Query["token"].FirstOrDefault() is { Length: > 0 } query) return (query, true);
+        return (request.Cookies[Cookie], false);
     }
 
     static bool Same(string? given, string expected)
     {
         return given is not null && CryptographicOperations.FixedTimeEquals(SHA256.HashData(Encoding.UTF8.GetBytes(given)), SHA256.HashData(Encoding.UTF8.GetBytes(expected)));
     }
+}
+
+// Marks a page's endpoint as one that needs the control token.
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
+public sealed class ControlOnlyAttribute : Attribute
+{
 }

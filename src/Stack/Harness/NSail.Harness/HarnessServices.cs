@@ -100,8 +100,8 @@ public static class HarnessServices
 
     public static void MapHarnessApi(this WebApplication app)
     {
-        app.UseMiddleware<ControlGate>();
         app.UseErrorHandler();
+        app.UseMiddleware<ControlGate>();
         app.MapEndpoints();
     }
 

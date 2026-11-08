@@ -124,6 +124,10 @@ public sealed class HarnessOptions
             throw new InvalidOperationException("Harness:Repositories has an entry without a Name");
         }
         if (Workers.Count == 0) throw new InvalidOperationException("Harness:Workers names no worker: the harness would take nothing");
+        if (Control.ResolveToken() is { } control && control == Control.ResolveLeaseToken())
+        {
+            throw new InvalidOperationException("Harness:Control:Token and LeaseToken are the same: a seat holds the lease token, so it would hold the control one");
+        }
         _ = Harness.Workers.Worker.Compile(this);
     }
 }

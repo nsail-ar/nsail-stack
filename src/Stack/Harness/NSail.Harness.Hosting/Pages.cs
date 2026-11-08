@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Harness.Api;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 
@@ -24,12 +25,13 @@ public static class Pages
             .ExcludeFromDescription();
         app.MapGet("/jobs/{id}", (string id, HarnessOptions o, JobHistory history, int? tail) =>
             JobsPage.One(o, history, id, tail) is { } html ? Results.Content(html, "text/html; charset=utf-8") : Results.NotFound())
+            .WithMetadata(new ControlOnlyAttribute())
             .ExcludeFromDescription();
         app.MapGet("/jobs/{id}/log", (string id, JobHistory history, int? tail) =>
         {
             var job = history.Jobs().LastOrDefault(j => j.Id == id);
             if (job is null || !File.Exists(job.LogPath)) return Results.NotFound();
             return Results.Text(JobsPage.Tail(job.LogPath, tail ?? 200), "text/plain; charset=utf-8");
-        });
+        }).WithMetadata(new ControlOnlyAttribute());
     }
 }
