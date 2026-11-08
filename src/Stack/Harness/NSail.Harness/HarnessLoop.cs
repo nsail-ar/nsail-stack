@@ -10,6 +10,7 @@ using NSail.Harness.Locks;
 using NSail.Harness.Planning;
 using NSail.Harness.Repositories;
 using NSail.Harness.Workers;
+using NSail.Problems;
 
 namespace NSail.Harness;
 
@@ -279,6 +280,9 @@ public sealed class HarnessLoop(
     {
         var worker = _workers.FirstOrDefault(w => w.Kind == item.Kind && (item.Kind != WorkKind.Release || string.Equals(w.Options.Product, item.ProductName, StringComparison.OrdinalIgnoreCase)))
             ?? throw new InvalidOperationException($"no worker runs {item.Kind}{(item.ProductName is { } p ? $" for {p}" : "")}");
+        if (options.Value.Mode == HarnessMode.Debug) throw (BusinessException)BusinessProblem.InvalidState("the harness is in Debug mode: it starts nothing");
+        if (Paused is { } why) throw (BusinessException)BusinessProblem.InvalidState($"the harness is paused ({why})");
+        if (AgentsOffUntil is { } wall && Capacity.Needs(item.Kind).Contains(Resource.Agent)) throw (BusinessException)BusinessProblem.InvalidState($"out of quota until {wall:HH:mm} UTC");
         return Start(item with { Worker = worker.Name, Workflow = item.Workflow ?? worker.Options.Workflow }, CancellationToken.None);
     }
 
@@ -369,7 +373,7 @@ public sealed class HarnessLoop(
                 call = PassCall.Closed;
                 await SweepClosed(stop);
                 call = PassCall.Chores;
-                await BoardChores.Do(board, plan.Chores, BoardChores.ReadOf(snapshot.Issues), reader.OpenPrOf, o.Texts.Signature, log, stop);
+                await BoardChores.Do(board, ChoresToDo(plan, take), BoardChores.ReadOf(snapshot.Issues), reader.OpenPrOf, o.Texts.Signature, log, stop);
                 call = PassCall.Start;
                 if (Paused is null)
                 {
@@ -390,6 +394,14 @@ public sealed class HarnessLoop(
             if (e is ProviderException { RetryAfter: { } after }) _limitedFor = after;
             return Failed(log, metrics, e, call, started);
         }
+    }
+
+    // The Starting chores of the items that fit this pass: an item not started (paused, over capacity,
+    // backed off, inside the quota wall) leaves its story as it stands.
+    internal static IReadOnlyList<Chore> ChoresToDo(Plan plan, IReadOnlyList<WorkItem> take)
+    {
+        var starts = take.Where(i => i.Story is not null).Select(i => (i.Story!.Value, i.Worker)).ToHashSet();
+        return plan.Chores.Where(c => !WorkerPlanner.IsStarting(c) || starts.Any(s => s.Value == c.Story && c.Why.StartsWith($"{s.Worker}: ", StringComparison.Ordinal))).ToList();
     }
 
     // The provider limited the pass: the next one waits out what it asked, up to a ceiling; a wake still ends it.
@@ -557,7 +569,7 @@ public sealed class HarnessLoop(
             if (result.Idle) _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + Backoff;
             if (result.QuotaUntil is { } until)
             {
-                lock (_gate) _quotaUntil = until;
+                lock (_gate) _quotaUntil = _quotaUntil is { } held && held > until ? held : until;
                 log.LogWarning("out of quota until {Until:HH:mm} UTC — no agent starts; builds go on", until);
             }
             // What the job's ending does on the board: its worker's actions, or its type's when the

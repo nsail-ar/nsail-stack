@@ -135,7 +135,7 @@ the files it leaves.
   atomically, so any number of harnesses can share one board.
 - **A job's processes die with the harness** (`Lanes/ProcessGroup.cs`): a restart never leaves a
   build writing in a slot the next job is handed.
-- **Modes**: `Debug` reads and plans and starts nothing; `Live` acts.
+- **Modes**: `Debug` reads and plans and starts nothing, and refuses a forced job (`POST /run`) as well; `Live` acts. A forced job also refuses while paused and, for one that needs an agent, inside the quota wall.
 
 ## A host
 

@@ -148,6 +148,27 @@ public class WorkerPlannerTests
 
         Assert.Equal(["dev #1 (round (PR #10: CI red))"], Lines(f, new PlannerOptions { WipLimit = 1 }));
     }
+
+    [Fact]
+    public void ARedPrStillGetsItsRoundBesideAGreenOneElsewhere()
+    {
+        var f = new Fixture()
+            .Story(5, "In-Progress")
+            .Pr(5, 50, repo: "acme/other").Pr(5, 51, CiState.Red);
+
+        Assert.Contains(Lines(f), l => l.Contains("PR #51"));
+    }
+
+    [Fact]
+    public void StartingChoresRunOnlyForItemsThatStart()
+    {
+        var plan = Plan(new Fixture().Story(2673, "Ready", "stalled"));
+        var started = HarnessLoop.ChoresToDo(plan, plan.Items);
+        var paused = HarnessLoop.ChoresToDo(plan, []);
+
+        Assert.Contains(started, c => c is { Kind: ChoreKind.MoveStage, Story: 2673, Value: "Analyze" });
+        Assert.DoesNotContain(paused, c => c.Story == 2673);
+    }
 }
 
 public class OrphanTests
