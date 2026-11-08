@@ -65,7 +65,8 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 | Call | Does |
 |---|---|
 | `AddSecurity()` | TryAdds `SessionProvider`, `RelationProvider`, `FeatureProvider`, `CredentialProvider`, `RequestOrganizationProvider`, `SecurityManager` with permissive defaults (anonymous session, every relation true, every feature on). A host with sign-in and a policy store replaces them |
-| `AddSecurityEnforcement()` | `AddSecurity()` plus the `SecurityInterceptor` on every send: deny by default |
+| `AddSecurityEnforcement()` | `AddSecurity()` plus the `SecurityInterceptor` on every send: deny by default. The host refuses to start while `RelationProvider` or `CredentialProvider` is still the permissive default (every relation constraint would pass, stale tickets be honoured): Iam registers the DB-backed ones |
+| `AcceptPermissiveProviders()` | Says an enforcing host has no Iam (a fixture, a sample) and runs over the permissive providers on purpose |
 | `AddBuiltInPolicy(policy)` | A code-owned policy no stored row can delete or widen |
 | `AddFeatures<TContributor>()` | An `IFeatureContributor` declaring the entitlement keys a module owns |
 
