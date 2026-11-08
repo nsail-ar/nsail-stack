@@ -54,8 +54,12 @@ the app (the suspended page, below).
 - Forwarded headers, when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is on: believed only from the
   proxies in `Security:TrustedProxies`; with none named the middleware is not installed, so
   behind a proxy the scheme reads as `http` too (no HSTS, and HTTPS redirection can loop).
+- `ResponseHeadersMiddleware` — `X-Content-Type-Options: nosniff`, a `Referrer-Policy` and a
+  `Permissions-Policy` on every response, through `OnStarting` for the same reason as below; a
+  header already set is kept. `frame-ancestors` and cookie flags are not its business.
 - `BuildVersionMiddleware` — the build this host is running (`BuildVersion.Current`) on
-  **every** response, under `X-NSail-Version`. Outermost, and stamped through
+  every response **to a signed-in caller**, under `X-NSail-Version`: an anonymous probe is not
+  told the build. Outermost, and stamped through
   `Response.OnStarting` rather than on the way in, because `ErrorMiddleware` clears the
   response it rewrites — and a refusal is exactly the answer a client left open across a
   deploy is likeliest to get. It is the whole server half of the handshake: no endpoint, no
@@ -114,7 +118,8 @@ the app (the suspended page, below).
   with no permission is refused before a missing body or query member can be. It no-ops unless
   a kit called `AddSecurityEnforcement`; see messaging.md.
 - Swagger (development)
-- HSTS (production)
+- HSTS (production), with `includeSubDomains`; `preload` stays off — it commits every subdomain
+  of the domain for good
 - `MapEndpoints()` — maps all generated `IEndpointEntry` implementations
 - `MapPush()` — the `PushHub` at `PushFeed.Path`, behind the same tenant wall and
   authentication as every endpoint, so a host that publishes always has the door its clients

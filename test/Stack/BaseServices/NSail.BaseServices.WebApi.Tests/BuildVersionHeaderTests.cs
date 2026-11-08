@@ -27,12 +27,46 @@ public sealed class BuildVersionHeaderTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AnAnswerCarriesTheBuildThatGaveIt()
+    public async Task ASignedInCallerIsAnsweredWithTheBuildThatGaveIt()
+    {
+        var ticket = await _host.SignIn(tenant: null);
+
+        using var response = await _host.Client.SendAsync(_host.Get("/where", tenant: null, ticket: ticket));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(BuildVersion.Current, Version(response));
+    }
+
+    [Fact]
+    public async Task AnAnonymousCallerIsNotToldTheBuild()
     {
         using var response = await _host.Client.SendAsync(_host.Get("/where", tenant: null));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(BuildVersion.Current, Version(response));
+        Assert.Null(Version(response));
+    }
+
+    [Fact]
+    public async Task EveryAnswerCarriesTheBrowserHardeningHeaders()
+    {
+        using var response = await _host.Client.SendAsync(_host.Get("/where", tenant: null));
+
+        Assert.Equal("nosniff", Single(response, "X-Content-Type-Options"));
+        Assert.Equal(ResponseHeadersMiddleware.ReferrerPolicy, Single(response, "Referrer-Policy"));
+        Assert.Equal(ResponseHeadersMiddleware.PermissionsPolicy, Single(response, "Permissions-Policy"));
+    }
+
+    [Fact]
+    public async Task ARefusalCarriesThemToo()
+    {
+        using var response = await _host.Client.SendAsync(_host.Get("/guarded", tenant: null));
+
+        Assert.Equal("nosniff", Single(response, "X-Content-Type-Options"));
+    }
+
+    static string? Single(HttpResponseMessage response, string name)
+    {
+        return response.Headers.TryGetValues(name, out var values) ? string.Join(",", values) : null;
     }
 
     // The answer a client running last week's build is likeliest to get, and the one a header
@@ -40,20 +74,11 @@ public sealed class BuildVersionHeaderTests : IAsyncLifetime
     [Fact]
     public async Task AProblemTheErrorHandlerRewroteCarriesItToo()
     {
-        using var response = await _host.Client.SendAsync(_host.Get("/boom", tenant: null));
+        var ticket = await _host.SignIn(tenant: null);
+
+        using var response = await _host.Client.SendAsync(_host.Get("/boom", tenant: null, ticket: ticket));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(BuildVersion.Current, Version(response));
-    }
-
-    // A refusal written by the authentication handler rather than by an endpoint: the stamp is
-    // the pipeline's, so it does not depend on anything downstream running at all.
-    [Fact]
-    public async Task ARefusalCarriesItBeforeAnyEndpointRuns()
-    {
-        using var response = await _host.Client.SendAsync(_host.Get("/guarded", tenant: null));
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal(BuildVersion.Current, Version(response));
     }
 

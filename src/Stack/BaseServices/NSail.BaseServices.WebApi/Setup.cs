@@ -56,6 +56,14 @@ public static class Setup
         builder.Services.TryAddScoped<RequestBudgetProvider>();
 
         builder.Services.AddSingleton<BuildVersionMiddleware>();
+        builder.Services.AddSingleton<ResponseHeadersMiddleware>();
+
+        // Subdomains are tenants of the same install, all served over HTTPS; preload is left off
+        // because it is a one-way commitment for every subdomain of the registrable domain.
+        builder.Services.AddHsts(options =>
+        {
+            options.IncludeSubDomains = true;
+        });
 
         builder.Services.AddScoped<TenancyMiddleware>();
         builder.Services.AddScoped<TenantStateMiddleware>();
@@ -200,6 +208,7 @@ public static class Setup
         // refusal, a 404 and a redirect included. It only registers a callback, so nothing
         // below it can drop the stamp by rewriting the response.
         app.UseMiddleware<BuildVersionMiddleware>();
+        app.UseMiddleware<ResponseHeadersMiddleware>();
 
         app.UseErrorHandler();
         app.UseHttpsRedirection();

@@ -6,7 +6,7 @@ using NSail.Messaging.Runtime.Context;
 
 namespace NSail.BaseServices.WebApi;
 
-/// <summary>Puts the build that answered on every response this host gives, under
+/// <summary>Puts the build that answered on every response this host gives to a signed-in caller, under
 /// <see cref="WireHeaders.Version"/>. It is the whole server half of a deploy reaching a client
 /// that is already open: no endpoint to call, nothing the client has to remember to ask for,
 /// and no polling — the client compares what it booted with against what came back.</summary>
@@ -30,6 +30,13 @@ public sealed class BuildVersionMiddleware : IMiddleware
     static Task Stamp(object state)
     {
         var context = (HttpContext)state;
+
+        // Only to a caller who signed in: the build is a fingerprint an anonymous probe has no
+        // business reading. The user is read when the response starts, after authentication ran.
+        if (context.User.Identity?.IsAuthenticated != true)
+        {
+            return Task.CompletedTask;
+        }
 
         context.Response.Headers[WireHeaders.Version] = BuildVersion.Current;
 

@@ -82,7 +82,7 @@ directory refuses to compose; Development without it seals under a fixed key.
    request then reads as `http`, so HSTS is not sent and HTTPS redirection can loop, and naming
    the proxy is required to keep both. With the flag off outside Development, startup logs a
    warning that behind a proxy all callers share one address.
-2. `BuildVersionMiddleware`: `BuildVersion.Current` on every response as `X-NSail-Version`.
+2. `BuildVersionMiddleware`: `BuildVersion.Current` as `X-NSail-Version` on every response to a signed-in caller (anonymous ones carry none); `ResponseHeadersMiddleware`: `nosniff`, `Referrer-Policy` and `Permissions-Policy` on every response.
 3. Error handler, then HTTPS redirection.
 4. `TenancyMiddleware` and `TenantStateMiddleware`, only where the host resolves a tenant.
 5. Authentication and authorization.
@@ -98,7 +98,7 @@ directory refuses to compose; Development without it seals under a fixed key.
 10. `CredentialMiddleware`: asks `CredentialProvider` whether the ticket still names a live party and signs the caller out and challenges if not (the default provider holds every ticket).
 11. `EndpointGateMiddleware`: the security gate, ahead of model binding; a no-op unless a kit called
     `AddSecurityEnforcement`.
-12. Swagger UI in Development, HSTS otherwise.
+12. Swagger UI in Development, HSTS (with `includeSubDomains`) otherwise.
 13. `MapEndpoints()` and `MapPush()`.
 
 The tenant-state wall also stands on every send (`TenantStateInterceptor`, registered by
