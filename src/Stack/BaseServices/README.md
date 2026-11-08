@@ -106,7 +106,7 @@ router render its NotFound (it leaves `/api` and file-looking paths alone).
 | Section | Keys | Read by |
 |---|---|---|
 | `Language` | `Base` (default `en`), `Default` (default `en`), `Offered` (default empty, meaning `Default` alone) | `UseBaseWebApp` request localization, the suspended page |
-| `Security` | `TicketEpoch` (int, default 0) | `TicketEpochMiddleware` |
+| `Security` | `TicketEpoch` (int, default 0); `TrustedProxies` (addresses or CIDR networks, default none) | `TicketEpochMiddleware`; forwarded headers |
 | `Tenancy` | `Mode`, `StateCacheSeconds`, `SupportContact`, ... | the tenant steps; options are `TenancyOptions` in `NSail.Data` |
 | `Telemetry` | see [Telemetry](../Telemetry/README.md) | `AddBaseWebApi` |
 | `HttpClients` | `<Area>:BaseUrl`, `<Area>:TimeoutSeconds` | `AddHttpClients` (Wasm), from `NSail.Messaging.Http` |
@@ -114,7 +114,7 @@ router render its NotFound (it leaves `/api` and file-looking paths alone).
 ```json
 {
   "Language": { "Base": "en", "Default": "es", "Offered": ["es", "en"] },
-  "Security": { "TicketEpoch": 0 },
+  "Security": { "TicketEpoch": 0, "TrustedProxies": [] },
   "HttpClients": { "Tasks": { "BaseUrl": "{scheme}://{host}:{port}", "TimeoutSeconds": 30 } }
 }
 ```

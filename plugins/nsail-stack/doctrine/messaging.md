@@ -790,8 +790,8 @@ recognise a refusal by status number alone.
   listed.
 - **Write the number for the worse reading of "one caller".** An install that does not set
   `ASPNETCORE_FORWARDEDHEADERS_ENABLED` sees the proxy's address for everybody, so the ceiling
-  must hold for a whole shop; an install that turns the header on gets the per-person reading
-  for free. On a token door a ceiling limits the cost of being hammered, not guessing — 32
+  must hold for a whole shop; an install that turns the header on and names its proxies in
+  `Security:TrustedProxies` gets the per-person reading. On a token door a ceiling limits the cost of being hammered, not guessing — 32
   bytes of entropy makes guessing infeasible at any rate.
 
 Proof: `ThrottleTests` (`NSail.BaseServices.WebApi.Tests`), through `AddBaseWebApi`/

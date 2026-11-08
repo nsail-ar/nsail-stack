@@ -124,6 +124,19 @@ public sealed class ThrottleTests
     }
 
     [Fact]
+    public async Task With_no_proxy_named_no_forwarded_header_is_believed()
+    {
+        await using var host = await ThrottleHost.Start(forwarded: true);
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From("203.0.113.7", Capped.Path, $"198.51.100.{attempt + 1}"));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("203.0.113.7", Capped.Path, "198.51.100.99"));
+    }
+
+    [Fact]
     public async Task A_forwarded_header_from_a_trusted_proxy_names_the_caller()
     {
         await using var host = await ThrottleHost.Start(forwarded: true, "10.0.0.0/8");

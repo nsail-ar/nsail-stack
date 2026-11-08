@@ -174,10 +174,14 @@ public static class Setup
 
             if (trusted.Length == 0)
             {
+                // Two empty lists make the framework skip the peer check and believe everyone,
+                // so with nobody named the middleware is not installed at all.
                 logger.LogWarning("ASPNETCORE_FORWARDEDHEADERS_ENABLED is on but Security:TrustedProxies is empty: no forwarded header is believed, so every caller behind a proxy shares the proxy's address.");
             }
-
-            app.UseForwardedHeaders(forwardedHeadersOptions);
+            else
+            {
+                app.UseForwardedHeaders(forwardedHeadersOptions);
+            }
         }
         else if (!app.Environment.IsDevelopment())
         {
