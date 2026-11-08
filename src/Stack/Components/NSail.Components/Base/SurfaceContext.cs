@@ -734,8 +734,8 @@ public sealed class SurfaceContext
     }
 
     /// <summary>Whether a destination carries a scheme no door may open: an external address
-    /// whose scheme is not http(s), mailto or tel — "javascript:" and "data:" run or draw what
-    /// the address says on a click. Only the scheme is asked; the path is the caller's. A link
+    /// whose scheme is not http(s), mailto, tel or otpauth — "javascript:" and "data:" run or
+    /// draw what the address says on a click. Only the scheme is asked; the path is the caller's. A link
     /// drawn over one is inert text, not an anchor.</summary>
     public static bool IsInert(string? href)
     {
@@ -745,7 +745,8 @@ public sealed class SurfaceContext
         }
 
         return !WebAddress.OpensScheme(address.Scheme)
-            && !address.Scheme.Equals("tel", StringComparison.OrdinalIgnoreCase);
+            && !address.Scheme.Equals("tel", StringComparison.OrdinalIgnoreCase)
+            && !address.Scheme.Equals("otpauth", StringComparison.OrdinalIgnoreCase);
     }
 
     static string Rooted(string route)
