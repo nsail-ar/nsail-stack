@@ -20,7 +20,7 @@ public sealed class InstallArchiveTests
         Assert.Equal(manifest.PostgresVersion, read.PostgresVersion);
         Assert.Equal(manifest.SchemaVersion, read.SchemaVersion);
         Assert.Equal(manifest.Product, read.Product);
-        Assert.Equal(BackupManifest.CurrentArchiveVersion, read.ArchiveVersion);
+        Assert.Equal(BackupManifest.PlainArchiveVersion, read.ArchiveVersion);
     }
 
     [Fact]

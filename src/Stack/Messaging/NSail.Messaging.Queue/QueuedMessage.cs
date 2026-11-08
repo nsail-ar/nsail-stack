@@ -53,8 +53,8 @@ public class QueuedMessage
     public int Attempts { get; set; }
 
     /// <summary>Set when the row has failed <see cref="QueueOptions.MaxAttempts"/> times. The
-    /// row stays, unattempted from here on: a dead letter is evidence, and deleting it would
-    /// be the silence the queue exists not to keep.</summary>
+    /// row stays, unattempted until an operator requeues it (<see cref="QueueDeadLetters"/>):
+    /// a dead letter is evidence, and it is purged on purpose, never silently.</summary>
     public DateTime? DeadLetteredAt { get; set; }
 
     // An exception's own words, which quote the value that threw.

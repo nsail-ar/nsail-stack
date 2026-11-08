@@ -15,7 +15,7 @@ public class QueueOptions
     /// own story lands, so an install that writes one is told rather than served silence.</summary>
     public string? Transport { get; set; }
 
-    /// <summary>How many times a row is attempted before it is dead-lettered. Counted across
+    /// <summary>How many times a delivery may fail before the row is dead-lettered. Counted across
     /// passes and across restarts, because it is a column of the row and not a loop
     /// variable.</summary>
     public int MaxAttempts { get; set; } = 5;

@@ -55,8 +55,8 @@ public sealed class QueueDrain
     }
 
     /// <summary>Delivers every row that is due, up to <see cref="QueueOptions.BatchSize"/>, and
-    /// answers how many it finished with. The tenant is whoever the caller entered: the query
-    /// filter is what makes this tenant's queue its own.</summary>
+    /// answers how many rows it visited, deferred ones included. The tenant is whoever the caller
+    /// entered: the query filter is what makes this tenant's queue its own.</summary>
     public async Task<int> Run(CancellationToken cancellationToken)
     {
         var now = _clock.GetUtcNow().UtcDateTime;
@@ -109,12 +109,10 @@ public sealed class QueueDrain
     {
         if (_consumers.For(row.MessageType) is not { } consumer)
         {
-            // A row whose message this composition does not know is not a failure to retry:
-            // nothing here will ever grow a consumer for it, and attempting it on every pass
-            // would bury the rows that can still be delivered.
-            await Settle(row, new InvalidOperationException(
-                $"No consumer is registered for '{row.MessageType}'. The host that drains a queued command must compose the kit that declares it."),
-                attempts: _options.MaxAttempts, cancellationToken).ConfigureAwait(false);
+            // Unknown to this process, not failed: a rolling deploy drains rows the new version
+            // enqueued, and a moved namespace strands pending ones. The row waits, backed off,
+            // and is never dead-lettered for it.
+            await Defer(row, cancellationToken).ConfigureAwait(false);
 
             return;
         }
@@ -146,6 +144,20 @@ public sealed class QueueDrain
         {
             await Settle(row, exception, row.Attempts + 1, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    async Task Defer(QueuedMessage row, CancellationToken cancellationToken)
+    {
+        var now = _clock.GetUtcNow().UtcDateTime;
+
+        // Attempts is the ladder of real failures and is left alone: a deferral that spent it
+        // would dead-letter the row on its first genuine failure once a consumer exists. The wait is a long rung of the ladder and no outcome is metered: nothing failed.
+        row.LastError = Truncate($"No consumer is registered for '{row.MessageType}'. The host that drains a queued command must compose the kit that declares it.");
+        row.NextAttemptAt = Due(now, _options.MaxAttempts);
+
+        _logger.LogWarning("A queued command of type {MessageType} has no consumer in this process; it stays pending until {NextAttemptAt:o}.", row.MessageType, row.NextAttemptAt);
+
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     async Task Settle(QueuedMessage row, Exception exception, int attempts, CancellationToken cancellationToken)

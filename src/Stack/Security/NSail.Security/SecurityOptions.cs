@@ -11,10 +11,9 @@ public class SecurityOptions
     /// credential and <c>TicketEpochMiddleware</c> compares it on every authenticated request,
     /// so raising the number signs out everyone holding an older one — and nobody else.
     ///
-    /// <para>It exists because the DataProtection key ring is the SERVER's and not the
-    /// install's: every install on a box unprotects with the same keys, so there is no key to
-    /// delete or revoke that would void one install's tickets without making every sealed
-    /// secret on the box — the storage credential, the ARCA certificate — unreadable for good.
+    /// <para>It exists because no DataProtection key can be deleted or revoked to void
+    /// tickets alone: the key ring is the install's, and deleting a key makes every secret it
+    /// sealed — the storage credential, the ARCA certificate — unreadable for good.
     /// This is the cut that is only this install's, and it touches nothing that was
     /// sealed.</para>
     ///
