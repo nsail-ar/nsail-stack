@@ -25,22 +25,25 @@ public static class ExportText
 
         return format switch
         {
-            ExportFormat.Number => Figure(value, "0.##########", culture),
-            ExportFormat.Money => Figure(value, "0.00", culture),
-            ExportFormat.Percent => Figure(value, "0.00%", culture),
+            ExportFormat.Number when IsFigure(value, format) => Figure(value, "0.##########", culture),
+            ExportFormat.Money when IsFigure(value, format) => Figure(value, "0.00", culture),
+            ExportFormat.Percent when IsFigure(value, format) => Figure(value, "0.00%", culture),
             ExportFormat.Date => Moment(value, culture),
             _ => Word(value, culture)
         };
     }
 
+    /// <summary>Whether <see cref="Of"/> prints the value as a figure — the only text that may
+    /// open with a minus and still be a number — rather than as words.</summary>
+    public static bool IsFigure(object? value, ExportFormat format)
+    {
+        return format is ExportFormat.Number or ExportFormat.Money or ExportFormat.Percent
+            && value is IConvertible and not string and not bool;
+    }
+
     static string Figure(object value, string pattern, CultureInfo culture)
     {
-        if (value is IConvertible and not string and not bool)
-        {
-            return Convert.ToDecimal(value, culture).ToString(pattern, culture);
-        }
-
-        return Word(value, culture);
+        return Convert.ToDecimal(value, culture).ToString(pattern, culture);
     }
 
     static string Moment(object value, CultureInfo culture)

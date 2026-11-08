@@ -55,6 +55,11 @@ all, so it prints every figure in the reader's own separators.
 | Encoding | OOXML | UTF-8 **with a byte-order mark** |
 | Separator | — | derived from the decimal mark: `;` where it is a comma, `,` otherwise |
 
+**A CSV text cell is never a formula.** One that opens with `=`, `+`, `-`, `@`, tab or CR is written
+with a leading `'`; only a figure is not touched, since a negative one starts with a minus. A figure
+is a value in a Number, Money or Percent column that printed as a number: a string in such a column
+is text and is defused too.
+
 **The CSV separator is derived and never configured.** A culture that writes `1.234,56` cannot
 separate fields with the comma inside its own figures; reading the separator off the region
 instead would be the same answer from a value that may be tailored per machine, and a mismatch
