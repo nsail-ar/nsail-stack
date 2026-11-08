@@ -43,6 +43,13 @@ export function NsField<T>({ name, multiline = false, autoFocus, label }: NsFiel
     set(raw === "" ? (field.nullable ? null : undefined) : Number(raw));
   }
 
+  // An emptied exact number is absent, as a number is: "" is no long the server reads.
+  function exact(event: ChangeEvent<HTMLInputElement>) {
+    const raw = event.target.value;
+
+    set(raw === "" ? (field.nullable ? null : undefined) : raw);
+  }
+
   const common = {
     id,
     name,
@@ -67,7 +74,7 @@ export function NsField<T>({ name, multiline = false, autoFocus, label }: NsFiel
           type="text"
           inputMode={field.kind === "bigint" ? "numeric" : "decimal"}
           value={value === null || value === undefined ? "" : String(value)}
-          onChange={text}
+          onChange={exact}
         />
       );
       break;

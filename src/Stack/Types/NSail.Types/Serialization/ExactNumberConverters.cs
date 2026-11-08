@@ -45,7 +45,7 @@ sealed class Int64StringConverter : JsonConverter<long>
 
     static long Parse(string? text)
     {
-        if (long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value))
+        if (long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
         {
             return value;
         }
@@ -88,7 +88,7 @@ sealed class UInt64StringConverter : JsonConverter<ulong>
 
     static ulong Parse(string? text)
     {
-        if (ulong.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var value))
+        if (ulong.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
         {
             return value;
         }

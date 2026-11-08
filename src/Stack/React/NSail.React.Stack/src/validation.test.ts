@@ -28,6 +28,11 @@ describe("validate", () => {
     expect(validateField(price, "9.999999999999999999").map((i) => i.code)).toEqual([]);
     expect(validateField(price, "10.5").map((i) => i.code)).toEqual(["OutOfRange"]);
     expect(validateField({ ...price, kind: "bigint" as const }, "-1").map((i) => i.code)).toEqual(["OutOfRange"]);
+
+    const id = { kind: "bigint" as const, key: "Shop.UpdateOrder.Id", max: 9007199254740992 };
+
+    expect(validateField(id, "9007199254740992").map((i) => i.code)).toEqual([]);
+    expect(validateField(id, "9007199254740993").map((i) => i.code)).toEqual(["OutOfRange"]);
   });
 
   // The text input takes anything; what the server's parse would refuse is refused here first.
@@ -41,6 +46,7 @@ describe("validate", () => {
     expect(validateField(price, "abc").map((i) => i.code)).toEqual(["InvalidFormat"]);
     expect(validateField(id, "9007199254740993").map((i) => i.code)).toEqual([]);
     expect(validateField(id, "1.5").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    expect(validateField(id, " +9007199254740993 ").map((i) => i.code)).toEqual([]);
   });
 
   it("bounds a query member like a body one", () => {

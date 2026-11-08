@@ -75,8 +75,8 @@ explicit is the machine's answer.** See [baseservices.md](baseservices.md).
 enums as names, and `long`, `ulong` and `decimal` as strings: a JavaScript reader parses a
 JSON number as a double and drops digits past 2^53 or about 15 (react.md). Reading accepts a
 number too, so a client that still writes one keeps working; a text that does not parse is
-a `JsonException`, so the endpoint answers it `400` like any malformed body. The generated HTTP client
-serializes with it directly; a host owns its own options instance and copies
+a `JsonException`, so the endpoint answers it `400` like any malformed body. The generated
+HTTP client serializes with it directly; a host owns its own options instance and copies
 `JsonOptions.Converters` instead. Nothing else should construct `JsonSerializerOptions` for
 message traffic — and a vendor's API is not message traffic: its client keeps its own
 options, or its numbers go out as strings.
@@ -88,8 +88,7 @@ from outside C# — a pack step, a tool call composed off the `MessageRegistry`
 `[Required]` alike, since every send validates the message's DataAnnotations. It describes
 a well-formed body, not the reader's tolerance: an `int` is `integer`, never the
 `["string", "integer"]` the lenient read admits, and `long`, `ulong` and `decimal` are
-`string`. `MessageSchemaTests` renders every
-registered message's schema.
+`string`. `MessageSchemaTests` renders every registered message's schema.
 
 ---
 

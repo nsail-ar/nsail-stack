@@ -74,6 +74,16 @@ public class JsonOptionsTests
         Assert.Equal(1.5m, number.Price);
     }
 
+    // The same texts NsField lets through: blanks around, a sign; a ulong's minus is out of range.
+    [Fact]
+    public void Wire_reads_an_integer_text_with_blanks_and_a_sign()
+    {
+        var exact = JsonSerializer.Deserialize<Exact>("{\"id\":\" -9007199254740993 \",\"big\":\"+5\"}", JsonOptions.Wire)!;
+
+        Assert.Equal(-9007199254740993, exact.Id);
+        Assert.Equal(5UL, exact.Big);
+    }
+
     // A JsonException is what the endpoint answers as a malformed body; a FormatException would
     // be a 500.
     [Theory]

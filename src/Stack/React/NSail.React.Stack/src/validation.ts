@@ -10,7 +10,8 @@ import type { Issue, Problem } from "./problems";
 const email = /^[^@\s]+@[^@\s]+$/;
 const phone = /^\+?(?=.*\d)[\d\s().\-]+((x|ext\.?)\s?\d+)?$/i;
 const url = /^(https?|ftp):\/\//i;
-// What the server's invariant parse of a long or a decimal takes: no group separator, a point.
+// What the server's invariant parse of a long or a decimal takes: blanks around, a sign, no
+// group separator, a point. A value past the type's range passes here and is the server's 400.
 const exact: Record<string, RegExp> = {
   bigint: /^\s*[+-]?\d+\s*$/,
   decimal: /^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/,
@@ -30,6 +31,26 @@ function length(value: unknown): number | null {
   }
 
   return null;
+}
+
+// A bigint compares as a BigInt, whole past 2^53; a decimal's text as the Number it rounds to.
+function outside(field: Field, value: unknown): boolean {
+  if (field.kind === "bigint" && typeof value === "string" && exact.bigint.test(value)) {
+    const whole = BigInt(value.trim());
+
+    return (
+      (field.min !== undefined && (Number.isInteger(field.min) ? whole < BigInt(field.min) : Number(whole) < field.min)) ||
+      (field.max !== undefined && (Number.isInteger(field.max) ? whole > BigInt(field.max) : Number(whole) > field.max))
+    );
+  }
+
+  const quantity = typeof value === "number" ? value : field.kind === "decimal" && typeof value === "string" && value.trim() !== "" ? Number(value) : NaN;
+
+  if (Number.isNaN(quantity)) {
+    return false;
+  }
+
+  return (field.min !== undefined && quantity < field.min) || (field.max !== undefined && quantity > field.max);
 }
 
 export function validateField(field: Field, value: unknown): Issue[] {
@@ -55,12 +76,8 @@ export function validateField(field: Field, value: unknown): Issue[] {
     issues.push(issue("Invalid", `The field ${name} must have at least ${field.minLength} characters`, name));
   }
 
-  const quantity = typeof value === "number" ? value : (field.kind === "bigint" || field.kind === "decimal") && typeof value === "string" && value.trim() !== "" ? Number(value) : null;
-
-  if ((field.min !== undefined || field.max !== undefined) && quantity !== null && !Number.isNaN(quantity)) {
-    if ((field.min !== undefined && quantity < field.min) || (field.max !== undefined && quantity > field.max)) {
-      issues.push(issue("OutOfRange", `The field ${name} must be between ${field.min} and ${field.max}`, name, { from: String(field.min), to: String(field.max) }));
-    }
+  if ((field.min !== undefined || field.max !== undefined) && outside(field, value)) {
+    issues.push(issue("OutOfRange", `The field ${name} must be between ${field.min} and ${field.max}`, name, { from: String(field.min), to: String(field.max) }));
   }
 
   if (typeof value === "string" && value.length > 0) {

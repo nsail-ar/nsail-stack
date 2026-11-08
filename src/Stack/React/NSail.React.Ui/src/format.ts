@@ -3,6 +3,9 @@
 
 import type { Field, Strings } from "@nsail/stack";
 
+const whole = /^-?\d+$/;
+const fixed = /^-?\d*(\.\d+)?$/;
+
 /** A wire value as a person reads it: the member's kind decides, the language formats. */
 export function display(strings: Strings, field: Field, value: unknown): string {
   if (value === null || value === undefined || value === "") {
@@ -22,10 +25,11 @@ export function display(strings: Strings, field: Field, value: unknown): string 
     }
     case "datetime":
       return new Date(String(value)).toLocaleString(strings.language, { dateStyle: "short", timeStyle: "short" });
+    // A value that is not the wire's text (a Number a product still writes) shows as a figure.
     case "bigint":
-      return BigInt(String(value)).toLocaleString(strings.language);
+      return whole.test(String(value)) ? BigInt(String(value)).toLocaleString(strings.language) : Number(value).toLocaleString(strings.language);
     case "decimal":
-      return decimal(strings.language, String(value));
+      return fixed.test(String(value)) ? decimal(strings.language, String(value)) : Number(value).toLocaleString(strings.language);
     case "integer":
     case "number":
       return Number(value).toLocaleString(strings.language);

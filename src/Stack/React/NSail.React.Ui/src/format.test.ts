@@ -32,6 +32,8 @@ describe("display", () => {
     expect(display(new Strings("en", stackStrings("en")), field("decimal"), "1234567890.123456789")).toBe("1,234,567,890.123456789");
     expect(display(new Strings("en", stackStrings("en")), field("decimal"), "-0.1234567890123456789012345678")).toBe("-0.1234567890123456789012345678");
     expect(display(strings, field("decimal"), "1234567.5")).toBe(`${(1234567).toLocaleString("es")},5`);
+    expect(display(new Strings("en", stackStrings("en")), field("bigint"), 1e21)).toBe((1e21).toLocaleString("en"));
+    expect(display(new Strings("en", stackStrings("en")), field("decimal"), "1e3")).toBe("1,000");
   });
 
   it("renders absent as nothing", () => {
