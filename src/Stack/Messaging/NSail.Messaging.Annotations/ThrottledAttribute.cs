@@ -28,4 +28,16 @@ public sealed class ThrottledAttribute : Attribute
     /// sliding: a public door is protected by the ceiling, not by the smoothness of it, and a
     /// sliding window keeps a timestamp per request per caller for the privilege.</summary>
     public int PerMinute { get; }
+
+    /// <summary>The name of the property that identifies the account the send is aimed at (a
+    /// sign-in's login, a code request's address). When set, the send is also counted per
+    /// that value, whatever address it comes from: a per-address ceiling alone is spent only by
+    /// one address, so a botnet or a client rotating inside its IPv6 /64 would guess at one
+    /// known account without ever meeting it.</summary>
+    public string? Identity { get; init; }
+
+    /// <summary>How many sends one identity gets inside a minute, from every address together.
+    /// Defaults to <see cref="PerMinute"/>; the per-address ceiling stays, so a shop's shared
+    /// address is not penalized beyond it.</summary>
+    public int IdentityPerMinute { get; init; }
 }

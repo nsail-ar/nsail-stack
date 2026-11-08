@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using NSail.Messaging.Annotations;
 using NSail.Messaging.WebApi;
@@ -33,11 +34,17 @@ public sealed class ThrottleMiddleware : IMiddleware, IDisposable
     // here because the lookup would otherwise run on every request of every endpoint.
     static readonly ConcurrentDictionary<Type, ThrottledAttribute?> Declarations = new();
 
+    const int MaxIdentityBodyBytes = 16 * 1024;
+
+    const string IdentityItem = "nsail:throttle-identity";
+
     readonly PartitionedRateLimiter<HttpContext> _limiter;
 
     public ThrottleMiddleware()
     {
-        _limiter = PartitionedRateLimiter.Create<HttpContext, string>(Partition);
+        _limiter = PartitionedRateLimiter.CreateChained(
+            PartitionedRateLimiter.Create<HttpContext, string>(Partition),
+            PartitionedRateLimiter.Create<HttpContext, string>(IdentityPartition));
     }
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -47,6 +54,11 @@ public sealed class ThrottleMiddleware : IMiddleware, IDisposable
 
         if (Declared(context) is { } message)
         {
+            if (Declaration(message) is { Identity: { } property })
+            {
+                context.Items[IdentityItem] = await Identity(context, property);
+            }
+
             using var lease = await _limiter.AcquireAsync(context, 1, context.RequestAborted);
 
             if (!lease.IsAcquired)
@@ -81,6 +93,88 @@ public sealed class ThrottleMiddleware : IMiddleware, IDisposable
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             });
+    }
+
+    // Per message AND per submitted identity, from every address together. A send that names
+    // none (the bind would refuse it anyway) is left to the per-address ceiling.
+    static RateLimitPartition<string> IdentityPartition(HttpContext context)
+    {
+        if (Declared(context) is not { } message
+            || Declaration(message) is not { Identity: not null } throttle
+            || context.Items[IdentityItem] is not string identity
+            || identity.Length == 0)
+        {
+            return RateLimitPartition.GetNoLimiter(string.Empty);
+        }
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            $"{message.FullName}|identity|{identity}",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = throttle.IdentityPerMinute > 0 ? throttle.IdentityPerMinute : throttle.PerMinute,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            });
+    }
+
+    // The identity is read before the body is bound, from the query or a JSON body, and the
+    // body is rewound for the binder. Case and surrounding space are not a new account.
+    static async Task<string?> Identity(HttpContext context, string property)
+    {
+        string? value = null;
+
+        foreach (var pair in context.Request.Query)
+        {
+            if (string.Equals(pair.Key, property, StringComparison.OrdinalIgnoreCase))
+            {
+                value = pair.Value.ToString();
+            }
+        }
+
+        if (value is null
+            && context.Request.ContentLength is null or (> 0 and <= MaxIdentityBodyBytes)
+            && context.Request.HasJsonContentType())
+        {
+            context.Request.EnableBuffering();
+
+            try
+            {
+                // Chunked bodies state no length, so the read is bounded here: a body past the
+                // bound is cut, does not parse, and names no identity.
+                var buffer = new byte[MaxIdentityBodyBytes];
+                var read = 0;
+                int chunk;
+
+                while (read < buffer.Length
+                    && (chunk = await context.Request.Body.ReadAsync(buffer.AsMemory(read), context.RequestAborted)) > 0)
+                {
+                    read += chunk;
+                }
+
+                using var document = JsonDocument.Parse(buffer.AsMemory(0, read));
+
+                if (document.RootElement.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var member in document.RootElement.EnumerateObject())
+                    {
+                        if (member.Value.ValueKind == JsonValueKind.String
+                            && string.Equals(member.Name, property, StringComparison.OrdinalIgnoreCase))
+                        {
+                            value = member.Value.GetString();
+                        }
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+            }
+            finally
+            {
+                context.Request.Body.Position = 0;
+            }
+        }
+
+        return value?.Trim().ToUpperInvariant();
     }
 
     // The connection's address, which UseForwardedHeaders has already rewritten to the real

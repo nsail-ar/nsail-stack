@@ -214,6 +214,27 @@ public sealed class ThrottleTests
         Assert.DoesNotContain(trail.Warnings, said => said.Contains("proxy", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task An_identity_is_capped_across_addresses_and_the_address_ceiling_stays()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", $"{{\"login\":\"Admin\",\"password\":\"p{attempt}\"}}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"login\":\" admin \"}"));
+        Assert.Equal(200, await host.Post("10.0.1.1", "{\"login\":\"other\"}"));
+
+        for (var attempt = 0; attempt < Login.AddressPerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post("10.0.2.1", $"{{\"login\":\"u{attempt}\"}}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.2.1", "{\"login\":\"fresh\"}"));
+    }
+
     static async Task<string> Code(HttpResponseMessage response)
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -231,6 +252,17 @@ public sealed class Capped : IMessage
     public const string Path = "api/probe/capped";
 
     public const int PerMinute = 3;
+}
+
+[Http(Method.Post, Login.Path)]
+[Throttled(Login.AddressPerMinute, Identity = "Login", IdentityPerMinute = Login.PerMinute)]
+public sealed class Login : IMessage
+{
+    public const string Path = "api/probe/login";
+
+    public const int PerMinute = 3;
+
+    public const int AddressPerMinute = 6;
 }
 
 [Http(Method.Get, AlsoCapped.Path)]
@@ -294,6 +326,7 @@ sealed class ThrottleHost : IAsyncDisposable
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Capped), Capped.Path));
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(AlsoCapped), AlsoCapped.Path));
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Uncapped), Uncapped.Path));
+        builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Login), Login.Path, post: true));
 
         var app = builder.Build();
 
@@ -335,6 +368,22 @@ sealed class ThrottleHost : IAsyncDisposable
         return context.Response.StatusCode;
     }
 
+    public async Task<int> Post(string address, string json)
+    {
+        var context = await _app.GetTestServer().SendAsync(request =>
+        {
+            request.Request.Scheme = "https";
+            request.Request.Method = HttpMethods.Post;
+            request.Request.Host = new HostString("localhost");
+            request.Request.Path = "/" + Login.Path;
+            request.Request.ContentType = "application/json";
+            request.Request.Body = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+            request.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(address);
+        });
+
+        return context.Response.StatusCode;
+    }
+
     public async ValueTask DisposeAsync()
     {
         Client.Dispose();
@@ -350,18 +399,21 @@ sealed class Probe : IEndpointEntry
 {
     readonly Type _message;
     readonly string _path;
+    readonly bool _post;
 
-    public Probe(Type message, string path)
+    public Probe(Type message, string path, bool post = false)
     {
         _message = message;
         _path = path;
+        _post = post;
     }
 
     public void Configure(IEndpointRouteBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.MapGet(_path, () => Results.Ok())
-            .WithMetadata(new MessageEndpointMetadata(_message));
+        var route = _post ? builder.MapPost(_path, () => Results.Ok()) : builder.MapGet(_path, () => Results.Ok());
+
+        route.WithMetadata(new MessageEndpointMetadata(_message));
     }
 }

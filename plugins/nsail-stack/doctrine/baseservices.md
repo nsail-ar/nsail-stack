@@ -90,7 +90,8 @@ the app (the suspended page, below).
 - `ThrottleMiddleware` — the ceiling on a public door, in FRONT of the gate: volume is not a
   permission question, and a flood is refused before any policy evaluation. It reads
   `[Throttled(perMinute)]` off the message the matched route names, so an endpoint whose
-  message declares none passes untouched; see messaging.md.
+  message declares none passes untouched; a message that names an `Identity` is also counted per
+  submitted identity; see messaging.md.
 - `RequestBudgetMiddleware` — a tenant's whole volume, beside the throttle: the authenticated
   message sends of each tenant per minute, against the figure `RequestBudgetProvider` answers
   (none in the base; the Stack names no key), refused past it with 429 and `Retry-After`. The

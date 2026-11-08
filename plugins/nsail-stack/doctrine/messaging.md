@@ -772,6 +772,12 @@ budget per request. Forwarded headers are believed only from `Security:TrustedPr
 `SecurityProblem.TooManyRequests` — 429, code `TooManyRequests` — so a client never has to
 recognise a refusal by status number alone.
 
+- **A door that guesses a secret also caps the account.** `[Throttled(perMinute, Identity = "Login", IdentityPerMinute = n)]`
+  names the property that identifies the account (sign-in's login, a code request's address);
+  the middleware reads it from the query or a small JSON body before binding (case and spaces
+  folded) and chains a second fixed window per message and identity, from every address together.
+  The per-address ceiling stays, so a shared address is not penalized beyond it; a per-address
+  ceiling alone is never met by a botnet or an IPv6 /64 rotating against one known account.
 - **The declaration rides the message, never a path**: the route is derived from the
   message, so a path-based declaration could only name an address that had moved.
 - **It stands in FRONT of the gate.** Volume is not a permission question; a flood is refused
