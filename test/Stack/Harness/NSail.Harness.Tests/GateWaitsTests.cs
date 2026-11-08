@@ -27,4 +27,14 @@ public class GateWaitsTests
         Assert.Null(Markers.GateAt(bodies, "aaa", "c2"));
         Assert.Equal(CiState.Red, Markers.GateAt([.. bodies, Markers.Gate(false, "aaa")], "aaa", "c1"));
     }
+
+    [Fact]
+    public void OnlyTheReadsOfThePrsOwnFilesAreItsRed()
+    {
+        Assert.True(GateJob.IsOwnRed(new System.Xml.XmlException("bad project")));
+        Assert.True(GateJob.IsOwnRed(new FileNotFoundException("no solution")));
+        Assert.True(GateJob.IsOwnRed(new DirectoryNotFoundException("no folder")));
+        Assert.False(GateJob.IsOwnRed(new InvalidOperationException("git fetch: timed out")));
+        Assert.False(GateJob.IsOwnRed(new IOException("disk full")));
+    }
 }
