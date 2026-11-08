@@ -401,7 +401,11 @@ other end, the surface this session was on would be gone and no route brings it 
   where a leaf naming nowhere goes instead of being drawn as a door. The same rule answers for a
   `NavMenuResult.Url` — a finder resolved it, the drawer did not derive it either — and for the
   markdown renderer over a document's own links ([guide.md](guide.md)): one rule, because a
-  second copy of it is a second answer.
+  second copy of it is a second answer. The one question a caller may ask apart from it is the
+  scheme alone (`WebAddress.OpensScheme`), for an address already parsed — `NsUrlField` asks it,
+  and `SurfaceContext.IsInert` asks it plus `tel:`, the one scheme a link may carry that the
+  drawer does not draw: `NsLink` and `NsChip` hand an address to the browser as written, so a
+  `tel:` with a space in it still calls, while a scheme no door opens is no `href`.
 
 ## A leaf running a `Command`
 

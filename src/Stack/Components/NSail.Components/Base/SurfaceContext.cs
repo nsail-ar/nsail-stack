@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using NSail.Icons;
+using NSail.Text;
 
 namespace NSail.Components;
 
@@ -713,9 +714,12 @@ public sealed class SurfaceContext
     /// <summary>Whether a destination belongs to somebody else — it carries its own scheme
     /// (https:, mailto:, tel:) — and so passes through untouched by any surface. Everything
     /// else is a route this app resolves.</summary>
-    public static bool IsExternal(string href)
+    public static bool IsExternal(string? href)
     {
-        ArgumentException.ThrowIfNullOrEmpty(href);
+        if (string.IsNullOrEmpty(href))
+        {
+            return false;
+        }
 
         // The rooted case is decided BEFORE Uri is asked anything, and that order is the fix:
         // Uri answers "is this absolute" about the operating system's file paths, not about a
@@ -727,6 +731,21 @@ public sealed class SurfaceContext
         // route with no surface query and no click interception, which navigates fine and so
         // shows nothing. A '/'-rooted value is one of ours by construction.
         return href[0] != '/' && Uri.TryCreate(href, UriKind.Absolute, out _);
+    }
+
+    /// <summary>Whether a destination carries a scheme no door may open: an external address
+    /// whose scheme is not http(s), mailto or tel — "javascript:" and "data:" run or draw what
+    /// the address says on a click. Only the scheme is asked; the path is the caller's. A link
+    /// drawn over one is inert text, not an anchor.</summary>
+    public static bool IsInert(string? href)
+    {
+        if (!IsExternal(href) || !Uri.TryCreate(href, UriKind.Absolute, out var address))
+        {
+            return false;
+        }
+
+        return !WebAddress.OpensScheme(address.Scheme)
+            && !address.Scheme.Equals("tel", StringComparison.OrdinalIgnoreCase);
     }
 
     static string Rooted(string route)

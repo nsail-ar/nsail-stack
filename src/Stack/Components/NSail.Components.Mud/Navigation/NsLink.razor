@@ -154,6 +154,7 @@ else
 
     string _href = string.Empty;
     bool _intercepts;
+    bool _inert;
 
     [CascadingParameter]
     SurfaceContext? Cascaded { get; set; }
@@ -357,11 +358,11 @@ else
     // that stops working with nothing on screen saying so, which is worse than the one thing it
     // has to offer. Its own Disabled still drops it (ActiveHref), because a destination that is
     // not reachable yet has no address to hand the browser in the first place.
-    bool IsDisabled => Disabled || ParentRefuses;
+    bool IsDisabled => Disabled || _inert || ParentRefuses;
 
     // A disabled control keeps the chrome but must not navigate: MudBlazor renders an
     // anchor whenever Href is set, and an anchor ignores the disabled attribute.
-    string? ActiveHref => Disabled ? null : _href;
+    string? ActiveHref => Disabled || _inert ? null : _href;
 
     string? BrowserTarget => Target?.IsBrowser == true ? Target.Value.Name : null;
 
@@ -376,6 +377,17 @@ else
         // this app's routes and passes through unchanged; everything else is a route this
         // surface resolves. The question is asked of SurfaceContext.IsExternal and never of
         // Uri directly — the platform trap that cost this story four sessions is named there.
+        // An empty destination or a scheme no door may open (javascript:, data:) has no address
+        // to hand the browser: the link draws disabled.
+        _inert = string.IsNullOrEmpty(Href) || SurfaceContext.IsInert(Href);
+
+        if (_inert)
+        {
+            _href = string.Empty;
+            _intercepts = false;
+            return;
+        }
+
         if (SurfaceContext.IsExternal(Href))
         {
             _href = Anchored(Href);

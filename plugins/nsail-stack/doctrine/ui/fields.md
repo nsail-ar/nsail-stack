@@ -100,8 +100,11 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
       wants the escaped canonical form and refuses a space, a brace, a backslash Chromium
       normalizes), and `TryCreate` alone is loose the other way (it reads `//acme.com/x` as a
       path under a `file` scheme the text never carried, which Chromium refuses). **Where a
-      match is impossible, the gap is ONE named class and its cost is written down** — here, a
-      domain no parser can read: Chromium takes `https://acme example/x`,
+      match is impossible, the gap is a named class and its cost is written down** — here two.
+      A scheme no door opens (`WebAddress.OpensScheme`: `https`, `http`, `mailto`): `tel:`,
+      `ftp:`, `javascript:` and `data:` are absolute URLs a `type="url"` takes, and the value
+      is drawn back as a link by whoever reads it, so an install holding one opens the screen
+      clean but cannot save it until the link is fixed. And a domain no parser can read: Chromium takes `https://acme example/x`,
       `http://ac me.com`, `https:/acme.com` and `C:\x\y` as valid, `Uri` refuses all four
       (measured, Chrome 154 and Playwright's own build). Kept refused, because the house's one
       URL box is a link that travels literally into a message somebody receives — so the cost
@@ -109,8 +112,9 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
       cannot save it until the link is fixed.
     - **A refusal names its own motive, not the kind's.** `Problems.UnreadableAddress` says to
       write the address whole, which is a lie over `https://acme example/x` — that one is whole.
-      The second motive gets the second row (`Problems.UnreadableAddressDomain`): a field owning
-      a gate owes as many sentences as the gate has reasons to refuse.
+      The second motive gets the second row (`Problems.UnreadableAddressDomain`), the scheme the
+      third (`Problems.UnreadableAddressScheme`): a field owning a gate owes as many sentences as
+      the gate has reasons to refuse.
     - **A refusal read off `Value` rather than off a keystroke posts through `GetOwnProblem`
       ONLY**, never through a `GetErrorText` of the field's own: the date boxes and
       `MailCopyAddressesField` can draw theirs straight because it is empty until somebody

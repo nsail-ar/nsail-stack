@@ -12,6 +12,16 @@ public static class WebAddress
 {
     static readonly string[] Schemes = ["http://", "https://", "mailto:"];
 
+    /// <summary>Whether a scheme (without its colon) is one of the three that open a page or a
+    /// letter — the scheme alone, for a caller that holds a parsed address and asks nothing of
+    /// its path.</summary>
+    public static bool OpensScheme(string scheme)
+    {
+        return scheme.Equals("http", StringComparison.OrdinalIgnoreCase)
+            || scheme.Equals("https", StringComparison.OrdinalIgnoreCase)
+            || scheme.Equals("mailto", StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>True for one of the three schemes that open a page or a letter, and — where the
     /// surface admits this app's own addresses — for a root-relative path, never the
     /// protocol-relative "//host" that reads like one and names somebody else, in either slant.
