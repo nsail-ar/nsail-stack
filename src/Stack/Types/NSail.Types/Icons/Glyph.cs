@@ -18,10 +18,9 @@ public readonly record struct Glyph
     /// markup, so a value that came off the wire or out of a store is inert at every site.</summary>
     public string Markup { get; }
 
-    /// <summary>True when the value handed in held something outside the allowlist that was
-    /// dropped. <see cref="Markup"/> is inert either way; a store that refuses rather than
+    /// <summary>True when the value handed in was not well-formed XML or held something outside
+    /// the allowlist, and it was dropped. <see cref="Markup"/> is inert either way; a store that refuses rather than
     /// cleans (NavMenuArrangementValidator) reads this, because it only ever sees the Glyph.</summary>
-    [JsonIgnore]
     public bool Altered { get; }
 
     public Glyph(string markup)

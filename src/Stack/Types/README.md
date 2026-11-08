@@ -29,7 +29,7 @@ Namespaces are named for a capability, not for the project.
 | `NSail.Privacy` | `PersonalData` (Name, Document, Email, Phone, Address, WebAddress, FreeText, BirthDate) and `PersonalDataComment` |
 | `NSail.Builds` | `BuildVersion.Current` (the entry assembly's informational version, `dev` if unstamped), `ServerBuild` (client side of the build handshake) |
 | `NSail.Tones` | `BrandTone`: derives an ink or a state from a picked colour |
-| `NSail.Icons` | `Glyph`, the SVG markup of one catalog icon, serialized as the markup string and sanitized on construction; `SvgSanitizer`, the one allowlist every inlined SVG passes (`Sanitize`, `IsClean` for a store that refuses instead of cleaning) |
+| `NSail.Icons` | `Glyph`, the SVG markup of one catalog icon, serialized as the markup string and sanitized on construction; `SvgSanitizer`, the one allowlist every inlined SVG passes (`Sanitize`; `IsClean` tests raw markup before a `Glyph` exists). A store that refuses instead of cleaning reads `Glyph.Altered`: `Markup` is always clean, so `IsClean` on it never fails |
 | `NSail.Dates` | `BusinessDate.Today`, the host's local date, never UTC |
 | `NSail.References` | `IRef`, the key of every `*Ref` projection |
 

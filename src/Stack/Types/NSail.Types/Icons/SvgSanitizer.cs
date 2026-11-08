@@ -91,15 +91,16 @@ public static class SvgSanitizer
         return Run(markup, out _);
     }
 
-    /// <summary>As <see cref="Sanitize(string?)"/>, also reporting whether anything outside
-    /// the allowlist had to be dropped.</summary>
+    /// <summary>As <see cref="Sanitize(string?)"/>, also reporting whether any element, attribute
+    /// or unparsable markup outside the allowlist had to be dropped.</summary>
     public static string Sanitize(string? markup, out bool clean)
     {
         return Run(markup, out clean);
     }
 
     /// <summary>Whether <paramref name="markup"/> holds only what the allowlist keeps — the
-    /// test a store applies to refuse a value rather than clean it.</summary>
+    /// test for raw markup, before a <see cref="Glyph"/> exists. On a Glyph's Markup it is always
+    /// true; a store that refuses reads <see cref="Glyph.Altered"/>.</summary>
     public static bool IsClean(string? markup)
     {
         Run(markup, out var clean);
