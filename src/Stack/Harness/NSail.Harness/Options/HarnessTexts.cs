@@ -14,6 +14,8 @@ public sealed class HarnessTexts
     public string QuotaWall { get; set; } = "The voyage died on the account's usage limit, not on the story: the harness starts nothing new until {until} UTC.";
     public string NothingPushed { get; set; } = "The voyage ended with nothing new pushed on PR #{pr}: the round did not advance. A second in a row goes to `stalled`.";
     public string DeadVoyage { get; set; } = "The voyage ended with no PR and no hand-off ({why}{pushed}): the story can be taken again. A second in a row with no progress goes to `stalled`.";
+    public string PushRefused { get; set; } = "The push to `{branch}` was refused (the branch moved past the head the voyage started from, or the network failed): the builder's commits are on `{rescue}`. A hand reconciles them.";
+    public string PushRefusedKept { get; set; } = "The push to `{branch}` was refused and the rescue push failed too: the builder's commits stay on the harness's local branch only. A hand reconciles them before the story's next voyage.";
     public string WorkPushed { get; set; } = ", what it committed pushed";
     public string NotOwnPr { get; set; } = "The builder asked to close PR #{pr}, which is not a PR of this story: nothing was closed.";
     public string ProtectedPaths { get; set; } = "The builder's commits touch protected paths ({paths}): nothing was pushed. A hand lifts the screen with the `{label}` label.";

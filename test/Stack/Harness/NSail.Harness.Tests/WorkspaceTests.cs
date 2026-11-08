@@ -102,4 +102,23 @@ public class WorkspaceTests : IDisposable
 
         Assert.True(File.Exists(Path.Combine(obj, "a")));
     }
+
+    [Fact]
+    public async Task PrepareKeepsALocalBranchAheadOfItsRemoteAndDropsOneThatIsNot()
+    {
+        var ws = await Warm();
+        await Shell.Git(Bare, "branch", "pushed", ws.Tip);
+        await Shell.Git(Bare, "branch", "ahead", ws.Tip);
+        var slot = ws.SlotPath(1);
+        await Shell.Git(slot, "checkout", "-q", "-B", "ahead", ws.Tip);
+        await Shell.Git(slot, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "unpushed");
+
+        await Shell.Git(slot, "checkout", "-q", "--detach");
+
+        await ws.Prepare(1);
+
+        var heads = await Shell.Git(Bare, "for-each-ref", "--format=%(refname:short)", "refs/heads");
+        Assert.Contains("ahead", heads);
+        Assert.DoesNotContain("pushed", heads);
+    }
 }

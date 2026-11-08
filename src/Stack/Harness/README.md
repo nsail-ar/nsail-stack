@@ -46,6 +46,9 @@ the files it leaves.
     since CI would run the changed workflow with the repository's secrets before review; `AllowProtectedPaths`
     lifts it for the harness, the `allow-protected` label for one story; a refused story returns to Ready. Extend the list when a workflow runs
     scripts taken from the PR checkout; configuration appends to the default, it does not replace it.
+  - Commits a cancelled job or a refused push would lose go to `rescue/<key>-<n>` (a numeric suffix if it exists), under the same
+    protected-paths screen (a held rescue logs a warning naming the label that lifts it); the refs accumulate and a hand
+    reconciles them.
   - A seat's `close-pr.md` closes only a PR of its own story, and an analyst's `labels.txt` sets only the
     board's `area:` and driver labels.
   - `Workers` (by name, ordered by `Priority`): everything the harness takes.
