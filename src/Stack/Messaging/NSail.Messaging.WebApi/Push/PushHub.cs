@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using NSail.Messaging.Runtime.Publishing;
 
 namespace NSail.Messaging.WebApi.Push;
@@ -13,10 +14,12 @@ namespace NSail.Messaging.WebApi.Push;
 public sealed class PushHub : Hub
 {
     readonly PushAudience _audience;
+    readonly ILogger<PushHub> _logger;
 
-    public PushHub(PushAudience audience)
+    public PushHub(PushAudience audience, ILogger<PushHub> logger)
     {
         _audience = audience;
+        _logger = logger;
     }
 
     // Asked through this invocation's own scope, never the connect request's: a long-polling
@@ -29,7 +32,7 @@ public sealed class PushHub : Hub
         // Authorized once, at connect; a right withdrawn since ends the connection.
         if (_audience.Watch() is { } holds)
         {
-            _ = PushWatch.Over(holds, Context.Abort, Context.ConnectionAborted);
+            _ = PushWatch.Over(holds, Context.Abort, _logger, Context.ConnectionAborted);
         }
 
         await base.OnConnectedAsync();

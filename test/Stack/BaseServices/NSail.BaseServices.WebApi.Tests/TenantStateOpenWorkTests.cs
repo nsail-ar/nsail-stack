@@ -86,6 +86,9 @@ public sealed class TenantStateOpenWorkTests
         clock.Advance(TimeSpan.FromMinutes(2));
 
         Assert.False(await holds(CancellationToken.None));
+
+        // Asked again inside the new window, the memo answers and the right stays withdrawn.
+        Assert.False(await holds(CancellationToken.None));
     }
 
     static AsyncServiceScope Enter(TenancyHost host)
