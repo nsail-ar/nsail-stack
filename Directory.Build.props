@@ -4,7 +4,7 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<!-- Turns the .editorconfig rules (and the CA2254 error) into build diagnostics, not editor-only hints. -->
+		<!-- Turns the .editorconfig style rules into build diagnostics, not editor-only hints. -->
 		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 	</PropertyGroup>
 
