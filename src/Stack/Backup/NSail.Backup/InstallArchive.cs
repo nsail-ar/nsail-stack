@@ -97,8 +97,9 @@ public static class InstallArchive
         return await ReadManifest(archive, cancelToken);
     }
 
-    /// <summary>Replace, not merge: the database is rebuilt from the dump and the key ring
-    /// directory is emptied of the keys the archive replaces. <see cref="RestorePlan"/> raises the
+    /// <summary>Replace, not merge: the database is rebuilt from the dump, and the key ring's keys
+    /// are replaced by the archive's, staged first and swapped in only once the database
+    /// restored. <see cref="RestorePlan"/> raises the
     /// refusals the manifest decides; an encrypted archive's missing or wrong passphrase, and a
     /// truncated one, raise <see cref="BackupFailure"/> here, before the database is touched.</summary>
     public static async Task Restore(InstallDescriptor install, Stream source, string? passphrase = null, CancellationToken cancelToken = default)
@@ -125,43 +126,69 @@ public static class InstallArchive
                 .Where(entry => Path.GetFileName(entry.FullName).Length > 0)
                 .ToList();
 
-            // Unsealed into the workspace before anything is replaced: a wrong passphrase fails
-            // here, with the install untouched.
-            var unsealed = new List<(string Name, string Path)>();
-
-            foreach (var key in keys)
-            {
-                var name = Path.GetFileName(key.FullName);
-                var staged = Path.Combine(workspace.FullName, "key-" + unsealed.Count);
-
-                await Extract(key, staged, cipher, cancelToken);
-
-                unsealed.Add((name, staged));
-            }
-
-            await Postgres.Restore(install.ConnectionString, dumpFilePath, cancelToken);
-
-            if (keys.Count == 0)
-            {
-                return;
-            }
-
+            // Unsealed inside the ring's own directory (a mount cannot be renamed, and a move
+            // across volumes is a copy) before anything is replaced: a wrong passphrase or a
+            // failed extract fails here, with the install untouched.
             var keyRing = Directory.CreateDirectory(install.KeyRingPath);
 
-            foreach (var stale in keyRing.EnumerateFiles("*.xml"))
-            {
-                stale.Delete();
-            }
+            var staging = keys.Count == 0 ? null : CreateStaging(keyRing);
 
-            foreach (var (name, staged) in unsealed)
+            try
             {
-                File.Copy(staged, Path.Combine(keyRing.FullName, name), overwrite: true);
+                foreach (var key in keys)
+                {
+                    await Extract(key, Path.Combine(staging!.FullName, Path.GetFileName(key.FullName)), cipher, cancelToken);
+                }
+
+                await Postgres.Restore(install.ConnectionString, dumpFilePath, cancelToken);
+
+                if (staging is null)
+                {
+                    return;
+                }
+
+                // Moved in before the stale keys go, so the ring is never without a key.
+                var restored = new HashSet<string>(StringComparer.Ordinal);
+
+                foreach (var key in staging.GetFiles())
+                {
+                    key.MoveTo(Path.Combine(keyRing.FullName, key.Name), overwrite: true);
+
+                    restored.Add(key.Name);
+                }
+
+                foreach (var stale in keyRing.GetFiles("*.xml").Where(stale => !restored.Contains(stale.Name)))
+                {
+                    stale.Delete();
+                }
+            }
+            finally
+            {
+                staging?.Refresh();
+
+                if (staging?.Exists == true)
+                {
+                    staging.Delete(recursive: true);
+                }
             }
         }
         finally
         {
             workspace.Delete(recursive: true);
         }
+    }
+
+    // Owner-only: the keys sit in it unsealed, and a restore killed midway leaves it behind.
+    static DirectoryInfo CreateStaging(DirectoryInfo keyRing)
+    {
+        var path = Path.Combine(keyRing.FullName, ".restore-" + Guid.NewGuid().ToString("N"));
+
+        if (OperatingSystem.IsWindows())
+        {
+            return Directory.CreateDirectory(path);
+        }
+
+        return Directory.CreateDirectory(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
     }
 
     static ArchiveCipher DeriveCipher(BackupManifest manifest, string? passphrase)

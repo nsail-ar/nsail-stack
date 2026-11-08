@@ -80,7 +80,7 @@ public sealed record RestorePlan
             $"  Key ring     {Target.KeyRingPath}",
             "",
             "Every row and every key currently in the target is dropped and rebuilt from the archive.",
-            "A restore that fails partway leaves the install empty — the archive is then the only copy."
+            "A restore that fails changes nothing: the database rolls back, and the key ring is swapped only once it restored."
         };
 
         return string.Join(Environment.NewLine, lines);

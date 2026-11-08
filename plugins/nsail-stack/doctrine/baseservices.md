@@ -373,7 +373,12 @@ its own name.
   done, `2` usage, `3` not confirmed, `4` refused.
 - **Restore is replace, not merge.** The public schema is dropped whole and rebuilt from the
   dump — `pg_restore --clean` would leave behind anything the install grew after the backup —
-  and the key ring is emptied before the archive's keys land in it.
+  in one transaction (`pg_restore` renders the dump to a script, `psql --single-transaction` runs
+  drop and rebuild together), so a failed restore leaves the database as it was. The rendered
+  script is the whole database as plain SQL in the temp directory, which the README's Temp space
+  line names. The archive's
+  keys are staged in a folder inside the ring and swapped in after the database restored. The
+  audit rows written before the restore are carried across it.
 - **Both operations are audited** into `nsail_backup_audit`: who, when, product, both version
   stamps, and which archive. It is created if absent by raw SQL rather than being an entity
   with a migration, because it must be writable into a database whose schema is whatever the

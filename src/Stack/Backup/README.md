@@ -51,9 +51,12 @@ There are no configuration keys. What the verbs use:
 - **Application name:** `AddBaseWebApi` sets the DataProtection application name to the host's
   `ApplicationName`, so a restore to another content-root path unprotects the same secrets.
 - **Database:** the `DbContext`'s own connection string, so the database is the one the host runs on.
-- **Tools:** `pg_dump` and `pg_restore` on the `PATH`, at the server's major version
+- **Tools:** `pg_dump`, `pg_restore` and `psql` on the `PATH`, at the server's major version
   (`--format=custom`, `--no-owner`, `--no-privileges`). The password travels in `PGPASSWORD`,
   never as an argument.
+- **Temp space:** a restore extracts the dump into the process's temp directory and renders it
+  there as plain SQL for `psql`, so the temp volume needs room for the dump plus the whole
+  database uncompressed; short of it the restore fails before the database is touched.
 - **Key ring:** `<content root>/data/keyring` (`KeyRing.Home`). `AddBaseWebApi` persists the
   DataProtection keys there, so they travel in the archive; without them every sealed secret in a
   restored install is unreadable.
@@ -75,8 +78,10 @@ version, last applied migration, time, whether keys travel, whether and how it i
   major version.
 - **It then prints what it will overwrite** (database and key ring) and stops unless
   `--confirm RESTORE` is passed; at a terminal the word is typed a second time.
-- **Restore is replace, not merge:** the `public` schema is dropped and rebuilt from the dump, and
-  the key ring's keys are replaced by the archive's.
+- **Restore is replace, not merge:** the `public` schema is dropped and rebuilt from the dump in one
+  transaction (a dump that fails leaves the database as it was), and the key ring's keys are
+  staged first and replaced by the archive's only once the database restored. The audit rows
+  written before the restore are carried across it.
 - **Both verbs are audited** in `nsail_backup_audit` (who, when, product, versions, archive). The
   table is created by raw SQL if absent, because it must be writable into whatever schema the
   archive carried.
