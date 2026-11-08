@@ -7,7 +7,8 @@ namespace NSail.Harness;
 
 // What an alert reads, as instruments and not log lines (a telemetry pipeline may cut a log's
 // strings; a metric keeps its tags): every job that ends, by kind and outcome (ok, broke), every
-// pass, by outcome (ok, failed) and a failed one's provider status, and how long the harness has stood paused.
+// pass, by outcome (ok, failed) and a failed one's provider status, and how long the harness has
+// stood paused.
 public sealed class HarnessMetrics : IDisposable
 {
     public const string MeterName = "NSail.Harness";
@@ -20,7 +21,7 @@ public sealed class HarnessMetrics : IDisposable
     public HarnessMetrics()
     {
         _jobs = _meter.CreateCounter<long>("harness.jobs", description: "Jobs that ended, by kind and outcome (ok, broke).");
-        _passes = _meter.CreateCounter<long>("harness.passes", description: "Passes over the board, by outcome (ok, failed).");
+        _passes = _meter.CreateCounter<long>("harness.passes", description: "Passes over the board, by outcome (ok, failed) and, when the provider answered a failed one, its status.");
         _meter.CreateObservableGauge("harness.paused", () => _paused(), unit: "s", description: "How long the harness has stood paused; 0 when it is not.");
     }
 

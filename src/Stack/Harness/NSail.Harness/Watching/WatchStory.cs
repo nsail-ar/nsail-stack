@@ -38,10 +38,12 @@ public static partial class WatchStory
     public static string Title(ErrorGroup g, string product)
     {
         var what = OneLine(g.Template);
-        // One template logs several bugs (`{Item} failed`): the exception's own name tells their titles apart.
-        if (g.ExceptionType is { } type) what = $"{what} ({type[(type.LastIndexOf('.') + 1)..]})";
-        if (what.Length > TitleLength) what = what[..(TitleLength - 1)].TrimEnd() + "…";
-        return $"telemetry({product}): {what}";
+        // One template logs several bugs (`{Item} failed`): the exception's own name tells their titles
+        // apart, so a long template is cut before it and never the name.
+        var type = g.ExceptionType is { } t ? $" ({t[(t.LastIndexOf('.') + 1)..]})" : "";
+        var room = Math.Max(1, TitleLength - type.Length);
+        if (what.Length > room) what = what[..(room - 1)].TrimEnd() + "…";
+        return $"telemetry({product}): {what}{type}";
     }
 
     // `again`: the story closed for the same error before, which came back after it closed.

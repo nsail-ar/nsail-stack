@@ -386,12 +386,13 @@ public sealed class HarnessLoop(
     // lands here too (it is a cancellation, but not the host's). What the provider answered rides
     // the record as numbers and an enum, the only kinds the log scrubber lets through; its body
     // stays in the exception's message, which reaches the console and never the log store.
+    internal const string FailedAnswered = "pass failed — nothing started: {ProviderCall} answered {ProviderStatus}, {RateLimitRemaining} calls left";
+
     internal static Pass Failed(ILogger log, HarnessMetrics metrics, Exception e, PassCall call, DateTimeOffset started)
     {
         if (e is ProviderException { Status: { } status } provider)
         {
-            log.LogError(e, "pass failed — nothing started: {ProviderCall} answered {ProviderStatus}, {RateLimitRemaining} calls left",
-                call, status, provider.RateLimitRemaining);
+            log.LogError(e, FailedAnswered, call, status, provider.RateLimitRemaining);
             metrics.Passed(failed: true, status);
         }
         else

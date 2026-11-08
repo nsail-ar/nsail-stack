@@ -16,7 +16,7 @@ namespace NSail.Harness.Tests;
 // the call as an enum. The provider's body stays in the exception's message, which never travels.
 public class PassFailureTests
 {
-    const string Template = "pass failed — nothing started: {ProviderCall} answered {ProviderStatus}, {RateLimitRemaining} calls left";
+    const string Template = HarnessLoop.FailedAnswered;
 
     sealed class Answer(HttpStatusCode status, string body, string? remaining) : HttpMessageHandler
     {
