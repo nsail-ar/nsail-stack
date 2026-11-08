@@ -260,7 +260,7 @@ jobs:
             exit 0
           fi
           TITLE=$(gh pr view "$PR" -R "$R" --json title --jq .title)
-          if ! gh pr merge "$PR" -R "$R" --squash --delete-branch; then
+          if ! gh pr merge "$PR" -R "$R" --squash --delete-branch --match-head-commit "$SHA"; then
             stall "PR #$PR de nsail-stack quedó limpia pero no se pudo mergear — \`stalled\`: una mano mira por qué."
             exit 1
           fi

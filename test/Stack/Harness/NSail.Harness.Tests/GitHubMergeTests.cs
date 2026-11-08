@@ -7,8 +7,8 @@ using NSail.Harness.GitHub;
 
 namespace NSail.Harness.Tests;
 
-// The provider's own promises: merge never deletes a branch the base repository does not own, and a PR of
-// another repository or an unlisted author is no story's PR.
+// The provider's own promises: merge names the head the review read, never deletes a branch the base repository does
+// not own, and a PR of another repository or an unlisted author is no story's PR.
 public class GitHubMergeTests
 {
     sealed class Recorder(string headRepo) : HttpMessageHandler
