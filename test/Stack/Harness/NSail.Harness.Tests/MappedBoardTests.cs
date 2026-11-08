@@ -95,12 +95,12 @@ public class MappedBoardTests
             throw new NotSupportedException();
         }
 
-        public Task<int> CreateStory(string title, string body, CancellationToken ct = default)
+        public Task<int> CreateStory(string title, string body, IReadOnlyCollection<string> labels, CancellationToken ct = default)
         {
             throw new NotSupportedException();
         }
 
-        public Task<int?> FindOpen(string title, bool exact = true, CancellationToken ct = default)
+        public Task<int?> FindOpen(string title, IReadOnlyCollection<string> labels, bool exact = true, CancellationToken ct = default)
         {
             throw new NotSupportedException();
         }

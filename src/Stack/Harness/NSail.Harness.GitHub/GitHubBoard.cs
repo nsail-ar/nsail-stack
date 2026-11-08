@@ -190,6 +190,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
             throw new InvalidOperationException($"project {number}'s {options.StatusField} has no column {stage} ({string.Join(", ", ids.Options.Keys)})");
         }
         var (issue, item) = await ItemOf(story, number, ct);
+        var addedHere = false;
         if (item is null)
         {
             try
@@ -197,6 +198,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
                 var added = await gh.GraphQl("mutation($p:ID!,$c:ID!){addProjectV2ItemById(input:{projectId:$p,contentId:$c}){item{id}}}",
                     new { p = ids.Project, c = issue.GetProperty("id").GetString() }, ct);
                 item = added.GetProperty("addProjectV2ItemById").GetProperty("item").GetProperty("id").GetString();
+                addedHere = true;
             }
             // A story just created is added by the project's own workflow while this adds it too: the
             // item is there, read it again.
@@ -206,8 +208,42 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
                 if (item is null) throw;
             }
         }
-        await gh.GraphQl("mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{singleSelectOptionId:$o}}){projectV2Item{id}}}",
-            new { p = ids.Project, i = item, f = ids.Field, o = option }, ct);
+        try
+        {
+            await WriteColumn(ids, item!, option, ct);
+        }
+        catch (GitHubException) when (addedHere)
+        {
+            // An item with no column reads as lost: take back the one this call added.
+            try
+            {
+                await gh.GraphQl("mutation($p:ID!,$i:ID!){deleteProjectV2Item(input:{projectId:$p,itemId:$i}){deletedItemId}}",
+                    new { p = ids.Project, i = item }, ct);
+            }
+            catch (GitHubException)
+            {
+            }
+            throw;
+        }
+    }
+
+    const int ColumnWriteAttempts = 3;
+
+    async Task WriteColumn((string Project, string Field, IReadOnlyDictionary<string, string> Options) ids, string item, string option, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await gh.GraphQl("mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{singleSelectOptionId:$o}}){projectV2Item{id}}}",
+                    new { p = ids.Project, i = item, f = ids.Field, o = option }, ct);
+                return;
+            }
+            catch (GitHubException) when (attempt < ColumnWriteAttempts)
+            {
+                await Task.Delay(options.RetryDelay * attempt, ct);
+            }
+        }
     }
 
     // GitHub's own attachments, the ones a pasted file becomes: uploaded to the repository's id.
@@ -304,17 +340,19 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         await gh.Send(HttpMethod.Patch, $"repos/{repo}/issues/{story}", new { state = "closed" }, ct);
     }
 
-    public async Task<int> CreateStory(string title, string body, CancellationToken ct = default)
+    public async Task<int> CreateStory(string title, string body, IReadOnlyCollection<string> labels, CancellationToken ct = default)
     {
-        var created = await gh.Send(HttpMethod.Post, $"repos/{repo}/issues", new { title, body }, ct);
+        var created = await gh.Send(HttpMethod.Post, $"repos/{repo}/issues", new { title, body, labels }, ct);
         return created.GetProperty("number").GetInt32();
     }
 
-    public async Task<int?> FindOpen(string title, bool exact = true, CancellationToken ct = default)
+    public async Task<int?> FindOpen(string title, IReadOnlyCollection<string> labels, bool exact = true, CancellationToken ct = default)
     {
-        var q = Uri.EscapeDataString($"repo:{repo} is:issue is:open in:title \"{title}\"");
-        var found = await gh.Get($"search/issues?q={q}&per_page=30&sort=created&order=asc", ct);
-        return found.GetProperty("items").EnumerateArray()
+        var query = $"repos/{repo}/issues?state=open&sort=created&direction=asc&per_page=100"
+            + (labels.Count > 0 ? $"&labels={Uri.EscapeDataString(string.Join(',', labels))}" : "");
+        var found = await gh.GetAll(query, ct: ct);
+        return found
+            .Where(i => !i.TryGetProperty("pull_request", out _))
             .Where(i => exact ? i.GetProperty("title").GetString() == title : (i.GetProperty("title").GetString() ?? "").StartsWith(title, StringComparison.Ordinal))
             .Select(i => (int?)i.GetProperty("number").GetInt32())
             .FirstOrDefault();

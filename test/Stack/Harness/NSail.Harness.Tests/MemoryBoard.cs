@@ -57,8 +57,11 @@ sealed class MemoryBoard : IBoard
         return Task.CompletedTask;
     }
 
+    public bool FailStageWrites { get; set; }
+
     public Task<bool> TrySetStage(int story, string stage, ILogger log, CancellationToken ct = default)
     {
+        if (FailStageWrites) return Task.FromResult(false);
         Cards[story].Stage = stage;
         return Task.FromResult(true);
     }
@@ -118,16 +121,16 @@ sealed class MemoryBoard : IBoard
         return Task.CompletedTask;
     }
 
-    public Task<int> CreateStory(string title, string body, CancellationToken ct = default)
+    public Task<int> CreateStory(string title, string body, IReadOnlyCollection<string> labels, CancellationToken ct = default)
     {
         var n = _next++;
-        Add(n, title, body, stage: "");
+        Add(n, title, body, stage: "", labels: [.. labels]);
         return Task.FromResult(n);
     }
 
-    public Task<int?> FindOpen(string title, bool exact = true, CancellationToken ct = default)
+    public Task<int?> FindOpen(string title, IReadOnlyCollection<string> labels, bool exact = true, CancellationToken ct = default)
     {
-        return Task.FromResult(Cards.Where(c => c.Value.ClosedAt is null && c.Value.Title == title).Select(c => (int?)c.Key).FirstOrDefault());
+        return Task.FromResult(Cards.Where(c => c.Value.ClosedAt is null && c.Value.Title == title && labels.All(l => c.Value.Labels.Contains(l))).Select(c => (int?)c.Key).FirstOrDefault());
     }
 
     public Task<IReadOnlyList<(int Number, string Stage)>> ClosedSince(DateTimeOffset since, CancellationToken ct = default)

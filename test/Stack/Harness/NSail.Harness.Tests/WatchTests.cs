@@ -55,6 +55,19 @@ public class WatchTests
     }
 
     [Fact]
+    public async Task AStoryWhoseStageWriteFailedIsFoundOnTheNextPassNotFiledAgain()
+    {
+        var board = new MemoryBoard { FailStageWrites = true };
+        var source = new Source(Line());
+
+        await Pass(board, source);
+        await Pass(board, source);
+
+        var story = Assert.Single(board.Cards).Value;
+        Assert.Contains(Labels.Telemetry, story.Labels);
+    }
+
+    [Fact]
     public void LinesOfOneBugGroupAcrossCellsAndSplitByException()
     {
         var groups = ErrorGroup.Of([Line(cell: "optical-test"), Line(cell: "optical-canary"), Line(exception: "System.TimeoutException")]);

@@ -115,7 +115,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
         var range = since is null ? $"`{head}`" : $"`{since[..8]}..{head[..8]}`";
         var body = HarnessTexts.Fill(ctx.Texts.MainRed, ("why", why), ("sha", head), ("range", range), ("failed", failed), ("log", logPath), ("machine", ctx.Options.Machine))
             + $"\n\n{ctx.Texts.Signature}";
-        if (await ctx.Board.FindOpen(title, exact: false) is { } n)
+        if (await ctx.Board.FindOpen(title, [], exact: false) is { } n)
         {
             await ctx.Board.Comment(n, body);
             var stage = await ctx.Board.StageOf(n);
@@ -123,8 +123,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
             return;
         }
         var first = failed.Split('\n').FirstOrDefault(l => l.Trim().Length > 0)?.Trim() ?? "the build";
-        var created = await ctx.Board.CreateStory($"{title}: {(first.Length > 120 ? first[..120] : first)}", body);
-        await ctx.Board.AddLabels(created, ctx.Options.RedLabels.ToArray());
+        var created = await ctx.Board.CreateStory($"{title}: {(first.Length > 120 ? first[..120] : first)}", body, ctx.Options.RedLabels.ToArray());
         await ctx.Board.SetStage(created, Stages.Ready);
     }
 }
