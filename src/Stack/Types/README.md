@@ -45,7 +45,13 @@ messaging layer refuses with is a `Problem`; do not add a parallel exception hie
 
 ## Configuration
 
-None. These are types, not services. Two behaviours worth knowing:
+None. These are types, not services. Three behaviours worth knowing:
+
+- The package ships `buildTransitive/NSail.Types.props` and `NSail.globalconfig`, which make
+  CA2254 an **error** in every project that references it: a log call's template must be a
+  literal, because `LogScrubber` forwards it to the collector as written. A product that moves
+  its pin and fails with `error CA2254` replaces `LogError($"... {x}")` with
+  `LogError("... {X}", x)`; an entry of its own in its `.editorconfig` wins over the global one.
 
 - `JsonOptions.Wire` is the only `JsonSerializerOptions` for message traffic; a host that owns its
   own options copies `JsonOptions.Converters` instead of constructing a second contract. A vendor's

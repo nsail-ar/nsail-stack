@@ -259,7 +259,9 @@ the Problem's Title. So `LogScrubber`, the logs-side sibling of `Scrubber`, cuts
 seam:
 
 - What travels is what the **source** declares — category, level, event id and the **message
-  template** (the record's body, a literal at every call site).
+  template** (the record's body, a literal at every call site: CA2254 is an error in this
+  repository's `.editorconfig` and, through `NSail.Types`'s `buildTransitive` global config, in
+  every product that takes the packages).
 - An attribute's value travels only if its **type cannot carry prose**: `Guid`, a number, a
   `bool`, an enum, a date or a duration. Every string is dropped, a code included — a
   Problem's Code and a patient's name are the same type, so the Code rides the span and the
