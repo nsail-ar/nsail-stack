@@ -93,7 +93,9 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         var branch = $"{BranchPrefix(p)}{DateTimeOffset.UtcNow:yyyyMMdd-HHmm}";
         await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
         await w.WriteLineAsync($"opened {branch}");
-        foreach (var old in (await Branches(p, dir)).Skip(BranchesKept))
+        // A push by address leaves no tracking ref, so the new branch joins the list here.
+        var known = (await Branches(p, dir)).Append(branch).Distinct().OrderByDescending(b => b, StringComparer.Ordinal);
+        foreach (var old in known.Skip(BranchesKept))
         {
             var gone = await Shell.Run("git", [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, "--delete", old], dir);
             await w.WriteLineAsync(gone.ExitCode == 0 ? $"deleted {old}" : $"could not delete {old}: {gone.Output.Trim()}");
