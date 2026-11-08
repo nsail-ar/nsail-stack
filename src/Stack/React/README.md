@@ -71,6 +71,9 @@ DataAnnotations (`required`, `maxLength`, `minLength`, `min`/`max`, `format`, `p
 Rules the generator cannot construct are listed in `serverRules` and left to the server. Models
 become interfaces plus `defineModel`, enums a union of names plus `defineEnum`. Two reachable types
 with the same simple name fail the build (`NSTS001`).
+A `[RegularExpression]` using a .NET-only construct (`(?i)`, `\A`, atomic groups) warns `NSTS002`
+and is left to the server; the client compiles each pattern once, with the `u` flag, retrying
+without it only when the pattern has no `\p{}`, `\P{}` or `\u{}`.
 
 **`Mediator`** (`new Mediator(options?)`):
 

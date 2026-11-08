@@ -35,6 +35,22 @@ describe("validate", () => {
     expect(validateField(id, "9007199254740993").map((i) => i.code)).toEqual(["OutOfRange"]);
   });
 
+  it("reads a .NET pattern with Unicode classes and leaves an uncompilable one to the server", () => {
+    const name = { kind: "string" as const, key: "Shop.UpdateOrder.Name", pattern: "^[\\p{L} ]+$" };
+
+    expect(validateField(name, "Ana")).toEqual([]);
+    expect(validateField(name, "A1").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    const phone = { ...name, pattern: "^\\d{3}\\-\\d{4}$" };
+
+    expect(validateField(phone, "555-1234")).toEqual([]);
+    expect(validateField(phone, "5551234").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    expect(validateField({ ...name, pattern: "(?<x" }, "anything")).toEqual([]);
+
+    const block = { ...name, pattern: "^[\\p{IsBasicLatin}]+$" };
+
+    expect(validateField(block, "Ana")).toEqual([]);
+  });
+
   // The text input takes anything; what the server's parse would refuse is refused here first.
   it("refuses a long or decimal text the server cannot read", () => {
     const price = { kind: "decimal" as const, key: "Shop.UpdateOrder.Price" };

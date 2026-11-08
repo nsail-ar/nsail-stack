@@ -59,6 +59,15 @@ public class AddOrderLine : IMessage
     [NotNegative]
     public decimal Discount { get; set; }
 
+    [RegularExpression(@"^[A-Z]{2}-[0-9]{4}$")]
+    public string Code { get; set; } = string.Empty;
+
+    [RegularExpression(@"(?i)^[a-z]+$")]
+    public string Slug { get; set; } = string.Empty;
+
+    [RegularExpression(@"^\++$")]
+    public string Plus { get; set; } = string.Empty;
+
     public long Batch { get; set; }
 
     public ulong? Serial { get; set; }

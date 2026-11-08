@@ -115,8 +115,9 @@ Sdk's own sources and writes the file from the same `HttpModelFactory` the C# cl
 ```
 
 The Sdk must declare an `Http.Clients` holder; its messages are the ones carried. The target is
-incremental and an unchanged `sdk.ts` is not rewritten. A compile that does not resolve, two
-reachable types with one simple name, or an Sdk with no holder fails with `NSTS001`. Inside this
+incremental and an unchanged `sdk.ts` is not rewritten. A compile that does not resolve,
+two reachable types with one simple name, or an Sdk with no holder fails with `NSTS001`. A
+`[RegularExpression]` using a .NET-only construct warns `NSTS002` and is listed in `serverRules`, not emitted as `pattern`. Inside this
 repository an Sdk imports `NSail.TypeScriptGenerator.targets` from the project folder instead of
 the package ([NSail.Sample.Sdk](../Sample/NSail.Sample.Sdk/NSail.Sample.Sdk.csproj)).
 
