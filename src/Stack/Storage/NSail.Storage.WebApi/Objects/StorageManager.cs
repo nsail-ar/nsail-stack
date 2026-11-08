@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Data;
 using NSail.Problems;
 using NSail.Storage.Providers;
 using NSail.Storage.Settings;
@@ -19,14 +20,20 @@ public sealed class StorageManager
 {
     readonly StorageCredentialProvider _credentials;
     readonly IEnumerable<IStorageProvider> _providers;
+    readonly TenancyProvider _tenancy;
 
-    public StorageManager(string name, StorageCredentialProvider credentials, IEnumerable<IStorageProvider> providers)
+    public StorageManager(
+        string name,
+        StorageCredentialProvider credentials,
+        IEnumerable<IStorageProvider> providers,
+        TenancyProvider? tenancy = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         Name = name;
         _credentials = credentials;
         _providers = providers;
+        _tenancy = tenancy ?? TenancyProvider.Install;
     }
 
     public string Name { get; }
@@ -35,28 +42,31 @@ public sealed class StorageManager
     {
         var (provider, target) = await Resolve(cancelToken);
 
-        await provider.Put(target, Guard(key), content, contentType, cancelToken);
+        await provider.Put(target, Scoped(key), content, contentType, cancelToken);
     }
 
     public async Task<ObjectContent?> Get(string key, CancellationToken cancelToken = default)
     {
         var (provider, target) = await Resolve(cancelToken);
 
-        return await provider.Get(target, Guard(key), cancelToken);
+        return await provider.Get(target, Scoped(key), cancelToken);
     }
 
     public async Task<IReadOnlyList<StoredObject>> List(string? prefix = null, CancellationToken cancelToken = default)
     {
         var (provider, target) = await Resolve(cancelToken);
 
-        return await provider.List(target, prefix, cancelToken);
+        var tenant = TenantSegment();
+        var listed = await provider.List(target, prefix, cancelToken);
+
+        return tenant is null ? listed : listed.Where(item => Segment(item.Key) == tenant).ToList();
     }
 
     public async Task Delete(string key, CancellationToken cancelToken = default)
     {
         var (provider, target) = await Resolve(cancelToken);
 
-        await provider.Delete(target, Guard(key), cancelToken);
+        await provider.Delete(target, Scoped(key), cancelToken);
     }
 
     // The address the object can be read at, or null where the store's provider has none to give.
@@ -65,7 +75,7 @@ public sealed class StorageManager
     {
         var (provider, target) = await Resolve(cancelToken);
 
-        return provider.Link(target, Guard(key));
+        return provider.Link(target, Scoped(key));
     }
 
     // Whether a Put would get as far as the provider, asked before there is anything to put: a
@@ -103,6 +113,47 @@ public sealed class StorageManager
         }
 
         return (provider, target);
+    }
+
+    // Where the wall is the tenant, a key is <kind>/<tenant:N>/<leaf> and the second segment must
+    // be the scope's own tenant: a handler that forgets it, or names another's, is refused here
+    // rather than overwriting that tenant's object. A scope in no tenant under such a mode stores
+    // nothing. Where the wall is not the tenant (None, MultiDb) the segment is not checked.
+    string Scoped(string key)
+    {
+        var guarded = Guard(key);
+        var tenant = TenantSegment();
+
+        if (tenant is not null && Segment(guarded) != tenant)
+        {
+            throw new BusinessException(BusinessProblem.RuleViolation(
+                "ObjectKeyOutsideTenant",
+                $"'{key}' does not carry this tenant's segment.",
+                new Dictionary<string, string> { ["key"] = key }));
+        }
+
+        return guarded;
+    }
+
+    string? TenantSegment()
+    {
+        var row = _tenancy.RowKey;
+
+        if (row is null)
+        {
+            throw new BusinessException(BusinessProblem.RuleViolation(
+                "NoTenantForStorage",
+                "Storage in this scope needs a tenant and none resolved."));
+        }
+
+        return row == Guid.Empty ? null : row.Value.ToString("N");
+    }
+
+    static string? Segment(string key)
+    {
+        var parts = key.Split('/');
+
+        return parts.Length > 2 ? parts[1] : null;
     }
 
     // The one door every key comes through, so a provider that resolves keys against a path —

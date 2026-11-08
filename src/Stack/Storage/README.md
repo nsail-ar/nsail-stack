@@ -101,7 +101,9 @@ anywhere stores nowhere.
 | `StorageManager.Link(key)` | The address the object can be read at — the S3 provider's path-style URL, the git provider's template, none for a directory — computed, not checked. |
 
 Every key passes `StorageManager.Guard`, which refuses one that would climb out of its container.
-A key is `<kind>/<tenant:N>/<leaf>`.
+A key is `<kind>/<tenant:N>/<leaf>`; where the tenant is the row wall, the manager refuses a key
+carrying another's segment and `List` answers only the scope's own. Under None and MultiDb nothing
+is checked.
 
 ## How it fits
 

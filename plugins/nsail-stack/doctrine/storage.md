@@ -63,7 +63,10 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
 - **A key is `<kind>/<tenant:N>/<leaf>`, and no kind is outside it.** The kind leads so one
   container holds every kind without a collision; the tenant leads inside it because an object
   store is the INSTALL's, not a tenant's — Storage guards a key against climbing out of its
-  container and knows nothing about whose data it holds, so the wall at this door is the prefix.
+  container, and where the wall is the tenant column (SingleDb) it enforces the segment itself:
+  a key whose tenant segment is not the scope's is refused (`ObjectKeyOutsideTenant`), a `List`
+  answers only the scope's own objects, and a scope in no tenant stores nothing
+  (`NoTenantForStorage`).
   One flat directory per tenant per kind, no deeper, so a copy that walks one level under
   `<kind>/<tenant:N>` brings across everything the convention wrote. Under a tenancy mode whose
   wall is not the column (MultiDb, None) the tenant segment is one zeroed guid, and that is
