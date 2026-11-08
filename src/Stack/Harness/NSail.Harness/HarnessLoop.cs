@@ -42,6 +42,9 @@ public sealed class HarnessLoop(
 
     readonly SemaphoreSlim _wake = new(0);
     readonly Lock _gate = new();
+    readonly string _instance = Guid.NewGuid().ToString("N")[..8];
+    // Stories whose lock is being taken or whose job is not yet registered in _running.
+    readonly ConcurrentDictionary<int, byte> _starting = new();
     readonly ConcurrentDictionary<string, RunningJob> _running = new();
     readonly ConcurrentDictionary<string, Task> _sailing = new();
     readonly ConcurrentDictionary<string, DateTimeOffset> _backoff = new();
@@ -208,20 +211,19 @@ public sealed class HarnessLoop(
         }
     }
 
-    // Locks nobody holds any more. This machine's that no running job owns died with an earlier
-    // run; anyone's past five hours outlived the longest job any harness runs.
+    // Locks nobody holds any more. This instance's that no running job owns died with its job; anyone's past five hours outlived the longest job any harness runs.
     async Task SweepLocks(CancellationToken ct)
     {
         foreach (var n in (await locks.Holders(ct)).Keys)
         {
             if (await locks.Holder(n, ct) is not { } h) continue;
             var age = DateTimeOffset.UtcNow - h.At;
-            var mine = _running.Values.Any(r => r.Item.Story == n);
+            var mine = _starting.ContainsKey(n) || _running.Values.Any(r => r.Item.Story == n);
             string? why = null;
-            if (h.Machine == options.Value.Machine && !mine) why = "its job died with an earlier run";
+            if (h.Machine == options.Value.Machine && h.Instance == _instance && !mine) why = "its job died with an earlier run";
             else if (age > TimeSpan.FromHours(5)) why = $"held by {h.Machine} for over five hours";
             if (why is null) continue;
-            await locks.Release(n, ct);
+            await locks.Release(n, h, ct);
             log.LogWarning("#{Story}: lock released — {Why}", n, why);
         }
     }
@@ -487,15 +489,19 @@ public sealed class HarnessLoop(
         if (workspace.Take() is not { } slot) return null;
         var id = $"{DateTimeOffset.UtcNow:MMddHHmmss}-{JobContext.HolderOf(item)}";
         var held = false;
+        LockHolder? holder = null;
+        if (story is { } sn) _starting[sn] = 0;
         try
         {
             if (story is { } n)
             {
-                held = await locks.TryAcquire(n, new LockHolder(o.Machine, id, item.Kind.ToString(), DateTimeOffset.UtcNow), ct);
+                holder = new LockHolder(o.Machine, id, item.Kind.ToString(), DateTimeOffset.UtcNow, _instance);
+                held = await locks.TryAcquire(n, holder, ct);
                 if (!held)
                 {
                     log.LogInformation("#{Story}: locked by someone else — skipped", n);
                     workspace.Give(slot);
+                    _starting.TryRemove(n, out _);
                     return null;
                 }
                 // The board may have moved since the read: a lock label written meanwhile is someone else's job.
@@ -503,8 +509,9 @@ public sealed class HarnessLoop(
                 if (labels.Overlaps(Labels.Locks))
                 {
                     log.LogInformation("#{Story}: a lock label appeared since the read — skipped", n);
-                    await locks.Release(n, ct);
+                    await locks.Release(n, holder, ct);
                     workspace.Give(slot);
+                    _starting.TryRemove(n, out _);
                     return null;
                 }
             }
@@ -512,8 +519,9 @@ public sealed class HarnessLoop(
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
             log.LogWarning(e, "#{Story}: could not start {Item}", story, item);
-            if (held) await Quietly(() => locks.Release(story!.Value, CancellationToken.None), "lock release");
+            if (held) await Quietly(() => locks.Release(story!.Value, holder!, CancellationToken.None), "lock release");
             workspace.Give(slot);
+            if (story is { } sx) _starting.TryRemove(sx, out _);
             return null;
         }
 
@@ -531,6 +539,7 @@ public sealed class HarnessLoop(
         };
         var running = new RunningJob(id, item, slot, DateTimeOffset.UtcNow, jobs.LogPath(item, DateTimeOffset.UtcNow));
         _running[id] = running;
+        if (story is { } sr) _starting.TryRemove(sr, out _);
         history.Record(new JobRecord(id, item.ToString(), story, running.Started, null, null, running.LogPath));
         stats.Started(story, running.Started);
         if (_planned.TryRemove(PlannedKey(item), out var planned)) _waited[id] = running.Started - planned;
@@ -620,7 +629,7 @@ public sealed class HarnessLoop(
         }
         finally
         {
-            if (story is { } n) await Quietly(() => locks.Release(n, CancellationToken.None), $"#{n} lock release");
+            if (story is { } n) await Quietly(() => locks.Release(n, new LockHolder(options.Value.Machine, running.Id, running.Item.Kind.ToString(), running.Started, _instance), CancellationToken.None), $"#{n} lock release");
             leases.ReleaseHolder(JobContext.HolderOf(running.Item));
             workspace.Give(running.Slot);
             _running.TryRemove(running.Id, out _);
