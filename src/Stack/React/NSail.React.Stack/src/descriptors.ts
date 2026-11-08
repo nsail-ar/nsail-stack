@@ -6,6 +6,8 @@ export type FieldKind =
   | "guid"
   | "boolean"
   | "integer"
+  | "bigint"
+  | "decimal"
   | "number"
   | "date"
   | "datetime"

@@ -43,6 +43,13 @@ export function NsField<T>({ name, multiline = false, autoFocus, label }: NsFiel
     set(raw === "" ? (field.nullable ? null : undefined) : Number(raw));
   }
 
+  // An emptied exact number is absent, as a number is: "" is no long the server reads.
+  function exact(event: ChangeEvent<HTMLInputElement>) {
+    const raw = event.target.value;
+
+    set(raw === "" ? (field.nullable ? null : undefined) : raw);
+  }
+
   const common = {
     id,
     name,
@@ -57,6 +64,19 @@ export function NsField<T>({ name, multiline = false, autoFocus, label }: NsFiel
   switch (field.kind) {
     case "boolean":
       control = <input {...common} type="checkbox" checked={value === true} onChange={(e) => set(e.target.checked)} />;
+      break;
+    case "bigint":
+    case "decimal":
+      // The value stays the text the user typed: a Number would round it.
+      control = (
+        <input
+          {...common}
+          type="text"
+          inputMode={field.kind === "bigint" ? "numeric" : "decimal"}
+          value={value === null || value === undefined ? "" : String(value)}
+          onChange={exact}
+        />
+      );
       break;
     case "integer":
     case "number":

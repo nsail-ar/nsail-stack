@@ -40,6 +40,14 @@ await mediator.send(CreateContact, { id, name });   // reads like the C# send
   without it — `required`, `[Required]`, or a route token; every other member is optional,
   because absent means "keep the message's own default" (generation.md, The message owns
   its defaults). A nullable member is `| null`.
+- **Exact numbers are strings.** `long`, `ulong` and `decimal` are `string` in the request and
+  the result, with kind `bigint` (the integers) or `decimal`: a JSON number is a double in
+  the browser and rounds past 2^53 or about 15 digits. `JsonOptions.Wire` writes them as
+  strings and reads either form, so a client still writing numbers works. `int`, `double`
+  and `float` stay `number`. A form field for them holds the typed text, never a `Number`;
+  emptied, the member is absent, as a number's is. It refuses `InvalidFormat` a text the
+  server's invariant parse would not read (`1234,56`); a value past the type's range passes
+  it and is the server's `400`. A table aligns them right like any figure.
 - **The descriptor is what the runtime reads**: per member its wire kind, its localization
   key (`MetadataProvider.KeyFor`, so `Sample.CreateContact.Name` is the key Blazor would
   use), its binding (HttpModelFactory's rules, rule for rule) and the message's

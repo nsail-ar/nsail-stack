@@ -197,7 +197,9 @@ body {
 }
 
 .ns-table .ns-col-integer,
-.ns-table .ns-col-number {
+.ns-table .ns-col-number,
+.ns-table .ns-col-bigint,
+.ns-table .ns-col-decimal {
   text-align: right;
 }
 

@@ -80,7 +80,7 @@ public static partial void AddTasksPushPublishers(this IServiceCollection servic
   A route token with no route-bound member is `NSG001`.
 - A non-`required` query, header or body member is optional: an omitted one is never assigned, so the
   message's own initializer supplies the value. `required` carries into the generated body type.
-- Enums cross the wire as names (`JsonOptions.Wire`).
+- Enums cross the wire as names, and `long`, `ulong` and `decimal` as strings (`JsonOptions.Wire`).
 - The client's name is derived: the Area of the class that declares the `Http.Clients` holder, taken
   from `[assembly: MetadataTemplate]` when declared, else the second namespace segment
   ([Metadata](../Metadata/README.md)). The `HttpClients:{Area}` section overrides its address.

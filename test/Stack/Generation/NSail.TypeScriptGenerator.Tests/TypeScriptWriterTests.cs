@@ -69,7 +69,20 @@ public class TypeScriptWriterTests
 
         Assert.Contains("quantity: { kind: \"integer\", key: \"Shop.AddOrderLine.Quantity\", binding: \"body\", min: 1, max: 99 }", text);
         Assert.Contains("format: \"email\"", text);
-        Assert.Contains("discount: { kind: \"number\", key: \"Shop.AddOrderLine.Discount\", binding: \"body\", serverRules: [\"NotNegative\"] }", text);
+        Assert.Contains("discount: { kind: \"decimal\", key: \"Shop.AddOrderLine.Discount\", binding: \"body\", serverRules: [\"NotNegative\"] }", text);
+    }
+
+    [Fact]
+    public void Int64_and_decimal_members_are_strings_of_their_own_kind()
+    {
+        var text = Orders();
+
+        Assert.Contains("  batch?: string;", text);
+        Assert.Contains("  serial?: string | null;", text);
+        Assert.Contains("  discount?: string;", text);
+        Assert.Contains("batch: { kind: \"bigint\", key: \"Shop.AddOrderLine.Batch\", binding: \"body\" }", text);
+        Assert.Contains("serial: { kind: \"bigint\", key: \"Shop.AddOrderLine.Serial\", nullable: true, binding: \"body\" }", text);
+        Assert.Contains("total: { kind: \"decimal\", key: \"Shop.OrderRow.Total\" }", text);
     }
 
     [Fact]
@@ -79,7 +92,7 @@ public class TypeScriptWriterTests
 
         Assert.Contains("export const ListOrders = defineMessage<ListOrders, DataPage<OrderRow>>({", text);
         Assert.Contains("export interface DataPage<T> {\n  items: T[];", text);
-        Assert.Contains("export const GetTotals = defineMessage<GetTotals, Record<string, number>>({", text);
+        Assert.Contains("export const GetTotals = defineMessage<GetTotals, Record<string, string>>({", text);
         Assert.Contains("  tags: string[];", text);
         Assert.Contains("  notes: (string | null)[];", text);
         Assert.Contains("  placedOn: string;", text);

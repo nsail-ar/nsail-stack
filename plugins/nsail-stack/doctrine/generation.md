@@ -221,7 +221,8 @@ default for it.
 with `JsonOptions.Wire`; the host copies `JsonOptions.Converters` into its own pipeline via
 `AddMessagingJson()` (called by `AddBaseWebApi`). Enums are **written as names** in both
 directions, and numbers are still accepted on read. A query-string enum was always a name,
-so the two edges agree.
+so the two edges agree. `long`, `ulong` and `decimal` are **written as strings** the same
+way and read from either form, because a JavaScript reader would round them (react.md).
 
 ### The client name is derived, never declared
 
