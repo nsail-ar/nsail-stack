@@ -607,6 +607,9 @@ about the data instead of an answer about the network.
   had none.
 - **The words are the sender's**, resolved through `ProblemManager.GetMessage` — the Stack
   invents no wording, so a reason that reads badly is fixed in its own kit's strings.
+- **NsTable's own page reads follow the same rule.** A page whose `OnQuery` failed or was cancelled
+  is not an answer: scroll mode appends nothing and does not advance, paged mode keeps the pager on
+  the page shown, and the grid draws a failure strip with Retry instead of "No records".
 - A failed read **replaces** the content rather than sitting above it: a filter that could not
   be applied leaves the previous filter's rows on screen, which is its own lie.
 

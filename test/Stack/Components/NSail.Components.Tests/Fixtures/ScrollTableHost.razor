@@ -27,13 +27,22 @@
     [Parameter]
     public int Total { get; set; } = 60;
 
+    /// <summary>Which queries throw, counting from one.</summary>
+    [Parameter]
+    public ISet<int> Failing { get; set; } = new HashSet<int>();
+
     public int Queries { get; private set; }
 
     DataPage<TestModel> Page { get; set; } = DataPage<TestModel>.Empty();
 
-    Task Query(QueryEventArgs args)
+    async Task Query(QueryEventArgs args)
     {
         Queries++;
+
+        if (Failing.Contains(Queries))
+        {
+            throw new InvalidOperationException("The read failed.");
+        }
 
         var skip = args.PageIndex * args.PageSize;
 
@@ -48,6 +57,11 @@
             TotalCount = Total
         };
 
-        return Task.CompletedTask;
+        // A real handler yields, and that is what lets the renderer flow the page just written
+        // down to the Rows parameter before a scrolling table reads it back.
+        if (Mode == NsTableMode.Scroll)
+        {
+            await Task.Yield();
+        }
     }
 }
