@@ -20,7 +20,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         """;
 
     const string MergedQuery = """
-        query($q:String!){search(query:$q,type:ISSUE,first:30){nodes{... on PullRequest{title headRefName mergedAt mergeCommit{oid}}}}}
+        query($q:String!){search(query:$q,type:ISSUE,first:30){nodes{... on PullRequest{title headRefName mergedAt mergeCommit{oid} headRepository{nameWithOwner} author{login}}}}}
         """;
 
     readonly string repo = options.Name;
@@ -100,11 +100,18 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         return result;
     }
 
+    // The planner's own rule (SnapshotReader.IsCrews) over the REST shape.
     bool IsOwnHead(JsonElement pr)
     {
         var head = pr.GetProperty("head");
-        return head.TryGetProperty("repo", out var hr) && hr.ValueKind == JsonValueKind.Object
-            && string.Equals(hr.GetProperty("full_name").GetString(), repo, StringComparison.OrdinalIgnoreCase);
+        var headRepo = head.TryGetProperty("repo", out var hr) && hr.ValueKind == JsonValueKind.Object && hr.TryGetProperty("full_name", out var fn) ? fn.GetString() ?? "" : "";
+        return IsCrews(headRepo, NestedString(pr, "user", "login"));
+    }
+
+    bool IsCrews(string headRepo, string author)
+    {
+        return string.Equals(headRepo, repo, StringComparison.OrdinalIgnoreCase)
+            && (options.Authors.Count == 0 || options.Authors.Contains(author, StringComparer.OrdinalIgnoreCase));
     }
 
     static DateTimeOffset? MergedAt(JsonElement pr)
@@ -203,6 +210,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         var data = await gh.GraphQl(MergedQuery, new { q = $"repo:{repo} is:pr is:merged {names.Ref(story)}" }, ct);
         var merge = data.GetProperty("search").GetProperty("nodes").EnumerateArray()
             .Where(n => n.TryGetProperty("title", out _))
+            .Where(n => IsCrews(NestedString(n, "headRepository", "nameWithOwner"), NestedString(n, "author", "login")))
             .Where(n => names.StoryOf(n.GetProperty("title").GetString() ?? "", n.GetProperty("headRefName").GetString() ?? "") == story)
             .OrderBy(n => n.GetProperty("mergedAt").GetString())
             .LastOrDefault();
