@@ -126,7 +126,7 @@ public sealed class QueueDrain
         var now = _clock.GetUtcNow().UtcDateTime;
 
         // Attempts is the ladder of real failures and is left alone: a deferral that spent it
-        // would dead-letter the row on its first genuine failure once a consumer exists. The, and no outcome is metered: nothing failed.
+        // would dead-letter the row on its first genuine failure once a consumer exists. The wait is a long rung of the ladder and no outcome is metered: nothing failed.
         row.LastError = Truncate($"No consumer is registered for '{row.MessageType}'. The host that drains a queued command must compose the kit that declares it.");
         row.NextAttemptAt = Due(now, _options.MaxAttempts);
 
