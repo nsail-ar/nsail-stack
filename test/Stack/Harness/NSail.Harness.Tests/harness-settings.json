@@ -11,7 +11,7 @@
     "Mode": "Debug",
     "Board": { "Provider": "GitHub", "Key": "app", "Repository": "acme/app", "Project": 1, "StatusField": "Status" },
     "Repositories": [
-      { "Provider": "GitHub", "Name": "acme/app",
+      { "Provider": "GitHub", "Name": "acme/app", "Authors": [ "crew-bot" ],
         "Build": { "Kind": "DotNet", "Solution": "App.sln", "Roots": [ "src", "test" ], "TestFilter": "FullyQualifiedName!~.E2E.", "RestoreArgs": [ "--no-http-cache" ] } },
       { "Provider": "GitHub", "Name": "acme/framework", "BranchPrefix": "stack", "Label": "area:stack",
         "Pin": { "File": "Directory.Build.props", "Pattern": "<NSailStackVersion>([^<]+)</NSailStackVersion>", "Ref": "v{version}" } }

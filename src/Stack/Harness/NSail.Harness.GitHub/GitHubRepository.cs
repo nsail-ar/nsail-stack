@@ -81,6 +81,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             var title = pr.GetProperty("title").GetString() ?? "";
             var head = pr.GetProperty("head").GetProperty("ref").GetString() ?? "";
             if (names.StoryOf(title, head) != story) continue;
+            if (!IsOwnHead(pr)) continue;
             if (state == "open" && pr.GetProperty("state").GetString() != "open") continue;
             var merged = MergedAt(pr);
             if (state == "merged" && merged is null) continue;
@@ -91,12 +92,19 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         foreach (var pr in direct)
         {
             var n = pr.GetProperty("number").GetInt32();
-            if (result.Any(p => p.Number == n)) continue;
+            if (result.Any(p => p.Number == n) || !IsOwnHead(pr)) continue;
             var merged = MergedAt(pr);
             if (state == "merged" && merged is null) continue;
             result.Add(new PrRef(n, pr.GetProperty("title").GetString() ?? "", pr.GetProperty("head").GetProperty("ref").GetString() ?? "", merged, repo, MergeSha(pr)));
         }
         return result;
+    }
+
+    bool IsOwnHead(JsonElement pr)
+    {
+        var head = pr.GetProperty("head");
+        return head.TryGetProperty("repo", out var hr) && hr.ValueKind == JsonValueKind.Object
+            && string.Equals(hr.GetProperty("full_name").GetString(), repo, StringComparison.OrdinalIgnoreCase);
     }
 
     static DateTimeOffset? MergedAt(JsonElement pr)
