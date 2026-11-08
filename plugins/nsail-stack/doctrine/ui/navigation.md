@@ -197,7 +197,10 @@ is the stored shape: `Name`, `Parent`, `Order`, `Shown`, `Icon` and `Labels` (th
 per language), and **no `PageType` and no `Url`** — an install arranges the doors its modules
 planted and cannot invent one that opens nowhere, on the route table or outside it: `Url` is
 configuration, never a row a shop's own editor could write, so `NavMenuArrangementEntry` has no
-field for it and the merged leaf keeps whatever its module contributed. `INavMenuArrangement` (`NSail.Components`) is the seam,
+field for it and the merged leaf keeps whatever its module contributed. `Icon` is a `Glyph`, sanitized on construction so it draws inert; the product's
+`NavMenuArrangementValidator` refuses a save whose `Icon.Altered` is true (the glyph was not well-formed XML or held an element or
+attribute outside the allowlist, `style` included — the wire value is gone by then, so `Altered`
+is the only trace of it; `IsClean` on `Markup` is always true). `INavMenuArrangement` (`NSail.Components`) is the seam,
 registered with `AddNavMenuArrangement<T>()`; the settings kit registers the one that reads the
 stored row (`MediatorNavMenuArrangement`), so an app that composes no storage has an empty
 cascade and nothing to remember. **`NavMenu` applies it after every contributor by

@@ -72,6 +72,11 @@ why.
 fails, and the glyph reads a stroke thicker than the card beside it. The optical size is not
 visible in the markup; only the URL it was fetched from says which one it is.
 
+**Gotcha**: `Glyph` keeps only what `SvgSanitizer` allows, silently. A brand mark exported with
+«Internal CSS» (`class` + `<style>`), a `style="fill:…"` attribute, or `<symbol>`/`<use xlink:href>`
+loses its fills or its references and draws black or nothing: write the fills as `fill`/`stroke`
+attributes and inline each shape (`ui/styling.md`, inlined SVG).
+
 ## Sizing is set once, not per icon
 
 `.mud-icon-size-{small|medium|large}` in `ns-mud.css` (16/20/24px) defines the size

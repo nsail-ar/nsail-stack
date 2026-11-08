@@ -28,7 +28,9 @@ public sealed class NavMenuArrangementEntry
     public const int LabelLength = 100;
 
     /// <summary>How much markup a glyph is. An icon is a path, not a picture: past this it is
-    /// something else pasted into a menu row.</summary>
+    /// something else pasted into a menu row. What the markup may hold is SvgSanitizer's
+    /// allowlist: a Glyph is already inert when read, and a validator refusing a row
+    /// refuses a Glyph whose Altered is true.</summary>
     public const int IconLength = 8000;
 
     /// <summary>The entry this row is about — the same Name the module contributed, which is
