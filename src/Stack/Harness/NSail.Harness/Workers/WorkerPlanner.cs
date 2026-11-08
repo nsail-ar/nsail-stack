@@ -33,9 +33,9 @@ public static class WorkerPlanner
         foreach (var keeper in workers.Where(w => w.Kind is null && may(w)))
         {
             // A story a job works is that job's to move.
-            foreach (var i in issues.Where(i => !Busy(i, flight, options) && keeper.Takes(i, null, null, lookup)))
+            foreach (var i in issues.Where(i => !Busy(i, flight, options) && !Settling(keeper, i, board, options) && keeper.Takes(i, null, null, lookup)))
             {
-                chores.AddRange(ChoresOf(keeper, Executed, i));
+                chores.AddRange(ChoresOf(keeper, Executed, i).Select(c => c with { NoPr = keeper.Filter.Pr == "none" }));
             }
         }
 
@@ -130,6 +130,16 @@ public static class WorkerPlanner
         if (flight.DevStories.Contains(i.Number) || flight.AnalyzeStories.Contains(i.Number) || flight.TestStories.Contains(i.Number)) return true;
         if (Labels.Locks.Any(i.Has)) return true;
         return Planner.HoldOf(i, options) is { } hold && hold.StartsWith("no ", StringComparison.Ordinal);
+    }
+
+    // A keeper that takes a story with no open PR reads an absence: a story In-Progress that a job on
+    // any harness of the fleet holds, or that anything touched within OrphanGrace, may be a job's
+    // ending whose PR is still opening.
+    static bool Settling(Worker keeper, Issue i, BoardSnapshot board, PlannerOptions options)
+    {
+        if (keeper.Filter.Pr != "none" || i.Stage != Stages.InProgress) return false;
+        if (board.LockHolders.ContainsKey(i.Number)) return true;
+        return i.TouchedAt is { } at && board.ReadAt - at <= options.OrphanGrace;
     }
 
     // The PR a story's PR work is about: its first open one nobody here is already reading.

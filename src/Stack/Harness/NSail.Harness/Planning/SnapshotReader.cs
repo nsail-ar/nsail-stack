@@ -76,6 +76,20 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         return merged;
     }
 
+    // The story's open PR, read now in every repository from the whole list (the search index lags
+    // the minute a PR opens), as `owner/name PR #n`; null when it has none.
+    public async Task<string?> OpenPrOf(int story, CancellationToken ct = default)
+    {
+        foreach (var repo in repos.All)
+        {
+            foreach (var pr in await repo.OpenPrs(ct))
+            {
+                if (IsCrews(pr, repo) && _names.StoryOf(pr.Title, pr.Head) == story) return $"{repo.Name} PR #{pr.Number}";
+            }
+        }
+        return null;
+    }
+
     bool Release(string workflow)
     {
         return options.Releases.Any(r => r.Workflow == workflow);
