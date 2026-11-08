@@ -16,7 +16,7 @@ namespace NSail.Data;
 /// instant, and neither is restoring (data-tenancy.md, Tenant state).</para></summary>
 public sealed class TenantStateMemo
 {
-    readonly ConcurrentDictionary<Guid, Entry> _entries = new();
+    readonly ConcurrentDictionary<string, Entry> _entries = new();
     readonly TimeProvider _clock;
     readonly TimeSpan _life;
 
@@ -29,11 +29,11 @@ public sealed class TenantStateMemo
         _life = TimeSpan.FromSeconds(tenancy.StateCacheSeconds);
     }
 
-    /// <summary>The state of <paramref name="tenant"/>, read through <paramref name="read"/> only
+    /// <summary>The state of <paramref name="tenant"/> (<see cref="TenancyProvider.StateKey"/>), read through <paramref name="read"/> only
     /// when nothing unexpired is held for it. The instance handed back is shared by every caller
     /// inside the window and must be treated as read-only — nothing in the app writes this row.</summary>
     public async Task<TenantState?> Of(
-        Guid tenant,
+        string tenant,
         Func<CancellationToken, Task<TenantState?>> read,
         CancellationToken cancellationToken = default)
     {
@@ -61,7 +61,7 @@ public sealed class TenantStateMemo
     /// most tenants have. For the callers that cannot await (visibility derived in render code),
     /// which is also why there is no read behind it: a question asked where no answer is in hand
     /// is answered permissively by whoever asked it.</summary>
-    public bool Holds(Guid tenant, out TenantState? state)
+    public bool Holds(string tenant, out TenantState? state)
     {
         if (_entries.TryGetValue(tenant, out var held) && _clock.GetUtcNow() < held.Until)
         {

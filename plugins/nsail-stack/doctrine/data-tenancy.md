@@ -483,7 +483,8 @@ the contract and the Stack only reads:
   behind `TenantStates`, for `Tenancy:StateCacheSeconds` — a few minutes, whose default and floor
   are `TenancyOptions`'; zero is refused rather than read as "no memo").
   A primary-key lookup on every request of every tenant bought almost nothing: what it read was
-  the same absent row. So the row is held per tenant, a missing one included, and whether a held
+  the same absent row. So the row is held per tenant (`TenancyProvider.StateKey`: the slug under `MultiDb`, where every
+  tenant's `RowKey` is the install's own `Guid.Empty`; the row key elsewhere), a missing one included, and whether a held
   row's window is open is still asked of the clock on each request — the memo delays the *row*,
   never the *cut*. **What it costs is stated and not hidden:** the row is written by a program
   outside this process, so a suspension written now reaches a running install when its entry

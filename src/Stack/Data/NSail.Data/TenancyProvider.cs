@@ -60,6 +60,23 @@ public class TenancyProvider
         }
     }
 
+    /// <summary>What a process-wide memo of a tenant's state is keyed by, and null where this
+    /// scope is in no tenant. <see cref="RowKey"/> cannot be it under <c>MultiDb</c>, where every
+    /// tenant answers the install's own <see cref="Guid.Empty"/>: the wall is the connection, so
+    /// the tenant's slug is its identity there.</summary>
+    public string? StateKey
+    {
+        get
+        {
+            if (_tenancy.Connection == TenancyScope.Tenant && Current is { IsResolved: true } tenant)
+            {
+                return tenant.Slug;
+            }
+
+            return RowKey?.ToString();
+        }
+    }
+
     /// <summary>The id, IN THIS SCOPE, of a row the install freezes and code names by constant —
     /// a seeded Role, the account a setting defaults to. Where the rows are the install's the
     /// answer is the constant itself; where they are the tenant's, the tenant owns a twin of that

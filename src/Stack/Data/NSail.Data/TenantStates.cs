@@ -43,12 +43,12 @@ public sealed class TenantStates
     /// read and never written.</summary>
     public async Task<TenantState?> Current(CancellationToken cancellationToken = default)
     {
-        if (_tenancy.RowKey is not { } key)
+        if (_tenancy.RowKey is not { } key || _tenancy.StateKey is not { } memoKey)
         {
             return null;
         }
 
-        return await _memo.Of(key, token => Read(key, token), cancellationToken);
+        return await _memo.Of(memoKey, token => Read(key, token), cancellationToken);
     }
 
     /// <summary>The row when this scope's tenant is paused at this moment — the open-ended switch
