@@ -118,6 +118,7 @@
   "Problems.UnreadableDate": "This is not a date — write it as {shape}",
   "Problems.UnreadableAddress": "This is not a web address — write it whole, like https://example.com",
   "Problems.UnreadableAddressDomain": "This is not a web address — check the domain",
+  "Problems.UnreadableAddressScheme": "This is not a web address — start it with https://, http:// or mailto:",
   "Problems.OutOfRange": "Out of range",
   "Problems.MaxLength": "No longer than {max} characters",
   "Problems.NotFuture": "Cannot be later than today",

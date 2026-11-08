@@ -16,12 +16,13 @@ namespace NSail.Components.Tests;
 /// rule of its own (a Channels template setting, one string for every kind). So the gate is the
 /// field's — the date box's `GetOwnProblem` seam — and this is the proof that it stands in the
 /// house's own words, blocks the submit, says nothing before Save, and takes what the browser
-/// took — everywhere but a domain no parser can read, which is pinned here as the one place the
-/// rule is stricter than the gate (fields.md carries the cost that buys).</summary>
+/// took — everywhere but a domain no parser can read and a scheme no door opens, which are pinned here as
+/// the places the rule is stricter than the gate (fields.md carries the cost that buys).</summary>
 public sealed class NsUrlRefusalTests : BunitContext, IAsyncLifetime
 {
     const string Refusal = "Esto no es una dirección web — escribila completa, como https://ejemplo.com";
     const string DomainRefusal = "Esto no es una dirección web — revisá el dominio";
+    const string SchemeRefusal = "Esto no es una dirección web — empezala con https://, http:// o mailto:";
 
     public NsUrlRefusalTests()
     {
@@ -36,7 +37,11 @@ public sealed class NsUrlRefusalTests : BunitContext, IAsyncLifetime
             new TwoLanguageStrings(
                 "Problems.UnreadableAddressDomain",
                 "This is not a web address — check the domain",
-                DomainRefusal)
+                DomainRefusal),
+            new TwoLanguageStrings(
+                "Problems.UnreadableAddressScheme",
+                "This is not a web address — start it with https://, http:// or mailto:",
+                SchemeRefusal)
         ]));
         Services.AddSingleton(new LanguageProvider { Current = "es" });
         Services.AddSingleton<MetadataProvider>();
@@ -117,8 +122,6 @@ public sealed class NsUrlRefusalTests : BunitContext, IAsyncLifetime
     [InlineData("https:")]
     [InlineData("https:/optica.example")]
     [InlineData("C:\\resenas\\optica")]
-    [InlineData("javascript:alert(1)")]
-    [InlineData("data:text/html,x")]
     public async Task AnAddressThatNamesNoDomain_IsRefusedAndSaysToWriteItWhole(string address)
     {
         var cut = await Refused(address);
@@ -141,6 +144,20 @@ public sealed class NsUrlRefusalTests : BunitContext, IAsyncLifetime
         var cut = await Refused(address);
 
         Assert.Equal(DomainRefusal, cut.FindComponent<NsUrlField>().Find(".mud-input-helper-text").TextContent.Trim());
+    }
+
+    /// <summary>The address reads whole and its domain is fine; the defect is a scheme no door
+    /// opens (the gate's own list), and the sentence says that and not "check the domain".</summary>
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("data:text/html,x")]
+    [InlineData("ftp://archivos.optica.example/catalogo.pdf")]
+    [InlineData("tel:+5491100000000")]
+    public async Task AnAddressUnderASchemeNoDoorOpens_IsRefusedAndSaysTheScheme(string address)
+    {
+        var cut = await Refused(address);
+
+        Assert.Equal(SchemeRefusal, cut.FindComponent<NsUrlField>().Find(".mud-input-helper-text").TextContent.Trim());
     }
 
     async Task<IRenderedComponent<RefusedAddressHost>> Refused(string address)

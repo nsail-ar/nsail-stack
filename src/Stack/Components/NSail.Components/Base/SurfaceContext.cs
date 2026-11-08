@@ -734,17 +734,18 @@ public sealed class SurfaceContext
     }
 
     /// <summary>Whether a destination carries a scheme no door may open: an external address
-    /// that is not http(s), mailto or tel — "javascript:" and "data:" run or draw what the
-    /// address says on a click. A link drawn over one is inert text, not an anchor.</summary>
+    /// whose scheme is not http(s), mailto or tel — "javascript:" and "data:" run or draw what
+    /// the address says on a click. Only the scheme is asked; the path is the caller's. A link
+    /// drawn over one is inert text, not an anchor.</summary>
     public static bool IsInert(string? href)
     {
-        if (!IsExternal(href))
+        if (!IsExternal(href) || !Uri.TryCreate(href, UriKind.Absolute, out var address))
         {
             return false;
         }
 
-        return !WebAddress.IsNavigable(href, withinApp: false)
-            && !(href!.StartsWith("tel:", StringComparison.OrdinalIgnoreCase) && href.All(character => !char.IsWhiteSpace(character) && !char.IsControl(character)));
+        return !WebAddress.OpensScheme(address.Scheme)
+            && !address.Scheme.Equals("tel", StringComparison.OrdinalIgnoreCase);
     }
 
     static string Rooted(string route)

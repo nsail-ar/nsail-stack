@@ -64,6 +64,8 @@ public sealed class NsLinkSchemeTests : BunitContext
     [InlineData("https://acme.com/x")]
     [InlineData("mailto:a@acme.com")]
     [InlineData("tel:+5491100000000")]
+    [InlineData("tel:+54 11 5555-5555")]
+    [InlineData("https://optica.example/mi local")]
     [InlineData("/parties/new")]
     public void TheSchemesADoorOpensKeepTheirHref(string href)
     {
