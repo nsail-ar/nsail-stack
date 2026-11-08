@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -209,6 +209,16 @@ public class PolicyHandlersTests
                     public override System.Guid OrganizationId { get; set; }
                 }
 
+                public class ListVisits : OrganizationMessage
+                {
+                    public override System.Guid OrganizationId { get; set; }
+                }
+
+                public class ListVisitNotes : ListVisits
+                {
+                    public override System.Guid OrganizationId { get; set; }
+                }
+
                 public static partial class PolicyHandlers
                 {
                     [Generated(Policies.Handlers)]
@@ -235,7 +245,7 @@ public class PolicyHandlersTests
         var generated = Assert.Single(driver.GetRunResult().GeneratedTrees).ToString();
 
         Assert.Contains("Satisfies(\"OrganizationId\", m.OrganizationId, global::NSail.Security.Annotations.RestrictAs.Organization", generated);
-        // One check per concrete message; the override does not add a second.
-        Assert.Equal(2, generated.Split("Satisfies(\"OrganizationId\", m.OrganizationId").Length - 1);
+        // One check per concrete message: an override adds no second, marked or not, at any depth.
+        Assert.Equal(4, generated.Split("Satisfies(\"OrganizationId\", m.OrganizationId").Length - 1);
     }
 }

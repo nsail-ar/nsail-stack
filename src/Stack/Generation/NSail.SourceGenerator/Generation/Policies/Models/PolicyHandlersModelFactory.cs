@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -33,7 +33,7 @@ public static class PolicyHandlersModelFactory
 
             foreach (var member in typeSymbol.GetAllProperties())
             {
-                var attribute = member.GetAttribute(PolicyFieldAttributeName);
+                var attribute = member.GetAttributeThroughOverrides(PolicyFieldAttributeName);
                 if (attribute is null)
                     continue;
 

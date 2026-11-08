@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -149,7 +149,9 @@ public class PushTests
 
         var reported = Assert.Single(diagnostics.Where(d => d.Id == "NSG003"));
 
+        Assert.Equal(DiagnosticSeverity.Error, reported.Severity);
         Assert.Contains("RowId", reported.GetMessage());
+        Assert.Contains("Acme.Inbox.InboxRowChanged", reported.GetMessage());
     }
 
     static ImmutableArray<Diagnostic> Diagnose(IIncrementalGenerator generator, string holder)

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -33,7 +33,7 @@ public static class GeneratorDiagnostics
     public static readonly DiagnosticDescriptor PushedCarriesData = new(
         id: "NSG003",
         title: "[Pushed] event carries data",
-        messageFormat: "'{0}' is marked [Pushed] and declares the public property '{1}'. A pushed event reaches every seat of the tenant, whatever its branch, so it carries nothing: it says that something moved, and each client re-reads through its own org-scoped read.",
+        messageFormat: "'{0}' is marked [Pushed] and declares or inherits the public property '{1}'. A pushed event reaches every seat of the tenant, whatever its branch, so it carries nothing: it says that something moved, and each client re-reads through its own org-scoped read.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,

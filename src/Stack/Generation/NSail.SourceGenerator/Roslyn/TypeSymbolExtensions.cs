@@ -18,20 +18,29 @@ public static class TypeSymbolExtensions
         }
     }
 
-    /// <summary>Every property the type exposes, inherited ones included, an override once.</summary>
+    /// <summary>Every property the type exposes, inherited ones included; an override or a hiding member is read once, as the most derived.</summary>
     public static IEnumerable<IPropertySymbol> GetAllProperties(this ITypeSymbol type)
     {
-        var overridden = new HashSet<IPropertySymbol>(SymbolEqualityComparer.Default);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var property in type.GetAllMembers().OfType<IPropertySymbol>())
         {
-            if (overridden.Contains(property.OriginalDefinition))
+            if (property.IsIndexer || !seen.Add(property.Name))
                 continue;
-
-            if (property.OverriddenProperty is { } baseProperty)
-                overridden.Add(baseProperty.OriginalDefinition);
 
             yield return property;
         }
+    }
+
+    /// <summary>The attribute on the property or, failing that, on the definition it overrides, as reflection inherits it.</summary>
+    public static AttributeData? GetAttributeThroughOverrides(this IPropertySymbol property, string attributeFullName)
+    {
+        for (var current = property; current != null; current = current.OverriddenProperty)
+        {
+            if (current.GetAttribute(attributeFullName) is { } attribute)
+                return attribute;
+        }
+
+        return null;
     }
 }
