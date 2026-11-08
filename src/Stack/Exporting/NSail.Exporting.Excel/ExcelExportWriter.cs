@@ -110,6 +110,7 @@ public sealed class ExcelExportWriter : IExportWriter
 
     // A date the sheet can hold is a DateTime: the serial number under the cell has no other
     // shape, and handing the vendor anything else leaves it to guess between a date and text.
+    // Whatever the vendor would write as a string (a Guid, a Uri, a char) is defused like one.
     static object? Cell(object? value)
     {
         return value switch
@@ -119,7 +120,9 @@ public sealed class ExcelExportWriter : IExportWriter
             TimeOnly time => time.ToTimeSpan(),
             Enum word => ExportText.Defused(word.ToString()),
             string text => ExportText.Defused(text),
-            _ => value
+            null or bool or DateTime or TimeSpan => value,
+            _ when Type.GetTypeCode(value.GetType()) is >= TypeCode.SByte and <= TypeCode.Decimal => value,
+            _ => ExportText.Defused(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty)
         };
     }
 

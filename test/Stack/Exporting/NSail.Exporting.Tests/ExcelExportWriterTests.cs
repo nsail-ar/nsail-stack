@@ -93,10 +93,25 @@ public class ExcelExportWriterTests
         var sheet = workbook.Worksheet(1);
 
         Assert.Equal("'=Title", sheet.Cell(1, 1).GetString());
+        // The vendor reads a CR back as LF.
         Assert.Equal("'" + text.Replace('\r', '\n'), sheet.Cell(2, 1).GetString());
         Assert.Equal("plain", sheet.Cell(3, 1).GetString());
         Assert.Equal(XLDataType.Number, sheet.Cell(4, 1).Value.Type);
         Assert.Equal(-5, sheet.Cell(4, 1).Value.GetNumber());
+    }
+
+    [Fact]
+    public async Task A_value_the_vendor_writes_as_text_is_defused_like_a_string()
+    {
+        var column = new ExportColumn { Key = "Name", Title = "Name" };
+        var book = ExportBook.Of("Lista", new ExportTable { Columns = [column], Rows = Books.Rows([[new Uri("-x", UriKind.Relative)], [-5m]]) });
+
+        using var stream = new MemoryStream(await Books.Write(new ExcelExportWriter(), book, Books.States));
+        using var workbook = new XLWorkbook(stream);
+        var sheet = workbook.Worksheet(1);
+
+        Assert.Equal("'-x", sheet.Cell(2, 1).GetString());
+        Assert.Equal(XLDataType.Number, sheet.Cell(3, 1).Value.Type);
     }
 
     static async Task<IXLWorksheet> Sheet(System.Globalization.CultureInfo culture)

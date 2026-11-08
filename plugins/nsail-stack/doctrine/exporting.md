@@ -55,10 +55,13 @@ all, so it prints every figure in the reader's own separators.
 | Encoding | OOXML | UTF-8 **with a byte-order mark** |
 | Separator | — | derived from the decimal mark: `;` where it is a comma, `,` otherwise |
 
-**A text cell is never a formula, in either writer.** In the `.xlsx` a string (or enum word) and a heading; in the CSV one that opens with `=`, `+`, `-`, `@`, tab or CR is written
-with a leading `'`; only a figure is not touched, since a negative one starts with a minus. A figure
-is a value in a Number, Money or Percent column that printed as a number: a string in such a column
-is text and is defused too.
+**A text cell is never a formula, in either writer.** One that opens with `=`, `+`, `-`, `@`, tab
+or CR is written with a leading `'`, which is part of the value: the reader of a `.xlsx` sees it.
+The CSV leaves a figure untouched, since a negative one starts with a minus: a value in a Number,
+Money or Percent column that printed as a number; a string in such a column is text and is defused
+too. The `.xlsx` decides by type, not by column format: numbers, booleans, dates and times stay
+typed cells, and every other value (a string, an enum word, a heading, a `Guid`) is text and is
+defused.
 
 **The CSV separator is derived and never configured.** A culture that writes `1.234,56` cannot
 separate fields with the comma inside its own figures; reading the separator off the region
