@@ -280,11 +280,18 @@ process over that database delivers it.
   and not a second verdict on a message already accepted.
 - **Retry, backoff, dead letter — the Stack's own, and configuration.** `Queue:MaxAttempts`,
   `Queue:Backoff` (doubling per attempt), `Queue:Interval` and `Queue:BatchSize`. A row that
-  fails its last attempt is dead-lettered: it stays, it is never attempted again, and it is
-  counted on `nsail.queue.delivered` tagged by message and outcome. A meter and not a log line
-  because `LogScrubber` drops the name out of an exported record — and the meter is subscribed
-  for every server host by `AddBaseWebApi`, since a counter nothing exports is the same silence
-  (baseservices.md, *Telemetry*).
+  fails its last attempt is dead-lettered: it stays, unattempted until `QueueDeadLetters`
+  requeues or purges it (a kit's operator message calls it), and it is counted on
+  `nsail.queue.delivered` tagged by message and outcome — a meter and not a log line because
+  `LogScrubber` drops the name out of an exported record, subscribed for every server host by
+  `AddBaseWebApi`, since a counter nothing exports is the same silence
+  (baseservices.md, *Telemetry*). A row whose type this process has no consumer for is not a
+  failure: it stays pending, waits the longest rung, is not metered and does not spend its
+  attempts. It waits for a process that registers **the name stored on the row**, so a rolling
+  deploy delivers it with the full ladder; a message renamed or moved to another namespace
+  leaves rows no process will ever register, and `QueueDeadLetters` does not reach them (they
+  are pending, not dead-lettered): the Stack gives the operator no tool for them, so a rename
+  of a `[Queue]` message waits until its pending rows have drained.
 - **Queueing is a save point of the sending operation.** The producer writes its row with
   `SaveChangesAsync`, which saves the *context* and not one entity: everything the operation
   has tracked so far goes to the database with it, inside the operation's transaction. A
