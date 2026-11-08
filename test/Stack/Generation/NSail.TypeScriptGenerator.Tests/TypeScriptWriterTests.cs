@@ -77,8 +77,12 @@ public class TypeScriptWriterTests
     {
         var text = Orders();
 
-        Assert.Contains("kind: \"decimal\"", text);
-        Assert.DoesNotContain("discount?: number", text);
+        Assert.Contains("  batch?: string;", text);
+        Assert.Contains("  serial?: string | null;", text);
+        Assert.Contains("  discount?: string;", text);
+        Assert.Contains("batch: { kind: \"bigint\", key: \"Shop.AddOrderLine.Batch\", binding: \"body\" }", text);
+        Assert.Contains("serial: { kind: \"bigint\", key: \"Shop.AddOrderLine.Serial\", nullable: true, binding: \"body\" }", text);
+        Assert.Contains("total: { kind: \"decimal\", key: \"Shop.OrderRow.Total\" }", text);
     }
 
     [Fact]
