@@ -106,7 +106,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
     static async Task<List<string>> Bodies(IRepository repo, OpenPr pr, CancellationToken ct)
     {
         if (BodiesByPr.TryGetValue((pr.Repo, pr.Number), out var hit) && hit.UpdatedAt == pr.UpdatedAt) return hit.Bodies;
-        var bodies = (await repo.Thread(pr.Number, ct)).Select(n => n.Body).ToList();
+        var bodies = Markers.OwnBodies(await repo.Thread(pr.Number, ct), await repo.Login(ct)).ToList();
         BodiesByPr[(pr.Repo, pr.Number)] = (pr.UpdatedAt, bodies);
         return bodies;
     }

@@ -72,7 +72,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 ["OUT"] = Out,
             }, ct);
             // The seat reads the board from disk and writes its verdict to disk: it holds no token to the board.
-            var result = await ctx.Agent.Run(new AgentRun(
+            var result = await ctx.RunSeat(new AgentRun(
                 prompt, dir, Seat.Model,
                 Access: AgentAccess.Reader,
                 MaxTurns: 300,

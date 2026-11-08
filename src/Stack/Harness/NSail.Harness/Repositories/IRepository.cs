@@ -27,6 +27,9 @@ public interface IRepository
     // Every review and comment on a PR, oldest first.
     Task<IReadOnlyList<PrNote>> Thread(int pr, CancellationToken ct = default);
 
+    // The login the harness writes as: the only author whose markers on a thread count.
+    Task<string> Login(CancellationToken ct = default);
+
     // A PR's files with their line counts, as `path (+a -d)`.
     Task<IReadOnlyList<string>> Files(int pr, CancellationToken ct = default);
 

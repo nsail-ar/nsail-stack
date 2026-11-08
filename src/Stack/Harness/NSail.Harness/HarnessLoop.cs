@@ -322,11 +322,16 @@ public sealed class HarnessLoop(
     async Task<Pass> RunPass(HarnessOptions o, CancellationToken stop)
     {
         var started = DateTimeOffset.UtcNow;
+        var call = PassCall.Planning;
         try
         {
             if (leases.Sweep(TimeSpan.FromMinutes(60)) is var dead and > 0) log.LogWarning("{Dead} build turn(s) older than an hour went back to the line", dead);
+            call = PassCall.Statuses;
             var marks = await jobs.Repo.Statuses(ct: stop);
-            var snapshot = await reader.Read(OwnFlight(), stop) with
+            call = PassCall.Stories;
+            var read = await reader.Read(OwnFlight(), stop);
+            call = PassCall.Planning;
+            var snapshot = read with
             {
                 DueReleases = DueReleases(marks, DateTimeOffset.UtcNow),
                 DueWatches = DueWatches(DateTimeOffset.UtcNow),
@@ -350,9 +355,13 @@ public sealed class HarnessLoop(
             var startedNow = new List<string>();
             if (o.Mode == HarnessMode.Live)
             {
+                call = PassCall.Locks;
                 await SweepLocks(stop);
+                call = PassCall.Closed;
                 await SweepClosed(stop);
+                call = PassCall.Chores;
                 await BoardChores.Do(board, plan.Chores, snapshot.Issues.DistinctBy(i => i.Number).ToDictionary(i => i.Number, i => i.Stage), o.Texts.Signature, log, stop);
+                call = PassCall.Start;
                 if (Paused is null)
                 {
                     foreach (var item in take)
@@ -369,12 +378,29 @@ public sealed class HarnessLoop(
         }
         catch (Exception e) when (!stop.IsCancellationRequested)
         {
-            // A failed read starts nothing: a half board reads as an empty queue. A request that
-            // timed out lands here too (it is a cancellation, but not the host's).
+            return Failed(log, metrics, e, call, started);
+        }
+    }
+
+    // A failed read starts nothing: a half board reads as an empty queue. A request that timed out
+    // lands here too (it is a cancellation, but not the host's). What the provider answered rides
+    // the record as numbers and an enum, the only kinds the log scrubber lets through; its body
+    // stays in the exception's message, which reaches the console and never the log store.
+    internal const string FailedAnswered = "pass failed — nothing started: {ProviderCall} answered {ProviderStatus}, {RateLimitRemaining} calls left";
+
+    internal static Pass Failed(ILogger log, HarnessMetrics metrics, Exception e, PassCall call, DateTimeOffset started)
+    {
+        if (e is ProviderException { Status: { } status } provider)
+        {
+            log.LogError(e, FailedAnswered, call, status, provider.RateLimitRemaining);
+            metrics.Passed(failed: true, status);
+        }
+        else
+        {
             log.LogError(e, "pass failed — nothing started");
             metrics.Passed(failed: true);
-            return new Pass(started, DateTimeOffset.UtcNow - started, null, [], [], e.Message);
         }
+        return new Pass(started, DateTimeOffset.UtcNow - started, null, [], [], e.Message);
     }
 
     // The required endpoints that refuse a connection within a few seconds.

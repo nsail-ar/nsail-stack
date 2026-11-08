@@ -13,7 +13,9 @@ public interface ILogSource
 }
 
 // One error line: the service that logged it, the logger (Source) and the message template it
-// logged, the exception it carried, the cell it ran in, and where to read it whole.
+// logged, the exception it carried, the cell it ran in, and where to read it whole. A line that
+// logged a provider's answer (a failed pass) also carries the call it made, the status it got and
+// the calls its rate limit still allowed.
 public sealed record LoggedError(
     DateTimeOffset At,
     string Service,
@@ -23,4 +25,7 @@ public sealed record LoggedError(
     string? StackTrace,
     string Cell,
     string? TraceId,
-    Uri? Link);
+    Uri? Link,
+    string? ProviderCall = null,
+    int? ProviderStatus = null,
+    long? RateLimitRemaining = null);

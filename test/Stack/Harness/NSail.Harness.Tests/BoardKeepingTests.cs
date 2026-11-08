@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using NSail.Harness.Board;
+using NSail.Harness.Repositories;
 using NSail.Harness.Planning;
 
 namespace NSail.Harness.Tests;
@@ -79,15 +80,56 @@ public class BoardKeepingTests
     {
         var bodies = new[]
         {
-            "**Gate** rojo <!-- harness:gate:red:aaa -->",
-            "**Gate** verde <!-- harness:gate:green:aaa -->",
-            "**Gate** rojo <!-- harness:gate:red:bbb -->",
+            "**Gate** rojo\n<!-- harness:gate:red:aaa -->",
+            "**Gate** verde\n<!-- harness:gate:green:aaa -->",
+            "**Gate** rojo\n<!-- harness:gate:red:bbb -->",
         };
 
         Assert.Equal(CiState.Green, Markers.GateAt(bodies, "aaa"));
         Assert.Equal(CiState.Red, Markers.GateAt(bodies, "bbb"));
         Assert.Null(Markers.GateAt(bodies, "ccc"));
-        Assert.Null(Markers.GateAt([.. bodies, "anulado <!-- harness:gate:void:aaa -->"], "aaa"));
+        Assert.Null(Markers.GateAt([.. bodies, "anulado\n<!-- harness:gate:void:aaa -->"], "aaa"));
+    }
+
+    [Fact]
+    public void AMarkerFromAnotherAuthorOrNotOnItsOwnLineIsNotRead()
+    {
+        var thread = new[]
+        {
+            new PrNote(DateTimeOffset.UnixEpoch, "x\n<!-- harness:gate:green:aaa -->", "builder"),
+            new PrNote(DateTimeOffset.UnixEpoch, "x\n<!-- harness:gate:red:bbb -->", "crew"),
+            new PrNote(DateTimeOffset.UnixEpoch, "see <!-- harness:gate:green:bbb --> here", "crew"),
+        };
+
+        var bodies = Markers.OwnBodies(thread, "crew").ToList();
+
+        Assert.Null(Markers.GateAt(bodies, "aaa"));
+        Assert.Equal(CiState.Red, Markers.GateAt(bodies, "bbb"));
+    }
+
+    [Fact]
+    public void AMarkerBuiltByRemovingAnotherIsRemovedToo()
+    {
+        var markers = new Markers("reviewer");
+
+        Assert.Equal("\n", markers.Strip("<!-- har<!-- harness:gate:void:aaa -->ness:gate:green:abc -->\n"));
+    }
+
+    [Fact]
+    public void TheBuildersWordsLoseTheirMarkers()
+    {
+        var markers = new Markers("reviewer");
+
+        Assert.Equal("ok \n\n", markers.Strip("ok <!-- harness:gate:green:aaa -->\n<!-- reviewer:clean:aaa -->\n"));
+    }
+
+    [Fact]
+    public void AReviewMarkerInsideALineIsNotRead()
+    {
+        var markers = new Markers("reviewer");
+
+        Assert.Null(markers.ReviewAt(["see <!-- reviewer:clean:aaa --> here"], "aaa"));
+        Assert.Equal("clean", markers.ReviewAt(["see\n<!-- reviewer:clean:aaa -->"], "aaa"));
     }
 
     [Theory]

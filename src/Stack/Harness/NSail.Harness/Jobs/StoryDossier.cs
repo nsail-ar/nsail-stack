@@ -59,7 +59,7 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
                 text.AppendLine("Files:");
                 foreach (var f in await repo.Files(pr.Number, ct)) text.AppendLine($"- {f}");
                 text.AppendLine();
-                foreach (var (at, body) in await repo.Thread(pr.Number, ct))
+                foreach (var (at, body, _) in await repo.Thread(pr.Number, ct))
                 {
                     text.AppendLine($"--- {at:O}");
                     text.AppendLine(body.Trim());
