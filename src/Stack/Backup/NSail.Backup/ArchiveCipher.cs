@@ -7,13 +7,10 @@ using System.Text;
 
 namespace NSail.Backup;
 
-/// <summary>Seals one archive entry under a key derived from the operator's passphrase
-/// (PBKDF2-SHA256, AES-256-GCM). An entry is a random nonce prefix followed by chunks, each
-/// <c>length, tag, ciphertext</c>, ending in a chunk shorter than <see cref="ChunkSize"/> so a
-/// truncated entry fails instead of restoring short. The entry name is authenticated, so one
-/// sealed entry cannot be passed off as another.</summary>
 internal sealed class ArchiveCipher
 {
+    // Entry = nonce prefix, then chunks of length, tag, ciphertext; the last chunk is shorter than
+    // ChunkSize so a truncated entry fails instead of restoring short. The entry name is the AAD.
     public const int ChunkSize = 64 * 1024;
 
     public const int DefaultIterations = 600_000;
