@@ -67,7 +67,7 @@ public class BoardReaderTests
     public void TheReviewersWordIsTheLastMarkAtThatSha()
     {
         var markers = new Markers("reviewer");
-        var bodies = new[] { "x <!-- reviewer:findings:aaa -->", "y <!-- reviewer:clean:bbb -->", "z <!-- reviewer:findings:bbb -->" };
+        var bodies = new[] { "x\n<!-- reviewer:findings:aaa -->", "y\n<!-- reviewer:clean:bbb -->", "z\n<!-- reviewer:findings:bbb -->" };
 
         Assert.Equal("findings", markers.ReviewAt(bodies, "bbb"));
         Assert.Equal("findings", markers.ReviewAt(bodies, "aaa"));

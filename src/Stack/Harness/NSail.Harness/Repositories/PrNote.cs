@@ -3,5 +3,5 @@
 
 namespace NSail.Harness.Repositories;
 
-// A review or a comment on a PR.
-public sealed record PrNote(DateTimeOffset At, string Body);
+// A review or a comment on a PR, and the login that wrote it.
+public sealed record PrNote(DateTimeOffset At, string Body, string Author);

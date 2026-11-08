@@ -60,6 +60,18 @@ public sealed class Markers(string review)
         return $"<!-- {review}:{word}:{sha} -->";
     }
 
+    // The bodies on a thread that the harness itself wrote: a marker from anyone else is a forgery.
+    public static IEnumerable<string> OwnBodies(IEnumerable<PrNote> thread, string login)
+    {
+        return thread.Where(n => string.Equals(n.Author, login, StringComparison.OrdinalIgnoreCase)).Select(n => n.Body);
+    }
+
+    // A text with the protocol's markers taken out, for words that are not the harness's own.
+    public string Strip(string text)
+    {
+        return Regex.Replace(text, $@"<!--\s*(harness:gate|{Regex.Escape(review)}):[^>]*-->", "");
+    }
+
     // The gate's verdict at a head; `void` withdraws an earlier one, and the head is gated again. A
     // head waiting on main reads pending while main is still the head it waited on (none known: still).
     public static CiState? GateAt(IEnumerable<string> bodies, string sha, string? main = null)
@@ -67,7 +79,7 @@ public sealed class Markers(string review)
         CiState? word = null;
         foreach (var body in bodies)
         {
-            foreach (Match m in Regex.Matches(body, @"harness:gate:(green|red|void|waits):([0-9a-f]+)(?::([0-9a-f]+))?"))
+            foreach (Match m in Regex.Matches(body, @"^<!-- harness:gate:(green|red|void|waits):([0-9a-f]+)(?::([0-9a-f]+))? -->[ \t]*\r?$", RegexOptions.Multiline))
             {
                 if (m.Groups[2].Value != sha) continue;
                 word = m.Groups[1].Value switch
@@ -104,6 +116,6 @@ public sealed class Markers(string review)
 
     MatchCollection ReviewMatches(string body)
     {
-        return Regex.Matches(body, $@"{Regex.Escape(review)}:(clean|findings):([0-9a-f]+)");
+        return Regex.Matches(body, $@"^<!-- {Regex.Escape(review)}:(clean|findings):([0-9a-f]+) -->[ \t]*\r?$", RegexOptions.Multiline);
     }
 }

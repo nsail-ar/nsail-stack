@@ -244,7 +244,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             var open = (await repo.PrsOf(n, "open", ct)).FirstOrDefault(p => p.Head == branch);
             if (open is null)
             {
-                var lines = words.Split('\n', 2);
+                var lines = ctx.Markers.Strip(words).Split('\n', 2);
                 var prTitle = ctx.Names.Untitled(lines[0]);
                 var story = HarnessTexts.Fill(ctx.Texts.PrStory, ("story", $"{ctx.Repo.Name}#{n}"));
                 var number = await repo.CreatePr(branch, ctx.Names.PrTitle(n, prTitle.Length > 0 ? prTitle : title),
@@ -256,7 +256,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
                 await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.NothingPushed, ("pr", open.Number))));
                 return new Ending($"PR #{open.Number} open, nothing pushed — dead", Failed: true);
             }
-            await repo.Comment(open.Number, JobContext.Signed(words, Seat));
+            await repo.Comment(open.Number, JobContext.Signed(ctx.Markers.Strip(words), Seat));
             return new Ending($"PR #{open.Number} updated; the gate decides", "Pushed");
         }
 
