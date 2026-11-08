@@ -57,6 +57,7 @@
   "Problems.RuleViolation.StorageNotDeclared": "No store named '{name}' is declared in this host.",
   "Problems.RuleViolation.KeyOutsideContainer": "'{key}' resolves outside the configured container.",
   "Problems.RuleViolation.StorageRefused": "The storage service answered {status}: {detail}",
+  "Problems.RuleViolation.KeyThroughSymlink": "'{key}' passes through a symbolic link of the repository.",
   "Problems.RuleViolation.GitRefused": "git answered: {detail}",
   "Problems.RuleViolation.StorageTestNotReadBack": "The test object was written but could not be read back.",
   "Problems.RuleViolation.StorageTestContentDiffers": "The test object read back does not match what was written.",
