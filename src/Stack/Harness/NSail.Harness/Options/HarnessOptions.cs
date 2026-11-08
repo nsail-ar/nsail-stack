@@ -88,6 +88,10 @@ public sealed class HarnessOptions
     // repository's own reviewer writes the same one.
     public string ReviewMarker { get; set; } = "harness:review";
 
+    // The logins whose gate and review markers on a PR count beside this harness's own: every
+    // harness of the fleet, so one reads another's verdicts. The same list on every harness.
+    public List<string> MarkerAuthors { get; set; } = [];
+
     // The Ops this Harness reports to (OpsOptions).
     public OpsOptions Ops { get; set; } = new();
 

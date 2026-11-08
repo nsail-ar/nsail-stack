@@ -31,6 +31,7 @@ public class ConfigurationTests
         Assert.True(o.Gate);
         Assert.Equal(".github/builder-prompt.md", o.Seats[o.Workers["develop"].Seat!].PromptFile);
         Assert.Equal("${vars:QA_USER}", o.Workers["test"].Variables["QA_USER"]);
+        Assert.Equal(["crew", "github-actions[bot]", "ana"], o.MarkerAuthors);
         Assert.Single(config.GetSection(ClaudeOptions.Section).Get<ClaudeOptions>()!.Plugins);
 
         var board = config.GetSection("Harness:Board").Get<GitHubBoardOptions>()!;
