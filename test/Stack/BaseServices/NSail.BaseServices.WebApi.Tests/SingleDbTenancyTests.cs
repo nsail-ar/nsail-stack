@@ -233,6 +233,7 @@ public sealed class SingleDbTenancyTests : IAsyncLifetime
         Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("stays"));
     }
 
+    // The refusal is not a blanket on updates: a row loaded under its tenant saves as always.
     [Fact]
     public async Task ATenantsOwnTrackedEntityStillUpdates()
     {
@@ -252,6 +253,7 @@ public sealed class SingleDbTenancyTests : IAsyncLifetime
         Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("after"));
     }
 
+    // The value half of the refusal: a tracked entry whose column was set to another tenant's key.
     [Fact]
     public async Task AHandSetTenantOnATrackedModifiedEntryIsRefused()
     {
@@ -267,6 +269,8 @@ public sealed class SingleDbTenancyTests : IAsyncLifetime
         db.Entry(note).Property("TenantId").CurrentValue = Tenant.For("vision").RowKey;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
+
+        Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("mine"));
     }
 
     async Task Write(string tenant, string text)
