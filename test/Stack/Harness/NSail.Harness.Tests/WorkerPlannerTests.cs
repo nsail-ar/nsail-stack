@@ -187,6 +187,54 @@ public class OrphanTests
         Assert.Empty(Plan(new Fixture().Story(1, "In-Progress", label).LockAge(1, label, TimeSpan.FromMinutes(1))).Chores);
     }
 
+    // A job's ending takes its label off before its PR opens; the fleet's lock and the grace span it.
+    [Fact]
+    public void AStoryAnotherHarnessHoldsIsNoOrphan()
+    {
+        Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromSeconds(10)).HeldBy(1, "box2")).Chores, c => c.Story == 1);
+        Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromHours(1)).HeldBy(1, "box2")).Chores, c => c.Story == 1);
+    }
+
+    [Fact]
+    public void AStoryTouchedWithinTheGraceIsNoOrphan()
+    {
+        Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromSeconds(10))).Chores, c => c.Story == 1);
+        Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromMinutes(9)).MergedPr(1)).Chores, c => c.Story == 1);
+    }
+
+    [Fact]
+    public void AStoryQuietPastTheGraceIsAnOrphan()
+    {
+        var plan = Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromMinutes(17)).Story(2, "In-Progress", quiet: TimeSpan.FromMinutes(11)).MergedPr(2));
+
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 1, Value: "Ready", NoPr: true });
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 2, Value: "Analyze", NoPr: true });
+    }
+
+    [Fact]
+    public void TheGraceIsTheOptions()
+    {
+        var f = new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromMinutes(3));
+
+        Assert.Contains(WorkerPlanner.Make(f.Build(), Workers, new PlannerOptions { OrphanGrace = TimeSpan.FromMinutes(2) }).Chores, c => c.Story == 1);
+        Assert.Equal(TimeSpan.FromMinutes(10), HarnessLoop.PlannerOptionsOf(new HarnessOptions()).OrphanGrace);
+        Assert.Equal(TimeSpan.FromMinutes(4), HarnessLoop.PlannerOptionsOf(new HarnessOptions { OrphanGraceMinutes = 4 }).OrphanGrace);
+    }
+
+    // Only a keeper that reads an absent PR waits: the others move the story on the pass that sees it.
+    [Fact]
+    public void EveryOtherKeeperMovesWithNoGrace()
+    {
+        var plan = Plan(new Fixture()
+            .Story(1, "-", quiet: TimeSpan.FromSeconds(5)).HeldBy(1, "box2")
+            .Story(2, "Backlog", "blocked", blockers: [9], quiet: TimeSpan.FromSeconds(5)).Story(9, "Merged")
+            .Story(100, "Ready", subs: 3, quiet: TimeSpan.FromSeconds(5)).Story(101, "In-Progress", parent: 100).Flying(dev: [101]));
+
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 1, Value: "Backlog", NoPr: false });
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 2, Value: "Analyze" });
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 100, Value: "In-Progress" });
+    }
+
     [Fact]
     public void WorkedOrWithAPrOrAnEpicIsNoOrphan()
     {

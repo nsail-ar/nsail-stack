@@ -47,9 +47,7 @@ public sealed class HttpRequestMessageBuilder
             return this;
         }
 
-        AppendQuery(
-            name,
-            Convert.ToString(value, CultureInfo.InvariantCulture)!);
+        AppendQuery(name, Format(value));
 
         return this;
     }
@@ -74,6 +72,24 @@ public sealed class HttpRequestMessageBuilder
         }
 
         return this;
+    }
+
+    /// <summary>Writes a route value as one escaped path segment, formatted invariantly.</summary>
+    public static string Segment<T>(T value)
+    {
+        return value is null ? string.Empty : Uri.EscapeDataString(Format(value));
+    }
+
+    static string Format(object value)
+    {
+        return value switch
+        {
+            DateTime v => v.ToString("O", CultureInfo.InvariantCulture),
+            DateTimeOffset v => v.ToString("O", CultureInfo.InvariantCulture),
+            DateOnly v => v.ToString("O", CultureInfo.InvariantCulture),
+            TimeOnly v => v.ToString("O", CultureInfo.InvariantCulture),
+            _ => Convert.ToString(value, CultureInfo.InvariantCulture)!
+        };
     }
 
     void AppendQuery(string name, string value)

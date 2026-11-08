@@ -25,11 +25,15 @@ sealed class Fixture
     readonly DateTimeOffset _now = DateTimeOffset.UtcNow;
 
     public Fixture Story(int n, string stage = "Ready", string labels = "", string? title = null,
-        int subs = 0, int[]? blockers = null, double parentPercent = -1, int parent = 0, bool milestone = false, double ownPercent = 0, int? blockersTotal = null)
+        int subs = 0, int[]? blockers = null, double parentPercent = -1, int parent = 0, bool milestone = false, double ownPercent = 0, int? blockersTotal = null,
+        TimeSpan? quiet = null)
     {
         _issues.Add(new Issue(n, title ?? $"story {n}",
             labels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(),
-            stage, subs, blockers ?? [], parentPercent, milestone, parent, ownPercent, blockersTotal ?? (blockers?.Length ?? 0)));
+            stage, subs, blockers ?? [], parentPercent, milestone, parent, ownPercent, blockersTotal ?? (blockers?.Length ?? 0))
+        {
+            TouchedAt = _now - quiet,
+        });
         return this;
     }
 
