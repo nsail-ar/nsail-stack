@@ -92,7 +92,8 @@
         _hasSecretKey = settings.HasSecretKey;
 
         // The secret key is deliberately absent from what the read answers, so the field starts
-        // empty on every visit and an untouched save keeps whatever is stored.
+        // empty on every visit; an empty save keeps the stored one only while Provider, Endpoint
+        // and Container stay as they are.
         args.Model = new SaveStorageSettings
         {
             Name = Name,
