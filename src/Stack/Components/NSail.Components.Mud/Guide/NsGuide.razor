@@ -189,9 +189,11 @@
             {
                 var read = await Reader.Read(open, token);
 
+                token.ThrowIfCancellationRequested();
+
                 _body = read;
                 _read = open;
-            });
+            }, RunOptions.Replace);
 
             Publish();
 

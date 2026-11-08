@@ -262,7 +262,11 @@ are asked in that same breath, for the reason and through the walk the list's ar
   Cancelar already uses — and the save goes through, which is what makes the keyboard's own
   trailing row cost nothing (Enter on the last row adds one, below). Asked only of a
   never-confirmed row: reopening a row and emptying its boxes is an EDIT, and the row's own rule
-  answers for that. **A grid that answers nothing commits or refuses every open row**, so no
+  answers for that. A row's Confirmar, Cancelar, Eliminar and Agregar, and the submit's close of
+  the row, do nothing while the host's Runner is busy: the row stays as it was, and a Guardar pressed
+  in that window saves nothing — the one mute `false` besides `Abort`, because closing the row would
+  raise on a Runner that refuses a second run.
+  **A grid that answers nothing commits or refuses every open row**, so no
   screen quietly sends a row its own rule would have thrown back — and the Stack derives nothing
   from `TRow`, where a default quantity and a blank description cannot be told from a line
   somebody meant. The counter sale is the screen that asked the question (cases);

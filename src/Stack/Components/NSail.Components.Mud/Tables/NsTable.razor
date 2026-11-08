@@ -913,7 +913,7 @@ else
     /// the same one-row-at-a-time rule the control keeps by being disabled.</summary>
     public void Add()
     {
-        if (!Editable || NewRow is null || IsBusy)
+        if (!Editable || NewRow is null || IsBusy || IsRunning)
         {
             return;
         }
@@ -952,6 +952,12 @@ else
         // change the row's own rule answers for (hosts.md).
         if (_editingIsNew && NewRowEmpty is not null && NewRowEmpty(row))
         {
+            // The remove notification cannot go out on a busy Runner; the row stays open.
+            if (IsRunning)
+            {
+                return false;
+            }
+
             await Discard(row);
 
             return true;
@@ -965,6 +971,12 @@ else
     /// the row is either closed or standing there with its reason drawn.</summary>
     async Task<bool> Commit(TRow item)
     {
+        // A second press while the first is being answered does nothing.
+        if (IsRunning)
+        {
+            return false;
+        }
+
         // What the last press refused is lifted before this one runs: a message standing beside
         // a value the user has already corrected says the row is still refused when it is not.
         Placement.Clear();
@@ -1024,6 +1036,11 @@ else
 
     async Task Cancel(TRow item)
     {
+        if (IsRunning)
+        {
+            return;
+        }
+
         // A row that was never confirmed exists only because the user asked for one; backing
         // out of it leaves nothing to fall back to, so it goes.
         if (_editingIsNew)
@@ -1051,6 +1068,11 @@ else
 
     Task Remove(TRow item)
     {
+        if (IsRunning)
+        {
+            return Task.CompletedTask;
+        }
+
         return Raise(OnRowRemove, new RowEditEventArgs<TRow> { Row = item });
     }
 

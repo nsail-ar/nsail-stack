@@ -605,7 +605,8 @@ placement on its context, the row's included — but only a field and the annota
 re-answer inside that pass; a "no" a page's `OnCommit` decided has nobody to re-raise it, so the
 submit settles the open row BEFORE it validates at all (next paragraph) rather than replaying a
 verdict. A row left refused never makes Guardar go mute — the submit runs or it draws its reason,
-and a collection that leaves the screen takes its refusal with it (cases).
+and a collection that leaves the screen takes its refusal with it (cases). The one other mute
+answer is a host whose Runner is busy: its row stays as it was and that Guardar saves nothing.
 
 **A row left OPEN is settled by the submit before the document is validated at all.** Its values
 are already the document's — the host appended the row when it was added, not when it was
@@ -617,7 +618,8 @@ that lifted it and a page's `OnCommit` has nobody to re-raise it, so without the
 lifts the row's "no" and the bad row reaches the server, whose answer lands at the form's foot in
 its own words a round trip later (cases).
 
-**The one row a submit may DROP is a new one the screen says nobody typed into**, and the screen
+**The one row a submit may DROP is a new one the screen says nobody typed into** (unless the host's
+Runner is busy: then it stays and nothing saves), and the screen
 is who says it (`NsTable.NewRowEmpty`, ui/hosts.md): a row minted by the keystroke that asked for
 the next line is not a line, so the submit takes it back out and saves what was typed. Every
 other open row is committed or refused by name — a row somebody did type into is never dropped in

@@ -153,8 +153,21 @@ else
         Reports.Add(args.Handled);
     }
 
-    void Remove(RowEditEventArgs<TestModel> args)
+    /// <summary>Holds the remove handler open until released, so a second press lands while the
+    /// first is still being answered.</summary>
+    public TaskCompletionSource? Gate { get; set; }
+
+    public int Removes { get; private set; }
+
+    async Task Remove(RowEditEventArgs<TestModel> args)
     {
+        Removes++;
+
+        if (Gate is not null)
+        {
+            await Gate.Task;
+        }
+
         _items.Remove(args.Row);
     }
 }
