@@ -30,6 +30,7 @@ it. A policy with no audience matches anyone, signed in or not:
 
 ```csharp
 services.AddSecurityEnforcement();
+services.AcceptPermissiveProviders();   // no Iam here: relations and tickets stay permissive
 services.AddAppPermissions();
 services.AddBuiltInPolicy(new Policy
 {

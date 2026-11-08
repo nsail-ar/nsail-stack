@@ -6,8 +6,8 @@ using Microsoft.Extensions.Hosting;
 
 namespace NSail.Security;
 
-/// <summary>Registered by <see cref="Setup.AcceptPermissiveProviders"/>: the host knows
-/// enforcement runs over the permissive Relation and Credential providers and says so.</summary>
+// Registered by AcceptPermissiveProviders: the host knows enforcement runs over the
+// permissive Relation and Credential providers and says so.
 sealed class PermissiveProvidersAccepted
 {
 }
@@ -46,9 +46,9 @@ sealed class SecurityProviderCheck : IHostedService
         if (missing.Count > 0)
         {
             throw new InvalidOperationException(
-                $"AddSecurityEnforcement is on but {string.Join(" and ", missing)} is still the permissive default, " +
-                "so every relation constraint passes and stale tickets are honoured. Register the Iam-backed providers " +
-                "(AddIam), or call AcceptPermissiveProviders() if this host has no Iam.");
+                $"AddSecurityEnforcement is on but {string.Join(" and ", missing)} {(missing.Count > 1 ? "are" : "is")} still the permissive default, " +
+                "so every relation constraint passes and stale tickets are honoured. Register the Iam-backed " +
+                "RelationProvider and CredentialProvider, or call AcceptPermissiveProviders() if this host has no Iam.");
         }
 
         return Task.CompletedTask;

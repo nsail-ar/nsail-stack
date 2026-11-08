@@ -353,6 +353,7 @@ public static class Web
         services.AddTasksInProcessClients();
 
         services.AddSecurityEnforcement();
+        services.AcceptPermissiveProviders();
         services.AddTasksPermissions();
         services.AddTasksPolicies();
 
