@@ -67,10 +67,15 @@ public sealed class Markers(string review)
         return thread.Where(n => string.Equals(n.Author, login, StringComparison.OrdinalIgnoreCase)).Select(n => n.Body);
     }
 
-    // A text with the protocol's markers taken out, for words that are not the harness's own.
+    // A text with the protocol's markers taken out until none remains (removing one can join the halves of another), for words that are not the harness's own.
     public string Strip(string text)
     {
-        return Regex.Replace(text, $@"<!--\s*(harness:gate|{Regex.Escape(review)}):[^>]*-->", "");
+        var marker = new Regex($@"<!--\s*(harness:gate|{Regex.Escape(review)}):[^>]*-->");
+        for (var shorter = marker.Replace(text, ""); shorter != text; shorter = marker.Replace(text, ""))
+        {
+            text = shorter;
+        }
+        return text;
     }
 
     // The gate's verdict at a head; `void` withdraws an earlier one, and the head is gated again. A

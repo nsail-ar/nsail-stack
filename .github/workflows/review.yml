@@ -205,7 +205,7 @@ jobs:
               exit 1 ;;
           esac
           # The marker counts rounds; the body is what people read.
-          { tail -n +2 "$FINDINGS"; echo; echo "<!-- vigia:$KIND:$SHA -->"; } > /tmp/review-body.md
+          { tail -n +2 "$FINDINGS" | sed -E ':a;s/<!--[[:space:]]*(harness:gate|vigia):[^>]*-->//;ta'; echo; echo "<!-- vigia:$KIND:$SHA -->"; } > /tmp/review-body.md
 
           # A native review needs a second identity (the PAT opened the PR). If the repository
           # refuses Actions reviews, the same text lands as a comment.

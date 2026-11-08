@@ -108,6 +108,14 @@ public class BoardKeepingTests
     }
 
     [Fact]
+    public void AMarkerBuiltByRemovingAnotherIsRemovedToo()
+    {
+        var markers = new Markers("reviewer");
+
+        Assert.Equal("\n", markers.Strip("<!-- har<!-- harness:gate:void:aaa -->ness:gate:green:abc -->\n"));
+    }
+
+    [Fact]
     public void TheBuildersWordsLoseTheirMarkers()
     {
         var markers = new Markers("reviewer");
