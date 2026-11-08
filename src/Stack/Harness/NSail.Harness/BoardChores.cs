@@ -3,6 +3,7 @@
 
 using NSail.Harness.Board;
 using NSail.Harness.Planning;
+using NSail.Harness.Workers;
 
 namespace NSail.Harness;
 
@@ -10,9 +11,15 @@ namespace NSail.Harness;
 // this pass: a comment that follows a move must not be said while the move does not happen.
 static class BoardChores
 {
-    // read: each story's column as the pass's read saw it. A move is written only over that column:
-    // one a hand set since stays. The board has no conditional write, so this narrows the race to
-    // one read and one write.
+    // Each story's column as the pass's read saw it.
+    public static IReadOnlyDictionary<int, string> ReadOf(IEnumerable<Issue> issues)
+    {
+        return issues.DistinctBy(i => i.Number).ToDictionary(i => i.Number, i => i.Stage);
+    }
+
+    // A keeper's move is written only over the column the pass read: one a hand set since stays. A
+    // story a keeper moves is in the read. The board has no conditional write, so this narrows the
+    // race to one read and one write. A worker's Starting move is the job's and is written as planned.
     public static async Task Do(IBoard board, IReadOnlyList<Chore> chores, IReadOnlyDictionary<int, string> read,
         string signature, ILogger log, CancellationToken ct)
     {
@@ -29,8 +36,9 @@ static class BoardChores
                         await board.RemoveLabel(c.Story, c.Value);
                         break;
                     case ChoreKind.MoveStage:
-                        if (expected.TryGetValue(c.Story, out var saw))
+                        if (WorkerPlanner.Kept(c))
                         {
+                            var saw = expected[c.Story];
                             var now = await board.StageOf(c.Story, ct);
                             if (now != saw)
                             {

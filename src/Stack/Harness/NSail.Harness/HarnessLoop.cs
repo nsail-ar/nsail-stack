@@ -360,7 +360,7 @@ public sealed class HarnessLoop(
                 call = PassCall.Closed;
                 await SweepClosed(stop);
                 call = PassCall.Chores;
-                await BoardChores.Do(board, plan.Chores, snapshot.Issues.DistinctBy(i => i.Number).ToDictionary(i => i.Number, i => i.Stage), o.Texts.Signature, log, stop);
+                await BoardChores.Do(board, plan.Chores, BoardChores.ReadOf(snapshot.Issues), o.Texts.Signature, log, stop);
                 call = PassCall.Start;
                 if (Paused is null)
                 {

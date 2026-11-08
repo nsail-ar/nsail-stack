@@ -18,6 +18,8 @@ namespace NSail.Harness.Workers;
 // here and a driver this machine cannot run hold it below any filter.
 public static class WorkerPlanner
 {
+    const string Executed = "Executed";
+
     public static Plan Make(BoardSnapshot board, IReadOnlyList<Worker> workers, PlannerOptions options, Func<Worker, bool>? may = null)
     {
         may ??= _ => true;
@@ -33,7 +35,7 @@ public static class WorkerPlanner
             // A story a job works is that job's to move.
             foreach (var i in issues.Where(i => !Busy(i, flight, options) && keeper.Takes(i, null, null, lookup)))
             {
-                chores.AddRange(ChoresOf(keeper, "Executed", i));
+                chores.AddRange(ChoresOf(keeper, Executed, i));
             }
         }
 
@@ -212,6 +214,12 @@ public static class WorkerPlanner
         }
         var tier = bug ? "bug" : red ? "red" : i.Has(Labels.P1) ? "p1" : i.ParentPercent > 0 ? "epic" : "rest";
         return new WorkItem(w.Kind!.Value, i.Number, null, tier, tier, Worker: w.Name);
+    }
+
+    // A keeper's chore: planned from the pass's read, with no job's lock on the story behind it.
+    internal static bool Kept(Chore c)
+    {
+        return c.Why.EndsWith($": {Executed}", StringComparison.Ordinal);
     }
 
     // A worker's actions on a story, as chores the loop applies: what is already so is left out.

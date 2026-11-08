@@ -69,10 +69,11 @@ the files it leaves.
     repository; any other is the repository's. A pass: the UpdateBoard keepers, every story worker over
     the `bug` stories (broken where a customer runs: before a release too, and past the WIP limit), the
     workers on their own, then every story worker over the p1 stories, then over the rest; one job per
-    story per pass. A keeper's `MoveTo` is written only while the story's column is still the one the
-    pass read: one a hand set since stays, the pass logs the dropped move, and the story gets no other
-    chore that pass. A failed pass logs the call it was making, the provider's status and the rate limit
-    it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
+    story per pass. A keeper's (`On.Executed`) `MoveTo` is written only while the story's column is
+    still the one the pass read: one a hand set since stays, the pass logs the dropped move, and the
+    story gets no other chore that pass. A story worker's `On.Starting` `MoveTo` goes with its job and
+    is written as planned. A failed pass logs the call it was making, the provider's status and the
+    rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for
     it names all three. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at

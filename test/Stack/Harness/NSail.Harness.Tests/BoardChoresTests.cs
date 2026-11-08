@@ -36,7 +36,7 @@ public class BoardChoresTests
         var snapshot = read.Build();
         var plan = SampleWorkers.Plan(snapshot);
         var log = new Lines();
-        await BoardChores.Do(board, plan.Chores, snapshot.Issues.ToDictionary(i => i.Number, i => i.Stage), "— harness", log, CancellationToken.None);
+        await BoardChores.Do(board, plan.Chores, BoardChores.ReadOf(snapshot.Issues), "— harness", log, CancellationToken.None);
         return log;
     }
 
@@ -114,5 +114,17 @@ public class BoardChoresTests
         await Run(new Fixture().Story(1, "-", "blocked", blockers: [2]).Story(2, "Merged"), board);
 
         Assert.Equal("Analyze", board.Cards[1].Stage);
+    }
+
+    [Fact]
+    public async Task AWorkersStartingMoveIsWrittenAsPlanned()
+    {
+        var board = new MemoryBoard();
+        board.Add(900, stage: "Backlog", labels: "stalled");
+
+        var log = await Run(new Fixture().Story(900, "Ready", "stalled"), board);
+
+        Assert.Equal("Analyze", board.Cards[900].Stage);
+        Assert.DoesNotContain(log.Written, l => l.Contains("dropped"));
     }
 }
