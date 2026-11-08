@@ -122,14 +122,26 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         {
             if (r.TryGetProperty("submitted_at", out var at) && at.ValueKind == JsonValueKind.String)
             {
-                all.Add(new PrNote(at.GetDateTimeOffset(), r.GetProperty("body").GetString() ?? ""));
+                all.Add(new PrNote(at.GetDateTimeOffset(), r.GetProperty("body").GetString() ?? "", LoginOf(r)));
             }
         }
         foreach (var c in await gh.GetAll($"repos/{repo}/issues/{pr}/comments?per_page=100", ct: ct))
         {
-            all.Add(new PrNote(c.GetProperty("created_at").GetDateTimeOffset(), c.GetProperty("body").GetString() ?? ""));
+            all.Add(new PrNote(c.GetProperty("created_at").GetDateTimeOffset(), c.GetProperty("body").GetString() ?? "", LoginOf(c)));
         }
         return all.OrderBy(b => b.At).ToList();
+    }
+
+    static string LoginOf(JsonElement e)
+    {
+        return e.TryGetProperty("user", out var u) && u.ValueKind == JsonValueKind.Object && u.TryGetProperty("login", out var l) ? l.GetString() ?? "" : "";
+    }
+
+    string? _login;
+
+    public async Task<string> Login(CancellationToken ct = default)
+    {
+        return _login ??= (await gh.Get("user", ct)).GetProperty("login").GetString() ?? "";
     }
 
     public async Task<IReadOnlyList<string>> Files(int pr, CancellationToken ct = default)
