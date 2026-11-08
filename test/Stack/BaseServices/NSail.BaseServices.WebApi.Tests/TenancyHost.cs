@@ -20,6 +20,8 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using NSail.Data;
 using NSail.Data.Testing;
+using NSail.Messaging;
+using NSail.Messaging.Runtime.Sending;
 using NSail.Security;
 
 namespace NSail.BaseServices.WebApi.Tests;
@@ -276,6 +278,11 @@ public sealed class TenancyHost : IAsyncDisposable
         }
 
         PushProbes.Register(builder.Services);
+
+        // A send a circuit makes (TenantStateOpenWorkTests), through the real pipeline: the
+        // outermost send opens a scope of its own and every interceptor is built from it.
+        builder.Services.AddScoped<IHandler<Knocked>, KnockedHandler>();
+        builder.Services.AddScoped<ISender<Knocked>, InProcessSender<Knocked>>();
 
         // The push's lines, so a listener here is waited for on the server's side as it is in
         // PushTests: the handshake a client returns on precedes the audience it joins.

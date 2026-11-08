@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Data;
 using NSail.Messaging;
+using NSail.Messaging.Runtime;
 using NSail.Problems;
 using NSail.Messaging.WebApi.Push;
 using NSail.Security;
@@ -44,6 +45,32 @@ public sealed class TenantStateOpenWorkTests
 
         Assert.Equal(503, refusal.Status);
         Assert.Equal(2, reached);
+    }
+
+    // The shape a circuit's event has: a flow carrying the circuit's tenant (TenancyCircuit
+    // enters it on every inbound activity) and a caller's scope that never entered one, whose
+    // outermost send builds the wall from a scope of the send's own.
+    [Fact]
+    public async Task A_circuits_send_through_the_pipeline_is_refused_once_the_memo_expires_on_a_suspension()
+    {
+        var clock = new TestClock();
+
+        await using var host = await TenancyHost.Start(TenancyMode.SingleDb, clock: clock);
+
+        await Circuit(host, async mediator =>
+        {
+            await mediator.Send(new Knocked());
+
+            await Suspend(host);
+
+            await mediator.Send(new Knocked());
+
+            clock.Advance(TimeSpan.FromMinutes(2));
+
+            var refusal = await Assert.ThrowsAsync<BusinessException>(() => mediator.Send(new Knocked()));
+
+            Assert.Equal(503, refusal.Status);
+        });
     }
 
     [Fact]
@@ -100,6 +127,15 @@ public sealed class TenantStateOpenWorkTests
         return scope;
     }
 
+    static async Task Circuit(TenancyHost host, Func<Mediator, Task> events)
+    {
+        AmbientTenant.Enter(Tenant.For(Slug));
+
+        await using var scope = host.Services.CreateAsyncScope();
+
+        await events(scope.ServiceProvider.GetRequiredService<Mediator>());
+    }
+
     static async Task Suspend(TenancyHost host)
     {
         await using var scope = host.Services.CreateAsyncScope();
@@ -118,5 +154,17 @@ public sealed class TenantStateOpenWorkTests
             get { return Session.System(); }
             set { }
         }
+    }
+}
+
+public sealed class Knocked : IMessage
+{
+}
+
+sealed class KnockedHandler : IHandler<Knocked>
+{
+    public Task Handle(Knocked message, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
     }
 }
