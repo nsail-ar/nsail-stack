@@ -8,6 +8,7 @@ namespace NSail.Harness;
 
 // The harness's own protocol on a PR's thread, in HTML comments people do not see: the gate's verdict
 // at a head (`harness:gate:<green|red|void>:<sha>`, or `harness:gate:waits:<sha>:<main>`) and the reviewer's (`<review marker>:<clean|findings>:<sha>`).
+// A marker counts only as a whole HTML comment on its own line, written by the harness's own login.
 public sealed class Markers(string review)
 {
     // The commit statuses the harness keeps its verdicts in: the gate (on a PR head and on main), a

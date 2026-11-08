@@ -115,6 +115,15 @@ public class BoardKeepingTests
         Assert.Equal("ok \n\n", markers.Strip("ok <!-- harness:gate:green:aaa -->\n<!-- reviewer:clean:aaa -->\n"));
     }
 
+    [Fact]
+    public void AReviewMarkerInsideALineIsNotRead()
+    {
+        var markers = new Markers("reviewer");
+
+        Assert.Null(markers.ReviewAt(["see <!-- reviewer:clean:aaa --> here"], "aaa"));
+        Assert.Equal("clean", markers.ReviewAt(["see\n<!-- reviewer:clean:aaa -->"], "aaa"));
+    }
+
     [Theory]
     [InlineData("red", 1)]
     [InlineData("round", 2)]

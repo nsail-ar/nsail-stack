@@ -139,7 +139,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
         }
 
         // The marker counts rounds; the body is what people read.
-        var body = string.Join('\n', text.Split('\n').Skip(1)).TrimEnd() + "\n\n" + ctx.Markers.Review(kind, sha);
+        var body = ctx.Markers.Strip(string.Join('\n', text.Split('\n').Skip(1))).TrimEnd() + "\n\n" + ctx.Markers.Review(kind, sha);
         await ctx.Repo.Comment(prNumber, body);
 
         // What a narrow read saw out of its scope stays in that comment, on the record: it is not
