@@ -37,19 +37,19 @@ public sealed class NsTableFailedReadTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public async Task AFailedSecondPageAppendsNothingAndTheRetryAsksForIt()
+    public void AFailedSecondPageAppendsNothingAndTheRetryAsksForIt()
     {
         var cut = Render<ScrollTableHost>(p => p.Add(x => x.Failing, new HashSet<int> { 2 }));
 
         cut.WaitForAssertion(() => Assert.Equal(25, cut.FindAll(".ns-table .mud-table-body tr.mud-table-row").Count));
 
-        await cut.Find(".ns-table-more button").ClickAsync(new());
+        cut.Find(".ns-table-more button").Click();
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-table-retry")));
         Assert.Equal(25, cut.FindAll(".ns-table .mud-table-body tr.mud-table-row").Count);
         Assert.Empty(cut.FindAll(".ns-table-more"));
 
-        await cut.Find(".ns-table-retry").ClickAsync(new());
+        cut.Find(".ns-table-retry").Click();
 
         cut.WaitForAssertion(() => Assert.Equal(50, cut.FindAll(".ns-table .mud-table-body tr.mud-table-row").Count));
         Assert.Contains("Row 025", cut.Markup);
@@ -62,17 +62,46 @@ public sealed class NsTableFailedReadTests : BunitContext, IAsyncLifetime
         var cut = Render<ScrollTableHost>(p => p.Add(x => x.Failing, new HashSet<int> { 1 }));
 
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-table-retry")));
-        Assert.DoesNotContain("No records", cut.Markup);
+        Assert.DoesNotContain("Common.NoRecords", cut.Markup);
         Assert.Empty(cut.FindAll(".ns-table-loading-overlay"));
     }
 
     [Fact]
-    public async Task AnEmptySuccessfulReadStillSaysNoRecords()
+    public void AnEmptySuccessfulReadStillSaysNoRecords()
     {
         var cut = Render<ScrollTableHost>(p => p.Add(x => x.Total, 0));
 
         cut.WaitForAssertion(() => Assert.Contains("Common.NoRecords", cut.Markup));
         Assert.Empty(cut.FindAll(".ns-table-retry"));
-        await Task.CompletedTask;
+    }
+
+    [Fact]
+    public void APagedFirstReadThatFailedIsNotNoRecords()
+    {
+        var cut = Render<ScrollTableHost>(p => p
+            .Add(x => x.Mode, NsTableMode.Page)
+            .Add(x => x.Yields, true)
+            .Add(x => x.Failing, new HashSet<int> { 1 }));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-table-retry")));
+        Assert.DoesNotContain("Common.NoRecords", cut.Markup);
+        Assert.Equal(1, cut.Instance.Queries);
+    }
+
+    [Fact]
+    public void AFailedPageKeepsThePagerOnTheShownPageWithoutAskingAgain()
+    {
+        var cut = Render<ScrollTableHost>(p => p
+            .Add(x => x.Mode, NsTableMode.Page)
+            .Add(x => x.Yields, true)
+            .Add(x => x.Failing, new HashSet<int> { 2 }));
+
+        cut.WaitForAssertion(() => Assert.Contains("Row 000", cut.Markup));
+
+        cut.FindAll(".mud-table-pagination-actions button")[2].Click();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-table-retry")));
+        Assert.Equal(2, cut.Instance.Queries);
+        Assert.Contains("Row 000", cut.Markup);
     }
 }

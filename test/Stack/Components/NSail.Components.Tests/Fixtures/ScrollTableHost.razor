@@ -31,6 +31,10 @@
     [Parameter]
     public ISet<int> Failing { get; set; } = new HashSet<int>();
 
+    /// <summary>Whether the handler yields; scroll mode always needs it, paged only to flow Rows.</summary>
+    [Parameter]
+    public bool? Yields { get; set; }
+
     public int Queries { get; private set; }
 
     DataPage<TestModel> Page { get; set; } = DataPage<TestModel>.Empty();
@@ -58,8 +62,8 @@
         };
 
         // A real handler yields, and that is what lets the renderer flow the page just written
-        // down to the Rows parameter before a scrolling table reads it back.
-        if (Mode == NsTableMode.Scroll)
+        // down to the Rows parameter before the table reads it back.
+        if (Yields ?? Mode == NsTableMode.Scroll)
         {
             await Task.Yield();
         }

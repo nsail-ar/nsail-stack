@@ -30,6 +30,7 @@
     // on an answer nobody has yet — exactly the claim _hasLoaded exists to refuse. Null while
     // the overlay's own condition holds (IsRunning || !_hasLoaded) is the other face of
     // loadingOverlay below; once it is false either a real empty list draws here or rows do.
+    RenderFragment? pagedNoRecords = _failed ? null : noRecords;
     RenderFragment? scrollNoRecords = IsRunning || !_hasLoaded || _failed ? null : noRecords;
 
     // Built once per render whether or not it draws here: a page header elsewhere on this
@@ -225,14 +226,6 @@
           </div>
         : null;
 
-    @* The keyboard's way in where the bar does not draw one — a page adding from chrome of its
-       own (AddControl off) or a grid the page around it already names. The grid keeps the
-       control either way, so the key presses the same code the click presses and the host goes
-       on deciding what adding a row means (ns.js, the Enter policy): what the page draws is the
-       page's and is never pressed from here. Clipped rather than display:none, which the
-       keystroke reads as no way in at all, and out of both the accessibility tree and the tab
-       order: the hand's way in is the one the page drew, and a second control under the same
-       name is the shape the one-seat rule refuses (hosts.md). *@
     // A read that did not land is neither rows nor an empty list: it says so and offers the
     // read again (hosts.md, a failed read is not an empty read). The words of the refusal were
     // already reported through the host; this is the grid's own state beside it.
@@ -243,6 +236,14 @@
           </NsStack>
         : null;
 
+    @* The keyboard's way in where the bar does not draw one — a page adding from chrome of its
+       own (AddControl off) or a grid the page around it already names. The grid keeps the
+       control either way, so the key presses the same code the click presses and the host goes
+       on deciding what adding a row means (ns.js, the Enter policy): what the page draws is the
+       page's and is never pressed from here. Clipped rather than display:none, which the
+       keystroke reads as no way in at all, and out of both the accessibility tree and the tab
+       order: the hand's way in is the one the page drew, and a second control under the same
+       name is the shape the one-seat rule refuses (hosts.md). *@
     RenderFragment? undrawnAdd = Editable && NewRow is not null && !BarAdds
         ? @<button type="button" class="ns-cells-add ns-cells-add-undrawn" tabindex="-1" aria-hidden="true" disabled="@IsBusy" @onclick="Add"></button>
         : null;
@@ -346,7 +347,7 @@ else if (OnQuery.HasDelegate)
                 @problemRow(context)
             </ChildRowContent>
             <NoRecordsContent>
-                @noRecords
+                @pagedNoRecords
             </NoRecordsContent>
             <PagerContent>
                 <MudTablePager />
@@ -451,6 +452,8 @@ else
     bool _failed;
     bool _reading;
     bool _readReported;
+    int _readEpoch;
+    int? _serveShown;
     int _shownPage;
 
     // Which read is the current one, in both branches. Replacing a read only cancels it, and a
@@ -1068,6 +1071,19 @@ else
     /// count only the rows in hand and conclude there is a single page.</summary>
     async Task<TableData<TRow>> LoadPage(TableState state, CancellationToken cancellationToken)
     {
+        // The pager going back to the page shown after a failed read asks for that page again:
+        // the rows are in hand, so the answer is theirs and no second query is made.
+        if (_serveShown == state.Page)
+        {
+            _serveShown = null;
+
+            return new TableData<TRow>
+            {
+                Items = _page.Items,
+                TotalItems = _page.TotalCount
+            };
+        }
+
         var generation = ++_generation;
 
         var args = new QueryEventArgs
@@ -1080,7 +1096,7 @@ else
         // while the previous page is still arriving asks again at once, and a second run on a
         // busy Runner throws — the vendor swallows that, so the search was simply lost and the
         // grid kept showing rows the new filter excludes.
-        var failed = await Read(args, RunOptions.Replace);
+        var outcome = await Read(args, RunOptions.Replace);
 
         // The page asked for last is also the one whose answer wins. A read superseded while it
         // was in flight still gets here — its handler ignored the cancellation, or honoured it
@@ -1090,7 +1106,11 @@ else
         // either, which the vendor bounds against that total right after the assign. Throwing
         // instead is not available — nothing in MudTable catches, and the escape lands on
         // NsErrorBoundary, which wraps the whole @Body, header and NUEVO link included.
-        if (generation == _generation && failed)
+        if (generation == _generation && outcome == ReadOutcome.Superseded)
+        {
+            // Another read took the Runner: its rows are what the grid shows now.
+        }
+        else if (generation == _generation && outcome == ReadOutcome.Failed)
         {
             // Not an answer: the rows stay the page that was shown, and so does the pager, which
             // the vendor already moved to the page asked for.
@@ -1099,9 +1119,8 @@ else
 
             if (_table is { } table && table.CurrentPage != _shownPage)
             {
-                var shown = _shownPage;
-
-                _ = InvokeAsync(() => table.NavigateTo(shown));
+                _serveShown = _shownPage;
+                table.NavigateTo(_shownPage);
             }
         }
         else if (generation == _generation)
@@ -1236,8 +1255,9 @@ else
 
     // Raise reports a refusal or a throw to the host and returns normally, so whether the read
     // landed is read off the report; a cancellation nobody superseded leaves no report at all.
-    async Task<bool> Read(QueryEventArgs args, RunOptions options)
+    async Task<ReadOutcome> Read(QueryEventArgs args, RunOptions options)
     {
+        var epoch = ++_readEpoch;
         _reading = true;
         _readReported = false;
 
@@ -1250,7 +1270,26 @@ else
             _reading = false;
         }
 
-        return _readReported || args.Problem is not null || args.CancellationToken.IsCancellationRequested;
+        if (_readReported || args.Problem is not null)
+        {
+            return ReadOutcome.Failed;
+        }
+
+        if (args.CancellationToken.IsCancellationRequested)
+        {
+            // Cancelled by another read (an export takes the Runner too) is that read's to
+            // answer; cancelled with nobody after it is a read that never landed.
+            return epoch == _readEpoch ? ReadOutcome.Failed : ReadOutcome.Superseded;
+        }
+
+        return ReadOutcome.Landed;
+    }
+
+    enum ReadOutcome
+    {
+        Landed,
+        Failed,
+        Superseded
     }
 
     Task FetchNext()
@@ -1274,7 +1313,7 @@ else
             PageSize = ScrollPageSize
         };
 
-        var failed = await Read(args, options);
+        var outcome = await Read(args, options);
 
         // A reload that landed while this page was in flight already owns the list, and this
         // answer describes the result set it replaced — appending it would mix two searches.
@@ -1283,7 +1322,14 @@ else
             return;
         }
 
-        if (failed)
+        if (outcome == ReadOutcome.Superseded)
+        {
+            _fetching = false;
+
+            return;
+        }
+
+        if (outcome == ReadOutcome.Failed)
         {
             _failed = true;
             _fetching = false;
@@ -1342,6 +1388,8 @@ else
 
             return Fetch(_generation, RunOptions.Replace);
         }
+
+        _serveShown = null;
 
         if (_table is null)
         {
@@ -1674,6 +1722,7 @@ else
 
             // Replace, for the same reason LoadPage replaces: a page the pager asked for may still
             // be in flight, and a second run on a busy Runner throws.
+            _readEpoch++;
             await Raise(OnQuery, args, RunOptions.Replace);
 
             refused = args.Problem is not null;
