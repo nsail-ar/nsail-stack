@@ -132,7 +132,7 @@ public sealed class QueueDeliveryLoopTests
             Body = "{}",
             EnqueuedAt = now,
             NextAttemptAt = now,
-            Attempts = deadLettered is null ? 0 : 3,
+            Attempts = deadLettered is null ? 0 : Options().MaxAttempts,
             DeadLetteredAt = deadLettered,
         };
     }
