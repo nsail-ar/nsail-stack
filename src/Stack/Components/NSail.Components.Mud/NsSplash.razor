@@ -44,10 +44,19 @@
                    logo answers, content moving for a state that carries no information. A wide
                    lockup still corrects once its real ratio is known: one resize, not the two a
                    bare height:auto draws. *@
-                <div id="ns-splash-logo" data-logo="@LogoUrl"
+                <div id="ns-splash-logo" data-logo="@LogoUrl" data-dark-logo="@DarkLogoUrl"
                      style="width:100%; color:var(--mud-palette-primary, #8a8782);">
-                    <img src="@LogoUrl" alt="" style="width:100%; height:auto; max-width:100%; aspect-ratio:auto 1 / 1; object-fit:contain;"
-                         onerror="this.style.display='none'; this.parentElement.dataset.failed='1';" />
+                    @* The first frame, before the inlined mark replaces it: the OS scheme picks the
+                       file here, and the script below picks by the ground the splash is actually
+                       painted on once it has measured it. *@
+                    <picture>
+                        @if (DarkLogoUrl is not null)
+                        {
+                            <source media="(prefers-color-scheme: dark)" srcset="@DarkLogoUrl" />
+                        }
+                        <img src="@LogoUrl" alt="" style="width:100%; height:auto; max-width:100%; aspect-ratio:auto 1 / 1; object-fit:contain;"
+                             onerror="this.style.display='none'; this.closest('#ns-splash-logo').dataset.failed='1';" />
+                    </picture>
                 </div>
             }
 
@@ -141,6 +150,28 @@
             .catch(() => { });
     })();
 
+    // The mark is chosen by the ground the splash is painted on, read back from its own
+    // background: the theme variables are the same ones the page then wears, so the mark and the
+    // ground cannot disagree. The OS scheme answers only where nothing is painted yet.
+    function logoUrl(host) {
+        const dark = host.dataset.darkLogo && splashIsDark();
+
+        return dark ? host.dataset.darkLogo : host.dataset.logo;
+    }
+
+    function splashIsDark() {
+        const splash = document.getElementById("ns-splash");
+        const channels = splash ? getComputedStyle(splash).backgroundColor.match(/[d.]+/g) : null;
+
+        if (channels && channels.length >= 3 && !(channels.length > 3 && Number(channels[3]) === 0)) {
+            const [r, g, b] = channels.map(Number);
+
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b < 128;
+        }
+
+        return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+
     (function () {
         const host = document.getElementById("ns-splash-logo");
 
@@ -153,7 +184,7 @@
         // its own baked colours through the <img> that is already here. Sized the same as the
         // <img> fallback above (the block's own width, height following the ratio), then fitted
         // to its artwork in this same task so the block lays out once.
-        fetch(host.dataset.logo, { credentials: "same-origin" })
+        fetch(logoUrl(host), { credentials: "same-origin" })
             .then(response => {
                 const type = (response.headers.get("content-type") || "").split(";")[0].trim();
 
@@ -207,6 +238,12 @@
     /// <c>&lt;img&gt;</c>.</summary>
     [Parameter]
     public string? LogoUrl { get; set; }
+
+    /// <summary>The same mark for a dark ground, where the brand has one: the splash wears it
+    /// when its own background is dark. Same route family and same sanitized-SVG rule as
+    /// <see cref="LogoUrl"/>; unset, the one logo serves both grounds.</summary>
+    [Parameter]
+    public string? DarkLogoUrl { get; set; }
 
     /// <summary>The app's anonymous branding-info route (Optical/Therapy pass
     /// "api/branding/public") — read only for its <c>Name</c>, rendered under the logo (or

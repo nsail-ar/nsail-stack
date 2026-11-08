@@ -16,7 +16,6 @@
 @inject LanguageProvider Language
 @inject IJSRuntime JS
 @inject IScrollListenerFactory ScrollListeners
-@inject IBrowserViewportService Viewport
 @inject IServiceProvider Services
 
 @{
@@ -426,10 +425,8 @@ else
     // vendor's scroll listener to THIS table's container rather than the first one on screen.
     readonly string _instance = $"ns-table-{Guid.NewGuid():N}";
     readonly List<TRow> _scrolled = [];
-    readonly Guid _viewportSubscription = Guid.NewGuid();
     IScrollListener? _listener;
     IDeviceProvider? _devices;
-    Breakpoint? _breakpoint;
     bool _askedDevice;
     int _nextPage;
     bool _started;
@@ -1104,11 +1101,6 @@ else
             declaring.SetResult();
         }
 
-        if (firstRender && Mode == NsTableMode.Auto)
-        {
-            await SubscribeToViewport();
-        }
-
         if (!OnQuery.HasDelegate || !Scrolls)
         {
             return;
@@ -1169,45 +1161,6 @@ else
         {
             _listener = null;
         }
-    }
-
-    // Same reason, same blast radius: SubscribeAsync is raw JS interop (ListenForResize, plus
-    // GetBrowserWindowSize for the immediate answer) and lets a JSException straight out. A
-    // viewport that cannot be measured costs the measurement and nothing else — no branch of
-    // this table depends on one arriving.
-    async Task SubscribeToViewport()
-    {
-        try
-        {
-            await Viewport.SubscribeAsync(
-                _viewportSubscription,
-                OnViewportChanged,
-                new ResizeOptions { NotifyOnBreakpointOnly = true },
-                fireImmediately: true);
-        }
-        catch
-        {
-            _breakpoint = null;
-        }
-    }
-
-    void OnViewportChanged(BrowserViewportEventArgs args)
-    {
-        // A width of zero is not a narrow window, it is nobody measuring: the service answers
-        // its immediate notification from whatever the JS side hands back, which off a browser
-        // (bUnit, prerender) is an empty size that classifies as the smallest breakpoint.
-        if (args.BrowserWindowSize is not { Width: > 0 })
-        {
-            return;
-        }
-
-        if (_breakpoint == args.Breakpoint)
-        {
-            return;
-        }
-
-        _breakpoint = args.Breakpoint;
-        _ = InvokeAsync(StateHasChanged);
     }
 
     void HandleScroll(object? sender, ScrollEventArgs args)
@@ -1644,9 +1597,8 @@ else
         }
     }
 
-    // The two JS-side subscriptions are dropped without awaiting them: NsComponent's teardown is
-    // synchronous, and the JS side of a listener whose circuit is going away has nothing left
-    // to report to.
+    // The scroll listener is dropped without awaiting it: NsComponent's teardown is synchronous,
+    // and the JS side of a listener whose circuit is going away has nothing left to report to.
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -1657,8 +1609,6 @@ else
                 _ = _listener.DisposeAsync();
                 _listener = null;
             }
-
-            _ = Viewport.UnsubscribeAsync(_viewportSubscription);
 
             // An export in flight has a screen to put its file on no longer, and its next page
             // would be a round trip asked for by nobody.
