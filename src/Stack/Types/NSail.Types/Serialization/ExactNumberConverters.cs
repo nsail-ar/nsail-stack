@@ -9,7 +9,8 @@ namespace NSail.Serialization;
 
 // A JSON number is a double to every JavaScript reader: past 2^53 an integer, and past 15 or
 // so digits a decimal, loses its tail. These types travel as strings; reading accepts either
-// form, so a client that still writes numbers keeps working.
+// form, so a client that still writes numbers keeps working. A text that does not parse is a
+// JsonException, which the endpoint answers as a malformed body, not a failure of its own.
 sealed class Int64StringConverter : JsonConverter<long>
 {
     public override long Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -19,12 +20,37 @@ sealed class Int64StringConverter : JsonConverter<long>
             return reader.GetInt64();
         }
 
-        return long.Parse(reader.GetString() ?? string.Empty, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture);
+        if (reader.TokenType != JsonTokenType.String)
+        {
+            throw new JsonException($"A {reader.TokenType} is not a number.");
+        }
+
+        return Parse(reader.GetString());
     }
 
     public override void Write(Utf8JsonWriter writer, long value, JsonSerializerOptions options)
     {
         writer.WriteStringValue(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    public override long ReadAsPropertyName(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return Parse(reader.GetString());
+    }
+
+    public override void WriteAsPropertyName(Utf8JsonWriter writer, long value, JsonSerializerOptions options)
+    {
+        writer.WritePropertyName(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    static long Parse(string? text)
+    {
+        if (long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value))
+        {
+            return value;
+        }
+
+        throw new JsonException($"'{text}' is not a long.");
     }
 }
 
@@ -37,12 +63,37 @@ sealed class UInt64StringConverter : JsonConverter<ulong>
             return reader.GetUInt64();
         }
 
-        return ulong.Parse(reader.GetString() ?? string.Empty, NumberStyles.None, CultureInfo.InvariantCulture);
+        if (reader.TokenType != JsonTokenType.String)
+        {
+            throw new JsonException($"A {reader.TokenType} is not a number.");
+        }
+
+        return Parse(reader.GetString());
     }
 
     public override void Write(Utf8JsonWriter writer, ulong value, JsonSerializerOptions options)
     {
         writer.WriteStringValue(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    public override ulong ReadAsPropertyName(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return Parse(reader.GetString());
+    }
+
+    public override void WriteAsPropertyName(Utf8JsonWriter writer, ulong value, JsonSerializerOptions options)
+    {
+        writer.WritePropertyName(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    static ulong Parse(string? text)
+    {
+        if (ulong.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var value))
+        {
+            return value;
+        }
+
+        throw new JsonException($"'{text}' is not a ulong.");
     }
 }
 
@@ -55,11 +106,36 @@ sealed class DecimalStringConverter : JsonConverter<decimal>
             return reader.GetDecimal();
         }
 
-        return decimal.Parse(reader.GetString() ?? string.Empty, NumberStyles.Float, CultureInfo.InvariantCulture);
+        if (reader.TokenType != JsonTokenType.String)
+        {
+            throw new JsonException($"A {reader.TokenType} is not a number.");
+        }
+
+        return Parse(reader.GetString());
     }
 
     public override void Write(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options)
     {
         writer.WriteStringValue(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    public override decimal ReadAsPropertyName(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return Parse(reader.GetString());
+    }
+
+    public override void WriteAsPropertyName(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options)
+    {
+        writer.WritePropertyName(value.ToString(CultureInfo.InvariantCulture));
+    }
+
+    static decimal Parse(string? text)
+    {
+        if (decimal.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            return value;
+        }
+
+        throw new JsonException($"'{text}' is not a decimal.");
     }
 }

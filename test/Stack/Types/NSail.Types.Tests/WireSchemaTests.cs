@@ -27,6 +27,10 @@ public class WireSchemaTests
         public Kind Kind { get; set; }
 
         public string? Notes { get; set; }
+
+        public long Id { get; set; }
+
+        public decimal? Discount { get; set; }
     }
 
     [Fact]
@@ -34,7 +38,7 @@ public class WireSchemaTests
     {
         var properties = Properties(WireSchema.For(typeof(Payload)));
 
-        Assert.Equal(["code", "kind", "name", "notes", "retries"], properties.Select(p => p.Key).Order(StringComparer.Ordinal));
+        Assert.Equal(["code", "discount", "id", "kind", "name", "notes", "retries"], properties.Select(p => p.Key).Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -77,6 +81,15 @@ public class WireSchemaTests
         var notes = Properties(WireSchema.For(typeof(Payload)))["notes"]!;
 
         Assert.Equal(["string", "null"], notes["type"]!.AsArray().Select(type => type!.GetValue<string>()));
+    }
+
+    [Fact]
+    public void An_exact_number_is_a_string()
+    {
+        var properties = Properties(WireSchema.For(typeof(Payload)));
+
+        Assert.Equal("string", properties["id"]!["type"]!.GetValue<string>());
+        Assert.Equal(["string", "null"], properties["discount"]!["type"]!.AsArray().Select(type => type!.GetValue<string>()));
     }
 
     static JsonObject Properties(JsonNode schema)

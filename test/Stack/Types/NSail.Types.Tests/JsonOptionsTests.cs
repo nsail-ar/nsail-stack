@@ -73,4 +73,29 @@ public class JsonOptionsTests
         Assert.Equal(42, number.Id);
         Assert.Equal(1.5m, number.Price);
     }
+
+    // A JsonException is what the endpoint answers as a malformed body; a FormatException would
+    // be a 500.
+    [Theory]
+    [InlineData("{\"id\":\"abc\"}")]
+    [InlineData("{\"id\":\"99999999999999999999\"}")]
+    [InlineData("{\"big\":\"-1\"}")]
+    [InlineData("{\"price\":\"1234,56\"}")]
+    [InlineData("{\"price\":true}")]
+    public void Wire_refuses_a_text_that_is_not_the_number_as_a_json_error(string json)
+    {
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Exact>(json, JsonOptions.Wire));
+    }
+
+    [Fact]
+    public void Wire_keys_a_dictionary_by_those_types()
+    {
+        var totals = new Dictionary<long, decimal> { [9007199254740993] = 1234567890.123456789m };
+
+        var json = JsonSerializer.Serialize(totals, JsonOptions.Wire);
+        var back = JsonSerializer.Deserialize<Dictionary<long, decimal>>(json, JsonOptions.Wire)!;
+
+        Assert.Equal("{\"9007199254740993\":\"1234567890.123456789\"}", json);
+        Assert.Equal(totals, back);
+    }
 }
