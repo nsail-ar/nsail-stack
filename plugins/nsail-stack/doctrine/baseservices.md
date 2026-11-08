@@ -342,7 +342,13 @@ its own name.
   `keyring/*.xml`. The key ring lives in `<content root>/data/keyring`
   (`PersistKeysToFileSystem`, wired in `AddBaseWebApi`) rather than the framework default,
   which is machine-dependent and could not travel — without it every sealed secret in a
-  restored install is unreadable. That folder is git-ignored.
+  restored install is unreadable. That folder is git-ignored. The application name is the
+  host's `ApplicationName`, not the content-root path DataProtection would isolate by, so a
+  restore elsewhere reads the same secrets.
+- **The archive is created `0600` and can be sealed.** `--encrypt` encrypts the dump and keys
+  under an operator passphrase (`NSAIL_BACKUP_PASSPHRASE` or a prompt, never an argument); the
+  manifest records `Encrypted`, and an unencrypted archive says so. Archives from before this
+  restore unchanged.
 - **`pg_dump`, not a structured export**: a backup returns an install to its exact state, byte
   for byte; an export that survives a schema change is a different feature. So the runtime
   image carries `postgres-client` at the production server's major.
