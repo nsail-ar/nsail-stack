@@ -88,6 +88,8 @@ public sealed class RestoreAtomicityTests : IAsyncLifetime
 
             using (var zip = new System.IO.Compression.ZipArchive(archive, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
             {
+                await WriteManifest(zip);
+
                 await using (var dump = zip.CreateEntry(Postgres.DumpEntryName).Open())
                 {
                     await dump.WriteAsync("not a dump"u8.ToArray());
@@ -131,6 +133,8 @@ public sealed class RestoreAtomicityTests : IAsyncLifetime
 
             using (var zip = new System.IO.Compression.ZipArchive(archive, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
             {
+                await WriteManifest(zip);
+
                 System.IO.Compression.ZipFileExtensions.CreateEntryFromFile(zip, _dumpFilePath, Postgres.DumpEntryName);
                 zip.CreateEntry(KeyRing.ArchiveFolder + "key-new.xml");
             }
@@ -153,6 +157,23 @@ public sealed class RestoreAtomicityTests : IAsyncLifetime
         {
             ring.Delete(recursive: true);
         }
+    }
+
+    static async Task WriteManifest(System.IO.Compression.ZipArchive zip)
+    {
+        var manifest = new BackupManifest
+        {
+            Product = "Test",
+            Database = "test",
+            PostgresVersion = "18",
+            SchemaVersion = "x",
+            TakenAtUtc = DateTime.UtcNow,
+            HasKeyRing = true
+        };
+
+        await using var entry = zip.CreateEntry(BackupManifest.EntryName).Open();
+
+        await System.Text.Json.JsonSerializer.SerializeAsync(entry, manifest);
     }
 
     static string BackupAuditRow(string archive)

@@ -65,7 +65,7 @@ the middleware below, the permissive `RequestBudgetProvider`, `SecurityOptions` 
 `Security`), the tenant feature provider and a hosted service that publishes the declared
 features, the push server end with the tenant as its audience, authorization, metadata, Swagger
 with schema ids derived from `MetadataProvider`, and a DataProtection key ring persisted under
-`<content root>/data/keyring` (so a backup carries it). It sets `RouteHandlerOptions.ThrowOnBadRequest` in every environment so a binding failure takes
+`<content root>/data/keyring` (so a backup carries it) under the host's `ApplicationName` as its DataProtection application name (the first link of the purpose chain: renaming the application leaves what was sealed under the old name unreadable). It sets `RouteHandlerOptions.ThrowOnBadRequest` in every environment so a binding failure takes
 the same exception path everywhere.
 
 `UseBaseWebApi` builds the pipeline in this order:

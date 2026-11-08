@@ -30,7 +30,7 @@ public sealed class TicketEpochTests : IAsyncLifetime
     }
 
     // The cut itself: the generation before this one is the one the flip left behind, and it
-    // decrypts perfectly — the key ring is the server's and was never touched.
+    // decrypts perfectly — the key ring was never touched.
     [Fact]
     public async Task ATicketFromTheGenerationBeforeIsRefused()
     {

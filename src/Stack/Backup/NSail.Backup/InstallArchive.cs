@@ -14,7 +14,7 @@ public static class InstallArchive
 {
     static readonly JsonSerializerOptions ManifestFormat = new() { WriteIndented = true };
 
-    public static async Task<BackupManifest> Create(InstallDescriptor install, Stream destination, CancellationToken cancelToken = default)
+    public static async Task<BackupManifest> Create(InstallDescriptor install, Stream destination, string? passphrase = null, CancellationToken cancelToken = default)
     {
         var workspace = Directory.CreateTempSubdirectory("nsail-backup");
 
@@ -26,8 +26,15 @@ public static class InstallArchive
 
             var keyRing = new DirectoryInfo(install.KeyRingPath);
 
+            var salt = passphrase is null ? [] : ArchiveCipher.NewSalt();
+            var cipher = passphrase is null ? null : ArchiveCipher.Derive(passphrase, salt, ArchiveCipher.DefaultIterations);
+
             var manifest = new BackupManifest
             {
+                ArchiveVersion = cipher is null ? BackupManifest.PlainArchiveVersion : BackupManifest.CurrentArchiveVersion,
+                Encrypted = cipher is not null,
+                KeySalt = Convert.ToBase64String(salt),
+                KeyIterations = cipher is null ? 0 : ArchiveCipher.DefaultIterations,
                 Product = install.Product,
                 Database = DatabaseName(install.ConnectionString),
                 PostgresVersion = await Postgres.ServerVersion(install.ConnectionString, cancelToken),
@@ -45,13 +52,13 @@ public static class InstallArchive
                     await JsonSerializer.SerializeAsync(manifestStream, manifest, ManifestFormat, cancelToken);
                 }
 
-                archive.CreateEntryFromFile(dumpFilePath, Postgres.DumpEntryName, CompressionLevel.SmallestSize);
+                await AddFile(archive, dumpFilePath, Postgres.DumpEntryName, cipher, cancelToken);
 
                 if (keyRing.Exists)
                 {
                     foreach (var key in keyRing.EnumerateFiles("*.xml"))
                     {
-                        archive.CreateEntryFromFile(key.FullName, KeyRing.ArchiveFolder + key.Name);
+                        await AddFile(archive, key.FullName, KeyRing.ArchiveFolder + key.Name, cipher, cancelToken);
                     }
                 }
             }
@@ -64,6 +71,25 @@ public static class InstallArchive
         }
     }
 
+    /// <summary>The archive file, created owner-only: it holds the whole database and the key
+    /// ring, and a umask-default mode would let any local account read both.</summary>
+    public static FileStream CreateFile(string path)
+    {
+        var options = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.Write,
+            Share = FileShare.None
+        };
+
+        if (!OperatingSystem.IsWindows())
+        {
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        return new FileStream(path, options);
+    }
+
     public static async Task<BackupManifest> ReadManifest(Stream source, CancellationToken cancelToken = default)
     {
         using var archive = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
@@ -72,9 +98,10 @@ public static class InstallArchive
     }
 
     /// <summary>Replace, not merge: the database is rebuilt from the dump and the key ring
-    /// directory is emptied of the keys the archive replaces. Every refusal this can raise has
-    /// already been raised by <see cref="RestorePlan"/>; nothing here asks a question.</summary>
-    public static async Task Restore(InstallDescriptor install, Stream source, CancellationToken cancelToken = default)
+    /// directory is emptied of the keys the archive replaces. <see cref="RestorePlan"/> raises the
+    /// refusals the manifest decides; an encrypted archive's missing or wrong passphrase, and a
+    /// truncated one, raise <see cref="BackupFailure"/> here, before the database is touched.</summary>
+    public static async Task Restore(InstallDescriptor install, Stream source, string? passphrase = null, CancellationToken cancelToken = default)
     {
         var workspace = Directory.CreateTempSubdirectory("nsail-restore");
 
@@ -82,20 +109,25 @@ public static class InstallArchive
         {
             using var archive = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: true);
 
+            var manifest = await ReadManifest(archive, cancelToken);
+
+            var cipher = manifest.Encrypted ? DeriveCipher(manifest, passphrase) : null;
+
             var dumpEntry = archive.GetEntry(Postgres.DumpEntryName)
                 ?? throw new BackupFailure($"The archive carries no '{Postgres.DumpEntryName}'.");
 
             var dumpFilePath = Path.Combine(workspace.FullName, Postgres.DumpEntryName);
 
-            dumpEntry.ExtractToFile(dumpFilePath, overwrite: true);
+            await Extract(dumpEntry, dumpFilePath, cipher, cancelToken);
 
             var keys = archive.Entries
                 .Where(entry => entry.FullName.StartsWith(KeyRing.ArchiveFolder, StringComparison.Ordinal))
                 .Where(entry => Path.GetFileName(entry.FullName).Length > 0)
                 .ToList();
 
-            // Inside the ring's own directory (a mount cannot be renamed, and a move across
-            // volumes is a copy): extracted whole before anything is replaced.
+            // Unsealed inside the ring's own directory (a mount cannot be renamed, and a move
+            // across volumes is a copy) before anything is replaced: a wrong passphrase or a
+            // failed extract fails here, with the install untouched.
             var keyRing = Directory.CreateDirectory(install.KeyRingPath);
 
             var staging = keys.Count == 0 ? null : keyRing.CreateSubdirectory(".restore-" + Guid.NewGuid().ToString("N"));
@@ -104,7 +136,7 @@ public static class InstallArchive
             {
                 foreach (var key in keys)
                 {
-                    key.ExtractToFile(Path.Combine(staging!.FullName, Path.GetFileName(key.FullName)), overwrite: true);
+                    await Extract(key, Path.Combine(staging!.FullName, Path.GetFileName(key.FullName)), cipher, cancelToken);
                 }
 
                 await Postgres.Restore(install.ConnectionString, dumpFilePath, cancelToken);
@@ -138,6 +170,59 @@ public static class InstallArchive
         {
             workspace.Delete(recursive: true);
         }
+    }
+
+    static ArchiveCipher DeriveCipher(BackupManifest manifest, string? passphrase)
+    {
+        if (passphrase is null)
+        {
+            throw new BackupFailure("This archive is encrypted and needs its passphrase.");
+        }
+
+        try
+        {
+            return ArchiveCipher.Derive(passphrase, Convert.FromBase64String(manifest.KeySalt), manifest.KeyIterations);
+        }
+        catch (Exception exception) when (exception is FormatException or ArgumentException)
+        {
+            throw new BackupFailure("This archive's manifest carries no usable encryption parameters.");
+        }
+    }
+
+    static async Task AddFile(ZipArchive archive, string path, string entryName, ArchiveCipher? cipher, CancellationToken cancelToken)
+    {
+        // A sealed entry is incompressible.
+        var level = cipher is not null
+            ? CompressionLevel.NoCompression
+            : entryName == Postgres.DumpEntryName ? CompressionLevel.SmallestSize : CompressionLevel.Optimal;
+        var entry = archive.CreateEntry(entryName, level);
+
+        await using var entryStream = entry.Open();
+        await using var file = File.OpenRead(path);
+
+        if (cipher is null)
+        {
+            await file.CopyToAsync(entryStream, cancelToken);
+
+            return;
+        }
+
+        await cipher.Encrypt(file, entryStream, entryName, cancelToken);
+    }
+
+    static async Task Extract(ZipArchiveEntry entry, string path, ArchiveCipher? cipher, CancellationToken cancelToken)
+    {
+        await using var entryStream = entry.Open();
+        await using var file = File.Create(path);
+
+        if (cipher is null)
+        {
+            await entryStream.CopyToAsync(file, cancelToken);
+
+            return;
+        }
+
+        await cipher.Decrypt(entryStream, file, entry.FullName, cancelToken);
     }
 
     public static string NameFor(BackupManifest manifest)

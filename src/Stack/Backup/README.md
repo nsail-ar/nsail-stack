@@ -30,7 +30,7 @@ await app.ApplyMigrations<SampleDbContext>();
 ```
 
 ```bash
-sample backup [<file or directory>]
+sample backup [<file or directory>] [--encrypt]
 sample restore <archive> --confirm RESTORE
 ```
 
@@ -42,6 +42,14 @@ The binary's name is the product, taken from the context type (`SampleDbContext`
 
 There are no configuration keys. What the verbs use:
 
+- **Passphrase:** `--encrypt` seals the dump and the key ring (AES-256-GCM, key from PBKDF2) under
+  a passphrase read from `NSAIL_BACKUP_PASSPHRASE`, or asked twice at a terminal; never an
+  argument. `restore` of an encrypted archive reads it the same way and refuses without it. The
+  manifest stays readable and says `Encrypted`; an archive without `--encrypt` says so in the
+  manifest, in the restore statement and when the backup finishes.
+- **File mode:** the archive is created `0600` on Linux and macOS.
+- **Application name:** `AddBaseWebApi` sets the DataProtection application name to the host's
+  `ApplicationName`, so a restore to another content-root path unprotects the same secrets.
 - **Database:** the `DbContext`'s own connection string, so the database is the one the host runs on.
 - **Tools:** `pg_dump`, `pg_restore` and `psql` on the `PATH`, at the server's major version
   (`--format=custom`, `--no-owner`, `--no-privileges`). The password travels in `PGPASSWORD`,
@@ -60,7 +68,7 @@ There are no configuration keys. What the verbs use:
 | `4` | Refused (`BackupFailure`) |
 
 The archive holds `manifest.json` (`BackupManifest`: archive version, product, database, PostgreSQL
-version, last applied migration, time, whether keys travel), `database.dump` and `keyring/*.xml`.
+version, last applied migration, time, whether keys travel, whether and how it is encrypted), `database.dump` and `keyring/*.xml`.
 
 - **Restore refuses before it writes**, via `RestorePlan.For`: an archive format newer than this
   build, a different product, a schema this build has no migration for, or a different PostgreSQL

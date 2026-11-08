@@ -102,9 +102,11 @@ public static class Setup
         // The key ring's home is the install's own, not the framework default: the default is a
         // machine-dependent profile folder nothing can package, so an install restored elsewhere
         // would come back with every sealed secret unreadable. Under the content root it travels
-        // in the backup archive (KeyRing).
+        // in the backup archive (KeyRing). The application name is set because the default
+        // isolates by content-root path, so a restore to another path could not unprotect it.
         builder.Services
             .AddDataProtection()
+            .SetApplicationName(builder.Environment.ApplicationName)
             .PersistKeysToFileSystem(KeyRing.Home(builder.Environment.ContentRootPath));
 
         builder.Services.AddAuthorization();

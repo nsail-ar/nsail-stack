@@ -540,9 +540,9 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   `TicketEpochMiddleware` refuses anything else — signing the ticket out, then answering as it
   would anyone with none, marked stale like the credential wall's own refusal.
   **It is the install's only cut across its own sessions**, because the DataProtection key ring
-  is the SERVER's: every install on a box unprotects with the same keys, so deleting or revoking
-  one is not a per-install act at all — it signs out the whole box AND leaves every secret ever
-  sealed on it unreadable for good. Raising a number instead touches nothing that was sealed.
+  is the INSTALL's (`<content root>/data/keyring`): deleting or revoking a key is not a
+  per-session act at all — it signs out every session of the install AND leaves every secret
+  ever sealed under it unreadable for good. Raising a number instead touches nothing that was sealed.
   What it is owed to is a **tenancy-mode flip**, the one change that leaves every old ticket
   decrypting perfectly and naming rows the row filter now hides: under `MultiDb` the seeded rows
   are their own ids, under `SingleDb` the same rows belong to a tenant derived from its slug, so
