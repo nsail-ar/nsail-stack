@@ -57,6 +57,12 @@ public static partial class WatchStory
         s.Append(Inv($"`{g.Service}` logged an error {Times(g.Count)} between {g.First:yyyy-MM-dd HH:mm} and {g.Last:yyyy-MM-dd HH:mm} UTC, in {Cells(g.Cells)}"));
         s.AppendLine(prod ? " — production, where a customer runs." : ".");
         s.AppendLine(Inv($"The logger `{g.Source}` wrote `{OneLine(g.Template)}`{(g.ExceptionType is { } t ? $" with `{t}`" : "")}. The harness's telemetry watch filed it; nobody has read the cause yet."));
+        if (g.Sample.ProviderStatus is { } status)
+        {
+            var call = g.Sample.ProviderCall is { } c ? $" to `{c}`" : "";
+            var left = g.Sample.RateLimitRemaining is { } r ? Inv($", with `{r}` calls left on its rate limit") : "";
+            s.AppendLine(Inv($"On the newest line the provider answered `{status}`{call}{left}."));
+        }
         s.AppendLine();
         s.AppendLine("## Acceptance Criteria").AppendLine();
         s.AppendLine("- [ ] AC1 — When the path that logged this runs again, it does not fail; the cause is fixed, never the log line silenced or lowered.");
