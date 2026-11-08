@@ -17,7 +17,7 @@ namespace NSail.Harness.Hosting;
 static class StatusPage
 {
     // One colour per role, in the order JobStats.Roles names them.
-    static readonly string[] Colors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#6250d6"];
+    static readonly string[] Colors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#6250d6", "#0e9aa7"];
     static readonly string[] Ranges = ["24h", "7d", "30d"];
 
     internal const string Style = """
@@ -101,6 +101,7 @@ static class StatusPage
             "qa" => "qa",
             "release" => "release",
             "gate" => "gate",
+            "watch" => "watch",
             _ => "",
         };
     }
@@ -140,7 +141,7 @@ static class StatusPage
         html.Append("</div>");
     }
 
-    static void Stats(StringBuilder html, HarnessStatsView view)
+    internal static void Stats(StringBuilder html, HarnessStatsView view)
     {
         var span = view.Range switch { "7d" => "7 days", "30d" => "30 days", _ => "24 h" };
         html.Append("<div style=\"display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px\"><h2>The crew, last ").Append(span).Append("</h2><span class=ranges>");
@@ -208,16 +209,24 @@ static class StatusPage
         html.Append("</svg>");
     }
 
-    static void Sides(StringBuilder html, HarnessStatsView view, HarnessOptions o, IAgent agent, DateTimeOffset now)
+    // A role a machine may never run (no QA walker, no release, no watch) shows only once it has jobs.
+    internal static void RoleTable(StringBuilder html, HarnessStatsView view)
     {
-        html.Append("<div class=cols><div><h2>By role</h2><table class=r><tr><th>Role</th><th class=n>Jobs</th><th class=n>OK</th><th class=n>Failed</th><th class=n>Broke</th><th class=n>p50</th><th class=n>p95</th><th class=n>Wait</th></tr>");
+        html.Append("<h2>By role</h2><table class=r><tr><th>Role</th><th class=n>Jobs</th><th class=n>OK</th><th class=n>Failed</th><th class=n>Broke</th><th class=n>p50</th><th class=n>p95</th><th class=n>Wait</th></tr>");
         for (var i = 0; i < view.Roles.Count; i++)
         {
             var r = view.Roles[i];
-            if (r.Jobs == 0 && r.Role is "qa" or "release") continue;
+            if (r.Jobs == 0 && r.Role is "qa" or "release" or "watch") continue;
             html.Append($"<tr><td><span class=sw style=\"background:{Colors[i]}\"></span>{Esc(Title(r.Role))}</td><td class=n>{r.Jobs}</td><td class=n>{(r.Jobs == 0 ? "—" : $"{100.0 * r.Ok / r.Jobs:F0}%")}</td><td class=n>{r.Failed}</td><td class=n>{r.Broke}</td><td class=n>{Time(r.P50)}</td><td class=n>{Time(r.P95)}</td><td class=n>{Time(r.Wait)}</td></tr>");
         }
-        html.Append("</table><p class=muted style=\"font-size:12px\">Failed: its work went wrong (a red gate, a dead voyage). Broke: the harness's own break. Wait: from first planned to started. Times are a histogram's bucket edges.</p></div><div>");
+        html.Append("</table><p class=muted style=\"font-size:12px\">Failed: its work went wrong (a red gate, a dead voyage). Broke: the harness's own break. Wait: from first planned to started. Times are a histogram's bucket edges.</p>");
+    }
+
+    static void Sides(StringBuilder html, HarnessStatsView view, HarnessOptions o, IAgent agent, DateTimeOffset now)
+    {
+        html.Append("<div class=cols><div>");
+        RoleTable(html, view);
+        html.Append("</div><div>");
 
         html.Append("<h2>Agent quota</h2>");
         var seats = o.Seats.Count == 0 ? "" : $" <span class=muted>· {Esc(string.Join(", ", o.Seats.Keys))}</span>";
