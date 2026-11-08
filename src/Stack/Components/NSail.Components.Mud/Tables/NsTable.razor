@@ -927,6 +927,12 @@ else
         // change the row's own rule answers for (hosts.md).
         if (_editingIsNew && NewRowEmpty is not null && NewRowEmpty(row))
         {
+            // The remove notification cannot go out on a busy Runner; the row stays open.
+            if (IsRunning)
+            {
+                return false;
+            }
+
             await Discard(row);
 
             return true;
