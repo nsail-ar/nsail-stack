@@ -10,6 +10,10 @@ namespace NSail.Harness.Lanes;
 // stderr, goes to the log as it comes and back to the caller.
 public static class Shell
 {
+    // A seat shares the repository's common git directory, so what it plants there (a hook, a
+    // fsmonitor command) must never run in the harness's git: command-line config outranks the repository's.
+    static readonly string[] Hardened = ["-c", $"core.hooksPath={OperatingSystem.IsWindows() switch { true => "NUL", false => "/dev/null" }}", "-c", "core.fsmonitor=false"];
+
     public static async Task<ShellResult> Run(
         string file, IEnumerable<string> args, string workDir, IDictionary<string, string>? env = null,
         TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false)
@@ -24,6 +28,10 @@ public static class Shell
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
         };
+        if (file == "git")
+        {
+            foreach (var a in Hardened) psi.ArgumentList.Add(a);
+        }
         foreach (var a in args) psi.ArgumentList.Add(a);
         if (env is not null)
         {

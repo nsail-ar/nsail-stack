@@ -120,6 +120,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             LogPath: logPath,
             Marketplace: doctrine), ct);
 
+        await ctx.WorkspaceOf(repo).Restore();
         var ending = await Deliver(n, title, repo, work, branch, startedAt, claimedAt, result, log, ct);
         return ending.Outcome(result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : null);
     }

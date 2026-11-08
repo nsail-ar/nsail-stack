@@ -74,6 +74,58 @@ public sealed class Workspace
         return PrepareAt(Path.Combine(_root, $"doctrine-{slot}"));
     }
 
+    // The clone's configuration and hooks are the harness's alone: a seat shares the common git
+    // directory, so whatever it planted there is gone before the harness runs git in it again.
+    public async Task Restore()
+    {
+        await _git.WaitAsync();
+        try
+        {
+            await WriteConfig();
+        }
+        finally
+        {
+            _git.Release();
+        }
+    }
+
+    // Caller holds _git. The file is rebuilt, not edited: only the keys git itself set on a
+    // clone of this machine's platform are carried over.
+    async Task WriteConfig()
+    {
+        var config = Path.Combine(Bare, "config");
+        var kept = new List<(string Key, string Value)>();
+        foreach (var key in new[] { "core.filemode", "core.symlinks", "core.ignorecase", "core.precomposeunicode" })
+        {
+            var r = await Shell.Run("git", ["config", "--file", config, "--get", key], _root);
+            if (r.ExitCode == 0) kept.Add((key, r.Output.Trim()));
+        }
+
+        var fresh = config + ".harness";
+        File.WriteAllText(fresh, "");
+        await Shell.Git(_root, "config", "--file", fresh, "core.repositoryformatversion", "0");
+        await Shell.Git(_root, "config", "--file", fresh, "core.bare", "true");
+        foreach (var (key, value) in kept) await Shell.Git(_root, "config", "--file", fresh, key, value);
+        await Shell.Git(_root, "config", "--file", fresh, "remote.origin.url", _repoUrl);
+        await Shell.Git(_root, "config", "--file", fresh, "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*");
+        // The empty helper first resets the list: a machine-wide helper (Git Credential Manager
+        // under WSL) would wait on a window.
+        await Shell.Git(_root, "config", "--file", fresh, "--add", "credential.helper", "");
+        if (_credential is not null) await Shell.Git(_root, "config", "--file", fresh, "--add", "credential.helper", _credential);
+        // Commits attribute by email, whoever's token pushes.
+        await Shell.Git(_root, "config", "--file", fresh, "user.name", _name);
+        await Shell.Git(_root, "config", "--file", fresh, "user.email", _email);
+        // A slot checks files out as the repository holds them (LF), as on Linux: a CRLF checkout
+        // makes a test reading a file or a template see bytes CI never sees.
+        await Shell.Git(_root, "config", "--file", fresh, "core.autocrlf", "false");
+        await Shell.Git(_root, "config", "--file", fresh, "core.eol", "lf");
+        File.Move(fresh, config, overwrite: true);
+
+        var hooks = Path.Combine(Bare, "hooks");
+        if (Directory.Exists(hooks)) Directory.Delete(hooks, recursive: true);
+        foreach (var f in Directory.EnumerateFiles(Bare, "config.worktree", SearchOption.AllDirectories)) File.Delete(f);
+    }
+
     async Task<string> PrepareAt(string path)
     {
         await _git.WaitAsync();
@@ -92,19 +144,8 @@ public sealed class Workspace
                     if (Directory.Exists(Bare)) Directory.Delete(Bare, recursive: true);
                     throw;
                 }
-                await Shell.Git(Bare, "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*");
-                // The empty helper first resets the list: a machine-wide helper (Git Credential Manager
-                // under WSL) would wait on a window.
-                await Shell.Git(Bare, "config", "--add", "credential.helper", "");
-                if (_credential is not null) await Shell.Git(Bare, "config", "--add", "credential.helper", _credential);
             }
-            // Commits attribute by email, whoever's token pushes.
-            await Shell.Git(Bare, "config", "user.name", _name);
-            await Shell.Git(Bare, "config", "user.email", _email);
-            // A slot checks files out as the repository holds them (LF), as on Linux: a CRLF checkout
-            // makes a test reading a file or a template see bytes CI never sees.
-            await Shell.Git(Bare, "config", "core.autocrlf", "false");
-            await Shell.Git(Bare, "config", "core.eol", "lf");
+            await WriteConfig();
             await Shell.Git(Bare, "fetch", "--prune", "-q", "origin");
             // A local story branch left by an earlier job would shadow the remote one a
             // later round must continue; every branch not checked out in a slot goes.
