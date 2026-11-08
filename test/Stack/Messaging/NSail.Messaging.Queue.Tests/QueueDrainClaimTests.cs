@@ -7,6 +7,8 @@ using NSail.Security;
 
 namespace NSail.Messaging.Queue.Tests;
 
+/// <summary>nsail#3303, the first and second criteria: drains over one database split the rows
+/// instead of delivering one twice, and a drain that loses a row moves on.</summary>
 public sealed class QueueDrainClaimTests
 {
     static Session Clerk()

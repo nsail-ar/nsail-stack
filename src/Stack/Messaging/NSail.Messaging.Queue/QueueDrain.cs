@@ -73,7 +73,7 @@ public sealed class QueueDrain
 
         foreach (var row in due)
         {
-            if (!await Claim(row, now, cancellationToken).ConfigureAwait(false))
+            if (!await Claim(row, cancellationToken).ConfigureAwait(false))
             {
                 // Another drain took it between the read and here: its row now, the next one ours.
                 continue;
@@ -90,11 +90,12 @@ public sealed class QueueDrain
         return handled;
     }
 
-    async Task<bool> Claim(QueuedMessage row, DateTime now, CancellationToken cancellationToken)
+    async Task<bool> Claim(QueuedMessage row, CancellationToken cancellationToken)
     {
         var id = row.Id;
         var seen = row.NextAttemptAt;
-        var leased = now + _options.Lease;
+        // Read per row: the lease is owed from the claim, not from the start of the pass.
+        var leased = _clock.GetUtcNow().UtcDateTime + _options.Lease;
 
         var claimed = await _db.Set<QueuedMessage>()
             .Where(other => other.Id == id && other.NextAttemptAt == seen && other.DeadLetteredAt == null)
@@ -139,11 +140,7 @@ public sealed class QueueDrain
         }
         catch (DbUpdateConcurrencyException)
         {
-            // The lease ran out mid-delivery and another drain took the row and finished it:
-            // there is nothing left here to delete or to settle.
-            _db.Entry(row).State = EntityState.Detached;
-
-            _logger.LogWarning("A queued command outlived its lease and was delivered by another drain; it may have run twice.");
+            LeaseLost(row);
         }
         catch (Exception exception)
         {
@@ -187,7 +184,23 @@ public sealed class QueueDrain
             _db.Entry(row).State = EntityState.Modified;
         }
 
-        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            LeaseLost(row);
+        }
+    }
+
+    void LeaseLost(QueuedMessage row)
+    {
+        // The lease ran out mid-delivery and another drain took the row and finished it:
+        // there is nothing left here to delete or to settle.
+        _db.Entry(row).State = EntityState.Detached;
+
+        _logger.LogWarning("A queued command outlived its lease and was delivered by another drain; it may have run twice.");
     }
 
     DateTime Due(DateTime now, int attempts)
