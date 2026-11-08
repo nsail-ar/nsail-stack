@@ -324,10 +324,10 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   not height: its logo, its name and its progress bar all take the width its own script measures
   off the install's name, so the three read as one block instead of three widths of their own.
   A brand's dark mark (`DarkLogoUrl`) is the one it wears when its own painted ground is dark.
-- **Inlined SVG passes `SvgSanitizer` (`NSail.Icons`) and nothing else puts markup in the DOM**:
+- **Inlined SVG passes `SvgSanitizer` (`NSail.Icons`) and no other inlined SVG reaches the DOM**:
   a `Glyph`, a fetched logo and the splash mark share its one allowlist of drawing elements and
   presentation attributes. Scripts, event handlers, `style`, `<image>`, `<a>`, `<foreignObject>`,
-  non-fragment `href` and non-local `url(...)` are dropped, so an «Internal CSS» logo keeps its
+  non-fragment `href` (`xlink:href` included) and non-local `url(...)` are dropped, so an «Internal CSS» logo keeps its
   geometry and loses its fills. A file with nothing drawable left falls back to the `<img>`
   branch, which cannot execute in the app's origin. The splash applies the same lists, injected
   from the sanitizer, because C# cannot run before boot.

@@ -104,4 +104,21 @@ public class SvgSanitizerTests
     {
         Assert.True(SvgSanitizer.IsClean("<path d=\"M0 0\" aria-label=\"ver data: x\"/>"));
     }
+
+    [Fact]
+    public void ACutOutShapeInDefsDrawsNothing()
+    {
+        var clean = SvgSanitizer.Sanitize("<svg viewBox=\"0 0 240 60\"><defs><clipPath id=\"c\"><path d=\"M0 0h240v60H0z\"/></clipPath></defs><image clip-path=\"url(#c)\" href=\"data:image/png;base64,AA\"/></svg>");
+
+        Assert.False(SvgSanitizer.HasDrawing(clean));
+        Assert.True(SvgSanitizer.HasDrawing("<svg><g><path d=\"M0 0\"/></g></svg>"));
+    }
+
+    [Fact]
+    public void AGlyphReportsWhatItDropped()
+    {
+        Assert.True(new Glyph("<svg onload=\"x()\"><path d=\"M0 0\"/></svg>").Altered);
+        Assert.True(new Glyph("<svg onload=x>").Altered);
+        Assert.False(new Glyph("<path d=\"M0 0\"/>").Altered);
+    }
 }

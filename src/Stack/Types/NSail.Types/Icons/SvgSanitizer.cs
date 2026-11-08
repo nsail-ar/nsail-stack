@@ -59,9 +59,20 @@ public static class SvgSanitizer
             return false;
         }
 
-        foreach (XmlElement e in doc!.DocumentElement!.GetElementsByTagName("*"))
+        return DrawsIn(doc!.DocumentElement!);
+    }
+
+    // defs, clip paths, masks and gradients hold shapes that paint nothing by themselves.
+    static bool DrawsIn(XmlElement parent)
+    {
+        foreach (XmlNode node in parent.ChildNodes)
         {
-            if (e.LocalName is "path" or "circle" or "ellipse" or "rect" or "line" or "polyline" or "polygon" or "text")
+            if (node is not XmlElement e || e.LocalName is "defs" or "clipPath" or "mask" or "linearGradient" or "radialGradient")
+            {
+                continue;
+            }
+
+            if (e.LocalName is "path" or "circle" or "ellipse" or "rect" or "line" or "polyline" or "polygon" or "text" || DrawsIn(e))
             {
                 return true;
             }
@@ -78,6 +89,13 @@ public static class SvgSanitizer
     public static string Sanitize(string? markup)
     {
         return Run(markup, out _);
+    }
+
+    /// <summary>As <see cref="Sanitize(string?)"/>, also reporting whether anything outside
+    /// the allowlist had to be dropped.</summary>
+    public static string Sanitize(string? markup, out bool clean)
+    {
+        return Run(markup, out clean);
     }
 
     /// <summary>Whether <paramref name="markup"/> holds only what the allowlist keeps — the
