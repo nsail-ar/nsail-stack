@@ -30,6 +30,19 @@ describe("validate", () => {
     expect(validateField({ ...price, kind: "bigint" as const }, "-1").map((i) => i.code)).toEqual(["OutOfRange"]);
   });
 
+  // The text input takes anything; what the server's parse would refuse is refused here first.
+  it("refuses a long or decimal text the server cannot read", () => {
+    const price = { kind: "decimal" as const, key: "Shop.UpdateOrder.Price" };
+    const id = { kind: "bigint" as const, key: "Shop.UpdateOrder.Id" };
+
+    expect(validateField(price, "1234567890.123456789").map((i) => i.code)).toEqual([]);
+    expect(validateField(price, "-1.5e3").map((i) => i.code)).toEqual([]);
+    expect(validateField(price, "1234,56").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    expect(validateField(price, "abc").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    expect(validateField(id, "9007199254740993").map((i) => i.code)).toEqual([]);
+    expect(validateField(id, "1.5").map((i) => i.code)).toEqual(["InvalidFormat"]);
+  });
+
   it("bounds a query member like a body one", () => {
     expect(validate(ListOrders, { search: "x".repeat(11) })?.issues[0].code).toBe("MaxLength");
   });

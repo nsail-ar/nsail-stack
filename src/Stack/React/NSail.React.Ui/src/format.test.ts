@@ -30,6 +30,8 @@ describe("display", () => {
   it("keeps every digit of an exact number", () => {
     expect(display(new Strings("en", stackStrings("en")), field("bigint"), "9007199254740993")).toBe("9,007,199,254,740,993");
     expect(display(new Strings("en", stackStrings("en")), field("decimal"), "1234567890.123456789")).toBe("1,234,567,890.123456789");
+    expect(display(new Strings("en", stackStrings("en")), field("decimal"), "-0.1234567890123456789012345678")).toBe("-0.1234567890123456789012345678");
+    expect(display(strings, field("decimal"), "1234567.5")).toBe(`${(1234567).toLocaleString("es")},5`);
   });
 
   it("renders absent as nothing", () => {

@@ -10,6 +10,11 @@ import type { Issue, Problem } from "./problems";
 const email = /^[^@\s]+@[^@\s]+$/;
 const phone = /^\+?(?=.*\d)[\d\s().\-]+((x|ext\.?)\s?\d+)?$/i;
 const url = /^(https?|ftp):\/\//i;
+// What the server's invariant parse of a long or a decimal takes: no group separator, a point.
+const exact: Record<string, RegExp> = {
+  bigint: /^\s*[+-]?\d+\s*$/,
+  decimal: /^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/,
+};
 
 function issue(code: string, message: string, field: string, args: Record<string, string> = {}): Issue {
   return { code, message, source: field, arguments: { field, ...args } };
@@ -60,6 +65,7 @@ export function validateField(field: Field, value: unknown): Issue[] {
 
   if (typeof value === "string" && value.length > 0) {
     const formatted =
+      (exact[field.kind] !== undefined && !exact[field.kind].test(value)) ||
       (field.format === "email" && !email.test(value)) ||
       (field.format === "phone" && !phone.test(value)) ||
       (field.format === "url" && !url.test(value)) ||
