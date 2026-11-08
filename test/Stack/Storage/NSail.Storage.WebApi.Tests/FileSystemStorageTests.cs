@@ -84,6 +84,64 @@ public sealed class FileSystemStorageTests
         Assert.Null(await _provider.Get(container.Target, "backups/a.zip"));
     }
 
+    [Fact]
+    public async Task DeletesAKeyWhoseDirectoryDoesNotExist()
+    {
+        using var container = new Container();
+
+        await _provider.Delete(container.Target, "a/b.txt");
+    }
+
+    [Fact]
+    public async Task ACancelledReplaceLeavesThePreviousObjectIntactAndNoPartialFile()
+    {
+        using var container = new Container();
+
+        using (var first = new MemoryStream([1, 2, 3]))
+        {
+            await _provider.Put(container.Target, "a.bin", first, null);
+        }
+
+        using var cancel = new CancellationTokenSource();
+        var source = new ProbeStream(Big, produced =>
+        {
+            if (produced >= Big / 2)
+            {
+                cancel.Cancel();
+            }
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => _provider.Put(container.Target, "a.bin", source, null, cancel.Token));
+
+        Assert.Equal([1, 2, 3], await File.ReadAllBytesAsync(Path.Combine(container.Path, "a.bin")));
+        Assert.Single(Directory.EnumerateFiles(container.Path));
+    }
+
+    [Fact]
+    public async Task AReplaceWhoseSourceThrowsLeavesThePreviousObjectIntact()
+    {
+        using var container = new Container();
+
+        using (var first = new MemoryStream([1, 2, 3]))
+        {
+            await _provider.Put(container.Target, "a.bin", first, null);
+        }
+
+        var source = new ProbeStream(Big, produced =>
+        {
+            if (produced >= Big / 2)
+            {
+                throw new IOException("source failed");
+            }
+        });
+
+        await Assert.ThrowsAsync<IOException>(() => _provider.Put(container.Target, "a.bin", source, null));
+
+        Assert.Equal([1, 2, 3], await File.ReadAllBytesAsync(Path.Combine(container.Path, "a.bin")));
+        Assert.Single(Directory.EnumerateFiles(container.Path));
+    }
+
     // The story's own claim, made measurable: an archive larger than memory is neither loaded
     // nor buffered whole. The source is not seekable and refuses to state its length, so nothing
     // downstream could size a buffer even if it wanted to — and the destination is watched WHILE
@@ -99,9 +157,9 @@ public sealed class FileSystemStorageTests
 
         var source = new ProbeStream(Big, produced =>
         {
-            if (produced >= Big / 2 && landedEarly == 0 && File.Exists(path))
+            if (produced >= Big / 2 && landedEarly == 0)
             {
-                landedEarly = new FileInfo(path).Length;
+                landedEarly = Directory.EnumerateFiles(container.Path).Select(file => new FileInfo(file).Length).DefaultIfEmpty(0).Max();
             }
         });
 
