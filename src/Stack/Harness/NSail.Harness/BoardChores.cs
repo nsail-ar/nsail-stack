@@ -19,9 +19,11 @@ static class BoardChores
 
     // A keeper's move is written only over the column the pass read: one a hand set since stays. A
     // story a keeper moves is in the read. The board has no conditional write, so this narrows the
-    // race to one read and one write. A worker's Starting move is the job's and is written as planned.
+    // race to one read and one write. A move planned for a story with no open PR (Chore.NoPr) is
+    // written only while openPr, read again now, names none. A worker's Starting move is the job's
+    // and is written as planned.
     public static async Task Do(IBoard board, IReadOnlyList<Chore> chores, IReadOnlyDictionary<int, string> read,
-        string signature, ILogger log, CancellationToken ct)
+        Func<int, CancellationToken, Task<string?>> openPr, string signature, ILogger log, CancellationToken ct)
     {
         var expected = new Dictionary<int, string>(read);
         var dropped = new HashSet<int>();
@@ -44,6 +46,12 @@ static class BoardChores
                             {
                                 dropped.Add(c.Story);
                                 log.LogInformation("#{Story}: in {Found}, not {Read} — move to {Stage} dropped ({Why})", c.Story, now, saw, c.Value, c.Why);
+                                continue;
+                            }
+                            if (c.NoPr && await openPr(c.Story, ct) is { } pr)
+                            {
+                                dropped.Add(c.Story);
+                                log.LogInformation("#{Story}: {Pr} open — move to {Stage} dropped ({Why})", c.Story, pr, c.Value, c.Why);
                                 continue;
                             }
                         }

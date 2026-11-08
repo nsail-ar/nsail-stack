@@ -85,7 +85,13 @@ the files it leaves.
     workers on their own, then every story worker over the p1 stories, then over the rest; one job per
     story per pass. A keeper's (`On.Executed`) `MoveTo` is written only while the story's column is
     still the one the pass read: one a hand set since stays, the pass logs the dropped move, and the
-    story gets no other chore that pass. A story worker's `On.Starting` `MoveTo` goes with its job and
+    story gets no other chore that pass. A keeper whose filter asks for no open PR (`Pr: none`) reads
+    an absence, so it takes a story In-Progress only when no job on any harness of the fleet holds
+    the story's lock and nothing touched it (a comment, a label, a column move) for `OrphanGraceMinutes`
+    (default 10, as long as a lock with no job behind it waits): a job's ending takes its label off
+    before its PR opens. Right before its move is written, the open PRs are read again in every
+    repository; one of the story drops the move and its comment, and the pass logs the PR it found.
+    Every other keeper moves on the pass that sees its story. A story worker's `On.Starting` `MoveTo` goes with its job and
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for

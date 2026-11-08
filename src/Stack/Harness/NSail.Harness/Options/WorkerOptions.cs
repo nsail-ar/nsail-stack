@@ -93,7 +93,9 @@ public sealed class FilterOptions
     // replaces the type's list whole.
     public List<string>? Labels { get; set; }
 
-    // `none`: no open PR. `open`: an open PR, and the worker acts on it. `any`: either.
+    // `none`: no open PR; a keeper's over a story In-Progress also waits for no job on any harness and
+    // the story quiet past PlannerOptions.OrphanGrace, and its move reads the PRs again before it is
+    // written. `open`: an open PR, and the worker acts on it. `any`: either.
     public string? Pr { get; set; }
 
     // The open PR's state at its head, any of: ungated (no verdict of the harness's own Verify),

@@ -71,6 +71,8 @@ Defined in `NSail.SourceGeneration.Annotations`:
 
 Each transport groups its artifacts in one enum. For HTTP: `Clients` is the remote send side, `Endpoints` the receive side, and `InProcess` the local counterpart of `Clients` — same `[Http]` contract, dispatched directly to the handler in the host that exposes the endpoints.
 
+A sender writes each route value through `HttpRequestMessageBuilder.Segment` (one escaped segment, invariant culture) and each query value invariantly, dates and times round-trip (`O`): the server parses invariantly, and a value must not change the path.
+
 `Http.InProcess` is declared in the kit's WebApi setup (same assembly as the handlers) and called from `Add{Kit}WebApi()`. It makes `Mediator.Send` dispatch locally in the host that owns the handlers — required for server-side prerendering of components that send messages. There is no implicit sender fallback and `[Http]` is the gate — the sender-registration semantics live in [messaging.md](messaging.md) (In-process vs remote).
 
 For the push, the same pair over `[Pushed]` instead of `[Http]`, both from one walk so what the

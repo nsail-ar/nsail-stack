@@ -13,7 +13,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
 {
 
     const string IssuesQuery = """
-        query($o:String!,$n:String!,$c:String,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title projectItems(first:10){nodes{id project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}} milestone{number} labels(first:30){nodes{name}} subIssuesSummary{total percentCompleted} parent{number subIssuesSummary{percentCompleted}} blockedBy(first:30){nodes{number state}}}}}}
+        query($o:String!,$n:String!,$c:String,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title updatedAt projectItems(first:10){nodes{id updatedAt project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}} milestone{number} labels(first:30){nodes{name}} subIssuesSummary{total percentCompleted} parent{number subIssuesSummary{percentCompleted}} blockedBy(first:30){nodes{number state}}}}}}
         """;
 
     const string ClosedQuery = """
@@ -101,7 +101,30 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
             n.GetProperty("milestone").ValueKind == JsonValueKind.Object,
             hasParent ? parent.GetProperty("number").GetInt32() : 0,
             Percent(subs),
-            allBlockers.Count);
+            allBlockers.Count)
+        {
+            TouchedAt = TouchedIn(n, project),
+        };
+    }
+
+    // The issue's updatedAt moves on a comment or a label; a column move moves only its item's on the project.
+    internal static DateTimeOffset? TouchedIn(JsonElement n, int project)
+    {
+        var at = Time(n);
+        if (n.TryGetProperty("projectItems", out var items))
+        {
+            foreach (var item in items.GetProperty("nodes").EnumerateArray())
+            {
+                if (item.GetProperty("project").GetProperty("number").GetInt32() != project) continue;
+                if (Time(item) is { } moved && (at is null || moved > at)) at = moved;
+            }
+        }
+        return at;
+
+        static DateTimeOffset? Time(JsonElement e)
+        {
+            return e.TryGetProperty("updatedAt", out var u) && u.ValueKind == JsonValueKind.String ? u.GetDateTimeOffset() : null;
+        }
     }
 
     static double Percent(JsonElement summary)
