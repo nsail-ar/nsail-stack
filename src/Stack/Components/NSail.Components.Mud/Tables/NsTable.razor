@@ -888,7 +888,7 @@ else
     /// the same one-row-at-a-time rule the control keeps by being disabled.</summary>
     public void Add()
     {
-        if (!Editable || NewRow is null || IsBusy)
+        if (!Editable || NewRow is null || IsBusy || IsRunning)
         {
             return;
         }
@@ -940,6 +940,12 @@ else
     /// the row is either closed or standing there with its reason drawn.</summary>
     async Task<bool> Commit(TRow item)
     {
+        // A second press while the first is being answered does nothing.
+        if (IsRunning)
+        {
+            return false;
+        }
+
         // What the last press refused is lifted before this one runs: a message standing beside
         // a value the user has already corrected says the row is still refused when it is not.
         Placement.Clear();
@@ -1021,6 +1027,11 @@ else
 
     Task Remove(TRow item)
     {
+        if (IsRunning)
+        {
+            return Task.CompletedTask;
+        }
+
         return Raise(OnRowRemove, new RowEditEventArgs<TRow> { Row = item });
     }
 

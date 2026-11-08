@@ -301,7 +301,7 @@ else
     /// control greyed with no way back out.</summary>
     public void Add()
     {
-        if (!Editable || NewItem is null)
+        if (!Editable || NewItem is null || IsBusy || IsRunning)
         {
             return;
         }
@@ -347,6 +347,12 @@ else
     /// the row is either closed or standing there with its reason drawn.</summary>
     async Task<bool> Commit(TItem item)
     {
+        // A second press while the first is being answered does nothing.
+        if (IsRunning)
+        {
+            return false;
+        }
+
         // What the last press refused is lifted before this one runs: a message standing beside
         // a value the user has already corrected says the row is still refused when it is not.
         Placement.Clear();
@@ -404,6 +410,11 @@ else
 
     Task Remove(TItem item)
     {
+        if (IsRunning)
+        {
+            return Task.CompletedTask;
+        }
+
         return Raise(OnRemove, new RowEditEventArgs<TItem> { Row = item });
     }
 
