@@ -136,9 +136,9 @@ public class PushTests : IDisposable
         var (dir, _, start) = await Sailing();
         var added = await Commit(dir, "B");
 
-        var first = await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []);
+        var first = await DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []);
         var later = await Commit(dir, "C");
-        var second = await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []);
+        var second = await DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []);
 
         Assert.Equal("rescue/oz-1", first);
         Assert.Equal("rescue/oz-1-2", second);
@@ -152,7 +152,7 @@ public class PushTests : IDisposable
     {
         var (dir, _, start) = await Sailing();
 
-        Assert.Null(await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
+        Assert.Null(await DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
     }
 
     [Fact]
@@ -164,8 +164,8 @@ public class PushTests : IDisposable
         await Shell.Git(dir, "add", "-A");
         await Commit(dir, "W");
 
-        Assert.Null(await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", [".github/workflows/**"]));
-        Assert.Equal("rescue/oz-1", await NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
+        Assert.Null(await DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", [".github/workflows/**"]));
+        Assert.Equal("rescue/oz-1", await DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
     }
 
     [Fact]
@@ -178,7 +178,7 @@ public class PushTests : IDisposable
         await File.WriteAllTextAsync(hook, $"#!/bin/sh\necho x >> '{tally.Replace('\\', '/')}'\nexit 1\n");
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(hook, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => NSail.Harness.Jobs.DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", []));
 
         Assert.Single(await File.ReadAllLinesAsync(tally));
     }

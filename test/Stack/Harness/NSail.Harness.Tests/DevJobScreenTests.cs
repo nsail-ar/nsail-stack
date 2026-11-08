@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using NSail.Harness.Jobs;
-
 namespace NSail.Harness.Tests;
 
 public class DevJobScreenTests
