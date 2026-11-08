@@ -58,6 +58,30 @@ public sealed class JobContext(
         return new JobStep(w, agent, command, w.Minutes ?? WorkerTypes.All[w.Type].Minutes, w.Variables);
     }
 
+    // A seat's run, and the end of its reach: every clone it shared is rewritten as the harness wrote it
+    // before any other git runs there. A restore that fails costs nothing here: the next Prepare redoes it,
+    // and the work the seat left is still to be delivered.
+    public async Task<AgentResult> RunSeat(AgentRun run, CancellationToken ct)
+    {
+        try
+        {
+            return await Agent.Run(run, ct);
+        }
+        finally
+        {
+            foreach (var w in workspaces.Values)
+            {
+                try
+                {
+                    await w.Restore();
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
+                {
+                }
+            }
+        }
+    }
+
     // A repository's own slots: a story it holds is built and pushed there.
     public Workspace WorkspaceOf(IRepository repository)
     {
@@ -78,9 +102,9 @@ public sealed class JobContext(
         return Path.Combine(dir, name);
     }
 
-    // The environment every lane's tools see: the providers' credentials, the harness's build-turn
+    // The environment every lane's tools see: the providers' credentials (a step that runs code, only if it declares them), the harness's build-turn
     // door, the clock, and the project's variables (HarnessOptions.Variables, then the worker's own).
-    public async Task<Dictionary<string, string>> LaneEnv(DateTimeOffset axe, WorkItem item, JobStep? step = null, CancellationToken ct = default)
+    public async Task<Dictionary<string, string>> LaneEnv(DateTimeOffset axe, WorkItem item, JobStep? step = null, CancellationToken ct = default, bool runsCode = false)
     {
         var shims = Path.Combine(AppContext.BaseDirectory, "shims");
         var env = await VariableReferences.Resolve(Options.Variables.Concat(step?.Variables ?? new Dictionary<string, string>()), RepositoryVariable, ct);
@@ -99,7 +123,9 @@ public sealed class JobContext(
         env["VOYAGE_AXE"] = axe.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
         env["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         env["DOTNET_NOLOGO"] = "1";
-        foreach (var e in environments) e.Lane(env);
+        // A step that runs a PR's or a branch's code holds a credential only where its Variables name one (GH_TOKEN).
+        var credentials = !runsCode || step?.Variables.ContainsKey("GH_TOKEN") == true;
+        foreach (var e in environments) e.Lane(env, credentials);
         return env;
     }
 

@@ -11,7 +11,7 @@ public class CrewPrTests
 {
     static OpenPr Pr(string headRepo, string author)
     {
-        return new OpenPr(1, "app#5: x", "story/app-5", "abc", CiState.Green, "acme/app", "t", headRepo, author);
+        return new OpenPr(1, "app#5: x", "story/app-5", "abc", CiState.Green, "acme/app", "t", HeadRepo: headRepo, Author: author);
     }
 
     [Fact]

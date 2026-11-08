@@ -57,9 +57,11 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         return raw.Where(pr => !pr.GetProperty("isDraft").GetBoolean()).Select(pr =>
         {
             var sha = pr.GetProperty("headRefOid").GetString() ?? "";
-            var ci = pr.GetProperty("mergeable").GetString() == "CONFLICTING" ? CiState.Conflict : CiOf(bySha.GetValueOrDefault(sha));
+            var shaRuns = bySha.GetValueOrDefault(sha);
+            var ci = pr.GetProperty("mergeable").GetString() == "CONFLICTING" ? CiState.Conflict : CiOf(shaRuns);
             return new OpenPr(pr.GetProperty("number").GetInt32(), pr.GetProperty("title").GetString() ?? "",
                 pr.GetProperty("headRefName").GetString() ?? "", sha, ci, repo, pr.GetProperty("updatedAt").GetString() ?? "",
+                ci == CiState.Green ? GreenAtOf(shaRuns) : null,
                 NestedString(pr, "headRepository", "nameWithOwner"), NestedString(pr, "author", "login"));
         }).ToList();
     }
@@ -142,14 +144,26 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         {
             if (r.TryGetProperty("submitted_at", out var at) && at.ValueKind == JsonValueKind.String)
             {
-                all.Add(new PrNote(at.GetDateTimeOffset(), r.GetProperty("body").GetString() ?? ""));
+                all.Add(new PrNote(at.GetDateTimeOffset(), r.GetProperty("body").GetString() ?? "", LoginOf(r)));
             }
         }
         foreach (var c in await gh.GetAll($"repos/{repo}/issues/{pr}/comments?per_page=100", ct: ct))
         {
-            all.Add(new PrNote(c.GetProperty("created_at").GetDateTimeOffset(), c.GetProperty("body").GetString() ?? ""));
+            all.Add(new PrNote(c.GetProperty("created_at").GetDateTimeOffset(), c.GetProperty("body").GetString() ?? "", LoginOf(c)));
         }
         return all.OrderBy(b => b.At).ToList();
+    }
+
+    static string LoginOf(JsonElement e)
+    {
+        return e.TryGetProperty("user", out var u) && u.ValueKind == JsonValueKind.Object && u.TryGetProperty("login", out var l) ? l.GetString() ?? "" : "";
+    }
+
+    string? _login;
+
+    public async Task<string> Login(CancellationToken ct = default)
+    {
+        return _login ??= (await gh.Get("user", ct)).GetProperty("login").GetString() ?? "";
     }
 
     public async Task<IReadOnlyList<string>> Files(int pr, CancellationToken ct = default)
@@ -225,12 +239,25 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             && r.GetProperty("event").GetString() is "pull_request" or "push").ToList());
     }
 
+    // The newest run per workflow at a head.
+    static IEnumerable<JsonElement> Latest(List<JsonElement> runs)
+    {
+        return runs
+            .GroupBy(r => r.GetProperty("workflow_id").GetInt64())
+            .Select(g => g.OrderBy(r => r.TryGetProperty("run_started_at", out var s) ? s.GetString() : "").Last());
+    }
+
+    // When a green head's last workflow finished: a run's updated_at is its completion once completed.
+    internal static DateTimeOffset? GreenAtOf(List<JsonElement>? runs)
+    {
+        if (runs is null || runs.Count == 0) return null;
+        return Latest(runs).Select(r => r.TryGetProperty("updated_at", out var u) && u.ValueKind == JsonValueKind.String ? u.GetDateTimeOffset() : (DateTimeOffset?)null).Max();
+    }
+
     internal static CiState CiOf(List<JsonElement>? runs)
     {
         if (runs is null || runs.Count == 0) return CiState.Pending;
-        var latest = runs
-            .GroupBy(r => r.GetProperty("workflow_id").GetInt64())
-            .Select(g => g.OrderBy(r => r.TryGetProperty("run_started_at", out var s) ? s.GetString() : "").Last());
+        var latest = Latest(runs);
         var pending = false;
         var red = false;
         foreach (var run in latest)

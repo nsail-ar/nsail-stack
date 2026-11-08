@@ -53,6 +53,20 @@ public class BoardReaderTests
     }
 
     [Fact]
+    public void AGreenHeadIsGreenSinceItsLastWorkflowFinished()
+    {
+        var runs = Runs("""
+            [
+              {"workflow_id":1,"run_started_at":"2026-10-25T10:00:00Z","updated_at":"2026-10-25T12:00:00Z","status":"completed","conclusion":"failure"},
+              {"workflow_id":1,"run_started_at":"2026-10-25T11:00:00Z","updated_at":"2026-10-25T11:20:00Z","status":"completed","conclusion":"success"},
+              {"workflow_id":2,"run_started_at":"2026-10-25T11:00:00Z","updated_at":"2026-10-25T11:05:00Z","status":"completed","conclusion":"success"}
+            ]
+            """);
+
+        Assert.Equal(DateTimeOffset.Parse("2026-10-25T11:20:00Z"), GitHubRepository.GreenAtOf(runs));
+    }
+
+    [Fact]
     public void OneRedWorkflowMakesItRedAndOneInFlightMakesItPending()
     {
         Assert.Equal(CiState.Red, GitHubRepository.CiOf(Runs("""[{"workflow_id":1,"run_started_at":"a","status":"completed","conclusion":"cancelled"}]""")));
@@ -67,7 +81,7 @@ public class BoardReaderTests
     public void TheReviewersWordIsTheLastMarkAtThatSha()
     {
         var markers = new Markers("reviewer");
-        var bodies = new[] { "x <!-- reviewer:findings:aaa -->", "y <!-- reviewer:clean:bbb -->", "z <!-- reviewer:findings:bbb -->" };
+        var bodies = new[] { "x\n<!-- reviewer:findings:aaa -->", "y\n<!-- reviewer:clean:bbb -->", "z\n<!-- reviewer:findings:bbb -->" };
 
         Assert.Equal("findings", markers.ReviewAt(bodies, "bbb"));
         Assert.Equal("findings", markers.ReviewAt(bodies, "aaa"));

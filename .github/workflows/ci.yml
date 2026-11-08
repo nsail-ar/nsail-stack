@@ -22,6 +22,7 @@ on:
     paths-ignore:
       - '**.md'
       - '.github/workflows/review.yml'
+      - '.github/review-reads.sh'
   workflow_dispatch:
 
 permissions:

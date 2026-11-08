@@ -43,7 +43,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
         {
             // The log moves as the turn comes: its silence while in line is not the build's (JobActivity).
             await w.WriteLineAsync("== build turn taken");
-            var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(Step.Minutes), Item, Step, ct);
+            var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(Step.Minutes), Item, Step, ct, runsCode: true);
             env["HARNESS_LEASE_HELD"] = "1";
             env["GATE_WORK"] = Path.Combine(ctx.Options.WorkRoot, "gate", $"slot-{slot}");
             Directory.CreateDirectory(env["GATE_WORK"]);

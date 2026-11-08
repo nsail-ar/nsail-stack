@@ -5,7 +5,8 @@ using System.Net;
 
 namespace NSail.Harness.GitHub;
 
-public sealed class GitHubException(HttpStatusCode status, string message) : ProviderException(message, (int)status)
+public sealed class GitHubException(HttpStatusCode status, string message, long? rateLimitRemaining = null)
+    : ProviderException(message, (int)status, rateLimitRemaining)
 {
     public HttpStatusCode HttpStatus { get; } = status;
 }

@@ -13,7 +13,8 @@ namespace NSail.Harness.OpenObserve;
 // The error lines of OpenObserve's logs stream, over its search API (SQL). The store's columns are
 // the OpenTelemetry export's as OpenObserve flattens them: `service_name`, the logger in
 // `instrumentation_library_name`, the message template in `body`, `exception_type` and
-// `exception_stacktrace`, the cell in `nsail_tenant`, `trace_id` when the line had one.
+// `exception_stacktrace`, the cell in `nsail_tenant`, `trace_id` when the line had one; a failed
+// pass's `providercall`, `providerstatus` and `ratelimitremaining` (its placeholders, in any case).
 public sealed class OpenObserveLogSource(HttpClient http, OpenObserveOptions options) : ILogSource
 {
     public string Name => "OpenObserve";
@@ -57,7 +58,10 @@ public sealed class OpenObserveLogSource(HttpClient http, OpenObserveOptions opt
                 Text(hit, "exception_stacktrace"),
                 Text(hit, "nsail_tenant") ?? "",
                 Text(hit, "trace_id"),
-                Link(endpoint, options, at)));
+                Link(endpoint, options, at),
+                Field(hit, "providercall") is { ValueKind: JsonValueKind.String } call && call.GetString() is { Length: > 0 } named ? named : null,
+                Number(hit, "providerstatus") is { } status and >= int.MinValue and <= int.MaxValue ? (int)status : null,
+                Number(hit, "ratelimitremaining")));
         }
         return rows;
     }
@@ -73,6 +77,24 @@ public sealed class OpenObserveLogSource(HttpClient http, OpenObserveOptions opt
     static string? Text(JsonElement hit, string name)
     {
         return hit.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String && v.GetString() is { Length: > 0 } s ? s : null;
+    }
+
+    // A record attribute's column, in whatever case the store kept the placeholder's name.
+    static JsonElement? Field(JsonElement hit, string name)
+    {
+        foreach (var column in hit.EnumerateObject())
+        {
+            if (string.Equals(column.Name, name, StringComparison.OrdinalIgnoreCase)) return column.Value;
+        }
+        return null;
+    }
+
+    // An attribute OpenObserve stored as a number, or as the number's text.
+    static long? Number(JsonElement hit, string name)
+    {
+        if (Field(hit, name) is not { } v) return null;
+        if (v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var n)) return n;
+        return v.ValueKind == JsonValueKind.String && long.TryParse(v.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
     }
 
     static long Microseconds(DateTimeOffset at)

@@ -16,8 +16,10 @@ name: Review
 #   - `workflow_run` always executes THIS file as it stands on main, never the version a pull
 #     request carries, so a pull request that edits it is not reviewed by its own edit;
 #   - the automatic path reviews only a pull request whose head branch lives in this repository
-#     and whose author is the crew (a fork's CI run lists no pull request at all, and the job
-#     says so and stops); a hand may dispatch a read of any same-repository pull request;
+#     and is a story's (`stack/nsail-N`, `story/nsail-N`) whose story no hand holds, whoever
+#     opened it (a fork's CI run lists no pull request at all, and the job says so and stops); a
+#     hand may dispatch a read of any same-repository pull request. Which PR is read is decided
+#     by .github/review-reads.sh, checked out from main, never from the pull request;
 #   - the story is read from nsail-ar/nsail, the queue's home; its text is DATA to the reviewer.
 #
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN (the reviewer) and NSAIL_CREW_PAT (the crew's identity, which
@@ -52,6 +54,7 @@ jobs:
     env:
       R: ${{ github.repository }}
       Q: nsail-ar/nsail
+      # The crew's login: the one writer, beside the Actions bot, whose review markers count.
       CREW: nsail-software
       STAGE_FIELD: "47730047"
       FINDINGS: .vigia-review.md
@@ -69,6 +72,14 @@ jobs:
           echo "CLAUDE_CODE_OAUTH_TOKEN: ${#OAUTH} chars, starts '${OAUTH:0:10}', ends '${OAUTH: -2}', $SHAPE chars outside [A-Za-z0-9_-]"
           case "$OAUTH" in sk-ant-oat*) ;; *) echo "::error::CLAUDE_CODE_OAUTH_TOKEN does not start with sk-ant-oat: it is not a setup-token value"; exit 1 ;; esac
           [ "$SHAPE" -eq 0 ] || { echo "::error::CLAUDE_CODE_OAUTH_TOKEN holds $SHAPE characters that are not part of a token (spaces, line breaks): paste the bare value"; exit 1; }
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: .trusted
+          sparse-checkout: .github/review-reads.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
 
       - name: Read the PR
         id: pr
@@ -94,27 +105,32 @@ jobs:
             echo "go=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [ "$CROSS" != "false" ]; then
-            echo "::warning::PR #$PR comes from a fork — never reviewed here"
+          READS_SH=.trusted/.github/review-reads.sh
+          ISSUE=$(bash "$READS_SH" story "$BRANCH")
+          LABELS=""
+          if [ "$EVENT" = "workflow_run" ] && [ "$CROSS" = "false" ] && [ -n "$ISSUE" ]; then
+            if ! LABELS=$(gh issue view "$ISSUE" -R "$Q" --json labels --jq '[.labels[].name] | join(",")'); then
+              echo "::warning::PR #$PR — its story nsail#$ISSUE is unreadable, so whether a hand holds it is unknown — not reviewed"
+              echo "go=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          if ! WHY=$(bash "$READS_SH" go "$EVENT" "$CROSS" "$BRANCH" "$LABELS"); then
+            if [ "$CROSS" != "false" ]; then echo "::warning::PR #$PR $WHY"; else echo "PR #$PR by $AUTHOR $WHY"; fi
             echo "go=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [ "$EVENT" = "workflow_run" ] && [ "$AUTHOR" != "$CREW" ]; then
-            echo "PR #$PR is by $AUTHOR, not the crew — dispatch a read by hand if one is wanted"
-            echo "go=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          echo "PR #$PR by $AUTHOR $WHY"
           if [ "$EVENT" = "workflow_run" ] && [ "$SHA" != "$WF_SHA" ]; then
             echo "PR #$PR moved past the head this CI run built — the next CI run reviews it"
             echo "go=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          ISSUE=""
-          case "$BRANCH" in stack/nsail-*) ISSUE="${BRANCH#stack/nsail-}" ;; story/nsail-*) ISSUE="${BRANCH#story/nsail-}" ;; esac
-          ISSUE=$(printf "%s" "${ISSUE:-}" | grep -oE "^[0-9]+" || true)
           # Earlier reads with findings, oldest first; the last one's sha is where a narrow
           # read starts.
-          MARKS='(.body // "") | scan("vigia:findings:([0-9a-f]+)") | "\($t) \(.[0])"'
+          # Only the two identities that write the marker count (the Actions bot, or the crew's
+          # login when the repository refuses its reviews), and only as a whole line.
+          MARKS='select(.user.login == "github-actions[bot]" or .user.login == "'"$CREW"'") | (.body // "") | scan("(?m)^<!-- vigia:findings:([0-9a-f]+) -->[ \\t]*\\r?$") | "\($t) \(.[0])"'
           PRIOR=$( { gh api "repos/$R/pulls/$PR/reviews" --paginate --jq ".[] | .submitted_at as \$t | $MARKS"; gh api "repos/$R/issues/$PR/comments" --paginate --jq ".[] | .created_at as \$t | $MARKS"; } 2>/dev/null \
             | sort | awk '!seen[$2]++' || true)
           READS=$(printf '%s\n' "$PRIOR" | grep -c . || true)
@@ -203,7 +219,7 @@ jobs:
               exit 1 ;;
           esac
           # The marker counts rounds; the body is what people read.
-          { tail -n +2 "$FINDINGS"; echo; echo "<!-- vigia:$KIND:$SHA -->"; } > /tmp/review-body.md
+          { tail -n +2 "$FINDINGS" | sed -E ':a;s/<!--[[:space:]]*(harness:gate|vigia):[^>]*-->//;ta'; echo; echo "<!-- vigia:$KIND:$SHA -->"; } > /tmp/review-body.md
 
           # A native review needs a second identity (the PAT opened the PR). If the repository
           # refuses Actions reviews, the same text lands as a comment.
@@ -223,8 +239,9 @@ jobs:
           fi
 
           if [ "$KIND" = "findings" ]; then
-            ROUNDS=$( { gh api "repos/$R/pulls/$PR/reviews" --paginate --jq '.[].body'; gh api "repos/$R/issues/$PR/comments" --paginate --jq '.[].body'; } 2>/dev/null \
-              | grep -oE 'vigia:findings:[0-9a-f]+' | sort -u | grep -c . || true)
+            OWN='.[] | select(.user.login == "github-actions[bot]" or .user.login == "'"$CREW"'") | (.body // "")'
+            ROUNDS=$( { gh api "repos/$R/pulls/$PR/reviews" --paginate --jq "$OWN"; gh api "repos/$R/issues/$PR/comments" --paginate --jq "$OWN"; } 2>/dev/null \
+              | grep -oE '^<!-- vigia:findings:[0-9a-f]+ -->[[:space:]]*$' | sort -u | grep -c . || true)
             if [ "$ROUNDS" -ge 4 ]; then
               stall "Cuarta lectura con hallazgos en PR #$PR de nsail-stack — \`stalled\` en vez de otra vuelta: una mano mira por qué no converge."
               exit 0
