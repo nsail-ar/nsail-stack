@@ -1,0 +1,9 @@
+<Project>
+
+	<!-- Analyzer rules every product inherits with the packages. NSail.Types sits under every
+	     Stack package, so buildTransitive reaches each consumer. -->
+	<ItemGroup>
+		<GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)NSail.globalconfig" />
+	</ItemGroup>
+
+</Project>
