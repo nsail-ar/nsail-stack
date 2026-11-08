@@ -161,6 +161,25 @@ static class SdkReader
         return null;
     }
 
+    // Constructs .NET reads and JavaScript does not: inline options, \A \z \Z \G anchors, atomic
+    // groups, possessive quantifiers, character-class subtraction.
+    static readonly System.Text.RegularExpressions.Regex DotNetOnly = new(
+        @"\(\?[imnsx-]+[:)]|\\[AzZG]|\(\?>|[*+?}]\+|-\[",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    static FieldShape WithPattern(FieldShape field, INamedTypeSymbol message, IPropertySymbol property, string pattern, List<string> serverRules)
+    {
+        if (!DotNetOnly.IsMatch(pattern))
+        {
+            return field with { Pattern = pattern };
+        }
+
+        Console.Error.WriteLine($"warning NSTS002: {message.Name}.{property.Name} has a [RegularExpression] JavaScript cannot compile; only the server checks it");
+        serverRules.Add("RegularExpression");
+
+        return field;
+    }
+
     static FieldShape ReadField(
         INamedTypeSymbol message,
         IPropertySymbol property,
@@ -206,7 +225,7 @@ static class SdkReader
                 EmailAddressAttribute => field with { Format = "email" },
                 PhoneAttribute => field with { Format = "phone" },
                 UrlAttribute => field with { Format = "url" },
-                RegularExpressionAttribute pattern => field with { Pattern = pattern.Pattern },
+                RegularExpressionAttribute pattern => WithPattern(field, message, property, pattern.Pattern, serverRules),
                 _ => field,
             };
         }

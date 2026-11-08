@@ -70,7 +70,7 @@ same name: method, path, and per member its wire kind, localization key, binding
 DataAnnotations (`required`, `maxLength`, `minLength`, `min`/`max`, `format`, `pattern`).
 Rules the generator cannot construct are listed in `serverRules` and left to the server. Models
 become interfaces plus `defineModel`, enums a union of names plus `defineEnum`. Two reachable types
-with the same simple name fail the build (`NSTS001`).
+with the same simple name fail the build (`NSTS001`). A `[RegularExpression]` using a .NET-only construct (`(?i)`, `\A`, atomic groups) warns `NSTS002` and is left to the server; the client compiles each pattern once, with the `u` flag.
 
 **`Mediator`** (`new Mediator(options?)`):
 

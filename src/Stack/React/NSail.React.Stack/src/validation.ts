@@ -17,6 +17,26 @@ const exact: Record<string, RegExp> = {
   decimal: /^\s*[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?\s*$/,
 };
 
+// Compiled once per pattern, with `u` so \p{L} is a property class. A pattern JavaScript cannot
+// compile is null: the server's rule alone judges it.
+const compiled = new Map<string, RegExp | null>();
+
+function compile(pattern: string): RegExp | null {
+  let regex = compiled.get(pattern);
+
+  if (regex === undefined) {
+    try {
+      regex = new RegExp(`^(?:${pattern})$`, "u");
+    } catch {
+      regex = null;
+    }
+
+    compiled.set(pattern, regex);
+  }
+
+  return regex;
+}
+
 function issue(code: string, message: string, field: string, args: Record<string, string> = {}): Issue {
   return { code, message, source: field, arguments: { field, ...args } };
 }
@@ -86,7 +106,7 @@ export function validateField(field: Field, value: unknown): Issue[] {
       (field.format === "email" && !email.test(value)) ||
       (field.format === "phone" && !phone.test(value)) ||
       (field.format === "url" && !url.test(value)) ||
-      (field.pattern !== undefined && !new RegExp(`^(?:${field.pattern})$`).test(value));
+      (field.pattern !== undefined && compile(field.pattern)?.test(value) === false);
 
     if (formatted) {
       issues.push(issue("InvalidFormat", `The field ${name} has an invalid format`, name));
