@@ -155,7 +155,7 @@ public partial class NsDateTimeField<TValue>
         {
             null => null,
             DateTime dateTime => dateTime,
-            DateTimeOffset dateTimeOffset => dateTimeOffset.DateTime,
+            DateTimeOffset dateTimeOffset => TimeZoneInfo.ConvertTime(dateTimeOffset, TimeZoneInfo.Local).DateTime,
             _ => null
         };
     }
