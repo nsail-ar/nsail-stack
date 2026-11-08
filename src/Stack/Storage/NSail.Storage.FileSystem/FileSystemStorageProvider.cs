@@ -23,7 +23,7 @@ public class FileSystemStorageProvider : IStorageProvider
     // stays listable.
     const string StagingPrefix = ".put-";
 
-    const int StagingNameLength = 5 + 32;
+    static readonly int StagingNameLength = StagingPrefix.Length + 32;
 
     public string Type
     {
@@ -67,7 +67,7 @@ public class FileSystemStorageProvider : IStorageProvider
             {
                 File.Delete(staging);
             }
-            catch (IOException)
+            catch (Exception)
             {
                 // The original failure is the one the caller must see.
             }

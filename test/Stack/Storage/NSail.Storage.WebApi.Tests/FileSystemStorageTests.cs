@@ -118,6 +118,23 @@ public sealed class FileSystemStorageTests
     }
 
     [Fact]
+    public async Task ListSkipsAStagingFileLeftBehind()
+    {
+        using var container = new Container();
+
+        using (var content = new MemoryStream([1]))
+        {
+            await _provider.Put(container.Target, "a.bin", content, null);
+        }
+
+        await File.WriteAllBytesAsync(Path.Combine(container.Path, ".put-" + Guid.NewGuid().ToString("N")), [1, 2]);
+
+        var all = await _provider.List(container.Target, null);
+
+        Assert.Equal(["a.bin"], all.Select(stored => stored.Key));
+    }
+
+    [Fact]
     public async Task ListsAKeyThatOnlyStartsLikeAStagingFile()
     {
         using var container = new Container();
@@ -185,8 +202,8 @@ public sealed class FileSystemStorageTests
     // The story's own claim, made measurable: an archive larger than memory is neither loaded
     // nor buffered whole. The source is not seekable and refuses to state its length, so nothing
     // downstream could size a buffer even if it wanted to — and the container is watched WHILE
-    // the source is still producing. Bytes in the staging file before the last chunk was read is the whole
-    // proof: a provider that materialized the object would leave an empty file until the end.
+    // the source is still producing. Bytes in the staging file before the last chunk was read
+    // are the whole proof: a provider that materialized the object would leave it empty.
     [Fact]
     public async Task WritesWhileTheSourceIsStillProducing()
     {
