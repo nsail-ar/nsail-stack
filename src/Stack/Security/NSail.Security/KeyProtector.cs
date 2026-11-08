@@ -9,8 +9,8 @@ namespace NSail.Security;
 /// <summary>
 /// Reversible protection for stored secrets (tokens, keys) using AES-GCM.
 /// Payload format: "v2." + base64(salt | nonce | tag | ciphertext), the key derived per payload
-/// (HKDF-SHA256 over the configured value and the salt). A payload without the prefix is the
-/// original format, base64(nonce | tag | ciphertext) under SHA256 of the configured value, and
+/// (HKDF-SHA256 over the current key and the salt). A payload without the prefix is the
+/// original format, base64(nonce | tag | ciphertext) under SHA256 of the key, and
 /// still unseals.
 /// </summary>
 public class KeyProtector
@@ -20,27 +20,43 @@ public class KeyProtector
     const string Version = "v2.";
     const int SaltSize = 16;
 
-    readonly byte[] _secret;
-    readonly byte[] _legacyKey;
+    readonly IEncryptionKeySource _keys;
 
     public KeyProtector(string encryptionKey)
     {
         if (string.IsNullOrWhiteSpace(encryptionKey))
             throw new ArgumentException("An encryption key is required.", nameof(encryptionKey));
 
-        _secret = Encoding.UTF8.GetBytes(encryptionKey);
-        _legacyKey = SHA256.HashData(_secret);
+        _keys = new FixedKey(encryptionKey);
+    }
+
+    public KeyProtector(IEncryptionKeySource keys)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+
+        _keys = keys;
+    }
+
+    byte[] Secret()
+    {
+        var key = _keys.Current;
+
+        if (string.IsNullOrWhiteSpace(key))
+            throw new MissingEncryptionKeyException("The current work has no encryption key, so nothing can be sealed or opened.");
+
+        return Encoding.UTF8.GetBytes(key);
     }
 
     public string Protect(string value)
     {
+        var secret = Secret();
         var salt = RandomNumberGenerator.GetBytes(SaltSize);
         var nonce = RandomNumberGenerator.GetBytes(AesGcm.NonceByteSizes.MaxSize);
         var tag = new byte[AesGcm.TagByteSizes.MaxSize];
         var plaintext = Encoding.UTF8.GetBytes(value);
         var ciphertext = new byte[plaintext.Length];
 
-        using var aes = new AesGcm(Derive(salt), tag.Length);
+        using var aes = new AesGcm(Derive(secret, salt), tag.Length);
         aes.Encrypt(nonce, plaintext, ciphertext, tag);
 
         var payload = new byte[salt.Length + nonce.Length + tag.Length + ciphertext.Length];
@@ -54,6 +70,8 @@ public class KeyProtector
 
     public string Unprotect(string protectedValue)
     {
+        var secret = Secret();
+
         if (protectedValue.StartsWith(Version, StringComparison.Ordinal))
         {
             var payload = Convert.FromBase64String(protectedValue[Version.Length..]);
@@ -61,15 +79,15 @@ public class KeyProtector
             if (payload.Length < SaltSize)
                 throw new CryptographicException("The protected value is malformed.");
 
-            return Open(Derive(payload[..SaltSize]), payload.AsSpan(SaltSize));
+            return Open(Derive(secret, payload[..SaltSize]), payload.AsSpan(SaltSize));
         }
 
-        return Open(_legacyKey, Convert.FromBase64String(protectedValue));
+        return Open(SHA256.HashData(secret), Convert.FromBase64String(protectedValue));
     }
 
-    byte[] Derive(byte[] salt)
+    static byte[] Derive(byte[] secret, byte[] salt)
     {
-        return HKDF.DeriveKey(HashAlgorithmName.SHA256, _secret, 32, salt, Info);
+        return HKDF.DeriveKey(HashAlgorithmName.SHA256, secret, 32, salt, Info);
     }
 
     static string Open(byte[] key, ReadOnlySpan<byte> payload)
@@ -89,5 +107,15 @@ public class KeyProtector
         aes.Decrypt(nonce, ciphertext, tag, plaintext);
 
         return Encoding.UTF8.GetString(plaintext);
+    }
+
+    sealed class FixedKey : IEncryptionKeySource
+    {
+        public FixedKey(string key)
+        {
+            Current = key;
+        }
+
+        public string? Current { get; }
     }
 }

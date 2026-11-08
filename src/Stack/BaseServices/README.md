@@ -28,6 +28,7 @@ Web host (`Microsoft.NET.Sdk.Web`):
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddBaseWebApi();
+builder.AddTenantKeys();                       // the KeyProtector Storage seals with
 builder.AddBaseWebApp();                       // only if the host renders Blazor
 
 builder.Services.AddSampleWebApi(builder.Configuration);   // your kits and app
@@ -67,6 +68,11 @@ features, the push server end with the tenant as its audience, authorization, me
 with schema ids derived from `MetadataProvider`, and a DataProtection key ring persisted under
 `<content root>/data/keyring` (so a backup carries it) under the host's `ApplicationName` as its DataProtection application name (the first link of the purpose chain: renaming the application leaves what was sealed under the old name unreadable). It sets `RouteHandlerOptions.ThrowOnBadRequest` in every environment so a binding failure takes
 the same exception path everywhere.
+
+`AddTenantKeys` registers the `KeyProtector` that seals with the current tenant's key, one
+`{slug}.key` file per tenant under `Security:KeysDirectory`. A tenant with no file makes a seal
+or an open throw `MissingEncryptionKeyException`. Outside Development a host without the
+directory refuses to compose; Development without it seals under a fixed key.
 
 `UseBaseWebApi` builds the pipeline in this order:
 
@@ -113,7 +119,7 @@ router render its NotFound (it leaves `/api` and file-looking paths alone).
 | Section | Keys | Read by |
 |---|---|---|
 | `Language` | `Base` (default `en`), `Default` (default `en`), `Offered` (default empty, meaning `Default` alone) | `UseBaseWebApp` request localization, the suspended page |
-| `Security` | `TicketEpoch` (int, default 0); `TrustedProxies` (addresses or CIDR networks, default none) | `TicketEpochMiddleware`; forwarded headers |
+| `Security` | `TicketEpoch` (int, default 0); `TrustedProxies` (addresses or CIDR networks, default none); `KeysDirectory` (the per-tenant key files) | `TicketEpochMiddleware`; forwarded headers; `AddTenantKeys` |
 | `Tenancy` | `Mode`, `StateCacheSeconds`, `SupportContact`, ... | the tenant steps; options are `TenancyOptions` in `NSail.Data` |
 | `Telemetry` | see [Telemetry](../Telemetry/README.md) | `AddBaseWebApi` |
 | `HttpClients` | `<Area>:BaseUrl`, `<Area>:TimeoutSeconds` | `AddHttpClients` (Wasm), from `NSail.Messaging.Http` |

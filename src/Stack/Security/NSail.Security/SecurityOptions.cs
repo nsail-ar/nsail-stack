@@ -29,4 +29,9 @@ public class SecurityOptions
     /// (<c>10.0.0.0/8</c>). A header from any other peer is ignored, so a caller who reaches the
     /// app port directly cannot pick its own address. Empty trusts nobody.</summary>
     public string[] TrustedProxies { get; set; } = [];
+
+    /// <summary>The directory holding one <c>{slug}.key</c> file per tenant, which
+    /// <c>AddTenantKeys</c> reads to seal that tenant's stored secrets. A host that calls
+    /// <c>AddTenantKeys</c> outside Development must set it.</summary>
+    public string? KeysDirectory { get; set; }
 }

@@ -59,6 +59,7 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 | Key | Default | Meaning |
 |---|---|---|
 | `TicketEpoch` | `0` | The ticket generation this install honours. Raising it signs out everyone holding an older ticket and nobody else: an HTTP request meets the 401 at once, and an open Blazor circuit meets it as a 401 on its next send (the security gate asks again) and reaches the sign-in page on its next document load, where the request wall signs the ticket out. What it cannot reach is a circuit that sends nothing, and a push feed, which are not asked until they act or reconnect. The value is read at startup, so a change takes a restart. `0` means never raised: nothing is stamped or refused. From `1` up, a ticket must carry exactly this generation |
+| `KeysDirectory` | none | The directory of one `{slug}.key` file per tenant, read by `AddTenantKeys`. Required outside Development by a host that calls `AddTenantKeys` |
 | `TrustedProxies` | `[]` | Proxies (addresses or CIDR networks) whose `X-Forwarded-*` headers are believed when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is on. Any other peer's are ignored; empty trusts nobody |
 
 **Registration**
@@ -67,6 +68,7 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 |---|---|
 | `AddSecurity()` | TryAdds `SessionProvider`, `RelationProvider`, `FeatureProvider`, `CredentialProvider`, `RequestOrganizationProvider`, `SecurityManager` with permissive defaults (anonymous session, every relation true, every feature on). A host with sign-in and a policy store replaces them |
 | `AddSecurityEnforcement()` | `AddSecurity()` plus the `SecurityInterceptor` on every send: deny by default. The host refuses to start while `RelationProvider` or `CredentialProvider` is still the permissive default (every relation constraint would pass, stale tickets be honoured): Iam registers the DB-backed ones |
+| `AddTenantKeys()` (`NSail.BaseServices.WebApi`, on the builder) | Registers the `KeyProtector` that seals with the current tenant's key from `Security:KeysDirectory`. A tenant with no file makes a seal or an open throw `MissingEncryptionKeyException`; Development without a directory seals under a fixed key, any other environment refuses to compose. The file is the cell's copy of a key kept elsewhere, and is read at every call, so a key written while the host runs is honoured |
 | `AcceptPermissiveProviders()` | Says an enforcing host has no Iam (a fixture, a sample) and runs over the permissive providers on purpose |
 | `AddBuiltInPolicy(policy)` | A code-owned policy no stored row can delete or widen |
 | `AddFeatures<TContributor>()` | An `IFeatureContributor` declaring the entitlement keys a module owns |
@@ -99,7 +101,7 @@ nobody wrote about a tenant reads as on, with no ceiling.
 
 **Helpers.** `PasswordHash.Hash` / `Verify` (PBKDF2-SHA256; `Verify(…, out needsRehash)` flags a
 hash under the current count, and one outside the floor and ceiling is refused),
-`KeyProtector(key).Protect` / `Unprotect` (AES-GCM, a versioned payload with a per-payload salt; the
+`KeyProtector(key or IEncryptionKeySource).Protect` / `Unprotect` (AES-GCM, a versioned payload with a per-payload salt; the
 earlier format still unseals), `Jwt` (base64url and token splitting, not a JWT library),
 `SafeReturnTo` (guards a return address before a redirect), `SignInRoutes` (the sign-in address's
 query names).
