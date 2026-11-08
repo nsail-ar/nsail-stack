@@ -43,7 +43,7 @@ public sealed class HarnessTexts
     public string GateWaits { get; set; } = "red only where `main` is red at `{main}`: not this PR's round. It is gated again once `main` moves.";
     public string GateTimedOut { get; set; } = "passed the {minutes} min";
     public string GateConflict { get; set; } = "the head does not merge with `main`: there are conflicts. The next round brings `main` in and resolves them.";
-    public string GateBroke { get; set; } = "the gate could not run ({error})";
+    public string GateBroke { get; set; } = "the gate broke on infrastructure, not on this PR ({error}). The head is gated again on the next pass.";
 
     public string SuiteRedTitle { get; set; } = "Regression red on main ({product})";
     public string SuiteRed { get; set; } = "**{product}**'s browser suite went {why} on `{sha}` ({where}).\n\n**What went red:**\n```\n{failed}\n```\n\nThe run's log and evidence: `{log}` on {machine}.";

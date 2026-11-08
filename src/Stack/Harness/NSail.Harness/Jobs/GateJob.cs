@@ -38,8 +38,9 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
-            // A gate that broke says so on the head, so nobody reads its silence as a verdict.
-            await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateBroke, ("error", e.Message)), null, log);
+            // Infrastructure is not the PR's red: the comment carries no gate marker and no status is set,
+            // so the head stays ungated and the next pass gates it again.
+            await Broke(prNumber, sha, e.Message, log);
             throw;
         }
     }
@@ -111,6 +112,20 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         {
             // The comment is the verdict; the status is a courtesy the token may not be allowed.
             log.LogDebug("no gate status on {Sha}: {Error}", sha[..8], e.Message);
+        }
+    }
+
+    async Task Broke(int pr, string sha, string error, ILogger log)
+    {
+        var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", "broke"), ("sha", sha[..8]), ("text", HarnessTexts.Fill(ctx.Texts.GateBroke, ("error", error))))
+            + $"\n\n{ctx.Texts.Signature}";
+        try
+        {
+            await ctx.Repo.Comment(pr, body);
+        }
+        catch (ProviderException e)
+        {
+            log.LogDebug("no gate-broke comment on {Sha}: {Error}", sha[..8], e.Message);
         }
     }
 
