@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using NSail.Harness.GitHub;
 using NSail.Harness.Lanes;
 
 namespace NSail.Harness.Tests;
 
-[Collection("ChildEnvironment")]
 public class ChildEnvironmentTests
 {
     [Fact]
@@ -80,6 +81,21 @@ public class ChildEnvironmentTests
 
         Assert.DoesNotContain("GH_TOKEN", env.Keys);
         Assert.Equal(Path.Combine(work, "no-gh"), env["GH_CONFIG_DIR"]);
+    }
+
+    [Fact]
+    public void AddingGitHubRemovesTheTokenFromTheProcessEnvironment()
+    {
+        using var _ = Held(("GH_TOKEN", "harness-token"));
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Harness:Repositories:0:Name"] = "o/r"
+        }).Build();
+
+        new ServiceCollection().AddGitHub(configuration);
+
+        Assert.Null(Environment.GetEnvironmentVariable("GH_TOKEN"));
+        Assert.Equal("harness-token", Shell.GitEnvironment!["GH_TOKEN"]);
     }
 
     static Held Held(params (string, string)[] vars)

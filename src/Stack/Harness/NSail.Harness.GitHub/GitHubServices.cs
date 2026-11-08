@@ -17,6 +17,8 @@ public static class GitHubServices
     {
         var options = configuration.GetSection(GitHubOptions.Section).Get<GitHubOptions>() ?? new GitHubOptions();
         var token = new GitHubToken(options.ResolveToken());
+        // The token was read; a PR's code runs as the harness's user and could read the process's environment.
+        Environment.SetEnvironmentVariable("GH_TOKEN", null);
         // The harness's own git (clone, fetch, push) reaches GitHub through `gh auth git-credential`,
         // which reads GH_TOKEN: it pushes as the harness's token, never as whoever is logged in to gh
         // on the machine (and a machine with no login at all works the same). Only git gets it, not

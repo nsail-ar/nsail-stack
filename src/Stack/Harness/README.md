@@ -120,7 +120,10 @@ app.Run();
 
 It listens on `127.0.0.1:6190` with no authentication, so it never binds beyond the loopback. The
 GitHub token is `GitHub:Token`, `GitHub:TokenFile` or `GH_TOKEN`, the workstation's `gh` login
-otherwise. Machine-local settings go in `appsettings.Local.json` beside the binary (ignored); it
+otherwise; once read, `AddGitHub` removes `GH_TOKEN` from the process environment (a PR's code
+runs as the same user and could read it), so `${env:GH_TOKEN}` in `Variables` resolves to nothing:
+prefer `GitHub:TokenFile`. A step's `GH_TOKEN` in `Variables` is a switch, not a value: it always
+gets the harness's token. Machine-local settings go in `appsettings.Local.json` beside the binary (ignored); it
 is read last, so it outranks the command line.
 
 The API is the Sdk's messages, under `/api/harness/` — browsable at `/scalar`, described at
