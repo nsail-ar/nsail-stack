@@ -42,4 +42,35 @@ public class JsonOptionsTests
 
         Assert.Equal(Kind.Near, payload!.Kind);
     }
+
+    sealed class Exact
+    {
+        public long Id { get; set; }
+        public ulong Big { get; set; }
+        public decimal Price { get; set; }
+        public long? Maybe { get; set; }
+        public int Count { get; set; }
+        public double Ratio { get; set; }
+    }
+
+    [Fact]
+    public void Wire_writes_long_ulong_and_decimal_as_strings_and_leaves_the_rest_numbers()
+    {
+        var json = JsonSerializer.Serialize(new Exact { Id = 9007199254740993, Big = ulong.MaxValue, Price = 1234567890.123456789m, Count = 3, Ratio = 0.5 }, JsonOptions.Wire);
+
+        Assert.Equal("{\"id\":\"9007199254740993\",\"big\":\"18446744073709551615\",\"price\":\"1234567890.123456789\",\"maybe\":null,\"count\":3,\"ratio\":0.5}", json);
+    }
+
+    [Fact]
+    public void Wire_reads_those_types_from_strings_and_from_numbers()
+    {
+        var text = JsonSerializer.Deserialize<Exact>("{\"id\":\"9007199254740993\",\"price\":\"0.1234567890123456789\",\"maybe\":\"7\"}", JsonOptions.Wire)!;
+        var number = JsonSerializer.Deserialize<Exact>("{\"id\":42,\"price\":1.5}", JsonOptions.Wire)!;
+
+        Assert.Equal(9007199254740993, text.Id);
+        Assert.Equal(0.1234567890123456789m, text.Price);
+        Assert.Equal(7, text.Maybe);
+        Assert.Equal(42, number.Id);
+        Assert.Equal(1.5m, number.Price);
+    }
 }

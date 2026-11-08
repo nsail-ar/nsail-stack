@@ -50,8 +50,10 @@ export function validateField(field: Field, value: unknown): Issue[] {
     issues.push(issue("Invalid", `The field ${name} must have at least ${field.minLength} characters`, name));
   }
 
-  if ((field.min !== undefined || field.max !== undefined) && typeof value === "number") {
-    if ((field.min !== undefined && value < field.min) || (field.max !== undefined && value > field.max)) {
+  const quantity = typeof value === "number" ? value : (field.kind === "bigint" || field.kind === "decimal") && typeof value === "string" && value.trim() !== "" ? Number(value) : null;
+
+  if ((field.min !== undefined || field.max !== undefined) && quantity !== null && !Number.isNaN(quantity)) {
+    if ((field.min !== undefined && quantity < field.min) || (field.max !== undefined && quantity > field.max)) {
       issues.push(issue("OutOfRange", `The field ${name} must be between ${field.min} and ${field.max}`, name, { from: String(field.min), to: String(field.max) }));
     }
   }

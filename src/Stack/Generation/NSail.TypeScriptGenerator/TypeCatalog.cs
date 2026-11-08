@@ -118,12 +118,15 @@ sealed class TypeCatalog(MetadataKeys metadata)
             case SpecialType.System_UInt16:
             case SpecialType.System_Int32:
             case SpecialType.System_UInt32:
+                return new TsType("number", "integer");
+            // Past 2^53 or 15 digits a JSON number is not exact in JavaScript: these travel as strings.
             case SpecialType.System_Int64:
             case SpecialType.System_UInt64:
-                return new TsType("number", "integer");
+                return new TsType("string", "bigint");
+            case SpecialType.System_Decimal:
+                return new TsType("string", "decimal");
             case SpecialType.System_Single:
             case SpecialType.System_Double:
-            case SpecialType.System_Decimal:
                 return new TsType("number", "number");
             case SpecialType.System_DateTime:
                 return new TsType("string", "datetime");

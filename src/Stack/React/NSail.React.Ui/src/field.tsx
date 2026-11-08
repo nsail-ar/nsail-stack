@@ -58,6 +58,19 @@ export function NsField<T>({ name, multiline = false, autoFocus, label }: NsFiel
     case "boolean":
       control = <input {...common} type="checkbox" checked={value === true} onChange={(e) => set(e.target.checked)} />;
       break;
+    case "bigint":
+    case "decimal":
+      // The value stays the text the user typed: a Number would round it.
+      control = (
+        <input
+          {...common}
+          type="text"
+          inputMode={field.kind === "bigint" ? "numeric" : "decimal"}
+          value={value === null || value === undefined ? "" : String(value)}
+          onChange={text}
+        />
+      );
+      break;
     case "integer":
     case "number":
       control = (

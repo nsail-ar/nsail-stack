@@ -72,3 +72,13 @@ describe("Mediator.send", () => {
     expect((error as BusinessError).problem.issues.map((i) => i.code)).toEqual(["HttpStatus", "DeserializationFailed"]);
   });
 });
+
+describe("Mediator.send exact numbers", () => {
+  it("reads an exact string back as the same string", async () => {
+    const { mediator } = recording(200, '{"id":"9007199254740993","price":"0.1234567890123456789"}');
+    const result = await mediator.send(ListOrders, {}) as unknown as { id: string; price: string };
+
+    expect(result.id).toBe("9007199254740993");
+    expect(result.price).toBe("0.1234567890123456789");
+  });
+});

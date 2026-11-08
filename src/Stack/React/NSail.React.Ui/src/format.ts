@@ -22,8 +22,11 @@ export function display(strings: Strings, field: Field, value: unknown): string 
     }
     case "datetime":
       return new Date(String(value)).toLocaleString(strings.language, { dateStyle: "short", timeStyle: "short" });
+    case "bigint":
+      return BigInt(String(value)).toLocaleString(strings.language);
     case "integer":
     case "number":
+    case "decimal":
       return Number(value).toLocaleString(strings.language);
     default:
       return String(value);
