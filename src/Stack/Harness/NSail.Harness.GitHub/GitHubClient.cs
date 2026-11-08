@@ -30,7 +30,8 @@ public sealed partial class GitHubClient(HttpClient http)
     }
 
     // Follows the Link header; `select` picks the array out of each page (the page itself
-    // when it is an array, `workflow_runs` or `runners` when it is wrapped).
+    // when it is an array, `workflow_runs` or `runners` when it is wrapped). A next link left at
+    // `maxPages` throws: a prefix is never returned as the whole.
     public async Task<List<JsonElement>> GetAll(string path, Func<JsonElement, JsonElement>? select = null, int maxPages = 20, CancellationToken ct = default)
     {
         var all = new List<JsonElement>();
@@ -42,6 +43,10 @@ public sealed partial class GitHubClient(HttpClient http)
             var items = select is null ? body : select(body);
             all.AddRange(items.EnumerateArray());
             next = NextLink(response);
+        }
+        if (next is not null)
+        {
+            throw new GitHubPageLimitException(path, maxPages);
         }
         return all;
     }

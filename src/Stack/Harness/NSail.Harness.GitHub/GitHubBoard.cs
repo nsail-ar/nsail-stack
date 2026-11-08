@@ -17,18 +17,27 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         """;
 
     const string ClosedQuery = """
-        query($o:String!,$n:String!,$s:DateTime!,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:CLOSED,filterBy:{since:$s},orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number closedAt projectItems(first:10){nodes{id project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}
+        query($o:String!,$n:String!,$s:DateTime!,$c:String,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:CLOSED,after:$c,filterBy:{since:$s},orderBy:{field:UPDATED_AT,direction:DESC}){pageInfo{hasNextPage endCursor} nodes{number closedAt projectItems(first:10){nodes{id project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}
         """;
 
     public string Name => repo;
 
     public async Task<IReadOnlyList<(int Number, string Stage)>> ClosedSince(DateTimeOffset since, CancellationToken ct = default)
     {
-        var data = await gh.GraphQl(ClosedQuery, new { o = Owner, n = RepoName, s = since.UtcDateTime.ToString("O"), sf = options.StatusField }, ct);
-        return data.GetProperty("repository").GetProperty("issues").GetProperty("nodes").EnumerateArray()
-            .Where(n => n.GetProperty("closedAt").GetDateTimeOffset() >= since)
-            .Select(n => (n.GetProperty("number").GetInt32(), StageIn(n, options.Project)))
-            .ToList();
+        var closed = new List<(int, string)>();
+        string? cursor = null;
+        do
+        {
+            var data = await gh.GraphQl(ClosedQuery, new { o = Owner, n = RepoName, s = since.UtcDateTime.ToString("O"), c = cursor, sf = options.StatusField }, ct);
+            var page = data.GetProperty("repository").GetProperty("issues");
+            closed.AddRange(page.GetProperty("nodes").EnumerateArray()
+                .Where(n => n.GetProperty("closedAt").GetDateTimeOffset() >= since)
+                .Select(n => (n.GetProperty("number").GetInt32(), StageIn(n, options.Project))));
+            var info = page.GetProperty("pageInfo");
+            cursor = info.GetProperty("hasNextPage").GetBoolean() ? info.GetProperty("endCursor").GetString() : null;
+        }
+        while (cursor is not null);
+        return closed;
     }
 
     // Where a story stands: its column on the board's project, a dash when it has none there.
