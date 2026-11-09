@@ -5,8 +5,8 @@ using System.Text.RegularExpressions;
 
 namespace NSail.BaseServices.Wasm.Tests;
 
-/// <summary>ci.yml packs the whole solution: a project in it is a package on nuget.org. The
-/// list is the contract; a project added or dropped changes it on purpose.</summary>
+// ci.yml packs the whole solution: a Stack project is a package, under its PackageId. The
+// list is the contract; a project added or dropped changes it on purpose.
 public class PackedPackagesTests
 {
     static readonly string[] Expected =
@@ -50,7 +50,7 @@ public class PackedPackagesTests
         "NSail.Settings",
         "NSail.SourceGeneration.Annotations",
         "NSail.SourceGeneration.Testing",
-        "NSail.SourceGenerator",
+        "NSail.Messaging.SourceGenerator",
         "NSail.Storage.FileSystem",
         "NSail.Storage.Git",
         "NSail.Storage.S3",
@@ -63,18 +63,42 @@ public class PackedPackagesTests
     ];
 
     [Fact]
-    public void The_solution_packs_exactly_the_listed_packages()
+    public void The_stack_packs_exactly_the_listed_packages()
     {
-        var solution = File.ReadAllText(Path.Combine(ProjectGraph.RepoRoot(), "NSail.sln"));
-        var packed = Regex
-            .Matches(solution, @"src\\Stack\\[^""]*\\([^\\""]+)\.csproj")
-            .Select(m => m.Groups[1].Value)
-            .Where(id => !id.StartsWith("NSail.Sample.", StringComparison.Ordinal))
+        var packed = PackedProjects()
+            .Select(p => PackageId(p))
             .Distinct()
             .Order(StringComparer.Ordinal)
             .ToList();
 
-        Assert.Equal(Expected, packed);
+        Assert.Equal(Expected.Order(StringComparer.Ordinal).ToList(), packed);
+    }
+
+    [Fact]
+    public void Every_packed_project_is_in_the_solution()
+    {
+        var solution = File.ReadAllText(Path.Combine(ProjectGraph.RepoRoot(), "NSail.sln")).Replace('\\', '/');
+        var missing = PackedProjects()
+            .Where(p => !solution.Contains(Path.GetFileName(p), StringComparison.Ordinal))
+            .Select(Path.GetFileNameWithoutExtension)
+            .ToList();
+
+        Assert.Empty(missing);
+    }
+
+    // The Sample is code to read and run: src/Directory.Build.props makes it unpackable.
+    static IEnumerable<string> PackedProjects()
+    {
+        var root = Path.Combine(ProjectGraph.RepoRoot(), "src", "Stack");
+        return Directory
+            .EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
+            .Where(p => !p.Replace('\\', '/').Contains("/Sample/", StringComparison.Ordinal));
+    }
+
+    static string PackageId(string csproj)
+    {
+        var declared = Regex.Match(File.ReadAllText(csproj), @"<PackageId>([^<]+)</PackageId>");
+        return declared.Success ? declared.Groups[1].Value : Path.GetFileNameWithoutExtension(csproj);
     }
 
     [Fact]
