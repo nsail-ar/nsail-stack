@@ -129,7 +129,7 @@
        aside included. Safe for NsPanel's own reason: a block taking its width from the parent,
        never from its content. Note for whatever is put INSIDE a row: an unnamed @container
        query resolves to the nearest container whatever its name, so a button's own collapse
-       inside a row now measures this <ul> and not the panel — the panel's padding narrower. */
+       inside a row measures this <ul> and not the panel — the panel's padding narrower. */
     container-type: inline-size;
 }
 
@@ -258,13 +258,13 @@
 
 /* ONE FRAME PER TABLE. A MudTable is itself a raised sheet: measured on 9.10.0, its root renders
    mud-table mud-elevation-1 — Surface for a fill, the house radius, and elevation 1, whose own
-   1px 6% white ring BrandMudTheme.BuildElevations casts IS an edge (ui/styling.md, Card chrome).
-   So a table placed inside a sheet of its own — NsPaper or NsCard: every lines editor, a
-   document's line list — framed one thing twice. Inside one, the enclosing sheet is the edge and the
-   table is flat on it. (MudTableBase.Outlined is NOT what draws it: its doc remark says true and
-   the property is false, so no mud-table-outlined is rendered at all. The border is stated here
-   anyway — a table that one day asks for Outlined inside a card must not reintroduce the second
-   frame.)
+   1px 6% white ring BrandMudTheme.BuildElevations casts IS an edge (ui/styling.md, Card
+   chrome). So a table placed inside a sheet of its own — NsPaper or NsCard: every lines editor,
+   a document's line list — would frame one thing twice. Inside one, the enclosing sheet is the
+   edge and the table is flat on it. (MudTableBase.Outlined is NOT what draws it: its doc
+   remark says true and the property is false, so no mud-table-outlined is rendered at all. The
+   border is stated here anyway — a table that one day asks for Outlined inside a card must not
+   reintroduce the second frame.)
 
    Derived from where the table STANDS rather than asked for per call site: a parameter would be a
    styling decision nine pages make and a tenth forgets, and the one fact that decides it — is
@@ -565,7 +565,7 @@
    two of them, and the reserve below is --ns-action-slots of those less that last separation
    — the toolbar's own cap, the kebab overflow raises, and the row's constant where it carries
    one, held whether the kebab renders or not. The cell IS one toolbar (intentional-ui, grids:
-   the page's fixed verbs ride in as Leading), so that reserve now covers the whole cell
+   the page's fixed verbs ride in as Leading), so that reserve covers the whole cell
    rather than a fragment of it sitting between two hand-written icons — which is what the
    hole a fragment leaves.
 
@@ -693,8 +693,8 @@
 }
 
 /* A coarse pointer hits an area, not a point. The compact chrome above measures 30px, which is
-   well under half of what a finger lands on, so the BOX grows to 48px. Padding alone carries it
-   now: the glyph is already at 1.5rem above (and matches the card's own glyph, so nothing here
+   well under half of what a finger lands on, so the BOX grows to 48px. Padding alone carries
+   it: the glyph is already at 1.5rem above (and matches the card's own glyph, so nothing here
    shrinks it).
 
    The grid's action column is the one ICON scope to correct here. Everywhere else an Ns icon
@@ -1319,7 +1319,7 @@
    work — the menu inside it owns its own overflow, the same doctrine everywhere else: only
    what is marked scrolls, and the region marked is the one that actually holds too much.
 
-   That owner is now NsNavMenu's own panel content, one box further IN than this: the drawer
+   That owner is NsNavMenu's own panel content, one box further IN than this: the drawer
    holds a search field that has to stay reachable while the entries move under it, so a
    scroller out here would carry the field off the top of the screen with them. What this region
    owes the panel is only the definite height it grows against — MudBlazor already gives it
@@ -1756,11 +1756,10 @@
 }
 
 /* A control with a help icon beside it sizes to its content: MudCheckbox's control ships
-   width:100%,
-   so in a horizontal stack it claims the whole row and the shrink-proof ns-help beside it
-   has nowhere left -- it overflows the stack onto the neighbouring grid item, and the item's
-   own min-content collapses because a percentage-width child contributes nothing to it. Lone
-   controls keep the vendor width, since nothing sits beside them to crush. */
+   width:100%, so in a horizontal stack it claims the whole row and the shrink-proof ns-help
+   beside it has nowhere left -- it overflows the stack onto the neighbouring grid item, and the
+   item's own min-content collapses because a percentage-width child contributes nothing to it.
+   Lone controls keep the vendor width, since nothing sits beside them to crush. */
 .ns-form .mud-input-control:has(+ .ns-help),
 .ns-form .ns-stored-box:has(+ .ns-help) {
     flex: 1 1 auto;
@@ -1807,7 +1806,7 @@
     line-height: var(--mud-typography-body1-lineheight);
 }
 
-/* The measure the open list stops at, now that the field no longer caps it at whatever box it
+/* The measure the open list stops at, since the field does not cap it at whatever box it
    stands in (NsAutocomplete's RelativeWidth note). 28rem is the aside's own content width — the
    448 the .ns-grid block below already reckons with — which is the narrowest surface a lookup
    opens on, so the list never outgrows the smallest place it can stand in, and a reading past
@@ -2010,7 +2009,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     }
 }
 
-/* A sign-in page's contributed provider buttons (whatever each ISignInContributor adds)
+/* A sign-in page's contributed provider buttons (whatever each sign-in provider adds)
    render as square icon tiles rather than stacked full-width rows. Each vendor still renders
    one ordinary NsLink As="NsAs.Default" (icon + label) — nothing per vendor changes beyond
    which string its Label carries (the bare provider name) — this class is what turns that
@@ -2127,7 +2126,7 @@ div.mud-input-slot.mud-input-root::placeholder {
    card put in the first — the header needs no layout of its own, only these three corrections
    to the vendor's own assumption about what an actions slot holds. It offsets that slot up
    and out by 8px, for a bare glyph meant to hug the card's corner; the door is a filled
-   square now, the same box as the card's own acts, so it lines up WITH them instead: centred
+   square, the same box as the card's own acts, so it lines up WITH them instead: centred
    on the row and inset on the header's own padding line, one gap apart.
 
    min-width on the content box is what makes a long title give way rather than push the door
@@ -4626,7 +4625,7 @@ div.mud-input-slot.mud-input-root::placeholder {
    wherever the cursor can land, the key a search box shows inside itself, and the sheet "?"
    opens. The chord a control with a WORD answers is shown on its tooltip (THE WHISPER above,
    whose text is the name and the key together) and never drawn beside the word — a hint and
-   the word's own hover bubble turned out to be one mechanism, not two; a box has
+   the word's own hover bubble are one mechanism, not two; a box has
    no word to hover and no bubble to carry one, which is the whole reason it is the one control
    that paints its key.
    The chords themselves are declared on the controls and dispatched in ns.js — nothing about

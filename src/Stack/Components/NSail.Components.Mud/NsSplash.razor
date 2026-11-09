@@ -292,8 +292,8 @@
         return JsonSerializer.Serialize(names.Select(n => n.ToLowerInvariant()));
     }
 
-    /// <summary>The app's own well-known logo route (for example the Branding kit's
-    /// anonymous "api/branding/logo", reachable before WASM boots and before any session
+    /// <summary>The app's own well-known logo route (for example an anonymous
+    /// "api/branding/logo", reachable before WASM boots and before any session
     /// exists) — a plain string, no coupling, and no default: a Stack component names no
     /// app-specific URL. An SVG response is inlined so it can inherit the splash's primary
     /// colour, which first passes the <see cref="SvgSanitizer"/> allowlist; anything else stays an isolated

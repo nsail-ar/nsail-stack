@@ -109,7 +109,7 @@
     }
     @if (_items.Count > MaxVisible)
     {
-        @* The kebab now CLOSES the row: the constant is the fixed
+        @* The kebab CLOSES the row: the constant is the fixed
            target muscle memory aims at, and a row that just grew a fourth verb must not
            shove that target sideways every time the overflow appears or disappears — the
            kebab is the one whose presence is conditional, so it is the one that moves. Left
@@ -198,8 +198,8 @@
     public NsBreakpoint? Breakpoint { get; set; }
 
     /// <summary>What the action column reserves: the cap, the overflow beside it, and the
-    /// constant when the row carries one — the whole cell, honestly, now that the whole cell
-    /// is this one toolbar.</summary>
+    /// constant when the row carries one — the whole cell, since the whole cell is this one
+    /// toolbar.</summary>
     int Slots => MaxVisible + 1 + (_constant is null ? 0 : 1);
 
     protected override async Task OnParametersSetAsync()
