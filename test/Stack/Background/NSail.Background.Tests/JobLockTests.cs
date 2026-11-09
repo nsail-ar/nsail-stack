@@ -248,7 +248,7 @@ public sealed class JobLockTests : IAsyncLifetime
         return Harness.Build(services =>
         {
             services.AddSingleton(tenancy);
-            services.AddSingleton(new TenantDatabases(tenancy, "Host=localhost;Username=postgres;Database=postgres"));
+            services.AddSingleton(new TenantDatabases(tenancy, "Host=localhost;Username=postgres;Database=postgres", TimeProvider.System));
             services.AddScoped<DbContext>(_ => throw new InvalidOperationException("nothing resolves a tenant"));
             services.AddSingleton(gate);
             services.AddSingleton(signal);
