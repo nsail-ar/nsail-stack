@@ -66,7 +66,7 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 
 | Call | Does |
 |---|---|
-| `AddSecurity()` | TryAdds `SessionProvider`, `RelationProvider`, `FeatureProvider`, `CredentialProvider`, `RequestOrganizationProvider`, `SecurityManager` with permissive defaults (anonymous session, every relation true, every feature on). A host with sign-in and a policy store replaces them |
+| `AddSecurity()` | TryAdds `SessionProvider`, `RelationProvider`, `FeatureProvider`, `CredentialProvider`, `RequestOrganizationProvider`, `SecurityManager` (and the process-wide `BuiltInHandlers` it shares) with permissive defaults (anonymous session, every relation true, every feature on). A host with sign-in and a policy store replaces them |
 | `AddSecurityEnforcement()` | `AddSecurity()` plus the `SecurityInterceptor` on every send: deny by default. The host refuses to start while `RelationProvider` or `CredentialProvider` is still the permissive default (every relation constraint would pass, stale tickets be honoured): Iam registers the DB-backed ones |
 | `AddTenantKeys()` (`NSail.BaseServices.WebApi`, on the builder) | Registers the `KeyProtector` that seals with the current tenant's key from `Security:KeysDirectory`. A tenant with no file makes a seal or an open throw `MissingEncryptionKeyException`; Development without a directory seals under a fixed key, any other environment refuses to compose. The file is the cell's copy of a key kept elsewhere, and is read at every call, so a key written while the host runs is honoured |
 | `AcceptPermissiveProviders()` | Says an enforcing host has no Iam (a fixture, a sample) and runs over the permissive providers on purpose |

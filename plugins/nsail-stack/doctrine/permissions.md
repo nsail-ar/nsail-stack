@@ -98,7 +98,8 @@ the failure is the size of the mistake instead of the size of a role. Bounds:
   unrelated authoring typo rides out on the first dead key its row carries — deliberate and
   cheap: under lenient fields a constraint no surviving member declares binds nothing, so the
   grant is unchanged and only the signal was at stake. The signal is kept: each excused field
-  is named in the drop report.
+  is named in the drop report and listed in `SecurityManager.Drops` (`PolicyDrop`: row, dropped
+  keys, excused fields) for an administrator surface to show beside the log.
 - **The report is once per store load, not once per hydration.** The stored set re-hydrates on
   every request, so an unconditional log would print the same stale row dozens of times a
   second. The drop and its amnesty are one report, throttled together.
@@ -236,6 +237,11 @@ Seeds may *also* grant lookups broadly — `[Requires]` guarantees UI correctnes
   every declaration becomes a **dependency handler** (`LookupParties ← CreatePrescription`),
   read off the registration rather than by reflecting over attributes (which a trimmed client
   could not do); the client derives the same set from the same registrations.
+- **`LoadPolicies` swaps, never mutates**: the stored set is built aside and replaced by
+  reference, so a manager shared by a circuit never enumerates a half-loaded list. Built-ins are
+  hydrated once per process (`BuiltInHandlers`), and `Session.Standing()` is computed once per
+  organization and membership list. `SessionProvider` prefers its own assignment over the flow's
+  and puts the flow's previous session back when its scope disposes.
 - **`SecurityManager` aggregates the sources through one list** (built-in, stored,
   dependency), so `Authorize`, `PreAuthorize`, `GetEffectivePolicies` and `RequiresMe` all see
   the implication. The effective-policies response includes the **closure** of the matched

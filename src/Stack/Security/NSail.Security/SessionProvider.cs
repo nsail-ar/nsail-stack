@@ -6,7 +6,7 @@ namespace NSail.Security;
 /// <summary>Scoped source of the current Session. The default is anonymous — Iam
 /// replaces it server-side with one built from the request's principal; jobs set
 /// Session.System(); tests set whatever they need.</summary>
-public class SessionProvider
+public class SessionProvider : IDisposable
 {
     // An ASSIGNED session travels with the async flow as well as with the instance. The
     // outermost in-process Send runs in a service scope of its own and everything it composes —
@@ -20,6 +20,11 @@ public class SessionProvider
 
     Session? _assigned;
 
+    // What the flow carried before this instance wrote to it, put back when the instance's scope
+    // ends: an assignment belongs to the scope that made it and must not outlive it on the flow.
+    Session? _previous;
+    bool _wrote;
+
     // One instance, not a fresh one per read: a caller that never assigns a Session still edits
     // the one it is given in place (a page filling the active organization onto it), and a
     // getter that minted a new Session each time would swallow every such write.
@@ -27,7 +32,7 @@ public class SessionProvider
 
     protected Session? Assigned
     {
-        get { return Flowing.Value ?? _assigned; }
+        get { return _assigned ?? Flowing.Value; }
     }
 
     public virtual Session Session
@@ -35,8 +40,25 @@ public class SessionProvider
         get { return Assigned ?? (_anonymous ??= new Session()); }
         set
         {
+            if (!_wrote)
+            {
+                _previous = Flowing.Value;
+                _wrote = true;
+            }
+
             _assigned = value;
             Flowing.Value = value;
         }
+    }
+
+    public void Dispose()
+    {
+        if (_wrote && ReferenceEquals(Flowing.Value, _assigned))
+        {
+            Flowing.Value = _previous;
+        }
+
+        _wrote = false;
+        GC.SuppressFinalize(this);
     }
 }
