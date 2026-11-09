@@ -31,7 +31,7 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         return Closure(changed, solution, p => File.Exists(Path.Combine(dir, p)), p => References(dir, p));
     }
 
-    // The pure walk over a change: Everything builds all (null); outside Roots seeds nothing; a file
+    // The pure walk over a change: Everything builds all (null); outside Roots seeds nothing when it is Markdown, else is unprovable (null); a file
     // with no owning project is prose when it is Markdown, else unprovable (null); an owner the
     // solution does not list is unprovable too.
     internal IReadOnlyList<string>? Closure(IReadOnlyList<string> changed, IReadOnlyList<string> solution, Func<string, bool> exists, Func<string, IEnumerable<string>> references)
@@ -42,11 +42,16 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         {
             var name = Path.GetFileName(file);
             if (options.Everything.Any(e => e.Contains('/') ? file.Equals(e, StringComparison.OrdinalIgnoreCase) : FileSystemName.MatchesSimpleExpression(e, name))) return null;
-            if (options.Roots.Count > 0 && !options.Roots.Any(r => file.StartsWith(r.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase))) continue;
+            var documentation = file.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+            if (options.Roots.Count > 0 && !options.Roots.Any(r => file.StartsWith(r.TrimEnd('/') + "/", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (documentation) continue;
+                return null;
+            }
             var owner = OwnerOf(file, exists);
             if (owner is null)
             {
-                if (file.EndsWith(".md", StringComparison.OrdinalIgnoreCase)) continue;
+                if (documentation) continue;
                 return null;
             }
             if (!inSolution.Contains(owner)) return null;

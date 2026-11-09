@@ -148,6 +148,43 @@ public class PlannerTests
     }
 
     [Fact]
+    public void AllowProtectedLiftsTheScreensRulingAndTheStoryIsTaken()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "ruling,screened,allow-protected").Build());
+
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.Unlock, Story: 7, Value: "ruling" });
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.Unlock, Story: 7, Value: "screened" });
+        Assert.Equal(["dev #7 (rest)"], plan.Items.Select(i => i.ToString()));
+    }
+
+    [Fact]
+    public void AllowProtectedLeavesARulingTheScreenDidNotSet()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "ruling,allow-protected").Build());
+
+        Assert.Empty(plan.Chores);
+        Assert.Empty(plan.Items);
+    }
+
+    [Fact]
+    public void TheScreensRulingWaitsForAllowProtected()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "ruling,screened").Build());
+
+        Assert.Empty(plan.Chores);
+        Assert.Empty(plan.Items);
+    }
+
+    [Fact]
+    public void AScreenedMarkWithItsRulingLiftedComesOff()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "screened").Build());
+
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.Unlock, Story: 7, Value: "screened" });
+        Assert.Equal(["dev #7 (rest)"], plan.Items.Select(i => i.ToString()));
+    }
+
+    [Fact]
     public void AFreshClaimStays()
     {
         var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "claimed").LockAge(7, "claimed", TimeSpan.FromMinutes(5)).Build());
