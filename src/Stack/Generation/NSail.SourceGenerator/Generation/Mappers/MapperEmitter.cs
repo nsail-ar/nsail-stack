@@ -794,10 +794,18 @@ sealed partial class MapperEmitter
                 return null;
             }
 
-            var converted = Convert(value, from.Type, member.Type, member.Name, !Keys(target).Any(k => k.Name == member.Name));
+            var strict = !Keys(target).Any(k => k.Name == member.Name);
+            var converted = Convert(value, from.Type, member.Type, member.Name, strict);
 
             if (converted is null)
             {
+                if (strict && IsNullableValue(from.Type) && !IsNullableValue(member.Type) && member.Type.SpecialType != SpecialType.System_String
+                    && Convert(value, from.Type, member.Type, member.Name) is not null)
+                {
+                    Report(GeneratorDiagnostics.MappedNullableIntoNonNullable, member, target.Name, member.Name, member.Type.ToDisplayString(), source.Name, from.Name, from.Type.ToDisplayString());
+                    return null;
+                }
+
                 Unconvertible(source, target, member, from);
                 return null;
             }
@@ -1156,7 +1164,7 @@ sealed partial class MapperEmitter
 
         if (conversion.IsExplicit && conversion.IsEnumeration)
         {
-            return $"({Name(to)})({expression})";
+            return $"checked(({Name(to)})({expression}))";
         }
 
         if (to.SpecialType == SpecialType.System_String)
@@ -1171,12 +1179,12 @@ sealed partial class MapperEmitter
                 : null;
         }
 
-        if (from.TypeKind == TypeKind.Enum && to.TypeKind == TypeKind.Enum)
-        {
-            return $"{Runtime}.Maps.ParseEnum<{Name(to)}>({expression}.ToString(), {Literal(field)})";
-        }
-
         return null;
+    }
+
+    bool IsNullableValue(ITypeSymbol type)
+    {
+        return !SymbolEqualityComparer.Default.Equals(Underlying(Plain(type)), Plain(type));
     }
 
     string? Parse(string expression, ITypeSymbol to, string? field)

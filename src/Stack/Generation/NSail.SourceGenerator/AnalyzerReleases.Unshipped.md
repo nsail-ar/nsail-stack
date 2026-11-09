@@ -21,3 +21,4 @@ NSG013 | NSail.Generation | Error | An Ignore entry names a member the type does
 NSG014 | NSail.Generation | Error | A [Queue] message returns a result.
 NSG015 | NSail.Generation | Error | A [Queue] message also carries [Http].
 NSG016 | NSail.Generation | Error | [Throttled] Identity names a property that is not a public string bound from the body under its own name.
+NSG017 | NSail.Generation | Error | A [MapFrom] member reads a nullable into a non-nullable member that is not a key.

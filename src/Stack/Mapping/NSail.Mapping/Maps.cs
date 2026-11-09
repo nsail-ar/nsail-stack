@@ -27,7 +27,7 @@ public static class Maps
             return value;
         }
 
-        throw Invalid(field, text, typeof(T).Name);
+        throw Invalid(field);
     }
 
     /// <summary>The text read as an enum member, by name or number, ignoring case.</summary>
@@ -39,16 +39,16 @@ public static class Maps
             return value;
         }
 
-        throw Invalid(field, text, typeof(T).Name);
+        throw Invalid(field);
     }
 
-    static NSail.Problems.BusinessException Invalid(string field, string text, string type)
+    static NSail.Problems.BusinessException Invalid(string field)
     {
         return NSail.Problems.InputProblem.InvalidModel(new NSail.Problems.Issue(
-            code: "InvalidValue",
-            message: $"'{text}' is not a valid {type}.",
+            code: "InvalidFormat",
+            message: $"The field {field} has an invalid format",
             source: field.Length == 0 ? null : field,
-            arguments: new Dictionary<string, string> { ["value"] = text, ["type"] = type }));
+            arguments: new Dictionary<string, string> { ["field"] = field }));
     }
 
     /// <summary>A new list of mapped items, in the source's order; null for no source. A list of

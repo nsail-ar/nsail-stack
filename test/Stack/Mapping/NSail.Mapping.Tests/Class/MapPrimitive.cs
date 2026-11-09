@@ -37,10 +37,18 @@ public sealed class MapPrimitive
     }
 
     [Fact]
+    public void map_enum_narrowing_throws_instead_of_wrapping()
+    {
+        Assert.Equal(Small.B, Mappings.Map(new Numbered { Kind = 1 }, new Enumerated()).Kind);
+        Assert.Throws<OverflowException>(() => Mappings.Map(new Numbered { Kind = 300 }, new Enumerated()));
+    }
+
+    [Fact]
     public void map_unparsable_text_is_an_input_problem()
     {
         var number = Assert.Throws<NSail.Problems.BusinessException>(() => Mappings.Map(new Strings { Number = "abc" }, new Values()));
         Assert.Equal("InvalidModel", number.Code);
+        Assert.Equal("InvalidFormat", Assert.Single(number.Issues).Code);
         Assert.Equal("Number", Assert.Single(number.Issues).Source);
 
         Assert.Throws<NSail.Problems.BusinessException>(() => Mappings.Map(new Strings { Flag = "maybe" }, new Values()));
@@ -117,5 +125,22 @@ public sealed class MapPrimitive
         public int Number { get; set; }
 
         public int Money { get; set; }
+    }
+
+    public enum Small : byte
+    {
+        A,
+        B,
+    }
+
+    public sealed class Numbered
+    {
+        public int Kind { get; set; }
+    }
+
+    [MapFrom(typeof(Numbered))]
+    public sealed class Enumerated
+    {
+        public Small Kind { get; set; }
     }
 }

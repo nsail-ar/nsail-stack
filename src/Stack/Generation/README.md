@@ -99,7 +99,7 @@ not a silent skip.
 | `NSG014` | Error | A `[Queue]` message returns a result (`IMessage<T>`) |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` |
 | `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) |
-| `NSG004`-`NSG013` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
+| `NSG004`-`NSG013`, `NSG017` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
 
 ### TypeScript client
 

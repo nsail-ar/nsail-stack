@@ -155,4 +155,13 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "The ceiling reads the JSON body; a name that matches nothing there caps no account, and goes on capping nothing after the property it meant is renamed.");
+
+    public static readonly DiagnosticDescriptor MappedNullableIntoNonNullable = new(
+        id: "NSG017",
+        title: "A nullable member is mapped into a non-nullable one",
+        messageFormat: "'{0}.{1}' ({2}) is written from '{3}.{4}' ({5}), which can hold no value, and nothing says what that becomes. Make '{0}.{1}' nullable, make '{3}.{4}' non-nullable, or mark the entity's member [MapIgnore].",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Writing the type's default for \"no value\" would turn an absent amount into zero without a word; a key is exempt, where no value is the id still to be made.");
 }
