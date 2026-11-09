@@ -37,6 +37,9 @@ public sealed class SlotTestPage : ComponentBase;
 [Route("/")]
 public sealed class HomeTestPage : ComponentBase;
 
+[Route("/reports/{Year:int?}")]
+public sealed class ReportsTestPage : ComponentBase;
+
 public sealed class UnroutedTestPage : ComponentBase;
 
 public sealed class RouteTableTests
@@ -276,4 +279,44 @@ public sealed class RouteTableTests
             CultureInfo.CurrentCulture = culture;
         }
     }
+
+    [Fact]
+    public void GetUrl_keeps_the_slashes_of_a_catch_all_and_escapes_its_segments()
+    {
+        Assert.Equal("/files/a/b%20c", Build().GetUrl<FilesTestPage>(new { Path = "a/b c" }));
+    }
+
+    [Fact]
+    public void GetUrl_omits_an_optional_token_without_a_value()
+    {
+        var table = Build();
+
+        Assert.Equal("/reports", table.GetUrl<ReportsTestPage>());
+        Assert.Equal("/reports", table.GetUrl<ReportsTestPage>(new { Year = (int?)null }));
+        Assert.Equal("/reports/2026", table.GetUrl<ReportsTestPage>(new { Year = 2026 }));
+    }
+
+    [Fact]
+    public void Match_resolves_an_optional_token_present_or_absent()
+    {
+        var table = Build();
+
+        Assert.Equal(2026, table.Match("/reports/2026")!.RouteValues["Year"]);
+        Assert.Equal(typeof(ReportsTestPage), table.Match("/reports")!.PageType);
+    }
+
+    [Fact]
+    public void SurfaceQuery_ignores_undefined_enum_values()
+    {
+        Assert.Equal(default, SurfaceQuery.GetValue<QueryState>("?s=99", "s"));
+        Assert.Equal(QueryState.Closed, SurfaceQuery.GetValue<QueryState>("?s=closed", "s"));
+        Assert.Equal(default, SurfaceQuery.GetValue<QueryState>("?s=Open,Closed", "s"));
+        Assert.Equal(QueryFlags.A | QueryFlags.B, SurfaceQuery.GetValue<QueryFlags>("?f=A,B", "f"));
+        Assert.Equal(default, SurfaceQuery.GetValue<QueryFlags>("?f=16", "f"));
+    }
+
+    private enum QueryState { Open = 1, Closed = 2 }
+
+    [Flags]
+    private enum QueryFlags { A = 1, B = 2 }
 }

@@ -4,10 +4,11 @@
 using Microsoft.AspNetCore.Components;
 using System.Globalization;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace NSail.Components;
 
-public sealed class RouteTable
+public sealed partial class RouteTable
 {
     static readonly IReadOnlyDictionary<string, object?> s_emptyParameters =
         new Dictionary<string, object?>();
@@ -15,6 +16,7 @@ public sealed class RouteTable
     readonly Assembly _appAssembly;
     readonly IReadOnlyList<Assembly> _additionalAssemblies;
     readonly Dictionary<Type, string[]> _templates = new();
+    readonly List<(Type PageType, string Template)> _routes = new();
 
     public RouteTable(Assembly appAssembly, IReadOnlyList<Assembly> additionalAssemblies)
     {
@@ -42,20 +44,17 @@ public sealed class RouteTable
         RouteData? bestMatch = null;
         var bestScore = int.MinValue;
 
-        foreach (var pageType in GetRouteableComponents())
+        foreach (var (pageType, template) in _routes)
         {
-            foreach (var attribute in pageType.GetCustomAttributes<RouteAttribute>(inherit: false))
+            if (!TryMatch(path, pageType, template, out var routeData, out var score))
             {
-                if (!TryMatch(path, pageType, attribute.Template, out var routeData, out var score))
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                if (score > bestScore)
-                {
-                    bestMatch = routeData;
-                    bestScore = score;
-                }
+            if (score > bestScore)
+            {
+                bestMatch = routeData;
+                bestScore = score;
             }
         }
 
@@ -99,6 +98,11 @@ public sealed class RouteTable
             if (templates.Length > 0)
             {
                 _templates[type] = templates;
+
+                foreach (var template in templates)
+                {
+                    _routes.Add((type, template));
+                }
             }
         }
     }
@@ -147,7 +151,7 @@ public sealed class RouteTable
                 break;
             }
 
-            var name = template[(open + 1)..close].TrimStart('*').Split(':')[0];
+            var name = template[(open + 1)..close].TrimStart('*').TrimEnd('?').Split(':')[0].TrimEnd('?');
             tokens.Add(name);
 
             open = template.IndexOf('{', close + 1);
@@ -165,17 +169,18 @@ public sealed class RouteTable
 
         if (parameters is null || parameters.Count == 0)
         {
-            return url;
+            return FillTokens(url, s_emptyParameters);
         }
 
         var tokens = GetTemplateTokens(template);
         var query = new List<string>();
 
+        url = FillTokens(url, parameters);
+
         foreach (var (key, value) in parameters)
         {
             if (tokens.Any(token => string.Equals(token, key, StringComparison.OrdinalIgnoreCase)))
             {
-                url = ReplaceParameter(url, key, Uri.EscapeDataString(SurfaceQuery.Format(value)));
                 continue;
             }
 
@@ -207,32 +212,45 @@ public sealed class RouteTable
         }
     }
 
-    static string ReplaceParameter(string template, string key, string value)
+    // A catch-all keeps its slashes and escapes each segment; an optional token with no value
+    // drops out of the address.
+    static string FillTokens(string url, IReadOnlyDictionary<string, object?> parameters)
     {
-        var open = template.IndexOf('{');
+        var omitted = false;
 
-        while (open >= 0)
+        var filled = TokenPattern().Replace(url, match =>
         {
-            var close = template.IndexOf('}', open + 1);
+            var name = match.Groups["name"].Value;
+            var provided = parameters.FirstOrDefault(
+                pair => string.Equals(pair.Key, name, StringComparison.OrdinalIgnoreCase));
+            var value = provided.Key is null ? null : provided.Value;
 
-            if (close < 0)
+            if (value is null && match.Groups["optional"].Success)
             {
-                break;
+                omitted = true;
+
+                return string.Empty;
             }
 
-            var segment = template[open..(close + 1)];
-            var name = segment.TrimStart('{').TrimEnd('}').Split(':')[0];
+            var text = SurfaceQuery.Format(value);
 
-            if (string.Equals(name, key, StringComparison.OrdinalIgnoreCase))
-            {
-                return template.Replace(segment, value, StringComparison.Ordinal);
-            }
+            return match.Groups["catchAll"].Success
+                ? string.Join('/', text.Split('/').Select(Uri.EscapeDataString))
+                : Uri.EscapeDataString(text);
+        });
 
-            open = template.IndexOf('{', close + 1);
+        if (!omitted)
+        {
+            return filled;
         }
 
-        return template;
+        filled = filled.TrimEnd('/');
+
+        return filled.Length == 0 ? "/" : filled;
     }
+
+    [GeneratedRegex(@"\{(?<catchAll>\*)?(?<name>[^}:?]+)(:[^}?]*)?(?<optional>\?)?\}")]
+    private static partial Regex TokenPattern();
 
     static IReadOnlyDictionary<string, object?> ToDictionary(object? parameters)
     {
@@ -334,7 +352,8 @@ public sealed class RouteTable
                 return false;
             }
         }
-        else if (pathSegments.Length != templateSegments.Length)
+        else if (pathSegments.Length > templateSegments.Length
+            || pathSegments.Length < templateSegments.Count(segment => !IsOptional(segment)))
         {
             return false;
         }
@@ -353,6 +372,11 @@ public sealed class RouteTable
 
             if (pathSegments.Length <= i)
             {
+                if (IsOptional(templateSegment))
+                {
+                    continue;
+                }
+
                 return false;
             }
 
@@ -360,7 +384,7 @@ public sealed class RouteTable
 
             if (templateSegment.StartsWith('{') && templateSegment.EndsWith('}'))
             {
-                var parts = templateSegment[1..^1].Split(':');
+                var parts = templateSegment[1..^1].TrimEnd('?').Split(':');
 
                 if (!TryConvert(pathSegment, parts.Length > 1 ? parts[1] : null, out var value))
                 {
@@ -382,6 +406,11 @@ public sealed class RouteTable
 
         routeData = new RouteData(pageType, values);
         return true;
+    }
+
+    static bool IsOptional(string segment)
+    {
+        return segment.StartsWith('{') && segment.EndsWith("?}", StringComparison.Ordinal);
     }
 
     // Blazor's route constraint syntax ("{id:guid}"): the constraint both filters the
