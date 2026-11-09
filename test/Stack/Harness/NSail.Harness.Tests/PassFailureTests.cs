@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Harness.Locks;
 using System.Diagnostics.Metrics;
 using System.Net;
 using Microsoft.Extensions.Logging;
@@ -35,6 +36,19 @@ public class PassFailureTests
         var o = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }] };
         var repo = new GitHubRepository(new GitHubClient(http) { Delay = (_, _) => Task.CompletedTask }, o.Repositories[0], o.Names(), "t");
         return await Assert.ThrowsAsync<GitHubException>(() => repo.Statuses());
+    }
+
+    [Fact]
+    public void ASweepNeverReleasesAnotherInstancesLockOrAStartingOne()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var mine = new LockHolder("box", "j", "Dev", now, "aaaa");
+
+        Assert.Null(HarnessLoop.SweepReason(mine with { Instance = "bbbb" }, "box", "aaaa", false, now));
+        Assert.Null(HarnessLoop.SweepReason(mine, "box", "aaaa", true, now));
+        Assert.NotNull(HarnessLoop.SweepReason(mine, "box", "aaaa", false, now));
+        Assert.NotNull(HarnessLoop.SweepReason(mine with { Instance = "bbbb", At = now.AddHours(-6) }, "box", "aaaa", false, now));
+        Assert.NotNull(HarnessLoop.SweepReason(mine with { Machine = "other", At = now.AddHours(-6) }, "box", "aaaa", true, now));
     }
 
     [Fact]
