@@ -37,8 +37,20 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", "--prune", ctx.Workspace.Url, $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*"]);
         var head = await Shell.Git(dir, "rev-parse", "HEAD");
-        var outcome = await Cut(p, product, step, dir, head, slot, w, logPath, ct);
-        // Written once the cut reached a verdict: a dispatch or suite that threw leaves the day's cut due.
+        // The claim keeps the fleet's other harnesses off the cut while this one works; the cut mark,
+        // written once the cut reached a verdict, keeps the day. A cut that threw lets go of the claim
+        // and leaves the day due; one whose harness died is due again when its claim lapses.
+        await ctx.Repo.SetStatus(head, Markers.HeldContext(p), "failure", $"cut running on {ctx.Options.Machine}", ct);
+        JobOutcome outcome;
+        try
+        {
+            outcome = await Cut(p, product, step, dir, head, slot, w, logPath, ct);
+        }
+        catch
+        {
+            await ctx.Repo.SetStatus(head, Markers.HeldContext(p), "success", $"cut let go on {ctx.Options.Machine}", CancellationToken.None);
+            throw;
+        }
         await ctx.Repo.SetStatus(head, Markers.CutContext(p), "success", $"cut tried on {ctx.Options.Machine}", ct);
         return outcome;
     }
@@ -94,11 +106,11 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         return $"release/{product}/";
     }
 
-    // The day's branch, at main's head; the oldest beyond the kept few go.
+    // The day's branch, at main's head (a retried cut reuses it); the oldest beyond the kept few go.
     async Task<string> OpenBranch(string p, string dir, TextWriter w)
     {
-        var branch = $"{BranchPrefix(p)}{DateTimeOffset.UtcNow:yyyyMMdd-HHmm}";
-        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
+        var branch = $"{BranchPrefix(p)}{DateTimeOffset.UtcNow:yyyyMMdd}";
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", "--force", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
         await w.WriteLineAsync($"opened {branch}");
         // A push by address leaves no tracking ref, so the new branch joins the list here.
         var known = (await Branches(p, dir)).Append(branch).Distinct().OrderByDescending(b => b, StringComparer.Ordinal);
@@ -180,7 +192,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
             return null;
         }
         var tip = await Shell.Git(dir, "rev-parse", "HEAD");
-        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", "--force", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
         await w.WriteLineAsync($"carried {string.Join(", ", fixes.Select(f => f[..8]))} to {branch} at {tip[..8]}; again: {string.Join(", ", failed)}");
 
         var result = await Suite(product, Filter(failed), dir, step, w, ct);

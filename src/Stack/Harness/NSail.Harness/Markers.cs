@@ -29,6 +29,12 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
         return $"harness/cut/{product}";
     }
 
+    // A cut at work: failure (a state the marks read) while a harness runs it, success once it let go without a verdict.
+    public static string HeldContext(string product)
+    {
+        return $"harness/cut/{product}/held";
+    }
+
     // What a dead voyage's comment on the story carries, so the next one can count them.
     public const string Voyage = "<!-- harness:voyage -->";
 

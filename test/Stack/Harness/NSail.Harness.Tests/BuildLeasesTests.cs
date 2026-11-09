@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using NSail.Harness.Planning;
+using NSail.Harness.Repositories;
 
 namespace NSail.Harness.Tests;
 
@@ -93,9 +94,25 @@ public class BuildLeasesTests
         var age = HarnessLoop.TurnAge(SampleWorkers.Workers);
 
         Assert.True(age >= TimeSpan.FromMinutes(150));
+        Assert.True(age >= TimeSpan.FromMinutes(SampleWorkers.Workers.Where(w => w.Kind == WorkKind.Main).Max(w => (w.Options.Minutes ?? w.Type.Minutes) * 2)));
         Assert.Equal(0, leases.Sweep(age, DateTimeOffset.UtcNow.AddMinutes(90)));
         Assert.Equal(1, leases.Held);
         Assert.Equal(1, leases.Sweep(age, DateTimeOffset.UtcNow.AddMinutes(400)));
         Assert.Equal(0, leases.Held);
+    }
+
+    [Fact]
+    public void ACutHeldByAnotherHarnessIsNotDueUntilItsClaimLapsesOrIsLetGo()
+    {
+        var worker = SampleWorkers.Workers.First(w => w.Kind == WorkKind.Release && w.Options.Product is not null);
+        var p = worker.Options.Product!.ToLowerInvariant();
+        var fired = DateTimeOffset.UtcNow.AddMinutes(-200);
+        var now = fired.AddMinutes(200);
+        StatusMark Held(bool ok, int minutes) => new("c", Markers.HeldContext(p), ok, fired.AddMinutes(minutes));
+
+        Assert.True(HarnessLoop.CutHeld([Held(false, 150)], worker, fired, now));
+        Assert.False(HarnessLoop.CutHeld([Held(false, 10)], worker, fired, now));
+        Assert.False(HarnessLoop.CutHeld([Held(false, 150), Held(true, 160)], worker, fired, now));
+        Assert.False(HarnessLoop.CutHeld([], worker, fired, now));
     }
 }
