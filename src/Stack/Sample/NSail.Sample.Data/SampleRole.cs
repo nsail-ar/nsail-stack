@@ -2,6 +2,8 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using NSail.Data;
 
@@ -25,7 +27,29 @@ public static class SampleRole
 
         await using (var context = new SampleDbContext(options, [new DbContextSetup()]))
         {
-            await context.Database.MigrateAsync(cancellationToken);
+            var db = context.Database;
+            var creator = db.GetService<IRelationalDatabaseCreator>();
+
+            if (!await creator.ExistsAsync(cancellationToken))
+            {
+                await creator.CreateAsync(cancellationToken);
+            }
+
+            // The chain is the install's own work: the tenant policies are forced, so the key is
+            // written on the connection that runs it, as ApplyMigrations does.
+            await db.OpenConnectionAsync(cancellationToken);
+
+            try
+            {
+                await using var enter = new NpgsqlCommand("SELECT set_config('nsail.tenant', @tenant, false)", (NpgsqlConnection)db.GetDbConnection());
+                enter.Parameters.AddWithValue("tenant", Tenant.None.RowKey.ToString());
+                await enter.ExecuteNonQueryAsync(cancellationToken);
+                await db.MigrateAsync(cancellationToken);
+            }
+            finally
+            {
+                await db.CloseConnectionAsync();
+            }
         }
 
         await using var connection = new NpgsqlConnection(admin);
@@ -43,15 +67,18 @@ public static class SampleRole
             $$;
             """, cancellationToken);
 
-        await using (var alter = new NpgsqlCommand($"ALTER ROLE {Name} PASSWORD '{password.Replace("'", "''")}'", connection))
+        await using (var format = new NpgsqlCommand($"SELECT format('ALTER ROLE {Name} PASSWORD %L', @password)", connection))
         {
-            await alter.ExecuteNonQueryAsync(cancellationToken);
+            format.Parameters.AddWithValue("password", password);
+            var alter = (string)(await format.ExecuteScalarAsync(cancellationToken))!;
+            await Execute(connection, alter, cancellationToken);
         }
 
         await Execute(connection, $"""
             GRANT CONNECT ON DATABASE "{database!.Replace("\"", "\"\"")}" TO {Name};
             GRANT USAGE ON SCHEMA public TO {Name};
             GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {Name};
+            REVOKE ALL ON "__EFMigrationsHistory" FROM {Name};
             GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {Name};
             """, cancellationToken);
     }

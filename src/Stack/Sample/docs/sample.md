@@ -31,7 +31,7 @@ the rule — the row the index names stays open under it.
 
 It lives under `src/Stack` but is written the way a kit or an app is: it is the code a
 stranger copies first, so it keeps the consumer-side rules: no vendor types, no doc comments, every
-endpoint behind the gate. No test in this repository sweeps it yet; a review does.
+endpoint behind the gate. `SampleRoleTests` covers its role; no test composes its security, so a review does.
 
 **Not for production.** No Iam is composed: there is no sign-in, so anyone who can reach the port
 can read, change and delete the contacts, which are `[Personal]` data. Run it on localhost only;
@@ -66,7 +66,7 @@ dotnet run --project src/Stack/Sample/NSail.Sample.Web --launch-profile http
 
 The host connects as `sample_app`, a role without superuser rights. On start,
 `SampleRole.Prepare` migrates the database and creates or refreshes that role through
-`Sample:AdminConnectionString` (the `postgres` user), then grants it reads and writes on the
+`Sample:AdminConnectionString` (the superuser connection), then grants it reads and writes on the
 tables, nothing more. Both strings leave the password out: it arrives in `PGPASSWORD`, and
 `sample_app` takes that same value.
 
@@ -90,5 +90,6 @@ The sample owns the **41xx** block of NSail's port nomenclature.
 | Vite dev server | 4002 |
 
 The connection string is `Sample:ConnectionString` (`appsettings.json`: `localhost`, database
-`sample_main`, user `postgres`; Npgsql reads the password from `PGPASSWORD`). The first run
+`sample_main`, user `sample_app`; Npgsql reads the password from `PGPASSWORD`), and the role
+setup connects through `Sample:AdminConnectionString`. The first run
 creates the database.

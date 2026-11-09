@@ -18,12 +18,12 @@ public static class Policies
             Name = "Sample.Policies.Everyone",
             Messages =
             [
-                "Sample.ListContacts",
-                "Sample.GetContact",
-                "Sample.CreateContact",
-                "Sample.UpdateContact",
-                "Sample.DeleteContact",
-                "Sample.GetStrings",
+                "Sample.Contacts.ListContacts",
+                "Sample.Contacts.GetContact",
+                "Sample.Contacts.CreateContact",
+                "Sample.Contacts.UpdateContact",
+                "Sample.Contacts.DeleteContact",
+                "Sample.Strings.GetStrings",
             ],
         });
     }
