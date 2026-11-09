@@ -102,7 +102,7 @@ public class MapperDiagnosticsTests
             public class Target { public int Count { get; set; } }
             """);
 
-        Assert.Equal("NSG024", Assert.Single(diagnostics).Id);
+        Assert.Equal("NSG025", Assert.Single(diagnostics).Id);
     }
 
     [Fact]

@@ -690,7 +690,7 @@ The graph rules are Detached Mapper's:
   holds M and T never sees the Data project. An `Ignore` naming a member that does not exist is
   NSG013. Both are warnings, so an app refuses them through its own `.editorconfig` or
   `WarningsAsErrors`.
-- **"No value" is never silently zero** (NSG024): a `[MapFrom]` that reads a nullable into a
+- **"No value" is never silently zero** (NSG025): a `[MapFrom]` that reads a nullable into a
   non-nullable member does not build — make the member nullable, the source non-nullable, or
   `[MapIgnore]` it. The entity's key is exempt (a `Guid?` Id is the id still to be made). A
   `[MapTo]` row reads the default, because a query provider translates the projection.

@@ -6,9 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace NSail.SourceGenerator.Tests.Transport.HttpInProcess;
 
-public partial class TestInProcess
+public static partial class TestInProcess
 {
     [Generated(NSail.SourceGeneration.Annotations.Http.InProcess)]
     [Source(Assembly="NSail.SourceGenerator.TestAssets")]
-    public partial void AddTestInProcess(this IServiceCollection services);
+    public static partial void AddTestInProcess(this IServiceCollection services);
 }

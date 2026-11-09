@@ -6,9 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace NSail.SourceGenerator.Tests.Transport.HttpClients;
 
-public partial class TestClients
+public static partial class TestClients
 {
     [Generated(NSail.SourceGeneration.Annotations.Http.Clients)]
     [Source(Assembly="NSail.SourceGenerator.TestAssets")]
-    public partial void AddTestClients(this IServiceCollection services);
+    public static partial void AddTestClients(this IServiceCollection services);
 }

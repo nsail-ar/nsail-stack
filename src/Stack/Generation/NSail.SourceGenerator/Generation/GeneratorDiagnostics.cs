@@ -218,8 +218,17 @@ public static class GeneratorDiagnostics
         isEnabledByDefault: true,
         description: "The route is the endpoint and the client's address; a message without one is skipped by neither and served by neither.");
 
-    public static readonly DiagnosticDescriptor MappedNullableIntoNonNullable = new(
+    public static readonly DiagnosticDescriptor CollectionHeader = new(
         id: "NSG024",
+        title: "A header-bound member is a collection",
+        messageFormat: "'{0}.{1}' is bound from a header, but it is a collection: the client's values reach the endpoint as one comma-joined value, never as the elements. Send it in the query or the body.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "HTTP joins repeated values of a header into one line and the endpoint binds that line as a single element, so the collection would arrive wrong or be refused.");
+
+    public static readonly DiagnosticDescriptor MappedNullableIntoNonNullable = new(
+        id: "NSG025",
         title: "A nullable member is mapped into a non-nullable one",
         messageFormat: "'{0}.{1}' ({2}) is written from '{3}.{4}' ({5}), which can hold no value, and nothing says what that becomes. Make '{0}.{1}' nullable, make '{3}.{4}' non-nullable, or mark the entity's member [MapIgnore].",
         category: Category,

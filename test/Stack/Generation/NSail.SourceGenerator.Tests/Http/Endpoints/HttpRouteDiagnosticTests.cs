@@ -184,6 +184,27 @@ public class HttpRouteDiagnosticTests
         Assert.Single(diagnostics.Where(d => d.Id == "NSG018"));
     }
 
+    [Theory]
+    [InlineData("[AsHeader] public int[]? Attempts { get; set; }")]
+    [InlineData("[AsHeader] public System.Collections.Generic.List<string>? Attempts { get; set; }")]
+    public void A_collection_header_is_a_build_error(string member)
+    {
+        var diagnostics = Run(RouteSource("[Http(Method.Get, \"api/items\")]", member));
+
+        var reported = Assert.Single(diagnostics.Where(d => d.Id == "NSG024"));
+
+        Assert.Equal(DiagnosticSeverity.Error, reported.Severity);
+        Assert.Contains("Attempts", reported.GetMessage());
+    }
+
+    [Fact]
+    public void A_single_value_header_is_no_error()
+    {
+        var diagnostics = Run(RouteSource("[Http(Method.Get, \"api/items\")]", "[AsHeader] public string? Trace { get; set; }"));
+
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+    }
+
     [Fact]
     public void Two_messages_on_one_verb_and_normalised_path_are_a_build_error()
     {

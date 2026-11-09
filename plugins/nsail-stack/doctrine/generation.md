@@ -71,7 +71,7 @@ Defined in `NSail.SourceGeneration.Annotations`:
 
 Each transport groups its artifacts in one enum. For HTTP: `Clients` is the remote send side, `Endpoints` the receive side, and `InProcess` the local counterpart of `Clients` — same `[Http]` contract, dispatched directly to the handler in the host that exposes the endpoints.
 
-A sender writes each route value through `HttpRequestMessageBuilder.Segment` (one escaped segment, invariant culture) and each query value invariantly, dates and times round-trip (`O`): the server parses invariantly, and a value must not change the path.
+A sender writes each route value through `HttpRequestMessageBuilder.Segment` (one escaped segment, invariant culture) and each query and header value invariantly, dates and times round-trip (`O`): the server parses invariantly, and a value must not change the path.
 
 `Http.InProcess` is declared in the kit's WebApi setup (same assembly as the handlers) and called from `Add{Kit}WebApi()`. It makes `Mediator.Send` dispatch locally in the host that owns the handlers — required for server-side prerendering of components that send messages. There is no implicit sender fallback and `[Http]` is the gate — the sender-registration semantics live in [messaging.md](messaging.md) (In-process vs remote).
 
@@ -167,12 +167,12 @@ public class GetPrescription : IMessage<Prescription>
 |---|---|
 | `[AsRoute]` | Path segment |
 | `[AsQuery]` | Query string |
-| `[AsHeader]` | Request header |
+| `[AsHeader]` | Request header (one value; a collection is `NSG024`) |
 | (default on POST/PUT) | JSON body |
 
 Only public, instance, non-indexer properties with a public `set` or `init` and no `[JsonIgnore]` enter the model, read once as the most derived declaration; any other member is not on the wire.
 
-Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc.
+Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Head and Options are mapped with `MapMethods`; their members bind from the query string (route tokens and `[AsRoute]`/`[AsHeader]` still win).
 
 Sdk projects import `static NSail.Messaging.Annotations.Method` via global usings.
 
@@ -309,7 +309,8 @@ same thing.
 | `NSG021` | Error | A holder's class is nested, generic, not `partial` or in the global namespace — the generated half re-declares the class and cannot match it. |
 | `NSG022` | Error | A holder has no `IServiceCollection` parameter — the registrations have no receiver; the generated body uses the parameter's own name. |
 | `NSG023` | Error | An `[Http]` message declares no path — it has no route to map or call. |
-| `NSG024` | Error | A `[MapFrom]` member reads a nullable into a non-nullable member that is not the entity's key — nothing says what "no value" becomes. A `[MapTo]` row reads it as the default, since a query provider translates the projection. |
+| `NSG024` | Error | A header-bound member (`[AsHeader]`) is a collection — HTTP joins a repeated header into one line, which the endpoint binds as one element. |
+| `NSG025` | Error | A `[MapFrom]` member reads a nullable into a non-nullable member that is not the entity's key — nothing says what "no value" becomes. A `[MapTo]` row reads it as the default, since a query provider translates the projection. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only

@@ -105,7 +105,7 @@ behaviors): `CompositeCollectionBehavior` (`Merge` deletes what the source no lo
 | NSG011 | warning | A `[MapFrom]` source member is written nowhere |
 | NSG012 | warning | A settable `[MapTo]` row member is filled by nothing |
 | NSG013 | error | An `Ignore` names a member that does not exist |
-| NSG024 | error | A `[MapFrom]` member reads a nullable into a non-nullable member that is not a key; a `[MapTo]` row reads it as the default |
+| NSG025 | error | A `[MapFrom]` member reads a nullable into a non-nullable member that is not a key; a `[MapTo]` row reads it as the default |
 
 Conversions at run time: a narrowing numeric or enum cast is `checked` (an `OverflowException`,
 never a wrapped value); text that does not parse as a number, bool, date, `Guid` or enum throws a
