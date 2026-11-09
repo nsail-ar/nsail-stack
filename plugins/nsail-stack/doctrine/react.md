@@ -65,7 +65,13 @@ await mediator.send(CreateContact, { id, name });   // reads like the C# send
 - **Models and enums travel too.** Every type a message reaches is emitted: a model as an
   interface plus a `defineModel` descriptor (keys and kinds for a table header and a cell),
   a generic definition (`DataPage<T>`) as a generic interface, an enum as a union of its
-  names (the wire's shape, generation.md) plus a `defineEnum` with its key.
+  names (the wire's shape, generation.md) plus a `defineEnum` with its key. An enum with
+  no members is `never`; a `[Flags]` enum is `string` (the wire writes the names joined) and
+  its fields carry kind `string`, so `display()` shows the combination as it came. `Uri` and
+  `Version` are `string`; `JsonElement`, `JsonNode` and kin, `BigInteger`, `Int128` and
+  `UInt128` are `unknown`, since the wire writes them as free JSON. A property renamed with
+  `[JsonPropertyName]` keeps that name in the body, quoted when it is not an identifier; in a
+  route, query or header member the name is the lowered property name, as the endpoint reads it.
 - **One namespace.** Two reachable types sharing a simple name fail the build
   (`NSTS001`), as does a route token no member binds (NSG001's twin) — a generator that
   guessed would emit a client that compiles and calls the wrong thing.
