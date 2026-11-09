@@ -314,8 +314,16 @@ public sealed class HarnessLoop(
     {
         return _workers.Where(w => w.Kind == WorkKind.Release && w.Options.When.Schedule is not null)
             .Where(w => Conditions.LastFiring(w.Options.When.Schedule!, now) is { } fired
-                && (StatusMark.LastAt(marks, Markers.CutContext(w.Options.Product!.ToLowerInvariant())) is not { } tried || tried < fired))
+                && (StatusMark.LastAt(marks, Markers.CutContext(w.Options.Product!.ToLowerInvariant())) is not { } tried || tried < fired)
+                && !CutHeld(marks, w.Options.Product!.ToLowerInvariant(), fired, now))
             .Select(w => w.Options.Workflow!).ToList();
+    }
+
+    // A harness holds the cut while its newest claim since the firing is unreleased and was renewed inside the lapse.
+    internal static bool CutHeld(IReadOnlyList<StatusMark> marks, string product, DateTimeOffset fired, DateTimeOffset now)
+    {
+        var claim = marks.Where(m => m.Context == Markers.HeldContext(product) && m.At >= fired).OrderByDescending(m => m.At).FirstOrDefault();
+        return claim is { Ok: false } && now - claim.At < Markers.ClaimLapse;
     }
 
     // A Watch worker's pass is due its period after the last one read, and never twice at once.
@@ -402,13 +410,21 @@ public sealed class HarnessLoop(
         return info?.IndexOf('+') is { } plus and >= 0 ? info[(plus + 1)..][..Math.Min(7, info.Length - plus - 1)] : null;
     }
 
+    // A turn is dead past the longest step any worker runs, with a margin for the job's own wind-down.
+    internal static TimeSpan TurnAge(IReadOnlyList<Worker> workers)
+    {
+        // A main gate holds its turn for twice its step's minutes.
+        var longest = workers.Select(w => (w.Options.Minutes ?? w.Type.Minutes) * (w.Kind == WorkKind.Main ? 2 : 1)).DefaultIfEmpty(0).Max();
+        return TimeSpan.FromMinutes(longest + 10);
+    }
+
     async Task<Pass> RunPass(HarnessOptions o, CancellationToken stop)
     {
         var started = DateTimeOffset.UtcNow;
         var call = PassCall.Planning;
         try
         {
-            if (leases.Sweep(TimeSpan.FromMinutes(60)) is var dead and > 0) log.LogWarning("{Dead} build turn(s) older than an hour went back to the line", dead);
+            if (leases.Sweep(TurnAge(_workers)) is var dead and > 0) log.LogWarning("{Dead} build turn(s) older than the longest step went back to the line", dead);
             call = PassCall.Statuses;
             var marks = await jobs.Repo.Statuses(ct: stop);
             call = PassCall.Stories;
