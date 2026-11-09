@@ -17,6 +17,13 @@ public class BindingModel
 {
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>The identifier the endpoint lambda declares for the parameter: <see cref="Name"/>
+    /// unless that collides with a keyword or a local of the lambda.</summary>
+    public string ParameterName { get; set; } = string.Empty;
+
+    /// <summary>Pins the wire name on the attribute when the identifier is not the name.</summary>
+    public string NameArgument { get; set; } = string.Empty;
+
     public string? PropertyName { get; set; }
 
     public string Type { get; set; } = string.Empty;
