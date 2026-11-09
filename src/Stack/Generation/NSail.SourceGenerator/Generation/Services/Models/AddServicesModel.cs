@@ -1,9 +1,9 @@
-﻿﻿// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 namespace NSail.SourceGenerator.Generation.Services.Models;
 
-public record AddServicesModel
+public record AddServicesModel : GeneratedModel
 {
     public string? Namespace { get; set; }
 

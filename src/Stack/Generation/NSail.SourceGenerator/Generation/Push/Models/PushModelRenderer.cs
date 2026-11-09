@@ -20,10 +20,13 @@ public static class PushModelRenderer
 
     static void Render(SourceProductionContext spc, PushModel model, string templateName)
     {
-        foreach (var diagnostic in model.Diagnostics)
+        foreach (var diagnostic in model.HolderDiagnostics.Concat(model.Diagnostics))
         {
             spc.ReportDiagnostic(diagnostic.ToDiagnostic());
         }
+
+        if (model.Unusable)
+            return;
 
         var template = SourceTemplateRegistry.Instance.Get(templateName);
         var sourceCode = template.Render(model);

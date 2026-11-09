@@ -80,12 +80,12 @@ sealed partial class MapperEmitter
 
     string Services
     {
-        get { return _method.Parameters.Length > 0 ? _method.Parameters[0].Name : "services"; }
+        get { return _method.FindParameterNameByType("IServiceCollection"); }
     }
 
     public string Emit()
     {
-        foreach (var target in _compilation.FindTypesInScope(_method))
+        foreach (var target in _compilation.FindTypesInScope(_method, Diagnostics))
         {
             if (target.IsGenericType && (target.HasAttribute(MapFromName) || target.HasAttribute(MapToName)))
             {

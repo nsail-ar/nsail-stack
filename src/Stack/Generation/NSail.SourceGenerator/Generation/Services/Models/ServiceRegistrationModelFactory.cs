@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -23,6 +23,15 @@ public static class ServiceRegistrationModelFactory
             MethodName = target.MethodName,
             MethodDeclaration = target.MethodDeclaration,
         };
+
+        model.ReadHolder(target);
+
+        if (model.Unusable)
+        {
+            return model;
+        }
+
+        model.HolderDiagnostics.AddRange(scoped.Diagnostics);
 
         foreach (var injectables in scoped.Fragments)
         {

@@ -18,6 +18,31 @@ public class BodyAttributeTests
     [Fact]
     public void An_enum_attribute_argument_reaches_the_generated_body_as_the_enum()
     {
+        var generated = Run("Endpoints", new HttpEndpointsSourceGenerator());
+
+        // The body DTO copies a property's attributes verbatim. An enum constant carries its
+        // underlying integer, so writing it raw produced [PolicyField(0)] and the generated
+        // file stopped compiling with CS1503 — which is why a message could not carry the
+        // marks its own policies need.
+        Assert.DoesNotContain("PolicyFieldAttribute(1)", generated);
+        Assert.DoesNotContain("PolicyFieldAttribute(2)", generated);
+
+        Assert.Contains("((global::NSail.Security.Annotations.RestrictAs)1)", generated);
+        Assert.Contains("((global::NSail.Security.Annotations.RestrictAs)2)", generated);
+    }
+
+    [Fact]
+    public void The_clients_target_emits_no_parameter_types()
+    {
+        var generated = Run("Clients", new HttpClientsSourceGenerator());
+
+        Assert.Contains("CreatePrescription", generated);
+        Assert.DoesNotContain("ClientParameters", generated);
+        Assert.DoesNotContain("CreatePrescriptionBody", generated);
+    }
+
+    static string Run(string target, IIncrementalGenerator generator)
+    {
         var builder = new CompilationUnitBuilder()
             .AddSource("Messages.cs", """
                 using Microsoft.Extensions.DependencyInjection;
@@ -42,10 +67,10 @@ public class BodyAttributeTests
 
                 public static partial class Clients
                 {
-                    [Generated(Http.Clients)]
-                    public static partial void AddClinicHttpClients(this IServiceCollection services);
+                    [Generated(Http.__TARGET__)]
+                    public static partial void AddClinicHttp(this IServiceCollection services);
                 }
-                """)
+                """.Replace("__TARGET__", target))
             .AddFrameworkReferences("net10.0")
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()
@@ -54,21 +79,10 @@ public class BodyAttributeTests
 
         var compilation = builder.Build("ClientBodyAttributeTestAssembly");
 
-        var generator = new HttpClientsSourceGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _);
 
-        var generated = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
-
-        // The body DTO copies a property's attributes verbatim. An enum constant carries its
-        // underlying integer, so writing it raw produced [PolicyField(0)] and the generated
-        // file stopped compiling with CS1503 — which is why a message could not carry the
-        // marks its own policies need.
-        Assert.DoesNotContain("PolicyFieldAttribute(1)", generated);
-        Assert.DoesNotContain("PolicyFieldAttribute(2)", generated);
-
-        Assert.Contains("((global::NSail.Security.Annotations.RestrictAs)1)", generated);
-        Assert.Contains("((global::NSail.Security.Annotations.RestrictAs)2)", generated);
+        return string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
     }
 }

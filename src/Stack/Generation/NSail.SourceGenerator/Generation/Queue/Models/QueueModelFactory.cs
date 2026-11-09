@@ -26,8 +26,16 @@ public static class QueueModelFactory
             MethodName = target.MethodName,
             ClassDeclaration = target.ClassDeclaration,
             MethodDeclaration = target.MethodDeclaration,
-            ServicesParameterName = target.FirstParameterName,
         };
+
+        model.ReadHolder(target);
+
+        if (model.Unusable)
+        {
+            return model;
+        }
+
+        model.HolderDiagnostics.AddRange(scoped.Diagnostics);
 
         foreach (var fragment in scoped.Fragments)
         {

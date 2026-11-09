@@ -12,7 +12,9 @@ public static class CompilationExtensions
     const string AssemblyParameterName = "Assembly";
     const string PatternParameterName = "Pattern";
 
-    public static IEnumerable<INamedTypeSymbol> FindTypesInScope(this Compilation compilation, ISymbol generatedSymbol)
+    /// <summary>The types a holder generates for. A <c>[Source]</c> that names no referenced
+    /// assembly is reported into <paramref name="diagnostics"/> and contributes nothing.</summary>
+    public static IEnumerable<INamedTypeSymbol> FindTypesInScope(this Compilation compilation, ISymbol generatedSymbol, List<DiagnosticInfo> diagnostics)
     {
         if (compilation is null)
             throw new ArgumentNullException(nameof(compilation));
@@ -32,16 +34,27 @@ public static class CompilationExtensions
             yield break;
         }
 
-        foreach (var type in FindTypesInSources(compilation, sources))
+        var unknown = new List<SourceScope>();
+
+        foreach (var type in FindTypesInSources(compilation, sources, unknown))
             yield return type;
+
+        foreach (var source in unknown)
+            diagnostics.Add(DiagnosticInfo.Create(GeneratorDiagnostics.UnknownSourceAssembly, generatedSymbol, generatedSymbol.Name, source.Assembly ?? string.Empty));
     }
 
-    public static IEnumerable<INamedTypeSymbol> FindTypesInSources(Compilation compilation, IEnumerable<SourceScope> sources)
+    public static IEnumerable<INamedTypeSymbol> FindTypesInSources(Compilation compilation, IEnumerable<SourceScope> sources, List<SourceScope> unknown)
     {
         var seen = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
         foreach (var source in sources)
         {
+            if (compilation.GetReferencedAssemblySymbol(source.Assembly) is null)
+            {
+                unknown.Add(source);
+                continue;
+            }
+
             foreach (var type in FindSourceScope(compilation, source))
             {
                 if (seen.Add(type))
@@ -55,8 +68,7 @@ public static class CompilationExtensions
     public static bool IsInDefaultScope(INamedTypeSymbol type)
     {
         return type.TypeKind is TypeKind.Class
-            && !type.IsAbstract
-            && type.ContainingType?.ContainingType is null;
+            && !type.IsAbstract;
     }
 
     static IEnumerable<INamedTypeSymbol> FindDefaultScope(Compilation compilation)

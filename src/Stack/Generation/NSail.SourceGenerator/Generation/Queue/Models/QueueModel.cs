@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Queue.Models;
 
-public record QueueModel
+public record QueueModel : GeneratedModel
 {
     public string? Namespace { get; set; }
 
@@ -15,10 +15,6 @@ public record QueueModel
 
     public string? MethodDeclaration { get; set; }
 
-    public string? ServicesParameterName { get; set; }
-
     /// <summary>Fully qualified, global::-prefixed: every [Queue] message in scope.</summary>
     public EquatableList<string> Messages { get; set; } = new();
-
-    public EquatableList<DiagnosticInfo> Diagnostics { get; set; } = new();
 }

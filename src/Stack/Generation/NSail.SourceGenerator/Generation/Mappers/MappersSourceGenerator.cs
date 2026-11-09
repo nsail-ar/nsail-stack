@@ -30,6 +30,13 @@ public class MappersSourceGenerator : IIncrementalGenerator
             .Select(static (pair, ct) =>
             {
                 var ((target, modelled), compilation) = pair;
+                var holder = new HolderCheck(target);
+
+                if (holder.Unusable)
+                {
+                    return new MapperOutput(string.Empty, string.Empty, holder.HolderDiagnostics);
+                }
+
                 var method = target.ResolveMethod(compilation);
 
                 if (method is null)
@@ -55,7 +62,10 @@ public class MappersSourceGenerator : IIncrementalGenerator
                 spc.ReportDiagnostic(diagnostic.ToDiagnostic());
             }
 
-            spc.AddSource(output.HintName, output.Source);
+            if (output.HintName.Length > 0)
+            {
+                spc.AddSource(output.HintName, output.Source);
+            }
         });
     }
 

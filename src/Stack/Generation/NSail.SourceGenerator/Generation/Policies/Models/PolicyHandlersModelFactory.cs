@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -16,16 +16,37 @@ public static class PolicyHandlersModelFactory
     {
         var target = scoped.Target;
 
-        return new PolicyHandlersModel
+        var model = new PolicyHandlersModel
         {
             Namespace = target.Namespace,
             ClassName = target.ClassName,
             MethodName = target.MethodName,
             ClassDeclaration = target.ClassDeclaration,
             MethodDeclaration = target.MethodDeclaration,
-            ServicesParameterName = target.FirstParameterName,
-            Handlers = new EquatableList<PolicyHandlerModel>(scoped.Fragments),
         };
+
+        model.ReadHolder(target);
+
+        if (model.Unusable)
+        {
+            return model;
+        }
+
+        model.HolderDiagnostics.AddRange(scoped.Diagnostics);
+        model.Handlers = new EquatableList<PolicyHandlerModel>(scoped.Fragments);
+
+        // A name two messages share would declare one class twice; those, and only those, take
+        // their full name, so a holder without the clash keeps the names it always had.
+        var clashing = new HashSet<string?>(
+            model.Handlers
+                .GroupBy(h => h.HandlerName, StringComparer.Ordinal)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key),
+            StringComparer.Ordinal);
+
+        model.Handlers = new EquatableList<PolicyHandlerModel>(model.Handlers.Select(h => clashing.Contains(h.HandlerName) ? h with { HandlerName = $"{h.UniqueName}PolicyHandler" } : h));
+
+        return model;
     }
 
     public static PolicyHandlerModel? Inspect(INamedTypeSymbol typeSymbol)
@@ -67,6 +88,7 @@ public static class PolicyHandlersModelFactory
         {
             MessageType = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             HandlerName = $"{typeSymbol.Name}PolicyHandler",
+            UniqueName = new string(new TypeModel(typeSymbol).MetadataName.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray()),
         };
 
         handler.Fields.AddRange(fields);

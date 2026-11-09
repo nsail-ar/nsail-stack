@@ -21,14 +21,23 @@ public sealed record GeneratorTarget(
     string MethodName,
     string ClassDeclaration,
     string MethodDeclaration,
-    string FirstParameterName,
     string ServicesParameterName,
     string? FilePath,
     TextSpan Span,
-    EquatableList<SourceScope> Sources);
+    TextSpan IdentifierSpan,
+    LinePositionSpan IdentifierLineSpan,
+    string? HolderProblem,
+    EquatableList<SourceScope> Sources)
+{
+    /// <summary>A finding located at the holder's method.</summary>
+    public DiagnosticInfo Report(DiagnosticDescriptor descriptor, params object[] arguments)
+    {
+        return new DiagnosticInfo(descriptor, FilePath, IdentifierSpan, IdentifierLineSpan, new EquatableList<string>(arguments.Select(a => a?.ToString() ?? string.Empty)));
+    }
+}
 
 /// <summary>What a generator found in scope for one holder.</summary>
-public sealed record Scoped<T>(GeneratorTarget Target, EquatableList<T> Fragments);
+public sealed record Scoped<T>(GeneratorTarget Target, EquatableList<T> Fragments, EquatableList<DiagnosticInfo> Diagnostics);
 
 public static class GeneratedSyntaxExtensions
 {
@@ -88,16 +97,39 @@ public static class GeneratedSyntaxExtensions
         var sources = new EquatableList<SourceScope>(method.GetAttributes(SourceAttributeName)
             .Select(a => new SourceScope(a.GetNamedArgument<string>("Assembly"), a.GetNamedArgument<string>("Pattern"))));
 
+        var type = method.ContainingType;
+        var identifier = method.Locations.FirstOrDefault(l => l.IsInSource);
+        string? problem = null;
+
+        if (type.ContainingType is not null)
+        {
+            problem = "is nested in another type";
+        }
+        else if (type.IsGenericType)
+        {
+            problem = "is generic";
+        }
+        else if (type.TypeKind != TypeKind.Class || !type.IsPartial())
+        {
+            problem = "is not a partial class";
+        }
+        else if (type.ContainingNamespace is null || type.ContainingNamespace.IsGlobalNamespace)
+        {
+            problem = "is in the global namespace";
+        }
+
         return new GeneratorTarget(
             method.ContainingNamespace.ToDisplayString(),
             method.ContainingType.Name,
             method.Name,
             method.ContainingType.GetDeclaration(),
             method.GetDeclaration(),
-            method.Parameters.Length > 0 ? method.Parameters[0].Name : "services",
             method.FindParameterNameByType("IServiceCollection"),
             declaration?.SyntaxTree.FilePath,
             declaration?.Span ?? default,
+            identifier?.SourceSpan ?? default,
+            identifier?.GetLineSpan().Span ?? default,
+            problem,
             sources);
     }
 
@@ -136,10 +168,13 @@ public static class GeneratedSyntaxExtensions
             {
                 var (target, compilation) = pair;
                 var fragments = new EquatableList<T>();
+                var diagnostics = new EquatableList<DiagnosticInfo>();
 
                 if (target.Sources.Count > 0)
                 {
-                    foreach (var type in CompilationExtensions.FindTypesInSources(compilation, target.Sources))
+                    var unknown = new List<SourceScope>();
+
+                    foreach (var type in CompilationExtensions.FindTypesInSources(compilation, target.Sources, unknown))
                     {
                         ct.ThrowIfCancellationRequested();
 
@@ -148,9 +183,14 @@ public static class GeneratedSyntaxExtensions
                             fragments.Add(fragment);
                         }
                     }
+
+                    foreach (var source in unknown)
+                    {
+                        diagnostics.Add(target.Report(GeneratorDiagnostics.UnknownSourceAssembly, target.MethodName, source.Assembly ?? string.Empty));
+                    }
                 }
 
-                return new Scoped<T>(target, fragments);
+                return new Scoped<T>(target, fragments, diagnostics);
             })
             .WithTrackingName("SourceTypes");
 
@@ -160,7 +200,7 @@ public static class GeneratedSyntaxExtensions
             {
                 var (found, fragments) = pair;
 
-                return found.Target.Sources.Count > 0 ? found : new Scoped<T>(found.Target, fragments);
+                return found.Target.Sources.Count > 0 ? found : new Scoped<T>(found.Target, fragments, found.Diagnostics);
             })
             .WithTrackingName("Scoped");
     }

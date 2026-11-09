@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Push.Models;
 
-public record PushModel
+public record PushModel : GeneratedModel
 {
     public string? Namespace { get; set; }
 
@@ -15,10 +15,6 @@ public record PushModel
 
     public string? MethodDeclaration { get; set; }
 
-    public string? ServicesParameterName { get; set; }
-
     /// <summary>Fully qualified, global::-prefixed: every [Pushed] message in scope.</summary>
     public EquatableList<string> Messages { get; set; } = new();
-
-    public EquatableList<DiagnosticInfo> Diagnostics { get; set; } = new();
 }

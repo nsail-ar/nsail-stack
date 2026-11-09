@@ -75,7 +75,7 @@ export class Mediator {
     const values = request as Record<string, unknown>;
     const fields = Object.entries(message.fields) as [string, Field][];
 
-    const path = message.path.replace(/{([^{}:?]+)[^{}]*}/g, (_, token: string) => {
+    const path = message.path.replace(/{\*{0,2}([^{}:?=*]+)[^{}]*}/g, (_, token: string) => {
       const name = fields.find(([candidate]) => candidate.toLowerCase() === token.toLowerCase())?.[0] ?? token;
 
       return encodeURIComponent(format(values[name]));

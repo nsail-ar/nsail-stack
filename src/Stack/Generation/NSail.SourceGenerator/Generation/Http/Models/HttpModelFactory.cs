@@ -12,7 +12,7 @@ namespace NSail.SourceGenerator.Generation.Http.Models;
 
 /// <summary>One message as one type contributes it: the model, the findings it drew, and the
 /// key that keeps a message declared twice — itself and its handler — from being written twice.</summary>
-public sealed record HttpFragment(string Key, MessageModel Message, EquatableList<DiagnosticInfo> Diagnostics);
+public sealed record HttpFragment(string Key, MessageModel? Message, EquatableList<DiagnosticInfo> Diagnostics, string RouteKey, DiagnosticInfo? AtAttribute);
 
 public static class HttpModelFactory
 {
@@ -23,8 +23,6 @@ public static class HttpModelFactory
     const string IMessageInterfaceName = "IMessage";
     const string IHandlerInterfaceName = "IHandler";
     const string JsonIgnoreAttributeName = "System.Text.Json.Serialization.JsonIgnoreAttribute";
-    const string ServiceCollectionType = "IServiceCollection";
-
     public static HttpModel Create(Scoped<EquatableList<HttpFragment>> scoped, string? metadataTemplate)
     {
         var target = scoped.Target;
@@ -37,11 +35,20 @@ public static class HttpModelFactory
             MethodName = target.MethodName,
             ClassDeclaration = target.ClassDeclaration,
             MethodDeclaration = target.MethodDeclaration,
-            ServicesParameterName = target.ServicesParameterName,
             ServiceEndpoint = serviceEndpoint
         };
 
+        model.ReadHolder(target);
+
+        if (model.Unusable)
+        {
+            return model;
+        }
+
+        model.HolderDiagnostics.AddRange(scoped.Diagnostics);
+
         var processed = new HashSet<string>(StringComparer.Ordinal);
+        var claimedRoutes = new Dictionary<string, MessageModel>(StringComparer.Ordinal);
 
         foreach (var fragments in scoped.Fragments)
         {
@@ -51,7 +58,25 @@ public static class HttpModelFactory
                     continue;
 
                 model.Diagnostics.AddRange(fragment.Diagnostics);
-                model.Messages.Add(fragment.Message with { ServiceEndpoint = serviceEndpoint });
+
+                if (fragment.Message is not { } message)
+                {
+                    continue;
+                }
+
+                if (claimedRoutes.TryGetValue(fragment.RouteKey, out var claimant))
+                {
+                    model.Diagnostics.Add(fragment.AtAttribute! with
+                    {
+                        Arguments = new EquatableList<string>([message.MessageType.Declaration, claimant.MessageType.Declaration, message.HttpMethod.ToString().ToUpperInvariant(), message.Path])
+                    });
+                }
+                else
+                {
+                    claimedRoutes.Add(fragment.RouteKey, message);
+                }
+
+                model.Messages.Add(message with { ServiceEndpoint = serviceEndpoint });
             }
         }
 
@@ -63,8 +88,9 @@ public static class HttpModelFactory
     public static HttpModel Create(IMethodSymbol methodSymbol, Compilation compilation, string paramNamespace)
     {
         var fragments = new EquatableList<EquatableList<HttpFragment>>();
+        var diagnostics = new List<DiagnosticInfo>();
 
-        foreach (var type in compilation.FindTypesInScope(methodSymbol))
+        foreach (var type in compilation.FindTypesInScope(methodSymbol, diagnostics))
         {
             if (Inspect(type, paramNamespace) is { } found)
             {
@@ -72,7 +98,7 @@ public static class HttpModelFactory
             }
         }
 
-        var scoped = new Scoped<EquatableList<HttpFragment>>(GeneratedSyntaxExtensions.ToTarget(methodSymbol), fragments);
+        var scoped = new Scoped<EquatableList<HttpFragment>>(GeneratedSyntaxExtensions.ToTarget(methodSymbol), fragments, new EquatableList<DiagnosticInfo>(diagnostics));
 
         return Create(scoped, MetadataTemplate.GetDeclaredTemplate(compilation));
     }
@@ -86,8 +112,20 @@ public static class HttpModelFactory
         foreach (var (messageTypeSymbol, httpAttribute) in GetHttpMessages(typeSymbol))
         {
             var diagnostics = new EquatableList<DiagnosticInfo>();
+            var key = messageTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            if (httpAttribute.ConstructorArguments.Length < 2
+                || httpAttribute.ConstructorArguments[1].Value is not string httpPath)
+            {
+                diagnostics.Add(DiagnosticInfo.Create(
+                    GeneratorDiagnostics.HttpWithoutPath,
+                    GetAttributeLocation(httpAttribute, messageTypeSymbol),
+                    messageTypeSymbol.ToDisplayString()));
+                fragments.Add(new HttpFragment(key, null, diagnostics, string.Empty, null));
+                continue;
+            }
+
             var httpMethod = httpAttribute.GetConstructorValue<HttpMethodName>(0);
-            var httpPath = httpAttribute.GetConstructorValue<string>(1);
 
             CheckThrottledIdentity(messageTypeSymbol, httpMethod, httpPath, diagnostics);
 
@@ -103,7 +141,9 @@ public static class HttpModelFactory
                 Route = CreateRoute(httpPath, bindings, messageTypeSymbol, httpAttribute, diagnostics)
             };
 
-            fragments.Add(new HttpFragment(messageTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), message, diagnostics));
+            var duplicate = DiagnosticInfo.Create(GeneratorDiagnostics.DuplicateRoute, GetAttributeLocation(httpAttribute, messageTypeSymbol));
+
+            fragments.Add(new HttpFragment(key, message, diagnostics, $"{httpMethod} {NormalizePath(httpPath)}", duplicate));
         }
 
         return fragments.Count > 0 ? fragments : null;
@@ -181,10 +221,11 @@ public static class HttpModelFactory
                 case BindingSource.Form:
                     if (!bindingTable.TryGetValue(source, out BindingModel binding))
                     {
+                        var owner = new TypeModel(typeSymbol);
                         var dto = new ParameterClassModel
                         {
-                            Namespace = $"{typeSymbol.ContainingNamespace.ToDisplayString()}.{paramNamespace}",
-                            ClassName = typeSymbol.Name + source
+                            Namespace = owner.Namespace.Length == 0 ? paramNamespace : $"{owner.Namespace}.{paramNamespace}",
+                            ClassName = owner.FlatName + source
                         };
 
                         binding = new BindingModel
@@ -433,37 +474,62 @@ public static class HttpModelFactory
 
         foreach (var segment in segments)
         {
-            if (segment.StartsWith("{", StringComparison.Ordinal) && segment.EndsWith("}", StringComparison.Ordinal))
-            {
-                var token = segment.Substring(1, segment.Length - 2);
-                var parameterName = token.ToLowerInvariant();
+            var braces = segment.IndexOfAny(['{', '}']);
 
-                if (binding.TryGetValue(parameterName, out BindingModel? bindingModel))
-                {
-                    route.Segments.Add(new SegmentModel
-                    {
-                        Type = SegmentType.Parameter,
-                        Value = bindingModel.PropertyName
-                    });
-                }
-                else
-                {
-                    diagnostics.Add(DiagnosticInfo.Create(
-                        GeneratorDiagnostics.UnboundRouteToken,
-                        GetAttributeLocation(httpAttribute, messageTypeSymbol),
-                        path,
-                        messageTypeSymbol.ToDisplayString(),
-                        token));
-                }
-            }
-            else
+            if (braces < 0)
             {
                 route.Segments.Add(new SegmentModel
                 {
                     Type = SegmentType.Literal,
                     Value = segment
                 });
+
+                continue;
             }
+
+            if (!IsWholeToken(segment))
+            {
+                diagnostics.Add(DiagnosticInfo.Create(
+                    GeneratorDiagnostics.MixedRouteSegment,
+                    GetAttributeLocation(httpAttribute, messageTypeSymbol),
+                    path,
+                    messageTypeSymbol.ToDisplayString(),
+                    segment));
+
+                continue;
+            }
+
+            var token = TokenName(segment.Substring(1, segment.Length - 2));
+
+            if (binding.TryGetValue(token.ToLower(), out BindingModel? bindingModel))
+            {
+                route.Segments.Add(new SegmentModel
+                {
+                    Type = SegmentType.Parameter,
+                    Value = bindingModel.PropertyName
+                });
+            }
+            else
+            {
+                diagnostics.Add(DiagnosticInfo.Create(
+                    GeneratorDiagnostics.UnboundRouteToken,
+                    GetAttributeLocation(httpAttribute, messageTypeSymbol),
+                    path,
+                    messageTypeSymbol.ToDisplayString(),
+                    token));
+            }
+        }
+
+        var tokens = GetPropertiesFromPath(path);
+
+        foreach (var orphan in bindings.Where(b => b.BindingSource == BindingSource.Route && !tokens.Contains(b.Name)))
+        {
+            diagnostics.Add(DiagnosticInfo.Create(
+                GeneratorDiagnostics.RouteMemberWithoutToken,
+                GetAttributeLocation(httpAttribute, messageTypeSymbol),
+                messageTypeSymbol.ToDisplayString(),
+                orphan.PropertyName,
+                path));
         }
 
         return route;
@@ -504,17 +570,63 @@ public static class HttpModelFactory
         var pathTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrEmpty(path))
         {
-            var tokenMatches = Regex.Matches(path, @"{([^{}]+)}");
-            foreach (Match match in tokenMatches)
+            foreach (Match match in Regex.Matches(path, @"{([^{}]+)}"))
             {
-                if (match.Groups.Count > 1)
-                {
-                    pathTokens.Add(match.Groups[1].Value.ToLowerInvariant());
-                }
+                pathTokens.Add(TokenName(match.Groups[1].Value).ToLowerInvariant());
             }
         }
 
         return pathTokens;
+    }
+
+    static bool IsWholeToken(string segment)
+    {
+        return segment.Length > 2
+            && segment[0] == '{'
+            && segment[segment.Length - 1] == '}'
+            && segment.IndexOfAny(['{', '}'], 1, segment.Length - 2) < 0;
+    }
+
+    // "{id:guid}", "{id?}", "{id=5}", "{*rest}" and "{**rest}" all bind the member "id" / "rest".
+    static string TokenName(string token)
+    {
+        var start = 0;
+
+        while (start < token.Length && token[start] == '*')
+        {
+            start++;
+        }
+
+        var end = token.IndexOfAny([':', '?', '='], start);
+
+        return end < 0 ? token.Substring(start) : token.Substring(start, end - start);
+    }
+
+    // Two templates that differ only in token names match the same requests; a constraint
+    // takes part in the match, so it stays in the key.
+    static string NormalizePath(string path)
+    {
+        var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries).Select(segment =>
+        {
+            if (!IsWholeToken(segment))
+            {
+                return segment.ToLowerInvariant();
+            }
+
+            var catchAll = segment.StartsWith("{*", StringComparison.Ordinal) ? "*" : "";
+            var colon = segment.IndexOf(':');
+            var constraint = colon < 0 ? "" : segment.Substring(colon, segment.Length - 1 - colon);
+            var cut = constraint.IndexOf('=');
+
+            if (cut >= 0)
+            {
+                constraint = constraint.Substring(0, cut);
+            }
+
+            return "{" + catchAll + constraint.TrimEnd('?') + "}";
+        });
+
+        return string.Join("/", parts);
     }
 
     // The endpoint name follows the namespace convention ({Root}.{Area}...): the area of
