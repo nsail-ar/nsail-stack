@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Diagnostics;
 using System.Net;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,8 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
     readonly PushDispatch _dispatch;
 
     HubConnection? _connection;
+    long _since;
+    int _attempt;
     CancellationTokenSource? _opened;
 
     public HubFeed(Mediator mediator, PushConnection connect, IEnumerable<PushedMessage> known, ILogger<HubFeed> logger)
@@ -41,7 +44,13 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
 
         // The catch-up is the listeners' own read: whatever was published while the line was
         // down is not replayed, so they are told to ask.
-        connection.Reconnected += _ => _dispatch.Connected();
+        connection.Reconnected += _ =>
+        {
+            _since = Stopwatch.GetTimestamp();
+            _attempt = 0;
+
+            return _dispatch.Connected();
+        };
 
         // The automatic reconnect answers a line that dropped with an error, and only that: a
         // server that closes it cleanly — a deploy stopping, a connection it aborted — ends in
@@ -54,7 +63,14 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
         {
             if (!token.IsCancellationRequested && (failure is null || !Refused(failure)))
             {
-                _ = Start(connection, token);
+                // A line that ended before PushRetry.Steady keeps climbing the ladder: a server
+                // that accepts and hangs up must not be answered with a connect per cycle.
+                if (Stopwatch.GetElapsedTime(_since) >= PushRetry.Steady)
+                {
+                    _attempt = 0;
+                }
+
+                _ = Start(connection, token, _attempt);
             }
 
             return Task.CompletedTask;
@@ -62,7 +78,7 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
 
         _connection = connection;
 
-        _ = Start(connection, token);
+        _ = Start(connection, token, 0);
     }
 
     public override async Task Close()
@@ -93,9 +109,9 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
     // The automatic reconnect covers a line that was up and dropped; it does nothing for one
     // that never came up — a deploy in progress when the tab opened — so the first start keeps
     // trying on the same delays.
-    async Task Start(HubConnection connection, CancellationToken cancellationToken)
+    async Task Start(HubConnection connection, CancellationToken cancellationToken, int attempt)
     {
-        for (var attempt = 0; !cancellationToken.IsCancellationRequested; attempt++)
+        for (; !cancellationToken.IsCancellationRequested; attempt++)
         {
             try
             {
@@ -124,6 +140,9 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
 
             // The first connect is a catch-up too: a screen that read before the line came up
             // has missed whatever was pushed in between.
+            _since = Stopwatch.GetTimestamp();
+            _attempt = attempt + 1;
+
             await _dispatch.Connected();
 
             return;

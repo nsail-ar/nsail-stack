@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -77,6 +78,8 @@ public sealed class SseFeed : PushFeed, IAsyncDisposable
 
         while (!cancellationToken.IsCancellationRequested)
         {
+            var since = Stopwatch.GetTimestamp();
+
             switch (await Hold(client, cancellationToken))
             {
                 case Line.Refused:
@@ -87,9 +90,17 @@ public sealed class SseFeed : PushFeed, IAsyncDisposable
                     return;
 
                 case Line.Held:
-                    // A line that was up and dropped is opened again at once, the way the hub's
-                    // own reconnect answers one; only a line that never came up climbs the ladder.
-                    attempt = 0;
+                    // A line that stayed up and dropped is opened again at once, the way the
+                    // hub's own reconnect answers one; one that ended before PushRetry.Steady —
+                    // a 200 and a hang-up — keeps climbing, or it would be a request storm.
+                    if (Stopwatch.GetElapsedTime(since) >= PushRetry.Steady)
+                    {
+                        attempt = 0;
+                    }
+
+                    await PushRetry.Wait(attempt, cancellationToken);
+
+                    attempt++;
 
                     break;
 

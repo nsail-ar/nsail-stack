@@ -19,6 +19,10 @@ public static class PushRetry
         TimeSpan.FromSeconds(30),
     ];
 
+    // How long a line must stay up to count as held. Shorter than the server's heartbeat, a
+    // close is a server or proxy answering and hanging up — climbing on, not starting over.
+    public static readonly TimeSpan Steady = TimeSpan.FromSeconds(30);
+
     public static TimeSpan Delay(int attempt)
     {
         return Delays[Math.Min(Math.Max(attempt, 0), Delays.Length - 1)];

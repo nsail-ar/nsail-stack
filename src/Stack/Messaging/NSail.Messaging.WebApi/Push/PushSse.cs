@@ -29,10 +29,6 @@ static class PushSse
         response.Headers.CacheControl = "no-cache,no-transform";
         response.Headers["X-Accel-Buffering"] = "no";
 
-        // The client counts itself connected on the response head, so it goes out before the
-        // first event rather than with it.
-        await response.Body.FlushAsync(context.RequestAborted);
-
         using var line = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
 
         var watch = audience.Watch() is { } holds
@@ -41,7 +37,11 @@ static class PushSse
 
         try
         {
-            await streams.Hold(audience.Current, (frame, cancellationToken) => Write(response, frame, cancellationToken), line.Token);
+            await streams.Hold(audience.Current, (frame, cancellationToken) => Write(response, frame, cancellationToken), line.Token,
+                // The client counts itself connected on the response head and reads then, so the
+                // head goes out only once the line is registered: an event published in between
+                // reaches the stream rather than neither the catch-up nor the line.
+                cancellationToken => response.Body.FlushAsync(cancellationToken));
         }
         catch (OperationCanceledException)
         {
