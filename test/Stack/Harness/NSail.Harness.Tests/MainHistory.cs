@@ -2,7 +2,6 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using NSail.Harness.Lanes;
-using NSail.Harness.Repositories;
 
 namespace NSail.Harness.Tests;
 

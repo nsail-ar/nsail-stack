@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using NSail.Harness.Jobs;
 using NSail.Harness.Lanes;
-using NSail.Harness.Planning;
 
 namespace NSail.Harness.Tests;
 
@@ -12,6 +10,7 @@ namespace NSail.Harness.Tests;
 public class MainGateTests
 {
     const string Red = "CI red on main: Foo";
+
     [Fact]
     public void AMovedMainIsGatedFirst()
     {
@@ -62,7 +61,8 @@ public class MainGateTests
 
         await ReportRed(board, main, main.Merge, main.Parent);
 
-        Assert.Single(board.Cards[1].Comments);
+        var comment = Assert.Single(board.Cards[1].Comments);
+        Assert.Contains($"does not hold this story's merge `{main.Fix[..8]}`", comment.Body, StringComparison.Ordinal);
         Assert.Equal(stage, board.Cards[1].Stage);
     }
 
@@ -75,7 +75,8 @@ public class MainGateTests
 
         await ReportRed(board, main, main.Merge, main.Fix);
 
-        Assert.Single(board.Cards[1].Comments);
+        var comment = Assert.Single(board.Cards[1].Comments);
+        Assert.DoesNotContain("does not hold", comment.Body, StringComparison.Ordinal);
         Assert.Equal(Stages.Ready, board.Cards[1].Stage);
     }
 

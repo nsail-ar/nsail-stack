@@ -119,18 +119,26 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
     {
         var title = ctx.Texts.MainRedTitle;
         var range = since is null ? $"`{head}`" : $"`{since[..8]}..{head[..8]}`";
-        var body = HarnessTexts.Fill(ctx.Texts.MainRed, ("why", why), ("sha", head), ("range", range), ("failed", failed), ("log", logPath), ("machine", ctx.Options.Machine))
-            + $"\n\n{ctx.Texts.Signature}";
+        var report = HarnessTexts.Fill(ctx.Texts.MainRed, ("why", why), ("sha", head), ("range", range), ("failed", failed), ("log", logPath), ("machine", ctx.Options.Machine));
+        var body = $"{report}\n\n{ctx.Texts.Signature}";
         if (await ctx.Board.FindOpen(title, [], exact: false) is { } n)
         {
-            await ctx.Board.Comment(n, body);
             var stage = await ctx.Board.StageOf(n);
+            if (!Stages.Landed.Contains(stage))
+            {
+                await ctx.Board.Comment(n, body);
+                return;
+            }
             // A head without the story's merge carries no news about its fix: a gate that started before
             // the merge reports the red it fixed. With no merge there is no fix, and any red reopens it.
-            if (Stages.Landed.Contains(stage) && await ctx.Repo.MergeOf(n, ct) is var merge && (merge is null || await Holds(merge, head, dir)))
+            if (await ctx.Repo.MergeOf(n, ct) is { } merge && !await Holds(merge, head, dir))
             {
-                await ctx.Board.SetStage(n, Stages.Ready);
+                var stays = HarnessTexts.Fill(ctx.Texts.MainRedWithoutFix, ("sha", head[..8]), ("merge", merge.Sha[..8]), ("stage", stage));
+                await ctx.Board.Comment(n, $"{report}\n\n{stays}\n\n{ctx.Texts.Signature}");
+                return;
             }
+            await ctx.Board.Comment(n, body);
+            await ctx.Board.SetStage(n, Stages.Ready);
             return;
         }
         var first = failed.Split('\n').FirstOrDefault(l => l.Trim().Length > 0)?.Trim() ?? "the build";

@@ -7,6 +7,7 @@ using NSail.Harness.GitHub;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 using NSail.Harness.Repositories;
+using NSail.Harness.Workers;
 
 namespace NSail.Harness.Tests;
 
@@ -518,7 +519,7 @@ public class DevJobRunTests : IDisposable
     }
 
     // CloseFixedReds on another machine while the seat builds: the story closes under the voyage.
-    sealed class Closing(MemoryBoard board, IAgent inner) : IAgent
+    sealed class Closing(MemoryBoard board, IAgent inner, DateTimeOffset? wall = null) : IAgent
     {
         public string Driver => "test";
 
@@ -527,7 +528,7 @@ public class DevJobRunTests : IDisposable
             var result = await inner.Run(run, ct);
             await board.SetStage(1, Stages.Closed, ct);
             await board.Close(1, ct);
-            return result;
+            return wall is null ? result : result with { QuotaRefused = true, QuotaUntil = wall };
         }
 
         public IReadOnlyDictionary<string, string> ScriptEnvironment(string name)
@@ -557,5 +558,20 @@ public class DevJobRunTests : IDisposable
         Assert.Equal(Stages.Closed, board.Cards[1].Stage);
         Assert.NotNull(board.Cards[1].ClosedAt);
         Assert.DoesNotContain(Labels.Claimed, board.Cards[1].Labels);
+    }
+
+    [Fact]
+    public async Task AStoryClosedWhileTheSeatMetTheQuotaWallKeepsTheWall()
+    {
+        await Seed();
+        var board = Board();
+        var wall = DateTimeOffset.UtcNow.AddHours(3);
+
+        var outcome = await Run(new Closing(board, new Seat("work.txt", null, "fix(stack): a fix\n\nWords."), wall), board, new Lines());
+
+        Assert.True(outcome.Idle);
+        Assert.Equal(wall, outcome.QuotaUntil);
+        Assert.Empty(JobEvents.Fired(outcome));
+        Assert.Empty(Repo.Opened);
     }
 }

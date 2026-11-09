@@ -414,6 +414,7 @@ public sealed class HarnessLoop(
             call = PassCall.Stories;
             var read = await reader.Read(OwnFlight(), stop);
             await SayOrphans(read, stop);
+            var unjudged = await reader.ReadUnjudged(read.Issues, marks, stop);
             call = PassCall.Planning;
             var snapshot = read with
             {
@@ -423,7 +424,7 @@ public sealed class HarnessLoop(
                 // again, once: a PR's gate tells main's red from its own by them.
                 MainGated = StatusMark.Newest(marks, Markers.GateContext) is { } gated && (gated.Ok || MainGateJob.RedAt(gated.Sha) is not null) ? gated.Sha : null,
                 LastQaAt = StatusMark.LastAt(marks, Markers.QaContext),
-                UnjudgedFixes = await reader.ReadUnjudged(read.Issues, marks, stop),
+                UnjudgedFixes = unjudged,
             };
             var limits = new Limits(o.Agents, o.Builds, o.Browsers);
             leases.Limit = limits.Builds;

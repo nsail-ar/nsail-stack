@@ -2,9 +2,6 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.Extensions.Configuration;
-using NSail.Harness.Board;
-using NSail.Harness.Planning;
-using NSail.Harness.Repositories;
 using NSail.Harness.Workers;
 
 namespace NSail.Harness.Tests;
