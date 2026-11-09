@@ -10,10 +10,9 @@ namespace NSail.Harness.Tests;
 
 public class ChildEnvironmentTests
 {
-    [Fact]
+    [FactOn("unix")]
     public async Task AChildHoldsNoCredentialTheHarnessProcessHolds()
     {
-        if (OperatingSystem.IsWindows()) return;
         using var _ = Held(("GH_TOKEN", "harness-token"), ("PGPASSWORD", "db-secret"), ("ANTHROPIC_API_KEY", "key"));
 
         var result = await Shell.Run("env", [], Path.GetTempPath());
@@ -27,20 +26,17 @@ public class ChildEnvironmentTests
         Assert.DoesNotContain("harness-token", result.Output);
     }
 
-    [Fact]
+    [FactOn("unix")]
     public async Task ANameTheCallerGivesReachesTheChild()
     {
-        if (OperatingSystem.IsWindows()) return;
-
         var result = await Shell.Run("env", [], Path.GetTempPath(), new Dictionary<string, string> { ["PGPASSWORD"] = "declared" });
 
         Assert.Contains("PGPASSWORD=declared", result.Output);
     }
 
-    [Fact]
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
     public async Task ASeatRunAsAnotherUserGoesThroughSudoWithoutThisUsersHome()
     {
-        if (OperatingSystem.IsWindows()) return;
         var bin = Directory.CreateTempSubdirectory().FullName;
         var sudo = Path.Combine(bin, "sudo");
         File.WriteAllText(sudo, "#!/bin/sh\necho \"argv=$*\"\necho \"home=${HOME-unset}\"\n");
@@ -63,10 +59,9 @@ public class ChildEnvironmentTests
         }
     }
 
-    [Fact]
+    [FactOn("unix")]
     public async Task OnlyTheHarnessGitCarriesItsToken()
     {
-        if (OperatingSystem.IsWindows()) return;
         var before = Shell.GitEnvironment;
         Shell.GitEnvironment = new Dictionary<string, string> { ["GH_TOKEN"] = "harness-token" };
         try

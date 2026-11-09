@@ -39,10 +39,9 @@ public class WorkspaceTests : IDisposable
         return $"#!/bin/sh\necho ran > '{marker}'\n";
     }
 
-    [Fact]
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
     public async Task APlantedHookAndFsmonitorNeverRunInTheHarnessGit()
     {
-        if (OperatingSystem.IsWindows()) return;
         var ws = await Warm();
         var hook = Path.Combine(_root, "hook-ran");
         var monitor = Path.Combine(_root, "monitor-ran");

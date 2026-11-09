@@ -13,9 +13,10 @@ public class ProcessGroupTests
     {
         var job = ProcessGroup.Create();
         // A shell that starts two grandchildren and reports their pids: the grandchildren are what a
-        // killed harness used to orphan, and only those two are looked at, never a name.
+        // killed harness used to orphan, and only those two are looked at, never a name. Their own
+        // output goes to files, so the only lines on the test's pipe are the pids.
         var shell = Process.Start(new ProcessStartInfo("powershell.exe",
-            "-NoProfile -NonInteractive -Command \"$a = Start-Process ping -ArgumentList '-n','120','127.0.0.1' -NoNewWindow -PassThru; $b = Start-Process ping -ArgumentList '-n','120','127.0.0.1' -NoNewWindow -PassThru; $a.Id; $b.Id; Wait-Process -Id $a.Id,$b.Id\"")
+            "-NoProfile -NonInteractive -Command \"$a = Start-Process ping -ArgumentList '-n','120','127.0.0.1' -NoNewWindow -PassThru -RedirectStandardOutput ([IO.Path]::GetTempFileName()); $b = Start-Process ping -ArgumentList '-n','120','127.0.0.1' -NoNewWindow -PassThru -RedirectStandardOutput ([IO.Path]::GetTempFileName()); $a.Id; $b.Id; Wait-Process -Id $a.Id,$b.Id\"")
         {
             UseShellExecute = false,
             CreateNoWindow = true,
@@ -59,8 +60,13 @@ public class ProcessGroupTests
         return false;
     }
 
+    // The next line on the shell's pipe that is a number: a stray line is passed over, never parsed.
     static int Pid(Process shell)
     {
-        return int.Parse(shell.StandardOutput.ReadLine()!.Trim(), System.Globalization.CultureInfo.InvariantCulture);
+        while (shell.StandardOutput.ReadLine() is { } line)
+        {
+            if (int.TryParse(line.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var pid)) return pid;
+        }
+        throw new InvalidOperationException("the shell exited before it reported both pids");
     }
 }

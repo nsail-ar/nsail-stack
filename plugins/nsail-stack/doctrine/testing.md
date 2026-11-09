@@ -182,6 +182,10 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   races below — ten isolated runs of the two cases pass on a hosted runner, six at once do not.
   What a wait that ends in nothing may not do is keep why to itself: the drop says what it cut
   and the client composes a logging provider, so the timeout carries both ends' story.
+- **A test that cannot run on this platform reports a skip, never a pass.** An early `return;`
+  off-platform is green in every total, so a lane that never ran it reads as proof. Mark it
+  with the platform (`[FactOn("linux")]`, `[TheoryOn("unix")]` in the Harness tests'
+  `FactOnAttribute.cs`) so the skip is counted where it happens.
 
 ### Handler harnesses
 

@@ -7,6 +7,7 @@ using NSail.Harness.Claude;
 namespace NSail.Harness.Tests;
 
 // A seat without its doctrine never starts.
+[System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
 public class ClaudePluginTests : IDisposable
 {
     readonly string _root = Path.Combine(Path.GetTempPath(), "harness-claude-" + Guid.NewGuid().ToString("N"));
@@ -55,7 +56,7 @@ public class ClaudePluginTests : IDisposable
 
         var broke = await Assert.ThrowsAsync<InvalidOperationException>(() => agent.Run(Run(), CancellationToken.None));
 
-        Assert.Contains("/doctrine", broke.Message);
+        Assert.Contains("/doctrine was not added", broke.Message);
         Assert.Single(File.ReadAllLines(calls));
     }
 
