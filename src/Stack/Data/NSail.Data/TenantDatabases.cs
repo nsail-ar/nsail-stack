@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
 using Npgsql;
 
 namespace NSail.Data;
@@ -8,8 +9,9 @@ namespace NSail.Data;
 /// <summary>Postgres is the registry. A tenant's database name derives as
 /// <c>{product}_{cell}_{tenant}</c> — product and cell from the cell's own configuration,
 /// tenant from whoever resolved it — and its row in <c>pg_database</c> IS the truth that the
-/// tenant exists: no catalog database, no third runtime dependency in a request's path.
-/// Nothing here creates anything; provisioning writes the registry, the request path only
+/// tenant exists, as of at most <c>DatabaseHitSeconds</c> ago: the lookup is memoised, so a
+/// database dropped or moved inside that window still resolves and the request fails on connect.
+/// No catalog database, no third runtime dependency in a request's path. Nothing here creates anything; provisioning writes the registry, the request path only
 /// reads it, and a slug with no database is simply not a tenant.</summary>
 public class TenantDatabases
 {
@@ -24,16 +26,29 @@ public class TenantDatabases
 
     readonly FirstTouch _first = new();
 
+    // A name is only memoised after Resolve derived it within the identifier limit, and expired
+    // entries are swept as new ones arrive, so what is held is what arrived since the last
+    // sweep. Concurrent first lookups of one name each read the registry, as in TenantStateMemo.
+    readonly ConcurrentDictionary<string, long> _known = new();
+    readonly TimeProvider _clock;
+    readonly long _hitTicks;
+    readonly long _missTicks;
+    long _swept;
+
     readonly string _installConnectionString;
     readonly string _product;
     readonly string _cell;
 
-    public TenantDatabases(TenancyOptions tenancy, string installConnectionString)
+    public TenantDatabases(TenancyOptions tenancy, string installConnectionString, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(tenancy);
+        ArgumentNullException.ThrowIfNull(clock);
         ArgumentException.ThrowIfNullOrWhiteSpace(installConnectionString);
 
         _installConnectionString = installConnectionString;
+        _clock = clock;
+        _hitTicks = tenancy.DatabaseHitSeconds * 1000L;
+        _missTicks = tenancy.DatabaseMissSeconds * 1000L;
         _product = Named(tenancy.Product, nameof(tenancy.Product));
         _cell = Named(tenancy.Cell, nameof(tenancy.Cell));
     }
@@ -113,7 +128,46 @@ public class TenantDatabases
             return null;
         }
 
-        return await Exists(database, cancellationToken) ? Tenant.For(tenant, database) : null;
+        var exists = await Remembered(database, cancellationToken);
+
+        return exists ? Tenant.For(tenant, database) : null;
+    }
+
+    // The registry is read once per window per name: a flood of one unknown slug costs one round
+    // trip, and a database provisioned meanwhile is seen once the shorter miss window lapses.
+    async Task<bool> Remembered(string database, CancellationToken cancellationToken)
+    {
+        var now = _clock.GetUtcNow().ToUnixTimeMilliseconds();
+
+        if (_known.TryGetValue(database, out var until) && now < Math.Abs(until))
+        {
+            return until > 0;
+        }
+
+        var exists = await Exists(database, cancellationToken);
+
+        now = _clock.GetUtcNow().ToUnixTimeMilliseconds();
+
+        // Swept every few miss windows: often enough that a slug flood does not pile up, rarely
+        // enough that the walk is not paid per request.
+        if (now - Interlocked.Read(ref _swept) > _missTicks * 4)
+        {
+            Interlocked.Exchange(ref _swept, now);
+
+            foreach (var entry in _known)
+            {
+                if (now >= Math.Abs(entry.Value))
+                {
+                    _known.TryRemove(entry);
+                }
+            }
+        }
+
+        var ttl = (exists ? _hitTicks : _missTicks) + now;
+
+        _known[database] = exists ? ttl : -ttl;
+
+        return exists;
     }
 
     /// <summary>Runs <paramref name="migrate"/> at most once per tenant database, and never

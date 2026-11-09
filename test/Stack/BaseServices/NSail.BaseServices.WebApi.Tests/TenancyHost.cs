@@ -94,7 +94,8 @@ public sealed class TenancyHost : IAsyncDisposable
     /// <paramref name="logs"/> is what the install said on its way up;
     /// <paramref name="features"/> is the <c>IFeatureContributor</c> this build composes, which is
     /// what the install publishes about itself; <paramref name="tenants"/> and
-    /// <paramref name="tenantsFile"/> are the roster it declares.</summary>
+    /// <paramref name="tenantsFile"/> are the roster it declares; <paramref name="proxySecret"/> is
+    /// the secret the proxy must present.</summary>
     public static Task<TenancyHost> Start(
         TenancyMode mode,
         bool bootstraps = false,
@@ -108,7 +109,8 @@ public sealed class TenancyHost : IAsyncDisposable
         ILoggerProvider? logs = null,
         Type? features = null,
         string? tenants = null,
-        string? tenantsFile = null)
+        string? tenantsFile = null,
+        string? proxySecret = null)
     {
         return Start(
             mode,
@@ -124,7 +126,8 @@ public sealed class TenancyHost : IAsyncDisposable
             logs,
             features,
             tenants,
-            tenantsFile);
+            tenantsFile,
+            proxySecret);
     }
 
     /// <summary>The same install again, carrying whatever chain that build carries — a deploy,
@@ -153,7 +156,8 @@ public sealed class TenancyHost : IAsyncDisposable
         ILoggerProvider? logs = null,
         Type? features = null,
         string? tenants = null,
-        string? tenantsFile = null)
+        string? tenantsFile = null,
+        string? proxySecret = null)
     {
         var owned = cell is null;
 
@@ -168,6 +172,7 @@ public sealed class TenancyHost : IAsyncDisposable
             RequireRowSecurity = requireWall,
             Tenants = tenants,
             TenantsFile = tenantsFile,
+            ProxySecret = proxySecret,
         };
 
         // The app connects as a role that is NEITHER a superuser NOR BYPASSRLS, because a
