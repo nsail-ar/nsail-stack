@@ -305,8 +305,8 @@ process over that database delivers it.
   and a drain that loses one moves on to the next. The drain is a background job whose pass holds
   an advisory lock per tenant, so a sibling replica yields the pass instead of splitting its rows:
   a tenant's drain throughput is one replica's. A drain that dies mid-delivery leaves a row due
-  again when the lease ends; a delivery slower than the lease can run twice, so the lease outlasts the
-  slowest handler.
+  again when the lease ends; a delivery slower than the lease can run twice, so the lease outlasts
+  the slowest handler.
 - **Delivery is at least once.** A process that dies between a handler's commit and the pass
   that deletes its row delivers that row again. The alternative — delete first — loses the
   work, which is the one thing a durable queue may not do.

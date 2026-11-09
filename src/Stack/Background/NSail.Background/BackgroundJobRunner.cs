@@ -276,13 +276,13 @@ sealed class BackgroundJobRunner : BackgroundService
             held = lockable
                 ? await JobLock.TryTake(
                         scope.Value.ServiceProvider.GetService<DbContext>(),
-                        jobType.Name,
+                        jobType,
                         tenant?.Slug ?? string.Empty,
                         budget.Token)
                     .ConfigureAwait(false)
                 : await JobLock.TryTakeOnCluster(
                         scope.Value.ServiceProvider.GetService<TenantDatabases>(),
-                        jobType.FullName ?? jobType.Name,
+                        jobType,
                         budget.Token)
                     .ConfigureAwait(false);
 

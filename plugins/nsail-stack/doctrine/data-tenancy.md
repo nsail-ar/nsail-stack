@@ -754,16 +754,18 @@ reads nothing and cannot write at all.
 - **A pass holds a lock, so two replicas never run one together.** The runner takes a Postgres
   advisory lock per job and tenant (`AdvisoryLock`, the one `FirstTouch` uses) on a connection of
   its own, inside the pass's budget and held until the pass ends — an abandoned pass keeps its
-  scope **and** its lock until it does. A runner that cannot take it yields the pass: counted
-  `skipped`, neither ok nor failed, and the job reads as completed for the overdue clock, because
-  a sibling is running it. It fences **overlap**, not repetition: replicas tick on their own
-  clocks, so a job whose passes do not overlap still runs once per replica per interval — a job
-  that must run once per interval across replicas needs a lease, not this. A store that is not
-  Postgres takes no lock. Install-wide work under a per-tenant connection has no install database,
-  so it locks on the cluster's maintenance database, the one the roster is read from, under a
-  key of the cell's `{product}_{cell}_` prefix and the job's full name: a neighbouring cell or
-  product on the server is not a sibling. The durable
-  queue's drain is a job like any other: a tenant's drain runs on one replica at a time.
+  scope **and** its lock until it does. The key names the job by its full type name: a lock key
+  identifies its resource, and two kits' `CleanupJob`s are two resources; `JobTimeouts`, the log
+  lines and the metrics keep the simple name. A runner that cannot take it yields the pass:
+  counted `skipped`, neither ok nor failed, and the job reads as completed for the overdue clock,
+  because a sibling is running it. It fences **overlap**, not repetition: replicas tick on their
+  own clocks, so a job whose passes do not overlap still runs once per replica per interval — a
+  job that must run once per interval across replicas needs a lease, not this. A store that is
+  not Postgres takes no lock. Install-wide work under a per-tenant connection has no install
+  database, so it locks on the cluster's maintenance database, the one the roster is read from,
+  under a key of the cell's `{product}_{cell}_` prefix and the job's full name: a neighbouring
+  cell or product on the server is not a sibling. The durable queue's drain is a job like any
+  other: a tenant's drain runs on one replica at a time.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as
   `UseRequestLanguage` does on a request; `LanguageProvider` then seeds itself with "es" instead

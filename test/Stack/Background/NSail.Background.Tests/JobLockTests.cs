@@ -38,11 +38,14 @@ sealed class LockedJob : IBackgroundJob
 }
 
 /// <summary>Two replicas over one database: the pass one holds is not run by the other, and the
-/// lock is free again once the pass ends. Over a real Postgres, because the lock
-/// is its.</summary>
+/// lock is free again once the pass ends. Over a real Postgres, because the advisory lock is
+/// Postgres's own.</summary>
 public sealed class JobLockTests : IAsyncLifetime
 {
     readonly string _database = "nsail3410_" + Guid.NewGuid().ToString("N")[..12];
+
+    // The cluster lock lives on the shared maintenance database, so each run names its own product.
+    readonly string _product = "nsail3410-" + Guid.NewGuid().ToString("N")[..12];
 
     DbContextOptions<StateDbContext> _options = null!;
 
@@ -78,27 +81,32 @@ public sealed class JobLockTests : IAsyncLifetime
         var runnerOne = Harness.Runner(one);
         var runnerTwo = Harness.Runner(two);
 
-        await runnerOne.StartAsync(CancellationToken.None);
-        await first.Reached.WaitAsync(TimeSpan.FromSeconds(10));
+        try
+        {
+            await runnerOne.StartAsync(CancellationToken.None);
+            await first.Reached.WaitAsync(TimeSpan.FromSeconds(10));
 
-        // The second runner's refusal is the signal, so the count is read after it tried.
-        var refused = logs.Awaits(entry => entry.Message.Contains("another runner holds its lock", StringComparison.Ordinal));
+            // The second runner's refusal is the signal, so the count is read after it tried.
+            var refused = logs.Awaits(entry => entry.Message.Contains("another runner holds its lock", StringComparison.Ordinal));
 
-        await runnerTwo.StartAsync(CancellationToken.None);
-        await refused.WaitAsync(TimeSpan.FromSeconds(10));
+            await runnerTwo.StartAsync(CancellationToken.None);
+            await refused.WaitAsync(TimeSpan.FromSeconds(10));
 
-        Assert.Equal(1, first.Count);
-        Assert.Equal(0, second.Count);
+            Assert.Equal(1, first.Count);
+            Assert.Equal(0, second.Count);
 
-        meters.Poll();
+            meters.Poll();
 
-        Assert.Equal(1, meters.Passes(nameof(LockedJob), BackgroundJobMetrics.Skipped));
-        Assert.Equal(0, meters.Passes(nameof(LockedJob), BackgroundJobMetrics.Failed));
+            Assert.Equal(1, meters.Passes(nameof(LockedJob), BackgroundJobMetrics.Skipped));
+            Assert.Equal(0, meters.Passes(nameof(LockedJob), BackgroundJobMetrics.Failed));
+        }
+        finally
+        {
+            gate.Open.TrySetResult();
 
-        gate.Open.SetResult();
-
-        await runnerOne.StopAsync(CancellationToken.None);
-        await runnerTwo.StopAsync(CancellationToken.None);
+            await runnerOne.StopAsync(CancellationToken.None);
+            await runnerTwo.StopAsync(CancellationToken.None);
+        }
     }
 
     [Fact]
@@ -142,47 +150,100 @@ public sealed class JobLockTests : IAsyncLifetime
         await Harness.Run(provider, signal.Reached);
     }
 
+    // Two kits' jobs of one simple name over one database are two jobs: each holds its own pass.
+    [Fact]
+    public async Task Two_jobs_of_one_simple_name_both_run_and_neither_is_skipped()
+    {
+        using var meters = new Meters();
+        var gate = new Gate();
+        var twins = new Twins();
+
+        await using var provider = Harness.Build(services =>
+        {
+            services.AddScoped<DbContext>(_ => new StateDbContext(_options));
+            services.AddSingleton(gate);
+            services.AddSingleton(twins);
+            services.AddBackgroundJob<KitOne.CleanupJob>();
+            services.AddBackgroundJob<KitTwo.CleanupJob>();
+        });
+
+        var runner = Harness.Runner(provider);
+
+        try
+        {
+            await runner.StartAsync(CancellationToken.None);
+
+            // Each pass is held open by the gate, so both reaching it means both held a lock at once.
+            await twins.One.Reached.WaitAsync(TimeSpan.FromSeconds(10));
+            await twins.Two.Reached.WaitAsync(TimeSpan.FromSeconds(10));
+
+            meters.Poll();
+
+            Assert.Equal(0, meters.Passes(nameof(KitOne.CleanupJob), BackgroundJobMetrics.Skipped));
+        }
+        finally
+        {
+            gate.Open.TrySetResult();
+
+            await runner.StopAsync(CancellationToken.None);
+        }
+    }
+
     // The maintenance database is the cluster's: a sibling of the same cell yields, a neighbouring
     // cell's pass of the same job is not its sibling.
     [Fact]
     public async Task An_install_job_under_a_per_tenant_connection_locks_on_the_cluster_per_cell()
     {
+        using var meters = new Meters();
         var gate = new Gate();
         var first = new Signal();
         var sameCell = new Signal();
         var otherCell = new Signal();
+        var logs = new LogRecorder();
 
         await using var one = BuildPerTenant("eu1", gate, first);
-        await using var twin = BuildPerTenant("eu1", gate, sameCell);
+        await using var twin = BuildPerTenant("eu1", gate, sameCell, logs);
         await using var neighbour = BuildPerTenant("us1", gate, otherCell);
 
         var runnerOne = Harness.Runner(one);
         var runnerTwin = Harness.Runner(twin);
         var runnerNeighbour = Harness.Runner(neighbour);
 
-        await runnerOne.StartAsync(CancellationToken.None);
-        await first.Reached.WaitAsync(TimeSpan.FromSeconds(10));
+        try
+        {
+            await runnerOne.StartAsync(CancellationToken.None);
+            await first.Reached.WaitAsync(TimeSpan.FromSeconds(10));
 
-        await runnerNeighbour.StartAsync(CancellationToken.None);
-        await otherCell.Reached.WaitAsync(TimeSpan.FromSeconds(10));
+            await runnerNeighbour.StartAsync(CancellationToken.None);
+            await otherCell.Reached.WaitAsync(TimeSpan.FromSeconds(10));
 
-        await runnerTwin.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+            // The twin's refusal is the signal, so the count is read after it tried.
+            var refused = logs.Awaits(entry => entry.Message.Contains("another runner holds its lock", StringComparison.Ordinal));
 
-        Assert.Equal(1, first.Count);
-        Assert.Equal(1, otherCell.Count);
-        Assert.Equal(0, sameCell.Count);
+            await runnerTwin.StartAsync(CancellationToken.None);
+            await refused.WaitAsync(TimeSpan.FromSeconds(10));
 
-        gate.Open.SetResult();
+            Assert.Equal(1, first.Count);
+            Assert.Equal(1, otherCell.Count);
+            Assert.Equal(0, sameCell.Count);
 
-        await runnerOne.StopAsync(CancellationToken.None);
-        await runnerTwin.StopAsync(CancellationToken.None);
-        await runnerNeighbour.StopAsync(CancellationToken.None);
+            meters.Poll();
+
+            Assert.Equal(1, meters.Passes(nameof(LockedJob), BackgroundJobMetrics.Skipped));
+        }
+        finally
+        {
+            gate.Open.TrySetResult();
+
+            await runnerOne.StopAsync(CancellationToken.None);
+            await runnerTwin.StopAsync(CancellationToken.None);
+            await runnerNeighbour.StopAsync(CancellationToken.None);
+        }
     }
 
-    ServiceProvider BuildPerTenant(string cell, Gate gate, Signal signal)
+    ServiceProvider BuildPerTenant(string cell, Gate gate, Signal signal, LogRecorder? logs = null)
     {
-        var tenancy = new TenancyOptions { Mode = TenancyMode.MultiDb, Product = "nsail3410", Cell = cell };
+        var tenancy = new TenancyOptions { Mode = TenancyMode.MultiDb, Product = _product, Cell = cell };
 
         return Harness.Build(services =>
         {
@@ -192,7 +253,7 @@ public sealed class JobLockTests : IAsyncLifetime
             services.AddSingleton(gate);
             services.AddSingleton(signal);
             services.AddBackgroundJob<LockedJob>();
-        });
+        }, logs);
     }
 
     ServiceProvider Build(Gate gate, Signal signal, LogRecorder? logs = null)
