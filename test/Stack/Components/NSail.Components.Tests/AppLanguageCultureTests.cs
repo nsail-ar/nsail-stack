@@ -7,7 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
-using NSail.Metadata;
 using NSail.Paging;
 using static NSail.Components.Tests.Fixtures.SelectionTableHost;
 
@@ -24,16 +23,8 @@ public sealed class AppLanguageCultureTests : BunitContext, IAsyncLifetime
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
-        Services.AddSingleton(new StringCatalog([new FixedStrings(new Dictionary<string, string>
-        {
-            ["Common.Selected"] = "{0:N0} selected",
-            ["Common.Selected.Plural"] = "{0:N0} selected",
-            ["Common.SelectAll.Plural"] = "Select all {0:N0}",
-            ["Common.ClearSelection"] = "Clear selection",
-        })]));
         Services.AddSingleton(new LanguageProvider { Current = "es" });
-        Services.AddSingleton<MetadataProvider>();
-        Services.AddSingleton<StringManager>();
+        Services.AddStringsFromAssembly(typeof(NsTable<>).Assembly);
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
@@ -55,8 +46,8 @@ public sealed class AppLanguageCultureTests : BunitContext, IAsyncLifetime
             .Add(x => x.Series, [new NsBarSeries("a", "A", NsChartColor.Neutral)])
             .Add(x => x.Buckets, [new NsBarBucket("b", new Dictionary<string, double> { ["a"] = 1.5 })]));
 
-        Assert.Contains(cut.FindAll(".ns-bar-chart-axis"), e => e.TextContent.Contains(','));
-        Assert.Contains(cut.FindAll("title"), e => e.TextContent.EndsWith("A: 1,5"));
+        Assert.Contains(cut.FindAll(".ns-bar-chart-axis"), e => e.TextContent.Contains(',', StringComparison.Ordinal));
+        Assert.Contains(cut.FindAll("title"), e => e.TextContent.EndsWith("A: 1,5", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -76,6 +67,13 @@ public sealed class AppLanguageCultureTests : BunitContext, IAsyncLifetime
         Assert.Contains(day.ToString("ddd d", es), marks);
         Assert.Contains(new TimeOnly(15, 0).ToString("t", es), marks);
         Assert.DoesNotContain(day.ToString("ddd d", CultureInfo.GetCultureInfo("en-US")), marks);
+
+        var week = Render<NsTimeGrid>(p => p
+            .Add(x => x.From, day)
+            .Add(x => x.To, day.AddDays(6))
+            .Add(x => x.Day, day));
+
+        Assert.Contains(day.ToString("D", es), week.Find(".ns-time-grid-note").TextContent, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -88,6 +86,6 @@ public sealed class AppLanguageCultureTests : BunitContext, IAsyncLifetime
             .Add(x => x.Total, 1234)
             .Add(x => x.Selection, new Selection { All = true }));
 
-        Assert.Contains("1.234 selected", cut.Find(".ns-selection-bar").TextContent);
+        Assert.Contains("1.234 seleccionados", cut.Find(".ns-selection-bar").TextContent, StringComparison.Ordinal);
     }
 }
