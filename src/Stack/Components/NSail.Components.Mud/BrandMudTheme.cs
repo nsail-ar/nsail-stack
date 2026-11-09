@@ -94,8 +94,8 @@ public static class BrandMudTheme
         palette.TableLines = new MudColor(theme.Lines);
         palette.Divider = new MudColor(theme.Lines);
 
-        // An outlined field's border is read as a boundary and not as a decoration (nsail#2744:
-        // the vendor's own LinesInputs default measured 1.79:1 on the light canvas), so it owes
+        // An outlined field's border is read as a boundary and not as a decoration (the vendor's own LinesInputs default measured 1.79:1 on the
+        // light canvas), so it owes
         // the large floor the decorative Lines rung above does not.
         palette.LinesInputs = new MudColor(theme.LinesInputs);
 
@@ -126,7 +126,7 @@ public static class BrandMudTheme
     // Material's shadows are black at 12-20%, which is invisible on a dark surface. Each
     // level here casts further and darker, and carries a translucent ring: in dark it is a
     // white top edge that reads as "lifted", in light a black one is the card's actual edge
-    // (nsail#2744 — a white ring on a near-white surface is invisible, which left a light card
+    // (a white ring on a near-white surface is invisible, which left a light card
     // standing on its shadow alone). The ring reads --ns-elevation-ring, which NsTheme is the
     // one place with both schemes to choose between (Shadows is one array shared by
     // PaletteLight and PaletteDark, so the CSS value is what has to branch); the fallback is

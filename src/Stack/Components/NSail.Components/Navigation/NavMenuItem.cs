@@ -106,11 +106,10 @@ public sealed class NavMenuItem
     /// <param name="collapseSingleChildGroups">Whether a group left holding exactly one child
     /// gives up its level to that child. The SETTINGS tree asks for it, and only it: a
     /// settings group is a list of screens, so a fold around a single screen is empty
-    /// ceremony (Leonardo, on Talleres). The main nav never asks, because the fold hands the
-    /// place to the CHILD, label and all, and there the section's name is the map: Compras
-    /// stays Compras, it does not become Órdenes de Compra (Leonardo, on Compras: "me gustaba
-    /// el menu compras, que vuelva"). A main-nav section with one screen is written flat by
-    /// its own contributor instead, keeping the name (navigation.md).</param>
+    /// ceremony. The main nav never asks, because the fold hands the
+    /// place to the CHILD, label and all, and there the section's name is the map: a
+    /// "Purchasing" section stays "Purchasing", it does not become its one screen's name.
+    /// A main-nav section with one screen is written flat by its own contributor instead, keeping the name (navigation.md).</param>
     public static IReadOnlyList<NavMenuItem> Merge(
         IEnumerable<NavMenuItem> items,
         bool collapseSingleChildGroups = false)

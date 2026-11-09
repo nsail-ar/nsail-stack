@@ -19,7 +19,7 @@ public partial class NsDurationField<TValue>
     // Duration is the numeric family too (Story: "los campos se seleccionan al recibir
     // foco") — an hour count typed over, same as any other MudNumericField. Which is also why
     // it owes the same culture: half an hour is "0,5" to an es-AR hand, and the vendor's
-    // invariant default read that as 5 (nsail#1620).
+    // invariant default read that as 5.
     protected override bool SelectOnFocus => true;
 
     CultureInfo FigureCulture

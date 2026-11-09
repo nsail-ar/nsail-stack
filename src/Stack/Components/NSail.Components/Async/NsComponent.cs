@@ -100,8 +100,7 @@ public abstract class NsComponent : ComponentBase, IRunHost, IDisposable
             // A surface outlives the pages rendered in it — only named ones remount per route —
             // so a component that reported itself dirty and then unmounted left that report
             // behind forever: every later screen on the same surface offered an enabled submit
-            // and asked about changes nobody had made (Leonardo, 2026-08-10, "smtp siempre me
-            // pregunta antes de navegar aunque no haya tocado nada"). SetDirty(this) is keyed on
+            // and asked about changes nobody had made. SetDirty(this) is keyed on
             // the instance, so the instance's own end is where it is spent — no editor has to
             // remember, and none of them could remember for the case that leaks: leaving the
             // page with the change still unsaved. Retired rather than only spent: a gesture still

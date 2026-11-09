@@ -292,7 +292,7 @@
         return JsonSerializer.Serialize(names.Select(n => n.ToLowerInvariant()));
     }
 
-    /// <summary>The app's own well-known logo route (Optical passes the Branding kit's
+    /// <summary>The app's own well-known logo route (for example the Branding kit's
     /// anonymous "api/branding/logo", reachable before WASM boots and before any session
     /// exists) — a plain string, no coupling, and no default: a Stack component names no
     /// app-specific URL. An SVG response is inlined so it can inherit the splash's primary
@@ -307,7 +307,7 @@
     [Parameter]
     public string? DarkLogoUrl { get; set; }
 
-    /// <summary>The app's anonymous branding-info route (Optical/Therapy pass
+    /// <summary>The app's anonymous branding-info route (for example
     /// "api/branding/public") — read only for its <c>Name</c>, rendered under the logo (or
     /// alone, when there is none). Same no-coupling shape as <see cref="LogoUrl"/>: a plain
     /// string, no app-specific default.</summary>

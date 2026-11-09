@@ -9,7 +9,7 @@ namespace NSail.Components;
 // The reader's notation, plus the one key the keyboard has. A numeric keypad carries a single
 // separator key and it is a DOT, whatever the reader's notation is, so under es-AR a graduation
 // typed "-2.25" reached the vendor's parser as "-225" — the dot read as a grouping, and the
-// receta that travelled to the taller ground a lens nobody prescribed (nsail#2165). A dot is
+// receta that travelled to the taller ground a lens nobody prescribed. A dot is
 // the decimal separator here, and the box still reads and writes the reader's own comma.
 //
 // The vendor's DefaultConverter is sealed, so this wraps one rather than deriving from it, and
@@ -74,7 +74,7 @@ sealed class FigureConverter<T> : IReversibleConverter<T?, string?>, ICultureAwa
         // still writes every earlier group correctly, and only runs out of its one key at the
         // decimal point, so a trailing group of any other length — two decimals, one, nine — is
         // that key pressed for a decimal point, however many grouping dots came before it
-        // (nsail#2392: "1.040.456.062096373" read every dot as a thousand and the tope landed
+        // ("1.040.456.062096373" read every dot as a thousand and the tope landed
         // in the quadrillions).
         if (format.NumberGroupSeparator == "." && IsGrouping(text, dot))
         {

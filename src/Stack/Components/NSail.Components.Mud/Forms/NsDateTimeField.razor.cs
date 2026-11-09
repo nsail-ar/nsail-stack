@@ -84,8 +84,7 @@ public partial class NsDateTimeField<TValue>
     // outranks what the box is holding. Compared against the value the pick displaced rather
     // than against the pick, because only "still the old value" means the round trip is still
     // in flight; everything else means the page has spoken. A read of _pending alone cannot
-    // tell those apart, and the box kept a day the page had already moved off (nsail#2315:
-    // pressing "next open day" repainted the free times and left the closed day in the box).
+    // tell those apart, and the box kept a day the page had already moved off (pressing "next open day" repainted the free times and left the closed day in the box).
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
@@ -112,7 +111,7 @@ public partial class NsDateTimeField<TValue>
 
     // The picked DATE with the time already held. The picker hands its date back at
     // midnight, so reading the time off IT would silently reset the hour every time someone
-    // changed the day — which is what this control did until 2026-08-04: it kept the old
+    // changed the day — which is what reading it off the picker would do: it keeps the old
     // date and took the picker's 00:00, the exact inverse of what the person asked for.
     // Refused text is skipped for the reason NsDateField's own copy carries, and the damage here
     // is worse: Combine below falls back to DateTime.Today for a missing date, so writing the

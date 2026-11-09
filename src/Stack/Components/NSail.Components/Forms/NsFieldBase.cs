@@ -186,7 +186,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     }
 
     /// <summary>Whether this field selects its whole content the moment it receives focus —
-    /// the mostrador feature (Leonardo, 2026-08-07: tab into Importe showing 0,00, type 500,
+    /// the counter-entry feature (tab into an amount showing 0,00, type 500,
     /// it replaces — no manual clear first). Off by default: a field usually edited in place
     /// rather than replaced wholesale (email, phone, a multi-line note, a lookup's search
     /// box) must not opt in just by inheriting this base. Text, numeric and money fields
@@ -582,7 +582,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     ///
     /// It goes to the EditContext rather than staying a drawn message, because a problem the
     /// person can see and the submit cannot is how a value nobody entered reaches the server
-    /// (nsail#1196): the box refuses the text out loud while the model keeps whatever it held,
+    ///: the box refuses the text out loud while the model keeps whatever it held,
     /// and Guardar would save that other value as though it were the one on screen.</summary>
     protected virtual string? GetOwnProblem()
     {

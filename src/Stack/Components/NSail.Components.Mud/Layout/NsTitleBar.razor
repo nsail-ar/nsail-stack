@@ -12,7 +12,7 @@
 @inject RouteTable Routes
 @inject NavigationManager Navigation
 
-@* On the main surface the shell has no bar at all (nsail#561), so this row IS the screen's
+@* On the main surface the shell has no bar at all, so this row IS the screen's
    title at every width — the title belongs to the page, not to a global frame. The one thing
    the vanished bar owned that no page can own is the way to reach a hidden drawer, so the
    hamburger lives here, at the head of the title row and only at the widths the drawer is not
@@ -23,9 +23,9 @@
 @* And where the SHELL draws this surface's row (NsSurfaceChrome, inside NsDrawer and NsDialog),
    the screen's own row draws nothing at all and only announces: the chrome of an overlay has to
    stand from the first frame, and this row is drawn inside the page's NsForm, which renders
-   neither of its branches until its first read answers (nsail#2053). What goes quiet is the
+   neither of its branches until its first read answers. What goes quiet is the
    row that claimed the surface — a section's row is still the section's and still draws. *@
-@* THE PAGE NAME NEVER GIVES WAY (nsail#1869). The title and the utilities beside it are two
+@* THE PAGE NAME NEVER GIVES WAY. The title and the utilities beside it are two
    boxes in one row, and when the row runs short the row WRAPS: the utilities take a line of
    their own — still at the trailing edge, which ms-auto holds for them once space-between has
    no second box left to push against — and the title keeps its own content width. Hence no
@@ -58,7 +58,7 @@
             <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center">
                 @* The page's glyph and the loading indicator share ONE slot, never two — see the
                    twin block below for why, and ns-title-icon-slot (ns-mud.css) for how the slot
-                   keeps its box whether an icon is in it or not (nsail#614). *@
+                   keeps its box whether an icon is in it or not. *@
                 <span class="ns-title-icon-slot">
                     @if (Surface?.HasWork == true)
                     {
@@ -172,7 +172,7 @@ else if (!Hoisted)
 
     // The hamburger is this row's alone — a main surface with the drawer cascade present, and
     // the claim on top. No other row in the page derives it or lines anything up with it: the
-    // toolbar beneath keeps the page's gutter whatever this row does (NsPageHeader, nsail#2595).
+    // toolbar beneath keeps the page's gutter whatever this row does.
     // Asked at render, never cached: the row that holds the claim can leave while the surface
     // stays, and the taker is then whichever row renders next (SurfaceContext.ClaimsRow).
     bool OwnsToggle => Surface?.IsMain == true && LayoutState is not null && Surface.ClaimsRow(this);

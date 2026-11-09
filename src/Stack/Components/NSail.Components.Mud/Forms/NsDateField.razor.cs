@@ -75,7 +75,7 @@ public partial class NsDateField<TValue>
     // outranks what the box is holding. Compared against the value the pick displaced rather
     // than against the pick, because only "still the old value" means the round trip is still
     // in flight; everything else means the page has spoken. A read of _pending alone cannot
-    // tell those apart, and the box kept a day the page had already moved off (nsail#2315).
+    // tell those apart, and the box kept a day the page had already moved off.
     protected override void OnParametersSet()
     {
         base.OnParametersSet();

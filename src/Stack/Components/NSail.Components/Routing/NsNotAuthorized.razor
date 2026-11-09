@@ -43,7 +43,7 @@
         // every ancestor between the router and this component re-renders on that, and the
         // second pass would escape the address it had just written into the first one. Each
         // round roughly doubles the URL, which is what pegs a whole browser tab rather than
-        // merely looping (nsail#469). NsRouteGate guards its own redirect the same way.
+        // merely looping. NsRouteGate guards its own redirect the same way.
         if (_forbidden || _redirected)
         {
             return;

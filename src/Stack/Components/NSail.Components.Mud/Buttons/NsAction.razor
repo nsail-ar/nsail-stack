@@ -58,7 +58,7 @@
     [CascadingParameter]
     IFormProblems? Form { get; set; }
 
-    // Holds the icon at NsIcons.Progress for as long as the call is in flight (nsail#1346):
+    // Holds the icon at NsIcons.Progress for as long as the call is in flight:
     // this is the one seam every contributed action's OnClick renders through, so the fix
     // lands here rather than per contributor. No Runner: the handler already runs through
     // one where that matters — NsPartial.GetAction wraps a host's own act, and a contributed

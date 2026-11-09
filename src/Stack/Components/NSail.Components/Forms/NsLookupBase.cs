@@ -39,7 +39,7 @@ public abstract class NsLookupBase<TItem, TValue, TSaved> : NsPickerBase
     // NsFieldBase.SetValue is what a click on a real option runs through, and it is what
     // tells the EditContext a field changed. A save this picker adopts never touches it —
     // ValueChanged is invoked directly, below — so without this the model gets the new id
-    // and Guardar never learns anything happened (nsail#1569).
+    // and Guardar never learns anything happened.
     [CascadingParameter]
     EditContext? EditContext { get; set; }
 
