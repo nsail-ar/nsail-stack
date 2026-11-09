@@ -7,12 +7,11 @@
 @* The key the box answers is drawn INSIDE it, the convention every application that spends a
    chord on a search box uses — and as a mark of its own, never folded into the placeholder: a
    placeholder is an input's name FALLBACK, so a key written there would land in the accessible
-   name, which is nsail#2259 one layer up. The claim itself is already on the input, where
-   assistive technology reads it as aria-keyshortcuts (NsKeys), so this node is decoration and
-   says so.
-   The wrapper is a plain block div carrying whatever width class the field itself carried, so
-   the field keeps the box it always had — it is here only to be the mark's positioned
-   ancestor. *@
+   name, which is the chord joining the name one layer up. The claim itself is already on the
+   input, where assistive technology reads it as aria-keyshortcuts (NsKeys), so this node is
+   decoration and says so. The wrapper is a plain block div carrying whatever width class the
+   field itself carried, so the field keeps the box it always had — it is here only to be the
+   mark's positioned ancestor. *@
 <div class="@GetBoxClasses()" style="@GetBoxStyle()">
     <MudTextField T="string"
                   Value="Value"
@@ -119,7 +118,7 @@
 
     // Wired only for a box answering OnEnterCommit: the undebounced track it needs costs every
     // OTHER caller nothing, since an unset TextChanged is the vendor's own untouched path — the
-    // one nsail-stack#80 found a tree's own clearing relies on.
+    // one a tree's own clearing relies on.
     EventCallback<string?> GetTextChanged()
     {
         return OnEnterCommit.HasDelegate

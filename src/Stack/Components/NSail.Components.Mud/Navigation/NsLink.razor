@@ -30,7 +30,7 @@
    hook a document listener answers on, per click, on those same terms (ns.js); Follow reads
    the same flags below so the two ends cannot disagree.
    Stopping propagation too (not just the default) is what keeps this link honest wherever it
-   renders: a grid row with its own OnRowClick (the counter door's Clientes grid) would
+   renders: a grid row with its own OnRowClick would
    otherwise see the same click a beat after Follow already fired, and NavigationManager's
    second call wins — the row's own destination silently replaces whatever the link just
    opened. It is unconditional, modifier click included: a new tab opening is no reason for
@@ -69,14 +69,13 @@
    (NsButton draws the same two faces).
    The word-and-icon anchor never reads Breakpoint, unlike NsButton's own worded Inline face:
    it sets no aria-label, so the word IS its whole accessible name, and hiding it below a
-   container width would leave the anchor nameless rather than iconed (nsail#1726 review,
-   actions.md). *@
+   container width would leave the anchor nameless rather than iconed (actions.md). *@
 @if (As == NsAs.Inline && !Wordless)
 {
     @* No aria-label on this face, keyed or not: the word IS the accessible name (the reason
        above), and the bubble that names the chord is drawn nowhere near the anchor — ns.js puts
        it in the top layer, where nothing it says can join a name computed from this element's
-       own content (nsail#2259 is what that rules out). *@
+       own content (a name carrying the chord is what that rules out). *@
     <a href="@ActiveHref" target="@BrowserTarget" class="@GetAnchorClasses()" data-ns-whisper="@LabelWithChord" data-ns-probe="@Probe" data-ns-keys="@ClaimedKeys" aria-keyshortcuts="@AnnouncedKeys">
         @if (Icon is not null)
         {
@@ -239,7 +238,7 @@ else
     /// an Icon (or a Content standing in for one): there would be nothing left to
     /// click.
     /// <para>No effect either on the Inline rank's bare-anchor face once it carries both an
-    /// Icon and a Label (nsail#1726): that anchor sets no aria-label of its own, so the word
+    /// Icon and a Label: that anchor sets no aria-label of its own, so the word
     /// is its whole accessible name and collapsing it away would leave the anchor nameless
     /// rather than iconed. It stays on screen at every width.</para></summary>
     [Parameter]
@@ -291,7 +290,7 @@ else
     string? AnnouncedKeys => NsKeys.Declare(ClaimedKeys).GetValueOrDefault("aria-keyshortcuts") as string;
 
     // The bubble's text, on all three faces: a SEPARATE attribute from aria-label, on purpose —
-    // aria-label IS the accessible name and the name stays the word (nsail#2272), while this
+    // aria-label IS the accessible name and the name stays the word, while this
     // is read by ns.js and by nothing that computes a name.
     string? LabelWithChord => Chord is { Length: > 0 } ? $"{Label} ({Chord})" : Label;
 
@@ -376,7 +375,7 @@ else
         // A destination that carries its own scheme (https:, mailto:, tel:, ...) is outside
         // this app's routes and passes through unchanged; everything else is a route this
         // surface resolves. The question is asked of SurfaceContext.IsExternal and never of
-        // Uri directly — the platform trap that cost this story four sessions is named there.
+        // Uri directly — the platform trap is named there.
         // An empty destination or a scheme no door may open (javascript:, data:) has no address
         // to hand the browser: the link draws disabled.
         _inert = string.IsNullOrEmpty(Href) || SurfaceContext.IsInert(Href);

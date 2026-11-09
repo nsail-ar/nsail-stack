@@ -27,7 +27,7 @@ public sealed class DashboardItem
 
     /// <summary>The card's own screen, when it has one — NavMenuItem.PageType's shape: a
     /// destination type, never a route string, so the host derives the URL from the route
-    /// table. A card with nothing to open (an act, not a place — StarterCatalog's import)
+    /// table. A card with nothing to open (an act, not a place — an import)
     /// leaves this null and renders no door.</summary>
     public Type? PageType { get; init; }
 

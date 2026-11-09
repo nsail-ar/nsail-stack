@@ -37,7 +37,10 @@
         UpdateRoute();
     }
 
-    void OnLocationChanged(object? sender, LocationChangedEventArgs args) => UpdateRoute();
+    void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        UpdateRoute();
+    }
 
     void UpdateRoute()
     {

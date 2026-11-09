@@ -27,7 +27,7 @@
 
 @code {
 
-    // A URL identifies content the same way an AssetId does for NsImage, so one probe per
+    // A URL identifies content the way an asset id identifies a stored image, so one probe per
     // URL serves every instance and every later render of it.
     // Keyed by the service scope (a circuit, a server-rendered request, a client app), so a
     // logo one tenant's host resolved is never served to another's, and no answer outlives
@@ -76,8 +76,8 @@
     [Parameter]
     public int? Height { get; set; }
 
-    /// <summary>Chrome only, reusing NsAs rather than founding a second enum (an
-    /// NsImageAs.Primary would collide with NsAs.Main across the static imports):
+    /// <summary>Chrome only, reusing NsAs rather than founding a second enum (a
+    /// Primary of its own would collide with NsAs.Main across the static imports):
     /// Inline (default) inherits the surrounding colour, Primary maps to the .text-primary
     /// utility. Meaningful only on the inlined-SVG branch (currentColor); a raster &lt;img&gt;
     /// ignores it, same as CSS color always would.</summary>

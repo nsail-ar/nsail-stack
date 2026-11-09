@@ -126,7 +126,7 @@ public sealed class SurfaceContext
     // handler on what it just wrote). Reports covered by an open window are therefore the save's
     // WHEREVER in its life they were filed — before the window opened as well as inside it — so no
     // ordering between the spend and the window can leave one of them arming the guard against the
-    // navigation the save itself makes (nsail#1471). What no open window reaches is somebody's
+    // navigation the save itself makes. What no open window reaches is somebody's
     // unsaved work and still protests: another FORM's document is its own business (Spendable),
     // and with nothing saving this is HasChanges exactly.
     internal bool HasUnansweredChanges
@@ -806,7 +806,7 @@ public sealed class SurfaceContext
     /// address bar's own query, inside a named one the query of the inner route, which is
     /// merged IN PLACE inside the value of ?aside=/?modal= and re-encoded exactly once — the
     /// composition never resolves a route it did not read, which is what keeps a query from
-    /// nesting inside another (nsail#78). A host-managed surface (a dialog) is routed by
+    /// nesting inside another. A host-managed surface (a dialog) is routed by
     /// nothing and carries no query, so this is a no-op there rather than a write nobody could
     /// read. Always REPLACES the history entry: a tab or a filter is a view of the place the
     /// user is at, not a place of its own that Back owes them.</summary>
@@ -819,7 +819,7 @@ public sealed class SurfaceContext
 
     /// <summary>The batched form of SetQuery(name, value): every pair lands in the ONE
     /// navigation this makes. A caller clearing a filter whose own default another filter's
-    /// Query() reads off the first one's absence (nsail#1807) cannot write them as two
+    /// Query() reads off the first one's absence cannot write them as two
     /// separate calls — SetQuery reads the surface's own route fresh each time, and the second
     /// call would read it before the first call's navigation landed.</summary>
     public void SetQuery(IReadOnlyDictionary<string, object?> values)
@@ -1077,7 +1077,7 @@ public sealed class SurfaceContext
 
     // Inside a submit's own window (BeginSave) the report is held rather than taken: the handler
     // navigates from in there, so a report taken here would have the exit guard protest a departure
-    // the save itself caused (nsail#1450). Held, not dropped — the window answers for it at EndSave.
+    // the save itself caused. Held, not dropped — the window answers for it at EndSave.
     void Take(object source, bool inherited)
     {
         var raiseChanged = false;
@@ -1399,7 +1399,7 @@ public sealed class SurfaceContext
 
     // Hands reports back for a submit that ends refused: what its spend took and what its window
     // held. Not SetDirty — a window still open over them is about to navigate out of a save of its
-    // own, so it inherits them rather than the surface taking them (nsail#1450), and owes them back
+    // own, so it inherits them rather than the surface taking them, and owes them back
     // at its own close because it neither spent nor caused them.
     internal void PutBack(IEnumerable<object> reports)
     {

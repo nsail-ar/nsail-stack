@@ -18,8 +18,8 @@ public partial class NsUrlField
     // a refusal the person can see and the submit cannot is how a value nobody meant reaches
     // the server.
     //
-    // And posted THERE ONLY — no GetErrorText of its own, which the date box and
-    // MailCopyAddressesField can afford because their refusal is born of a keystroke and empty
+    // And posted THERE ONLY — no GetErrorText of its own, which the date box and a
+    // mail-address list field can afford because their refusal is born of a keystroke and empty
     // until one. This one is read off Value on every render, so drawn straight it would refuse a
     // form the instant it opens over an address the model brought, and again on the first letter
     // of a scheme being typed. The moment belongs to NsFieldBase: the validation request Save

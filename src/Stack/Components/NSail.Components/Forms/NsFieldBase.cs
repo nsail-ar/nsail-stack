@@ -122,7 +122,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     public string? Autocomplete { get; set; }
 
     /// <summary>What the underlying input needs splatted onto it — the autofill hint, the
-    /// accessible name a hidden label leaves behind, the mostrador focus behaviour
+    /// accessible name a hidden label leaves behind, the select-on-focus behaviour
     /// (SelectOnFocus) and the reference to the node carrying this field's refusal. Never null:
     /// the vendor's input reads this collection during initialization and throws on a null one.
     /// Never rebuilt per render either — a fresh dictionary every time reads as a changed
@@ -186,11 +186,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     }
 
     /// <summary>Whether this field selects its whole content the moment it receives focus —
-    /// the mostrador feature (Leonardo, 2026-08-07: tab into Importe showing 0,00, type 500,
-    /// it replaces — no manual clear first). Off by default: a field usually edited in place
-    /// rather than replaced wholesale (email, phone, a multi-line note, a lookup's search
-    /// box) must not opt in just by inheriting this base. Text, numeric and money fields
-    /// override it; wired here once so no field hand-rolls its own focus handler.</summary>
+    /// tab into an amount showing 0,00, type 500, it replaces, with no manual clear first. Off
+    /// by default: a field usually edited in place rather than replaced wholesale (email,
+    /// phone, a multi-line note, a lookup's search box) must not opt in just by inheriting this
+    /// base. Text, numeric and money fields override it; wired here once so no field hand-rolls
+    /// its own focus handler.</summary>
     protected virtual bool SelectOnFocus => false;
 
     /// <summary>Whether Enter inside this field is the FIELD's own gesture — the entry ending
@@ -343,8 +343,8 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         // earliest place that can see it: SetValue awaits ValueChanged while the Value parameter
         // still holds the old one, so the new value is only here, on the parameter set the
         // binding's write triggers — which is also the only seam that catches a value a SCREEN
-        // wrote into the model behind the field (CreateVoucherPage's party satellite filling the
-        // fiscal condition), since that one travels no SetValue at all.
+        // wrote into the model behind the field (a companion lookup filling a sibling
+        // property), since that one travels no SetValue at all.
         //
         // Only once the form has asked: OwnProblem() answers for any empty required field, a
         // form nobody submitted included, and a refusal is drawn at Save, never at the keystroke
@@ -507,9 +507,9 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     }
 
     /// <summary>Label when the expression-derived key has no translation. Item-bearing
-    /// fields (select, autocomplete) override this with the item type's concept key
-    /// ("Directory.OrganizationRef" → "Organization"); the base keeps the untranslated
-    /// key visible, never guessed.</summary>
+    /// fields (select, autocomplete) override this with the translation of the item type's
+    /// own key (<c>MetadataProvider.KeyFor</c>, area-qualified like every key); the base keeps
+    /// the untranslated key visible, never guessed.</summary>
     protected virtual string? FallbackLabel(string key)
     {
         return key;
@@ -581,8 +581,8 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     /// field has nothing of its own to say, which is every field that does not override this.
     ///
     /// It goes to the EditContext rather than staying a drawn message, because a problem the
-    /// person can see and the submit cannot is how a value nobody entered reaches the server
-    /// (nsail#1196): the box refuses the text out loud while the model keeps whatever it held,
+    /// person can see and the submit cannot is how a value nobody entered reaches the server:
+    /// the box refuses the text out loud while the model keeps whatever it held,
     /// and Guardar would save that other value as though it were the one on screen.</summary>
     protected virtual string? GetOwnProblem()
     {
