@@ -6,7 +6,7 @@ namespace NSail.Messaging.Annotations;
 /// <summary>Records that a numeric or code member declares no bound of its own, and why —
 /// either because the domain names none (a concurrency token is not a quantity) or because the
 /// bound is about a value the message does not carry, and a rule beside it owns the whole of it.
-/// It refuses nothing at runtime: DeclaredBoundTests (NSail.Architecture.Tests) is what reads
+/// It refuses nothing at runtime: DeclaredBoundTests (NSail.Architecture.Tests, the products' repository) is what reads
 /// it, and the attribute exists so the answer is a decision on the record instead of a silence.
 /// The reason is the record — one that says "no bound" says nothing the gate did not already
 /// know.</summary>

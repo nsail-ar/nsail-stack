@@ -10,7 +10,7 @@ Each layer proves one kind of truth. A test in the wrong layer proves nothing tw
 
 | Layer | Proves | Lives in |
 |---|---|---|
-| `Architecture.Tests` | **form** — doctrine made mechanical: a rule over the whole tree (no `Mud*` in pages, migrations drift, the gate answers first on every endpoint) | `test/Architecture` |
+| `Architecture.Tests` | **form** — doctrine made mechanical: a rule over the whole tree (no `Mud*` in pages, migrations drift, the gate answers first on every endpoint) | `test/Architecture` in the products' repository |
 | Stack unit tests | a Stack module's own behavior, offline (localization merge, problem shapes, the JWS codec against a fake JWKS) | `test/Stack/...` |
 | Kit handler harnesses | **handler doctrine against real Postgres** — round trips, Problem contracts (AlreadyExists names the typed value, dangling refs answer NotFound), invariants (double entry balances), `@me` denial through the real evaluator | `test/Kits/.../WebApi.Tests` on `NSail.Data.Testing` |
 | Shared/bUnit | screen behavior through real DOM events (dirty tracking, validation speaking first, vocabulary gating) | `test/Kits/.../Shared.Tests`, `test/Stack/Components` |
@@ -77,7 +77,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
      awaiting the dispatch is not enough. It carries its reason in the code.
    - **Never both at one site, and never a bare `Task.Delay`.** A site already read through
      a `WaitForAssertion` is cured; adding the await on top is the opposite mistake.
-   - The bar is **`AwaitedActTests`**, not a grep and not a count: greps over-report so badly
+   - The bar is **`AwaitedActTests`** (enforced in the products' repository), not a grep and not a count: greps over-report so badly
      (hundreds of act sites, a handful of defects) that judging hits by hand is the recurring
      audit ruling 3 refuses. The test reads statements, so the awaited form spread over three
      lines is not a hit. A site that is neither dispatched nor polled says why with
@@ -116,7 +116,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
 11. **A number or a code on a message declares its bound, and the gate refuses the silence.**
     No test finds a rule that does not exist (a sphere of +45, a negative price, a CAE of any
     text all passed), so the answer is not coverage — it is ruling 3's shape over field
-    bounds. `DeclaredBoundTests` walks exactly `MessageValidator`'s reach and fails the build
+    bounds. `DeclaredBoundTests` (enforced in the products' repository) walks exactly `MessageValidator`'s reach and fails the build
     on a numeric or `string` member that declares nothing (messaging.md has what satisfies it,
     and the identifier escalation). **The exemption list is `[Unbounded("why")]`, per member,
     so it is read where the decision matters** rather than in the test.
@@ -328,7 +328,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   finished text is a PASTE and not a typing**, which is how three per-keystroke defects sat
   under eight green acts: a suite about the keystroke types the prefixes one at a time
   (`TypedValueCommitTests`), and the whole box arrives on each one because that is what a
-  browser sends. `AwaitedActTests` gates `Blur` and `KeyDown` like the other four acts.
+  browser sends. `AwaitedActTests` (products' repository) gates `Blur` and `KeyDown` like the other four acts.
 - **A figure is typed in the notation the suite declared it reads in.** Every numeric box
   parses in `RegionCulture.For(Language)`, so the same literal is two numbers: Optical reads
   `es` and takes `"-1,25"`, Therapy reads `en` and takes `"-1.25"` — and the wrong one is not a

@@ -688,7 +688,7 @@ business rules.
     reaches the sentence as the wire carries it, so name an instant `at` and write the catalog
     sentence for the rest knowing the number is invariant.
   - **Every declared code has its sentence in every language**: `CodedValidationStringTests`
-    (`NSail.Architecture.Tests`) sweeps the tree's declarations, not its attribute types — a
+    (`NSail.Architecture.Tests`, enforced in the products' repository) sweeps the tree's declarations, not its attribute types — a
     code may be derived from the attribute's argument.
 - **A rule a HANDLER owns names a code the same way.** `InputProblemBuilder.AddInvalid(code,
   field, message, arguments)` is the shape; the two-argument sibling puts every rule on one
@@ -716,7 +716,7 @@ business rules.
   collection or not — the rows of a `[Composition]` a message does not open with `[Validated]`
   are enforced by neither end, same as a lone nested model today.
 - **A number or a code declares its bound, or says on the record that it has none.**
-  `DeclaredBoundTests` (`NSail.Architecture.Tests`) walks exactly `MessageValidator`'s reach —
+  `DeclaredBoundTests` (`NSail.Architecture.Tests`, enforced in the products' repository) walks exactly `MessageValidator`'s reach —
   every shipped `IMessage` plus any model opened with `[Validated]`, into a collection's
   ELEMENT type rather than the collection itself — and fails the build when
   a numeric or `string` member declares nothing. A number wants a range (`[Range]` **or a
@@ -777,7 +777,7 @@ router's content-type matcher decides during endpoint *selection*, before any en
 metadata exists to gate on. It is transport negotiation: it names no field, spends no query,
 and answers every caller identically.
 
-`EndpointGateTests` (`NSail.Architecture.Tests`) pins the contract: every generated endpoint,
+`EndpointGateTests` (`NSail.Architecture.Tests`, enforced in the products' repository) pins the contract: every generated endpoint,
 probed anonymously with no body and no content type, must answer the gate's denial. It runs
 against a host with **no policy registered at all**, so the sweep is total, with no
 anonymous-exception list to maintain.

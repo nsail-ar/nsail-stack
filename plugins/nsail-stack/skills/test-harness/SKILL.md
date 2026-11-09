@@ -13,7 +13,7 @@ This skill surfaces the lore that has been paid for. When they disagree, the doc
 
 | Layer | Proves |
 |---|---|
-| `test/Architecture` | form — a doctrine rule quantified over the whole tree |
+| `test/Architecture` (products' repository) | form — a doctrine rule quantified over the whole tree |
 | `test/Stack/...` | a Stack module's own behavior, offline |
 | `test/Kits/.../WebApi.Tests` | handler doctrine against real Postgres (`NSail.Data.Testing`) |
 | `test/Kits/.../Shared.Tests`, `test/Stack/Components` | screen behavior through real DOM events (bUnit) |

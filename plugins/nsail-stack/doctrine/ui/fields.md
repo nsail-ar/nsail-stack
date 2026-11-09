@@ -384,7 +384,7 @@ when the entry ENDS — Enter pressed, or the box left — carrying what the box
   screen moves itself reaches the box unheard, and a field still holding the old text would
   commit it on the next leave — a value nobody typed, over one somebody did.
 - **A bUnit suite proving a take or a save acts through the end of the entry** — `Input(…)` then
-  `Blur()` or `KeyDown(Key.Enter)` — and `AwaitedActTests` gates those two acts like the other
+  `Blur()` or `KeyDown(Key.Enter)` — and `AwaitedActTests` (products' repository) gates those two acts like the other
   four ([testing.md](../testing.md)).
 
 ---

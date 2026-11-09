@@ -247,7 +247,7 @@ Seeds may *also* grant lookups broadly — `[Requires]` guarantees UI correctnes
   stored and built-in handlers ALONE (one hop), its fields verdict is unconditional (flat),
   and it is asked **alongside** the direct policies, never only when they fail (guardrail 3).
   Guardrail 2's review half — only lookup-shaped messages in the attribute — stays in the
-  `NSail.Architecture.Tests` sweep, never the evaluator.
+  `NSail.Architecture.Tests` sweep (the products' repository), never the evaluator.
 - **A match names its source**: `Origin: Dependency` plus the primary's key, so "why do I have
   access" answers "because you may send `Optical.WorkOrders.CreateWorkOrder`".
 - Optical's Vendedor preset relies on it for `LookupParties`, `LookupPrescriptions` and
@@ -321,7 +321,7 @@ with a read that does not carry it: a narrower response model, or no grant at al
 hiding a column on screen, and never by a field constraint, which answers a different
 question. A wildcard grant cannot be audited at all, because it also grants whatever is filed
 under that feature next. Optical's Vendedor is the worked example and
-`VendedorSeesNoMoneyTests` (`NSail.Architecture.Tests`) is that walk, run on every build.
+`VendedorSeesNoMoneyTests` (`NSail.Architecture.Tests`, the products' repository) is that walk, run on every build.
 
 ### `RestrictAs.Reference`, `RestrictAs.Flag` and collections
 
@@ -520,7 +520,7 @@ flight, because `GetSession` travels the same pipeline that reported the refusal
 
 Proof: `NSail.Security.Tests`, `NSail.Iam.Shared.Tests` (the renewal, the 403 that must not
 trigger it, the anonymous client that must not loop, the re-entrancy bound), and the
-`NSail.Architecture.Tests` endpoint sweep, which requires **401** from every mapped endpoint
+`NSail.Architecture.Tests` endpoint sweep (the products' repository), which requires **401** from every mapped endpoint
 for an anonymous probe.
 
 ## Session
