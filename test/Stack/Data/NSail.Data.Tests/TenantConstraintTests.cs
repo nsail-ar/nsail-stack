@@ -3,6 +3,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 namespace NSail.Data.Tests;
@@ -225,6 +226,112 @@ public sealed class TenantConstraintTests : IAsyncLifetime
         Assert.Null(kind.FindProperty("TenantId"));
     }
 
+    // A row that is a principal and a dependent of the tenant-led keys at once is the shape EF
+    // refuses to insert while it does not know the column, and every row of these modes carries
+    // the install's Guid.Empty: through the stamp, in the mode's own composition.
+    [Theory]
+    [InlineData(TenancyMode.None)]
+    [InlineData(TenancyMode.MultiDb)]
+    public async Task A_row_both_principal_and_dependent_saves_where_every_row_is_the_installs(TenancyMode mode)
+    {
+        var tenancy = new TenancyOptions { Mode = mode, Product = "nsail", Cell = "test" };
+
+        await using var provider = new ServiceCollection()
+            .AddDataAccess<InstallDbContext>(Connection, tenancy)
+            .BuildServiceProvider();
+
+        var root = Guid.NewGuid();
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            await using var db = Enter(scope, mode);
+
+            db.Add(new CNode { Id = root });
+
+            await db.SaveChangesAsync();
+        }
+
+        await using (var scope = provider.CreateAsyncScope())
+        {
+            await using var db = Enter(scope, mode);
+
+            db.Add(new CNode { Id = Guid.NewGuid(), ParentId = root });
+            db.Add(new CProvince { Id = Guid.NewGuid(), ParentId = await Parent() });
+
+            await db.SaveChangesAsync();
+        }
+
+        await AssertEveryRowIsTheInstalls();
+    }
+
+    // And with no stamp at all — a design-time factory's context, a retrofit's, a seed's. The
+    // column's default is the install's key, so these saves are what that default promises.
+    [Fact]
+    public async Task A_context_the_stamp_never_reaches_saves_the_installs_rows()
+    {
+        var options = new DbContextOptionsBuilder<InstallDbContext>().UseNpgsql(Connection).Options;
+        var root = Guid.NewGuid();
+
+        await using (var db = new InstallDbContext(options, TenancyProvider.Install))
+        {
+            db.Add(new CNode { Id = root });
+
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = new InstallDbContext(options, TenancyProvider.Install))
+        {
+            db.Add(new CNode { Id = Guid.NewGuid(), ParentId = root });
+            db.Add(new CProvince { Id = Guid.NewGuid(), ParentId = await Parent() });
+
+            await db.SaveChangesAsync();
+        }
+
+        await AssertEveryRowIsTheInstalls();
+    }
+
+    string Connection
+    {
+        get { return ConnectionStrings.Complete($"Host=localhost;Username=postgres;Database={_database}"); }
+    }
+
+    InstallDbContext Enter(AsyncServiceScope scope, TenancyMode mode)
+    {
+        if (mode == TenancyMode.MultiDb)
+        {
+            scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For("lumina", _database));
+        }
+
+        return scope.ServiceProvider.GetRequiredService<InstallDbContext>();
+    }
+
+    async Task<Guid> Parent()
+    {
+        var parent = Guid.NewGuid();
+
+        await using var db = new ConstraintDbContext(_options, Guid.Empty);
+
+        db.Add(new CParent { Id = parent, Code = parent.ToString("N") });
+
+        await db.SaveChangesAsync();
+
+        return parent;
+    }
+
+    async Task AssertEveryRowIsTheInstalls()
+    {
+        await using var db = new ConstraintDbContext(_options, Guid.Empty);
+
+        Assert.Equal(2, await db.Set<CNode>().CountAsync());
+        Assert.Equal(1, await db.Set<CProvince>().CountAsync());
+        Assert.All(
+            await db.Set<CNode>().Select(row => EF.Property<Guid>(row, "TenantId")).ToListAsync(),
+            tenant => Assert.Equal(Guid.Empty, tenant));
+        Assert.All(
+            await db.Set<CProvince>().Select(row => EF.Property<Guid>(row, "TenantId")).ToListAsync(),
+            tenant => Assert.Equal(Guid.Empty, tenant));
+    }
+
     static async Task Execute(string database, string sql)
     {
         await using var connection = new NpgsqlConnection(
@@ -266,6 +373,38 @@ public sealed class ConstraintDbContext : DbContext, ITenanted, IHasOrgScope
         }
 
         return base.SaveChangesAsync(cancellationToken);
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.ApplyTenancy();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplySetups(this, [new ConstraintSetup()]);
+    }
+}
+
+// Built by AddDataAccess, so its saves pass through the stamp the way an app's do.
+public sealed class InstallDbContext : DbContext, ITenanted, IHasOrgScope
+{
+    readonly TenancyProvider _tenancy;
+
+    public InstallDbContext(DbContextOptions<InstallDbContext> options, TenancyProvider tenancy)
+        : base(options)
+    {
+        _tenancy = tenancy;
+    }
+
+    public Guid? TenantId
+    {
+        get { return _tenancy.RowKey; }
+    }
+
+    public OrgScope OrgScope
+    {
+        get { return OrgScope.Everywhere; }
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -323,6 +462,24 @@ sealed class ConstraintSetup : IDbContextSetup
             row.HasOne<CParent>().WithMany().HasForeignKey(r => r.ParentId);
         });
 
+        modelBuilder.Entity<CNode>(row =>
+        {
+            row.ToTable("Nodes");
+            row.HasOne<CNode>().WithMany().HasForeignKey(r => r.ParentId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CProvince>(row =>
+        {
+            row.ToTable("Provinces");
+            row.HasOne<CParent>().WithMany().HasForeignKey(r => r.ParentId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CTown>(row =>
+        {
+            row.ToTable("Towns");
+            row.HasOne<CProvince>().WithMany().HasForeignKey(r => r.ProvinceId).OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<CByCode>(row =>
         {
             row.ToTable("ByCode");
@@ -359,6 +516,27 @@ public sealed class CByCode
     public Guid Id { get; set; }
 
     public string ParentCode { get; set; } = string.Empty;
+}
+
+public sealed class CNode
+{
+    public Guid Id { get; set; }
+
+    public Guid? ParentId { get; set; }
+}
+
+public sealed class CProvince
+{
+    public Guid Id { get; set; }
+
+    public Guid ParentId { get; set; }
+}
+
+public sealed class CTown
+{
+    public Guid Id { get; set; }
+
+    public Guid ProvinceId { get; set; }
 }
 
 public sealed class CLoose

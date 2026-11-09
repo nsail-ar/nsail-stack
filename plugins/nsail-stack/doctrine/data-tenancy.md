@@ -34,7 +34,11 @@ Stack sets and no product writes:
   detached entity handed to `Update` (default tenant) or a hand-set value throws
   `InvalidOperationException` naming the entity. The rule holds in every mode, judged by value:
   where every row carries the same key (`None`, `MultiDb`) nothing differs. Load the row under
-  its tenant and change its fields.
+  its tenant and change its fields. The column is also **generated on add** from the same
+  context (`TenantKeyGenerator`), so a context `AddDataAccess` did not build — a design-time
+  factory's, a retrofit's — writes the context's tenant without the stamp: EF refuses to insert
+  a row whose shadow key it does not know, and the column sits in a key wherever another table
+  names the row (below).
 - **Every index leads with the tenant**, foreign keys included, on every entity that has the
   column; an install-scoped entity keeps the plain indexes its own foreign keys earn, restored
   by the same pass. A filter is cheap only when its index leads with the tenant; otherwise the

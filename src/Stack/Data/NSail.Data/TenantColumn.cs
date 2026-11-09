@@ -65,8 +65,13 @@ static class TenantColumn
 
             var tenant = entity.AddProperty(Name, typeof(Guid));
 
+            // Generated on add from the context, so a new row's column is known before any stamp:
+            // EF refuses to insert a row whose shadow key it does not know, and the column sits in
+            // a key wherever another table names the row. A context AddDataAccess did not build —
+            // a design-time factory's, a retrofit's — has no stamp to make it known.
             tenant.IsNullable = false;
-            tenant.ValueGenerated = ValueGenerated.Never;
+            tenant.ValueGenerated = ValueGenerated.OnAdd;
+            tenant.SetValueGeneratorFactory((_, _) => new TenantKeyGenerator());
             tenant.SetDefaultValue(Install);
 
             entity.SetQueryFilter(Key, Filter(entity.ClrType, context));
