@@ -2,7 +2,6 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using Npgsql;
 using NSail.Data;
 
@@ -48,7 +47,7 @@ public sealed class JobLockTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await Execute("postgres", $"CREATE DATABASE \"{_database}\"");
+        await Harness.Execute("postgres", $"CREATE DATABASE \"{_database}\"");
 
         _options = new DbContextOptionsBuilder<StateDbContext>()
             .UseNpgsql(ConnectionStrings.Complete($"Host=localhost;Username=postgres;Database={_database}"))
@@ -59,7 +58,7 @@ public sealed class JobLockTests : IAsyncLifetime
     {
         NpgsqlConnection.ClearAllPools();
 
-        await Execute("postgres", $"DROP DATABASE IF EXISTS \"{_database}\" WITH (FORCE)");
+        await Harness.Execute("postgres", $"DROP DATABASE IF EXISTS \"{_database}\" WITH (FORCE)");
     }
 
     [Fact]
@@ -70,18 +69,21 @@ public sealed class JobLockTests : IAsyncLifetime
         var second = new Signal();
 
         await using var one = Build(gate, first);
-        await using var two = Build(gate, second);
+        var logs = new LogRecorder();
 
-        var runnerOne = Runner(one);
-        var runnerTwo = Runner(two);
+        await using var two = Build(gate, second, logs);
+
+        var runnerOne = Harness.Runner(one);
+        var runnerTwo = Harness.Runner(two);
 
         await runnerOne.StartAsync(CancellationToken.None);
         await first.Reached.WaitAsync(TimeSpan.FromSeconds(10));
 
-        // StartAsync returns once the loop has begun, so the second runner's up-front tick is
-        // given its time before the count is read.
+        // The second runner's refusal is the signal, so the count is read after it tried.
+        var refused = logs.Awaits(entry => entry.Message.Contains("another runner holds its lock", StringComparison.Ordinal));
+
         await runnerTwo.StartAsync(CancellationToken.None);
-        await Task.Delay(TimeSpan.FromSeconds(1));
+        await refused.WaitAsync(TimeSpan.FromSeconds(10));
 
         Assert.Equal(1, first.Count);
         Assert.Equal(0, second.Count);
@@ -112,12 +114,28 @@ public sealed class JobLockTests : IAsyncLifetime
         Assert.Equal(1, second.Count);
     }
 
-    static IHostedService Runner(ServiceProvider provider)
+    // Under a mode that connects per tenant the DbContext's factory throws with no tenant entered,
+    // so install-wide work must not be asked for one to lock on.
+    [Fact]
+    public async Task An_install_job_under_a_per_tenant_connection_runs_without_a_lock()
     {
-        return provider.GetServices<IHostedService>().Single(h => h.GetType().Name != "SecurityProviderCheck");
+        var signal = new Signal();
+        var gate = new Gate();
+        gate.Open.SetResult();
+
+        await using var provider = Harness.Build(services =>
+        {
+            services.AddSingleton(new TenancyOptions { Mode = TenancyMode.MultiDb });
+            services.AddScoped<DbContext>(_ => throw new InvalidOperationException("nothing resolves a tenant"));
+            services.AddSingleton(gate);
+            services.AddSingleton(signal);
+            services.AddBackgroundJob<LockedJob>();
+        });
+
+        await Harness.Run(provider, signal.Reached);
     }
 
-    ServiceProvider Build(Gate gate, Signal signal)
+    ServiceProvider Build(Gate gate, Signal signal, LogRecorder? logs = null)
     {
         return Harness.Build(services =>
         {
@@ -125,18 +143,6 @@ public sealed class JobLockTests : IAsyncLifetime
             services.AddSingleton(gate);
             services.AddSingleton(signal);
             services.AddBackgroundJob<LockedJob>();
-        });
-    }
-
-    static async Task Execute(string database, string statement)
-    {
-        await using var admin = new NpgsqlConnection(
-            ConnectionStrings.Complete($"Host=localhost;Username=postgres;Database={database}"));
-
-        await admin.OpenAsync();
-
-        await using var command = new NpgsqlCommand(statement, admin);
-
-        await command.ExecuteNonQueryAsync();
+        }, logs);
     }
 }

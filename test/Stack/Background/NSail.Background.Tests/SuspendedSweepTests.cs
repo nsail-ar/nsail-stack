@@ -46,7 +46,7 @@ public sealed class SuspendedSweepTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await Execute("postgres", $"CREATE DATABASE \"{_database}\"");
+        await Harness.Execute("postgres", $"CREATE DATABASE \"{_database}\"");
 
         _options = new DbContextOptionsBuilder<StateDbContext>()
             .UseNpgsql(ConnectionStrings.Complete($"Host=localhost;Username=postgres;Database={_database}"))
@@ -61,7 +61,7 @@ public sealed class SuspendedSweepTests : IAsyncLifetime
     {
         NpgsqlConnection.ClearAllPools();
 
-        await Execute("postgres", $"DROP DATABASE IF EXISTS \"{_database}\" WITH (FORCE)");
+        await Harness.Execute("postgres", $"DROP DATABASE IF EXISTS \"{_database}\" WITH (FORCE)");
     }
 
     [Fact]
@@ -174,18 +174,6 @@ public sealed class SuspendedSweepTests : IAsyncLifetime
 
         await db.SaveChangesAsync();
     }
-
-    static async Task Execute(string database, string statement)
-    {
-        await using var admin = new NpgsqlConnection(
-            ConnectionStrings.Complete($"Host=localhost;Username=postgres;Database={database}"));
-
-        await admin.OpenAsync();
-
-        await using var command = new NpgsqlCommand(statement, admin);
-
-        await command.ExecuteNonQueryAsync();
-    }
 }
 
 // The Stack's own three tables and nothing else: what ApplySetups puts on a model is the subject,
@@ -217,3 +205,4 @@ sealed class StateDbContext : DbContext, ITenanted, IHasOrgScope
         modelBuilder.ApplySetups(this, []);
     }
 }
+

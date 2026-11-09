@@ -8,7 +8,8 @@ namespace NSail.Background;
 static class Abandonment
 {
     // The scope is what the abandoned work still resolves from and holds a DbContext of, so it
-    // is disposed when that work ends, not under it, and the lock that fences the pass with it; the work's fault is observed there too.
+    // is disposed when that work ends, not under it, and so is the lock that fences the pass; the
+    // work's fault is observed there too.
     internal static async ValueTask Release(AsyncServiceScope? scope, Task? abandoned, IAsyncDisposable? held = null)
     {
         if (scope is not { } owned)

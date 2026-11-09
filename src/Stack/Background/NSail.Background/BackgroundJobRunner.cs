@@ -19,7 +19,8 @@ namespace NSail.Background;
 // cadence and never another's.
 //
 // A pass takes a Postgres advisory lock per job and tenant (JobLock), so a second replica over
-// the same database skips the pass its sibling holds instead of running every job twice.
+// the same database skips a pass that overlaps its sibling's. Replicas tick on their own clocks,
+// so the lock fences overlap and does not make a job run once per interval across replicas.
 sealed class BackgroundJobRunner : BackgroundService
 {
     readonly ConcurrentDictionary<Type, byte> _emptyRosterSaid = new();
@@ -232,7 +233,7 @@ sealed class BackgroundJobRunner : BackgroundService
         }
 
         AsyncServiceScope? scope = null;
-        JobLock? held = null;
+        IAsyncDisposable? held = null;
         var timeout = _options.TimeoutOf(jobType.Name);
 
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
@@ -263,23 +264,44 @@ sealed class BackgroundJobRunner : BackgroundService
                 }
             }
 
-            held = await JobLock.TryTake(
-                    scope.Value.ServiceProvider.GetService<DbContext>(),
-                    jobType.Name,
-                    tenant?.Slug ?? string.Empty,
-                    stoppingToken)
-                .ConfigureAwait(false);
+            // The budget covers the lock too: a sick database must not stretch the pass.
+            budget.CancelAfter(timeout);
+
+            // Install-wide work under a mode that connects per tenant has no database to lock:
+            // resolving the DbContext there is what throws, so it is not asked for.
+            var lockable = tenant is not null
+                || scope.Value.ServiceProvider.GetService<TenancyOptions>() is not { Connection: TenancyScope.Tenant };
+
+            held = lockable
+                ? await JobLock.TryTake(
+                        scope.Value.ServiceProvider.GetService<DbContext>(),
+                        jobType.Name,
+                        tenant?.Slug ?? string.Empty,
+                        budget.Token)
+                    .ConfigureAwait(false)
+                : JobLock.NoLock.Instance;
 
             if (held is null)
             {
-                _logger.LogDebug(
-                    "Background job {Job} skipped a pass: another runner holds its lock.",
-                    jobType.Name);
+                // A sibling is doing this pass: the job is not overdue and not failing, and the
+                // outcome is its own so an alert can tell a replica that yields from one that
+                // does nothing.
+                _meter.Skipped(jobType.Name);
 
-                return false;
+                if (tenant is null)
+                {
+                    _logger.LogDebug("Background job {Job} skipped a pass: another runner holds its lock.", jobType.Name);
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        "Background job {Job} skipped tenant {Tenant}: another runner holds its lock.",
+                        jobType.Name,
+                        tenant.Slug);
+                }
+
+                return true;
             }
-
-            budget.CancelAfter(timeout);
 
             // The token asks first; WaitAsync is what stops the sweep waiting for a job that
             // ignores it (a dead socket, a lock), which no token can interrupt.

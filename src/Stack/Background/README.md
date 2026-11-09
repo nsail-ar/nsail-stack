@@ -83,8 +83,11 @@ The runners read three things from the host:
 - The session is `Session.System()` with no organization, party or memberships, so ids travel in
   the messages the job sends.
 - A pass holds a Postgres advisory lock per job and tenant, on a connection of its own, until the
-  pass ends (an abandoned one, until it does). A second replica over the same database skips the
-  pass it cannot lock, neither counted nor failed. A host with no Npgsql `DbContext` takes none.
+  pass ends (an abandoned one, until it does). A second replica over the same database skips a
+  pass that overlaps it: counted `skipped`, not failed, and the job is not overdue for it. The lock
+  fences overlap only — replicas tick on their own clocks, so a job still runs once per replica per
+  interval. A host with no Npgsql `DbContext`, and install-wide work under a per-tenant connection,
+  take none.
 
 **Deferred work** (`DeferredWork`):
 
@@ -102,7 +105,7 @@ The runners read three things from the host:
 
 | Meter | Instrument | Tags |
 |---|---|---|
-| `BackgroundJobMetrics.MeterName` (`NSail.Background`) | `Passes`, `Roster`, `Overdue` (intervals since the last completed pass) | `nsail.job`; `Passes` also `nsail.outcome` (`ok`/`failed`) |
+| `BackgroundJobMetrics.MeterName` (`NSail.Background`) | `Passes`, `Roster`, `Overdue` (intervals since the last completed pass) | `nsail.job`; `Passes` also `nsail.outcome` (`ok`/`failed`/`skipped`) |
 | `DeferredWorkMetrics.MeterName` (`NSail.Background.Deferred`) | `Completed` | `nsail.deferred.kind`, `nsail.outcome` (`ok`/`failed`/`timeout`) |
 
 Failures are metrics because log attributes that are strings are dropped at export; an alert has to
