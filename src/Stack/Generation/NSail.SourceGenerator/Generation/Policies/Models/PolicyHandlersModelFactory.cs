@@ -21,10 +21,14 @@ public static class PolicyHandlersModelFactory
             MethodName = methodSymbol.Name,
             ClassDeclaration = methodSymbol.ContainingType.GetDeclaration(),
             MethodDeclaration = methodSymbol.GetDeclaration(),
-            ServicesParameterName = methodSymbol.Parameters.Length > 0 ? methodSymbol.Parameters[0].Name : "services",
         };
 
-        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol))
+        model.ReadHolder(methodSymbol);
+
+        if (model.Unusable)
+            return model;
+
+        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol, model.HolderDiagnostics))
         {
             if (!typeSymbol.AllInterfaces.Any(i => i.Name == IMessageInterfaceName))
                 continue;
@@ -61,11 +65,26 @@ public static class PolicyHandlersModelFactory
             {
                 MessageType = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 HandlerName = $"{typeSymbol.Name}PolicyHandler",
+                UniqueName = new string(new TypeModel(typeSymbol).MetadataName.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray()),
             };
 
             handler.Fields.AddRange(fields);
             handler.Requires.AddRange(Requires(typeSymbol));
             model.Handlers.Add(handler);
+        }
+
+        // A name two messages share would declare one class twice; those, and only those, take
+        // their full name, so a holder without the clash keeps the names it always had.
+        var clashing = new HashSet<string?>(
+            model.Handlers
+                .GroupBy(h => h.HandlerName, StringComparer.Ordinal)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key),
+            StringComparer.Ordinal);
+
+        foreach (var handler in model.Handlers.Where(h => clashing.Contains(h.HandlerName)))
+        {
+            handler.HandlerName = $"{handler.UniqueName}PolicyHandler";
         }
 
         return model;

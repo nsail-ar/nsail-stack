@@ -65,6 +65,9 @@ public static class CompilationExtensions
         if (string.IsNullOrWhiteSpace(assemblyName))
             return compilation.Assembly;
 
+        if (compilation.Assembly.Name == assemblyName)
+            return compilation.Assembly;
+
         foreach (var reference in compilation.References)
         {
             var symbol = compilation.GetAssemblyOrModuleSymbol(reference);

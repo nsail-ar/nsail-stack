@@ -24,3 +24,7 @@ NSG016 | NSail.Generation | Error | [Throttled] Identity names a property that i
 NSG017 | NSail.Generation | Error | A route segment mixes a token with literal text.
 NSG018 | NSail.Generation | Error | A route-bound member has no token in the route.
 NSG019 | NSail.Generation | Error | Two messages share a verb and a normalised route.
+NSG020 | NSail.Generation | Error | [Source] names an assembly the compilation does not reference.
+NSG021 | NSail.Generation | Error | A generated holder is nested, generic, not a partial class or in the global namespace.
+NSG022 | NSail.Generation | Error | A generated holder has no IServiceCollection parameter.
+NSG023 | NSail.Generation | Error | An [Http] message declares no path.

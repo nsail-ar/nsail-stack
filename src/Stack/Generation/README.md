@@ -103,6 +103,10 @@ not a silent skip.
 | `NSG017` | Error | An `[Http]` route segment mixes a token with literal text |
 | `NSG018` | Error | A route-bound member has no token in the route |
 | `NSG019` | Error | Two `[Http]` messages share a verb and a normalised route |
+| `NSG020` | Error | `[Source(Assembly = ...)]` names an assembly the compilation does not reference |
+| `NSG021` | Error | A `[Generated]` holder's class is nested, generic, not `partial` or in the global namespace |
+| `NSG022` | Error | A `[Generated]` holder has no `IServiceCollection` parameter |
+| `NSG023` | Error | An `[Http]` message declares no path |
 | `NSG004`-`NSG013` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
 
 ### TypeScript client

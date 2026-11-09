@@ -19,12 +19,9 @@ public static class HttpModelFactory
     const string IMessageInterfaceName = "IMessage";
     const string IHandlerInterfaceName = "IHandler";
     const string JsonIgnoreAttributeName = "System.Text.Json.Serialization.JsonIgnoreAttribute";
-    const string ServiceCollectionType = "IServiceCollection";
 
     public static HttpModel Create(IMethodSymbol methodSymbol, Compilation compilation, string paramNamespace)
     {
-        string serviceEndpoint = GetServiceEndpoint(methodSymbol, compilation);
-
         var model = new HttpModel
         {
             Namespace = methodSymbol.ContainingType.ContainingNamespace.ToDisplayString(),
@@ -32,11 +29,17 @@ public static class HttpModelFactory
             MethodName = methodSymbol.Name,
             ClassDeclaration = methodSymbol.ContainingType.GetDeclaration(),
             MethodDeclaration = methodSymbol.GetDeclaration(),
-            ServicesParameterName = methodSymbol.FindParameterNameByType(ServiceCollectionType),
-            ServiceEndpoint = serviceEndpoint
         };
 
-        model.Messages = CreateMessages(methodSymbol, serviceEndpoint, compilation, paramNamespace, model.Diagnostics);
+        model.ReadHolder(methodSymbol);
+
+        if (model.Unusable)
+            return model;
+
+        var serviceEndpoint = GetServiceEndpoint(methodSymbol, compilation);
+
+        model.ServiceEndpoint = serviceEndpoint;
+        model.Messages = CreateMessages(methodSymbol, serviceEndpoint, compilation, paramNamespace, model.Diagnostics, model.HolderDiagnostics);
 
         return model;
     }
@@ -46,21 +49,31 @@ public static class HttpModelFactory
         string? serviceEndpoint,
         Compilation compilation,
         string paramNamespace,
-        List<Diagnostic> diagnostics)
+        List<Diagnostic> diagnostics,
+        List<Diagnostic>? scopeDiagnostics = null)
     {
         var messages = new List<MessageModel>();
         var processedMessageTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
         var claimedRoutes = new Dictionary<string, INamedTypeSymbol>();
 
-        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol))
+        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol, scopeDiagnostics ?? diagnostics))
         {
             foreach (var (messageTypeSymbol, httpAttribute) in GetHttpMessages(typeSymbol))
             {
                 if (!processedMessageTypes.Add(messageTypeSymbol))
                     continue;
 
+                if (httpAttribute.ConstructorArguments.Length < 2
+                    || httpAttribute.ConstructorArguments[1].Value is not string httpPath)
+                {
+                    diagnostics.Add(Diagnostic.Create(
+                        GeneratorDiagnostics.HttpWithoutPath,
+                        GetAttributeLocation(httpAttribute, messageTypeSymbol),
+                        messageTypeSymbol.ToDisplayString()));
+                    continue;
+                }
+
                 var httpMethod = httpAttribute.GetConstructorValue<HttpMethodName>(0);
-                var httpPath = httpAttribute.GetConstructorValue<string>(1);
 
                 CheckThrottledIdentity(messageTypeSymbol, httpMethod, httpPath, diagnostics);
 
@@ -173,10 +186,11 @@ public static class HttpModelFactory
                 case BindingSource.Form:
                     if (!bindingTable.TryGetValue(source, out BindingModel binding))
                     {
+                        var owner = new TypeModel(typeSymbol);
                         var dto = new ParameterClassModel
                         {
-                            Namespace = $"{typeSymbol.ContainingNamespace.ToDisplayString()}.{paramNamespace}",
-                            ClassName = typeSymbol.Name + source
+                            Namespace = owner.Namespace.Length == 0 ? paramNamespace : $"{owner.Namespace}.{paramNamespace}",
+                            ClassName = owner.FlatName + source
                         };
 
                         binding = new BindingModel

@@ -305,6 +305,10 @@ same thing.
 | `NSG017` | Error | An `[Http]` route segment mixes a token with literal text. |
 | `NSG018` | Error | A route-bound member (`[AsRoute]`) has no token in the route — it would be required from a value the template never carries. |
 | `NSG019` | Error | Two `[Http]` messages in one scope share a verb and a path once token names are ignored (a constraint still tells routes apart) — the endpoints would meet `AmbiguousMatchException` at request time. |
+| `NSG020` | Error | `[Source(Assembly = ...)]` names an assembly the compilation does not reference — the holder would register nothing and look finished. |
+| `NSG021` | Error | A holder's class is nested, generic, not `partial` or in the global namespace — the generated half re-declares the class and cannot match it. |
+| `NSG022` | Error | A holder has no `IServiceCollection` parameter — the registrations have no receiver; the generated body uses the parameter's own name. |
+| `NSG023` | Error | An `[Http]` message declares no path — it has no route to map or call. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only
