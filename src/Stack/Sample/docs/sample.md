@@ -33,11 +33,15 @@ It lives under `src/Stack` but is written the way a kit or an app is: it is the 
 stranger copies first, so it keeps the consumer-side rules: no vendor types, no doc comments, every
 endpoint behind the gate. No test in this repository sweeps it yet; a review does.
 
-No Iam is composed: there is no sign-in. The gate is on all the same — the messages are open
-through one anonymous built-in policy (`Policies.cs`), registered on both sides: the
-server enforces it, the client draws by it. Pages keep their `[Authorize<TMessage>]`; what
+**Not for production.** No Iam is composed: there is no sign-in, so anyone who can reach the port
+can read, change and delete the contacts, which are `[Personal]` data. Run it on localhost only;
+never put it on a network the internet can see. The gate is on all the same — the messages are
+open through one anonymous built-in policy (`Policies.cs`) that names each of them, never
+`Sample.*`, registered on both sides: the server enforces it, the client draws by it. A new
+message is refused until that list names it. Pages keep their `[Authorize<TMessage>]`; what
 changes is the default page policy, which asks for anyone instead of a signed-in user
-(`Screens.cs`). No tenancy either: the install is one database.
+(`Screens.cs`). A collection on a message declares its maximum count (`UpdateContact.Addresses`).
+No tenancy either: the install is one database.
 
 ## Layout
 
@@ -59,6 +63,12 @@ npm install                                    # once, at the repository root
 dotnet build src/Stack/Sample/NSail.Sample.Web
 dotnet run --project src/Stack/Sample/NSail.Sample.Web --launch-profile http
 ```
+
+The host connects as `sample_app`, a role without superuser rights. On start,
+`SampleRole.Prepare` migrates the database and creates or refreshes that role through
+`Sample:AdminConnectionString` (the `postgres` user), then grants it reads and writes on the
+tables, nothing more. Both strings leave the password out: it arrives in `PGPASSWORD`, and
+`sample_app` takes that same value.
 
 Blazor answers at the host's root, React under `/react`. The build writes `sdk.ts`,
 typechecks the client and builds it into `react/` beside the host project (gitignored). Without
