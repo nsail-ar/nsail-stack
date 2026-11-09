@@ -41,11 +41,11 @@ static class Books
         }
     }
 
-    public static async Task<byte[]> Write(IExportWriter writer, ExportBook book, CultureInfo culture)
+    public static async Task<byte[]> Write(IExportWriter writer, ExportBook book, CultureInfo culture, TimeZoneInfo? zone = null)
     {
         using var stream = new MemoryStream();
 
-        await writer.WriteAsync(book, stream, culture, CancellationToken.None);
+        await writer.WriteAsync(book, stream, culture, zone ?? TimeZoneInfo.Utc, CancellationToken.None);
 
         return stream.ToArray();
     }

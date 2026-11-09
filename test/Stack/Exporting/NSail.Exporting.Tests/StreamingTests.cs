@@ -103,7 +103,7 @@ public class StreamingTests
 
         using var stream = new MemoryStream();
 
-        await Writer(kind).WriteAsync(Book(source.Read()), stream, Books.Argentina, CancellationToken.None);
+        await Writer(kind).WriteAsync(Book(source.Read()), stream, Books.Argentina, TimeZoneInfo.Utc, CancellationToken.None);
 
         Assert.Equal(1_000, source.Produced);
         Assert.True(stream.Length > 0);
@@ -123,7 +123,7 @@ public class StreamingTests
         await cancellation.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => Writer(kind).WriteAsync(Book(source.Read()), stream, Books.Argentina, cancellation.Token));
+            () => Writer(kind).WriteAsync(Book(source.Read()), stream, Books.Argentina, TimeZoneInfo.Utc, cancellation.Token));
 
         Assert.True(source.Produced <= 1, $"{source.Produced} rows were asked for after the reader gave up");
     }
@@ -176,7 +176,7 @@ public class StreamingTests
     {
         await using var sink = Stream.Null;
 
-        await writer.WriteAsync(Book(source.Read()), sink, Books.Argentina, CancellationToken.None);
+        await writer.WriteAsync(Book(source.Read()), sink, Books.Argentina, TimeZoneInfo.Utc, CancellationToken.None);
     }
 
     static IExportWriter Writer(ExportKind kind)

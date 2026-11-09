@@ -18,13 +18,29 @@ public sealed class StoreMapContext : MapContext
 {
     readonly DbContext _db;
     readonly List<object> _written = [];
+    readonly Dictionary<Type, CreatedRows> _created;
+
+    internal sealed class CreatedRows
+    {
+        public Dictionary<object, object> ByKey { get; } = [];
+
+        public List<object> Unkeyed { get; } = [];
+    }
 
     public StoreMapContext(DbContext db, MapParameters? parameters = null)
+        : this(db, parameters, null)
+    {
+    }
+
+    // The index outlives one context when a batch shares it: the sweep of the tracker is paid
+    // once per batch, not once per root.
+    internal StoreMapContext(DbContext db, MapParameters? parameters, Dictionary<Type, CreatedRows>? created)
         : base(parameters)
     {
         ArgumentNullException.ThrowIfNull(db);
 
         _db = db;
+        _created = created ?? [];
     }
 
     public override bool Stores
@@ -32,11 +48,25 @@ public sealed class StoreMapContext : MapContext
         get { return true; }
     }
 
+    public override async Task<TEntity?> Load<TEntity>(EntityType<TEntity> type, object key, IReadOnlyList<string> includes, CancellationToken cancellationToken)
+        where TEntity : class
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentNullException.ThrowIfNull(key);
+
+        // A row this unit of work created is not in the database yet, and all of it is in
+        // memory: an import that names it twice merges onto it instead of adding it again.
+        if (Created<TEntity>(type, key) is { } created)
+        {
+            return created;
+        }
+
+        return await Query(type.Match(key), includes, cancellationToken).ConfigureAwait(false);
+    }
+
     public override async Task<TEntity?> Load<TEntity>(Expression<Func<TEntity, bool>> match, IReadOnlyList<string> includes, CancellationToken cancellationToken)
         where TEntity : class
     {
-        // A row this unit of work created is not in the database yet, and all of it is in
-        // memory: an import that names it twice merges onto it instead of adding it again.
         var created = _db.ChangeTracker.Entries<TEntity>()
             .Where(entry => entry.State == EntityState.Added)
             .Select(entry => entry.Entity)
@@ -47,6 +77,48 @@ public sealed class StoreMapContext : MapContext
             return created;
         }
 
+        return await Query(match, includes, cancellationToken).ConfigureAwait(false);
+    }
+
+    // The Added rows of a type, by key, built from the tracker once per batch and kept current by Created.
+    // A row whose key the store had not given yet waits in Unkeyed until a Load asks.
+    TEntity? Created<TEntity>(EntityType<TEntity> type, object key)
+        where TEntity : class
+    {
+        if (!_created.TryGetValue(typeof(TEntity), out var state))
+        {
+            state = new CreatedRows();
+            _created[typeof(TEntity)] = state;
+
+            foreach (var entry in _db.ChangeTracker.Entries<TEntity>().Where(e => e.State == EntityState.Added))
+            {
+                state.Unkeyed.Add(entry.Entity);
+            }
+        }
+
+        if (state.Unkeyed.Count > 0)
+        {
+            state.Unkeyed.RemoveAll(row =>
+            {
+                if (type.TargetKey((TEntity)row) is not { } rowKey)
+                {
+                    return false;
+                }
+
+                state.ByKey[rowKey] = row;
+
+                return true;
+            });
+        }
+
+        return state.ByKey.TryGetValue(key, out var found) && _db.Entry(found).State == EntityState.Added
+            ? (TEntity)found
+            : null;
+    }
+
+    async Task<TEntity?> Query<TEntity>(Expression<Func<TEntity, bool>> match, IReadOnlyList<string> includes, CancellationToken cancellationToken)
+        where TEntity : class
+    {
         IQueryable<TEntity> query = _db.Set<TEntity>();
 
         foreach (var path in includes)
@@ -107,6 +179,23 @@ public sealed class StoreMapContext : MapContext
         if (_db.Entry(entity).State == EntityState.Detached)
         {
             _db.Add(entity);
+        }
+
+        foreach (var (type, state) in _created)
+        {
+            if (!type.IsInstanceOfType(entity))
+            {
+                continue;
+            }
+
+            if (key is null)
+            {
+                state.Unkeyed.Add(entity);
+            }
+            else
+            {
+                state.ByKey[key] = entity;
+            }
         }
 
         _written.Add(entity);

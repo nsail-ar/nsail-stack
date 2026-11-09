@@ -76,7 +76,7 @@ public static partial void AddTasksPushPublishers(this IServiceCollection servic
 
 ### What an `[Http]` message derives
 
-- Members bind by `[Http]`'s route tokens, then by verb, then by `[AsRoute]`/`[AsQuery]`/`[AsHeader]`.
+- Public instance properties with a public setter or `init` and no `[JsonIgnore]` bind, by `[Http]`'s route tokens, then by verb, then by `[AsRoute]`/`[AsQuery]`/`[AsHeader]`.
   A route token with no route-bound member is `NSG001`. A token is a whole segment and may carry a
   constraint, `?` or `*` (`{id:guid}`, `{id?}`, `{*rest}`); text beside it in a segment is `NSG017`.
 - A non-`required` query, header or body member is optional: an omitted one is never assigned, so the
