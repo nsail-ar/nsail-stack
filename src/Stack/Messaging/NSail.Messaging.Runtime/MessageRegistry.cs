@@ -21,7 +21,19 @@ public class MessageRegistry
         ArgumentNullException.ThrowIfNull(messageTypes);
 
         _metadata = metadata;
-        _types = messageTypes.ToDictionary(KeyFor);
+        _types = new Dictionary<string, Type>();
+
+        foreach (var type in messageTypes)
+        {
+            var key = KeyFor(type);
+
+            if (!_types.TryAdd(key, type))
+            {
+                throw new InvalidOperationException(
+                    $"Messages {_types[key].FullName} and {type.FullName} render the same key '{key}'; give one a distinct metadata Object.");
+            }
+        }
+
         _keys = _types.Keys.Order(StringComparer.Ordinal).ToList();
     }
 

@@ -277,7 +277,7 @@ public class DeclarationShapeTests
                     public static partial void AddAcmeServices(this IServiceCollection collection);
                 }
             }
-            """.Replace("using", ""), "using NSail.Injection.Annotations;\n");
+            """, "using NSail.Injection.Annotations;\n");
 
         Assert.Empty(run.Errors);
 
