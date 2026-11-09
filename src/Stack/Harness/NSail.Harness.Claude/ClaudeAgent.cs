@@ -68,11 +68,11 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         if (run.Marketplace is not null && options.Plugins.Count > 0)
         {
             var added = await Shell.Run(command, ["plugin", "marketplace", "add", run.Marketplace], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
-            if (Failure(added) is { } addFailure) return Unequipped($"marketplace {run.Marketplace}", addFailure);
+            if (Failure(added) is { } addFailure) throw await Unequipped(log, $"marketplace {run.Marketplace}", addFailure);
             foreach (var plugin in options.Plugins)
             {
                 var installed = await Shell.Run(command, ["plugin", "install", plugin], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
-                if (Failure(installed) is { } failure) return Unequipped($"plugin {plugin}", failure);
+                if (Failure(installed) is { } failure) throw await Unequipped(log, $"plugin {plugin}", failure);
             }
         }
 
@@ -97,10 +97,13 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         return r.TimedOut ? "timed out" : r.ExitCode != 0 ? $"exit {r.ExitCode}" : null;
     }
 
-    // A seat without its doctrine must not start: the job fails here, naming what did not install.
-    static AgentResult Unequipped(string what, string why)
+    // A seat without its doctrine must not start. It is the machine's break, not the story's: the
+    // harness says it on the story as a broken job, naming what did not install.
+    static async Task<InvalidOperationException> Unequipped(StreamWriter log, string what, string why)
     {
-        return new AgentResult(-1, false, null, false, $"{what} did not install ({why}); the agent was not started");
+        var said = $"{what} did not install ({why}); the agent was not started";
+        await log.WriteLineAsync(said);
+        return new InvalidOperationException(said);
     }
 
     // A seat's access in Claude Code's tools. A reader writes only through Write (its out files) and

@@ -4,6 +4,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using NSail.Harness.Agents;
 using NSail.Harness.Api;
 using NSail.Harness.Lanes;
@@ -14,7 +15,7 @@ namespace NSail.Harness.Hosting;
 // The harness at a glance, refreshed every few seconds: where it stands, what the crew did over a
 // range (JobStats, drawn here as plain SVG: no script, no library), what runs, what the last pass
 // planned, what ended. Times are the machine's.
-static class StatusPage
+static partial class StatusPage
 {
     // One colour per role, in the order JobStats.Roles names them.
     static readonly string[] Colors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#6250d6", "#0e9aa7"];
@@ -106,6 +107,9 @@ static class StatusPage
         };
     }
 
+    [GeneratedRegex(@"(?:\b([\w.-]+) PR )?#(\d+)")]
+    private static partial Regex Numbered();
+
     // A story's and a PR's number linked to the repository, where it is GitHub's (it sends an issue's
     // address on to the PR's).
     internal static string Linked(HarnessOptions o, string text)
@@ -116,7 +120,7 @@ static class StatusPage
         // default repository's.
         var html = new StringBuilder();
         var last = 0;
-        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(text, @"(?:\b([\w.-]+) PR )?#(\d+)"))
+        foreach (Match m in Numbered().Matches(text))
         {
             var named = m.Groups[1].Success ? o.Repositories.FirstOrDefault(r => r.Provider == "GitHub" && r.Name.EndsWith($"/{m.Groups[1].Value}", StringComparison.Ordinal)) : null;
             var repo = named?.Name ?? o.DefaultRepository.Name;

@@ -34,38 +34,34 @@ public class ClaudePluginTests : IDisposable
         return new AgentRun("go", dir, "m", AgentAccess.Builder, 1, TimeSpan.FromMinutes(1), new Dictionary<string, string>(), Path.Combine(_root, "log.txt"), Marketplace: "/doctrine");
     }
 
-    [Fact]
+    [FactOn("linux")]
     public async Task AFailedPluginInstallStopsTheJobBeforeTheAgentAndNamesThePlugin()
     {
-        if (OperatingSystem.IsWindows()) return;
         var agent = Agent("nsail-crew", out var calls);
 
-        var result = await agent.Run(Run(), CancellationToken.None);
+        var broke = await Assert.ThrowsAsync<InvalidOperationException>(() => agent.Run(Run(), CancellationToken.None));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("nsail-crew@market", result.Result);
+        Assert.Contains("nsail-crew@market", broke.Message);
+        Assert.Contains("nsail-crew@market did not install", File.ReadAllText(Path.Combine(_root, "log.txt")));
         var lines = File.ReadAllLines(calls);
         Assert.DoesNotContain(lines, l => l.StartsWith("-p"));
         Assert.Equal(3, lines.Length);
     }
 
-    [Fact]
+    [FactOn("linux")]
     public async Task AFailedMarketplaceAddStopsTheJobBeforeAnyInstall()
     {
-        if (OperatingSystem.IsWindows()) return;
         var agent = Agent("marketplace", out var calls);
 
-        var result = await agent.Run(Run(), CancellationToken.None);
+        var broke = await Assert.ThrowsAsync<InvalidOperationException>(() => agent.Run(Run(), CancellationToken.None));
 
-        Assert.NotEqual(0, result.ExitCode);
-        Assert.Contains("/doctrine", result.Result);
+        Assert.Contains("/doctrine", broke.Message);
         Assert.Single(File.ReadAllLines(calls));
     }
 
-    [Fact]
+    [FactOn("linux")]
     public async Task WhenEveryInstallSucceedsTheAgentStarts()
     {
-        if (OperatingSystem.IsWindows()) return;
         var agent = Agent("never-matches", out var calls);
 
         var result = await agent.Run(Run(), CancellationToken.None);
