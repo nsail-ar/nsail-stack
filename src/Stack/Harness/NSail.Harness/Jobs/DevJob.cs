@@ -95,7 +95,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
 
         // A voyage the screen refused left its work and its ending on this machine: once a hand lifts the
         // screen, that work goes up as its builder left it, while the branch is still where it was built from.
-        if ((await ScreenOf(ctx.Options, board, n)).Count == 0 && await Unkeep(work, branch, startedAt))
+        if ((await ScreenOf(ctx.Options, board, n)).Count == 0 && await Unkeep(work, branch, startedAt, await MergedOf(repo, n, ct)))
         {
             await File.AppendAllTextAsync(logPath, $"== {ctx.Names.Ref(n)} {title} — the screen lifted: the kept work is delivered, no seat runs{Environment.NewLine}", ct);
             var delivered = await Deliver(n, title, repo, work, branch, startedAt, claimedAt, new AgentResult(0, false, null, false, null), log, ct);
@@ -199,7 +199,8 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     }
 
     // Where a refused voyage's work waits: a ref and a folder in the machine's own git directory, never
-    // on the remote. The folder holds the head the voyage started from and the builder's ending.
+    // on the remote. The folder holds the head the voyage started from, the story's PRs merged by then
+    // and the builder's ending.
     static async Task<(string Ref, string Dir)> KeptOf(string work, string branch)
     {
         var common = (await Shell.Git(work, "rev-parse", "--git-common-dir")).Trim();
@@ -207,25 +208,26 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         return ($"refs/harness-kept/{branch}", Path.Combine(root, "harness-kept", branch));
     }
 
-    static async Task Keep(string work, string branch, string? startedAt)
+    static async Task Keep(string work, string branch, string? startedAt, string merged)
     {
         var (name, dir) = await KeptOf(work, branch);
         if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
         Directory.CreateDirectory(dir);
         await File.WriteAllTextAsync(Path.Combine(dir, "base"), startedAt ?? "");
+        await File.WriteAllTextAsync(Path.Combine(dir, "merged"), merged);
         Copy(Path.Combine(work, Voyage, "out"), Path.Combine(dir, "out"));
         await Shell.Git(work, "update-ref", name, "HEAD");
     }
 
     // The kept work back on the branch with its ending in .voyage/out, when the remote branch is still at
-    // the head it was built from (still absent for a new one). Kept work that no longer applies is dropped.
-    static async Task<bool> Unkeep(string work, string branch, string? startedAt)
+    // the head it was built from (still absent for a new one) and no PR of the story merged since: a branch
+    // absent again after a merge is not the one the work was built for. Kept work that no longer applies is dropped.
+    static async Task<bool> Unkeep(string work, string branch, string? startedAt, string merged)
     {
         var (name, dir) = await KeptOf(work, branch);
         var head = await Shell.Run("git", ["rev-parse", "-q", "--verify", $"{name}^{{commit}}"], work);
         if (head.ExitCode != 0) return false;
-        var basePath = Path.Combine(dir, "base");
-        var applies = File.Exists(basePath) && (await File.ReadAllTextAsync(basePath)).Trim() == (startedAt ?? "");
+        var applies = await Kept(dir, "base") == (startedAt ?? "") && await Kept(dir, "merged") == merged;
         if (applies)
         {
             await Shell.Git(work, "checkout", "-q", "--ignore-other-worktrees", "-B", branch, head.Output.Trim());
@@ -234,6 +236,17 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         await Shell.Run("git", ["update-ref", "-d", name], work);
         if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
         return applies;
+    }
+
+    static async Task<string?> Kept(string dir, string file)
+    {
+        var path = Path.Combine(dir, file);
+        return File.Exists(path) ? (await File.ReadAllTextAsync(path)).Trim() : null;
+    }
+
+    static async Task<string> MergedOf(IRepository repo, int n, CancellationToken ct)
+    {
+        return string.Join(",", (await repo.PrsOf(n, "merged", ct)).Select(p => p.Number).Order());
     }
 
     static void Copy(string from, string to)
@@ -321,7 +334,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             {
                 try
                 {
-                    await Keep(dir, branch, startedAt);
+                    await Keep(dir, branch, startedAt, await MergedOf(repo, n, ct));
                 }
                 catch (Exception e)
                 {

@@ -53,8 +53,8 @@ the files it leaves.
     `harness-kept` in its git directory), never on the remote. The refusal is no dead voyage. Adding `allow-protected` releases
     it: the planner lifts the `ruling` the screen set (one from any other question stays), and the next voyage on that machine
     pushes the kept work and opens or updates the PR with its builder's words, with no seat, while the story's remote branch is
-    still at the head the work was built from (still absent for a new one); otherwise it builds as any voyage. An analyst whose
-    story's change must touch a protected path lists it in its `protected.txt` (its prompt's `__PROTECTED__` slot names the
+    still at the head the work was built from (still absent for a new one) and no PR of the story merged since; otherwise it
+    builds as any voyage. An analyst whose story's change must touch a protected path lists it in its `protected.txt` (its prompt's `__PROTECTED__` slot names the
     list): a Ready verdict then waits in Ready under the same hold before any voyage. Extend the list when a workflow runs
     scripts taken from the PR checkout; configuration appends to the default, it does not replace it.
   - Commits a cancelled job or a refused push would lose go to `rescue/<key>-<n>` (a numeric suffix if it exists), under the same

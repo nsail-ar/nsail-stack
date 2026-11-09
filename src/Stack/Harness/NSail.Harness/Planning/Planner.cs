@@ -136,5 +136,4 @@ public static class Planner
         notes.Add($"#{i.Number} wears `{Labels.AllowProtected}` — the screen's `{Labels.Ruling}` lifted, back in the queue");
         return [Labels.Ruling, Labels.Screened];
     }
-
 }

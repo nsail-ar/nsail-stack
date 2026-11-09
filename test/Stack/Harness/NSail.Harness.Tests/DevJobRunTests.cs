@@ -46,9 +46,16 @@ public class DevJobRunTests : IDisposable
 
         public List<PrRef> Open { get; } = [];
 
+        public List<PrRef> Merged { get; } = [];
+
         public Task<IReadOnlyList<PrRef>> PrsOf(int story, string state, CancellationToken ct = default)
         {
-            return Task.FromResult<IReadOnlyList<PrRef>>(state == "open" ? [.. Open] : []);
+            return Task.FromResult<IReadOnlyList<PrRef>>(state switch
+            {
+                "open" => [.. Open],
+                "merged" => [.. Merged],
+                _ => [],
+            });
         }
 
         public Task<IReadOnlyList<DateTimeOffset>> PushTimes(int story, CancellationToken ct = default)
@@ -63,8 +70,8 @@ public class DevJobRunTests : IDisposable
 
         public Task<PullRequest> Pr(int number, CancellationToken ct = default)
         {
-            var pr = Open.Single(p => p.Number == number);
-            return Task.FromResult(new PullRequest(pr.Number, pr.Title, true, pr.Head, "", false));
+            var pr = Open.Concat(Merged).Single(p => p.Number == number);
+            return Task.FromResult(new PullRequest(pr.Number, pr.Title, Open.Contains(pr), pr.Head, "", false));
         }
 
         public Task<IReadOnlyList<PrNote>> Thread(int pr, CancellationToken ct = default)
@@ -482,6 +489,23 @@ public class DevJobRunTests : IDisposable
         await Run(new Seat(Workflow, null, "fix(stack): a workflow edit\n\nWords."), board, new Lines());
         Allow(board);
         await Shell.Git(Remote, "update-ref", $"refs/heads/{Story}", "refs/heads/main");
+        var seat = new Seat("work.txt", null, "fix(stack): rebuilt\n\nNew words.");
+
+        await Run(seat, board, new Lines());
+
+        Assert.Equal(1, seat.Runs);
+        Assert.Equal(seat.Committed, await RemoteHead(Story));
+        Assert.Contains("New words.", Assert.Single(Repo.Opened).Body);
+    }
+
+    [Fact]
+    public async Task KeptWorkForANewBranchIsRebuiltOnceTheStoryMergedSince()
+    {
+        await Seed();
+        var board = Board();
+        await Run(new Seat(Workflow, null, "fix(stack): a workflow edit\n\nStale words."), board, new Lines());
+        Allow(board);
+        Repo.Merged.Add(new PrRef(8, "a story", Story, DateTimeOffset.UtcNow, "acme/app"));
         var seat = new Seat("work.txt", null, "fix(stack): rebuilt\n\nNew words.");
 
         await Run(seat, board, new Lines());

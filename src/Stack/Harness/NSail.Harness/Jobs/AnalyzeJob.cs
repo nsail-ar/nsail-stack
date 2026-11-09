@@ -10,13 +10,13 @@ using NSail.Harness.Planning;
 namespace NSail.Harness.Jobs;
 
 // The analyst shapes one story in Analyze into what a cold builder needs, or reads why a
-// `stalled` one died. Three ways out: no question fired a trigger -> Ready; one did -> stays in
-// Analyze wearing `ruling` with only that question on the thread; the story is already built (its
-// PR merged and main meets every criterion) -> Merged, so no empty voyage is sent. A Ready story
-// whose change must touch a protected path (its protected.txt) the screen holds waits there wearing
-// `ruling` and `screened` until a hand adds `allow-protected`. A death with
-// no verdict is sent again on the next pass; the second in a row (or the first of a story that
-// was already stalled) stamps `stalled` and `ruling`, and it is not taken again.
+// `stalled` one died. Four ways out: no question fired a trigger -> Ready; one did -> stays in
+// Analyze wearing `ruling` with only that question on the thread; a Ready story whose change must
+// touch a path the screen holds (its protected.txt) -> Ready wearing `ruling` and `screened` until a
+// hand adds `allow-protected`; the story is already built (its PR merged and main meets every
+// criterion) -> Merged, so no empty voyage is sent. A death with no verdict is sent again on the
+// next pass; the second in a row (or the first of a story that was already stalled) stamps
+// `stalled` and `ruling`, and it is not taken again.
 public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history) : IJob
 {
     const string Out = ".analysis";
