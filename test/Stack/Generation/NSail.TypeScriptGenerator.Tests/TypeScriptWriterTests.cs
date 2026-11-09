@@ -143,7 +143,7 @@ public class TypeScriptWriterTests
         var text = Orders();
 
         Assert.Contains("pagesize: { kind: \"integer\"", text);
-        Assert.DoesNotContain("page-size", text.Replace("  \"page-size", ""));
+        Assert.DoesNotContain("page-size", text);
     }
 
     [Fact]
