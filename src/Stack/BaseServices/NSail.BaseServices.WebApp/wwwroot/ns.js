@@ -1220,9 +1220,8 @@
     // Only a MudAutocomplete's own input wires OpenOnFocus and reacts to THIS focus exactly like
     // a click, opening its popover over the page (Vigía, nsail#1815 round 2).
     // stopImmediatePropagation on the listener above halts the WHOLE dispatch, capture through
-    // target, not just Blazor's own listener -- arming it for a plain field would cost that field
-    // its own select-on-focus (NsFieldBase) for a popover it never opens (Vigía,
-    // round 4). `.focus()` dispatches its events synchronously, so the flag set right before it
+    // target, not just Blazor's own listener -- arming it for a plain field would suppress
+    // `focus` handlers it has no reason to lose, for a popover it never opens. `.focus()` dispatches its events synchronously, so the flag set right before it
     // is read and cleared by the listener above before this call returns; nothing is left armed
     // for a focus that happens not to fire (the candidate was already the active element).
     //

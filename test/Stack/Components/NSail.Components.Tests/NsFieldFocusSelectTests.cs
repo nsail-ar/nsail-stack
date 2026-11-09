@@ -12,16 +12,13 @@ namespace NSail.Components.Tests;
 
 /// <summary>Story: "los campos se seleccionan al recibir foco" (Leonardo, 2026-08-07) — the
 /// mostrador feature: tab into Importe showing 0,00, type 500, it replaces, no manual clear.
-/// Wired once in NsFieldBase.SetInputAttributes (SelectOnFocus), as a plain "onfocus" HTML
-/// attribute (no @ prefix, so Blazor never mediates it — the browser runs it as inline JS the
-/// instant the input gets focus). Text, numeric and money opt in; a field usually edited in
+/// Wired once in NsFieldBase.SetInputAttributes (SelectOnFocus) as a "data-ns-select-on-focus"
+/// marker that ns.js acts on, so the markup carries no inline handler and a host whose CSP omits
+/// 'unsafe-inline' keeps the feature. Text, numeric and money opt in; a field usually edited in
 /// place (email, phone, a lookup's search box, a picker) does not.
 ///
-/// bUnit proves the ATTRIBUTE reaches the markup on every opted-in unmasked shape, and — just
-/// as load-bearing — that it does NOT reach a masked one (measured below: the vendor's own
-/// mask mode claims the input's onfocus for its own caret bookkeeping). What bUnit cannot
-/// answer is how a touch tap differs from a mouse click on an UNMASKED field; that needs a
-/// real device and is reasoned about in the commit, not measured here.</summary>
+/// bUnit proves the marker reaches the markup on every opted-in unmasked shape, and that it does
+/// NOT reach a masked one. The browser behaviour needs a real device.</summary>
 public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
 {
     public NsFieldFocusSelectTests()
@@ -53,16 +50,10 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
         Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 
-    /// <summary>MEASURED, not assumed: a masked field (a CUIT, a DNI, and by the same
-    /// mechanism NsDateField's own vendor mask) does NOT carry the attribute. The vendor's
-    /// masked mode renders its own Blazor-bound "blazor:onfocus" handler on the input — the
-    /// mask engine's own caret/selection bookkeeping — and does not merge UserAttributes'
-    /// plain "onfocus" in alongside it (dumped markup: no "onfocus" attribute at all once
-    /// Mask is set, confirmed against an unmasked render of the same field carrying it).
-    /// This is the answer the story asked to verify ("¿select-all + tipeo de dígito convive
-    /// con el Mask de Mud?"): it does not reach the input in the first place, so there is no
-    /// keystroke-level conflict to have — a masked field's focus behaviour is entirely the
-    /// vendor's own, unchanged by this story.</summary>
+    /// <summary>A masked field (a CUIT, a DNI, and by the same mechanism NsDateField's own vendor
+/// mask) carries no marker: NsTextField.SelectOnFocus is false while Mask is set, because the mask
+/// engine owns the caret and selection. Do not simplify that condition to true — the marker
+/// would survive the vendor's attribute splat and the masked field would start selecting.</summary>
     [Fact]
     public void AMaskedTextField_DoesNotCarryTheAttribute_TheVendorsOwnMaskOwnsFocus()
     {

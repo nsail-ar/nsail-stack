@@ -1461,6 +1461,7 @@ public sealed class SurfaceContext
             return;
         }
 
+        // Invoking the multicast delegate would hand back only the last subscriber's Task.
         var pending = new List<Task>();
 
         foreach (var subscriber in handler.GetInvocationList())

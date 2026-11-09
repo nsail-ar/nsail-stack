@@ -760,7 +760,7 @@ public sealed class SurfaceContextTests
     }
 
     [Fact]
-    public async Task Report_AwaitsEverySubscriber()
+    public async Task Report_awaits_every_subscriber_not_only_the_last()
     {
         var surface = Build();
         var first = new TaskCompletionSource();
@@ -769,11 +769,12 @@ public sealed class SurfaceContextTests
         surface.OnProblem += _ => second.Task;
 
         var report = surface.Report(new ProblemEventArgs(new NSail.Problems.Problem("c", "t", Array.Empty<NSail.Problems.Issue>())));
-        first.SetResult();
+        second.SetResult();
+        await Task.Yield();
 
         Assert.False(report.IsCompleted);
 
-        second.SetResult();
+        first.SetResult();
         await report;
     }
 }
