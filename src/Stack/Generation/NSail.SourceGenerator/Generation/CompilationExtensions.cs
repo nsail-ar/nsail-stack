@@ -12,7 +12,9 @@ public static class CompilationExtensions
     const string AssemblyParameterName = "Assembly";
     const string PatternParameterName = "Pattern";
 
-    public static IEnumerable<INamedTypeSymbol> FindTypesInScope(this Compilation compilation, ISymbol generatedSymbol)
+    /// <summary>The types a holder generates for. A <c>[Source]</c> that names no referenced
+    /// assembly is reported into <paramref name="diagnostics"/> and contributes nothing.</summary>
+    public static IEnumerable<INamedTypeSymbol> FindTypesInScope(this Compilation compilation, ISymbol generatedSymbol, List<Diagnostic> diagnostics)
     {
         if (compilation is null)
             throw new ArgumentNullException(nameof(compilation));
@@ -34,7 +36,7 @@ public static class CompilationExtensions
 
         foreach (var source in sources)
         {
-            foreach (var type in FindSourceScope(compilation, source))
+            foreach (var type in FindSourceScope(compilation, source, generatedSymbol, diagnostics))
             {
                 if (seen.Add(type))
                     yield return type;
@@ -55,14 +57,18 @@ public static class CompilationExtensions
         }
     }
 
-    static IEnumerable<INamedTypeSymbol> FindSourceScope(Compilation compilation, AttributeData sourceAttribute)
+    static IEnumerable<INamedTypeSymbol> FindSourceScope(Compilation compilation, AttributeData sourceAttribute, ISymbol generatedSymbol, List<Diagnostic> diagnostics)
     {
         var assemblyName = sourceAttribute.GetNamedArgument<string>(AssemblyParameterName);
         var pattern = sourceAttribute.GetNamedArgument<string>(PatternParameterName);
 
         var assembly = compilation.GetReferencedAssemblySymbol(assemblyName);
         if (assembly is null)
+        {
+            var location = generatedSymbol.Locations.FirstOrDefault(l => l.IsInSource) ?? Location.None;
+            diagnostics.Add(Diagnostic.Create(GeneratorDiagnostics.UnknownSourceAssembly, location, generatedSymbol.Name, assemblyName));
             yield break;
+        }
 
         foreach (var type in assembly.GlobalNamespace.GetAllTypes())
         {

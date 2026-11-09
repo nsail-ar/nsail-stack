@@ -92,5 +92,6 @@ guards its parts (data.md, *Mapping*) — and a zero version not held; a missing
 speaking: `NSG004` an organization axis mapped by name alone, `NSG005` a `[Primitive]` of another
 type, `NSG006` a member with no conversion, `NSG007` no parameterless constructor, `NSG008`
 a `[MapFrom]` that names a non-class, `NSG009` a projection that cannot carry a derived type,
-`NSG010` an open generic, `NSG013` an `Ignore` naming a member that does not exist. `NSG011` and
+`NSG010` an open generic, `NSG013` an `Ignore` naming a member that does not exist, `NSG024` a
+`[MapFrom]` reading a nullable into a non-nullable member that is not the key. `NSG011` and
 `NSG012` are warnings, not errors: the build is green and the data is gone.
