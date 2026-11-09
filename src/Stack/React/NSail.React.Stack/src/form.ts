@@ -16,7 +16,9 @@ export interface Form<T> {
   /** What the server last refused, kept until the field it is about changes. */
   readonly problem: Problem | null;
   set<K extends keyof T>(name: K, value: T[K]): void;
-  reset(value: T): void;
+  /** Replaces the value with another record or with what the server holds; `saved` is cleared unless
+   * `keepSaved` says the value is the re-read of what was just sent. */
+  reset(value: T, options?: { keepSaved?: boolean }): void;
   issues(name: keyof T): Issue[];
   submit(action: (value: T) => Promise<void>): Promise<boolean>;
 }
@@ -43,11 +45,15 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
     setProblem((current) => (current ? { ...current, issues: current.issues.filter((issue) => issue.source !== member) } : current));
   }, [message]);
 
-  const reset = useCallback((next: T) => {
+  const reset = useCallback((next: T, options?: { keepSaved?: boolean }) => {
     setValue(next);
     setTouched(new Set());
     setProblem(null);
-    setSaved(false);
+
+    if (!options?.keepSaved) {
+      setSaved(false);
+    }
+
     edits.current++;
   }, []);
 
@@ -65,6 +71,7 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
 
   const submit = useCallback(
     async (action: (value: T) => Promise<void>) => {
+      // A ref, not `submitting`: two calls in one tick both see the state unchanged.
       if (sending.current) {
         return false;
       }
@@ -79,6 +86,7 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
       }
 
       sending.current = true;
+      // Counted in the handler, not in a state updater, which StrictMode runs twice.
       const sentAt = edits.current;
       setSubmitting(true);
       setSaved(false);

@@ -163,4 +163,17 @@ describe("useForm.submit", () => {
 
     expect(form.current.saved).toBe(false);
   });
+
+  it("keeps saved when the reset is the re-read of what was sent", async () => {
+    const form = hold();
+
+    await act(async () => {
+      await form.current.submit(async () => {});
+    });
+
+    act(() => form.current.reset({ ...initial, quantity: 2 }, { keepSaved: true }));
+
+    expect(form.current.saved).toBe(true);
+    expect(form.current.value.quantity).toBe(2);
+  });
 });
