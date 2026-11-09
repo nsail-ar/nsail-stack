@@ -222,6 +222,12 @@ public static class Setup
         // pipeline is the one that shipped before the seam existed.
         if (app.ResolvesTenants())
         {
+            if (!app.Environment.IsDevelopment()
+                && string.IsNullOrWhiteSpace(app.Services.GetRequiredService<TenancyOptions>().ProxySecret))
+            {
+                logger.LogWarning("Tenancy:ProxySecret is not set: X-NSail-Tenant is believed from whoever sends it, so the listener must be bound to the proxy only.");
+            }
+
             app.UseMiddleware<TenancyMiddleware>();
 
             // Immediately behind it, because a tenant the install has suspended is as unreachable

@@ -3,6 +3,7 @@
 
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace NSail.TypeScriptGenerator;
 
@@ -10,7 +11,7 @@ namespace NSail.TypeScriptGenerator;
 // TypeScript keeps in separate spaces: the interface is what a caller writes, the descriptor is
 // what the runtime reads (route, binding, rules, keys), so a send reads like the C# one —
 // mediator.send(CreateContact, { ... }).
-static class TypeScriptWriter
+static partial class TypeScriptWriter
 {
     public static string Write(SdkModel model)
     {
@@ -46,9 +47,27 @@ static class TypeScriptWriter
         var values = string.Join(", ", shape.Values.Select(Quote));
 
         text.AppendLine();
-        text.AppendLine($"export type {shape.Name} = {string.Join(" | ", shape.Values.Select(Quote))};");
+        text.AppendLine($"export type {shape.Name} = {EnumType(shape)};");
         text.AppendLine($"export const {shape.Name} = defineEnum<{shape.Name}>({Quote(shape.Key)}, [{values}]);");
     }
+
+    static string EnumType(EnumShape shape)
+    {
+        if (shape.Flags)
+        {
+            return "string";
+        }
+
+        return shape.Values.Count == 0 ? "never" : string.Join(" | ", shape.Values.Select(Quote));
+    }
+
+    static string Member(string name)
+    {
+        return IsIdentifier().IsMatch(name) ? name : Quote(name);
+    }
+
+    [GeneratedRegex("^[A-Za-z_$][A-Za-z0-9_$]*$")]
+    private static partial Regex IsIdentifier();
 
     static void WriteModel(StringBuilder text, ModelShape shape)
     {
@@ -59,7 +78,7 @@ static class TypeScriptWriter
 
         foreach (var field in shape.Fields)
         {
-            text.AppendLine($"  {field.Name}: {field.Type.Full};");
+            text.AppendLine($"  {Member(field.Name)}: {field.Type.Full};");
         }
 
         text.AppendLine("}");
@@ -73,7 +92,7 @@ static class TypeScriptWriter
 
         foreach (var field in shape.Fields)
         {
-            text.AppendLine($"  {field.Name}: {Descriptor(field)},");
+            text.AppendLine($"  {Member(field.Name)}: {Descriptor(field)},");
         }
 
         text.AppendLine("});");
@@ -86,7 +105,7 @@ static class TypeScriptWriter
 
         foreach (var field in shape.Fields)
         {
-            text.AppendLine($"  {field.Name}{(field.Optional ? "?" : string.Empty)}: {field.Type.Full};");
+            text.AppendLine($"  {Member(field.Name)}{(field.Optional ? "?" : string.Empty)}: {field.Type.Full};");
         }
 
         text.AppendLine("}");
@@ -100,7 +119,7 @@ static class TypeScriptWriter
 
         foreach (var field in shape.Fields)
         {
-            text.AppendLine($"    {field.Name}: {Descriptor(field)},");
+            text.AppendLine($"    {Member(field.Name)}: {Descriptor(field)},");
         }
 
         text.AppendLine("  },");
