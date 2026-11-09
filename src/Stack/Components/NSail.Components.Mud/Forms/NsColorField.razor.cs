@@ -25,6 +25,11 @@ public partial class NsColorField
             return Task.CompletedTask;
         }
 
+        if (!string.IsNullOrWhiteSpace(text) && !NsColorText.IsColor(text))
+        {
+            return Task.CompletedTask;
+        }
+
         return SetValue(text);
     }
 }

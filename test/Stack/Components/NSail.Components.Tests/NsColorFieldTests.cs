@@ -17,9 +17,7 @@ namespace NSail.Components.Tests;
 /// hex matching the plain 6-digit strings every caller already stores (BrandingColors,
 /// CreateConsultingRoomPage) — an alpha-suffixed round trip would otherwise rewrite the model
 /// the instant the field first renders (caught by FieldArrivalProbeTests' dirty-on-arrival
-/// case). The vendor refuses unparseable text itself, below TextChanged: measured directly
-/// (SetInputStringAsync never invokes TextChanged for text MudColor.TryParse rejects), not
-/// assumed — so no guard is layered on top of it here.</summary>
+/// case). Text that is not a color is refused before it is stored (NsColorText).</summary>
 public sealed class NsColorFieldTests : BunitContext, IAsyncLifetime
 {
     Task IAsyncLifetime.InitializeAsync()
@@ -70,6 +68,22 @@ public sealed class NsColorFieldTests : BunitContext, IAsyncLifetime
             .Add(p => p.ValueChanged, EventCallback.Factory.Create<string?>(this, v => changes.Add(v))));
 
         await cut.InvokeAsync(() => cut.Find("input").Change("not a color"));
+
+        Assert.Empty(changes);
+        Assert.Equal("#1976d2", cut.Instance.Value);
+    }
+
+    [Fact]
+    public async Task TypingAStyleInjection_StoresNothing()
+    {
+        Compose();
+
+        var changes = new List<string?>();
+        var cut = Render<NsColorField>(ps => ps
+            .Add(p => p.Value, "#1976d2")
+            .Add(p => p.ValueChanged, EventCallback.Factory.Create<string?>(this, v => changes.Add(v))));
+
+        await cut.InvokeAsync(() => cut.Find("input").Change("red;background:url(//x)"));
 
         Assert.Empty(changes);
         Assert.Equal("#1976d2", cut.Instance.Value);

@@ -202,7 +202,8 @@
             style = $"{style}; --ns-time-lane: {Lane.Index}; --ns-time-lanes: {Lane.Count}";
         }
 
-        if (Color is null)
+        var color = NsColorText.Safe(Color);
+        if (color is null)
         {
             return style;
         }
@@ -214,11 +215,11 @@
         // enough of the hue to read as solid by itself, whatever the wash under it does.
         if (Background)
         {
-            return $"{style}; border-color: color-mix(in srgb, {Color} 55%, transparent); background-color: color-mix(in srgb, {Color} {BackgroundWashPercent}%, transparent)";
+            return $"{style}; border-color: color-mix(in srgb, {color} 55%, transparent); background-color: color-mix(in srgb, {color} {BackgroundWashPercent}%, transparent)";
         }
 
         // border-inline-start, not border-left: the block's stylesheet rule is already
         // logical (ns-mud.css), and a physical override here would desync under RTL.
-        return $"{style}; border-inline-start-color: {Color}; background-color: color-mix(in srgb, {Color} {ContentWashPercent}%, transparent)";
+        return $"{style}; border-inline-start-color: {color}; background-color: color-mix(in srgb, {color} {ContentWashPercent}%, transparent)";
     }
 }

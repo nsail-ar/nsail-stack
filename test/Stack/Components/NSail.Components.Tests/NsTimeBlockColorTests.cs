@@ -92,4 +92,23 @@ public sealed class NsTimeBlockColorTests : BunitContext
 
         Assert.Contains($"border-inline-start-color: {Color}", style);
     }
+
+    [Fact]
+    public void AColorThatIsNotAColor_NeverReachesTheStyle()
+    {
+        var cut = Render<NsTimeGrid>(p => p
+            .Add(x => x.From, Day)
+            .Add(x => x.To, Day)
+            .Add(x => x.DayStart, new TimeOnly(8, 0))
+            .Add(x => x.DayEnd, new TimeOnly(20, 0))
+            .AddChildContent<NsTimeBlock>(b => b
+                .Add(x => x.Starts, Day.ToDateTime(new TimeOnly(13, 0)))
+                .Add(x => x.Duration, TimeSpan.FromHours(1))
+                .Add(x => x.Color, "red;background:url(//x)")));
+
+        var style = cut.Find(".ns-time-block").GetAttribute("style")!;
+
+        Assert.DoesNotContain("url(", style);
+        Assert.DoesNotContain("red", style);
+    }
 }
