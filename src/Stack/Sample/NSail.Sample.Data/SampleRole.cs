@@ -13,7 +13,7 @@ public static class SampleRole
 {
     public const string Name = "sample_app";
 
-    public static async Task Prepare(string adminConnectionString, string appConnectionString, CancellationToken cancellationToken = default)
+    public static async Task MigrateAndGrant(string adminConnectionString, string appConnectionString, CancellationToken cancellationToken = default)
     {
         var admin = ConnectionStrings.Complete(adminConnectionString);
         var password = new NpgsqlConnectionStringBuilder(ConnectionStrings.Complete(appConnectionString)).Password;
@@ -41,7 +41,7 @@ public static class SampleRole
 
             try
             {
-                await using var enter = new NpgsqlCommand("SELECT set_config('nsail.tenant', @tenant, false)", (NpgsqlConnection)db.GetDbConnection());
+                await using var enter = new NpgsqlCommand($"SELECT set_config('{TenantPolicies.Setting}', @tenant, false)", (NpgsqlConnection)db.GetDbConnection());
                 enter.Parameters.AddWithValue("tenant", Tenant.None.RowKey.ToString());
                 await enter.ExecuteNonQueryAsync(cancellationToken);
                 await db.MigrateAsync(cancellationToken);
@@ -61,10 +61,11 @@ public static class SampleRole
             DO $$
             BEGIN
                 IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{Name}') THEN
-                    CREATE ROLE {Name} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
+                    CREATE ROLE {Name} LOGIN;
                 END IF;
             END
             $$;
+            ALTER ROLE {Name} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOREPLICATION;
             """, cancellationToken);
 
         await using (var format = new NpgsqlCommand($"SELECT format('ALTER ROLE {Name} PASSWORD %L', @password)", connection))
@@ -79,6 +80,7 @@ public static class SampleRole
             GRANT USAGE ON SCHEMA public TO {Name};
             GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {Name};
             REVOKE ALL ON "__EFMigrationsHistory" FROM {Name};
+            GRANT SELECT ON "__EFMigrationsHistory" TO {Name};
             GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {Name};
             """, cancellationToken);
     }

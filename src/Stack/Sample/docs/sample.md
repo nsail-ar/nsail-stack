@@ -64,10 +64,11 @@ dotnet build src/Stack/Sample/NSail.Sample.Web
 dotnet run --project src/Stack/Sample/NSail.Sample.Web --launch-profile http
 ```
 
-The host connects as `sample_app`, a role without superuser rights. On start,
-`SampleRole.Prepare` migrates the database and creates or refreshes that role through
-`Sample:AdminConnectionString` (the superuser connection), then grants it reads and writes on the
-tables, nothing more. Both strings leave the password out: it arrives in `PGPASSWORD`, and
+The host connects as a role without superuser rights. On start,
+`SampleRole.MigrateAndGrant` runs the migration chain through `Sample:AdminConnectionString`,
+creates the role if it is missing, strips it of superuser, `BYPASSRLS` and role or database
+creation whether it was just created or not, then grants it reads and writes on the tables,
+nothing more. Both strings leave the password out: it arrives in `PGPASSWORD`, and
 `sample_app` takes that same value.
 
 Blazor answers at the host's root, React under `/react`. The build writes `sdk.ts`,
@@ -89,7 +90,6 @@ The sample owns the **41xx** block of NSail's port nomenclature.
 | `--launch-profile https` (VS F5) | 4000 (https), 4001 (http) |
 | Vite dev server | 4002 |
 
-The connection string is `Sample:ConnectionString` (`appsettings.json`: `localhost`, database
-`sample_main`, user `sample_app`; Npgsql reads the password from `PGPASSWORD`), and the role
-setup connects through `Sample:AdminConnectionString`. The first run
-creates the database.
+The connection strings are `Sample:ConnectionString` and `Sample:AdminConnectionString` in
+`appsettings.json`; Npgsql reads the password from `PGPASSWORD`. The first run creates the
+database.

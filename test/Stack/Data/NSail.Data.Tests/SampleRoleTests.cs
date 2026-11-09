@@ -17,15 +17,14 @@ public class SampleRoleTests
         var admin = new NpgsqlConnectionStringBuilder(database.ConnectionString);
         var app = new NpgsqlConnectionStringBuilder(admin.ConnectionString) { Username = SampleRole.Name };
 
-        await SampleRole.Prepare(admin.ConnectionString, app.ConnectionString);
+        await SampleRole.MigrateAndGrant(admin.ConnectionString, app.ConnectionString);
 
         await using var connection = new NpgsqlConnection(ConnectionStrings.Complete(app.ConnectionString));
         await connection.OpenAsync();
 
-        await using var superuser = new NpgsqlCommand("SELECT rolsuper FROM pg_roles WHERE rolname = current_user", connection);
-        Assert.False((bool)(await superuser.ExecuteScalarAsync())!);
+        await AssertUnprivileged(connection);
 
-        await using (var enter = new NpgsqlCommand("SELECT set_config('nsail.tenant', @tenant, false)", connection))
+        await using (var enter = new NpgsqlCommand($"SELECT set_config('{TenantPolicies.Setting}', @tenant, false)", connection))
         {
             enter.Parameters.AddWithValue("tenant", Guid.Empty.ToString());
             await enter.ExecuteNonQueryAsync();
@@ -54,5 +53,40 @@ public class SampleRoleTests
         await using var ddl = new NpgsqlCommand("CREATE TABLE intruder (x int)", connection);
         var denied = await Assert.ThrowsAsync<PostgresException>(() => ddl.ExecuteNonQueryAsync());
         Assert.Equal("42501", denied.SqlState);
+    }
+
+    [Fact]
+    public async Task ARoleThatAlreadyExistsWithPrivilegesIsStrippedOfThem()
+    {
+        await using var database = new TestDatabase("sample_role_strip", cs => new SampleDbContextFactory().CreateDbContext([$"--Sample:ConnectionString={cs}"]));
+        await database.Reserve();
+        var admin = new NpgsqlConnectionStringBuilder(database.ConnectionString);
+        var app = new NpgsqlConnectionStringBuilder(admin.ConnectionString) { Username = SampleRole.Name };
+
+        await SampleRole.MigrateAndGrant(admin.ConnectionString, app.ConnectionString);
+
+        await using (var elevate = new NpgsqlConnection(ConnectionStrings.Complete(admin.ConnectionString)))
+        {
+            await elevate.OpenAsync();
+            await using var alter = new NpgsqlCommand($"ALTER ROLE {SampleRole.Name} SUPERUSER BYPASSRLS CREATEDB CREATEROLE", elevate);
+            await alter.ExecuteNonQueryAsync();
+        }
+
+        await SampleRole.MigrateAndGrant(admin.ConnectionString, app.ConnectionString);
+
+        await using var connection = new NpgsqlConnection(ConnectionStrings.Complete(app.ConnectionString));
+        await connection.OpenAsync();
+        await AssertUnprivileged(connection);
+    }
+
+    static async Task AssertUnprivileged(NpgsqlConnection connection)
+    {
+        await using var role = new NpgsqlCommand("SELECT rolsuper, rolbypassrls, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = current_user", connection);
+        await using var reader = await role.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.False(reader.GetBoolean(0), "superuser");
+        Assert.False(reader.GetBoolean(1), "bypassrls");
+        Assert.False(reader.GetBoolean(2), "createdb");
+        Assert.False(reader.GetBoolean(3), "createrole");
     }
 }

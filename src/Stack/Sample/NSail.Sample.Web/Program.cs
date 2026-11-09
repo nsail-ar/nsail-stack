@@ -19,7 +19,7 @@ builder.Services.AddSampleWebApp();
 var app = builder.Build();
 
 var sample = app.Configuration.Load<SampleOptions>();
-await SampleRole.Prepare(sample.AdminConnectionString, sample.ConnectionString);
+await SampleRole.MigrateAndGrant(sample.AdminConnectionString, sample.ConnectionString);
 
 app.UseBaseWebApi();
 app.UseBaseWebApp();
