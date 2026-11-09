@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using NSail.Messaging.WebApi;
 using NSail.Problems;
 
-namespace NSail.BaseServices.WebApi.Tests;
+namespace NSail.Messaging.WebApi.Tests;
 
 public sealed class ErrorMiddlewareTests
 {
@@ -37,6 +37,27 @@ public sealed class ErrorMiddlewareTests
         var (context, loud) = await Run(new TaskCanceledException("vendor timeout"));
         Assert.Equal(LogLevel.Warning, Assert.Single(loud.Entries).Level);
         Assert.Equal(500, context.Response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_business_failure_of_500_or_above_logs_at_error_with_its_issues()
+    {
+        var (context, logger) = await Run(new BusinessException(MessagingProblem.HandlerNotFound("Probe")));
+        Assert.Equal(500, context.Response.StatusCode);
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.IsType<BusinessException>(entry.Exception);
+        Assert.Contains("HandlerNotFound: No handler is registered for message type Probe", entry.Text);
+    }
+
+    [Fact]
+    public async Task A_business_failure_without_a_status_answers_500_and_logs_at_error()
+    {
+        var (context, logger) = await Run(new BusinessException("Code", "Title", []));
+        Assert.Equal(500, context.Response.StatusCode);
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.NotNull(entry.Exception);
     }
 
     [Fact]

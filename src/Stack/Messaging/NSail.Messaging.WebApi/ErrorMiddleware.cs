@@ -52,9 +52,9 @@ public sealed class ErrorMiddleware : IMiddleware
     }
 
     // Mapping keeps the response a client sees; the level is read off what the exception is. A
-    // user-caused outcome is one Warning line. A bug-class exception wearing a 404 or 403, a
-    // timeout and any 5xx are system distress: the exception with its stack goes to Error (a
-    // timeout stays Warning). A cancellation from the request's own token is the caller leaving
+    // user-caused outcome is one Warning line. A bug-class exception wearing a 404 or 403 and a
+    // BusinessException answering 5xx are system distress: the exception with its stack goes to
+    // Error. A timeout stays Warning. A cancellation from the request's own token is the caller leaving
     // and stays quiet; any other is a vendor timeout and is logged.
     void Log(Exception exception, Problem? mapped, Problem problem, HttpContext context)
     {
@@ -70,7 +70,7 @@ public sealed class ErrorMiddleware : IMiddleware
             return;
         }
 
-        if (exception is BusinessException && problem.Status >= StatusCodes.Status500InternalServerError)
+        if (exception is BusinessException && (problem.Status ?? StatusCodes.Status500InternalServerError) >= StatusCodes.Status500InternalServerError)
         {
             _logger.LogError(
                 exception,
