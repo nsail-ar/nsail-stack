@@ -157,6 +157,17 @@ public static class Postgres
         return separator < 0 ? version : version[..separator];
     }
 
+    static void Kill(Process process)
+    {
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
     static async Task Run(string executable, IReadOnlyList<string> arguments, string? password, CancellationToken cancelToken)
     {
         var start = new ProcessStartInfo(executable)
@@ -190,11 +201,25 @@ public static class Postgres
 
         // Both pipes drained at once: psql prints the rows of the dump's SELECTs, and a full
         // stdout pipe would block it while the restore's transaction holds every lock.
-        var output = process.StandardOutput.ReadToEndAsync(cancelToken);
-        var error = await process.StandardError.ReadToEndAsync(cancelToken);
+        var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+        var errors = process.StandardError.ReadToEndAsync(CancellationToken.None);
 
-        await output;
-        await process.WaitForExitAsync(cancelToken);
+        string error;
+
+        try
+        {
+            await process.WaitForExitAsync(cancelToken);
+
+            await output;
+            error = await errors;
+        }
+        catch (OperationCanceledException)
+        {
+            // A cancelled backup must not leave the dump running against the database.
+            Kill(process);
+
+            throw;
+        }
 
         if (process.ExitCode != 0)
         {

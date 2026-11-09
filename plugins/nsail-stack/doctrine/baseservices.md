@@ -383,9 +383,12 @@ its own name.
   statement run that way by a role a policy applies to — `FORCE ROW LEVEL SECURITY` subjects
   even the table's owner (data-tenancy.md, The second wall) — so on a cell that has provisioned
   the app a role without `BYPASSRLS`, `backup` is a credential of its own: a superuser or a
-  `BYPASSRLS` role on the same database. The verb asks before it starts the process and refuses
+  `BYPASSRLS` role on the same database, supplied as `Backup:ConnectionString` (the dump uses it;
+  restore keeps the app's). The verb asks before it starts the process and refuses
   by name, rather than ending in pg_dump's exit code on the first tenant table. Restore is not
   affected: an archive's data lands before its policies do.
+- **Under MultiDb both verbs refuse** (`BackupFailure`, exit `4`): the install has no one database,
+  and the tenants' own are not covered. A cancelled run kills the child tool and its tree.
 - **A restore refuses before it writes.** `RestorePlan.For` throws `BackupFailure` on an
   archive whose schema this build does not know (newer), whose product is another product,
   whose Postgres major differs, or whose archive format this build cannot read. An encrypted

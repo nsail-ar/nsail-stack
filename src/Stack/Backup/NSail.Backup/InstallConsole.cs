@@ -2,8 +2,10 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NSail.Data;
 
 namespace NSail.Backup;
 
@@ -33,6 +35,13 @@ public static class InstallConsole
     public static async Task<int> Run<TDbContext>(IHost host, string[] args, CancellationToken cancelToken = default)
         where TDbContext : DbContext
     {
+        if (host.ConnectsPerTenant())
+        {
+            Console.Error.WriteLine("REFUSED: This install runs a database per tenant, and backup and restore cover the install's own database only; the tenant databases are not covered. Back them up with the server's own tools.");
+
+            return 4;
+        }
+
         using var scope = host.Services.CreateScope();
 
         var dbContext = scope.ServiceProvider.GetRequiredService<TDbContext>();
@@ -40,7 +49,7 @@ public static class InstallConsole
 
         try
         {
-            var install = await InstallBackup.Describe(dbContext, environment, cancelToken);
+            var install = await InstallBackup.Describe(dbContext, environment, scope.ServiceProvider.GetService<IConfiguration>(), cancelToken);
 
             return Verb(args) switch
             {

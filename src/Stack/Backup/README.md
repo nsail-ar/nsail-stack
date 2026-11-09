@@ -40,7 +40,9 @@ The binary's name is the product, taken from the context type (`SampleDbContext`
 
 ## Configuration
 
-There are no configuration keys. What the verbs use:
+One key, optional: `Backup:ConnectionString`, the credential `pg_dump` connects with (a superuser or
+`BYPASSRLS` role on the install's database); without it the dump uses the `DbContext`'s own connection
+string. What the verbs use:
 
 - **Passphrase:** `--encrypt` seals the dump and the key ring (AES-256-GCM, key from PBKDF2) under
   a passphrase read from `NSAIL_BACKUP_PASSPHRASE`, or asked twice at a terminal; never an
@@ -61,7 +63,10 @@ There are no configuration keys. What the verbs use:
   DataProtection keys there, so they travel in the archive; without them every sealed secret in a
   restored install is unreadable.
 - **Role:** the dump needs a role that is a superuser or has `BYPASSRLS` when tenant tables force
-  row-level security; `backup` checks first and refuses by name.
+  row-level security; `backup` checks first and refuses by name. A cell with `RequireRowSecurity` sets
+  `Backup:ConnectionString` to one. Restore always uses the `DbContext`'s connection.
+- **MultiDb:** a database per tenant is not covered: both verbs refuse with exit code `4`.
+- **Cancel:** a cancelled run kills `pg_dump`/`pg_restore`/`psql` and their process tree.
 
 | Exit code | Meaning |
 |---|---|
