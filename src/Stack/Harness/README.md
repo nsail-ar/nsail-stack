@@ -38,7 +38,7 @@ the files it leaves.
     issues (the list API, never the search index), so labels stay free to edit.
     A board that names its columns or labels otherwise maps them (`Stages`, `Labels`); a repository
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
-    seed projects, the `Everything` files that build it all, the `Tests` and their `TestFilter`): the
+    seed projects (a non-Markdown change outside them builds it all), the `Everything` files that build it all (by default solutions, `global.json`, props, targets, `nuget.config`, `.editorconfig`, `Directory.Build.rsp`, `*.globalconfig`), the `Tests` and their `TestFilter`): the
     gate builds and tests what a change affects through the solution's ProjectReference graph (a PR
     red only where main's own gate is red waits for main to move: no round owes it; a gate that broke on infrastructure — git, the provider, the disk — writes
     no verdict and no status, only an unmarked comment, and the head is gated again after the backoff; a malformed project or a
