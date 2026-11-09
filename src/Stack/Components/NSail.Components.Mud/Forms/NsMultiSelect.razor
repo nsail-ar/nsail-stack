@@ -57,7 +57,7 @@
     {
         var list = selected.ToList();
 
-        if (Value is not null && Value.SequenceEqual(list))
+        if ((Value ?? []).SequenceEqual(list))
         {
             return Task.CompletedTask;
         }

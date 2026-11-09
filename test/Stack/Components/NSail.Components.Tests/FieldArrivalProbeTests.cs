@@ -43,7 +43,7 @@ public sealed class FieldArrivalProbeTests : BunitContext, IAsyncLifetime
         [
             "text", "password", "textarea", "email", "phone", "url", "color",
             "numeric", "money", "percent", "duration", "date", "dateonly", "time",
-            "datetime", "select", "select-required", "autocomplete", "checkbox"
+            "datetime", "select", "select-required", "autocomplete", "checkbox", "multiselect"
         ];
 
         string[] modes = ["empty", "preset", "load-swap", "load-inplace"];

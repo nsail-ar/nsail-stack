@@ -81,6 +81,10 @@
                 case "checkbox":
                     <NsCheckBox TValue="bool" @bind-Value="context.Flag" />
                     break;
+                case "multiselect":
+                    <NsMultiSelect TItem="SelectOption" TValue="Guid" @bind-Value="context.Choices"
+                                   Items="Options" ItemValue="o => o.Id" ItemText="o => o.Name" />
+                    break;
             }
             <NsSubmit Class="tracked-submit" />
         </NsForm>
