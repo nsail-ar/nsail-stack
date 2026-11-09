@@ -90,7 +90,7 @@ public sealed class HarnessOptions
 
     // Paths a builder's commits may not touch: CI runs them with the repository's secrets before any
     // review. Globs (`*` within a folder, `**` across); AllowProtectedPaths lifts the screen, the
-    // Labels.AllowProtected label lifts it for one story.
+    // Labels.AllowProtected label lifts it for one story and releases the hold the screen set on it.
     public List<string> ProtectedPaths { get; set; } = [".github/workflows/**"];
     public bool AllowProtectedPaths { get; set; }
 
