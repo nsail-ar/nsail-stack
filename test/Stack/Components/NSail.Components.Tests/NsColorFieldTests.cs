@@ -17,7 +17,7 @@ namespace NSail.Components.Tests;
 /// hex matching the plain 6-digit strings every caller already stores (BrandingColors,
 /// CreateConsultingRoomPage) — an alpha-suffixed round trip would otherwise rewrite the model
 /// the instant the field first renders (caught by FieldArrivalProbeTests' dirty-on-arrival
-/// case). Text that is not a color is refused before it is stored (NsColorText).</summary>
+/// case). The field also drops text that is not a color before storing it (NsColorText).</summary>
 public sealed class NsColorFieldTests : BunitContext, IAsyncLifetime
 {
     Task IAsyncLifetime.InitializeAsync()
@@ -73,6 +73,7 @@ public sealed class NsColorFieldTests : BunitContext, IAsyncLifetime
         Assert.Equal("#1976d2", cut.Instance.Value);
     }
 
+    /// <summary>Text that is not a color reaches the field's callback and is dropped there.</summary>
     [Fact]
     public async Task TypingAStyleInjection_StoresNothing()
     {
@@ -83,7 +84,10 @@ public sealed class NsColorFieldTests : BunitContext, IAsyncLifetime
             .Add(p => p.Value, "#1976d2")
             .Add(p => p.ValueChanged, EventCallback.Factory.Create<string?>(this, v => changes.Add(v))));
 
-        await cut.InvokeAsync(() => cut.Find("input").Change("red;background:url(//x)"));
+        // The vendor filters typed text before it calls back; the field's own guard is the
+        // second line, so the callback is driven directly with the text a model could carry.
+        var picker = cut.FindComponent<MudBlazor.MudColorPicker>().Instance;
+        await cut.InvokeAsync(() => picker.TextChanged.InvokeAsync("red;background:url(//x)"));
 
         Assert.Empty(changes);
         Assert.Equal("#1976d2", cut.Instance.Value);
@@ -94,7 +98,7 @@ public sealed class NsColorFieldTests : BunitContext, IAsyncLifetime
         return new(typeof(NsColorFieldTests).Assembly, Array.Empty<System.Reflection.Assembly>());
     }
 
-    /// <summary>The same round trip as the two tests above, now inside a real NsForm — the
+    /// <summary>The same round trip as the tests above, now inside a real NsForm — the
     /// EditContext's own validation-state notification re-renders the field the instant
     /// ValueChanged lands (NsFieldBase.HandleValidationStateChanged), the same race that once
     /// wiped NsDateField's in-progress text. Proves the picker's Value binding survives it:

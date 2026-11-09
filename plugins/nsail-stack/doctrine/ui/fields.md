@@ -290,7 +290,8 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   and never kept past the page.
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
   6-digit hex — no alpha channel — matching what every caller already stores; text that
-  isn't a color never reaches the model. *Accepted debt: the box itself keeps showing the
+  isn't a color never reaches the model (`NsColorText` is the second line behind the
+  vendor's own filter, and the same check gates every color the time views write into a style). *Accepted debt: the box itself keeps showing the
   refused text on screen — the vendor never calls back into `TextChanged` for text it
   rejects, so nothing tells the field to redraw over it.*
 

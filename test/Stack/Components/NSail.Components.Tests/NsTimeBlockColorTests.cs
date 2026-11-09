@@ -93,6 +93,7 @@ public sealed class NsTimeBlockColorTests : BunitContext
         Assert.Contains($"border-inline-start-color: {Color}", style);
     }
 
+    /// <summary>A color that is not one never reaches the style attribute, whatever the model holds.</summary>
     [Fact]
     public void AColorThatIsNotAColor_NeverReachesTheStyle()
     {
