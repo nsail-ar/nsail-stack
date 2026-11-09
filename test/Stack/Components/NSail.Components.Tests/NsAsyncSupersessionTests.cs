@@ -77,8 +77,13 @@ public sealed class NsAsyncSupersessionTests : BunitContext, IAsyncLifetime
 
         Assert.Equal(2, slow.Asks.Count);
 
+        var drawn = cut.RenderCount;
+
         slow.Asks[0].SetResult(typeof(ProbeOtherPage));
-        await Task.Delay(50);
+
+        // The superseded run still renders when it ends; waiting on that render is what makes
+        // the assertions below about an answer that was applied or dropped, not one still on its way.
+        cut.WaitForState(() => cut.RenderCount > drawn);
 
         Assert.Equal(before, Navigation.History.Count);
         Assert.DoesNotContain("page", cut.Markup);
@@ -138,22 +143,26 @@ public sealed class NsAsyncSupersessionTests : BunitContext, IAsyncLifetime
         Assert.Contains(_log.Messages, message => message.Contains("Tickets", StringComparison.Ordinal));
     }
 
-    /// <summary>AC3 and K1: one contributor throws, the other's verb stays, the slot stops
-    /// resolving, and nobody is asked twice.</summary>
+    /// <summary>AC3 and K1: one contributor throws while another is still asking, the slot
+    /// keeps its mark until the slow one answers, then stops resolving, and nobody is asked twice.</summary>
     [Fact]
     public void AThrowingContributorDropsOnlyItsOwnItemsAndIsLogged()
     {
         Services.AddSingleton<IActionContributor<ProbeRowOutlet>>(new ThrowingContributor());
-        var healthy = new CountingContributor { Verb = "Sync" };
-        Services.AddSingleton<IActionContributor<ProbeRowOutlet>>(healthy);
+        var slow = new WaitingContributor { Verb = "Sync" };
+        Services.AddSingleton<IActionContributor<ProbeRowOutlet>>(slow);
 
         var cut = Render<ActionOutletHost>(p => p
             .Add(x => x.Mounted, true)
             .Add(x => x.Context, "Ana"));
 
+        cut.WaitForAssertion(() => Assert.Contains("ns-action-mark", cut.Markup));
+
+        slow.Answer();
+
         cut.WaitForAssertion(() => Assert.DoesNotContain("ns-action-mark", cut.Markup));
         Assert.Contains("Sync-Ana", cut.Markup);
-        Assert.Equal(1, healthy.Asks);
+        Assert.Equal(1, slow.Asks);
         Assert.Contains(_log.Messages, message => message.Contains(nameof(ThrowingContributor), StringComparison.Ordinal));
     }
 
@@ -208,21 +217,6 @@ public sealed class NsAsyncSupersessionTests : BunitContext, IAsyncLifetime
         public Task<IReadOnlyList<ActionItem>> GetActions(ProbeRowOutlet outlet)
         {
             throw new InvalidOperationException("down");
-        }
-    }
-
-    sealed class CountingContributor : IActionContributor<ProbeRowOutlet>
-    {
-        public required string Verb { get; init; }
-
-        public int Asks { get; private set; }
-
-        public Task<IReadOnlyList<ActionItem>> GetActions(ProbeRowOutlet outlet)
-        {
-            Asks++;
-
-            return Task.FromResult<IReadOnlyList<ActionItem>>(
-                [new ActionItem { Name = $"{Verb}-{outlet.Context}", OnClick = () => Task.CompletedTask }]);
         }
     }
 
