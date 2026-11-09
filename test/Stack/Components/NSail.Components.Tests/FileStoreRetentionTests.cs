@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Components;
 using NSail.Components.Tests.Fixtures;
+using System.Globalization;
 using System.Net;
 
 namespace NSail.Components.Tests;
@@ -35,23 +36,36 @@ public sealed class FileStoreRetentionTests
     [Fact]
     public async Task A_transient_failure_is_retried_and_a_404_is_cached()
     {
-        var handler = new SequenceHandler(HttpStatusCode.ServiceUnavailable, HttpStatusCode.ServiceUnavailable, HttpStatusCode.OK);
-        var reader = new GuideReader(new HttpClient(handler), new StubNavigation());
-        var chapter = new GuideItem { Name = "A", File = "a.md" };
+        var culture = CultureInfo.CurrentUICulture;
 
-        Assert.Null(await reader.Read(chapter));
-        Assert.NotNull(await reader.Read(chapter));
+        try
+        {
+            // One culture to try, so each read is one fetch.
+            CultureInfo.CurrentUICulture = new CultureInfo(GuideItem.DefaultCulture);
 
-        var calls = handler.Calls;
+            var handler = new SequenceHandler(HttpStatusCode.ServiceUnavailable, HttpStatusCode.OK);
+            var reader = new GuideReader(new HttpClient(handler), new StubNavigation());
+            var chapter = new GuideItem { Name = "A", File = "a" };
 
-        Assert.NotNull(await reader.Read(chapter));
-        Assert.Equal(calls, handler.Calls);
+            Assert.Null(await reader.Read(chapter));
+            Assert.NotNull(await reader.Read(chapter));
 
-        var missing = new SequenceHandler(HttpStatusCode.NotFound, HttpStatusCode.NotFound, HttpStatusCode.OK);
-        var other = new GuideReader(new HttpClient(missing), new StubNavigation());
+            var calls = handler.Calls;
 
-        Assert.Null(await other.Read(chapter));
-        Assert.Null(await other.Read(chapter));
+            Assert.NotNull(await reader.Read(chapter));
+            Assert.Equal(calls, handler.Calls);
+
+            var missing = new SequenceHandler(HttpStatusCode.NotFound, HttpStatusCode.OK);
+            var other = new GuideReader(new HttpClient(missing), new StubNavigation());
+
+            Assert.Null(await other.Read(chapter));
+            Assert.Null(await other.Read(chapter));
+            Assert.Equal(1, missing.Calls);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = culture;
+        }
     }
 
     sealed class SequenceHandler(params HttpStatusCode[] answers) : HttpMessageHandler
