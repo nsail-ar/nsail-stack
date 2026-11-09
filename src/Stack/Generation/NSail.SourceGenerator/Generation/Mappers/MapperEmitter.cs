@@ -1304,13 +1304,19 @@ sealed partial class MapperEmitter
 
         _modelled = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
 
-        // What the store's model declares was gathered from the syntax as metadata names: a
-        // ModelBuilder.Entity<T>() call, or a DbSet<T> of a context.
-        foreach (var name in _modelledSeeds)
+        // What the store's model declares was gathered from the syntax as metadata names with
+        // their assembly: a ModelBuilder.Entity<T>() call, or a DbSet<T> of a context.
+        foreach (var seed in _modelledSeeds)
         {
-            if (_compilation.GetTypeByMetadataName(name) is { } entity)
+            var separator = seed.LastIndexOf('|');
+            var assembly = seed.Substring(separator + 1);
+
+            foreach (var entity in _compilation.GetTypesByMetadataName(seed.Substring(0, separator)))
             {
-                _modelled.Add(entity.OriginalDefinition);
+                if (entity.ContainingAssembly.Name == assembly)
+                {
+                    _modelled.Add(entity.OriginalDefinition);
+                }
             }
         }
 

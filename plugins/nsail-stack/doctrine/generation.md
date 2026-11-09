@@ -366,7 +366,8 @@ An edit must not re-read the project. A generator's pipeline holds only value-eq
   compares by reference: an unedited file keeps its tree and the finding stays equal; a location
   rebuilt from a path is outside every tree, and neither reaches it.
 - **A new generator owes the proof**: `IncrementalityTests` runs it twice over an unrelated edit
-  and every named step must be `Cached` or `Unchanged`.
+  and every step but the compiler's own inputs, and every output, must be `Cached` or
+  `Unchanged`.
 
 ---
 

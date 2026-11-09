@@ -131,6 +131,7 @@ public class MappersSourceGenerator : IIncrementalGenerator
             .WithTrackingName("Modelled");
     }
 
+    // The assembly travels with the name: two references may declare the same one.
     static string MetadataKey(INamedTypeSymbol type)
     {
         var name = type.MetadataName;
@@ -140,6 +141,8 @@ public class MappersSourceGenerator : IIncrementalGenerator
             name = outer.MetadataName + "+" + name;
         }
 
-        return type.ContainingNamespace.IsGlobalNamespace ? name : type.ContainingNamespace.ToDisplayString() + "." + name;
+        var qualified = type.ContainingNamespace.IsGlobalNamespace ? name : type.ContainingNamespace.ToDisplayString() + "." + name;
+
+        return qualified + "|" + type.ContainingAssembly.Name;
     }
 }

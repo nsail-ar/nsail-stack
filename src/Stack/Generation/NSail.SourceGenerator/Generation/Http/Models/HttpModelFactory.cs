@@ -68,7 +68,7 @@ public static class HttpModelFactory
                 {
                     model.Diagnostics.Add(fragment.AtAttribute! with
                     {
-                        Arguments = new EquatableList<string>([message.MessageType.Declaration, claimant.MessageType.Declaration, message.HttpMethod.ToString().ToUpperInvariant(), message.Path])
+                        Arguments = new EquatableList<string>([message.MessageType.DisplayName, claimant.MessageType.DisplayName, message.HttpMethod.ToString().ToUpperInvariant(), message.Path])
                     });
                 }
                 else

@@ -20,6 +20,7 @@ public sealed record TypeModel
         ClassName = symbol.Name;
         Namespace = global ? string.Empty : symbol.ContainingNamespace!.ToDisplayString();
         Declaration = global ? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) : symbol.ToDisplayString();
+        DisplayName = symbol.ToDisplayString();
         FlatName = string.Join("_", chain);
         RelativeName = string.Join(".", chain);
         MetadataName = (global ? string.Empty : Namespace + ".") + string.Join("+", chain);
@@ -31,6 +32,9 @@ public sealed record TypeModel
     public string Namespace { get; }
 
     public string Declaration { get; }
+
+    /// <summary>The name a finding shows: <see cref="Declaration"/> without <c>global::</c>.</summary>
+    public string DisplayName { get; }
 
     /// <summary>The name with its declaring types joined by underscores: unique among the
     /// types of one namespace, where <see cref="ClassName"/> is not for nested ones.</summary>

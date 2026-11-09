@@ -242,6 +242,46 @@ public class HttpRouteDiagnosticTests
             """;
     }
 
+    [Fact]
+    public void A_duplicate_route_names_the_messages_as_written()
+    {
+        var scoped = Assert.Single(Run(TwoRoutes("Method.Get", "api/x/{a}", "Method.Get", "api/x/{b}")).Where(d => d.Id == "NSG019"));
+        var global = Assert.Single(Run(GlobalRoutes).Where(d => d.Id == "NSG019"));
+
+        Assert.Contains("'Acme.Clinic.Items.MessageB'", scoped.GetMessage());
+        Assert.Contains("'Acme.Clinic.Items.MessageA'", scoped.GetMessage());
+        Assert.Contains("'MessageB'", global.GetMessage());
+        Assert.Contains("'MessageA'", global.GetMessage());
+    }
+
+    const string GlobalRoutes = """
+        using Microsoft.Extensions.DependencyInjection;
+        using NSail.Messaging;
+        using NSail.Messaging.Annotations;
+        using NSail.SourceGeneration.Annotations;
+
+        [Http(Method.Get, "api/x/{a}")]
+        public class MessageA : IMessage
+        {
+            [AsRoute] public string A { get; set; } = "";
+        }
+
+        [Http(Method.Get, "api/x/{b}")]
+        public class MessageB : IMessage
+        {
+            [AsRoute] public string B { get; set; } = "";
+        }
+
+        namespace Acme.Clinic.Items
+        {
+            public static partial class Endpoints
+            {
+                [Generated(NSail.SourceGeneration.Annotations.Http.Endpoints)]
+                public static partial void AddClinicEndpoints(this IServiceCollection services);
+            }
+        }
+        """;
+
     static string TwoRoutes(string verbA, string pathA, string verbB, string pathB)
     {
         return $$"""
