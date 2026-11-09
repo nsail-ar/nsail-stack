@@ -95,9 +95,10 @@ the files it leaves.
     seat's `PromptFile` beside the harness's configuration (`prompts/`) is the harness's, for every
     repository; any other is the repository's. A pass: the UpdateBoard keepers, every story worker over
     the `bug` stories (broken where a customer runs: before a release too, and past the WIP limit), the
-    workers on their own, then every story worker over the p1 stories, then over the rest; one job per
-    story per pass. A keeper's (`On.Executed`) `MoveTo` is written only while the story's column is
-    still the one the pass read: one a hand set since stays, the pass logs the dropped move, and the
+    workers on their own, then every story worker over the p1 stories and a red main's or suite's
+    (the red first, and past the WIP limit too), then over the rest; at the limit, its note names the
+    first story it holds; one job per story per pass. A keeper's (`On.Executed`)
+    `MoveTo` is written only while the story's column is still the one the pass read: one a hand set since stays, the pass logs the dropped move, and the
     story gets no other chore that pass. A keeper whose filter asks for no open PR (`Pr: none`) reads
     an absence, so it takes a story In-Progress only when no job on any harness of the fleet holds
     the story's lock and nothing touched it (a comment, a label, a column move) for `OrphanGraceMinutes`
