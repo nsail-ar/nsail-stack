@@ -197,6 +197,11 @@ read, so a row type's other members are none of an export's business.**
   prints a UTC moment through `ToLocalTime`, and a file three hours off the list it came from is
   nobody's reading. Only a `DateTime` that says it is UTC: any other kind is already local, or is
   a date with no zone to it.
+- **Writers are handed the culture and the time zone, never the thread's or the process's.** A
+  UTC `DateTimeOffset` or `DateTime` is converted to the zone given; a non-finite figure
+  (NaN, Infinity) is an empty cell, since it has no decimal and throwing would abort a stream whose
+  headers are already out. File names lose a fixed set (`" \ / : * ? < > |` and control
+  characters), the same on every OS (`ExportWriters.FileName`).
 - **A collection reads as its members, comma-separated** (a party's roles): no cell type holds a
   list, and left alone the file would print the type's name.
 - **A column with no `For` is not a column** — the action column has nothing to put in a file and

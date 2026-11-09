@@ -14,9 +14,10 @@ public static class ExportText
     /// format is a character that has to be told apart from the field separator by whoever reads
     /// the file back, and es-AR writes the two the same way round as en-US writes them swapped.
     /// </summary>
-    public static string Of(object? value, ExportFormat format, CultureInfo culture)
+    public static string Of(object? value, ExportFormat format, CultureInfo culture, TimeZoneInfo zone)
     {
         ArgumentNullException.ThrowIfNull(culture);
+        ArgumentNullException.ThrowIfNull(zone);
 
         if (value is null)
         {
@@ -28,7 +29,7 @@ public static class ExportText
             ExportFormat.Number when IsFigure(value, format) => Figure(value, "0.##########", culture),
             ExportFormat.Money when IsFigure(value, format) => Figure(value, "0.00", culture),
             ExportFormat.Percent when IsFigure(value, format) => Figure(value, "0.00%", culture),
-            ExportFormat.Date => Moment(value, culture),
+            ExportFormat.Date => Moment(value, culture, zone),
             _ => Word(value, culture)
         };
     }
@@ -51,17 +52,26 @@ public static class ExportText
 
     static string Figure(object value, string pattern, CultureInfo culture)
     {
+        // NaN and Infinity have no decimal and no cell: throwing here would abort the stream
+        // after the headers are out.
+        if (value is double.NaN or double.PositiveInfinity or double.NegativeInfinity
+            or float.NaN or float.PositiveInfinity or float.NegativeInfinity)
+        {
+            return string.Empty;
+        }
+
         return Convert.ToDecimal(value, culture).ToString(pattern, culture);
     }
 
-    static string Moment(object value, CultureInfo culture)
+    static string Moment(object value, CultureInfo culture, TimeZoneInfo zone)
     {
         // A date-only member and a timestamp at midnight are the same fact to a reader, and
         // printing 00:00 on every row of a date column is noise the screen never showed.
         var moment = value switch
         {
             DateOnly date => date.ToDateTime(TimeOnly.MinValue),
-            DateTimeOffset offset => offset.LocalDateTime,
+            DateTimeOffset offset => TimeZoneInfo.ConvertTime(offset, zone).DateTime,
+            DateTime { Kind: DateTimeKind.Utc } utc => TimeZoneInfo.ConvertTimeFromUtc(utc, zone),
             DateTime stamp => stamp,
             _ => (DateTime?)null
         };
