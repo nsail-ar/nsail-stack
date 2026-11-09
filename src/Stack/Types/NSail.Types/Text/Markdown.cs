@@ -31,9 +31,9 @@ public static class Markdown
     static readonly Regex TableRow = new(@"^\s*\|(.+)\|\s*$", RegexOptions.Compiled);
     static readonly Regex TableRule = new(@"^\s*\|(\s*:?-{1,}:?\s*\|)+\s*$", RegexOptions.Compiled);
 
-    const char Hold = '\uE000';
-    const char Release = '\uE001';
-    static readonly Regex Placeholder = new("\uE000(\\d+)\uE001", RegexOptions.Compiled);
+    const char Hold = '\u0001';
+    const char Release = '\u0002';
+    static readonly Regex Placeholder = new("\u0001(\\d+)\u0002", RegexOptions.Compiled);
 
     static readonly string[] ImageSchemes = ["http://", "https://"];
 
@@ -463,8 +463,11 @@ public static class Markdown
         // the bang — which is exactly what a caller that admits no images still gets.
         var held = new List<string>();
 
-        rendered = rendered.Replace(Hold.ToString(), string.Empty, StringComparison.Ordinal)
-            .Replace(Release.ToString(), string.Empty, StringComparison.Ordinal);
+        if (rendered.AsSpan().IndexOfAny(Hold, Release) >= 0)
+        {
+            rendered = rendered.Replace(Hold.ToString(), string.Empty, StringComparison.Ordinal)
+                .Replace(Release.ToString(), string.Empty, StringComparison.Ordinal);
+        }
 
         if (options.Images)
         {

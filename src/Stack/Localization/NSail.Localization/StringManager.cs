@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using NSail.Metadata;
 using NSail.Problems;
 using NSail.Text;
@@ -13,6 +14,7 @@ namespace NSail.Localization;
 public sealed class StringManager(StringCatalog catalog, LanguageProvider language, MetadataProvider metadata)
 {
     const string EntityArgument = "entity";
+    const string InstantArgument = "at";
 
     public string Translate(string key, string? fallback = null)
     {
@@ -104,18 +106,38 @@ public sealed class StringManager(StringCatalog catalog, LanguageProvider langua
     // BusinessProblem hands the entity over as the key MetadataProvider.KeyFor renders, because
     // the type it was derived from lives in an assembly the browser never loads. A key with no
     // string in the catalog falls back to its last segment — the type's own name — so the worst
-    // an untranslated concept can read is "Store", never "Products.Store".
+    // an untranslated concept can read is "Store", never "Products.Store". The "at" argument
+    // travels as ISO 8601 UTC and is read here on the reader's own clock and culture.
     IReadOnlyDictionary<string, string>? Concept(IReadOnlyDictionary<string, string>? arguments)
     {
-        if (arguments is null || !arguments.TryGetValue(EntityArgument, out var key))
+        if (arguments is null)
         {
             return arguments;
         }
 
-        return new Dictionary<string, string>(arguments, StringComparer.Ordinal)
+        var hasEntity = arguments.TryGetValue(EntityArgument, out var key);
+        var hasInstant = arguments.TryGetValue(InstantArgument, out var instant)
+            && DateTime.TryParseExact(instant, "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out _);
+
+        if (!hasEntity && !hasInstant)
         {
-            [EntityArgument] = Translate(key, key[(key.LastIndexOf('.') + 1)..])
-        };
+            return arguments;
+        }
+
+        var localized = new Dictionary<string, string>(arguments, StringComparer.Ordinal);
+
+        if (hasEntity)
+        {
+            localized[EntityArgument] = Translate(key!, key![(key!.LastIndexOf('.') + 1)..]);
+        }
+
+        if (hasInstant)
+        {
+            var moment = DateTime.ParseExact(instant!, "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+            localized[InstantArgument] = moment.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+        }
+
+        return localized;
     }
 
     static string Fill(string text, IReadOnlyDictionary<string, string>? arguments)

@@ -155,12 +155,12 @@ public sealed class InputProblemBuilder<TModel>
     {
         _issues.Add(new(
             code: "MaxLength",
-            message: $"The field {field} exceeds the maximum length of {max}",
+            message: $"The field {field} exceeds the maximum length of {BusinessProblem.Invariant(max)}",
             source: field,
             arguments: new Dictionary<string, string>
             {
                 ["field"] = field,
-                ["max"] = max.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                ["max"] = BusinessProblem.Invariant(max)
             }));
     }
 

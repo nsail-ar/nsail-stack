@@ -28,4 +28,12 @@ public sealed class ProblemArgumentsCultureTests
             CultureInfo.CurrentCulture = previous;
         }
     }
+
+    [Fact]
+    public void A_business_date_travels_as_an_ISO_day()
+    {
+        var issue = Assert.Single(BusinessProblem.AlreadyExists(typeof(string), new DateOnly(2026, 3, 4)).Issues);
+
+        Assert.Equal("2026-03-04", issue.Arguments!["value"]);
+    }
 }

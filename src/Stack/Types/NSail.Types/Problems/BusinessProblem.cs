@@ -89,9 +89,6 @@ public static class BusinessProblem
         return NotFound(KeyOf(entity), id, source);
     }
 
-    /// <summary>The entity as its concept KEY ("Products.Store"), for the caller that cannot
-    /// name the type: one kit refusing on another's row, or a failure with no entity behind it
-    /// at all. Every caller that can reach the type passes it instead.</summary>
     /// <summary>An argument value as the wire carries it: culture-neutral, a moment as ISO 8601 UTC.</summary>
     internal static string Invariant(object? value)
     {
@@ -100,11 +97,16 @@ public static class BusinessProblem
             null => string.Empty,
             DateTime moment => moment.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             DateTimeOffset moment => moment.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
+            DateOnly day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            TimeOnly time => time.ToString("HH':'mm':'ss", CultureInfo.InvariantCulture),
             IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
             _ => value.ToString() ?? string.Empty,
         };
     }
 
+    /// <summary>The entity as its concept KEY ("Products.Store"), for the caller that cannot
+    /// name the type: one kit refusing on another's row, or a failure with no entity behind it
+    /// at all. Every caller that can reach the type passes it instead.</summary>
     public static Problem NotFound(string entityKey, object id, string? source = null)
     {
         var name = NameOf(entityKey);
@@ -144,7 +146,7 @@ public static class BusinessProblem
 
         if (modifiedAt is { } instant)
         {
-            // Stored UTC and sent as ISO 8601 UTC: the client localizes it to its reader's zone.
+            // Stored UTC and sent as ISO 8601 UTC: StringManager and the React strings read it on the reader's clock.
             arguments["at"] = Invariant(instant.Kind == DateTimeKind.Local ? instant.ToUniversalTime() : DateTime.SpecifyKind(instant, DateTimeKind.Utc));
         }
 
