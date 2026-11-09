@@ -72,16 +72,29 @@ public static class Shell
             foreach (var (k, v) in env) psi.Environment[k] = v;
         }
 
+        string? sessionFile = null;
         if (runAs is not null && !OperatingSystem.IsWindows())
         {
             // The process runs as another user, never with this one's home or keys: sudo (no prompt,
-            // the target's own HOME) carries only the names this method set.
+            // the target's own HOME) carries only the names this method set. It starts its own session,
+            // whose id it writes to a file, because this user cannot signal the seat: the kill goes through sudo.
             foreach (var name in Identity) psi.Environment.Remove(name);
             var inner = psi.ArgumentList.ToList();
             psi.ArgumentList.Clear();
-            foreach (var a in new[] { "-n", "-H", "-u", runAs, $"--preserve-env={string.Join(',', psi.Environment.Keys)}", "--", file }) psi.ArgumentList.Add(a);
+            sessionFile = Path.Combine(Path.GetTempPath(), $"seat-{Guid.NewGuid():N}.sid");
+            File.WriteAllText(sessionFile, "");
+            File.SetUnixFileMode(sessionFile, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupWrite | UnixFileMode.OtherWrite);
+            string[] head = ["-n", "-H", "-u", runAs, $"--preserve-env={string.Join(',', psi.Environment.Keys)}", "--", "setsid", "sh", "-c", "echo $$ > \"$0\"; exec \"$@\"", sessionFile];
+            foreach (var a in head) psi.ArgumentList.Add(a);
+            // Priority cannot be set on a process this user does not own: it rides inside the line.
+            if (lowPriority)
+            {
+                foreach (var a in new[] { "nice", "-n", "10" }) psi.ArgumentList.Add(a);
+            }
+            psi.ArgumentList.Add(file);
             foreach (var a in inner) psi.ArgumentList.Add(a);
             psi.FileName = "sudo";
+            lowPriority = false;
         }
 
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
@@ -135,9 +148,10 @@ public static class Shell
             {
                 p.Kill(entireProcessTree: true);
             }
-            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or AggregateException)
             {
             }
+            if (sessionFile is not null) await KillSeat(runAs!, sessionFile);
             await exited.Task.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None).ContinueWith(_ => { }, TaskScheduler.Default);
             if (!timedOut) throw;
         }
@@ -154,10 +168,26 @@ public static class Shell
             p.CancelOutputRead();
             p.CancelErrorRead();
         }
+        if (sessionFile is not null) File.Delete(sessionFile);
         lock (gate)
         {
             log?.Flush();
             return new ShellResult(timedOut ? -1 : p.ExitCode, output.ToString(), timedOut);
+        }
+    }
+
+    // The seat's whole session, killed as the seat's own user: sudo's rule for the account must allow `pkill`.
+    static async Task KillSeat(string runAs, string sessionFile)
+    {
+        var sid = (await File.ReadAllTextAsync(sessionFile)).Trim();
+        if (sid.Length == 0 || !sid.All(char.IsAsciiDigit)) return;
+        try
+        {
+            using var kill = Process.Start(new ProcessStartInfo("sudo", ["-n", "-u", runAs, "pkill", "-KILL", "-s", sid]) { UseShellExecute = false });
+            if (kill is not null) await kill.WaitForExitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(15)).Token);
+        }
+        catch (Exception e) when (e is System.ComponentModel.Win32Exception or OperationCanceledException)
+        {
         }
     }
 

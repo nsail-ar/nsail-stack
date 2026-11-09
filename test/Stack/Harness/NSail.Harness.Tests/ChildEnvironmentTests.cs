@@ -53,7 +53,8 @@ public class ChildEnvironmentTests
 
             Assert.Contains("argv=-n -H -u seat --preserve-env=", result.Output);
             Assert.Contains("CLAUDE_CONFIG_DIR", result.Output);
-            Assert.Contains("-- claude -p", result.Output);
+            Assert.Contains("-- setsid sh -c", result.Output);
+            Assert.Contains(" claude -p", result.Output);
             Assert.Contains("home=unset", result.Output);
         }
         finally

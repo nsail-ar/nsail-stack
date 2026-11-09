@@ -115,8 +115,13 @@ the files it leaves.
   - How a story is named (`{key}#{n}`, `{prefix}/{key}-{n}`) and the words the harness posts (`HarnessTexts`).
   - A provider's own settings sit in its section (`GitHub`, `Claude`: the seats' plugins live there, and
     `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository; `RunAs`, a Linux
-    account the seats run as through `sudo -n -u`, so a seat reads none of the harness user's `~/.ssh`, secrets file or docker
-    group: the account owns neither, writes the slots and `configRoot`, and the harness user's sudoers rule carries `SETENV`).
+    account the seats run as through `sudo -n -H -u`, so a seat reads none of the harness user's `~/.ssh`, secrets file or docker
+    group. The account owns none of them and must write what the harness creates for it, which the Stack does not chmod:
+    default ACLs (`setfacl -d -m u:<account>:rwx`) on the work root (slots and the bare `repo.git`) and `configRoot`, or a
+    shared group with the harness's umask at 002. The harness user's sudoers rule for it carries `SETENV` and `!secure_path`
+    (the seat keeps the machine's PATH), allows `setsid` and `pkill` (a timeout kills the seat's session through sudo),
+    and `Claude:Command` is best given as an absolute path. `RunAs` covers the agent's runs and plugin installs, not a
+    worker's own `Command`: that runs as the harness user.)
 - **Capacity is per resource, per machine**: agents, builds, browsers (`Agents`, `Builds`,
   `Browsers`). The plan is walked in order and every item whose resources are free is taken; a
   worker's `Max` caps its own jobs. Past the agent's quota wall (a refused run) only the agents stop.
