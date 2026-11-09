@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.ComponentModel.DataAnnotations;
+
 namespace NSail.Messaging.Queue;
 
 /// <summary>Section <c>Queue</c>. Everything the delivery loop is judged by is here and not a
@@ -18,6 +20,7 @@ public class QueueOptions
     /// <summary>How many times a delivery may fail before the row is dead-lettered. Counted across
     /// passes and across restarts, because it is a column of the row and not a loop
     /// variable.</summary>
+    [Range(1, int.MaxValue)]
     public int MaxAttempts { get; set; } = 5;
 
     /// <summary>The wait before the first retry; each further attempt doubles it. A handler
@@ -26,6 +29,7 @@ public class QueueOptions
     public TimeSpan Backoff { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>How often the drain looks for due rows, per tenant.</summary>
+    [Range(typeof(TimeSpan), "00:00:00.001", "1.00:00:00")]
     public TimeSpan Interval { get; set; } = TimeSpan.FromSeconds(10);
 
     /// <summary>How long a drain holds a row it claimed. Longer than the slowest delivery: a
@@ -35,5 +39,6 @@ public class QueueOptions
     /// <summary>How many due rows one pass delivers. A bound and not a target: the next pass
     /// is one Interval away, and a pass that read the whole table would hold one tenant's
     /// sweep for as long as its backlog takes.</summary>
+    [Range(1, int.MaxValue)]
     public int BatchSize { get; set; } = 50;
 }
