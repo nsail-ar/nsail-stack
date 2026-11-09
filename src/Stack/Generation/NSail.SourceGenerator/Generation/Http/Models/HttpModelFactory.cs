@@ -97,8 +97,7 @@ public static class HttpModelFactory
         {
             if (argument.Key == "Identity"
                 && argument.Value.Value is string name
-                && !messageTypeSymbol.GetAllMembers().OfType<IPropertySymbol>().Any(p => p.Name == name
-                    && p.DeclaredAccessibility == Accessibility.Public
+                && !GetBoundProperties(messageTypeSymbol).Any(p => p.Name == name
                     && p.Type.SpecialType == SpecialType.System_String
                     && !p.GetAttributes().Any(a => a.AttributeClass?.Name == "JsonPropertyNameAttribute")
                     && GetBindingSource(p, httpMethod, GetPropertiesFromPath(httpPath)) == BindingSource.Body))
@@ -192,16 +191,12 @@ public static class HttpModelFactory
     // the model — the entry could not assign it.
     static IEnumerable<IPropertySymbol> GetBoundProperties(INamedTypeSymbol typeSymbol)
     {
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var property in typeSymbol.GetAllMembers().OfType<IPropertySymbol>())
+        foreach (var property in typeSymbol.GetAllProperties())
         {
             if (property.IsStatic
-                || property.IsIndexer
                 || property.DeclaredAccessibility != Accessibility.Public
                 || property.SetMethod is not { DeclaredAccessibility: Accessibility.Public }
-                || IsIgnored(property)
-                || !seen.Add(property.Name))
+                || IsIgnored(property))
             {
                 continue;
             }
@@ -227,7 +222,7 @@ public static class HttpModelFactory
 
     static readonly HashSet<string> LambdaLocals = new(StringComparer.Ordinal)
     {
-        "message", "pipeline", "result", "body", "form"
+        "builder", "message", "pipeline", "result", "body", "form"
     };
 
     // The wire name stays the lowered property name; the identifier is what the lambda can
@@ -243,7 +238,7 @@ public static class HttpModelFactory
         }
         else if (LambdaLocals.Contains(name))
         {
-            binding.ParameterName = "p_" + name;
+            binding.ParameterName = "nsail" + char.ToUpperInvariant(name[0]) + name.Substring(1);
             binding.NameArgument = $"(Name = \"{name}\")";
         }
         else

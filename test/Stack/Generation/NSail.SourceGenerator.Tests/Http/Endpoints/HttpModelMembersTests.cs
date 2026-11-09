@@ -54,12 +54,32 @@ public class HttpModelMembersTests
         }
         """;
 
+    const string Hidden = Header + """
+        public record HiddenBase { public virtual string Secret { get; set; } = ""; }
+
+        public class NarrowBase { public string Name { get; set; } = ""; }
+
+        [Http(Method.Post, "api/hidden")]
+        public record SaveHidden : HiddenBase, IMessage
+        {
+            [System.Text.Json.Serialization.JsonIgnore]
+            public override string Secret { get; set; } = "";
+        }
+
+        [Http(Method.Post, "api/narrow")]
+        public class SaveNarrow : NarrowBase, IMessage
+        {
+            public new string Name { get; } = "";
+        }
+        """;
+
     const string Names = Header + """
         [Http(Method.Get, "api/things/{id}")]
         public class FindThing : IMessage
         {
             public System.Guid Id { get; set; }
             [AsQuery] public string Message { get; set; } = "";
+            [AsQuery] public string Builder { get; set; } = "";
             [AsQuery] public string Result { get; set; } = "";
             [AsQuery] public string Event { get; set; } = "";
             [AsQuery] public int Params { get; set; }
@@ -96,6 +116,20 @@ public class HttpModelMembersTests
     }
 
     [Fact]
+    public void An_ignored_or_narrowed_override_hides_the_inherited_member_too()
+    {
+        var generated = Run(Hidden, out var errors);
+
+        Assert.Empty(errors);
+
+        foreach (var dto in generated.Where(t => t.Contains("class SaveHiddenBody", StringComparison.Ordinal) || t.Contains("class SaveNarrowBody", StringComparison.Ordinal)))
+        {
+            Assert.DoesNotContain("Secret", dto);
+            Assert.DoesNotContain("Name", dto);
+        }
+    }
+
+    [Fact]
     public void Parameter_names_never_collide_with_keywords_locals_or_the_culture()
     {
         var previous = CultureInfo.CurrentCulture;
@@ -111,7 +145,8 @@ public class HttpModelMembersTests
 
             Assert.Contains("[FromRoute] System.Guid id,", entry);
             Assert.Contains("[FromQuery(Name = \"message\")]", entry);
-            Assert.Contains("string? p_message,", entry);
+            Assert.Contains("string? nsailMessage,", entry);
+            Assert.Contains("[FromQuery(Name = \"builder\")]", entry);
             Assert.Contains("string? @event,", entry);
             Assert.Contains("@params", entry);
         }

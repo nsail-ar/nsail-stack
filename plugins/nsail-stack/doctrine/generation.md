@@ -170,6 +170,8 @@ public class GetPrescription : IMessage<Prescription>
 | `[AsHeader]` | Request header |
 | (default on POST/PUT) | JSON body |
 
+Only public, instance, non-indexer properties with a public `set` or `init` and no `[JsonIgnore]` enter the model, read once as the most derived declaration; any other member is not on the wire.
+
 Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc.
 
 Sdk projects import `static NSail.Messaging.Annotations.Method` via global usings.
