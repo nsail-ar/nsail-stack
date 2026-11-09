@@ -42,6 +42,9 @@ public sealed class HarnessLoop(
     // The longest a provider's rate-limit wait holds the next pass.
     internal static readonly TimeSpan MaxLimitBackoff = TimeSpan.FromMinutes(10);
 
+    // A job's result when it ended on the provider's limit or its server's failure, not on its own.
+    public const string ProviderResult = "provider";
+
     readonly SemaphoreSlim _wake = new(0);
     readonly Lock _gate = new();
     readonly string _instance = Guid.NewGuid().ToString("N")[..8];
@@ -65,6 +68,8 @@ public sealed class HarnessLoop(
     string? _paused = state.Paused;
     DateTimeOffset? _quotaUntil = state.QuotaUntil;
     TimeSpan? _limitedFor;
+    // Until when a job's limited ending holds every pass; under _gate. A pass resets _limitedFor, and a job ends on its own task.
+    DateTimeOffset? _limitedUntil;
     volatile bool _restarting;
     DateTimeOffset? _pausedSince = state.PausedSince;
     bool _orphansSaid;
@@ -117,6 +122,11 @@ public sealed class HarnessLoop(
             step = null;
         }
         return JobActivity.Read(job, step, jobs.Agent.LongestCommand, leases.Waits(JobContext.HolderOf(job.Item)));
+    }
+
+    internal DateTimeOffset? LimitedUntil
+    {
+        get { lock (_gate) return _limitedUntil; }
     }
 
     // The stories labelled stalled on the last board read.
@@ -218,6 +228,18 @@ public sealed class HarnessLoop(
 
         while (!stop.IsCancellationRequested)
         {
+            if (HeldFor(LimitedUntil, DateTimeOffset.UtcNow) is { } held)
+            {
+                log.LogWarning("a job hit the provider's rate limit — next pass in {Seconds:F0}s", held.TotalSeconds);
+                try
+                {
+                    await Task.Delay(held, stop);
+                }
+                catch (OperationCanceledException) when (stop.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
             _limitedFor = null;
             var pass = await RunPass(o, stop);
             lock (_gate) _last = pass;
@@ -374,7 +396,7 @@ public sealed class HarnessLoop(
         return item is { Kind: WorkKind.Qa, Story: { } n } && _walked.TryGetValue(n, out var at) && (lastCut is null || at > lastCut);
     }
 
-    bool BackedOff(WorkItem item)
+    internal bool BackedOff(WorkItem item)
     {
         var key = BackoffKey(item);
         if (!_backoff.TryGetValue(key, out var until)) return false;
@@ -524,6 +546,34 @@ public sealed class HarnessLoop(
             return asked < MaxLimitBackoff ? asked : MaxLimitBackoff;
         }
         return wait;
+    }
+
+    // What is left of a limited job's hold on the passes; a wake does not end it.
+    internal static TimeSpan? HeldFor(DateTimeOffset? until, DateTimeOffset now)
+    {
+        return until is { } u && u > now ? u - now : null;
+    }
+
+    // How long an item whose job ended on the provider waits, or null when the ending is a break: a
+    // limit announced with its wait (GitHubClient.LimitWait), up to the ceiling a limited pass uses,
+    // or a 5xx, the provider's own failure, as long as a break. A bare 403 or a 404 is an answer.
+    internal static TimeSpan? ProviderWait(Exception e)
+    {
+        return e switch
+        {
+            ProviderException { RetryAfter: { } after } => after < MaxLimitBackoff ? after : MaxLimitBackoff,
+            ProviderException { Status: >= 500 } => Backoff,
+            _ => null,
+        };
+    }
+
+    // The call it failed on, without the provider's body: `rate limited — 403 GET …/pulls/287/files, retry in 42m`.
+    internal static string ProviderOutcome(ProviderException e)
+    {
+        var call = e.Message.Split(": ", 2)[0];
+        return e.RetryAfter is { } after
+            ? $"rate limited — {call}, retry in {(after.TotalMinutes >= 1 ? $"{Math.Ceiling(after.TotalMinutes):F0}m" : $"{Math.Ceiling(after.TotalSeconds):F0}s")}"
+            : $"provider answered {e.Status} — {call}";
     }
 
     // A failed read starts nothing: a half board reads as an empty queue. A request that timed out
@@ -691,11 +741,12 @@ public sealed class HarnessLoop(
         return id;
     }
 
-    async Task Sail(IJob job, RunningJob running)
+    internal async Task Sail(IJob job, RunningJob running)
     {
         var story = running.Item.Story;
         string outcome;
         JobOutcome? ended = null;
+        var provider = false;
         try
         {
             var result = await job.Run(running.Slot, running.LogPath, _jobsStop.Token);
@@ -731,6 +782,24 @@ public sealed class HarnessLoop(
                 }
             }
         }
+        // Not the story's break: nothing is said on it and nothing counts toward stalled; it goes back as a break puts it.
+        catch (ProviderException e) when (ProviderWait(e) is not null)
+        {
+            provider = true;
+            outcome = ProviderOutcome(e);
+            var until = DateTimeOffset.UtcNow + ProviderWait(e)!.Value;
+            _backoff[BackoffKey(running.Item)] = until;
+            if (e.RetryAfter is not null)
+            {
+                lock (_gate) _limitedUntil = LaterWall(_limitedUntil, until);
+            }
+            log.LogWarning(e, "{Item} ended on the provider: {Outcome}", running.Item, outcome);
+            if (story is { } n)
+            {
+                await LockLabelOff(running.Item, n);
+                await BackToReady(running.Item, n);
+            }
+        }
         catch (Exception e)
         {
             outcome = $"failed: {e.Message}";
@@ -739,16 +808,7 @@ public sealed class HarnessLoop(
             log.LogError(e, "{Item} failed", running.Item);
             if (story is { } n)
             {
-                // The story goes back where the next pass can take it again: a Dev cut off mid-voyage
-                // with no PR would otherwise sit In-Progress, where nothing takes a story.
-                var lockLabel = running.Item.Kind switch
-                {
-                    WorkKind.Dev => Labels.Claimed,
-                    WorkKind.Review => Labels.Review,
-                    WorkKind.Analyze => Labels.Analyzing,
-                    _ => null,
-                };
-                if (lockLabel is not null) await Quietly(() => board.RemoveLabel(n, lockLabel), $"#{n} {lockLabel} off");
+                await LockLabelOff(running.Item, n);
                 // Every break is said on the story with its marker; the second in a row is not backed
                 // off but stopped, loud: a job that broke twice breaks every ten minutes forever.
                 var o = options.Value;
@@ -769,9 +829,9 @@ public sealed class HarnessLoop(
                 {
                     outcome += " — broke twice, stalled";
                 }
-                else if (running.Item.Kind == WorkKind.Dev && running.Item.Pr is null)
+                else
                 {
-                    await Quietly(() => board.SetStage(n, Stages.Ready, CancellationToken.None), $"#{n} back to Ready");
+                    await BackToReady(running.Item, n);
                 }
             }
         }
@@ -783,20 +843,43 @@ public sealed class HarnessLoop(
             _running.TryRemove(running.Id, out _);
             _sailing.TryRemove(running.Id, out _);
         }
-        metrics.JobEnded(running.Item.Kind.ToString().ToLowerInvariant(), broke: outcome.StartsWith("failed: ", StringComparison.Ordinal));
+        var ending = provider ? ProviderResult : ended is null ? "broke" : ended.Quiet ? "quiet" : ended.Failed ? "failed" : "ok";
+        metrics.JobEnded(running.Item.Kind.ToString().ToLowerInvariant(), ending is "broke" or ProviderResult ? ending : "ok");
         TimeSpan? waited = _waited.TryRemove(running.Id, out var wait) ? wait : null;
         await Quietly(() =>
         {
-            stats.Ended(running.Item.Kind, story, running.Started, DateTimeOffset.UtcNow, waited, ended);
+            // A provider's outage is not the crew's work, as the quota wall is not.
+            if (!provider) stats.Ended(running.Item.Kind, story, running.Started, DateTimeOffset.UtcNow, waited, ended);
             // A review that read its PR clean lands it (ReviewJob.Land): the story's PR merged.
             if (running.Item is { Kind: WorkKind.Review, Pr: { } pr } && ended?.Event == "Clean") stats.Merged(pr, story, DateTimeOffset.UtcNow);
             return Task.CompletedTask;
         }, "stats");
-        var ending = ended is null ? "broke" : ended.Quiet ? "quiet" : ended.Failed ? "failed" : "ok";
         history.Record(new JobRecord(running.Id, running.Item.ToString(), story, running.Started, DateTimeOffset.UtcNow, outcome, running.LogPath, ending));
         log.LogInformation("✓ {Item} [{Id}]: {Outcome}", running.Item, running.Id, outcome);
         StopIfDrained();
         Wake();
+    }
+
+    // The story goes back where the next pass can take it again: its job's lock label off, and a Dev
+    // cut off mid-voyage with no PR to Ready, or it would sit In-Progress, where nothing takes a story.
+    async Task LockLabelOff(WorkItem item, int n)
+    {
+        var lockLabel = item.Kind switch
+        {
+            WorkKind.Dev => Labels.Claimed,
+            WorkKind.Review => Labels.Review,
+            WorkKind.Analyze => Labels.Analyzing,
+            _ => null,
+        };
+        if (lockLabel is not null) await Quietly(() => board.RemoveLabel(n, lockLabel), $"#{n} {lockLabel} off");
+    }
+
+    async Task BackToReady(WorkItem item, int n)
+    {
+        if (item.Kind == WorkKind.Dev && item.Pr is null)
+        {
+            await Quietly(() => board.SetStage(n, Stages.Ready, CancellationToken.None), $"#{n} back to Ready");
+        }
     }
 
     // Cleanup never throws: one failed step must not skip the ones after it.

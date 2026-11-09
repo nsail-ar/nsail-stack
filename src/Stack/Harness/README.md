@@ -108,7 +108,13 @@ the files it leaves.
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for
-    it names all three. A story whose body or refinery comment names a blocker
+    it names all three. A job that ends on the provider's limit (a `ProviderException` with its
+    `RetryAfter`) or on a 5xx is not a break: nothing is said on its story and nothing counts toward
+    `stalled`; its lock label and lock come off and a Dev with no PR goes back to Ready, as a break's do.
+    A limit holds the item and every pass for the wait it asked, up to `MaxLimitBackoff`; a 5xx backs the
+    item off as a break. Its run's result is `provider` (`/jobs`, the pill, `harness.jobs{outcome=provider}`),
+    its outcome `rate limited — <call>, retry in <wait>` or the status the provider answered. A bare 403
+    or a 404 is an answer, and breaks. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
     its analysis and before its first voyage (`Board/WrittenBlockers.cs`); a `Waits` line that answers
     `nothing`, `none`, `nada`, `ninguna` or `ninguno` names no blocker, whatever else it mentions. A
