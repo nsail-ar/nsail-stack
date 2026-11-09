@@ -293,7 +293,9 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   login, and a box the browser fills with it stops being blank, which the save reads as a
   replacement (settings.md); a caller's `Autocomplete` wins.
 - **`NsDurationField` refuses a span `TimeSpan` cannot hold** as its own field problem and keeps
-  the model's value. `NsMultiSelect` is an `NsFieldBase<IReadOnlyList<TValue>>` like any field;
+  the model's value; the refusal lifts on the next readable keystroke or when the page writes
+  another value behind the field — a read that lands is not a reason to keep blocking Save.
+  `NsMultiSelect` is an `NsFieldBase<IReadOnlyList<TValue>>` like any field;
   the vendor re-raises a selection the model hands it, so a set equal to the held one is an echo,
   never an edit (forms.md).
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
