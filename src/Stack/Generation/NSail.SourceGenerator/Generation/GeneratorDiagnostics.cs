@@ -217,4 +217,13 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "The route is the endpoint and the client's address; a message without one is skipped by neither and served by neither.");
+
+    public static readonly DiagnosticDescriptor CollectionHeader = new(
+        id: "NSG024",
+        title: "A header-bound member is a collection",
+        messageFormat: "'{0}.{1}' is bound from a header, but it is a collection: the client's values reach the endpoint as one comma-joined value, never as the elements. Send it in the query or the body.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "HTTP joins repeated values of a header into one line and the endpoint binds that line as a single element, so the collection would arrive wrong or be refused.");
 }

@@ -1,5 +1,6 @@
 #nullable enable
 
+using System.Net.Http;
 using NSail.Messaging;
 using NSail.Messaging.Http;
 using NSail.Messaging.Runtime.Context;
@@ -31,7 +32,7 @@ public sealed class {{ MessageType.FlatName }}HttpSender : HttpSender<{{ Message
 {{~ when "Body" ~}}
             .AddJsonContent(message)
 {{~ when "Header" ~}}
-            .AddHeader(message)
+            .AddHeader("{{ binding.Name }}", message.{{ binding.PropertyName }})
 {{~ end ~}}
 {{~ end ~}}
             .Build();
