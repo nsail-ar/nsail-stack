@@ -7,12 +7,14 @@ using System.Text;
 namespace NSail.Harness.Lanes;
 
 // A process with its own environment and working folder; the whole output, stdout and
-// stderr, goes to the log as it comes and back to the caller.
+// stderr, goes to the log as it comes and its last TailChars characters back to the caller.
 public static class Shell
 {
     // What the harness's own git (clone, fetch, push) authenticates with: set once at startup, never
     // written to the process environment, so no child but a `git` it starts reads it.
     public static IReadOnlyDictionary<string, string> GitEnvironment { get; set; } = new Dictionary<string, string>();
+
+    public const int TailChars = 1 << 20;
 
     static readonly string[] InheritedNames =
     [
@@ -38,7 +40,7 @@ public static class Shell
 
     public static async Task<ShellResult> Run(
         string file, IEnumerable<string> args, string workDir, IDictionary<string, string>? env = null,
-        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false)
+        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false, int tailChars = TailChars)
     {
         var psi = new ProcessStartInfo(file)
         {
@@ -70,14 +72,20 @@ public static class Shell
         }
 
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
-        var output = new StringBuilder();
+        var tail = new Queue<string>();
+        var tailLength = 0;
         var gate = new object();
         void Line(string? l)
         {
             if (l is null) return;
             lock (gate)
             {
-                output.AppendLine(l);
+                tail.Enqueue(l);
+                tailLength += l.Length + Environment.NewLine.Length;
+                while (tailLength > tailChars && tail.Count > 1)
+                {
+                    tailLength -= tail.Dequeue().Length + Environment.NewLine.Length;
+                }
                 log?.WriteLine(l);
             }
         }
@@ -86,7 +94,15 @@ public static class Shell
         var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         p.Exited += (_, _) => exited.TrySetResult();
         p.Start();
-        ProcessGroup.Join(p);
+        try
+        {
+            ProcessGroup.Join(p);
+        }
+        catch
+        {
+            Kill(p);
+            throw;
+        }
         if (lowPriority)
         {
             // Children inherit it, on Windows and Linux alike: a lane's builds yield to whoever sits at the machine.
@@ -100,14 +116,11 @@ public static class Shell
         }
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
-        if (stdin is not null)
-        {
-            await p.StandardInput.WriteAsync(stdin);
-            p.StandardInput.Close();
-        }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         if (timeout is { } t) cts.CancelAfter(t);
+        // A child that never reads stdin blocks the write: it runs inside the timeout window, and the kill breaks its pipe.
+        var written = stdin is null ? Task.CompletedTask : WriteStdin(p, stdin);
         var timedOut = false;
         try
         {
@@ -116,13 +129,7 @@ public static class Shell
         catch (OperationCanceledException)
         {
             timedOut = !ct.IsCancellationRequested;
-            try
-            {
-                p.Kill(entireProcessTree: true);
-            }
-            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
-            {
-            }
+            Kill(p);
             await exited.Task.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None).ContinueWith(_ => { }, TaskScheduler.Default);
             if (!timedOut) throw;
         }
@@ -142,7 +149,32 @@ public static class Shell
         lock (gate)
         {
             log?.Flush();
+            var output = new StringBuilder();
+            foreach (var l in tail) output.AppendLine(l);
             return new ShellResult(timedOut ? -1 : p.ExitCode, output.ToString(), timedOut);
+        }
+    }
+
+    static async Task WriteStdin(Process p, string stdin)
+    {
+        try
+        {
+            await p.StandardInput.WriteAsync(stdin);
+            p.StandardInput.Close();
+        }
+        catch (Exception e) when (e is IOException or ObjectDisposedException or InvalidOperationException)
+        {
+        }
+    }
+
+    static void Kill(Process p)
+    {
+        try
+        {
+            p.Kill(entireProcessTree: true);
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
         }
     }
 

@@ -134,7 +134,13 @@ the files it leaves.
 - **Locks** are the board's labels plus a story lock (a git ref per story on GitHub), created
   atomically, so any number of harnesses can share one board.
 - **A job's processes die with the harness** (`Lanes/ProcessGroup.cs`): a restart never leaves a
-  build writing in a slot the next job is handed.
+  build writing in a slot the next job is handed. On Windows that is a job object; off Windows
+  there is none, and the guarantee is the service unit's `KillMode=control-group` (systemd's
+  default), set in the unit file that runs the harness: the unit's stop kills every process in
+  its cgroup. A child whose group join fails is killed at once.
+- **A process's output** goes to the job log line by line as it comes; the caller gets the last
+  `Shell.TailChars` characters. Its stdin is written inside the same timeout window, so a child
+  that never reads it is killed with its tree.
 - **Modes**: `Debug` reads and plans and starts nothing; `Live` acts.
 
 ## A host
