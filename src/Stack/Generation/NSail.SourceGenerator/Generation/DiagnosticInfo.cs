@@ -21,7 +21,7 @@ public sealed record DiagnosticInfo(
     EquatableList<string> Arguments,
     bool Suppressed = false)
 {
-    public static DiagnosticInfo Create(DiagnosticDescriptor descriptor, Location? location, params object[] arguments)
+    public static DiagnosticInfo Create(DiagnosticDescriptor descriptor, Location? location, params object?[] arguments)
     {
         var args = new EquatableList<string>(arguments.Select(a => a?.ToString() ?? string.Empty));
 
@@ -33,7 +33,7 @@ public sealed record DiagnosticInfo(
         return new DiagnosticInfo(descriptor, null, default, default, args);
     }
 
-    public static DiagnosticInfo Create(DiagnosticDescriptor descriptor, ISymbol symbol, params object[] arguments)
+    public static DiagnosticInfo Create(DiagnosticDescriptor descriptor, ISymbol symbol, params object?[] arguments)
     {
         return Create(descriptor, symbol.Locations.FirstOrDefault(l => l.IsInSource), arguments);
     }
