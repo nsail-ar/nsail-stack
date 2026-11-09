@@ -77,6 +77,56 @@ public sealed class TenantConstraintTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Deleting_a_principal_clears_the_optional_key_of_a_loaded_dependent()
+    {
+        var parent = Guid.NewGuid();
+        var loose = Guid.NewGuid();
+
+        await using (var own = new ConstraintDbContext(_options, Lumina))
+        {
+            own.Add(new CParent { Id = parent, Code = "A" });
+            own.Add(new CLoose { Id = loose, ParentId = parent });
+
+            await own.SaveChangesAsync();
+        }
+
+        await using (var db = new ConstraintDbContext(_options, Lumina))
+        {
+            var row = await db.Set<CLoose>().SingleAsync();
+            var principal = await db.Set<CParent>().SingleAsync();
+
+            db.Remove(principal);
+
+            await db.SaveChangesAsync();
+        }
+
+        await using var check = new ConstraintDbContext(_options, Lumina);
+
+        Assert.Null((await check.Set<CLoose>().SingleAsync()).ParentId);
+    }
+
+    [Fact]
+    public async Task A_foreign_key_declared_on_a_derived_type_names_the_tenant_too()
+    {
+        var parent = Guid.NewGuid();
+
+        await using (var owner = new ConstraintDbContext(_options, Lumina))
+        {
+            owner.Add(new CParent { Id = parent, Code = "A" });
+
+            await owner.SaveChangesAsync();
+        }
+
+        await using var other = new ConstraintDbContext(_options, Vision);
+
+        other.Add(new CDerived { Id = Guid.NewGuid(), OwnerId = parent });
+
+        var refusal = await Assert.ThrowsAsync<DbUpdateException>(() => other.SaveChangesAsync());
+
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, ((PostgresException)refusal.InnerException!).SqlState);
+    }
+
+    [Fact]
     public async Task A_key_to_an_alternate_key_stays_in_the_tenant()
     {
         await using (var owner = new ConstraintDbContext(_options, Lumina))
@@ -90,7 +140,9 @@ public sealed class TenantConstraintTests : IAsyncLifetime
 
         other.Add(new CByCode { Id = Guid.NewGuid(), ParentCode = "SHARED" });
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => other.SaveChangesAsync());
+        var refusal = await Assert.ThrowsAsync<DbUpdateException>(() => other.SaveChangesAsync());
+
+        Assert.Equal(PostgresErrorCodes.ForeignKeyViolation, ((PostgresException)refusal.InnerException!).SqlState);
     }
 
     [Fact]
@@ -216,6 +268,20 @@ sealed class ConstraintSetup : IDbContextSetup
             child.HasOne<CKind>().WithMany().HasForeignKey(row => row.KindId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<CBase>(row => row.ToTable("Bases"));
+
+        modelBuilder.Entity<CDerived>(row =>
+        {
+            row.HasBaseType<CBase>();
+            row.HasOne<CParent>().WithMany().HasForeignKey(r => r.OwnerId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CLoose>(row =>
+        {
+            row.ToTable("Loose");
+            row.HasOne<CParent>().WithMany().HasForeignKey(r => r.ParentId);
+        });
+
         modelBuilder.Entity<CByCode>(row =>
         {
             row.ToTable("ByCode");
@@ -252,4 +318,21 @@ public sealed class CByCode
     public Guid Id { get; set; }
 
     public string ParentCode { get; set; } = string.Empty;
+}
+
+public sealed class CLoose
+{
+    public Guid Id { get; set; }
+
+    public Guid? ParentId { get; set; }
+}
+
+public class CBase
+{
+    public Guid Id { get; set; }
+}
+
+public sealed class CDerived : CBase
+{
+    public Guid? OwnerId { get; set; }
 }

@@ -79,14 +79,14 @@ static class TenantColumn
         foreach (var (entity, tenant) in owned)
         {
             LeadIndexesWithTenant(entity, tenant);
-        }
-
-        foreach (var (entity, tenant) in owned)
-        {
             ScopeKeys(entity, tenant);
         }
 
-        foreach (var (entity, tenant) in owned)
+        // Every type, not only the roots: a derived type or an owned one shares its root's row and
+        // may declare a foreign key of its own, which names the same tenant.
+        var sharing = model.GetEntityTypes().ToArray();
+
+        foreach (var entity in sharing)
         {
             ScopeForeignKeys(entity, owned);
         }
@@ -94,16 +94,30 @@ static class TenantColumn
         foreach (var (entity, tenant) in owned)
         {
             DropGlobalKeys(entity, tenant);
-            CoverForeignKeys(entity, tenant);
+        }
+
+        foreach (var entity in sharing)
+        {
+            if (TenantOf(entity, owned) is { } tenant)
+            {
+                CoverForeignKeys(entity, tenant);
+            }
         }
     }
 
-    // The tenant column of the row a type shares or is: its root's, and only where the root took
-    // one. Asked of the marker's outcome and not of the column, because TenantState carries a
+    // The tenant column of the row a type shares or is: its root's — the base of a hierarchy, the
+    // owner of an aggregate — and only where the root took one. Asked of the marker's outcome and not of the column, because TenantState carries a
     // TenantId of its own that is not the wall's.
     static IMutableProperty? TenantOf(IMutableEntityType entity, Dictionary<IMutableEntityType, IMutableProperty> owned)
     {
-        return owned.TryGetValue(entity.GetRootType(), out var tenant) ? tenant : null;
+        var root = entity;
+
+        for (var above = Above(root); above is not null; above = Above(root))
+        {
+            root = above;
+        }
+
+        return owned.TryGetValue(root, out var tenant) ? tenant : null;
     }
 
     // An alternate key is unique per tenant, like every unique index: the tenant leads it, so two
@@ -162,6 +176,12 @@ static class TenantColumn
 
             var target = foreignKey.PrincipalKey;
             var declaring = target.DeclaringEntityType;
+
+            if (!owned.ContainsKey(declaring))
+            {
+                continue;
+            }
+
             var scoped = target.Properties[0] == principal
                 ? target
                 : declaring.FindKey(Led(principal, target.Properties)) ?? declaring.AddKey(Led(principal, target.Properties));
@@ -281,12 +301,11 @@ static class TenantColumn
                 Rebuild(entity, index, tenant);
             }
         }
-
     }
 
     static void CoverForeignKeys(IMutableEntityType entity, IMutableProperty? lead)
     {
-        foreach (var foreignKey in entity.GetForeignKeys().ToArray())
+        foreach (var foreignKey in entity.GetDeclaredForeignKeys().ToArray())
         {
             Cover(entity, foreignKey, foreignKey.Properties[0] == lead ? null : lead);
         }
@@ -320,8 +339,11 @@ static class TenantColumn
 
     static void Cover(IMutableEntityType entity, IMutableForeignKey foreignKey, IMutableProperty? lead)
     {
-        // The primary key already indexes what leads it, and a Guid key names one row either way.
-        if (entity.FindPrimaryKey() is { } key && Leads(key.Properties, foreignKey.Properties))
+        // The primary key already indexes what leads it, and a Guid key names one row either way —
+        // the tenant in front of a foreign key that is the key itself included.
+        if (entity.FindPrimaryKey() is { } key
+            && (Leads(key.Properties, foreignKey.Properties)
+                || (lead is null && foreignKey.Properties[0].Name == Name && Leads(key.Properties, foreignKey.Properties.Skip(1).ToArray()))))
         {
             return;
         }

@@ -51,7 +51,10 @@ Stack sets and no product writes:
   a product: the pass derives it from the model, so the migration of every product's foreign
   keys is the one `dotnet ef migrations add` scaffolds. An optional foreign key with a null `Fk` is
   not checked (Postgres's default match), so it names nothing; `DeleteBehavior.SetNull` becomes
-  `ClientSetNull` (Postgres would null the tenant column too). **Install-scoped entities keep
+  `ClientSetNull`: Postgres's `ON DELETE SET NULL` on a composite key would null the tenant column
+  too, so the database no longer clears it. EF clears the key of every dependent it has
+  **loaded** when the principal is deleted; one it has not loaded makes the `DELETE` fail with
+  23503, so a handler that deletes a principal loads its optional dependents first. **Install-scoped entities keep
   their plain keys**, and a foreign key from a tenant row onto one stays plain: it is the same
   row for every tenant.
 
@@ -368,8 +371,9 @@ nothing (Caddy assigns the tenant, below). Nothing else exists to do.
 
 The tree names some rows by constant — every id in `SeededRoles.All`, and the accounts and the
 currency `AccountingSettings` defaults to. Where rows belong to a tenant, those constants name
-the install's row, which the tenant cannot see: the foreign key is satisfied physically, nothing
-throws, and the join answers nothing. **`TenancyProvider.Row(wellKnown)` answers "that row, in
+the install's row, which the tenant cannot see: a read joins nothing, and a write naming it is
+refused by the tenant-carrying foreign key (23503) — the request fails where it used to save a row
+that joined nothing. **`TenancyProvider.Row(wellKnown)` answers "that row, in
 this scope"** — the identity where rows are the install's, `TenantKey.For(slug, id)` where they
 are a tenant's. It is the function the first touch derives with, so a handler resolving a frozen
 id lands on the row the tenant was born with.
