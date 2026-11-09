@@ -54,15 +54,16 @@ public class WatchTests
         }
     }
 
+    // Includes the line at `since`, as OpenObserve does, so the watch's own `> since` filter is what keeps it from counting twice.
     sealed class Capped(IEnumerable<LoggedError> lines) : ILogSource
     {
-        readonly LoggedError[] all = [.. lines.OrderBy(l => l.At)];
+        readonly LoggedError[] _all = [.. lines.OrderBy(l => l.At)];
 
         public string Name => "logs";
 
         public Task<IReadOnlyList<LoggedError>> Errors(DateTimeOffset since, DateTimeOffset until, int max, CancellationToken ct = default)
         {
-            return Task.FromResult<IReadOnlyList<LoggedError>>(all.Where(l => l.At >= since && l.At <= until).Take(max).ToList());
+            return Task.FromResult<IReadOnlyList<LoggedError>>(_all.Where(l => l.At >= since && l.At <= until).Take(max).ToList());
         }
     }
 

@@ -123,20 +123,34 @@ the files it leaves.
     harness's own git authenticates through `Shell.GitEnvironment`, not the process environment.
   - How a story is named (`{key}#{n}`, `{prefix}/{key}-{n}`) and the words the harness posts (`HarnessTexts`).
   - A provider's own settings sit in its section (`GitHub`, `Claude`: the seats' plugins live there, and
-    `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository).
+    `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository; `RunAs`, a Linux
+    account the seats run as through `sudo -n -H -u`, so a seat reads none of the harness user's `~/.ssh`, secrets file or docker
+    group. The account owns none of them and each side must write what the other creates, which the Stack does not chmod:
+    default ACLs on the work root (slots and the bare `repo.git`) and `configRoot` for both users (`setfacl -d -m u:<account>:rwx`
+    and `u:<harness user>:rwx`), or a shared group with setgid folders and umask 002 for both (`umask=0002` in the sudoers rule).
+    The harness user's sudoers rule for it carries the `SETENV` tag, `Defaults!<each command> !secure_path` (the seat keeps the
+    machine's PATH), and allows `setsid` and `pkill` (a timeout kills the seat's session through sudo),
+    and `Claude:Command` is best given as an absolute path. `RunAs` covers the agent's runs and plugin installs, not a
+    worker's own `Command`: that runs as the harness user. Windows ignores `RunAs`.)
 - **Capacity is per resource, per machine**: agents, builds, browsers (`Agents`, `Builds`,
   `Browsers`). The plan is walked in order and every item whose resources are free is taken; a
   worker's `Max` caps its own jobs. Past the agent's quota wall (a refused run) only the agents stop.
+  A build turn whose holder died returns to the line once older than the longest step the machine's
+  enabled workers run (a main gate counts twice its minutes) plus ten.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
-  cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, ...);
+  cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the
   story. A gate or review marker on a PR counts only as a whole HTML comment on its own line, written
   by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   Every harness on the board reads the same: main's `harness/gate` mark written `pending` holds that head from
-  a second gate on any harness for twice the gate worker's `Minutes` plus an hour (a harness that died leaves it pending).
-  What stays on the machine is its job history,
-  its count of them, and the work the protected-paths screen refused (`ProtectedPaths`).
+  a second gate on any harness for twice the gate worker's `Minutes` plus an hour; past that (a harness
+  that died leaves it pending) another harness judges the head again. What stays on the machine is its job history,
+  its count of them, the work the protected-paths screen refused (`ProtectedPaths`), and what a hand or
+  the provider set (`state.json`: the pause, take-new when a hand moved it, an unexpired quota wall),
+  which a restart keeps. A state file that is zero-length or torn is
+  moved aside as `<name>.bad-<time>` with a log line and the state starts empty; every write goes to a
+  temp file moved over the original. At the first board read the log names each In-Progress story no job holds.
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its
   role's tally in its hour (kept two days) and its day (ninety, on the machine's clock), its time and
   its wait in a histogram, so the status page and `GET /api/harness/stats?range=24h|7d|30d` read

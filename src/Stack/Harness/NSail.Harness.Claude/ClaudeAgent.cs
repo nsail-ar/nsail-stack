@@ -33,7 +33,22 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         var config = Path.Combine(configRoot, Path.GetFileName(run.WorkDir));
         Directory.CreateDirectory(config);
         var plugins = Path.Combine(config, "plugins");
-        if (Directory.Exists(plugins)) Directory.Delete(plugins, recursive: true);
+        if (Directory.Exists(plugins))
+        {
+            if (options.RunAs is null)
+            {
+                Directory.Delete(plugins, recursive: true);
+            }
+            else
+            {
+                // The account created it, so the account removes it.
+                var removed = await Shell.Run("rm", ["-rf", plugins], config, ct: ct, runAs: options.RunAs);
+                if (removed.ExitCode != 0)
+                {
+                    throw new InvalidOperationException($"{plugins} could not be emptied as {options.RunAs}: {removed.Output.Trim()}");
+                }
+            }
+        }
 
         var env = new Dictionary<string, string>(run.Env)
         {
@@ -52,10 +67,10 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
 
         if (run.Marketplace is not null && options.Plugins.Count > 0)
         {
-            await Shell.Run(command, ["plugin", "marketplace", "add", run.Marketplace], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct);
+            await Shell.Run(command, ["plugin", "marketplace", "add", run.Marketplace], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
             foreach (var plugin in options.Plugins)
             {
-                await Shell.Run(command, ["plugin", "install", plugin], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct);
+                await Shell.Run(command, ["plugin", "install", plugin], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
             }
         }
 
@@ -69,7 +84,7 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
             .. run.Mcp is null ? Array.Empty<string>() : ["--mcp-config", run.Mcp, "--strict-mcp-config"],
             .. options.Settings() is { } settings ? ["--settings", settings] : Array.Empty<string>(),
         ];
-        var result = await Shell.Run(command, args, run.WorkDir, env, run.Timeout, log, stdin: run.Prompt, ct: ct, lowPriority: true);
+        var result = await Shell.Run(command, args, run.WorkDir, env, run.Timeout, log, stdin: run.Prompt, ct: ct, lowPriority: true, runAs: options.RunAs);
         var signals = StreamSignals.Read(result.Output);
         Heard(signals);
         return new AgentResult(result.ExitCode, result.TimedOut, signals.QuotaUntil, signals.QuotaRefused, signals.Result);
