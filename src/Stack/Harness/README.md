@@ -48,7 +48,14 @@ the files it leaves.
     a release holds that repository's merges when the version its tag pins does.
   - `ProtectedPaths` (default `.github/workflows/**`): a builder whose commits touch one is not pushed,
     since CI would run the changed workflow with the repository's secrets before review; `AllowProtectedPaths`
-    lifts it for the harness, the `allow-protected` label for one story; a refused story returns to Ready. Extend the list when a workflow runs
+    lifts it for the harness, the `allow-protected` label for one story. A refused story waits where it stands wearing `ruling` and
+    `screened` and is not built again; its commits and its ending stay on the machine that built it (a ref and a folder under
+    `harness-kept` in its git directory), never on the remote. The refusal is no dead voyage. Adding `allow-protected` releases
+    it: the planner lifts the `ruling` the screen set (one from any other question stays), and the next voyage on that machine
+    pushes the kept work and opens or updates the PR with its builder's words, with no seat, while the story's remote branch is
+    still at the head the work was built from (still absent for a new one) and no PR of the story merged since; otherwise it
+    builds as any voyage. An analyst whose story's change must touch a protected path lists it in its `protected.txt` (its prompt's `__PROTECTED__` slot names the
+    list): a Ready verdict then waits in Ready under the same hold before any voyage. Extend the list when a workflow runs
     scripts taken from the PR checkout; configuration appends to the default, it does not replace it.
   - Commits a cancelled job or a refused push would lose go to `rescue/<key>-<n>` (a numeric suffix if it exists), under the same
     protected-paths screen (a held rescue logs a warning naming the label that lifts it); the refs accumulate and a hand
@@ -124,8 +131,8 @@ the files it leaves.
   story. A gate or review marker on a PR counts only as a whole HTML comment on its own line, written
   by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
-  Every harness on the board reads the same. What stays on the machine is its job history
-  and its count of them.
+  Every harness on the board reads the same. What stays on the machine is its job history,
+  its count of them, and the work the protected-paths screen refused (`ProtectedPaths`).
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its
   role's tally in its hour (kept two days) and its day (ninety, on the machine's clock), its time and
   its wait in a histogram, so the status page and `GET /api/harness/stats?range=24h|7d|30d` read
