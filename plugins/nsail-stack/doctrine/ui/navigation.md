@@ -177,7 +177,7 @@ new door reddens CI instead of surfacing in a release.
   (prerender) and `Add{App}Wasm` (client) are two lists, and they are one drawer and one home to
   whoever is looking at them: mounted in one and forgotten in the other, a menu changes shape and
   a home gains or loses cards the moment interactivity lands. `NavMenuMountTests` and
-  `DashboardMountTests` (Architecture) run both roots over a real `ServiceCollection` and compare
+  `DashboardMountTests` (Architecture, enforced in the products' repository) run both roots over a real `ServiceCollection` and compare
   the registrations.
 - **An app's own arrangement is declared as DATA, not composed.** `NavMenuEntry` is the flat row
   — `Name`, `Parent` (a Name), `Order`, `Shown`, plus `Icon` / `PageType` / `Parameters` / `Url` — and
@@ -245,7 +245,7 @@ module's by being mounted early.
   Accesos leaf belongs — so a second enumerator is the cost paid twice, not a second feature. The
   tree it holds is keyed on the cascaded authentication state and shared by the drawer and by
   every `NsTitleBar` deriving its page's glyph; a faulted ask is not kept.
-  `NavContributorAskTests` (Architecture) keeps it one seam. **Nothing else may inject
+  `NavContributorAskTests` (Architecture, enforced in the products' repository) keeps it one seam. **Nothing else may inject
   `IEnumerable<INavMenuContributor>`.**
 - **On a full load the client asks none of it: the prerender's answers cross as persisted
   state** (`NavMenuHandoff`), taken synchronously before the first build so the drawer carries

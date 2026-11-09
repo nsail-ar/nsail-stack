@@ -89,7 +89,7 @@ find. The generated `Add{Kit}PushPublishers` composes the push's own services fi
 both transports' server halves and the install's `PushAudience`), so a composition that mounts
 the kit alone — a handler harness — resolves every publisher it registers; a host that composed
 the push earlier keeps its own.
-`PushMountTests` (`NSail.Architecture.Tests`) holds both roots of every product to the
+`PushMountTests` (`NSail.Architecture.Tests`, enforced in the products' repository) holds both roots of every product to the
 `[Pushed]` messages its host carries, so a forgotten holder fails the build instead of leaving
 a screen stale. Runtime semantics: [messaging.md](messaging.md) (Pushed to clients).
 

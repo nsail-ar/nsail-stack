@@ -48,7 +48,7 @@ the method name; buttons without content from `Common.{As}`.
   (types.md). The `at` argument (ISO 8601 UTC) is rewritten the same way, to the reader's clock
   in `RegionCulture.For(Language)`'s pattern; the argument's name is what triggers it.
   An entity a problem can name owes its bare key in `en` and `es`, and
-  `ProblemEntityStringTests` fails the build without it.
+  `ProblemEntityStringTests` (enforced in the products' repository) fails the build without it.
 - **A Mud component's accessible names are keys too.** A `Mud.<Key>` the wrapped components request
   owes an entry in `strings.json` and `strings.es.json` of `NSail.Components.Mud`, or the name
   shows in English; `MudVendorContractTests` lists the keys, checks them against MudBlazor's own

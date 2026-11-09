@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using NSail.Messaging;
+using System.ComponentModel.DataAnnotations;
 
 namespace NSail.Harness.Api;
 
@@ -11,6 +12,8 @@ namespace NSail.Harness.Api;
 [Http(Post, "api/harness/leases")]
 public class AcquireBuildLease : IMessage<Guid>
 {
+    [MaxLength(100)]
     public required string Holder { get; set; }
+    [Range(-1, 20)]
     public int Rank { get; set; } = 9;
 }

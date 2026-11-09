@@ -133,14 +133,14 @@ is a parameter a button or link beside it declares and this one does not:
 the spinner the form is running) and so `NsSubmit` and `NsClose` declare no `Icon`, while
 `NsButton`, `NsLink` and `NsPageLink` each do. The Razor compiler emits any attribute it does
 not recognize (the component might capture unmatched values; none of ours does,
-`UnmatchedParameterTests`), and at render time Blazor normalizes the `SetParametersAsync` throw
+`UnmatchedParameterTests`, enforced in the products' repository), and at render time Blazor normalizes the `SetParametersAsync` throw
 into a faulted Task and routes it to the nearest `IErrorBoundary` **without aborting the
 batch**. The rest of the tree ships. Inside a dialog — portaled as a sibling of the router, so
 outside `MainLayout`'s `NsErrorBoundary` — nothing catches it at all and the only report is an
 unhandled circuit error: a dialog renders complete and interactive with a footer missing its
 submit.
 
-What holds the line is `DialogRenderTests` — every component handed to `DialogManager.Open<T>`
+What holds the line is `DialogRenderTests` (enforced in the products' repository) — every component handed to `DialogManager.Open<T>`
 is rendered in that surface, and a form that draws no submit fails by name. Dialog-hosted forms
 are otherwise rendered by no test: a kit's `FakeDialogManager.Open` answers with a completed Task
 and never mounts anything. (`NsPanel.Footer` is not at fault here: `NsOpenDialog` already
@@ -293,7 +293,7 @@ breakpoint anyway. There is no second knob.
   button, not who rendered it. **Two sweeps hold the rule**: every `NsButton`, `NsLink` and
   `NsMenu` handed an `Icon` writes a `Label` (`NamedGlyphTests` — those three draw a glyph of
   their own, every other face in the house being one of them underneath), and every act built
-  with `GetAction` has its `Actions.{Name}` text in both languages (`ScreenStringTests`) — with
+  with `GetAction` has its `Actions.{Name}` text in both languages (`ScreenStringTests`, both enforced in the products' repository) — with
   none, `ActionItem.GetLabel`'s last resort is the handler's own C# identifier, so the glyph
   wears `MarkGiven` and whispers it. Their bound is what no static reader can see: a name a
   vendor part carries itself, a name built at runtime, a face composed as child content with no
@@ -389,7 +389,7 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   (`@inherits NsActionOutlet<PartyRowOutlet, PartyRow>`) delegating to a presenter and handing
   it **both** halves of what it resolved —
   `<NsActionToolbar Actions="Actions" Resolving="Resolving" …/>`, which
-  `ActionOutletPresenterTests` holds every outlet to; the host mounts
+  `ActionOutletPresenterTests` (enforced in the products' repository) holds every outlet to; the host mounts
   `<PartyRowOutlet Context="row" />`. A host that folds its own label when the outlet turns
   out empty (a drawer group with no children takes the same call) reads `HasActionsChanged`,
   fired once with whether any contributor answered — never polled, since the outlet already
