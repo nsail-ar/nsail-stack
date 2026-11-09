@@ -13,7 +13,7 @@ namespace NSail.Components.Tests;
 /// text colour of the page hosting it, so a monochrome SVG logo drawn with currentColor must
 /// be inlined to inherit it, while a raster keeps the &lt;img&gt; it always had and a broken
 /// route stops rendering anything at all rather than relying on the browser's own error event.
-/// The probe verdict caches per service scope, and each test has its own.</summary>
+/// The probe verdict caches per service scope, and each bUnit context has its own.</summary>
 public sealed class NsRemoteImageTests : BunitContext
 {
     static HttpResponseMessage SvgResponse(string markup)
