@@ -113,13 +113,13 @@ public sealed class InputProblemBuilder<TModel>
     {
         _issues.Add(new(
             code: "OutOfRange",
-            message: $"The field {field} must be between {from} and {to}",
+            message: $"The field {field} must be between {BusinessProblem.Invariant(from)} and {BusinessProblem.Invariant(to)}",
             source: field,
             arguments: new Dictionary<string, string>
             {
                 ["field"] = field,
-                ["from"] = from?.ToString() ?? string.Empty,
-                ["to"] = to?.ToString() ?? string.Empty
+                ["from"] = BusinessProblem.Invariant(from),
+                ["to"] = BusinessProblem.Invariant(to)
             }));
     }
 
@@ -160,7 +160,7 @@ public sealed class InputProblemBuilder<TModel>
             arguments: new Dictionary<string, string>
             {
                 ["field"] = field,
-                ["max"] = max.ToString()
+                ["max"] = max.ToString(System.Globalization.CultureInfo.InvariantCulture)
             }));
     }
 

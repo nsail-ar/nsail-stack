@@ -31,6 +31,10 @@ public static class Markdown
     static readonly Regex TableRow = new(@"^\s*\|(.+)\|\s*$", RegexOptions.Compiled);
     static readonly Regex TableRule = new(@"^\s*\|(\s*:?-{1,}:?\s*\|)+\s*$", RegexOptions.Compiled);
 
+    const char Hold = '\uE000';
+    const char Release = '\uE001';
+    static readonly Regex Placeholder = new("\uE000(\\d+)\uE001", RegexOptions.Compiled);
+
     static readonly string[] ImageSchemes = ["http://", "https://"];
 
     public static string ToHtml(string? markdown)
@@ -48,10 +52,11 @@ public static class Markdown
         options ??= MarkdownOptions.Prose;
 
         var html = new StringBuilder();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var block in Read(markdown, options))
         {
-            AppendHtml(html, block, options);
+            AppendHtml(html, block, options, seen);
         }
 
         return html.ToString();
@@ -68,6 +73,7 @@ public static class Markdown
         }
 
         var headings = new List<MarkdownHeading>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var block in Read(markdown, MarkdownOptions.Prose))
         {
@@ -78,10 +84,31 @@ public static class Markdown
 
             var text = Inline(block.Lines[0], html: false, MarkdownStyle.Plain, MarkdownOptions.Prose);
 
-            headings.Add(new MarkdownHeading(block.Level, text, Slug(block.Lines[0])));
+            headings.Add(new MarkdownHeading(block.Level, text, Unique(Slug(block.Lines[0]), seen)));
         }
 
         return headings;
+    }
+
+    // A repeated heading takes "-1", "-2"… after its slug, in document order, so every id is
+    // unique and Headings and the rendered anchors derive the same one.
+    static string Unique(string slug, HashSet<string> seen)
+    {
+        if (slug.Length == 0)
+        {
+            return slug;
+        }
+
+        var candidate = slug;
+        var suffix = 0;
+
+        while (!seen.Add(candidate))
+        {
+            suffix++;
+            candidate = $"{slug}-{suffix.ToString(CultureInfo.InvariantCulture)}";
+        }
+
+        return candidate;
     }
 
     /// <summary>The id a heading of this text wears: its words with the markup spent, accents
@@ -142,13 +169,13 @@ public static class Markdown
         return text.ToString().TrimEnd('\n');
     }
 
-    static void AppendHtml(StringBuilder html, MarkdownBlock block, MarkdownOptions options)
+    static void AppendHtml(StringBuilder html, MarkdownBlock block, MarkdownOptions options, HashSet<string> seen)
     {
         switch (block.Kind)
         {
             case MarkdownBlockKind.Heading:
                 var anchor = options.Anchors
-                    ? string.Create(CultureInfo.InvariantCulture, $" id=\"{Slug(block.Lines[0])}\"")
+                    ? string.Create(CultureInfo.InvariantCulture, $" id=\"{Unique(Slug(block.Lines[0]), seen)}\"")
                     : string.Empty;
 
                 html.Append(CultureInfo.InvariantCulture, $"<h{block.Level}{anchor}>{Inline(block.Lines[0], html: true, MarkdownStyle.Plain, options)}</h{block.Level}>");
@@ -429,20 +456,38 @@ public static class Markdown
     {
         var rendered = html ? WebUtility.HtmlEncode(text) : text;
 
-        // Images before links, and only where they are admitted: "![alt](src)" carries a link's
-        // own shape inside it, so the link pass would otherwise eat all but the bang — which is
-        // exactly what a caller that admits no images still gets, unchanged.
+        // Anchors and pictures are set aside as placeholders while the emphasis pass runs, so
+        // a "*" in an address is never read as a delimiter; only an anchor's own text is
+        // emphasized. Images before links, and only where they are admitted: "![alt](src)"
+        // carries a link's own shape inside it, so the link pass would otherwise eat all but
+        // the bang — which is exactly what a caller that admits no images still gets.
+        var held = new List<string>();
+
+        rendered = rendered.Replace(Hold.ToString(), string.Empty, StringComparison.Ordinal)
+            .Replace(Release.ToString(), string.Empty, StringComparison.Ordinal);
+
         if (options.Images)
         {
-            rendered = Image.Replace(rendered, match => RenderImage(match, html, options));
+            rendered = Image.Replace(rendered, match => Set(held, RenderImage(match, html, options)));
         }
 
-        // Links first: the anchor's own text may carry emphasis, and an emphasis pass that ran
-        // ahead of it would have to be taught to keep out of an href.
-        rendered = Link.Replace(rendered, match => RenderLink(match, html, style, options));
+        rendered = Link.Replace(rendered, match => Set(held, RenderLink(match, html, style, options)));
         rendered = Emphasis.Replace(rendered, match => RenderEmphasis(match, html, style));
 
+        // A link's text may itself hold a picture's placeholder, so release until none is left.
+        while (held.Count > 0 && Placeholder.IsMatch(rendered))
+        {
+            rendered = Placeholder.Replace(rendered, match => held[int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture)]);
+        }
+
         return rendered;
+    }
+
+    static string Set(List<string> held, string rendered)
+    {
+        held.Add(rendered);
+
+        return $"{Hold}{held.Count - 1}{Release}";
     }
 
     static string RenderImage(Match match, bool html, MarkdownOptions options)
@@ -498,7 +543,7 @@ public static class Markdown
 
     static string RenderLink(Match match, bool html, MarkdownStyle style, MarkdownOptions options)
     {
-        var text = match.Groups[1].Value;
+        var text = Emphasis.Replace(match.Groups[1].Value, inner => RenderEmphasis(inner, html, style));
         var address = match.Groups[2].Value;
 
         // An address this renderer may not draw as a door stays the literal text it was written

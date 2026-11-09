@@ -92,6 +92,19 @@ public static class BusinessProblem
     /// <summary>The entity as its concept KEY ("Products.Store"), for the caller that cannot
     /// name the type: one kit refusing on another's row, or a failure with no entity behind it
     /// at all. Every caller that can reach the type passes it instead.</summary>
+    /// <summary>An argument value as the wire carries it: culture-neutral, a moment as ISO 8601 UTC.</summary>
+    internal static string Invariant(object? value)
+    {
+        return value switch
+        {
+            null => string.Empty,
+            DateTime moment => moment.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
+            DateTimeOffset moment => moment.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
+            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? string.Empty,
+        };
+    }
+
     public static Problem NotFound(string entityKey, object id, string? source = null)
     {
         var name = NameOf(entityKey);
@@ -103,12 +116,12 @@ public static class BusinessProblem
             {
                 new Issue(
                     code: NotFoundCode,
-                    message: $"{name} with id {id} was not found",
+                    message: $"{name} with id {Invariant(id)} was not found",
                     source: source ?? name,
                     arguments: new Dictionary<string, string>
                     {
                         ["entity"] = entityKey,
-                        ["id"] = id?.ToString() ?? string.Empty
+                        ["id"] = Invariant(id)
                     })
             },
             status: 404);
@@ -131,9 +144,8 @@ public static class BusinessProblem
 
         if (modifiedAt is { } instant)
         {
-            // Stored UTC, read on somebody's wall clock: the host's local zone is the one the
-            // rest of the model already treats as the user's (data.md, BusinessDate.Today).
-            arguments["at"] = instant.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
+            // Stored UTC and sent as ISO 8601 UTC: the client localizes it to its reader's zone.
+            arguments["at"] = Invariant(instant.Kind == DateTimeKind.Local ? instant.ToUniversalTime() : DateTime.SpecifyKind(instant, DateTimeKind.Utc));
         }
 
         return new(
@@ -169,12 +181,12 @@ public static class BusinessProblem
             {
                 new Issue(
                     code: "AlreadyExists",
-                    message: $"{name} with value {value} already exists",
+                    message: $"{name} with value {Invariant(value)} already exists",
                     source: name,
                     arguments: new Dictionary<string, string>
                     {
                         ["entity"] = entityKey,
-                        ["value"] = value?.ToString() ?? string.Empty
+                        ["value"] = Invariant(value)
                     })
             },
             status: 409);
@@ -252,7 +264,7 @@ public static class BusinessProblem
     // Errors rule) instead of anchoring to a member no form renders.
     public static Problem InsufficientStock(string product, decimal available)
     {
-        var quantity = available.ToString("0.####");
+        var quantity = available.ToString("0.####", CultureInfo.InvariantCulture);
 
         return new(
             code: "InsufficientStock",

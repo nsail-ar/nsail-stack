@@ -279,4 +279,23 @@ public sealed class MarkdownTests
             Assert.Contains($"id=\"{heading.Slug}\"", html, StringComparison.Ordinal);
         }
     }
+
+    [Fact]
+    public void ToHtml_keeps_an_asterisk_in_an_address_out_of_emphasis()
+    {
+        var html = Markdown.ToHtml("[docs](https://x.com/a*b) is *great*");
+
+        Assert.Equal("<p><a href=\"https://x.com/a*b\" rel=\"noopener noreferrer\">docs</a> is <em>great</em></p>", html);
+    }
+
+    [Fact]
+    public void ToHtml_gives_repeated_headings_distinct_ids_and_Headings_points_at_each()
+    {
+        var source = "## Setup\n\n## Setup\n\n## Setup";
+        var html = Markdown.ToHtml(source, MarkdownOptions.Document);
+        var slugs = Markdown.Headings(source).Select(heading => heading.Slug).ToArray();
+
+        Assert.Equal(["setup", "setup-1", "setup-2"], slugs);
+        Assert.All(slugs, slug => Assert.Contains($"id=\"{slug}\"", html, StringComparison.Ordinal));
+    }
 }
