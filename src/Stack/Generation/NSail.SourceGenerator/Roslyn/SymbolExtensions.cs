@@ -286,10 +286,14 @@ public static class SymbolExtensions
             sb.Append('[')
               .Append(attr.AttributeClass?.ToDisplayString());
 
-            if (attr.ConstructorArguments.Length > 0)
+            var arguments = attr.ConstructorArguments.Select(ToLiteral)
+                .Concat(attr.NamedArguments.Select(n => $"{n.Key} = {ToLiteral(n.Value)}"))
+                .ToList();
+
+            if (arguments.Count > 0)
             {
                 sb.Append('(')
-                  .Append(string.Join(", ", attr.ConstructorArguments.Select(ToLiteral)))
+                  .Append(string.Join(", ", arguments))
                   .Append(')');
             }
 
@@ -338,11 +342,27 @@ public static class SymbolExtensions
             return $"(({constant.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}){constant.Value})";
         }
 
+        if (constant.Kind == TypedConstantKind.Type)
+        {
+            return $"typeof({((ITypeSymbol)constant.Value!).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)})";
+        }
+
+        if (constant.Kind == TypedConstantKind.Array)
+        {
+            var elementType = constant.Type is IArrayTypeSymbol array
+                ? array.ElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                : "object";
+
+            return $"new {elementType}[] {{ {string.Join(", ", constant.Values.Select(ToLiteral))} }}";
+        }
+
         return constant.Value switch
         {
             string s => SymbolDisplay.FormatLiteral(s, quote: true),
             char c => SymbolDisplay.FormatLiteral(c, quote: true),
             bool b => b ? "true" : "false",
+            double or float or decimal => SymbolDisplay.FormatPrimitive(constant.Value, quoteStrings: true, useHexadecimalNumbers: false)!,
+            IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
             _ => constant.Value?.ToString() ?? "null"
         };
     }

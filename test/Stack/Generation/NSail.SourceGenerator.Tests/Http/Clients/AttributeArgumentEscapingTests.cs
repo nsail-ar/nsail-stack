@@ -86,4 +86,87 @@ public class AttributeArgumentEscapingTests
         Assert.Contains("RegularExpressionAttribute(", generated);
         Assert.Contains(SymbolDisplay.FormatLiteral(expectedPattern, quote: true), generated);
     }
+
+    [Theory]
+    [InlineData("es-AR")]
+    [InlineData("tr-TR")]
+    public void Named_type_array_and_double_arguments_reach_the_generated_body_and_the_client_compiles(string culture)
+    {
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo(culture);
+
+        try
+        {
+            var builder = new CompilationUnitBuilder()
+                .AddSource("Messages.cs", """
+                    global using System.Net.Http;
+
+                    using Microsoft.Extensions.DependencyInjection;
+                    using NSail.Messaging;
+                    using NSail.Messaging.Annotations;
+                    using NSail.SourceGeneration.Annotations;
+                    using System;
+                    using System.ComponentModel.DataAnnotations;
+
+                    namespace Acme.Clinic.Prescriptions;
+
+                    [AttributeUsage(AttributeTargets.Property)]
+                    public class ShapeAttribute : Attribute
+                    {
+                        public ShapeAttribute(Type type, params string[] names) { }
+                        public int[] Sizes { get; set; } = [];
+                    }
+
+                    [Http(Method.Post, "api/prescriptions")]
+                    public class CreatePrescription : IMessage
+                    {
+                        [StringLength(10, MinimumLength = 2, ErrorMessage = "bad")]
+                        public string Name { get; set; } = string.Empty;
+
+                        [Range(0.5, 2.5)]
+                        public double Dose { get; set; }
+
+                        [Shape(typeof(string), "a", "b", Sizes = new[] { 1, 2 })]
+                        public string Other { get; set; } = string.Empty;
+                    }
+
+                    public static partial class Clients
+                    {
+                        [Generated(Http.Clients)]
+                        public static partial void AddClinicHttpClients(this IServiceCollection services);
+                    }
+                    """)
+                .AddFrameworkReferences("net10.0")
+                .AddContainingAssembly<GeneratedAttribute>()
+                .AddContainingAssembly<IMessage>()
+                .AddContainingAssembly<HttpAttribute>()
+                .AddContainingAssembly<RegularExpressionAttribute>()
+                .AddContainingAssembly<IServiceCollection>()
+                .AddContainingAssembly<IHttpClientFactory>()
+                .AddContainingAssembly<ISender<IMessage>>()
+                .AddContainingAssembly<HttpSender<IMessage>>()
+                .AddContainingAssembly<System.Text.Json.JsonSerializerOptions>();
+
+            var compilation = builder.Build("AttributeNamedArgumentTestAssembly");
+
+            GeneratorDriver driver = CSharpGeneratorDriver.Create(new HttpClientsSourceGenerator());
+            driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
+
+            Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+
+            var errors = outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+            Assert.True(errors.Count == 0, string.Join("\n", errors));
+
+            var generated = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
+
+            Assert.Contains("MinimumLength = 2", generated);
+            Assert.Contains("ErrorMessage = \"bad\"", generated);
+            Assert.Contains("typeof(string)", generated);
+            Assert.Contains("0.5", generated);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+    }
 }
