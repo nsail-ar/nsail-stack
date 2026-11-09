@@ -10,11 +10,11 @@ namespace {{ Namespace }}
         {
             {{~ for Service in Injectables ~}}
             {{~ if Service.AliasType != null ~}}
-            services.Add{{ Service.Lifetime }}<{{ Service.ServiceType }}>(sp => sp.GetRequiredService<{{ Service.AliasType }}>());
+            {{ ServicesParameterName }}.Add{{ Service.Lifetime }}<{{ Service.ServiceType }}>(sp => sp.GetRequiredService<{{ Service.AliasType }}>());
             {{~ else if Service.ImplementationType != null ~}}
-            services.Add{{ Service.Lifetime }}<{{ Service.ServiceType }}, {{ Service.ImplementationType }}>();
+            {{ ServicesParameterName }}.Add{{ Service.Lifetime }}<{{ Service.ServiceType }}, {{ Service.ImplementationType }}>();
             {{~ else ~}}
-            services.Add{{ Service.Lifetime }}<{{ Service.ServiceType }}>();
+            {{ ServicesParameterName }}.Add{{ Service.Lifetime }}<{{ Service.ServiceType }}>();
             {{~ end ~}}  
             {{~ end ~}}
         }

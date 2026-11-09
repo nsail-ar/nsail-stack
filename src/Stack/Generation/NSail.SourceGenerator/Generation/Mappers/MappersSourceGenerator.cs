@@ -18,6 +18,16 @@ public class MappersSourceGenerator : IIncrementalGenerator
         {
             var (methodSymbol, compilation) = parameters;
 
+            var holder = new HolderCheck(methodSymbol);
+
+            foreach (var diagnostic in holder.HolderDiagnostics)
+            {
+                spc.ReportDiagnostic(diagnostic);
+            }
+
+            if (holder.Unusable)
+                return;
+
             var emitter = new MapperEmitter(methodSymbol, compilation);
             var source = emitter.Emit();
 

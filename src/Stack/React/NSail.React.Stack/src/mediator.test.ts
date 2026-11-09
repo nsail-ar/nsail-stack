@@ -73,6 +73,17 @@ describe("Mediator.send", () => {
   });
 });
 
+describe("Mediator.send route token forms", () => {
+  it.each(["{id}", "{id:guid}", "{id?}", "{id=5}", "{*id}", "{**id}"])("binds %s to the member by name", async (token) => {
+    const { calls, mediator } = recording(200);
+    const route = { ...UpdateOrder, path: `api/files/${token}` };
+
+    await mediator.send(route, { id: "a/b", number: "A" });
+
+    expect(calls[0].url).toBe("https://host/api/files/a%2Fb");
+  });
+});
+
 describe("Mediator.send exact numbers", () => {
   it("sends a long and a decimal as the strings they are and reads them back the same", async () => {
     const order = { id: "9007199254740993", price: "1234567890.123456789" };

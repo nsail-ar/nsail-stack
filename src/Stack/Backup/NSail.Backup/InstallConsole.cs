@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Runtime.InteropServices;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NSail.Data;
 
 namespace NSail.Backup;
 
@@ -33,6 +36,51 @@ public static class InstallConsole
     public static async Task<int> Run<TDbContext>(IHost host, string[] args, CancellationToken cancelToken = default)
         where TDbContext : DbContext
     {
+        if (host.ConnectsPerTenant())
+        {
+            Console.Error.WriteLine("REFUSED: This install runs a database per tenant, and backup and restore cover the install's own database only; the tenant databases are not covered. Back them up with the server's own tools.");
+
+            return 4;
+        }
+
+        // SIGTERM from a supervisor ends the process without running any cancel path, and pg_dump
+        // would outlive it: while a child runs the verb takes the signal and kills it; otherwise
+        // the default ends the process.
+        using var interrupt = CancellationTokenSource.CreateLinkedTokenSource(cancelToken);
+
+        void Interrupt(object? sender, ConsoleCancelEventArgs e)
+        {
+            e.Cancel = Postgres.ChildRunning;
+            interrupt.Cancel();
+        }
+
+        Console.CancelKeyPress += Interrupt;
+
+        using var terminate = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
+        {
+            context.Cancel = Postgres.ChildRunning;
+            interrupt.Cancel();
+        });
+
+        try
+        {
+            return await Dispatch<TDbContext>(host, args, interrupt.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            Console.Error.WriteLine("CANCELLED: the run was interrupted; any child tool was killed and nothing was left half-written.");
+
+            return 130;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= Interrupt;
+        }
+    }
+
+    static async Task<int> Dispatch<TDbContext>(IHost host, string[] args, CancellationToken cancelToken)
+        where TDbContext : DbContext
+    {
         using var scope = host.Services.CreateScope();
 
         var dbContext = scope.ServiceProvider.GetRequiredService<TDbContext>();
@@ -40,7 +88,7 @@ public static class InstallConsole
 
         try
         {
-            var install = await InstallBackup.Describe(dbContext, environment, cancelToken);
+            var install = await InstallBackup.Describe(dbContext, environment, scope.ServiceProvider.GetService<IConfiguration>(), cancelToken);
 
             return Verb(args) switch
             {

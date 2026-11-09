@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Policies.Models;
 
-public class PolicyHandlersModel
+public class PolicyHandlersModel : GeneratedModel
 {
     public string? Namespace { get; set; }
 
@@ -15,8 +15,6 @@ public class PolicyHandlersModel
 
     public string? MethodDeclaration { get; set; }
 
-    public string? ServicesParameterName { get; set; }
-
     public List<PolicyHandlerModel> Handlers { get; } = new();
 }
 
@@ -25,6 +23,10 @@ public class PolicyHandlerModel
     public string? MessageType { get; set; }
 
     public string? HandlerName { get; set; }
+
+    /// <summary>The message's full metadata name as an identifier: what the handler is named
+    /// when another message shares its short name.</summary>
+    public string? UniqueName { get; set; }
 
     public List<PolicyFieldModel> Fields { get; } = new();
 

@@ -26,7 +26,7 @@ public class AttributeArgumentEscapingTests
         @"line one
         line two"
         """, "line one\nline two")]
-    public void A_string_attribute_argument_reaches_the_generated_body_escaped_and_the_client_compiles(
+    public void A_string_attribute_argument_reaches_the_generated_body_escaped_and_parses(
         string literalSource,
         string expectedPattern)
     {
@@ -51,8 +51,8 @@ public class AttributeArgumentEscapingTests
 
                 public static partial class Clients
                 {
-                    [Generated(Http.Clients)]
-                    public static partial void AddClinicHttpClients(this IServiceCollection services);
+                    [Generated(Http.Endpoints)]
+                    public static partial void AddClinicEndpoints(this IServiceCollection services);
                 }
                 """)
             .AddFrameworkReferences("net10.0")
@@ -64,11 +64,12 @@ public class AttributeArgumentEscapingTests
             .AddContainingAssembly<IHttpClientFactory>()
             .AddContainingAssembly<ISender<IMessage>>()
             .AddContainingAssembly<HttpSender<IMessage>>()
-            .AddContainingAssembly<System.Text.Json.JsonSerializerOptions>();
+            .AddContainingAssembly<System.Text.Json.JsonSerializerOptions>()
+            .AddContainingAssembly<Microsoft.AspNetCore.Routing.IEndpointRouteBuilder>();
 
         var compilation = builder.Build("AttributeArgumentEscapingTestAssembly");
 
-        var generator = new HttpClientsSourceGenerator();
+        var generator = new HttpEndpointsSourceGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
@@ -77,8 +78,11 @@ public class AttributeArgumentEscapingTests
 
         // A raw pattern like @"^\d{14}$" appears identically in the generated text whether the
         // argument is escaped correctly or not, so grepping the text cannot tell the two apart —
-        // only compiling the generated tree exposes a malformed literal (CS1009 and friends).
-        var errors = outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+        // only parsing the generated tree exposes a malformed literal (CS1009 and friends).
+        var errors = driver.GetRunResult().GeneratedTrees
+            .SelectMany(tree => tree.GetDiagnostics())
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ToList();
         Assert.True(errors.Count == 0, string.Join("\n", errors));
 
         var generated = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));

@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Services.Models;
 
-public class AddServicesModel
+public class AddServicesModel : GeneratedModel
 {
     public string? Namespace { get; set; }
 
