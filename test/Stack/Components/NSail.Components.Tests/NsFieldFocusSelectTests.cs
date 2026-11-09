@@ -50,7 +50,7 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<NsTextField>(ps => ps.Add(p => p.Value, "hello"));
 
-        Assert.Equal("this.select()", cut.Find("input").GetAttribute("onfocus"));
+        Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 
     /// <summary>MEASURED, not assumed: a masked field (a CUIT, a DNI, and by the same
@@ -70,7 +70,7 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
             .Add(p => p.Mask, "00-00000000-0")
             .Add(p => p.Value, "20123456789"));
 
-        Assert.Null(cut.Find("input").GetAttribute("onfocus"));
+        Assert.Null(cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<NsMoneyField<decimal?>>(ps => ps.Add(p => p.Value, 0m));
 
-        Assert.Equal("this.select()", cut.Find("input").GetAttribute("onfocus"));
+        Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 
     [Fact]
@@ -86,7 +86,7 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<NsNumericField<int?>>(ps => ps.Add(p => p.Value, 1));
 
-        Assert.Equal("this.select()", cut.Find("input").GetAttribute("onfocus"));
+        Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<NsPercentField<decimal?>>(ps => ps.Add(p => p.Value, 0.1m));
 
-        Assert.Equal("this.select()", cut.Find("input").GetAttribute("onfocus"));
+        Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 
     [Fact]
@@ -102,7 +102,7 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<NsDurationField<TimeSpan?>>(ps => ps.Add(p => p.Value, TimeSpan.FromHours(2)));
 
-        Assert.Equal("this.select()", cut.Find("input").GetAttribute("onfocus"));
+        Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 
     /// <summary>Scope discipline: an email field shares NsTextField's own MudTextField shell
@@ -113,6 +113,6 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
     {
         var cut = Render<NsEmailField>(ps => ps.Add(p => p.Value, "a@b.com"));
 
-        Assert.Null(cut.Find("input").GetAttribute("onfocus"));
+        Assert.Null(cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 }

@@ -190,7 +190,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     /// it replaces — no manual clear first). Off by default: a field usually edited in place
     /// rather than replaced wholesale (email, phone, a multi-line note, a lookup's search
     /// box) must not opt in just by inheriting this base. Text, numeric and money fields
-    /// override it; wired here once so no field hand-rolls its own onfocus.</summary>
+    /// override it; wired here once so no field hand-rolls its own focus handler.</summary>
     protected virtual bool SelectOnFocus => false;
 
     /// <summary>Whether Enter inside this field is the FIELD's own gesture — the entry ending
@@ -276,12 +276,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
             attributes["aria-describedby"] = describedBy;
         }
 
-        // A plain HTML attribute (no @ prefix), so Blazor never mediates it as a synthetic
-        // event: the browser applies it as inline JS the instant the input gets focus, no
-        // interop round trip. select() is native to every text-shaped <input>.
+        // A marker ns.js answers on focusin (select() is native to every text-shaped <input>):
+        // no inline handler, so a CSP without 'unsafe-inline' keeps the feature.
         if (selectOnFocus)
         {
-            attributes["onfocus"] = "this.select()";
+            attributes["data-ns-select-on-focus"] = "true";
         }
 
         // Read off the DOM by the keyboard layer at the moment Enter is pressed, the way the

@@ -1144,6 +1144,14 @@
         }
     }, true);
 
+    // Select-on-focus: a field marks itself (NsFieldBase, SelectOnFocus) and focusin, which
+    // bubbles, reaches this one listener -- no inline handler, so the CSP needs no 'unsafe-inline'.
+    document.addEventListener("focusin", e => {
+        const t = e.target;
+        if (t && typeof t.select === "function" && t.getAttribute("data-ns-select-on-focus") === "true")
+            t.select();
+    });
+
     // The first editable control inside a freshly opened create form, so the person can type
     // at once instead of clicking into the page first. Scoped to the form's own id rather than
     // asked of `document` because a surface can hold more than one form (an aside over the main
@@ -1213,7 +1221,7 @@
     // a click, opening its popover over the page (Vigía, nsail#1815 round 2).
     // stopImmediatePropagation on the listener above halts the WHOLE dispatch, capture through
     // target, not just Blazor's own listener -- arming it for a plain field would cost that field
-    // its own `onfocus="this.select()"` (NsFieldBase) for a popover it never opens (Vigía,
+    // its own select-on-focus (NsFieldBase) for a popover it never opens (Vigía,
     // round 4). `.focus()` dispatches its events synchronously, so the flag set right before it
     // is read and cleared by the listener above before this call returns; nothing is left armed
     // for a focus that happens not to fire (the candidate was already the active element).

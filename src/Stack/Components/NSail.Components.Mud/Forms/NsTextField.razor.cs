@@ -21,10 +21,9 @@ public partial class NsTextField
     [Inject]
     IJSRuntime JS { get; init; } = default!;
 
-    // Text is the mostrador family (Story: "los campos se seleccionan al recibir foco") — a
-    // masked field (a CUIT, a DNI) opts in too: the raw characters are what select() grabs,
-    // the mask only reformats what is typed back over them.
-    protected override bool SelectOnFocus => true;
+    // Text is the mostrador family; a masked field (a CUIT, a DNI) stays out, its caret
+    // bookkeeping belongs to the vendor's mask engine.
+    protected override bool SelectOnFocus => Mask is null;
 
     /// <summary>The shape the value is typed in, as a pattern in NSail's own vocabulary:
     /// <c>0</c> is a digit, <c>a</c> a letter, <c>*</c> either, and every other character is

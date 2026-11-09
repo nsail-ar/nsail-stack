@@ -118,7 +118,7 @@ public sealed class SurfaceContext
     /// HasWork for everything that draws a spinner, and NsForm reports this from the after-render
     /// of the pass that decided it — so an event the page and the submit also listened to would
     /// make it a render that provokes a render, for a state change already announced.</summary>
-    public Action? RefusalChanged;
+    public event Action? RefusalChanged;
 
     // What a departure actually has to be asked about, which is not everything HasChanges counts:
     // a submit in flight answers for every report its own spend reaches, and the window that
@@ -164,7 +164,7 @@ public sealed class SurfaceContext
     /// <summary>Raised when the announcement changes. Separate from StateChanged on purpose:
     /// StateChanged re-renders the page itself (NsPage subscribes), and a page whose render
     /// re-announces would be re-rendering itself forever.</summary>
-    public Action? AnnouncementChanged;
+    public event Action? AnnouncementChanged;
 
     /// <summary>The page tells its surface what it is called and what utilities it offers.
     /// NsTitleBar announces on the main surface and still draws its own row there, since the
@@ -197,7 +197,7 @@ public sealed class SurfaceContext
     /// <summary>Raised when the announced index changes. Its own event, not AnnouncementChanged:
     /// the app bar has nothing to redraw when an index moves, and the drawer has nothing to
     /// redraw when a title does.</summary>
-    public Action? IndexChanged;
+    public event Action? IndexChanged;
 
     /// <summary>The page hands its index to the surface and stops deciding where it goes. Called
     /// again whenever what the index shows changed — the fragment is the page's own, so the
@@ -230,7 +230,7 @@ public sealed class SurfaceContext
     /// and whenever the slot the trigger is drawn in changes hands, which is the only thing the
     /// announcing side can be told by. A reader of either half redraws for the part of it its
     /// own render reads and no other (ui/surfaces.md, the announce seam).</summary>
-    public Action? ExportChanged;
+    public event Action? ExportChanged;
 
     /// <summary>The exporting grid's own call, once per render, whenever it is a candidate for
     /// the surface's one export slot — the same shape <see cref="ClaimsRow"/> stands for, but on
@@ -386,7 +386,7 @@ public sealed class SurfaceContext
         }
     }
 
-    public Action? StateChanged;
+    public event Action? StateChanged;
 
     public event Func<ProblemEventArgs, Task>? OnProblem;
 
@@ -1456,10 +1456,19 @@ public sealed class SurfaceContext
 
         var handler = OnProblem;
 
-        if (handler is not null)
+        if (handler is null)
         {
-            await handler(args);
+            return;
         }
+
+        var pending = new List<Task>();
+
+        foreach (var subscriber in handler.GetInvocationList())
+        {
+            pending.Add(((Func<ProblemEventArgs, Task>)subscriber)(args));
+        }
+
+        await Task.WhenAll(pending);
     }
 
     /// <summary>The form an act the page hosts is standing INSIDE, for the length of that act's
