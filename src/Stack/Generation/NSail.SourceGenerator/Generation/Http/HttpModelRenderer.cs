@@ -22,7 +22,6 @@ public static class HttpModelRenderer
         ReportDiagnostics(spc, model);
         RenderSetup(spc, model, "HttpClientSetup");
         RenderMessages(spc, model, "HttpClientSender");
-        RenderParameters(spc, model);
     }
 
     // The in-process setup builds no route, and it is declared in the same assembly as the
