@@ -49,6 +49,10 @@ public static class MessageSpan
 
     public const string Failed = "failed";
 
+    /// <summary>The caller went away (a client abort, a shutdown): neither a failure of the
+    /// message nor an error status, so it stays out of failure rates.</summary>
+    public const string Cancelled = "cancelled";
+
     static readonly ActivitySource _source = new(SourceName);
 
     /// <summary>Null when nobody is listening, which is every host that was handed no
@@ -89,6 +93,13 @@ public static class MessageSpan
 
         if (activity is null)
         {
+            return;
+        }
+
+        if (exception is OperationCanceledException)
+        {
+            activity.SetTag(OutcomeTag, Cancelled);
+
             return;
         }
 

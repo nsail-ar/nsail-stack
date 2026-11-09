@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Consulting.Patients;
 using NSail.Messaging;
@@ -124,6 +125,24 @@ public sealed class MessageSpanTests
         Assert.Equal(typeof(InvalidOperationException).FullName, span.GetTagItem(MessageSpan.FailureTag));
         Assert.Null(span.GetTagItem(MessageSpan.ProblemTag));
         Assert.Null(span.GetTagItem(MessageSpan.RuleTag));
+    }
+
+    [Fact]
+    public async Task A_cancelled_send_is_its_own_outcome_and_not_an_error()
+    {
+        using var recorder = new SpanRecorder();
+        using var app = Harness.Host(credentialed: false);
+
+        await using var scope = app.Services.CreateAsyncScope();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
+            Harness.Mediator(scope.ServiceProvider).Send(new AbortedPatient()));
+
+        var span = Assert.Single(recorder.Stopped);
+
+        Assert.Equal(MessageSpan.Cancelled, span.GetTagItem(MessageSpan.OutcomeTag));
+        Assert.Equal(ActivityStatusCode.Unset, span.Status);
+        Assert.Null(span.GetTagItem(MessageSpan.FailureTag));
     }
 
     // The tag the failure log is searched by: without it, "why did MY last action fail" has
