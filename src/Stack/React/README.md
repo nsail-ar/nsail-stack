@@ -96,7 +96,7 @@ with keys. `useCatalog` and `StackProvider` are the pieces underneath when you n
 | Component | Props worth knowing |
 |---|---|
 | `NsLoad` | `load` (from `useLoad`) and a render function over the data; spinner the first time, dimmed while re-reading, failure in place with retry |
-| `NsForm` + `useForm` | `form`, `onSubmit`, `onReload?` (offered only for a `Conflict`); `NsSaved` shows the saved state |
+| `NsForm` + `useForm` | `form`, `onSubmit`, `onReload?` (offered only for a `Conflict`); `NsSaved` shows the saved state, which `form.reset(value, { keepSaved: true })` keeps over the re-read of what was just sent |
 | `NsField` | `name`, `multiline?`, `autoFocus?`, `label?` (a string key); input, label and bounds come from the descriptor |
 | `NsTable` | `model`, `rows`, `columns`, `rowKey`, `onRowClick?`, `actions?`, `empty?` (a key) |
 | `NsPager` | `page` (`pageIndex`, `pageSize`, `totalCount`), `onPage` |
