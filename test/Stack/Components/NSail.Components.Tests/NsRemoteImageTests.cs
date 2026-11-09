@@ -13,9 +13,7 @@ namespace NSail.Components.Tests;
 /// text colour of the page hosting it, so a monochrome SVG logo drawn with currentColor must
 /// be inlined to inherit it, while a raster keeps the &lt;img&gt; it always had and a broken
 /// route stops rendering anything at all rather than relying on the browser's own error event.
-/// Each test names its own URL: the probe result caches per URL for the process's life (the
-/// same trade NsImage makes per AssetId), so a shared URL across tests would let an earlier
-/// test's fake response answer a later test that never touched its own factory.</summary>
+/// The probe verdict caches per service scope, and each test has its own.</summary>
 public sealed class NsRemoteImageTests : BunitContext
 {
     static HttpResponseMessage SvgResponse(string markup)
@@ -132,6 +130,122 @@ public sealed class NsRemoteImageTests : BunitContext
         cut.WaitForState(() => cut.Markup.Trim().Length == 0, TimeSpan.FromSeconds(2));
 
         Assert.Empty(cut.Markup.Trim());
+    }
+
+    [Fact]
+    public void FetchesAgainOnTheNextRenderAfterATransientFailure()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var calls = 0;
+
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+        {
+            return ++calls == 1
+                ? new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                : RasterResponse();
+        }));
+
+        var cut = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/flaky"));
+
+        cut.WaitForState(() => cut.Markup.Trim().Length == 0, TimeSpan.FromSeconds(2));
+
+        cut.Render();
+
+        cut.WaitForState(() => cut.FindAll("img").Count > 0, TimeSpan.FromSeconds(2));
+
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public void RemembersA404()
+    {
+        var calls = 0;
+
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+        {
+            calls++;
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }));
+
+        var cut = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/missing"));
+
+        cut.WaitForState(() => cut.Markup.Trim().Length == 0, TimeSpan.FromSeconds(2));
+
+        cut.Render();
+        cut.Render();
+
+        Assert.Equal(1, calls);
+        Assert.Empty(cut.Markup.Trim());
+    }
+
+    [Fact]
+    public void EndsUnavailableOnATimeoutOrAnUnresolvableUrl()
+    {
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+            throw new TaskCanceledException("simulated timeout")));
+
+        var cut = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/timeout"));
+
+        cut.WaitForState(() => cut.Markup.Trim().Length == 0, TimeSpan.FromSeconds(2));
+
+        Assert.Empty(cut.Markup.Trim());
+
+        using var other = new BunitContext();
+
+        other.Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+            throw new InvalidOperationException("relative url")));
+
+        var cut2 = other.Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "relative"));
+
+        cut2.WaitForState(() => cut2.Markup.Trim().Length == 0, TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public void FetchesOncePerScopeAndNeverSharesAcrossScopes()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var calls = 0;
+
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+        {
+            calls++;
+
+            return RasterResponse();
+        }));
+
+        var cut = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/shared"));
+
+        cut.WaitForState(() => cut.FindAll("img").Count > 0, TimeSpan.FromSeconds(2));
+
+        cut.Render();
+
+        var second = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/shared"));
+
+        second.WaitForState(() => second.FindAll("img").Count > 0, TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, calls);
+
+        using var tenantB = new BunitContext();
+
+        tenantB.JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var callsB = 0;
+
+        tenantB.Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+        {
+            callsB++;
+
+            return RasterResponse();
+        }));
+
+        var other = tenantB.Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/shared"));
+
+        other.WaitForState(() => other.FindAll("img").Count > 0, TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, callsB);
     }
 
     /// <summary>Prerendering has no HTTP transport of its own, so the probe never runs and the
