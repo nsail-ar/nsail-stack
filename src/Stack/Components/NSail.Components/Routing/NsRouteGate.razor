@@ -22,6 +22,8 @@
 
     Type? _asked;
 
+    int _run;
+
     [Parameter, EditorRequired]
     public Type PageType { get; set; } = default!;
 
@@ -41,6 +43,8 @@
         _asked = PageType;
         _allowed = false;
 
+        var run = ++_run;
+
         // The lightest gate that answers is the one the visitor obeys (IRouteGate), and its
         // answer for the page it was asked about is a claim — they stay. Nothing lighter is
         // asked either way, and that is what stops the bouncing: a gate free to move the
@@ -49,7 +53,17 @@
         // the order somebody's composition root happened to register in.
         foreach (var gate in Gates.OrderBy(gate => gate.Weight))
         {
-            if (await gate.GetRedirect(PageType) is not { } destination)
+            var redirect = await gate.GetRedirect(PageType);
+
+            // A route that moved while this gate was thinking asked its own question: this
+            // answer is about a page that is no longer here and must neither move the visitor
+            // nor let the new page through.
+            if (run != _run)
+            {
+                return;
+            }
+
+            if (redirect is not { } destination)
             {
                 continue;
             }
