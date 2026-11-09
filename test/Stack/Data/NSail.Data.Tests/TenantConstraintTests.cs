@@ -474,6 +474,7 @@ sealed class ConstraintSetup : IDbContextSetup
             row.HasOne<CParent>().WithMany().HasForeignKey(r => r.ParentId).OnDelete(DeleteBehavior.Restrict);
         });
 
+        // Only so a province is named by another table, which puts its tenant in a key.
         modelBuilder.Entity<CTown>(row =>
         {
             row.ToTable("Towns");
