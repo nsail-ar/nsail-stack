@@ -49,7 +49,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
             Directory.CreateDirectory(env["GATE_WORK"]);
             string[] args = green is null ? [] : [green];
             result = Step.Command is { } command
-                ? await ctx.Run(command, args, dir, env, Timeout(Step), w, ct)
+                ? await ctx.Run(command, args, dir, env, Timeout(Step), w, ct, keep: GateJob.IsFailureLine)
                 : await ctx.Builder!.Gate(dir, green, env, Timeout(Step), w, ct);
         }
         finally
