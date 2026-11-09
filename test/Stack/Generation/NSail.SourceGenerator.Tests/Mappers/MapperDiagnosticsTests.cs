@@ -299,6 +299,31 @@ public class MapperDiagnosticsTests
         Assert.Contains("Project", warning.GetMessage());
     }
 
+    // The finding points into the source, so a #pragma there silences it as it would a compiler warning.
+    [Fact]
+    public void A_warning_suppressed_around_its_declaration_is_not_reported()
+    {
+        const string Types = """
+            public class UpdateProject { public int Id { get; set; } public string Name { get; set; } public string Title { get; set; } }
+
+            {0}
+            [Entity, MapFrom(typeof(UpdateProject))]
+            public class Project { public int Id { get; set; } public string Name { get; set; } }
+            {1}
+            """;
+
+        var reported = Assert.Single(Generate(Types.Replace("{0}", string.Empty).Replace("{1}", string.Empty)));
+        var suppressed = Generate(Types.Replace("{0}", "#pragma warning disable NSG011").Replace("{1}", "#pragma warning restore NSG011"));
+        var other = Assert.Single(Generate(Types.Replace("{0}", "#pragma warning disable NSG012").Replace("{1}", "#pragma warning restore NSG012")));
+
+        Assert.Equal("NSG011", reported.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, reported.Severity);
+        Assert.Equal(9, reported.Location.GetLineSpan().StartLinePosition.Line);
+        Assert.Empty(suppressed);
+        Assert.Equal("NSG011", other.Id);
+        Assert.Equal(reported.Location.GetLineSpan().StartLinePosition.Line, other.Location.GetLineSpan().StartLinePosition.Line);
+    }
+
     [Fact]
     public void A_source_member_renamed_onto_an_entity_member_is_written()
     {

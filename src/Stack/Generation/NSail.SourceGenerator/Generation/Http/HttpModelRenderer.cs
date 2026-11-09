@@ -36,7 +36,7 @@ public static class HttpModelRenderer
     {
         foreach (var diagnostic in model.HolderDiagnostics)
         {
-            spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+            diagnostic.Report(spc);
         }
 
         if (model.Unusable)
@@ -49,7 +49,7 @@ public static class HttpModelRenderer
     {
         foreach (var diagnostic in model.HolderDiagnostics.Concat(model.Diagnostics))
         {
-            spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+            diagnostic.Report(spc);
         }
     }
 

@@ -349,10 +349,19 @@ An edit must not re-read the project. A generator's pipeline holds only value-eq
   travel as `DiagnosticInfo` and become diagnostics in the renderer.
 - **The holder comes from the attribute provider** (`FindGeneratedTargets`), and the types in
   scope are inspected from their own declarations (`GatherInScope`), so an edit re-reads the
-  types of the edited file only. A holder with `[Source]` reads the scopes it names from the
-  compilation instead — the one step that takes it, compared by its output.
+  types of the edited file only.
+- **A step reads the compilation in two cases only**: a holder with `[Source]`, whose scopes are
+  referenced assemblies reachable no other way, and the mapper emission, which walks the types
+  reachable from the declarations. Either step's output is an equatable model, so nothing after
+  it reruns.
 - **Mappers** emit inside a pipeline step and register only the text and findings; the entities
   the store's model declares (`Entity<T>()`, `DbSet<T>`) are gathered from the syntax.
+- **Caching skips work, never changes the result**: an edit to a fact another file's type reads
+  (a base class in `A.cs` under a `[Pushed]` or `[MapFrom]` type in `B.cs`) regenerates `B`'s
+  output on that edit.
+- **A `#pragma warning disable` still suppresses a finding**: a `DiagnosticInfo` reads the
+  pragma state while it has the tree and carries it as `Suppressed`, because the location it is
+  reported at is rebuilt outside the tree, where the compiler no longer sees the pragma.
 - **A new generator owes the proof**: `IncrementalityTests` runs it twice over an unrelated edit
   and every named step must be `Cached` or `Unchanged`.
 

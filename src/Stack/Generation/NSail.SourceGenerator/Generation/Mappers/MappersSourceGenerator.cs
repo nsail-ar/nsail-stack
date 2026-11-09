@@ -59,7 +59,7 @@ public class MappersSourceGenerator : IIncrementalGenerator
         {
             foreach (var diagnostic in output!.Diagnostics)
             {
-                spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+                diagnostic.Report(spc);
             }
 
             if (output.HintName.Length > 0)

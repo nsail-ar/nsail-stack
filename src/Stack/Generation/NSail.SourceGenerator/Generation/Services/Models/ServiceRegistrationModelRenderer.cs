@@ -12,7 +12,7 @@ public static class ServiceRegistrationModelRenderer
     {
         foreach (var diagnostic in model.HolderDiagnostics)
         {
-            spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+            diagnostic.Report(spc);
         }
 
         if (model.Unusable)

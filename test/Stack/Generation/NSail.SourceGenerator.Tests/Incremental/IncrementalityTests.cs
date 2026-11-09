@@ -167,6 +167,104 @@ public class IncrementalityTests
         Assert.Contains("Late", after);
     }
 
+    // A per-file step whose type reads a fact from another file must not keep its old answer: an
+    // edit to the base in A.cs changes what the generator says about the type in B.cs.
+    const string Base = """
+        namespace Acme.Inbox;
+
+        public class NoteBase
+        {
+            public string Subject { get; set; } = "";
+        }
+
+        public class MovedBase
+        {
+            // moved
+        }
+        """;
+
+    const string Derived = """
+        using NSail.Mapping.Annotations;
+        using NSail.Messaging;
+        using NSail.Messaging.Annotations;
+
+        namespace Acme.Inbox;
+
+        public class PostNote : IMessage
+        {
+            public string Subject { get; set; } = "";
+
+            public string Body { get; set; } = "";
+        }
+
+        [Entity, MapFrom(typeof(PostNote))]
+        public class Note : NoteBase
+        {
+            public System.Guid Id { get; set; }
+        }
+
+        [Pushed]
+        public class NoteMoved : MovedBase, IMessage
+        {
+        }
+        """;
+
+    [Fact]
+    public void An_edit_to_a_base_in_another_file_regenerates_the_derived_mapper()
+    {
+        var driver = Driver(new MappersSourceGenerator());
+        var compilation = CompileDerived("Mappers.Entities");
+
+        driver = driver.RunGenerators(compilation);
+
+        var before = driver.GetRunResult();
+
+        driver = driver.RunGenerators(Edit(compilation, "Base.cs", Base.Replace("public string Subject", "public string Body { get; set; } = \"\"; public string Subject")));
+
+        var after = driver.GetRunResult();
+
+        Assert.Contains(before.Diagnostics, d => d.Id == "NSG011" && d.GetMessage().Contains("PostNote.Body"));
+        Assert.DoesNotContain(after.Diagnostics, d => d.Id == "NSG011");
+        Assert.DoesNotContain(".Body", Text(before));
+        Assert.Contains(".Body", Text(after));
+        Assert.Contains(after.Results[0].TrackedOutputSteps.SelectMany(p => p.Value).SelectMany(r => r.Outputs), o => o.Reason == IncrementalStepRunReason.Modified);
+    }
+
+    [Fact]
+    public void An_edit_to_a_base_in_another_file_reaches_the_derived_pushed_event()
+    {
+        var driver = Driver(new PushPublishersSourceGenerator());
+        var compilation = CompileDerived("Push.Publishers");
+
+        driver = driver.RunGenerators(compilation);
+
+        var before = driver.GetRunResult();
+
+        driver = driver.RunGenerators(Edit(compilation, "Base.cs", Base.Replace("// moved", "public string Leak { get; set; } = \"\";")));
+
+        var after = driver.GetRunResult();
+
+        Assert.DoesNotContain(before.Diagnostics, d => d.Id == "NSG003");
+        Assert.Contains(after.Diagnostics, d => d.Id == "NSG003" && d.GetMessage().Contains("NoteMoved"));
+    }
+
+    static string Text(GeneratorDriverRunResult result)
+    {
+        return string.Concat(result.GeneratedTrees.Select(t => t.ToString()));
+    }
+
+    static Compilation CompileDerived(string target)
+    {
+        var compilation = Compile(Holder(target, scoped: false), Unrelated);
+        var domain = compilation.SyntaxTrees.Single(t => t.FilePath.EndsWith("Domain.cs", StringComparison.Ordinal));
+
+        return compilation
+            .RemoveSyntaxTrees(domain)
+            .AddSyntaxTrees(
+                CSharpSyntaxTree.ParseText(Base, (CSharpParseOptions)domain.Options, "Base.cs"),
+                CSharpSyntaxTree.ParseText(Derived, (CSharpParseOptions)domain.Options, "Derived.cs"));
+    }
+
     static void AssertNothingRan(GeneratorDriver driver)
     {
         var result = Assert.Single(driver.GetRunResult().Results);
