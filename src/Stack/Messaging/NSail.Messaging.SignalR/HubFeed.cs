@@ -113,6 +113,11 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
     {
         for (; !cancellationToken.IsCancellationRequested; attempt++)
         {
+            // The wait comes before the connect, so a line that came up and was closed at once
+            // is answered on the ladder it carries; the first connect and a held line's reset
+            // are step zero, which is no wait.
+            await PushRetry.Wait(attempt, cancellationToken);
+
             try
             {
                 await connection.StartAsync(cancellationToken);
@@ -129,8 +134,6 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
             {
                 // Nothing to say out loud: the screens still answer every read, and the next
                 // attempt is already scheduled.
-                await PushRetry.Wait(attempt, cancellationToken);
-
                 continue;
             }
             catch (OperationCanceledException)
