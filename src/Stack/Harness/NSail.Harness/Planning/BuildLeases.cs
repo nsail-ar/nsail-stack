@@ -76,13 +76,14 @@ public sealed class BuildLeases(int limit)
         return await w.Grant.Task;
     }
 
-    // A lane killed mid-build never gives its turn back: no build or test run of this repository
-    // lasts an hour, so an older turn is dead and goes back to the line.
-    public int Sweep(TimeSpan olderThan)
+    // A lane killed mid-build never gives its turn back: no job outlasts its step's minutes, so a
+    // turn older than the longest one is dead and goes back to the line.
+    public int Sweep(TimeSpan olderThan, DateTimeOffset? now = null)
     {
+        var at = now ?? DateTimeOffset.UtcNow;
         lock (_gate)
         {
-            var stale = _held.Values.Where(l => DateTimeOffset.UtcNow - l.At > olderThan).Select(l => l.Id).ToList();
+            var stale = _held.Values.Where(l => at - l.At > olderThan).Select(l => l.Id).ToList();
             foreach (var id in stale) _held.Remove(id);
             if (stale.Count > 0) Grant();
             return stale.Count;

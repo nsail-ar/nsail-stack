@@ -125,8 +125,10 @@ the files it leaves.
 - **Capacity is per resource, per machine**: agents, builds, browsers (`Agents`, `Builds`,
   `Browsers`). The plan is walked in order and every item whose resources are free is taken; a
   worker's `Max` caps its own jobs. Past the agent's quota wall (a refused run) only the agents stop.
+  A build turn whose holder died returns to the line once older than the longest step the machine's
+  enabled workers run (a main gate counts twice its minutes) plus ten.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
-  cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, ...);
+  cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the
   story. A gate or review marker on a PR counts only as a whole HTML comment on its own line, written
   by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
