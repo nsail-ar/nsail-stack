@@ -147,8 +147,18 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             throw;
         }
 
+        // A story closed while the seat ran (a red main's fixed by its green gate, on any machine) has
+        // nothing to deliver: its work, its ending and its stage are left as they are. The quota wall
+        // the seat met still stands.
+        var quotaUntil = result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : (DateTimeOffset?)null;
+        if (!(await board.Story(n, ct)).Open)
+        {
+            await board.RemoveLabel(n, Labels.Claimed);
+            return new JobOutcome("closed while the lane sailed — nothing delivered", Idle: true, QuotaUntil: quotaUntil);
+        }
+
         var ending = await Deliver(n, title, repo, work, branch, startedAt, claimedAt, result, log, ct);
-        return ending.Outcome(result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : null);
+        return ending.Outcome(quotaUntil);
     }
 
     // The analyst's last comment on the story: the one signed by a seat an Analyze worker sits.

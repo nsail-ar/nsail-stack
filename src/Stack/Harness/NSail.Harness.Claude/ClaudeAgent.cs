@@ -67,10 +67,12 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
 
         if (run.Marketplace is not null && options.Plugins.Count > 0)
         {
-            await Shell.Run(command, ["plugin", "marketplace", "add", run.Marketplace], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
+            var added = await Shell.Run(command, ["plugin", "marketplace", "add", run.Marketplace], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
+            if (Failure(added) is { } addFailure) throw await Unequipped(log, $"marketplace {run.Marketplace} was not added", addFailure);
             foreach (var plugin in options.Plugins)
             {
-                await Shell.Run(command, ["plugin", "install", plugin], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
+                var installed = await Shell.Run(command, ["plugin", "install", plugin], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
+                if (Failure(installed) is { } failure) throw await Unequipped(log, $"plugin {plugin} did not install", failure);
             }
         }
 
@@ -88,6 +90,20 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         var signals = StreamSignals.Read(result.Output);
         Heard(signals);
         return new AgentResult(result.ExitCode, result.TimedOut, signals.QuotaUntil, signals.QuotaRefused, signals.Result);
+    }
+
+    static string? Failure(ShellResult r)
+    {
+        return r.TimedOut ? "timed out" : r.ExitCode != 0 ? $"exit {r.ExitCode}" : null;
+    }
+
+    // A seat without its doctrine must not start. It is the machine's break, not the story's: the
+    // harness says it on the story as a broken job, naming what failed.
+    static async Task<InvalidOperationException> Unequipped(StreamWriter log, string failed, string why)
+    {
+        var said = $"{failed} ({why}); the agent was not started";
+        await log.WriteLineAsync(said);
+        return new InvalidOperationException(said);
     }
 
     // A seat's access in Claude Code's tools. A reader writes only through Write (its out files) and

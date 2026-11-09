@@ -70,6 +70,13 @@ public static class WorkerPlanner
         var full = options.WipLimit > 0 && wip >= options.WipLimit;
         if (full) notes.Add($"{wip} stories under way (limit {options.WipLimit}): no new story starts until one closes");
 
+        // A red-main story whose fix merged waits for main's gate to judge a head that holds it: only
+        // Develop waits, everything else goes on.
+        foreach (var n in board.UnjudgedFixes)
+        {
+            notes.Add($"#{n}: its fix merged and no gate of main has judged a head that holds it — Develop waits");
+        }
+
         var sea = issues.Where(i => flight.DevStories.Contains(i.Number))
             .SelectMany(i => i.Labels.Where(l => l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal)))
             .ToHashSet();
@@ -98,6 +105,7 @@ public static class WorkerPlanner
                 foreach (var i in stories)
                 {
                     if (taken.Contains(i.Number) || Busy(i, flight, options)) continue;
+                    if (w.Kind == WorkKind.Dev && board.UnjudgedFixes.Contains(i.Number)) continue;
                     var (pr, state) = Deciding(i, w, prsByStory.GetValueOrDefault(i.Number), board, options, lookup);
                     if (!w.Takes(i, w.Filter.Pr == "open" ? pr : null, state, lookup)) continue;
                     taken.Add(i.Number);

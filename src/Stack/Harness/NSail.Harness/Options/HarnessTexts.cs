@@ -52,6 +52,7 @@ public sealed class HarnessTexts
     public string SuiteRed { get; set; } = "**{product}**'s browser suite went {why} on `{sha}` ({where}).\n\n**What went red:**\n```\n{failed}\n```\n\nThe run's log and evidence: `{log}` on {machine}.";
     public string MainRedTitle { get; set; } = "CI red on main";
     public string MainRed { get; set; } = "`main`'s gate went {why} at `{sha}` — the commits in {range} are the suspects.\n\n**What went red:**\n```\n{failed}\n```\n\nThe gate's log: `{log}` on {machine}.";
+    public string MainRedWithoutFix { get; set; } = "`{sha}` does not hold this story's merge `{merge}`: its red is no news about the fix, and the story stays in {stage}.";
 
     // The template with its `{name}` slots filled.
     public static string Fill(string template, params (string Name, object? Value)[] values)

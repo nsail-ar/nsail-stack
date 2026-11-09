@@ -112,7 +112,8 @@ the app (the suspended page, below).
   asset — `MapStaticAssets` maps behind this middleware, and a cold WebAssembly load is dozens of
   files that can neither write a row nor draw a notice. Installed by every host; what it asks is
   `CredentialProvider`, whose permissive floor leaves a host that composed no identity exactly as
-  it was. See [permissions.md](permissions.md#session).
+  it was. It also refuses a ticket whose memberships changed since sign-in, at one cached read per
+  party per `Tenancy:StateCacheSeconds` (`MembershipStampMemo`). See [permissions.md](permissions.md#session).
 - `EndpointGateMiddleware` — the security gate, ahead of model binding. After authentication so
   it reads the session the pipeline's own gate will read, and before `MapEndpoints` so a caller
   with no permission is refused before a missing body or query member can be. It no-ops unless
