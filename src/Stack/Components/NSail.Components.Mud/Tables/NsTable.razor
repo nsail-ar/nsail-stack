@@ -840,7 +840,7 @@ else
 
     string Counted(string key, int count)
     {
-        return string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Translate(key, count), count);
+        return string.Format(RegionCulture.For(Language), Strings.Translate(key, count), count);
     }
 
     // Auto asks the device, not the size: the answer rides in on the request, so it is already
