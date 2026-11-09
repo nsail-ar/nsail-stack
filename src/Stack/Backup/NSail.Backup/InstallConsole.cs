@@ -68,7 +68,7 @@ public static class InstallConsole
         }
         catch (OperationCanceledException)
         {
-            Console.Error.WriteLine("CANCELLED: the run was interrupted and the child tool killed; nothing was left half-written.");
+            Console.Error.WriteLine("CANCELLED: the run was interrupted; any child tool was killed and nothing was left half-written.");
 
             return 130;
         }

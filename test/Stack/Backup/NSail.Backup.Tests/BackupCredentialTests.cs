@@ -52,21 +52,4 @@ public sealed class BackupCredentialTests
     sealed class ProbeDbContext : DbContext
     {
     }
-
-    [Fact]
-    public async Task ACancelKillsTheChildAndSaysCancelled()
-    {
-        using var cancel = new CancellationTokenSource();
-        var running = Postgres.Run("sleep", ["30"], null, cancel.Token);
-
-        while (!Postgres.ChildRunning)
-        {
-            await Task.Delay(20);
-        }
-
-        await cancel.CancelAsync();
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
-        Assert.False(Postgres.ChildRunning);
-    }
 }

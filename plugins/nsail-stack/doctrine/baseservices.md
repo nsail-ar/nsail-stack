@@ -390,7 +390,8 @@ its own name.
   affected: an archive's data lands before its policies do.
 - **Under MultiDb both verbs refuse** (`REFUSED:`, exit `4`): the install has no one database,
   and the tenants' own are not covered.
-- **A cancel kills the child.** A Ctrl-C or SIGTERM while a child tool runs kills it and its tree, and the verb exits `130`; at a prompt the signal ends the process as usual.
+- **A cancel kills the child.** A Ctrl-C or SIGTERM while a child tool runs kills it and its tree, and the verb exits
+  `130`; at a prompt the signal ends the process as usual.
 - **A restore refuses before it writes.** `RestorePlan.For` throws `BackupFailure` on an
   archive whose schema this build does not know (newer), whose product is another product,
   whose Postgres major differs, or whose archive format this build cannot read. An encrypted
@@ -398,7 +399,7 @@ its own name.
   wrong one, or a truncated entry. Then the plan says
   what it will overwrite — database and key ring — and stops unless the operator passes
   `--confirm RESTORE` (and types the word again when stdin is a terminal). Exit codes: `0`
-  done, `2` usage, `3` not confirmed, `4` refused.
+  done, `2` usage, `3` not confirmed, `4` refused, `130` cancelled.
 - **Restore is replace, not merge.** The public schema is dropped whole and rebuilt from the
   dump — `pg_restore --clean` would leave behind anything the install grew after the backup —
   in one transaction (`pg_restore` renders the dump to a script, `psql --single-transaction` runs

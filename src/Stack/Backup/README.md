@@ -67,7 +67,9 @@ string. What the verbs use:
   row-level security; `backup` checks first and refuses by name. A cell with `RequireRowSecurity` sets
   `Backup:ConnectionString` to one. Restore always uses the `DbContext`'s connection.
 - **MultiDb:** a database per tenant is not covered: both verbs refuse with `REFUSED:` and exit code `4`.
-- **Cancel:** while `pg_dump`/`pg_restore`/`psql` runs, Ctrl-C and SIGTERM (and the token `Run` is given) kill it and its process tree and the verb exits `130`; at a prompt the signal ends the process as usual.
+- **Cancel:** while `pg_dump`/`pg_restore`/`psql` runs, Ctrl-C and SIGTERM (and the token `Run`
+  is given) kill it and its process tree and the verb exits `130`; at a prompt the signal ends
+  the process as usual.
 
 | Exit code | Meaning |
 |---|---|
