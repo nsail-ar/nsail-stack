@@ -62,8 +62,8 @@ A host that offers `backup` and `restore` calls `InstallConsole.Requested(args)`
 ## What each call does
 
 `AddBaseWebApi` registers telemetry (`AddTelemetry`), the messaging runtime, the error handler,
-the middleware below, the `MembershipStampMemo`, the permissive `RequestBudgetProvider`, `SecurityOptions` (from
-`Security`), the tenant feature provider and a hosted service that publishes the declared
+the middleware below, the `MembershipStampMemo`, the permissive `RequestBudgetProvider`,
+`SecurityOptions` (from `Security`), the tenant feature provider and a hosted service that publishes the declared
 features, the push server end with the tenant as its audience, authorization, metadata, Swagger
 with schema ids derived from `MetadataProvider`, and a DataProtection key ring persisted under
 `<content root>/data/keyring` (so a backup carries it) under the host's `ApplicationName` as its DataProtection application name (the first link of the purpose chain: renaming the application leaves what was sealed under the old name unreadable). It sets `RouteHandlerOptions.ThrowOnBadRequest` in every environment so a binding failure takes

@@ -92,7 +92,13 @@ public sealed class CredentialMiddleware : IMiddleware
             return false;
         }
 
-        return await StampHolds(context, services, credentials, session);
+        // Asked again: Holds may have re-issued the credential, and the stamp is judged against
+        // the session the request will carry.
+        return await StampHolds(
+            context,
+            services,
+            credentials,
+            services.GetService<SessionProvider>()?.Session ?? session);
     }
 
     // Memberships and roles ride the ticket as of sign-in, so a change to them makes the ticket
@@ -110,8 +116,12 @@ public sealed class CredentialMiddleware : IMiddleware
             return true;
         }
 
+        var fromSource = false;
+
         Task<string?> Read(CancellationToken token)
         {
+            fromSource = true;
+
             return credentials.MembershipStamp(party, token);
         }
 
@@ -123,7 +133,13 @@ public sealed class CredentialMiddleware : IMiddleware
         }
 
         // The held stamp may predate this ticket (a sign-in after the change, inside the
-        // window), so a mismatch is confirmed at the source before it refuses anyone.
+        // window), so a mismatch is confirmed at the source before it refuses anyone — unless
+        // the value just came from there.
+        if (fromSource)
+        {
+            return false;
+        }
+
         current = await memo.Refresh(session.Tenant, party, Read, context.RequestAborted);
 
         return current is null || current == session.MembershipStamp;

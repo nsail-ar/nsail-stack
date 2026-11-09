@@ -101,6 +101,24 @@ public sealed class MembershipStampTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, await Status(ticket));
     }
 
+    [Fact]
+    public async Task AMismatchWithinTheWindowCostsOneConfirmingRead()
+    {
+        _host.Memberships.Set(Party, "admin");
+
+        var ticket = await _host.SignIn(tenant: null, party: Party, memberships: "admin");
+
+        Assert.Equal(HttpStatusCode.OK, await Status(ticket));
+
+        _host.Memberships.Set(Party, "viewer");
+        _clock.Advance(TimeSpan.FromSeconds(new TenancyOptions().StateCacheSeconds + 1));
+
+        var before = _host.Memberships.Reads;
+
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status(ticket));
+        Assert.Equal(before + 1, _host.Memberships.Reads);
+    }
+
     async Task<HttpStatusCode> Status(string ticket)
     {
         using var response = await _host.Client.SendAsync(_host.Get("/guarded", tenant: null, ticket: ticket));
