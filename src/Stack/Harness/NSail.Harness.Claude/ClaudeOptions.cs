@@ -25,6 +25,9 @@ public sealed class ClaudeOptions
     // path is relative: what a repository's own settings do not say, for every repository.
     public string? SettingsFile { get; set; }
 
+    // A Linux account the seats' processes run as; the Harness README's `Claude` entry says what it and its sudoers rule need.
+    public string? RunAs { get; set; }
+
     public string? Settings()
     {
         if (string.IsNullOrWhiteSpace(SettingsFile)) return null;
