@@ -16,7 +16,7 @@ namespace {{ Namespace }}
         {{ MethodDeclaration }}
         {
             {{~ for client in Messages ~}}
-            {{ ServicesParameterName }}.AddScoped<ISender<{{ client.MessageType }}{{ if client.ReturnType != "void" }}, {{ client.ReturnType }}{{ end }}>, {{ client.MessageType }}HttpSender>();
+            {{ ServicesParameterName }}.AddScoped<ISender<{{ client.MessageType }}{{ if client.ReturnType != "void" }}, {{ client.ReturnType }}{{ end }}>, {{ client.MessageType.QualifiedFlatName }}HttpSender>();
             {{~ end ~}}
         }
     }

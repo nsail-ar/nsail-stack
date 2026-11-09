@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis;
 
 namespace NSail.SourceGenerator.Generation.Queue.Models;
 
-public class QueueModel
+public class QueueModel : GeneratedModel
 {
     public string? Namespace { get; set; }
 
@@ -17,10 +17,6 @@ public class QueueModel
 
     public string? MethodDeclaration { get; set; }
 
-    public string? ServicesParameterName { get; set; }
-
     /// <summary>Fully qualified, global::-prefixed: every [Queue] message in scope.</summary>
     public List<string> Messages { get; } = new();
-
-    public List<Diagnostic> Diagnostics { get; } = new();
 }

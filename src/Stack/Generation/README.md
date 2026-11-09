@@ -99,6 +99,10 @@ not a silent skip.
 | `NSG014` | Error | A `[Queue]` message returns a result (`IMessage<T>`) |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` |
 | `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) |
+| `NSG017` | Error | `[Source(Assembly = ...)]` names an assembly the compilation does not reference |
+| `NSG018` | Error | A `[Generated]` holder's class is nested, generic, not `partial` or in the global namespace |
+| `NSG019` | Error | A `[Generated]` holder has no `IServiceCollection` parameter |
+| `NSG020` | Error | An `[Http]` message declares no path |
 | `NSG004`-`NSG013` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
 
 ### TypeScript client

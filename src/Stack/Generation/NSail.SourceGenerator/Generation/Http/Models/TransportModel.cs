@@ -5,14 +5,8 @@ using Microsoft.CodeAnalysis;
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
 
-public class TransportModel
+public class TransportModel : GeneratedModel
 {
-    /// <summary>Reported by the renderer: the model is built in a pipeline stage that has no
-    /// <see cref="SourceProductionContext"/> to report through, so the findings travel here.</summary>
-    public List<Diagnostic> Diagnostics { get; } = [];
-
-    public string ServicesParameterName { get; set; } = string.Empty;
-
     public string Namespace { get; set; } = string.Empty;
 
     public string ClassName { get; set; } = string.Empty;

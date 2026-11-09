@@ -300,6 +300,10 @@ same thing.
 | `NSG014` | Error | A `[Queue]` message implements `IMessage<T>` — a durable send answers "accepted" and never the outcome, so there is no result to hand back. |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` — each registers an `ISender`, so every send would meet `MultipleSenders` at runtime. |
 | `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) — it would cap no account, silently, and go on doing so after a rename. |
+| `NSG017` | Error | `[Source(Assembly = ...)]` names an assembly the compilation does not reference — the holder would register nothing and look finished. |
+| `NSG018` | Error | A holder's class is nested, generic, not `partial` or in the global namespace — the generated half re-declares the class and cannot match it. |
+| `NSG019` | Error | A holder has no `IServiceCollection` parameter — the registrations have no receiver; the generated body uses the parameter's own name. |
+| `NSG020` | Error | An `[Http]` message declares no path — it has no route to map or call. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only

@@ -10,10 +10,10 @@ using NSail.Messaging.Runtime;
 using NSail.Messaging.Runtime.Pipelines;
 using NSail.Messaging.WebApi;
 
-namespace {{ MessageType.Namespace }};
+{{ MessageType.NamespaceLine }}
 
 [System.CodeDom.Compiler.GeneratedCode("NSail.SourceGenerator", "1.0")]
-public class {{ MessageType.ClassName }}EndpointEntry : IEndpointEntry
+public class {{ MessageType.FlatName }}EndpointEntry : IEndpointEntry
 {
     public void Configure(IEndpointRouteBuilder builder)
     {

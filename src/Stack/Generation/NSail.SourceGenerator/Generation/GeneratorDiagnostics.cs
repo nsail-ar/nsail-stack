@@ -155,4 +155,40 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "The ceiling reads the JSON body; a name that matches nothing there caps no account, and goes on capping nothing after the property it meant is renamed.");
+
+    public static readonly DiagnosticDescriptor UnknownSourceAssembly = new(
+        id: "NSG017",
+        title: "[Source] names an assembly the compilation does not reference",
+        messageFormat: "'{0}' declares [Source(Assembly = \"{1}\")], but no assembly of that name is referenced: the holder would generate for nothing",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A scope that matches no assembly is an empty one, and an empty registration looks the same as a working one until a send meets no sender.");
+
+    public static readonly DiagnosticDescriptor HolderNotDeclarable = new(
+        id: "NSG018",
+        title: "A generated holder cannot be completed",
+        messageFormat: "'{0}' is marked [Generated], but its class '{1}' {2}: the generator completes a partial method of a top-level, non-generic partial class in a namespace by declaring that class again, and cannot do so here",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The generated half re-declares the holder's class; a declaration that differs from the written one is a compile error in generated code nobody wrote.");
+
+    public static readonly DiagnosticDescriptor HolderWithoutServices = new(
+        id: "NSG019",
+        title: "A generated holder takes no IServiceCollection",
+        messageFormat: "'{0}' is marked [Generated], but none of its parameters is an IServiceCollection: there is nothing to register the generated services on",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Every holder registers on the collection it is handed; without one the generated body would have no receiver.");
+
+    public static readonly DiagnosticDescriptor HttpWithoutPath = new(
+        id: "NSG020",
+        title: "[Http] without a path",
+        messageFormat: "'{0}' declares [Http] without a path: the message has no route to map or call",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The route is the endpoint and the client's address; a message without one is skipped by neither and served by neither.");
 }
