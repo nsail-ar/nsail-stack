@@ -67,6 +67,23 @@ public class BoardReaderTests
     }
 
     [Fact]
+    public void ARunsFailedJobsAreReadWithTheirFirstFailedStep()
+    {
+        var jobs = Runs("""
+            [
+              {"id":11,"name":"build","conclusion":"failure","steps":[
+                {"name":"Set up job","conclusion":"success"},
+                {"name":"Test","conclusion":"failure"},
+                {"name":"Pack","conclusion":"skipped"}]},
+              {"id":12,"name":"docs","conclusion":"success","steps":[{"name":"Lint","conclusion":"success"}]},
+              {"id":13,"name":"e2e","conclusion":"timed_out","steps":[]}
+            ]
+            """);
+
+        Assert.Equal([(11L, "build", "Test"), (13L, "e2e", "timed_out")], GitHubRepository.FailedJobs(jobs).ToList());
+    }
+
+    [Fact]
     public void OneRedWorkflowMakesItRedAndOneInFlightMakesItPending()
     {
         Assert.Equal(CiState.Red, GitHubRepository.CiOf(Runs("""[{"workflow_id":1,"run_started_at":"a","status":"completed","conclusion":"cancelled"}]""")));

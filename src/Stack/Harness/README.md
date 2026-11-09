@@ -46,6 +46,9 @@ the files it leaves.
     Release's `Suite` (a test project, `{Product}` its name) runs there — no script. Another repository
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):
     a release holds that repository's merges when the version its tag pins does.
+    A PR no gate judges (another repository's, or any with no Verify worker) whose red CI failed only
+    tests or build errors that main's newest completed CI run failed too waits for main the same way,
+    read again each pass; nothing re-runs it.
   - `ProtectedPaths` (default `.github/workflows/**`): a builder whose commits touch one is not pushed,
     since CI would run the changed workflow with the repository's secrets before review; `AllowProtectedPaths`
     lifts it for the harness, the `allow-protected` label for one story. A refused story waits where it stands wearing `ruling` and
@@ -164,7 +167,10 @@ the files it leaves.
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   The dossier a seat reads lays a comment or PR note by any other login fenced and labelled untrusted; the
   logins whose words reach it as the crew's are the harness's own, `Harness:MarkerAuthors` and `Harness:TrustedAuthors`
-  (the owners and the crew, empty by default). A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
+  (the owners and the crew, empty by default). Under an open PR it says why its head is not green where no
+  gate verdict does: the head does not merge with the default branch, or the CI that runs outside the harness is
+  red there — its failed jobs and steps and failed tests (else build errors), the first 30 of each, and the last 40
+  non-empty lines of the first three failed jobs' logs, each cut where its failed step closes, fenced as data. A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
   watch files it in Analyze, never Ready.
   Every harness on the board reads the same: main's `harness/gate` mark written `pending` holds that head from
   a second gate on any harness for twice the longest `Minutes` among that harness's own Main

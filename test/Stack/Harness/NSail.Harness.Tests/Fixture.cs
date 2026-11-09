@@ -37,9 +37,9 @@ sealed class Fixture
         return this;
     }
 
-    public Fixture Pr(int story, int number, CiState ci = CiState.Green, string? word = null, string repo = Repo, string sha = "abcdef1234567890", CiState? gate = null, TimeSpan? greenFor = null)
+    public Fixture Pr(int story, int number, CiState ci = CiState.Green, string? word = null, string repo = Repo, string sha = "abcdef1234567890", CiState? gate = null, TimeSpan? greenFor = null, bool shared = false)
     {
-        _prs.Add(new StoryPr(story, number, sha, ci, repo, word, gate, _now - greenFor));
+        _prs.Add(new StoryPr(story, number, sha, ci, repo, word, gate, _now - greenFor, shared));
         return this;
     }
 

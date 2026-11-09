@@ -95,23 +95,57 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         return options.Releases.Any(r => r.Workflow == workflow);
     }
 
-    async Task<List<StoryPr>> ReadPrs(IRepository repo, string main, CancellationToken ct)
+    internal async Task<List<StoryPr>> ReadPrs(IRepository repo, string main, CancellationToken ct)
     {
         var home = repo == repos.Default;
         var result = new List<StoryPr>();
-        foreach (var pr in await repo.OpenPrs(ct))
+        CiFailure? mains = null;
+        var mainRead = false;
+        var open = await repo.OpenPrs(ct);
+        foreach (var gone in FailureByPr.Keys.Where(k => k.Repo == repo.Name && open.All(p => p.Number != k.Pr)))
+        {
+            FailureByPr.TryRemove(gone, out _);
+        }
+        foreach (var pr in open)
         {
             if (!IsCrews(pr, repo)) continue;
             if (_names.StoryOf(pr.Title, pr.Head) is not { } story) continue;
+            // A red the CI decides (no gate judges this repository) that main's own newest CI shares is no round.
+            var shared = false;
+            if (pr.Ci == CiState.Red && !(home && options.Gate))
+            {
+                if (!mainRead)
+                {
+                    mains = await repo.MainFailure(ct);
+                    mainRead = true;
+                }
+                shared = mains is not null && (await FailureOf(repo, pr, ct))?.SharedWith(mains) == true;
+            }
+            else
+            {
+                FailureByPr.TryRemove((pr.Repo, pr.Number), out _);
+            }
             // The default repository's heads always need their threads (the gate's verdict lives there);
             // another's head only once its own CI is green.
             var bodies = home || pr.Ci == CiState.Green ? await Bodies(repo, pr, ct) : [];
             var gate = home && options.Gate ? Markers.GateAt(bodies, pr.Sha, main) : null;
             var green = gate == CiState.Green || (gate is null && pr.Ci == CiState.Green);
             var word = green ? _markers.ReviewAt(bodies, pr.Sha) : null;
-            result.Add(new StoryPr(story, pr.Number, pr.Sha, pr.Ci, pr.Repo, word, gate, pr.GreenAt));
+            result.Add(new StoryPr(story, pr.Number, pr.Sha, pr.Ci, pr.Repo, word, gate, pr.GreenAt, shared));
         }
         return result;
+    }
+
+    // What a red head's CI failed is read once while it stays red (a run again turns it pending
+    // first), one entry per open PR.
+    static readonly ConcurrentDictionary<(string Repo, int Pr), (string Sha, CiFailure? Failure)> FailureByPr = new();
+
+    static async Task<CiFailure?> FailureOf(IRepository repo, OpenPr pr, CancellationToken ct)
+    {
+        if (FailureByPr.TryGetValue((pr.Repo, pr.Number), out var hit) && hit.Sha == pr.Sha) return hit.Failure;
+        var failure = await repo.Failure(pr.Sha, ct);
+        FailureByPr[(pr.Repo, pr.Number)] = (pr.Sha, failure);
+        return failure;
     }
 
     // A PR is the crew's only when its head lives in this repository (a fork's branch name is the

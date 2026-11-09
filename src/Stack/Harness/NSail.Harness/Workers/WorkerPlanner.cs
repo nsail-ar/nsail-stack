@@ -70,6 +70,11 @@ public static class WorkerPlanner
             }
         }
 
+        foreach (var pr in board.Prs.Where(p => p.Shared && issues.Any(i => i.Number == p.Story && i.Stage == Stages.InProgress && Planner.HoldOf(i, options) is null)))
+        {
+            notes.Add($"#{pr.Story}: {(pr.Repo == board.Repo ? "" : pr.Repo.Split('/')[1] + " ")}PR #{pr.Number} red only where main's own CI is red — no round until main moves");
+        }
+
         var items = new List<WorkItem>();
         var taken = new HashSet<int>();
         var wip = prsByStory.Keys.Where(n => issues.FirstOrDefault(i => i.Number == n) is { } i && Planner.HoldOf(i, options) is not (Labels.Ruling or Labels.Blocked or Labels.Hand or Labels.Stalled))
@@ -194,6 +199,8 @@ public static class WorkerPlanner
         {
             switch (pr.Ci)
             {
+                // A red main's own CI shares waits for main to move, as the gate's does.
+                case CiState.Red when pr.Shared: return "pending";
                 case CiState.Pending: return "pending";
                 case CiState.Red: return "red";
                 case CiState.Conflict: return "conflict";
