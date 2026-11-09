@@ -217,6 +217,26 @@ public sealed class NsTableOrderTests : BunitContext, IAsyncLifetime
         Assert.Equal([0, 3, 1, 2, 4], _csv.Rows.Select(row => Convert.ToInt32(row.Values[0])));
     }
 
+    /// <summary>A render the sort did not ask for does not sort again: the cells are read once per
+    /// row for a sort, and a parent that renders on its own reads none.</summary>
+    [Fact]
+    public async Task A_render_that_changes_nothing_does_not_sort_again()
+    {
+        var cut = Render<CountedTableHost>();
+
+        await cut.InvokeAsync(() => cut.Find(".ns-th-order").ClickAsync(new MouseEventArgs()));
+
+        cut.Render(parameters => parameters.Add(host => host.Unrelated, 1));
+        cut.Render(parameters => parameters.Add(host => host.Unrelated, 2));
+
+        var before = CountedTableHost.CountedRow.Reads;
+
+        cut.Render(parameters => parameters.Add(host => host.Unrelated, 3));
+
+        // The row template reads each name once per render; a sort would read each again.
+        Assert.Equal(50, CountedTableHost.CountedRow.Reads - before);
+    }
+
     // Which rows are on screen and in which order, read off the column no test presses.
     static int[] Shown(IRenderedComponent<OrderTableHost> cut)
     {

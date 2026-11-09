@@ -192,6 +192,7 @@
   "Mud.MudTabs_ScrollUp": "Scroll up",
   "Mud.MudTabs_ScrollDown": "Scroll down",
   "Common.NoRecords": "No records to show",
+  "Common.ExportTooLarge": "The export has more than {max} rows; narrow the list with a filter and export again.",
   "Common.TimeGridHiddenDay": "Showing {day}. 1 more day is hidden this week",
   "Common.TimeGridHiddenDay.Plural": "Showing {day}. {count} more days are hidden this week",
 

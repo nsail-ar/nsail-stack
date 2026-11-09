@@ -134,7 +134,8 @@ neither.
 **`Run` answers the rows the file carries, or null where no file was written.** A reader sees the
 download; a caller away from the screen sees nothing, and "it worked" is the one thing it cannot
 be left to assume — a read that does not land leaves no file (below), a kind nobody registered
-has no writer, an export already in flight writes no second file, and all three are null. What
+has no writer, an export already in flight writes no second file, a list with more rows than
+`NsTable.MaxExportRows` is refused (below), and all four are null. What
 null never means is **"not yet"**: the announcement is handed out from the top of the grid's own
 render pass, before the header's `NsTh` have declared a single column, and an act run right there
 waits for that pass to land rather than answering as though the list had nothing to export — a
@@ -235,3 +236,8 @@ what a page that does not answer means are settled with no renderer in the way.
 (`nsapp.download`, a `DotNetStreamReference` so the bytes cross once and never as base64), so the
 writer's output stays in hand — a megabyte or two for tens of thousands of rows — while the result
 set it came from is read a page at a time and dropped.
+
+The file's size is bounded by `NsTable.MaxExportRows` (default `TableExport.DefaultRowCap`, at
+least 1): the row past it ends the export with a message and no file, so a large `OnQuery` list
+cannot grow the circuit without limit. The refusal is `Problems.ExportTooLarge`, whose `{max}`
+names the cap.
