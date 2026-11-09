@@ -102,8 +102,7 @@ bounds, once, for every list in the tree (`public class ListProducts : PagedMess
 IMessage<DataPage<ProductRow>>`). `PageSize = 0` means "the caller did not choose" and the
 handler's own default answers it; `MaxPageSize` is where a page stops being a page and
 becomes an export; `MaxPageIndex` keeps `PageIndex * PageSize` inside an int for the
-`Skip` a handler writes. Validation refuses an enum number no member defines (a `[Flags]` one
-by its mask) as `OutOfRange` on the field.
+`Skip(PageIndex * PageSize)` a handler writes.
 
 ---
 

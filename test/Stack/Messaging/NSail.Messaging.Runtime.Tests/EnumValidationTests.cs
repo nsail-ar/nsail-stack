@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using NSail.Messaging.Runtime.Validation;
+using NSail.Paging;
 
 namespace NSail.Messaging.Runtime.Tests;
 
@@ -19,6 +20,12 @@ public sealed class EnumValidationTests
         public Kind? Maybe { get; set; }
 
         public Bits Bits { get; set; }
+
+        public List<Kind>? Kinds { get; set; }
+    }
+
+    sealed class Listing : PagedMessage
+    {
     }
 
     [Fact]
@@ -48,5 +55,22 @@ public sealed class EnumValidationTests
     {
         Assert.Null(MessageValidator.Validate(new Holder { Bits = Bits.X | Bits.Y }));
         Assert.NotNull(MessageValidator.Validate(new Holder { Bits = (Bits)2 }));
+    }
+
+    [Fact]
+    public void UndefinedElement_IsRefused_NamingTheIndex()
+    {
+        var problem = MessageValidator.Validate(new Holder { Kinds = [Kind.A, (Kind)99] });
+
+        var issue = Assert.Single(problem!.Issues!);
+        Assert.Equal("Kinds[1]", issue.Source);
+        Assert.Null(MessageValidator.Validate(new Holder { Kinds = [Kind.A, Kind.B] }));
+    }
+
+    [Fact]
+    public void PageIndex_PastTheOffsetBound_IsRefused()
+    {
+        Assert.NotNull(MessageValidator.Validate(new Listing { PageIndex = int.MaxValue, PageSize = 1000 }));
+        Assert.Null(MessageValidator.Validate(new Listing { PageIndex = PagedMessage.MaxPageIndex, PageSize = 1000 }));
     }
 }

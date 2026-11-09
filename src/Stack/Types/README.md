@@ -23,7 +23,7 @@ Namespaces are named for a capability, not for the project.
 | Namespace | Contents |
 |---|---|
 | `NSail.Problems` | `Problem` (code, title, issues, status), `Issue`, `BusinessException`, and factories per family: `BusinessProblem`, `InputProblem` (`For<T>()` builds through `InputProblemBuilder`), `SecurityProblem`, `SystemProblem`, `ExternalProblem`, `MessagingProblem`, `NetworkProblem`, `TenancyProblem` |
-| `NSail.Paging` | `DataPage<T>`, `PagedMessage` (`PageIndex`, `PageSize`, `MaxPageSize` = 1000), `Selection` (ids or "all rows the filter answers") |
+| `NSail.Paging` | `DataPage<T>`, `PagedMessage` (`PageIndex`, `PageSize`, `MaxPageSize` = 1000, `MaxPageIndex`), `Selection` (ids or "all rows the filter answers") |
 | `NSail.Serialization` | `JsonOptions.Wire` (web defaults, enums as names, `long`/`ulong`/`decimal` as strings), `WireSchema.For(type)` (JSON Schema of a wire payload) |
 | `NSail.Text` | `Markdown` (`ToHtml`, `Headings`, `Slug`, `ToText`) with `MarkdownOptions.Prose` / `Document`, `NamedTokens` (`In`, `Fill` for `{name}`), `WebAddress.IsNavigable` |
 | `NSail.Privacy` | `PersonalData` (Name, Document, Email, Phone, Address, WebAddress, FreeText, BirthDate) and `PersonalDataComment` |
@@ -57,7 +57,8 @@ None. These are types, not services. Three behaviours worth knowing:
   own options copies `JsonOptions.Converters` instead of constructing a second contract. A vendor's
   API is not message traffic: its client keeps its own options.
 - `PagedMessage.PageSize` of 0 means the caller did not choose, and the handler's own default
-  answers; sizes above `MaxPageSize` and indexes above `MaxPageIndex` (so `PageIndex * PageSize` fits an int) are refused.
+  answers; sizes above `MaxPageSize` and indexes above `MaxPageIndex` (so
+  `PageIndex * PageSize` fits an int) are refused.
 
 ## How it fits
 

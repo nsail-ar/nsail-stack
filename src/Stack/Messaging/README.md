@@ -117,6 +117,11 @@ of `SearchTermAttribute.MaximumLength`), and `[Validated]` to walk into a nested
 element of a collection. An attribute implementing `ICodedValidation` names its own problem code
 and the catalog sentence that goes with it.
 
+An enum member (or each element of an enum collection) holding a number no member defines is
+refused as `OutOfRange` on the field (`Kinds[1]`), a `[Flags]` one by its mask; no attribute is
+needed. A non-nullable enum with no zero member that a message leaves unchosen is refused too:
+declare the zero member or make the field nullable.
+
 ### Headers, unit of work, events
 
 - Headers are an argument, `Send(message, headers, token)` / `Publish(message, headers, token)`,
