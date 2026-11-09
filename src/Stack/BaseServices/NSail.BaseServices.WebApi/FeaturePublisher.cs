@@ -40,7 +40,8 @@ sealed class FeaturePublisher : IHostedService
 
     // Advisory: the publish never stops the host. A rolling deploy starts two processes together,
     // and the loser of a race on a key fails its save; it reads again, now seeing the winner's
-    // rows, and amends them, after a short wait. Whatever still fails is logged, and the next start publishes.
+    // rows, and amends them, after a short wait. Whatever still fails is logged, and the next
+    // start publishes.
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         for (var attempt = 1; attempt <= Attempts; attempt++)

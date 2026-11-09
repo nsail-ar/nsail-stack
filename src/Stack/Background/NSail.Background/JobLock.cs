@@ -22,6 +22,18 @@ static class JobLock
         return await AdvisoryLock.TryTake(connectionString, job + "\n" + tenant, cancellationToken).ConfigureAwait(false);
     }
 
+    // Install-wide work under a per-tenant connection: the DbContext cannot be asked for, so the
+    // lock sits on the maintenance database the roster is read from.
+    public static async Task<IAsyncDisposable?> TryTakeOnCluster(TenantDatabases? databases, string job, CancellationToken cancellationToken)
+    {
+        if (databases is null)
+        {
+            return NoLock.Instance;
+        }
+
+        return await AdvisoryLock.TryTake(databases.MaintenanceConnection, job + "\n", cancellationToken).ConfigureAwait(false);
+    }
+
     public sealed class NoLock : IAsyncDisposable
     {
         public static NoLock Instance { get; } = new();

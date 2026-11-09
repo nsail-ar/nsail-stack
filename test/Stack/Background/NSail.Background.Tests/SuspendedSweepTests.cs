@@ -205,4 +205,3 @@ sealed class StateDbContext : DbContext, ITenanted, IHasOrgScope
         modelBuilder.ApplySetups(this, []);
     }
 }
-

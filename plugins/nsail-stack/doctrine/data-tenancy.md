@@ -741,8 +741,9 @@ reads nothing and cannot write at all.
   a sibling is running it. It fences **overlap**, not repetition: replicas tick on their own
   clocks, so a job whose passes do not overlap still runs once per replica per interval — a job
   that must run once per interval across replicas needs a lease, not this. A store that is not
-  Postgres takes no lock, and install-wide work under a per-tenant connection has no database to
-  lock on, so it takes none either.
+  Postgres takes no lock. Install-wide work under a per-tenant connection has no install database,
+  so it locks on the cluster's maintenance database, the one the roster is read from. The durable
+  queue's drain is a job like any other: a tenant's drain runs on one replica at a time.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as
   `UseRequestLanguage` does on a request; `LanguageProvider` then seeds itself with "es" instead

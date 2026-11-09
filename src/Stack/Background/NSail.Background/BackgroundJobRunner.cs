@@ -267,8 +267,9 @@ sealed class BackgroundJobRunner : BackgroundService
             // The budget covers the lock too: a sick database must not stretch the pass.
             budget.CancelAfter(timeout);
 
-            // Install-wide work under a mode that connects per tenant has no database to lock:
-            // resolving the DbContext there is what throws, so it is not asked for.
+            // Install-wide work under a mode that connects per tenant has no install database:
+            // resolving the DbContext there is what throws, so it is not asked for, and the
+            // lock sits on the maintenance database the roster is read from.
             var lockable = tenant is not null
                 || scope.Value.ServiceProvider.GetService<TenancyOptions>() is not { Connection: TenancyScope.Tenant };
 
@@ -279,7 +280,11 @@ sealed class BackgroundJobRunner : BackgroundService
                         tenant?.Slug ?? string.Empty,
                         budget.Token)
                     .ConfigureAwait(false)
-                : JobLock.NoLock.Instance;
+                : await JobLock.TryTakeOnCluster(
+                        scope.Value.ServiceProvider.GetService<TenantDatabases>(),
+                        jobType.Name,
+                        budget.Token)
+                    .ConfigureAwait(false);
 
             if (held is null)
             {

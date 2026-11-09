@@ -64,6 +64,7 @@ public sealed class JobLockTests : IAsyncLifetime
     [Fact]
     public async Task A_second_runner_skips_the_pass_the_first_holds()
     {
+        using var meters = new Meters();
         var gate = new Gate();
         var first = new Signal();
         var second = new Signal();
@@ -87,6 +88,11 @@ public sealed class JobLockTests : IAsyncLifetime
 
         Assert.Equal(1, first.Count);
         Assert.Equal(0, second.Count);
+
+        meters.Poll();
+
+        Assert.Equal(1, meters.Passes(nameof(LockedJob), BackgroundJobMetrics.Skipped));
+        Assert.Equal(0, meters.Passes(nameof(LockedJob), BackgroundJobMetrics.Failed));
 
         gate.Open.SetResult();
 
@@ -139,7 +145,7 @@ public sealed class JobLockTests : IAsyncLifetime
     {
         return Harness.Build(services =>
         {
-            services.AddScoped<DbContext>(provider => new StateDbContext(_options));
+            services.AddScoped<DbContext>(_ => new StateDbContext(_options));
             services.AddSingleton(gate);
             services.AddSingleton(signal);
             services.AddBackgroundJob<LockedJob>();

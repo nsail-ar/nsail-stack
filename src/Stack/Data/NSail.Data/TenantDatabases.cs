@@ -50,6 +50,10 @@ public class TenantDatabases
         return database.Length > MaxIdentifierLength ? null : database;
     }
 
+    /// <summary>The cluster's maintenance database: the one place install-wide work has to
+    /// coordinate on when every other connection is a tenant's.</summary>
+    public string MaintenanceConnection => On(MaintenanceDatabase);
+
     public string ConnectionFor(string database)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(database);
