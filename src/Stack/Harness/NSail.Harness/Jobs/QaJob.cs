@@ -69,7 +69,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var shots = Path.Combine(outDir, "shots");
         Directory.CreateDirectory(shots);
         var story = await ctx.Board.Story(n, ct);
-        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), story.Title)}\n\n{story.Body}", ct);
+        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), story.Title, labels, story.Body)}\n\n{StoryDossier.Body(story.Body, labels)}", ct);
         var dossier = new StoryDossier(ctx, history);
         await dossier.WritePrs(n, outDir, ct);
         var asked = labels.Contains(Labels.QaAsked) ? Asked(await ctx.Board.Comments(n, ct), await dossier.Trusted(ct)) : "";

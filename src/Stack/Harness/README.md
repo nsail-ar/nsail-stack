@@ -143,7 +143,7 @@ the files it leaves.
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   The dossier a seat reads lays a comment or PR note by any other login fenced and labelled untrusted; the
   logins whose words reach it as the crew's are the harness's own, `Harness:MarkerAuthors` and `Harness:TrustedAuthors`
-  (the owners and the crew, empty by default). A Watch story fences the log's template and stack as data, and the
+  (the owners and the crew, empty by default). A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with title and body fenced as data, and the
   watch files it in Analyze, never Ready.
   Every harness on the board reads the same. What stays on the machine is its job history,
   its count of them, the work the protected-paths screen refused (`ProtectedPaths`), and what a hand or

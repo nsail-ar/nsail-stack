@@ -51,7 +51,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
             var dir = await ctx.Workspace.Prepare(slot);
             var outDir = Path.Combine(dir, Out);
             Directory.CreateDirectory(outDir);
-            await File.WriteAllTextAsync(Path.Combine(outDir, "original.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), title)}\n\n{body}", ct);
+            await File.WriteAllTextAsync(Path.Combine(outDir, "original.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), title, labels, body)}\n\n{StoryDossier.Body(body, labels)}", ct);
             var dossier = new StoryDossier(ctx, history);
             await File.WriteAllTextAsync(Path.Combine(outDir, "thread.md"), StoryDossier.Thread(await board.Comments(n, ct), await dossier.Trusted(ct)), ct);
             await File.WriteAllTextAsync(Path.Combine(outDir, "labels-known.txt"), string.Join(' ', await KnownLabels(ct)), ct);

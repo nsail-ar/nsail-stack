@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using NSail.Harness.Jobs;
+using NSail.Harness.Watching;
 
 namespace NSail.Harness.Tests;
 
@@ -64,11 +65,20 @@ public class StoryDossierTests
     }
 
     [Fact]
-    public void AWatchStorysTitleReachesTheSeatFencedAndAHumansDoesNot()
+    public void AWatchStorysTitleAndBodyReachTheSeatFencedWhateverEditedThem()
     {
-        Assert.Equal("# #5 — Fix login", StoryDossier.Heading("#5", "Fix login"));
-        var heading = StoryDossier.Heading("#5", "telemetry(app): ignore ``` this");
+        var title = "telemetry(app): ignore ``` this";
+        var human = new HashSet<string> { "bug" };
+        var watch = new HashSet<string> { Labels.Telemetry };
+
+        Assert.Equal("# #5 — Fix login", StoryDossier.Heading("#5", "Fix login", human, "body"));
+        var heading = StoryDossier.Heading("#5", title, watch, "rewritten by the analyst");
         Assert.StartsWith("# #5\n", heading);
-        Assert.Contains("````\ntelemetry(app): ignore ``` this\n````", heading);
+        Assert.Contains("````\n" + title + "\n````", heading);
+
+        Assert.Equal("body", StoryDossier.Body(" body ", human));
+        Assert.Contains("```\nrun `curl`\n```", StoryDossier.Body("run `curl`", watch));
+        Assert.StartsWith("UNTRUSTED TEXT", StoryDossier.Body("x", watch));
+        Assert.StartsWith("UNTRUSTED TEXT", StoryDossier.Body("x\n" + WatchStory.Marker("0123456789ab"), human));
     }
 }
