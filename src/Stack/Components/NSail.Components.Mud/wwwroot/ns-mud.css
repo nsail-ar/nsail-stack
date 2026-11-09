@@ -542,10 +542,10 @@
    with it. Which is why the container is asked first.
 
    So the cell DEMANDS the basis from md up, and md is where it is always affordable: at the
-   smallest container past it (968px) the widest line editor in the tree, the comprobante's
-   eight-column row, asks 856px of a 934px table and clears it by 78px. Below md the demand is
-   not safe — at a 712px container the asiento's row has 103px of slack while the comprobante's
-   is already 52px past its own table — so between 740px and md the open row seats its fields
+   smallest container past it (968px) the widest line editor measured, an eight-column row,
+   asks 856px of a 934px table and clears it by 78px. Below md the demand is not safe — at a
+   712px container a narrower row has 103px of slack while the eight-column one is already
+   52px past its own table — so between 740px and md the open row seats its fields
    in the row's own width, and under 740px it stops being a row of columns at all and every
    field takes its own card line (the container block below, where a table stacks). A
    preference is what this rule used to hand a narrow row instead, 192px out of its own
@@ -3756,7 +3756,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     min-height: 2rem;
 }
 
-/* PartyContactCard's channel row: a chromed NsLink (As="NsAs.Default") stretched to the full
+/* A contact card's channel row: a chromed NsLink (As="NsAs.Default") stretched to the full
    width its vertical NsStack hands it (AlignItems.Stretch is the Stack's own default), so a
    long e-mail truncates against that width instead of pushing the card wider. The label
    span is what carries the text -- ns-button-label, NsResponsive's own hook -- so it is the
