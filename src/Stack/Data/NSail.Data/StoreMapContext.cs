@@ -105,7 +105,7 @@ public sealed class StoreMapContext : MapContext
                     return false;
                 }
 
-                state.ByKey.TryAdd(rowKey, row);
+                state.ByKey[rowKey] = row;
 
                 return true;
             });
@@ -194,7 +194,7 @@ public sealed class StoreMapContext : MapContext
             }
             else
             {
-                state.ByKey.TryAdd(key, entity);
+                state.ByKey[key] = entity;
             }
         }
 

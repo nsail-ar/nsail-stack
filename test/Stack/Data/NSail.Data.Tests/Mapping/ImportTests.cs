@@ -124,6 +124,22 @@ public sealed class ImportTests
         Assert.Equal("again3000", (await read.Users.SingleAsync(u => u.Id == 3000)).Name);
     }
 
+    [Fact]
+    public async Task import_sweeps_the_tracker_once_however_many_roots_it_holds()
+    {
+        await using var store = await MapperStore<ImportContext>.Create();
+
+        var sweeps = 0;
+
+        store.Db.ChangeTracker.DetectingAllChanges += (_, _) => sweeps++;
+
+        var rows = Enumerable.Range(1, 500).Select(i => new UserName { Id = i, Name = "u" + i }).ToList();
+
+        await store.Mapper.Import<UserName, User>(rows);
+
+        Assert.True(sweeps <= 2, $"the tracker was swept {sweeps} times for 500 roots");
+    }
+
     static List<T> Json<T>(string json)
     {
         return JsonSerializer.Deserialize<List<T>>(json.Replace('\'', '"'), Web)!;
