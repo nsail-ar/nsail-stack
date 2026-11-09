@@ -62,8 +62,8 @@ A host that offers `backup` and `restore` calls `InstallConsole.Requested(args)`
 ## What each call does
 
 `AddBaseWebApi` registers telemetry (`AddTelemetry`), the messaging runtime, the error handler,
-the middleware below, the permissive `RequestBudgetProvider`, `SecurityOptions` (from
-`Security`), the tenant feature provider and a hosted service that publishes the declared
+the middleware below, the `MembershipStampMemo`, the permissive `RequestBudgetProvider`,
+`SecurityOptions` (from `Security`), the tenant feature provider and a hosted service that publishes the declared
 features, the push server end with the tenant as its audience, authorization, metadata, Swagger
 with schema ids derived from `MetadataProvider`, and a DataProtection key ring persisted under
 `<content root>/data/keyring` (so a backup carries it) under the host's `ApplicationName` as its DataProtection application name (the first link of the purpose chain: renaming the application leaves what was sealed under the old name unreadable). It sets `RouteHandlerOptions.ThrowOnBadRequest` in every environment so a binding failure takes
@@ -95,7 +95,7 @@ directory refuses to compose; Development without it seals under a fixed key.
 9. `RequestBudgetMiddleware`: a per-tenant fixed window of one minute over every authenticated message send,
    against `RequestBudgetProvider.PerMinute` (the base answers null, no budget; a product
    registers its own, before or after `AddBaseWebApi`). Past it: 429 and `Retry-After`.
-10. `CredentialMiddleware`: asks `CredentialProvider` whether the ticket still names a live party and signs the caller out and challenges if not (the default provider holds every ticket).
+10. `CredentialMiddleware`: asks `CredentialProvider` whether the ticket still names a live party, and whether the party's memberships and roles (`Session.MembershipStamp`) are still those of sign-in; either failing signs the caller out and challenges (the default provider holds every ticket and answers no stamp). The current stamp is read once per party per `Tenancy:StateCacheSeconds` through `MembershipStampMemo`, so a change reaches a ticket within that window.
 11. `EndpointGateMiddleware`: the security gate, ahead of model binding; a no-op unless a kit called
     `AddSecurityEnforcement`.
 12. Swagger UI in Development, HSTS (with `includeSubDomains`) otherwise.
@@ -122,7 +122,7 @@ router render its NotFound (it leaves `/api` and file-looking paths alone).
 |---|---|---|
 | `Language` | `Base` (default `en`), `Default` (default `en`), `Offered` (default empty, meaning `Default` alone) | `UseBaseWebApp` request localization, the suspended page |
 | `Security` | `TicketEpoch` (int, default 0); `TrustedProxies` (addresses or CIDR networks, default none); `KeysDirectory` (the per-tenant key files) | `TicketEpochMiddleware`; forwarded headers; `AddTenantKeys` |
-| `Tenancy` | `Mode`, `StateCacheSeconds`, `SupportContact`, ... | the tenant steps; options are `TenancyOptions` in `NSail.Data` |
+| `Tenancy` | `Mode`, `StateCacheSeconds`, `SupportContact`, ... | the tenant steps and the credential wall's stamp read; options are `TenancyOptions` in `NSail.Data` |
 | `Telemetry` | see [Telemetry](../Telemetry/README.md) | `AddBaseWebApi` |
 | `HttpClients` | `<Area>:BaseUrl`, `<Area>:TimeoutSeconds` | `AddHttpClients` (Wasm), from `NSail.Messaging.Http` |
 

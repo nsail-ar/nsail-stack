@@ -585,6 +585,20 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   a cold WebAssembly load is dozens of them; the skip is a deny-list and not an allow-list so a
   host's own new endpoint is walled by default. **A guard per handler is the wrong shape**: every
   write that takes `PartyId` off the Session is the same defect, and there is no counting them.
+- **Memberships and roles are frozen in the ticket, so a change to them makes the ticket stale —
+  within `Tenancy:StateCacheSeconds`.** `Session.MembershipStamp` is the fingerprint of the
+  party's memberships and roles at sign-in; `CredentialProvider.MembershipStamp` answers the
+  current one (null in the floor: nothing compared), read through `MembershipStampMemo` once per
+  party per window, not per request. A removed or demoted member is refused like any stale ticket
+  — signed out, challenged, marked stale — at the first request past the window, and signs in
+  again with the new roles (a mismatch is confirmed at the source before it refuses, so a sign-in
+  after the change is honoured at once). There is no live session rebuild, so unsaved input can be
+  lost; a change inside the window is not yet seen, and a circuit already open keeps the old roles
+  until its next document load. A provider that re-issues the credential in `Holds` leaves
+  `Session.MembershipStamp` current for the party the request will carry; null never means "no
+  memberships". An unchanged party never re-signs-in. The unstamped
+  ticket is refused once a provider answers a stamp (a one-time re-login at rollout); `TicketEpoch`
+  still signs out everyone. Proof: `MembershipStampTests` (`NSail.BaseServices.WebApi.Tests`).
 - **The refusal says why, on both arms, because the ticket is gone by the time the person reads
   it.** The browser's redirect carries `SignInRoutes.StaleParameter` and the sign-in page draws
   one sentence for all three ways (marked on the challenge as `SignInRoutes.StaleProperty`, turned
