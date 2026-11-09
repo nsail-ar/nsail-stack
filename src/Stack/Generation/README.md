@@ -77,7 +77,8 @@ public static partial void AddTasksPushPublishers(this IServiceCollection servic
 ### What an `[Http]` message derives
 
 - Members bind by `[Http]`'s route tokens, then by verb, then by `[AsRoute]`/`[AsQuery]`/`[AsHeader]`.
-  A route token with no route-bound member is `NSG001`.
+  A route token with no route-bound member is `NSG001`. A token is a whole segment and may carry a
+  constraint, `?` or `*` (`{id:guid}`, `{id?}`, `{*rest}`); text beside it in a segment is `NSG017`.
 - A non-`required` query, header or body member is optional: an omitted one is never assigned, so the
   message's own initializer supplies the value. `required` carries into the generated body type.
 - Enums cross the wire as names, and `long`, `ulong` and `decimal` as strings (`JsonOptions.Wire`).
@@ -99,6 +100,9 @@ not a silent skip.
 | `NSG014` | Error | A `[Queue]` message returns a result (`IMessage<T>`) |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` |
 | `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) |
+| `NSG017` | Error | An `[Http]` route segment mixes a token with literal text |
+| `NSG018` | Error | A route-bound member has no token in the route |
+| `NSG019` | Error | Two `[Http]` messages share a verb and a normalised route |
 | `NSG004`-`NSG013` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
 
 ### TypeScript client
