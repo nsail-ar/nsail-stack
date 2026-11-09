@@ -62,8 +62,9 @@ public interface IRepository
 
     Task SetStatus(string sha, string context, string state, string description, CancellationToken ct = default);
 
-    // The harness's verdicts live on the commits they judged: every finished status (passed or not,
-    // pending left out) along the default branch, newest commit first, as far back as depth commits.
+    // The harness's verdicts live on the commits they judged: every status along the default branch,
+    // passed, failed or pending (StatusMark.Pending: a judgment under way on some harness, which keeps
+    // another from starting a second), newest commit first, as far back as depth commits.
     Task<IReadOnlyList<StatusMark>> Statuses(int depth = 100, CancellationToken ct = default);
 
     // The workflows (by file name) with a run queued or in progress.

@@ -19,6 +19,9 @@ public sealed class WatchJob(WorkItem item, JobContext ctx, WatchState state) : 
     // The most error lines one pass reads; past that the count is a floor.
     const int MaxLines = 5000;
 
+    // Minutes the window's end trails now when the worker names no IngestLag.
+    internal const int DefaultIngestLag = 5;
+
     static readonly string[] NotProdDefault = ["test", "qa", "canary"];
 
     public WorkItem Item { get; } = item;
@@ -31,17 +34,24 @@ public sealed class WatchJob(WorkItem item, JobContext ctx, WatchState state) : 
             ?? throw new InvalidOperationException($"no log source named {w.Source}: add its provider to the host (AddOpenObserve, ...)");
         var board = ctx.Board;
         var log = ctx.Logs.CreateLogger($"watch:{name}");
-        var until = DateTimeOffset.UtcNow;
+        // The window ends short of now: a line is ingested some minutes after it is logged.
+        var until = DateTimeOffset.UtcNow.AddMinutes(-(w.IngestLag ?? DefaultIngestLag));
         var since = state.ReadUntil(name) ?? until.AddHours(-(w.Lookback ?? 24));
         var notProd = w.NotProd ?? [.. NotProdDefault];
         var max = w.MaxStories ?? 5;
 
-        var groups = ErrorGroup.Of(await source.Errors(since, until, MaxLines, ct));
+        // The window is (since, until]: the line the last pass ended on is not read twice. Oldest first,
+        // so a full read ends at its last line and the next pass takes up from there.
+        var read = await source.Errors(since, until, MaxLines, ct);
+        var capped = read.Count >= MaxLines;
+        var lines = read.Where(l => l.At > since && l.At <= until).OrderBy(l => l.At).Take(MaxLines).ToList();
+        var readTo = capped && lines.Count > 0 ? lines[^1].At : until;
+        var groups = ErrorGroup.Of(lines);
         await using var file = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await file.WriteLineAsync($"== watch {name}: {groups.Count} error group(s) in {source.Name} since {since:yyyy-MM-dd HH:mm} UTC");
         if (groups.Count == 0)
         {
-            state.Read(name, until);
+            state.Read(name, readTo);
             return new JobOutcome("no errors logged");
         }
 
@@ -85,11 +95,12 @@ public sealed class WatchJob(WorkItem item, JobContext ctx, WatchState state) : 
         }
 
         // What did not fit this pass is read again on the next one: the watch reads from its oldest line.
-        state.Read(name, left.Count == 0 ? until : left.Min(g => g.First).AddTicks(-1));
+        state.Read(name, left.Count == 0 ? readTo : new[] { readTo, left.Min(g => g.First).AddTicks(-1) }.Min());
         var said = new List<string>();
         if (opened.Count > 0) said.Add($"filed {string.Join(", ", opened.Select(n => $"#{n}"))}");
         if (counted.Count > 0) said.Add($"counted on {string.Join(", ", counted.Select(n => $"#{n}"))}");
         if (left.Count > 0) said.Add($"{left.Count} left for the next pass");
+        if (capped) said.Add($"read the cap of {MaxLines} lines, the next pass takes up after the last one");
         return new JobOutcome(said.Count == 0 ? $"{groups.Count} error group(s), all filed and counted today" : string.Join("; ", said));
     }
 

@@ -330,8 +330,8 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             if (commit.GetProperty("status").ValueKind != JsonValueKind.Object) continue;
             var sha = commit.GetProperty("oid").GetString()!;
             marks.AddRange(commit.GetProperty("status").GetProperty("contexts").EnumerateArray()
-                .Where(c => c.GetProperty("state").GetString() is "SUCCESS" or "FAILURE" or "ERROR")
-                .Select(c => new StatusMark(sha, c.GetProperty("context").GetString()!, c.GetProperty("state").GetString() == "SUCCESS", c.GetProperty("createdAt").GetDateTimeOffset()))
+                .Where(c => c.GetProperty("state").GetString() is "SUCCESS" or "FAILURE" or "ERROR" or "PENDING")
+                .Select(c => new StatusMark(sha, c.GetProperty("context").GetString()!, c.GetProperty("state").GetString() == "SUCCESS", c.GetProperty("createdAt").GetDateTimeOffset(), c.GetProperty("state").GetString() == "PENDING"))
                 .OrderByDescending(m => m.At));
         }
         return marks;

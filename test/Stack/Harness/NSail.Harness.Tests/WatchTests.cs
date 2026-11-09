@@ -54,6 +54,64 @@ public class WatchTests
         }
     }
 
+    // Includes the line at `since`, as OpenObserve does, so the watch's own `> since` filter is what keeps it from counting twice.
+    sealed class Capped(IEnumerable<LoggedError> lines) : ILogSource
+    {
+        readonly LoggedError[] _all = [.. lines.OrderBy(l => l.At)];
+
+        public string Name => "logs";
+
+        public Task<IReadOnlyList<LoggedError>> Errors(DateTimeOffset since, DateTimeOffset until, int max, CancellationToken ct = default)
+        {
+            return Task.FromResult<IReadOnlyList<LoggedError>>(_all.Where(l => l.At >= since && l.At <= until).Take(max).ToList());
+        }
+    }
+
+    [Fact]
+    public async Task MoreLinesThanTheCapAdvanceTheCursorOnlyToTheLastLineRead()
+    {
+        var first = DateTimeOffset.UtcNow.AddHours(-3);
+        var lines = Enumerable.Range(0, 6000).Select(i => Line() with { At = first.AddSeconds(i) }).ToList();
+        var state = new WatchState(null);
+        var board = new MemoryBoard();
+
+        await Pass(board, new Capped(lines), state);
+
+        Assert.Equal(first.AddSeconds(4999), state.ReadUntil("watch"));
+        await Pass(board, new Capped(lines), state);
+        Assert.True(state.ReadUntil("watch") > first.AddSeconds(5999));
+    }
+
+    [Fact]
+    public async Task ASecondCappedPassStillTakesUpAfterTheLastLineRead()
+    {
+        var first = DateTimeOffset.UtcNow.AddHours(-5);
+        var lines = Enumerable.Range(0, 11000).Select(i => Line() with { At = first.AddSeconds(i) }).ToList();
+        var state = new WatchState(null);
+        var board = new MemoryBoard();
+
+        await Pass(board, new Capped(lines), state);
+        await Pass(board, new Capped(lines), state);
+
+        Assert.Equal(first.AddSeconds(9998), state.ReadUntil("watch"));
+    }
+
+    [Fact]
+    public async Task TheWindowEndsShortOfNowAndALineOnTheBoundaryIsReadOnce()
+    {
+        var edge = DateTimeOffset.UtcNow.AddHours(-1);
+        var state = new WatchState(null);
+        state.Read("watch", edge);
+        var late = Line(minutesAgo: 1);
+        var board = new MemoryBoard();
+
+        await Pass(board, new Capped([Line() with { At = edge }, Line(minutesAgo: 30), late]), state);
+
+        Assert.Single(board.Cards);
+        Assert.Contains("logged an error once", board.Cards.Single().Value.Body);
+        Assert.True(state.ReadUntil("watch") <= DateTimeOffset.UtcNow.AddMinutes(-4));
+    }
+
     [Fact]
     public async Task AStoryWhoseStageWriteFailedIsFoundOnTheNextPassNotFiledAgain()
     {
