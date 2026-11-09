@@ -423,6 +423,7 @@ public sealed class HarnessLoop(
                 // again, once: a PR's gate tells main's red from its own by them.
                 MainGated = StatusMark.Newest(marks, Markers.GateContext) is { } gated && (gated.Ok || MainGateJob.RedAt(gated.Sha) is not null) ? gated.Sha : null,
                 LastQaAt = StatusMark.LastAt(marks, Markers.QaContext),
+                UnjudgedFixes = await reader.ReadUnjudged(read.Issues, marks, stop),
             };
             var limits = new Limits(o.Agents, o.Builds, o.Browsers);
             leases.Limit = limits.Builds;

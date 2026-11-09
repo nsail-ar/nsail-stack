@@ -155,6 +155,21 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         return ages;
     }
 
+    // A red-main story in Ready with a merge waits until a gate of main judges a head that holds it:
+    // the newest gate verdict along main is on a head that holds the merge, or none does yet (the
+    // running gate's pending mark is no verdict). Only the stories with a merge cost a call or two.
+    public async Task<IReadOnlySet<int>> ReadUnjudged(IReadOnlyList<Issue> issues, IReadOnlyList<StatusMark> marks, CancellationToken ct = default)
+    {
+        var unjudged = new HashSet<int>();
+        var judged = StatusMark.Newest(marks, Markers.GateContext)?.Sha;
+        foreach (var i in issues.Where(i => i.Stage == Stages.Ready && i.Title.StartsWith(options.Texts.MainRedTitle, StringComparison.Ordinal)))
+        {
+            if (await repos.Default.MergeOf(i.Number, ct) is not { } merge) continue;
+            if (judged is null || !await repos.Default.Holds(judged, merge.Sha, ct)) unjudged.Add(i.Number);
+        }
+        return unjudged;
+    }
+
     // A red fix merged, nobody cutting its product, and fewer than two cuts since the merge. The
     // release job runs the suite on main's head, which holds the fix.
     async Task<List<ReleaseCandidate>> ReadReleaseCandidates(List<Issue> issues, Flight flight, CancellationToken ct)
