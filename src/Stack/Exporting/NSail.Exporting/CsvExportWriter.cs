@@ -29,6 +29,7 @@ public sealed class CsvExportWriter : IExportWriter
         ArgumentNullException.ThrowIfNull(book);
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentNullException.ThrowIfNull(culture);
+        ArgumentNullException.ThrowIfNull(zone);
 
         var separator = SeparatorFor(culture);
 

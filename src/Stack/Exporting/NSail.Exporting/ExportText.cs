@@ -52,12 +52,17 @@ public static class ExportText
 
     static string Figure(object value, string pattern, CultureInfo culture)
     {
-        // NaN and Infinity have no decimal and no cell: throwing here would abort the stream
-        // after the headers are out.
+        // NaN and Infinity have no decimal and no cell, and a double past decimal's range has no
+        // decimal either: throwing here would abort the stream after the headers are out.
         if (value is double.NaN or double.PositiveInfinity or double.NegativeInfinity
             or float.NaN or float.PositiveInfinity or float.NegativeInfinity)
         {
             return string.Empty;
+        }
+
+        if (value is double or float && Math.Abs(Convert.ToDouble(value, CultureInfo.InvariantCulture)) > (double)decimal.MaxValue)
+        {
+            return Convert.ToDouble(value, CultureInfo.InvariantCulture).ToString("R", culture);
         }
 
         return Convert.ToDecimal(value, culture).ToString(pattern, culture);

@@ -14,7 +14,7 @@ namespace NSail.Exporting;
 /// asked for it, and on a server that person is a request and never the process. What each writer
 /// does with it differs — a spreadsheet stores invariant values and a region only picks the date
 /// PATTERN, while a text format has to print every figure in the reader's own separators.</para>
-/// <para>The time zone is handed in for the same reason: a UTC moment is printed on the asker's clock, never the process's.</para>
+/// <para>The time zone is handed in for the same reason: a UTC <c>DateTimeOffset</c> or <c>DateTime</c> reaching the writer is printed on the asker's clock. A grid's column reader already turns a UTC <c>DateTime</c> into local time before the book is built, so for a grid book the zone governs only its <c>DateTimeOffset</c> values.</para>
 /// <para><see cref="WriteAsync"/> is handed the destination and must stream into it: a book's rows
 /// may be an open list of tens of thousands and may be enumerated only once
 /// (<see cref="ExportTable.Rows"/>).</para></summary>
