@@ -108,7 +108,7 @@ not a silent skip.
 | `NSG022` | Error | A `[Generated]` holder has no `IServiceCollection` parameter |
 | `NSG023` | Error | An `[Http]` message declares no path |
 | `NSG024` | Error | A header-bound member (`[AsHeader]`) is a collection |
-| `NSG004`-`NSG013` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
+| `NSG004`-`NSG013`, `NSG025` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
 
 ### TypeScript client
 

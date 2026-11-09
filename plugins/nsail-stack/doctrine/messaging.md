@@ -645,7 +645,8 @@ business rules.
   `MessageValidator` also refuses a member (or each element of a collection, `Kinds[1]`)
   holding a number no enum member defines — `OutOfRange` on the field; a `[Flags]` enum by its
   mask. Consequence: a non-nullable enum without a zero member that a message leaves unchosen
-  is refused — declare the zero member or make the field nullable.
+  is refused — declare the zero member or make the field nullable (mapped onto a non-nullable
+  entity member, a nullable field is NSG025: see the Mapping section of [data.md](data.md)).
 - **Refusal speaks `Problem`.** The pipeline turns a returned `Problem` into the same
   `BusinessException` a handler throws; nothing new travels on the wire.
 - **Order is structural, not registration order.** `SendPipeline` runs DataAnnotations and

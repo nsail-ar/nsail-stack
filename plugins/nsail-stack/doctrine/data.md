@@ -690,6 +690,20 @@ The graph rules are Detached Mapper's:
   holds M and T never sees the Data project. An `Ignore` naming a member that does not exist is
   NSG013. Both are warnings, so an app refuses them through its own `.editorconfig` or
   `WarningsAsErrors`.
+- **"No value" is never silently zero** (NSG025): a `[MapFrom]` that reads a nullable value
+  (`int?`, `decimal?`, an enum`?`) into a non-nullable member does not build — make the member
+  nullable, the source non-nullable, or `[MapIgnore]` it and let the handler decide. A message
+  field left nullable so an enum can stay unchosen ([messaging.md](messaging.md)) meets this
+  rule here. The target's key (its `[Key]`, else its `Id`) is exempt: a `Guid?` Id is the id
+  still to be made. Text is not covered: a null or empty string read into a number, bool, date,
+  `Guid` or enum is the target's default, so a field that must be filled says `[Required]` on
+  the message. A `[MapTo]` row reads the default, because a query provider translates the
+  projection.
+- **A conversion that cannot hold fails out loud**: on the `[MapFrom]` path a narrowing number
+  or enum is `checked` (`OverflowException`, never a wrapped value), and text that does not parse
+  as a number, bool, date, `Guid` or enum is the `InvalidFormat` input problem, sourced at the
+  source member the caller sent. A projection stays unchecked and parses nothing — the query
+  provider translates it.
 - **A row may be init-only** (`{ get; init; }`, a record): a projection builds it with an
   initializer. A `[MapFrom]` target merges in place, so its members need a setter.
 - **An entity is what the model declares**: a `DbSet<T>`, a `ModelBuilder.Entity<T>()`, an

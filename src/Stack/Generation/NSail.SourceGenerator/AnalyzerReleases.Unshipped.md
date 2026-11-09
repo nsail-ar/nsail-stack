@@ -29,3 +29,4 @@ NSG021 | NSail.Generation | Error | A generated holder is nested, generic, not a
 NSG022 | NSail.Generation | Error | A generated holder has no IServiceCollection parameter.
 NSG023 | NSail.Generation | Error | An [Http] message declares no path.
 NSG024 | NSail.Generation | Error | A header-bound member is a collection.
+NSG025 | NSail.Generation | Error | A [MapFrom] member reads a nullable into a non-nullable member that is not a key.
