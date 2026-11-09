@@ -10,6 +10,7 @@ using NSail.Harness.Locks;
 using NSail.Harness.Planning;
 using NSail.Harness.Repositories;
 using NSail.Harness.Workers;
+using NSail.Problems;
 
 namespace NSail.Harness;
 
@@ -281,13 +282,33 @@ public sealed class HarnessLoop(
             .Select(w => w.Name).ToList();
     }
 
-    // A job a hand sends (POST /run): it skips the workers' order, filters and the machine's limits,
-    // not the story's lock. It runs as the first enabled worker of its kind (a release: of its product).
+    // A job a hand sends (POST api/harness/runs): it skips the workers' order, filters and the machine's
+    // limits, not the story's lock, Debug mode, a pause or the quota wall (for a job that needs an agent). It runs as the first enabled worker of its kind (a release: of its product).
     public Task<string?> Force(WorkItem item)
     {
         var worker = _workers.FirstOrDefault(w => w.Kind == item.Kind && (item.Kind != WorkKind.Release || string.Equals(w.Options.Product, item.ProductName, StringComparison.OrdinalIgnoreCase)))
             ?? throw new InvalidOperationException($"no worker runs {item.Kind}{(item.ProductName is { } p ? $" for {p}" : "")}");
+        if (ForceRefusal(options.Value.Mode, Paused, AgentsOffUntil, item.Kind) is { } refusal) throw (BusinessException)BusinessProblem.InvalidState(refusal);
         return Start(item with { Worker = worker.Name, Workflow = item.Workflow ?? worker.Options.Workflow }, CancellationToken.None);
+    }
+
+    internal static string? ForceRefusal(HarnessMode mode, string? paused, DateTimeOffset? wall, WorkKind kind)
+    {
+        if (mode == HarnessMode.Debug) return "the harness is in Debug mode: it starts nothing";
+        if (paused is { } why) return $"the harness is paused ({why})";
+        if (wall is { } until && Capacity.Needs(kind).Contains(Resource.Agent)) return $"out of quota until {WallClock(until, DateTimeOffset.UtcNow)} UTC";
+        return null;
+    }
+
+    // A wall can last days: past 20 hours the day goes with the hour, as the quota windows' resets do.
+    public static string WallClock(DateTimeOffset at, DateTimeOffset now)
+    {
+        return at - now < TimeSpan.FromHours(20) ? $"{at:HH:mm}" : $"{at:ddd HH:mm}";
+    }
+
+    internal static DateTimeOffset LaterWall(DateTimeOffset? held, DateTimeOffset until)
+    {
+        return held is { } h && h > until ? h : until;
     }
 
     Dictionary<Resource, int> InUse()
@@ -388,7 +409,7 @@ public sealed class HarnessLoop(
                 call = PassCall.Closed;
                 await SweepClosed(stop);
                 call = PassCall.Chores;
-                await BoardChores.Do(board, plan.Chores, BoardChores.ReadOf(snapshot.Issues), reader.OpenPrOf, o.Texts.Signature, log, stop);
+                await BoardChores.Do(board, ChoresToDo(plan, take), BoardChores.ReadOf(snapshot.Issues), reader.OpenPrOf, o.Texts.Signature, log, stop);
                 call = PassCall.Start;
                 if (Paused is null)
                 {
@@ -409,6 +430,14 @@ public sealed class HarnessLoop(
             if (e is ProviderException { RetryAfter: { } after }) _limitedFor = after;
             return Failed(log, metrics, e, call, started);
         }
+    }
+
+    // The Starting chores of the items that fit this pass: an item not started (paused, over capacity,
+    // backed off, inside the quota wall) leaves its story as it stands.
+    internal static IReadOnlyList<Chore> ChoresToDo(Plan plan, IReadOnlyList<WorkItem> take)
+    {
+        var starts = take.Where(i => i.Story is not null).Select(i => (i.Story!.Value, i.Worker)).ToHashSet();
+        return plan.Chores.Where(c => !WorkerPlanner.IsStarting(c) || starts.Any(s => s.Value == c.Story && c.Why.StartsWith($"{s.Worker}: ", StringComparison.Ordinal))).ToList();
     }
 
     // The provider limited the pass: the next one waits out what it asked, up to a ceiling; a wake still ends it.
@@ -594,8 +623,9 @@ public sealed class HarnessLoop(
             if (result.Idle) _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + Backoff;
             if (result.QuotaUntil is { } until)
             {
-                lock (_gate) _quotaUntil = until;
-                log.LogWarning("out of quota until {Until:HH:mm} UTC — no agent starts; builds go on", until);
+                DateTimeOffset wall;
+                lock (_gate) _quotaUntil = wall = LaterWall(_quotaUntil, until);
+                log.LogWarning("out of quota until {Until} UTC — no agent starts; builds go on", WallClock(wall, DateTimeOffset.UtcNow));
             }
             // What the job's ending does on the board: its worker's actions, or its type's when the
             // steps planned it. Under the story's lock still: nobody moves it between the two.
