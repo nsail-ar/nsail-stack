@@ -127,7 +127,7 @@ static class StatusPage
     {
         html.Append("<div class=badges>");
         if (loop.Paused is { } why) html.Append($"<span class=\"b warn\">paused: {Esc(why)}</span>");
-        if (loop.AgentsOffUntil is { } wall) html.Append($"<span class=\"b warn\">agents off: out of quota until {Local(wall):HH:mm}; builds go on</span>");
+        if (loop.AgentsOffUntil is { } wall) html.Append($"<span class=\"b warn\">agents off: out of quota until {HarnessLoop.WallClock(Local(wall), Local(now))}; builds go on</span>");
         html.Append($"<span class=\"b acc\">{running} running</span>");
         if (loop.Last is { Plan: { } plan } pass) html.Append($"<span class=b>{Math.Max(0, plan.Items.Count - pass.Started.Count)} waiting</span>");
         html.Append(loop.Stalled > 0 ? $"<span class=\"b warn\">{loop.Stalled} stalled</span>" : "<span class=b>0 stalled</span>");
