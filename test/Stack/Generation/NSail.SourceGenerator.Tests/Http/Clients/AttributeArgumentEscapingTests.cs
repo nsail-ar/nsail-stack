@@ -136,8 +136,8 @@ public class AttributeArgumentEscapingTests
 
                     public static partial class Clients
                     {
-                        [Generated(Http.Clients)]
-                        public static partial void AddClinicHttpClients(this IServiceCollection services);
+                        [Generated(Http.Endpoints)]
+                        public static partial void AddClinicEndpoints(this IServiceCollection services);
                     }
                     """)
                 .AddFrameworkReferences("net10.0")
@@ -149,11 +149,12 @@ public class AttributeArgumentEscapingTests
                 .AddContainingAssembly<IHttpClientFactory>()
                 .AddContainingAssembly<ISender<IMessage>>()
                 .AddContainingAssembly<HttpSender<IMessage>>()
-                .AddContainingAssembly<System.Text.Json.JsonSerializerOptions>();
+                .AddContainingAssembly<System.Text.Json.JsonSerializerOptions>()
+                .AddContainingAssembly<Microsoft.AspNetCore.Routing.IEndpointRouteBuilder>();
 
             var compilation = builder.Build("AttributeNamedArgumentTestAssembly");
 
-            GeneratorDriver driver = CSharpGeneratorDriver.Create(new HttpClientsSourceGenerator());
+            GeneratorDriver driver = CSharpGeneratorDriver.Create(new HttpEndpointsSourceGenerator());
             driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
             Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
