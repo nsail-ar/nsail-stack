@@ -2,6 +2,9 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.Extensions.Configuration;
+using NSail.Harness.Board;
+using NSail.Harness.Planning;
+using NSail.Harness.Repositories;
 using NSail.Harness.Workers;
 
 namespace NSail.Harness.Tests;
@@ -81,6 +84,44 @@ public class WorkerPlannerTests
             .Story(3, "Ready", "p1", title: "Regression red on main (Shop)");
 
         Assert.Equal(["dev #3 (red)", "dev #1 (p1)", "review PR #20 (story #2)"], Lines(f));
+    }
+
+    [Fact]
+    public void AFixedRedStoryWaitsWhileNoGateJudgedAHeadThatHoldsItsMerge()
+    {
+        var f = new Fixture()
+            .Story(1, "Ready", "p1")
+            .Story(3, "Ready", "p1", title: "CI red on main: Foo");
+
+        var plan = WorkerPlanner.Make(f.Build() with { UnjudgedFixes = new HashSet<int> { 3 } }, Workers, new PlannerOptions());
+
+        Assert.Equal(["dev #1 (p1)"], plan.Items.Select(i => i.ToString()));
+        Assert.Contains(plan.Notes, n => n.StartsWith("#3:", StringComparison.Ordinal));
+    }
+
+    // The gate's verdicts along main, as IRepository.Statuses reads them: a running gate's pending mark is none.
+    static async Task<IReadOnlySet<int>> Unjudged(MainHistory main, Merge? merge, params StatusMark[] marks)
+    {
+        var options = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }] };
+        var repo = new DevJobRunTests.FileRepository(main.Dir) { Landed = merge };
+        var reader = new SnapshotReader(new MemoryBoard(), new RepositorySet([(repo, options.Repositories[0])]), null!, options);
+        var issues = new Fixture().Story(3, "Ready", "p1", title: "CI red on main: Foo").Build().Issues;
+        return await reader.ReadUnjudged(issues, marks);
+    }
+
+    [Fact]
+    public async Task AFixedRedStoryIsHeldUntilAHeadThatHoldsItsMergeGoesRed()
+    {
+        using var main = await MainHistory.Create();
+        var at = DateTimeOffset.UtcNow;
+
+        // No verdict at all, or only one at the head the fix merged on top of.
+        Assert.Equal([3], await Unjudged(main, main.Merge));
+        Assert.Equal([3], await Unjudged(main, main.Merge, new StatusMark(main.Parent, Markers.GateContext, false, at)));
+        // The head that holds the fix went red: Develop takes it, first.
+        Assert.Empty(await Unjudged(main, main.Merge, new StatusMark(main.Fix, Markers.GateContext, false, at), new StatusMark(main.Parent, Markers.GateContext, false, at)));
+        // With no merge there is no fix to wait for.
+        Assert.Empty(await Unjudged(main, null));
     }
 
     [Fact]

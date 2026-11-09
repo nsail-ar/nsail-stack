@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Harness.Jobs;
+using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 
 namespace NSail.Harness.Tests;
 
-// main's head is judged whenever it moves past what the gate last judged, before anything else.
+// main's head is judged whenever it moves past what the gate last judged, before anything else; its
+// red reopens a landed red-main story only at a head that holds the story's merge.
 public class MainGateTests
 {
+    const string Red = "CI red on main: Foo";
     [Fact]
     public void AMovedMainIsGatedFirst()
     {
@@ -34,5 +38,69 @@ public class MainGateTests
         board = board with { Flight = board.Flight with { MainGating = true } };
 
         Assert.DoesNotContain(SampleWorkers.Plan(board, new PlannerOptions(Gate: true)).Items, i => i.Kind == WorkKind.Main);
+    }
+
+    static async Task ReportRed(MemoryBoard board, MainHistory main, Merge? merge, string head)
+    {
+        var options = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }] };
+        var repo = new DevJobRunTests.FileRepository(main.Dir) { Landed = merge };
+        var ctx = new JobContext(board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace>(),
+            new NoAgent(), options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
+        var job = new MainGateJob(new WorkItem(WorkKind.Main, null, null, "red", "main moved", Sha: head), ctx);
+        await job.ReportRed(head, main.Dir, null, "red", "Foo", "gate.log", CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(Stages.Merged)]
+    [InlineData(Stages.Released)]
+    [InlineData(Stages.Qa)]
+    public async Task ARedAtAHeadOlderThanTheFixOnlyComments(string stage)
+    {
+        using var main = await MainHistory.Create();
+        var board = new MemoryBoard();
+        board.Add(1, title: Red, stage: stage);
+
+        await ReportRed(board, main, main.Merge, main.Parent);
+
+        Assert.Single(board.Cards[1].Comments);
+        Assert.Equal(stage, board.Cards[1].Stage);
+    }
+
+    [Fact]
+    public async Task ARedAtAHeadThatHoldsTheFixReopensTheStory()
+    {
+        using var main = await MainHistory.Create();
+        var board = new MemoryBoard();
+        board.Add(1, title: Red, stage: Stages.Merged);
+
+        await ReportRed(board, main, main.Merge, main.Fix);
+
+        Assert.Single(board.Cards[1].Comments);
+        Assert.Equal(Stages.Ready, board.Cards[1].Stage);
+    }
+
+    [Fact]
+    public async Task ARedOnAStoryWithNoMergeReopensIt()
+    {
+        using var main = await MainHistory.Create();
+        var board = new MemoryBoard();
+        board.Add(1, title: Red, stage: Stages.Qa);
+
+        await ReportRed(board, main, null, main.Parent);
+
+        Assert.Equal(Stages.Ready, board.Cards[1].Stage);
+    }
+
+    [Fact]
+    public async Task ARedWithNoOpenStoryFilesOneInReady()
+    {
+        using var main = await MainHistory.Create();
+        var board = new MemoryBoard();
+
+        await ReportRed(board, main, null, main.Fix);
+
+        var (_, card) = Assert.Single(board.Cards);
+        Assert.StartsWith(Red, card.Title);
+        Assert.Equal(Stages.Ready, card.Stage);
     }
 }

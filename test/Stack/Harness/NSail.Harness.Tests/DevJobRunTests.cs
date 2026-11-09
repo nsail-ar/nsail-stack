@@ -115,9 +115,11 @@ public class DevJobRunTests : IDisposable
             throw new NotSupportedException();
         }
 
+        public Merge? Landed { get; set; }
+
         public Task<Merge?> MergeOf(int story, CancellationToken ct = default)
         {
-            throw new NotSupportedException();
+            return Task.FromResult(Landed);
         }
 
         public Task<CiState> Ci(string branch, string sha, CancellationToken ct = default)
@@ -160,9 +162,9 @@ public class DevJobRunTests : IDisposable
             throw new NotSupportedException();
         }
 
-        public Task<bool> Holds(string reference, string sha, CancellationToken ct = default)
+        public async Task<bool> Holds(string reference, string sha, CancellationToken ct = default)
         {
-            throw new NotSupportedException();
+            return (await Shell.Run("git", ["merge-base", "--is-ancestor", sha, reference], remote)).ExitCode == 0;
         }
 
         public Task<string?> Variable(string name, CancellationToken ct = default)
@@ -513,5 +515,47 @@ public class DevJobRunTests : IDisposable
         Assert.Equal(1, seat.Runs);
         Assert.Equal(seat.Committed, await RemoteHead(Story));
         Assert.Contains("New words.", Assert.Single(Repo.Opened).Body);
+    }
+
+    // CloseFixedReds on another machine while the seat builds: the story closes under the voyage.
+    sealed class Closing(MemoryBoard board, IAgent inner) : IAgent
+    {
+        public string Driver => "test";
+
+        public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
+        {
+            var result = await inner.Run(run, ct);
+            await board.SetStage(1, Stages.Closed, ct);
+            await board.Close(1, ct);
+            return result;
+        }
+
+        public IReadOnlyDictionary<string, string> ScriptEnvironment(string name)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        public (bool Refused, DateTimeOffset? Until) Quota(string output)
+        {
+            return (false, null);
+        }
+    }
+
+    [Fact]
+    public async Task AStoryClosedWhileTheSeatRanDeliversNothing()
+    {
+        await Seed();
+        var board = Board();
+
+        var outcome = await Run(new Closing(board, new Seat("work.txt", null, "fix(stack): a fix\n\nWords.")), board, new Lines());
+
+        Assert.True(outcome.Idle);
+        Assert.Null(await RemoteHead(Story));
+        Assert.Null(await RemoteHead(Rescue));
+        Assert.Empty(Repo.Opened);
+        Assert.DoesNotContain(board.Cards[1].Comments, c => c.Body.Contains(Markers.Voyage, StringComparison.Ordinal));
+        Assert.Equal(Stages.Closed, board.Cards[1].Stage);
+        Assert.NotNull(board.Cards[1].ClosedAt);
+        Assert.DoesNotContain(Labels.Claimed, board.Cards[1].Labels);
     }
 }

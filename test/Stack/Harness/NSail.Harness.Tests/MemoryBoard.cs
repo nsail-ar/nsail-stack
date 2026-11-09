@@ -130,7 +130,7 @@ sealed class MemoryBoard : IBoard
 
     public Task<int?> FindOpen(string title, IReadOnlyCollection<string> labels, bool exact = true, CancellationToken ct = default)
     {
-        return Task.FromResult(Cards.Where(c => c.Value.ClosedAt is null && c.Value.Title == title && labels.All(l => c.Value.Labels.Contains(l))).Select(c => (int?)c.Key).FirstOrDefault());
+        return Task.FromResult(Cards.Where(c => c.Value.ClosedAt is null && (exact ? c.Value.Title == title : c.Value.Title.StartsWith(title, StringComparison.Ordinal)) && labels.All(l => c.Value.Labels.Contains(l))).Select(c => (int?)c.Key).FirstOrDefault());
     }
 
     public Task<IReadOnlyList<(int Number, string Stage)>> ClosedSince(DateTimeOffset since, CancellationToken ct = default)
