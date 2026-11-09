@@ -38,7 +38,8 @@ public sealed class TenancyMiddleware : IMiddleware
         // startup validation for hosts that never install it.
         var services = context.RequestServices;
 
-        if (services.GetService<TenancyOptions>()?.ProxySecret is { Length: > 0 } secret
+        if (services.GetService<TenancyOptions>()?.ProxySecret is { } secret
+            && !string.IsNullOrWhiteSpace(secret)
             && !Proven(context.Request.Headers[ProxySecretHeader].ToString(), secret))
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;

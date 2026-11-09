@@ -68,7 +68,9 @@ the app (the suspended page, below).
 - HTTPS redirection
 - `TenancyMiddleware` — **only where a tenant is resolved** (`host.ResolvesTenants()`: either
   switch), so under `Tenancy:Mode=None` the pipeline has no tenancy step. Before authentication
-  on purpose: under a per-tenant connection a slug that names no database answers 404, and
+  on purpose. It refuses first **403** when `Tenancy:ProxySecret` is set and the request does not
+  carry it in `X-Proxy-Secret`, ahead of any tenant being resolved or created; unset, outside
+  Development, startup warns that the listener must be bound to the proxy only. Then, under a per-tenant connection a slug that names no database answers 404, and
   under `SingleDb` so does a slug off the roster a cell declares, and nothing about it is
   reachable by signing in. See [data-tenancy.md](data-tenancy.md#caddy-assigns-the-tenant-postgres-is-the-registry).
 - `TenantStateMiddleware` — whether this install is serving this tenant at all, **only where a

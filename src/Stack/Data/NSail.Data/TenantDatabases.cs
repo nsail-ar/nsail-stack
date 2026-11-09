@@ -25,9 +25,11 @@ public class TenantDatabases
 
     readonly FirstTouch _first = new();
 
-    // Bounded by the lookups themselves: a name is only memoised after Resolve derived it
-    // within the identifier limit, and expired entries are swept as new ones arrive.
+    // A name is only memoised after Resolve derived it within the identifier limit, and expired
+    // entries are swept as new ones arrive, so what is held is what arrived since the last
+    // sweep. Concurrent first lookups of one name each read the registry, as in TenantStateMemo.
     readonly ConcurrentDictionary<string, long> _known = new();
+    readonly TimeProvider _clock;
     readonly long _hitTicks;
     readonly long _missTicks;
     long _swept;
@@ -36,12 +38,14 @@ public class TenantDatabases
     readonly string _product;
     readonly string _cell;
 
-    public TenantDatabases(TenancyOptions tenancy, string installConnectionString)
+    public TenantDatabases(TenancyOptions tenancy, string installConnectionString, TimeProvider clock)
     {
         ArgumentNullException.ThrowIfNull(tenancy);
+        ArgumentNullException.ThrowIfNull(clock);
         ArgumentException.ThrowIfNullOrWhiteSpace(installConnectionString);
 
         _installConnectionString = installConnectionString;
+        _clock = clock;
         _hitTicks = tenancy.DatabaseHitSeconds * 1000L;
         _missTicks = tenancy.DatabaseMissSeconds * 1000L;
         _product = Named(tenancy.Product, nameof(tenancy.Product));
@@ -124,7 +128,7 @@ public class TenantDatabases
     // trip, and a database provisioned meanwhile is seen once the shorter miss window lapses.
     async Task<bool> Remembered(string database, CancellationToken cancellationToken)
     {
-        var now = Environment.TickCount64;
+        var now = _clock.GetUtcNow().ToUnixTimeMilliseconds();
 
         if (_known.TryGetValue(database, out var until) && now < Math.Abs(until))
         {
@@ -133,8 +137,10 @@ public class TenantDatabases
 
         var exists = await Exists(database, cancellationToken);
 
-        now = Environment.TickCount64;
+        now = _clock.GetUtcNow().ToUnixTimeMilliseconds();
 
+        // Swept every few miss windows: often enough that a slug flood does not pile up, rarely
+        // enough that the walk is not paid per request.
         if (now - Interlocked.Read(ref _swept) > _missTicks * 4)
         {
             Interlocked.Exchange(ref _swept, now);

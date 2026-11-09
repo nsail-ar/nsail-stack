@@ -95,13 +95,15 @@ public static class Setup
         {
             // Constructed here rather than from a factory so a cell that names its product or
             // its cell badly is refused at startup, not on the first request that needs one.
-            var databases = new TenantDatabases(tenancy, connectionString);
+            _ = new TenantDatabases(tenancy, connectionString, TimeProvider.System);
 
-            services.AddSingleton(databases);
+            // A factory so the memo's clock is the host's own, registered ahead of this call.
+            services.TryAddSingleton(TimeProvider.System);
+            services.AddSingleton(provider => new TenantDatabases(tenancy, connectionString, provider.GetRequiredService<TimeProvider>()));
 
             // The roster of the wall that has a registry: the databases themselves, so a tenant
             // provisioned after this process started is swept without a restart.
-            services.AddSingleton(new TenantRoster(tenancy, databases));
+            services.AddSingleton(provider => new TenantRoster(tenancy, provider.GetRequiredService<TenantDatabases>()));
 
             services.AddScoped<TenantMigrator, TenantMigrator<TDbContext>>();
         }
