@@ -88,7 +88,9 @@ from outside C# — a pack step, a tool call composed off the `MessageRegistry`
 `[Required]` alike, since every send validates the message's DataAnnotations. It describes
 a well-formed body, not the reader's tolerance: an `int` is `integer`, never the
 `["string", "integer"]` the lenient read admits, and `long`, `ulong` and `decimal` are
-`string`. `MessageSchemaTests` (enforced in the products' repository) renders every registered message's schema.
+`string`. `MessageSchemaTests` (enforced in the products' repository) renders every registered message's schema;
+the Stack's own messages are swept by
+`test/Stack/Messaging/NSail.Messaging.Declarations.Tests/MessageSchemaTests.cs`.
 
 ---
 

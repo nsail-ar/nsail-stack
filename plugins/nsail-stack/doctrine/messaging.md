@@ -689,7 +689,9 @@ business rules.
     sentence for the rest knowing the number is invariant.
   - **Every declared code has its sentence in every language**: `CodedValidationStringTests`
     (`NSail.Architecture.Tests`, enforced in the products' repository) sweeps the tree's declarations, not its attribute types — a
-    code may be derived from the attribute's argument.
+    code may be derived from the attribute's argument. The Stack's own copy,
+    `test/Stack/Messaging/NSail.Messaging.Declarations.Tests/CodedValidationStringTests.cs`, checks the codes
+    the Stack mints (its coded attributes and the BCL vocabulary) against the shared catalogs' two languages.
 - **A rule a HANDLER owns names a code the same way.** `InputProblemBuilder.AddInvalid(code,
   field, message, arguments)` is the shape; the two-argument sibling puts every rule on one
   field under the shared `Invalid` code, so none of them can be worded or placed apart (the

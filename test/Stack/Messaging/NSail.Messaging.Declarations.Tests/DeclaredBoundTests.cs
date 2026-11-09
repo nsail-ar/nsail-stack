@@ -29,9 +29,7 @@ public class DeclaredBoundTests
     {
         var undeclared = new List<string>();
         var seen = new HashSet<Type>();
-        var messages = Anchors.Select(a => a.Assembly).Distinct().SelectMany(a => a.GetTypes())
-            .Where(t => !t.IsAbstract && t.GetInterfaces().Any(IsMessageInterface))
-            .ToList();
+        var messages = ShippedMessages();
 
         Assert.True(messages.Count >= 25, $"The sweep reads every shipped message; it found {messages.Count}.");
 
@@ -42,6 +40,13 @@ public class DeclaredBoundTests
 
         Assert.True(undeclared.Count == 0,
             "A number or string declares its bound or [Unbounded(\"why\")]: " + string.Join(", ", undeclared));
+    }
+
+    internal static List<Type> ShippedMessages()
+    {
+        return Anchors.Select(a => a.Assembly).Distinct().SelectMany(a => a.GetTypes())
+            .Where(t => !t.IsAbstract && t.GetInterfaces().Any(IsMessageInterface))
+            .ToList();
     }
 
     private static void Walk(Type type, HashSet<Type> seen, List<string> undeclared)
@@ -85,7 +90,7 @@ public class DeclaredBoundTests
         return type == typeof(IMessage) || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IMessage<>);
     }
 
-    private static Type ElementOf(Type type)
+    internal static Type ElementOf(Type type)
     {
         if (type.IsArray)
         {
