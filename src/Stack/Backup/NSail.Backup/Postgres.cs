@@ -163,8 +163,9 @@ public static class Postgres
         {
             process.Kill(entireProcessTree: true);
         }
-        catch (InvalidOperationException)
+        catch (Exception exception) when (exception is InvalidOperationException or Win32Exception or AggregateException)
         {
+            // The child already exited; the cancel is what the caller must see.
         }
     }
 
@@ -217,6 +218,9 @@ public static class Postgres
         {
             // A cancelled backup must not leave the dump running against the database.
             Kill(process);
+
+            _ = output.ContinueWith(static task => task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+            _ = errors.ContinueWith(static task => task.Exception, TaskContinuationOptions.OnlyOnFaulted);
 
             throw;
         }

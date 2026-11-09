@@ -4,6 +4,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Npgsql;
 using NSail.Data;
 
 namespace NSail.Backup;
@@ -38,6 +39,25 @@ public static class InstallBackup
     internal static string? DumpConnection(IConfiguration? configuration)
     {
         return configuration?[ConnectionStringKey] is { Length: > 0 } dump ? ConnectionStrings.Complete(dump) : null;
+    }
+
+    /// <summary>The manifest is sealed from the install's connection, so a dump credential
+    /// that reaches another database would write an archive whose bytes are not the ones it
+    /// names.</summary>
+    internal static void RefuseAnotherDatabase(InstallDescriptor install)
+    {
+        if (install.DumpConnectionString is null)
+        {
+            return;
+        }
+
+        var dump = new NpgsqlConnectionStringBuilder(install.DumpConnectionString);
+        var own = new NpgsqlConnectionStringBuilder(install.ConnectionString);
+
+        if (!string.Equals(dump.Host, own.Host, StringComparison.OrdinalIgnoreCase) || dump.Port != own.Port || !string.Equals(dump.Database, own.Database, StringComparison.Ordinal))
+        {
+            throw new BackupFailure($"{ConnectionStringKey} reaches {dump.Host}:{dump.Port}/{dump.Database}, not the install's {own.Host}:{own.Port}/{own.Database}; the dump credential must be a role on the same database.");
+        }
     }
 
     public static IReadOnlyCollection<string> KnownSchemas<TDbContext>(TDbContext dbContext)

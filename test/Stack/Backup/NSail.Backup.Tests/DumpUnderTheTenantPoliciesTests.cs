@@ -56,6 +56,45 @@ public sealed class DumpUnderTheTenantPoliciesTests : IAsyncLifetime
         Assert.False(File.Exists(_dumpFilePath));
     }
 
+    [Fact]
+    public async Task ASuperuserCredentialOnTheSameDatabaseDumpsAWalledInstall()
+    {
+        var superuser = new NpgsqlConnectionStringBuilder(Server) { Database = _name }.ConnectionString;
+
+        var install = new InstallDescriptor
+        {
+            Product = "Probe",
+            ConnectionString = Install,
+            SchemaVersion = "",
+            KeyRingPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")),
+            DumpConnectionString = superuser
+        };
+
+        await using var archive = new MemoryStream();
+
+        var manifest = await InstallArchive.Create(install, archive);
+
+        Assert.Equal(_name, manifest.Database);
+        Assert.True(archive.Length > 0);
+    }
+
+    [Fact]
+    public async Task ACredentialOnAnotherDatabaseIsRefusedBeforeTheDump()
+    {
+        var install = new InstallDescriptor
+        {
+            Product = "Probe",
+            ConnectionString = Install,
+            SchemaVersion = "",
+            KeyRingPath = Path.GetTempPath(),
+            DumpConnectionString = Server
+        };
+
+        var refusal = await Assert.ThrowsAsync<BackupFailure>(() => InstallArchive.Create(install, new MemoryStream()));
+
+        Assert.Contains("same database", refusal.Message, StringComparison.Ordinal);
+    }
+
     string Install
     {
         get

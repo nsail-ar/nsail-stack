@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Runtime.InteropServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,37 @@ public static class InstallConsole
             return 4;
         }
 
+        // The verb is attended, so it owns its own interrupt: SIGTERM from a supervisor ends the
+        // process without running any cancel path, and pg_dump would outlive it.
+        using var interrupt = CancellationTokenSource.CreateLinkedTokenSource(cancelToken);
+
+        void Interrupt(object? sender, ConsoleCancelEventArgs e)
+        {
+            e.Cancel = true;
+            interrupt.Cancel();
+        }
+
+        Console.CancelKeyPress += Interrupt;
+
+        using var terminate = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
+        {
+            context.Cancel = true;
+            interrupt.Cancel();
+        });
+
+        try
+        {
+            return await Dispatch<TDbContext>(host, args, interrupt.Token);
+        }
+        finally
+        {
+            Console.CancelKeyPress -= Interrupt;
+        }
+    }
+
+    static async Task<int> Dispatch<TDbContext>(IHost host, string[] args, CancellationToken cancelToken)
+        where TDbContext : DbContext
+    {
         using var scope = host.Services.CreateScope();
 
         var dbContext = scope.ServiceProvider.GetRequiredService<TDbContext>();

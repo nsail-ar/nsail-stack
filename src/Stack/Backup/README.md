@@ -41,7 +41,7 @@ The binary's name is the product, taken from the context type (`SampleDbContext`
 ## Configuration
 
 One key, optional: `Backup:ConnectionString`, the credential `pg_dump` connects with (a superuser or
-`BYPASSRLS` role on the install's database); without it the dump uses the `DbContext`'s own connection
+`BYPASSRLS` role on the install's database; another host, port or database is refused); without it the dump uses the `DbContext`'s own connection
 string. What the verbs use:
 
 - **Passphrase:** `--encrypt` seals the dump and the key ring (AES-256-GCM, key from PBKDF2) under
@@ -52,7 +52,8 @@ string. What the verbs use:
 - **File mode:** the archive is created `0600` on Linux and macOS.
 - **Application name:** `AddBaseWebApi` sets the DataProtection application name to the host's
   `ApplicationName`, so a restore to another content-root path unprotects the same secrets.
-- **Database:** the `DbContext`'s own connection string, so the database is the one the host runs on.
+- **Database:** the `DbContext`'s own connection string names the database in the manifest and is
+  what restore writes to; the dump credential must reach the same one.
 - **Tools:** `pg_dump`, `pg_restore` and `psql` on the `PATH`, at the server's major version
   (`--format=custom`, `--no-owner`, `--no-privileges`). The password travels in `PGPASSWORD`,
   never as an argument.
@@ -65,8 +66,8 @@ string. What the verbs use:
 - **Role:** the dump needs a role that is a superuser or has `BYPASSRLS` when tenant tables force
   row-level security; `backup` checks first and refuses by name. A cell with `RequireRowSecurity` sets
   `Backup:ConnectionString` to one. Restore always uses the `DbContext`'s connection.
-- **MultiDb:** a database per tenant is not covered: both verbs refuse with exit code `4`.
-- **Cancel:** a cancelled run kills `pg_dump`/`pg_restore`/`psql` and their process tree.
+- **MultiDb:** a database per tenant is not covered: both verbs refuse with `REFUSED:` and exit code `4`.
+- **Cancel:** `Run` cancels on Ctrl-C and SIGTERM (and on the token it is given), which kills `pg_dump`/`pg_restore`/`psql` and their process tree.
 
 | Exit code | Meaning |
 |---|---|

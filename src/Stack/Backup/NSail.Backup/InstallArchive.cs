@@ -22,6 +22,8 @@ public static class InstallArchive
         {
             var dumpFilePath = Path.Combine(workspace.FullName, Postgres.DumpEntryName);
 
+            InstallBackup.RefuseAnotherDatabase(install);
+
             await Postgres.Dump(install.DumpConnectionString ?? install.ConnectionString, dumpFilePath, cancelToken);
 
             var keyRing = new DirectoryInfo(install.KeyRingPath);
