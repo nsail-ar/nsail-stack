@@ -59,14 +59,17 @@ public sealed class NsFieldHardeningTests : BunitContext, IAsyncLifetime
     }
 
     [Theory]
-    [InlineData(false, null, "current-password")]
-    [InlineData(true, null, "new-password")]
-    [InlineData(false, "off", "off")]
-    public void ThePasswordBoxDefaultsItsAutofillToken(bool isNew, string? given, string expected)
+    [InlineData(false, false, null, "current-password")]
+    [InlineData(true, false, null, "new-password")]
+    [InlineData(false, true, null, "new-password")]
+    [InlineData(false, false, "off", "off")]
+    [InlineData(false, true, "off", "off")]
+    public void ThePasswordBoxDefaultsItsAutofillToken(bool isNew, bool isStored, string? given, string expected)
     {
         var cut = Render<NsPasswordField>(ps => ps
             .Add(p => p.Label, "Secret")
             .Add(p => p.IsNew, isNew)
+            .Add(p => p.IsStored, isStored)
             .Add(p => p.Autocomplete, given)
             .Add(p => p.Value, "x"));
 
