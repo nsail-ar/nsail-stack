@@ -263,7 +263,9 @@ Core instrumentation), and then fails open silently.
 writes log lines, and the OTLP exporter sends every attribute, the exception's message and a
 stack trace rendered from `ToString()` (which opens with that message). `ErrorMiddleware` logs
 `"Exception mapped to problem {Code}: {Message}"`, and for a refusal that `{Message}` **is**
-the Problem's Title. So `LogScrubber`, the logs-side sibling of `Scrubber`, cuts at the export
+the Problem's Title. A bug-class exception wearing a 404 or 403 (`KeyNotFoundException`,
+`UnauthorizedAccessException`) and a `BusinessException` of status 500 or above log at Error with the
+exception; a cancellation of the request's own token logs nothing. So `LogScrubber`, the logs-side sibling of `Scrubber`, cuts at the export
 seam:
 
 - What travels is what the **source** declares — category, level, event id and the **message
