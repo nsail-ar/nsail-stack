@@ -127,6 +127,7 @@
         }
         else
         {
+            // The await above suspends: Url may have moved on, and this verdict is then not for what is shown.
             if (Url != url)
             {
                 return;

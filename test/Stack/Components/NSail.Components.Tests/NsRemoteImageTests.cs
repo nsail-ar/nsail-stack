@@ -203,45 +203,67 @@ public sealed class NsRemoteImageTests : BunitContext
     }
 
     [Fact]
-    public void ALateFailureOfThePreviousUrlDoesNotHideTheCurrentOne()
+    public async Task ALateFailureOfThePreviousUrlDoesNotHideTheCurrentOne()
     {
         var gate = new TaskCompletionSource();
+        var slowEnded = new TaskCompletionSource();
 
-        Services.AddSingleton<IHttpClientFactory>(new GatedClientFactory(gate.Task));
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        Services.AddSingleton<IHttpClientFactory>(new GatedClientFactory(gate.Task, slowEnded));
 
         var cut = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/slow"));
 
         cut.Render(ps => ps.Add(p => p.Url, "/test/ns-remote-image/fast"));
 
-        cut.WaitForState(() => cut.FindAll("img").Count > 0, TimeSpan.FromSeconds(2));
+        // Inline markup only exists once the fast probe resolved; the optimistic <img> is not it.
+        cut.WaitForState(() => cut.Markup.Contains("<svg"), TimeSpan.FromSeconds(2));
 
         gate.SetResult();
 
-        Thread.Sleep(200);
+        await slowEnded.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
-        Assert.NotEmpty(cut.FindAll("img"));
+        // The handler has unwound; only the component's continuation is left, and an absence
+        // has nothing to wait on, so this margin is a ceiling on that one hop.
+        await Task.Delay(100);
+
+        Assert.Contains("<svg", cut.Markup);
     }
 
-    sealed class GatedClientFactory(Task release) : IHttpClientFactory
+    sealed class GatedClientFactory(Task release, TaskCompletionSource slowEnded) : IHttpClientFactory
     {
-        sealed class Handler(Task release) : HttpMessageHandler
+        sealed class Handler(Task release, TaskCompletionSource slowEnded) : HttpMessageHandler
         {
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                if (request.RequestUri!.AbsolutePath.EndsWith("slow"))
-                {
-                    await release;
+                var path = request.RequestUri!.AbsolutePath;
 
-                    throw new TaskCanceledException("simulated timeout");
+                if (path.EndsWith("/slow"))
+                {
+                    try
+                    {
+                        await release;
+
+                        throw new TaskCanceledException("simulated timeout");
+                    }
+                    finally
+                    {
+                        slowEnded.TrySetResult();
+                    }
                 }
 
-                return RasterResponse();
+                if (path.EndsWith("/fast"))
+                {
+                    return SvgResponse("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1 1\"><path d=\"M0 0h1v1z\"/></svg>");
+                }
+
+                throw new InvalidOperationException("unexpected url " + path);
             }
         }
 
         public HttpClient CreateClient(string name)
         {
-            return new HttpClient(new Handler(release)) { BaseAddress = new Uri("http://localhost/") };
+            return new HttpClient(new Handler(release, slowEnded)) { BaseAddress = new Uri("http://localhost/") };
         }
     }
 
