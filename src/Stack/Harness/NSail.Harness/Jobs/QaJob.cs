@@ -69,9 +69,10 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var shots = Path.Combine(outDir, "shots");
         Directory.CreateDirectory(shots);
         var story = await ctx.Board.Story(n, ct);
-        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), $"# {story.Title}\n\n{story.Body}", ct);
-        await new StoryDossier(ctx, history).WritePrs(n, outDir, ct);
-        var asked = labels.Contains(Labels.QaAsked) ? Asked(await ctx.Board.Comments(n, ct)) : "";
+        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), story.Title)}\n\n{story.Body}", ct);
+        var dossier = new StoryDossier(ctx, history);
+        await dossier.WritePrs(n, outDir, ct);
+        var asked = labels.Contains(Labels.QaAsked) ? Asked(await ctx.Board.Comments(n, ct), await dossier.Trusted(ct)) : "";
         await File.WriteAllTextAsync(Path.Combine(outDir, "asked.md"), asked, ct);
 
         var env = await ctx.LaneEnv(started.AddMinutes(step.Minutes), Item, step, ct);
@@ -240,11 +241,11 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     }
 
     // What QA asked a person, and every comment since: the walk only looks for the answer.
-    internal static string Asked(IReadOnlyList<Board.StoryComment> comments)
+    internal static string Asked(IReadOnlyList<Board.StoryComment> comments, ISet<string> trusted)
     {
         var ordered = comments.OrderBy(c => c.At).ToList();
         var at = ordered.FindLastIndex(c => c.Body.Contains("<!-- qa-asked:", StringComparison.Ordinal));
-        return at < 0 ? "" : string.Join('\n', ordered.Skip(at).Select(c => $"--- {c.Author} {c.At:O}\n{c.Body}"));
+        return at < 0 ? "" : StoryDossier.Thread(ordered.Skip(at), trusted);
     }
 
     static string Value(IReadOnlyDictionary<string, string> env, string? name)

@@ -21,7 +21,7 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
         var trusted = await Trusted(ct);
         var (title, body, _) = await board.Story(story, ct);
         var text = new StringBuilder();
-        text.AppendLine($"# {ctx.Names.Ref(story)} — {title}");
+        text.AppendLine(Heading(ctx.Names.Ref(story), title));
         text.AppendLine();
         text.AppendLine($"Stage: {await board.StageOf(story, ct)} · Labels: {string.Join(", ", (await board.Labels(story, ct)).Order(StringComparer.Ordinal))}");
         text.AppendLine();
@@ -30,12 +30,8 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
         text.AppendLine(body.Trim());
         text.AppendLine();
         text.AppendLine("## Thread");
-        foreach (var c in await board.Comments(story, ct))
-        {
-            text.AppendLine();
-            text.AppendLine($"--- {c.Author} {c.At:O}{(trusted.Contains(c.Author) ? "" : " (untrusted)")}");
-            text.AppendLine(Voice(c.Author, c.Body, trusted));
-        }
+        text.AppendLine();
+        text.AppendLine(Thread(await board.Comments(story, ct), trusted));
         await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), text.ToString(), ct);
     }
 
@@ -72,16 +68,29 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
         await File.WriteAllTextAsync(Path.Combine(outDir, "prs.md"), text.Length == 0 ? "(no PR for this story)\n" : text.ToString(), ct);
     }
 
+    // A story's title: a Watch story's carries the log's template, so it is laid fenced as data.
+    internal static string Heading(string reference, string title)
+    {
+        return title.StartsWith("telemetry(", StringComparison.Ordinal)
+            ? $"# {reference}\n\nTitle:\n{Fence(title)}"
+            : $"# {reference} — {title}";
+    }
+
+    // Comments oldest first, each under its author's line: a foreign author's labelled and fenced.
+    internal static string Thread(IEnumerable<Board.StoryComment> comments, ISet<string> trusted)
+    {
+        return string.Join("\n\n", comments.Select(c => $"--- {c.Author} {c.At:O}{(trusted.Contains(c.Author) ? "" : " (untrusted)")}\n{Voice(c.Author, c.Body, trusted)}"));
+    }
+
     // Whose words a seat takes as the crew's: this harness's login, the fleet's and the configured owners and crew.
-    async Task<HashSet<string>> Trusted(CancellationToken ct)
+    internal async Task<HashSet<string>> Trusted(CancellationToken ct)
     {
         var trusted = new HashSet<string>(ctx.Options.MarkerAuthors.Concat(ctx.Options.TrustedAuthors), StringComparer.OrdinalIgnoreCase);
         trusted.Add(await ctx.Repo.Login(ct));
         return trusted;
     }
 
-    // A foreign author's text is data: fenced under a line saying so, never loose in the dossier, with
-    // the protocol's markers taken out so it cannot pass for the harness's.
+    // A foreign author's text is data: fenced under a line saying so, never loose in the dossier.
     internal static string Voice(string author, string body, ISet<string> trusted)
     {
         return trusted.Contains(author) ? body.Trim() : Fence(body.Trim());

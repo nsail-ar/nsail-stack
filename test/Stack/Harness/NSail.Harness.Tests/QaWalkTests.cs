@@ -34,12 +34,15 @@ public class QaWalkTests
             new(t.AddHours(2), "done, it works", "ana"),
         };
 
-        var asked = QaJob.Asked(comments);
+        var asked = QaJob.Asked(comments, new HashSet<string> { "crew-bot" });
 
         Assert.DoesNotContain("first ask", asked);
         Assert.Contains("second ask", asked);
         Assert.Contains("done, it works", asked);
-        Assert.Equal("", QaJob.Asked([new StoryComment(t, "nothing asked", "x")]));
+        Assert.Contains("--- ana ", asked);
+        Assert.Contains("(untrusted)", asked);
+        Assert.Contains("UNTRUSTED", asked);
+        Assert.Equal("", QaJob.Asked([new StoryComment(t, "nothing asked", "x")], new HashSet<string>()));
     }
 
     [Fact]
