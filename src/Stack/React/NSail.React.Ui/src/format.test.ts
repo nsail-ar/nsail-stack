@@ -40,4 +40,9 @@ describe("display", () => {
     expect(display(strings, field("string"), null)).toBe("");
     expect(display(strings, field("integer"), undefined)).toBe("");
   });
+
+  it("leaves an integer ungrouped when the caller opts out", () => {
+    expect(display(strings, field("integer"), 12345, { grouped: false })).toBe("12345");
+    expect(display(strings, field("integer"), 12345)).toBe(Number(12345).toLocaleString("es"));
+  });
 });

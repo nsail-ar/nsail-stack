@@ -18,6 +18,10 @@ export function NsSearch({ field, value, onSearch, delay = 300 }: NsSearchProps)
   const [term, setTerm] = useState(value ?? "");
 
   useEffect(() => {
+    setTerm((current) => (current.trim() === (value ?? "") ? current : (value ?? "")));
+  }, [value]);
+
+  useEffect(() => {
     const trimmed = term.trim();
 
     if (trimmed === (value ?? "")) {

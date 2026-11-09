@@ -17,9 +17,19 @@ const DialogContext = createContext<((text: string, danger?: boolean) => Promise
 export function NsDialogHost({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<Pending | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
+  const open = useRef<Pending | null>(null);
 
+  // A confirmation asked while another is open ends the first as declined: no caller waits forever.
   const confirm = useCallback((text: string, danger = false) => {
-    return new Promise<boolean>((resolve) => setPending({ text, danger, resolve }));
+    return new Promise<boolean>((resolve) => {
+      open.current?.resolve(false);
+      open.current = { text, danger, resolve };
+      setPending(open.current);
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => open.current?.resolve(false);
   }, []);
 
   useEffect(() => {
@@ -48,7 +58,8 @@ export function NsDialogHost({ children }: { children: ReactNode }) {
   }, [pending]);
 
   function close(confirmed: boolean) {
-    pending?.resolve(confirmed);
+    open.current?.resolve(confirmed);
+    open.current = null;
     dialog.current?.close();
     setPending(null);
   }

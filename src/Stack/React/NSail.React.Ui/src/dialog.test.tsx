@@ -70,6 +70,7 @@ async function ask(danger: boolean) {
     dialog: host.querySelector("dialog") as HTMLDialogElement,
     faces: [...host.querySelectorAll<HTMLButtonElement>(".ns-actions button")],
     answer,
+    confirm,
   };
 }
 
@@ -128,5 +129,34 @@ describe("the one confirmation surface", () => {
 
     expect(await answer).toBe(expected);
     expect(dialog.open).toBe(false);
+  });
+});
+
+describe("pending confirmations", () => {
+  it("resolves the first with false when a second is asked", async () => {
+    const { answer, confirm } = await ask(false);
+    let second!: Promise<boolean>;
+
+    await act(async () => {
+      second = confirm(question, false);
+    });
+
+    await expect(answer).resolves.toBe(false);
+
+    await act(async () => {
+      document.querySelectorAll<HTMLButtonElement>(".ns-actions button")[1].click();
+    });
+
+    await expect(second).resolves.toBe(true);
+  });
+
+  it("resolves a pending one false on unmount", async () => {
+    const { answer } = await ask(false);
+
+    await act(async () => {
+      mounted[0].root.unmount();
+    });
+
+    await expect(answer).resolves.toBe(false);
   });
 });
