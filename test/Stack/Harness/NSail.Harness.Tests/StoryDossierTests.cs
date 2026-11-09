@@ -177,7 +177,7 @@ public class StoryDossierTests
         Assert.DoesNotContain(tail, l => l.Contains("upload-artifact") || l.Contains("No files were found"));
     }
 
-    sealed class RedCi(string remote, bool conflicting) : DevJobRunTests.FileRepository(remote)
+    sealed class RedCi(string remote, bool conflicting, string? log = null) : DevJobRunTests.FileRepository(remote)
     {
         public override Task<PullRequest> Pr(int number, CancellationToken ct = default)
         {
@@ -186,7 +186,7 @@ public class StoryDossierTests
 
         public override Task<CiFailure?> Failure(string sha, CancellationToken ct = default)
         {
-            return Task.FromResult<CiFailure?>(sha == "abcdef1234567890" ? CiFailure.Of([("build", "Test", Log())]) : null);
+            return Task.FromResult<CiFailure?>(sha == "abcdef1234567890" ? CiFailure.Of([("build", "Test", log ?? Log())]) : null);
         }
     }
 
@@ -236,5 +236,36 @@ public class StoryDossierTests
         {
             Directory.Delete(dir, true);
         }
+    }
+
+    [Fact]
+    public async Task ARedOfHundredsOfFailedTestsListsTheFirstThirtyAndKeepsTheSetWhole()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var log = string.Join("\n", Enumerable.Range(100, 200).Select(i => $"  Failed NSail.A.T.Case{i} [1 ms]")) + "\n##[error]Process completed with exit code 1.";
+
+            Assert.Equal(200, CiFailure.Of([("build", "Test", log)]).Failed.Count);
+            var prs = await PrsOf(new RedCi(dir, conflicting: false, log), dir);
+            var listed = prs[prs.IndexOf("Failed:\n", StringComparison.Ordinal)..prs.IndexOf("Log tail:", StringComparison.Ordinal)].Split('\n', StringSplitOptions.RemoveEmptyEntries)[1..];
+            Assert.Equal(31, listed.Length);
+            Assert.Equal("- NSail.A.T.Case100", listed[0]);
+            Assert.Equal("- … and 170 more", listed[^1]);
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void AHeadWhoseJobsFailedTestsAndBuildErrorsIsReadAsItsFailedTestsAsTheGateReadsIt()
+    {
+        var tests = ("test", "Test", $"  Failed {Bound} [12 ms]\n##[error]Process completed with exit code 1.");
+        var build = ("pack", "Build", "/src/A.cs(1,1): error CS0103: The name 'x' does not exist\n##[error]Process completed with exit code 1.");
+
+        Assert.Equal([Bound], CiFailure.Of([tests, build]).Names);
+        Assert.Equal(["/src/A.cs(1,1): error CS0103: The name 'x' does not exist"], CiFailure.Of([build]).Names);
     }
 }
