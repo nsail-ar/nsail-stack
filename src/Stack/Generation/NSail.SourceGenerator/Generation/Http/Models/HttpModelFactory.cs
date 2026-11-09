@@ -58,6 +58,25 @@ public static class HttpModelFactory
         return model;
     }
 
+    /// <summary>The whole reading for a caller that holds the compilation — the TypeScript
+    /// generator reads the Sdk the way the C# client is rendered from it.</summary>
+    public static HttpModel Create(IMethodSymbol methodSymbol, Compilation compilation, string paramNamespace)
+    {
+        var fragments = new EquatableList<EquatableList<HttpFragment>>();
+
+        foreach (var type in compilation.FindTypesInScope(methodSymbol))
+        {
+            if (Inspect(type, paramNamespace) is { } found)
+            {
+                fragments.Add(found);
+            }
+        }
+
+        var scoped = new Scoped<EquatableList<HttpFragment>>(GeneratedSyntaxExtensions.ToTarget(methodSymbol), fragments);
+
+        return Create(scoped, MetadataTemplate.GetDeclaredTemplate(compilation));
+    }
+
     /// <summary>The messages one type puts on the wire: itself when it carries [Http], or the
     /// messages of the handlers it implements.</summary>
     public static EquatableList<HttpFragment>? Inspect(INamedTypeSymbol typeSymbol, string paramNamespace)

@@ -78,6 +78,13 @@ public static class GeneratedSyntaxExtensions
             return null;
         }
 
+        return ToTarget(method, ctx.TargetNode);
+    }
+
+    public static GeneratorTarget ToTarget(IMethodSymbol method, SyntaxNode? declaration = null)
+    {
+        declaration ??= method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax();
+
         var sources = new EquatableList<SourceScope>(method.GetAttributes(SourceAttributeName)
             .Select(a => new SourceScope(a.GetNamedArgument<string>("Assembly"), a.GetNamedArgument<string>("Pattern"))));
 
@@ -89,8 +96,8 @@ public static class GeneratedSyntaxExtensions
             method.GetDeclaration(),
             method.Parameters.Length > 0 ? method.Parameters[0].Name : "services",
             method.FindParameterNameByType("IServiceCollection"),
-            ctx.TargetNode.SyntaxTree.FilePath,
-            ctx.TargetNode.Span,
+            declaration?.SyntaxTree.FilePath,
+            declaration?.Span ?? default,
             sources);
     }
 
