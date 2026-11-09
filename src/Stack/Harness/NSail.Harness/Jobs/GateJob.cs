@@ -86,7 +86,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             env["TEST_OUTPUT"] = Path.Combine(env["GATE_WORK"], "test-output.txt");
             Directory.CreateDirectory(env["GATE_WORK"]);
             result = Step.Command is { } command
-                ? await ctx.Run(command, [main], dir, env, Timeout(Step), w, ct)
+                ? await ctx.Run(command, [main], dir, env, Timeout(Step), w, ct, keep: IsFailureLine)
                 : await ctx.Builder!.Gate(dir, main, env, Timeout(Step), w, ct);
         }
         finally
@@ -163,6 +163,12 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         var lines = output.Split('\n').Select(l => l.TrimEnd('\r').Replace(dir.TrimEnd('/', '\\'), "", StringComparison.Ordinal).Trim()).ToList();
         var failed = lines.Where(l => FailedTest().IsMatch(l)).Select(l => TestTime().Replace(l, "")).ToHashSet();
         return failed.Count > 0 ? failed : lines.Where(l => BuildError().IsMatch(l)).ToHashSet();
+    }
+
+    // A line the failure sets read: kept through the output's cut, since failures come all along a run.
+    internal static bool IsFailureLine(string line)
+    {
+        return FailedTest().IsMatch(line) || BuildError().IsMatch(line);
     }
 
     // What a builder needs to start: the failed test names, else the build errors, else the tail.
