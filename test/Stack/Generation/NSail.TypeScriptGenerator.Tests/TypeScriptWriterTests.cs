@@ -130,6 +130,15 @@ public class TypeScriptWriterTests
     }
 
     [Fact]
+    public void A_renamed_query_member_keeps_the_name_the_endpoint_reads()
+    {
+        var text = Orders();
+
+        Assert.Contains("pagesize: { kind: \"integer\"", text);
+        Assert.DoesNotContain("page-size", text.Replace("  \"page-size", ""));
+    }
+
+    [Fact]
     public void BCL_scalars_are_the_strings_or_free_JSON_the_wire_writes()
     {
         var text = Orders();
@@ -138,8 +147,8 @@ public class TypeScriptWriterTests
         Assert.Contains("  build: string;", text);
         Assert.Contains("  raw: unknown;", text);
         Assert.Contains("  node: unknown | null;", text);
-        Assert.Contains("  big: string;", text);
-        Assert.Contains("  wide: string;", text);
+        Assert.Contains("  big: unknown;", text);
+        Assert.Contains("  wide: unknown;", text);
     }
 
     [Fact]

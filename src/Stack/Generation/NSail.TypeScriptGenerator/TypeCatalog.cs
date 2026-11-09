@@ -78,9 +78,11 @@ sealed class TypeCatalog(MetadataKeys metadata)
         return described;
     }
 
+    const string Flags = "System.FlagsAttribute";
+
     static bool IsFlags(INamedTypeSymbol type)
     {
-        return type.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == "System.FlagsAttribute");
+        return type.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == Flags);
     }
 
     static bool Ignored(IPropertySymbol property)
@@ -160,7 +162,7 @@ sealed class TypeCatalog(MetadataKeys metadata)
             case "System.Numerics.BigInteger":
             case "System.Int128":
             case "System.UInt128":
-                return new TsType("string", "bigint");
+                return new TsType("unknown", "unknown");
             case "System.Text.Json.JsonElement":
             case "System.Text.Json.JsonDocument":
             case "System.Text.Json.Nodes.JsonNode":

@@ -117,6 +117,10 @@ public class AddOrderLine : IMessage
     [AsQuery]
     public bool Preview { get; set; }
 
+    [AsQuery]
+    [System.Text.Json.Serialization.JsonPropertyName("page-size")]
+    public int PageSize { get; set; }
+
     [AsHeader]
     public string? Idempotency { get; set; }
 }
