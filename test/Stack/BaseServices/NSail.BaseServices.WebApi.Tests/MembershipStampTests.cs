@@ -51,6 +51,23 @@ public sealed class MembershipStampTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ASignInAfterTheChangeIsHonouredEvenWhenTheMemoHoldsTheOldSet()
+    {
+        _host.Memberships.Set(Party, "admin");
+
+        var before = await _host.SignIn(tenant: null, party: Party, memberships: "admin");
+
+        Assert.Equal(HttpStatusCode.OK, await Status(before));
+
+        _host.Memberships.Set(Party, "viewer");
+
+        var after = await _host.SignIn(tenant: null, party: Party, memberships: "viewer");
+
+        Assert.Equal(HttpStatusCode.OK, await Status(after));
+        Assert.Equal(HttpStatusCode.Unauthorized, await Status(before));
+    }
+
+    [Fact]
     public async Task AnUnchangedPartyIsReadOncePerWindowNotOncePerRequest()
     {
         _host.Memberships.Set(Party, "admin");

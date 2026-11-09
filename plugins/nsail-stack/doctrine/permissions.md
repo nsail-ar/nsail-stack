@@ -588,7 +588,7 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   current one (null in the floor: nothing compared), read through `MembershipStampMemo` once per
   party per window, not per request. A removed or demoted member is refused like any stale ticket
   — signed out, challenged, marked stale — at the first request past the window, and signs in
-  again with the new roles; there is no live session rebuild, so unsaved input can be lost, and a
+  again with the new roles (a mismatch is confirmed at the source before it refuses, so a sign-in after the change is honoured at once); there is no live session rebuild, so unsaved input can be lost, and a
   change inside the window is not yet seen. An unchanged party never re-signs-in. The unstamped
   ticket is refused once a provider answers a stamp (a one-time re-login at rollout); `TicketEpoch`
   still signs out everyone. Proof: `MembershipStampTests` (`NSail.BaseServices.WebApi.Tests`).

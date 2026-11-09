@@ -110,11 +110,21 @@ public sealed class CredentialMiddleware : IMiddleware
             return true;
         }
 
-        var current = await memo.Of(
-            session.Tenant,
-            party,
-            token => credentials.MembershipStamp(party, token),
-            context.RequestAborted);
+        Task<string?> Read(CancellationToken token)
+        {
+            return credentials.MembershipStamp(party, token);
+        }
+
+        var current = await memo.Of(session.Tenant, party, Read, context.RequestAborted);
+
+        if (current is null || current == session.MembershipStamp)
+        {
+            return true;
+        }
+
+        // The held stamp may predate this ticket (a sign-in after the change, inside the
+        // window), so a mismatch is confirmed at the source before it refuses anyone.
+        current = await memo.Refresh(session.Tenant, party, Read, context.RequestAborted);
 
         return current is null || current == session.MembershipStamp;
     }
