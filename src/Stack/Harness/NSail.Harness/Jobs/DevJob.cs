@@ -92,6 +92,16 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         var voyage = Path.Combine(work, Voyage);
         if (Directory.Exists(voyage)) Directory.Delete(voyage, recursive: true);
         Directory.CreateDirectory(Path.Combine(voyage, "out"));
+
+        // A voyage the screen refused left its work and its ending on this machine: once a hand lifts the
+        // screen, that work goes up as its builder left it, while the branch is still where it was built from.
+        if ((await ScreenOf(ctx.Options, board, n)).Count == 0 && await Unkeep(work, branch, startedAt))
+        {
+            await File.AppendAllTextAsync(logPath, $"== {ctx.Names.Ref(n)} {title} — the screen lifted: the kept work is delivered, no seat runs{Environment.NewLine}", ct);
+            var delivered = await Deliver(n, title, repo, work, branch, startedAt, claimedAt, new AgentResult(0, false, null, false, null), log, ct);
+            return delivered.Outcome(null);
+        }
+
         var dossier = new StoryDossier(ctx, history);
         await dossier.WriteStory(n, voyage, ct);
         await dossier.WritePrs(n, voyage, ct);
@@ -188,6 +198,51 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         return remote.ExitCode == 0 ? from : null;
     }
 
+    // Where a refused voyage's work waits: a ref and a folder in the machine's own git directory, never
+    // on the remote. The folder holds the head the voyage started from and the builder's ending.
+    static async Task<(string Ref, string Dir)> KeptOf(string work, string branch)
+    {
+        var common = (await Shell.Git(work, "rev-parse", "--git-common-dir")).Trim();
+        var root = Path.IsPathRooted(common) ? common : Path.Combine(work, common);
+        return ($"refs/harness-kept/{branch}", Path.Combine(root, "harness-kept", branch));
+    }
+
+    static async Task Keep(string work, string branch, string? startedAt)
+    {
+        var (name, dir) = await KeptOf(work, branch);
+        if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "base"), startedAt ?? "");
+        Copy(Path.Combine(work, Voyage, "out"), Path.Combine(dir, "out"));
+        await Shell.Git(work, "update-ref", name, "HEAD");
+    }
+
+    // The kept work back on the branch with its ending in .voyage/out, when the remote branch is still at
+    // the head it was built from (still absent for a new one). Kept work that no longer applies is dropped.
+    static async Task<bool> Unkeep(string work, string branch, string? startedAt)
+    {
+        var (name, dir) = await KeptOf(work, branch);
+        var head = await Shell.Run("git", ["rev-parse", "-q", "--verify", $"{name}^{{commit}}"], work);
+        if (head.ExitCode != 0) return false;
+        var basePath = Path.Combine(dir, "base");
+        var applies = File.Exists(basePath) && (await File.ReadAllTextAsync(basePath)).Trim() == (startedAt ?? "");
+        if (applies)
+        {
+            await Shell.Git(work, "checkout", "-q", "--ignore-other-worktrees", "-B", branch, head.Output.Trim());
+            Copy(Path.Combine(dir, "out"), Path.Combine(work, Voyage, "out"));
+        }
+        await Shell.Run("git", ["update-ref", "-d", name], work);
+        if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
+        return applies;
+    }
+
+    static void Copy(string from, string to)
+    {
+        Directory.CreateDirectory(to);
+        if (!Directory.Exists(from)) return;
+        foreach (var file in Directory.EnumerateFiles(from)) File.Copy(file, Path.Combine(to, Path.GetFileName(file)), overwrite: true);
+    }
+
     // Commits ahead of `since` go to a ref of their own, unleased and never the story's: a push that must
     // survive a cancelled job or a refused lease. Returns the ref, null when nothing was ahead or the screen held the push.
     async Task<string?> Rescue(int n, IRepository repo, string dir, string since, ILogger log, IReadOnlyList<string> screen)
@@ -242,7 +297,8 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     }
 
     // What the builder committed goes up first, unless it touches a protected path: work is never lost to the axe.
-    // Then its ending, exactly one: a PR's words, a ruling, a hand-off; none is a dead voyage.
+    // Then its ending, exactly one: a PR's words, a ruling, a hand-off; none is a dead voyage. Commits the
+    // screen refuses are kept on this machine and the story held for a hand's word.
     async Task<Ending> Deliver(int n, string title, IRepository repo, string dir, string branch, string? startedAt, DateTimeOffset claimedAt, AgentResult result, ILogger log, CancellationToken ct)
     {
         var board = ctx.Board;
@@ -263,10 +319,20 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
                 : SeatOutput.Protected(await SeatOutput.Changed(dir, since), ctx.Options.ProtectedPaths);
             if (touched.Count > 0)
             {
+                try
+                {
+                    await Keep(dir, branch, startedAt);
+                }
+                catch (Exception e)
+                {
+                    log.LogError(e, "#{Story}: the refused work could not be kept", n);
+                }
+                // Held where it stands for a hand's word, never built again meanwhile; a refusal is no dead voyage, so its comment carries no voyage marker.
+                await board.AddLabels(n, Labels.Ruling, Labels.Screened);
                 await board.RemoveLabel(n, Labels.Claimed);
-                await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.ProtectedPaths, ("paths", string.Join(", ", touched.Select(f => $"`{f}`"))), ("label", Labels.AllowProtected))));
+                await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.ProtectedPaths, ("paths", string.Join(", ", touched.Select(f => $"`{f}`"))), ("label", Labels.AllowProtected))} {ctx.Texts.Signature}");
                 if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
-                return new Ending("push refused — protected paths touched", Failed: true);
+                return new Ending("push refused — protected paths touched, held for a hand", Failed: true);
             }
             try
             {

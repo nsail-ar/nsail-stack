@@ -35,8 +35,8 @@ public sealed record PlannerOptions(bool Gate = false)
 }
 
 // What every planner shares: the urgency of a tier for whoever waits for a turn, the holds that
-// keep a story waiting, and the release of a lock no job holds. The order of the work is the
-// workers' (WorkerPlanner).
+// keep a story waiting, and the release of a lock no job holds and of a hold the screen set. The
+// order of the work is the workers' (WorkerPlanner).
 public static class Planner
 {
     // How urgent a tier is, for whoever must wait for a turn: the planner's own order, 0 first.
@@ -71,7 +71,8 @@ public static class Planner
         return null;
     }
 
-    // A lock with no job behind it comes off, out loud, and the story is simply in the queue again.
+    // A lock with no job behind it comes off, out loud, and the story is simply in the queue again; so
+    // does the screen's hold once a hand allows the protected paths.
     internal static List<Issue> ReleaseStaleLocks(BoardSnapshot board, PlannerOptions options, List<Chore> chores, List<string> notes)
     {
         var reviewByStory = board.Prs.Where(p => p.Repo == board.Repo).GroupBy(p => p.Story)
@@ -107,6 +108,8 @@ public static class Planner
                 chores.Add(new Chore(ChoreKind.Unlock, i.Number, label, $"`{label}` with no job behind it"));
                 notes.Add($"#{i.Number} wore `{label}` with no job behind it — released, back in the queue");
             }
+            var lifted = LiftScreen(i, chores, notes);
+            drop.AddRange(lifted);
             result.Add(drop.Count == 0 ? i : i with { Labels = i.Labels.Except(drop).ToHashSet() });
         }
         return result;
@@ -115,6 +118,23 @@ public static class Planner
         {
             return board.LockAges.TryGetValue((n, label), out var age) && age > options.StaleLock;
         }
+    }
+
+    // The screen's hold is the harness's own: `allow-protected` lifts it with no hand removing a label.
+    // A `screened` left after a hand lifted the `ruling` itself is only a stale mark.
+    static List<string> LiftScreen(Issue i, List<Chore> chores, List<string> notes)
+    {
+        if (!i.Has(Labels.Screened)) return [];
+        if (!i.Has(Labels.Ruling))
+        {
+            chores.Add(new Chore(ChoreKind.Unlock, i.Number, Labels.Screened, $"`{Labels.Ruling}` already lifted"));
+            return [Labels.Screened];
+        }
+        if (!i.Has(Labels.AllowProtected)) return [];
+        chores.Add(new Chore(ChoreKind.Unlock, i.Number, Labels.Ruling, $"`{Labels.AllowProtected}` lifts the screen"));
+        chores.Add(new Chore(ChoreKind.Unlock, i.Number, Labels.Screened, $"`{Labels.AllowProtected}` lifts the screen"));
+        notes.Add($"#{i.Number} wears `{Labels.AllowProtected}` — the screen's `{Labels.Ruling}` lifted, back in the queue");
+        return [Labels.Ruling, Labels.Screened];
     }
 
 }
