@@ -40,6 +40,21 @@ public sealed class QueueCompositionTests
         Assert.Contains("InProcess", refusal.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("Queue:BatchSize", "0")]
+    [InlineData("Queue:MaxAttempts", "0")]
+    [InlineData("Queue:MaxAttempts", "-1")]
+    [InlineData("Queue:Interval", "00:00:00")]
+    [InlineData("Queue:Interval", "-00:00:05")]
+    public async Task A_non_positive_bound_is_refused_at_startup_naming_the_key(string key, string value)
+    {
+        using var host = Host((key, value));
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => host.StartAsync(CancellationToken.None));
+
+        Assert.Contains(key.Split(':')[1], refusal.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task A_transport_the_install_does_not_know_is_refused_too()
     {
