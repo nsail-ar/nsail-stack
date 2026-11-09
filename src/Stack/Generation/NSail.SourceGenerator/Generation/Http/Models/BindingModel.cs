@@ -13,7 +13,7 @@ public enum BindingSource
     Services
 }
 
-public class BindingModel
+public record BindingModel
 {
     public string Name { get; set; } = string.Empty;
 

@@ -22,7 +22,7 @@ public static class PushModelRenderer
     {
         foreach (var diagnostic in model.HolderDiagnostics.Concat(model.Diagnostics))
         {
-            spc.ReportDiagnostic(diagnostic);
+            diagnostic.Report(spc);
         }
 
         if (model.Unusable)

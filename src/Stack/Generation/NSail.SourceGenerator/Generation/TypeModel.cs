@@ -1,11 +1,11 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
 
 namespace NSail.SourceGenerator.Generation;
 
-public class TypeModel
+public sealed record TypeModel
 {
     public TypeModel(INamedTypeSymbol symbol)
     {
@@ -20,6 +20,7 @@ public class TypeModel
         ClassName = symbol.Name;
         Namespace = global ? string.Empty : symbol.ContainingNamespace!.ToDisplayString();
         Declaration = global ? symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) : symbol.ToDisplayString();
+        DisplayName = symbol.ToDisplayString();
         FlatName = string.Join("_", chain);
         RelativeName = string.Join(".", chain);
         MetadataName = (global ? string.Empty : Namespace + ".") + string.Join("+", chain);
@@ -31,6 +32,9 @@ public class TypeModel
     public string Namespace { get; }
 
     public string Declaration { get; }
+
+    /// <summary>The name a finding shows: <see cref="Declaration"/> without <c>global::</c>.</summary>
+    public string DisplayName { get; }
 
     /// <summary>The name with its declaring types joined by underscores: unique among the
     /// types of one namespace, where <see cref="ClassName"/> is not for nested ones.</summary>

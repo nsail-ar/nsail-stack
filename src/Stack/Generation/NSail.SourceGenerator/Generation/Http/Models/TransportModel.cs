@@ -1,10 +1,9 @@
 ﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-
 namespace NSail.SourceGenerator.Generation.Http.Models;
 
-public class TransportModel : GeneratedModel
+public record TransportModel : GeneratedModel
 {
     public string Namespace { get; set; } = string.Empty;
 
@@ -18,5 +17,5 @@ public class TransportModel : GeneratedModel
 
     public string MethodDeclaration { get; set; } = string.Empty;
 
-    public List<MessageModel> Messages { get; set; } = [];
+    public EquatableList<MessageModel> Messages { get; set; } = [];
 }

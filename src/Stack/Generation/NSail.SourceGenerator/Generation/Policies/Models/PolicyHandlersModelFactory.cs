@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -12,66 +12,28 @@ public static class PolicyHandlersModelFactory
     const string RequiresAttributeName = "NSail.Security.Annotations.RequiresAttribute";
     const string IMessageInterfaceName = "IMessage";
 
-    public static PolicyHandlersModel Create(IMethodSymbol methodSymbol, Compilation compilation)
+    public static PolicyHandlersModel Create(Scoped<PolicyHandlerModel> scoped)
     {
+        var target = scoped.Target;
+
         var model = new PolicyHandlersModel
         {
-            Namespace = methodSymbol.ContainingNamespace.ToDisplayString(),
-            ClassName = methodSymbol.ContainingType.Name,
-            MethodName = methodSymbol.Name,
-            ClassDeclaration = methodSymbol.ContainingType.GetDeclaration(),
-            MethodDeclaration = methodSymbol.GetDeclaration(),
+            Namespace = target.Namespace,
+            ClassName = target.ClassName,
+            MethodName = target.MethodName,
+            ClassDeclaration = target.ClassDeclaration,
+            MethodDeclaration = target.MethodDeclaration,
         };
 
-        model.ReadHolder(methodSymbol);
+        model.ReadHolder(target);
 
         if (model.Unusable)
-            return model;
-
-        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol, model.HolderDiagnostics))
         {
-            if (!typeSymbol.AllInterfaces.Any(i => i.Name == IMessageInterfaceName))
-                continue;
-
-            var fields = new List<PolicyFieldModel>();
-
-            foreach (var member in typeSymbol.GetAllProperties())
-            {
-                var attribute = member.GetAttributeThroughOverrides(PolicyFieldAttributeName);
-                if (attribute is null)
-                    continue;
-
-                // The RestrictAs member arrives as its underlying int: the generator runs
-                // against the annotations assembly as metadata, where the enum is a symbol
-                // rather than a type it could bind to.
-                fields.Add(new PolicyFieldModel
-                {
-                    Name = member.Name,
-                    Kind = attribute.GetConstructorValue<int>(0) switch
-                    {
-                        2 => "Organization",
-                        3 => "Reference",
-                        4 => "Flag",
-                        _ => "Party",
-                    },
-                });
-            }
-
-            // Every message gets a handler, including the ones with no constrained field:
-            // a policy expands into one handler per member message, so a message missing
-            // from the registry cannot be granted at all. Skipping the unconstrained ones
-            // would leave flat policies to a key-pattern handler.
-            var handler = new PolicyHandlerModel
-            {
-                MessageType = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                HandlerName = $"{typeSymbol.Name}PolicyHandler",
-                UniqueName = new string(new TypeModel(typeSymbol).MetadataName.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray()),
-            };
-
-            handler.Fields.AddRange(fields);
-            handler.Requires.AddRange(Requires(typeSymbol));
-            model.Handlers.Add(handler);
+            return model;
         }
+
+        model.HolderDiagnostics.AddRange(scoped.Diagnostics);
+        model.Handlers = new EquatableList<PolicyHandlerModel>(scoped.Fragments);
 
         // A name two messages share would declare one class twice; those, and only those, take
         // their full name, so a holder without the clash keeps the names it always had.
@@ -82,12 +44,57 @@ public static class PolicyHandlersModelFactory
                 .Select(g => g.Key),
             StringComparer.Ordinal);
 
-        foreach (var handler in model.Handlers.Where(h => clashing.Contains(h.HandlerName)))
-        {
-            handler.HandlerName = $"{handler.UniqueName}PolicyHandler";
-        }
+        model.Handlers = new EquatableList<PolicyHandlerModel>(model.Handlers.Select(h => clashing.Contains(h.HandlerName) ? h with { HandlerName = $"{h.UniqueName}PolicyHandler" } : h));
 
         return model;
+    }
+
+    public static PolicyHandlerModel? Inspect(INamedTypeSymbol typeSymbol)
+    {
+        if (!typeSymbol.AllInterfaces.Any(i => i.Name == IMessageInterfaceName))
+        {
+            return null;
+        }
+
+        var fields = new List<PolicyFieldModel>();
+
+        foreach (var member in typeSymbol.GetAllProperties())
+        {
+            var attribute = member.GetAttributeThroughOverrides(PolicyFieldAttributeName);
+            if (attribute is null)
+                continue;
+
+            // The RestrictAs member arrives as its underlying int: the generator runs
+            // against the annotations assembly as metadata, where the enum is a symbol
+            // rather than a type it could bind to.
+            fields.Add(new PolicyFieldModel
+            {
+                Name = member.Name,
+                Kind = attribute.GetConstructorValue<int>(0) switch
+                {
+                    2 => "Organization",
+                    3 => "Reference",
+                    4 => "Flag",
+                    _ => "Party",
+                },
+            });
+        }
+
+        // Every message gets a handler, including the ones with no constrained field:
+        // a policy expands into one handler per member message, so a message missing
+        // from the registry cannot be granted at all. Skipping the unconstrained ones
+        // would leave flat policies to a key-pattern handler.
+        var handler = new PolicyHandlerModel
+        {
+            MessageType = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            HandlerName = $"{typeSymbol.Name}PolicyHandler",
+            UniqueName = new string(new TypeModel(typeSymbol).MetadataName.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray()),
+        };
+
+        handler.Fields.AddRange(fields);
+        handler.Requires.AddRange(Requires(typeSymbol));
+
+        return handler;
     }
 
     /// <summary>The [Requires] declarations, emitted beside the fields so the evaluator can

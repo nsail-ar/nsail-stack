@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Policies.Models;
 
-public class PolicyHandlersModel : GeneratedModel
+public record PolicyHandlersModel : GeneratedModel
 {
     public string? Namespace { get; set; }
 
@@ -15,10 +15,10 @@ public class PolicyHandlersModel : GeneratedModel
 
     public string? MethodDeclaration { get; set; }
 
-    public List<PolicyHandlerModel> Handlers { get; } = new();
+    public EquatableList<PolicyHandlerModel> Handlers { get; set; } = new();
 }
 
-public class PolicyHandlerModel
+public record PolicyHandlerModel
 {
     public string? MessageType { get; set; }
 
@@ -28,12 +28,12 @@ public class PolicyHandlerModel
     /// when another message shares its short name.</summary>
     public string? UniqueName { get; set; }
 
-    public List<PolicyFieldModel> Fields { get; } = new();
+    public EquatableList<PolicyFieldModel> Fields { get; set; } = new();
 
-    public List<string> Requires { get; } = new();
+    public EquatableList<string> Requires { get; set; } = new();
 }
 
-public class PolicyFieldModel
+public record PolicyFieldModel
 {
     public string? Name { get; set; }
 

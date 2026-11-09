@@ -12,16 +12,13 @@ public class HttpClientsSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var generatedMethods = context.FindGeneratedSymbols(outputType: TargetIds.Http_Clients);
+        var targets = context.FindGeneratedTargets(outputType: TargetIds.Http_Clients);
 
-        var addServicesModel = generatedMethods
-                .Combine(context.CompilationProvider)
-                .Select(static (parameters, _) =>
-                {
-                    var (methodSymbol, compilation) = parameters;
-                    return HttpModelFactory.Create(methodSymbol, compilation, "ClientParameters");
-                });
+        var models = context.GatherInScope(targets, static type => HttpModelFactory.Inspect(type, "ClientParameters"))
+            .Combine(context.FindMetadataTemplate())
+            .Select(static (pair, _) => HttpModelFactory.Create(pair.Left, pair.Right))
+            .WithTrackingName("Model");
 
-        context.RegisterSourceOutput(addServicesModel, HttpModelRenderer.RenderClients);
+        context.RegisterSourceOutput(models, HttpModelRenderer.RenderClients);
     }
 }

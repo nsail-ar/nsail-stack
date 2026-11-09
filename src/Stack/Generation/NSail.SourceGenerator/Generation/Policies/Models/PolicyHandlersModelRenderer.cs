@@ -12,7 +12,7 @@ public static class PolicyHandlersModelRenderer
     {
         foreach (var diagnostic in model.HolderDiagnostics)
         {
-            spc.ReportDiagnostic(diagnostic);
+            diagnostic.Report(spc);
         }
 
         if (model.Unusable)

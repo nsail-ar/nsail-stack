@@ -29,14 +29,14 @@ public static class QueueModelRenderer
     {
         foreach (var diagnostic in model.HolderDiagnostics)
         {
-            spc.ReportDiagnostic(diagnostic);
+            diagnostic.Report(spc);
         }
 
         if (reportDiagnostics)
         {
             foreach (var diagnostic in model.Diagnostics)
             {
-                spc.ReportDiagnostic(diagnostic);
+                diagnostic.Report(spc);
             }
         }
 

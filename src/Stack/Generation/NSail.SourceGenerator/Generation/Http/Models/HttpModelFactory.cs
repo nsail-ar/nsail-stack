@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -10,6 +10,10 @@ using System.Text.RegularExpressions;
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
 
+/// <summary>One message as one type contributes it: the model, the findings it drew, and the
+/// key that keeps a message declared twice — itself and its handler — from being written twice.</summary>
+public sealed record HttpFragment(string Key, MessageModel? Message, EquatableList<DiagnosticInfo> Diagnostics, string RouteKey, DiagnosticInfo? AtAttribute);
+
 public static class HttpModelFactory
 {
     const string HttpAttributeName = $"NSail.Messaging.Annotations.HttpAttribute";
@@ -19,111 +23,142 @@ public static class HttpModelFactory
     const string IMessageInterfaceName = "IMessage";
     const string IHandlerInterfaceName = "IHandler";
     const string JsonIgnoreAttributeName = "System.Text.Json.Serialization.JsonIgnoreAttribute";
-
-    public static HttpModel Create(IMethodSymbol methodSymbol, Compilation compilation, string paramNamespace)
+    public static HttpModel Create(Scoped<EquatableList<HttpFragment>> scoped, string? metadataTemplate)
     {
+        var target = scoped.Target;
+        var serviceEndpoint = GetServiceEndpoint(target.Namespace, target.ClassName, metadataTemplate);
+
         var model = new HttpModel
         {
-            Namespace = methodSymbol.ContainingType.ContainingNamespace.ToDisplayString(),
-            ClassName = methodSymbol.ContainingType.Name,
-            MethodName = methodSymbol.Name,
-            ClassDeclaration = methodSymbol.ContainingType.GetDeclaration(),
-            MethodDeclaration = methodSymbol.GetDeclaration(),
+            Namespace = target.Namespace,
+            ClassName = target.ClassName,
+            MethodName = target.MethodName,
+            ClassDeclaration = target.ClassDeclaration,
+            MethodDeclaration = target.MethodDeclaration,
+            ServiceEndpoint = serviceEndpoint
         };
 
-        model.ReadHolder(methodSymbol);
+        model.ReadHolder(target);
 
         if (model.Unusable)
+        {
             return model;
+        }
 
-        var serviceEndpoint = GetServiceEndpoint(methodSymbol, compilation);
+        model.HolderDiagnostics.AddRange(scoped.Diagnostics);
 
-        model.ServiceEndpoint = serviceEndpoint;
-        model.Messages = CreateMessages(methodSymbol, serviceEndpoint, compilation, paramNamespace, model.Diagnostics, model.HolderDiagnostics);
+        var processed = new HashSet<string>(StringComparer.Ordinal);
+        var claimedRoutes = new Dictionary<string, MessageModel>(StringComparer.Ordinal);
+
+        foreach (var fragments in scoped.Fragments)
+        {
+            foreach (var fragment in fragments)
+            {
+                if (!processed.Add(fragment.Key))
+                    continue;
+
+                model.Diagnostics.AddRange(fragment.Diagnostics);
+
+                if (fragment.Message is not { } message)
+                {
+                    continue;
+                }
+
+                if (claimedRoutes.TryGetValue(fragment.RouteKey, out var claimant))
+                {
+                    model.Diagnostics.Add(fragment.AtAttribute! with
+                    {
+                        Arguments = new EquatableList<string>([message.MessageType.DisplayName, claimant.MessageType.DisplayName, message.HttpMethod.ToString().ToUpperInvariant(), message.Path])
+                    });
+                }
+                else
+                {
+                    claimedRoutes.Add(fragment.RouteKey, message);
+                }
+
+                model.Messages.Add(message with { ServiceEndpoint = serviceEndpoint });
+            }
+        }
 
         return model;
     }
 
-    public static List<MessageModel> CreateMessages(
-        IMethodSymbol methodSymbol,
-        string? serviceEndpoint,
-        Compilation compilation,
-        string paramNamespace,
-        List<Diagnostic> diagnostics,
-        List<Diagnostic>? scopeDiagnostics = null)
+    /// <summary>The whole reading for a caller that holds the compilation — the TypeScript
+    /// generator reads the Sdk the way the C# client is rendered from it.</summary>
+    public static HttpModel Create(IMethodSymbol methodSymbol, Compilation compilation, string paramNamespace)
     {
-        var messages = new List<MessageModel>();
-        var processedMessageTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
-        var claimedRoutes = new Dictionary<string, INamedTypeSymbol>();
+        var fragments = new EquatableList<EquatableList<HttpFragment>>();
+        var diagnostics = new List<DiagnosticInfo>();
 
-        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol, scopeDiagnostics ?? diagnostics))
+        foreach (var type in compilation.FindTypesInScope(methodSymbol, diagnostics))
         {
-            foreach (var (messageTypeSymbol, httpAttribute) in GetHttpMessages(typeSymbol))
+            if (Inspect(type, paramNamespace) is { } found)
             {
-                if (!processedMessageTypes.Add(messageTypeSymbol))
-                    continue;
-
-                if (httpAttribute.ConstructorArguments.Length < 2
-                    || httpAttribute.ConstructorArguments[1].Value is not string httpPath)
-                {
-                    diagnostics.Add(Diagnostic.Create(
-                        GeneratorDiagnostics.HttpWithoutPath,
-                        GetAttributeLocation(httpAttribute, messageTypeSymbol),
-                        messageTypeSymbol.ToDisplayString()));
-                    continue;
-                }
-
-                var httpMethod = httpAttribute.GetConstructorValue<HttpMethodName>(0);
-
-                CheckThrottledIdentity(messageTypeSymbol, httpMethod, httpPath, diagnostics);
-
-                var bindings = CreateBindings(messageTypeSymbol, httpMethod, httpPath, paramNamespace);
-
-                foreach (var header in bindings.Where(b => b.BindingSource == BindingSource.Header && b.IsCollection))
-                {
-                    diagnostics.Add(Diagnostic.Create(
-                        GeneratorDiagnostics.CollectionHeader,
-                        GetAttributeLocation(httpAttribute, messageTypeSymbol),
-                        messageTypeSymbol.ToDisplayString(),
-                        header.PropertyName));
-                }
-
-                var message = new MessageModel
-                {
-                    MessageType = new TypeModel(messageTypeSymbol),
-                    HttpMethod = httpMethod,
-                    Path = httpPath,
-                    ReturnType = GetReturnType(messageTypeSymbol),
-                    Bindings = bindings,
-                    Route = CreateRoute(httpPath, bindings, messageTypeSymbol, httpAttribute, diagnostics),
-                    ServiceEndpoint = serviceEndpoint
-                };
-
-                var routeKey = $"{httpMethod} {NormalizePath(httpPath)}";
-
-                if (claimedRoutes.TryGetValue(routeKey, out var claimant))
-                {
-                    diagnostics.Add(Diagnostic.Create(
-                        GeneratorDiagnostics.DuplicateRoute,
-                        GetAttributeLocation(httpAttribute, messageTypeSymbol),
-                        messageTypeSymbol.ToDisplayString(),
-                        claimant.ToDisplayString(),
-                        httpMethod.ToString().ToUpperInvariant(),
-                        httpPath));
-                }
-                else
-                {
-                    claimedRoutes.Add(routeKey, messageTypeSymbol);
-                }
-
-                messages.Add(message);
+                fragments.Add(found);
             }
         }
 
-        return messages;
+        var scoped = new Scoped<EquatableList<HttpFragment>>(GeneratedSyntaxExtensions.ToTarget(methodSymbol), fragments, new EquatableList<DiagnosticInfo>(diagnostics));
+
+        return Create(scoped, MetadataTemplate.GetDeclaredTemplate(compilation));
     }
 
-    static void CheckThrottledIdentity(INamedTypeSymbol messageTypeSymbol, HttpMethodName httpMethod, string httpPath, List<Diagnostic> diagnostics)
+    /// <summary>The messages one type puts on the wire: itself when it carries [Http], or the
+    /// messages of the handlers it implements.</summary>
+    public static EquatableList<HttpFragment>? Inspect(INamedTypeSymbol typeSymbol, string paramNamespace)
+    {
+        var fragments = new EquatableList<HttpFragment>();
+
+        foreach (var (messageTypeSymbol, httpAttribute) in GetHttpMessages(typeSymbol))
+        {
+            var diagnostics = new EquatableList<DiagnosticInfo>();
+            var key = messageTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            if (httpAttribute.ConstructorArguments.Length < 2
+                || httpAttribute.ConstructorArguments[1].Value is not string httpPath)
+            {
+                diagnostics.Add(DiagnosticInfo.Create(
+                    GeneratorDiagnostics.HttpWithoutPath,
+                    GetAttributeLocation(httpAttribute, messageTypeSymbol),
+                    messageTypeSymbol.ToDisplayString()));
+                fragments.Add(new HttpFragment(key, null, diagnostics, string.Empty, null));
+                continue;
+            }
+
+            var httpMethod = httpAttribute.GetConstructorValue<HttpMethodName>(0);
+
+            CheckThrottledIdentity(messageTypeSymbol, httpMethod, httpPath, diagnostics);
+
+            var bindings = CreateBindings(messageTypeSymbol, httpMethod, httpPath, paramNamespace);
+
+            foreach (var header in bindings.Where(b => b.BindingSource == BindingSource.Header && b.IsCollection))
+            {
+                diagnostics.Add(DiagnosticInfo.Create(
+                    GeneratorDiagnostics.CollectionHeader,
+                    GetAttributeLocation(httpAttribute, messageTypeSymbol),
+                    messageTypeSymbol.ToDisplayString(),
+                    header.PropertyName));
+            }
+
+            var message = new MessageModel
+            {
+                MessageType = new TypeModel(messageTypeSymbol),
+                HttpMethod = httpMethod,
+                Path = httpPath,
+                ReturnType = GetReturnType(messageTypeSymbol),
+                Bindings = bindings,
+                Route = CreateRoute(httpPath, bindings, messageTypeSymbol, httpAttribute, diagnostics)
+            };
+
+            var duplicate = DiagnosticInfo.Create(GeneratorDiagnostics.DuplicateRoute, GetAttributeLocation(httpAttribute, messageTypeSymbol));
+
+            fragments.Add(new HttpFragment(key, message, diagnostics, $"{httpMethod} {NormalizePath(httpPath)}", duplicate));
+        }
+
+        return fragments.Count > 0 ? fragments : null;
+    }
+
+    static void CheckThrottledIdentity(INamedTypeSymbol messageTypeSymbol, HttpMethodName httpMethod, string httpPath, List<DiagnosticInfo> diagnostics)
     {
         var throttled = messageTypeSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == "NSail.Messaging.Annotations.ThrottledAttribute");
@@ -142,7 +177,7 @@ public static class HttpModelFactory
                     && !p.GetAttributes().Any(a => a.AttributeClass?.Name == "JsonPropertyNameAttribute")
                     && GetBindingSource(p, httpMethod, GetPropertiesFromPath(httpPath)) == BindingSource.Body))
             {
-                diagnostics.Add(Diagnostic.Create(
+                diagnostics.Add(DiagnosticInfo.Create(
                     GeneratorDiagnostics.ThrottledIdentityNotFound,
                     GetAttributeLocation(throttled, messageTypeSymbol),
                     messageTypeSymbol.ToDisplayString(),
@@ -178,10 +213,10 @@ public static class HttpModelFactory
         }
     }
 
-    static List<BindingModel> CreateBindings(INamedTypeSymbol typeSymbol, HttpMethodName httpMethod, string httpPath, string paramNamespace)
+    static EquatableList<BindingModel> CreateBindings(INamedTypeSymbol typeSymbol, HttpMethodName httpMethod, string httpPath, string paramNamespace)
     {
         var bindingTable = new Dictionary<BindingSource, BindingModel>();
-        var bindings = new List<BindingModel>();
+        var bindings = new EquatableList<BindingModel>();
 
         var pathTokens = GetPropertiesFromPath(httpPath);
 
@@ -436,7 +471,7 @@ public static class HttpModelFactory
         IEnumerable<BindingModel> bindings,
         INamedTypeSymbol messageTypeSymbol,
         AttributeData httpAttribute,
-        List<Diagnostic> diagnostics)
+        List<DiagnosticInfo> diagnostics)
     {
         var route = new RouteModel();
 
@@ -463,7 +498,7 @@ public static class HttpModelFactory
 
             if (!IsWholeToken(segment))
             {
-                diagnostics.Add(Diagnostic.Create(
+                diagnostics.Add(DiagnosticInfo.Create(
                     GeneratorDiagnostics.MixedRouteSegment,
                     GetAttributeLocation(httpAttribute, messageTypeSymbol),
                     path,
@@ -485,7 +520,7 @@ public static class HttpModelFactory
             }
             else
             {
-                diagnostics.Add(Diagnostic.Create(
+                diagnostics.Add(DiagnosticInfo.Create(
                     GeneratorDiagnostics.UnboundRouteToken,
                     GetAttributeLocation(httpAttribute, messageTypeSymbol),
                     path,
@@ -498,7 +533,7 @@ public static class HttpModelFactory
 
         foreach (var orphan in bindings.Where(b => b.BindingSource == BindingSource.Route && !tokens.Contains(b.Name)))
         {
-            diagnostics.Add(Diagnostic.Create(
+            diagnostics.Add(DiagnosticInfo.Create(
                 GeneratorDiagnostics.RouteMemberWithoutToken,
                 GetAttributeLocation(httpAttribute, messageTypeSymbol),
                 messageTypeSymbol.ToDisplayString(),
@@ -607,14 +642,11 @@ public static class HttpModelFactory
     // the setup class names the HttpClient and its "HttpClients:{Area}" config section.
     // An [assembly: MetadataTemplate] in the compilation redefines the shape; an invalid
     // template falls back to the default here — the runtime provider surfaces the error.
-    public static string GetServiceEndpoint(this IMethodSymbol methodSymbol, Compilation compilation)
+    public static string GetServiceEndpoint(string @namespace, string className, string? declaredTemplate)
     {
-        var containingType = methodSymbol.ContainingType;
-        var declaredTemplate = MetadataTemplate.GetDeclaredTemplate(compilation);
-
         if (declaredTemplate is not null)
         {
-            var fullName = $"{containingType.ContainingNamespace.ToDisplayString()}.{containingType.Name}";
+            var fullName = $"{@namespace}.{className}";
             var area = MetadataTemplate.GetArea(fullName, declaredTemplate);
 
             if (area is not null)
@@ -623,9 +655,7 @@ public static class HttpModelFactory
             }
         }
 
-        var parts = containingType.ContainingNamespace
-            .ToDisplayString()
-            .Split('.');
+        var parts = @namespace.Split('.');
 
         return parts.Length > 1 ? parts[1] : parts[0];
     }

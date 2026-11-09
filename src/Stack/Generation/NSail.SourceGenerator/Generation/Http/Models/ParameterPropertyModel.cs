@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
 
-public class ParameterPropertyModel
+public record ParameterPropertyModel
 {
     public string PropertyName { get; set; } = string.Empty;
 

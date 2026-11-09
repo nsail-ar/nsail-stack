@@ -341,6 +341,36 @@ Use when registration must pull types from a referenced assembly.
 
 ---
 
+## Incremental pipelines
+
+An edit must not re-read the project. A generator's pipeline holds only value-equal data:
+
+- **Models are records of equatable data** — names, declarations, spans, arguments; lists are
+  `EquatableList<T>`. A model never holds a symbol, a `Diagnostic` or a `Location`: findings
+  travel as `DiagnosticInfo` (descriptor, tree, span, arguments) and become diagnostics in the
+  renderer.
+- **The holder comes from the attribute provider** (`FindGeneratedTargets`), and the types in
+  scope are inspected from their own declarations (`GatherInScope`), so an edit re-reads the
+  types of the edited file only.
+- **A step reads the compilation in two cases only**: a holder with `[Source]`, whose scopes are
+  referenced assemblies reachable no other way, and the mapper emission, which walks the types
+  reachable from the declarations. Either step's output is an equatable model, so nothing after
+  it reruns.
+- **Mappers** emit inside a pipeline step and register only the text and findings; the entities
+  the store's model declares (`Entity<T>()`, `DbSet<T>`) are gathered from the syntax.
+- **Caching skips work, never changes the result**: an edit to a fact another file's type reads
+  (a base class in `A.cs` under a `[Pushed]` or `[MapFrom]` type in `B.cs`) regenerates `B`'s
+  output on that edit.
+- **A finding is reported inside its file's tree**, so the compiler applies that file's
+  `#pragma warning` and `.editorconfig` severity to it as it does to its own warnings. The tree
+  compares by reference: an unedited file keeps its tree and the finding stays equal; a location
+  rebuilt from a path is outside every tree, and neither reaches it.
+- **A new generator owes the proof**: `IncrementalityTests` runs it twice over an unrelated edit
+  and every step but the compiler's own inputs, and every output, must be `Cached` or
+  `Unchanged`.
+
+---
+
 ## What gets generated
 
 - **Endpoints** — for each `[Http]` message with a matching `[Injectable]` handler, an

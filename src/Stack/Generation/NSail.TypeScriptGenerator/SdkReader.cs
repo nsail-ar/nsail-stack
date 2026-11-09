@@ -55,7 +55,7 @@ static class SdkReader
         {
             var model = HttpModelFactory.Create(holder, compilation, "ClientParameters");
 
-            if (model.HolderDiagnostics.Concat(model.Diagnostics).FirstOrDefault(d => d.Severity == DiagnosticSeverity.Error) is { } error)
+            if (model.HolderDiagnostics.Concat(model.Diagnostics).Select(d => d.ToDiagnostic()).FirstOrDefault(d => d.Severity == DiagnosticSeverity.Error) is { } error)
             {
                 throw new SdkReadException($"{error.Id}: {error.GetMessage(CultureInfo.InvariantCulture)}");
             }
