@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using NSail.SourceGenerator.Generation;
 using NSail.SourceGenerator.Roslyn;
 using System.Linq;
@@ -17,6 +18,7 @@ public static class HttpModelFactory
     const string AsQueryAttributeName = $"NSail.Messaging.Annotations.AsQueryAttribute";
     const string IMessageInterfaceName = "IMessage";
     const string IHandlerInterfaceName = "IHandler";
+    const string JsonIgnoreAttributeName = "System.Text.Json.Serialization.JsonIgnoreAttribute";
     const string ServiceCollectionType = "IServiceCollection";
 
     public static HttpModel Create(IMethodSymbol methodSymbol, Compilation compilation, string paramNamespace)
@@ -144,7 +146,7 @@ public static class HttpModelFactory
 
         var pathTokens = GetPropertiesFromPath(httpPath);
 
-        foreach (var propSymbol in typeSymbol.GetAllMembers().OfType<IPropertySymbol>())
+        foreach (var propSymbol in GetBoundProperties(typeSymbol))
         {
             var source = GetBindingSource(propSymbol, httpMethod, pathTokens);
 
@@ -162,7 +164,8 @@ public static class HttpModelFactory
 
                         binding = new BindingModel
                         {
-                            Name = source.ToString().ToLower(),
+                            Name = source.ToString().ToLowerInvariant(),
+                            ParameterName = source.ToString().ToLowerInvariant(),
                             Type = dto.Declaration,
                             BindingSource = source,
                             Dto = dto
@@ -184,6 +187,76 @@ public static class HttpModelFactory
         return bindings;
     }
 
+    // What the message carries on the wire: public instance properties a caller can set, read
+    // once as the most derived. A get-only, static, indexer or ignored member has no place in
+    // the model — the entry could not assign it.
+    static IEnumerable<IPropertySymbol> GetBoundProperties(INamedTypeSymbol typeSymbol)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var property in typeSymbol.GetAllMembers().OfType<IPropertySymbol>())
+        {
+            if (property.IsStatic
+                || property.IsIndexer
+                || property.DeclaredAccessibility != Accessibility.Public
+                || property.SetMethod is not { DeclaredAccessibility: Accessibility.Public }
+                || IsIgnored(property)
+                || !seen.Add(property.Name))
+            {
+                continue;
+            }
+
+            yield return property;
+        }
+    }
+
+    static bool IsIgnored(IPropertySymbol property)
+    {
+        var ignore = property.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == JsonIgnoreAttributeName);
+
+        if (ignore is null)
+        {
+            return false;
+        }
+
+        // [JsonIgnore] with no Condition means Always; any other condition still serializes.
+        var condition = ignore.NamedArguments.FirstOrDefault(a => a.Key == "Condition").Value;
+
+        return condition.Value is null or 1;
+    }
+
+    static readonly HashSet<string> LambdaLocals = new(StringComparer.Ordinal)
+    {
+        "message", "pipeline", "result", "body", "form"
+    };
+
+    // The wire name stays the lowered property name; the identifier is what the lambda can
+    // declare: a keyword is escaped, a local of the lambda is prefixed and the attribute
+    // pins the wire name.
+    static void SetParameterName(BindingModel binding)
+    {
+        var name = binding.Name;
+
+        if (SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None)
+        {
+            binding.ParameterName = "@" + name;
+        }
+        else if (LambdaLocals.Contains(name))
+        {
+            binding.ParameterName = "p_" + name;
+            binding.NameArgument = $"(Name = \"{name}\")";
+        }
+        else
+        {
+            binding.ParameterName = name;
+        }
+
+        if (binding.ValueAccess.Length > 0 && binding.ValueAccess.StartsWith(name, StringComparison.Ordinal))
+        {
+            binding.ValueAccess = binding.ParameterName + binding.ValueAccess.Substring(name.Length);
+        }
+    }
+
     // A property the message declares with a default is optional on the wire too: the
     // parameter is widened to carry "absent", and an absent one is never assigned, so the
     // message's own declaration supplies the value. The initializer expression itself is
@@ -191,7 +264,16 @@ public static class HttpModelFactory
     // carry no syntax — which is why the default is left to the message rather than copied.
     static BindingModel CreateParameterBinding(IPropertySymbol propSymbol, BindingSource source)
     {
-        var name = propSymbol.Name.ToLower();
+        var binding = CreateParameterBindingCore(propSymbol, source);
+
+        SetParameterName(binding);
+
+        return binding;
+    }
+
+    static BindingModel CreateParameterBindingCore(IPropertySymbol propSymbol, BindingSource source)
+    {
+        var name = propSymbol.Name.ToLowerInvariant();
         var type = propSymbol.Type;
         var optional = !propSymbol.IsRequired
             && (source == BindingSource.Query || source == BindingSource.Header);
@@ -212,7 +294,7 @@ public static class HttpModelFactory
             };
         }
 
-        if (optional && IsAlreadyOptional(type))
+        if (optional && (IsAlreadyOptional(type) || type.IsReferenceType))
         {
             return new BindingModel
             {
@@ -324,7 +406,7 @@ public static class HttpModelFactory
 
         var binding = bindings
                 .Where(b => b.BindingSource == BindingSource.Route)
-                .ToDictionary(b => b.Name.ToLower());
+                .ToDictionary(b => b.Name.ToLowerInvariant());
 
         var segments = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
 
@@ -333,7 +415,7 @@ public static class HttpModelFactory
             if (segment.StartsWith("{", StringComparison.Ordinal) && segment.EndsWith("}", StringComparison.Ordinal))
             {
                 var token = segment.Substring(1, segment.Length - 2);
-                var parameterName = token.ToLower();
+                var parameterName = token.ToLowerInvariant();
 
                 if (binding.TryGetValue(parameterName, out BindingModel? bindingModel))
                 {
@@ -406,7 +488,7 @@ public static class HttpModelFactory
             {
                 if (match.Groups.Count > 1)
                 {
-                    pathTokens.Add(match.Groups[1].Value.ToLower());
+                    pathTokens.Add(match.Groups[1].Value.ToLowerInvariant());
                 }
             }
         }
@@ -453,7 +535,7 @@ public static class HttpModelFactory
             _ => BindingSource.Body
         };
 
-        if (tokens.Contains(property.Name.ToLower()))
+        if (tokens.Contains(property.Name.ToLowerInvariant()))
         {
             result = BindingSource.Route;
         }
