@@ -82,7 +82,7 @@ public class DevJobRunTests : IDisposable
 
         public virtual Task<string> Login(CancellationToken ct = default)
         {
-            throw new NotSupportedException();
+            return Task.FromResult("harness");
         }
 
         public Task<IReadOnlyList<string>> Files(int pr, CancellationToken ct = default)

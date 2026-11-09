@@ -51,12 +51,11 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
             var dir = await ctx.Workspace.Prepare(slot);
             var outDir = Path.Combine(dir, Out);
             Directory.CreateDirectory(outDir);
-            await File.WriteAllTextAsync(Path.Combine(outDir, "original.md"), $"# {title}\n\n{body}", ct);
-            var thread = (await board.Comments(n, ct)).Select(c => $"--- {c.Author} {c.At:O}\n{c.Body}");
-            await File.WriteAllTextAsync(Path.Combine(outDir, "thread.md"), string.Join('\n', thread), ct);
+            await File.WriteAllTextAsync(Path.Combine(outDir, "original.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), title, labels, body)}\n\n{StoryDossier.Filed(body, labels)}", ct);
+            var dossier = new StoryDossier(ctx, history);
+            await File.WriteAllTextAsync(Path.Combine(outDir, "thread.md"), StoryDossier.Thread(await board.Comments(n, ct), await dossier.Trusted(ct)), ct);
             await File.WriteAllTextAsync(Path.Combine(outDir, "labels-known.txt"), string.Join(' ', await KnownLabels(ct)), ct);
             if (stalled) await File.WriteAllTextAsync(Path.Combine(outDir, "stalled.txt"), "stalled", ct);
-            var dossier = new StoryDossier(ctx, history);
             await dossier.WritePrs(n, outDir, ct);
             if (stalled) await dossier.WriteRuns(n, outDir, ct);
 
