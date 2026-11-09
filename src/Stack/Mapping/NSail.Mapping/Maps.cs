@@ -42,13 +42,9 @@ public static class Maps
         throw Invalid(field);
     }
 
-    static NSail.Problems.BusinessException Invalid(string field)
+    static Exception Invalid(string field)
     {
-        return NSail.Problems.InputProblem.InvalidModel(new NSail.Problems.Issue(
-            code: "InvalidFormat",
-            message: $"The field {field} has an invalid format",
-            source: field.Length == 0 ? null : field,
-            arguments: new Dictionary<string, string> { ["field"] = field }));
+        return NSail.Problems.InputProblem.For<object>().InvalidFormat(field);
     }
 
     /// <summary>A new list of mapped items, in the source's order; null for no source. A list of

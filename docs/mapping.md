@@ -138,9 +138,9 @@ wants them refused raises them in its `.editorconfig` or `WarningsAsErrors`.
 ## The compiler as reviewer
 
 A mapping that cannot work does not build: a member with no conversion (`NSG006`), a
-`[MapFrom]` that reads a nullable into a non-nullable member, a key apart (`NSG025`: nothing says
-what "no value" becomes; a `[MapTo]` row reads it as the default, which a query provider
-translates), a target with no parameterless constructor (`NSG007`), a projection that cannot
+`[MapFrom]` that reads a nullable value into a non-nullable member, a key apart (`NSG025`:
+nothing says what "no value" becomes; a `[MapTo]` row reads it as the default, which a query
+provider translates, and a null or empty text reads the target's default), a target with no parameterless constructor (`NSG007`), a projection that cannot
 carry a derived type (`NSG009`), an organization field mapped by name alone (`NSG004`) — the last
 because writing an `OrganizationId` is a permission question and has to be said out loud.
 

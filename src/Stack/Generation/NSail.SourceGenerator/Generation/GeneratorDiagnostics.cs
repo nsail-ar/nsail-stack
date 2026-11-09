@@ -234,5 +234,5 @@ public static class GeneratorDiagnostics
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Writing the type's default for \"no value\" would turn an absent amount into zero without a word; a key is exempt, where no value is the id still to be made.");
+        description: "Writing the type's default for \"no value\" would turn an absent amount into zero without a word; a key is exempt, where no value is the id still to be made. A text source is not a nullable value: a null or empty string reads the target's default.");
 }

@@ -50,8 +50,18 @@ public sealed class MapPrimitive
         Assert.Equal("InvalidModel", number.Code);
         Assert.Equal("InvalidFormat", Assert.Single(number.Issues).Code);
         Assert.Equal("Number", Assert.Single(number.Issues).Source);
+        Assert.Equal("Number", Assert.Single(number.Issues).Arguments!["field"]);
 
         Assert.Throws<NSail.Problems.BusinessException>(() => Mappings.Map(new Strings { Flag = "maybe" }, new Values()));
+    }
+
+    [Fact]
+    public void map_unparsable_text_is_sourced_at_the_field_sent()
+    {
+        var problem = Assert.Throws<NSail.Problems.BusinessException>(() => Mappings.Map(new Strings { Quantity = "abc" }, new Values()));
+        var issue = Assert.Single(problem.Issues);
+        Assert.Equal("Quantity", issue.Source);
+        Assert.Equal("Quantity", issue.Arguments!["field"]);
     }
 
     [Fact]
@@ -77,6 +87,8 @@ public sealed class MapPrimitive
         public string? Text { get; set; }
 
         public string? Flag { get; set; }
+
+        public string? Quantity { get; set; }
     }
 
     [MapFrom(typeof(Strings))]
@@ -87,6 +99,9 @@ public sealed class MapPrimitive
         public string? Text { get; set; }
 
         public bool Flag { get; set; }
+
+        [MapFrom(typeof(Strings), nameof(Strings.Quantity))]
+        public int Count { get; set; }
     }
 
     public sealed class Nullables
