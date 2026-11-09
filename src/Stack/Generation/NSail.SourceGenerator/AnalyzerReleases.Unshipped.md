@@ -28,3 +28,4 @@ NSG020 | NSail.Generation | Error | [Source] names an assembly the compilation d
 NSG021 | NSail.Generation | Error | A generated holder is nested, generic, not a partial class or in the global namespace.
 NSG022 | NSail.Generation | Error | A generated holder has no IServiceCollection parameter.
 NSG023 | NSail.Generation | Error | An [Http] message declares no path.
+NSG024 | NSail.Generation | Error | A header-bound member is a collection.

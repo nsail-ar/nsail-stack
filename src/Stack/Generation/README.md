@@ -107,6 +107,7 @@ not a silent skip.
 | `NSG021` | Error | A `[Generated]` holder's class is nested, generic, not `partial` or in the global namespace |
 | `NSG022` | Error | A `[Generated]` holder has no `IServiceCollection` parameter |
 | `NSG023` | Error | An `[Http]` message declares no path |
+| `NSG024` | Error | A header-bound member (`[AsHeader]`) is a collection |
 | `NSG004`-`NSG013` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
 
 ### TypeScript client
@@ -142,6 +143,9 @@ var compilation = new CompilationUnitBuilder()
 GeneratorDriver driver = CSharpGeneratorDriver.Create(new ServiceRegistrationSourceGenerator());
 driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics);
 ```
+
+`AddFrameworkReferences` references every assembly the test host can load, not only those already
+loaded, so whether `output` compiles does not depend on which tests ran first.
 
 ## How it fits
 
