@@ -40,7 +40,9 @@ the files it leaves.
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
     seed projects (a non-Markdown change outside them builds it all), the `Everything` files that build it all (by default solutions, `global.json`, props, targets, `nuget.config`, `.editorconfig`, `Directory.Build.rsp`, `*.globalconfig`), the `Tests` and their `TestFilter`): the
     gate builds and tests what a change affects through the solution's ProjectReference graph (a PR
-    red only where main's own gate is red waits for main to move: no round owes it; a gate that broke on infrastructure — git, the provider, the disk — writes
+    red only where main's own gate is red waits for main to move: no round owes it — and a PR the
+    gate does not judge (another repository's, or any with no Verify worker) whose red CI failed only
+    tests or build errors main's newest completed CI run failed too waits the same way, read again each pass; a gate that broke on infrastructure — git, the provider, the disk — writes
     no verdict and no status, only an unmarked comment, and the head is gated again after the backoff; a malformed project or a
     missing solution in the PR is its red), and a
     Release's `Suite` (a test project, `{Product}` its name) runs there — no script. Another repository
@@ -151,7 +153,10 @@ the files it leaves.
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   The dossier a seat reads lays a comment or PR note by any other login fenced and labelled untrusted; the
   logins whose words reach it as the crew's are the harness's own, `Harness:MarkerAuthors` and `Harness:TrustedAuthors`
-  (the owners and the crew, empty by default). A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
+  (the owners and the crew, empty by default). Under an open PR it says why its head is not green where no
+  gate verdict does: the head does not merge with the default branch, or the CI that runs outside the harness is
+  red there — its failed jobs and steps, failed tests (else build errors) and the last 40 lines of the first three
+  failed steps' logs, fenced as data. A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
   watch files it in Analyze, never Ready.
   Every harness on the board reads the same: main's `harness/gate` mark written `pending` holds that head from
   a second gate on any harness for twice the longest `Minutes` among that harness's own Main
