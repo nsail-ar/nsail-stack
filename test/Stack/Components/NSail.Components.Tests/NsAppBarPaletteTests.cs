@@ -46,6 +46,18 @@ public sealed class NsAppBarPaletteTests : BunitContext, IAsyncLifetime
         Assert.Contains("mud-appbar", header.ClassName, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void TheMenuButtonIsNamedForAssistiveTechnology()
+    {
+        var surface = Setup();
+
+        var cut = Render<NsAppBar>(p => p
+            .AddCascadingValue(new NsLayoutState())
+            .AddCascadingValue(surface));
+
+        Assert.Equal("Menú", cut.Find("header button").GetAttribute("aria-label"));
+    }
+
     SurfaceContext Setup()
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
@@ -53,6 +65,7 @@ public sealed class NsAppBarPaletteTests : BunitContext, IAsyncLifetime
         Services.AddSingleton(new StringCatalog([new FixedStrings(new Dictionary<string, string>
         {
             ["Common.Loading"] = "Cargando",
+            ["Common.Menu"] = "Menú",
         })]));
         Services.AddSingleton<LanguageProvider>();
         Services.AddSingleton<MetadataProvider>();

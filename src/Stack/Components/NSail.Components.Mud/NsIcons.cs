@@ -23,6 +23,10 @@ public static class NsIcons
     public static readonly Glyph Search =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="M765-144 526-383q-30 22-65.79 34.5-35.79 12.5-76.18 12.5Q284-336 214-406t-70-170q0-100 70-170t170-70q100 0 170 70t70 170.03q0 40.39-12.5 76.18Q599-464 577-434l239 239-51 51ZM384-408q70 0 119-49t49-119q0-70-49-119t-119-49q-70 0-119 49t-49 119q0 70 49 119t119 49Z"/></g>""");
 
+    /// <summary>Material Symbols <c>menu</c>.</summary>
+    public static readonly Glyph Menu =
+        new("""<g transform="translate(0,24) scale(0.025)"><path d="M120-240v-72h720v72H120Zm0-204v-72h720v72H120Zm0-204v-72h720v72H120Z"/></g>""");
+
     /// <summary>Material Symbols <c>add</c>.</summary>
     public static readonly Glyph Add =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="M444-444H240v-72h204v-204h72v204h204v72H516v204h-72v-204Z"/></g>""");

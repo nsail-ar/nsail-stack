@@ -13,7 +13,7 @@ namespace NSail.Components;
 /// define is reported as not found, so MudBlazor falls back to its built-in resource.
 /// <para>Mud texts take <b>positional</b> placeholders ("{0}-{1} of {2}"), not the named ones
 /// NSail strings use: MudBlazor runs them through string.Format, which throws on a name.</para></summary>
-public sealed class NsMudLocalizer(StringManager strings) : MudLocalizer
+internal sealed class NsMudLocalizer(StringManager strings) : MudLocalizer
 {
     public override LocalizedString this[string key]
     {
