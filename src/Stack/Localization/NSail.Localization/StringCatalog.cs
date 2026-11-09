@@ -7,13 +7,15 @@ namespace NSail.Localization;
 
 /// <summary>Holds one merged dictionary per supported language for the whole process, built from
 /// the registered IStringSources on first use. A language the install does not carry answers the
-/// default's dictionary, so the cache is bounded by the supported set whatever the caller passes.
+/// default's dictionary, so the cache is bounded by the supported set whatever the caller passes;
+/// that set is fixed at first use, as request localization is configured once.
 /// GetAsync awaits the sources; Get serves the cache and builds only from sources that complete
 /// synchronously, so it never blocks on a pending task.</summary>
 public sealed class StringCatalog
 {
     readonly IEnumerable<IStringSource> _sources;
     readonly LanguageOptions _options;
+    readonly Lazy<IReadOnlyCollection<string>> _supported;
     readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, string>> _languages = new();
 
     public StringCatalog(IEnumerable<IStringSource> sources, LanguageOptions? options = null)
@@ -22,6 +24,7 @@ public sealed class StringCatalog
 
         _sources = sources;
         _options = options ?? new LanguageOptions();
+        _supported = new Lazy<IReadOnlyCollection<string>>(() => Languages.Supported(_sources, _options).ToArray());
     }
 
     public async Task<IReadOnlyDictionary<string, string>> GetAsync(string language)
@@ -80,9 +83,7 @@ public sealed class StringCatalog
 
     string Resolve(string language)
     {
-        var supported = Languages.Supported(_sources, _options);
-
-        return supported.FirstOrDefault(l => string.Equals(l, language, StringComparison.OrdinalIgnoreCase))
+        return _supported.Value.FirstOrDefault(l => string.Equals(l, language, StringComparison.OrdinalIgnoreCase))
             ?? _options.Default;
     }
 }

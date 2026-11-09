@@ -464,7 +464,7 @@ Three things are not in any source's `Languages` and are declared instead:
   offers `[es]`; a practice that attends in two languages says so.
 
 Two derivations in `NSail.Localization` read them. **`Languages.Supported`** (called by the
-middleware and `GetLanguageSettings`) is every language the catalogs can render, English
+middleware, `GetLanguageSettings` and `StringCatalog`) is every language the catalogs can render, English
 included *by construction* (`Base` is `en`); it is the settings picker's list and what a
 forced choice is validated against. **`Languages.Offered`** (middleware only) is the
 narrower one, and the only one a browser is resolved against — conflating them served

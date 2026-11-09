@@ -8,20 +8,13 @@ using NSail.Messaging;
 namespace NSail.Sample.Strings;
 
 [Injectable]
-public sealed class StringsHandler : IHandler<GetStrings, Dictionary<string, string>>
+public sealed class StringsHandler(StringCatalog catalog) : IHandler<GetStrings, Dictionary<string, string>>
 {
-    readonly StringCatalog _catalog;
-
-    public StringsHandler(StringCatalog catalog)
-    {
-        _catalog = catalog;
-    }
-
     public async Task<Dictionary<string, string>> Handle(GetStrings message, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var strings = await _catalog.GetAsync(message.Language);
+        var strings = await catalog.GetAsync(message.Language);
 
         return new Dictionary<string, string>(strings);
     }
