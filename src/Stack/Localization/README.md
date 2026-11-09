@@ -89,7 +89,9 @@ first and the language overlays it, so gaps fall back to the base text. Register
 
 **Current language.** `LanguageProvider.Current` defaults to the ambient UI culture's two-letter
 code; set it to switch language without a reload. `StringCatalog` holds one merged dictionary per
-language requested, built on first use.
+supported language, built on first use; an unsupported language answers the `Default`'s without
+adding an entry. `GetAsync(language)` awaits the sources; `Get(language)` serves the cache and
+builds only from sources that complete synchronously, throwing on a pending one.
 
 **Custom sources.** Implement `IStringSource` (`Languages` and `GetStrings(language)`) and
 register it as a singleton to add texts from somewhere other than embedded files.
