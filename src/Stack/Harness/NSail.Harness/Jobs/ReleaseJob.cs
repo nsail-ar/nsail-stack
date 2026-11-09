@@ -37,7 +37,14 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", "--prune", ctx.Workspace.Url, $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*"]);
         var head = await Shell.Git(dir, "rev-parse", "HEAD");
+        var outcome = await Cut(p, product, step, dir, head, slot, w, logPath, ct);
+        // Written once the cut reached a verdict: a dispatch or suite that threw leaves the day's cut due.
         await ctx.Repo.SetStatus(head, Markers.CutContext(p), "success", $"cut tried on {ctx.Options.Machine}", ct);
+        return outcome;
+    }
+
+    async Task<JobOutcome> Cut(string p, string product, JobStep step, string dir, string head, int slot, StreamWriter w, string logPath, CancellationToken ct)
+    {
         var marks = await ctx.Repo.Statuses(ct: ct);
         // The last release is the newest one published: a tag whose cut died before publishing holds
         // nothing that reached anyone, and read as released it would skip every later cut.

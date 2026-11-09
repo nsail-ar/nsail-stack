@@ -328,13 +328,20 @@ public sealed class HarnessLoop(
         return info?.IndexOf('+') is { } plus and >= 0 ? info[(plus + 1)..][..Math.Min(7, info.Length - plus - 1)] : null;
     }
 
+    // A turn is dead past the longest step any worker runs, with a margin for the job's own wind-down.
+    internal static TimeSpan TurnAge(IReadOnlyList<Worker> workers)
+    {
+        var longest = workers.Select(w => w.Options.Minutes ?? w.Type.Minutes).DefaultIfEmpty(0).Max();
+        return TimeSpan.FromMinutes(longest + 10);
+    }
+
     async Task<Pass> RunPass(HarnessOptions o, CancellationToken stop)
     {
         var started = DateTimeOffset.UtcNow;
         var call = PassCall.Planning;
         try
         {
-            if (leases.Sweep(TimeSpan.FromMinutes(60)) is var dead and > 0) log.LogWarning("{Dead} build turn(s) older than an hour went back to the line", dead);
+            if (leases.Sweep(TurnAge(_workers)) is var dead and > 0) log.LogWarning("{Dead} build turn(s) older than the longest step went back to the line", dead);
             call = PassCall.Statuses;
             var marks = await jobs.Repo.Statuses(ct: stop);
             call = PassCall.Stories;

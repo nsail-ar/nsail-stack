@@ -84,4 +84,18 @@ public class BuildLeasesTests
     {
         Assert.Equal(1, new BuildLeases(0).Limit);
     }
+
+    [Fact]
+    public async Task ASweepLeavesATurnInsideTheLongestStepAndReturnsADeadOne()
+    {
+        var leases = new BuildLeases(1);
+        await leases.Acquire("release", 5, default);
+        var age = HarnessLoop.TurnAge(SampleWorkers.Workers);
+
+        Assert.True(age >= TimeSpan.FromMinutes(150));
+        Assert.Equal(0, leases.Sweep(age, DateTimeOffset.UtcNow.AddMinutes(90)));
+        Assert.Equal(1, leases.Held);
+        Assert.Equal(1, leases.Sweep(age, DateTimeOffset.UtcNow.AddMinutes(400)));
+        Assert.Equal(0, leases.Held);
+    }
 }
