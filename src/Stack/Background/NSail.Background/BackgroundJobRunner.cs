@@ -3,6 +3,7 @@
 
 using System.Collections.Concurrent;
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,10 +18,8 @@ namespace NSail.Background;
 // One independent loop per registered job, so a slow or failing job delays only its own
 // cadence and never another's.
 //
-// Single instance is an assumption, not a property. deploy/tenant-template/compose.yml runs
-// one container per tenant, so nothing runs twice today — a second replica would silently
-// double every job, with no error anywhere to say so. A Postgres advisory lock taken around
-// the tick is the cheap fix the day that topology changes.
+// A pass takes a Postgres advisory lock per job and tenant (JobLock), so a second replica over
+// the same database skips the pass its sibling holds instead of running every job twice.
 sealed class BackgroundJobRunner : BackgroundService
 {
     readonly ConcurrentDictionary<Type, byte> _emptyRosterSaid = new();
@@ -233,6 +232,7 @@ sealed class BackgroundJobRunner : BackgroundService
         }
 
         AsyncServiceScope? scope = null;
+        JobLock? held = null;
         var timeout = _options.TimeoutOf(jobType.Name);
 
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
@@ -261,6 +261,22 @@ sealed class BackgroundJobRunner : BackgroundService
                 {
                     return false;
                 }
+            }
+
+            held = await JobLock.TryTake(
+                    scope.Value.ServiceProvider.GetService<DbContext>(),
+                    jobType.Name,
+                    tenant?.Slug ?? string.Empty,
+                    stoppingToken)
+                .ConfigureAwait(false);
+
+            if (held is null)
+            {
+                _logger.LogDebug(
+                    "Background job {Job} skipped a pass: another runner holds its lock.",
+                    jobType.Name);
+
+                return false;
             }
 
             budget.CancelAfter(timeout);
@@ -335,7 +351,7 @@ sealed class BackgroundJobRunner : BackgroundService
         }
         finally
         {
-            await Abandonment.Release(scope, abandoned).ConfigureAwait(false);
+            await Abandonment.Release(scope, abandoned, held).ConfigureAwait(false);
         }
     }
 

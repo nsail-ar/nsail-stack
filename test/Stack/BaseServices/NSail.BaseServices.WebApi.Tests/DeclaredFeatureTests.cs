@@ -3,6 +3,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSail.Data;
 using NSail.Security;
 
@@ -86,6 +87,62 @@ public sealed class DeclaredFeatureTests
         Assert.Equal(["organizations.max", "whatsapp"], (await Published(host)).Select(row => row.Key));
     }
 
+    // A rolling deploy: two processes of one build come up together over a table that holds
+    // nothing, both read it empty and both insert. Whichever loses the race on a key must still
+    // start, and the table holds each key once.
+    [Fact]
+    public async Task Two_hosts_publishing_together_both_start_and_each_key_is_held_once()
+    {
+        await using var first = await TenancyHost.Start(TenancyMode.SingleDb, features: typeof(TwoSold));
+
+        for (var round = 0; round < 5; round++)
+        {
+            await Execute(first, "DELETE FROM \"DeclaredFeatures\"");
+
+            var both = await Task.WhenAll(
+                TenancyHost.Redeploy(first, features: typeof(TwoSold)),
+                TenancyHost.Redeploy(first, features: typeof(TwoSold)));
+
+            foreach (var host in both)
+            {
+                await host.DisposeAsync();
+            }
+
+            Assert.Equal(["organizations.max", "whatsapp"], (await Published(first)).Select(row => row.Key));
+        }
+    }
+
+    // The publish is advisory: a store that refuses it is logged and the host comes up.
+    [Fact]
+    public async Task A_database_error_while_publishing_is_logged_and_does_not_stop_startup()
+    {
+        await using var host = await TenancyHost.Start(TenancyMode.SingleDb, features: typeof(TwoSold));
+
+        await Execute(host, "ALTER TABLE \"DeclaredFeatures\" RENAME TO \"DeclaredFeaturesAside\"");
+
+        var logs = new CapturedLogs();
+
+        try
+        {
+            await using var redeployed = await TenancyHost.Redeploy(host, features: typeof(TwoSold), logs: logs);
+        }
+        finally
+        {
+            await Execute(host, "ALTER TABLE \"DeclaredFeaturesAside\" RENAME TO \"DeclaredFeatures\"");
+        }
+
+        Assert.Contains(logs.Entries, entry => entry.Level == LogLevel.Warning && entry.Exception is not null);
+    }
+
+    static async Task Execute(TenancyHost host, string statement)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+
+        var db = scope.ServiceProvider.GetRequiredService<DbContext>();
+
+        await db.Database.ExecuteSqlRawAsync(statement);
+    }
+
     // Read as the fleet's own program reads it: off the table, by the key, with nothing of the
     // app's catalog in the answer.
     static async Task<IReadOnlyList<DeclaredFeature>> Published(TenancyHost host)
@@ -122,5 +179,52 @@ internal sealed class OneSold : IFeatureContributor
     public IReadOnlyList<FeatureItem> GetItems()
     {
         return [new FeatureItem { Key = "whatsapp", Kind = FeatureKind.Flag, Enabled = true }];
+    }
+}
+
+sealed class CapturedLogs : ILoggerProvider
+{
+    readonly List<(LogLevel Level, Exception? Exception)> _entries = [];
+
+    public IReadOnlyList<(LogLevel Level, Exception? Exception)> Entries
+    {
+        get
+        {
+            lock (_entries)
+            {
+                return _entries.ToList();
+            }
+        }
+    }
+
+    public ILogger CreateLogger(string categoryName)
+    {
+        return new Sink(this);
+    }
+
+    public void Dispose()
+    {
+    }
+
+    sealed class Sink(CapturedLogs owner) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (owner._entries)
+            {
+                owner._entries.Add((logLevel, exception));
+            }
+        }
     }
 }

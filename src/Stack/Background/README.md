@@ -82,7 +82,9 @@ The runners read three things from the host:
   process.
 - The session is `Session.System()` with no organization, party or memberships, so ids travel in
   the messages the job sends.
-- One runner instance is assumed: a second replica would run every job twice.
+- A pass holds a Postgres advisory lock per job and tenant, on a connection of its own, until the
+  pass ends (an abandoned one, until it does). A second replica over the same database skips the
+  pass it cannot lock, neither counted nor failed. A host with no Npgsql `DbContext` takes none.
 
 **Deferred work** (`DeferredWork`):
 
