@@ -281,7 +281,7 @@ public static class SurfaceQuery
         {
             var parsed = Enum.TryParse(type, text, ignoreCase: true, out value);
 
-            return parsed && value is not null;
+            return parsed && value is not null && IsDeclared(type, value);
         }
 
         if (s_parsers.TryGetValue(type, out var parser))
@@ -294,6 +294,39 @@ public static class SurfaceQuery
         value = null;
 
         return false;
+    }
+
+    // Enum.TryParse takes any number ("99") and any sum; a flags enum may combine its members.
+    static bool IsDeclared(Type enumType, object value)
+    {
+        if (Enum.IsDefined(enumType, value))
+        {
+            return true;
+        }
+
+        if (!enumType.IsDefined(typeof(FlagsAttribute), inherit: false))
+        {
+            return false;
+        }
+
+        var bits = Bits(value);
+        var declared = 0UL;
+
+        foreach (var member in Enum.GetValues(enumType))
+        {
+            declared |= Bits(member);
+        }
+
+        return bits != 0 && (bits & ~declared) == 0;
+    }
+
+    // Sign-extends a signed underlying type so a negative member (All = ~0) keeps its bits and
+    // never overflows.
+    static ulong Bits(object value)
+    {
+        return Enum.GetUnderlyingType(value.GetType()) == typeof(ulong)
+            ? Convert.ToUInt64(value, CultureInfo.InvariantCulture)
+            : unchecked((ulong)Convert.ToInt64(value, CultureInfo.InvariantCulture));
     }
 
     static IEnumerable<(string Key, string Value)> Pairs(string query)
