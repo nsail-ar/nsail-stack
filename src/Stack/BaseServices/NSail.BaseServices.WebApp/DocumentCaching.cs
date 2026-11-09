@@ -6,19 +6,16 @@ using Microsoft.Net.Http.Headers;
 
 namespace NSail.BaseServices.WebApp;
 
-/// <summary>Forces every HTML document response to revalidate rather than either go stale
-/// forever or refuse caching outright. Antiforgery answers a page carrying a fresh token with
-/// `no-cache, no-store` (it does not want the token itself cached); a document with no
-/// antiforgery interaction on it answers with no Cache-Control header at all, and an
-/// intermediary is then free to cache it under its own heuristic — the poisoned-device
-/// incident this guards against (stories.md: a stale document keeps naming a retired
-/// release's fingerprints and WASM never attaches). Both are wrong the same way: the document
-/// must always be asked about, never assumed fresh, but `no-store` throws away the ETag
-/// revalidation a 304 could answer with. `no-cache` alone is the middle ground, applied here
-/// deterministically to every document response regardless of what ran upstream.</summary>
+/// <summary>Makes every HTML document response revalidate instead of going stale: a stale
+/// document keeps naming a retired release's fingerprints and WASM never attaches. An anonymous
+/// document gets `no-cache`, which keeps ETag revalidation. A response already saying `no-store`
+/// (antiforgery's token-bearing page) is left alone, and an authenticated document answers
+/// `private, no-store` because it carries personal data that must not reach a disk cache.</summary>
 public static class DocumentCaching
 {
     public const string HeaderValue = "no-cache";
+
+    public const string AuthenticatedHeaderValue = "private, no-store";
 
     public static void Apply(HttpContext context)
     {
@@ -27,7 +24,14 @@ public static class DocumentCaching
             return;
         }
 
-        context.Response.Headers.CacheControl = HeaderValue;
+        if (context.Response.Headers.CacheControl.ToString().Contains("no-store", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var authenticated = context.User.Identity?.IsAuthenticated == true;
+
+        context.Response.Headers.CacheControl = authenticated ? AuthenticatedHeaderValue : HeaderValue;
         context.Response.Headers.Remove(HeaderNames.Pragma);
         context.Response.Headers.Remove(HeaderNames.Expires);
     }
