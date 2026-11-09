@@ -59,6 +59,5 @@ public class SessionProvider : IDisposable
         }
 
         _wrote = false;
-        GC.SuppressFinalize(this);
     }
 }

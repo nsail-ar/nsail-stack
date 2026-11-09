@@ -3,8 +3,8 @@
 
 namespace NSail.Security;
 
-/// <summary>A stored policy that is in force minus something: <paramref name="Messages"/> are
-/// the keys the registry no longer knows, <paramref name="ExcusedFields"/> the constrained
+/// <summary>A stored policy that is in force minus something: <see cref="Messages"/> are
+/// the keys the registry no longer knows, <see cref="ExcusedFields"/> the constrained
 /// fields no surviving message declares (<see cref="SecurityManager.Drops"/>).</summary>
 public sealed record PolicyDrop(
     Guid? PolicyId,

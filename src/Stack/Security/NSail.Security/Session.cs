@@ -80,8 +80,8 @@ public class Session
             return [];
         }
 
-        // Asked on every handler of every send: computed once for the organization and the
-        // membership list it was computed for, and again when either is replaced or grows.
+        // Asked on every handler of every send, possibly from parallel handlers: computed once
+        // per organization, membership list reference and count, and published as one reference.
         var memberships = Memberships;
 
         if (_standing is { } cached
@@ -94,12 +94,14 @@ public class Session
 
         var held = Compute(current);
 
-        _standing = (current, memberships, memberships.Count, held);
+        _standing = new StandingCache(current, memberships, memberships.Count, held);
 
         return held;
     }
 
-    (Guid Organization, List<SessionMembership> Source, int Count, List<SessionMembership> Held)? _standing;
+    sealed record StandingCache(Guid Organization, List<SessionMembership> Source, int Count, List<SessionMembership> Held);
+
+    StandingCache? _standing;
 
     List<SessionMembership> Compute(Guid current)
     {

@@ -99,16 +99,16 @@ public class SecurityManager
         return _builtIn.Concat(_stored).Concat(_dependencies);
     }
 
-    /// <summary>The code-owned policies, for an editor that has to show them read-only.
-    /// Listed from the hydrated set rather than from the injected one: a built-in that did
-    /// not hydrate is not in force, and showing it anyway would document a grant the
-    /// evaluator does not have.</summary>
     /// <summary>The stored rows the last load put in force with something excused: the
     /// message keys the registry no longer knows and the constrained fields their departure
     /// left unbound. What an administrator reads to find a stale row, beside the log. The
     /// grant is unchanged — the list exists so the excuse is visible.</summary>
     public IReadOnlyList<PolicyDrop> Drops => _drops;
 
+    /// <summary>The code-owned policies, for an editor that has to show them read-only.
+    /// Listed from the hydrated set rather than from the injected one: a built-in that did
+    /// not hydrate is not in force, and showing it anyway would document a grant the
+    /// evaluator does not have.</summary>
     public IReadOnlyList<Policy> BuiltInPolicies => _builtIn.Select(handler => handler.Policy).Distinct().ToList();
 
     /// <summary>Every message key the registry knows, which is what a policy editor builds
