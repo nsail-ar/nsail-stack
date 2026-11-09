@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
 using NSail.Harness.Repositories;
@@ -248,6 +249,82 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             && r.GetProperty("event").GetString() is "pull_request" or "push").ToList());
     }
 
+    public async Task<CiFailure?> Failure(string sha, CancellationToken ct = default)
+    {
+        var runs = await gh.GetAll($"repos/{repo}/actions/runs?head_sha={Uri.EscapeDataString(sha)}&per_page=100", b => b.GetProperty("workflow_runs"), ct: ct);
+        return await FailureOf(runs.Where(r => r.GetProperty("head_sha").GetString() == sha
+            && r.GetProperty("event").GetString() is "pull_request" or "push").ToList(), ct);
+    }
+
+    public async Task<CiFailure?> MainFailure(CancellationToken ct = default)
+    {
+        var runs = await gh.Get($"repos/{repo}/actions/runs?branch={Uri.EscapeDataString(options.DefaultBranch)}&event=push&status=completed&per_page=50", ct);
+        return await FailureOf(runs.GetProperty("workflow_runs").EnumerateArray().ToList(), ct);
+    }
+
+    // A run's failed jobs never change once it completed: each attempt is read once.
+    readonly ConcurrentDictionary<(long Run, int Attempt), List<(string Job, string Step, string Log)>> _failedJobs = new();
+
+    async Task<CiFailure?> FailureOf(List<JsonElement> runs, CancellationToken ct)
+    {
+        var failed = Latest(runs).Where(r => r.GetProperty("status").GetString() == "completed" && IsRed(Conclusion(r))).ToList();
+        if (failed.Count == 0) return null;
+        var jobs = new List<(string Job, string Step, string Log)>();
+        foreach (var run in failed)
+        {
+            var key = (run.GetProperty("id").GetInt64(), run.TryGetProperty("run_attempt", out var a) ? a.GetInt32() : 1);
+            if (!_failedJobs.TryGetValue(key, out var hit))
+            {
+                hit = [];
+                var page = await gh.GetAll($"repos/{repo}/actions/runs/{key.Item1}/jobs?per_page=100", b => b.GetProperty("jobs"), ct: ct);
+                foreach (var (id, job, step) in FailedJobs(page))
+                {
+                    hit.Add((job, step, await LogOf(id, ct)));
+                }
+                // A run red with no job failed (a workflow that never started) is named by itself.
+                if (hit.Count == 0) hit.Add((run.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "", Conclusion(run), ""));
+                _failedJobs[key] = hit;
+            }
+            jobs.AddRange(hit);
+        }
+        return CiFailure.Of(jobs);
+    }
+
+    // A run's failed jobs, each with its first failed step.
+    internal static IEnumerable<(long Id, string Job, string Step)> FailedJobs(IEnumerable<JsonElement> jobs)
+    {
+        foreach (var job in jobs.Where(j => IsRed(Conclusion(j))))
+        {
+            var steps = job.TryGetProperty("steps", out var s) && s.ValueKind == JsonValueKind.Array ? s.EnumerateArray().ToList() : [];
+            var step = steps.FirstOrDefault(st => IsRed(Conclusion(st)));
+            yield return (job.GetProperty("id").GetInt64(), job.GetProperty("name").GetString() ?? "",
+                step.ValueKind == JsonValueKind.Object ? step.GetProperty("name").GetString() ?? "" : Conclusion(job));
+        }
+    }
+
+    // A job's log expires with the run's retention: what is gone is said, not thrown.
+    async Task<string> LogOf(long job, CancellationToken ct)
+    {
+        try
+        {
+            return await gh.GetText($"repos/{repo}/actions/jobs/{job}/logs", ct);
+        }
+        catch (GitHubException e) when (e.HttpStatus is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+        {
+            return "(log gone)";
+        }
+    }
+
+    static string Conclusion(JsonElement e)
+    {
+        return e.TryGetProperty("conclusion", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() ?? "" : "";
+    }
+
+    static bool IsRed(string conclusion)
+    {
+        return conclusion is "failure" or "timed_out" or "cancelled" or "startup_failure" or "stale";
+    }
+
     // The newest run per workflow at a head.
     static IEnumerable<JsonElement> Latest(List<JsonElement> runs)
     {
@@ -272,9 +349,9 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         foreach (var run in latest)
         {
             var status = run.GetProperty("status").GetString();
-            var conclusion = run.TryGetProperty("conclusion", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : "";
+            var conclusion = Conclusion(run);
             if (status != "completed") pending = true;
-            else if (conclusion is "failure" or "timed_out" or "cancelled" or "startup_failure" or "stale") red = true;
+            else if (IsRed(conclusion)) red = true;
             else if (conclusion is not ("success" or "skipped" or "neutral")) pending = true;
         }
         return pending ? CiState.Pending : red ? CiState.Red : CiState.Green;
