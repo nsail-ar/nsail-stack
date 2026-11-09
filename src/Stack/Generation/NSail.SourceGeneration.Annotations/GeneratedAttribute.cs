@@ -46,7 +46,7 @@ public enum Mappers
 
 public enum Policies
 {
-    /// <summary>A PolicyHandler per message with [PolicyField]-marked fields, plus their DI factories.</summary>
+    /// <summary>A PolicyHandler per `IMessage` in scope, plus their DI factories.</summary>
     Handlers = 51
 }
 

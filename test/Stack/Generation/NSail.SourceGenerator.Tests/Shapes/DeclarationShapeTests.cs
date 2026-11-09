@@ -311,7 +311,7 @@ public class DeclarationShapeTests
         return new CompilationUnitBuilder()
             .AddSource("Usings.cs", "global using System.Net.Http;")
             .AddSource("Shapes.cs", Usings + extraUsings + code)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
             .AddContainingAssembly<IEndpointRouteBuilder>()
             .AddContainingAssembly<GeneratedAttribute>()

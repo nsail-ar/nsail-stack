@@ -425,7 +425,7 @@ same tenant**, published again through the client's own Mediator. A screen hears
 - **The audience is the tenant, so a pushed event carries no row and no words.** Every seat
   of the tenant hears it whatever its branch. It says that something moved; the listener
   re-reads through its own org-scoped read and decides. Channels' `ConversationsMoved` is the
-  shape: empty, answered by `ConversationWatch` asking the seat's own stamp (inventory-kits.md,
+  shape: empty, answered by `ConversationWatch` asking the seat's own stamp (the product's inventory-kits page,
   Channels). The generator holds the rule: a `[Pushed]` event with a public property is
   `NSG003`, and `[Pushed]` on a type that is not an `IMessage` is `NSG002` — build errors,
   never a silent skip (generation.md, Diagnostics).
@@ -833,7 +833,7 @@ recognise a refusal by status number alone.
   An anonymous send never counts against it, so a public door spends only its own ceiling.
 - **An in-process `Send` spends nothing.** The middleware reads the attribute of the message
   the *request* names, so a door that relays a message somebody else chose — the Assistant's
-  confirm (assistant.md) — would carry a metered one past its own ceiling. Such a door refuses
+  confirm (the product's assistant page) — would carry a metered one past its own ceiling. Such a door refuses
   the metered messages instead of relaying them; the exclusion is read off the attribute, never
   listed.
 - **Write the number for the worse reading of "one caller".** An install that does not set

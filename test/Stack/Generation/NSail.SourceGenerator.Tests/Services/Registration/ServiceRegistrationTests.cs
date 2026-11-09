@@ -20,7 +20,7 @@ public class ServiceRegistrationTests
     {
         var builder = new CompilationUnitBuilder()
             .AddSourceFiles("./Services/Registration/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<InjectableAttribute>()
             .AddContainingAssembly<ServiceB>()

@@ -136,7 +136,7 @@ the package ([NSail.Sample.Sdk](../Sample/NSail.Sample.Sdk/NSail.Sample.Sdk.cspr
 ```csharp
 var compilation = new CompilationUnitBuilder()
     .AddSourceFiles("./Services/Registration/Sources/**/*.cs")
-    .AddFrameworkReferences("net10.0")
+    .AddFrameworkReferences()
     .AddContainingAssembly<GeneratedAttribute>()
     .Build("TestAssembly");
 

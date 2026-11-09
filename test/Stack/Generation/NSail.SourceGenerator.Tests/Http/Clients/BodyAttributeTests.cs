@@ -71,7 +71,7 @@ public class BodyAttributeTests
                     public static partial void AddClinicHttp(this IServiceCollection services);
                 }
                 """.Replace("__TARGET__", target))
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()
             .AddContainingAssembly<HttpAttribute>()

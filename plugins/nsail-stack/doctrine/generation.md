@@ -67,6 +67,7 @@ Defined in `NSail.SourceGeneration.Annotations`:
 | `[Generated(Push.Clients)]` | `Push.Clients` | a `PushedMessage<TMessage>` entry per `[Pushed]` message, the closed list a client's feed publishes from |
 | `[Generated(Queue.Producers)]` | `Queue.Producers` | `ISender<TMessage> → QueueSender<TMessage>` for `[Queue]` messages (the durable send side) |
 | `[Generated(Queue.Consumers)]` | `Queue.Consumers` | a `QueueConsumer<TMessage>` entry per `[Queue]` message, the closed list the drain delivers from |
+| `[Generated(Policies.Handlers)]` | `Policies.Handlers` | a `PolicyHandler` per `IMessage` in scope, plus their DI factories |
 | `[Generated(Mappers.Entities)]` | `Mappers.Entities` | an `IEntityMapper<TSource, TEntity>` per `[MapFrom]` and an `IProjection<TEntity, TRow>` per `[MapTo]` in scope |
 
 Each transport groups its artifacts in one enum. For HTTP: `Clients` is the remote send side, `Endpoints` the receive side, and `InProcess` the local counterpart of `Clients` — same `[Http]` contract, dispatched directly to the handler in the host that exposes the endpoints.
@@ -172,7 +173,7 @@ public class GetPrescription : IMessage<Prescription>
 
 Only public, instance, non-indexer properties with a public `set` or `init` and no `[JsonIgnore]` enter the model, read once as the most derived declaration; any other member is not on the wire.
 
-Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Head and Options are mapped with `MapMethods`; their members bind from the query string (route tokens and `[AsRoute]`/`[AsHeader]` still win).
+Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Members bind from the query string on Get, Delete, Head and Options and from the JSON body on Post, Put and Patch. Head and Options are mapped with `MapMethods`; their members bind from the query string (route tokens and `[AsRoute]`/`[AsHeader]` still win).
 
 Sdk projects import `static NSail.Messaging.Annotations.Method` via global usings.
 
@@ -373,7 +374,7 @@ An edit must not re-read the project. A generator's pipeline holds only value-eq
 
 ## What gets generated
 
-- **Endpoints** — for each `[Http]` message with a matching `[Injectable]` handler, an
+- **Endpoints** — for each `[Http]` message in scope (the handler is resolved at send time), an
   `IEndpointEntry` that maps the route to `Mediator.Send`. Every emitted entry carries two
   things the runtime reads off the route table, never a per-endpoint decision:
   `MessageEndpointMetadata`, which names the message before ASP.NET binds anything (so the
