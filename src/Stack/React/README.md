@@ -11,7 +11,7 @@ Both are npm packages (not NuGet), released at the same version as the NuGet pac
 
 | Package | Folder | What it is | Peer dependencies |
 |---|---|---|---|
-| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm` | `react >= 19` |
+| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm` | `react >= 19`, `react-dom >= 19` |
 | `@nsail/ui` | `NSail.React.Ui` | The components (`NsApp`, `NsLoad`, `NsForm`, `NsField`, `NsTable`, ...) and the `@nsail/ui/ns.css` stylesheet; depends on `@nsail/stack` | `react >= 19`, `react-dom >= 19` |
 
 The contract itself comes from the Sdk, through the build-time package `NSail.TypeScriptGenerator`
@@ -96,7 +96,7 @@ with keys. `useCatalog` and `StackProvider` are the pieces underneath when you n
 | Component | Props worth knowing |
 |---|---|
 | `NsLoad` | `load` (from `useLoad`) and a render function over the data; spinner the first time, dimmed while re-reading, failure in place with retry |
-| `NsForm` + `useForm` | `form`, `onSubmit`, `onReload?` (offered only for a `Conflict`); `NsSaved` shows the saved state |
+| `NsForm` + `useForm` | `form`, `onSubmit`, `onReload?` (offered only for a `Conflict`); `NsSaved` shows the saved state, which `form.reset(value, { keepSaved: true })` keeps over the re-read of what was just sent |
 | `NsField` | `name`, `multiline?`, `autoFocus?`, `label?` (a string key); input, label and bounds come from the descriptor |
 | `NsTable` | `model`, `rows`, `columns`, `rowKey`, `onRowClick?` (rows also open from Enter and Space), `actions?`, `empty?` (a key), `ungrouped?` (columns shown without digit grouping, for numbers that are identifiers) |
 | `NsPager` | `page` (`pageIndex`, `pageSize`, `totalCount`), `onPage` |
