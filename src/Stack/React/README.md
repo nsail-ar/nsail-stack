@@ -98,7 +98,7 @@ with keys. `useCatalog` and `StackProvider` are the pieces underneath when you n
 | `NsLoad` | `load` (from `useLoad`) and a render function over the data; spinner the first time, dimmed while re-reading, failure in place with retry |
 | `NsForm` + `useForm` | `form`, `onSubmit`, `onReload?` (offered only for a `Conflict`); `NsSaved` shows the saved state |
 | `NsField` | `name`, `multiline?`, `autoFocus?`, `label?` (a string key); input, label and bounds come from the descriptor |
-| `NsTable` | `model`, `rows`, `columns`, `rowKey`, `onRowClick?`, `actions?`, `empty?` (a key) |
+| `NsTable` | `model`, `rows`, `columns`, `rowKey`, `onRowClick?` (rows also open from Enter and Space), `actions?`, `empty?` (a key), `ungrouped?` (columns shown without digit grouping, for numbers that are identifiers) |
 | `NsPager` | `page` (`pageIndex`, `pageSize`, `totalCount`), `onPage` |
 | `NsSearch` | `field`, `value`, `onSearch`, `delay?` (300 ms) |
 | `NsEnumSelect` | `field`, `value`, `onChange`, `none?` (a key, default `Common.All`) |

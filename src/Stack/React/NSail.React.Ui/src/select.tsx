@@ -30,7 +30,9 @@ export function NsEnumSelect<TValue extends string>({ field, value, onChange, no
       value={value ?? ""}
       onChange={(event) => onChange((event.target.value || null) as TValue | null)}
     >
-      {(field.nullable || value === null || value === undefined) && <option value="">{field.nullable ? strings.translate(none) : ""}</option>}
+      {(field.nullable || value === null || value === undefined) && (
+        <option value="">{field.nullable ? strings.translate(none) : ""}</option>
+      )}
       {type.values.map((option) => (
         <option key={option} value={option}>
           {strings.enumValue(type, option)}

@@ -146,12 +146,12 @@ is always a `BusinessError` carrying a `Problem`: the server's own when it sent 
 
 | Piece | Package | Does |
 |---|---|---|
-| `NsApp` | ui | `StackProvider` plus the catalog read before the first paint (`useCatalog`) and the one confirmation surface |
+| `NsApp` | ui | `StackProvider` plus the catalog read before the first paint (`useCatalog`) (a regional `language` such as `es-AR` uses its base language's Stack strings) and the one confirmation surface |
 | `Strings` | stack | `StringManager`'s resolution: a miss renders the key; `Problems.{Code}.{Source}` → `Problems.{Code}` → the message; the `entity` argument is a key and `at` an ISO instant shown in the reader's zone |
 | `useLoad` + `NsLoad` | stack + ui | A region owns its read (convert-to-nsload's contract): a spinner the first time, the last answer dimmed while it re-reads, a failure in place with a retry — never a toast |
 | `useForm` + `NsForm` + `NsField` | stack + ui | A form over one message: `NsField name="…"` picks its input from the member's kind, its label from the member's key, its bounds from the message; refusals are checked as the user types and the server's land under the field they name; anything no field can show is drawn above the fields; `onReload` is offered only for a `Conflict` |
 | `NsTable`, `NsPager`, `NsSearch`, `NsEnumSelect` | ui | A projection's rows with headers from keys and cells formatted by kind (`ungrouped` columns skip digit grouping), rows that open by click also open from the keyboard; a `DataPage`'s pager; a debounced search bound by its member; an enum pick whose options come from the descriptor |
-| `NsPage`, `NsButton`, `useConfirm` | ui | A titled page; a button whose `text` is a key, never a sentence; one native `<dialog>` for confirmations, opening on the act it offers and on the way out when `danger` says the act destroys ([ui/forms.md](ui/forms.md), *Focus on open*) |
+| `NsPage`, `NsButton`, `useConfirm` | ui | A titled page; a button whose `text` is a key, never a sentence; one native `<dialog>` for confirmations (a second `confirm()` resolves the first `false`, as does an unmount), opening on the act it offers and on the way out when `danger` says the act destroys ([ui/forms.md](ui/forms.md), *Focus on open*) |
 
 **The Stack's sentences are the Blazor catalog's.** `Strings` reads `Common.*`,
 `Actions.*` and `Problems.*` from the very `strings*.json` that

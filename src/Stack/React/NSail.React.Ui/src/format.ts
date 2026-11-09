@@ -13,7 +13,8 @@ export interface DisplayOptions {
 
 /** A wire value as a person reads it: the member's kind decides, the language formats. */
 export function display(strings: Strings, field: Field, value: unknown, options?: DisplayOptions): string {
-  const useGrouping = options?.grouped !== false;
+  // Omitted, not true: true forces grouping of four digits, which the language's own default does not.
+  const useGrouping = options?.grouped === false ? false : undefined;
 
   if (value === null || value === undefined || value === "") {
     return "";
@@ -47,7 +48,7 @@ export function display(strings: Strings, field: Field, value: unknown, options?
 
 // A decimal carries up to 28 fraction digits and Intl stops at 20 (and reads a string as a
 // Number before Intl V3): the whole part is grouped as a BigInt and the fraction kept as sent.
-function decimal(language: string, text: string, useGrouping: boolean): string {
+function decimal(language: string, text: string, useGrouping: boolean | undefined): string {
   const negative = text.startsWith("-");
   const [whole, fraction] = (negative ? text.slice(1) : text).split(".");
   const parts = new Intl.NumberFormat(language).formatToParts(-0.5);
