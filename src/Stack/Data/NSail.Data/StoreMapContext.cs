@@ -18,9 +18,9 @@ public sealed class StoreMapContext : MapContext
 {
     readonly DbContext _db;
     readonly List<object> _written = [];
-    readonly Dictionary<Type, CreatedRows> _created = [];
+    readonly Dictionary<Type, CreatedRows> _created;
 
-    sealed class CreatedRows
+    internal sealed class CreatedRows
     {
         public Dictionary<object, object> ByKey { get; } = [];
 
@@ -28,11 +28,19 @@ public sealed class StoreMapContext : MapContext
     }
 
     public StoreMapContext(DbContext db, MapParameters? parameters = null)
+        : this(db, parameters, null)
+    {
+    }
+
+    // The index outlives one context when a batch shares it: the sweep of the tracker is paid
+    // once per batch, not once per root.
+    internal StoreMapContext(DbContext db, MapParameters? parameters, Dictionary<Type, CreatedRows>? created)
         : base(parameters)
     {
         ArgumentNullException.ThrowIfNull(db);
 
         _db = db;
+        _created = created ?? [];
     }
 
     public override bool Stores
@@ -72,7 +80,7 @@ public sealed class StoreMapContext : MapContext
         return await Query(match, includes, cancellationToken).ConfigureAwait(false);
     }
 
-    // The Added rows of a type, by key, built from the tracker once and kept current by Created.
+    // The Added rows of a type, by key, built from the tracker once per batch and kept current by Created.
     // A row whose key the store had not given yet waits in Unkeyed until a Load asks.
     TEntity? Created<TEntity>(EntityType<TEntity> type, object key)
         where TEntity : class
