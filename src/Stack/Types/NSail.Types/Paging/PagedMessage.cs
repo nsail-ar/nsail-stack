@@ -16,7 +16,11 @@ public abstract class PagedMessage
     /// agenda. Past it the caller wants an export, which is a message of its own.</summary>
     public const int MaxPageSize = 1000;
 
-    [Range(0, int.MaxValue)]
+    /// <summary>The last page index whose offset (<c>PageIndex * MaxPageSize</c>) still fits an
+    /// int, so <c>Skip(PageIndex * PageSize)</c> never wraps negative.</summary>
+    public const int MaxPageIndex = int.MaxValue / MaxPageSize;
+
+    [Range(0, MaxPageIndex)]
     public int PageIndex { get; set; }
 
     [Range(0, MaxPageSize)]

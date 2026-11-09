@@ -57,7 +57,7 @@ None. These are types, not services. Three behaviours worth knowing:
   own options copies `JsonOptions.Converters` instead of constructing a second contract. A vendor's
   API is not message traffic: its client keeps its own options.
 - `PagedMessage.PageSize` of 0 means the caller did not choose, and the handler's own default
-  answers; sizes above `MaxPageSize` are refused.
+  answers; sizes above `MaxPageSize` and indexes above `MaxPageIndex` (so `PageIndex * PageSize` fits an int) are refused.
 
 ## How it fits
 

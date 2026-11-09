@@ -91,6 +91,21 @@ public static class MessageValidator
                 failed = true;
             }
 
+            if (member.Enum is { } shape)
+            {
+                if (!read)
+                {
+                    value = property.GetValue(model);
+                    read = true;
+                }
+
+                if (value is not null && !shape.Defines(value))
+                {
+                    builder.AddOutOfRange(prefix + property.Name);
+                    failed = true;
+                }
+            }
+
             if (!member.Validated)
             {
                 continue;
@@ -171,16 +186,56 @@ public static class MessageValidator
             var rules = property.GetCustomAttributes<ValidationAttribute>(inherit: true).ToArray();
             var validated = property.GetCustomAttribute<ValidatedAttribute>(inherit: true) is not null;
 
-            if (rules.Length > 0 || validated)
+            var enumType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+            var shape = enumType.IsEnum ? new EnumShape(enumType) : null;
+
+            if (rules.Length > 0 || validated || shape is not null)
             {
-                members.Add(new Member(property, rules, validated));
+                members.Add(new Member(property, rules, validated, shape));
             }
         }
 
         return members.ToArray();
     }
 
-    sealed record Member(PropertyInfo Property, ValidationAttribute[] Rules, bool Validated);
+    sealed record Member(PropertyInfo Property, ValidationAttribute[] Rules, bool Validated, EnumShape? Enum);
+
+    // The wire reads enum numbers, so a number no member names reaches the message: a plain enum
+    // must be one of its members, a [Flags] one a combination of them.
+    sealed class EnumShape
+    {
+        readonly Type _type;
+        readonly bool _flags;
+        readonly ulong _mask;
+
+        public EnumShape(Type type)
+        {
+            _type = type;
+            _flags = type.IsDefined(typeof(FlagsAttribute), inherit: false);
+
+            foreach (var member in Enum.GetValues(type))
+            {
+                _mask |= Bits(member);
+            }
+        }
+
+        public bool Defines(object value)
+        {
+            if (!_flags)
+            {
+                return Enum.IsDefined(_type, value);
+            }
+
+            return (Bits(value) & ~_mask) == 0;
+        }
+
+        static ulong Bits(object value)
+        {
+            var number = Convert.ToDecimal(value);
+
+            return number < 0 ? unchecked((ulong)(long)number) : (ulong)number;
+        }
+    }
 
     static void Add(InputProblemBuilder<object> builder, ValidationAttribute attribute, string field)
     {
