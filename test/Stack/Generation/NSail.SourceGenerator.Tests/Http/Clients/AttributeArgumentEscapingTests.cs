@@ -56,7 +56,7 @@ public class AttributeArgumentEscapingTests
                     public static partial void AddClinicEndpoints(this IServiceCollection services);
                 }
                 """)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()
             .AddContainingAssembly<HttpAttribute>()
@@ -145,7 +145,7 @@ public class AttributeArgumentEscapingTests
                         public static partial void AddClinicEndpoints(this IServiceCollection services);
                     }
                     """)
-                .AddFrameworkReferences("net10.0")
+                .AddFrameworkReferences()
                 .AddContainingAssembly<GeneratedAttribute>()
                 .AddContainingAssembly<IMessage>()
                 .AddContainingAssembly<HttpAttribute>()

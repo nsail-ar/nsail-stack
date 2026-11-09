@@ -227,7 +227,7 @@ module's by being mounted early.
   drawer's search finds a renamed door by the name on screen. A product renaming a kit's door
   for its whole market still writes a string (registration order); a SHOP renaming its own
   door writes data. Optical is both at once: `NavMenu.SettingsScheduling` is a string, and
-  Contactología in the drawer is a row (optical.md).
+  Contactología in the drawer is a row (Optical's own page).
 - **It is read in the one ask, with the tree**, so a change lands on the next load of the app
   and never on a release. There is no editor or settings page yet: the door is
   `SaveNavMenuArrangement`, administered like any write, while reading is a built-in grant — a
@@ -266,7 +266,8 @@ module's by being mounted early.
   is a function of the session and `NavMenu` asks it once for one, while a number is the point of
   being a number — `NavMenu.GetCounts()` remembers nothing, `NsNavMenu` asks it when the drawer
   builds and again on every **arrival**, and a contributor that throws is left out rather than
-  allowed to take the map down with it. A surface written over the address the person is already
+  allowed to take the map down with it — and logged with the entry's name, so a number that
+  stopped showing has a trace to read. A surface written over the address the person is already
   standing at — an aside, a dialog, a tab, a filter — is not an arrival and is not counted: a
   round trip per contributor lands inside the window of every save taken in an overlay, and
   nobody went anywhere. The route is still reapplied on it, because a deep-link filter in the
@@ -297,7 +298,7 @@ module's by being mounted early.
   drawing what it is handed: a cap written here would be the second number for one bound. So is
   **who may see them** — the read is authorized where it is sent ([permissions.md](../permissions.md)),
   never by the drawer, which has no page to ask the gate about. A module that throws is left out
-  exactly as a count is. Nothing of this crosses `NavMenuHandoff` — a typed term exists only
+  and logged exactly as a count is. Nothing of this crosses `NavMenuHandoff` — a typed term exists only
   after interactivity.
 - **An answer belongs to the term that asked for it, and that is the HOST's half of the seam**
   (`NsNavMenu.SetSearch`, not `Find`, which answers a term and remembers nothing): the results

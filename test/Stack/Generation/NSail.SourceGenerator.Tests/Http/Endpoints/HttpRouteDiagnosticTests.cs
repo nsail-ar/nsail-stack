@@ -317,7 +317,7 @@ public class HttpRouteDiagnosticTests
     {
         var builder = new CompilationUnitBuilder()
             .AddSource("Messages.cs", source)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()
             .AddContainingAssembly<HttpAttribute>()

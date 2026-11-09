@@ -122,7 +122,7 @@ namespace NSail.SourceGeneration.Testing
         /// Adds every assembly the running host can load (its trusted platform assemblies) as a
         /// reference, so a compilation sees the same set whichever tests ran before it.
         /// </summary>
-        public CompilationUnitBuilder AddFrameworkReferences(string targetFramework)
+        public CompilationUnitBuilder AddFrameworkReferences()
         {
             var paths = (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string)?
                 .Split(new[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
@@ -138,7 +138,7 @@ namespace NSail.SourceGeneration.Testing
         }
 
         /// <summary>
-        /// Builds a CSharpCompilation for the specified target framework.
+        /// Builds a CSharpCompilation for the assembly.
         /// </summary>
         public CSharpCompilation Build(string assemblyName)
         {

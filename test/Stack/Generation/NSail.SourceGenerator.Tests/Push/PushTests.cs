@@ -181,7 +181,7 @@ public class PushTests
     {
         return new CompilationUnitBuilder()
             .AddSource("Messages.cs", Messages + holder)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()

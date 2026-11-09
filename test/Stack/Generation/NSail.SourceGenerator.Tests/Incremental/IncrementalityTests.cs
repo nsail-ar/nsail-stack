@@ -351,7 +351,7 @@ public class IncrementalityTests
             .AddSource("Domain.cs", Domain)
             .AddSource("Holder.cs", holder)
             .AddSource("Unrelated.cs", unrelated)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()
