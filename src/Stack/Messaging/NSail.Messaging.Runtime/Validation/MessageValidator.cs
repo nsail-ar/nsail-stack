@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using NSail.Problems;
@@ -60,13 +61,14 @@ public static class MessageValidator
     {
         var failed = false;
 
-        foreach (var property in model.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        foreach (var member in Plans.GetOrAdd(model.GetType(), Plan))
         {
+            var property = member.Property;
             object? value = null;
             var read = false;
             ValidationContext? context = null;
 
-            foreach (var attribute in property.GetCustomAttributes<ValidationAttribute>(inherit: true))
+            foreach (var attribute in member.Rules)
             {
                 if (!read)
                 {
@@ -89,7 +91,7 @@ public static class MessageValidator
                 failed = true;
             }
 
-            if (property.GetCustomAttribute<ValidatedAttribute>(inherit: true) is null)
+            if (!member.Validated)
             {
                 continue;
             }
@@ -155,6 +157,30 @@ public static class MessageValidator
 
         return failed;
     }
+
+    // Per type and for the life of the process: the members that declare a rule or open a
+    // model, with their attributes, so a send reads metadata once instead of every time.
+    static readonly ConcurrentDictionary<Type, Member[]> Plans = new();
+
+    static Member[] Plan(Type type)
+    {
+        var members = new List<Member>();
+
+        foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            var rules = property.GetCustomAttributes<ValidationAttribute>(inherit: true).ToArray();
+            var validated = property.GetCustomAttribute<ValidatedAttribute>(inherit: true) is not null;
+
+            if (rules.Length > 0 || validated)
+            {
+                members.Add(new Member(property, rules, validated));
+            }
+        }
+
+        return members.ToArray();
+    }
+
+    sealed record Member(PropertyInfo Property, ValidationAttribute[] Rules, bool Validated);
 
     static void Add(InputProblemBuilder<object> builder, ValidationAttribute attribute, string field)
     {
