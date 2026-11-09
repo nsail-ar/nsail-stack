@@ -274,16 +274,27 @@ public sealed class HarnessLoop(
             .Select(w => w.Name).ToList();
     }
 
-    // A job a hand sends (POST /run): it skips the workers' order, filters and the machine's limits,
-    // not the story's lock. It runs as the first enabled worker of its kind (a release: of its product).
+    // A job a hand sends (POST api/harness/runs): it skips the workers' order, filters and the machine's
+    // limits, not the story's lock, Debug mode, a pause or the quota wall (for a job that needs an agent). It runs as the first enabled worker of its kind (a release: of its product).
     public Task<string?> Force(WorkItem item)
     {
         var worker = _workers.FirstOrDefault(w => w.Kind == item.Kind && (item.Kind != WorkKind.Release || string.Equals(w.Options.Product, item.ProductName, StringComparison.OrdinalIgnoreCase)))
             ?? throw new InvalidOperationException($"no worker runs {item.Kind}{(item.ProductName is { } p ? $" for {p}" : "")}");
-        if (options.Value.Mode == HarnessMode.Debug) throw (BusinessException)BusinessProblem.InvalidState("the harness is in Debug mode: it starts nothing");
-        if (Paused is { } why) throw (BusinessException)BusinessProblem.InvalidState($"the harness is paused ({why})");
-        if (AgentsOffUntil is { } wall && Capacity.Needs(item.Kind).Contains(Resource.Agent)) throw (BusinessException)BusinessProblem.InvalidState($"out of quota until {wall:HH:mm} UTC");
+        if (ForceRefusal(options.Value.Mode, Paused, AgentsOffUntil, item.Kind) is { } refusal) throw (BusinessException)BusinessProblem.InvalidState(refusal);
         return Start(item with { Worker = worker.Name, Workflow = item.Workflow ?? worker.Options.Workflow }, CancellationToken.None);
+    }
+
+    internal static string? ForceRefusal(HarnessMode mode, string? paused, DateTimeOffset? wall, WorkKind kind)
+    {
+        if (mode == HarnessMode.Debug) return "the harness is in Debug mode: it starts nothing";
+        if (paused is { } why) return $"the harness is paused ({why})";
+        if (wall is { } until && Capacity.Needs(kind).Contains(Resource.Agent)) return $"out of quota until {until:HH:mm} UTC";
+        return null;
+    }
+
+    internal static DateTimeOffset LaterWall(DateTimeOffset? held, DateTimeOffset until)
+    {
+        return held is { } h && h > until ? h : until;
     }
 
     Dictionary<Resource, int> InUse()
@@ -569,8 +580,9 @@ public sealed class HarnessLoop(
             if (result.Idle) _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + Backoff;
             if (result.QuotaUntil is { } until)
             {
-                lock (_gate) _quotaUntil = _quotaUntil is { } held && held > until ? held : until;
-                log.LogWarning("out of quota until {Until:HH:mm} UTC — no agent starts; builds go on", until);
+                DateTimeOffset wall;
+                lock (_gate) _quotaUntil = wall = LaterWall(_quotaUntil, until);
+                log.LogWarning("out of quota until {Until:HH:mm} UTC — no agent starts; builds go on", wall);
             }
             // What the job's ending does on the board: its worker's actions, or its type's when the
             // steps planned it. Under the story's lock still: nobody moves it between the two.

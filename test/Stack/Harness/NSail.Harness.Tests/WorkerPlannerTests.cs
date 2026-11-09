@@ -169,6 +169,28 @@ public class WorkerPlannerTests
         Assert.Contains(started, c => c is { Kind: ChoreKind.MoveStage, Story: 2673, Value: "Analyze" });
         Assert.DoesNotContain(paused, c => c.Story == 2673);
     }
+
+    [Fact]
+    public void AnEarlierQuotaEndKeepsTheLaterWall()
+    {
+        var week = DateTimeOffset.UtcNow.AddDays(7);
+        var hours = DateTimeOffset.UtcNow.AddHours(5);
+
+        Assert.Equal(week, HarnessLoop.LaterWall(week, hours));
+        Assert.Equal(week, HarnessLoop.LaterWall(hours, week));
+        Assert.Equal(hours, HarnessLoop.LaterWall(null, hours));
+    }
+
+    [Fact]
+    public void AForcedJobRefusesInDebugWhilePausedAndInsideTheQuotaWall()
+    {
+        var wall = DateTimeOffset.UtcNow.AddHours(1);
+
+        Assert.Null(HarnessLoop.ForceRefusal(HarnessMode.Live, null, null, WorkKind.Dev));
+        Assert.Contains("Debug", HarnessLoop.ForceRefusal(HarnessMode.Debug, null, null, WorkKind.Dev));
+        Assert.Contains("paused", HarnessLoop.ForceRefusal(HarnessMode.Live, "drain", null, WorkKind.Dev));
+        Assert.Contains("quota", HarnessLoop.ForceRefusal(HarnessMode.Live, null, wall, WorkKind.Dev));
+    }
 }
 
 public class OrphanTests
