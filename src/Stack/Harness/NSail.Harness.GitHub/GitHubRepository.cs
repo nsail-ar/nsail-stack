@@ -262,7 +262,9 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         return await FailureOf(runs.GetProperty("workflow_runs").EnumerateArray().ToList(), ct);
     }
 
-    // A run's failed jobs never change once it completed: each attempt is read once, and kept reduced.
+    // A run's failed jobs never change once it completed: each attempt is read once, and kept reduced,
+    // the newest few hundred runs only.
+    const int KeptRuns = 256;
     readonly ConcurrentDictionary<(long Run, int Attempt), List<CiFailure>> _failedJobs = new();
 
     async Task<CiFailure?> FailureOf(List<JsonElement> runs, CancellationToken ct)
@@ -283,6 +285,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
                 }
                 // A run red with no job failed (a workflow that never started) is named by itself.
                 if (hit.Count == 0) hit.Add(CiFailure.Of(run.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "", Conclusion(run), ""));
+                if (_failedJobs.Count >= KeptRuns) _failedJobs.Clear();
                 _failedJobs[key] = hit;
             }
             jobs.AddRange(hit);

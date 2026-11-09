@@ -101,7 +101,12 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         var result = new List<StoryPr>();
         CiFailure? mains = null;
         var mainRead = false;
-        foreach (var pr in await repo.OpenPrs(ct))
+        var open = await repo.OpenPrs(ct);
+        foreach (var gone in FailureByPr.Keys.Where(k => k.Repo == repo.Name && open.All(p => p.Number != k.Pr)))
+        {
+            FailureByPr.TryRemove(gone, out _);
+        }
+        foreach (var pr in open)
         {
             if (!IsCrews(pr, repo)) continue;
             if (_names.StoryOf(pr.Title, pr.Head) is not { } story) continue;
@@ -132,7 +137,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
     }
 
     // What a red head's CI failed is read once while it stays red (a run again turns it pending
-    // first), one entry per PR, as its thread is.
+    // first), one entry per open PR.
     static readonly ConcurrentDictionary<(string Repo, int Pr), (string Sha, CiFailure? Failure)> FailureByPr = new();
 
     static async Task<CiFailure?> FailureOf(IRepository repo, OpenPr pr, CancellationToken ct)

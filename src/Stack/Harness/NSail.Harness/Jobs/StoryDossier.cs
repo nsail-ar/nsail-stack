@@ -88,11 +88,11 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
     {
         var what = new StringBuilder();
         what.AppendLine("Failed jobs and steps:");
-        foreach (var s in failure.Steps) what.AppendLine($"- {s}");
+        foreach (var s in CiFailure.Listing(failure.Steps)) what.AppendLine($"- {s}");
         if (failure.Failed.Count > 0)
         {
             what.AppendLine("Failed:");
-            foreach (var f in failure.Names) what.AppendLine($"- {f}");
+            foreach (var f in CiFailure.Listing(failure.Names)) what.AppendLine($"- {f}");
         }
         what.AppendLine("Log tail:");
         what.Append(failure.Tail);
