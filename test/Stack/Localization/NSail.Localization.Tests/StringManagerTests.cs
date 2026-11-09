@@ -116,6 +116,23 @@ public sealed class StringManagerTests
     }
 
     [Fact]
+    public void Translate_issue_reads_an_ISO_instant_on_the_readers_clock()
+    {
+        var manager = Build("en", new FakeSource("en", new Dictionary<string, string>
+        {
+            ["Problems.ConflictAt"] = "changed on {at}"
+        }));
+        var issue = new Issue(
+            "ConflictAt",
+            "server text",
+            null,
+            new Dictionary<string, string> { ["at"] = "2026-03-04T05:06:07Z" });
+        var expected = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc).ToLocalTime().ToString("g", CultureInfo.GetCultureInfo("en-US"));
+
+        Assert.Equal($"changed on {expected}", manager.Translate(issue));
+    }
+
+    [Fact]
     public void Translate_issue_leaves_unmatched_tokens_alone()
     {
         var manager = Build("en", new FakeSource("en", new Dictionary<string, string>

@@ -113,13 +113,13 @@ public sealed class InputProblemBuilder<TModel>
     {
         _issues.Add(new(
             code: "OutOfRange",
-            message: $"The field {field} must be between {from} and {to}",
+            message: $"The field {field} must be between {BusinessProblem.Invariant(from)} and {BusinessProblem.Invariant(to)}",
             source: field,
             arguments: new Dictionary<string, string>
             {
                 ["field"] = field,
-                ["from"] = from?.ToString() ?? string.Empty,
-                ["to"] = to?.ToString() ?? string.Empty
+                ["from"] = BusinessProblem.Invariant(from),
+                ["to"] = BusinessProblem.Invariant(to)
             }));
     }
 
@@ -155,12 +155,12 @@ public sealed class InputProblemBuilder<TModel>
     {
         _issues.Add(new(
             code: "MaxLength",
-            message: $"The field {field} exceeds the maximum length of {max}",
+            message: $"The field {field} exceeds the maximum length of {BusinessProblem.Invariant(max)}",
             source: field,
             arguments: new Dictionary<string, string>
             {
                 ["field"] = field,
-                ["max"] = max.ToString()
+                ["max"] = BusinessProblem.Invariant(max)
             }));
     }
 

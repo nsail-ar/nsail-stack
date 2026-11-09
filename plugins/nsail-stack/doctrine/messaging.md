@@ -681,7 +681,11 @@ business rules.
     field (`[Cuit]`, Directory).
   - **The numbers its sentence names travel with it**: `Arguments` ({`from`}, {`to`}) fills
     the catalog's tokens from the same bound the attribute refuses by, so moving a bound
-    needs no second edit.
+    needs no second edit. Every problem argument is culture-neutral (invariant numbers, ISO
+    8601 dates and instants). The client localizes two by name — `entity` (a concept key) and
+    `at` (an instant, on the reader's clock in the app language's region); every other argument
+    reaches the sentence as the wire carries it, so name an instant `at` and write the catalog
+    sentence for the rest knowing the number is invariant.
   - **Every declared code has its sentence in every language**: `CodedValidationStringTests`
     (`NSail.Architecture.Tests`) sweeps the tree's declarations, not its attribute types — a
     code may be derived from the attribute's argument.
