@@ -23,10 +23,11 @@ public class WipLimitTests
     [Theory]
     [InlineData("CI red on main: Foo", "")]
     [InlineData("CI red on main: Foo", "p1")]
-    [InlineData("Regression red on main (Shop)", "")]
-    [InlineData("Regression red on main (Shop)", "p1")]
+    [InlineData("Regression red on main (Foo)", "")]
+    [InlineData("Regression red on main (Foo)", "p1")]
     public void TheWipLimitDoesNotHoldARedStory(string title, string labels)
     {
+        // No release worker cuts Foo, so no andon lets the story through: only the limit's exemption does.
         var full = new Fixture().Story(1, "In-Progress").Pr(1, 10, gate: CiState.Pending).Story(2, "In-Progress").Pr(2, 20, gate: CiState.Pending)
             .Story(3, "Ready", labels, title: title).Build();
         // A red story under way counts like any other: the plain story beside it is held.

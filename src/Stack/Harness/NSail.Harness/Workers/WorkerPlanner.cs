@@ -13,8 +13,8 @@ namespace NSail.Harness.Workers;
 //   3. the workers that run on their own (a release, main's verification, a QA drain), by Priority;
 //   4. the workers over stories, by Priority, over the p1 stories (and a red main's or suite's);
 //   5. the same workers over every other story.
-// At the WIP limit no new story starts but a `bug` and a red main's or suite's: their fix is
-// finishing work.
+// At the WIP limit no new story starts but a `bug`, a red main's or suite's (their fix is finishing
+// work) and, while an andon is lit, the release's own.
 // Inside a worker, stories go by the configured Order (epic progress, then age). A story gets one
 // job per pass: the first worker that takes it. Locks (a job's own labels), a story already worked
 // here and a driver this machine cannot run hold it below any filter.
