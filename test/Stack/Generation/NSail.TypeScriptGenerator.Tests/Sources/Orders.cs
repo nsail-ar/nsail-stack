@@ -14,6 +14,45 @@ public enum OrderStatus
     Shipped
 }
 
+public enum NoStatus
+{
+}
+
+[Flags]
+public enum Perks
+{
+    None = 0,
+    Gift = 1,
+    Rush = 2
+}
+
+public class Extras
+{
+    [System.Text.Json.Serialization.JsonPropertyName("first-name")]
+    public string FirstName { get; set; } = string.Empty;
+
+    public Uri? Link { get; set; }
+
+    public Version Build { get; set; } = new();
+
+    public System.Text.Json.JsonElement Raw { get; set; }
+
+    public System.Text.Json.Nodes.JsonNode? Node { get; set; }
+
+    public System.Numerics.BigInteger Big { get; set; }
+
+    public Int128 Wide { get; set; }
+
+    public NoStatus Empty { get; set; }
+
+    public Perks Perks { get; set; }
+}
+
+[Http(Get, "api/shop/extras")]
+public class GetExtras : IMessage<Extras>
+{
+}
+
 public class OrderRow
 {
     public Guid Id { get; set; }
