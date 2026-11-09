@@ -49,13 +49,13 @@ public class ChildEnvironmentTests
         using var _ = Held(("PATH", $"{bin}:{path}"));
         try
         {
-            var result = await Shell.Run("claude", ["-p"], Path.GetTempPath(), new Dictionary<string, string> { ["CLAUDE_CONFIG_DIR"] = "/c" }, runAs: "seat");
+            var result = await Shell.Run("claude", ["-p"], Path.GetTempPath(), new Dictionary<string, string> { ["CLAUDE_CONFIG_DIR"] = "/c" }, lowPriority: true, runAs: "seat");
 
             Assert.Contains("argv=-n -H -u seat --preserve-env=", result.Output);
             Assert.Contains("CLAUDE_CONFIG_DIR", result.Output);
-            Assert.Contains("-- setsid sh -c", result.Output);
-            Assert.Contains(" claude -p", result.Output);
-            Assert.Contains("home=unset", result.Output);
+            Assert.Contains("-- setsid -w sh -c", result.Output);
+            Assert.Contains(" nice -n 10 claude -p", result.Output);
+                        Assert.Contains("home=unset", result.Output);
         }
         finally
         {

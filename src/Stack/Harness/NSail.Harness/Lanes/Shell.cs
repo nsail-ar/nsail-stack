@@ -73,6 +73,7 @@ public static class Shell
         }
 
         string? sessionFile = null;
+        string? sessionDir = null;
         if (runAs is not null && !OperatingSystem.IsWindows())
         {
             // The process runs as another user, never with this one's home or keys: sudo (no prompt,
@@ -81,10 +82,14 @@ public static class Shell
             foreach (var name in Identity) psi.Environment.Remove(name);
             var inner = psi.ArgumentList.ToList();
             psi.ArgumentList.Clear();
-            sessionFile = Path.Combine(Path.GetTempPath(), $"seat-{Guid.NewGuid():N}.sid");
+            // The file sits in a run folder only this user can list, in /tmp (the seat needs to reach it; a private TMPDIR would hide it).
+            sessionDir = Path.Combine("/tmp", $"nsail-seat-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(sessionDir);
+            File.SetUnixFileMode(sessionDir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
+            sessionFile = Path.Combine(sessionDir, "sid");
             File.WriteAllText(sessionFile, "");
             File.SetUnixFileMode(sessionFile, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupWrite | UnixFileMode.OtherWrite);
-            string[] head = ["-n", "-H", "-u", runAs, $"--preserve-env={string.Join(',', psi.Environment.Keys)}", "--", "setsid", "sh", "-c", "echo $$ > \"$0\"; exec \"$@\"", sessionFile];
+            string[] head = ["-n", "-H", "-u", runAs, $"--preserve-env={string.Join(',', psi.Environment.Keys)}", "--", "setsid", "-w", "sh", "-c", "echo $$ > \"$0\"; exec \"$@\"", sessionFile];
             foreach (var a in head) psi.ArgumentList.Add(a);
             // Priority cannot be set on a process this user does not own: it rides inside the line.
             if (lowPriority)
@@ -97,6 +102,18 @@ public static class Shell
             lowPriority = false;
         }
 
+        try
+        {
+            return await Execute(psi, stdin, timeout, log, ct, lowPriority, runAs, sessionFile);
+        }
+        finally
+        {
+            if (sessionDir is not null) Directory.Delete(sessionDir, recursive: true);
+        }
+    }
+
+    static async Task<ShellResult> Execute(ProcessStartInfo psi, string? stdin, TimeSpan? timeout, TextWriter? log, CancellationToken ct, bool lowPriority, string? runAs, string? sessionFile)
+    {
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
         var output = new StringBuilder();
         var gate = new object();
@@ -168,7 +185,6 @@ public static class Shell
             p.CancelOutputRead();
             p.CancelErrorRead();
         }
-        if (sessionFile is not null) File.Delete(sessionFile);
         lock (gate)
         {
             log?.Flush();

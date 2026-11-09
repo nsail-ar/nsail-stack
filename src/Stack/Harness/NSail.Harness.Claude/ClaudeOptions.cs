@@ -25,9 +25,7 @@ public sealed class ClaudeOptions
     // path is relative: what a repository's own settings do not say, for every repository.
     public string? SettingsFile { get; set; }
 
-    // A Linux account the seats' processes run as (`sudo -n -u`): one with no ssh keys, no secrets
-    // file and no docker group, so a seat's shell reaches none of the harness user's. The harness user
-    // needs a sudoers rule for it with SETENV, and the account must write the slots and the config root.
+    // A Linux account the seats' processes run as; the Harness README's `Claude` entry says what it and its sudoers rule need.
     public string? RunAs { get; set; }
 
     public string? Settings()

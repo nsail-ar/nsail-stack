@@ -33,7 +33,18 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         var config = Path.Combine(configRoot, Path.GetFileName(run.WorkDir));
         Directory.CreateDirectory(config);
         var plugins = Path.Combine(config, "plugins");
-        if (Directory.Exists(plugins)) Directory.Delete(plugins, recursive: true);
+        if (Directory.Exists(plugins))
+        {
+            if (options.RunAs is null)
+            {
+                Directory.Delete(plugins, recursive: true);
+            }
+            else
+            {
+                // The account created it, so the account removes it.
+                await Shell.Run("rm", ["-rf", plugins], config, ct: ct, runAs: options.RunAs);
+            }
+        }
 
         var env = new Dictionary<string, string>(run.Env)
         {
