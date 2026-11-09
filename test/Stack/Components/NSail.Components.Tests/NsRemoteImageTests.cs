@@ -203,6 +203,49 @@ public sealed class NsRemoteImageTests : BunitContext
     }
 
     [Fact]
+    public void ALateFailureOfThePreviousUrlDoesNotHideTheCurrentOne()
+    {
+        var gate = new TaskCompletionSource();
+
+        Services.AddSingleton<IHttpClientFactory>(new GatedClientFactory(gate.Task));
+
+        var cut = Render<NsRemoteImage>(ps => ps.Add(p => p.Url, "/test/ns-remote-image/slow"));
+
+        cut.Render(ps => ps.Add(p => p.Url, "/test/ns-remote-image/fast"));
+
+        cut.WaitForState(() => cut.FindAll("img").Count > 0, TimeSpan.FromSeconds(2));
+
+        gate.SetResult();
+
+        Thread.Sleep(200);
+
+        Assert.NotEmpty(cut.FindAll("img"));
+    }
+
+    sealed class GatedClientFactory(Task release) : IHttpClientFactory
+    {
+        sealed class Handler(Task release) : HttpMessageHandler
+        {
+            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                if (request.RequestUri!.AbsolutePath.EndsWith("slow"))
+                {
+                    await release;
+
+                    throw new TaskCanceledException("simulated timeout");
+                }
+
+                return RasterResponse();
+            }
+        }
+
+        public HttpClient CreateClient(string name)
+        {
+            return new HttpClient(new Handler(release)) { BaseAddress = new Uri("http://localhost/") };
+        }
+    }
+
+    [Fact]
     public void FetchesOncePerScopeAndNeverSharesAcrossScopes()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
