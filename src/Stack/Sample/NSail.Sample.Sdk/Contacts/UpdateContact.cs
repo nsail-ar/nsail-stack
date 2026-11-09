@@ -43,5 +43,6 @@ public class UpdateContact : IMessage
     public string? Notes { get; set; }
 
     [Validated]
+    [MaxLength(20)]
     public List<ContactAddressModel> Addresses { get; set; } = [];
 }
