@@ -44,4 +44,7 @@ public static class BackgroundJobMetrics
     public const string Succeeded = "ok";
 
     public const string Failed = "failed";
+
+    /// <summary>A pass another runner over the same database held, which this one yielded.</summary>
+    public const string Skipped = "skipped";
 }

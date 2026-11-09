@@ -132,11 +132,11 @@ public sealed class TenancyHost : IAsyncDisposable
     /// the same database. It provisions nothing and drops nothing: the database is the host it
     /// was started beside. <paramref name="features"/> is what THAT build declares, which is how a
     /// deploy that sells one key more or one key fewer is reachable at all.</summary>
-    public static Task<TenancyHost> Redeploy(TenancyHost host, Type? seed = null, Type? features = null)
+    public static Task<TenancyHost> Redeploy(TenancyHost host, Type? seed = null, Type? features = null, ILoggerProvider? logs = null)
     {
         ArgumentNullException.ThrowIfNull(host);
 
-        return Start(TenancyMode.SingleDb, seed, host.Cell, features: features);
+        return Start(TenancyMode.SingleDb, seed, host.Cell, features: features, logs: logs);
     }
 
     public static async Task<TenancyHost> Start(

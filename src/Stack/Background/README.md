@@ -52,7 +52,7 @@ The runners read three things from the host:
 
 | Source | Used for |
 |---|---|
-| `Background` (`BackgroundOptions`) | `JobTimeout` (default 5 min) is the budget of one pass of a job, one tenant's for a per-tenant job; `JobTimeouts` overrides it per job, keyed by the job type's name; `DeferredTimeout` (default 30 s) is a deferred item's. Each is 1 ms to 1 day; outside that the host does not start. |
+| `Background` (`BackgroundOptions`) | `JobTimeout` (default 5 min) is the budget of one pass of a job, one tenant's for a per-tenant job; `JobTimeouts` overrides it per job, keyed by the job type's simple name; `DeferredTimeout` (default 30 s) is a deferred item's. Each is 1 ms to 1 day; outside that the host does not start. |
 | `Language:Default` | The culture every job pass and every deferred item runs in, since no request sets one. Absent configuration keeps the ambient culture. |
 | `Tenancy` (`NSail.Data`) | The roster a per-tenant job sweeps (`Tenancy:Tenants`, `Tenancy:TenantsFile`, or the provisioned databases under a per-tenant connection). Under `SingleDb` a declared roster also refuses a request's slug off it with a 404 ([Data](../Data/README.md)). |
 
@@ -82,7 +82,17 @@ The runners read three things from the host:
   process.
 - The session is `Session.System()` with no organization, party or memberships, so ids travel in
   the messages the job sends.
-- One runner instance is assumed: a second replica would run every job twice.
+- A pass holds a Postgres advisory lock per job and tenant, on a connection of its own, until the
+  pass ends (an abandoned one, until it does). The key names the job by its full type name, so two
+  kits' jobs of one simple name are two jobs; config, logs and metrics keep the simple name. A
+  second replica over the same database skips a pass that overlaps it: counted `skipped`, not
+  failed, and the job is not overdue for it. The lock fences overlap only — replicas tick on their
+  own clocks, so a job still runs once per replica per interval. Install-wide work under a
+  per-tenant connection locks on the cluster's maintenance database, under a key of the cell's
+  `{product}_{cell}_` prefix and the job's full name, so neighbouring cells and products do not
+  fence each other. A host with no Npgsql `DbContext` takes no lock. The durable queue's drain is
+  a job like any other, so a tenant's drain runs on one replica at a time and a sibling yields its
+  pass.
 
 **Deferred work** (`DeferredWork`):
 
@@ -100,7 +110,7 @@ The runners read three things from the host:
 
 | Meter | Instrument | Tags |
 |---|---|---|
-| `BackgroundJobMetrics.MeterName` (`NSail.Background`) | `Passes`, `Roster`, `Overdue` (intervals since the last completed pass) | `nsail.job`; `Passes` also `nsail.outcome` (`ok`/`failed`) |
+| `BackgroundJobMetrics.MeterName` (`NSail.Background`) | `Passes`, `Roster`, `Overdue` (intervals since the last completed pass) | `nsail.job`; `Passes` also `nsail.outcome` (`ok`/`failed`/`skipped`) |
 | `DeferredWorkMetrics.MeterName` (`NSail.Background.Deferred`) | `Completed` | `nsail.deferred.kind`, `nsail.outcome` (`ok`/`failed`/`timeout`) |
 
 Failures are metrics because log attributes that are strings are dropped at export; an alert has to

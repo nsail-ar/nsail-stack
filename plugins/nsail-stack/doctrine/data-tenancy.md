@@ -627,12 +627,17 @@ operator the keys *its own* build knows, which is a different list the moment a 
 | `Enabled` | `boolean`, not null | What a flag answers where a tenant's bag is silent |
 | `Limit` | `numeric`, null | What a ceiling answers there, or null for no ceiling at all |
 
-- **Rewritten whole at startup, which is the only moment it can change.** The catalog is gathered
+- **Rewritten whole at startup, which is the only moment it can change — and advisory.** The catalog is gathered
   from the modules composed into the process, so what a build declares is a compile-time fact and
   a deploy is the one event that moves it (`FeaturePublisher`, `NSail.BaseServices.WebApi` — the
   one composition that reaches both the catalog and the context, since `NSail.Data` references no
   `NSail.Security`). The table then says what THIS build declares: a key that left the build
-  leaves the table with it, and the same build twice says the same thing.
+  leaves the table with it, and the same build twice says the same thing. Publishing is advisory
+  and never stops the host: two processes starting together race on a key, so the loser reads
+  again and amends what the winner wrote, and a store that keeps refusing (three attempts, spaced)
+  is logged at warning and the host comes up. **The table can then still say what the previous
+  build declared** until the next start publishes — a reader treats it as what the install last
+  managed to report, not as a guarantee about the running build.
 - **Amended, never emptied and refilled.** A program outside this process reads it, and a
   delete-then-insert would show it empty to whoever read between the two.
 - **An empty table is an honest answer and the reader owes it no entry.** A build that composes no
@@ -746,6 +751,21 @@ reads nothing and cannot write at all.
   circuit and a held push feed have no request either, and are asked on the send and on the
   feed (A suspended tenant's requests, above). It is not a failed pass and not a pass: a
   failure is the job's problem, a suspension is the install's answer about the customer.
+- **A pass holds a lock, so two replicas never run one together.** The runner takes a Postgres
+  advisory lock per job and tenant (`AdvisoryLock`, the one `FirstTouch` uses) on a connection of
+  its own, inside the pass's budget and held until the pass ends — an abandoned pass keeps its
+  scope **and** its lock until it does. The key names the job by its full type name: a lock key
+  identifies its resource, and two kits' `CleanupJob`s are two resources; `JobTimeouts`, the log
+  lines and the metrics keep the simple name. A runner that cannot take it yields the pass:
+  counted `skipped`, neither ok nor failed, and the job reads as completed for the overdue clock,
+  because a sibling is running it. It fences **overlap**, not repetition: replicas tick on their
+  own clocks, so a job whose passes do not overlap still runs once per replica per interval — a
+  job that must run once per interval across replicas needs a lease, not this. A store that is
+  not Postgres takes no lock. Install-wide work under a per-tenant connection has no install
+  database, so it locks on the cluster's maintenance database, the one the roster is read from,
+  under a key of the cell's `{product}_{cell}_` prefix and the job's full name: a neighbouring
+  cell or product on the server is not a sibling. The durable queue's drain is a job like any
+  other: a tenant's drain runs on one replica at a time.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as
   `UseRequestLanguage` does on a request; `LanguageProvider` then seeds itself with "es" instead
@@ -789,7 +809,7 @@ reads nothing and cannot write at all.
   Three instruments, one per way a job goes quiet, each tagged `nsail.job` (the type's name —
   not `job`, which the Prometheus side of an OTLP gateway spends on the service):
   - `nsail.background.job.passes`, a counter also tagged `nsail.outcome` (`ok`/`failed`, the
-    Mediator span's vocabulary) — **it fails**;
+    Mediator span's vocabulary, and `skipped` for a pass a sibling replica held) — **it fails**;
   - `nsail.background.job.roster`, the passes the last tick swept: the tenants ENTERED for a
     per-tenant job (the roster less whoever is suspended), **one** for install-wide work and for
     an install that resolves no tenant, **zero** for the job that runs for nobody — so the two
