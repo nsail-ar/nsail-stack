@@ -951,5 +951,6 @@ decides whether what is held is shown. **No parameter turns one into the other**
   A field with no `Accept` keeps the client's type: declare `Accept` on anything served back.
 - **Where bytes go is `IFileStore`, not the field's business.** The app's registered store
   answers for ordinary screens; a screen whose files belong to somebody other than the
-  session's organization hands its own `Store`. A store that cannot build a preview URL from an
+  session's organization hands its own `Store`. `FileStore` remembers a saved file's name and
+  content type for the scope, never its bytes. A store that cannot build a preview URL from an
   id answers null and the field shows no image.

@@ -9,7 +9,7 @@ namespace NSail.Components;
 
 /// <summary>Fetches a chapter's markdown from the static assets its module ships, in the UI
 /// culture where that module wrote one and in GuideItem.DefaultCulture where it did not. Every
-/// chapter read stays read for the rest of the scope, so paging back and forth through a guide
+/// chapter found, or answered 404, stays read for the rest of the scope, so paging back and forth through a guide
 /// costs one request per chapter and no more.</summary>
 public class GuideReader(HttpClient client, NavigationManager navigation)
 {
@@ -24,10 +24,16 @@ public class GuideReader(HttpClient client, NavigationManager navigation)
             return known;
         }
 
+        var missing = true;
+
         foreach (var culture in Cultures())
         {
-            if (await Fetch(chapter, culture, cancellationToken) is not { } body)
+            var (body, notFound) = await Fetch(chapter, culture, cancellationToken);
+
+            if (body is null)
             {
+                missing &= notFound;
+
                 continue;
             }
 
@@ -38,12 +44,16 @@ public class GuideReader(HttpClient client, NavigationManager navigation)
             return read;
         }
 
-        _read[chapter.File] = null;
+        // Only a 404 is an answer worth keeping; a 5xx, a 429 or an exception is retried on the next read.
+        if (missing)
+        {
+            _read[chapter.File] = null;
+        }
 
         return null;
     }
 
-    async Task<string?> Fetch(GuideItem chapter, string culture, CancellationToken cancellationToken)
+    async Task<(string? Body, bool NotFound)> Fetch(GuideItem chapter, string culture, CancellationToken cancellationToken)
     {
         // Absolute, because the client the factory hands out carries no base address and a
         // browser cannot send a relative one — where the app is served from is the navigation
@@ -54,10 +64,10 @@ public class GuideReader(HttpClient client, NavigationManager navigation)
 
         if (!response.IsSuccessStatusCode)
         {
-            return null;
+            return (null, response.StatusCode == System.Net.HttpStatusCode.NotFound);
         }
 
-        return await response.Content.ReadAsStringAsync(cancellationToken);
+        return (await response.Content.ReadAsStringAsync(cancellationToken), false);
     }
 
     static IEnumerable<string> Cultures()

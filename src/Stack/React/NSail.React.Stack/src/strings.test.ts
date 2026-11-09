@@ -43,4 +43,9 @@ describe("Strings", () => {
     expect(strings.problem({ code: "Conflict", title: "x", issues: [] })).toBe("Conflicto de concurrencia");
     expect(strings.format("Mud.MudDataGridPager_InfoFormat", ["1", "10", "42"])).toBe("1-10 de 42");
   });
+
+  it("reads a regional language as its base language's catalog", () => {
+    expect(stackStrings("es-AR")).toEqual(stackStrings("es"));
+    expect(stackStrings("fr")).toEqual(stackStrings("en"));
+  });
 });

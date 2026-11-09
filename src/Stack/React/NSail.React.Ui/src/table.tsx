@@ -14,10 +14,12 @@ export interface NsTableProps<T> {
   actions?: (row: T) => ReactNode;
   /** A string key: what an empty answer says. */
   empty?: string;
+  /** Columns shown without digit grouping: a number that names something (a voucher), not a quantity. */
+  ungrouped?: readonly (keyof T & string)[];
 }
 
 /** Rows of a projection: each header is the member's key, each cell its value formatted by kind. */
-export function NsTable<T>({ model, rows, columns, rowKey, onRowClick, actions, empty = "Common.NoRecords" }: NsTableProps<T>) {
+export function NsTable<T>({ model, rows, columns, rowKey, onRowClick, actions, empty = "Common.NoRecords", ungrouped }: NsTableProps<T>) {
   const strings = useStrings();
 
   if (rows.length === 0) {
@@ -43,13 +45,28 @@ export function NsTable<T>({ model, rows, columns, rowKey, onRowClick, actions, 
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={String(row[rowKey])} className={onRowClick ? "ns-clickable" : undefined} onClick={onRowClick ? () => onRowClick(row) : undefined}>
+            <tr
+              key={String(row[rowKey])}
+              className={onRowClick ? "ns-clickable" : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (event) => {
+                      if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                        event.preventDefault();
+                        onRowClick(row);
+                      }
+                    }
+                  : undefined
+              }
+            >
               {columns.map((column) => {
                 const field: Field = model.fields[column];
 
                 return (
                   <td key={column} className={`ns-col-${field.kind}`}>
-                    {display(strings, field, row[column])}
+                    {display(strings, field, row[column], { grouped: !ungrouped?.includes(column) })}
                   </td>
                 );
               })}
