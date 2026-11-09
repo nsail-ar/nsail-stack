@@ -144,7 +144,9 @@ the files it leaves.
   by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   Every harness on the board reads the same: main's `harness/gate` mark written `pending` holds that head from
-  a second gate on any harness for twice the gate worker's `Minutes` plus an hour; past that (a harness
+  a second gate on any harness for twice the longest `Minutes` among that harness's own Main
+  workers plus an hour (a fleet whose harnesses set different `Minutes` holds as long as the
+  shortest of them); past that (a harness
   that died leaves it pending) another harness judges the head again. What stays on the machine is its job history,
   its count of them, the work the protected-paths screen refused (`ProtectedPaths`), and what a hand or
   the provider set (`state.json`: the pause, take-new when a hand moved it, an unexpired quota wall),

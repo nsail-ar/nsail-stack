@@ -100,7 +100,7 @@ public sealed class WatchJob(WorkItem item, JobContext ctx, WatchState state) : 
         if (opened.Count > 0) said.Add($"filed {string.Join(", ", opened.Select(n => $"#{n}"))}");
         if (counted.Count > 0) said.Add($"counted on {string.Join(", ", counted.Select(n => $"#{n}"))}");
         if (left.Count > 0) said.Add($"{left.Count} left for the next pass");
-        if (capped) said.Add($"read {MaxLines} lines, the rest on the next pass");
+        if (capped) said.Add($"read the cap of {MaxLines} lines, the next pass takes up after the last one");
         return new JobOutcome(said.Count == 0 ? $"{groups.Count} error group(s), all filed and counted today" : string.Join("; ", said));
     }
 

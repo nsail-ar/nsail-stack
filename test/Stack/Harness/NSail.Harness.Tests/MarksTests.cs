@@ -24,6 +24,15 @@ public class MarksTests
     }
 
     [Fact]
+    public void ThePendingHoldIsTheLongestMainWorkersCutPlusAnHour()
+    {
+        var longest = SampleWorkers.Workers.Where(w => w.Kind == WorkKind.Main).Max(w => w.Options.Minutes ?? w.Type.Minutes);
+
+        Assert.Equal(TimeSpan.FromMinutes(longest * 2 + 60), HarnessLoop.MainPendingFor(SampleWorkers.Workers));
+        Assert.Equal(TimeSpan.Zero, HarnessLoop.MainPendingFor(SampleWorkers.Workers.Where(w => w.Kind != WorkKind.Main).ToList()));
+    }
+
+    [Fact]
     public void BreaksCountOnlyWhileNothingElseIsSaidBetweenThem()
     {
         var comments = new[]

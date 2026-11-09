@@ -58,12 +58,12 @@ public sealed class WorkerOptions
     public string? Source { get; set; }
     public int? Every { get; set; }
     public int? Lookback { get; set; }
-
-    // Watch: minutes the window's end trails now, for a line the source ingests late (none, five).
-    public int? IngestLag { get; set; }
     public int? MaxStories { get; set; }
     public Dictionary<string, string> Areas { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string>? NotProd { get; set; }
+
+    // Watch: minutes the window's end trails now, for a line the source ingests late (none, five).
+    public int? IngestLag { get; set; }
 
     // The job is cut at this age; none takes the type's.
     public int? Minutes { get; set; }

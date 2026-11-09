@@ -411,7 +411,7 @@ public sealed class HarnessLoop(
     }
 
     // How long another harness's pending gate mark keeps its head from a second gate: the gate's own cut (twice its Minutes, as
-    // MainGateJob.Timeout) plus the wait for a build turn; a harness that died mid-build leaves the mark pending for good.
+    // MainGateJob.Timeout) plus the wait for a build turn; past it, a mark a dead harness left pending holds nothing.
     internal static TimeSpan PendingGate(int minutes)
     {
         return TimeSpan.FromMinutes(minutes * 2) + TimeSpan.FromHours(1);
@@ -427,11 +427,11 @@ public sealed class HarnessLoop(
     }
 
     // The longest any Main worker's gate may run, as another harness's pending mark must outlast it.
-    TimeSpan MainPendingFor()
+    internal static TimeSpan MainPendingFor(IReadOnlyList<Worker> workers)
     {
-        return _workers.Where(w => w.Kind == WorkKind.Main)
+        return workers.Where(w => w.Kind == WorkKind.Main)
             .Select(w => PendingGate(w.Options.Minutes ?? w.Type.Minutes))
-            .DefaultIfEmpty(PendingGate(0)).Max();
+            .DefaultIfEmpty(TimeSpan.Zero).Max();
     }
 
     // A turn is dead past the longest step any worker runs, with a margin for the job's own wind-down.
@@ -459,7 +459,7 @@ public sealed class HarnessLoop(
             {
                 DueReleases = DueReleases(marks, DateTimeOffset.UtcNow),
                 DueWatches = DueWatches(DateTimeOffset.UtcNow),
-                MainGated = MainGatedOf(marks, DateTimeOffset.UtcNow, MainPendingFor()),
+                MainGated = MainGatedOf(marks, DateTimeOffset.UtcNow, MainPendingFor(_workers)),
                 LastQaAt = StatusMark.LastAt(marks, Markers.QaContext),
             };
             var limits = new Limits(o.Agents, o.Builds, o.Browsers);
