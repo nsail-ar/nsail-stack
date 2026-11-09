@@ -148,6 +148,53 @@ public class WorkerPlannerTests
 
         Assert.Equal(["dev #1 (round (PR #10: CI red))"], Lines(f, new PlannerOptions { WipLimit = 1 }));
     }
+
+    [Fact]
+    public void ARedPrStillGetsItsRoundBesideAGreenOneElsewhere()
+    {
+        var f = new Fixture()
+            .Story(5, "In-Progress")
+            .Pr(5, 50, repo: "acme/other").Pr(5, 51, CiState.Red);
+
+        Assert.Contains(Lines(f), l => l.Contains("PR #51"));
+    }
+
+    [Fact]
+    public void StartingChoresRunOnlyForItemsThatStart()
+    {
+        var plan = Plan(new Fixture().Story(2673, "Ready", "stalled"));
+        var started = HarnessLoop.ChoresToDo(plan, plan.Items);
+        var paused = HarnessLoop.ChoresToDo(plan, []);
+
+        Assert.Contains(started, c => c is { Kind: ChoreKind.MoveStage, Story: 2673, Value: "Analyze" });
+        Assert.DoesNotContain(paused, c => c.Story == 2673);
+    }
+
+    [Fact]
+    public void AnEarlierQuotaEndKeepsTheLaterWall()
+    {
+        var week = DateTimeOffset.UtcNow.AddDays(7);
+        var hours = DateTimeOffset.UtcNow.AddHours(5);
+
+        Assert.Equal(week, HarnessLoop.LaterWall(week, hours));
+        Assert.Equal(week, HarnessLoop.LaterWall(hours, week));
+        Assert.Equal(hours, HarnessLoop.LaterWall(null, hours));
+    }
+
+    [Fact]
+    public void AForcedJobRefusesInDebugWhilePausedAndInsideTheQuotaWall()
+    {
+        var wall = DateTimeOffset.UtcNow.AddHours(1);
+
+        Assert.Null(HarnessLoop.ForceRefusal(HarnessMode.Live, null, null, WorkKind.Dev));
+        Assert.Contains("Debug", HarnessLoop.ForceRefusal(HarnessMode.Debug, null, null, WorkKind.Dev));
+        Assert.Contains("paused", HarnessLoop.ForceRefusal(HarnessMode.Live, "drain", null, WorkKind.Dev));
+        Assert.Contains("quota", HarnessLoop.ForceRefusal(HarnessMode.Live, null, wall, WorkKind.Dev));
+        Assert.Null(HarnessLoop.ForceRefusal(HarnessMode.Live, null, wall, WorkKind.Release));
+        var now = new DateTimeOffset(2026, 11, 9, 14, 0, 0, TimeSpan.Zero);
+        Assert.Equal("17:15", HarnessLoop.WallClock(now.AddHours(3).AddMinutes(15), now));
+        Assert.Equal("Mon 14:00", HarnessLoop.WallClock(now.AddDays(7), now));
+    }
 }
 
 public class OrphanTests
