@@ -40,23 +40,52 @@ public partial class NsDurationField<TValue>
     // A span TimeSpan cannot hold is refused on the field and the model keeps what it had.
     async Task OnHoursChanged(double? value)
     {
-        var refused = value is { } hours && (double.IsNaN(hours) || Math.Abs(hours) > TimeSpan.MaxValue.TotalHours);
-
-        if (refused != _tooLong)
+        if (value is { } hours && (double.IsNaN(hours) || Math.Abs(hours) > TimeSpan.MaxValue.TotalHours))
         {
-            _tooLong = refused;
-            NotifyOwnProblemChanged();
-        }
+            if (!_tooLong)
+            {
+                _tooLong = true;
+                _refusedOver = Value;
+                NotifyOwnProblemChanged();
+            }
 
-        if (refused)
-        {
             return;
         }
 
+        var lifted = _tooLong;
+        _tooLong = false;
+
         await SetValue(FromHours(value));
+
+        // After the write, so the lift is judged against the value the box now holds.
+        if (lifted)
+        {
+            NotifyOwnProblemChanged();
+        }
     }
 
     bool _tooLong;
+
+    TValue? _refusedOver;
+
+    // A value the page writes behind the field replaces what the refusal was about; only a
+    // keystroke can raise it, so this is the one seam that can lift it otherwise.
+    protected override void OnParametersSet()
+    {
+        var lifted = _tooLong && !EqualityComparer<TValue?>.Default.Equals(Value, _refusedOver);
+
+        if (lifted)
+        {
+            _tooLong = false;
+        }
+
+        base.OnParametersSet();
+
+        if (lifted)
+        {
+            NotifyOwnProblemChanged();
+        }
+    }
 
     protected override string? GetErrorText()
     {

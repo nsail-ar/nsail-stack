@@ -4,6 +4,7 @@
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
+using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
 
 namespace NSail.Components.Tests;
@@ -43,6 +44,24 @@ public sealed class NsFieldHardeningTests : BunitContext, IAsyncLifetime
 
         Assert.Equal(TimeSpan.FromHours(2), held);
         Assert.Contains("mud-input-error", cut.Markup);
+    }
+
+    [Fact]
+    public async Task ADurationThePageWritesLiftsTheRefusal()
+    {
+        var model = new DurationFormHost.FormModel { Length = TimeSpan.FromHours(2) };
+        var submitted = false;
+        var cut = Render<DurationFormHost>(ps => ps
+            .Add(p => p.Model, model)
+            .Add(p => p.Submitted, () => submitted = true));
+
+        await cut.InvokeAsync(() => cut.Find("input").Input("999999999"));
+        await cut.InvokeAsync(() => cut.Instance.Write(TimeSpan.FromHours(3)));
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.True(submitted);
+        Assert.Empty(cut.FindAll(".mud-input-error"));
+        Assert.Equal(TimeSpan.FromHours(3), model.Length);
     }
 
     [Fact]

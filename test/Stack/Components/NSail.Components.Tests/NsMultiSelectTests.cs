@@ -96,13 +96,11 @@ public sealed class NsMultiSelectTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public async Task NsMultiSelect_FollowsTheFormFreeze()
+    public void NsMultiSelect_FollowsTheFormFreeze()
     {
         var cut = Render<MultiSelectFormHost>(ps => ps
             .Add(p => p.Model, new MultiSelectFormHost.FormModel())
             .Add(p => p.Disabled, true));
-
-        await cut.InvokeAsync(() => { });
 
         Assert.Contains("mud-disabled", cut.Find("div.mud-input").ClassList);
     }
