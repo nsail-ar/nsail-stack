@@ -8,7 +8,7 @@ using NSail.Problems;
 
 namespace NSail.Messaging.Runtime.Validation;
 
-/// <summary>Turns a message's DataAnnotations into the same Issues InputProblemBuilder emits,
+/// <summary>Turns a message's DataAnnotations, and an enum number no member defines, into the same Issues InputProblemBuilder emits,
 /// so a field error reads identically whether a rule rejected it in the handler or an
 /// attribute rejected it before the send — one vocabulary ("Required", "MaxLength") that the
 /// UI translates by code, with the bounds carried as named arguments. An attribute outside
@@ -91,6 +91,46 @@ public static class MessageValidator
                 failed = true;
             }
 
+            if (member.Enum is { } shape)
+            {
+                if (!read)
+                {
+                    value = property.GetValue(model);
+                    read = true;
+                }
+
+                if (value is not null && !shape.Defines(value))
+                {
+                    builder.AddOutOfRange(prefix + property.Name);
+                    failed = true;
+                }
+            }
+
+            if (member.Element is { } elementShape)
+            {
+                if (!read)
+                {
+                    value = property.GetValue(model);
+                    read = true;
+                }
+
+                if (value is System.Collections.IEnumerable items)
+                {
+                    var at = 0;
+
+                    foreach (var item in items)
+                    {
+                        if (item is not null && !elementShape.Defines(item))
+                        {
+                            builder.AddOutOfRange($"{prefix}{property.Name}[{at}]");
+                            failed = true;
+                        }
+
+                        at++;
+                    }
+                }
+            }
+
             if (!member.Validated)
             {
                 continue;
@@ -171,16 +211,77 @@ public static class MessageValidator
             var rules = property.GetCustomAttributes<ValidationAttribute>(inherit: true).ToArray();
             var validated = property.GetCustomAttribute<ValidatedAttribute>(inherit: true) is not null;
 
-            if (rules.Length > 0 || validated)
+            var enumType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+            var shape = enumType.IsEnum ? new EnumShape(enumType) : null;
+
+            var element = ElementType(property.PropertyType) is { IsEnum: true } item ? new EnumShape(item) : null;
+
+            if (rules.Length > 0 || validated || shape is not null || element is not null)
             {
-                members.Add(new Member(property, rules, validated));
+                members.Add(new Member(property, rules, validated, shape, element));
             }
         }
 
         return members.ToArray();
     }
 
-    sealed record Member(PropertyInfo Property, ValidationAttribute[] Rules, bool Validated);
+    sealed record Member(
+        PropertyInfo Property, ValidationAttribute[] Rules, bool Validated, EnumShape? Enum, EnumShape? Element);
+
+    // The enum a collection member carries, nullable elements included; null for anything else.
+    static Type? ElementType(Type type)
+    {
+        if (type == typeof(string) || type.IsEnum)
+        {
+            return null;
+        }
+
+        var sequence = type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+            ? type
+            : type.GetInterfaces().FirstOrDefault(
+                i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+
+        return sequence is null
+            ? null
+            : Nullable.GetUnderlyingType(sequence.GetGenericArguments()[0]) ?? sequence.GetGenericArguments()[0];
+    }
+
+    // The wire reads enum numbers, so a number no member names reaches the message: a plain enum
+    // must be one of its members, a [Flags] one a combination of them.
+    sealed class EnumShape
+    {
+        readonly Type _type;
+        readonly bool _flags;
+        readonly ulong _mask;
+
+        public EnumShape(Type type)
+        {
+            _type = type;
+            _flags = type.IsDefined(typeof(FlagsAttribute), inherit: false);
+
+            foreach (var member in Enum.GetValues(type))
+            {
+                _mask |= Bits(member);
+            }
+        }
+
+        public bool Defines(object value)
+        {
+            if (!_flags)
+            {
+                return Enum.IsDefined(_type, value);
+            }
+
+            return (Bits(value) & ~_mask) == 0;
+        }
+
+        static ulong Bits(object value)
+        {
+            var number = Convert.ToDecimal(value);
+
+            return number < 0 ? unchecked((ulong)(long)number) : (ulong)number;
+        }
+    }
 
     static void Add(InputProblemBuilder<object> builder, ValidationAttribute attribute, string field)
     {
