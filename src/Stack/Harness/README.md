@@ -131,6 +131,10 @@ the files it leaves.
   story. A gate or review marker on a PR counts only as a whole HTML comment on its own line, written
   by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
+  The dossier a seat reads lays a comment or PR note by any other login fenced and labelled untrusted; the
+  logins whose words reach it as the crew's are the harness's own, `Harness:MarkerAuthors` and `Harness:TrustedAuthors`
+  (the owners and the crew, empty by default). A Watch story fences the log's template and stack as data, and the
+  watch files it in Analyze, never Ready.
   Every harness on the board reads the same. What stays on the machine is its job history,
   its count of them, the work the protected-paths screen refused (`ProtectedPaths`), and what a hand or
   the provider set (`state.json`: the pause, take-new when a hand moved it, an unexpired quota wall),

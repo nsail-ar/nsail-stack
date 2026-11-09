@@ -105,6 +105,11 @@ public sealed class HarnessOptions
     // harness of the fleet, so one reads another's verdicts. The same list on every harness.
     public List<string> MarkerAuthors { get; set; } = [];
 
+    // The logins whose comments reach a seat as the crew's words, beside this harness's own and the
+    // MarkerAuthors: the owners and the crew. Anyone else's text on a story or a PR is laid in the
+    // dossier fenced and labelled untrusted.
+    public List<string> TrustedAuthors { get; set; } = [];
+
     // The Ops this Harness reports to (OpsOptions).
     public OpsOptions Ops { get; set; } = new();
 
