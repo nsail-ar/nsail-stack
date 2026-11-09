@@ -71,9 +71,9 @@ await mediator.send(CreateContact, { id, name });   // reads like the C# send
   `Version` are `string`; `JsonElement`, `JsonNode` and kin are `unknown`, since the wire
   writes them as free JSON; `BigInteger`, `Int128` and `UInt128` are `unknown` too, since no
   converter in `JsonOptions` pins them as text and a JSON number that wide loses digits in a
-  `number`. A property renamed with
-  `[JsonPropertyName]` keeps that name in the body, quoted when it is not an identifier; in a
-  route, query or header member the name is the lowered property name, as the endpoint reads it.
+  `number`. A property renamed with `[JsonPropertyName]` keeps that name in the body, quoted
+  when it is not an identifier; in a route, query or header member the name is the lowered
+  property name, as the endpoint reads it.
 - **One namespace.** Two reachable types sharing a simple name fail the build
   (`NSTS001`), as does a route token no member binds (NSG001's twin) — a generator that
   guessed would emit a client that compiles and calls the wrong thing.
