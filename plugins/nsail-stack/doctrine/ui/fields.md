@@ -42,7 +42,7 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   `*` either, everything else a literal), presentation only — the bound value stays raw. The
   patterns are the consuming kit's knowledge (`PartyMasks`). **A date field wears none**, and
   that is a rule rather than an omission: see the typing contract below. A masked box also
-  carries no select-on-focus marker: the mask engine owns its caret.
+  carries no select-on-focus marker: the mask engine owns its caret. An empty `Mask` is no mask.
 - **`NsTextField` copies its value behind `Copy`** — one boolean, for a value shown once and
   carried elsewhere by hand (a generated password, a token, a link). An end button writes the
   bound value — raw, as a `Mask` leaves it — through `navigator.clipboard.writeText` and is

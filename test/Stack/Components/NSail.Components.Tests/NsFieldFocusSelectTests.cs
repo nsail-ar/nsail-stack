@@ -18,7 +18,8 @@ namespace NSail.Components.Tests;
 /// place (email, phone, a lookup's search box, a picker) does not.
 ///
 /// bUnit proves the marker reaches the markup on every opted-in unmasked shape, and that it does
-/// NOT reach a masked one. The browser behaviour needs a real device.</summary>
+/// NOT reach a masked one; the listener's half is read from ns.js. The browser behaviour needs a
+/// real device.</summary>
 public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
 {
     public NsFieldFocusSelectTests()
@@ -50,18 +51,30 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
         Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 
-    /// <summary>A masked field (a CUIT, a DNI, and by the same mechanism NsDateField's own vendor
-/// mask) carries no marker: NsTextField.SelectOnFocus is false while Mask is set, because the mask
-/// engine owns the caret and selection. Do not simplify that condition to true — the marker
-/// would survive the vendor's attribute splat and the masked field would start selecting.</summary>
+    /// <summary>A masked field (a CUIT, a DNI) carries no marker: NsTextField.SelectOnFocus is
+    /// false while a Mask is set, because the vendor's mask engine owns the caret and selection.
+    /// Do not simplify that condition to true — the marker would survive the vendor's attribute
+    /// splat and the masked field would start selecting.</summary>
     [Fact]
-    public void AMaskedTextField_DoesNotCarryTheAttribute_TheVendorsOwnMaskOwnsFocus()
+    public void AMaskedTextField_CarriesNoMarker_TheMaskEngineOwnsTheCaret()
     {
         var cut = Render<NsTextField>(ps => ps
             .Add(p => p.Mask, "00-00000000-0")
             .Add(p => p.Value, "20123456789"));
 
         Assert.Null(cut.Find("input").GetAttribute("data-ns-select-on-focus"));
+    }
+
+    /// <summary>An empty Mask installs no mask (GetMask reads it as none), so the box is a plain
+    /// one and selects like one.</summary>
+    [Fact]
+    public void AnEmptyMask_IsNoMask_TheFieldSelectsOnFocus()
+    {
+        var cut = Render<NsTextField>(ps => ps
+            .Add(p => p.Mask, "")
+            .Add(p => p.Value, "hello"));
+
+        Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-select-on-focus"));
     }
 
     [Fact]
@@ -105,5 +118,33 @@ public sealed class NsFieldFocusSelectTests : BunitContext, IAsyncLifetime
         var cut = Render<NsEmailField>(ps => ps.Add(p => p.Value, "a@b.com"));
 
         Assert.Null(cut.Find("input").GetAttribute("data-ns-select-on-focus"));
+    }
+
+    // The marker is only half the mechanism: read here, so a rename on either side goes red
+    // instead of silently losing the feature in a browser suite nobody runs.
+    [Fact]
+    public void TheKeyboardLayer_SelectsTheFieldThatCarriesTheMarker()
+    {
+        var layer = ReadSource("src/Stack/BaseServices/NSail.BaseServices.WebApp/wwwroot/ns.js");
+
+        Assert.Contains("t.getAttribute(\"data-ns-select-on-focus\") === \"true\")", layer, StringComparison.Ordinal);
+        Assert.Contains("t.select();", layer, StringComparison.Ordinal);
+    }
+
+    static string ReadSource(string path)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
+            {
+                return File.ReadAllText(Path.Combine(directory.FullName, path));
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException($"{path} not found above the test assembly.");
     }
 }
