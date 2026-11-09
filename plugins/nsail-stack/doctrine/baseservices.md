@@ -254,9 +254,9 @@ halves are written by the source (a rule's name, a field's, an entity's); the is
 does the exception's, which opens every rendered stack. No `RecordException` and no status
 description either. For code NSail did not write, `Scrubber` is a span
 processor and an **allow-list**: only `nsail.*` and the closed list in `Scrubber.cs` survive,
-so a tag a new package version adds fails closed; it cuts the query string off `url.full` and
-sets `url.path` to the route template, since a literal path carries the values the route was
-filled with. A processor rather than
+so a tag a new package version adds fails closed. It cuts `url.full` to its origin and sets
+`url.path` to the route template, since a literal path carries the values the route was filled
+with. Blazor's spans keep only the component type, method and circuit id. A processor rather than
 vendor options on purpose: an instrumentation option can be removed or renamed by the next
 package version (`SetDbStatementForText`, which suppressed SQL text, was removed from the EF
 Core instrumentation), and then fails open silently.

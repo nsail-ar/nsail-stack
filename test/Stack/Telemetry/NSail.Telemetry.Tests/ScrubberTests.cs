@@ -63,25 +63,25 @@ public sealed class ScrubberTests
     }
 
     [Fact]
-    public void The_query_string_is_cut_off_a_client_spans_url()
+    public void A_client_spans_url_is_cut_to_its_origin()
     {
         var span = Ended(activity =>
         {
-            activity.SetTag("url.full", $"https://app.nsail.ar/api/directory/parties{Search}");
+            activity.SetTag("url.full", $"https://app.nsail.ar/api/directory/parties/20123456789{Search}");
         });
 
-        Assert.Equal("https://app.nsail.ar/api/directory/parties", span.GetTagItem("url.full"));
+        Assert.Equal("https://app.nsail.ar", span.GetTagItem("url.full"));
     }
 
     [Fact]
-    public void A_url_with_no_query_is_left_alone()
+    public void A_url_with_no_path_is_left_alone()
     {
         var span = Ended(activity =>
         {
-            activity.SetTag("url.full", "https://app.nsail.ar/api/directory/parties");
+            activity.SetTag("url.full", "https://app.nsail.ar");
         });
 
-        Assert.Equal("https://app.nsail.ar/api/directory/parties", span.GetTagItem("url.full"));
+        Assert.Equal("https://app.nsail.ar", span.GetTagItem("url.full"));
     }
 
     [Fact]

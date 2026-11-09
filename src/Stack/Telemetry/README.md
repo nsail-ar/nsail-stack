@@ -79,16 +79,16 @@ and any meter names passed to `AddTelemetry`. `AddBaseWebApi` passes `TenantPoli
 
 **The message span.** `TelemetryInterceptor<>` registers open-generic and wraps every send as a
 span named `{Area}.{Feature}.{Object}` (source `NSail.Messaging`), registered whatever the
-configuration. It carries only `nsail.outcome` (`ok`, `refused`, `failed`, `cancelled` for a client abort, which sets no Error status), `nsail.user`, and on a
+configuration. It carries only `nsail.outcome` (`ok`, `refused`, `failed`, `cancelled` when the caller's token was cancelled, which sets no Error status), `nsail.user`, and on a
 refusal `nsail.problem` (the Problem's code) and `nsail.rule`, or on a crash `nsail.failure` (the
 exception type). It never reads a message's members.
 
 **Scrubbing.**
 
 - `Scrubber` (span processor) is an allow-list: only `nsail.*` and a closed list of HTTP and
-  database tags survive (the list is in `Scrubber.cs`); any other tag is dropped. It cuts the
-  query string off `url.full` and sets `url.path` to the route template (`http.route`), dropping
-  it where there is none.
+  database tags and Blazor's component type, method and circuit id survive (the list is in
+  `Scrubber.cs`); any other tag is dropped. It cuts `url.full` to its origin and sets `url.path`
+  to the route template (`http.route`), dropping it where there is none.
 - `LogScrubber` (log processor, at the exporter only, so console and file keep the full line)
   keeps the category, level, event id and message template. An attribute travels only if its type
   cannot carry prose (`Guid`, numbers, `bool`, enums, dates, durations); every string is dropped.

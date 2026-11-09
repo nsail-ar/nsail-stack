@@ -49,8 +49,9 @@ public static class MessageSpan
 
     public const string Failed = "failed";
 
-    /// <summary>The caller went away (a client abort, a shutdown): neither a failure of the
-    /// message nor an error status, so it stays out of failure rates.</summary>
+    /// <summary>The caller went away (its token was cancelled: a client abort, a shutdown):
+    /// neither a failure of the message nor an error status, so it stays out of failure rates.
+    /// A cancellation the caller did not ask for, a dependency's timeout, is a failure.</summary>
     public const string Cancelled = "cancelled";
 
     static readonly ActivitySource _source = new(SourceName);
@@ -87,7 +88,7 @@ public static class MessageSpan
         activity?.SetTag(OutcomeTag, Succeeded);
     }
 
-    public static void Fail(Activity? activity, Exception exception)
+    public static void Fail(Activity? activity, Exception exception, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(exception);
 
@@ -96,7 +97,7 @@ public static class MessageSpan
             return;
         }
 
-        if (exception is OperationCanceledException)
+        if (exception is OperationCanceledException && cancellationToken.IsCancellationRequested)
         {
             activity.SetTag(OutcomeTag, Cancelled);
 

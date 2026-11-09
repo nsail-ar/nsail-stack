@@ -135,14 +135,35 @@ public sealed class MessageSpanTests
 
         await using var scope = app.Services.CreateAsyncScope();
 
+        using var aborted = new CancellationTokenSource();
+
+        await aborted.CancelAsync();
+
         await Assert.ThrowsAsync<OperationCanceledException>(() =>
-            Harness.Mediator(scope.ServiceProvider).Send(new AbortedPatient()));
+            Harness.Mediator(scope.ServiceProvider).Send(new AbortedPatient(), aborted.Token));
 
         var span = Assert.Single(recorder.Stopped);
 
         Assert.Equal(MessageSpan.Cancelled, span.GetTagItem(MessageSpan.OutcomeTag));
         Assert.Equal(ActivityStatusCode.Unset, span.Status);
         Assert.Null(span.GetTagItem(MessageSpan.FailureTag));
+    }
+
+    [Fact]
+    public async Task A_cancellation_the_caller_did_not_ask_for_is_a_failure()
+    {
+        using var recorder = new SpanRecorder();
+        using var app = Harness.Host(credentialed: false);
+
+        await using var scope = app.Services.CreateAsyncScope();
+
+        await Assert.ThrowsAsync<TaskCanceledException>(() =>
+            Harness.Mediator(scope.ServiceProvider).Send(new TimedOutPatient()));
+
+        var span = Assert.Single(recorder.Stopped);
+
+        Assert.Equal(MessageSpan.Failed, span.GetTagItem(MessageSpan.OutcomeTag));
+        Assert.Equal(ActivityStatusCode.Error, span.Status);
     }
 
     // The tag the failure log is searched by: without it, "why did MY last action fail" has

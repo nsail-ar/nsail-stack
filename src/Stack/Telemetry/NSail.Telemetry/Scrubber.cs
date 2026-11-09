@@ -8,11 +8,10 @@ namespace NSail.Telemetry;
 
 /// <summary>Keeps, on every span the vendor instrumentations produce, only the tags of a closed
 /// list; anything else is dropped before export, so a tag a package version adds tomorrow
-/// (<c>enduser.id</c>, <c>user_agent.original</c>, a captured header) fails closed. The query
-/// string a list screen's search box arrives in is cut off <c>url.full</c>, and
-/// <c>url.path</c> is replaced by the route template (<c>http.route</c>) or dropped where
-/// there is none, because a literal path carries the ids and documents the route was filled
-/// with. NSail's own spans (<c>nsail.*</c>) have nothing to scrub. It is a processor rather
+/// (<c>enduser.id</c>, <c>user_agent.original</c>, a captured header) fails closed. <c>url.full</c>
+/// is cut to its origin, and <c>url.path</c> is replaced by the route template
+/// (<c>http.route</c>) or dropped where there is none, because a literal path and query carry
+/// the ids, documents and search text the route was filled with. NSail's own spans (<c>nsail.*</c>) have nothing to scrub. It is a processor rather
 /// than a set of vendor options on purpose: an option renamed by the next package version
 /// fails open and silently, a tag that is removed after the fact does not.</summary>
 public sealed class Scrubber : BaseProcessor<Activity>
@@ -43,6 +42,9 @@ public sealed class Scrubber : BaseProcessor<Activity>
         "db.operation.name",
         "db.collection.name",
         "otel.status_code",
+        "aspnetcore.components.type",
+        "aspnetcore.components.method",
+        "aspnetcore.components.circuit.id",
     };
 
     public override void OnEnd(Activity data)
@@ -71,16 +73,14 @@ public sealed class Scrubber : BaseProcessor<Activity>
             data.SetTag(PathTag, route);
         }
 
-        if (data.GetTagItem(UrlTag) is string url && Trim(url) is { } trimmed)
+        if (data.GetTagItem(UrlTag) is string url)
         {
-            data.SetTag(UrlTag, trimmed);
+            data.SetTag(UrlTag, Origin(url));
         }
     }
 
-    static string? Trim(string url)
+    static string? Origin(string url)
     {
-        var mark = url.IndexOf('?', StringComparison.Ordinal);
-
-        return mark < 0 ? null : url[..mark];
+        return Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.GetLeftPart(UriPartial.Authority) : null;
     }
 }
