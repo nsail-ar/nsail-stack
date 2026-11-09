@@ -25,6 +25,29 @@ public sealed class QueueDeliveryLoopTests
     }
 
     [Fact]
+    public async Task A_business_failure_dead_letters_with_the_issue_text()
+    {
+        var options = Options();
+        var clock = new TestClock();
+
+        await using var host = await HandlerHost.Start(
+            "queue_rule", QueueHarness.Context, services => QueueHarness.Compose(services, options, clock));
+
+        await host.Send(new FailsWithRule(), Clerk());
+
+        for (var attempt = 1; attempt <= options.MaxAttempts; attempt++)
+        {
+            await host.Use<QueueDrain, int>(drain => drain.Run(CancellationToken.None));
+            clock.Advance(options.Backoff * Math.Pow(2, attempt));
+        }
+
+        var row = Assert.Single(await host.Read(db => db.Set<QueuedMessage>().ToListAsync()));
+
+        Assert.NotNull(row.DeadLetteredAt);
+        Assert.Contains("Letter 42 does not exist.", row.LastError);
+    }
+
+    [Fact]
     public async Task A_handler_that_always_throws_is_attempted_the_configured_number_of_times_and_then_dead_lettered()
     {
         var options = Options();

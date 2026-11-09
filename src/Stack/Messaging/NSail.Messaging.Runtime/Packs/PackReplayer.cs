@@ -43,7 +43,7 @@ public class PackReplayer
                 // done, not refused. This is what makes a retry after a partial run resume.
                 replay.Skipped++;
             }
-            catch (Exception exception)
+            catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 replay.Errors.Add(new PackStepError { Index = index, Step = step, Detail = Describe(exception) });
 
