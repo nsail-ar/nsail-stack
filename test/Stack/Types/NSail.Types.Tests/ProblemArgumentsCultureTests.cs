@@ -36,4 +36,12 @@ public sealed class ProblemArgumentsCultureTests
 
         Assert.Equal("2026-03-04", issue.Arguments!["value"]);
     }
+
+    [Fact]
+    public void A_civil_time_is_not_stamped_as_UTC()
+    {
+        var issue = Assert.Single(BusinessProblem.AlreadyExists(typeof(string), new DateTime(2026, 3, 4, 18, 0, 0, DateTimeKind.Unspecified)).Issues);
+
+        Assert.Equal("2026-03-04T18:00:00", issue.Arguments!["value"]);
+    }
 }

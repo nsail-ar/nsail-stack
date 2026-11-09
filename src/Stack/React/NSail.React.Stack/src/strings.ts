@@ -74,7 +74,7 @@ export class Strings {
     }
 
     if (args?.at && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(args.at)) {
-      args.at = new Date(args.at).toLocaleString();
+      args.at = new Date(args.at).toLocaleString(this.language, { dateStyle: "short", timeStyle: "short" });
     }
 
     return fill(text, args);

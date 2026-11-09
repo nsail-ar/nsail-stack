@@ -89,13 +89,15 @@ public static class BusinessProblem
         return NotFound(KeyOf(entity), id, source);
     }
 
-    /// <summary>An argument value as the wire carries it: culture-neutral, a moment as ISO 8601 UTC.</summary>
+    // An argument value as the wire carries it: culture-neutral, a moment as ISO 8601 UTC. A
+    // DateTime of Unspecified kind is a civil time and never reaches here stamped as UTC.
     internal static string Invariant(object? value)
     {
         return value switch
         {
             null => string.Empty,
-            DateTime moment => moment.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
+            DateTime { Kind: DateTimeKind.Unspecified } civil => civil.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture),
+            DateTime moment => moment.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             DateTimeOffset moment => moment.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             DateOnly day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             TimeOnly time => time.ToString("HH':'mm':'ss", CultureInfo.InvariantCulture),

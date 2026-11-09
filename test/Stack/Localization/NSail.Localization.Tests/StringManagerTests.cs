@@ -127,7 +127,7 @@ public sealed class StringManagerTests
             "server text",
             null,
             new Dictionary<string, string> { ["at"] = "2026-03-04T05:06:07Z" });
-        var expected = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc).ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+        var expected = new DateTime(2026, 3, 4, 5, 6, 7, DateTimeKind.Utc).ToLocalTime().ToString("g", CultureInfo.GetCultureInfo("en-US"));
 
         Assert.Equal($"changed on {expected}", manager.Translate(issue));
     }

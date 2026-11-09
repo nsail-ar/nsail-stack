@@ -116,8 +116,9 @@ public sealed class StringManager(StringCatalog catalog, LanguageProvider langua
         }
 
         var hasEntity = arguments.TryGetValue(EntityArgument, out var key);
+        var moment = default(DateTime);
         var hasInstant = arguments.TryGetValue(InstantArgument, out var instant)
-            && DateTime.TryParseExact(instant, "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out _);
+            && DateTime.TryParseExact(instant, "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out moment);
 
         if (!hasEntity && !hasInstant)
         {
@@ -133,8 +134,7 @@ public sealed class StringManager(StringCatalog catalog, LanguageProvider langua
 
         if (hasInstant)
         {
-            var moment = DateTime.ParseExact(instant!, "yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
-            localized[InstantArgument] = moment.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+            localized[InstantArgument] = moment.ToLocalTime().ToString("g", RegionCulture.For(language));
         }
 
         return localized;

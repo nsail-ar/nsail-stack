@@ -145,7 +145,8 @@ and it is the table of contents and the navigation at once.
 draws carries `id="{slug}"` — lowercase, accents stripped, everything else a hyphen — and a
 repeated heading's slug takes `-1`, `-2`… in document order. `Markdown.Headings` reads the
 same ids off the same document, so the index and the anchors it points at are one derivation;
-a link from another chapter to a repeat reads them from `Headings`, never `Markdown.Slug`. `/guide/{chapter}#{slug}` scrolls to that section on arrival and
+a link from another chapter to a repeat reads them from `Headings`, never `Markdown.Slug`.
+`/guide/{chapter}#{slug}` scrolls to that section on arrival and
 again whenever the fragment changes (`nsapp.scrollToId`).
 
 **A fragment rides the resolved href, not the route** — `NsLink Fragment`
