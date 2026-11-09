@@ -14,7 +14,7 @@ namespace NSail.Harness.Hosting;
 static class JobsPage
 {
     const int PageSize = 25;
-    static readonly string[] Results = ["ok", "failed", "broke", "quiet", "running"];
+    static readonly string[] Results = ["ok", "failed", "broke", HarnessLoop.ProviderResult, "quiet", "running"];
     static readonly int[] Tails = [200, 1000, 0];
 
     // A row as the table shows it: a job running or ended.
@@ -70,6 +70,16 @@ static class JobsPage
         html.Append($"<td class=\"out doing\" title=\"{StatusPage.Esc(whose + doing)}\">{StatusPage.Esc(slot)} · {StatusPage.Esc(doing)}</td>");
     }
 
+    static string Label(string result)
+    {
+        return result switch
+        {
+            "quiet" => "nothing to do",
+            HarnessLoop.ProviderResult => "provider down",
+            _ => result,
+        };
+    }
+
     static string Pill(string result)
     {
         var (css, label) = result switch
@@ -77,7 +87,8 @@ static class JobsPage
             "ok" => ("ok", "ok"),
             "failed" => ("warn", "failed"),
             "broke" => ("bad", "broke"),
-            "quiet" => ("", "nothing to do"),
+            HarnessLoop.ProviderResult => ("warn", Label(result)),
+            "quiet" => ("", Label(result)),
             "running" => ("acc", "running"),
             "stale" => ("bad", "stale"),
             _ => ("", "—"),
@@ -101,7 +112,7 @@ static class JobsPage
         html.Append($"<p class=muted style=\"font-size:13px\"><a href=\"/\">← Status</a></p><h1>Jobs <small class=muted>{StatusPage.Esc(o.Machine)} · the newest {all.Count} this machine ran</small></h1>");
         html.Append("<form class=filters method=get action=\"/jobs\">");
         html.Append(Select("role", "Every role", JobStats.Roles.Select(r => (r, StatusPage.Title(r))), role));
-        html.Append(Select("result", "Every result", Results.Select(r => (r, r == "quiet" ? "nothing to do" : r)), result));
+        html.Append(Select("result", "Every result", Results.Select(r => (r, Label(r))), result));
         html.Append($"<input name=story inputmode=numeric placeholder=\"Story #\" size=8 value=\"{story}\">");
         html.Append($"<input name=q placeholder=\"Search work or outcome\" size=24 value=\"{StatusPage.Esc(q ?? "")}\"><button>Filter</button>");
         if (!string.IsNullOrEmpty(role) || !string.IsNullOrEmpty(result) || story is not null || !string.IsNullOrEmpty(q)) html.Append("<a href=\"/jobs\">Clear</a>");
