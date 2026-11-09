@@ -177,6 +177,7 @@
   "Mud.MudBaseDatePicker_NextYear": "Año siguiente",
   "Mud.MudTimePicker_Open": "Abrir reloj",
   "Common.NoRecords": "No hay registros para mostrar",
+  "Common.ExportTooLarge": "La exportación supera las {0:N0} filas; acotá la lista con un filtro y exportá de nuevo.",
   "Common.TimeGridHiddenDay": "Mostrando {day}. Hay 1 día más oculto esta semana",
   "Common.TimeGridHiddenDay.Plural": "Mostrando {day}. Hay {count} días más ocultos esta semana",
 

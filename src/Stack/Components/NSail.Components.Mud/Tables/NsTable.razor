@@ -495,6 +495,11 @@ else
     // act right there, before the NsTh in the header have declared a single column (Declaring).
     TaskCompletionSource? _declaring;
 
+    /// <summary>The most rows an export writes; one past it is refused with a message, because the
+    /// file is held whole in the circuit until it is handed to the browser.</summary>
+    [Parameter]
+    public int MaxExportRows { get; set; } = TableExport.DefaultRowCap;
+
     [Parameter]
     public string? Class { get; set; }
 
@@ -1505,9 +1510,36 @@ else
                 return Rows.Items;
             }
 
-            return TableOrder.Sort(Rows.Items, column, _columns.Descending, RegionCulture.For(Language));
+            var rows = Rows.Items;
+            var culture = RegionCulture.For(Language);
+
+            // Sorted once per (rows, column, direction, culture): HeldRows is read by every render
+            // and a few thousand rows re-sorting on each parent render is the cost.
+            if (_sorted is null
+                || !ReferenceEquals(_sortedFrom, rows)
+                || _sortedCount != rows.Count
+                || !ReferenceEquals(_sortedBy, column)
+                || _sortedDescending != _columns.Descending
+                || !ReferenceEquals(_sortedCulture, culture))
+            {
+                _sorted = TableOrder.Sort(rows, column, _columns.Descending, culture);
+                _sortedFrom = rows;
+                _sortedCount = rows.Count;
+                _sortedBy = column;
+                _sortedDescending = _columns.Descending;
+                _sortedCulture = culture;
+            }
+
+            return _sorted;
         }
     }
+
+    IReadOnlyList<TRow>? _sorted;
+    IReadOnlyList<TRow>? _sortedFrom;
+    int _sortedCount;
+    TableColumn? _sortedBy;
+    bool _sortedDescending;
+    System.Globalization.CultureInfo? _sortedCulture;
 
     protected override void OnInitialized()
     {
@@ -1659,7 +1691,7 @@ else
         var book = ExportBook.Of(name, new ExportTable
         {
             Columns = [.. columns.Select(column => new ExportColumn { Key = column.Key, Title = column.Title, Format = column.Format })],
-            Rows = Count(rows)
+            Rows = Count(TableExport.Capped(rows, MaxExportRows))
         });
 
         try
@@ -1688,6 +1720,18 @@ else
         {
             // The refusal is already on screen, placed by the Runner that raised the read. There
             // is nothing to add, and half a file is not offered.
+        }
+        catch (ExportTooLarge)
+        {
+            // Refused before a file exists: the cap is the memory the file may take in the circuit.
+            var message = string.Format(
+                RegionCulture.For(Language),
+                Strings.Translate("Common.ExportTooLarge"),
+                MaxExportRows);
+
+            await Report(new ProblemEventArgs(
+                new NSail.Problems.Problem("ExportTooLarge", message, [new NSail.Problems.Issue("ExportTooLarge", message)], null),
+                this));
         }
         catch (OperationCanceledException)
         {

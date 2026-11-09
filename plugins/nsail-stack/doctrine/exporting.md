@@ -235,3 +235,7 @@ what a page that does not answer means are settled with no renderer in the way.
 (`nsapp.download`, a `DotNetStreamReference` so the bytes cross once and never as base64), so the
 writer's output stays in hand — a megabyte or two for tens of thousands of rows — while the result
 set it came from is read a page at a time and dropped.
+
+The file's size is bounded by `NsTable.MaxExportRows` (default `TableExport.DefaultRowCap`): the row
+past it ends the export with a message and no file, so a large `OnQuery` list cannot grow the
+circuit without limit.
