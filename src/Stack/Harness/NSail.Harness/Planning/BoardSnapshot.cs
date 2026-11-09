@@ -25,7 +25,7 @@ public sealed record BoardSnapshot(
     // The Watch workers whose next pass is due and that run nowhere here.
     public IReadOnlyList<string> DueWatches { get; init; } = [];
 
-    // main's head, and the last head of main this machine's gate judged (null: none yet).
+    // main's head, and the last head of main a harness's gate judged or is judging (null: none yet).
     public string? MainSha { get; init; }
     public string? MainGated { get; init; }
 

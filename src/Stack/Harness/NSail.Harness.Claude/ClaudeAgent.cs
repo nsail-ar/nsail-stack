@@ -84,7 +84,7 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
             .. run.Mcp is null ? Array.Empty<string>() : ["--mcp-config", run.Mcp, "--strict-mcp-config"],
             .. options.Settings() is { } settings ? ["--settings", settings] : Array.Empty<string>(),
         ];
-        var result = await Shell.Run(command, args, run.WorkDir, env, run.Timeout, log, stdin: run.Prompt, ct: ct, lowPriority: true, runAs: options.RunAs);
+        var result = await Shell.Run(command, args, run.WorkDir, env, run.Timeout, log, stdin: run.Prompt, ct: ct, lowPriority: true, runAs: options.RunAs, keep: StreamSignals.IsSignal);
         var signals = StreamSignals.Read(result.Output);
         Heard(signals);
         return new AgentResult(result.ExitCode, result.TimedOut, signals.QuotaUntil, signals.QuotaRefused, signals.Result);
@@ -125,6 +125,11 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         };
         if (options.Token() is { } token) env["CLAUDE_CODE_OAUTH_TOKEN"] = token;
         return env;
+    }
+
+    public bool IsSignal(string line)
+    {
+        return StreamSignals.IsSignal(line);
     }
 
     public (bool Refused, DateTimeOffset? Until) Quota(string output)

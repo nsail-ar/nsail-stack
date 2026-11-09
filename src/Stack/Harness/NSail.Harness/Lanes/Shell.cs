@@ -7,12 +7,18 @@ using System.Text;
 namespace NSail.Harness.Lanes;
 
 // A process with its own environment and working folder; the whole output, stdout and
-// stderr, goes to the log as it comes and back to the caller.
+// stderr, goes to the log as it comes and its last TailChars characters back to the caller,
+// preceded by the lines of the cut-off head that `keep` accepts.
 public static class Shell
 {
     // What the harness's own git (clone, fetch, push) authenticates with: set once at startup, never
     // written to the process environment, so no child but a `git` it starts reads it.
     public static IReadOnlyDictionary<string, string> GitEnvironment { get; set; } = new Dictionary<string, string>();
+
+    public const int TailChars = 1 << 20;
+
+    // Lines a caller's `keep` saves from the cut-off head, so what it reads (failures, quota signals) survives the tail.
+    public const int KeptLines = 20_000;
 
     static readonly string[] InheritedNames =
     [
@@ -41,7 +47,7 @@ public static class Shell
 
     public static async Task<ShellResult> Run(
         string file, IEnumerable<string> args, string workDir, IDictionary<string, string>? env = null,
-        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false, string? runAs = null)
+        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false, string? runAs = null, int tailChars = TailChars, Func<string, bool>? keep = null)
     {
         var psi = new ProcessStartInfo(file)
         {
@@ -95,20 +101,29 @@ public static class Shell
             lowPriority = false;
         }
 
-        return await Execute(psi, stdin, timeout, log, ct, lowPriority, seat ? runAs : null);
+        return await Execute(psi, stdin, timeout, log, ct, lowPriority, seat ? runAs : null, tailChars, keep);
     }
 
-    static async Task<ShellResult> Execute(ProcessStartInfo psi, string? stdin, TimeSpan? timeout, TextWriter? log, CancellationToken ct, bool lowPriority, string? runAs)
+    static async Task<ShellResult> Execute(ProcessStartInfo psi, string? stdin, TimeSpan? timeout, TextWriter? log, CancellationToken ct, bool lowPriority, string? runAs, int tailChars, Func<string, bool>? keep)
     {
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
-        var output = new StringBuilder();
+        var tail = new Queue<string>();
+        var tailLength = 0;
+        var kept = new List<string>();
         var gate = new object();
         void Line(string? l)
         {
             if (l is null) return;
             lock (gate)
             {
-                output.AppendLine(l);
+                tail.Enqueue(l);
+                tailLength += l.Length + Environment.NewLine.Length;
+                while (tailLength > tailChars && tail.Count > 1)
+                {
+                    var evicted = tail.Dequeue();
+                    tailLength -= evicted.Length + Environment.NewLine.Length;
+                    if (keep is not null && kept.Count < KeptLines && keep(evicted)) kept.Add(evicted);
+                }
                 log?.WriteLine(l);
             }
         }
@@ -117,7 +132,15 @@ public static class Shell
         var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         p.Exited += (_, _) => exited.TrySetResult();
         p.Start();
-        ProcessGroup.Join(p);
+        try
+        {
+            ProcessGroup.Join(p);
+        }
+        catch
+        {
+            Kill(p);
+            throw;
+        }
         if (lowPriority)
         {
             // Children inherit it, on Windows and Linux alike: a lane's builds yield to whoever sits at the machine.
@@ -131,14 +154,11 @@ public static class Shell
         }
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
-        if (stdin is not null)
-        {
-            await p.StandardInput.WriteAsync(stdin);
-            p.StandardInput.Close();
-        }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         if (timeout is { } t) cts.CancelAfter(t);
+        // A child that never reads stdin blocks the write: it runs inside the timeout window, and the kill breaks its pipe.
+        if (stdin is not null) _ = WriteStdin(p, stdin);
         var timedOut = false;
         try
         {
@@ -148,13 +168,7 @@ public static class Shell
         {
             timedOut = !ct.IsCancellationRequested;
             var sessions = runAs is null ? [] : SeatSessions(p.Id);
-            try
-            {
-                p.Kill(entireProcessTree: true);
-            }
-            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or AggregateException)
-            {
-            }
+            Kill(p);
             if (runAs is not null) await KillSeat(runAs, sessions);
             await exited.Task.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None).ContinueWith(_ => { }, TaskScheduler.Default);
             if (!timedOut) throw;
@@ -175,7 +189,33 @@ public static class Shell
         lock (gate)
         {
             log?.Flush();
+            var output = new StringBuilder();
+            foreach (var l in kept) output.AppendLine(l);
+            foreach (var l in tail) output.AppendLine(l);
             return new ShellResult(timedOut ? -1 : p.ExitCode, output.ToString(), timedOut);
+        }
+    }
+
+    static async Task WriteStdin(Process p, string stdin)
+    {
+        try
+        {
+            await p.StandardInput.WriteAsync(stdin);
+            p.StandardInput.Close();
+        }
+        catch (Exception e) when (e is IOException or ObjectDisposedException or InvalidOperationException)
+        {
+        }
+    }
+
+    static void Kill(Process p)
+    {
+        try
+        {
+            p.Kill(entireProcessTree: true);
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or AggregateException)
+        {
         }
     }
 

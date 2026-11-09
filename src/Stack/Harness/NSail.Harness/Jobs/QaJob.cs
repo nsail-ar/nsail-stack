@@ -301,7 +301,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
 
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await w.WriteLineAsync($"== {Item} on {ctx.Options.Machine} slot {slot}");
-        var result = await ctx.Run(step.Command!, [], dir, env, TimeSpan.FromMinutes(step.Minutes), w, ct);
+        var result = await ctx.Run(step.Command!, [], dir, env, TimeSpan.FromMinutes(step.Minutes), w, ct, keep: ctx.Agent.IsSignal);
         var (refused, until) = ctx.Agent.Quota(result.Output);
         var quota = refused ? until ?? DateTimeOffset.UtcNow.AddHours(1) : (DateTimeOffset?)null;
         var ended = result.ExitCode == 0 ? "walked" : $"walk ended {(result.TimedOut ? "by timeout" : $"with exit {result.ExitCode}")}";

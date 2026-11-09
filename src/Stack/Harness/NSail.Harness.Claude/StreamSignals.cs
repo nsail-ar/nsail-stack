@@ -57,6 +57,15 @@ public sealed record StreamSignals(bool QuotaRefused, DateTimeOffset? QuotaUntil
         return new StreamSignals(refused, until, result, usage);
     }
 
+    // The lines Read can act on, small enough to keep from any depth of a run.
+    public static bool IsSignal(string line)
+    {
+        var t = line.TrimStart();
+        return t.Length > 0 && t[0] == '{'
+            && (t.Contains("rate_limit_event", StringComparison.Ordinal) || t.Contains("usage_limit_reached", StringComparison.Ordinal)
+                || t.Contains("\"result\"", StringComparison.Ordinal));
+    }
+
     // A rate-limit event's quota windows (`unifiedWindows`: five_hour, seven_day, ...), each with
     // its share used and its reset; a window whose length the name does not tell is left out.
     internal static IReadOnlyList<UsageWindow> Windows(JsonElement info)

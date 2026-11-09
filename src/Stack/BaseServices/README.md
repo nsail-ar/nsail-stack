@@ -110,8 +110,9 @@ open circuit and a push line are not requests: a suspension reaches them within
 `TenancyCircuit` that carries the tenant onto the circuit and onto every event's send, `AddMessagePolicies` (so a page's
 `[Authorize<TMessage>]` resolves), the per-request `IDeviceProvider` and the
 `IProblemDocumentProvider` that draws the error page for a document navigation.
-`UseBaseWebApp` adds request localization, antiforgery, `Cache-Control: no-cache` on every HTML
-document and `MapStaticAssets`. `MapRazorApp<TApp>` maps the components with both render modes,
+`UseBaseWebApp` adds request localization, antiforgery, `Cache-Control: no-cache` on every anonymous HTML
+document (`private, no-store` on an authenticated one; a response already saying `no-store` is left alone) and
+`MapStaticAssets`. `MapRazorApp<TApp>` maps the components with both render modes,
 adds the assemblies of every `IRouteContributor` and installs the 404 fallback that lets the
 router render its NotFound (it leaves `/api` and file-looking paths alone).
 

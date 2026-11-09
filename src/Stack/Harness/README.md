@@ -85,7 +85,9 @@ the files it leaves.
     the event, and the board is the harness's. Every verdict leaves the story where a walk reads it
     again: Released, or QA wearing `qa-asked` (a doubt is an ask) — a story in QA with neither is a
     planner note. A Watch reads its `Source` (a log source by name) every `Every` minutes, from where it
-    last read (`Lookback` hours the first time), groups the error lines by service, logger, message
+    last read (`Lookback` hours the first time) up to `IngestLag` minutes (default five) short of now, for a
+    line the source ingests late. A pass reads at most 5000 lines, oldest first, and the next takes up after the
+    last one read. A Watch groups the error lines by service, logger, message
     template and exception type, and files a story per new group in Analyze (`telemetry`, the service's
     area — a product of that name, or its `Areas` entry — and `bug` when a cell outside `NotProd` logged
     it), at most `MaxStories` a pass; an open one gets the count, once a day; one closed and logged
@@ -145,7 +147,11 @@ the files it leaves.
   logins whose words reach it as the crew's are the harness's own, `Harness:MarkerAuthors` and `Harness:TrustedAuthors`
   (the owners and the crew, empty by default). A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with title and body fenced as data, and the
   watch files it in Analyze, never Ready.
-  Every harness on the board reads the same. What stays on the machine is its job history,
+  Every harness on the board reads the same: main's `harness/gate` mark written `pending` holds that head from
+  a second gate on any harness for twice the longest `Minutes` among that harness's own Main
+  workers plus an hour (a fleet whose harnesses set different `Minutes` holds as long as the
+  shortest of them); past that (a harness
+  that died leaves it pending) another harness judges the head again. What stays on the machine is its job history,
   its count of them, the work the protected-paths screen refused (`ProtectedPaths`), and what a hand or
   the provider set (`state.json`: the pause, take-new when a hand moved it, an unexpired quota wall),
   which a restart keeps. A state file that is zero-length or torn is
@@ -159,7 +165,14 @@ the files it leaves.
 - **Locks** are the board's labels plus a story lock (a git ref per story on GitHub), created
   atomically, so any number of harnesses can share one board.
 - **A job's processes die with the harness** (`Lanes/ProcessGroup.cs`): a restart never leaves a
-  build writing in a slot the next job is handed.
+  build writing in a slot the next job is handed. On Windows that is a job object; off Windows
+  there is none, and the guarantee is the service unit's `KillMode=control-group` (systemd's
+  default), set in the unit file that runs the harness: the unit's stop kills every process in
+  its cgroup. A child whose group join fails is killed at once.
+- **A process's output** goes to the job log line by line as it comes; the caller gets the last
+  `Shell.TailChars` characters, preceded by the cut-off lines a caller's `keep` accepts (the gate's
+  failure lines, the agent's quota signals). Its stdin is written inside the same timeout window, so a child
+  that never reads it is killed with its tree.
 - **Modes**: `Debug` reads and plans and starts nothing; `Live` acts. A forced job (`POST runs`) refuses in Debug, while paused and, for one that needs an agent, inside the quota wall.
 
 ## A host

@@ -38,7 +38,7 @@ public sealed class WatchState
         }
     }
 
-    // Whether the worker's next pass is due: never read, or read longer ago than its period.
+    // Whether the worker's next pass is due: never read, or its cursor trails now by at least `every`.
     public bool Due(string worker, TimeSpan every, DateTimeOffset now)
     {
         return ReadUntil(worker) is not { } at || now - at >= every;
