@@ -32,7 +32,8 @@ public sealed class StateFileTests : IDisposable
         var first = Loop();
         first.Pause("by hand");
         first.TakeNew = false;
-        new HarnessState(_root).Set(first.Paused, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(2), new HarnessState(_root).TakeNew);
+        var written = new HarnessState(_root);
+        written.Set(written.Paused, written.PausedSince, DateTimeOffset.UtcNow.AddHours(2), written.TakeNew);
 
         var second = Loop();
         Assert.Equal("by hand", second.Paused);
@@ -56,6 +57,19 @@ public sealed class StateFileTests : IDisposable
         first.Restart("a deploy");
         Assert.NotNull(first.Paused);
         Assert.Null(Loop().Paused);
+        Environment.ExitCode = 0;
+    }
+
+    [Fact]
+    public void A_hand_pause_survives_a_deploy_restart()
+    {
+        var first = new HarnessLoop(null!, null!, null!, null!, null!, null!, null!, null!, null!,
+            Options.Create(new HarnessOptions()), new Lifetime(), new HarnessMetrics(), new WatchState(null),
+            new HarnessState(_root), NullLogger<HarnessLoop>.Instance);
+        first.Pause("by hand");
+        first.Restart("a deploy");
+        Environment.ExitCode = 0;
+        Assert.Equal("by hand", Loop().Paused);
     }
 
     sealed class Lifetime : IHostApplicationLifetime

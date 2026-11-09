@@ -67,6 +67,7 @@ public sealed class HarnessLoop(
     volatile bool _restarting;
     DateTimeOffset? _pausedSince = state.PausedSince;
     bool _orphansSaid;
+    bool _restartPause;
     readonly IReadOnlyList<Worker> _workers = Worker.Compile(options.Value);
 
     public Pass? Last
@@ -137,6 +138,7 @@ public sealed class HarnessLoop(
         {
             _paused = why;
             _pausedSince ??= DateTimeOffset.UtcNow;
+            _restartPause = false;
             Persist();
         }
         log.LogWarning("paused: {Why}", why);
@@ -148,7 +150,16 @@ public sealed class HarnessLoop(
     public void Restart(string why)
     {
         _restarting = true;
-        Pause($"restart: {why}");
+        lock (_gate)
+        {
+            if (_paused is null)
+            {
+                _paused = $"restart: {why}";
+                _pausedSince ??= DateTimeOffset.UtcNow;
+                _restartPause = true;
+            }
+        }
+        log.LogWarning("paused: restart: {Why}", why);
         StopIfDrained();
     }
 
@@ -161,10 +172,11 @@ public sealed class HarnessLoop(
         lifetime.StopApplication();
     }
 
-    // Under _gate. A restart's pause is not kept: the next run starts working. Take-new is kept only when a hand moved it off the configuration's.
+    // Under _gate. The pause a restart itself set is not kept (the next run starts working); a hand's is.
+    // Take-new is kept only when a hand moved it off the configuration's.
     void Persist()
     {
-        state.Set(_restarting ? null : _paused, _restarting ? null : _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
+        state.Set(_restartPause ? null : _paused, _restartPause ? null : _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
     }
 
     public void Resume()
@@ -175,6 +187,7 @@ public sealed class HarnessLoop(
             _paused = null;
             _pausedSince = null;
             _quotaUntil = null;
+            _restartPause = false;
             Persist();
         }
         Wake();
@@ -270,10 +283,10 @@ public sealed class HarnessLoop(
         var held = _running.Values.Select(r => r.Item.Story).ToHashSet();
         foreach (var i in read.Issues.Where(i => i.Stage == Stages.InProgress && i.SubIssues == 0 && !held.Contains(i.Number)))
         {
-            // Another machine's or instance's lock is a job somewhere else; this instance's own is a dead run's.
+            // Another machine's lock is a job somewhere else; this machine's is a dead run's.
             if (read.LockHolders.ContainsKey(i.Number)
                 && await locks.Holder(i.Number, ct) is { } h
-                && (h.Machine != options.Value.Machine || h.Instance != _instance)) continue;
+                && h.Machine != options.Value.Machine) continue;
             log.LogWarning("#{Story}: In-Progress with no job running ({Claimed}) — nothing holds it", i.Number, i.Has(Labels.Claimed) ? "claimed" : "unclaimed");
         }
     }
