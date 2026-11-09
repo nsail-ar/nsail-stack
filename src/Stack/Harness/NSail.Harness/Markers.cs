@@ -29,6 +29,17 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
         return $"harness/cut/{product}";
     }
 
+    // A cut at work: failure (a state the marks read), renewed every beat while a harness runs it; success once it let go.
+    public static readonly TimeSpan ClaimBeat = TimeSpan.FromMinutes(10);
+
+    // A claim not renewed for this long belongs to a harness that died.
+    public static readonly TimeSpan ClaimLapse = ClaimBeat * 3;
+
+    public static string HeldContext(string product)
+    {
+        return $"harness/cut/{product}/held";
+    }
+
     // What a dead voyage's comment on the story carries, so the next one can count them.
     public const string Voyage = "<!-- harness:voyage -->";
 

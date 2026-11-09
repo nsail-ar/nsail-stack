@@ -31,7 +31,7 @@ public sealed class JobStats
     readonly StatsData _data;
 
     // No root keeps the count in memory only.
-    public JobStats(string? root, TimeZoneInfo? zone = null)
+    public JobStats(string? root, TimeZoneInfo? zone = null, ILogger? log = null)
     {
         _zone = zone ?? TimeZoneInfo.Local;
         if (root is null)
@@ -41,19 +41,7 @@ public sealed class JobStats
         }
         Directory.CreateDirectory(root);
         _path = Path.Combine(root, "stats.json");
-        _data = Load(_path);
-    }
-
-    static StatsData Load(string path)
-    {
-        try
-        {
-            return File.Exists(path) ? JsonSerializer.Deserialize<StatsData>(File.ReadAllText(path), Json) ?? new StatsData() : new StatsData();
-        }
-        catch (JsonException)
-        {
-            return new StatsData();
-        }
+        _data = StateFile.Read(_path, () => new StatsData(), Json, log);
     }
 
     public static string RoleOf(WorkKind kind)
@@ -271,9 +259,7 @@ public sealed class JobStats
         if (_path is null) return;
         try
         {
-            var tmp = _path + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(_data, Json));
-            File.Move(tmp, _path, overwrite: true);
+            StateFile.Write(_path, _data, Json);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

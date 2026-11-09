@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Text.Json;
+using NSail.Harness.Lanes;
 
 namespace NSail.Harness.Watching;
 
@@ -17,7 +18,7 @@ public sealed class WatchState
     readonly Dictionary<string, DateTimeOffset> _readUntil;
 
     // No root keeps it in memory only.
-    public WatchState(string? root)
+    public WatchState(string? root, ILogger? log = null)
     {
         if (root is null)
         {
@@ -26,19 +27,7 @@ public sealed class WatchState
         }
         Directory.CreateDirectory(root);
         _path = Path.Combine(root, "watch.json");
-        _readUntil = Load(_path);
-    }
-
-    static Dictionary<string, DateTimeOffset> Load(string path)
-    {
-        try
-        {
-            return File.Exists(path) ? JsonSerializer.Deserialize<Dictionary<string, DateTimeOffset>>(File.ReadAllText(path), Json) ?? [] : [];
-        }
-        catch (JsonException)
-        {
-            return [];
-        }
+        _readUntil = StateFile.Read<Dictionary<string, DateTimeOffset>>(_path, () => [], Json, log);
     }
 
     public DateTimeOffset? ReadUntil(string worker)
@@ -60,7 +49,7 @@ public sealed class WatchState
         lock (_gate)
         {
             _readUntil[worker] = until;
-            if (_path is not null) File.WriteAllText(_path, JsonSerializer.Serialize(_readUntil, Json));
+            if (_path is not null) StateFile.Write(_path, _readUntil, Json);
         }
     }
 }
