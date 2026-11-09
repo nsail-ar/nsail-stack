@@ -55,6 +55,7 @@ public class HttpRequestMessageBuilderTests
             .AddHeader("x-attempt", (int?)null)
             .AddHeader("x-count", 1234.5)
             .AddHeader("x-tenant", "acme")
+            .AddHeader("x-day", new DateOnly(2026, 3, 4))
             .AddHeader("x-many", (IEnumerable<int>?)new[] { 1, 2 })
             .AddHeader("x-none", (IEnumerable<int>?)null)
             .Build();
@@ -64,6 +65,7 @@ public class HttpRequestMessageBuilderTests
         Assert.False(request.Headers.Contains("x-none"));
         Assert.Equal("1234.5", Assert.Single(request.Headers.GetValues("x-count")));
         Assert.Equal("acme", Assert.Single(request.Headers.GetValues("x-tenant")));
+        Assert.Equal("2026-03-04", Assert.Single(request.Headers.GetValues("x-day")));
         Assert.Equal(new[] { "1", "2" }, request.Headers.GetValues("x-many"));
     }
 

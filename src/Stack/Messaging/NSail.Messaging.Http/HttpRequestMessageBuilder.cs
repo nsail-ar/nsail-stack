@@ -119,7 +119,7 @@ public sealed class HttpRequestMessageBuilder
             return this;
         }
 
-        return AddHeader(name, Convert.ToString(value, CultureInfo.InvariantCulture));
+        return AddHeader(name, Format(value));
     }
 
     public HttpRequestMessageBuilder AddHeader<T>(string name, IEnumerable<T>? values)
