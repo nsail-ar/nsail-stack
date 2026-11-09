@@ -48,6 +48,7 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
             [metadata.KeyFor(ExportRowKind.Shop)] = "Comercio",
             ["Common.Yes"] = "Sí",
             ["Common.No"] = "No",
+            ["Common.ExportTooLarge"] = "Más de {max} filas",
         })]));
         Services.AddSingleton(new LanguageProvider { Current = "es" });
         Services.AddSingleton(metadata);
@@ -160,6 +161,41 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
         Assert.Equal(ExportHeldTableHost.Held, _excel.Rows.Count);
         Assert.Equal("Row 0", _excel.Rows[0].Values[0]);
         Assert.Equal($"Row {ExportHeldTableHost.Held - 1}", _excel.Rows[^1].Values[0]);
+    }
+
+    /// <summary>A list longer than the grid's MaxExportRows is refused on screen with the cap in
+    /// the words, and no file is handed to the browser.</summary>
+    [Fact]
+    public async Task A_list_past_the_cap_is_refused_with_a_message_and_no_file()
+    {
+        Writers(_excel);
+
+        // The floor a page puts under every refusal its grid does not place itself (NsPage).
+        var dialogs = new CountingDialogManager();
+        var floor = new ProblemManager(dialogs, Services.GetRequiredService<StringManager>());
+
+        var cut = Render<ExportHeldTableHost>(parameters => parameters
+            .Add(host => host.Cap, ExportHeldTableHost.Held - 1)
+            .Add(host => host.OnProblem, args => floor.Report(args)));
+
+        await Pick(cut, "Excel");
+
+        Assert.Equal([$"Más de {ExportHeldTableHost.Held - 1} filas"], dialogs.Notices);
+        Assert.Empty(JSInterop.Invocations["nsapp.download"]);
+    }
+
+    /// <summary>A list exactly as long as the cap is not past it.</summary>
+    [Fact]
+    public async Task A_list_as_long_as_the_cap_is_written()
+    {
+        Writers(_excel);
+
+        var cut = Render<ExportHeldTableHost>(parameters => parameters.Add(host => host.Cap, ExportHeldTableHost.Held));
+
+        await Pick(cut, "Excel");
+
+        Assert.Equal(ExportHeldTableHost.Held, _excel.Rows.Count);
+        Assert.Single(JSInterop.Invocations["nsapp.download"]);
     }
 
     /// <summary>And the one thing a held list is not: a collection a DOCUMENT holds. Its rows are

@@ -237,32 +237,6 @@ public sealed class NsTableOrderTests : BunitContext, IAsyncLifetime
         Assert.Equal(50, CountedTableHost.CountedRow.Reads - before);
     }
 
-    /// <summary>Past the cap the export is refused and nothing is written.</summary>
-    [Fact]
-    public async Task Exportar_refuses_a_list_beyond_the_cap()
-    {
-        await Assert.ThrowsAsync<ExportTooLarge>(async () =>
-        {
-            await foreach (var _ in TableExport.Capped(Rows(3), 2))
-            {
-            }
-        });
-
-        await foreach (var _ in TableExport.Capped(Rows(2), 2))
-        {
-        }
-
-        static async IAsyncEnumerable<ExportRow> Rows(int count)
-        {
-            for (var i = 0; i < count; i++)
-            {
-                yield return new ExportRow { Values = [i] };
-            }
-
-            await Task.CompletedTask;
-        }
-    }
-
     // Which rows are on screen and in which order, read off the column no test presses.
     static int[] Shown(IRenderedComponent<OrderTableHost> cut)
     {

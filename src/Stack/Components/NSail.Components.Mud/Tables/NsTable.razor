@@ -495,8 +495,9 @@ else
     // act right there, before the NsTh in the header have declared a single column (Declaring).
     TaskCompletionSource? _declaring;
 
-    /// <summary>The most rows an export writes; one past it is refused with a message, because the
-    /// file is held whole in the circuit until it is handed to the browser.</summary>
+    /// <summary>The most rows an export writes, at least 1; a list longer than that is not
+    /// exported and a message says so, because the file is held whole in the circuit until it is
+    /// handed to the browser.</summary>
     [Parameter]
     public int MaxExportRows { get; set; } = TableExport.DefaultRowCap;
 
@@ -1562,6 +1563,8 @@ else
 
     protected override void OnParametersSet()
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxExportRows);
+
         // Said by the table, because the table is what knows whether it holds the whole list, and
         // read by every heading under it: a column that declares itself sortable where nothing
         // can be ordered draws no control instead of one that would lie.
@@ -1724,13 +1727,15 @@ else
         catch (ExportTooLarge)
         {
             // Refused before a file exists: the cap is the memory the file may take in the circuit.
-            var message = string.Format(
-                RegionCulture.For(Language),
-                Strings.Translate("Common.ExportTooLarge"),
-                MaxExportRows);
+            var arguments = new Dictionary<string, string>
+            {
+                ["max"] = MaxExportRows.ToString("N0", RegionCulture.For(Language))
+            };
+
+            var message = Strings.Translate("Common.ExportTooLarge", arguments);
 
             await Report(new ProblemEventArgs(
-                new NSail.Problems.Problem("ExportTooLarge", message, [new NSail.Problems.Issue("ExportTooLarge", message)], null),
+                new NSail.Problems.Problem("ExportTooLarge", message, [new NSail.Problems.Issue("ExportTooLarge", message, arguments: arguments)], null),
                 this));
         }
         catch (OperationCanceledException)

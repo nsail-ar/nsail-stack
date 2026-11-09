@@ -12,7 +12,7 @@
 
 <MudPopoverProvider />
 
-<NsTable TRow="CountedRow" Rows="_rows" MaxExportRows="Cap">
+<NsTable TRow="CountedRow" Rows="_rows">
     <HeaderContent>
         <NsTh For="() => context.Name" Sortable />
     </HeaderContent>
@@ -41,9 +41,6 @@
     }
 
     readonly DataPage<CountedRow> _rows = DataPage<CountedRow>.From([.. Enumerable.Range(0, 50).Select(i => new CountedRow { Index = i })]);
-
-    [Parameter]
-    public int Cap { get; set; } = TableExport.DefaultRowCap;
 
     [Parameter]
     public int Unrelated { get; set; }

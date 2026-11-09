@@ -47,8 +47,16 @@ else
     [Parameter]
     public bool Editable { get; set; }
 
+    /// <summary>The most rows the grid's export may write.</summary>
+    [Parameter]
+    public int Cap { get; set; } = TableExport.DefaultRowCap;
+
+    /// <summary>Where the grid's refusals go: the page's floor, which no surface stands in for here.</summary>
+    [Parameter]
+    public EventCallback<ProblemEventArgs> OnProblem { get; set; }
+
     RenderFragment Grid =>
-        @<NsTable TRow="ExportRowModel" Rows="_rows" NewRow="Blank" OnRowRemove="Remove">
+        @<NsTable TRow="ExportRowModel" Rows="_rows" NewRow="Blank" OnRowRemove="Remove" MaxExportRows="Cap" OnProblem="OnProblem">
             <HeaderContent>
                 <NsTh For="() => context.Name" />
                 <NsTh For="() => context.Total" Format="ExportFormat.Money" />

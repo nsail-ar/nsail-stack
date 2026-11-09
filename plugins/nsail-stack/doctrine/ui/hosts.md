@@ -203,6 +203,10 @@ own word is the control's name, so there is no string, no glyph and no handler a
   own is not blank and orders by them.
 - **An order and the list's own filter do not reach each other**: both narrow the same rows in
   hand, so a filter press keeps the order and a heading press keeps the filter.
+- **The order is computed once per list, column, direction and culture**, not on every render: a
+  held list of a few thousand rows re-sorted on each parent render is the cost. "The list" is the
+  instance of `Rows.Items` and its length, so **a host that edits a row in place hands the grid
+  a new list** — the same list with a changed cell keeps the row where its old value put it.
 - **The file Exportar writes is the order on screen** ([exporting.md](../exporting.md)).
 - **Stacked, the list has no headings to press**: a card draws no header row, on a phone or in
   a container under 740px alike, so the order offered there is the one already in effect.

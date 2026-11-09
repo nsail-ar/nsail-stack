@@ -79,6 +79,35 @@ public class TableExportPagesTests
         Assert.Equal(2, register.Asked.Count);
     }
 
+    /// <summary>A list as long as the cap is written whole; one row more ends the export before
+    /// that row is written.</summary>
+    [Fact]
+    public async Task A_list_past_the_cap_ends_at_the_row_beyond_it()
+    {
+        var register = new Register(Size + 1);
+
+        var whole = new List<ExportRow>();
+
+        await foreach (var row in TableExport.Capped(TableExport.Rows<ExportRowModel>(register.Read, Columns, default), Size + 1))
+        {
+            whole.Add(row);
+        }
+
+        var written = new List<ExportRow>();
+
+        var refused = await Assert.ThrowsAsync<ExportTooLarge>(async () =>
+        {
+            await foreach (var row in TableExport.Capped(TableExport.Rows<ExportRowModel>(register.Read, Columns, default), Size))
+            {
+                written.Add(row);
+            }
+        });
+
+        Assert.Equal(Size + 1, whole.Count);
+        Assert.Equal(Size, written.Count);
+        Assert.Equal(Size, refused.Cap);
+    }
+
     [Fact]
     public async Task A_reader_who_gave_up_stops_the_pages()
     {
