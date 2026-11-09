@@ -135,6 +135,20 @@ public sealed class S3TransportTests
         Assert.Contains("prefix=backups%2F", transport.Sent[0].Url, StringComparison.Ordinal);
     }
 
+    // Pages are handed over as they arrive: stopping after the first leaves the rest unrequested.
+    [Fact]
+    public async Task EnumerateStopsRequestingPagesWhenTheCallerStops()
+    {
+        var transport = new Transport(request => Xml(Page($"backups/{request.RequestUri!.Query.Length}", "more")));
+
+        await foreach (var _ in Provider(transport).Enumerate(Target("https://store.example.com"), "backups/"))
+        {
+            break;
+        }
+
+        Assert.Single(transport.Sent);
+    }
+
     // A delete of what is not there is what the caller asked for either way.
     [Fact]
     public async Task DeleteTreatsAnObjectThatWasAlreadyGoneAsDone()

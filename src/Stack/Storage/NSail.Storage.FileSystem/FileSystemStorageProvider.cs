@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.IO.Enumeration;
 using NSail.Problems;
 using NSail.Storage.Providers;
 
@@ -101,22 +102,34 @@ public class FileSystemStorageProvider : IStorageProvider
     {
         var root = Root(target);
 
-        if (!Directory.Exists(root))
+        // Only the directory the prefix names is walked; the text after its last slash is a
+        // filter on names inside it.
+        var slash = prefix?.LastIndexOf('/') ?? -1;
+        var directory = slash > 0 ? Path.GetFullPath(Path.Combine(root, prefix![..slash])) : root;
+        var inside = directory == root
+            || directory.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+
+        if (!inside || !Directory.Exists(directory))
         {
             return Task.FromResult<IReadOnlyList<StoredObject>>([]);
         }
 
-        var objects = Directory
-            .EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Where(path => !IsStaging(Path.GetFileName(path)))
-            .Select(path => new { Path = path, Key = Path.GetRelativePath(root, path).Replace('\\', '/') })
-            .Where(entry => prefix is not { Length: > 0 } || entry.Key.StartsWith(prefix, StringComparison.Ordinal))
-            .Select(entry => new StoredObject
+        var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 };
+        var entries = new FileSystemEnumerable<StoredObject>(
+            directory,
+            (ref FileSystemEntry entry) => new StoredObject
             {
-                Key = entry.Key,
-                Length = new FileInfo(entry.Path).Length,
-                ModifiedAt = File.GetLastWriteTimeUtc(entry.Path),
-            })
+                Key = Path.GetRelativePath(root, entry.ToFullPath()).Replace('\\', '/'),
+                Length = entry.Length,
+                ModifiedAt = entry.LastWriteTimeUtc,
+            },
+            options)
+        {
+            ShouldIncludePredicate = (ref FileSystemEntry entry) => !entry.IsDirectory && !IsStaging(entry.FileName.ToString()),
+        };
+
+        var objects = entries
+            .Where(stored => prefix is not { Length: > 0 } || stored.Key.StartsWith(prefix, StringComparison.Ordinal))
             .OrderBy(stored => stored.Key, StringComparer.Ordinal)
             .ToList();
 

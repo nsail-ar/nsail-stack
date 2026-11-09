@@ -41,6 +41,28 @@ public sealed class FileSystemStorageTests
     }
 
     [Fact]
+    public async Task ListWalksOnlyThePrefixDirectory()
+    {
+        using var container = new Container();
+
+        foreach (var index in Enumerable.Range(0, 10_000))
+        {
+            var directory = index < 20 ? "logos" : "other";
+            var folder = Path.Combine(container.Target.Container, directory);
+
+            Directory.CreateDirectory(folder);
+            await File.WriteAllTextAsync(Path.Combine(folder, $"f{index:D5}.txt"), "x");
+        }
+
+        var listed = await _provider.List(container.Target, "logos/f0001");
+
+        Assert.Equal(10, listed.Count);
+        Assert.All(listed, stored => Assert.StartsWith("logos/f0001", stored.Key));
+        Assert.Equal(10_000, (await _provider.List(container.Target, null)).Count);
+        Assert.Empty(await _provider.List(container.Target, "../x/"));
+    }
+
+    [Fact]
     public async Task AnswersNullForAnObjectThatIsNotThere()
     {
         using var container = new Container();
