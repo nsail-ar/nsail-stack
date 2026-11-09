@@ -56,7 +56,7 @@ public abstract class NsPartial : NsComponent
     protected bool CanSend<TMessage>()
     {
         // Resolved, never injected: a host with no security registered (a component test, a
-        // surface without Iam) must still render its markup rather than fail to construct it
+        // surface without security) must still render its markup rather than fail to construct it
         // — the permissive default the endpoint gate and the relation provider already take.
         var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
         var sessions = Services.GetService(typeof(SessionProvider)) as SessionProvider;

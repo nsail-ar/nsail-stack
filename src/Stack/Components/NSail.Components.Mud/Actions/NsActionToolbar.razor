@@ -240,7 +240,7 @@
     async Task<bool> Allows(ActionItem item)
     {
         // Resolved, never injected: a host with no security registered (a component test, a
-        // surface without Iam) must still render its markup rather than fail to construct it
+        // surface without security) must still render its markup rather than fail to construct it
         // — the permissive default NsPartial.CanSend already takes. A command carries no
         // destination, so there is nothing to ask about it.
         if (item.PageType is null || Services.GetService(typeof(PageGate)) is not PageGate gate)

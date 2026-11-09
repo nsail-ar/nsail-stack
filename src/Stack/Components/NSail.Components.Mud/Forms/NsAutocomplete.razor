@@ -15,7 +15,7 @@
    the field. MudBlazor 9.10.0 defaults RelativeWidth to DropdownWidth.Relative, whose popover
    script writes max-width = the anchor's width inline on every open (measured, mudpopoverHelper
    — and .mud-popover-relative-width is the one width case the vendor ships CSS for); in a line
-   editor the anchor is a table cell, so an option reading "CR-150 - Orgánico CR-39 1.50 (1,00)"
+   editor the anchor is a table cell, so an option reading "Code - Name (detail)"
    — 353px of text — came out three lines tall in 191px. Adaptive writes min-width instead and
    leaves the width to the content, so a narrow anchor no longer decides how a result reads and a
    wide one is unchanged: min-width holds the list at the field it drops from. What bounds it
@@ -259,7 +259,7 @@
     bool IsBusy => Runner.IsRunning || Resolver.IsRunning;
 
     // A field bound to a page-local value has no message property to derive a label from —
-    // the item type names the concept ("Directory.OrganizationRef" → "Organizaciones") and
+    // the item type names the concept ("OrganizationRef" → "Organizations") and
     // one template turns it into the prompt, so no entity carries a search string of its
     // own. The concept keeps its own capital, which is what the label rule asks for.
     protected override string? FallbackLabel(string key)

@@ -84,7 +84,7 @@ else if (_items.Count > 0)
         var user = await PageGate.UserOf(AuthenticationState);
 
         // Resolved, never injected: a host with no security registered (a component test, a
-        // surface without Iam) must still render, the same permissive default CanSend takes.
+        // surface without security) must still render, the same permissive default CanSend takes.
         var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
         var session = (Services.GetService(typeof(SessionProvider)) as SessionProvider)?.Session;
 

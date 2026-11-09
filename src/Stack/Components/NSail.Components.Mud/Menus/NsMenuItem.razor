@@ -77,7 +77,7 @@
     }
 
     // Deny-by-default only once a gate exists to ask: a command row carries no destination and
-    // a host with no security registered (a component test, a surface without Iam) must still
+    // a host with no security registered (a component test, a surface without security) must still
     // render, which is why the flag starts true and only OnParametersSetAsync can turn it off.
     bool _allowed = true;
 

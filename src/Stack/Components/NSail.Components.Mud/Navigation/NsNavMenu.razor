@@ -623,8 +623,8 @@
                 : current.Equals(url, StringComparison.OrdinalIgnoreCase)
                     || current.StartsWith(url + "/", StringComparison.OrdinalIgnoreCase);
 
-            // Two leaves can name one page and differ only by a deep-link filter (Personas
-            // bare, Pacientes with RoleIds): the path ties, so the query decides. A leaf
+            // Two leaves can name one page and differ only by a deep-link filter (one
+            // bare, one with a role filter): the path ties, so the query decides. A leaf
             // carrying parameters is active only where the URL carries them too, and there
             // it outranks the bare leaf that matches everywhere else.
             if (!matches || !query.All(currentQuery.Contains))

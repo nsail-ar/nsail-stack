@@ -30,7 +30,7 @@
    hook a document listener answers on, per click, on those same terms (ns.js); Follow reads
    the same flags below so the two ends cannot disagree.
    Stopping propagation too (not just the default) is what keeps this link honest wherever it
-   renders: a grid row with its own OnRowClick (the counter door's Clientes grid) would
+   renders: a grid row with its own OnRowClick would
    otherwise see the same click a beat after Follow already fired, and NavigationManager's
    second call wins — the row's own destination silently replaces whatever the link just
    opened. It is unconditional, modifier click included: a new tab opening is no reason for

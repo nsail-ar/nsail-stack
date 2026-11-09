@@ -508,7 +508,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
     /// <summary>Label when the expression-derived key has no translation. Item-bearing
     /// fields (select, autocomplete) override this with the item type's concept key
-    /// ("Directory.OrganizationRef" → "Organization"); the base keeps the untranslated
+    /// ("OrganizationRef" → "Organization"); the base keeps the untranslated
     /// key visible, never guessed.</summary>
     protected virtual string? FallbackLabel(string key)
     {

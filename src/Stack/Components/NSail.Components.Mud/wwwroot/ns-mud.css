@@ -76,10 +76,9 @@
    class, so the two cannot come to look like different components.
 
    The horizontal inset carried here belongs to the whole family, not just the bar:
-   a ruling of no margins on the deposit killed the wrapper's own lateral pa-4 outright (SaleLinesEditor/TendersEditor
-   both wrap in Class="py-4", horizontal dropped on purpose), so the bar, a list row, an
-   empty collection's own message and the foot's totals all sat flush against the card's
-   border — moderated, not reverted ("un padding minimo por favor"): the house's smallest
+   a wrapper with no lateral padding of its own (Class="py-4", horizontal dropped on purpose)
+   leaves the bar, a list row, an empty collection's own message and the foot's totals flush
+   against the card's border unless this rule insets them: the house's smallest
    step, the same 0.5rem this rule already spent on its own vertical seam, shared by every
    selector in the family below so nothing in one collection lines up against a different
    edge than its neighbour. */
@@ -198,8 +197,8 @@
     flex: 1 1 12rem;
 }
 
-/* Iam.AccountLoginsList: one connected account, visually contained. Two glyphs at two different depths — unlink the account, disconnect a
-   service — used to read as the same action; the border is what tells them apart. Same
+/* One connected account, visually contained. Two glyphs at two different depths — unlink the
+   account, disconnect a service — used to read as the same action; the border is what tells them apart. Same
    hairline and radius the house's other subtle borders already use (.ns-form-problem,
    .ns-tree), never a new token. */
 .ns-account-block {
@@ -260,8 +259,8 @@
 /* ONE FRAME PER TABLE. A MudTable is itself a raised sheet: measured on 9.10.0, its root renders
    mud-table mud-elevation-1 — Surface for a fill, the house radius, and elevation 1, whose own
    1px 6% white ring BrandMudTheme.BuildElevations casts IS an edge (ui/styling.md, Card chrome).
-   So a table placed inside a sheet of its own — NsPaper or NsCard: every lines editor, the
-   Venta's Artículos — framed one thing twice. Inside one, the enclosing sheet is the edge and the
+   So a table placed inside a sheet of its own — NsPaper or NsCard: every lines editor, a
+   document's line list — framed one thing twice. Inside one, the enclosing sheet is the edge and the
    table is flat on it. (MudTableBase.Outlined is NOT what draws it: its doc remark says true and
    the property is false, so no mud-table-outlined is rendered at all. The border is stated here
    anyway — a table that one day asks for Outlined inside a card must not reintroduce the second
@@ -292,7 +291,7 @@
 /* On mobile the pager row itself (page-size select, counter,
    arrows) rendered cut off at the bottom of the list, not just the container's rows.
 
-   Catálogo's NsTable (like every NsTable in this codebase — none sets Mode explicitly)
+   An NsTable that sets no Mode
    resolves Mode="Auto", which answers Scroll only on a phone (NsTable.razor's Scrolls, asking
    IDeviceProvider); everything else — a tablet, a desktop window dragged short, a host with no
    device seam — stays on the Page branch, the real MudTablePager. The squeeze this rule guards
@@ -520,7 +519,7 @@
    where the box showed 14px of a 353px value (measured). Every other cell in that row holds
    something legible from its first characters — a quantity, a price, a description the
    operator typed — while a lookup's
-   value is a composed reading the user never wrote ("CR-150 - Orgánico CR-39 1.50 (Depósito)"):
+   value is a composed reading the user never wrote ("Code - Name (detail)"):
    its head is the SKU and its middle is which article it actually is, so a fragment of it names
    nothing. The floor is the grow basis, the same number a growing field is never squeezed below
    in a form row (.ns-grid > .ns-form-field-grow), and it is the width at which the box inside the
@@ -699,8 +698,8 @@
 
    The grid's action column is the one ICON scope to correct here. Everywhere else an Ns icon
    action is MudBlazor's own medium — 12px of padding around that same 1.5rem glyph, 48px by
-   construction — which is also what NsActionToolbar renders outside a table (Organization's
-   cards among them), so restating either property for .ns-action-toolbar would only re-derive
+   construction — which is also what NsActionToolbar renders outside a table (a
+   card's row actions among them), so restating either property for .ns-action-toolbar would only re-derive
    what the size already gives, and the font-size half of it used to shrink the app bar's
    deliberately larger icons. The WORDED face is the block below.
 
@@ -850,7 +849,7 @@
        gap: a desktop COLUMN'S rows need it to stay the same width regardless of how many
        actions each row contributed, and a stacked card has no column to serve, so nothing
        downstream needs that width held once the row has already become its own box. Central
-       here means every grid using NsActionToolbar inherits the fix, not just Clientes'. */
+       here means every grid using NsActionToolbar inherits the fix. */
     .ns-table.mud-sm-table .ns-action-toolbar {
         min-width: 0;
     }
@@ -1800,8 +1799,8 @@
    the after-items and no-items seams, which is where the create entry lives, as bare divs
    padded 4px on every side, with the anchor inside falling back to the body's own 0.875rem.
    The entry came out at roughly 28px of 14px text against 48px of 16px, indented 4px where
-   every row above it is indented 16px: "se sigue viendo más chico", and the ruling is that an actionable last entry is never smaller than the passive
-   rows it follows.
+   every row above it is indented 16px, and an actionable last entry is never smaller than the passive rows it
+   follows.
 
    The seam's own padding goes and the entry carries the item's numbers instead — 12px is the
    item's 8px plus the 4px its text container contributes, so the two boxes come out the same
@@ -3311,11 +3310,9 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* Emphasis-ladder footers (NsPanel's own Footer wrapper above, "d-flex justify-end gap-2
-   ns-panel-footer" — shared by every document page in the house: WorkOrderPage, the
-   transition pages' Cobrar/Facturar/Entregar, PurchaseOrderPage, the Accounting document
-   pages). A page cramped at phone width: SECONDARY footer buttons
-   collapse to icon-only under the phone breakpoint; the HERO keeps its pinned text (his own
-   doctrine, "Important acts sit at the bottom with text").
+   ns-panel-footer" — shared by every document page that hosts one). A page cramped at phone width: SECONDARY footer buttons
+   collapse to icon-only under the phone breakpoint; the HERO keeps its pinned text (ui doctrine:
+   "Important acts sit at the bottom with text").
 
    Scoped once, centrally, rather than per page: :has(.mud-button-icon-start) is what makes
    this safe against a secondary button with no icon (PurchaseOrderPage's Cancel/Issue/
@@ -3880,8 +3877,8 @@ div.mud-input-slot.mud-input-root::placeholder {
     --ns-field-width: 20rem;
 }
 
-/* a document's own subject field (Paciente, Proveedor, Cliente) reads at
-   ns-field-wide's 20rem from the tablet floor up, where it shares the header row with Fecha and
+/* a document's own subject field (the party it is about) reads at
+   ns-field-wide's 20rem from the tablet floor up, where it shares the header row with the date and
    whatever else stands beside it; alone on a phone's single-field row it is the row's only
    occupant, so it fills it the way Grow once did there, without Grow's own cost at a desktop
    width (it took every pixel the row had). Scoped to the header row itself (set beside
@@ -4194,7 +4191,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 /* NsRecordState and NsCheckBox in a row of fields: every other field
    draws a label gutter and an outline, so the row's own flex-start leaves them flush at the top
    -- but a boolean control draws neither, is shorter than its labeled neighbour, and would
-   float high beside it ("Usar cotización manual" beside the Cotización manual it gates).
+   float high beside it (a toggle beside the field it gates).
 
    The line is the neighbour's INPUT, not the row: a field with a hint stands its helper text
    under the box, so the row's centre falls below the input's. The control takes the field's own
@@ -4542,7 +4539,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 
 /* A button's face that is a SENTENCE and not a verb: "Ya tengo una clave privada" is
    something the person is telling the form, and the vendor's uppercase — right for Guardar, right
-   for Facturar — shouts a line that is read rather than pressed. Sentence case is also what the
+   for any verb — shouts a line that is read rather than pressed. Sentence case is also what the
    guide chapter prints it as, and a label a manual quotes has to be quotable. */
 .ns-disclosure .ns-button-label {
     text-transform: none;

@@ -383,7 +383,7 @@ else if (HasDocument)
         // follows validates the document the save is actually about; and the refusal a row just
         // drew would be wiped by that pass, which lifts every placement on this context
         // (RefusalPlacement). Before the spend below too, so a commit that takes reports the
-        // surface dirty in time for this submit to spend it and the popup still closes (#1420).
+        // surface dirty in time for this submit to spend it and the popup still closes.
         if (!await Settle())
         {
             return;

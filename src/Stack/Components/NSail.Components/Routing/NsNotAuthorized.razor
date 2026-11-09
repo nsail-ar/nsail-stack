@@ -85,8 +85,8 @@
         return query.Count is 0 ? signInPath : $"{signInPath}?{string.Join('&', query)}";
     }
 
-    // The app that never names a sign-in page keeps the Iam kit's own route, which is where
-    // every product's sign-in lives today; naming the page overrides it without a path.
+    // An app that names no sign-in page gets the conventional sign-in route; naming the page
+    // overrides it without a path.
     string GetSignInPath()
     {
         if (SignInPage is null || RouteTable is null)
