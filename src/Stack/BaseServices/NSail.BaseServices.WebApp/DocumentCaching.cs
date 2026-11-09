@@ -29,16 +29,9 @@ public static class DocumentCaching
             return;
         }
 
-        if (context.User.Identity?.IsAuthenticated == true)
-        {
-            context.Response.Headers.CacheControl = AuthenticatedHeaderValue;
-            context.Response.Headers.Remove(HeaderNames.Pragma);
-            context.Response.Headers.Remove(HeaderNames.Expires);
+        var authenticated = context.User.Identity?.IsAuthenticated == true;
 
-            return;
-        }
-
-        context.Response.Headers.CacheControl = HeaderValue;
+        context.Response.Headers.CacheControl = authenticated ? AuthenticatedHeaderValue : HeaderValue;
         context.Response.Headers.Remove(HeaderNames.Pragma);
         context.Response.Headers.Remove(HeaderNames.Expires);
     }

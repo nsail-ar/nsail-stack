@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using NSail.BaseServices.WebApp;
 
@@ -28,13 +29,30 @@ public class DocumentCachingTests
     {
         var context = new DefaultHttpContext();
 
-        context.User = new System.Security.Claims.ClaimsPrincipal(
-            new System.Security.Claims.ClaimsIdentity("test"));
+        context.User = new ClaimsPrincipal(
+            new ClaimsIdentity("test"));
         context.Response.ContentType = "text/html";
 
         DocumentCaching.Apply(context);
 
         Assert.Equal("private, no-store", context.Response.Headers.CacheControl.ToString());
+    }
+
+    [Fact]
+    public void Apply_ClearsPragmaAndExpires_OnAnAnonymousDocument()
+    {
+        var context = new DefaultHttpContext();
+
+        context.Response.ContentType = "text/html";
+        context.Response.Headers.CacheControl = "max-age=0";
+        context.Response.Headers.Pragma = "no-cache";
+        context.Response.Headers.Expires = "0";
+
+        DocumentCaching.Apply(context);
+
+        Assert.Equal("no-cache", context.Response.Headers.CacheControl.ToString());
+        Assert.False(context.Response.Headers.ContainsKey("Pragma"));
+        Assert.False(context.Response.Headers.ContainsKey("Expires"));
     }
 
     [Fact]
