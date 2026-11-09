@@ -106,6 +106,24 @@ public sealed class ImportTests
         Assert.Contains(updated.Rows, r => r.Description == "prod 2" && r.Quantity == 3);
     }
 
+    [Fact]
+    public async Task import_names_a_created_root_twice_and_merges_onto_it()
+    {
+        await using var store = await MapperStore<ImportContext>.Create();
+
+        var rows = Enumerable.Range(1, 3000).Select(i => new UserName { Id = i, Name = "u" + i })
+            .Concat(Enumerable.Range(1, 3000).Select(i => new UserName { Id = i, Name = "again" + i }))
+            .ToList();
+
+        await store.Mapper.Import<UserName, User>(rows);
+        await store.Db.SaveChangesAsync();
+
+        await using var read = store.Fresh();
+
+        Assert.Equal(3000, await read.Users.CountAsync());
+        Assert.Equal("again3000", (await read.Users.SingleAsync(u => u.Id == 3000)).Name);
+    }
+
     static List<T> Json<T>(string json)
     {
         return JsonSerializer.Deserialize<List<T>>(json.Replace('\'', '"'), Web)!;
