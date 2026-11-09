@@ -346,7 +346,8 @@ An edit must not re-read the project. A generator's pipeline holds only value-eq
 
 - **Models are records of equatable data** — names, declarations, spans, arguments; lists are
   `EquatableList<T>`. A model never holds a symbol, a `Diagnostic` or a `Location`: findings
-  travel as `DiagnosticInfo` and become diagnostics in the renderer.
+  travel as `DiagnosticInfo` (descriptor, tree, span, arguments) and become diagnostics in the
+  renderer.
 - **The holder comes from the attribute provider** (`FindGeneratedTargets`), and the types in
   scope are inspected from their own declarations (`GatherInScope`), so an edit re-reads the
   types of the edited file only.
@@ -359,9 +360,10 @@ An edit must not re-read the project. A generator's pipeline holds only value-eq
 - **Caching skips work, never changes the result**: an edit to a fact another file's type reads
   (a base class in `A.cs` under a `[Pushed]` or `[MapFrom]` type in `B.cs`) regenerates `B`'s
   output on that edit.
-- **A `#pragma warning disable` still suppresses a finding**: a `DiagnosticInfo` reads the
-  pragma state while it has the tree and carries it as `Suppressed`, because the location it is
-  reported at is rebuilt outside the tree, where the compiler no longer sees the pragma.
+- **A finding is reported inside its file's tree**, so the compiler applies that file's
+  `#pragma warning` and `.editorconfig` severity to it as it does to its own warnings. The tree
+  compares by reference: an unedited file keeps its tree and the finding stays equal; a location
+  rebuilt from a path is outside every tree, and neither reaches it.
 - **A new generator owes the proof**: `IncrementalityTests` runs it twice over an unrelated edit
   and every named step must be `Cached` or `Unchanged`.
 

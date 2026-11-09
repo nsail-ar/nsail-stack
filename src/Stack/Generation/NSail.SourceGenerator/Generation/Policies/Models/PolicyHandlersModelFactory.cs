@@ -93,7 +93,8 @@ public static class PolicyHandlersModelFactory
 
         handler.Fields.AddRange(fields);
         handler.Requires.AddRange(Requires(typeSymbol));
-            return handler;
+
+        return handler;
     }
 
     /// <summary>The [Requires] declarations, emitted beside the fields so the evaluator can

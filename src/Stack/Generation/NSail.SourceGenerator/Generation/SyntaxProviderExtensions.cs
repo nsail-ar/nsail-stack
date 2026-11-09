@@ -25,14 +25,15 @@ public sealed record GeneratorTarget(
     string? FilePath,
     TextSpan Span,
     TextSpan IdentifierSpan,
-    LinePositionSpan IdentifierLineSpan,
-    string? HolderProblem,
+    EquatableList<DiagnosticInfo> HolderFindings,
     EquatableList<SourceScope> Sources)
 {
-    /// <summary>A finding located at the holder's method.</summary>
-    public DiagnosticInfo Report(DiagnosticDescriptor descriptor, params object[] arguments)
+    /// <summary>A finding located at the holder's method, in the compilation's tree for it.</summary>
+    public DiagnosticInfo Report(Compilation compilation, DiagnosticDescriptor descriptor, params object[] arguments)
     {
-        return new DiagnosticInfo(descriptor, FilePath, IdentifierSpan, IdentifierLineSpan, new EquatableList<string>(arguments.Select(a => a?.ToString() ?? string.Empty)));
+        var tree = compilation.SyntaxTrees.FirstOrDefault(t => t.FilePath == FilePath);
+
+        return DiagnosticInfo.Create(descriptor, tree is null ? null : Location.Create(tree, IdentifierSpan), arguments);
     }
 }
 
@@ -118,18 +119,30 @@ public static class GeneratedSyntaxExtensions
             problem = "is in the global namespace";
         }
 
+        var servicesParameterName = method.FindParameterNameByType("IServiceCollection");
+        var findings = new EquatableList<DiagnosticInfo>();
+
+        if (problem is not null)
+        {
+            findings.Add(DiagnosticInfo.Create(GeneratorDiagnostics.HolderNotDeclarable, identifier, method.Name, type.Name, problem));
+        }
+
+        if (servicesParameterName.Length == 0)
+        {
+            findings.Add(DiagnosticInfo.Create(GeneratorDiagnostics.HolderWithoutServices, identifier, method.Name, type.Name));
+        }
+
         return new GeneratorTarget(
             method.ContainingNamespace.ToDisplayString(),
-            method.ContainingType.Name,
+            type.Name,
             method.Name,
-            method.ContainingType.GetDeclaration(),
+            type.GetDeclaration(),
             method.GetDeclaration(),
-            method.FindParameterNameByType("IServiceCollection"),
+            servicesParameterName,
             declaration?.SyntaxTree.FilePath,
             declaration?.Span ?? default,
             identifier?.SourceSpan ?? default,
-            identifier?.GetLineSpan().Span ?? default,
-            problem,
+            findings,
             sources);
     }
 
@@ -186,7 +199,7 @@ public static class GeneratedSyntaxExtensions
 
                     foreach (var source in unknown)
                     {
-                        diagnostics.Add(target.Report(GeneratorDiagnostics.UnknownSourceAssembly, target.MethodName, source.Assembly ?? string.Empty));
+                        diagnostics.Add(target.Report(compilation, GeneratorDiagnostics.UnknownSourceAssembly, target.MethodName, source.Assembly ?? string.Empty));
                     }
                 }
 

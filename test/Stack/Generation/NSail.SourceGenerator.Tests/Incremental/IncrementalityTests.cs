@@ -100,7 +100,9 @@ public class IncrementalityTests
         }
         """;
 
-    static readonly HashSet<string> Named = ["Targets", "MetadataTemplate", "LocalTypes", "SourceTypes", "Scoped", "Model", "Mappers", "Modelled"];
+    // The compiler's own inputs — the compilation, and the attribute lookup that takes it — are
+    // modified by any edit.
+    static readonly HashSet<string> CompilerInputs = ["Compilation", "CompilationOptions"];
 
     public static TheoryData<string, string> Generators => new()
     {
@@ -248,6 +250,25 @@ public class IncrementalityTests
         Assert.Contains(after.Diagnostics, d => d.Id == "NSG003" && d.GetMessage().Contains("NoteMoved"));
     }
 
+    // A finding is located in its file's tree, and an unedited file keeps its tree.
+    [Theory]
+    [InlineData(nameof(MappersSourceGenerator), "Mappers.Entities", "NSG011")]
+    [InlineData(nameof(PushPublishersSourceGenerator), "Push.Publishers", "NSG003")]
+    public void A_finding_survives_an_unrelated_edit_cached(string generatorName, string target, string id)
+    {
+        var driver = Driver(Create(generatorName));
+        var compilation = CompileDerived(target);
+
+        compilation = Edit(compilation, "Base.cs", Base.Replace("// moved", "public string Leak { get; set; } = \"\";"));
+        driver = driver.RunGenerators(compilation);
+        Assert.Contains(driver.GetRunResult().Diagnostics, d => d.Id == id);
+
+        driver = driver.RunGenerators(Edit(compilation, "Unrelated.cs", Unrelated + "\n// a comment\n"));
+
+        Assert.Contains(driver.GetRunResult().Diagnostics, d => d.Id == id);
+        AssertNothingRan(driver);
+    }
+
     static string Text(GeneratorDriverRunResult result)
     {
         return string.Concat(result.GeneratedTrees.Select(t => t.ToString()));
@@ -269,10 +290,9 @@ public class IncrementalityTests
     {
         var result = Assert.Single(driver.GetRunResult().Results);
 
-        // The steps the generator names, and what it registers. The compiler's own inputs — the
-        // compilation, and the attribute lookup that takes it — are modified by any edit.
+        // Every step but the compiler's, so a step named anew is covered without being listed.
         var steps = result.TrackedSteps
-            .Where(p => Named.Contains(p.Key))
+            .Where(p => !CompilerInputs.Contains(p.Key) && !p.Key.Contains("_ForAttribute"))
             .Concat(result.TrackedOutputSteps)
             .ToArray();
 
@@ -353,7 +373,7 @@ public class IncrementalityTests
     {
         var old = compilation.SyntaxTrees.Single(t => t.FilePath.EndsWith(fileName, StringComparison.Ordinal));
 
-        return compilation.ReplaceSyntaxTree(old, CSharpSyntaxTree.ParseText(text, path: old.FilePath));
+        return compilation.ReplaceSyntaxTree(old, CSharpSyntaxTree.ParseText(text, (CSharpParseOptions)old.Options, old.FilePath));
     }
 }
 

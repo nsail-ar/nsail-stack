@@ -324,6 +324,24 @@ public class MapperDiagnosticsTests
         Assert.Equal(reported.Location.GetLineSpan().StartLinePosition.Line, other.Location.GetLineSpan().StartLinePosition.Line);
     }
 
+    // The finding points into the source, so the file's .editorconfig severity reaches it.
+    [Fact]
+    public void A_warning_takes_the_severity_its_file_configures()
+    {
+        const string Types = """
+            public class UpdateProject { public int Id { get; set; } public string Name { get; set; } public string Title { get; set; } }
+
+            [Entity, MapFrom(typeof(UpdateProject))]
+            public class Project { public int Id { get; set; } public string Name { get; set; } }
+            """;
+
+        var raised = Assert.Single(Generate(Types, ReportDiagnostic.Error));
+
+        Assert.Equal("NSG011", raised.Id);
+        Assert.Equal(DiagnosticSeverity.Error, raised.Severity);
+        Assert.Empty(Generate(Types, ReportDiagnostic.Suppress));
+    }
+
     [Fact]
     public void A_source_member_renamed_onto_an_entity_member_is_written()
     {
@@ -541,9 +559,9 @@ public class MapperDiagnosticsTests
         Assert.Equal("NSG013", Assert.Single(diagnostics).Id);
     }
 
-    static IReadOnlyList<Diagnostic> Generate(string types)
+    static IReadOnlyList<Diagnostic> Generate(string types, ReportDiagnostic? nsg011 = null)
     {
-        var compilation = new CompilationUnitBuilder()
+        Compilation compilation = new CompilationUnitBuilder()
             .AddSource("Types.cs", $$"""
                 using Microsoft.Extensions.DependencyInjection;
                 using NSail.Mapping.Annotations;
@@ -563,6 +581,11 @@ public class MapperDiagnosticsTests
             .AddContainingAssembly<NSail.Messaging.Annotations.AsRouteAttribute>()
             .Build("MapperDiagnosticsAssembly");
 
+        if (nsg011 is { } severity)
+        {
+            compilation = compilation.WithOptions(compilation.Options.WithSyntaxTreeOptionsProvider(new FileSeverity("NSG011", severity)));
+        }
+
         GeneratorDriver driver = CSharpGeneratorDriver.Create(new MappersSourceGenerator());
 
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics);
@@ -570,6 +593,30 @@ public class MapperDiagnosticsTests
         // Whatever the generator refused, what it did emit must still compile.
         Assert.Empty(output.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error && !d.Id.StartsWith("NSG")));
 
-        return diagnostics.Where(d => d.Id.StartsWith("NSG")).ToList();
+        // A build leaves out what a #pragma marked suppressed.
+        return diagnostics.Where(d => d.Id.StartsWith("NSG") && !d.IsSuppressed).ToList();
+    }
+
+    // An .editorconfig section's dotnet_diagnostic.<id>.severity, as the compiler reads it per tree.
+    sealed class FileSeverity(string id, ReportDiagnostic severity) : SyntaxTreeOptionsProvider
+    {
+        public override GeneratedKind IsGenerated(SyntaxTree tree, CancellationToken cancellationToken)
+        {
+            return GeneratedKind.Unknown;
+        }
+
+        public override bool TryGetDiagnosticValue(SyntaxTree tree, string diagnosticId, CancellationToken cancellationToken, out ReportDiagnostic value)
+        {
+            value = severity;
+
+            return diagnosticId == id;
+        }
+
+        public override bool TryGetGlobalDiagnosticValue(string diagnosticId, CancellationToken cancellationToken, out ReportDiagnostic value)
+        {
+            value = default;
+
+            return false;
+        }
     }
 }

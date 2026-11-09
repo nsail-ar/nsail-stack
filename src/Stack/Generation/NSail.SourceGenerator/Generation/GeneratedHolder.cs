@@ -32,18 +32,8 @@ public abstract record GeneratedModel
 
     public void ReadHolder(GeneratorTarget target)
     {
-        if (target.HolderProblem is not null)
-        {
-            HolderDiagnostics.Add(target.Report(GeneratorDiagnostics.HolderNotDeclarable, target.MethodName, target.ClassName, target.HolderProblem));
-            Unusable = true;
-        }
-
-        if (target.ServicesParameterName.Length == 0)
-        {
-            HolderDiagnostics.Add(target.Report(GeneratorDiagnostics.HolderWithoutServices, target.MethodName, target.ClassName));
-            Unusable = true;
-        }
-
+        HolderDiagnostics.AddRange(target.HolderFindings);
+        Unusable = target.HolderFindings.Count > 0;
         ServicesParameterName = target.ServicesParameterName;
     }
 }
