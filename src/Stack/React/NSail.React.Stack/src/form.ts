@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { memberOf, type Field, type MessageType } from "./descriptors";
 import type { Issue, Problem } from "./problems";
 import { validate, validateField } from "./validation";
@@ -29,11 +29,14 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
   const [problem, setProblem] = useState<Problem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
+  const sending = useRef(false);
+  const edits = useRef(0);
 
   const set = useCallback(<K extends keyof T>(name: K, next: T[K]) => {
     setValue((current) => ({ ...current, [name]: next }));
     setTouched((current) => new Set(current).add(name));
     setSaved(false);
+    edits.current++;
 
     const member = memberOf(message.fields[name]);
 
@@ -44,6 +47,8 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
     setValue(next);
     setTouched(new Set());
     setProblem(null);
+    setSaved(false);
+    edits.current++;
   }, []);
 
   const issues = useCallback(
@@ -60,6 +65,10 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
 
   const submit = useCallback(
     async (action: (value: T) => Promise<void>) => {
+      if (sending.current) {
+        return false;
+      }
+
       const refused = validate(message, value);
 
       if (refused) {
@@ -69,13 +78,18 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
         return false;
       }
 
+      sending.current = true;
+      const sentAt = edits.current;
       setSubmitting(true);
       setSaved(false);
       setProblem(null);
 
       try {
         await action(value);
-        setSaved(true);
+
+        if (edits.current === sentAt) {
+          setSaved(true);
+        }
 
         return true;
       } catch (error) {
@@ -83,6 +97,7 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
 
         return false;
       } finally {
+        sending.current = false;
         setSubmitting(false);
       }
     },

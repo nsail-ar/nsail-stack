@@ -31,5 +31,9 @@
   },
   "peerDependencies": {
     "react": ">=19"
+  },
+  "devDependencies": {
+    "happy-dom": "^21.0.4",
+    "react-dom": "^19.3.0"
   }
 }
