@@ -12,7 +12,7 @@ import mudEs from "../../../Components/NSail.Components.Mud/strings.es.json";
 const stackCatalogs: Record<string, Record<string, string>> = { en: mudBase, es: { ...mudBase, ...mudEs } };
 
 export function stackStrings(language: string): Record<string, string> {
-  return stackCatalogs[language] ?? stackCatalogs.en;
+  return stackCatalogs[language] ?? stackCatalogs[language.split("-")[0].toLowerCase()] ?? stackCatalogs.en;
 }
 
 const token = /{([A-Za-z0-9_]+)}/g;
