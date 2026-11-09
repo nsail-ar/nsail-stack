@@ -72,7 +72,7 @@ public class MapperModelTests
                     public static partial void AddShopMappings(this IServiceCollection services);
                 }
                 """)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
             .AddContainingAssembly<Microsoft.EntityFrameworkCore.DbContext>()
             .AddContainingAssembly<GeneratedAttribute>()

@@ -15,7 +15,7 @@ in a message's fields, never the rows a handler returns.
 ## Use it
 
 The Sdk references `NSail.Security` and declares a holder the generator fills with one policy
-handler per message that carries `[PolicyField]` fields:
+handler per `IMessage` (a message without `[PolicyField]` fields gets one that restricts nothing):
 
 ```csharp
 public static partial class Permissions

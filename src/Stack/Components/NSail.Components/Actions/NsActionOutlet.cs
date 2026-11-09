@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 
 namespace NSail.Components;
 
@@ -19,6 +20,9 @@ public abstract class NsActionOutlet<TOutlet, TModel> : NsPartial, IActionOutlet
 
     [Inject]
     IEnumerable<IActionContributor<TOutlet>> Contributors { get; init; } = default!;
+
+    [Inject]
+    ILogger<TOutlet> Log { get; init; } = default!;
 
     [Inject]
     PageGate Gate { get; init; } = default!;
@@ -114,7 +118,9 @@ public abstract class NsActionOutlet<TOutlet, TModel> : NsPartial, IActionOutlet
         // the slower and not the sum. Order survives: WhenAll answers in the order it was
         // handed, and a contributor that shares one read across the rows of a render pass
         // still sees every ask arrive before the first answer.
-        var contributed = await Task.WhenAll(Contributors.Select(contributor => contributor.GetActions((TOutlet)this)));
+        // A contributor that throws drops its own items and no one else's: an action is chrome,
+        // and a failure here would otherwise reach the page's error boundary once per row.
+        var contributed = await Task.WhenAll(Contributors.Select(Contribute));
 
         var allowed = new List<ActionItem>();
 
@@ -129,5 +135,19 @@ public abstract class NsActionOutlet<TOutlet, TModel> : NsPartial, IActionOutlet
         }
 
         return allowed.OrderBy(item => item.Weight).ToList();
+    }
+
+    async Task<IReadOnlyList<ActionItem>> Contribute(IActionContributor<TOutlet> contributor)
+    {
+        try
+        {
+            return await contributor.GetActions((TOutlet)this);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            Log.LogWarning(exception, "Action contributor {Contributor} failed and was left out", contributor.GetType().Name);
+
+            return [];
+        }
     }
 }

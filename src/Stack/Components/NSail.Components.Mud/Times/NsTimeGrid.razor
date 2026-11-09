@@ -10,6 +10,7 @@
 
 @inject IJSRuntime JS
 @inject StringManager Strings
+@inject LanguageProvider Language
 
 <div class="@GetClasses()" style="@GetStyle()">
 
@@ -36,7 +37,7 @@
             @foreach (var hour in Hours)
             {
                 <div class="ns-time-grid-hour">
-                    <span class="ns-time-grid-mark">@hour.ToString("t")</span>
+                    <span class="ns-time-grid-mark">@hour.ToString("t", Culture)</span>
                 </div>
             }
         </div>
@@ -47,7 +48,7 @@
                 @foreach (var date in _dates)
                 {
                     <div class="@GetColumnClasses(date)">
-                        <span class="ns-time-grid-mark">@date.ToString("ddd d")</span>
+                        <span class="ns-time-grid-mark">@date.ToString("ddd d", Culture)</span>
                     </div>
                 }
             </div>
@@ -98,6 +99,7 @@
 </div>
 
 @code {
+    CultureInfo Culture => RegionCulture.For(Language);
 
     const int HoursInDay = 24;
 
@@ -364,7 +366,7 @@
 
         return Strings.Translate(key, new Dictionary<string, string>
         {
-            ["day"] = Focused().ToString("D", CultureInfo.CurrentCulture),
+            ["day"] = Focused().ToString("D", Culture),
             ["count"] = hidden.ToString(CultureInfo.InvariantCulture),
         });
     }

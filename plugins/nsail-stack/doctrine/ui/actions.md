@@ -371,7 +371,7 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   the reader's OWN record rather than somebody else's — the allow list cannot tell them apart
   and the act needs a gate that says so: `NsPartial.CanSend<TMessage>(field, subjectId)` where
   the difference is a party or organization pin (permissions.md, The client consumes policies),
-  the product's own where it is not (Optical's `clients.md`, a warranty claim).
+  the product's own where it is not (Optical's clients page: a warranty claim).
 - Labels resolve as `Actions.{Name}`, then — for a link — the destination page's own title, then
   the raw name; so moving a row's `NsPageLink` into an `ActionItem` writes no string. Pass a
   `name` only where the row reaches that page for a meaning its title does not carry.
@@ -383,7 +383,9 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   contribution order), exposes `Actions` and `Resolving`. **Every contributor is asked before
   any of them answers**, so two slow ones cost the slower and not the sum; the answer is
   guarded by the ask it came from, so a `Context` that moves mid-flight drops the one that was
-  in flight for the model that left. **No markup.** A kit's outlet is one file
+  in flight for the model that left. **A contributor that throws is left out**: it is logged, its
+  own items are dropped, the rest of the cell draws and `Resolving` clears — one failing
+  contributor never reaches the page's error boundary. **No markup.** A kit's outlet is one file
   (`@inherits NsActionOutlet<PartyRowOutlet, PartyRow>`) delegating to a presenter and handing
   it **both** halves of what it resolved —
   `<NsActionToolbar Actions="Actions" Resolving="Resolving" …/>`, which

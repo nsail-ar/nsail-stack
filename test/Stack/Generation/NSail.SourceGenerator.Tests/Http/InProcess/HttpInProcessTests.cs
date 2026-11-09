@@ -20,7 +20,7 @@ public class HttpInProcessTests
     {
         var builder = new CompilationUnitBuilder()
             .AddSourceFiles("./Http/InProcess/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()

@@ -20,7 +20,7 @@ public class HttpClientsTests
     {
         var builder = new CompilationUnitBuilder()
             .AddSourceFiles("./Http/Clients/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()
@@ -61,7 +61,7 @@ public class HttpClientsTests
     {
         var builder = new CompilationUnitBuilder()
             .AddSourceFiles("./Http/Clients/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()
@@ -87,7 +87,7 @@ public class HttpClientsTests
     {
         var builder = new CompilationUnitBuilder()
             .AddSourceFiles("./Http/Clients/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()
@@ -112,7 +112,7 @@ public class HttpClientsTests
     {
         var builder = new CompilationUnitBuilder()
             .AddSourceFiles("./Http/Clients/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()

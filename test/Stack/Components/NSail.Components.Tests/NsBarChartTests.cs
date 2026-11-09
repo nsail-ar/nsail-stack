@@ -18,6 +18,7 @@ public sealed class NsBarChartTests : BunitContext
 
     public NsBarChartTests()
     {
+        Services.AddSingleton(new LanguageProvider { Current = "en" });
         Services.AddStringsFromAssembly(typeof(NsBarChart).Assembly);
     }
 
@@ -131,7 +132,7 @@ public sealed class NsBarChartTests : BunitContext
             .Add(c => c.Series, Series)
             .Add(c => c.Buckets, new[] { Bucket("10h", 0.5, 0) }));
 
-        Assert.Equal([0.ToString("0.##", CultureInfo.CurrentCulture), 0.25.ToString("0.##", CultureInfo.CurrentCulture), 0.5.ToString("0.##", CultureInfo.CurrentCulture)], cut.FindAll(".ns-bar-chart-axis").Take(3).Select(t => t.TextContent).ToList());
+        Assert.Equal([0.ToString("0.##", CultureInfo.GetCultureInfo("en-US")), 0.25.ToString("0.##", CultureInfo.GetCultureInfo("en-US")), 0.5.ToString("0.##", CultureInfo.GetCultureInfo("en-US"))], cut.FindAll(".ns-bar-chart-axis").Take(3).Select(t => t.TextContent).ToList());
     }
 
     [Fact]

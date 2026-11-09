@@ -6,6 +6,7 @@
 @using NSail.Localization
 
 @inject StringManager Strings
+@inject LanguageProvider Language
 
 @* Stacked bars over ordered buckets, drawn as plain SVG: no script, no library. Every colour is a
    --mud-palette-* variable, so both schemes read. The hover is the SVG's own <title>. The <g>
@@ -16,7 +17,7 @@
         {
             var y = Y(tick);
             <line x1="@N(Left)" x2="@N(W - 6)" y1="@N(y)" y2="@N(y)" class="ns-bar-chart-grid" />
-            <g><text x="@N(Left - 6)" y="@N(y + 4)" text-anchor="end" class="ns-bar-chart-axis">@tick.ToString("0.##", CultureInfo.CurrentCulture)</text></g>
+            <g><text x="@N(Left - 6)" y="@N(y + 4)" text-anchor="end" class="ns-bar-chart-axis">@tick.ToString("0.##", Culture)</text></g>
         }
         @if (_max <= 0)
         {
@@ -38,7 +39,7 @@
                 var top = Y(running + value);
                 var height = Y(running) - top;
                 running += value;
-                <rect x="@N(x + 2)" y="@N(top + 1)" width="@N(Math.Max(1, Slot - 4))" height="@N(Math.Max(1, height - 2))" rx="2" fill="var(--mud-palette-@Palette(series.Color))"><title>@(bucket.Title ?? bucket.Label) · @series.Name: @value.ToString("0.##", CultureInfo.CurrentCulture)</title></rect>
+                <rect x="@N(x + 2)" y="@N(top + 1)" width="@N(Math.Max(1, Slot - 4))" height="@N(Math.Max(1, height - 2))" rx="2" fill="var(--mud-palette-@Palette(series.Color))"><title>@(bucket.Title ?? bucket.Label) · @series.Name: @value.ToString("0.##", Culture)</title></rect>
             }
             @if (i % LabelEvery == 0)
             {
@@ -66,6 +67,7 @@
 </div>
 
 @code {
+    CultureInfo Culture => RegionCulture.For(Language);
 
     const double W = 720;
     const double H = 200;

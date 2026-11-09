@@ -125,9 +125,12 @@ refused rather than stored.
   never in a startup pass: a chain is what CI applies to an empty database, so schema written
   outside it is schema no test ever sees. The tables are NAMED there, because a migration's own
   `TargetModel` is the snapshot's and its entity types carry no CLR type to ask the marker of.
-- **One database role, with `FORCE ROW LEVEL SECURITY`.** A table's owner bypasses its policies
-  unless the table forces them, and the app role owns the tables because it runs the chain; a
-  second, non-owner role would owe a grant pass on every table every migration adds.
+- **One database role by default, with `FORCE ROW LEVEL SECURITY`.** A table's owner bypasses
+  its policies unless the table forces them, and the app role owns the tables because it runs the
+  chain. Splitting them — the chain under an admin role, the app under a non-owner one — is
+  allowed and owes what the Sample's `SampleRole` does on every start, after the chain: the grant
+  pass over every table a migration added, and the role's attributes re-stated (`NOSUPERUSER
+  NOBYPASSRLS`), because a role that already exists keeps whatever someone gave it.
 - **The tenant reaches the connection as a session setting written on connection open**
   (`TenantSession`), from `TenancyProvider.RowKey` and from nothing else — **left unwritten
   where the wall IS the column and nothing resolved**, so the policy compares against NULL and
@@ -301,7 +304,7 @@ the branch that now owns the work. Whoever moves the head owes that question an 
 granted, because after the move the destination is the one branch that may authorize it and the
 one branch that cannot read the attempts already made for it.
 
-**An in-use guard that must NOT find a row fails open when it is filtered** (org-map.md, G2): a
+**An in-use guard that must NOT find a row fails open when it is filtered** (nsail's `plugins/nsail-kits/doctrine/org-map.md`, G2): a
 delete asking whether any org-scoped row still names the id it is about to remove reads only the
 caller's own subtree, so a row standing in another branch answers "free" and the delete hits the
 provider's `Restrict` constraint instead of the `InUse` refusal it exists to pre-empt. The guard
@@ -314,7 +317,7 @@ is.
 **This filter does NOT answer which branch a caller may name.** It reads the message's field;
 the gate says whether this caller may put that value there — so a marked field no policy
 constrains is a filter pointed wherever the caller likes. Which messages carry the field, which
-consolidate without one, and what the shipped policies pin it to: org-map.md's message table,
+consolidate without one, and what the shipped policies pin it to: nsail's `plugins/nsail-kits/doctrine/org-map.md`'s message table,
 held by `OrgAxisMessageTests`. The two halves lean on each other on purpose: because this filter
 answers an omitted field with the seat's own subtree, a policy pinning that field to
 `@memberOfOrDescendant` — the one symbol whose permitted set CONTAINS that subtree — lets the
@@ -322,7 +325,7 @@ omission through rather than refusing every by-id site. `@current` and `@memberO
 because there the fallback reaches below what the symbol allows (permissions.md, Null
 semantics).
 
-**The party axis** is the other half, answered in org-map.md (The party axis) on purpose. A
+**The party axis** is the other half, answered in nsail's `plugins/nsail-kits/doctrine/org-map.md` (The party axis) on purpose. A
 membership and a relationship are EDGES the scope is computed FROM, so no model-wide filter can
 touch them without circularity; the two lists of one person's edges write the subtree WHERE
 themselves, against the set this filter compares to, read from `OrgScopeProvider` rather than

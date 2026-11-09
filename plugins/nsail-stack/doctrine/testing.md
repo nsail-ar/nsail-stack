@@ -23,7 +23,7 @@ sends. When an app story touches a seam, the seam's test rides the story.
 
 **No coverage target, deliberately.** A target breeds filler in the layers already covered;
 the question is *which layer owes the proof*, not how much. The honest-count rule lives in
-commits.md: the suite total is the tree's, verified against
+the product's commits page (a product page): the suite total is the tree's, verified against
 `find test -name '*.Tests.csproj' | wc -l`, never a number carried from memory.
 
 ## Rulings
@@ -152,7 +152,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
     `FullyQualifiedName!~.E2E.`) and run at the nightly regression and at a release, so a
     path's proof is the builder's own run before the push. This bounds nothing in ruling 7:
     an outcome the product promises is a contract, and the anecdote it refuses is a second
-    test of the same outcome. What it costs a story: story-template.md (nsail: `docs/agents/story-template.md`);
+    test of the same outcome. What it costs a story: the product's story template (a product page);
     the guide half: [ui/guide.md](ui/guide.md).
 
 ## Harness lore (paid for, do not re-buy)

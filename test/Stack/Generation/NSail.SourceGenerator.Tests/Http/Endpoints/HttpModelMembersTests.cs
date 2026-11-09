@@ -179,7 +179,7 @@ public class HttpModelMembersTests
     {
         var compilation = new CompilationUnitBuilder()
             .AddSource("Messages.cs", source)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()
             .AddContainingAssembly<HttpAttribute>()
