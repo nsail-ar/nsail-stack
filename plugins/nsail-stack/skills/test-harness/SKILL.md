@@ -71,7 +71,7 @@ its scenario lands in the catalog (`NSail.Optical.Scenarios.Tests` against
 times in a week is a class that earns a net, not three regression tests.
 
 Repeatable verification lands as a test; prose is for what only the eye judges. Form
-rules quantified over the tree go to `Architecture.Tests` with an explicit exemption
+rules quantified over the tree go to `Architecture.Tests` (products' repository; the Stack's own in `test/Stack`) with an explicit exemption
 list, never a recurring manual audit.
 
 ## Reporting

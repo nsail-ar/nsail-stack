@@ -293,7 +293,7 @@ breakpoint anyway. There is no second knob.
   button, not who rendered it. **Two sweeps hold the rule**: every `NsButton`, `NsLink` and
   `NsMenu` handed an `Icon` writes a `Label` (`NamedGlyphTests` — those three draw a glyph of
   their own, every other face in the house being one of them underneath), and every act built
-  with `GetAction` has its `Actions.{Name}` text in both languages (`ScreenStringTests`; both sweeps are enforced in the products' repository) — with
+  with `GetAction` has its `Actions.{Name}` text in both languages (`ScreenStringTests`, both enforced in the products' repository) — with
   none, `ActionItem.GetLabel`'s last resort is the handler's own C# identifier, so the glyph
   wears `MarkGiven` and whispers it. Their bound is what no static reader can see: a name a
   vendor part carries itself, a name built at runtime, a face composed as child content with no
@@ -387,7 +387,7 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   (`@inherits NsActionOutlet<PartyRowOutlet, PartyRow>`) delegating to a presenter and handing
   it **both** halves of what it resolved —
   `<NsActionToolbar Actions="Actions" Resolving="Resolving" …/>`, which
-  `ActionOutletPresenterTests` (products' repository) holds every outlet to; the host mounts
+  `ActionOutletPresenterTests` (enforced in the products' repository) holds every outlet to; the host mounts
   `<PartyRowOutlet Context="row" />`. A host that folds its own label when the outlet turns
   out empty (a drawer group with no children takes the same call) reads `HasActionsChanged`,
   fired once with whether any contributor answered — never polled, since the outlet already

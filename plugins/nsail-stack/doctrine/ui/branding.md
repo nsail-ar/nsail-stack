@@ -66,7 +66,7 @@ an empty field with no visible edge is the same defect whichever way the scheme 
 abandoned columns. `SessionBrandProvider` starts from `BrandTheme.DefaultDark()`/`DefaultLight()`
 and lays the row's picks over it — so **an install that saved a brand under an older palette
 shows the current one on its next paint, with no UPDATE to run**, and there is no second copy to
-drift. `BrandPaletteTests` (Architecture) keeps it one copy.
+drift. `BrandPaletteTests` (Architecture, enforced in the products' repository) keeps it one copy.
 
 **A severity at full strength is a band, so its text is read against the fill and never against
 the card** — `TextOnError`/`TextOnWarning`/`TextOnSuccess`/`TextOnInfo`, one per severity per

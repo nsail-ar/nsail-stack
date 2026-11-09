@@ -40,7 +40,7 @@ being read and dropped the status word onto a ground it had not been measured ag
 **A collection that offers a way IN names itself, and the name's bar is the only seat Agregar
 has.** `Title` draws that bar above the grid — heading left, add control at the right edge, one
 baseline — and unset there is no bar at all, so no face a hand can press: a grid wiring `NewRow`
-with no `Title` is refused by the Architecture suite rather than shipped with nothing for a hand
+with no `Title` is refused by the Architecture suite (enforced in the products' repository) rather than shipped with nothing for a hand
 to reach. There is no second position to drift to; an Agregar under the rows is the shape this
 rule replaced, after it had already split the house in two (cases). **It is the family's rule,
 not the table's** — `NsListEditor`'s bar is the same `.ns-collection-bar`, so the two collection

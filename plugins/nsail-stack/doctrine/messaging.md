@@ -716,7 +716,7 @@ business rules.
   collection or not — the rows of a `[Composition]` a message does not open with `[Validated]`
   are enforced by neither end, same as a lone nested model today.
 - **A number or a code declares its bound, or says on the record that it has none.**
-  `DeclaredBoundTests` (`NSail.Architecture.Tests`, enforced in the products' repository) walks exactly `MessageValidator`'s reach —
+  `DeclaredBoundTests` (the products' `NSail.Architecture.Tests`; the Stack's own messages in [`test/Stack/Messaging/NSail.Messaging.Declarations.Tests`](../../../test/Stack/Messaging/NSail.Messaging.Declarations.Tests/DeclaredBoundTests.cs)) walks exactly `MessageValidator`'s reach —
   every shipped `IMessage` plus any model opened with `[Validated]`, into a collection's
   ELEMENT type rather than the collection itself — and fails the build when
   a numeric or `string` member declares nothing. A number wants a range (`[Range]` **or a

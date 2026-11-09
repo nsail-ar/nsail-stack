@@ -63,7 +63,7 @@ Keeping both and defaulting to the bar was refused: a default is a drift that ha
 yet (principles.md 4 — remove the possibility, not the instance). Removing the bottom one costs
 something real, though — it makes `Title` load-bearing, and a grid that forgets it loses its way
 in SILENTLY, which is the worst failure there is. So the cost is paid where it cannot be
-forgotten: the Architecture suite reads every `.razor` in `src` and refuses a `NewRow` with no
+forgotten: the Architecture suite (enforced in the products' repository) reads every `.razor` in `src` and refuses a `NewRow` with no
 `Title`. The six grids that moved had the heading already — four printed it as a loose
 `NsText As="Title"` line above the grid, which the bar now carries, and the two wizard steps took
 the name the wizard's own rail already owns. Nothing new was translated.

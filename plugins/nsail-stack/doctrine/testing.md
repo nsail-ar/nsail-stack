@@ -38,7 +38,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
    Aesthetic calls, third-party round trips needing real credentials, and one-shot
    migrations stay prose — named honestly as such. A queue issue claiming "unproven"
    names the test that would close it.
-3. **Form rules go to `Architecture.Tests`.** A doctrine sentence quantified over the
+3. **Form rules go to `Architecture.Tests`** (the products' repository; a rule over the Stack's own tree is a test in `test/Stack`). A doctrine sentence quantified over the
    tree ("every generated endpoint denies before binding") is an architecture test with an
    explicit, documented exemption list — never a recurring manual audit. The exemption list
    is part of the test, and shrinking it is progress a diff can show.
@@ -116,7 +116,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
 11. **A number or a code on a message declares its bound, and the gate refuses the silence.**
     No test finds a rule that does not exist (a sphere of +45, a negative price, a CAE of any
     text all passed), so the answer is not coverage — it is ruling 3's shape over field
-    bounds. `DeclaredBoundTests` (enforced in the products' repository) walks exactly `MessageValidator`'s reach and fails the build
+    bounds. `DeclaredBoundTests` (the products' repository; the Stack's own messages in `test/Stack`) walks exactly `MessageValidator`'s reach and fails the build
     on a numeric or `string` member that declares nothing (messaging.md has what satisfies it,
     and the identifier escalation). **The exemption list is `[Unbounded("why")]`, per member,
     so it is read where the decision matters** rather than in the test.
@@ -328,7 +328,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   finished text is a PASTE and not a typing**, which is how three per-keystroke defects sat
   under eight green acts: a suite about the keystroke types the prefixes one at a time
   (`TypedValueCommitTests`), and the whole box arrives on each one because that is what a
-  browser sends. `AwaitedActTests` (products' repository) gates `Blur` and `KeyDown` like the other four acts.
+  browser sends. `AwaitedActTests` (enforced in the products' repository) gates `Blur` and `KeyDown` like the other four acts.
 - **A figure is typed in the notation the suite declared it reads in.** Every numeric box
   parses in `RegionCulture.For(Language)`, so the same literal is two numbers: Optical reads
   `es` and takes `"-1,25"`, Therapy reads `en` and takes `"-1.25"` — and the wrong one is not a
