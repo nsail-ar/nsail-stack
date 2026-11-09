@@ -87,7 +87,8 @@ The runners read three things from the host:
   pass that overlaps it: counted `skipped`, not failed, and the job is not overdue for it. The lock
   fences overlap only — replicas tick on their own clocks, so a job still runs once per replica per
   interval. Install-wide work under a per-tenant connection locks on the cluster's maintenance
-  database; a host with no Npgsql `DbContext` takes no lock. The durable queue's drain is a job
+  database, under a key of the cell's `{product}_{cell}_` prefix and the job's full name, so
+  neighbouring cells and products do not fence each other; a host with no Npgsql `DbContext` takes no lock. The durable queue's drain is a job
   like any other, so a tenant's drain runs on one replica at a time and a sibling yields its pass.
 
 **Deferred work** (`DeferredWork`):

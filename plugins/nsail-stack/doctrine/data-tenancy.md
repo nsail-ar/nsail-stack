@@ -742,7 +742,9 @@ reads nothing and cannot write at all.
   clocks, so a job whose passes do not overlap still runs once per replica per interval — a job
   that must run once per interval across replicas needs a lease, not this. A store that is not
   Postgres takes no lock. Install-wide work under a per-tenant connection has no install database,
-  so it locks on the cluster's maintenance database, the one the roster is read from. The durable
+  so it locks on the cluster's maintenance database, the one the roster is read from, under a
+  key of the cell's `{product}_{cell}_` prefix and the job's full name: a neighbouring cell or
+  product on the server is not a sibling. The durable
   queue's drain is a job like any other: a tenant's drain runs on one replica at a time.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as

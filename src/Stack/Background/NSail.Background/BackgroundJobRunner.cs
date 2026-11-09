@@ -282,7 +282,7 @@ sealed class BackgroundJobRunner : BackgroundService
                     .ConfigureAwait(false)
                 : await JobLock.TryTakeOnCluster(
                         scope.Value.ServiceProvider.GetService<TenantDatabases>(),
-                        jobType.Name,
+                        jobType.FullName ?? jobType.Name,
                         budget.Token)
                     .ConfigureAwait(false);
 

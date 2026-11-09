@@ -38,7 +38,8 @@ sealed class LockedJob : IBackgroundJob
 }
 
 /// <summary>Two replicas over one database: the pass one holds is not run by the other, and the
-/// lock is free again once the pass ends. Over a real Postgres, because the lock is its.</summary>
+/// lock is free again once the pass ends. Over a real Postgres, because the lock
+/// is its.</summary>
 public sealed class JobLockTests : IAsyncLifetime
 {
     readonly string _database = "nsail3410_" + Guid.NewGuid().ToString("N")[..12];
@@ -123,7 +124,7 @@ public sealed class JobLockTests : IAsyncLifetime
     // Under a mode that connects per tenant the DbContext's factory throws with no tenant entered,
     // so install-wide work must not be asked for one to lock on.
     [Fact]
-    public async Task An_install_job_under_a_per_tenant_connection_runs_without_a_lock()
+    public async Task An_install_job_under_a_per_tenant_connection_with_no_cluster_known_runs_without_a_lock()
     {
         var signal = new Signal();
         var gate = new Gate();
@@ -139,6 +140,59 @@ public sealed class JobLockTests : IAsyncLifetime
         });
 
         await Harness.Run(provider, signal.Reached);
+    }
+
+    // The maintenance database is the cluster's: a sibling of the same cell yields, a neighbouring
+    // cell's pass of the same job is not its sibling.
+    [Fact]
+    public async Task An_install_job_under_a_per_tenant_connection_locks_on_the_cluster_per_cell()
+    {
+        var gate = new Gate();
+        var first = new Signal();
+        var sameCell = new Signal();
+        var otherCell = new Signal();
+
+        await using var one = BuildPerTenant("eu1", gate, first);
+        await using var twin = BuildPerTenant("eu1", gate, sameCell);
+        await using var neighbour = BuildPerTenant("us1", gate, otherCell);
+
+        var runnerOne = Harness.Runner(one);
+        var runnerTwin = Harness.Runner(twin);
+        var runnerNeighbour = Harness.Runner(neighbour);
+
+        await runnerOne.StartAsync(CancellationToken.None);
+        await first.Reached.WaitAsync(TimeSpan.FromSeconds(10));
+
+        await runnerNeighbour.StartAsync(CancellationToken.None);
+        await otherCell.Reached.WaitAsync(TimeSpan.FromSeconds(10));
+
+        await runnerTwin.StartAsync(CancellationToken.None);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, first.Count);
+        Assert.Equal(1, otherCell.Count);
+        Assert.Equal(0, sameCell.Count);
+
+        gate.Open.SetResult();
+
+        await runnerOne.StopAsync(CancellationToken.None);
+        await runnerTwin.StopAsync(CancellationToken.None);
+        await runnerNeighbour.StopAsync(CancellationToken.None);
+    }
+
+    ServiceProvider BuildPerTenant(string cell, Gate gate, Signal signal)
+    {
+        var tenancy = new TenancyOptions { Mode = TenancyMode.MultiDb, Product = "nsail3410", Cell = cell };
+
+        return Harness.Build(services =>
+        {
+            services.AddSingleton(tenancy);
+            services.AddSingleton(new TenantDatabases(tenancy, "Host=localhost;Username=postgres;Database=postgres"));
+            services.AddScoped<DbContext>(_ => throw new InvalidOperationException("nothing resolves a tenant"));
+            services.AddSingleton(gate);
+            services.AddSingleton(signal);
+            services.AddBackgroundJob<LockedJob>();
+        });
     }
 
     ServiceProvider Build(Gate gate, Signal signal, LogRecorder? logs = null)
