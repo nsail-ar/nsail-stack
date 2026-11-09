@@ -30,7 +30,8 @@
     public Func<TItem, string>? ItemText { get; set; }
 
     // A field bound to a page-local value has no message property to derive a label
-    // from — the item type itself names the concept ("LocationTypeRef" reads "Location type").
+    // from — the item type's own key (MetadataProvider.KeyFor, area-qualified) names the
+    // concept, and its translation is the label.
     protected override string? FallbackLabel(string key)
     {
         if (Strings.TryTranslate(Metadata.KeyFor(typeof(TItem)), out var concept))

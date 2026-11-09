@@ -56,7 +56,7 @@
     // The page's own word while it has one, and the name its route derives before it renders at
     // all: a page's title bar passes the key its own type resolves (NsPartial.GetTitle), so the
     // name drawn at once is the page's and nothing swaps under the reader. A page that refines
-    // it from what it read (SettlementPage) replaces it the moment it announces.
+    // it from what it read replaces it the moment it announces.
     string? GetName()
     {
         if (Surface?.Title is { } announced)

@@ -170,10 +170,10 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
         {
             var message = Describe(issue, problem);
 
-            // Being a real property is not enough — the counter sale's tenders were a real
-            // property of the message and the screen bound its own local list, so the refusal
-            // went under an input that never rendered and disappeared (6062c3fb). Only a field
-            // that announced itself here can carry a message.
+            // Being a real property is not enough — a property of the message the screen
+            // binds through a local list of its own has no input rendered for it, and a
+            // refusal placed there would disappear. Only a field that announced itself here can
+            // carry a message.
             var identifier = string.IsNullOrWhiteSpace(issue.Source)
                 ? null
                 : TryCreateFieldIdentifier(model, issue.Source);

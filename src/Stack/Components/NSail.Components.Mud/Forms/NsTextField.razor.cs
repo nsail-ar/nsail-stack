@@ -21,7 +21,7 @@ public partial class NsTextField
     [Inject]
     IJSRuntime JS { get; init; } = default!;
 
-    // Text is the mostrador family; a masked field (a CUIT, a DNI) stays out, its caret
+    // Text selects on focus; a masked field (a CUIT, a DNI) stays out, its caret
     // bookkeeping belongs to the vendor's mask engine.
     protected override bool SelectOnFocus => Mask is not { Length: > 0 };
 
@@ -55,7 +55,7 @@ public partial class NsTextField
     /// <summary>Floats the label always, whether or not there is text or focus. Off by default —
     /// the vendor already floats the label the moment either arrives, which is right for a plain
     /// field. A caller opts in only where the resting label itself is the problem —
-    /// <c>MailAddressField</c>'s own is long enough to print straight through its permanent
+    /// an address field's own is long enough to print straight through its permanent
     /// <see cref="Suffix"/> while the field is empty and untouched, and
     /// there the label has to float always, not on a value that may never come.</summary>
     [Parameter]

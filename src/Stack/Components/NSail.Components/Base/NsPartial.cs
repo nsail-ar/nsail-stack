@@ -243,7 +243,7 @@ public abstract class NsPartial : NsComponent
     // Which acts destroy, read off the one word a message is already required to open with:
     // Delete is the closed verb set's own name for it (naming.md), the same way NsForm reads
     // Create to tell a newborn document from an edited one. Nothing else in that set destroys —
-    // an Update rewrites, and a send outside the set (RegisterClient, OpenTicket) mints.
+    // an Update rewrites, and a send outside the set (a Register*, an Open*) mints.
     static bool Destroys(Type message)
     {
         return message.Name.StartsWith("Delete", StringComparison.Ordinal);

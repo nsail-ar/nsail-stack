@@ -67,8 +67,8 @@
     /// Opt-in per screen, and one screen has at most one bound tabs control: the key is the
     /// fixed word "tab", so a second control would be writing over the first. Most tabs
     /// deep-link into nothing and would only dirty the address, which is why the default is off;
-    /// the screens that turn it on are the ones something comes BACK to (My Profile, where an
-    /// identity provider's callback has to land on Cuentas). Hosted in a dialog it is inert —
+    /// the screens that turn it on are the ones something comes BACK to (a profile page, where
+    /// an identity provider's callback has to land on the tab that started it). Hosted in a dialog it is inert —
     /// a dialog is routed by nothing and carries no query to hold.</summary>
     [Parameter]
     public bool BindQuery { get; set; }

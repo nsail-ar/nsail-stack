@@ -111,8 +111,8 @@ public partial class NsDateTimeField<TValue>
 
     // The picked DATE with the time already held. The picker hands its date back at
     // midnight, so reading the time off IT would silently reset the hour every time someone
-    // changed the day — which is what reading it off the picker would do: it keeps the old
-    // date and took the picker's 00:00, the exact inverse of what the person asked for.
+    // changes the day: the old date kept and the picker's 00:00 taken, the exact inverse of
+    // what the person asked for.
     // Refused text is skipped for the reason NsDateField's own copy carries, and the damage here
     // is worse: Combine below falls back to DateTime.Today for a missing date, so writing the
     // refusal through would move the appointment to TODAY at the hour already chosen — a real

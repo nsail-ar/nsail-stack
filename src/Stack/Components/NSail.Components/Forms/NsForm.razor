@@ -194,11 +194,11 @@ else if (HasDocument)
 
     /// <summary>Overrides the derived create/edit answer where both of its signals get it
     /// wrong — a Create*-shaped model reused to edit something that already exists
-    /// (<c>UpdatePartyPage</c> locks Kind and loads through <see cref="OnLoad"/>, so the name
-    /// outvotes <see cref="Untracked"/>/<see cref="OnLoad"/> and still needs telling), or a
-    /// repeatable inline form that is not a screen of its own (<c>PriceListItemAdder</c>) or an
-    /// Untracked form that still mints a document in a dialog (<c>RegisterPractitionerForm</c>),
-    /// where <see cref="Untracked"/> itself answers wrong. Unset keeps the derived
+    /// (an update page that loads through <see cref="OnLoad"/> while its model's name still
+    /// says Create, so the name outvotes <see cref="Untracked"/>/<see cref="OnLoad"/> and still
+    /// needs telling), or a repeatable inline form that is not a screen of its own, or an
+    /// Untracked form that still mints a document in a dialog, where <see cref="Untracked"/>
+    /// itself answers wrong. Unset keeps the derived
     /// answer.</summary>
     [Parameter]
     public bool? FocusFirstField { get; set; }
@@ -401,7 +401,7 @@ else if (HasDocument)
         // Spent before the handler runs: the unsaved-changes lock must not fire on a successful
         // save. Not this form's report alone — the editors' beside it too, because a collection
         // editor's rows are not in the EditContext, so every one of them reports the surface
-        // itself (SetDirty(this) — LocationsEditor, EyesEditor, every *LinesEditor) and those
+        // itself (SetDirty(this) — every collection editor does) and those
         // rows are part of the very document this submit is saving. Left to each page to spend
         // by hand, "a successful save closes the surface" is a rule every page has to remember,
         // and one that forgets never closes its popup. An untracked form holds no

@@ -375,7 +375,7 @@ else
         // A destination that carries its own scheme (https:, mailto:, tel:, ...) is outside
         // this app's routes and passes through unchanged; everything else is a route this
         // surface resolves. The question is asked of SurfaceContext.IsExternal and never of
-        // Uri directly — the platform trap that cost this story four sessions is named there.
+        // Uri directly — the platform trap is named there.
         // An empty destination or a scheme no door may open (javascript:, data:) has no address
         // to hand the browser: the link draws disabled.
         _inert = string.IsNullOrEmpty(Href) || SurfaceContext.IsInert(Href);

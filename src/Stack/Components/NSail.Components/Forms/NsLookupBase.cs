@@ -21,7 +21,7 @@ public abstract class NsLookupBase<TItem, TValue, TSaved> : NsPickerBase
     where TSaved : ISaved
 {
     // One token per mounted lookup, minted here rather than derived from anything the screen
-    // can repeat: two PartyLookups on one form are two askers, and only the one whose create
+    // can repeat: two lookups of one type on one form are two askers, and only the one whose create
     // page was opened may take the row that page saved.
     readonly string _token = Guid.NewGuid().ToString("N");
 
@@ -153,7 +153,7 @@ public abstract class NsLookupBase<TItem, TValue, TSaved> : NsPickerBase
 
         // Whatever the create form THIS lookup opened saves becomes this field's value; the
         // autocomplete's own OnLoad resolves the display, so nothing here carries text around.
-        // Every party-typed lookup on the screen hears the same PartySaved — who adopts it is
+        // Every lookup of that type on the screen hears the same saved message — who adopts it is
         // decided by the token the delivery carries, never by who was listening.
         Subscribe<TSaved>((message, _) =>
         {

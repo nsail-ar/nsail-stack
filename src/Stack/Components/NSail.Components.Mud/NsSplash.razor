@@ -131,7 +131,7 @@
         if (!nameEl || !nameEl.dataset.brandUrl)
             return;
 
-        // Same anonymous, pre-session route family as the logo (AnonymousBrandingRoutes):
+        // Same anonymous, pre-session route family as the logo:
         // reachable before WASM boots or any org is known from a cookie session.
         fetch(nameEl.dataset.brandUrl, { credentials: "same-origin" })
             .then(response => response.ok ? response.json() : null)

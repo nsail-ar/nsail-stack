@@ -85,8 +85,9 @@
         return query.Count is 0 ? signInPath : $"{signInPath}?{string.Join('&', query)}";
     }
 
-    // An app that names no sign-in page gets the conventional sign-in route; naming the page
-    // overrides it without a path.
+    // An app that names no sign-in page is sent to /iam/sign-in, the path its sign-in page
+    // routes at by convention; naming the page (SignInPage) reads its path from the route
+    // table instead.
     string GetSignInPath()
     {
         if (SignInPage is null || RouteTable is null)

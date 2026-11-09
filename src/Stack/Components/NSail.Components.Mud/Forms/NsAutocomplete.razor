@@ -259,7 +259,7 @@
     bool IsBusy => Runner.IsRunning || Resolver.IsRunning;
 
     // A field bound to a page-local value has no message property to derive a label from —
-    // the item type names the concept ("OrganizationRef" → "Organizations") and
+    // the item type's own key (MetadataProvider.KeyFor, area-qualified) names the concept and
     // one template turns it into the prompt, so no entity carries a search string of its
     // own. The concept keeps its own capital, which is what the label rule asks for.
     protected override string? FallbackLabel(string key)
@@ -315,7 +315,7 @@
     //
     // The entry is the list's last ITEM, so it has to measure like one — the vendor renders
     // these two seams as bare padded divs rather than through its own list item, which left
-    // the create entry visibly smaller than every row above it (ns-lookup-create
+    // the create entry visibly smaller than every row above it. ns-lookup-create
     // is where the item's own geometry is restated; ListClass is the handle it is reached
     // through, the popover being a portal this component's own tree does not contain.
     //
@@ -903,8 +903,8 @@
             // latency, the two answers landing in whichever order the network hands them back
             // rather than the order they were asked in. The vendor writes its own list from
             // whatever this call returns with no regard for that order, and its own catch
-            // writes an EMPTY list regardless of what a cancelled search throws or returns
-            //: the row a person is looking at would flicker closed on an answer
+            // writes an EMPTY list regardless of what a cancelled search throws or returns:
+            // the row a person is looking at would flicker closed on an answer
             // for a term nobody is reading anymore. Typing forward and back onto the SAME term
             // leaves an outlived call whose OWN term still matches the box, so a term compare
             // alone is not enough — the cancellation itself has to be checked too, the same

@@ -82,7 +82,7 @@ public static class BrandMudTheme
 
         // The ink EVERY refused control is drawn in — a disabled button's word, a greyed menu
         // row, a disabled glyph — so it is the scheme's own third ink rung and never a state of
-        // the accent: "no puedo tocar esto todavía" wearing the tenant's colour is
+        // the accent: "not available yet" wearing the tenant's colour is
         // NsAs.Important's soft accent, a live act at low emphasis. Both vendor slots take it:
         // the vendor styles a refused control from either one depending on the control, and a
         // rung that is the ladder's third in one slot and the vendor's own translucent grey in
@@ -155,7 +155,7 @@ public static class BrandMudTheme
     /// body's) when nothing is picked — <c>Typography.Default</c>, every table, field and
     /// figure, stays untouched either way. A pick reaches only the heading ranks: NsText's own
     /// "Title" treatment is <see cref="Typo.h6"/>, and the brand name itself renders through
-    /// it (BrandingBar), so one family on H1-H6 is both the titles and the name.</summary>
+    /// it, so one family on H1-H6 is both the titles and the name.</summary>
     static Typography BuildTypography(Typeface? typeface)
     {
         var typography = new Typography();

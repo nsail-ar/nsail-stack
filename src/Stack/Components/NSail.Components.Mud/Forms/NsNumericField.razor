@@ -77,10 +77,10 @@
 
     // MudFormComponent's Culture defaults to CultureInfo.InvariantCulture, which reads the
     // decimal comma a Spanish keyboard types as a THOUSANDS separator: "0,5" parses to 5 and
-    // "-0,25" to -25 (the cristal's window). Same source as NsMoneyField's.
+    // "-0,25" to -25. Same source as NsMoneyField's.
     CultureInfo FigureCulture => RegionCulture.For(Language);
 
-    // Numeric is the mostrador family too (Story: "los campos se seleccionan al recibir
-    // foco") — a quantity typed over rather than edited digit by digit.
+    // Numeric selects on focus too: a quantity is typed over rather than edited digit by
+    // digit.
     protected override bool SelectOnFocus => true;
 }
