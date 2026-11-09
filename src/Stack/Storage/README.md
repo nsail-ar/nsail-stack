@@ -62,6 +62,7 @@ public ReportsHandler([FromKeyedServices(AccountingStores.Reports)] StorageManag
 await storage.Put($"exports/{tenant:N}/{name}", stream, "text/csv", cancellationToken);
 using var content = await storage.Get(key, cancellationToken);   // null: no such object
 var objects = await storage.List($"exports/{tenant:N}/", cancellationToken);
+await foreach (var item in storage.Enumerate($"exports/{tenant:N}/", cancellationToken)) { }   // one page at a time on S3
 var link = await storage.Link(key, cancellationToken);           // null: the provider has none
 await storage.Delete(key, cancellationToken);
 ```

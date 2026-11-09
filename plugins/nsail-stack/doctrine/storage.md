@@ -83,7 +83,8 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   there is the store's own access policy, not Storage's.
 - **The provider contract is frozen.** S3 and Git, the two vendors after the filesystem, have
   shaped it; a change to `IStorageProvider` is a change to every provider and to the screen
-  that reads it.
+  that reads it. It grew by one optional member, `Enumerate`, whose default drains `List`, so
+  no implementer breaks.
 - **A key never escapes its container.** `StorageManager.Guard` is the one door every key
   comes through, and the filesystem and git providers check the RESOLVED path behind it. The
   git provider also refuses a `.git` segment at any depth and in any case: git skips it, so
@@ -132,8 +133,8 @@ caps at 5 GiB; a non-seekable stream is refused out loud rather than half-writte
 end, and something generated on the fly is spooled to a seekable source first.
 
 A listing follows the continuation one page at a time (`Enumerate`, an `IAsyncEnumerable`);
-the contract's `List` still collects every page, so a caller through `IStorageProvider` holds
-the whole listing.
+`List` still collects every page, but `StorageManager.Enumerate` (tenant-filtered like `List`)
+reaches `Enumerate` through the contract, so a caller that streams holds one page.
 
 **There is no wall-clock ceiling, and that is a decision.** `HttpClient`'s default would cut
 every send at 100 seconds — a clock that covers the whole body, so an object of any real size

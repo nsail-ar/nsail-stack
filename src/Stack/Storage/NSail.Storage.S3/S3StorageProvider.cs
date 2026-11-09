@@ -126,7 +126,7 @@ public class S3StorageProvider : IStorageProvider
         return objects;
     }
 
-    // One page in memory at a time: a caller that only scans or stops early never holds the bucket.
+    // One page in memory at a time; reached through IStorageProvider.Enumerate.
     public async IAsyncEnumerable<StoredObject> Enumerate(StorageTarget target, string? prefix, [EnumeratorCancellation] CancellationToken cancelToken = default)
     {
         var token = default(string);

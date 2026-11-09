@@ -149,6 +149,44 @@ public sealed class S3TransportTests
         Assert.Single(transport.Sent);
     }
 
+    // 10,000 keys come as ten pages; through the contract's own type, a caller that stops sees
+    // the first without the rest being requested.
+    [Fact]
+    public async Task AnEnumerationOfTenThousandObjectsRequestsOnePagePerThousand()
+    {
+        var transport = new Transport(request =>
+        {
+            var query = request.RequestUri!.Query;
+            var page = query.Contains("continuation-token=tok-", StringComparison.Ordinal)
+                ? int.Parse(query[(query.IndexOf("continuation-token=tok-", StringComparison.Ordinal) + 23)..].Split('&')[0])
+                : 0;
+            var keys = Enumerable.Range(page * 1000, 1000).Select(i => $"logos/{i:D5}");
+
+            return Xml(Page(keys, page < 9 ? $"tok-{page + 1}" : null));
+        });
+        IStorageProvider provider = Provider(transport);
+        var target = Target("https://store.example.com");
+
+        var count = 0;
+
+        await foreach (var _ in provider.Enumerate(target, "logos/"))
+        {
+            count++;
+        }
+
+        Assert.Equal(10_000, count);
+        Assert.Equal(10, transport.Sent.Count);
+
+        transport.Sent.Clear();
+
+        await foreach (var _ in provider.Enumerate(target, "logos/"))
+        {
+            break;
+        }
+
+        Assert.Single(transport.Sent);
+    }
+
     // A delete of what is not there is what the caller asked for either way.
     [Fact]
     public async Task DeleteTreatsAnObjectThatWasAlreadyGoneAsDone()
@@ -207,6 +245,20 @@ public sealed class S3TransportTests
     static HttpResponseMessage Xml(string body)
     {
         return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body) };
+    }
+
+    static string Page(IEnumerable<string> keys, string? next)
+    {
+        var contents = string.Concat(keys.Select(key => $"<Contents><Key>{key}</Key><Size>3</Size><LastModified>2026-08-21T10:00:00.000Z</LastModified></Contents>"));
+
+        return $"""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+              <IsTruncated>{(next is null ? "false" : "true")}</IsTruncated>
+              {contents}
+              {(next is null ? "" : $"<NextContinuationToken>{next}</NextContinuationToken>")}
+            </ListBucketResult>
+            """;
     }
 
     static string Page(string key, string? next)

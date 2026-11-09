@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Runtime.CompilerServices;
+
 namespace NSail.Storage.Providers;
 
-// The contract is frozen: S3 and Git shaped it, and a change reaches every provider.
+// The contract is frozen: S3 and Git shaped it, and a change reaches every provider. Enumerate
+// is the one optional member, so no implementer breaks.
 //
 // Every operation takes the target rather than reading the settings itself: a provider is a
 // stateless translator of these verbs into one protocol, and the store's configuration is
@@ -34,6 +37,16 @@ public interface IStorageProvider
     Task<ObjectContent?> Get(StorageTarget target, string key, CancellationToken cancelToken = default);
 
     Task<IReadOnlyList<StoredObject>> List(StorageTarget target, string? prefix, CancellationToken cancelToken = default);
+
+    // The same listing handed over as it is read, for a caller that scans or stops early. The
+    // default drains List; a provider whose store pages overrides it to hold one page at a time.
+    async IAsyncEnumerable<StoredObject> Enumerate(StorageTarget target, string? prefix, [EnumeratorCancellation] CancellationToken cancelToken = default)
+    {
+        foreach (var stored in await List(target, prefix, cancelToken))
+        {
+            yield return stored;
+        }
+    }
 
     // Deleting what is not there succeeds: the caller asked for the object to be gone.
     Task Delete(StorageTarget target, string key, CancellationToken cancelToken = default);

@@ -5,6 +5,7 @@ using NSail.Data;
 using NSail.Problems;
 using NSail.Storage.Providers;
 using NSail.Storage.Settings;
+using System.Runtime.CompilerServices;
 
 namespace NSail.Storage.Objects;
 
@@ -72,6 +73,27 @@ public sealed class StorageManager
         var listed = await provider.List(target, prefix, cancelToken);
 
         return tenant is null ? listed : listed.Where(item => Segment(item.Key) == tenant).ToList();
+    }
+
+    // List as the provider reads it, one item at a time, filtered by tenant as List is.
+    public async IAsyncEnumerable<StoredObject> Enumerate(string? prefix = null, [EnumeratorCancellation] CancellationToken cancelToken = default)
+    {
+        var (provider, target) = await Resolve(cancelToken);
+
+        if (_tenancy.RowKey is null)
+        {
+            yield break;
+        }
+
+        var tenant = TenantSegment();
+
+        await foreach (var stored in provider.Enumerate(target, prefix, cancelToken))
+        {
+            if (tenant is null || Segment(stored.Key) == tenant)
+            {
+                yield return stored;
+            }
+        }
     }
 
     public async Task Delete(string key, CancellationToken cancelToken = default)
