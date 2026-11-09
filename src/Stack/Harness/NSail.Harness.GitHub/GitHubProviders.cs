@@ -29,7 +29,7 @@ public sealed class GitHubProviders(GitHubClient gh, GitHubToken token) : IBoard
 
     public IStoryLock Locks(RepositoryOptions repository, string key)
     {
-        return new RefLock(gh, repository.Name, key);
+        return new RefLock(gh, repository.Name, key, repository.DefaultBranch);
     }
 }
 
