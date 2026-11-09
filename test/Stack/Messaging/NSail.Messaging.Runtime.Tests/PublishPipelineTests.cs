@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Messaging.Runtime.Pipelines;
+using NSail.Problems;
 
 namespace NSail.Messaging.Runtime.Tests;
 
@@ -201,6 +202,7 @@ public sealed class PublishPipelineTests
                 probe.Overlapped = true;
             }
 
+            Interlocked.Increment(ref probe.Entered);
             await Task.Delay(30, ct);
             Interlocked.Decrement(ref probe.Running);
         }
@@ -210,6 +212,7 @@ public sealed class PublishPipelineTests
     {
         public int Running;
         public bool Overlapped;
+        public int Entered;
     }
 
     [Fact]
@@ -226,5 +229,41 @@ public sealed class PublishPipelineTests
         await sp.GetRequiredService<Mediator>().Publish(new EventMessage());
 
         Assert.False(probe.Overlapped);
+        Assert.Equal(2, probe.Entered);
+    }
+
+    private sealed class FailingHandler(Exception failure) : IHandler<EventMessage>
+    {
+        public Task Handle(EventMessage message, CancellationToken ct)
+        {
+            return Task.FromException(failure);
+        }
+    }
+
+    [Fact]
+    public async Task Publish_of_only_refusals_ends_as_the_first_refusal()
+    {
+        var first = new BusinessException("A", "first", [], 409);
+        var sp = Build(s =>
+        {
+            s.AddSingleton<IHandler<EventMessage>>(new FailingHandler(first));
+            s.AddSingleton<IHandler<EventMessage>>(new FailingHandler(new BusinessException("B", "second", [], 400)));
+        });
+
+        var ex = await Assert.ThrowsAsync<BusinessException>(() => sp.GetRequiredService<Mediator>().Publish(new EventMessage()));
+
+        Assert.Same(first, ex);
+    }
+
+    [Fact]
+    public async Task Publish_of_only_cancellations_stays_a_cancellation()
+    {
+        var sp = Build(s =>
+        {
+            s.AddSingleton<IHandler<EventMessage>>(new FailingHandler(new OperationCanceledException()));
+            s.AddSingleton<IHandler<EventMessage>>(new FailingHandler(new OperationCanceledException()));
+        });
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => sp.GetRequiredService<Mediator>().Publish(new EventMessage()));
     }
 }

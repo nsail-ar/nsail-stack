@@ -331,7 +331,10 @@ Something happened and others react: `Mediator.Publish`. The past participle nam
   `[Injectable]` `IHandler<TEvent>`; `InProcessPublisher` invokes every registered handler
   plus every subscription, one after another on the publisher's scope (so two that send or share a
   `DbContext` never collide). A listener that throws does not stop the rest; one failure is rethrown
-  as is, several as an `AggregateException`. Example: `AppointmentCompleted` in `NSail.Scheduling.Sdk`.
+  as is, several as an `AggregateException` — except cancellations and `BusinessException`s only,
+  which end as the first of them, because the HTTP layer, the client runner and the queue classify
+  by exception type and cannot see inside an aggregate. A publish with N subscribers pays the sum
+  of their work, not the longest. Example: `AppointmentCompleted` in `NSail.Scheduling.Sdk`.
 - The producer publishes after the operation succeeds:
   `await Mediator.Publish(new PartySaved { Id = ... })`.
 - In-process publish is always available: `AddMessaging` registers `IPublisher<>` →
