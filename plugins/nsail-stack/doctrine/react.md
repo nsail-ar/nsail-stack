@@ -68,8 +68,10 @@ await mediator.send(CreateContact, { id, name });   // reads like the C# send
   names (the wire's shape, generation.md) plus a `defineEnum` with its key. An enum with
   no members is `never`; a `[Flags]` enum is `string` (the wire writes the names joined) and
   its fields carry kind `string`, so `display()` shows the combination as it came. `Uri` and
-  `Version` are `string`; `JsonElement`, `JsonNode` and kin, `BigInteger`, `Int128` and
-  `UInt128` are `unknown`, since the wire writes them as free JSON. A property renamed with
+  `Version` are `string`; `JsonElement`, `JsonNode` and kin are `unknown`, since the wire
+  writes them as free JSON; `BigInteger`, `Int128` and `UInt128` are `unknown` too, since no
+  converter in `JsonOptions` pins them as text and a JSON number that wide loses digits in a
+  `number`. A property renamed with
   `[JsonPropertyName]` keeps that name in the body, quoted when it is not an identifier; in a
   route, query or header member the name is the lowered property name, as the endpoint reads it.
 - **One namespace.** Two reachable types sharing a simple name fail the build
