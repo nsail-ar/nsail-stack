@@ -84,7 +84,7 @@ directory refuses to compose; Development without it seals under a fixed key.
    warning that behind a proxy all callers share one address.
 2. `BuildVersionMiddleware` (`X-NSail-Version`, signed-in callers only) and `ResponseHeadersMiddleware` (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, every response).
 3. Error handler, then HTTPS redirection.
-4. `TenancyMiddleware` and `TenantStateMiddleware`, only where the host resolves a tenant.
+4. `TenancyMiddleware` (403 first when `Tenancy:ProxySecret` is set and `X-Proxy-Secret` does not carry it) and `TenantStateMiddleware`, only where the host resolves a tenant.
 5. Authentication and authorization.
 6. `TenantClaimMiddleware`, only where the host resolves a tenant.
 7. `TicketEpochMiddleware`, every host: refuses a ticket stamped with a generation other than

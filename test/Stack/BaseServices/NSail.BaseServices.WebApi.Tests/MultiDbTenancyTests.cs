@@ -220,7 +220,8 @@ public sealed class MultiDbTenancyTests : IAsyncLifetime
     {
         return new TenantDatabases(
             new TenancyOptions { Mode = TenancyMode.MultiDb, Product = TenancyHost.Product, Cell = _host.Cell },
-            "Host=localhost;Username=postgres;Database=postgres");
+            "Host=localhost;Username=postgres;Database=postgres",
+            TimeProvider.System);
     }
 
     async Task<Where> Where(string tenant, string host = "demo.nsail.ar")
