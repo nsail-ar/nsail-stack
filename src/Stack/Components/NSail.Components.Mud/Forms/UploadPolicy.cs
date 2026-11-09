@@ -72,7 +72,7 @@ static class UploadPolicy
 
         if (token == "*/*")
         {
-            return true;
+            return !IsActive(clientType);
         }
 
         var claim = new Kind(clientType, null, Active: IsActive(clientType));

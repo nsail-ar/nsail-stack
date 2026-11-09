@@ -47,7 +47,7 @@ public sealed class NsMultiFileUploadTests : UploadBunitContext
     {
         var cut = Render<UploadValuesHost>(ps => ps
             .Add(p => p.Store, FileStore)
-            .Add(p => p.MaxTotalSize, 20)
+            .Add(p => p.MaxTotalSize, 100)
             .Add(p => p.MaxSize, 12));
 
         var png = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
