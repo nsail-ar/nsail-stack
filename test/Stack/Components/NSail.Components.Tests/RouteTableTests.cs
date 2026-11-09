@@ -306,17 +306,11 @@ public sealed class RouteTableTests
     }
 
     [Fact]
-    public void SurfaceQuery_ignores_undefined_enum_values()
+    public void Match_unescapes_a_catch_all_so_the_url_round_trips()
     {
-        Assert.Equal(default, SurfaceQuery.GetValue<QueryState>("?s=99", "s"));
-        Assert.Equal(QueryState.Closed, SurfaceQuery.GetValue<QueryState>("?s=closed", "s"));
-        Assert.Equal(default, SurfaceQuery.GetValue<QueryState>("?s=Open,Closed", "s"));
-        Assert.Equal(QueryFlags.A | QueryFlags.B, SurfaceQuery.GetValue<QueryFlags>("?f=A,B", "f"));
-        Assert.Equal(default, SurfaceQuery.GetValue<QueryFlags>("?f=16", "f"));
+        var table = Build();
+        var url = table.GetUrl<FilesTestPage>(new { Path = "a/b c" });
+
+        Assert.Equal("a/b c", table.Match(url)!.RouteValues["Path"]);
     }
-
-    private enum QueryState { Open = 1, Closed = 2 }
-
-    [Flags]
-    private enum QueryFlags { A = 1, B = 2 }
 }

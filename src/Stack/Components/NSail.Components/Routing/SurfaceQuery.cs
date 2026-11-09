@@ -309,15 +309,24 @@ public static class SurfaceQuery
             return false;
         }
 
-        var bits = Convert.ToUInt64(value, CultureInfo.InvariantCulture);
+        var bits = Bits(value);
         var declared = 0UL;
 
         foreach (var member in Enum.GetValues(enumType))
         {
-            declared |= Convert.ToUInt64(member, CultureInfo.InvariantCulture);
+            declared |= Bits(member);
         }
 
         return bits != 0 && (bits & ~declared) == 0;
+    }
+
+    // Sign-extends a signed underlying type so a negative member (All = ~0) keeps its bits and
+    // never overflows.
+    static ulong Bits(object value)
+    {
+        return Enum.GetUnderlyingType(value.GetType()) == typeof(ulong)
+            ? Convert.ToUInt64(value, CultureInfo.InvariantCulture)
+            : unchecked((ulong)Convert.ToInt64(value, CultureInfo.InvariantCulture));
     }
 
     static IEnumerable<(string Key, string Value)> Pairs(string query)

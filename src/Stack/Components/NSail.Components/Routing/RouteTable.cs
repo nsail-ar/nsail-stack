@@ -151,7 +151,7 @@ public sealed partial class RouteTable
                 break;
             }
 
-            var name = template[(open + 1)..close].TrimStart('*').TrimEnd('?').Split(':')[0].TrimEnd('?');
+            var name = template[(open + 1)..close].TrimStart('*').TrimEnd('?').Split(':')[0];
             tokens.Add(name);
 
             open = template.IndexOf('{', close + 1);
@@ -167,10 +167,7 @@ public sealed partial class RouteTable
     {
         var url = template.StartsWith('/') ? template : "/" + template;
 
-        if (parameters is null || parameters.Count == 0)
-        {
-            return FillTokens(url, s_emptyParameters);
-        }
+        parameters ??= s_emptyParameters;
 
         var tokens = GetTemplateTokens(template);
         var query = new List<string>();
@@ -365,7 +362,7 @@ public sealed partial class RouteTable
             if (catchAllIndex >= 0 && i == catchAllIndex)
             {
                 var parameterName = templateSegment[2..^1];
-                values[parameterName] = string.Join('/', pathSegments.Skip(i));
+                values[parameterName] = string.Join('/', pathSegments.Skip(i).Select(Uri.UnescapeDataString));
                 score = (score * 10) + 1;
                 break;
             }
