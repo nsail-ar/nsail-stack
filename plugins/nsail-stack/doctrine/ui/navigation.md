@@ -227,7 +227,7 @@ module's by being mounted early.
   drawer's search finds a renamed door by the name on screen. A product renaming a kit's door
   for its whole market still writes a string (registration order); a SHOP renaming its own
   door writes data. Optical is both at once: `NavMenu.SettingsScheduling` is a string, and
-  Contactología in the drawer is a row (optical.md).
+  Contactología in the drawer is a row (Optical's own page).
 - **It is read in the one ask, with the tree**, so a change lands on the next load of the app
   and never on a release. There is no editor or settings page yet: the door is
   `SaveNavMenuArrangement`, administered like any write, while reading is a built-in grant — a
