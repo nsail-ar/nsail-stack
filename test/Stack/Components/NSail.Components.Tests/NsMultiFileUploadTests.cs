@@ -13,6 +13,34 @@ namespace NSail.Components.Tests;
 /// added to rather than replaced, and that its ORDER is part of its value.</summary>
 public sealed class NsMultiFileUploadTests : UploadBunitContext
 {
+    [Fact]
+    public void EveryRefusalOfOneSelection_IsShown()
+    {
+        var cut = Render<UploadValuesHost>(ps => ps
+            .Add(p => p.Store, FileStore)
+            .Add(p => p.MaxSize, 20));
+
+        PickMany(cut, ("grande.png", new byte[30]), ("chico.png", [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]), ("otro.exe", new byte[1]));
+
+        Assert.Contains("grande.png", cut.Markup);
+        Assert.Contains("El archivo supera los 20 B", cut.Markup);
+        Assert.Single(FileStore.Saved);
+    }
+
+    [Fact]
+    public void ASelectionPastTheTotalCap_RefusesTheFilesThatPassIt()
+    {
+        var cut = Render<UploadValuesHost>(ps => ps
+            .Add(p => p.Store, FileStore)
+            .Add(p => p.MaxTotalSize, 10));
+
+        var png = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+        PickMany(cut, ("a.png", png), ("b.png", png));
+
+        Assert.Single(FileStore.Saved);
+        Assert.Contains("Selección supera los 10 B", cut.Markup);
+    }
+
     /// <summary>No preview: a line per file, each with its own clear, and the trigger always
     /// visible — nothing has to be cleared before the next one is added.</summary>
     [Fact]
@@ -129,6 +157,6 @@ public sealed class NsMultiFileUploadTests : UploadBunitContext
     {
         Assert.Equal(
             NsFileUploadTests.GetParameterNames(typeof(NsFileUpload)),
-            NsFileUploadTests.GetParameterNames(typeof(NsMultiFileUpload)));
+            NsFileUploadTests.GetParameterNames(typeof(NsMultiFileUpload)).Where(name => name != "MaxTotalSize"));
     }
 }

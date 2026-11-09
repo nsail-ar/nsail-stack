@@ -19,7 +19,7 @@ public abstract class NsUploadBase<TValue> : NsFieldBase<TValue>
 
     /// <summary>The refusal this field drew itself (a file over the limit), which outranks the
     /// validation message: it names what the user just did.</summary>
-    string? _error;
+    readonly List<string> _errors = [];
 
     /// <summary>Shows what was uploaded, not only that something was. With a preview the
     /// component gains a second surface, and that is where the clear lives (top-right, on
@@ -55,7 +55,7 @@ public abstract class NsUploadBase<TValue> : NsFieldBase<TValue>
 
     protected string? GetFieldError()
     {
-        return _error ?? GetErrorText();
+        return _errors.Count > 0 ? string.Join(" · ", _errors) : GetErrorText();
     }
 
     protected bool IsTriggerDisabled()
@@ -96,12 +96,22 @@ public abstract class NsUploadBase<TValue> : NsFieldBase<TValue>
         return _store?.GetName(value) ?? Strings.Translate("Common.File");
     }
 
+    /// <summary>Forgets the refusals of the previous selection; one selection calls it once,
+    /// before its files, so every refusal of that selection stays on the field.</summary>
+    protected void ClearRefusals()
+    {
+        _errors.Clear();
+    }
+
+    protected void RefuseTotal(IBrowserFile file, long limit)
+    {
+        _errors.Add($"{file.Name}: " + string.Format(Strings.Translate("Common.FilesTooLarge"), UploadPolicy.FormatSize(limit)));
+    }
+
     /// <summary>Saves a picked file and answers the id it was filed under, or null when this
     /// field refused it — in which case the refusal is already drawn on the field.</summary>
     protected async Task<Guid?> Upload(IBrowserFile file)
     {
-        _error = null;
-
         if (_store is not { } store)
         {
             return null;
@@ -109,15 +119,27 @@ public abstract class NsUploadBase<TValue> : NsFieldBase<TValue>
 
         if (file.Size > MaxSize)
         {
-            _error = string.Format(Strings.Translate("Common.FileTooLarge"), MaxSize / (1024 * 1024));
+            _errors.Add($"{file.Name}: " + string.Format(Strings.Translate("Common.FileTooLarge"), UploadPolicy.FormatSize(MaxSize)));
 
             return null;
         }
 
-        using var stream = file.OpenReadStream(MaxSize);
-        using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer);
+        var content = new byte[file.Size];
 
-        return await store.Save(new FileContent(file.Name, file.ContentType, buffer.ToArray()));
+        await using (var stream = file.OpenReadStream(MaxSize))
+        {
+            await stream.ReadExactlyAsync(content);
+        }
+
+        var contentType = UploadPolicy.Resolve(Accept, file.Name, file.ContentType, content[..Math.Min(content.Length, UploadPolicy.HeadLength)]);
+
+        if (contentType is null)
+        {
+            _errors.Add($"{file.Name}: " + Strings.Translate("Common.FileTypeNotAccepted"));
+
+            return null;
+        }
+
+        return await store.Save(new FileContent(file.Name, contentType, content));
     }
 }

@@ -940,8 +940,12 @@ decides whether what is held is shown. **No parameter turns one into the other**
 - **Empty states show the shape of what will land there** plus the trigger, so the box does not
   change size when the first file arrives — the dashed frame carries `NsIcons.Image` as an
   **illustration**, the one case `ns-mud.css` sizes a glyph outside the three steps.
-- **`MaxSize` defaults to 5 MB and is per control**; a file over it is refused *on the field*
-  with the limit in the sentence, never dropped silently. `Accept` is per control.
+- **`MaxSize` defaults to 5 MB and is per control**; `NsMultiFileUpload` also caps one selection
+  with `MaxTotalSize`. A file over either is refused *on the field*, named, with the limit in
+  the unit a person reads (KB under 1 MB), never dropped silently; every refusal of a selection
+  stays shown. `Accept` is per control and is **enforced, not a hint**: a file whose extension or
+  leading bytes fall outside it is refused, and the stored content type comes from the Stack's
+  allow-list, never the client. A wildcard never admits svg/html — name them to allow them.
 - **Where bytes go is `IFileStore`, not the field's business.** The app's registered store
   answers for ordinary screens; a screen whose files belong to somebody other than the
   session's organization hands its own `Store`. A store that cannot build a preview URL from an

@@ -52,6 +52,11 @@
     // rendering the previous order.
     MudDropContainer<Guid>? _container;
 
+    /// <summary>The most one selection may carry in all, in bytes; a file that would pass it is
+    /// refused on the field like one over <c>MaxSize</c>.</summary>
+    [Parameter]
+    public long MaxTotalSize { get; set; } = 25 * 1024 * 1024;
+
     const string Zone = "files";
 
     IReadOnlyList<Guid> Current => Value ?? [];
@@ -107,9 +112,21 @@
     {
         var next = Current.ToList();
         var count = next.Count;
+        long total = 0;
+
+        ClearRefusals();
 
         foreach (var file in files ?? [])
         {
+            total += file.Size;
+
+            if (total > MaxTotalSize)
+            {
+                RefuseTotal(file, MaxTotalSize);
+
+                continue;
+            }
+
             if (await Upload(file) is { } id)
             {
                 next.Add(id);
