@@ -16,7 +16,15 @@ public static class Policies
         services.AddBuiltInPolicy(new Policy
         {
             Name = "Sample.Policies.Everyone",
-            Messages = ["Sample.*"],
+            Messages =
+            [
+                "Sample.Contacts.ListContacts",
+                "Sample.Contacts.GetContact",
+                "Sample.Contacts.CreateContact",
+                "Sample.Contacts.UpdateContact",
+                "Sample.Contacts.DeleteContact",
+                "Sample.Strings.GetStrings",
+            ],
         });
     }
 }

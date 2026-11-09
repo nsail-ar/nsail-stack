@@ -125,9 +125,12 @@ refused rather than stored.
   never in a startup pass: a chain is what CI applies to an empty database, so schema written
   outside it is schema no test ever sees. The tables are NAMED there, because a migration's own
   `TargetModel` is the snapshot's and its entity types carry no CLR type to ask the marker of.
-- **One database role, with `FORCE ROW LEVEL SECURITY`.** A table's owner bypasses its policies
-  unless the table forces them, and the app role owns the tables because it runs the chain; a
-  second, non-owner role would owe a grant pass on every table every migration adds.
+- **One database role by default, with `FORCE ROW LEVEL SECURITY`.** A table's owner bypasses
+  its policies unless the table forces them, and the app role owns the tables because it runs the
+  chain. Splitting them — the chain under an admin role, the app under a non-owner one — is
+  allowed and owes what the Sample's `SampleRole` does on every start, after the chain: the grant
+  pass over every table a migration added, and the role's attributes re-stated (`NOSUPERUSER
+  NOBYPASSRLS`), because a role that already exists keeps whatever someone gave it.
 - **The tenant reaches the connection as a session setting written on connection open**
   (`TenantSession`), from `TenancyProvider.RowKey` and from nothing else — **left unwritten
   where the wall IS the column and nothing resolved**, so the policy compares against NULL and
