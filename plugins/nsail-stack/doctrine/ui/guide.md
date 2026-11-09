@@ -35,8 +35,9 @@ a guide is content a module already knows, not state anybody saves.
   weight, ties keeping contribution order.
 - **The body is fetched when the chapter opens** (`GuideReader`, registered by `AddGuide`):
   the UI culture's file first, then `GuideItem.DefaultCulture` (`es`) — a guide nobody
-  translated is read in one language. Every chapter read stays read for the scope, so paging
-  back and forth costs one request per chapter. **The read happens after the first render, never
+  translated is read in one language. Every chapter found (or answered 404) stays read for the scope, so paging
+  back and forth costs one request per chapter; a 5xx, 429 or network failure is not kept and
+  the next read retries. **The read happens after the first render, never
   in `OnInitialized`**: a server prerender that fetched it would be the host asking itself for
   its own static file.
 - **Registration is the whole composition, and nothing filters afterwards.** An app that never

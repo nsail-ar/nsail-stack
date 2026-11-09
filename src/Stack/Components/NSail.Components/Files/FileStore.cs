@@ -14,7 +14,7 @@ public abstract class FileStore : IFileStore
     {
         var id = await SaveContent(file, cancellationToken);
 
-        _saved[id] = file;
+        _saved[id] = file with { Content = [] };
 
         return id;
     }
@@ -27,7 +27,7 @@ public abstract class FileStore : IFileStore
     }
 
     /// <summary>What this store saved under an id during this visit, or null — the name and
-    /// content type a document that stores them beside the id (a note's attachments) writes
+    /// content type (the bytes are not kept, so a long session holds none of its uploads) a document that stores them beside the id (a note's attachments) writes
     /// at submit, without a second read of anything.</summary>
     public FileContent? Get(Guid id)
     {
