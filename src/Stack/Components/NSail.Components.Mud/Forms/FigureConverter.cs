@@ -9,7 +9,8 @@ namespace NSail.Components;
 // The reader's notation, plus the one key the keyboard has. A numeric keypad carries a single
 // separator key and it is a DOT, whatever the reader's notation is, so under es-AR a graduation
 // typed "-2.25" reached the vendor's parser as "-225" — the dot read as a grouping, and the
-// model kept a figure nobody typed. A dot is the decimal separator here, and the box still reads and writes the reader's own comma.
+// model kept a figure nobody typed. A dot is the decimal separator here, and the box still
+// reads and writes the reader's own comma.
 //
 // The vendor's DefaultConverter is sealed, so this wraps one rather than deriving from it, and
 // is an ICultureAwareConverter for the same reason that one is: a Mud form component fills the

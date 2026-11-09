@@ -139,8 +139,8 @@ else if (HasDocument)
     // every message that mints one). FocusFirstField overrides either
     // answer for where it lies instead: a Create*-shaped model reused to EDIT something that
     // already exists (an update screen that locks a field and reads through OnLoad — the
-    // name says create, OnLoad says otherwise, and the name wins unless told not to), or an Untracked
-    // form that still mints a document (inside a dialog).
+    // name says create, OnLoad says otherwise, and the name wins unless told not to), or an
+    // Untracked form that still mints a document (inside a dialog).
     static readonly bool NameSaysCreate = typeof(TModel).Name.StartsWith("Create", StringComparison.Ordinal);
 
     bool IsCreate => FocusFirstField ?? (NameSaysCreate || (!Untracked && !OnLoad.HasDelegate));
@@ -500,8 +500,9 @@ else if (HasDocument)
     }
 
     /// <summary>A popup's document is finished when it saves, so the surface closes — the
-    /// honest signal that the save took, in every case: a user left waiting for something to happen is the defect. The main
-    /// surface is the opposite case and stays open, repopulating instead (intentional-ui.md, master/detail).</summary>
+    /// honest signal that the save took, in every case: a user left waiting for something to
+    /// happen is the defect. The main surface is the opposite case and stays open, repopulating
+    /// instead (intentional-ui.md, master/detail).</summary>
     bool Finishes(SurfaceContext? surface)
     {
         // A multi-add loop says so itself.

@@ -258,7 +258,8 @@
 
     // The row's door is the one link the house draws the same everywhere: a page-link constant
     // handed no glyph wears the chevron, so no page names it; a glyph passed is drawn as passed
-    // (a pencil, on a row whose door edits rather than opens). A Content (an avatar) is the door's own face.
+    // (a pencil, on a row whose door edits rather than opens). A Content (an avatar) is the
+    // door's own face.
     static ActionItem WithDoorGlyph(ActionItem item)
     {
         if (item.PageType is null || item.Icon is not null || item.Content is not null)

@@ -109,7 +109,8 @@ public sealed class NavMenuItem
     /// ceremony. The main nav never asks, because the fold hands the
     /// place to the CHILD, label and all, and there the section's name is the map: a
     /// "Purchasing" section stays "Purchasing", it does not become its one screen's name.
-    /// A main-nav section with one screen is written flat by its own contributor instead, keeping the name (navigation.md).</param>
+    /// A main-nav section with one screen is written flat by its own contributor instead,
+    /// keeping the name (navigation.md).</param>
     public static IReadOnlyList<NavMenuItem> Merge(
         IEnumerable<NavMenuItem> items,
         bool collapseSingleChildGroups = false)

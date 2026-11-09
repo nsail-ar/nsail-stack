@@ -414,9 +414,10 @@ public abstract class NsPartial : NsComponent
     /// to the renderer). InvokeAsync only dispatches the handler onto the render thread — it is
     /// not one of Blazor's own automatic-render points the way OnParametersSet or a bound event
     /// is, so a handler that only mutates a field left the change invisible until something else
-    /// happened to redraw the component (a card and a grid, both subscribed correctly, go stale once the
-    /// tree is no longer torn down on every navigation). Redrawing after every handler is this method's job precisely because Subscribe is what promised "stays current"
-    /// to begin with; a handler that manages its own redraw (NsTable.Reload) just gets a second,
+    /// happened to redraw the component (a card and a grid, both subscribed correctly, go stale
+    /// once the tree is no longer torn down on every navigation). Redrawing after every handler
+    /// is this method's job precisely because Subscribe is what promised "stays current" to
+    /// begin with; a handler that manages its own redraw (NsTable.Reload) just gets a second,
     /// harmless one.</summary>
     protected IDisposable Subscribe<TMessage>(SubscriptionDelegate<TMessage> handler)
         where TMessage : IMessage

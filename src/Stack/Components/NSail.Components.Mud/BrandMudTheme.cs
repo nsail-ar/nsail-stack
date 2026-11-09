@@ -94,9 +94,9 @@ public static class BrandMudTheme
         palette.TableLines = new MudColor(theme.Lines);
         palette.Divider = new MudColor(theme.Lines);
 
-        // An outlined field's border is read as a boundary and not as a decoration (the vendor's own LinesInputs default measured 1.79:1 on the
-        // light canvas), so it owes
-        // the large floor the decorative Lines rung above does not.
+        // An outlined field's border is read as a boundary and not as a decoration (the
+        // vendor's own LinesInputs default measured 1.79:1 on the light canvas), so it owes the
+        // large floor the decorative Lines rung above does not.
         palette.LinesInputs = new MudColor(theme.LinesInputs);
 
         // TableStriped is left at the vendor's own default and never reached: no table in the

@@ -80,7 +80,6 @@
     // "-0,25" to -25. Same source as NsMoneyField's.
     CultureInfo FigureCulture => RegionCulture.For(Language);
 
-    // Numeric selects on focus too: a quantity is typed over rather than edited digit by
-    // digit.
+    // Numeric selects on focus too: a quantity is typed over, not edited digit by digit.
     protected override bool SelectOnFocus => true;
 }

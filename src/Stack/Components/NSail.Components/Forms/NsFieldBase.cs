@@ -186,10 +186,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     }
 
     /// <summary>Whether this field selects its whole content the moment it receives focus —
-    /// tab into an amount showing 0,00, type 500, it replaces, with no manual clear first. Off by default: a field usually edited in place
-    /// rather than replaced wholesale (email, phone, a multi-line note, a lookup's search
-    /// box) must not opt in just by inheriting this base. Text, numeric and money fields
-    /// override it; wired here once so no field hand-rolls its own focus handler.</summary>
+    /// tab into an amount showing 0,00, type 500, it replaces, with no manual clear first. Off
+    /// by default: a field usually edited in place rather than replaced wholesale (email,
+    /// phone, a multi-line note, a lookup's search box) must not opt in just by inheriting this
+    /// base. Text, numeric and money fields override it; wired here once so no field hand-rolls
+    /// its own focus handler.</summary>
     protected virtual bool SelectOnFocus => false;
 
     /// <summary>Whether Enter inside this field is the FIELD's own gesture — the entry ending

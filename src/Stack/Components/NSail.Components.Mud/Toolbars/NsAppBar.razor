@@ -23,8 +23,8 @@
                        OnClick="LayoutState.ToggleDrawer" />
     }
 
-    @* no page announcing on this bar lends its slot any more, so
-       GetBrandClasses always keeps this off screen. *@
+    @* No page announcing on this bar lends its slot, so GetBrandClasses always keeps this
+       off screen. *@
     @if (Brand is not null)
     {
         @* Drawn, never mounted and unmounted: the brand is a load, and hanging its lifetime on
@@ -101,7 +101,7 @@
     public RenderFragment? Actions { get; set; }
 
     /// <summary>The install's identity — logo and organization name. Nothing announcing on this
-    /// bar ever trades its name for it any more, so it never draws.</summary>
+    /// bar ever trades its name for it, so it never draws.</summary>
     [Parameter]
     public RenderFragment? Brand { get; set; }
 
@@ -129,8 +129,7 @@
         return new NsClassBuilder("d-flex").Add("align-center min-w-0").ToString();
     }
 
-    // Nothing announcing on this bar ever lends its slot any more — the brand
-    // never draws.
+    // Nothing announcing on this bar ever lends its slot — the brand never draws.
     string GetBrandClasses()
     {
         return "d-none";

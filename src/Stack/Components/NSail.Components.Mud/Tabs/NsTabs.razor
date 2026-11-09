@@ -39,8 +39,8 @@
 
     /// <summary>Acts drawn at the far end of the strip, after the last tab — the page's own acts
     /// on the collections the tabs partition (an add that makes a card or a line, by the
-    /// tab that shows), never a toolbar of one tab's: the page decides which panel they belong to and
-    /// renders them only while it shows.</summary>
+    /// tab that shows), never a toolbar of one tab's: the page decides which panel they belong
+    /// to and renders them only while it shows.</summary>
     [Parameter]
     public RenderFragment? Actions { get; set; }
 
@@ -68,8 +68,8 @@
     /// fixed word "tab", so a second control would be writing over the first. Most tabs
     /// deep-link into nothing and would only dirty the address, which is why the default is off;
     /// the screens that turn it on are the ones something comes BACK to (a profile page, where
-    /// an identity provider's callback has to land on the tab that started it). Hosted in a dialog it is inert —
-    /// a dialog is routed by nothing and carries no query to hold.</summary>
+    /// an identity provider's callback has to land on the tab that started it). Hosted in a
+    /// dialog it is inert — a dialog is routed by nothing and carries no query to hold.</summary>
     [Parameter]
     public bool BindQuery { get; set; }
 
