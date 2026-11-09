@@ -82,6 +82,20 @@ public class WatchTests
     }
 
     [Fact]
+    public async Task ASecondCappedPassStillTakesUpAfterTheLastLineRead()
+    {
+        var first = DateTimeOffset.UtcNow.AddHours(-5);
+        var lines = Enumerable.Range(0, 11000).Select(i => Line() with { At = first.AddSeconds(i) }).ToList();
+        var state = new WatchState(null);
+        var board = new MemoryBoard();
+
+        await Pass(board, new Capped(lines), state);
+        await Pass(board, new Capped(lines), state);
+
+        Assert.Equal(first.AddSeconds(9998), state.ReadUntil("watch"));
+    }
+
+    [Fact]
     public async Task TheWindowEndsShortOfNowAndALineOnTheBoundaryIsReadOnce()
     {
         var edge = DateTimeOffset.UtcNow.AddHours(-1);
@@ -90,20 +104,11 @@ public class WatchTests
         var late = Line(minutesAgo: 1);
         var board = new MemoryBoard();
 
-        await Pass(board, new Capped([Line() with { At = edge }, late]), state);
+        await Pass(board, new Capped([Line() with { At = edge }, Line(minutesAgo: 30), late]), state);
 
-        Assert.Empty(board.Cards);
+        Assert.Single(board.Cards);
+        Assert.Contains("logged an error once", board.Cards.Single().Value.Body);
         Assert.True(state.ReadUntil("watch") <= DateTimeOffset.UtcNow.AddMinutes(-4));
-    }
-
-    [Fact]
-    public void AnotherHarnessesPendingGateMarkKeepsTheHeadFromASecondGate()
-    {
-        var now = DateTimeOffset.UtcNow;
-
-        Assert.Equal("c1", HarnessLoop.MainGatedOf([new StatusMark("c1", Markers.GateContext, false, now.AddMinutes(-5), Pending: true)], now));
-        Assert.Null(HarnessLoop.MainGatedOf([new StatusMark("c1", Markers.GateContext, false, now.AddHours(-4), Pending: true)], now));
-        Assert.Null(StatusMark.Newest([new StatusMark("c1", Markers.GateContext, false, now, Pending: true)], Markers.GateContext));
     }
 
     [Fact]

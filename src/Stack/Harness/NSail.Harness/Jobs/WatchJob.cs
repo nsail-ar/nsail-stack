@@ -20,7 +20,7 @@ public sealed class WatchJob(WorkItem item, JobContext ctx, WatchState state) : 
     const int MaxLines = 5000;
 
     // Minutes the window's end trails now when the worker names no IngestLag.
-    const int DefaultIngestLag = 5;
+    internal const int DefaultIngestLag = 5;
 
     static readonly string[] NotProdDefault = ["test", "qa", "canary"];
 
@@ -42,9 +42,10 @@ public sealed class WatchJob(WorkItem item, JobContext ctx, WatchState state) : 
 
         // The window is (since, until]: the line the last pass ended on is not read twice. Oldest first,
         // so a full read ends at its last line and the next pass takes up from there.
-        var lines = (await source.Errors(since, until, MaxLines, ct)).Where(l => l.At > since && l.At <= until).OrderBy(l => l.At).Take(MaxLines).ToList();
-        var capped = lines.Count >= MaxLines;
-        var readTo = capped ? lines[^1].At : until;
+        var read = await source.Errors(since, until, MaxLines, ct);
+        var capped = read.Count >= MaxLines;
+        var lines = read.Where(l => l.At > since && l.At <= until).OrderBy(l => l.At).Take(MaxLines).ToList();
+        var readTo = capped && lines.Count > 0 ? lines[^1].At : until;
         var groups = ErrorGroup.Of(lines);
         await using var file = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await file.WriteLineAsync($"== watch {name}: {groups.Count} error group(s) in {source.Name} since {since:yyyy-MM-dd HH:mm} UTC");
