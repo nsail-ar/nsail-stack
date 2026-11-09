@@ -4,7 +4,9 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.ValueGeneration;
 
 namespace NSail.Data;
 
@@ -65,8 +67,16 @@ static class TenantColumn
 
             var tenant = entity.AddProperty(Name, typeof(Guid));
 
+            // EF refuses to insert a row whose shadow key it does not know, and the column sits in
+            // a key wherever another table names the row, so something has to write it before the
+            // save: the stamp, where AddDataAccess built the context, and this generator where
+            // nothing did — a design-time factory's context, a retrofit's. It writes the install's
+            // key and never the context's tenant: EF generates on Attach and Update too, and a
+            // detached entity that arrived carrying the resolved tenant would pass the stamp's
+            // refusal.
             tenant.IsNullable = false;
-            tenant.ValueGenerated = ValueGenerated.Never;
+            tenant.ValueGenerated = ValueGenerated.OnAdd;
+            tenant.SetValueGeneratorFactory((_, _) => InstallKey.Instance);
             tenant.SetDefaultValue(Install);
 
             entity.SetQueryFilter(Key, Filter(entity.ClrType, context));
@@ -385,5 +395,20 @@ static class TenantColumn
     {
         return properties.Count >= prefix.Count
             && prefix.Select((property, position) => properties[position] == property).All(match => match);
+    }
+
+    sealed class InstallKey : ValueGenerator<Guid>
+    {
+        public static InstallKey Instance { get; } = new();
+
+        public override bool GeneratesTemporaryValues
+        {
+            get { return false; }
+        }
+
+        public override Guid Next(EntityEntry entry)
+        {
+            return Install;
+        }
     }
 }
