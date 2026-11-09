@@ -94,6 +94,11 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   the key and renamed over it, so a cancel or a throwing source leaves the previous object and
   no partial file; `List` skips exactly that name form. A process killed mid-put leaves its
   staging file behind: it is garbage and safe to delete.
+- **A filesystem listing walks the prefix's directory, not the container.** `List(prefix)`
+  enumerates the directory the prefix names up to its last slash and filters the names inside
+  it, reading length and time from the directory entry. A directory the host cannot read fails
+  the walk loudly rather than yielding a short listing; a prefix that resolves outside the
+  container lists nothing.
 - **`IsConfigured` answers the refusal before there is anything to put.** A caller that
   queues the writing for later — a request filed now and written by a job — would otherwise
   accept the ask, read a whole database and fail on its last line. It is false for both of
@@ -126,6 +131,10 @@ multipart upload, so the length has to be known before the first byte leaves and
 caps at 5 GiB; a non-seekable stream is refused out loud rather than half-written at the far
 end, and something generated on the fly is spooled to a seekable source first.
 
+A listing follows the continuation one page at a time (`Enumerate`, an `IAsyncEnumerable`);
+the contract's `List` still collects every page, so a caller through `IStorageProvider` holds
+the whole listing.
+
 **There is no wall-clock ceiling, and that is a decision.** `HttpClient`'s default would cut
 every send at 100 seconds — a clock that covers the whole body, so an object of any real size
 dies mid-transfer — so the registered client is given `Timeout.InfiniteTimeSpan`
@@ -155,7 +164,7 @@ link; the symlink check reads the committed tree, which holds on any platform. A
 the branch out; a read fetches the tree without its files and then only the files it answers with — the key's for a get, those under the prefix for a list,
 whose lengths need them — so a small object costs no more in a large repository. A server that
 does not filter sends every file instead: slower, still right. A push the remote rejected because
-the branch moved is fetched and committed again a few times before it is refused.
+the branch moved is fetched and committed again a few times before it is refused. The content is re-sent from the position the caller's stream started at, as S3's is, and a stream that cannot seek is refused rather than retried.
 
 The credential travels in the environment of the one process, as an HTTP basic header scoped to
 the repository's origin, and never on a command line. git would carry that header on to wherever

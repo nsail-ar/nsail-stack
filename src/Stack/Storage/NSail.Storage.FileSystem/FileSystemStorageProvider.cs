@@ -114,7 +114,7 @@ public class FileSystemStorageProvider : IStorageProvider
             return Task.FromResult<IReadOnlyList<StoredObject>>([]);
         }
 
-        var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 };
+        var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0, IgnoreInaccessible = false };
         var entries = new FileSystemEnumerable<StoredObject>(
             directory,
             (ref FileSystemEntry entry) => new StoredObject
