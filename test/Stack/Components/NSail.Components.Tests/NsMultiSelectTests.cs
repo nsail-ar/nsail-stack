@@ -69,4 +69,32 @@ public sealed class NsMultiSelectTests : BunitContext, IAsyncLifetime
 
         Assert.DoesNotContain("mud-shrink", cut.Find("div.mud-input").ClassList);
     }
+
+    [Fact]
+    public void NsMultiSelect_IsDisabledLikeAnyField()
+    {
+        var cut = Render<MultiSelectValueHost<SelectRef, Guid>>(ps => ps
+            .Add(p => p.Items, new[] { Alpha, Beta })
+            .Add(p => p.ItemValue, item => item.Id)
+            .Add(p => p.ItemText, item => item.DisplayName)
+            .Add(p => p.Label, "Recursos")
+            .Add(p => p.Disabled, true)
+            .Add(p => p.Value, new[] { Beta.Id }));
+
+        Assert.Contains("mud-disabled", cut.Find("div.mud-input").ClassList);
+    }
+
+    [Fact]
+    public void NsMultiSelect_ShowsTheRequiredRefusalWhenEmpty()
+    {
+        var cut = Render<MultiSelectValueHost<SelectRef, Guid>>(ps => ps
+            .Add(p => p.Items, new[] { Alpha, Beta })
+            .Add(p => p.ItemValue, item => item.Id)
+            .Add(p => p.ItemText, item => item.DisplayName)
+            .Add(p => p.Label, "Recursos")
+            .Add(p => p.Required, true)
+            .Add(p => p.Value, Array.Empty<Guid>()));
+
+        Assert.Contains("mud-input-required", cut.Markup);
+    }
 }

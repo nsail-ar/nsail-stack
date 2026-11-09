@@ -4,6 +4,7 @@
 @namespace NSail.Components
 @typeparam TItem
 @typeparam TValue
+@inherits NsFieldBase<IReadOnlyList<TValue>>
 
 @* ShrinkLabel is declared off the SELECTION for the reason NsSelect's is declared off its
    value: the text this field shows is resolved out of Items, so a caller filling them from a
@@ -12,9 +13,13 @@
            SelectedValues="(Value ?? []).ToList()" SelectedValuesChanged="OnChanged"
            ShrinkLabel="@HoldsValues()"
            ToStringFunc="GetValueText"
-           Label="@Label" Placeholder="@Placeholder"
-           Error="@HasError" ErrorText="@ErrorText"
-           Variant="Variant.Outlined" Margin="Margin.Dense">
+           Label="@GetLabel()" Placeholder="@Placeholder"
+           Required="IsRequired"
+           Disabled="IsDisabled"
+           ReadOnly="IsReadOnly"
+           Variant="Variant.Outlined" Margin="Margin.Dense"
+           Error="@HasError()" ErrorText="@GetErrorText()"
+           UserAttributes="InputAttributes">
     @if (Items is not null)
     {
         @foreach (var item in Items)
@@ -23,14 +28,9 @@
         }
     }
 </MudSelect>
+<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
 
 @code {
-
-    [Parameter]
-    public IEnumerable<TValue>? Value { get; set; }
-
-    [Parameter]
-    public EventCallback<List<TValue>> ValueChanged { get; set; }
 
     [Parameter]
     public IEnumerable<TItem>? Items { get; set; }
@@ -41,25 +41,19 @@
     [Parameter, EditorRequired]
     public Func<TItem, string> ItemText { get; set; } = default!;
 
-    [Parameter]
-    public string? Label { get; set; }
-
-    [Parameter]
-    public string? Placeholder { get; set; }
-
-    [Parameter]
-    public string? ErrorText { get; set; }
-
-    bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
+    protected override bool IsValueEmpty()
+    {
+        return Value is not { Count: > 0 };
+    }
 
     bool HoldsValues()
     {
-        return Value is not null && Value.Any();
+        return Value is { Count: > 0 };
     }
 
     Task OnChanged(IEnumerable<TValue> selected)
     {
-        return ValueChanged.InvokeAsync(selected.ToList());
+        return SetValue(selected.ToList());
     }
 
     TValue GetItemValue(TItem item)

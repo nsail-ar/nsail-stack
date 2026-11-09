@@ -37,9 +37,35 @@ public partial class NsDurationField<TValue>
         get { return Value is TimeSpan span ? span.TotalHours : null; }
     }
 
-    Task OnHoursChanged(double? value)
+    // A span TimeSpan cannot hold is refused on the field and the model keeps what it had.
+    async Task OnHoursChanged(double? value)
     {
-        return SetValue(FromHours(value));
+        var refused = value is { } hours && (double.IsNaN(hours) || Math.Abs(hours) > TimeSpan.MaxValue.TotalHours);
+
+        if (refused != _tooLong)
+        {
+            _tooLong = refused;
+            NotifyOwnProblemChanged();
+        }
+
+        if (refused)
+        {
+            return;
+        }
+
+        await SetValue(FromHours(value));
+    }
+
+    bool _tooLong;
+
+    protected override string? GetErrorText()
+    {
+        return GetOwnProblem() ?? base.GetErrorText();
+    }
+
+    protected override string? GetOwnProblem()
+    {
+        return _tooLong ? Strings.Translate("Components.NsDurationField.TooLong", "That duration is too long") : null;
     }
 
     static TValue? FromHours(double? value)

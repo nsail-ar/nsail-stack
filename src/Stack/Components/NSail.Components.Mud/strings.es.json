@@ -66,6 +66,7 @@
   "Common.FileTypeNotAccepted": "Este tipo de archivo no está aceptado",
   "Common.FilesTooLarge": "La selección supera los {0} en total",
   "Common.DateLetters": "dma",
+  "Components.NsDurationField.TooLong": "Esa duración es demasiado larga",
   "Common.Hours": "h",
   "Common.Back": "Atrás",
   "Common.Next": "Siguiente",

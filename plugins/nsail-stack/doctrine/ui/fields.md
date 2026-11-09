@@ -288,6 +288,10 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   `IsStored` has nothing to show and keeps its check, and the eye comes with the first character;
   a disabled or read-only box draws none. The reveal is the field's own state, never a parameter
   and never kept past the page.
+- **`NsPasswordField` always carries an `autocomplete` token**: `current-password`, or
+  `new-password` under `IsNew`; a caller's `Autocomplete` wins.
+- **`NsDurationField` refuses a span `TimeSpan` cannot hold** as its own field problem and keeps
+  the model's value. `NsMultiSelect` is an `NsFieldBase<IReadOnlyList<TValue>>` like any field.
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
   6-digit hex — no alpha channel — matching what every caller already stores; text that
   isn't a color never reaches the model (`NsColorText` is the second line behind the
