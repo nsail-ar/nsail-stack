@@ -31,7 +31,7 @@ public class DevJobRunTests : IDisposable
     }
 
     // The repository as the job reaches it: pushes go to the slot's origin, and the story has no PR and no push yet.
-    internal sealed class FileRepository(string remote) : IRepository
+    internal class FileRepository(string remote) : IRepository
     {
         readonly GitHubRepository _git = new(null!, new RepositoryOptions { Name = "acme/app" }, new StoryNames("app", ["story"]), "t");
 
@@ -69,18 +69,18 @@ public class DevJobRunTests : IDisposable
             throw new NotSupportedException();
         }
 
-        public Task<PullRequest> Pr(int number, CancellationToken ct = default)
+        public virtual Task<PullRequest> Pr(int number, CancellationToken ct = default)
         {
             var pr = Open.Concat(Merged).Single(p => p.Number == number);
             return Task.FromResult(new PullRequest(pr.Number, pr.Title, Open.Contains(pr), pr.Head, "", false));
         }
 
-        public Task<IReadOnlyList<PrNote>> Thread(int pr, CancellationToken ct = default)
+        public virtual Task<IReadOnlyList<PrNote>> Thread(int pr, CancellationToken ct = default)
         {
             return Task.FromResult<IReadOnlyList<PrNote>>([]);
         }
 
-        public Task<string> Login(CancellationToken ct = default)
+        public virtual Task<string> Login(CancellationToken ct = default)
         {
             throw new NotSupportedException();
         }
@@ -111,7 +111,7 @@ public class DevJobRunTests : IDisposable
             throw new NotSupportedException();
         }
 
-        public Task Merge(int pr, string sha, CancellationToken ct = default)
+        public virtual Task Merge(int pr, string sha, CancellationToken ct = default)
         {
             throw new NotSupportedException();
         }
@@ -391,7 +391,7 @@ public class DevJobRunTests : IDisposable
     }
 
     // A seat no voyage may call: the kept work goes up without one.
-    sealed class NoSeat : IAgent
+    internal sealed class NoSeat : IAgent
     {
         public string Driver => "test";
 
