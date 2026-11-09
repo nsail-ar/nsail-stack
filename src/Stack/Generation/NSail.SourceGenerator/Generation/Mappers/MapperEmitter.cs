@@ -45,6 +45,7 @@ sealed partial class MapperEmitter
 
     readonly IMethodSymbol _method;
     readonly Compilation _compilation;
+    readonly IReadOnlyList<string> _modelledSeeds;
     readonly string _container;
 
     readonly StringBuilder _members = new();
@@ -67,14 +68,15 @@ sealed partial class MapperEmitter
 
     int _next;
 
-    public MapperEmitter(IMethodSymbol method, Compilation compilation)
+    public MapperEmitter(IMethodSymbol method, Compilation compilation, IReadOnlyList<string> modelledSeeds)
     {
         _method = method;
         _compilation = compilation;
+        _modelledSeeds = modelledSeeds;
         _container = $"{method.ContainingType.Name}_{method.Name}_Mappers";
     }
 
-    public List<Diagnostic> Diagnostics { get; } = new();
+    public List<DiagnosticInfo> Diagnostics { get; } = new();
 
     string Services
     {
@@ -1285,40 +1287,13 @@ sealed partial class MapperEmitter
 
         _modelled = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
 
-        foreach (var tree in _compilation.SyntaxTrees)
+        // What the store's model declares was gathered from the syntax as metadata names: a
+        // ModelBuilder.Entity<T>() call, or a DbSet<T> of a context.
+        foreach (var name in _modelledSeeds)
         {
-            var model = _compilation.GetSemanticModel(tree);
-
-            foreach (var name in tree.GetRoot().DescendantNodes().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.GenericNameSyntax>())
+            if (_compilation.GetTypeByMetadataName(name) is { } entity)
             {
-                if (name.Identifier.ValueText != "Entity" || name.TypeArgumentList.Arguments.Count != 1)
-                {
-                    continue;
-                }
-
-                if (model.GetSymbolInfo(name).Symbol is IMethodSymbol { ContainingType: { } builder } method
-                    && builder.ToDisplayString() == ModelBuilderName
-                    && method.TypeArguments[0] is INamedTypeSymbol entity)
-                {
-                    _modelled.Add(entity.OriginalDefinition);
-                }
-            }
-        }
-
-        // A context's DbSet<T> declares one too.
-        foreach (var type in _compilation.Assembly.GlobalNamespace.GetAllTypes())
-        {
-            if (!type.InheritsFrom(DbContextName))
-            {
-                continue;
-            }
-
-            foreach (var set in type.GetMembers().OfType<IPropertySymbol>())
-            {
-                if (set.Type is INamedTypeSymbol { IsGenericType: true } named && named.OriginalDefinition.ToDisplayString() == DbSetName && named.TypeArguments[0] is INamedTypeSymbol entity)
-                {
-                    _modelled.Add(entity.OriginalDefinition);
-                }
+                _modelled.Add(entity.OriginalDefinition);
             }
         }
 
@@ -1506,12 +1481,12 @@ sealed partial class MapperEmitter
 
     void Report(DiagnosticDescriptor descriptor, ISymbol symbol, params object[] arguments)
     {
-        Diagnostics.Add(Diagnostic.Create(descriptor, symbol.Locations.FirstOrDefault(), arguments));
+        Diagnostics.Add(DiagnosticInfo.Create(descriptor, symbol, arguments));
     }
 
     void Report(DiagnosticDescriptor descriptor, Location? location, params object[] arguments)
     {
-        Diagnostics.Add(Diagnostic.Create(descriptor, location, arguments));
+        Diagnostics.Add(DiagnosticInfo.Create(descriptor, location, arguments));
     }
 
     // A member named by a keyword (@class, @event) is written as the source spells it.

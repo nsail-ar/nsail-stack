@@ -12,63 +12,66 @@ public static class PolicyHandlersModelFactory
     const string RequiresAttributeName = "NSail.Security.Annotations.RequiresAttribute";
     const string IMessageInterfaceName = "IMessage";
 
-    public static PolicyHandlersModel Create(IMethodSymbol methodSymbol, Compilation compilation)
+    public static PolicyHandlersModel Create(Scoped<PolicyHandlerModel> scoped)
     {
-        var model = new PolicyHandlersModel
+        var target = scoped.Target;
+
+        return new PolicyHandlersModel
         {
-            Namespace = methodSymbol.ContainingNamespace.ToDisplayString(),
-            ClassName = methodSymbol.ContainingType.Name,
-            MethodName = methodSymbol.Name,
-            ClassDeclaration = methodSymbol.ContainingType.GetDeclaration(),
-            MethodDeclaration = methodSymbol.GetDeclaration(),
-            ServicesParameterName = methodSymbol.Parameters.Length > 0 ? methodSymbol.Parameters[0].Name : "services",
+            Namespace = target.Namespace,
+            ClassName = target.ClassName,
+            MethodName = target.MethodName,
+            ClassDeclaration = target.ClassDeclaration,
+            MethodDeclaration = target.MethodDeclaration,
+            ServicesParameterName = target.FirstParameterName,
+            Handlers = new EquatableList<PolicyHandlerModel>(scoped.Fragments),
         };
+    }
 
-        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol))
+    public static PolicyHandlerModel? Inspect(INamedTypeSymbol typeSymbol)
+    {
+        if (!typeSymbol.AllInterfaces.Any(i => i.Name == IMessageInterfaceName))
         {
-            if (!typeSymbol.AllInterfaces.Any(i => i.Name == IMessageInterfaceName))
-                continue;
-
-            var fields = new List<PolicyFieldModel>();
-
-            foreach (var member in typeSymbol.GetAllProperties())
-            {
-                var attribute = member.GetAttributeThroughOverrides(PolicyFieldAttributeName);
-                if (attribute is null)
-                    continue;
-
-                // The RestrictAs member arrives as its underlying int: the generator runs
-                // against the annotations assembly as metadata, where the enum is a symbol
-                // rather than a type it could bind to.
-                fields.Add(new PolicyFieldModel
-                {
-                    Name = member.Name,
-                    Kind = attribute.GetConstructorValue<int>(0) switch
-                    {
-                        2 => "Organization",
-                        3 => "Reference",
-                        4 => "Flag",
-                        _ => "Party",
-                    },
-                });
-            }
-
-            // Every message gets a handler, including the ones with no constrained field:
-            // a policy expands into one handler per member message, so a message missing
-            // from the registry cannot be granted at all. Skipping the unconstrained ones
-            // would leave flat policies to a key-pattern handler.
-            var handler = new PolicyHandlerModel
-            {
-                MessageType = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                HandlerName = $"{typeSymbol.Name}PolicyHandler",
-            };
-
-            handler.Fields.AddRange(fields);
-            handler.Requires.AddRange(Requires(typeSymbol));
-            model.Handlers.Add(handler);
+            return null;
         }
 
-        return model;
+        var fields = new List<PolicyFieldModel>();
+
+        foreach (var member in typeSymbol.GetAllProperties())
+        {
+            var attribute = member.GetAttributeThroughOverrides(PolicyFieldAttributeName);
+            if (attribute is null)
+                continue;
+
+            // The RestrictAs member arrives as its underlying int: the generator runs
+            // against the annotations assembly as metadata, where the enum is a symbol
+            // rather than a type it could bind to.
+            fields.Add(new PolicyFieldModel
+            {
+                Name = member.Name,
+                Kind = attribute.GetConstructorValue<int>(0) switch
+                {
+                    2 => "Organization",
+                    3 => "Reference",
+                    4 => "Flag",
+                    _ => "Party",
+                },
+            });
+        }
+
+        // Every message gets a handler, including the ones with no constrained field:
+        // a policy expands into one handler per member message, so a message missing
+        // from the registry cannot be granted at all. Skipping the unconstrained ones
+        // would leave flat policies to a key-pattern handler.
+        var handler = new PolicyHandlerModel
+        {
+            MessageType = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            HandlerName = $"{typeSymbol.Name}PolicyHandler",
+        };
+
+        handler.Fields.AddRange(fields);
+        handler.Requires.AddRange(Requires(typeSymbol));
+            return handler;
     }
 
     /// <summary>The [Requires] declarations, emitted beside the fields so the evaluator can

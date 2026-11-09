@@ -31,7 +31,7 @@ public static class QueueModelRenderer
         {
             foreach (var diagnostic in model.Diagnostics)
             {
-                spc.ReportDiagnostic(diagnostic);
+                spc.ReportDiagnostic(diagnostic.ToDiagnostic());
             }
         }
 

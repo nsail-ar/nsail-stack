@@ -1,13 +1,13 @@
-﻿// SPDX-License-Identifier: MIT
+﻿﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Text;
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
 
-public class RouteModel
+public record RouteModel
 {
-    public List<SegmentModel> Segments { get; } = new();
+    public EquatableList<SegmentModel> Segments { get; set; } = new();
  
     public override string ToString()
     {

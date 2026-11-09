@@ -328,6 +328,24 @@ Use when registration must pull types from a referenced assembly.
 
 ---
 
+## Incremental pipelines
+
+An edit must not re-read the project. A generator's pipeline holds only value-equal data:
+
+- **Models are records of equatable data** — names, declarations, spans, arguments; lists are
+  `EquatableList<T>`. A model never holds a symbol, a `Diagnostic` or a `Location`: findings
+  travel as `DiagnosticInfo` and become diagnostics in the renderer.
+- **The holder comes from the attribute provider** (`FindGeneratedTargets`), and the types in
+  scope are inspected from their own declarations (`GatherInScope`), so an edit re-reads the
+  types of the edited file only. A holder with `[Source]` reads the scopes it names from the
+  compilation instead — the one step that takes it, compared by its output.
+- **Mappers** emit inside a pipeline step and register only the text and findings; the entities
+  the store's model declares (`Entity<T>()`, `DbSet<T>`) are gathered from the syntax.
+- **A new generator owes the proof**: `IncrementalityTests` runs it twice over an unrelated edit
+  and every named step must be `Cached` or `Unchanged`.
+
+---
+
 ## What gets generated
 
 - **Endpoints** — for each `[Http]` message with a matching `[Injectable]` handler, an

@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+﻿﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
@@ -9,7 +9,7 @@ public enum SegmentType
     Parameter
 }
 
-public class SegmentModel
+public record SegmentModel
 {
     public SegmentType Type { get; set; }
 

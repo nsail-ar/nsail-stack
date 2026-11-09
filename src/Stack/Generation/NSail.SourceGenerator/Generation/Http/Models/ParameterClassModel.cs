@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
 
-public class ParameterClassModel
+public record ParameterClassModel
 {
     public string Namespace { get; set; } = string.Empty;
 
@@ -20,5 +20,5 @@ public class ParameterClassModel
         }
     }
 
-    public List<ParameterPropertyModel> Properties { get; set; } = new();
+    public EquatableList<ParameterPropertyModel> Properties { get; set; } = new();
 }

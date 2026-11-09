@@ -11,15 +11,11 @@ public class PushPublishersSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var generatedMethods = context.FindGeneratedSymbols(outputType: TargetIds.Push_Publishers);
+        var targets = context.FindGeneratedTargets(outputType: TargetIds.Push_Publishers);
 
-        var models = generatedMethods
-            .Combine(context.CompilationProvider)
-            .Select(static (parameters, _) =>
-            {
-                var (methodSymbol, compilation) = parameters;
-                return PushModelFactory.Create(methodSymbol, compilation);
-            });
+        var models = context.GatherInScope(targets, static type => PushModelFactory.Inspect(type))
+            .Select(static (found, _) => PushModelFactory.Create(found))
+            .WithTrackingName("Model");
 
         context.RegisterSourceOutput(models, PushModelRenderer.RenderPublishers);
     }

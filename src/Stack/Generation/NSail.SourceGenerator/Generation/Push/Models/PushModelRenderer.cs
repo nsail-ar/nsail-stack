@@ -22,7 +22,7 @@ public static class PushModelRenderer
     {
         foreach (var diagnostic in model.Diagnostics)
         {
-            spc.ReportDiagnostic(diagnostic);
+            spc.ReportDiagnostic(diagnostic.ToDiagnostic());
         }
 
         var template = SourceTemplateRegistry.Instance.Get(templateName);

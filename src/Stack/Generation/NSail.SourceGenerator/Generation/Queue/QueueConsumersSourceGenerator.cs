@@ -11,15 +11,11 @@ public class QueueConsumersSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var generatedMethods = context.FindGeneratedSymbols(outputType: TargetIds.Queue_Consumers);
+        var targets = context.FindGeneratedTargets(outputType: TargetIds.Queue_Consumers);
 
-        var models = generatedMethods
-            .Combine(context.CompilationProvider)
-            .Select(static (parameters, _) =>
-            {
-                var (methodSymbol, compilation) = parameters;
-                return QueueModelFactory.Create(methodSymbol, compilation);
-            });
+        var models = context.GatherInScope(targets, static type => QueueModelFactory.Inspect(type))
+            .Select(static (found, _) => QueueModelFactory.Create(found))
+            .WithTrackingName("Model");
 
         context.RegisterSourceOutput(models, QueueModelRenderer.RenderConsumers);
     }

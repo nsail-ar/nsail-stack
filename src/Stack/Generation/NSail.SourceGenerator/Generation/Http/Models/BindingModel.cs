@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+﻿﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
@@ -13,7 +13,7 @@ public enum BindingSource
     Services
 }
 
-public class BindingModel
+public record BindingModel
 {
     public string Name { get; set; } = string.Empty;
 
