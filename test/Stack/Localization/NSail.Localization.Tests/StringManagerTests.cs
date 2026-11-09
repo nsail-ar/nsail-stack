@@ -209,4 +209,75 @@ public sealed class StringManagerTests
         Assert.False(manager.TryTranslate("Missing", out var missing));
         Assert.Equal(string.Empty, missing);
     }
+
+    private sealed class OffThreadSource : IStringSource
+    {
+        public IReadOnlyCollection<string> Languages => [];
+
+        public async Task<IReadOnlyDictionary<string, string>> GetStrings(string language)
+        {
+            await Task.Delay(20).ConfigureAwait(false);
+
+            return new Dictionary<string, string> { ["Greeting"] = "Hello" };
+        }
+    }
+
+    private sealed class SingleThreadContext : SynchronizationContext
+    {
+        public int Posts;
+
+        public override void Post(SendOrPostCallback d, object? state)
+        {
+            Interlocked.Increment(ref Posts);
+        }
+    }
+
+    // Blocking on purpose: awaiting under the stalled context is the deadlock being proved absent.
+#pragma warning disable xUnit1031
+    [Fact]
+    public void GetAsync_does_not_deadlock_on_a_single_threaded_context()
+    {
+        var catalog = new StringCatalog([new OffThreadSource()]);
+        var previous = SynchronizationContext.Current;
+        var context = new SingleThreadContext();
+        SynchronizationContext.SetSynchronizationContext(context);
+
+        try
+        {
+            var load = catalog.GetAsync("en");
+
+            Assert.True(load.Wait(TimeSpan.FromSeconds(5)));
+            Assert.Equal(0, context.Posts);
+            Assert.Equal("Hello", load.Result["Greeting"]);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+    }
+
+#pragma warning restore xUnit1031
+
+    [Fact]
+    public void Get_throws_instead_of_blocking_on_a_pending_source()
+    {
+        var catalog = new StringCatalog([new OffThreadSource()]);
+
+        Assert.Throws<InvalidOperationException>(() => catalog.Get("en"));
+    }
+
+    [Fact]
+    public async Task An_unknown_language_answers_the_default_without_adding_an_entry()
+    {
+        var catalog = new StringCatalog(
+            [new FakeSource("es", new Dictionary<string, string> { ["Greeting"] = "Hola" })],
+            new LanguageOptions { Default = "es" });
+
+        var first = await catalog.GetAsync("zz");
+        var second = catalog.Get("yy");
+
+        Assert.Equal("Hola", first["Greeting"]);
+        Assert.Same(first, second);
+        Assert.Same(first, catalog.Get("ES"));
+    }
 }

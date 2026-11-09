@@ -13,7 +13,9 @@ capitalized inside a label, menu entries and titles in Title Case, the blank `La
 
 Strings resolve through `StringManager` (`NSail.Localization`): **`IStringSource`s feed the
 manager**, merged in registration order, last wins — kits, then app, then (future, unbuilt) a
-database overlay. Each module ships `strings.json` (base language, English) + `strings.{lang}.json`
+database overlay. The manager reads synchronously, so a source feeding it completes its task
+synchronously; one that awaits I/O is served only through `StringCatalog.GetAsync`, awaited
+before the render reads. Each module ships `strings.json` (base language, English) + `strings.{lang}.json`
 overlays (flat key→text, at the project root) as embedded resources, registered with
 `AddStringsFromAssembly()`.
 
@@ -58,7 +60,8 @@ the method name; buttons without content from `Common.{As}`.
 **Culture is negotiated, never imposed, and two sets decide it.** *Supported* is every language
 the catalogs can render — English is in it **by construction** (`LanguageOptions.Base` is `en`
 and every base `strings.json` is written in it), so it is the settings picker's list and what a
-forced choice is validated against, never a statement about what the shop serves. *Offered*
+forced choice is validated against, and what `StringCatalog` bounds its cache to (any other
+language answers the default's strings), never a statement about what the shop serves. *Offered*
 (`Language:Offered`, unset meaning `Language:Default` alone) is what this install serves somebody
 who has chosen nothing.
 
