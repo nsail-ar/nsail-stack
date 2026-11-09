@@ -122,21 +122,6 @@ public sealed class HttpRequestMessageBuilder
         return AddHeader(name, Format(value));
     }
 
-    public HttpRequestMessageBuilder AddHeader<T>(string name, IEnumerable<T>? values)
-    {
-        if (values is null)
-        {
-            return this;
-        }
-
-        foreach (var value in values)
-        {
-            AddHeader(name, value);
-        }
-
-        return this;
-    }
-
     public HttpRequestMessageBuilder AddJsonContent<T>(
         T value,
         JsonSerializerOptions? options = null)

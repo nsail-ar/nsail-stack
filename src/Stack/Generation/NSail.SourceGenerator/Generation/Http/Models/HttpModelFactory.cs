@@ -79,6 +79,15 @@ public static class HttpModelFactory
 
                 var bindings = CreateBindings(messageTypeSymbol, httpMethod, httpPath, paramNamespace);
 
+                foreach (var header in bindings.Where(b => b.BindingSource == BindingSource.Header && b.IsCollection))
+                {
+                    diagnostics.Add(Diagnostic.Create(
+                        GeneratorDiagnostics.CollectionHeader,
+                        GetAttributeLocation(httpAttribute, messageTypeSymbol),
+                        messageTypeSymbol.ToDisplayString(),
+                        header.PropertyName));
+                }
+
                 var message = new MessageModel
                 {
                     MessageType = new TypeModel(messageTypeSymbol),
