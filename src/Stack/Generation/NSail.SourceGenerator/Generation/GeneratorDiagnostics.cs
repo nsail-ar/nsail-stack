@@ -177,7 +177,7 @@ public static class GeneratorDiagnostics
     public static readonly DiagnosticDescriptor DuplicateRoute = new(
         id: "NSG019",
         title: "Two messages share a verb and route",
-        messageFormat: "'{0}' and '{1}' both answer {2} '{3}' (token names and constraints do not tell routes apart). Give one of them another route.",
+        messageFormat: "'{0}' and '{1}' both answer {2} '{3}' (token names do not tell routes apart). Give one of them another route.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,

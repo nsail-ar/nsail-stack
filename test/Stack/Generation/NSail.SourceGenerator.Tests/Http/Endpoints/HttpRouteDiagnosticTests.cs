@@ -187,11 +187,13 @@ public class HttpRouteDiagnosticTests
     [Fact]
     public void Two_messages_on_one_verb_and_normalised_path_are_a_build_error()
     {
-        var same = Run(TwoRoutes("Method.Get", "api/x/{a}", "Method.Get", "api/x/{b:guid}"));
+        var same = Run(TwoRoutes("Method.Get", "api/x/{a}", "Method.Get", "api/x/{b}"));
+        var constrained = Run(TwoRoutes("Method.Get", "api/x/{a}", "Method.Get", "api/x/{b:guid}"));
         var otherVerb = Run(TwoRoutes("Method.Get", "api/x/{a}", "Method.Post", "api/x/{a}"));
 
         Assert.Single(same.Where(d => d.Id == "NSG019"));
         Assert.Empty(otherVerb.Where(d => d.Id == "NSG019"));
+        Assert.Empty(constrained.Where(d => d.Id == "NSG019"));
     }
 
     static string RouteSource(string http, string member)

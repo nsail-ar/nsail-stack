@@ -476,7 +476,8 @@ public static class HttpModelFactory
         return end < 0 ? token.Substring(start) : token.Substring(start, end - start);
     }
 
-    // Two templates that differ only in token names (or constraints) match the same requests.
+    // Two templates that differ only in token names match the same requests; a constraint
+    // takes part in the match, so it stays in the key.
     static string NormalizePath(string path)
     {
         var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries).Select(segment =>
@@ -486,7 +487,17 @@ public static class HttpModelFactory
                 return segment.ToLowerInvariant();
             }
 
-            return segment.StartsWith("{*", StringComparison.Ordinal) ? "{*}" : "{}";
+            var catchAll = segment.StartsWith("{*", StringComparison.Ordinal) ? "*" : "";
+            var colon = segment.IndexOf(':');
+            var constraint = colon < 0 ? "" : segment.Substring(colon, segment.Length - 1 - colon);
+            var cut = constraint.IndexOf('=');
+
+            if (cut >= 0)
+            {
+                constraint = constraint.Substring(0, cut);
+            }
+
+            return "{" + catchAll + constraint.TrimEnd('?') + "}";
         });
 
         return string.Join("/", parts);
