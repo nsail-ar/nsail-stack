@@ -6,62 +6,81 @@ using OpenTelemetry;
 
 namespace NSail.Telemetry;
 
-/// <summary>Drops, from every span the vendor instrumentations produce, the four tags that
-/// can carry a person: the query string a list screen's search box arrives in (url.query on
-/// the server span, and the whole of it again inside url.full on the calling client's), the
-/// SQL text, and any captured query parameter. NSail's own spans have nothing to scrub —
-/// they never read a message's members — so this exists for the code NSail did not write,
-/// and it is a processor rather than a set of vendor options on purpose: an option renamed
-/// by the next package version fails open and silently, a tag that is removed after the
-/// fact does not.</summary>
+/// <summary>Keeps, on every span the vendor instrumentations produce, only the tags of a closed
+/// list; anything else is dropped before export, so a tag a package version adds tomorrow
+/// (<c>enduser.id</c>, <c>user_agent.original</c>, a captured header) fails closed. <c>url.full</c>
+/// is cut to its origin, and <c>url.path</c> is replaced by the route template
+/// (<c>http.route</c>) or dropped where there is none, because a literal path and query carry
+/// the ids, documents and search text the route was filled with. NSail's own spans (<c>nsail.*</c>) have nothing to scrub. It is a processor rather
+/// than a set of vendor options on purpose: an option renamed by the next package version
+/// fails open and silently, a tag that is removed after the fact does not.</summary>
 public sealed class Scrubber : BaseProcessor<Activity>
 {
     const string UrlTag = "url.full";
 
-    const string ParameterPrefix = "db.query.parameter.";
+    const string PathTag = "url.path";
 
-    static readonly string[] _dropped = ["url.query", "db.statement", "db.query.text"];
+    const string RouteTag = "http.route";
+
+    const string OwnPrefix = "nsail.";
+
+    static readonly HashSet<string> _allowed = new(StringComparer.Ordinal)
+    {
+        UrlTag,
+        RouteTag,
+        "http.request.method",
+        "http.response.status_code",
+        "url.scheme",
+        "server.address",
+        "server.port",
+        "network.protocol.name",
+        "network.protocol.version",
+        "error.type",
+        "db.system",
+        "db.system.name",
+        "db.namespace",
+        "db.operation.name",
+        "db.collection.name",
+        "otel.status_code",
+        "aspnetcore.components.type",
+        "aspnetcore.components.method",
+        "aspnetcore.components.circuit.id",
+    };
 
     public override void OnEnd(Activity data)
     {
         ArgumentNullException.ThrowIfNull(data);
 
-        foreach (var tag in _dropped)
+        var route = data.GetTagItem(RouteTag) as string;
+        var dropped = new List<string>();
+
+        foreach (var tag in data.TagObjects)
+        {
+            if (!_allowed.Contains(tag.Key) && !tag.Key.StartsWith(OwnPrefix, StringComparison.Ordinal))
+            {
+                dropped.Add(tag.Key);
+            }
+        }
+
+        foreach (var tag in dropped)
         {
             // SetTag(key, null) is how an Activity drops a tag; there is no Remove.
             data.SetTag(tag, null);
         }
 
-        foreach (var parameter in Parameters(data))
+        if (!string.IsNullOrEmpty(route))
         {
-            data.SetTag(parameter, null);
+            data.SetTag(PathTag, route);
         }
 
-        if (data.GetTagItem(UrlTag) is string url && Trim(url) is { } trimmed)
+        if (data.GetTagItem(UrlTag) is string url)
         {
-            data.SetTag(UrlTag, trimmed);
+            data.SetTag(UrlTag, Origin(url));
         }
     }
 
-    static List<string> Parameters(Activity data)
+    static string? Origin(string url)
     {
-        var found = new List<string>();
-
-        foreach (var tag in data.TagObjects)
-        {
-            if (tag.Key.StartsWith(ParameterPrefix, StringComparison.Ordinal))
-            {
-                found.Add(tag.Key);
-            }
-        }
-
-        return found;
-    }
-
-    static string? Trim(string url)
-    {
-        var mark = url.IndexOf('?', StringComparison.Ordinal);
-
-        return mark < 0 ? null : url[..mark];
+        return Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.GetLeftPart(UriPartial.Authority) : null;
     }
 }

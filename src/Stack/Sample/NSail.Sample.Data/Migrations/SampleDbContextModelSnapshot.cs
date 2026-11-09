@@ -230,7 +230,8 @@ namespace NSail.Sample.Migrations
                 {
                     b.HasOne("NSail.Sample.Entities.Contact", "Contact")
                         .WithMany("Addresses")
-                        .HasForeignKey("ContactId")
+                        .HasForeignKey("TenantId", "ContactId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

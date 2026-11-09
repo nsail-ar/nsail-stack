@@ -6,7 +6,7 @@ namespace NSail.Components.Tests.Fixtures;
 /// <summary>Stands in for the real IHttpClientFactory NsRemoteImage asks the service provider
 /// for, so a test can hand back a canned response (or throw) without a live server on the
 /// other end of the URL. One delegate per instance rather than a full HttpMessageHandler
-/// subclass -- every test needs exactly one response, never a sequence.</summary>
+/// subclass; the delegate decides whether every call answers the same or each call differs.</summary>
 public sealed class FixedHttpClientFactory(Func<HttpResponseMessage> respond) : IHttpClientFactory
 {
     sealed class FixedHandler(Func<HttpResponseMessage> respond) : HttpMessageHandler

@@ -42,6 +42,23 @@ Stack sets and no product writes:
   This is why a product's context calls `configurationBuilder.ApplyTenancy()` in
   `ConfigureConventions`: it removes EF's `ForeignKeyIndexConvention`, which would otherwise put
   its single-column index back beside each tenant-leading one.
+- **Keys carry the tenant too.** A foreign key between two tenant-scoped entities is the
+  composite `(TenantId, Fk)` onto `(TenantId, Key)`, and the principal gains the unique
+  `(TenantId, Key)` it names. Referential checks bypass the row policy, so a plain `Fk` would
+  accept any Guid that exists: the database itself refuses a row naming another tenant's. An
+  alternate key and a unique index are unique **per tenant** — two tenants hold the same value,
+  and a unique violation never reveals that another tenant holds one. Nothing here is written by
+  a product: the pass derives it from the model, so the migration of every product's foreign
+  keys is the one `dotnet ef migrations add` scaffolds. An optional foreign key with a null `Fk` is
+  not checked (Postgres's default match), so it names nothing; `DeleteBehavior.SetNull` becomes
+  `ClientSetNull`: EF Core's DDL for `ON DELETE SET NULL` on a composite key nulls the tenant
+  column too, so the database no longer clears it. EF clears the key of every dependent it has
+  **loaded** when the principal is deleted; one it has not loaded makes the `DELETE` fail with
+  23503, so a handler that deletes a principal loads its optional dependents first. A derived type's
+  indexes and foreign keys follow its root; an **owned** type cannot name its owner's column in a
+  key or index of its own, so what it declares stays plain — give such a reference an entity of
+  its own. **Install-scoped entities keep their plain keys**, and a foreign key from a tenant row onto one stays plain: it is the same
+  row for every tenant.
 
 **The primary key does not move.** It stays `Id` alone in every mode; the tenant is a column
 BESIDE it. A row is globally unique by its id and the wall is the filter, not the key — two
@@ -356,8 +373,9 @@ nothing (Caddy assigns the tenant, below). Nothing else exists to do.
 
 The tree names some rows by constant — every id in `SeededRoles.All`, and the accounts and the
 currency `AccountingSettings` defaults to. Where rows belong to a tenant, those constants name
-the install's row, which the tenant cannot see: the foreign key is satisfied physically, nothing
-throws, and the join answers nothing. **`TenancyProvider.Row(wellKnown)` answers "that row, in
+the install's row, which the tenant cannot see: a read joins nothing, and a write naming it is
+refused by the tenant-carrying foreign key (23503) — the request fails where it used to save a row
+that joined nothing. **`TenancyProvider.Row(wellKnown)` answers "that row, in
 this scope"** — the identity where rows are the install's, `TenantKey.For(slug, id)` where they
 are a tenant's. It is the function the first touch derives with, so a handler resolving a frozen
 id lands on the row the tenant was born with.
