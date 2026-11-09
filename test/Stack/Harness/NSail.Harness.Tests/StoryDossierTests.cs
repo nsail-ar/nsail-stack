@@ -166,6 +166,17 @@ public class StoryDossierTests
         Assert.DoesNotContain(tail, l => l.Contains("2026-11-08T") || l.Contains("Post job cleanup") || l.Length > 310);
     }
 
+    [Fact]
+    public void TheTailIsTheFailedStepsNotALaterStepThatAlsoErrs()
+    {
+        var log = Log().Replace("Post job cleanup.", "##[group]Run actions/upload-artifact\r\n2026-11-08T07:04:04.0000000Z ##[error]No files were found with the provided path.");
+
+        var tail = CiFailure.Of([("build", "Test", log)]).Tail.Split('\n');
+
+        Assert.Equal("##[error]Process completed with exit code 1.", tail[^1]);
+        Assert.DoesNotContain(tail, l => l.Contains("upload-artifact") || l.Contains("No files were found"));
+    }
+
     sealed class RedCi(string remote, bool conflicting) : DevJobRunTests.FileRepository(remote)
     {
         public override Task<PullRequest> Pr(int number, CancellationToken ct = default)
