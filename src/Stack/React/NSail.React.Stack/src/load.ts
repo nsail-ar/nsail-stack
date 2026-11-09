@@ -37,7 +37,11 @@ export function useLoad<TRequest, TResult>(message: MessageType<TRequest, TResul
 
     mediator
       .send(message, latest.current, { signal: abort.signal })
-      .then((data) => setLoad({ state: "loaded", data, problem: null }))
+      .then((data) => {
+        if (!abort.signal.aborted) {
+          setLoad({ state: "loaded", data, problem: null });
+        }
+      })
       .catch((error: unknown) => {
         if (!abort.signal.aborted) {
           setLoad((current) => ({ state: "failed", data: current.data, problem: problemOf(error) }));

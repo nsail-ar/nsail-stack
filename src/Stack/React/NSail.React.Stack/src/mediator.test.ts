@@ -71,6 +71,22 @@ describe("Mediator.send", () => {
     expect((error as BusinessError).problem.code).toBe("RequestFailed");
     expect((error as BusinessError).problem.issues.map((i) => i.code)).toEqual(["HttpStatus", "DeserializationFailed"]);
   });
+
+  it("throws a BusinessError when a 200 carries a body that is not JSON", async () => {
+    const { mediator } = recording(200, "<html>index</html>");
+    const error = await mediator.send(ListOrders, { search: "ana" }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(BusinessError);
+    expect((error as BusinessError).problem.code).toBe("RequestFailed");
+    expect((error as BusinessError).problem.issues.map((i) => i.code)).toEqual(["HttpStatus", "DeserializationFailed"]);
+  });
+
+  it("throws a BusinessError when the body cannot be read", async () => {
+    const fetcher = (async () => ({ ok: true, status: 200, text: () => Promise.reject(new TypeError("network error")) })) as unknown as typeof fetch;
+    const error = await new Mediator({ fetch: fetcher }).send(ListOrders, {}).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(BusinessError);
+  });
 });
 
 describe("Mediator.send route token forms", () => {
