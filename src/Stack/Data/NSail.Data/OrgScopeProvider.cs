@@ -23,6 +23,9 @@ public class OrgScopeProvider
     public static OrgScopeProvider Ambient { get; } = new();
 
     OrgScope? _entered;
+    readonly object _everywhere = new();
+    int _depth;
+    OrgScope? _standing;
 
     public virtual OrgScope Current
     {
@@ -52,9 +55,17 @@ public class OrgScopeProvider
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var standing = Current;
+        // Overlapping calls share one standing: the first captures it, the last restores it, so
+        // the order they finish in cannot leave the scope at Everywhere.
+        lock (_everywhere)
+        {
+            if (_depth++ == 0)
+            {
+                _standing = Current;
+            }
 
-        Enter(OrgScope.Everywhere);
+            Enter(OrgScope.Everywhere);
+        }
 
         try
         {
@@ -62,7 +73,14 @@ public class OrgScopeProvider
         }
         finally
         {
-            Enter(standing);
+            lock (_everywhere)
+            {
+                if (--_depth == 0)
+                {
+                    Enter(_standing!);
+                    _standing = null;
+                }
+            }
         }
     }
 }

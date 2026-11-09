@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace NSail.Text;
@@ -44,14 +43,10 @@ public static partial class NamedTokens
             return text;
         }
 
-        var result = new StringBuilder(text);
-
-        foreach (var value in values)
+        return Token().Replace(text, match =>
         {
-            result.Replace($"{{{value.Key}}}", value.Value);
-        }
-
-        return result.ToString();
+            return values.TryGetValue(match.Groups[1].Value, out var value) ? value : match.Value;
+        });
     }
 
     [GeneratedRegex(@"\{([A-Za-z][A-Za-z0-9_]*)\}")]

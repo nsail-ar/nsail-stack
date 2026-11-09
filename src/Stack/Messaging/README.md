@@ -117,6 +117,11 @@ of `SearchTermAttribute.MaximumLength`), and `[Validated]` to walk into a nested
 element of a collection. An attribute implementing `ICodedValidation` names its own problem code
 and the catalog sentence that goes with it.
 
+An enum member (or each element of an enum collection) holding a number no member defines is
+refused as `OutOfRange` on the field (`Kinds[1]`), a `[Flags]` one by its mask; no attribute is
+needed. A non-nullable enum with no zero member that a message leaves unchosen is refused too:
+declare the zero member or make the field nullable.
+
 ### Headers, unit of work, events
 
 - Headers are an argument, `Send(message, headers, token)` / `Publish(message, headers, token)`,
@@ -150,11 +155,11 @@ throws `ClientNotConfigured` naming the client and the message.
 | Key | Default | Meaning |
 |---|---|---|
 | `Transport` | empty | Empty or `InProcess`: the durable row is the queue, drained by a background job of this process. `Postgres`, `RabbitMq`, `AmazonSqs`, `AzureServiceBus` are refused at startup |
-| `MaxAttempts` | `5` | Failed deliveries before the row is dead-lettered; a row of a type this process has no consumer for waits a long backoff, spends no attempt and is not dead-lettered; it is delivered once a process registers the name stored on the row, and a message renamed or moved leaves rows nothing reaches, so drain a `[Queue]` message's pending rows before renaming it |
+| `MaxAttempts` | `5` | Failed deliveries (at least 1) before the row is dead-lettered; a row of a type this process has no consumer for waits a long backoff, spends no attempt and is not dead-lettered; it is delivered once a process registers the name stored on the row, and a message renamed or moved leaves rows nothing reaches, so drain a `[Queue]` message's pending rows before renaming it |
 | `Backoff` | `00:00:30` | Wait before the first retry; doubles per attempt |
-| `Interval` | `00:00:10` | How often the drain looks for due rows, per tenant |
+| `Interval` | `00:00:10` | How often the drain looks for due rows, per tenant; 1 ms to 1 day |
 | `Lease` | `00:05:00` | How long a drain holds a claimed row; longer than the slowest delivery |
-| `BatchSize` | `50` | Rows delivered per pass |
+| `BatchSize` | `50` | Rows delivered per pass; at least 1 |
 
 `AddQueue()` (send side) and `AddQueueDelivery()` (drain) are called by the generated
 `Queue.Producers` and `Queue.Consumers` holders, so a product without a `[Queue]` message gains no

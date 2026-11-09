@@ -42,6 +42,23 @@ Stack sets and no product writes:
   This is why a product's context calls `configurationBuilder.ApplyTenancy()` in
   `ConfigureConventions`: it removes EF's `ForeignKeyIndexConvention`, which would otherwise put
   its single-column index back beside each tenant-leading one.
+- **Keys carry the tenant too.** A foreign key between two tenant-scoped entities is the
+  composite `(TenantId, Fk)` onto `(TenantId, Key)`, and the principal gains the unique
+  `(TenantId, Key)` it names. Referential checks bypass the row policy, so a plain `Fk` would
+  accept any Guid that exists: the database itself refuses a row naming another tenant's. An
+  alternate key and a unique index are unique **per tenant** — two tenants hold the same value,
+  and a unique violation never reveals that another tenant holds one. Nothing here is written by
+  a product: the pass derives it from the model, so the migration of every product's foreign
+  keys is the one `dotnet ef migrations add` scaffolds. An optional foreign key with a null `Fk` is
+  not checked (Postgres's default match), so it names nothing; `DeleteBehavior.SetNull` becomes
+  `ClientSetNull`: EF Core's DDL for `ON DELETE SET NULL` on a composite key nulls the tenant
+  column too, so the database no longer clears it. EF clears the key of every dependent it has
+  **loaded** when the principal is deleted; one it has not loaded makes the `DELETE` fail with
+  23503, so a handler that deletes a principal loads its optional dependents first. A derived type's
+  indexes and foreign keys follow its root; an **owned** type cannot name its owner's column in a
+  key or index of its own, so what it declares stays plain — give such a reference an entity of
+  its own. **Install-scoped entities keep their plain keys**, and a foreign key from a tenant row onto one stays plain: it is the same
+  row for every tenant.
 
 **The primary key does not move.** It stays `Id` alone in every mode; the tenant is a column
 BESIDE it. A row is globally unique by its id and the wall is the filter, not the key — two
@@ -317,7 +334,8 @@ schema that is already there and rows that are nobody's. `TenantBootstrap` — t
 the app says a tenant is born with (`ITenantSeed`, registered with `AddTenantSeed`), once per
 slug. So **provisioning a tenant is writing the Caddy block and, on a cell that declares a
 roster, filing the slug on it first** — off the roster the first visit is a 404 and plants
-nothing (Caddy assigns the tenant, below). Nothing else exists to do.
+nothing (Caddy assigns the tenant, below). Nothing else exists to do; the proxy secret is the
+installation's, set once.
 
 - **The seed is a chain, and the tenant has a history of it.** `ITenantSeed` is an ordered list
   of named `TenantSeedStep`s and each touch runs the ones this tenant has not, so a step added
@@ -359,8 +377,9 @@ nothing (Caddy assigns the tenant, below). Nothing else exists to do.
 
 The tree names some rows by constant — every id in `SeededRoles.All`, and the accounts and the
 currency `AccountingSettings` defaults to. Where rows belong to a tenant, those constants name
-the install's row, which the tenant cannot see: the foreign key is satisfied physically, nothing
-throws, and the join answers nothing. **`TenancyProvider.Row(wellKnown)` answers "that row, in
+the install's row, which the tenant cannot see: a read joins nothing, and a write naming it is
+refused by the tenant-carrying foreign key (23503) — the request fails where it used to save a row
+that joined nothing. **`TenancyProvider.Row(wellKnown)` answers "that row, in
 this scope"** — the identity where rows are the install's, `TenantKey.For(slug, id)` where they
 are a tenant's. It is the function the first touch derives with, so a handler resolving a frozen
 id lands on the row the tenant was born with.
@@ -413,14 +432,21 @@ a third runtime dependency buys nothing Caddy and Postgres are not already telli
   incoming copy of `X-NSail-Tenant` and writes its own (`header_up`). The wildcard demo route
   takes its slug from the host's label (`{labels.N}`), a custom domain from its own block: same
   header, two sources, and **the app never parses the Host**, so it cannot tell them apart.
-  `TenancyMiddleware` (`NSail.BaseServices.WebApi`) reads that header and nothing else; the
+  `TenancyMiddleware` (`NSail.BaseServices.WebApi`) reads that header; the
   header arriving twice is not a slug and is refused like any malformed one.
+- **The installation's proxy secret.** The proxy also writes `X-Proxy-Secret`
+  (`Tenancy:ProxySecret`), one value for the whole installation, not per block: when configured, a
+  request without it is **403** before any tenant is resolved or created; unconfigured outside
+  Development, startup warns that the listener must be bound to the proxy only.
 - **Postgres is the registry — under `MultiDb`.** `TenantDatabases` derives the name as
   `{product}_{cell}_{tenant}` — `Tenancy:Product` and `Tenancy:Cell` from the cell's own
   configuration, the tenant from the header — and the row in `pg_database` **is** the truth that
   the tenant exists. Unknown slug → no database → **404, answered before authentication** and
   creating nothing. Only the database moves per tenant; server, user and password stay the
-  install's.
+  install's. The lookup is memoised per name — longer for a hit, shorter for a miss
+  (`Tenancy:DatabaseHitSeconds`, `DatabaseMissSeconds`) — so a flood of one unknown slug is one
+  round trip, and a tenant Ops provisions is served within the miss window, and one Ops drops or moves still
+  resolves until the hit window lapses, failing on connect rather than 404.
 
 Under `SingleDb` there is no registry and no database name, so the install's **declared roster**
 (`TenantRoster`, below) is the truth that a tenant exists: a cell that declares one — a
@@ -612,12 +638,17 @@ operator the keys *its own* build knows, which is a different list the moment a 
 | `Enabled` | `boolean`, not null | What a flag answers where a tenant's bag is silent |
 | `Limit` | `numeric`, null | What a ceiling answers there, or null for no ceiling at all |
 
-- **Rewritten whole at startup, which is the only moment it can change.** The catalog is gathered
+- **Rewritten whole at startup, which is the only moment it can change — and advisory.** The catalog is gathered
   from the modules composed into the process, so what a build declares is a compile-time fact and
   a deploy is the one event that moves it (`FeaturePublisher`, `NSail.BaseServices.WebApi` — the
   one composition that reaches both the catalog and the context, since `NSail.Data` references no
   `NSail.Security`). The table then says what THIS build declares: a key that left the build
-  leaves the table with it, and the same build twice says the same thing.
+  leaves the table with it, and the same build twice says the same thing. Publishing is advisory
+  and never stops the host: two processes starting together race on a key, so the loser reads
+  again and amends what the winner wrote, and a store that keeps refusing (three attempts, spaced)
+  is logged at warning and the host comes up. **The table can then still say what the previous
+  build declared** until the next start publishes — a reader treats it as what the install last
+  managed to report, not as a guarantee about the running build.
 - **Amended, never emptied and refilled.** A program outside this process reads it, and a
   delete-then-insert would show it empty to whoever read between the two.
 - **An empty table is an honest answer and the reader owes it no entry.** A build that composes no
@@ -731,6 +762,21 @@ reads nothing and cannot write at all.
   circuit and a held push feed have no request either, and are asked on the send and on the
   feed (A suspended tenant's requests, above). It is not a failed pass and not a pass: a
   failure is the job's problem, a suspension is the install's answer about the customer.
+- **A pass holds a lock, so two replicas never run one together.** The runner takes a Postgres
+  advisory lock per job and tenant (`AdvisoryLock`, the one `FirstTouch` uses) on a connection of
+  its own, inside the pass's budget and held until the pass ends — an abandoned pass keeps its
+  scope **and** its lock until it does. The key names the job by its full type name: a lock key
+  identifies its resource, and two kits' `CleanupJob`s are two resources; `JobTimeouts`, the log
+  lines and the metrics keep the simple name. A runner that cannot take it yields the pass:
+  counted `skipped`, neither ok nor failed, and the job reads as completed for the overdue clock,
+  because a sibling is running it. It fences **overlap**, not repetition: replicas tick on their
+  own clocks, so a job whose passes do not overlap still runs once per replica per interval — a
+  job that must run once per interval across replicas needs a lease, not this. A store that is
+  not Postgres takes no lock. Install-wide work under a per-tenant connection has no install
+  database, so it locks on the cluster's maintenance database, the one the roster is read from,
+  under a key of the cell's `{product}_{cell}_` prefix and the job's full name: a neighbouring
+  cell or product on the server is not a sibling. The durable queue's drain is a job like any
+  other: a tenant's drain runs on one replica at a time.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as
   `UseRequestLanguage` does on a request; `LanguageProvider` then seeds itself with "es" instead
@@ -774,7 +820,7 @@ reads nothing and cannot write at all.
   Three instruments, one per way a job goes quiet, each tagged `nsail.job` (the type's name —
   not `job`, which the Prometheus side of an OTLP gateway spends on the service):
   - `nsail.background.job.passes`, a counter also tagged `nsail.outcome` (`ok`/`failed`, the
-    Mediator span's vocabulary) — **it fails**;
+    Mediator span's vocabulary, and `skipped` for a pass a sibling replica held) — **it fails**;
   - `nsail.background.job.roster`, the passes the last tick swept: the tenants ENTERED for a
     per-tenant job (the roster less whoever is suspended), **one** for install-wide work and for
     an install that resolves no tenant, **zero** for the job that runs for nobody — so the two

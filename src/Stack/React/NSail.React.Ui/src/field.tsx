@@ -40,6 +40,10 @@ export function NsField<T>({ name, multiline = false, autoFocus, label }: NsFiel
   function number(event: ChangeEvent<HTMLInputElement>) {
     const raw = event.target.value;
 
+    if (raw !== "" && field.kind === "integer" && !Number.isInteger(Number(raw))) {
+      return;
+    }
+
     set(raw === "" ? (field.nullable ? null : undefined) : Number(raw));
   }
 

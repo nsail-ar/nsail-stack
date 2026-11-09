@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Services.Models;
 
-public class InjectableModel
+public record InjectableModel
 {
     public TypeModel? ServiceType { get; set; }
 

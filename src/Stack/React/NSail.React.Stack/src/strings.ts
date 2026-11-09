@@ -12,7 +12,7 @@ import mudEs from "../../../Components/NSail.Components.Mud/strings.es.json";
 const stackCatalogs: Record<string, Record<string, string>> = { en: mudBase, es: { ...mudBase, ...mudEs } };
 
 export function stackStrings(language: string): Record<string, string> {
-  return stackCatalogs[language] ?? stackCatalogs.en;
+  return stackCatalogs[language] ?? stackCatalogs[language.split("-")[0].toLowerCase()] ?? stackCatalogs.en;
 }
 
 const token = /{([A-Za-z0-9_]+)}/g;
@@ -62,7 +62,8 @@ export class Strings {
   }
 
   /** "Problems.{Code}.{Source}", then "Problems.{Code}", then the message the sender wrote; the
-   * entity argument is a key and resolves to its label first. */
+   * entity argument is a key and resolves to its label first, the at argument
+   * (ISO 8601 UTC) to the reader's own date and time. */
   issue(issue: Issue): string {
     const scoped = issue.source ? this.#entries[`Problems.${issue.code}.${issue.source}`] : undefined;
     const text = scoped ?? this.#entries[`Problems.${issue.code}`] ?? issue.message;
@@ -70,6 +71,10 @@ export class Strings {
 
     if (args?.entity) {
       args.entity = this.translate(args.entity, args.entity.slice(args.entity.lastIndexOf(".") + 1));
+    }
+
+    if (args?.at && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(args.at)) {
+      args.at = new Date(args.at).toLocaleString(this.language, { dateStyle: "short", timeStyle: "short" });
     }
 
     return fill(text, args);

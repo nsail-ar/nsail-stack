@@ -12,5 +12,8 @@ public interface IStringSource
     /// appears later cannot become supported.</summary>
     IReadOnlyCollection<string> Languages { get; }
 
+    /// <summary>A source feeding the render path (StringManager, which reads synchronously) must
+    /// return a task already completed; one that awaits I/O is served only through
+    /// StringCatalog.GetAsync, which the caller awaits before the render reads.</summary>
     Task<IReadOnlyDictionary<string, string>> GetStrings(string language);
 }

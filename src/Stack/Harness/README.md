@@ -108,7 +108,13 @@ the files it leaves.
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for
-    it names all three. A story whose body or refinery comment names a blocker
+    it names all three. A job that ends on the provider's limit (a `ProviderException` with its
+    `RetryAfter`) or on a 5xx is not a break: nothing is said on its story and nothing counts toward
+    `stalled`; its lock label and lock come off and a Dev with no PR goes back to Ready, as a break's do.
+    A limit holds the item and every pass for the wait it asked, at least `MinLimitBackoff` and up to `MaxLimitBackoff`; a 5xx backs the
+    item off as a break. Its run's result is `provider` (`/jobs`, the pill, `harness.jobs{outcome=provider}`),
+    its outcome `rate limited — <call>, retry in <wait>` or `provider failed — <status> <call>`. A bare 403
+    or a 404 is an answer, and breaks. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
     its analysis and before its first voyage (`Board/WrittenBlockers.cs`); a `Waits` line that answers
     `nothing`, `none`, `nada`, `ninguna` or `ninguno` names no blocker, whatever else it mentions. A
@@ -143,6 +149,10 @@ the files it leaves.
   story. A gate or review marker on a PR counts only as a whole HTML comment on its own line, written
   by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
+  The dossier a seat reads lays a comment or PR note by any other login fenced and labelled untrusted; the
+  logins whose words reach it as the crew's are the harness's own, `Harness:MarkerAuthors` and `Harness:TrustedAuthors`
+  (the owners and the crew, empty by default). A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
+  watch files it in Analyze, never Ready.
   Every harness on the board reads the same: main's `harness/gate` mark written `pending` holds that head from
   a second gate on any harness for twice the longest `Minutes` among that harness's own Main
   workers plus an hour (a fleet whose harnesses set different `Minutes` holds as long as the
@@ -162,8 +172,8 @@ the files it leaves.
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its
   role's tally in its hour (kept two days) and its day (ninety, on the machine's clock), its time and
   its wait in a histogram, so the status page and `GET /api/harness/stats?range=24h|7d|30d` read
-  small sums and never walk the jobs. A job that found nothing to do or met the quota wall is not
-  counted; a PR the reviewer lands closes its story's lead time (first job to merged).
+  small sums and never walk the jobs. A job that found nothing to do, met the quota wall or ended on the
+  provider (its limit or a 5xx) is not counted; a PR the reviewer lands closes its story's lead time (first job to merged).
 - **Locks** are the board's labels plus a story lock (a git ref per story on GitHub), created
   atomically, so any number of harnesses can share one board.
 - **A job's processes die with the harness** (`Lanes/ProcessGroup.cs`): a restart never leaves a

@@ -24,11 +24,12 @@ public sealed class CsvExportWriter : IExportWriter
 
     public string ContentType => "text/csv";
 
-    public async Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, CancellationToken cancellationToken)
+    public async Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, TimeZoneInfo zone, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(book);
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentNullException.ThrowIfNull(culture);
+        ArgumentNullException.ThrowIfNull(zone);
 
         var separator = SeparatorFor(culture);
 
@@ -63,7 +64,7 @@ public sealed class CsvExportWriter : IExportWriter
                     var cells = table.Columns.Select((column, index) =>
                     {
                         var value = index < row.Values.Count ? row.Values[index] : null;
-                        var cell = ExportText.Of(value, column.Format, culture);
+                        var cell = ExportText.Of(value, column.Format, culture, zone);
 
                         return Field(ExportText.IsFigure(value, column.Format) ? cell : ExportText.Defused(cell), separator);
                     });

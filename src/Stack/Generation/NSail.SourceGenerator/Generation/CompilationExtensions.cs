@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -12,7 +12,9 @@ public static class CompilationExtensions
     const string AssemblyParameterName = "Assembly";
     const string PatternParameterName = "Pattern";
 
-    public static IEnumerable<INamedTypeSymbol> FindTypesInScope(this Compilation compilation, ISymbol generatedSymbol)
+    /// <summary>The types a holder generates for. A <c>[Source]</c> that names no referenced
+    /// assembly is reported into <paramref name="diagnostics"/> and contributes nothing.</summary>
+    public static IEnumerable<INamedTypeSymbol> FindTypesInScope(this Compilation compilation, ISymbol generatedSymbol, List<DiagnosticInfo> diagnostics)
     {
         if (compilation is null)
             throw new ArgumentNullException(nameof(compilation));
@@ -20,7 +22,9 @@ public static class CompilationExtensions
         if (generatedSymbol is null)
             throw new ArgumentNullException(nameof(generatedSymbol));
 
-        var sources = generatedSymbol.GetAttributes(SourceAttributeName).ToArray();
+        var sources = generatedSymbol.GetAttributes(SourceAttributeName)
+            .Select(a => new SourceScope(a.GetNamedArgument<string>(AssemblyParameterName), a.GetNamedArgument<string>(PatternParameterName)))
+            .ToArray();
 
         if (sources.Length == 0)
         {
@@ -30,10 +34,27 @@ public static class CompilationExtensions
             yield break;
         }
 
+        var unknown = new List<SourceScope>();
+
+        foreach (var type in FindTypesInSources(compilation, sources, unknown))
+            yield return type;
+
+        foreach (var source in unknown)
+            diagnostics.Add(DiagnosticInfo.Create(GeneratorDiagnostics.UnknownSourceAssembly, generatedSymbol, generatedSymbol.Name, source.Assembly ?? string.Empty));
+    }
+
+    public static IEnumerable<INamedTypeSymbol> FindTypesInSources(Compilation compilation, IEnumerable<SourceScope> sources, List<SourceScope> unknown)
+    {
         var seen = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
         foreach (var source in sources)
         {
+            if (compilation.GetReferencedAssemblySymbol(source.Assembly) is null)
+            {
+                unknown.Add(source);
+                continue;
+            }
+
             foreach (var type in FindSourceScope(compilation, source))
             {
                 if (seen.Add(type))
@@ -42,25 +63,28 @@ public static class CompilationExtensions
         }
     }
 
+    /// <summary>The types a holder without <c>[Source]</c> reads: the classes of the assembly
+    /// being compiled that are not abstract.</summary>
+    public static bool IsInDefaultScope(INamedTypeSymbol type)
+    {
+        return type.TypeKind is TypeKind.Class
+            && !type.IsAbstract;
+    }
+
     static IEnumerable<INamedTypeSymbol> FindDefaultScope(Compilation compilation)
     {
         var assembly = compilation.Assembly;
 
         foreach (var type in assembly.GlobalNamespace.GetAllTypes())
         {
-            if (type.TypeKind is not TypeKind.Class || type.IsAbstract)
-                continue;
-
-            yield return type;
+            if (IsInDefaultScope(type))
+                yield return type;
         }
     }
 
-    static IEnumerable<INamedTypeSymbol> FindSourceScope(Compilation compilation, AttributeData sourceAttribute)
+    static IEnumerable<INamedTypeSymbol> FindSourceScope(Compilation compilation, SourceScope source)
     {
-        var assemblyName = sourceAttribute.GetNamedArgument<string>(AssemblyParameterName);
-        var pattern = sourceAttribute.GetNamedArgument<string>(PatternParameterName);
-
-        var assembly = compilation.GetReferencedAssemblySymbol(assemblyName);
+        var assembly = compilation.GetReferencedAssemblySymbol(source.Assembly);
         if (assembly is null)
             yield break;
 
@@ -69,10 +93,10 @@ public static class CompilationExtensions
             if (type.TypeKind is not TypeKind.Class || type.IsAbstract)
                 continue;
 
-            if (pattern is not null)
+            if (source.Pattern is not null)
             {
                 var fullName = type.GetFullMetadataName();
-                if (!PatternMatching.Matches(fullName, pattern))
+                if (!PatternMatching.Matches(fullName, source.Pattern))
                     continue;
             }
 

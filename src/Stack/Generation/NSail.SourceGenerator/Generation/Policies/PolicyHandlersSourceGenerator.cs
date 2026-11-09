@@ -11,15 +11,11 @@ public class PolicyHandlersSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var generatedMethods = context.FindGeneratedSymbols(outputType: TargetIds.Policies_Handlers);
+        var targets = context.FindGeneratedTargets(outputType: TargetIds.Policies_Handlers);
 
-        var models = generatedMethods
-            .Combine(context.CompilationProvider)
-            .Select(static (parameters, _) =>
-            {
-                var (methodSymbol, compilation) = parameters;
-                return PolicyHandlersModelFactory.Create(methodSymbol, compilation);
-            });
+        var models = context.GatherInScope(targets, static type => PolicyHandlersModelFactory.Inspect(type))
+            .Select(static (found, _) => PolicyHandlersModelFactory.Create(found))
+            .WithTrackingName("Model");
 
         context.RegisterSourceOutput(models, PolicyHandlersModelRenderer.Render);
     }

@@ -3,6 +3,7 @@
 
 using System.Collections.Concurrent;
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,10 +18,9 @@ namespace NSail.Background;
 // One independent loop per registered job, so a slow or failing job delays only its own
 // cadence and never another's.
 //
-// Single instance is an assumption, not a property. deploy/tenant-template/compose.yml runs
-// one container per tenant, so nothing runs twice today — a second replica would silently
-// double every job, with no error anywhere to say so. A Postgres advisory lock taken around
-// the tick is the cheap fix the day that topology changes.
+// A pass takes a Postgres advisory lock per job and tenant (JobLock), so a second replica over
+// the same database skips a pass that overlaps its sibling's. Replicas tick on their own clocks,
+// so the lock fences overlap and does not make a job run once per interval across replicas.
 sealed class BackgroundJobRunner : BackgroundService
 {
     readonly ConcurrentDictionary<Type, byte> _emptyRosterSaid = new();
@@ -233,6 +233,7 @@ sealed class BackgroundJobRunner : BackgroundService
         }
 
         AsyncServiceScope? scope = null;
+        IAsyncDisposable? held = null;
         var timeout = _options.TimeoutOf(jobType.Name);
 
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
@@ -263,7 +264,49 @@ sealed class BackgroundJobRunner : BackgroundService
                 }
             }
 
+            // The budget covers the lock too: a sick database must not stretch the pass.
             budget.CancelAfter(timeout);
+
+            // Install-wide work under a mode that connects per tenant has no install database:
+            // resolving the DbContext there is what throws, so it is not asked for, and the
+            // lock sits on the maintenance database the roster is read from.
+            var lockable = tenant is not null
+                || scope.Value.ServiceProvider.GetService<TenancyOptions>() is not { Connection: TenancyScope.Tenant };
+
+            held = lockable
+                ? await JobLock.TryTake(
+                        scope.Value.ServiceProvider.GetService<DbContext>(),
+                        jobType,
+                        tenant?.Slug ?? string.Empty,
+                        budget.Token)
+                    .ConfigureAwait(false)
+                : await JobLock.TryTakeOnCluster(
+                        scope.Value.ServiceProvider.GetService<TenantDatabases>(),
+                        jobType,
+                        budget.Token)
+                    .ConfigureAwait(false);
+
+            if (held is null)
+            {
+                // A sibling is doing this pass: the job is not overdue and not failing, and the
+                // outcome is its own so an alert can tell a replica that yields from one that
+                // does nothing.
+                _meter.Skipped(jobType.Name);
+
+                if (tenant is null)
+                {
+                    _logger.LogDebug("Background job {Job} skipped a pass: another runner holds its lock.", jobType.Name);
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        "Background job {Job} skipped tenant {Tenant}: another runner holds its lock.",
+                        jobType.Name,
+                        tenant.Slug);
+                }
+
+                return true;
+            }
 
             // The token asks first; WaitAsync is what stops the sweep waiting for a job that
             // ignores it (a dead socket, a lock), which no token can interrupt.
@@ -335,7 +378,7 @@ sealed class BackgroundJobRunner : BackgroundService
         }
         finally
         {
-            await Abandonment.Release(scope, abandoned).ConfigureAwait(false);
+            await Abandonment.Release(scope, abandoned, held).ConfigureAwait(false);
         }
     }
 

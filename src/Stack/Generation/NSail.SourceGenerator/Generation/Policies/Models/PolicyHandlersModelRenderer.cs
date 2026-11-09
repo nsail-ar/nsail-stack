@@ -10,6 +10,14 @@ public static class PolicyHandlersModelRenderer
 {
     public static void Render(SourceProductionContext spc, PolicyHandlersModel model)
     {
+        foreach (var diagnostic in model.HolderDiagnostics)
+        {
+            diagnostic.Report(spc);
+        }
+
+        if (model.Unusable)
+            return;
+
         var template = SourceTemplateRegistry.Instance.Get("PolicyHandlers");
         var sourceCode = template.Render(model);
         var hintName = $"{model.Namespace}.{model.ClassName}_{model.MethodName}.g.cs";

@@ -33,32 +33,7 @@ public sealed class ErrorMiddleware : IMiddleware
             var mapped = Map(exception, context);
             var problem = mapped ?? SystemProblem.Unhandled();
 
-            if (mapped is not null)
-            {
-                if (exception is TimeoutException)
-                {
-                    // Every other mapped type here is a user-caused outcome wearing its correct
-                    // Problem, and one line is its whole story — the uniform form below is
-                    // deliberately not used for this one. A timeout is system distress wearing a
-                    // polite Problem, and the trace is what names where it hung.
-                    _logger.LogWarning(
-                        exception,
-                        "Exception mapped to problem {Code}: {Message}",
-                        problem.Code,
-                        exception.Message);
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "Exception mapped to problem {Code}: {Message}",
-                        problem.Code,
-                        exception.Message);
-                }
-            }
-            else
-            {
-                _logger.LogError(exception, "Unhandled exception mapped to problem {Code}", problem.Code);
-            }
+            Log(exception, mapped, problem, context);
 
             context.Response.Clear();
             context.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
@@ -73,6 +48,59 @@ public sealed class ErrorMiddleware : IMiddleware
             }
 
             await context.Response.WriteAsJsonAsync(problem, cancellationToken: context.RequestAborted);
+        }
+    }
+
+    // Mapping keeps the response a client sees; the level is read off what the exception is. A
+    // user-caused outcome is one Warning line. A bug-class exception wearing a 404 or 403 and a
+    // BusinessException answering 5xx are system distress: the exception with its stack goes to
+    // Error. A timeout stays Warning. A cancellation from the request's own token is the caller leaving
+    // and stays quiet; any other is a vendor timeout and is logged.
+    void Log(Exception exception, Problem? mapped, Problem problem, HttpContext context)
+    {
+        if (mapped is null)
+        {
+            _logger.LogError(exception, "Unhandled exception mapped to problem {Code}", problem.Code);
+
+            return;
+        }
+
+        if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (exception is BusinessException && (problem.Status ?? StatusCodes.Status500InternalServerError) >= StatusCodes.Status500InternalServerError)
+        {
+            _logger.LogError(
+                exception,
+                "Exception mapped to problem {Code}: {Message}. Issues: {Issues}",
+                problem.Code,
+                exception.Message,
+                string.Join("; ", problem.Issues.Select(issue => $"{issue.Code}: {issue.Message}")));
+        }
+        else if (exception is KeyNotFoundException or UnauthorizedAccessException)
+        {
+            _logger.LogError(
+                exception,
+                "Exception mapped to problem {Code}: {Message}",
+                problem.Code,
+                exception.Message);
+        }
+        else if (exception is TimeoutException or OperationCanceledException)
+        {
+            _logger.LogWarning(
+                exception,
+                "Exception mapped to problem {Code}: {Message}",
+                problem.Code,
+                exception.Message);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Exception mapped to problem {Code}: {Message}",
+                problem.Code,
+                exception.Message);
         }
     }
 

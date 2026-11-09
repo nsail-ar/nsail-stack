@@ -82,6 +82,8 @@
             return;
         }
 
+        ClearRefusals();
+
         if (await Upload(file) is { } id)
         {
             await SetValue(id);

@@ -39,6 +39,14 @@ public class TypeScriptWriterTests
     }
 
     [Fact]
+    public void A_nested_message_resolves_by_its_metadata_name()
+    {
+        var text = Generate("Nested.cs", "OrdersClients.cs");
+
+        Assert.Contains("api/shop/nested", text);
+    }
+
+    [Fact]
     public void A_route_token_binds_its_member_and_the_rest_follow_the_verb()
     {
         var text = Orders();
@@ -118,6 +126,48 @@ public class TypeScriptWriterTests
         Assert.Contains("export type OrderStatus = \"Open\" | \"Shipped\";", text);
         Assert.Contains("export const OrderStatus = defineEnum<OrderStatus>(\"Shop.OrderStatus\", [\"Open\", \"Shipped\"]);", text);
         Assert.Contains("status: { kind: \"enum\", key: \"Shop.ListOrders.Status\", nullable: true, enum: OrderStatus, binding: \"query\" }", text);
+    }
+
+    [Fact]
+    public void A_wire_name_that_is_not_an_identifier_is_quoted()
+    {
+        var text = Orders();
+
+        Assert.Contains("  \"first-name\": string;", text);
+        Assert.Contains("  \"first-name\": { kind: \"string\"", text);
+    }
+
+    [Fact]
+    public void A_renamed_query_member_keeps_the_name_the_endpoint_reads()
+    {
+        var text = Orders();
+
+        Assert.Contains("pagesize: { kind: \"integer\"", text);
+        Assert.DoesNotContain("page-size", text.Replace("  \"page-size", ""));
+    }
+
+    [Fact]
+    public void BCL_scalars_are_the_strings_or_free_JSON_the_wire_writes()
+    {
+        var text = Orders();
+
+        Assert.Contains("  link: string | null;", text);
+        Assert.Contains("  build: string;", text);
+        Assert.Contains("  raw: unknown;", text);
+        Assert.Contains("  node: unknown | null;", text);
+        Assert.Contains("  big: unknown;", text);
+        Assert.Contains("  wide: unknown;", text);
+    }
+
+    [Fact]
+    public void An_empty_enum_is_never_and_a_flags_enum_is_a_string()
+    {
+        var text = Orders();
+
+        Assert.Contains("export type NoStatus = never;", text);
+        Assert.Contains("export type Perks = string;", text);
+        Assert.Contains("  perks: Perks;", text);
+        Assert.Contains("  empty: NoStatus;", text);
     }
 
     [Fact]

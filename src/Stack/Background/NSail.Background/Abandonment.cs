@@ -8,17 +8,28 @@ namespace NSail.Background;
 static class Abandonment
 {
     // The scope is what the abandoned work still resolves from and holds a DbContext of, so it
-    // is disposed when that work ends, not under it; the work's fault is observed there too.
-    internal static async ValueTask Release(AsyncServiceScope? scope, Task? abandoned)
+    // is disposed when that work ends, not under it, and so is the lock that fences the pass; the
+    // work's fault is observed there too.
+    internal static async ValueTask Release(AsyncServiceScope? scope, Task? abandoned, IAsyncDisposable? held = null)
     {
-        if (scope is not { } held)
+        if (scope is not { } owned)
         {
+            if (held is not null)
+            {
+                await held.DisposeAsync().ConfigureAwait(false);
+            }
+
             return;
         }
 
         if (abandoned is null)
         {
-            await held.DisposeAsync().ConfigureAwait(false);
+            await owned.DisposeAsync().ConfigureAwait(false);
+
+            if (held is not null)
+            {
+                await held.DisposeAsync().ConfigureAwait(false);
+            }
 
             return;
         }
@@ -28,9 +39,16 @@ static class Abandonment
                 {
                     _ = task.Exception;
 
-                    await ((AsyncServiceScope)state!).DisposeAsync().ConfigureAwait(false);
+                    var (scoped, lease) = ((AsyncServiceScope, IAsyncDisposable?))state!;
+
+                    await scoped.DisposeAsync().ConfigureAwait(false);
+
+                    if (lease is not null)
+                    {
+                        await lease.DisposeAsync().ConfigureAwait(false);
+                    }
                 },
-                held,
+                (owned, held),
                 TaskScheduler.Default)
             .Unwrap()
             .ContinueWith(static task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);

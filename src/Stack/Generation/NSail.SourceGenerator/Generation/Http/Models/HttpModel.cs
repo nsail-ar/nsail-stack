@@ -3,6 +3,6 @@
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
 
-public class HttpModel : TransportModel
+public record HttpModel : TransportModel
 {
 }

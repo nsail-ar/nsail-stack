@@ -301,10 +301,12 @@ process over that database delivers it.
   handler where the reader can see it.
 - **A row is claimed before it is delivered.** One conditional update moves its
   `NextAttemptAt` out by `Queue:Lease`, and only the drain whose update changed the row delivers
-  it, so drains over one database (a rolling deploy, a second replica) split the rows and a drain
-  that loses one moves on to the next. A drain that dies mid-delivery leaves a row due again when
-  the lease ends; a delivery slower than the lease can run twice, so the lease outlasts the
-  slowest handler.
+  it, so drains over one database (a rolling deploy, a second replica) never deliver a row twice
+  and a drain that loses one moves on to the next. The drain is a background job whose pass holds
+  an advisory lock per tenant, so a sibling replica yields the pass instead of splitting its rows:
+  a tenant's drain throughput is one replica's. A drain that dies mid-delivery leaves a row due
+  again when the lease ends; a delivery slower than the lease can run twice, so the lease outlasts
+  the slowest handler.
 - **Delivery is at least once.** A process that dies between a handler's commit and the pass
   that deletes its row delivers that row again. The alternative — delete first — loses the
   work, which is the one thing a durable queue may not do.
@@ -329,7 +331,12 @@ Something happened and others react: `Mediator.Publish`. The past participle nam
   the **Sdk** — it crosses module boundaries inside the host, not the wire, so another kit or
   the app handles it referencing only the contract. Consumers declare an ordinary
   `[Injectable]` `IHandler<TEvent>`; `InProcessPublisher` invokes every registered handler
-  plus every subscription. Example: `AppointmentCompleted` in `NSail.Scheduling.Sdk`.
+  plus every subscription, one after another on the publisher's scope (so two that send or share a
+  `DbContext` never collide). A listener that throws does not stop the rest; one failure is rethrown
+  as is, several as an `AggregateException` — except cancellations and `BusinessException`s only,
+  which end as the first of them, because the HTTP layer, the client runner and the queue classify
+  by exception type and cannot see inside an aggregate. A publish with N subscribers pays the sum
+  of their work, not the longest. Example: `AppointmentCompleted` in `NSail.Scheduling.Sdk`.
 - The producer publishes after the operation succeeds:
   `await Mediator.Publish(new PartySaved { Id = ... })`.
 - In-process publish is always available: `AddMessaging` registers `IPublisher<>` →
@@ -441,7 +448,11 @@ same tenant**, published again through the client's own Mediator. A screen hears
   connect, a drop, and a line the server closed cleanly (a deploy stopping, an aborted
   connection), which SignalR's own reconnect leaves closed (`PushTests`, the drop) — except when
   the server refuses the session (401/403: a cookie that expired, a ticket for another tenant):
-  then it stops, and the sign-in that follows reloads the app and opens a feed of its own. A
+  then it stops, and the sign-in that follows reloads the app and opens a feed of its own. The
+  ladder starts over only for a line that stayed up `PushRetry.Steady`, however it ended, on
+  either transport; one that closed sooner — a 200 and a hang-up — climbs on, so a server
+  answering and ending the body is not met with a connect and a catch-up per cycle, at the
+  price of a catch-up up to the last step late. A
   line that falls so far behind that its queue fills is dropped rather than held, for the same
   reason: the reconnect is the catch-up. A listener that throws on a pushed event or on
   `PushConnected` is logged, never swallowed.
@@ -630,6 +641,12 @@ itself) and `IValidator` (what a *module downstream* declares about the message)
 different jobs. Both run structurally after every interceptor — DataAnnotations first, then
 business rules.
 
+- **An undefined enum number is refused with no attribute.** The wire reads enum numbers, so
+  `MessageValidator` also refuses a member (or each element of a collection, `Kinds[1]`)
+  holding a number no enum member defines — `OutOfRange` on the field; a `[Flags]` enum by its
+  mask. Consequence: a non-nullable enum without a zero member that a message leaves unchosen
+  is refused — declare the zero member or make the field nullable (mapped onto a non-nullable
+  entity member, a nullable field is NSG025: see the Mapping section of [data.md](data.md)).
 - **Refusal speaks `Problem`.** The pipeline turns a returned `Problem` into the same
   `BusinessException` a handler throws; nothing new travels on the wire.
 - **Order is structural, not registration order.** `SendPipeline` runs DataAnnotations and
@@ -665,7 +682,11 @@ business rules.
     field (`[Cuit]`, Directory).
   - **The numbers its sentence names travel with it**: `Arguments` ({`from`}, {`to`}) fills
     the catalog's tokens from the same bound the attribute refuses by, so moving a bound
-    needs no second edit.
+    needs no second edit. Every problem argument is culture-neutral (invariant numbers, ISO
+    8601 dates and instants). The client localizes two by name — `entity` (a concept key) and
+    `at` (an instant, on the reader's clock in the app language's region); every other argument
+    reaches the sentence as the wire carries it, so name an instant `at` and write the catalog
+    sentence for the rest knowing the number is invariant.
   - **Every declared code has its sentence in every language**: `CodedValidationStringTests`
     (`NSail.Architecture.Tests`) sweeps the tree's declarations, not its attribute types — a
     code may be derived from the attribute's argument.

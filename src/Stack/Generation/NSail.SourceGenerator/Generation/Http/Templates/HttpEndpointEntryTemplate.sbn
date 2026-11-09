@@ -10,18 +10,24 @@ using NSail.Messaging.Runtime;
 using NSail.Messaging.Runtime.Pipelines;
 using NSail.Messaging.WebApi;
 
-namespace {{ MessageType.Namespace }};
+{{ MessageType.NamespaceLine }}
 
 [System.CodeDom.Compiler.GeneratedCode("NSail.SourceGenerator", "1.0")]
-public class {{ MessageType.ClassName }}EndpointEntry : IEndpointEntry
+public class {{ MessageType.FlatName }}EndpointEntry : IEndpointEntry
 {
     public void Configure(IEndpointRouteBuilder builder)
     {
+        {{~ if HttpMethod == "Head" || HttpMethod == "Options" ~}}
+        builder.MapMethods(
+            "{{ Path }}",
+            new[] { "{{ HttpMethod | string.upcase }}" },
+        {{~ else ~}}
         builder.Map{{ HttpMethod }}(
             "{{ Path }}",
+        {{~ end ~}}
             async (
                 {{~ for binding in Bindings ~}}
-                [From{{ binding.BindingSource }}] {{ binding.Type }} {{ binding.Name }},
+                [From{{ binding.BindingSource }}{{ binding.NameArgument }}] {{ binding.Type }} {{ binding.ParameterName }},
                 {{~ end ~}}
                 {{~ if ReturnType == "void" ~}}
                 [FromServices] InProcessSendPipeline<{{ MessageType }}> pipeline,
@@ -38,11 +44,11 @@ public class {{ MessageType.ClassName }}EndpointEntry : IEndpointEntry
                     {{~ if binding.Dto ~}}
                     {{~ for prop in binding.Dto.Properties ~}}
                     {{~ if !prop.IsOptional ~}}
-                    {{ prop.PropertyName }} = {{ binding.Name }}.{{ prop.Name }},
+                    {{ prop.PropertyName }} = {{ binding.ParameterName }}.{{ prop.Name }},
                     {{~ end ~}}
                     {{~ end ~}}
                     {{~ else if !binding.IsOptional ~}}
-                    {{ binding.PropertyName }} = {{ binding.Name }},
+                    {{ binding.PropertyName }} = {{ binding.ParameterName }},
                     {{~ end ~}}
                     {{~ end ~}}
                 };
@@ -51,15 +57,15 @@ public class {{ MessageType.ClassName }}EndpointEntry : IEndpointEntry
                 {{~ for prop in binding.Dto.Properties ~}}
                 {{~ if prop.IsOptional ~}}
 
-                if ({{ binding.Name }}.{{ prop.Name }} is not null)
+                if ({{ binding.ParameterName }}.{{ prop.Name }} is not null)
                 {
-                    message.{{ prop.PropertyName }} = {{ binding.Name }}.{{ prop.ValueAccess }};
+                    message.{{ prop.PropertyName }} = {{ binding.ParameterName }}.{{ prop.ValueAccess }};
                 }
                 {{~ end ~}}
                 {{~ end ~}}
                 {{~ else if binding.IsOptional ~}}
 
-                if ({{ binding.Name }} is not null)
+                if ({{ binding.ParameterName }} is not null)
                 {
                     message.{{ binding.PropertyName }} = {{ binding.ValueAccess }};
                 }

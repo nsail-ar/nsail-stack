@@ -5,9 +5,9 @@ using System.Text;
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
 
-public class RouteModel
+public record RouteModel
 {
-    public List<SegmentModel> Segments { get; } = new();
+    public EquatableList<SegmentModel> Segments { get; set; } = new();
  
     public override string ToString()
     {

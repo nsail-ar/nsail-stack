@@ -68,8 +68,11 @@ the app (the suspended page, below).
 - HTTPS redirection
 - `TenancyMiddleware` — **only where a tenant is resolved** (`host.ResolvesTenants()`: either
   switch), so under `Tenancy:Mode=None` the pipeline has no tenancy step. Before authentication
-  on purpose: under a per-tenant connection a slug that names no database answers 404, and
-  under `SingleDb` so does a slug off the roster a cell declares, and nothing about it is
+  on purpose: the refusals below come ahead of any sign-in. It refuses first **403** when
+  `Tenancy:ProxySecret` is set and the request does not carry it in `X-Proxy-Secret`, ahead of any
+  tenant being resolved or created; unset, outside Development, startup warns that the listener
+  must be bound to the proxy only. Then, under a per-tenant connection a slug that names no
+  database answers 404, and under `SingleDb` so does a slug off the roster a cell declares, and nothing about it is
   reachable by signing in. See [data-tenancy.md](data-tenancy.md#caddy-assigns-the-tenant-postgres-is-the-registry).
 - `TenantStateMiddleware` — whether this install is serving this tenant at all, **only where a
   tenant is resolved**, immediately behind the step above: a customer the install has suspended is
@@ -242,7 +245,7 @@ Area `Optical`), `service.namespace` = `nsail`, `deployment.environment`, `nsail
 is not judged here: the column that holds one declares it, and the model carries the
 declaration to the schema (data.md § Provider). This is shape, not
 discipline. NSail's own span never reads a message's members: it carries `nsail.outcome`
-(`ok`/`refused`/`failed`), `nsail.user` (who asked), and, to say how it ended,
+(`ok`/`refused`/`failed`/`cancelled` — a client abort is not a failure and sets no Error status), `nsail.user` (who asked), and, to say how it ended,
 `nsail.problem` on a refusal — the Problem's **Code**, never its Title — plus `nsail.rule`,
 the key that refusal's own sentence lives at, or `nsail.failure` on a crash, the exception's
 type. **`nsail.rule` exists because the code cannot tell two rules apart**: every rule of the
@@ -253,8 +256,10 @@ halves are written by the source (a rule's name, a field's, an entity's); the is
 **message**, the one part free to quote the value that caused the refusal, stays out — and so
 does the exception's, which opens every rendered stack. No `RecordException` and no status
 description either. For code NSail did not write, `Scrubber` is a span
-processor that drops `url.query`, `db.statement`, `db.query.text` and every
-`db.query.parameter.*`, and cuts the query string off `url.full`. A processor rather than
+processor and an **allow-list**: only `nsail.*` and the closed list in `Scrubber.cs` survive,
+so a tag a new package version adds fails closed. It cuts `url.full` to its origin and sets
+`url.path` to the route template, since a literal path carries the values the route was filled
+with. Blazor's spans keep only the component type, method and circuit id. A processor rather than
 vendor options on purpose: an instrumentation option can be removed or renamed by the next
 package version (`SetDbStatementForText`, which suppressed SQL text, was removed from the EF
 Core instrumentation), and then fails open silently.
@@ -263,7 +268,11 @@ Core instrumentation), and then fails open silently.
 writes log lines, and the OTLP exporter sends every attribute, the exception's message and a
 stack trace rendered from `ToString()` (which opens with that message). `ErrorMiddleware` logs
 `"Exception mapped to problem {Code}: {Message}"`, and for a refusal that `{Message}` **is**
-the Problem's Title. So `LogScrubber`, the logs-side sibling of `Scrubber`, cuts at the export
+the Problem's Title. Level is read off what the exception is: a bug-class exception wearing a 404 or
+403 (`KeyNotFoundException`, `UnauthorizedAccessException`) and a `BusinessException` answering
+500 or above log at Error with the exception, because a failure the client sees as 500 that
+leaves no stack cannot be diagnosed; a cancellation of the request's own token logs nothing.
+`LogScrubber`, the logs-side sibling of `Scrubber`, cuts at the export
 seam:
 
 - What travels is what the **source** declares — category, level, event id and the **message
@@ -377,9 +386,15 @@ its own name.
   statement run that way by a role a policy applies to — `FORCE ROW LEVEL SECURITY` subjects
   even the table's owner (data-tenancy.md, The second wall) — so on a cell that has provisioned
   the app a role without `BYPASSRLS`, `backup` is a credential of its own: a superuser or a
-  `BYPASSRLS` role on the same database. The verb asks before it starts the process and refuses
+  `BYPASSRLS` role on the same database, supplied as `Backup:ConnectionString` (the dump uses it;
+  restore keeps the app's; a different host, port or database is refused, since the manifest
+  names the app's). The verb asks before it starts the process and refuses
   by name, rather than ending in pg_dump's exit code on the first tenant table. Restore is not
   affected: an archive's data lands before its policies do.
+- **Under MultiDb both verbs refuse** (`REFUSED:`, exit `4`): the install has no one database,
+  and the tenants' own are not covered.
+- **A cancel kills the child.** A Ctrl-C or SIGTERM while a child tool runs kills it and its tree, and the verb exits
+  `130`; at a prompt the signal ends the process as usual.
 - **A restore refuses before it writes.** `RestorePlan.For` throws `BackupFailure` on an
   archive whose schema this build does not know (newer), whose product is another product,
   whose Postgres major differs, or whose archive format this build cannot read. An encrypted
@@ -387,7 +402,7 @@ its own name.
   wrong one, or a truncated entry. Then the plan says
   what it will overwrite — database and key ring — and stops unless the operator passes
   `--confirm RESTORE` (and types the word again when stdin is a terminal). Exit codes: `0`
-  done, `2` usage, `3` not confirmed, `4` refused.
+  done, `2` usage, `3` not confirmed, `4` refused, `130` cancelled.
 - **Restore is replace, not merge.** The public schema is dropped whole and rebuilt from the
   dump — `pg_restore --clean` would leave behind anything the install grew after the backup —
   in one transaction (`pg_restore` renders the dump to a script, `psql --single-transaction` runs
@@ -458,7 +473,7 @@ Three things are not in any source's `Languages` and are declared instead:
   offers `[es]`; a practice that attends in two languages says so.
 
 Two derivations in `NSail.Localization` read them. **`Languages.Supported`** (called by the
-middleware and `GetLanguageSettings`) is every language the catalogs can render, English
+middleware, `GetLanguageSettings` and `StringCatalog`) is every language the catalogs can render, English
 included *by construction* (`Base` is `en`); it is the settings picker's list and what a
 forced choice is validated against. **`Languages.Offered`** (middleware only) is the
 narrower one, and the only one a browser is resolved against — conflating them served

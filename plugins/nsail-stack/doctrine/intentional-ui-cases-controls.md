@@ -374,7 +374,7 @@ which one, does not open it).
 
 On the Branding Logo tab, a field that rendered as a list because a second binding happened to
 be supplied was one component wearing two shapes — a logo tab, where the tabs ARE the variant
-split, read as a multi-file control. Hence: same parameters, and no parameter turns
+split, read as a multi-file control. Hence: same parameters (the list adds a selection total cap), and no parameter turns
 `NsFileUpload` into `NsMultiFileUpload`.
 
 ---

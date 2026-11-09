@@ -13,7 +13,9 @@ capitalized inside a label, menu entries and titles in Title Case, the blank `La
 
 Strings resolve through `StringManager` (`NSail.Localization`): **`IStringSource`s feed the
 manager**, merged in registration order, last wins — kits, then app, then (future, unbuilt) a
-database overlay. Each module ships `strings.json` (base language, English) + `strings.{lang}.json`
+database overlay. The manager reads synchronously, so a source feeding it completes its task
+synchronously; one that awaits I/O is served only through `StringCatalog.GetAsync`, awaited
+before the render reads. Each module ships `strings.json` (base language, English) + `strings.{lang}.json`
 overlays (flat key→text, at the project root) as embedded resources, registered with
 `AddStringsFromAssembly()`.
 
@@ -43,7 +45,9 @@ the method name; buttons without content from `Common.{As}`.
   the context differs. A field bound to a page-local value labels itself with no `Label` at all.
   **A refusal reads the same label**: `BusinessProblem`'s entity slot carries the concept key and
   `Translate(Issue)` resolves it before filling `{entity}`, falling back to the key's last segment
-  (types.md). An entity a problem can name owes its bare key in `en` and `es`, and
+  (types.md). The `at` argument (ISO 8601 UTC) is rewritten the same way, to the reader's clock
+  in `RegionCulture.For(Language)`'s pattern; the argument's name is what triggers it.
+  An entity a problem can name owes its bare key in `en` and `es`, and
   `ProblemEntityStringTests` fails the build without it.
 - **A search box hints itself.** `NsSearchField` falls back to `Common.Search` — one word, *Buscar*,
   so it fits beside the box's key mark in every language; a caller wanting different words sets
@@ -58,7 +62,8 @@ the method name; buttons without content from `Common.{As}`.
 **Culture is negotiated, never imposed, and two sets decide it.** *Supported* is every language
 the catalogs can render — English is in it **by construction** (`LanguageOptions.Base` is `en`
 and every base `strings.json` is written in it), so it is the settings picker's list and what a
-forced choice is validated against, never a statement about what the shop serves. *Offered*
+forced choice is validated against, and what `StringCatalog` bounds its cache to (any other
+language answers the default's strings), never a statement about what the shop serves. *Offered*
 (`Language:Offered`, unset meaning `Language:Default` alone) is what this install serves somebody
 who has chosen nothing.
 

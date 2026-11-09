@@ -328,8 +328,14 @@
 
     // Invariant for the reason every other style here is: a culture is not allowed to write a
     // separator the browser drops the whole declaration over.
-    static string TintStyle(string color)
+    static string TintStyle(string? unsafeColor)
     {
+        var color = NsColorText.Safe(unsafeColor);
+        if (color is null)
+        {
+            return string.Empty;
+        }
+
         return string.Create(
             CultureInfo.InvariantCulture,
             $"background-color: color-mix(in srgb, {color} {TintWashPercent}%, transparent); border-color: color-mix(in srgb, {color} {TintEdgePercent}%, transparent)");

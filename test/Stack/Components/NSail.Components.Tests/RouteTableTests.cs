@@ -37,6 +37,9 @@ public sealed class SlotTestPage : ComponentBase;
 [Route("/")]
 public sealed class HomeTestPage : ComponentBase;
 
+[Route("/reports/{Year:int?}")]
+public sealed class ReportsTestPage : ComponentBase;
+
 public sealed class UnroutedTestPage : ComponentBase;
 
 public sealed class RouteTableTests
@@ -275,5 +278,39 @@ public sealed class RouteTableTests
         {
             CultureInfo.CurrentCulture = culture;
         }
+    }
+
+    [Fact]
+    public void GetUrl_keeps_the_slashes_of_a_catch_all_and_escapes_its_segments()
+    {
+        Assert.Equal("/files/a/b%20c", Build().GetUrl<FilesTestPage>(new { Path = "a/b c" }));
+    }
+
+    [Fact]
+    public void GetUrl_omits_an_optional_token_without_a_value()
+    {
+        var table = Build();
+
+        Assert.Equal("/reports", table.GetUrl<ReportsTestPage>());
+        Assert.Equal("/reports", table.GetUrl<ReportsTestPage>(new { Year = (int?)null }));
+        Assert.Equal("/reports/2026", table.GetUrl<ReportsTestPage>(new { Year = 2026 }));
+    }
+
+    [Fact]
+    public void Match_resolves_an_optional_token_present_or_absent()
+    {
+        var table = Build();
+
+        Assert.Equal(2026, table.Match("/reports/2026")!.RouteValues["Year"]);
+        Assert.Equal(typeof(ReportsTestPage), table.Match("/reports")!.PageType);
+    }
+
+    [Fact]
+    public void Match_unescapes_a_catch_all_so_the_url_round_trips()
+    {
+        var table = Build();
+        var url = table.GetUrl<FilesTestPage>(new { Path = "a/b c" });
+
+        Assert.Equal("a/b c", table.Match(url)!.RouteValues["Path"]);
     }
 }
