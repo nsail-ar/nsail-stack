@@ -69,7 +69,8 @@ The host connects as a role without superuser rights. On start,
 creates the role if it is missing, strips it of superuser, `BYPASSRLS` and role or database
 creation whether it was just created or not, then grants it reads and writes on the tables,
 nothing more. Both strings leave the password out: it arrives in `PGPASSWORD`, and
-`sample_app` takes that same value.
+`sample_app` takes that same value. `dotnet ef` reads `Sample:AdminConnectionString` too, from
+the command line or the environment.
 
 Blazor answers at the host's root, React under `/react`. The build writes `sdk.ts`,
 typechecks the client and builds it into `react/` beside the host project (gitignored). Without

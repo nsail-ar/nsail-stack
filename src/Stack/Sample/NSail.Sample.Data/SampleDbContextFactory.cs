@@ -16,13 +16,14 @@ public class SampleDbContextFactory : IDesignTimeDbContextFactory<SampleDbContex
     public SampleDbContext CreateDbContext(string[] args)
     {
         // Design time never builds the host, so appsettings.json is out of reach here: the
-        // connection string has to arrive on the command line or the environment.
+        // connection string has to arrive on the command line or the environment. It is the admin
+        // one: the chain runs under the role that owns the tables, never the app's.
         var configuration = new ConfigurationBuilder()
             .AddEnvironmentVariables()
             .AddCommandLine(args)
             .Build();
 
-        var connectionString = configuration["Sample:ConnectionString"];
+        var connectionString = configuration["Sample:AdminConnectionString"];
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {

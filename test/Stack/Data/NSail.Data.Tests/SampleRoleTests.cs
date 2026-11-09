@@ -12,7 +12,7 @@ public class SampleRoleTests
     [Fact]
     public async Task TheRoleTheSetupCreatesWritesButIsNoSuperuser()
     {
-        await using var database = new TestDatabase("sample_role", cs => new SampleDbContextFactory().CreateDbContext([$"--Sample:ConnectionString={cs}"]));
+        await using var database = new TestDatabase("sample_role", cs => new SampleDbContextFactory().CreateDbContext([$"--Sample:AdminConnectionString={cs}"]));
         await database.Reserve();
         var admin = new NpgsqlConnectionStringBuilder(database.ConnectionString);
         var app = new NpgsqlConnectionStringBuilder(admin.ConnectionString) { Username = SampleRole.Name };
@@ -58,7 +58,7 @@ public class SampleRoleTests
     [Fact]
     public async Task ARoleThatAlreadyExistsWithPrivilegesIsStrippedOfThem()
     {
-        await using var database = new TestDatabase("sample_role_strip", cs => new SampleDbContextFactory().CreateDbContext([$"--Sample:ConnectionString={cs}"]));
+        await using var database = new TestDatabase("sample_role_strip", cs => new SampleDbContextFactory().CreateDbContext([$"--Sample:AdminConnectionString={cs}"]));
         await database.Reserve();
         var admin = new NpgsqlConnectionStringBuilder(database.ConnectionString);
         var app = new NpgsqlConnectionStringBuilder(admin.ConnectionString) { Username = SampleRole.Name };
