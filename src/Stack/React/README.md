@@ -11,7 +11,7 @@ Both are npm packages (not NuGet), released at the same version as the NuGet pac
 
 | Package | Folder | What it is | Peer dependencies |
 |---|---|---|---|
-| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm` | `react >= 19` |
+| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm` | `react >= 19`, `react-dom >= 19` |
 | `@nsail/ui` | `NSail.React.Ui` | The components (`NsApp`, `NsLoad`, `NsForm`, `NsField`, `NsTable`, ...) and the `@nsail/ui/ns.css` stylesheet; depends on `@nsail/stack` | `react >= 19`, `react-dom >= 19` |
 
 The contract itself comes from the Sdk, through the build-time package `NSail.TypeScriptGenerator`
