@@ -14,9 +14,8 @@ namespace NSail.Components.Tests;
 /// <summary>The dropdown was the only way in (nsail#466): <c>MudColorPicker</c> defaults its
 /// text box to read-only, so a person who already knows the hex still had to open the popover.
 /// <c>Editable="true"</c> lifts that, and <c>ShowAlpha="false"</c> keeps the box's canonical
-/// hex matching the plain 6-digit strings every caller already stores (BrandingColors,
-/// CreateConsultingRoomPage) — an alpha-suffixed round trip would otherwise rewrite the model
-/// the instant the field first renders (caught by FieldArrivalProbeTests' dirty-on-arrival
+/// hex matching the plain 6-digit strings every caller already stores — an alpha-suffixed
+/// round trip would otherwise rewrite the model the instant the field first renders (caught by FieldArrivalProbeTests' dirty-on-arrival
 /// case). The field also drops text that is not a color before storing it (NsColorText).</summary>
 public sealed class NsColorFieldTests : BunitContext, IAsyncLifetime
 {

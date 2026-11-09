@@ -7,10 +7,9 @@ namespace NSail.Components;
 
 public partial class NsColorField
 {
-    // The vendor's own refusal path (typed text that fails MudColor.TryParse) resets its
-    // displayed text from its OWN Value, not from what this field last handed TextChanged —
-    // left unbound, that Value never gets a color at all and the box wipes to blank instead of
-    // holding the last good hex. Feeding it back keeps that reset landing on the right color.
+    // Bound so the picker holds the model's color from its first render. Typed text it
+    // rejects is not reset here: the box keeps showing that text while the model keeps the
+    // last good hex.
     MudColor? MudValue => MudColor.TryParse(Value, out var color) ? color : null;
 
     // The same Value binding that fixes the refusal path also fires on first render: the

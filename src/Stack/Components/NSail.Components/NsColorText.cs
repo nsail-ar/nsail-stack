@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 namespace NSail.Components;
 
 /// <summary>Decides whether text is safe to write into a CSS color position.</summary>
-static partial class NsColorText
+public static partial class NsColorText
 {
     // A hex, an rgb()/rgba() of numbers, or a bare keyword: none can carry a `;`, a quote or
     // a url() into the style attribute that wears it.

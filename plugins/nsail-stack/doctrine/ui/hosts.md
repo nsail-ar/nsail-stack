@@ -469,6 +469,11 @@ so it reads as a stretch of time; the label sits at the hour the frame opens, an
 answers the pointer on bare closed time with the day's name, while every block — positioned,
 with a z-index — stays above it and keeps its own click and hover.
 
+**A color reaches a `style` only through `NsColorText`**: a block's `Color` and a tint's `Color`
+are strings a model can carry, so each is written only if it is a hex, an `rgb()`/`rgba()` of
+numbers or a bare keyword. Anything else — `hsl()`, `var(--x)`, text with a `;` or a `url()` —
+is dropped without a message and the block or the wash is drawn uncolored.
+
 **A block draws only the lines it can draw WHOLE, and always draws the first.** A block's
 height IS its time, so it is the one box that cannot be clipped anywhere convenient: what a
 half-hour block on a dense grid has room for is one line, and a second one rendered into it is
