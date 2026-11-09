@@ -1,6 +1,7 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
@@ -94,10 +95,10 @@ public class AttributeArgumentEscapingTests
     [Theory]
     [InlineData("es-AR")]
     [InlineData("tr-TR")]
-    public void Named_type_array_and_double_arguments_reach_the_generated_body_and_the_client_compiles(string culture)
+    public void Named_type_array_and_double_arguments_reach_the_generated_body_and_the_endpoints_compile(string culture)
     {
-        var previous = System.Globalization.CultureInfo.CurrentCulture;
-        System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo(culture);
+        var previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = new CultureInfo(culture);
 
         try
         {
@@ -118,6 +119,7 @@ public class AttributeArgumentEscapingTests
                     public class ShapeAttribute : Attribute
                     {
                         public ShapeAttribute(Type type, params string[] names) { }
+                        public ShapeAttribute(float max, double limit) { }
                         public int[] Sizes { get; set; } = [];
                     }
 
@@ -132,6 +134,9 @@ public class AttributeArgumentEscapingTests
 
                         [Shape(typeof(string), "a", "b", Sizes = new[] { 1, 2 })]
                         public string Other { get; set; } = string.Empty;
+
+                        [Shape(1.5f, double.NaN)]
+                        public string Weight { get; set; } = string.Empty;
                     }
 
                     public static partial class Clients
@@ -168,10 +173,12 @@ public class AttributeArgumentEscapingTests
             Assert.Contains("ErrorMessage = \"bad\"", generated);
             Assert.Contains("typeof(string)", generated);
             Assert.Contains("0.5", generated);
+            Assert.Contains("1.5f", generated);
+            Assert.Contains("double.NaN", generated);
         }
         finally
         {
-            System.Globalization.CultureInfo.CurrentCulture = previous;
+            CultureInfo.CurrentCulture = previous;
         }
     }
 }
