@@ -42,6 +42,18 @@ Stack sets and no product writes:
   This is why a product's context calls `configurationBuilder.ApplyTenancy()` in
   `ConfigureConventions`: it removes EF's `ForeignKeyIndexConvention`, which would otherwise put
   its single-column index back beside each tenant-leading one.
+- **Keys carry the tenant too.** A foreign key between two tenant-scoped entities is the
+  composite `(TenantId, Fk)` onto `(TenantId, Key)`, and the principal gains the unique
+  `(TenantId, Key)` it names. Referential checks bypass the row policy, so a plain `Fk` would
+  accept any Guid that exists: the database itself refuses a row naming another tenant's. An
+  alternate key and a unique index are unique **per tenant** — two tenants hold the same value,
+  and a unique violation never reveals that another tenant holds one. Nothing here is written by
+  a product: the pass derives it from the model, so the migration of every product's foreign
+  keys is the one `dotnet ef migrations add` scaffolds. An optional foreign key with a null `Fk` is
+  not checked (Postgres's default match), so it names nothing; `DeleteBehavior.SetNull` becomes
+  `ClientSetNull` (Postgres would null the tenant column too). **Install-scoped entities keep
+  their plain keys**, and a foreign key from a tenant row onto one stays plain: it is the same
+  row for every tenant.
 
 **The primary key does not move.** It stays `Id` alone in every mode; the tenant is a column
 BESIDE it. A row is globally unique by its id and the wall is the filter, not the key — two

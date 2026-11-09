@@ -41,6 +41,8 @@ static class TenantColumn
 
     public static void Apply(IMutableModel model, ITenanted context)
     {
+        var owned = new Dictionary<IMutableEntityType, IMutableProperty>();
+
         foreach (var entity in model.GetEntityTypes().ToArray())
         {
             if (!HasATableOfItsOwn(entity))
@@ -69,7 +71,109 @@ static class TenantColumn
 
             entity.SetQueryFilter(Key, Filter(entity.ClrType, context));
 
+            owned.Add(entity, tenant);
+        }
+
+        // After every column exists: a foreign key names the principal's column as well as its
+        // own, and the principal may come later in the model.
+        foreach (var (entity, tenant) in owned)
+        {
             LeadIndexesWithTenant(entity, tenant);
+        }
+
+        foreach (var (entity, tenant) in owned)
+        {
+            ScopeKeys(entity, tenant);
+        }
+
+        foreach (var (entity, tenant) in owned)
+        {
+            ScopeForeignKeys(entity, owned);
+        }
+
+        foreach (var (entity, tenant) in owned)
+        {
+            DropGlobalKeys(entity, tenant);
+            CoverForeignKeys(entity, tenant);
+        }
+    }
+
+    // The tenant column of the row a type shares or is: its root's, and only where the root took
+    // one. Asked of the marker's outcome and not of the column, because TenantState carries a
+    // TenantId of its own that is not the wall's.
+    static IMutableProperty? TenantOf(IMutableEntityType entity, Dictionary<IMutableEntityType, IMutableProperty> owned)
+    {
+        return owned.TryGetValue(entity.GetRootType(), out var tenant) ? tenant : null;
+    }
+
+    // An alternate key is unique per tenant, like every unique index: the tenant leads it, so two
+    // tenants hold the same value and one never learns, from a unique violation, that another
+    // holds it. The primary key stays Id alone. The global key goes once the foreign keys that
+    // named it name the tenant's (ScopeForeignKeys).
+    static void ScopeKeys(IMutableEntityType entity, IMutableProperty tenant)
+    {
+        foreach (var key in entity.GetDeclaredKeys().ToArray())
+        {
+            if (key == entity.FindPrimaryKey() || key.Properties[0] == tenant)
+            {
+                continue;
+            }
+
+            var led = entity.FindKey(Led(tenant, key.Properties)) ?? entity.AddKey(Led(tenant, key.Properties));
+
+            foreach (var annotation in key.GetAnnotations())
+            {
+                led.SetAnnotation(annotation.Name, annotation.Value);
+            }
+        }
+    }
+
+    static void DropGlobalKeys(IMutableEntityType entity, IMutableProperty tenant)
+    {
+        foreach (var key in entity.GetDeclaredKeys().ToArray())
+        {
+            if (key != entity.FindPrimaryKey()
+                && key.Properties[0] != tenant
+                && !key.GetReferencingForeignKeys().Any())
+            {
+                entity.RemoveKey(key);
+            }
+        }
+    }
+
+    // A foreign key between two tenant entities is (TenantId, Fk) onto (TenantId, Key), so the
+    // database refuses a row naming another tenant's: referential checks bypass the row policy,
+    // and a constraint that does not carry the tenant would accept any Guid that exists. A key
+    // onto an install-scoped entity stays plain — it is the same row for every tenant.
+    static void ScopeForeignKeys(IMutableEntityType entity, Dictionary<IMutableEntityType, IMutableProperty> owned)
+    {
+        foreach (var foreignKey in entity.GetDeclaredForeignKeys().ToArray())
+        {
+            var dependent = TenantOf(entity, owned);
+            var principal = TenantOf(foreignKey.PrincipalEntityType, owned);
+
+            if (dependent is null
+                || principal is null
+                || foreignKey.IsOwnership
+                || foreignKey.Properties[0] == dependent)
+            {
+                continue;
+            }
+
+            var target = foreignKey.PrincipalKey;
+            var declaring = target.DeclaringEntityType;
+            var scoped = target.Properties[0] == principal
+                ? target
+                : declaring.FindKey(Led(principal, target.Properties)) ?? declaring.AddKey(Led(principal, target.Properties));
+
+            foreignKey.SetProperties(Led(dependent, foreignKey.Properties), scoped);
+
+            // ON DELETE SET NULL on a composite key nulls every column of it, the tenant's
+            // included, which the column refuses; the context clears the key instead.
+            if (foreignKey.DeleteBehavior == DeleteBehavior.SetNull)
+            {
+                foreignKey.DeleteBehavior = DeleteBehavior.ClientSetNull;
+            }
         }
     }
 
@@ -178,14 +282,13 @@ static class TenantColumn
             }
         }
 
-        CoverForeignKeys(entity, tenant);
     }
 
     static void CoverForeignKeys(IMutableEntityType entity, IMutableProperty? lead)
     {
         foreach (var foreignKey in entity.GetForeignKeys().ToArray())
         {
-            Cover(entity, foreignKey, lead);
+            Cover(entity, foreignKey, foreignKey.Properties[0] == lead ? null : lead);
         }
     }
 
