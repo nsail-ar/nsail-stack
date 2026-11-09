@@ -32,6 +32,7 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
   const [submitting, setSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
   const sending = useRef(false);
+  // Bumped in the handlers below, never inside a state updater, which StrictMode runs twice.
   const edits = useRef(0);
 
   const set = useCallback(<K extends keyof T>(name: K, next: T[K]) => {
@@ -86,7 +87,6 @@ export function useForm<T>(message: MessageType<T, unknown>, initial: T): Form<T
       }
 
       sending.current = true;
-      // Counted in the handler, not in a state updater, which StrictMode runs twice.
       const sentAt = edits.current;
       setSubmitting(true);
       setSaved(false);
