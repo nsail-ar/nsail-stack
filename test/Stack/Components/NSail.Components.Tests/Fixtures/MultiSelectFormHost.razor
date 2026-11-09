@@ -1,0 +1,30 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+
+<MudPopoverProvider />
+
+<NsForm TModel="FormModel" Model="Model" Disabled="Disabled">
+    <NsMultiSelect TItem="SelectRef" TValue="Guid" @bind-Value="context.Ids" Required
+                   Items="Items" ItemValue="i => i.Id" ItemText="i => i.DisplayName" />
+</NsForm>
+
+@code {
+
+    static readonly SelectRef[] Items = [new(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Alpha")];
+
+    public sealed class FormModel
+    {
+        public IReadOnlyList<Guid> Ids { get; set; } = [];
+    }
+
+    [Parameter, EditorRequired]
+    public FormModel Model { get; set; } = default!;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+}

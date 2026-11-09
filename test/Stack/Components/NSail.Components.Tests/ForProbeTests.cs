@@ -53,6 +53,7 @@ public sealed class ForProbeTests : BunitContext, IAsyncLifetime
     [InlineData("percent-for")]
     [InlineData("autocomplete-for")]
     [InlineData("textarea-for")]
+    [InlineData("multiselect-for")]
     public void AnExplicitForDoesNotDirtyTheForm(string kind)
     {
         var host = Render<ForProbeHost>(p => p
