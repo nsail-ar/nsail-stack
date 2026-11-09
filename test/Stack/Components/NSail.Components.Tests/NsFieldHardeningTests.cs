@@ -31,7 +31,7 @@ public sealed class NsFieldHardeningTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void ADurationBeyondTheRangeIsRefusedNotThrown()
+    public async Task ADurationBeyondTheRangeIsRefusedNotThrown()
     {
         TimeSpan? held = TimeSpan.FromHours(2);
         var cut = Render<NsDurationField<TimeSpan?>>(ps => ps
@@ -39,21 +39,21 @@ public sealed class NsFieldHardeningTests : BunitContext, IAsyncLifetime
             .Add(p => p.Value, held)
             .Add(p => p.ValueChanged, v => held = v));
 
-        cut.Find("input").Input("999999999");
+        await cut.InvokeAsync(() => cut.Find("input").Input("999999999"));
 
         Assert.Equal(TimeSpan.FromHours(2), held);
         Assert.Contains("mud-input-error", cut.Markup);
     }
 
     [Fact]
-    public void AValidDurationStillCommits()
+    public async Task AValidDurationStillCommits()
     {
         TimeSpan? held = null;
         var cut = Render<NsDurationField<TimeSpan?>>(ps => ps
             .Add(p => p.Label, "Ventana")
             .Add(p => p.ValueChanged, v => held = v));
 
-        cut.Find("input").Input("3");
+        await cut.InvokeAsync(() => cut.Find("input").Input("3"));
 
         Assert.Equal(TimeSpan.FromHours(3), held);
     }

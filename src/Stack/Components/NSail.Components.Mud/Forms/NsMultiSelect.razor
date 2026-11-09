@@ -48,12 +48,31 @@
 
     bool HoldsValues()
     {
-        return Value is { Count: > 0 };
+        return !IsValueEmpty();
     }
 
+    // MudSelect re-raises its selection when the model hands it one; a set equal to the held
+    // one is that echo, not an edit.
     Task OnChanged(IEnumerable<TValue> selected)
     {
-        return SetValue(selected.ToList());
+        var list = selected.ToList();
+
+        if (Value is not null && Value.SequenceEqual(list))
+        {
+            return Task.CompletedTask;
+        }
+
+        return SetValue(list);
+    }
+
+    protected override string? FallbackLabel(string key)
+    {
+        if (Strings.TryTranslate(Metadata.KeyFor(typeof(TItem)), out var concept))
+        {
+            return concept;
+        }
+
+        return base.FallbackLabel(key);
     }
 
     TValue GetItemValue(TItem item)

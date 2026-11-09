@@ -85,16 +85,25 @@ public sealed class NsMultiSelectTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void NsMultiSelect_ShowsTheRequiredRefusalWhenEmpty()
+    public async Task NsMultiSelect_ShowsTheBoundRefusalOnSubmitWhenEmpty()
     {
-        var cut = Render<MultiSelectValueHost<SelectRef, Guid>>(ps => ps
-            .Add(p => p.Items, new[] { Alpha, Beta })
-            .Add(p => p.ItemValue, item => item.Id)
-            .Add(p => p.ItemText, item => item.DisplayName)
-            .Add(p => p.Label, "Recursos")
-            .Add(p => p.Required, true)
-            .Add(p => p.Value, Array.Empty<Guid>()));
+        var cut = Render<MultiSelectFormHost>(ps => ps.Add(p => p.Model, new MultiSelectFormHost.FormModel()));
 
-        Assert.Contains("mud-input-required", cut.Markup);
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.NotEmpty(cut.FindAll(".mud-input-error"));
+        Assert.Contains("Problems.Required", cut.Markup);
+    }
+
+    [Fact]
+    public async Task NsMultiSelect_FollowsTheFormFreeze()
+    {
+        var cut = Render<MultiSelectFormHost>(ps => ps
+            .Add(p => p.Model, new MultiSelectFormHost.FormModel())
+            .Add(p => p.Disabled, true));
+
+        await cut.InvokeAsync(() => { });
+
+        Assert.Contains("mud-disabled", cut.Find("div.mud-input").ClassList);
     }
 }
