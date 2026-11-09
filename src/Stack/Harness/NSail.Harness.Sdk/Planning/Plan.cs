@@ -3,4 +3,8 @@
 
 namespace NSail.Harness.Planning;
 
-public sealed record Plan(IReadOnlyList<WorkItem> Items, IReadOnlyList<Chore> Chores, IReadOnlyList<string> Notes);
+// Andon: the products whose failed cut holds the harness; while any is lit, Items is release work only.
+public sealed record Plan(IReadOnlyList<WorkItem> Items, IReadOnlyList<Chore> Chores, IReadOnlyList<string> Notes)
+{
+    public IReadOnlyList<Andon> Andon { get; init; } = [];
+}

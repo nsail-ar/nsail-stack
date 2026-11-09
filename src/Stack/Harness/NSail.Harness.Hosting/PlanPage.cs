@@ -18,6 +18,16 @@ static partial class PlanPage
     [GeneratedRegex(@"^#(\d+): stalled in (\w+), not Analyze")]
     private static partial Regex HeldNote();
 
+    // The release andon, above the plan: which product, since when, what it waits for.
+    internal static void Banner(StringBuilder html, HarnessOptions o, IReadOnlyList<Andon> lit, DateTimeOffset now)
+    {
+        foreach (var a in lit)
+        {
+            var since = a.Since is { } at ? $" since {StatusPage.Local(at):yyyy-MM-dd HH:mm} ({StatusPage.Time((now - at).TotalSeconds)})" : "";
+            html.Append($"<div style=\"background:var(--badbg);color:var(--bad);border-radius:8px;padding:10px 14px;margin:10px 0\"><b>Release andon — {StatusPage.Esc(a.Product)}</b>{StatusPage.Esc(since)}<br>Only its fix and its cut start; everything else waits behind them.<br>Waits for: {StatusPage.Linked(o, a.Waits)}</div>");
+        }
+    }
+
     // The status page's plan: the first rows, what is left counted by tier, and the way to the rest.
     internal static void Summary(StringBuilder html, HarnessOptions o, Plan plan)
     {
