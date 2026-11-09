@@ -120,7 +120,7 @@ the files it leaves.
     default ACLs on the work root (slots and the bare `repo.git`) and `configRoot` for both users (`setfacl -d -m u:<account>:rwx`
     and `u:<harness user>:rwx`), or a shared group with setgid folders and umask 002 for both (`umask=0002` in the sudoers rule).
     The harness user's sudoers rule for it carries the `SETENV` tag, `Defaults!<each command> !secure_path` (the seat keeps the
-    machine's PATH), and allows `setsid`, `nice`, `rm` and `pkill` (a timeout kills the seat's session through sudo),
+    machine's PATH), and allows `setsid` and `pkill` (a timeout kills the seat's session through sudo),
     and `Claude:Command` is best given as an absolute path. `RunAs` covers the agent's runs and plugin installs, not a
     worker's own `Command`: that runs as the harness user. Windows ignores `RunAs`.)
 - **Capacity is per resource, per machine**: agents, builds, browsers (`Agents`, `Builds`,

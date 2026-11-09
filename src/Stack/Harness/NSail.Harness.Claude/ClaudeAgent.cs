@@ -42,7 +42,11 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
             else
             {
                 // The account created it, so the account removes it.
-                await Shell.Run("rm", ["-rf", plugins], config, ct: ct, runAs: options.RunAs);
+                var removed = await Shell.Run("rm", ["-rf", plugins], config, ct: ct, runAs: options.RunAs);
+                if (removed.ExitCode != 0)
+                {
+                    throw new InvalidOperationException($"{plugins} could not be emptied as {options.RunAs}: {removed.Output.Trim()}");
+                }
             }
         }
 

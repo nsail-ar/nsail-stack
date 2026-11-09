@@ -72,24 +72,17 @@ public static class Shell
             foreach (var (k, v) in env) psi.Environment[k] = v;
         }
 
-        string? sessionFile = null;
-        string? sessionDir = null;
+        var seat = false;
         if (runAs is not null && !OperatingSystem.IsWindows())
         {
             // The process runs as another user, never with this one's home or keys: sudo (no prompt,
-            // the target's own HOME) carries only the names this method set. It starts its own session,
-            // whose id it writes to a file, because this user cannot signal the seat: the kill goes through sudo.
+            // the target's own HOME) carries only the names this method set. The seat gets its own
+            // session, which a timeout kills through sudo because this user cannot signal the seat.
+            seat = true;
             foreach (var name in Identity) psi.Environment.Remove(name);
             var inner = psi.ArgumentList.ToList();
             psi.ArgumentList.Clear();
-            // The file sits in a run folder only this user can list, in /tmp (the seat needs to reach it; a private TMPDIR would hide it).
-            sessionDir = Path.Combine("/tmp", $"nsail-seat-{Guid.NewGuid():N}");
-            Directory.CreateDirectory(sessionDir);
-            File.SetUnixFileMode(sessionDir, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
-            sessionFile = Path.Combine(sessionDir, "sid");
-            File.WriteAllText(sessionFile, "");
-            File.SetUnixFileMode(sessionFile, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupWrite | UnixFileMode.OtherWrite);
-            string[] head = ["-n", "-H", "-u", runAs, $"--preserve-env={string.Join(',', psi.Environment.Keys)}", "--", "setsid", "-w", "sh", "-c", "echo $$ > \"$0\"; exec \"$@\"", sessionFile];
+            string[] head = ["-n", "-H", "-u", runAs, $"--preserve-env={string.Join(',', psi.Environment.Keys)}", "--", "setsid", "-w"];
             foreach (var a in head) psi.ArgumentList.Add(a);
             // Priority cannot be set on a process this user does not own: it rides inside the line.
             if (lowPriority)
@@ -102,17 +95,10 @@ public static class Shell
             lowPriority = false;
         }
 
-        try
-        {
-            return await Execute(psi, stdin, timeout, log, ct, lowPriority, runAs, sessionFile);
-        }
-        finally
-        {
-            if (sessionDir is not null) Directory.Delete(sessionDir, recursive: true);
-        }
+        return await Execute(psi, stdin, timeout, log, ct, lowPriority, seat ? runAs : null);
     }
 
-    static async Task<ShellResult> Execute(ProcessStartInfo psi, string? stdin, TimeSpan? timeout, TextWriter? log, CancellationToken ct, bool lowPriority, string? runAs, string? sessionFile)
+    static async Task<ShellResult> Execute(ProcessStartInfo psi, string? stdin, TimeSpan? timeout, TextWriter? log, CancellationToken ct, bool lowPriority, string? runAs)
     {
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
         var output = new StringBuilder();
@@ -161,6 +147,7 @@ public static class Shell
         catch (OperationCanceledException)
         {
             timedOut = !ct.IsCancellationRequested;
+            var sessions = runAs is null ? [] : SeatSessions(p.Id);
             try
             {
                 p.Kill(entireProcessTree: true);
@@ -168,7 +155,7 @@ public static class Shell
             catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or AggregateException)
             {
             }
-            if (sessionFile is not null) await KillSeat(runAs!, sessionFile);
+            if (runAs is not null) await KillSeat(runAs, sessions);
             await exited.Task.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None).ContinueWith(_ => { }, TaskScheduler.Default);
             if (!timedOut) throw;
         }
@@ -192,18 +179,65 @@ public static class Shell
         }
     }
 
-    // The seat's whole session, killed as the seat's own user: sudo's rule for the account must allow `pkill`.
-    static async Task KillSeat(string runAs, string sessionFile)
+    // The sessions below sudo's process other than its own: the harness reads them from /proc, where
+    // the seat cannot write, so nothing the seat controls decides what gets killed.
+    static List<int> SeatSessions(int root)
     {
-        var sid = (await File.ReadAllTextAsync(sessionFile)).Trim();
-        if (sid.Length == 0 || !sid.All(char.IsAsciiDigit)) return;
+        var parents = new Dictionary<int, int>();
+        var sessions = new Dictionary<int, int>();
         try
         {
-            using var kill = Process.Start(new ProcessStartInfo("sudo", ["-n", "-u", runAs, "pkill", "-KILL", "-s", sid]) { UseShellExecute = false });
-            if (kill is not null) await kill.WaitForExitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(15)).Token);
+            foreach (var dir in Directory.EnumerateDirectories("/proc"))
+            {
+                if (!int.TryParse(Path.GetFileName(dir), out var pid)) continue;
+                try
+                {
+                    var stat = File.ReadAllText(Path.Combine(dir, "stat"));
+                    var fields = stat[(stat.LastIndexOf(')') + 2)..].Split(' ');
+                    parents[pid] = int.Parse(fields[1], System.Globalization.CultureInfo.InvariantCulture);
+                    sessions[pid] = int.Parse(fields[3], System.Globalization.CultureInfo.InvariantCulture);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or FormatException or ArgumentOutOfRangeException or IndexOutOfRangeException)
+                {
+                }
+            }
         }
-        catch (Exception e) when (e is System.ComponentModel.Win32Exception or OperationCanceledException)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
+            return [];
+        }
+
+        var own = sessions.GetValueOrDefault(root);
+        var found = new List<int>();
+        var queue = new Queue<int>([root]);
+        var seen = new HashSet<int> { root };
+        while (queue.Count > 0)
+        {
+            var parent = queue.Dequeue();
+            foreach (var (pid, ppid) in parents)
+            {
+                if (ppid != parent || !seen.Add(pid)) continue;
+                queue.Enqueue(pid);
+                var sid = sessions[pid];
+                if (sid > 1 && sid != own && !found.Contains(sid)) found.Add(sid);
+            }
+        }
+        return found;
+    }
+
+    // The seat's whole sessions, killed as the seat's own user: sudo's rule for the account must allow `pkill`.
+    static async Task KillSeat(string runAs, List<int> sessions)
+    {
+        foreach (var sid in sessions)
+        {
+            try
+            {
+                using var kill = Process.Start(new ProcessStartInfo("sudo", ["-n", "-u", runAs, "pkill", "-KILL", "-s", sid.ToString(System.Globalization.CultureInfo.InvariantCulture)]) { UseShellExecute = false });
+                if (kill is not null) await kill.WaitForExitAsync(new CancellationTokenSource(TimeSpan.FromSeconds(15)).Token);
+            }
+            catch (Exception e) when (e is System.ComponentModel.Win32Exception or OperationCanceledException)
+            {
+            }
         }
     }
 
