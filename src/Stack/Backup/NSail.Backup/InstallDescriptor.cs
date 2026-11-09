@@ -14,4 +14,8 @@ public sealed record InstallDescriptor
     public required string SchemaVersion { get; init; }
 
     public required string KeyRingPath { get; init; }
+
+    /// <summary>The credential <c>pg_dump</c> connects with, when the cell has one of its own
+    /// (<c>Backup:ConnectionString</c>); the install's connection otherwise.</summary>
+    public string? DumpConnectionString { get; init; }
 }
