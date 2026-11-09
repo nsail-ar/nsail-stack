@@ -22,6 +22,10 @@
         <ProjectReference Include="..\..\..\..\src\Stack\Storage\NSail.Storage.Sdk\NSail.Storage.Sdk.csproj" />
         <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.Sdk\NSail.Harness.Sdk.csproj" />
         <ProjectReference Include="..\..\..\..\src\Stack\Sample\NSail.Sample.Sdk\NSail.Sample.Sdk.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Storage\NSail.Storage.Shared\NSail.Storage.Shared.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Components\NSail.Components\NSail.Components.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Sample\NSail.Sample.Wasm\NSail.Sample.Wasm.csproj" />
     </ItemGroup>
 
     <ItemGroup>
