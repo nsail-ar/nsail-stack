@@ -78,7 +78,7 @@ public interface IRepository
     // The published releases, newest first: a tag pushed by a cut that died before publishing is not one.
     Task<IReadOnlyList<Release>> Releases(CancellationToken ct = default);
 
-    // Whether the history of the reference (a tag, a branch) holds the commit.
+    // Whether the history of the reference (a tag, a branch, a commit) holds the commit.
     Task<bool> Holds(string reference, string sha, CancellationToken ct = default);
 
     Task<string?> Variable(string name, CancellationToken ct = default);

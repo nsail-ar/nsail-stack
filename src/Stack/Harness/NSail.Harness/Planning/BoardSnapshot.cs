@@ -32,6 +32,10 @@ public sealed record BoardSnapshot(
     // The stories In-Progress with no open PR whose PR has merged (FilterOptions.PrMerged).
     public IReadOnlySet<int> MergedStories { get; init; } = new HashSet<int>();
 
+    // The red-main stories in Ready whose newest merge no finished gate of main has judged yet: the
+    // red that sent them back may be from a head older than the fix (SnapshotReader.ReadUnjudged).
+    public IReadOnlySet<int> UnjudgedFixes { get; init; } = new HashSet<int>();
+
     // Per product (lowercase), its newest published release whose stories are not walked yet.
     public IReadOnlyDictionary<string, string> Unshipped { get; init; } = new Dictionary<string, string>();
 }

@@ -454,6 +454,7 @@ public sealed class HarnessLoop(
             call = PassCall.Stories;
             var read = await reader.Read(OwnFlight(), stop);
             await SayOrphans(read, stop);
+            var unjudged = await reader.ReadUnjudged(read.Issues, marks, stop);
             call = PassCall.Planning;
             var snapshot = read with
             {
@@ -461,6 +462,7 @@ public sealed class HarnessLoop(
                 DueWatches = DueWatches(DateTimeOffset.UtcNow),
                 MainGated = MainGatedOf(marks, DateTimeOffset.UtcNow, MainPendingFor(_workers)),
                 LastQaAt = StatusMark.LastAt(marks, Markers.QaContext),
+                UnjudgedFixes = unjudged,
             };
             var limits = new Limits(o.Agents, o.Builds, o.Browsers);
             leases.Limit = limits.Builds;

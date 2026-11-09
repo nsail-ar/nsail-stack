@@ -153,6 +153,12 @@ the files it leaves.
   which a restart keeps. A state file that is zero-length or torn is
   moved aside as `<name>.bad-<time>` with a log line and the state starts empty; every write goes to a
   temp file moved over the original. At the first board read the log names each In-Progress story no job holds.
+- **main's red** files, or comments on, the one open red-main story. The merge of its fix on the
+  judged head is the only evidence of the fix: a red at a head that does not hold the story's newest
+  merge (a gate that started before it) leaves a landed story in its column, and its comment says
+  so (`HarnessTexts.MainRedWithoutFix`); while no gate verdict sits on a head that holds it Develop
+  does not take it. The first green gate of such a head closes the story; a voyage on a story closed
+  under it pushes nothing and says nothing, and keeps the quota wall its seat met.
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its
   role's tally in its hour (kept two days) and its day (ninety, on the machine's clock), its time and
   its wait in a histogram, so the status page and `GET /api/harness/stats?range=24h|7d|30d` read
