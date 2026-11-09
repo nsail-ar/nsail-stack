@@ -10,7 +10,7 @@ namespace NSail.Harness.Planning;
 // files when its suite is red); until that story ships, the release takes the whole harness: the
 // planner starts only the red story's analysis, build and PR work, a red main's, main's gate and the
 // product's own cut. Jobs already running finish. A hand lifts it by closing the story or moving it
-// to Released.
+// to Released, or its product published a release after the fix merged (ShippedFixes).
 public static class ReleaseAndon
 {
     // The tier above `bug`: the most urgent turn there is.
@@ -20,13 +20,13 @@ public static class ReleaseAndon
     static readonly string[] Shipped = [Stages.Released, Stages.Qa, Stages.Closed];
 
     // The products lit now, one per Release worker whose product has an open red story that has not shipped.
-    public static IReadOnlyList<Andon> Read(IReadOnlyList<Issue> issues, IReadOnlyList<Worker> workers, PlannerOptions options)
+    public static IReadOnlyList<Andon> Read(IReadOnlyList<Issue> issues, IReadOnlySet<int> shipped, IReadOnlyList<Worker> workers, PlannerOptions options)
     {
         var lit = new List<Andon>();
         foreach (var product in workers.Where(w => w.Kind == WorkKind.Release && w.Options.Product is not null).Select(w => w.Options.Product!).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             var title = options.SuiteRedTitleOf(product);
-            if (issues.Where(i => i.Title == title && !Shipped.Contains(i.Stage)).OrderBy(i => i.Number).FirstOrDefault() is { } story)
+            if (issues.Where(i => i.Title == title && !Shipped.Contains(i.Stage) && !shipped.Contains(i.Number)).OrderBy(i => i.Number).FirstOrDefault() is { } story)
             {
                 lit.Add(new Andon(product, story.Number, story.CreatedAt, WaitsFor(story)));
             }

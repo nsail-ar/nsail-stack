@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Harness.Board;
 using NSail.Harness.Planning;
+using NSail.Harness.Repositories;
 
 namespace NSail.Harness.Tests;
 
@@ -138,6 +140,61 @@ public class ReleaseAndonTests
         Assert.Empty(shipped.Andon);
         Assert.Contains(shipped.Items, i => i.Story is 2 or 3 or 4);
         Assert.DoesNotContain(shipped.Items, i => i.Tier == ReleaseAndon.Tier);
+    }
+
+    [Fact]
+    public void AFixTheProductAlreadyPublishedHoldsNothingWhateverTheWalkDid()
+    {
+        var shipped = SampleWorkers.Plan(Lit("Merged").FixShipped(1).Build(), Options());
+
+        Assert.Empty(shipped.Andon);
+        Assert.Contains(shipped.Items, i => i.Story is 2 or 3 or 4);
+    }
+
+    [Fact]
+    public void AClosedRedStoryIsNoLongerOnTheBoardAndHoldsNothing()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(2, "Ready", "p1").Build(), Options());
+
+        Assert.Empty(plan.Andon);
+        Assert.Contains(plan.Items, i => i.Story == 2);
+    }
+
+    // The reader's half: a red story in Merged is out once its product published a release after the merge.
+    static async Task<(List<ReleaseCandidate> Candidates, HashSet<int> Shipped)> RedFixes(DateTimeOffset mergedAt, params Release[] releases)
+    {
+        var options = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }] };
+        options.Workers["release-shop"] = new WorkerOptions { Type = "Release", Enabled = true, Product = "Shop", Workflow = "release-shop.yml" };
+        var repo = Stub<IRepository>.Make(new Dictionary<string, Func<object?[], object?>>
+        {
+            ["MergeOf"] = _ => Task.FromResult<Merge?>(new Merge("fixsha", mergedAt)),
+            ["RunsSince"] = _ => Task.FromResult(0),
+        });
+        var reader = new SnapshotReader(new MemoryBoard(), new RepositorySet([(repo, options.Repositories[0])]), null!, options);
+        var issues = new Fixture().Story(1, "Merged", title: ShopRed).Build().Issues.ToList();
+        return await reader.ReadRedFixes(issues, Flight.Empty, releases, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task AReleaseOfTheProductAfterTheMergeShipsTheFix()
+    {
+        var merged = DateTimeOffset.UtcNow.AddHours(-2);
+
+        var (candidates, shipped) = await RedFixes(merged, new Release("shop/v1.4.0", merged.AddHours(1)));
+
+        Assert.Equal([1], shipped);
+        Assert.Empty(candidates);
+    }
+
+    [Fact]
+    public async Task AReleaseBeforeTheMergeOrOfAnotherProductDoesNot()
+    {
+        var merged = DateTimeOffset.UtcNow.AddHours(-2);
+
+        var (candidates, shipped) = await RedFixes(merged, new Release("shop/v1.3.0", merged.AddHours(-1)), new Release("clinic/v2.0.0", merged.AddHours(1)));
+
+        Assert.Empty(shipped);
+        Assert.Equal([1], candidates.Select(c => c.Story));
     }
 
     [Fact]

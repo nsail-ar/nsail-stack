@@ -26,13 +26,15 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         var main = await home.Head(home.DefaultBranch, ct);
         foreach (var repo in repos.All) prs.AddRange(await ReadPrs(repo, main, ct));
         var releases = await home.Releases(ct);
-        return new BoardSnapshot(issues, prs, flight, await ReadReleaseCandidates(issues, flight, ct), null, releases.FirstOrDefault()?.PublishedAt,
+        var (candidates, shipped) = await ReadRedFixes(issues, flight, releases, ct);
+        return new BoardSnapshot(issues, prs, flight, candidates, null, releases.FirstOrDefault()?.PublishedAt,
             await ReadLockAges(issues, flight, now, ct), now, home.Name)
         {
             LockHolders = await locks.Holders(ct),
             MainSha = main,
             MergedStories = await ReadMerged(issues, prs, flight, ct),
             Unshipped = await ReadUnshipped(releases, ct),
+            ShippedFixes = shipped,
         };
     }
 
@@ -204,21 +206,31 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         return unjudged;
     }
 
-    // A red fix merged, nobody cutting its product, and fewer than two cuts since the merge. The
-    // release job runs the suite on main's head, which holds the fix.
-    async Task<List<ReleaseCandidate>> ReadReleaseCandidates(List<Issue> issues, Flight flight, CancellationToken ct)
+    // The merged red-suite stories, as two answers. Candidates: a fix merged, nobody cutting its
+    // product, and fewer than two cuts since the merge; the release job runs the suite on main's
+    // head, which holds the fix. Shipped: the product published a release after the merge, so the
+    // fix is out whatever the walk of that release has or has not moved yet (a cut that red-failed
+    // after the merge sends the story back to Ready, so a Merged story has no such cut).
+    internal async Task<(List<ReleaseCandidate> Candidates, HashSet<int> Shipped)> ReadRedFixes(List<Issue> issues, Flight flight, IReadOnlyList<Release> releases, CancellationToken ct)
     {
         var result = new List<ReleaseCandidate>();
+        var shipped = new HashSet<int>();
         foreach (var i in issues.Where(i => i.Stage == Stages.Merged))
         {
             // Only a red suite names its product; a red main's fix is cut with the next day's cut.
             var release = options.Releases.FirstOrDefault(r => i.Title == HarnessTexts.Fill(options.Texts.SuiteRedTitle, ("product", r.Product!)));
             if (release?.Workflow is not { } wf) continue;
-            if (flight.ReleaseWorkflows.Contains(wf)) continue;
             if (await repos.Default.MergeOf(i.Number, ct) is not { } merge) continue;
+            var product = release.Product!;
+            if (releases.Any(r => r.Tag.StartsWith($"{product.ToLowerInvariant()}/v", StringComparison.Ordinal) && r.PublishedAt > merge.At))
+            {
+                shipped.Add(i.Number);
+                continue;
+            }
+            if (flight.ReleaseWorkflows.Contains(wf)) continue;
             if (await repos.Default.RunsSince(wf, merge.At, ct) >= 2) continue;
             result.Add(new ReleaseCandidate(i.Number, wf, merge.Sha));
         }
-        return result;
+        return (result, shipped);
     }
 }

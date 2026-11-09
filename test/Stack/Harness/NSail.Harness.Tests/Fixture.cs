@@ -21,6 +21,7 @@ sealed class Fixture
     DateTimeOffset? _lastQa;
     DateTimeOffset? _lastCut;
     readonly HashSet<int> _merged = [];
+    readonly HashSet<int> _shippedFixes = [];
     readonly Dictionary<string, string> _unshipped = [];
     readonly DateTimeOffset _now = DateTimeOffset.UtcNow;
 
@@ -73,6 +74,12 @@ sealed class Fixture
         return this;
     }
 
+    public Fixture FixShipped(int story)
+    {
+        _shippedFixes.Add(story);
+        return this;
+    }
+
     public Fixture Cutting(string workflow)
     {
         _flight = _flight with { ReleaseWorkflows = _flight.ReleaseWorkflows.Append(workflow).ToHashSet() };
@@ -112,6 +119,7 @@ sealed class Fixture
             DueReleases = _due,
             MergedStories = _merged,
             Unshipped = _unshipped,
+            ShippedFixes = _shippedFixes,
         };
     }
 }
