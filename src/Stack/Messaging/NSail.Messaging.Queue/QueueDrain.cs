@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using NSail.Messaging.Runtime.Packs;
 using NSail.Security;
 using NSail.Serialization;
 
@@ -165,7 +166,7 @@ public sealed class QueueDrain
         var now = _clock.GetUtcNow().UtcDateTime;
 
         row.Attempts = attempts;
-        row.LastError = Truncate(exception.Message);
+        row.LastError = Truncate(PackReplayer.Describe(exception));
 
         if (attempts >= _options.MaxAttempts)
         {

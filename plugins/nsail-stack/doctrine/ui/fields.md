@@ -143,6 +143,13 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   rule it is: money's bound is the **caller's** (a range no annotation can express, said on the
   field), a date's is the **message's**, and a page that wrote it beside the declaration would be
   keeping a second copy of it.
+- **A `DateTimeOffset` binds as an instant read on the reader's clock.** Both date fields show the
+  day and hour of that instant in the host's local zone (`TimeZoneInfo.Local`, the zone
+  `BusinessDate.Today` and the `[NotFuture]` ceiling already use), never the wall clock of the
+  offset stored with it, and what they hand back is the picked local wall time with that zone's
+  offset — so an untouched value saves the same instant. A reader east of UTC therefore sees the
+  next day for a late-evening UTC value. A business date stays `DateOnly` (`data.md`): the
+  offset is for instants, not for dates.
 
 ### Numbers and money
 
@@ -283,9 +290,10 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   and never kept past the page.
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
   6-digit hex — no alpha channel — matching what every caller already stores; text that
-  isn't a color never reaches the model. *Accepted debt: the box itself keeps showing the
-  refused text on screen — the vendor never calls back into `TextChanged` for text it
-  rejects, so nothing tells the field to redraw over it.*
+  isn't a color never reaches the model (`NsColorText` is the second line behind the
+  vendor's own filter). *Accepted debt: the box itself keeps showing the refused text on
+  screen — the vendor never calls back into `TextChanged` for text it rejects, so nothing
+  tells the field to redraw over it.*
 
 ---
 
@@ -909,7 +917,7 @@ is a place nobody opens (core doc's rule and its exception; cases). Contract:
 
 **One file is one field; a set of them is a different field.** `NsFileUpload` holds ONE value
 (`@bind-Value`, `Guid?`); `NsMultiFileUpload` holds an ordered set (`IReadOnlyList<Guid>`).
-They take **the same parameters** — the list field's `Value` is simply the list — and `Preview`
+They take **the same parameters** (the list field adds `MaxTotalSize`) — the list field's `Value` is simply the list — and `Preview`
 decides whether what is held is shown. **No parameter turns one into the other** (cases).
 
 - **A field line carries exactly ONE action icon.** Without a preview it is the upload trigger
@@ -933,8 +941,14 @@ decides whether what is held is shown. **No parameter turns one into the other**
 - **Empty states show the shape of what will land there** plus the trigger, so the box does not
   change size when the first file arrives — the dashed frame carries `NsIcons.Image` as an
   **illustration**, the one case `ns-mud.css` sizes a glyph outside the three steps.
-- **`MaxSize` defaults to 5 MB and is per control**; a file over it is refused *on the field*
-  with the limit in the sentence, never dropped silently. `Accept` is per control.
+- **`MaxSize` defaults to 5 MB and is per control**; `NsMultiFileUpload` also caps one selection
+  with `MaxTotalSize`. A file over either is refused *on the field*, named, with the limit in
+  the unit a person reads (KB under 1 MB), never dropped silently; every refusal of a selection
+  stays shown. `Accept` is per control and is **enforced, not a hint**: a file whose extension or
+  leading bytes fall outside it is refused, and the stored content type comes from the Stack's
+  allow-list, never the client. A wildcard never admits svg/html — name them to allow them. An extension the allow-list does
+  not know is admitted only when named or fitted by a token, stored as `application/octet-stream`.
+  A field with no `Accept` keeps the client's type: declare `Accept` on anything served back.
 - **Where bytes go is `IFileStore`, not the field's business.** The app's registered store
   answers for ordinary screens; a screen whose files belong to somebody other than the
   session's organization hands its own `Store`. A store that cannot build a preview URL from an

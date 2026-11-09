@@ -90,14 +90,22 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   the object would be dropped without a word. It also refuses a key that is, or passes
   through, a symlink the committed tree holds (`KeyThroughSymlink`): it would write outside
   the clone.
+- **The filesystem provider replaces atomically.** A put is copied to `.put-<32 hex>` beside
+  the key and renamed over it, so a cancel or a throwing source leaves the previous object and
+  no partial file; `List` skips exactly that name form. A process killed mid-put leaves its
+  staging file behind: it is garbage and safe to delete.
 - **`IsConfigured` answers the refusal before there is anything to put.** A caller that
   queues the writing for later — a request filed now and written by a job — would otherwise
   accept the ask, read a whole database and fail on its last line. It is false for both of
   `Resolve`'s refusals, an install storing nowhere and a provider no host composed, because a
   caller at the door can do nothing different about either.
-- **The credential is sealed with the install's own key** (`KeyProtector`, `NSail.Security`).
-  `AddStorageWebApi` does not register one — the key is the host's — so a host that composes
-  Storage without it fails by name on first use rather than sealing under a key nobody chose.
+- **The credential is sealed with the key of the tenant it belongs to** (`KeyProtector`,
+  `NSail.Security`; `AddTenantKeys` reads one file per tenant). A tenant without a key makes the
+  seal throw. An open that cannot happen reads as an empty secret: the target is still
+  configured and a provider that signs with the secret refuses the write, so a stored secret
+  that no longer opens must be saved again. `AddStorageWebApi` does not register a
+  `KeyProtector` — the key is the host's — so a host that composes Storage without one fails by
+  name on first use rather than sealing under a key nobody chose.
 
 ## The S3 provider
 

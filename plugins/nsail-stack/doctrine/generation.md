@@ -170,6 +170,8 @@ public class GetPrescription : IMessage<Prescription>
 | `[AsHeader]` | Request header |
 | (default on POST/PUT) | JSON body |
 
+Only public, instance, non-indexer properties with a public `set` or `init` and no `[JsonIgnore]` enter the model, read once as the most derived declaration; any other member is not on the wire.
+
 Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Head and Options are mapped with `MapMethods`; their members bind from the query string (route tokens and `[AsRoute]`/`[AsHeader]` still win).
 
 Sdk projects import `static NSail.Messaging.Annotations.Method` via global usings.
@@ -221,7 +223,8 @@ default for it.
 with `JsonOptions.Wire`; the host copies `JsonOptions.Converters` into its own pipeline via
 `AddMessagingJson()` (called by `AddBaseWebApi`). Enums are **written as names** in both
 directions, and numbers are still accepted on read. A query-string enum was always a name,
-so the two edges agree.
+so the two edges agree. `long`, `ulong` and `decimal` are **written as strings** the same
+way and read from either form, because a JavaScript reader would round them (react.md).
 
 ### The client name is derived, never declared
 
@@ -298,6 +301,7 @@ same thing.
 | `NSG013` | Error | An `Ignore` entry on a `[MapFrom]` or `[MapTo]` names a member the type does not declare, so it silences nothing. |
 | `NSG014` | Error | A `[Queue]` message implements `IMessage<T>` — a durable send answers "accepted" and never the outcome, so there is no result to hand back. |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` — each registers an `ISender`, so every send would meet `MultipleSenders` at runtime. |
+| `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) — it would cap no account, silently, and go on doing so after a rename. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only

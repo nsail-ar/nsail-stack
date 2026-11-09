@@ -11,6 +11,10 @@ namespace NSail.Exporting;
 /// spreadsheet second would otherwise reorder every menu in the house.</para></summary>
 public sealed class ExportWriters
 {
+    // Fixed, not Path.GetInvalidFileNameChars(): that list is the OS's, and a name that goes into
+    // Content-Disposition has to be safe on whichever OS opens the file.
+    static readonly char[] Forbidden = ['"', '\\', '/', ':', '*', '?', '<', '>', '|'];
+
     readonly List<IExportWriter> _writers;
 
     public ExportWriters(IEnumerable<IExportWriter> writers)
@@ -37,7 +41,7 @@ public sealed class ExportWriters
         ArgumentNullException.ThrowIfNull(book);
         ArgumentNullException.ThrowIfNull(writer);
 
-        var name = new string([.. book.Name.Select(character => Path.GetInvalidFileNameChars().Contains(character) ? '-' : character)]).Trim();
+        var name = new string([.. book.Name.Select(character => Forbidden.Contains(character) || char.IsControl(character) ? '-' : character)]).Trim();
 
         return $"{(name.Length == 0 ? "export" : name)}.{writer.Extension}";
     }

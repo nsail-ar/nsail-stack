@@ -18,7 +18,8 @@ public sealed class HarnessTexts
     public string PushRefusedKept { get; set; } = "The push to `{branch}` was refused and the rescue push failed too: the builder's commits stay on the harness's local branch only. A hand reconciles them before the story's next voyage.";
     public string WorkPushed { get; set; } = ", what it committed pushed";
     public string NotOwnPr { get; set; } = "The builder asked to close PR #{pr}, which is not a PR of this story: nothing was closed.";
-    public string ProtectedPaths { get; set; } = "The builder's commits touch protected paths ({paths}): nothing was pushed. A hand lifts the screen with the `{label}` label.";
+    public string ProtectedPaths { get; set; } = "The builder's commits touch protected paths ({paths}): nothing was pushed, and the story waits as `ruling` instead of being built again. Should the screen lift for it? A hand who says yes adds `{label}`: the hold comes off by itself, and the kept work is pushed if the branch has not moved.";
+    public string ProtectedAhead { get; set; } = "The analysis finds this story's change must touch protected paths ({paths}), which no builder's push carries without a hand's word: it waits as `ruling` before any voyage. Should the screen lift for it? A hand who says yes adds `{label}`, and the hold comes off by itself.";
     public string CannotContinue { get; set; } = "This PR cannot be continued.";
     public string PrStory { get; set; } = "Story: {story}.";
     public string LandedNothingToBuild { get; set; } = "Nothing left to build: {evidence}. The voyage added nothing, so the story goes to **Merged** instead of back to a builder.";
@@ -51,6 +52,7 @@ public sealed class HarnessTexts
     public string SuiteRed { get; set; } = "**{product}**'s browser suite went {why} on `{sha}` ({where}).\n\n**What went red:**\n```\n{failed}\n```\n\nThe run's log and evidence: `{log}` on {machine}.";
     public string MainRedTitle { get; set; } = "CI red on main";
     public string MainRed { get; set; } = "`main`'s gate went {why} at `{sha}` — the commits in {range} are the suspects.\n\n**What went red:**\n```\n{failed}\n```\n\nThe gate's log: `{log}` on {machine}.";
+    public string MainRedWithoutFix { get; set; } = "`{sha}` does not hold this story's merge `{merge}`: its red is no news about the fix, and the story stays in {stage}.";
 
     // The template with its `{name}` slots filled.
     public static string Fill(string template, params (string Name, object? Value)[] values)

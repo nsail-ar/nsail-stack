@@ -10,10 +10,9 @@ namespace NSail.Harness.Tests;
 
 public class ChildEnvironmentTests
 {
-    [Fact]
+    [FactOn("unix")]
     public async Task AChildHoldsNoCredentialTheHarnessProcessHolds()
     {
-        if (OperatingSystem.IsWindows()) return;
         using var _ = Held(("GH_TOKEN", "harness-token"), ("PGPASSWORD", "db-secret"), ("ANTHROPIC_API_KEY", "key"));
 
         var result = await Shell.Run("env", [], Path.GetTempPath());
@@ -27,20 +26,42 @@ public class ChildEnvironmentTests
         Assert.DoesNotContain("harness-token", result.Output);
     }
 
-    [Fact]
+    [FactOn("unix")]
     public async Task ANameTheCallerGivesReachesTheChild()
     {
-        if (OperatingSystem.IsWindows()) return;
-
         var result = await Shell.Run("env", [], Path.GetTempPath(), new Dictionary<string, string> { ["PGPASSWORD"] = "declared" });
 
         Assert.Contains("PGPASSWORD=declared", result.Output);
     }
 
-    [Fact]
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task ASeatRunAsAnotherUserGoesThroughSudoWithoutThisUsersHome()
+    {
+        var bin = Directory.CreateTempSubdirectory().FullName;
+        var sudo = Path.Combine(bin, "sudo");
+        File.WriteAllText(sudo, "#!/bin/sh\necho \"argv=$*\"\necho \"home=${HOME-unset}\"\n");
+        File.SetUnixFileMode(sudo, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var path = Environment.GetEnvironmentVariable("PATH");
+        using var _ = Held(("PATH", $"{bin}:{path}"));
+        try
+        {
+            var result = await Shell.Run("claude", ["-p"], Path.GetTempPath(), new Dictionary<string, string> { ["CLAUDE_CONFIG_DIR"] = "/c" }, lowPriority: true, runAs: "seat");
+
+            Assert.Contains("argv=-n -H -u seat --preserve-env=", result.Output);
+            Assert.Contains("CLAUDE_CONFIG_DIR", result.Output);
+            Assert.Contains("-- setsid -w nice -n 10 claude", result.Output);
+            Assert.Contains(" claude -p", result.Output);
+            Assert.Contains("home=unset", result.Output);
+        }
+        finally
+        {
+            Directory.Delete(bin, recursive: true);
+        }
+    }
+
+    [FactOn("unix")]
     public async Task OnlyTheHarnessGitCarriesItsToken()
     {
-        if (OperatingSystem.IsWindows()) return;
         var before = Shell.GitEnvironment;
         Shell.GitEnvironment = new Dictionary<string, string> { ["GH_TOKEN"] = "harness-token" };
         try

@@ -33,7 +33,22 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         var config = Path.Combine(configRoot, Path.GetFileName(run.WorkDir));
         Directory.CreateDirectory(config);
         var plugins = Path.Combine(config, "plugins");
-        if (Directory.Exists(plugins)) Directory.Delete(plugins, recursive: true);
+        if (Directory.Exists(plugins))
+        {
+            if (options.RunAs is null)
+            {
+                Directory.Delete(plugins, recursive: true);
+            }
+            else
+            {
+                // The account created it, so the account removes it.
+                var removed = await Shell.Run("rm", ["-rf", plugins], config, ct: ct, runAs: options.RunAs);
+                if (removed.ExitCode != 0)
+                {
+                    throw new InvalidOperationException($"{plugins} could not be emptied as {options.RunAs}: {removed.Output.Trim()}");
+                }
+            }
+        }
 
         var env = new Dictionary<string, string>(run.Env)
         {
@@ -52,10 +67,12 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
 
         if (run.Marketplace is not null && options.Plugins.Count > 0)
         {
-            await Shell.Run(command, ["plugin", "marketplace", "add", run.Marketplace], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct);
+            var added = await Shell.Run(command, ["plugin", "marketplace", "add", run.Marketplace], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
+            if (Failure(added) is { } addFailure) throw await Unequipped(log, $"marketplace {run.Marketplace} was not added", addFailure);
             foreach (var plugin in options.Plugins)
             {
-                await Shell.Run(command, ["plugin", "install", plugin], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct);
+                var installed = await Shell.Run(command, ["plugin", "install", plugin], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct, runAs: options.RunAs);
+                if (Failure(installed) is { } failure) throw await Unequipped(log, $"plugin {plugin} did not install", failure);
             }
         }
 
@@ -69,10 +86,24 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
             .. run.Mcp is null ? Array.Empty<string>() : ["--mcp-config", run.Mcp, "--strict-mcp-config"],
             .. options.Settings() is { } settings ? ["--settings", settings] : Array.Empty<string>(),
         ];
-        var result = await Shell.Run(command, args, run.WorkDir, env, run.Timeout, log, stdin: run.Prompt, ct: ct, lowPriority: true);
+        var result = await Shell.Run(command, args, run.WorkDir, env, run.Timeout, log, stdin: run.Prompt, ct: ct, lowPriority: true, runAs: options.RunAs, keep: StreamSignals.IsSignal);
         var signals = StreamSignals.Read(result.Output);
         Heard(signals);
         return new AgentResult(result.ExitCode, result.TimedOut, signals.QuotaUntil, signals.QuotaRefused, signals.Result);
+    }
+
+    static string? Failure(ShellResult r)
+    {
+        return r.TimedOut ? "timed out" : r.ExitCode != 0 ? $"exit {r.ExitCode}" : null;
+    }
+
+    // A seat without its doctrine must not start. It is the machine's break, not the story's: the
+    // harness says it on the story as a broken job, naming what failed.
+    static async Task<InvalidOperationException> Unequipped(StreamWriter log, string failed, string why)
+    {
+        var said = $"{failed} ({why}); the agent was not started";
+        await log.WriteLineAsync(said);
+        return new InvalidOperationException(said);
     }
 
     // A seat's access in Claude Code's tools. A reader writes only through Write (its out files) and
@@ -110,6 +141,11 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         };
         if (options.Token() is { } token) env["CLAUDE_CODE_OAUTH_TOKEN"] = token;
         return env;
+    }
+
+    public bool IsSignal(string line)
+    {
+        return StreamSignals.IsSignal(line);
     }
 
     public (bool Refused, DateTimeOffset? Until) Quota(string output)

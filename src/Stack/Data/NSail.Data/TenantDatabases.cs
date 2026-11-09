@@ -50,6 +50,14 @@ public class TenantDatabases
         return database.Length > MaxIdentifierLength ? null : database;
     }
 
+    /// <summary>The cluster's maintenance database: the one place install-wide work has to
+    /// coordinate on when every other connection is a tenant's.</summary>
+    public string MaintenanceConnection => On(MaintenanceDatabase);
+
+    /// <summary>The prefix every database of this cell carries, and so what keeps a cluster-wide
+    /// key from reaching a neighbouring cell or product.</summary>
+    public string CellPrefix => $"{_product}_{_cell}_";
+
     public string ConnectionFor(string database)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(database);
@@ -62,7 +70,7 @@ public class TenantDatabases
     /// way to know.</summary>
     public async Task<IReadOnlyList<Tenant>> All(CancellationToken cancellationToken = default)
     {
-        var prefix = $"{_product}_{_cell}_";
+        var prefix = CellPrefix;
 
         await using var registry = new NpgsqlConnection(On(MaintenanceDatabase));
 

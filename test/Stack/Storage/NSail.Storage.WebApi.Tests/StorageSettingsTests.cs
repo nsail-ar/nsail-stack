@@ -146,6 +146,34 @@ public sealed class StorageSettingsTests
         Assert.Equal(container.Path, (await credentials.Get(StorageNames.Default)).Container);
     }
 
+    // A tenant with no key must not take the reader down: the secret reads as empty and the
+    // sealing side is the one that throws.
+    [Fact]
+    public async Task ASecretThatCannotOpenForWantOfAKeyReadsAsEmpty()
+    {
+        await _settings.Save(new StorageSettings
+        {
+            Provider = "s3",
+            Container = "bucket",
+            SecretKey = _keys.Protect(Secret),
+        }, 0);
+
+        var credentials = new StorageCredentialProvider(_settings, new KeyProtector(new NoKey()), Stores(null));
+
+        var target = await credentials.Get(StorageNames.Default);
+
+        Assert.Equal("", target.SecretKey);
+        Assert.Throws<MissingEncryptionKeyException>(() => credentials.Protect(Secret));
+    }
+
+    sealed class NoKey : IEncryptionKeySource
+    {
+        public string? Current
+        {
+            get { return null; }
+        }
+    }
+
     // An install that named nothing stores nowhere, which is what keeps the refusal above
     // meaning something: the default is an opt-in and not a floor Storage invents.
     [Fact]

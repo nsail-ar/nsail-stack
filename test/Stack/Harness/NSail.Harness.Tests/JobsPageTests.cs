@@ -63,6 +63,25 @@ public class JobsPageTests : IDisposable
     }
 
     [Fact]
+    public void AProviderEndingHasAResultAndPillOfItsOwn()
+    {
+        var history = History(
+            Job(1, "dev #5", 5, "rate limited — 403 GET /repos/acme/app/pulls/287/files, retry in 42m", HarnessLoop.ProviderResult),
+            Job(2, "dev #6", 6, "failed: boom", "broke"));
+
+        var limited = JobsPage.List(_options, history, null, HarnessLoop.ProviderResult, null, null);
+        var broke = JobsPage.List(_options, history, null, "broke", null, null);
+
+        Assert.Contains("1 job<", limited);
+        Assert.Contains("/jobs/job-1\"", limited);
+        Assert.Contains("<span class=\"b warn\">provider down</span>", limited);
+        Assert.Contains("rate limited — 403 GET", limited);
+        Assert.Contains("<option value=\"provider\" selected>provider down</option>", limited);
+        Assert.DoesNotContain("/jobs/job-1\"", broke);
+        Assert.Contains("provider down", JobsPage.One(_options, history, "job-1", null));
+    }
+
+    [Fact]
     public void AWatchJobReadsWatchAndTheRoleFilterFindsIt()
     {
         var history = History(

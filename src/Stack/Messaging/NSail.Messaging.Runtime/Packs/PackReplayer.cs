@@ -43,7 +43,8 @@ public class PackReplayer
                 // done, not refused. This is what makes a retry after a partial run resume.
                 replay.Skipped++;
             }
-            catch (Exception exception)
+            // A step's own timeout is an OperationCanceledException of another token: it stays a step error.
+            catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 replay.Errors.Add(new PackStepError { Index = index, Step = step, Detail = Describe(exception) });
 
@@ -75,7 +76,7 @@ public class PackReplayer
 
     /// <summary>What a failed step says — the refusing rule's own words where the failure names
     /// any. Public for an owner that catches its own steps instead of letting a replay collect
-    /// them, so one pack's error reads like every other's.</summary>
+    /// them, and for the queue's dead letter, so every failure reads the same wherever it is stored.</summary>
     public static string Describe(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);

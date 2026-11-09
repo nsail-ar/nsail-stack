@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Localization;
 using NSail.Dates;
 using NSail.Messaging.Runtime.Validation;
 
@@ -147,7 +148,7 @@ public partial class NsDateField<TValue>
             null => null,
             DateTime dateTime => dateTime.Date,
             DateOnly dateOnly => dateOnly.ToDateTime(TimeOnly.MinValue),
-            DateTimeOffset dateTimeOffset => dateTimeOffset.DateTime.Date,
+            DateTimeOffset dateTimeOffset => TimeZoneInfo.ConvertTime(dateTimeOffset, TimeZoneInfo.Local).Date,
             _ => null
         };
     }

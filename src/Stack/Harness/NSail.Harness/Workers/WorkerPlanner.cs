@@ -70,6 +70,13 @@ public static class WorkerPlanner
         var full = options.WipLimit > 0 && wip >= options.WipLimit;
         if (full) notes.Add($"{wip} stories under way (limit {options.WipLimit}): no new story starts until one closes");
 
+        // A red-main story whose fix merged waits for main's gate to judge a head that holds it: only
+        // Develop waits, everything else goes on.
+        foreach (var n in board.UnjudgedFixes)
+        {
+            notes.Add($"#{n}: its fix merged and no gate of main has judged a head that holds it — Develop waits");
+        }
+
         var sea = issues.Where(i => flight.DevStories.Contains(i.Number))
             .SelectMany(i => i.Labels.Where(l => l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal)))
             .ToHashSet();
@@ -98,8 +105,8 @@ public static class WorkerPlanner
                 foreach (var i in stories)
                 {
                     if (taken.Contains(i.Number) || Busy(i, flight, options)) continue;
-                    var pr = Deciding(prsByStory.GetValueOrDefault(i.Number), board, flight);
-                    var state = pr is null ? null : StateOf(pr, board, options);
+                    if (w.Kind == WorkKind.Dev && board.UnjudgedFixes.Contains(i.Number)) continue;
+                    var (pr, state) = Deciding(i, w, prsByStory.GetValueOrDefault(i.Number), board, options, lookup);
                     if (!w.Takes(i, w.Filter.Pr == "open" ? pr : null, state, lookup)) continue;
                     taken.Add(i.Number);
                     chores.AddRange(ChoresOf(w, "Starting", i));
@@ -142,10 +149,21 @@ public static class WorkerPlanner
         return i.TouchedAt is { } at && board.ReadAt - at <= options.OrphanGrace;
     }
 
-    // The PR a story's PR work is about: its first open one nobody here is already reading.
-    static StoryPr? Deciding(List<StoryPr>? prs, BoardSnapshot board, Flight flight)
+    // The PR a story's PR work is about: the first open one nobody here is already reading that the
+    // worker takes; none taken, the first unread one stands for the story's state.
+    static (StoryPr?, string?) Deciding(Issue i, Worker w, List<StoryPr>? prs, BoardSnapshot board, PlannerOptions options, StoryLookup lookup)
     {
-        return prs?.FirstOrDefault(p => p.Repo != board.Repo || !flight.ReviewPrs.Contains(p.Number));
+        var free = (prs ?? []).Where(p => p.Repo != board.Repo || !board.Flight.ReviewPrs.Contains(p.Number)).ToList();
+        if (free.Count == 0) return (null, null);
+        if (w.Filter.Pr == "open")
+        {
+            foreach (var p in free)
+            {
+                var s = StateOf(p, board, options);
+                if (w.Takes(i, p, s, lookup)) return (p, s);
+            }
+        }
+        return (free[0], StateOf(free[0], board, options));
     }
 
     // A PR's state at its head, as a filter's Checks names it.
@@ -237,6 +255,12 @@ public static class WorkerPlanner
         }
         var tier = bug ? "bug" : red ? "red" : i.Has(Labels.P1) ? "p1" : i.ParentPercent > 0 ? "epic" : "rest";
         return new WorkItem(w.Kind!.Value, i.Number, null, tier, tier, Worker: w.Name);
+    }
+
+    // A chore a worker's Starting event planned: it runs only for an item that starts.
+    internal static bool IsStarting(Chore c)
+    {
+        return c.Why.EndsWith(": Starting", StringComparison.Ordinal);
     }
 
     // A keeper's chore: planned from the pass's read, with no job's lock on the story behind it.

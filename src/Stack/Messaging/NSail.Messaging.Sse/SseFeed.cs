@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ public sealed class SseFeed : PushFeed, IAsyncDisposable
     readonly PushDispatch _dispatch;
 
     CancellationTokenSource? _opened;
+    long _up;
 
     public SseFeed(Mediator mediator, SseConnection connect, IEnumerable<PushedMessage> known, ILogger<SseFeed> logger)
     {
@@ -28,12 +30,9 @@ public sealed class SseFeed : PushFeed, IAsyncDisposable
 
     enum Line
     {
-        /// <summary>It never came up — a deploy in progress, a laptop that slept.</summary>
-        Failed,
-
-        /// <summary>It was up and has ended: a restart, a proxy's idle cut, a tab the browser
-        /// put to sleep.</summary>
-        Held,
+        /// <summary>The line did not come up, or came up and has ended — a deploy in progress, a
+        /// laptop that slept, a restart, a proxy's idle cut.</summary>
+        Ended,
 
         /// <summary>The session may not listen. Not a line to keep knocking on.</summary>
         Refused,
@@ -77,31 +76,28 @@ public sealed class SseFeed : PushFeed, IAsyncDisposable
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            switch (await Hold(client, cancellationToken))
+            _up = 0;
+
+            if (await Hold(client, cancellationToken) is Line.Refused)
             {
-                case Line.Refused:
-                    // The session this feed was opened for is over — expired, or a ticket minted
-                    // for another tenant. The sign-in that follows reloads the app and opens a
-                    // feed of its own; this one knocking every 30 s until then would never be
-                    // let in, so it stops.
-                    return;
-
-                case Line.Held:
-                    // A line that was up and dropped is opened again at once, the way the hub's
-                    // own reconnect answers one; only a line that never came up climbs the ladder.
-                    attempt = 0;
-
-                    break;
-
-                default:
-                    // Nothing to say out loud: the screens still answer every read, and the next
-                    // attempt is already scheduled.
-                    await PushRetry.Wait(attempt, cancellationToken);
-
-                    attempt++;
-
-                    break;
+                // The session this feed was opened for is over — expired, or a ticket minted
+                // for another tenant. The sign-in that follows reloads the app and opens a
+                // feed of its own; this one knocking every 30 s until then would never be
+                // let in, so it stops.
+                return;
             }
+
+            // A line that stayed up PushRetry.Steady and ended, cleanly or cut, starts the
+            // ladder over; one that ended sooner — a 200 and a hang-up — keeps climbing, or it
+            // would be a request storm. The screens still answer every read meanwhile.
+            if (_up != 0 && Stopwatch.GetElapsedTime(_up) >= PushRetry.Steady)
+            {
+                attempt = 0;
+            }
+
+            await PushRetry.Wait(attempt, cancellationToken);
+
+            attempt++;
         }
     }
 
@@ -119,8 +115,10 @@ public sealed class SseFeed : PushFeed, IAsyncDisposable
 
             if (!response.IsSuccessStatusCode)
             {
-                return Line.Failed;
+                return Line.Ended;
             }
+
+            _up = Stopwatch.GetTimestamp();
 
             // The head of the response is the line coming up, and the first connect is a
             // catch-up too: a screen that read before it came up has missed whatever was
@@ -129,15 +127,15 @@ public sealed class SseFeed : PushFeed, IAsyncDisposable
 
             await Read(response, cancellationToken);
 
-            return Line.Held;
+            return Line.Ended;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            return Line.Failed;
+            return Line.Ended;
         }
         catch (Exception)
         {
-            return Line.Failed;
+            return Line.Ended;
         }
     }
 

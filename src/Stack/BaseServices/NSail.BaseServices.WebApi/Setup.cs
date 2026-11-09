@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -10,6 +11,7 @@ using NSail.Configuration;
 using NSail.Data;
 using NSail.Messaging.Queue;
 using NSail.Messaging.Runtime;
+using NSail.Messaging.Runtime.Pipelines;
 using NSail.Messaging.WebApi.Push;
 using NSail.Messaging.WebApi;
 using NSail.Localization;
@@ -54,12 +56,28 @@ public static class Setup
         builder.Services.TryAddScoped<RequestBudgetProvider>();
 
         builder.Services.AddSingleton<BuildVersionMiddleware>();
+        builder.Services.AddSingleton<ResponseHeadersMiddleware>();
+
+        // Subdomains are tenants of the same install, all served over HTTPS; preload is left off
+        // because it is a one-way commitment for every subdomain of the registrable domain.
+        builder.Services.AddHsts(options =>
+        {
+            options.IncludeSubDomains = true;
+        });
 
         builder.Services.AddScoped<TenancyMiddleware>();
         builder.Services.AddScoped<TenantStateMiddleware>();
         builder.Services.AddScoped<TenantClaimMiddleware>();
         builder.Services.AddScoped<TicketEpochMiddleware>();
+
+        // The wall for what the middleware cannot reach: an open circuit's sends and the push
+        // feeds are not requests, so the suspension is asked again on every send.
+        builder.Services.AddScoped(typeof(IInterceptor<>), typeof(TenantStateInterceptor<>));
+        builder.Services.AddScoped(typeof(IInterceptor<,>), typeof(TenantStateInterceptor<,>));
         builder.Services.AddScoped<CredentialMiddleware>();
+        builder.Services.TryAddSingleton(sp => new MembershipStampMemo(
+            sp.GetService<TenancyOptions>() ?? new TenancyOptions(),
+            sp.GetService<TimeProvider>() ?? TimeProvider.System));
 
         // The install's own say over the credentials it mints, loaded here because this is where
         // the configuration is in hand: AddSecurity's TryAdd leaves this one standing, and a
@@ -143,23 +161,57 @@ public static class Setup
 
     public static void UseBaseWebApi(this WebApplication app)
     {
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("NSail.BaseServices.WebApi");
+
         if (app.Configuration.GetValue("ASPNETCORE_FORWARDEDHEADERS_ENABLED", false))
         {
-            var forwardedHeadersOptions = new ForwardedHeadersOptions
+            var trusted = app.Services.GetRequiredService<SecurityOptions>().TrustedProxies;
+
+            if (trusted.Length == 0)
             {
-                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-            };
+                // Two empty lists make the framework skip the peer check and believe everyone,
+                // so with nobody named the middleware is not installed at all.
+                logger.LogWarning("ASPNETCORE_FORWARDEDHEADERS_ENABLED is on but Security:TrustedProxies is empty: no forwarded header is believed. Behind a proxy every caller shares the proxy's address and every request reads as http, so HSTS is not sent and HTTPS redirection can loop. Name the proxy in Security:TrustedProxies.");
+            }
+            else
+            {
+                var forwardedHeadersOptions = new ForwardedHeadersOptions
+                {
+                    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+                };
 
-            forwardedHeadersOptions.KnownIPNetworks.Clear();
-            forwardedHeadersOptions.KnownProxies.Clear();
+                // Only the proxies the install names are believed; the framework's loopback
+                // default goes too, so the list is the whole trust.
+                forwardedHeadersOptions.KnownIPNetworks.Clear();
+                forwardedHeadersOptions.KnownProxies.Clear();
 
-            app.UseForwardedHeaders(forwardedHeadersOptions);
+                foreach (var entry in trusted)
+                {
+                    if (entry.Contains('/'))
+                    {
+                        forwardedHeadersOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(entry));
+                    }
+                    else
+                    {
+                        forwardedHeadersOptions.KnownProxies.Add(IPAddress.Parse(entry));
+                    }
+                }
+
+                app.UseForwardedHeaders(forwardedHeadersOptions);
+            }
+        }
+        else if (!app.Environment.IsDevelopment())
+        {
+            // Development runs on the machine itself, with no proxy in front, so the warning
+            // would only be noise there.
+            logger.LogWarning("Forwarded headers are off: behind a proxy every caller shares the proxy's address, so one flood closes every public door for everyone. Set ASPNETCORE_FORWARDEDHEADERS_ENABLED and Security:TrustedProxies.");
         }
 
-        // Outermost, so the build that answered rides on every answer this host gives — a
-        // refusal, a 404 and a redirect included. It only registers a callback, so nothing
-        // below it can drop the stamp by rewriting the response.
+        // Outermost, and both only register an OnStarting callback, so nothing below can drop
+        // the headers by rewriting the response. The build rides on a signed-in caller's
+        // answers, a refusal included, but not on one cut short before authentication.
         app.UseMiddleware<BuildVersionMiddleware>();
+        app.UseMiddleware<ResponseHeadersMiddleware>();
 
         app.UseErrorHandler();
         app.UseHttpsRedirection();

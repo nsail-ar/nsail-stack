@@ -3,6 +3,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using NSail.SourceGenerator.Generation;
 using NSail.SourceGenerator.Generation.Http.Models;
@@ -161,6 +162,30 @@ static class SdkReader
         return null;
     }
 
+    // Constructs .NET reads and JavaScript does not: inline options, \A \z \Z \G anchors, atomic
+    // groups, possessive quantifiers, character-class subtraction (a `-[` inside an open class).
+    static readonly Regex DotNetOnly = new(
+        @"\(\?[imnsx-]+[:)]|\\[AzZG]|\(\?>|(?<!\\)[*+?}]\+|\[[^\]]*-\[",
+        RegexOptions.CultureInvariant);
+
+    static string RuleName(INamedTypeSymbol attribute)
+    {
+        return attribute.Name.EndsWith("Attribute", StringComparison.Ordinal) ? attribute.Name[..^"Attribute".Length] : attribute.Name;
+    }
+
+    static FieldShape WithPattern(FieldShape field, INamedTypeSymbol message, IPropertySymbol property, string pattern, string rule, List<string> serverRules)
+    {
+        if (!DotNetOnly.IsMatch(pattern))
+        {
+            return field with { Pattern = pattern };
+        }
+
+        Console.Error.WriteLine($"warning NSTS002: {message.Name}.{property.Name} has a [RegularExpression] with a construct only .NET reads; only the server checks it");
+        serverRules.Add(rule);
+
+        return field;
+    }
+
     static FieldShape ReadField(
         INamedTypeSymbol message,
         IPropertySymbol property,
@@ -187,7 +212,7 @@ static class SdkReader
             // sentence the server never answers.
             if (attribute.AllInterfaces.Any(i => i.ToDisplayString() == CodedValidation) || Construct(data) is not { } rule)
             {
-                serverRules.Add(attribute.Name.EndsWith("Attribute", StringComparison.Ordinal) ? attribute.Name[..^"Attribute".Length] : attribute.Name);
+                serverRules.Add(RuleName(attribute));
 
                 continue;
             }
@@ -206,7 +231,7 @@ static class SdkReader
                 EmailAddressAttribute => field with { Format = "email" },
                 PhoneAttribute => field with { Format = "phone" },
                 UrlAttribute => field with { Format = "url" },
-                RegularExpressionAttribute pattern => field with { Pattern = pattern.Pattern },
+                RegularExpressionAttribute pattern => WithPattern(field, message, property, pattern.Pattern, RuleName(attribute), serverRules),
                 _ => field,
             };
         }

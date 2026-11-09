@@ -142,9 +142,11 @@ and it is the table of contents and the navigation at once.
 ## Anchors
 
 **Chapter = route segment, section = the heading's slug.** Every heading `Markdown.ToHtml`
-draws carries `id="{slug}"` — lowercase, accents stripped, everything else a hyphen — and
-`Markdown.Headings` reads the same slug off the same text, so the index and the anchors it
-points at are one derivation. `/guide/{chapter}#{slug}` scrolls to that section on arrival and
+draws carries `id="{slug}"` — lowercase, accents stripped, everything else a hyphen — and a
+repeated heading's slug takes `-1`, `-2`… in document order. `Markdown.Headings` reads the
+same ids off the same document, so the index and the anchors it points at are one derivation;
+a link from another chapter to a repeat reads them from `Headings`, never `Markdown.Slug`.
+`/guide/{chapter}#{slug}` scrolls to that section on arrival and
 again whenever the fragment changes (`nsapp.scrollToId`).
 
 **A fragment rides the resolved href, not the route** — `NsLink Fragment`

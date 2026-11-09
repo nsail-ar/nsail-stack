@@ -10,4 +10,5 @@ public sealed class GitHubBoardOptions
     public string Repository { get; set; } = "";
     public int Project { get; set; }
     public string StatusField { get; set; } = "Status";
+    public TimeSpan RetryDelay { get; set; } = TimeSpan.FromSeconds(1);
 }

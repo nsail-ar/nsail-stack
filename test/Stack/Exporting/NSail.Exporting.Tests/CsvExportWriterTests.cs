@@ -79,9 +79,46 @@ public class CsvExportWriterTests
     {
         using var stream = new MemoryStream();
 
-        await new CsvExportWriter().WriteAsync(Books.One(), stream, Books.Argentina, CancellationToken.None);
+        await new CsvExportWriter().WriteAsync(Books.One(), stream, Books.Argentina, TimeZoneInfo.Utc, CancellationToken.None);
 
         Assert.True(stream.CanWrite);
+    }
+
+    [Theory]
+    [InlineData("=1+1")]
+    [InlineData("+1")]
+    [InlineData("-1")]
+    [InlineData("@SUM(A1)")]
+    [InlineData("\tx")]
+    [InlineData("\rx")]
+    public async Task A_text_cell_that_a_spreadsheet_would_run_is_written_as_text(string text)
+    {
+        var column = new ExportColumn { Key = "Name", Title = "=Title" };
+        var book = ExportBook.Of("Lista", new ExportTable { Columns = [column], Rows = Books.Rows([[text]]) });
+
+        var file = Encoding.UTF8.GetString(await Books.Write(new CsvExportWriter(), book, Books.States));
+
+        Assert.StartsWith("'=Title" + Environment.NewLine, file.TrimStart('\uFEFF'), StringComparison.Ordinal);
+        Assert.Contains("'" + text, file, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_text_column_holding_a_value_that_is_not_a_string_is_prefixed()
+    {
+        var column = new ExportColumn { Key = "Delay", Title = "Delay" };
+        var book = ExportBook.Of("Lista", new ExportTable { Columns = [column], Rows = Books.Rows([[TimeSpan.FromHours(-1)]]) });
+
+        var file = Encoding.UTF8.GetString(await Books.Write(new CsvExportWriter(), book, Books.States));
+
+        Assert.Contains("'-01:00:00", file, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_negative_figure_is_not_prefixed()
+    {
+        var lines = await Lines(Books.Argentina);
+
+        Assert.Equal("-7,00", Books.Fields(lines[2], ';')[2]);
     }
 
     static async Task<string[]> Lines(System.Globalization.CultureInfo culture)

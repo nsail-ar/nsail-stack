@@ -22,7 +22,7 @@ public sealed class OpenObserveLogSource(HttpClient http, OpenObserveOptions opt
     public async Task<IReadOnlyList<LoggedError>> Errors(DateTimeOffset since, DateTimeOffset until, int max, CancellationToken ct = default)
     {
         var endpoint = options.Endpoint!.TrimEnd('/');
-        var sql = $"SELECT * FROM \"{options.Stream}\" WHERE severity IN ('Error', 'Critical') ORDER BY _timestamp DESC";
+        var sql = $"SELECT * FROM \"{options.Stream}\" WHERE severity IN ('Error', 'Critical') ORDER BY _timestamp ASC";
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{endpoint}/api/{options.Organization}/_search")
         {
             Content = JsonContent.Create(new { query = new { sql, start_time = Microseconds(since), end_time = Microseconds(until), from = 0, size = max } }),

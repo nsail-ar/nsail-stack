@@ -35,8 +35,8 @@ public static class Api
         // floor has to be resolvable even in a host that registers no settings of its own.
         services.AddSettings();
 
-        // KeyProtector is NOT registered here, and cannot be: it is constructed from the
-        // install's encryption key, which the host's identity composition owns. A host that
+        // KeyProtector is NOT registered here, and cannot be: it seals with the
+        // current tenant's key, which the host registers (AddTenantKeys). A host that
         // registers no KeyProtector fails to resolve StorageCredentialProvider on first use —
         // loudly, and by name, which is better than Storage inventing a key nobody chose and
         // sealing the credential under it.

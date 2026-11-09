@@ -26,7 +26,7 @@ public sealed class RecordingExportWriter(ExportKind kind) : IExportWriter
 
     public List<ExportRow> Rows { get; } = [];
 
-    public async Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, CancellationToken cancellationToken)
+    public async Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, TimeZoneInfo zone, CancellationToken cancellationToken)
     {
         Book = book;
         Culture = culture;

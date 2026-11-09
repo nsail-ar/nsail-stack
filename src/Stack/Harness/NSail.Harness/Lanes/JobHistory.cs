@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using System.Text.Json;
-
 namespace NSail.Harness.Lanes;
 
 // The jobs this machine ran, in one small file of its own: what a status page and a dossier read
@@ -14,11 +12,11 @@ public sealed class JobHistory
     readonly Lock _gate = new();
     readonly List<JobRecord> _jobs;
 
-    public JobHistory(string root)
+    public JobHistory(string root, ILogger? log = null)
     {
         Directory.CreateDirectory(root);
         _path = Path.Combine(root, "jobs.json");
-        _jobs = File.Exists(_path) ? JsonSerializer.Deserialize<List<JobRecord>>(File.ReadAllText(_path)) ?? [] : [];
+        _jobs = StateFile.Read<List<JobRecord>>(_path, () => [], log: log);
     }
 
     public void Record(JobRecord job)
@@ -29,9 +27,7 @@ public sealed class JobHistory
             _jobs.Add(job);
             // The newest few hundred are enough to read what happened; the logs keep the rest.
             if (_jobs.Count > 500) _jobs.RemoveRange(0, _jobs.Count - 500);
-            var tmp = _path + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(_jobs));
-            File.Move(tmp, _path, overwrite: true);
+            StateFile.Write(_path, _jobs);
         }
     }
 

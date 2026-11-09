@@ -10,11 +10,13 @@ using NSail.Harness.Planning;
 namespace NSail.Harness.Jobs;
 
 // The analyst shapes one story in Analyze into what a cold builder needs, or reads why a
-// `stalled` one died. Three ways out: no question fired a trigger -> Ready; one did -> stays in
-// Analyze wearing `ruling` with only that question on the thread; the story is already built (its
-// PR merged and main meets every criterion) -> Merged, so no empty voyage is sent. A death with
-// no verdict is sent again on the next pass; the second in a row (or the first of a story that
-// was already stalled) stamps `stalled` and `ruling`, and it is not taken again.
+// `stalled` one died. Four ways out: no question fired a trigger -> Ready; one did -> stays in
+// Analyze wearing `ruling` with only that question on the thread; a Ready story whose change must
+// touch a path the screen holds (its protected.txt) -> Ready wearing `ruling` and `screened` until a
+// hand adds `allow-protected`; the story is already built (its PR merged and main meets every
+// criterion) -> Merged, so no empty voyage is sent. A death with no verdict is sent again on the
+// next pass; the second in a row (or the first of a story that was already stalled) stamps
+// `stalled` and `ruling`, and it is not taken again.
 public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history) : IJob
 {
     const string Out = ".analysis";
@@ -49,12 +51,11 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
             var dir = await ctx.Workspace.Prepare(slot);
             var outDir = Path.Combine(dir, Out);
             Directory.CreateDirectory(outDir);
-            await File.WriteAllTextAsync(Path.Combine(outDir, "original.md"), $"# {title}\n\n{body}", ct);
-            var thread = (await board.Comments(n, ct)).Select(c => $"--- {c.Author} {c.At:O}\n{c.Body}");
-            await File.WriteAllTextAsync(Path.Combine(outDir, "thread.md"), string.Join('\n', thread), ct);
+            await File.WriteAllTextAsync(Path.Combine(outDir, "original.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), title, labels, body)}\n\n{StoryDossier.Filed(body, labels)}", ct);
+            var dossier = new StoryDossier(ctx, history);
+            await File.WriteAllTextAsync(Path.Combine(outDir, "thread.md"), StoryDossier.Thread(await board.Comments(n, ct), await dossier.Trusted(ct)), ct);
             await File.WriteAllTextAsync(Path.Combine(outDir, "labels-known.txt"), string.Join(' ', await KnownLabels(ct)), ct);
             if (stalled) await File.WriteAllTextAsync(Path.Combine(outDir, "stalled.txt"), "stalled", ct);
-            var dossier = new StoryDossier(ctx, history);
             await dossier.WritePrs(n, outDir, ct);
             if (stalled) await dossier.WriteRuns(n, outDir, ct);
 
@@ -70,6 +71,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 ["ISSUE"] = n.ToString(CultureInfo.InvariantCulture),
                 ["REPO"] = ctx.Repo.Name,
                 ["OUT"] = Out,
+                ["PROTECTED"] = string.Join(", ", ctx.Options.ProtectedPaths.Select(p => $"`{p}`")),
             }, ct);
             // The seat reads the board from disk and writes its verdict to disk: it holds no token to the board.
             var result = await ctx.RunSeat(new AgentRun(
@@ -130,6 +132,11 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 }
                 await Post();
                 await WrittenBlockers.Link(board, n, $"{Read("body.md")}\n{comment}", ctx.Names.Key, ct);
+                if (await Screen(n, Read("protected.txt"), ct) is { Count: > 0 } screened)
+                {
+                    await board.AddLabels(n, Labels.Ruling, Labels.Screened);
+                    await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.ProtectedAhead, ("paths", string.Join(", ", screened.Select(f => $"`{f}`"))), ("label", Labels.AllowProtected))} {ctx.Texts.Signature}");
+                }
                 // The move is the Ready event's (WorkerTypes), once the lock is off.
                 return new Ending("Ready", "Ready");
             case "VERDICT: ruling" when comment.Trim().Length > 0:
@@ -156,6 +163,14 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
         }
         await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.AnalysisDied, ("machine", ctx.Options.Machine))} {ctx.Texts.Signature}\n{Markers.AnalysisDied}");
         return new Ending("no verdict — sent again on the next pass", Failed: true);
+    }
+
+    // The paths of the analyst's protected.txt the screen holds, none once a hand or the harness lifted it:
+    // a story shaped to touch one waits in Ready for `allow-protected` instead of a voyage the screen refuses.
+    async Task<IReadOnlyList<string>> Screen(int n, string listed, CancellationToken ct)
+    {
+        if (ctx.Options.AllowProtectedPaths || (await ctx.Board.Labels(n, ct)).Contains(Labels.AllowProtected)) return [];
+        return SeatOutput.Protected(listed.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(p => p.Trim('`')), ctx.Options.ProtectedPaths).Distinct().ToList();
     }
 
     async Task<IEnumerable<string>> KnownLabels(CancellationToken ct)

@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { Mediator } from "./mediator";
 import { BusinessError } from "./problems";
-import { ListOrders, UpdateOrder } from "./fixtures.test-support";
+import { ListOrders, RepriceOrder, UpdateOrder } from "./fixtures.test-support";
 
 function recording(status = 200, body = "") {
   const calls: { url: string; init: RequestInit }[] = [];
@@ -70,5 +70,16 @@ describe("Mediator.send", () => {
 
     expect((error as BusinessError).problem.code).toBe("RequestFailed");
     expect((error as BusinessError).problem.issues.map((i) => i.code)).toEqual(["HttpStatus", "DeserializationFailed"]);
+  });
+});
+
+describe("Mediator.send exact numbers", () => {
+  it("sends a long and a decimal as the strings they are and reads them back the same", async () => {
+    const order = { id: "9007199254740993", price: "1234567890.123456789" };
+    const { calls, mediator } = recording(200, JSON.stringify(order));
+    const result = await mediator.send(RepriceOrder, order);
+
+    expect(JSON.parse(calls[0].init.body as string)).toEqual(order);
+    expect(result).toEqual(order);
   });
 });

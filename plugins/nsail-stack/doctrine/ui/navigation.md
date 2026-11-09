@@ -406,9 +406,10 @@ other end, the surface this session was on would be gone and no route brings it 
   markdown renderer over a document's own links ([guide.md](guide.md)): one rule, because a
   second copy of it is a second answer. The one question a caller may ask apart from it is the
   scheme alone (`WebAddress.OpensScheme`), for an address already parsed — `NsUrlField` asks it,
-  and `SurfaceContext.IsInert` asks it plus `tel:`, the one scheme a link may carry that the
-  drawer does not draw: `NsLink` and `NsChip` hand an address to the browser as written, so a
-  `tel:` with a space in it still calls, while a scheme no door opens is no `href`.
+  and `SurfaceContext.IsInert` asks it plus `tel:` and `otpauth:`, the schemes a link may carry
+  that the drawer does not draw — each hands the address to an installed app and runs nothing in
+  the page: `NsLink` and `NsChip` hand an address to the browser as written, so a `tel:` with a
+  space in it still calls, while a scheme no door opens is no `href`.
 
 ## A leaf running a `Command`
 

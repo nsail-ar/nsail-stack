@@ -65,6 +65,7 @@ public sealed class HandlerHost : IAsyncDisposable
         // prove the handler and imply the surface, and the two are only the same thing while
         // nobody checks — what a Send meets here is what a request meets.
         services.AddSecurityEnforcement();
+        services.AcceptPermissiveProviders();
 
         // An app host binds a connection string from configuration and reaches its context
         // through AddDataAccess (data.md, App composition). A fixture has no configuration and

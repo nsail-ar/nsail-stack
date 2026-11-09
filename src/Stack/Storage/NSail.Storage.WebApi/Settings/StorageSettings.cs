@@ -60,7 +60,7 @@ public class StorageTargetSettings
     // splitting the handling is how a save starts writing a shape the read no longer understands.
     public string? AccessKey { get; set; }
 
-    // Sealed with the install's own key, so a settings row read straight out of the database
+    // Sealed with the current tenant's key, so a settings row read straight out of the database
     // opens nothing at the far end.
     public string? SecretKey { get; set; }
 

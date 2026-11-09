@@ -17,10 +17,11 @@ methods. BaseServices must not reference Kits or Apps.
 In app hosts:
 
 1. `AddBaseWebApi` / `AddBaseWebApp` / Wasm equivalents
-2. `AddHttpClients` (clients only)
-3. Kit setup (`AddIamWebApi`, etc.)
-4. App setup (`AddOpticalWebApi`, etc.)
-5. After `Build()`, the pipeline: `UseBaseWebApi`/`UseBaseWebApp`, and a Blazor host
+2. `AddTenantKeys`, in a host that composes Storage (the `KeyProtector` it seals with)
+3. `AddHttpClients` (clients only)
+4. Kit setup (`AddIamWebApi`, etc.)
+5. App setup (`AddOpticalWebApi`, etc.)
+6. After `Build()`, the pipeline: `UseBaseWebApi`/`UseBaseWebApp`, and a Blazor host
    closes with `app.MapRazorApp<App>()` — skip it and the host serves no page.
 
 ---
@@ -41,17 +42,28 @@ app.Run();
 `AddBaseWebApi(builder)` registers: telemetry (`AddTelemetry`, first — see below), messaging
 runtime (`AddMessaging`), error handler middleware, authorization services, Swagger/OpenAPI,
 and the push's server end — both transports, their two doors, and the tenant as its audience
-(`TenantPushAudience`; messaging.md, Pushed to clients). It also contributes a string catalog of
-its own, the words of the one page this project draws without the app (the suspended page, below).
+(`TenantPushAudience`; messaging.md, Pushed to clients). It registers
+`TenantStateInterceptor`, the tenant-state wall on every send of a caller's, because an open
+circuit's sends never pass `TenantStateMiddleware` again; where no tenant is resolved there is no
+state to read and it asks nothing (data-tenancy.md, The install's own record). It also
+contributes a string catalog of its own, the words of the one page this project draws without
+the app (the suspended page, below).
 
 `UseBaseWebApi(app)` configures, in order:
 
-- `BuildVersionMiddleware` — the build this host is running (`BuildVersion.Current`) on
-  **every** response, under `X-NSail-Version`. Outermost, and stamped through
-  `Response.OnStarting` rather than on the way in, because `ErrorMiddleware` clears the
-  response it rewrites — and a refusal is exactly the answer a client left open across a
-  deploy is likeliest to get. It is the whole server half of the handshake: no endpoint, no
-  polling. Client half: [messaging.md](messaging.md).
+- Forwarded headers, when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is on: believed only from the
+  proxies in `Security:TrustedProxies`; with none named the middleware is not installed, so
+  behind a proxy the scheme reads as `http` too (no HSTS, and HTTPS redirection can loop).
+- `BuildVersionMiddleware` — the build this host is running (`BuildVersion.Current`) under
+  `X-NSail-Version` on the response to a **signed-in caller**: an anonymous probe is not told
+  the build, and neither is an answer cut short before authentication (the HTTPS redirect, an
+  unknown tenant's 404, the suspension page). Stamped through `Response.OnStarting` rather
+  than on the way in, because `ErrorMiddleware` clears the response it rewrites — so a
+  signed-in caller's refusal still carries it. It is the whole server half of the handshake:
+  no endpoint, no polling. Client half: [messaging.md](messaging.md).
+- `ResponseHeadersMiddleware` — `X-Content-Type-Options: nosniff`, a `Referrer-Policy` and a
+  `Permissions-Policy` on every response, through `OnStarting` for the same reason; a header
+  already set is kept. `frame-ancestors` and cookie flags are not its business.
 - Error handler
 - HTTPS redirection
 - `TenancyMiddleware` — **only where a tenant is resolved** (`host.ResolvesTenants()`: either
@@ -83,7 +95,8 @@ its own, the words of the one page this project draws without the app (the suspe
 - `ThrottleMiddleware` — the ceiling on a public door, in FRONT of the gate: volume is not a
   permission question, and a flood is refused before any policy evaluation. It reads
   `[Throttled(perMinute)]` off the message the matched route names, so an endpoint whose
-  message declares none passes untouched; see messaging.md.
+  message declares none passes untouched; a message that names an `Identity` is also counted per
+  submitted identity; see messaging.md.
 - `RequestBudgetMiddleware` — a tenant's whole volume, beside the throttle: the authenticated
   message sends of each tenant per minute, against the figure `RequestBudgetProvider` answers
   (none in the base; the Stack names no key), refused past it with 429 and `Retry-After`. The
@@ -99,13 +112,15 @@ its own, the words of the one page this project draws without the app (the suspe
   asset — `MapStaticAssets` maps behind this middleware, and a cold WebAssembly load is dozens of
   files that can neither write a row nor draw a notice. Installed by every host; what it asks is
   `CredentialProvider`, whose permissive floor leaves a host that composed no identity exactly as
-  it was. See [permissions.md](permissions.md#session).
+  it was. It also refuses a ticket whose memberships changed since sign-in, at one cached read per
+  party per `Tenancy:StateCacheSeconds` (`MembershipStampMemo`). See [permissions.md](permissions.md#session).
 - `EndpointGateMiddleware` — the security gate, ahead of model binding. After authentication so
   it reads the session the pipeline's own gate will read, and before `MapEndpoints` so a caller
   with no permission is refused before a missing body or query member can be. It no-ops unless
   a kit called `AddSecurityEnforcement`; see messaging.md.
 - Swagger (development)
-- HSTS (production)
+- HSTS (production), with `includeSubDomains`; `preload` stays off — it commits every subdomain
+  of the domain for good
 - `MapEndpoints()` — maps all generated `IEndpointEntry` implementations
 - `MapPush()` — the `PushHub` at `PushFeed.Path`, behind the same tenant wall and
   authentication as every endpoint, so a host that publishes always has the door its clients
@@ -227,7 +242,7 @@ Area `Optical`), `service.namespace` = `nsail`, `deployment.environment`, `nsail
 is not judged here: the column that holds one declares it, and the model carries the
 declaration to the schema (data.md § Provider). This is shape, not
 discipline. NSail's own span never reads a message's members: it carries `nsail.outcome`
-(`ok`/`refused`/`failed`), `nsail.user` (who asked), and, to say how it ended,
+(`ok`/`refused`/`failed`/`cancelled` — a client abort is not a failure and sets no Error status), `nsail.user` (who asked), and, to say how it ended,
 `nsail.problem` on a refusal — the Problem's **Code**, never its Title — plus `nsail.rule`,
 the key that refusal's own sentence lives at, or `nsail.failure` on a crash, the exception's
 type. **`nsail.rule` exists because the code cannot tell two rules apart**: every rule of the
@@ -238,8 +253,10 @@ halves are written by the source (a rule's name, a field's, an entity's); the is
 **message**, the one part free to quote the value that caused the refusal, stays out — and so
 does the exception's, which opens every rendered stack. No `RecordException` and no status
 description either. For code NSail did not write, `Scrubber` is a span
-processor that drops `url.query`, `db.statement`, `db.query.text` and every
-`db.query.parameter.*`, and cuts the query string off `url.full`. A processor rather than
+processor and an **allow-list**: only `nsail.*` and the closed list in `Scrubber.cs` survive,
+so a tag a new package version adds fails closed. It cuts `url.full` to its origin and sets
+`url.path` to the route template, since a literal path carries the values the route was filled
+with. Blazor's spans keep only the component type, method and circuit id. A processor rather than
 vendor options on purpose: an instrumentation option can be removed or renamed by the next
 package version (`SetDbStatementForText`, which suppressed SQL text, was removed from the EF
 Core instrumentation), and then fails open silently.
@@ -248,11 +265,17 @@ Core instrumentation), and then fails open silently.
 writes log lines, and the OTLP exporter sends every attribute, the exception's message and a
 stack trace rendered from `ToString()` (which opens with that message). `ErrorMiddleware` logs
 `"Exception mapped to problem {Code}: {Message}"`, and for a refusal that `{Message}` **is**
-the Problem's Title. So `LogScrubber`, the logs-side sibling of `Scrubber`, cuts at the export
+the Problem's Title. Level is read off what the exception is: a bug-class exception wearing a 404 or
+403 (`KeyNotFoundException`, `UnauthorizedAccessException`) and a `BusinessException` answering
+500 or above log at Error with the exception, because a failure the client sees as 500 that
+leaves no stack cannot be diagnosed; a cancellation of the request's own token logs nothing.
+`LogScrubber`, the logs-side sibling of `Scrubber`, cuts at the export
 seam:
 
 - What travels is what the **source** declares — category, level, event id and the **message
-  template** (the record's body, a literal at every call site).
+  template** (the record's body, a literal at every call site: CA2254 is an error in this
+  repository's `.editorconfig` and, through `NSail.Types`'s `buildTransitive` global config, in
+  every product that takes the packages).
 - An attribute's value travels only if its **type cannot carry prose**: `Guid`, a number, a
   `bool`, an enum, a date or a duration. Every string is dropped, a code included — a
   Problem's Code and a patient's name are the same type, so the Code rides the span and the
@@ -394,7 +417,9 @@ Entry component: `NsApp.razor`.
 
 - `AddBaseWebApp` registers `TenancyCircuit`, the `CircuitHandler` that pins the request's
   tenant onto the circuit's scope while the connect request is still on the stack — a circuit
-  outlives that request, and every later render runs in its own flow. It no-ops under
+  outlives that request, and every later render runs in its own flow — and enters it on the
+  flow of every inbound activity, so an event's send, whose scope is its own, connects and meets
+  the tenant-state wall in the circuit's tenant. It no-ops under
   `Tenancy:Mode=None`; see [data-tenancy.md](data-tenancy.md#the-credential-is-stamped-and-checked-on-every-request).
 - `AddBaseWebApp` also calls `AddMessagePolicies`, which lets a page's `[Authorize<TMessage>]`
   resolve. It lives here rather than in `AddBaseWebApi` because it serves pages: an API-only
@@ -439,7 +464,7 @@ Three things are not in any source's `Languages` and are declared instead:
   offers `[es]`; a practice that attends in two languages says so.
 
 Two derivations in `NSail.Localization` read them. **`Languages.Supported`** (called by the
-middleware and `GetLanguageSettings`) is every language the catalogs can render, English
+middleware, `GetLanguageSettings` and `StringCatalog`) is every language the catalogs can render, English
 included *by construction* (`Base` is `en`); it is the settings picker's list and what a
 forced choice is validated against. **`Languages.Offered`** (middleware only) is the
 narrower one, and the only one a browser is resolved against — conflating them served

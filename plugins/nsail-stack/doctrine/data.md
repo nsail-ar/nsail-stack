@@ -760,7 +760,8 @@ machine that already refuses the illegal move) never carry it — their invarian
   `DbUpdateConcurrencyException` to `BusinessProblem.Conflict` — 409, code `Conflict`. It sits in
   the **pipeline**, not at the HTTP edge, because an in-process caller never passes that edge.
   The row's `UpdatedAt` narrates it when the entity has one (issue code `ConflictAt`, `{at}`
-  argument); the token decides, the audit field only says when. Nothing records a **who** yet.
+  argument, ISO 8601 UTC, localized by the client); the token decides, the audit field only
+  says when. Nothing records a **who** yet.
 - **The screen keeps the user's values** and draws the Problem where every refusal draws
   (intentional-ui.md). A conflict — only a conflict — adds one act: `NsForm`'s `OnReload`, the
   screen's first read run again. Re-applying the edit is the user's; a merge is never attempted

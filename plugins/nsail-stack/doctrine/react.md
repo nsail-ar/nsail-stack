@@ -40,14 +40,27 @@ await mediator.send(CreateContact, { id, name });   // reads like the C# send
   without it — `required`, `[Required]`, or a route token; every other member is optional,
   because absent means "keep the message's own default" (generation.md, The message owns
   its defaults). A nullable member is `| null`.
+- **Exact numbers are strings.** `long`, `ulong` and `decimal` are `string` in the request and
+  the result, with kind `bigint` (the integers) or `decimal`: a JSON number is a double in
+  the browser and rounds past 2^53 or about 15 digits. `JsonOptions.Wire` writes them as
+  strings and reads either form, so a client still writing numbers works. `int`, `double`
+  and `float` stay `number`. A form field for them holds the typed text, never a `Number`;
+  emptied, the member is absent, as a number's is. It refuses `InvalidFormat` a text the
+  server's invariant parse would not read (`1234,56`); a value past the type's range passes
+  it and is the server's `400`. A table aligns them right like any figure.
 - **The descriptor is what the runtime reads**: per member its wire kind, its localization
   key (`MetadataProvider.KeyFor`, so `Sample.CreateContact.Name` is the key Blazor would
   use), its binding (HttpModelFactory's rules, rule for rule) and the message's
-  DataAnnotations (`required`, `maxLength`, `minLength`, `min`/`max`, `format`, `pattern`).
+  DataAnnotations (`required`, `maxLength`, `minLength`, `min`/`max`, `format`, `pattern`;
+  the client compiles each pattern once, with the `u` flag, retries without it only when
+  the pattern has no `\p{}`, `\P{}` or `\u{}`, and leaves one JavaScript still refuses to
+  the server).
   An attribute is read by constructing it from the arguments the source wrote, so a Stack
   subclass that fixes its own bound (`[SearchTerm]`) answers that bound. A rule that names
-  its own code (`ICodedValidation`), or one the tool cannot construct (a kit's own
-  attribute), is listed in `serverRules` and left to the server: drawing it locally under
+  its own code (`ICodedValidation`), one the tool cannot construct (a kit's own
+  attribute), or a `[RegularExpression]` using a .NET-only construct (`(?i)`, `\A`, atomic
+  groups, class subtraction; the build warns `NSTS002`), is listed in `serverRules` and
+  left to the server: drawing it locally under
   the BCL rule it may subclass would show a sentence the server never answers.
 - **Models and enums travel too.** Every type a message reaches is emitted: a model as an
   interface plus a `defineModel` descriptor (keys and kinds for a table header and a cell),
@@ -134,7 +147,7 @@ is always a `BusinessError` carrying a `Problem`: the server's own when it sent 
 | Piece | Package | Does |
 |---|---|---|
 | `NsApp` | ui | `StackProvider` plus the catalog read before the first paint (`useCatalog`) and the one confirmation surface |
-| `Strings` | stack | `StringManager`'s resolution: a miss renders the key; `Problems.{Code}.{Source}` → `Problems.{Code}` → the message; the `entity` argument is a key |
+| `Strings` | stack | `StringManager`'s resolution: a miss renders the key; `Problems.{Code}.{Source}` → `Problems.{Code}` → the message; the `entity` argument is a key and `at` an ISO instant shown in the reader's zone |
 | `useLoad` + `NsLoad` | stack + ui | A region owns its read (convert-to-nsload's contract): a spinner the first time, the last answer dimmed while it re-reads, a failure in place with a retry — never a toast |
 | `useForm` + `NsForm` + `NsField` | stack + ui | A form over one message: `NsField name="…"` picks its input from the member's kind, its label from the member's key, its bounds from the message; refusals are checked as the user types and the server's land under the field they name; anything no field can show is drawn above the fields; `onReload` is offered only for a `Conflict` |
 | `NsTable`, `NsPager`, `NsSearch`, `NsEnumSelect` | ui | A projection's rows with headers from keys and cells formatted by kind; a `DataPage`'s pager; a debounced search bound by its member; an enum pick whose options come from the descriptor |

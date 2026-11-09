@@ -51,7 +51,7 @@ public sealed class ContactHandler :
         }
 
         var pageSize = message.PageSize <= 0 ? 10 : message.PageSize;
-        var pageIndex = message.PageIndex < 0 ? 0 : message.PageIndex;
+        var pageIndex = message.PageIndex;
 
         var totalCount = await query.CountAsync(cancellationToken);
 

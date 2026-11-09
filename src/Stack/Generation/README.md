@@ -76,11 +76,11 @@ public static partial void AddTasksPushPublishers(this IServiceCollection servic
 
 ### What an `[Http]` message derives
 
-- Members bind by `[Http]`'s route tokens, then by verb, then by `[AsRoute]`/`[AsQuery]`/`[AsHeader]`.
+- Public instance properties with a public setter or `init` and no `[JsonIgnore]` bind, by `[Http]`'s route tokens, then by verb, then by `[AsRoute]`/`[AsQuery]`/`[AsHeader]`.
   A route token with no route-bound member is `NSG001`.
 - A non-`required` query, header or body member is optional: an omitted one is never assigned, so the
   message's own initializer supplies the value. `required` carries into the generated body type.
-- Enums cross the wire as names (`JsonOptions.Wire`).
+- Enums cross the wire as names, and `long`, `ulong` and `decimal` as strings (`JsonOptions.Wire`).
 - The client's name is derived: the Area of the class that declares the `Http.Clients` holder, taken
   from `[assembly: MetadataTemplate]` when declared, else the second namespace segment
   ([Metadata](../Metadata/README.md)). The `HttpClients:{Area}` section overrides its address.
@@ -98,6 +98,7 @@ not a silent skip.
 | `NSG003` | Error | A `[Pushed]` event declares a public property |
 | `NSG014` | Error | A `[Queue]` message returns a result (`IMessage<T>`) |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` |
+| `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) |
 | `NSG004`-`NSG013` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
 
 ### TypeScript client
@@ -115,8 +116,9 @@ Sdk's own sources and writes the file from the same `HttpModelFactory` the C# cl
 ```
 
 The Sdk must declare an `Http.Clients` holder; its messages are the ones carried. The target is
-incremental and an unchanged `sdk.ts` is not rewritten. A compile that does not resolve, two
-reachable types with one simple name, or an Sdk with no holder fails with `NSTS001`. Inside this
+incremental and an unchanged `sdk.ts` is not rewritten. A compile that does not resolve,
+two reachable types with one simple name, or an Sdk with no holder fails with `NSTS001`. A
+`[RegularExpression]` using a .NET-only construct warns `NSTS002` and is listed in `serverRules`, not emitted as `pattern`. Inside this
 repository an Sdk imports `NSail.TypeScriptGenerator.targets` from the project folder instead of
 the package ([NSail.Sample.Sdk](../Sample/NSail.Sample.Sdk/NSail.Sample.Sdk.csproj)).
 

@@ -68,6 +68,21 @@ sealed class JobMeter : IDisposable
         }
     }
 
+    // Another replica holds the pass: it counts as completed for the overdue clock, because the
+    // job is being run and this runner is not the one late.
+    public void Skipped(string job)
+    {
+        _passes.Add(
+            1,
+            new KeyValuePair<string, object?>(BackgroundJobMetrics.JobTag, job),
+            new KeyValuePair<string, object?>(BackgroundJobMetrics.OutcomeTag, BackgroundJobMetrics.Skipped));
+
+        if (_jobs.TryGetValue(job, out var scheduled))
+        {
+            scheduled.Completed();
+        }
+    }
+
     public void Dispose()
     {
         _meter.Dispose();

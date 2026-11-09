@@ -108,7 +108,7 @@ public class ProductRule : IValidator<UpdateProduct>   // a Problem refuses, nul
 | `[AsRoute]` `[AsQuery]` `[AsHeader]` | property | Override where a member binds. A non-`required` query/header/body member is optional: absent leaves the message's own default |
 | `[Pushed]` | event | A server publish also reaches every open client of the tenant. The event may carry no public property |
 | `[Queue]` | command | The send is durable. Only `IMessage`, never `IMessage<T>`; never beside `[Http]` |
-| `[Throttled(perMinute)]` | class | Fixed-window cap per caller over HTTP, for a door reachable by someone never authenticated |
+| `[Throttled(perMinute)]` | class | Fixed-window cap per caller over HTTP, for a door reachable by someone never authenticated; `Identity`/`IdentityPerMinute` add a cap per submitted account across all addresses; `Identity` must be a public `string` body property without `[JsonPropertyName]` (NSG016) |
 | `[Unbounded(reason)]` | property | Records why a number or code declares no bound; read by a test, no runtime effect |
 
 Validation attributes in `NSail.Messaging.Runtime.Validation`: `[NotFuture]`, `[NotNegative]`,
@@ -116,6 +116,11 @@ Validation attributes in `NSail.Messaging.Runtime.Validation`: `[NotFuture]`, `[
 of `SearchTermAttribute.MaximumLength`), and `[Validated]` to walk into a nested model or each
 element of a collection. An attribute implementing `ICodedValidation` names its own problem code
 and the catalog sentence that goes with it.
+
+An enum member (or each element of an enum collection) holding a number no member defines is
+refused as `OutOfRange` on the field (`Kinds[1]`), a `[Flags]` one by its mask; no attribute is
+needed. A non-nullable enum with no zero member that a message leaves unchosen is refused too:
+declare the zero member or make the field nullable.
 
 ### Headers, unit of work, events
 
@@ -150,11 +155,11 @@ throws `ClientNotConfigured` naming the client and the message.
 | Key | Default | Meaning |
 |---|---|---|
 | `Transport` | empty | Empty or `InProcess`: the durable row is the queue, drained by a background job of this process. `Postgres`, `RabbitMq`, `AmazonSqs`, `AzureServiceBus` are refused at startup |
-| `MaxAttempts` | `5` | Failed deliveries before the row is dead-lettered; a row of a type this process has no consumer for waits a long backoff, spends no attempt and is not dead-lettered; it is delivered once a process registers the name stored on the row, and a message renamed or moved leaves rows nothing reaches, so drain a `[Queue]` message's pending rows before renaming it |
+| `MaxAttempts` | `5` | Failed deliveries (at least 1) before the row is dead-lettered; a row of a type this process has no consumer for waits a long backoff, spends no attempt and is not dead-lettered; it is delivered once a process registers the name stored on the row, and a message renamed or moved leaves rows nothing reaches, so drain a `[Queue]` message's pending rows before renaming it |
 | `Backoff` | `00:00:30` | Wait before the first retry; doubles per attempt |
-| `Interval` | `00:00:10` | How often the drain looks for due rows, per tenant |
+| `Interval` | `00:00:10` | How often the drain looks for due rows, per tenant; 1 ms to 1 day |
 | `Lease` | `00:05:00` | How long a drain holds a claimed row; longer than the slowest delivery |
-| `BatchSize` | `50` | Rows delivered per pass |
+| `BatchSize` | `50` | Rows delivered per pass; at least 1 |
 
 `AddQueue()` (send side) and `AddQueueDelivery()` (drain) are called by the generated
 `Queue.Producers` and `Queue.Consumers` holders, so a product without a `[Queue]` message gains no
@@ -169,7 +174,10 @@ tenant's dead letters.
 - **Server:** `AddPush()` registers both transports and `PushAudience` (the install, or the tenant
   under `AddBaseWebApi`); `MapPush()` maps the hub at `api/push` and the event stream at
   `api/push/sse`, both behind authorization. `AddBaseWebApi`/`UseBaseWebApi` call both.
-  Per-kit publishers come from the `Push.Publishers` holder.
+  Per-kit publishers come from the `Push.Publishers` holder. A connection is authorized once, at
+  connect; `PushAudience.Watch()` is what a held line or hub connection asks again, once a second,
+  and the feed is closed when it answers false (the tenant's audience answers from the
+  tenant-state memo).
 - **Client:** the `Push.Clients` holder lists the events a feed may publish; the transport is the
   one project referenced, with `services.AddPush(origin)`. `NSail.Messaging.Sse` takes an optional
   `Action<SseOptions>` (`HttpMessageHandlerFactory`, `Headers`), `NSail.Messaging.SignalR` an

@@ -90,7 +90,7 @@ public sealed class HarnessOptions
 
     // Paths a builder's commits may not touch: CI runs them with the repository's secrets before any
     // review. Globs (`*` within a folder, `**` across); AllowProtectedPaths lifts the screen, the
-    // Labels.AllowProtected label lifts it for one story.
+    // Labels.AllowProtected label lifts it for one story and releases the hold the screen set on it.
     public List<string> ProtectedPaths { get; set; } = [".github/workflows/**"];
     public bool AllowProtectedPaths { get; set; }
 
@@ -104,6 +104,11 @@ public sealed class HarnessOptions
     // The logins whose gate and review markers on a PR count beside this harness's own: every
     // harness of the fleet, so one reads another's verdicts. The same list on every harness.
     public List<string> MarkerAuthors { get; set; } = [];
+
+    // The logins whose comments reach a seat as the crew's words, beside this harness's own and the
+    // MarkerAuthors: the owners and the crew. Anyone else's text on a story or a PR is laid in the
+    // dossier fenced and labelled untrusted.
+    public List<string> TrustedAuthors { get; set; } = [];
 
     // The Ops this Harness reports to (OpsOptions).
     public OpsOptions Ops { get; set; } = new();

@@ -4,6 +4,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using NSail.Harness.Agents;
 using NSail.Harness.Api;
 using NSail.Harness.Lanes;
@@ -14,7 +15,7 @@ namespace NSail.Harness.Hosting;
 // The harness at a glance, refreshed every few seconds: where it stands, what the crew did over a
 // range (JobStats, drawn here as plain SVG: no script, no library), what runs, what the last pass
 // planned, what ended. Times are the machine's.
-static class StatusPage
+static partial class StatusPage
 {
     // One colour per role, in the order JobStats.Roles names them.
     static readonly string[] Colors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#6250d6", "#0e9aa7"];
@@ -106,28 +107,36 @@ static class StatusPage
         };
     }
 
+    [GeneratedRegex(@"(?:\b([\w.-]+) PR )?#(\d+)")]
+    private static partial Regex Numbered();
+
     // A story's and a PR's number linked to the repository, where it is GitHub's (it sends an issue's
     // address on to the PR's).
     internal static string Linked(HarnessOptions o, string text)
     {
-        var escaped = Esc(text);
-        if (o.DefaultRepository.Provider != "GitHub") return escaped;
+        if (o.DefaultRepository.Provider != "GitHub") return Esc(text);
+        // Linked on the raw text and escaped piece by piece: escaping first would let `&#39;` read as #39.
         // Another repository's PR is named by its short name (`nsail-stack PR #130`); any other #N is the
         // default repository's.
-        return System.Text.RegularExpressions.Regex.Replace(escaped, @"(?:\b([\w.-]+) PR )?#(\d+)", m =>
+        var html = new StringBuilder();
+        var last = 0;
+        foreach (Match m in Numbered().Matches(text))
         {
             var named = m.Groups[1].Success ? o.Repositories.FirstOrDefault(r => r.Provider == "GitHub" && r.Name.EndsWith($"/{m.Groups[1].Value}", StringComparison.Ordinal)) : null;
             var repo = named?.Name ?? o.DefaultRepository.Name;
-            var lead = m.Groups[1].Success ? $"{m.Groups[1].Value} PR " : "";
-            return $"{lead}<a href=\"https://github.com/{Esc(repo)}/issues/{m.Groups[2].Value}\">#{m.Groups[2].Value}</a>";
-        });
+            var lead = m.Groups[1].Success ? $"{Esc(m.Groups[1].Value)} PR " : "";
+            html.Append(Esc(text[last..m.Index])).Append(lead)
+                .Append($"<a href=\"https://github.com/{Esc(repo)}/issues/{m.Groups[2].Value}\">#{m.Groups[2].Value}</a>");
+            last = m.Index + m.Length;
+        }
+        return html.Append(Esc(text[last..])).ToString();
     }
 
     static void Badges(StringBuilder html, HarnessLoop loop, int running, JobHistory history, BuildLeases leases, LoadSamples load, DateTimeOffset now)
     {
         html.Append("<div class=badges>");
         if (loop.Paused is { } why) html.Append($"<span class=\"b warn\">paused: {Esc(why)}</span>");
-        if (loop.AgentsOffUntil is { } wall) html.Append($"<span class=\"b warn\">agents off: out of quota until {Local(wall):HH:mm}; builds go on</span>");
+        if (loop.AgentsOffUntil is { } wall) html.Append($"<span class=\"b warn\">agents off: out of quota until {HarnessLoop.WallClock(Local(wall), Local(now))}; builds go on</span>");
         html.Append($"<span class=\"b acc\">{running} running</span>");
         if (loop.Last is { Plan: { } plan } pass) html.Append($"<span class=b>{Math.Max(0, plan.Items.Count - pass.Started.Count)} waiting</span>");
         html.Append(loop.Stalled > 0 ? $"<span class=\"b warn\">{loop.Stalled} stalled</span>" : "<span class=b>0 stalled</span>");

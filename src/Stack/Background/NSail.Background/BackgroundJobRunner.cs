@@ -3,6 +3,7 @@
 
 using System.Collections.Concurrent;
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,13 +18,16 @@ namespace NSail.Background;
 // One independent loop per registered job, so a slow or failing job delays only its own
 // cadence and never another's.
 //
-// Single instance is an assumption, not a property. deploy/tenant-template/compose.yml runs
-// one container per tenant, so nothing runs twice today — a second replica would silently
-// double every job, with no error anywhere to say so. A Postgres advisory lock taken around
-// the tick is the cheap fix the day that topology changes.
+// A pass takes a Postgres advisory lock per job and tenant (JobLock), so a second replica over
+// the same database skips a pass that overlaps its sibling's. Replicas tick on their own clocks,
+// so the lock fences overlap and does not make a job run once per interval across replicas.
 sealed class BackgroundJobRunner : BackgroundService
 {
     readonly ConcurrentDictionary<Type, byte> _emptyRosterSaid = new();
+
+    // The abandoned pass of each job and tenant: while it is still in flight the next tick skips
+    // that tenant, so a hang costs one held scope and not one per tick.
+    readonly ConcurrentDictionary<(Type Job, string Tenant), Task> _abandoned = new();
 
     // Its own signal beside the log lines, and not a duplicate of them: the export seam drops
     // every string attribute a log record carries (LogScrubber), so the line naming the job
@@ -35,6 +39,7 @@ sealed class BackgroundJobRunner : BackgroundService
     readonly ILogger<BackgroundJobRunner> _logger;
     readonly TenantRoster? _tenants;
     readonly CultureInfo? _culture;
+    readonly BackgroundOptions _options;
 
     // The roster is optional because only a mode that resolves tenants registers one, and this
     // runner is composed by every host: nothing registered means an install with a single scope,
@@ -54,6 +59,7 @@ sealed class BackgroundJobRunner : BackgroundService
         _logger = logger;
         _tenants = tenants;
         _culture = configuration is null ? null : CultureInfo.GetCultureInfo(configuration.Load<LanguageOptions>().Default);
+        _options = configuration is null ? new BackgroundOptions() : configuration.Load<BackgroundOptions>();
     }
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
@@ -200,9 +206,43 @@ sealed class BackgroundJobRunner : BackgroundService
     // about the customer and is not a pass at all.
     async Task<bool> Run(Type jobType, Tenant? tenant, CancellationToken stoppingToken)
     {
+        var key = (jobType, tenant?.Slug ?? string.Empty);
+
+        if (_abandoned.TryGetValue(key, out var inFlight))
+        {
+            if (!inFlight.IsCompleted)
+            {
+                _meter.Passed(jobType.Name, succeeded: false);
+
+                if (tenant is null)
+                {
+                    _logger.LogError("Background job {Job} skipped its tick: its abandoned pass is still running.", jobType.Name);
+                }
+                else
+                {
+                    _logger.LogError(
+                        "Background job {Job} skipped tenant {Tenant}: its abandoned pass is still running.",
+                        jobType.Name,
+                        tenant.Slug);
+                }
+
+                return false;
+            }
+
+            _abandoned.TryRemove(key, out _);
+        }
+
+        AsyncServiceScope? scope = null;
+        IAsyncDisposable? held = null;
+        var timeout = _options.TimeoutOf(jobType.Name);
+
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+
+        Task? abandoned = null;
+
         try
         {
-            await using var scope = Scope();
+            scope = Scope();
 
             if (tenant is not null)
             {
@@ -211,20 +251,78 @@ sealed class BackgroundJobRunner : BackgroundService
                 // beside it: a job provisions nothing, so a tenant whose schema or rows no
                 // request has ever asked for fails this pass, loudly, instead of having a
                 // migration applied by a clock.
-                scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(tenant);
+                scope.Value.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(tenant);
 
                 // And what the request edge asks next (TenantStateMiddleware): a customer the
                 // install has suspended gets no work done on its rows either. Asked after Enter
                 // because the state is read in the tenant's own scope, and before the job is
                 // resolved so nothing of it runs.
-                if (scope.ServiceProvider.GetService<TenantStates>() is { } states
+                if (scope.Value.ServiceProvider.GetService<TenantStates>() is { } states
                     && await states.IsSuspended(stoppingToken).ConfigureAwait(false))
                 {
                     return false;
                 }
             }
 
-            await ((IBackgroundJob)scope.ServiceProvider.GetRequiredService(jobType)).Run(stoppingToken).ConfigureAwait(false);
+            // The budget covers the lock too: a sick database must not stretch the pass.
+            budget.CancelAfter(timeout);
+
+            // Install-wide work under a mode that connects per tenant has no install database:
+            // resolving the DbContext there is what throws, so it is not asked for, and the
+            // lock sits on the maintenance database the roster is read from.
+            var lockable = tenant is not null
+                || scope.Value.ServiceProvider.GetService<TenancyOptions>() is not { Connection: TenancyScope.Tenant };
+
+            held = lockable
+                ? await JobLock.TryTake(
+                        scope.Value.ServiceProvider.GetService<DbContext>(),
+                        jobType,
+                        tenant?.Slug ?? string.Empty,
+                        budget.Token)
+                    .ConfigureAwait(false)
+                : await JobLock.TryTakeOnCluster(
+                        scope.Value.ServiceProvider.GetService<TenantDatabases>(),
+                        jobType,
+                        budget.Token)
+                    .ConfigureAwait(false);
+
+            if (held is null)
+            {
+                // A sibling is doing this pass: the job is not overdue and not failing, and the
+                // outcome is its own so an alert can tell a replica that yields from one that
+                // does nothing.
+                _meter.Skipped(jobType.Name);
+
+                if (tenant is null)
+                {
+                    _logger.LogDebug("Background job {Job} skipped a pass: another runner holds its lock.", jobType.Name);
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        "Background job {Job} skipped tenant {Tenant}: another runner holds its lock.",
+                        jobType.Name,
+                        tenant.Slug);
+                }
+
+                return true;
+            }
+
+            // The token asks first; WaitAsync is what stops the sweep waiting for a job that
+            // ignores it (a dead socket, a lock), which no token can interrupt.
+            var pass = ((IBackgroundJob)scope.Value.ServiceProvider.GetRequiredService(jobType)).Run(budget.Token);
+
+            try
+            {
+                await pass.WaitAsync(timeout + BackgroundOptions.Grace(timeout), stoppingToken).ConfigureAwait(false);
+            }
+            catch (TimeoutException) when (!pass.IsCompleted)
+            {
+                abandoned = pass;
+                _abandoned[key] = pass;
+
+                throw;
+            }
 
             _meter.Passed(jobType.Name, succeeded: true);
 
@@ -233,6 +331,27 @@ sealed class BackgroundJobRunner : BackgroundService
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (Exception exception) when (abandoned is not null || (exception is OperationCanceledException && budget.IsCancellationRequested))
+        {
+            // The budget fired, not the host and not the job's own cancellation: the pass is
+            // counted failed so the sweep reaches the next tenant.
+            _meter.Passed(jobType.Name, succeeded: false);
+
+            if (tenant is null)
+            {
+                _logger.LogError("Background job {Job} exceeded its budget of {Timeout} and was cut off; the runner continues on its next tick.", jobType.Name, _options.TimeoutOf(jobType.Name));
+            }
+            else
+            {
+                _logger.LogError(
+                    "Background job {Job} exceeded its budget of {Timeout} for tenant {Tenant} and was cut off; the sweep continues with the next tenant.",
+                    jobType.Name,
+                    _options.TimeoutOf(jobType.Name),
+                    tenant.Slug);
+            }
+
+            return true;
         }
         catch (Exception exception)
         {
@@ -256,6 +375,10 @@ sealed class BackgroundJobRunner : BackgroundService
             }
 
             return true;
+        }
+        finally
+        {
+            await Abandonment.Release(scope, abandoned, held).ConfigureAwait(false);
         }
     }
 

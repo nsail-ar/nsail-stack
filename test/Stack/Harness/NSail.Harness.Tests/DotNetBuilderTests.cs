@@ -35,7 +35,7 @@ public class DotNetBuilderTests
     [Fact]
     public void ProseOutsideTheRootsOrOwnedByNoProjectBuildsNothing()
     {
-        Assert.Empty(Affected("docs/guide.md", ".github/workflows/x.yml", "src/App/docs/notes.md".Replace("src/App/", "src/Docs/"))!);
+        Assert.Empty(Affected("docs/guide.md", "src/App/docs/notes.md".Replace("src/App/", "src/Docs/"))!);
     }
 
     [Fact]
@@ -43,6 +43,12 @@ public class DotNetBuilderTests
     {
         Assert.Null(Affected("Directory.Build.props"));
         Assert.Null(Affected("S.sln"));
+        Assert.Null(Affected("NuGet.Config"));
+        Assert.Null(Affected(".editorconfig"));
+        Assert.Null(Affected("src/Kit/.editorconfig"));
+        Assert.Null(Affected("Directory.Build.rsp"));
+        Assert.Null(Affected("eng/Rules.globalconfig"));
+        Assert.Null(Affected(".github/workflows/x.yml"));
         Assert.Null(Affected("src/Loose/file.cs"));
         Assert.Null(Affected("src/Orphan/Orphan.cs"));
     }

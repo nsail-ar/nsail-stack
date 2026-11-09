@@ -32,9 +32,13 @@ the files it leaves.
     `Authors` lists the logins whose PRs are the crew's there (none: any author; when listed, it
     includes the login of the token that opens the harness's own PRs). A PR whose head lives in
     another repository (a fork) is never matched, gated, reviewed or merged.
+    `Board:RetryDelay` (default one second) spaces the three attempts at a column write: when they
+    all fail, the project item that call added is removed, so no story reads as columnless.
+    A story the harness files is born with its labels and found again by its title among the open
+    issues (the list API, never the search index), so labels stay free to edit.
     A board that names its columns or labels otherwise maps them (`Stages`, `Labels`); a repository
     says its `DefaultBranch`, and its `Build` (`Kind` DotNet: the solution, the `Roots` whose changes
-    seed projects, the `Everything` files that build it all, the `Tests` and their `TestFilter`): the
+    seed projects (a non-Markdown change outside them builds it all), the `Everything` files that build it all (by default solutions, `global.json`, props, targets, `nuget.config`, `.editorconfig`, `Directory.Build.rsp`, `*.globalconfig`), the `Tests` and their `TestFilter`): the
     gate builds and tests what a change affects through the solution's ProjectReference graph (a PR
     red only where main's own gate is red waits for main to move: no round owes it; a gate that broke on infrastructure — git, the provider, the disk — writes
     no verdict and no status, only an unmarked comment, and the head is gated again after the backoff; a malformed project or a
@@ -44,7 +48,14 @@ the files it leaves.
     a release holds that repository's merges when the version its tag pins does.
   - `ProtectedPaths` (default `.github/workflows/**`): a builder whose commits touch one is not pushed,
     since CI would run the changed workflow with the repository's secrets before review; `AllowProtectedPaths`
-    lifts it for the harness, the `allow-protected` label for one story; a refused story returns to Ready. Extend the list when a workflow runs
+    lifts it for the harness, the `allow-protected` label for one story. A refused story waits where it stands wearing `ruling` and
+    `screened` and is not built again; its commits and its ending stay on the machine that built it (a ref and a folder under
+    `harness-kept` in its git directory), never on the remote. The refusal is no dead voyage. Adding `allow-protected` releases
+    it: the planner lifts the `ruling` the screen set (one from any other question stays), and the next voyage on that machine
+    pushes the kept work and opens or updates the PR with its builder's words, with no seat, while the story's remote branch is
+    still at the head the work was built from (still absent for a new one) and no PR of the story merged since; otherwise it
+    builds as any voyage. An analyst whose story's change must touch a protected path lists it in its `protected.txt` (its prompt's `__PROTECTED__` slot names the
+    list): a Ready verdict then waits in Ready under the same hold before any voyage. Extend the list when a workflow runs
     scripts taken from the PR checkout; configuration appends to the default, it does not replace it.
   - Commits a cancelled job or a refused push would lose go to `rescue/<key>-<n>` (a numeric suffix if it exists), under the same
     protected-paths screen (a held rescue logs a warning naming the label that lifts it); the refs accumulate and a hand
@@ -74,7 +85,9 @@ the files it leaves.
     the event, and the board is the harness's. Every verdict leaves the story where a walk reads it
     again: Released, or QA wearing `qa-asked` (a doubt is an ask) — a story in QA with neither is a
     planner note. A Watch reads its `Source` (a log source by name) every `Every` minutes, from where it
-    last read (`Lookback` hours the first time), groups the error lines by service, logger, message
+    last read (`Lookback` hours the first time) up to `IngestLag` minutes (default five) short of now, for a
+    line the source ingests late. A pass reads at most 5000 lines, oldest first, and the next takes up after the
+    last one read. A Watch groups the error lines by service, logger, message
     template and exception type, and files a story per new group in Analyze (`telemetry`, the service's
     area — a product of that name, or its `Areas` entry — and `bug` when a cell outside `NotProd` logged
     it), at most `MaxStories` a pass; an open one gets the count, once a day; one closed and logged
@@ -95,7 +108,13 @@ the files it leaves.
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for
-    it names all three. A story whose body or refinery comment names a blocker
+    it names all three. A job that ends on the provider's limit (a `ProviderException` with its
+    `RetryAfter`) or on a 5xx is not a break: nothing is said on its story and nothing counts toward
+    `stalled`; its lock label and lock come off and a Dev with no PR goes back to Ready, as a break's do.
+    A limit holds the item and every pass for the wait it asked, at least `MinLimitBackoff` and up to `MaxLimitBackoff`; a 5xx backs the
+    item off as a break. Its run's result is `provider` (`/jobs`, the pill, `harness.jobs{outcome=provider}`),
+    its outcome `rate limited — <call>, retry in <wait>` or `provider failed — <status> <call>`. A bare 403
+    or a 404 is an answer, and breaks. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
     its analysis and before its first voyage (`Board/WrittenBlockers.cs`); a `Waits` line that answers
     `nothing`, `none`, `nada`, `ninguna` or `ninguno` names no blocker, whatever else it mentions. A
@@ -110,28 +129,63 @@ the files it leaves.
     harness's own git authenticates through `Shell.GitEnvironment`, not the process environment.
   - How a story is named (`{key}#{n}`, `{prefix}/{key}-{n}`) and the words the harness posts (`HarnessTexts`).
   - A provider's own settings sit in its section (`GitHub`, `Claude`: the seats' plugins live there, and
-    `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository).
+    `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository; `RunAs`, a Linux
+    account the seats run as through `sudo -n -H -u`, so a seat reads none of the harness user's `~/.ssh`, secrets file or docker
+    group. The account owns none of them and each side must write what the other creates, which the Stack does not chmod:
+    default ACLs on the work root (slots and the bare `repo.git`) and `configRoot` for both users (`setfacl -d -m u:<account>:rwx`
+    and `u:<harness user>:rwx`), or a shared group with setgid folders and umask 002 for both (`umask=0002` in the sudoers rule).
+    The harness user's sudoers rule for it carries the `SETENV` tag, `Defaults!<each command> !secure_path` (the seat keeps the
+    machine's PATH), and allows `setsid` and `pkill` (a timeout kills the seat's session through sudo),
+    and `Claude:Command` is best given as an absolute path. `RunAs` covers the agent's runs and plugin installs, not a
+    worker's own `Command`: that runs as the harness user. Windows ignores `RunAs`.)
 - **Capacity is per resource, per machine**: agents, builds, browsers (`Agents`, `Builds`,
   `Browsers`). The plan is walked in order and every item whose resources are free is taken; a
   worker's `Max` caps its own jobs. Past the agent's quota wall (a refused run) only the agents stop.
+  A build turn whose holder died returns to the line once older than the longest step the machine's
+  enabled workers run (a main gate counts twice its minutes) plus ten.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
-  cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, ...);
+  cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the
   story. A gate or review marker on a PR counts only as a whole HTML comment on its own line, written
   by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
-  Every harness on the board reads the same. What stays on the machine is its job history
-  and its count of them.
+  The dossier a seat reads lays a comment or PR note by any other login fenced and labelled untrusted; the
+  logins whose words reach it as the crew's are the harness's own, `Harness:MarkerAuthors` and `Harness:TrustedAuthors`
+  (the owners and the crew, empty by default). A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
+  watch files it in Analyze, never Ready.
+  Every harness on the board reads the same: main's `harness/gate` mark written `pending` holds that head from
+  a second gate on any harness for twice the longest `Minutes` among that harness's own Main
+  workers plus an hour (a fleet whose harnesses set different `Minutes` holds as long as the
+  shortest of them); past that (a harness
+  that died leaves it pending) another harness judges the head again. What stays on the machine is its job history,
+  its count of them, the work the protected-paths screen refused (`ProtectedPaths`), and what a hand or
+  the provider set (`state.json`: the pause, take-new when a hand moved it, an unexpired quota wall),
+  which a restart keeps. A state file that is zero-length or torn is
+  moved aside as `<name>.bad-<time>` with a log line and the state starts empty; every write goes to a
+  temp file moved over the original. At the first board read the log names each In-Progress story no job holds.
+- **main's red** files, or comments on, the one open red-main story. The merge of its fix on the
+  judged head is the only evidence of the fix: a red at a head that does not hold the story's newest
+  merge (a gate that started before it) leaves a landed story in its column, and its comment says
+  so (`HarnessTexts.MainRedWithoutFix`); while no gate verdict sits on a head that holds it Develop
+  does not take it. The first green gate of such a head closes the story; a voyage on a story closed
+  under it pushes nothing and says nothing, and keeps the quota wall its seat met.
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its
   role's tally in its hour (kept two days) and its day (ninety, on the machine's clock), its time and
   its wait in a histogram, so the status page and `GET /api/harness/stats?range=24h|7d|30d` read
-  small sums and never walk the jobs. A job that found nothing to do or met the quota wall is not
-  counted; a PR the reviewer lands closes its story's lead time (first job to merged).
+  small sums and never walk the jobs. A job that found nothing to do, met the quota wall or ended on the
+  provider (its limit or a 5xx) is not counted; a PR the reviewer lands closes its story's lead time (first job to merged).
 - **Locks** are the board's labels plus a story lock (a git ref per story on GitHub), created
   atomically, so any number of harnesses can share one board.
 - **A job's processes die with the harness** (`Lanes/ProcessGroup.cs`): a restart never leaves a
-  build writing in a slot the next job is handed.
-- **Modes**: `Debug` reads and plans and starts nothing; `Live` acts.
+  build writing in a slot the next job is handed. On Windows that is a job object; off Windows
+  there is none, and the guarantee is the service unit's `KillMode=control-group` (systemd's
+  default), set in the unit file that runs the harness: the unit's stop kills every process in
+  its cgroup. A child whose group join fails is killed at once.
+- **A process's output** goes to the job log line by line as it comes; the caller gets the last
+  `Shell.TailChars` characters, preceded by the cut-off lines a caller's `keep` accepts (the gate's
+  failure lines, the agent's quota signals). Its stdin is written inside the same timeout window, so a child
+  that never reads it is killed with its tree.
+- **Modes**: `Debug` reads and plans and starts nothing; `Live` acts. A forced job (`POST runs`) refuses in Debug, while paused and, for one that needs an agent, inside the quota wall.
 
 ## A host
 

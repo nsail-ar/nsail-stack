@@ -31,7 +31,7 @@ public class GitHubSetStageTests
         {
             using var body = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
             var query = body.RootElement.GetProperty("query").GetString()!;
-            var operation = new[] { "addProjectV2ItemById", "updateProjectV2ItemFieldValue", "projectV2(number", "projectItems" }.First(query.Contains);
+            var operation = new[] { "addProjectV2ItemById", "updateProjectV2ItemFieldValue", "deleteProjectV2Item", "projectV2(number", "projectItems" }.First(query.Contains);
             Sent.Add((operation, body.RootElement.GetProperty("variables").Clone()));
             var next = _left.FindIndex(s => s.Operation == operation);
             if (next < 0) throw new InvalidOperationException($"unscripted {operation}");
@@ -44,7 +44,7 @@ public class GitHubSetStageTests
     static GitHubBoard Board(Scripted handler)
     {
         var http = new HttpClient(handler) { BaseAddress = new Uri("https://api.github.com/") };
-        return new GitHubBoard(new GitHubClient(http), "o/r", new GitHubBoardOptions { Repository = "o/r", Project = 1 });
+        return new GitHubBoard(new GitHubClient(http), "o/r", new GitHubBoardOptions { Repository = "o/r", Project = 1, RetryDelay = TimeSpan.Zero });
     }
 
     static string WrittenItem(Scripted handler)
@@ -102,9 +102,35 @@ public class GitHubSetStageTests
     [Fact]
     public async Task AFieldWriteErrorFailsTheCall()
     {
-        var handler = new Scripted(("projectV2(number", Project), ("projectItems", OnBoard), ("updateProjectV2ItemFieldValue", Forbidden));
+        var handler = new Scripted(("projectV2(number", Project), ("projectItems", OnBoard), ("updateProjectV2ItemFieldValue", Forbidden),
+            ("updateProjectV2ItemFieldValue", Forbidden), ("updateProjectV2ItemFieldValue", Forbidden));
 
         await Assert.ThrowsAsync<GitHubException>(() => Board(handler).SetStage(42, "Ready"));
+
+        Assert.DoesNotContain(handler.Sent, s => s.Operation == "deleteProjectV2Item");
+    }
+
+    [Fact]
+    public async Task AFieldWriteThatFailsOnceIsRetried()
+    {
+        var handler = new Scripted(("projectV2(number", Project), ("projectItems", OnBoard), ("updateProjectV2ItemFieldValue", Forbidden),
+            ("updateProjectV2ItemFieldValue", Written));
+
+        await Board(handler).SetStage(42, "Ready");
+
+        Assert.Equal(2, handler.Sent.Count(s => s.Operation == "updateProjectV2ItemFieldValue"));
+    }
+
+    [Fact]
+    public async Task AnItemAddedByThisCallIsRemovedWhenItsColumnCannotBeWritten()
+    {
+        var handler = new Scripted(("projectV2(number", Project), ("projectItems", NoItem), ("addProjectV2ItemById", Added),
+            ("updateProjectV2ItemFieldValue", Forbidden), ("updateProjectV2ItemFieldValue", Forbidden), ("updateProjectV2ItemFieldValue", Forbidden),
+            ("deleteProjectV2Item", """{"data":{"deleteProjectV2Item":{"deletedItemId":"added"}}}"""));
+
+        await Assert.ThrowsAsync<GitHubException>(() => Board(handler).SetStage(42, "Ready"));
+
+        Assert.Equal("added", handler.Sent.Single(s => s.Operation == "deleteProjectV2Item").Variables.GetProperty("i").GetString());
     }
 
     [Fact]
