@@ -43,13 +43,14 @@ public static class InstallConsole
             return 4;
         }
 
-        // The verb is attended, so it owns its own interrupt: SIGTERM from a supervisor ends the
-        // process without running any cancel path, and pg_dump would outlive it.
+        // SIGTERM from a supervisor ends the process without running any cancel path, and pg_dump
+        // would outlive it: while a child runs the verb takes the signal and kills it; otherwise
+        // the default ends the process.
         using var interrupt = CancellationTokenSource.CreateLinkedTokenSource(cancelToken);
 
         void Interrupt(object? sender, ConsoleCancelEventArgs e)
         {
-            e.Cancel = true;
+            e.Cancel = Postgres.ChildRunning;
             interrupt.Cancel();
         }
 
@@ -57,13 +58,19 @@ public static class InstallConsole
 
         using var terminate = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
         {
-            context.Cancel = true;
+            context.Cancel = Postgres.ChildRunning;
             interrupt.Cancel();
         });
 
         try
         {
             return await Dispatch<TDbContext>(host, args, interrupt.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            Console.Error.WriteLine("CANCELLED: the run was interrupted and the child tool killed; nothing was left half-written.");
+
+            return 130;
         }
         finally
         {

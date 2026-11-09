@@ -389,7 +389,8 @@ its own name.
   by name, rather than ending in pg_dump's exit code on the first tenant table. Restore is not
   affected: an archive's data lands before its policies do.
 - **Under MultiDb both verbs refuse** (`REFUSED:`, exit `4`): the install has no one database,
-  and the tenants' own are not covered. Ctrl-C or SIGTERM cancels the run, which kills the child tool and its tree.
+  and the tenants' own are not covered.
+- **A cancel kills the child.** A Ctrl-C or SIGTERM while a child tool runs kills it and its tree, and the verb exits `130`; at a prompt the signal ends the process as usual.
 - **A restore refuses before it writes.** `RestorePlan.For` throws `BackupFailure` on an
   archive whose schema this build does not know (newer), whose product is another product,
   whose Postgres major differs, or whose archive format this build cannot read. An encrypted

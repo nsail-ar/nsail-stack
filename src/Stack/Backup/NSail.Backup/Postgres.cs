@@ -167,9 +167,27 @@ public static class Postgres
         {
             // The child already exited; the cancel is what the caller must see.
         }
+
+        try
+        {
+            process.WaitForExit(TimeSpan.FromSeconds(5));
+        }
+        catch (InvalidOperationException)
+        {
+            // Never started, or already disposed: nothing to wait for.
+        }
     }
 
-    static async Task Run(string executable, IReadOnlyList<string> arguments, string? password, CancellationToken cancelToken)
+    static int running;
+
+    // Only while a child runs does the verb own the interrupt, so a signal at a prompt or in
+    // synchronous work still ends the process.
+    internal static bool ChildRunning
+    {
+        get => Volatile.Read(ref running) > 0;
+    }
+
+    internal static async Task Run(string executable, IReadOnlyList<string> arguments, string? password, CancellationToken cancelToken)
     {
         var start = new ProcessStartInfo(executable)
         {
@@ -191,6 +209,20 @@ public static class Postgres
 
         using var process = new Process { StartInfo = start };
 
+        Interlocked.Increment(ref running);
+
+        try
+        {
+            await Execute(process, executable, cancelToken);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref running);
+        }
+    }
+
+    static async Task Execute(Process process, string executable, CancellationToken cancelToken)
+    {
         try
         {
             process.Start();
@@ -213,6 +245,9 @@ public static class Postgres
 
             await output;
             error = await errors;
+
+            // Ctrl-C reaches the child through the process group too: its exit is the cancel, not a failure.
+            cancelToken.ThrowIfCancellationRequested();
         }
         catch (OperationCanceledException)
         {

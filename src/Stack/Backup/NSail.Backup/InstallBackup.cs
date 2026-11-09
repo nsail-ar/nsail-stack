@@ -41,9 +41,8 @@ public static class InstallBackup
         return configuration?[ConnectionStringKey] is { Length: > 0 } dump ? ConnectionStrings.Complete(dump) : null;
     }
 
-    /// <summary>The manifest is sealed from the install's connection, so a dump credential
-    /// that reaches another database would write an archive whose bytes are not the ones it
-    /// names.</summary>
+    // The manifest is sealed from the install's connection, so a dump credential that reaches
+    // another database would write an archive whose bytes are not the ones it names.
     internal static void RefuseAnotherDatabase(InstallDescriptor install)
     {
         if (install.DumpConnectionString is null)
