@@ -24,6 +24,7 @@ public sealed class NsMultiFileUploadTests : UploadBunitContext
 
         Assert.Contains("grande.png", cut.Markup);
         Assert.Contains("El archivo supera los 20 B", cut.Markup);
+        Assert.Contains("otro.exe", cut.Markup);
         Assert.Single(FileStore.Saved);
     }
 
@@ -39,6 +40,20 @@ public sealed class NsMultiFileUploadTests : UploadBunitContext
 
         Assert.Single(FileStore.Saved);
         Assert.Contains("Selección supera los 10 B", cut.Markup);
+    }
+
+    [Fact]
+    public void ARefusedBigFile_DoesNotSpendTheSelectionBudget()
+    {
+        var cut = Render<UploadValuesHost>(ps => ps
+            .Add(p => p.Store, FileStore)
+            .Add(p => p.MaxTotalSize, 20)
+            .Add(p => p.MaxSize, 12));
+
+        var png = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+        PickMany(cut, ("grande.png", new byte[30]), ("chico.png", png));
+
+        Assert.Single(FileStore.Saved);
     }
 
     /// <summary>No preview: a line per file, each with its own clear, and the trigger always
@@ -148,8 +163,8 @@ public sealed class NsMultiFileUploadTests : UploadBunitContext
         Assert.Equal(savedBefore, FileStore.Saved.Count);
     }
 
-    /// <summary>Two components, one vocabulary: the list field takes exactly the parameters the
-    /// single one takes — its Value is simply the ordered set. Nothing named Values survives,
+    /// <summary>Two components, one vocabulary: the list field takes the parameters the
+    /// single one takes, plus its selection cap — its Value is simply the ordered set. Nothing named Values survives,
     /// because a parameter that switches a component between two shapes is what this story
     /// removed.</summary>
     [Fact]

@@ -44,20 +44,47 @@ static class UploadPolicy
 
         var extension = Path.GetExtension(name);
 
-        if (!Kinds.TryGetValue(extension, out var kind) || !Matches(kind.Signature, kind.Offset, head))
+        var tokens = accept.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (!Kinds.TryGetValue(extension, out var kind))
+        {
+            return tokens.Any(token => AdmitsUnlisted(token, extension, clientType)) ? Inert : null;
+        }
+
+        if (!Matches(kind.Signature, kind.Offset, head))
         {
             return null;
         }
 
-        foreach (var token in accept.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        return tokens.Any(token => Admits(token, extension, kind)) ? kind.ContentType : null;
+    }
+
+    const string Inert = "application/octet-stream";
+
+    // An extension the allow-list does not know is admitted only when Accept names it or the
+    // client's claimed type fits a token; it is stored as inert bytes, never as the claim.
+    static bool AdmitsUnlisted(string token, string extension, string clientType)
+    {
+        if (token.StartsWith('.'))
         {
-            if (Admits(token, extension, kind))
-            {
-                return kind.ContentType;
-            }
+            return string.Equals(token, extension, StringComparison.OrdinalIgnoreCase);
         }
 
-        return null;
+        if (token == "*/*")
+        {
+            return true;
+        }
+
+        var claim = new Kind(clientType, null, Active: IsActive(clientType));
+
+        return Admits(token, extension, claim);
+    }
+
+    static bool IsActive(string contentType)
+    {
+        return contentType.Contains("html", StringComparison.OrdinalIgnoreCase)
+            || contentType.Contains("xml", StringComparison.OrdinalIgnoreCase)
+            || contentType.Contains("script", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>How many leading bytes <see cref="Resolve"/> needs to see.</summary>
@@ -89,6 +116,11 @@ static class UploadPolicy
         if (token.StartsWith('.'))
         {
             return string.Equals(token, extension, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (token == "*/*")
+        {
+            return !kind.Active;
         }
 
         if (token.EndsWith("/*", StringComparison.Ordinal))

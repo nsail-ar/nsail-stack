@@ -17,8 +17,8 @@ public abstract class NsUploadBase<TValue> : NsFieldBase<TValue>
 
     IFileStore? _store;
 
-    /// <summary>The refusal this field drew itself (a file over the limit), which outranks the
-    /// validation message: it names what the user just did.</summary>
+    /// <summary>The refusals this field drew itself (a file over a limit, a type not accepted),
+    /// which outrank the validation message: it names what the user just did.</summary>
     readonly List<string> _errors = [];
 
     /// <summary>Shows what was uploaded, not only that something was. With a preview the
@@ -28,8 +28,12 @@ public abstract class NsUploadBase<TValue> : NsFieldBase<TValue>
     [Parameter]
     public bool Preview { get; set; }
 
-    /// <summary>The file types the picker offers, in the browser's own accept vocabulary
-    /// ("image/*", ".pdf"). Null offers everything.</summary>
+    /// <summary>The file types this field admits, in the browser's accept vocabulary ("image/*",
+    /// ".pdf"); the picker offers them and the field ENFORCES them: a file whose extension or
+    /// leading bytes fall outside is refused, and the stored content type comes from the Stack's
+    /// allow-list, never the client. An extension the list does not know is admitted only when
+    /// named or fitted by a token, and stored as application/octet-stream. A wildcard never
+    /// admits svg or html. Null admits everything and keeps the client's type as given.</summary>
     [Parameter]
     public string? Accept { get; set; }
 

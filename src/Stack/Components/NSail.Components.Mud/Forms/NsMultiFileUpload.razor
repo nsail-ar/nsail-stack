@@ -118,9 +118,7 @@
 
         foreach (var file in files ?? [])
         {
-            total += file.Size;
-
-            if (total > MaxTotalSize)
+            if (total + file.Size > MaxTotalSize)
             {
                 RefuseTotal(file, MaxTotalSize);
 
@@ -129,6 +127,7 @@
 
             if (await Upload(file) is { } id)
             {
+                total += file.Size;
                 next.Add(id);
             }
         }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Text;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -56,7 +57,7 @@ public abstract class UploadBunitContext : BunitContext, IAsyncLifetime
     protected static void Pick(IRenderedComponent<IComponent> cut, string name, string? content = null)
     {
         var bytes = content is not null
-            ? System.Text.Encoding.UTF8.GetBytes(content)
+            ? Encoding.UTF8.GetBytes(content)
             : name.EndsWith(".pdf") ? "%PDF-1.4"u8.ToArray()
             : name.EndsWith(".png") ? [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
             : "<svg/>"u8.ToArray();

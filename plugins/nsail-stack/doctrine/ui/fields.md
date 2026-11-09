@@ -916,7 +916,7 @@ is a place nobody opens (core doc's rule and its exception; cases). Contract:
 
 **One file is one field; a set of them is a different field.** `NsFileUpload` holds ONE value
 (`@bind-Value`, `Guid?`); `NsMultiFileUpload` holds an ordered set (`IReadOnlyList<Guid>`).
-They take **the same parameters** — the list field's `Value` is simply the list — and `Preview`
+They take **the same parameters** (the list field adds `MaxTotalSize`) — the list field's `Value` is simply the list — and `Preview`
 decides whether what is held is shown. **No parameter turns one into the other** (cases).
 
 - **A field line carries exactly ONE action icon.** Without a preview it is the upload trigger
@@ -945,7 +945,9 @@ decides whether what is held is shown. **No parameter turns one into the other**
   the unit a person reads (KB under 1 MB), never dropped silently; every refusal of a selection
   stays shown. `Accept` is per control and is **enforced, not a hint**: a file whose extension or
   leading bytes fall outside it is refused, and the stored content type comes from the Stack's
-  allow-list, never the client. A wildcard never admits svg/html — name them to allow them.
+  allow-list, never the client. A wildcard never admits svg/html — name them to allow them. An extension the allow-list does
+  not know is admitted only when named or fitted by a token, stored as `application/octet-stream`.
+  A field with no `Accept` keeps the client's type: declare `Accept` on anything served back.
 - **Where bytes go is `IFileStore`, not the field's business.** The app's registered store
   answers for ordinary screens; a screen whose files belong to somebody other than the
   session's organization hands its own `Store`. A store that cannot build a preview URL from an
