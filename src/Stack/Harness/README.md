@@ -165,7 +165,6 @@ the files it leaves.
   that never reads it is killed with its tree.
 - **Modes**: `Debug` reads and plans and starts nothing; `Live` acts. A forced job (`POST runs`) refuses in Debug, while paused and, for one that needs an agent, inside the quota wall.
 
-
 ## A host
 
 A host is a plain `WebApplication` that picks its providers and carries its configuration:
