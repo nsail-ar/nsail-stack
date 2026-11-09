@@ -30,6 +30,7 @@ public sealed class HarnessLoop(
     IHostApplicationLifetime lifetime,
     HarnessMetrics metrics,
     Watching.WatchState watches,
+    HarnessState state,
     ILogger<HarnessLoop> log) : BackgroundService
 {
     // A job that found nothing to do (a story closed, held, already landed) is not sent again
@@ -60,11 +61,12 @@ public sealed class HarnessLoop(
     readonly ConcurrentDictionary<int, DateTimeOffset> _walked = new();
     readonly CancellationTokenSource _jobsStop = new();
     Pass? _last;
-    string? _paused;
-    DateTimeOffset? _quotaUntil;
+    string? _paused = state.Paused;
+    DateTimeOffset? _quotaUntil = state.QuotaUntil;
     TimeSpan? _limitedFor;
     volatile bool _restarting;
-    DateTimeOffset? _pausedSince;
+    DateTimeOffset? _pausedSince = state.PausedSince;
+    bool _orphansSaid;
     readonly IReadOnlyList<Worker> _workers = Worker.Compile(options.Value);
 
     public Pass? Last
@@ -74,12 +76,17 @@ public sealed class HarnessLoop(
 
     // Off, only what is already started moves: rounds, gates, reviews, QA, releases. A hand flips it
     // (POST /new); the configuration says where a start begins.
-    volatile bool _takeNew = options.Value.TakeNew;
+    volatile bool _takeNew = state.TakeNew ?? options.Value.TakeNew;
 
     public bool TakeNew
     {
         get => _takeNew;
-        set { _takeNew = value; Wake(); }
+        set
+        {
+            _takeNew = value;
+            lock (_gate) Persist();
+            Wake();
+        }
     }
 
     public string? Paused
@@ -130,6 +137,7 @@ public sealed class HarnessLoop(
         {
             _paused = why;
             _pausedSince ??= DateTimeOffset.UtcNow;
+            Persist();
         }
         log.LogWarning("paused: {Why}", why);
     }
@@ -153,6 +161,12 @@ public sealed class HarnessLoop(
         lifetime.StopApplication();
     }
 
+    // Under _gate. Take-new is kept only when a hand moved it off the configuration's.
+    void Persist()
+    {
+        state.Set(_paused, _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
+    }
+
     public void Resume()
     {
         _restarting = false;
@@ -161,6 +175,7 @@ public sealed class HarnessLoop(
             _paused = null;
             _pausedSince = null;
             _quotaUntil = null;
+            Persist();
         }
         Wake();
     }
@@ -243,6 +258,19 @@ public sealed class HarnessLoop(
             if (stage == Stages.Closed) continue;
             await board.SetStage(n, Stages.Closed, ct);
             log.LogInformation("#{Story}: closed but in {Stage} — moved to {Closed}", n, stage, Stages.Closed);
+        }
+    }
+
+    // Once, at the first board read: the In-Progress stories no job of this run holds, the ones a
+    // crash or a hard kill left waiting for nobody.
+    void SayOrphans(IEnumerable<Issue> issues)
+    {
+        if (_orphansSaid) return;
+        _orphansSaid = true;
+        var held = _running.Values.Select(r => r.Item.Story).ToHashSet();
+        foreach (var i in issues.Where(i => i.Stage == Stages.InProgress && i.SubIssues == 0 && !held.Contains(i.Number)))
+        {
+            log.LogWarning("#{Story}: In-Progress with no job running ({Claimed}) — nothing holds it", i.Number, i.Has(Labels.Claimed) ? "claimed" : "unclaimed");
         }
     }
 
@@ -347,6 +375,7 @@ public sealed class HarnessLoop(
             var marks = await jobs.Repo.Statuses(ct: stop);
             call = PassCall.Stories;
             var read = await reader.Read(OwnFlight(), stop);
+            SayOrphans(read.Issues);
             call = PassCall.Planning;
             var snapshot = read with
             {
@@ -557,8 +586,19 @@ public sealed class HarnessLoop(
             WorkKind.Watch => new WatchJob(item, jobs, watches),
             _ => new AnalyzeJob(item, jobs, history),
         };
-        history.Record(new JobRecord(id, item.ToString(), story, running.Started, null, null, running.LogPath));
-        stats.Started(story, running.Started);
+        try
+        {
+            history.Record(new JobRecord(id, item.ToString(), story, running.Started, null, null, running.LogPath));
+            stats.Started(story, running.Started);
+        }
+        catch (Exception e)
+        {
+            log.LogError(e, "#{Story}: bookkeeping failed at the start of {Item} — released", story, item);
+            _running.TryRemove(id, out _);
+            if (story is { } sl) await Quietly(() => locks.Release(sl, new LockHolder(o.Machine, id, item.Kind.ToString(), running.Started, _instance), CancellationToken.None), $"#{sl} lock release");
+            workspace.Give(slot);
+            return null;
+        }
         if (_planned.TryRemove(PlannedKey(item), out var planned)) _waited[id] = running.Started - planned;
         log.LogInformation("→ {Item} on slot {Slot} [{Id}]", item, slot, id);
         _sailing[id] = Task.Run(() => Sail(job, running), CancellationToken.None);
@@ -583,7 +623,11 @@ public sealed class HarnessLoop(
             if (result.Idle) _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + Backoff;
             if (result.QuotaUntil is { } until)
             {
-                lock (_gate) _quotaUntil = until;
+                lock (_gate)
+                {
+                    _quotaUntil = until;
+                    Persist();
+                }
                 log.LogWarning("out of quota until {Until:HH:mm} UTC — no agent starts; builds go on", until);
             }
             // What the job's ending does on the board: its worker's actions, or its type's when the

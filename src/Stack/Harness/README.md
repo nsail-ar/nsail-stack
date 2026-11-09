@@ -125,7 +125,10 @@ the files it leaves.
   by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   Every harness on the board reads the same. What stays on the machine is its job history
-  and its count of them.
+  and its count of them, and what a hand or the provider set (`state.json`: the pause, take-new when a hand
+  moved it, an unexpired quota wall), which a restart keeps. A state file that is zero-length or torn is
+  moved aside as `<name>.bad-<time>` with a log line and the state starts empty; every write goes to a
+  temp file moved over the original. At the first board read the log names each In-Progress story no job holds.
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its
   role's tally in its hour (kept two days) and its day (ninety, on the machine's clock), its time and
   its wait in a histogram, so the status page and `GET /api/harness/stats?range=24h|7d|30d` read
