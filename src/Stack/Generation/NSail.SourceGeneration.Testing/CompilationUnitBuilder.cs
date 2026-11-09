@@ -138,7 +138,7 @@ namespace NSail.SourceGeneration.Testing
         }
 
         /// <summary>
-        /// Builds a CSharpCompilation for the specified target framework.
+        /// Builds a CSharpCompilation for the assembly.
         /// </summary>
         public CSharpCompilation Build(string assemblyName)
         {

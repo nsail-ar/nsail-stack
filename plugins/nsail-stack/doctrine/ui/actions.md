@@ -371,7 +371,7 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   the reader's OWN record rather than somebody else's — the allow list cannot tell them apart
   and the act needs a gate that says so: `NsPartial.CanSend<TMessage>(field, subjectId)` where
   the difference is a party or organization pin (permissions.md, The client consumes policies),
-  the product's own where it is not (Optical's clients page, a product page: a warranty claim).
+  the product's own where it is not (Optical's clients page: a warranty claim).
 - Labels resolve as `Actions.{Name}`, then — for a link — the destination page's own title, then
   the raw name; so moving a row's `NsPageLink` into an `ActionItem` writes no string. Pass a
   `name` only where the row reaches that page for a meaning its title does not carry.

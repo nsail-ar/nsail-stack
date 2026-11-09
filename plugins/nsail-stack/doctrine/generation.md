@@ -173,7 +173,7 @@ public class GetPrescription : IMessage<Prescription>
 
 Only public, instance, non-indexer properties with a public `set` or `init` and no `[JsonIgnore]` enter the model, read once as the most derived declaration; any other member is not on the wire.
 
-Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Members bind from the query string on Get, Delete, Head and Options and from the JSON body on Post, Put and Patch. Head and Options are mapped with `MapMethods`; their members bind from the query string (route tokens and `[AsRoute]`/`[AsHeader]` still win).
+Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Members bind from the query string on Get, Delete, Head and Options and from the JSON body on Post, Put and Patch. Head and Options are mapped with `MapMethods` (route tokens and `[AsRoute]`/`[AsHeader]` still win).
 
 Sdk projects import `static NSail.Messaging.Annotations.Method` via global usings.
 
@@ -290,7 +290,7 @@ same thing.
 | `NSG001` | Error | An `[Http]` route token has no route-bound property on the message. |
 | `NSG002` | Error | A `[Pushed]` type does not implement `IMessage` — only an event can be published, so nothing would ever be pushed. |
 | `NSG003` | Error | A `[Pushed]` event declares or inherits a public property — the body reaches every seat of the tenant, so a property is a row crossing the org wall. |
-| `NSG004` | Error | A `[MapFrom]` would write `OrganizationId` by name alone — moving a row between branches is a decision (org-map.md), so it is named on the member or `[MapIgnore]`d. |
+| `NSG004` | Error | A `[MapFrom]` would write `OrganizationId` by name alone — moving a row between branches is a decision (nsail's `plugins/nsail-kits/doctrine/org-map.md`), so it is named on the member or `[MapIgnore]`d. |
 | `NSG005` | Error | A `[Primitive]` member's type differs from its source's — copied whole, it cannot be converted. |
 | `NSG006` | Error | A mapped member has no conversion from its source; for a projection, none a query can translate (no parsing). |
 | `NSG007` | Error | A mapped type cannot be built: no parameterless constructor, or abstract with no discriminator to pick a derived type. |

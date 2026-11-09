@@ -14,8 +14,8 @@ public partial class DoctrineLinksTests
     [GeneratedRegex(@"(?<![\w/.\-])(?<name>[\w\-]+\.md)\b")]
     private static partial Regex PageName();
 
-    // Pages the doctrine names that live in the codebase it describes, never in the plugin.
-    static readonly HashSet<string> ProductPages = ["org-map.md", "sample.md"];
+    // Files the doctrine names that belong to the codebase it describes, never to the plugin.
+    static readonly HashSet<string> ProductPages = ["CLAUDE.md"];
 
     [GeneratedRegex("`[^`]*`")]
     private static partial Regex CodeSpan();
@@ -72,7 +72,7 @@ public partial class DoctrineLinksTests
             .ToHashSet();
         var stray = new List<string>();
 
-        foreach (var file in Directory.EnumerateFiles(Path.Combine(plugin, "doctrine"), "*.md", SearchOption.AllDirectories))
+        foreach (var file in Directory.EnumerateFiles(plugin, "*.md", SearchOption.AllDirectories))
         {
             foreach (var line in File.ReadAllLines(file))
             {
@@ -80,7 +80,7 @@ public partial class DoctrineLinksTests
                 {
                     var name = match.Groups["name"].Value;
 
-                    if (!pages.Contains(name) && !ProductPages.Contains(name) && !line.Contains("/" + name) && !line.Contains("product", StringComparison.OrdinalIgnoreCase))
+                    if (!pages.Contains(name) && !ProductPages.Contains(name) && !line.Contains("/" + name))
                     {
                         stray.Add($"{Path.GetRelativePath(plugin, file)}: {name}");
                     }

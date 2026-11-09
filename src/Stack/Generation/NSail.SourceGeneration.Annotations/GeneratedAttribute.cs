@@ -10,7 +10,7 @@ public enum Services
 
 public enum Http
 {
-    /// <summary>Minimal API endpoints for the [Http] messages handled in scope (receive side).</summary>
+    /// <summary>Minimal API endpoints for the [Http] messages in scope (receive side).</summary>
     Endpoints = 21,
 
     /// <summary>HttpSender per [Http] message, registered as its ISender (remote send side).</summary>

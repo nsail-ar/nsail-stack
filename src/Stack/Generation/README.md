@@ -48,7 +48,7 @@ attribute.
 | Holder | Declared in | Emits |
 |---|---|---|
 | `Services.Registration` | any project with `[Injectable]` types | `Add{Lifetime}` per injectable ([Injection](../Injection/README.md)) |
-| `Http.Endpoints` | the host | an `IEndpointEntry` per `[Http]` message that a handler in scope handles |
+| `Http.Endpoints` | the host | an `IEndpointEntry` per `[Http]` message |
 | `Http.InProcess` | the host | `ISender<T>` to `InProcessSender<T>` per `[Http]` message |
 | `Http.Clients` | the Sdk | an `HttpSender` per `[Http]` message, registered as its `ISender<T>` |
 | `Push.Publishers` | the host's endpoints holder, with `[Source]` on the Sdk | `AddPush` plus an `IPublisher<T>` to `PushPublisher<T>` per `[Pushed]` event |

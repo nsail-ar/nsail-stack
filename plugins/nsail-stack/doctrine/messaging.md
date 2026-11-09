@@ -598,7 +598,7 @@ public class PrescriptionHandler :
 
 Avoid large multi-purpose handlers and hidden side effects.
 
-**A handler that reads or writes an org-scoped entity owes org-map.md a row** (Messages — where
+**A handler that reads or writes an org-scoped entity owes nsail's `plugins/nsail-kits/doctrine/org-map.md` a row** (Messages — where
 each send stands), and so does the `IValidator<T>` beside it: whether the message names a branch
 or consolidates over the seat's, what protects a row it names by id, and what a write that can
 move the row between branches puts to the policy. `OrgAxisMessageTests` fails on a message with
