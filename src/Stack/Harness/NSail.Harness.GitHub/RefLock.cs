@@ -21,7 +21,7 @@ public sealed class RefLock(GitHubClient gh, string repo, string key, string def
 
     public async Task<bool> TryAcquire(int story, LockHolder holder, CancellationToken ct = default)
     {
-        var main = await gh.Get($"repos/{repo}/git/ref/heads/{Uri.EscapeDataString(defaultBranch)}", ct);
+        var main = await gh.Get($"repos/{repo}/git/ref/heads/{defaultBranch}", ct);
         var tag = await gh.Send(HttpMethod.Post, $"repos/{repo}/git/tags", new
         {
             tag = $"lock-{key}-{story}",
@@ -53,15 +53,17 @@ public sealed class RefLock(GitHubClient gh, string repo, string key, string def
         }
     }
 
-    public async Task Release(int story, LockHolder owner, CancellationToken ct = default)
+    public async Task<bool> Release(int story, LockHolder owner, CancellationToken ct = default)
     {
         try
         {
-            if (await Holder(story, ct) is not { } current || !current.Is(owner)) return;
+            if (await Holder(story, ct) is not { } current || !current.Is(owner)) return false;
             await gh.Send(HttpMethod.Delete, $"repos/{repo}/git/refs/{Name(story)}", ct: ct);
+            return true;
         }
         catch (GitHubException e) when (e.HttpStatus is HttpStatusCode.NotFound or HttpStatusCode.UnprocessableEntity)
         {
+            return false;
         }
     }
 

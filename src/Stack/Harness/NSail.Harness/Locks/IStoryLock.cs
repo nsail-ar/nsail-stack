@@ -12,8 +12,8 @@ public interface IStoryLock
 
     Task<LockHolder?> Holder(int story, CancellationToken ct = default);
 
-    // Deletes the lock only while `owner` still holds it.
-    Task Release(int story, LockHolder owner, CancellationToken ct = default);
+    // Deletes the lock only while `owner` still holds it; false when it did not.
+    Task<bool> Release(int story, LockHolder owner, CancellationToken ct = default);
 
     // Every story held, with the machine that holds it.
     Task<IReadOnlyDictionary<int, string>> Holders(CancellationToken ct = default);
