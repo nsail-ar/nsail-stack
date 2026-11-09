@@ -189,6 +189,71 @@ public sealed class SecurityManagerTests
         return new SecurityManager(Registry.For(factories), relations ?? new FakeRelations(), factories, builtIns);
     }
 
+    [Fact]
+    public async Task Drops_lists_the_row_whose_constraint_was_excused_and_the_grant_survives()
+    {
+        var manager = Recording();
+        var id = Guid.NewGuid();
+
+        manager.LoadPolicies(
+        [
+            new Policy
+            {
+                Id = id,
+                Name = "stale",
+                Messages = [Gone, UpdateKey],
+                Audience = new() { Authenticated = true },
+                Fields = new Dictionary<string, PolicyConstraint> { ["PartyId"] = PolicyConstraint.Me },
+            },
+        ]);
+
+        var drop = Assert.Single(manager.Drops);
+        Assert.Equal(id, drop.PolicyId);
+        Assert.Equal([Gone], drop.Messages);
+        Assert.Equal(["PartyId"], drop.ExcusedFields);
+        Assert.True((await manager.Authorize(new UpdateTestMessage(), Doctor())).Allowed);
+
+        manager.LoadPolicies([]);
+
+        Assert.Empty(manager.Drops);
+    }
+
+    [Fact]
+    public void LoadPolicies_never_exposes_a_half_loaded_list_to_a_reader()
+    {
+        var manager = Manager();
+        var session = Doctor();
+        var seen = new List<bool>();
+
+        IEnumerable<Policy> Source()
+        {
+            yield return new Policy { Name = "a", Messages = [Key], Audience = new() { Authenticated = true } };
+
+            seen.Add(manager.PreAuthorize(typeof(TestMessage), session));
+
+            yield return new Policy { Name = "b", Messages = [UpdateKey], Audience = new() { Authenticated = true } };
+        }
+
+        manager.LoadPolicies(Source());
+
+        Assert.Equal([false], seen);
+        Assert.True(manager.PreAuthorize(typeof(TestMessage), session));
+    }
+
+    [Fact]
+    public void Built_in_handlers_are_hydrated_once_for_every_manager_sharing_the_holder()
+    {
+        var factories = Factories();
+        var registry = Registry.For(factories);
+        var shared = new BuiltInHandlers();
+        var open = new Policy { Name = "open", Messages = [Key], Audience = new() { Authenticated = true } };
+
+        var first = new SecurityManager(registry, new FakeRelations(), factories, [open], shared: shared);
+        var second = new SecurityManager(registry, new FakeRelations(), factories, [], shared: shared);
+
+        Assert.Same(Assert.Single(first.BuiltInPolicies), Assert.Single(second.BuiltInPolicies));
+    }
+
     static RecordingSecurityManager Recording(params Policy[] builtIns)
     {
         var factories = Factories();

@@ -80,12 +80,37 @@ public class Session
             return [];
         }
 
+        // Asked on every handler of every send, possibly from parallel handlers: computed once
+        // per organization, membership list reference and count, and published as one reference.
+        var memberships = Memberships;
+
+        if (_standing is { } cached
+            && cached.Organization == current
+            && ReferenceEquals(cached.Source, memberships)
+            && cached.Count == memberships.Count)
+        {
+            return cached.Held;
+        }
+
+        var held = Compute(current);
+
+        _standing = new StandingCache(current, memberships, memberships.Count, held);
+
+        return held;
+    }
+
+    sealed record StandingCache(Guid Organization, List<SessionMembership> Source, int Count, List<SessionMembership> Held);
+
+    StandingCache? _standing;
+
+    List<SessionMembership> Compute(Guid current)
+    {
         var above = Memberships
             .Where(m => m.OrganizationId == current)
             .SelectMany(m => m.Ancestors)
             .ToHashSet();
 
-        return Memberships.Where(m => m.OrganizationId == current || above.Contains(m.OrganizationId));
+        return Memberships.Where(m => m.OrganizationId == current || above.Contains(m.OrganizationId)).ToList();
     }
 
     /// <summary>Background jobs act as the system: every send is allowed.</summary>

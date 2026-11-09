@@ -33,6 +33,7 @@ public static class Setup
         services.TryAddScoped<FeatureProvider>();
         services.TryAddScoped<CredentialProvider>();
         services.TryAddScoped<RequestOrganizationProvider>();
+        services.TryAddSingleton<BuiltInHandlers>();
         services.TryAddScoped<SecurityManager>();
     }
 
