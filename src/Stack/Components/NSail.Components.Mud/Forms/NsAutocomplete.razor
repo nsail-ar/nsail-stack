@@ -83,7 +83,7 @@
     // The vendor takes the option it highlights on the Enter's key UP; its own flag is the one way
     // to hand that Enter back, so the key this field answers with a choice does not also pick the
     // first row of the list it leaves open. The flag is private, so it is written through
-    // reflection; NsAutocompleteReaderEnterTests pins the name.
+    // reflection; MudVendorContractTests pins the name.
     static readonly FieldInfo? SkipEnterKeyUp =
         typeof(MudAutocomplete<TItem>).GetField("_skipNextEnterKeyUp", BindingFlags.Instance | BindingFlags.NonPublic);
 
