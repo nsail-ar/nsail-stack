@@ -439,12 +439,13 @@ same tenant**, published again through the client's own Mediator. A screen hears
   up. A listener that keeps a screen current through a pushed event asks again on it: the
   catch-up is its own read. The feed retries forever on a fixed ladder (`PushRetry`) — the first
   connect, a drop, and a line the server closed cleanly (a deploy stopping, an aborted
-  connection), which SignalR's own reconnect leaves closed (`PushTests`, the drop). The ladder
-  starts over only for a line that stayed up `PushRetry.Steady`; one that closed sooner — a 200
-  and a hang-up — climbs on, so a server answering and ending the body is not met with a connect
-  and a catch-up per cycle, at the price of a catch-up up to the last step late — except when
+  connection), which SignalR's own reconnect leaves closed (`PushTests`, the drop) — except when
   the server refuses the session (401/403: a cookie that expired, a ticket for another tenant):
-  then it stops, and the sign-in that follows reloads the app and opens a feed of its own. A
+  then it stops, and the sign-in that follows reloads the app and opens a feed of its own. The
+  ladder starts over only for a line that stayed up `PushRetry.Steady`, however it ended, on
+  either transport; one that closed sooner — a 200 and a hang-up — climbs on, so a server
+  answering and ending the body is not met with a connect and a catch-up per cycle, at the
+  price of a catch-up up to the last step late. A
   line that falls so far behind that its queue fills is dropped rather than held, for the same
   reason: the reconnect is the catch-up. A listener that throws on a pushed event or on
   `PushConnected` is logged, never swallowed.

@@ -38,7 +38,7 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
 
         _opened = new CancellationTokenSource();
 
-        var connection = _connect.Build(new Retry());
+        var connection = _connect.Build(new Retry(this));
 
         connection.On<string, string>(PushFeed.Method, _dispatch.Receive);
 
@@ -47,7 +47,7 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
         connection.Reconnected += _ =>
         {
             _since = Stopwatch.GetTimestamp();
-            _attempt = 0;
+            _attempt++;
 
             return _dispatch.Connected();
         };
@@ -159,7 +159,20 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
         return failure is HttpRequestException { StatusCode: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden };
     }
 
-    sealed class Retry : IRetryPolicy
+    // The step a drop retries on: SignalR counts from zero after every reconnect it wins, so a
+    // line that came back and was lost again at once would never climb; the feed's own step
+    // carries over, and starts over only for a line that stayed up PushRetry.Steady.
+    int Step(int previousRetryCount)
+    {
+        if (previousRetryCount == 0 && Stopwatch.GetElapsedTime(_since) >= PushRetry.Steady)
+        {
+            _attempt = 0;
+        }
+
+        return _attempt + previousRetryCount;
+    }
+
+    sealed class Retry(HubFeed feed) : IRetryPolicy
     {
         public TimeSpan? NextRetryDelay(RetryContext retryContext)
         {
@@ -168,7 +181,7 @@ public sealed class HubFeed : PushFeed, IAsyncDisposable
                 return null;
             }
 
-            return PushRetry.Delay((int)retryContext.PreviousRetryCount);
+            return PushRetry.Delay(feed.Step((int)retryContext.PreviousRetryCount));
         }
     }
 }

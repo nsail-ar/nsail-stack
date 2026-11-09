@@ -97,7 +97,7 @@ public sealed class PushTests
 
         await client.Connected(times: 2, after: cut);
 
-        // The second line is the client's word, and the server registers it after the handshake
+        // The second line is the client's word, and the hub registers it after the handshake
         // the client returns on: a publish aimed at an audience the line has not joined yet
         // reaches nobody.
         await host.Held(lines: 2);
