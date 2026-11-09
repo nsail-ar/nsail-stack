@@ -54,6 +54,58 @@ public class WatchTests
         }
     }
 
+    sealed class Capped(IEnumerable<LoggedError> lines) : ILogSource
+    {
+        readonly LoggedError[] all = [.. lines.OrderBy(l => l.At)];
+
+        public string Name => "logs";
+
+        public Task<IReadOnlyList<LoggedError>> Errors(DateTimeOffset since, DateTimeOffset until, int max, CancellationToken ct = default)
+        {
+            return Task.FromResult<IReadOnlyList<LoggedError>>(all.Where(l => l.At >= since && l.At <= until).Take(max).ToList());
+        }
+    }
+
+    [Fact]
+    public async Task MoreLinesThanTheCapAdvanceTheCursorOnlyToTheLastLineRead()
+    {
+        var first = DateTimeOffset.UtcNow.AddHours(-3);
+        var lines = Enumerable.Range(0, 6000).Select(i => Line() with { At = first.AddSeconds(i) }).ToList();
+        var state = new WatchState(null);
+        var board = new MemoryBoard();
+
+        await Pass(board, new Capped(lines), state);
+
+        Assert.Equal(first.AddSeconds(4999), state.ReadUntil("watch"));
+        await Pass(board, new Capped(lines), state);
+        Assert.True(state.ReadUntil("watch") > first.AddSeconds(5999));
+    }
+
+    [Fact]
+    public async Task TheWindowEndsShortOfNowAndALineOnTheBoundaryIsReadOnce()
+    {
+        var edge = DateTimeOffset.UtcNow.AddHours(-1);
+        var state = new WatchState(null);
+        state.Read("watch", edge);
+        var late = Line(minutesAgo: 1);
+        var board = new MemoryBoard();
+
+        await Pass(board, new Capped([Line() with { At = edge }, late]), state);
+
+        Assert.Empty(board.Cards);
+        Assert.True(state.ReadUntil("watch") <= DateTimeOffset.UtcNow.AddMinutes(-4));
+    }
+
+    [Fact]
+    public void AnotherHarnessesPendingGateMarkKeepsTheHeadFromASecondGate()
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        Assert.Equal("c1", HarnessLoop.MainGatedOf([new StatusMark("c1", Markers.GateContext, false, now.AddMinutes(-5), Pending: true)], now));
+        Assert.Null(HarnessLoop.MainGatedOf([new StatusMark("c1", Markers.GateContext, false, now.AddHours(-4), Pending: true)], now));
+        Assert.Null(StatusMark.Newest([new StatusMark("c1", Markers.GateContext, false, now, Pending: true)], Markers.GateContext));
+    }
+
     [Fact]
     public async Task AStoryWhoseStageWriteFailedIsFoundOnTheNextPassNotFiledAgain()
     {

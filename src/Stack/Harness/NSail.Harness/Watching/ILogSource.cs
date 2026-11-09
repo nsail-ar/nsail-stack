@@ -4,7 +4,7 @@
 namespace NSail.Harness.Watching;
 
 // Where the fleet's logs are read (a Watch worker's Source, by Name): the error lines logged in a
-// window, newest first, at most `max` of them. The store's own columns stop here.
+// window, oldest first, at most `max` of them: past the cap it is the newest that wait for the next pass. The store's own columns stop here.
 public interface ILogSource
 {
     string Name { get; }

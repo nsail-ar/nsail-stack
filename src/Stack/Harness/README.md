@@ -78,7 +78,9 @@ the files it leaves.
     the event, and the board is the harness's. Every verdict leaves the story where a walk reads it
     again: Released, or QA wearing `qa-asked` (a doubt is an ask) — a story in QA with neither is a
     planner note. A Watch reads its `Source` (a log source by name) every `Every` minutes, from where it
-    last read (`Lookback` hours the first time), groups the error lines by service, logger, message
+    last read (`Lookback` hours the first time) up to `IngestLag` minutes (none, five) short of now, for a
+    line the source ingests late; a pass reads at most 5000 lines, oldest first, and the next takes up after the
+    last one read, groups the error lines by service, logger, message
     template and exception type, and files a story per new group in Analyze (`telemetry`, the service's
     area — a product of that name, or its `Areas` entry — and `bug` when a cell outside `NotProd` logged
     it), at most `MaxStories` a pass; an open one gets the count, once a day; one closed and logged

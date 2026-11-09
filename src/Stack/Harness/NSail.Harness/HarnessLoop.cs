@@ -336,6 +336,19 @@ public sealed class HarnessLoop(
         return info?.IndexOf('+') is { } plus and >= 0 ? info[(plus + 1)..][..Math.Min(7, info.Length - plus - 1)] : null;
     }
 
+    // How long another harness's pending gate mark keeps its head from a second gate; a harness that died
+    // mid-build leaves the mark pending for good.
+    internal static readonly TimeSpan PendingGate = TimeSpan.FromHours(3);
+
+    // The head main's gate has judged, or is judging on some harness. A red whose failures this harness
+    // does not hold (it restarted since) is judged again, once: a PR's gate tells main's red from its own by them.
+    internal static string? MainGatedOf(IReadOnlyList<StatusMark> marks, DateTimeOffset now)
+    {
+        if (StatusMark.NewestOrPending(marks, Markers.GateContext) is not { } gated) return null;
+        if (gated.Pending) return now - gated.At < PendingGate ? gated.Sha : null;
+        return gated.Ok || MainGateJob.RedAt(gated.Sha) is not null ? gated.Sha : null;
+    }
+
     async Task<Pass> RunPass(HarnessOptions o, CancellationToken stop)
     {
         var started = DateTimeOffset.UtcNow;
@@ -352,9 +365,7 @@ public sealed class HarnessLoop(
             {
                 DueReleases = DueReleases(marks, DateTimeOffset.UtcNow),
                 DueWatches = DueWatches(DateTimeOffset.UtcNow),
-                // A red main whose failures this harness does not hold (it restarted since) is judged
-                // again, once: a PR's gate tells main's red from its own by them.
-                MainGated = StatusMark.Newest(marks, Markers.GateContext) is { } gated && (gated.Ok || MainGateJob.RedAt(gated.Sha) is not null) ? gated.Sha : null,
+                MainGated = MainGatedOf(marks, DateTimeOffset.UtcNow),
                 LastQaAt = StatusMark.LastAt(marks, Markers.QaContext),
             };
             var limits = new Limits(o.Agents, o.Builds, o.Browsers);
