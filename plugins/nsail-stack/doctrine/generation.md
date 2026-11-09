@@ -71,7 +71,7 @@ Defined in `NSail.SourceGeneration.Annotations`:
 
 Each transport groups its artifacts in one enum. For HTTP: `Clients` is the remote send side, `Endpoints` the receive side, and `InProcess` the local counterpart of `Clients` — same `[Http]` contract, dispatched directly to the handler in the host that exposes the endpoints.
 
-A sender writes each route value through `HttpRequestMessageBuilder.Segment` (one escaped segment, invariant culture) and each query value invariantly, dates and times round-trip (`O`): the server parses invariantly, and a value must not change the path.
+A sender writes each route value through `HttpRequestMessageBuilder.Segment` (one escaped segment, invariant culture) and each query and header value invariantly, dates and times round-trip (`O`): the server parses invariantly, and a value must not change the path.
 
 `Http.InProcess` is declared in the kit's WebApi setup (same assembly as the handlers) and called from `Add{Kit}WebApi()`. It makes `Mediator.Send` dispatch locally in the host that owns the handlers — required for server-side prerendering of components that send messages. There is no implicit sender fallback and `[Http]` is the gate — the sender-registration semantics live in [messaging.md](messaging.md) (In-process vs remote).
 
@@ -167,10 +167,12 @@ public class GetPrescription : IMessage<Prescription>
 |---|---|
 | `[AsRoute]` | Path segment |
 | `[AsQuery]` | Query string |
-| `[AsHeader]` | Request header |
+| `[AsHeader]` | Request header (one value; a collection is `NSG024`) |
 | (default on POST/PUT) | JSON body |
 
-Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc.
+Only public, instance, non-indexer properties with a public `set` or `init` and no `[JsonIgnore]` enter the model, read once as the most derived declaration; any other member is not on the wire.
+
+Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Head and Options are mapped with `MapMethods`; their members bind from the query string (route tokens and `[AsRoute]`/`[AsHeader]` still win).
 
 Sdk projects import `static NSail.Messaging.Annotations.Method` via global usings.
 
@@ -300,10 +302,23 @@ same thing.
 | `NSG014` | Error | A `[Queue]` message implements `IMessage<T>` — a durable send answers "accepted" and never the outcome, so there is no result to hand back. |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` — each registers an `ISender`, so every send would meet `MultipleSenders` at runtime. |
 | `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) — it would cap no account, silently, and go on doing so after a rename. |
+| `NSG017` | Error | An `[Http]` route segment mixes a token with literal text. |
+| `NSG018` | Error | A route-bound member (`[AsRoute]`) has no token in the route — it would be required from a value the template never carries. |
+| `NSG019` | Error | Two `[Http]` messages in one scope share a verb and a path once token names are ignored (a constraint still tells routes apart) — the endpoints would meet `AmbiguousMatchException` at request time. |
+| `NSG020` | Error | `[Source(Assembly = ...)]` names an assembly the compilation does not reference — the holder would register nothing and look finished. |
+| `NSG021` | Error | A holder's class is nested, generic, not `partial` or in the global namespace — the generated half re-declares the class and cannot match it. |
+| `NSG022` | Error | A holder has no `IServiceCollection` parameter — the registrations have no receiver; the generated body uses the parameter's own name. |
+| `NSG023` | Error | An `[Http]` message declares no path — it has no route to map or call. |
+| `NSG024` | Error | A header-bound member (`[AsHeader]`) is a collection — HTTP joins a repeated header into one line, which the endpoint binds as one element. |
+| `NSG025` | Error | A `[MapFrom]` member reads a nullable value into a non-nullable member that is not the target's key — nothing says what "no value" becomes. A `[MapTo]` row reads it as the default, since a query provider translates the projection; a null or empty text reads the target's default. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only
 surface as a 404 at runtime.
+
+A route token is a whole segment, with an optional constraint, `?`, default or `*` (`{id:guid}`,
+`{id?}`, `{*rest}`): the member is bound by the name alone. Text beside a token in one segment
+(`v{version}`, `{a}.{b}`) is `NSG017`, because the client writes a token as one escaped segment.
 
 `NSG011` and `NSG012` are warnings: the mapping works, it just loses the data, and a partial
 message or a narrow row is often exactly what was meant. An app that wants them refused raises

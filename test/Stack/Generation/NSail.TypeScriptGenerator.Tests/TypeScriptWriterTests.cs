@@ -39,6 +39,14 @@ public class TypeScriptWriterTests
     }
 
     [Fact]
+    public void A_nested_message_resolves_by_its_metadata_name()
+    {
+        var text = Generate("Nested.cs", "OrdersClients.cs");
+
+        Assert.Contains("api/shop/nested", text);
+    }
+
+    [Fact]
     public void A_route_token_binds_its_member_and_the_rest_follow_the_verb()
     {
         var text = Orders();

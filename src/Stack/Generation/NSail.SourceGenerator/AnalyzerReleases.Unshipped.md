@@ -21,3 +21,12 @@ NSG013 | NSail.Generation | Error | An Ignore entry names a member the type does
 NSG014 | NSail.Generation | Error | A [Queue] message returns a result.
 NSG015 | NSail.Generation | Error | A [Queue] message also carries [Http].
 NSG016 | NSail.Generation | Error | [Throttled] Identity names a property that is not a public string bound from the body under its own name.
+NSG017 | NSail.Generation | Error | A route segment mixes a token with literal text.
+NSG018 | NSail.Generation | Error | A route-bound member has no token in the route.
+NSG019 | NSail.Generation | Error | Two messages share a verb and a normalised route.
+NSG020 | NSail.Generation | Error | [Source] names an assembly the compilation does not reference.
+NSG021 | NSail.Generation | Error | A generated holder is nested, generic, not a partial class or in the global namespace.
+NSG022 | NSail.Generation | Error | A generated holder has no IServiceCollection parameter.
+NSG023 | NSail.Generation | Error | An [Http] message declares no path.
+NSG024 | NSail.Generation | Error | A header-bound member is a collection.
+NSG025 | NSail.Generation | Error | A [MapFrom] member reads a nullable into a non-nullable member that is not a key.

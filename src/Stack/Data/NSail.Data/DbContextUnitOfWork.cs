@@ -47,8 +47,14 @@ sealed class DbContextUnitOfWork : IUnitOfWork
 
         _transaction = null;
 
-        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-        await transaction.DisposeAsync().ConfigureAwait(false);
+        try
+        {
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await transaction.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     public async Task Rollback()

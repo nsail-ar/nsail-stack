@@ -10,6 +10,14 @@ public static class ServiceRegistrationModelRenderer
 {
     public static void Render(SourceProductionContext spc, AddServicesModel model)
     {
+        foreach (var diagnostic in model.HolderDiagnostics)
+        {
+            spc.ReportDiagnostic(diagnostic);
+        }
+
+        if (model.Unusable)
+            return;
+
         var template = SourceTemplateRegistry.Instance.Get("ServiceRegistration");
         var sourceCode = template.Render(model);
         var hintName = $"{model.Namespace}.{model.ClassName}_{model.MethodName}.g.cs";

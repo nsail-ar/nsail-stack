@@ -1,21 +1,22 @@
 #nullable enable
 
+using System.Net.Http;
 using NSail.Messaging;
 using NSail.Messaging.Http;
 using NSail.Messaging.Runtime.Context;
 
-namespace {{ MessageType.Namespace }};
+{{ MessageType.NamespaceLine }}
 
-public sealed class {{ MessageType.ClassName }}HttpSender : HttpSender<{{ MessageType }}{{ if ReturnType != "void" }}, {{ ReturnType }}{{ end }}>
+public sealed class {{ MessageType.FlatName }}HttpSender : HttpSender<{{ MessageType }}{{ if ReturnType != "void" }}, {{ ReturnType }}{{ end }}>
 {
-    public {{ MessageType.ClassName }}HttpSender(IHttpClientFactory httpClientFactory, MessageContextAccessor deliveries)
+    public {{ MessageType.FlatName }}HttpSender(IHttpClientFactory httpClientFactory, MessageContextAccessor deliveries)
         : base(httpClientFactory, deliveries)
     {
     }
 
     protected override string Name => "{{ ServiceEndpoint }}";
 
-    protected override HttpRequestMessage BuildMessage({{ MessageType.ClassName }} message)
+    protected override HttpRequestMessage BuildMessage({{ MessageType.RelativeName }} message)
     {
         return CreateBuilder()
             .Method(HttpMethod.{{ HttpMethod }})
@@ -31,7 +32,7 @@ public sealed class {{ MessageType.ClassName }}HttpSender : HttpSender<{{ Messag
 {{~ when "Body" ~}}
             .AddJsonContent(message)
 {{~ when "Header" ~}}
-            .AddHeader(message)
+            .AddHeader("{{ binding.Name }}", message.{{ binding.PropertyName }})
 {{~ end ~}}
 {{~ end ~}}
             .Build();

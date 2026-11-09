@@ -22,10 +22,14 @@ public static class PushModelFactory
             MethodName = methodSymbol.Name,
             ClassDeclaration = methodSymbol.ContainingType.GetDeclaration(),
             MethodDeclaration = methodSymbol.GetDeclaration(),
-            ServicesParameterName = methodSymbol.Parameters.Length > 0 ? methodSymbol.Parameters[0].Name : "services",
         };
 
-        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol))
+        model.ReadHolder(methodSymbol);
+
+        if (model.Unusable)
+            return model;
+
+        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol, model.HolderDiagnostics))
         {
             if (typeSymbol.GetAttribute(PushedAttributeName) is null)
                 continue;

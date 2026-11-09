@@ -78,12 +78,12 @@ sealed partial class MapperEmitter
 
     string Services
     {
-        get { return _method.Parameters.Length > 0 ? _method.Parameters[0].Name : "services"; }
+        get { return _method.FindParameterNameByType("IServiceCollection"); }
     }
 
     public string Emit()
     {
-        foreach (var target in _compilation.FindTypesInScope(_method))
+        foreach (var target in _compilation.FindTypesInScope(_method, Diagnostics))
         {
             if (target.IsGenericType && (target.HasAttribute(MapFromName) || target.HasAttribute(MapToName)))
             {
@@ -231,7 +231,7 @@ sealed partial class MapperEmitter
 
             for (var i = 0; i < keys.Count; i++)
             {
-                var converted = Convert($"source.{Id(sourceKeys[i]!.Name)}", sourceKeys[i]!.Type, keys[i].Type);
+                var converted = Convert($"source.{Id(sourceKeys[i]!.Name)}", sourceKeys[i]!.Type, keys[i].Type, sourceKeys[i]!.Name);
 
                 if (converted is null)
                 {
@@ -794,10 +794,18 @@ sealed partial class MapperEmitter
                 return null;
             }
 
-            var converted = Convert(value, from.Type, member.Type);
+            var strict = !Keys(target).Any(k => k.Name == member.Name);
+            var converted = Convert(value, from.Type, member.Type, from.Name, strict);
 
             if (converted is null)
             {
+                if (strict && IsNullableValue(from.Type) && !IsNullableValue(member.Type) && member.Type.SpecialType != SpecialType.System_String
+                    && Convert(value, from.Type, member.Type, from.Name) is not null)
+                {
+                    Report(GeneratorDiagnostics.MappedNullableIntoNonNullable, member, target.Name, member.Name, member.Type.ToDisplayString(), source.Name, from.Name, from.Type.ToDisplayString());
+                    return null;
+                }
+
                 Unconvertible(source, target, member, from);
                 return null;
             }
@@ -885,7 +893,7 @@ sealed partial class MapperEmitter
 
         Consume(source, foreignKey);
 
-        var converted = Convert($"source.{Id(foreignKey.Name)}", foreignKey.Type, keys[0].Type);
+        var converted = Convert($"source.{Id(foreignKey.Name)}", foreignKey.Type, keys[0].Type, foreignKey.Name);
 
         if (converted is null)
         {
@@ -929,7 +937,7 @@ sealed partial class MapperEmitter
 
         var keyType = Keys(entity)[0].Type;
         var value = $"key{_next++}";
-        var converted = Convert(value, item, keyType);
+        var converted = Convert(value, item, keyType, foreignKeys.Name);
 
         if (converted is null)
         {
@@ -989,7 +997,7 @@ sealed partial class MapperEmitter
 
             Consume(source, navigation);
 
-            var converted = Convert($"source.{Id(navigation.Name)}.{Id(keys[0].Name)}", keys[0].Type, member.Type);
+            var converted = Convert($"source.{Id(navigation.Name)}.{Id(keys[0].Name)}", keys[0].Type, member.Type, navigation.Name);
 
             return converted is null ? null : $"target.{Id(member.Name)} = source.{Id(navigation.Name)} is null ? default({Name(member.Type)}) : {converted};";
         }
@@ -1039,7 +1047,7 @@ sealed partial class MapperEmitter
         if (IsScalar(element))
         {
             var item = $"item{_next++}";
-            var converted = Convert(item, fromElement, element);
+            var converted = Convert(item, fromElement, element, from.Name);
 
             if (converted is null)
             {
@@ -1091,7 +1099,7 @@ sealed partial class MapperEmitter
 
     /// <summary>The expression that turns <paramref name="expression"/>, a <paramref name="from"/>,
     /// into a <paramref name="to"/>; null when there is none worth writing.</summary>
-    string? Convert(string expression, ITypeSymbol from, ITypeSymbol to)
+    string? Convert(string expression, ITypeSymbol from, ITypeSymbol to, string field, bool strict = false)
     {
         from = Plain(from);
         to = Plain(to);
@@ -1113,11 +1121,18 @@ sealed partial class MapperEmitter
         var fromNullable = !SymbolEqualityComparer.Default.Equals(fromValue, from);
         var toNullable = !SymbolEqualityComparer.Default.Equals(toValue, to);
 
+        // A nullable source into a member that cannot be null would write a default for "no value";
+        // a key is the exception, where no value is the id still to be made.
+        if (strict && fromNullable && !toNullable && to.SpecialType != SpecialType.System_String)
+        {
+            return null;
+        }
+
         // A nullable source: its value converted, or the target's default where it has none.
         if (fromNullable)
         {
             var value = $"v{_next++}";
-            var inner = Convert(value, fromValue, toNullable ? toValue : to);
+            var inner = Convert(value, fromValue, toNullable ? toValue : to, field, strict);
 
             if (inner is null)
             {
@@ -1130,21 +1145,21 @@ sealed partial class MapperEmitter
         // An empty string is no value: the target's default, which for a nullable one is null.
         if (from.SpecialType == SpecialType.System_String && to.SpecialType != SpecialType.System_String)
         {
-            var parse = Parse(expression, toValue);
+            var parse = Parse(expression, toValue, field);
 
             return parse is null ? null : $"(string.IsNullOrEmpty({expression}) ? default({Name(to)}) : ({Name(to)})({parse}))";
         }
 
         if (toNullable)
         {
-            var inner = Convert(expression, from, toValue);
+            var inner = Convert(expression, from, toValue, field, strict);
 
             return inner is null ? null : $"({Name(to)})({inner})";
         }
 
         if (conversion.IsExplicit && (conversion.IsNumeric || conversion.IsEnumeration))
         {
-            return $"({Name(to)})({expression})";
+            return $"checked(({Name(to)})({expression}))";
         }
 
         if (to.SpecialType == SpecialType.System_String)
@@ -1159,29 +1174,28 @@ sealed partial class MapperEmitter
                 : null;
         }
 
-        if (from.TypeKind == TypeKind.Enum && to.TypeKind == TypeKind.Enum)
-        {
-            return $"global::System.Enum.Parse<{Name(to)}>({expression}.ToString())";
-        }
-
         return null;
     }
 
-    string? Parse(string expression, ITypeSymbol to)
+    bool IsNullableValue(ITypeSymbol type)
+    {
+        return !SymbolEqualityComparer.Default.Equals(Underlying(Plain(type)), Plain(type));
+    }
+
+    string? Parse(string expression, ITypeSymbol to, string field)
     {
         var type = Name(to);
 
         if (to.TypeKind == TypeKind.Enum)
         {
-            return $"global::System.Enum.Parse<{type}>({expression}, true)";
+            return $"{Runtime}.Maps.ParseEnum<{type}>({expression}, {Literal(field)})";
         }
 
         switch (to.SpecialType)
         {
-            case SpecialType.System_Boolean:
-                return $"bool.Parse({expression})";
             case SpecialType.System_Char:
                 return $"{expression}[0]";
+            case SpecialType.System_Boolean:
             case SpecialType.System_Byte:
             case SpecialType.System_SByte:
             case SpecialType.System_Int16:
@@ -1194,19 +1208,22 @@ sealed partial class MapperEmitter
             case SpecialType.System_Double:
             case SpecialType.System_Decimal:
             case SpecialType.System_DateTime:
-                return $"{type}.Parse({expression}, global::System.Globalization.CultureInfo.InvariantCulture)";
+                return $"{Runtime}.Maps.ParseValue<{type}>({expression}, {Literal(field)})";
         }
 
         var name = to.ToDisplayString();
 
         if (name is "System.Guid" or "System.DateTimeOffset" or "System.TimeSpan" or "System.DateOnly" or "System.TimeOnly")
         {
-            return name == "System.Guid"
-                ? $"global::System.Guid.Parse({expression})"
-                : $"{type}.Parse({expression}, global::System.Globalization.CultureInfo.InvariantCulture)";
+            return $"{Runtime}.Maps.ParseValue<{type}>({expression}, {Literal(field)})";
         }
 
         return null;
+    }
+
+    static string Literal(string text)
+    {
+        return SymbolDisplay.FormatLiteral(text, quote: true);
     }
 
     // ---- Symbols ------------------------------------------------------------------------

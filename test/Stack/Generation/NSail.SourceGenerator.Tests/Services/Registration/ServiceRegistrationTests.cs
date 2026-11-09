@@ -24,7 +24,8 @@ public class ServiceRegistrationTests
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<InjectableAttribute>()
             .AddContainingAssembly<ServiceB>()
-            .AddContainingAssembly<ServiceLifetime>();
+            .AddContainingAssembly<ServiceLifetime>()
+            .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>();
 
         var compilation = builder.Build("ServiceRegistrationTestAssembly");
 
@@ -34,6 +35,7 @@ public class ServiceRegistrationTests
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
         Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
 
         var runResult = driver.GetRunResult();
         var generatedTrees = runResult.GeneratedTrees;

@@ -19,7 +19,7 @@ namespace {{ Namespace }};
             .TryAddSingleton<global::NSail.Metadata.MetadataProvider>({{ ServicesParameterName }});
 
         {{~ for client in Messages ~}}
-        {{ ServicesParameterName }}.AddTransient<IEndpointEntry, {{ client.MessageType }}EndpointEntry>();
+        {{ ServicesParameterName }}.AddTransient<IEndpointEntry, {{ client.MessageType.QualifiedFlatName }}EndpointEntry>();
         {{~ end ~}}
     }
 }

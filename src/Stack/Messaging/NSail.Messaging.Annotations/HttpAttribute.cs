@@ -5,7 +5,7 @@ namespace NSail.Messaging.Annotations;
 
 /// <summary>
 /// Declares the HTTP contract of a message. Properties bind automatically:
-/// path {tokens} from the route, the rest from the query string on Get/Delete
+/// path {tokens} from the route, the rest from the query string on Get/Delete/Head/Options
 /// and from the JSON body on Post/Put/Patch (override with [AsRoute]/[AsQuery]/[AsHeader]).
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]

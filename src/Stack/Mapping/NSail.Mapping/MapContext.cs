@@ -39,6 +39,17 @@ public class MapContext
         return Task.FromResult<TEntity?>(null);
     }
 
+    /// <summary>The root named by <paramref name="key"/>, found through its type so a store can
+    /// index what it holds instead of compiling a match per root.</summary>
+    public virtual Task<TEntity?> Load<TEntity>(EntityType<TEntity> type, object key, IReadOnlyList<string> includes, CancellationToken cancellationToken)
+        where TEntity : class
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentNullException.ThrowIfNull(key);
+
+        return Load(type.Match(key), includes, cancellationToken);
+    }
+
     /// <summary>The entity an aggregation points at: the row the store already has, never one
     /// written from the source, or null where the store has none. With no store there is
     /// nothing to look up, and the stub — the key and nothing else — stands in.</summary>

@@ -45,6 +45,26 @@ public class HttpRequestMessageBuilderTests
         Assert.Equal("api/parties?kind=LegalEntity", request.RequestUri!.ToString());
     }
 
+    [Fact]
+    public void Header_skips_null_and_writes_values_invariantly()
+    {
+        var request = new HttpRequestMessageBuilder()
+            .Method(HttpMethod.Get)
+            .Path("api/parties")
+            .AddHeader("x-trace", (string?)null)
+            .AddHeader("x-attempt", (int?)null)
+            .AddHeader("x-count", 1234.5)
+            .AddHeader("x-tenant", "acme")
+            .AddHeader("x-day", new DateOnly(2026, 3, 4))
+            .Build();
+
+        Assert.False(request.Headers.Contains("x-trace"));
+        Assert.False(request.Headers.Contains("x-attempt"));
+        Assert.Equal("1234.5", Assert.Single(request.Headers.GetValues("x-count")));
+        Assert.Equal("acme", Assert.Single(request.Headers.GetValues("x-tenant")));
+        Assert.Equal("2026-03-04", Assert.Single(request.Headers.GetValues("x-day")));
+    }
+
     [Theory]
     [InlineData("a/b", "api/x/a%2Fb")]
     [InlineData("../x", "api/x/..%2Fx")]

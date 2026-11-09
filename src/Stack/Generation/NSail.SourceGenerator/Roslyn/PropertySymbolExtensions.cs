@@ -9,7 +9,8 @@ namespace NSail.SourceGenerator.Roslyn;
 public static class PropertySymbolExtensions
 {
     /// <summary>Renders the property as a declaration. <paramref name="typeOverride"/> replaces
-    /// the declared type, which a generated DTO uses to widen a member so it can hold "absent".</summary>
+    /// the declared type, which a generated DTO uses to widen a member so it can hold "absent".
+    /// An override is rendered as a plain property: the DTO has no base to override.</summary>
     public static string GetDeclaration(this IPropertySymbol prop, string? typeOverride = null)
     {
         var sb = new StringBuilder();
@@ -35,8 +36,6 @@ public static class PropertySymbolExtensions
             modifiers.Add("abstract");
         else if (prop.IsVirtual) 
             modifiers.Add("virtual");
-        else if (prop.IsOverride) 
-            modifiers.Add("override");
 
         if (prop.IsPartialDefinition)
             modifiers.Add("partial");

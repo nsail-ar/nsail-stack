@@ -53,7 +53,7 @@ public abstract class EntityPair<TSource, TTarget> : EntityType<TTarget>
 
         if (target is null && key is not null)
         {
-            target = await context.Load(Match(key), Includes, cancellationToken).ConfigureAwait(false);
+            target = await context.Load(this, key, Includes, cancellationToken).ConfigureAwait(false);
         }
 
         // SourceHasKey adds the one case SourceKey's own null cannot carry here: a key at its

@@ -23,7 +23,12 @@ public static class ServiceRegistrationModelFactory
             MethodDeclaration = methodSymbol.GetDeclaration(),
         };
 
-        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol))
+        model.ReadHolder(methodSymbol);
+
+        if (model.Unusable)
+            return model;
+
+        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol, model.HolderDiagnostics))
         {
             if (typeSymbol.IsAbstract)
                 continue;
