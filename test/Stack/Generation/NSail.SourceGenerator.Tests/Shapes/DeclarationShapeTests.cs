@@ -178,7 +178,7 @@ public class DeclarationShapeTests
             }
             """);
 
-        Assert.Contains(run.Diagnostics, d => d.Id == "NSG017" && d.GetMessage().Contains("No.Such.Assembly"));
+        Assert.Contains(run.Diagnostics, d => d.Id == "NSG020" && d.GetMessage().Contains("No.Such.Assembly"));
     }
 
     [Fact]
@@ -195,7 +195,7 @@ public class DeclarationShapeTests
             }
             """);
 
-        Assert.Contains(run.Diagnostics, d => d.Id == "NSG019");
+        Assert.Contains(run.Diagnostics, d => d.Id == "NSG022");
         Assert.Empty(run.Sources);
     }
 
@@ -215,7 +215,7 @@ public class DeclarationShapeTests
             }
             """);
 
-        Assert.Contains(run.Diagnostics, d => d.Id == "NSG018" && d.GetMessage().Contains(reason));
+        Assert.Contains(run.Diagnostics, d => d.Id == "NSG021" && d.GetMessage().Contains(reason));
         Assert.Empty(run.Sources);
     }
 
@@ -236,7 +236,7 @@ public class DeclarationShapeTests
             }
             """);
 
-        Assert.Contains(run.Diagnostics, d => d.Id == "NSG018" && d.GetMessage().Contains("is nested"));
+        Assert.Contains(run.Diagnostics, d => d.Id == "NSG021" && d.GetMessage().Contains("is nested"));
         Assert.Empty(run.Sources);
     }
 
@@ -255,7 +255,7 @@ public class DeclarationShapeTests
 
             """ + ClientsHolder);
 
-        Assert.Contains(run.Diagnostics, d => d.Id == "NSG020" && d.GetMessage().Contains("NoPath"));
+        Assert.Contains(run.Diagnostics, d => d.Id == "NSG023" && d.GetMessage().Contains("NoPath"));
         Assert.Contains(run.Sources, s => s.Contains("FineHttpSender"));
         Assert.DoesNotContain(run.Sources, s => s.Contains("NoPathHttpSender"));
     }
