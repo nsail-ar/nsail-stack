@@ -242,7 +242,7 @@ Area `Optical`), `service.namespace` = `nsail`, `deployment.environment`, `nsail
 is not judged here: the column that holds one declares it, and the model carries the
 declaration to the schema (data.md § Provider). This is shape, not
 discipline. NSail's own span never reads a message's members: it carries `nsail.outcome`
-(`ok`/`refused`/`failed`), `nsail.user` (who asked), and, to say how it ended,
+(`ok`/`refused`/`failed`/`cancelled` — a client abort is not a failure and sets no Error status), `nsail.user` (who asked), and, to say how it ended,
 `nsail.problem` on a refusal — the Problem's **Code**, never its Title — plus `nsail.rule`,
 the key that refusal's own sentence lives at, or `nsail.failure` on a crash, the exception's
 type. **`nsail.rule` exists because the code cannot tell two rules apart**: every rule of the
@@ -253,8 +253,10 @@ halves are written by the source (a rule's name, a field's, an entity's); the is
 **message**, the one part free to quote the value that caused the refusal, stays out — and so
 does the exception's, which opens every rendered stack. No `RecordException` and no status
 description either. For code NSail did not write, `Scrubber` is a span
-processor that drops `url.query`, `db.statement`, `db.query.text` and every
-`db.query.parameter.*`, and cuts the query string off `url.full`. A processor rather than
+processor and an **allow-list**: only `nsail.*` and the closed list in `Scrubber.cs` survive,
+so a tag a new package version adds fails closed. It cuts `url.full` to its origin and sets
+`url.path` to the route template, since a literal path carries the values the route was filled
+with. Blazor's spans keep only the component type, method and circuit id. A processor rather than
 vendor options on purpose: an instrumentation option can be removed or renamed by the next
 package version (`SetDbStatementForText`, which suppressed SQL text, was removed from the EF
 Core instrumentation), and then fails open silently.

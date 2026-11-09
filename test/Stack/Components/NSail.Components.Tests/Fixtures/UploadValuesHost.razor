@@ -8,7 +8,7 @@
    IS the value, so a reorder and a clear both arrive here as a new list. *@
 <NsForm TModel="UploadValuesModel" Model="Model" OnSubmit="@(_ => Task.CompletedTask)">
     <NsMultiFileUpload Value="Model.Images" ValueChanged="OnChanged" For="() => Model.Images"
-                       Preview="Preview" Store="Store" Accept="image/*" />
+                       Preview="Preview" Store="Store" Accept="image/*,.pdf,.svg" MaxSize="MaxSize" MaxTotalSize="MaxTotalSize" />
 </NsForm>
 
 @code {
@@ -18,6 +18,12 @@
 
     [Parameter]
     public bool Preview { get; set; }
+
+    [Parameter]
+    public long MaxSize { get; set; } = 5 * 1024 * 1024;
+
+    [Parameter]
+    public long MaxTotalSize { get; set; } = 25 * 1024 * 1024;
 
     [Parameter]
     public IFileStore? Store { get; set; }

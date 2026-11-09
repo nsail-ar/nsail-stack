@@ -229,7 +229,7 @@ add it (the `new-icon` skill) rather than borrow a neighbour's (cases).
 ## Files
 
 **One file is one field; a set of them is a different field.** `NsFileUpload` holds one value,
-`NsMultiFileUpload` an ordered set; they take **the same parameters**, and **no parameter turns
+`NsMultiFileUpload` an ordered set; they take **the same parameters** (the list adds a cap on a selection's total size), and **no parameter turns
 one into the other** (cases). The contract — one action icon per line, deletion riding the save,
 the order being the value, where the bytes go — is [ui/fields.md](ui/fields.md).
 
