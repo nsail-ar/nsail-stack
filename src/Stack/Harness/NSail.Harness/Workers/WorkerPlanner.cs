@@ -13,6 +13,8 @@ namespace NSail.Harness.Workers;
 //   3. the workers that run on their own (a release, main's verification, a QA drain), by Priority;
 //   4. the workers over stories, by Priority, over the p1 stories (and a red main's or suite's);
 //   5. the same workers over every other story.
+// At the WIP limit no new story starts but a `bug`, a red main's or suite's (their fix is finishing
+// work) and, while an andon is lit, the release's own.
 // Inside a worker, stories go by the configured Order (epic progress, then age). A story gets one
 // job per pass: the first worker that takes it. Locks (a job's own labels), a story already worked
 // here and a driver this machine cannot run hold it below any filter.
@@ -80,7 +82,9 @@ public static class WorkerPlanner
         var wip = prsByStory.Keys.Where(n => issues.FirstOrDefault(i => i.Number == n) is { } i && Planner.HoldOf(i, options) is not (Labels.Ruling or Labels.Blocked or Labels.Hand or Labels.Stalled))
             .Union(flight.DevStories).Distinct().Count();
         var full = options.WipLimit > 0 && wip >= options.WipLimit;
-        if (full && andon.Count == 0) notes.Add($"{wip} stories under way (limit {options.WipLimit}): no new story starts until one closes");
+        var limit = full && andon.Count == 0 ? notes.Count : -1;
+        int? next = null;
+        if (limit >= 0) notes.Add($"{wip} stories under way (limit {options.WipLimit}): no new story starts until one closes");
 
         // A red-main story whose fix merged waits for main's gate to judge a head that holds it: only
         // Develop waits, everything else goes on.
@@ -101,15 +105,18 @@ public static class WorkerPlanner
         {
             items.AddRange(OnItsOwn(w, board, issues, options).Where(item => andon.Count == 0 || ReleaseAndon.Owns(item, andon)).Select(item => andon.Count == 0 ? item : item with { Tier = ReleaseAndon.Tier }));
         }
-        // A red main's or red suite's story is swept with the p1 ones, whatever its labels.
+        // A red main's or red suite's story is swept with the p1 ones, whatever its labels, and the WIP
+        // limit does not hold it; the limit's note names the first story it holds.
         Sweep(i => !i.Has(Labels.Bug) && (i.Has(Labels.P1) || Red(i, options)), bug: false);
         Sweep(i => !i.Has(Labels.Bug) && !i.Has(Labels.P1) && !Red(i, options), bug: false);
+        if (limit >= 0 && next is { } held) notes[limit] += $" — #{held} would be next";
         return new Plan(items, chores, notes) { Andon = andon };
 
         void Sweep(Func<Issue, bool> which, bool bug)
         {
             foreach (var w in workers.Where(w => w.Kind is not null && w.OverStories && may(w)))
             {
+                var holding = w.TakesNew && full && !bug;
                 var stories = Ordered(issues.Where(which), w, options);
                 // Lanes in different parts of the tree conflict less: a new story in an area no lane
                 // builds goes first.
@@ -119,10 +126,14 @@ public static class WorkerPlanner
                     if (taken.Contains(i.Number) || Busy(i, flight, options)) continue;
                     var owned = andon.Count > 0 && release.Contains(i.Number);
                     if (andon.Count > 0 && !owned) continue;
-                    if (w.TakesNew && full && !bug && !owned) continue;
                     if (w.Kind == WorkKind.Dev && board.UnjudgedFixes.Contains(i.Number)) continue;
                     var (pr, state) = Deciding(i, w, prsByStory.GetValueOrDefault(i.Number), board, options, lookup);
                     if (!w.Takes(i, w.Filter.Pr == "open" ? pr : null, state, lookup)) continue;
+                    if (holding && !owned && !Red(i, options))
+                    {
+                        next ??= i.Number;
+                        continue;
+                    }
                     taken.Add(i.Number);
                     chores.AddRange(ChoresOf(w, "Starting", i));
                     var item = ItemOf(w, i, w.Filter.Pr == "open" ? pr : null, state, board, options);
