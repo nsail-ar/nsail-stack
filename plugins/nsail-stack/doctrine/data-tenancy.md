@@ -51,11 +51,13 @@ Stack sets and no product writes:
   a product: the pass derives it from the model, so the migration of every product's foreign
   keys is the one `dotnet ef migrations add` scaffolds. An optional foreign key with a null `Fk` is
   not checked (Postgres's default match), so it names nothing; `DeleteBehavior.SetNull` becomes
-  `ClientSetNull`: Postgres's `ON DELETE SET NULL` on a composite key would null the tenant column
-  too, so the database no longer clears it. EF clears the key of every dependent it has
+  `ClientSetNull`: EF Core's DDL for `ON DELETE SET NULL` on a composite key nulls the tenant
+  column too, so the database no longer clears it. EF clears the key of every dependent it has
   **loaded** when the principal is deleted; one it has not loaded makes the `DELETE` fail with
-  23503, so a handler that deletes a principal loads its optional dependents first. **Install-scoped entities keep
-  their plain keys**, and a foreign key from a tenant row onto one stays plain: it is the same
+  23503, so a handler that deletes a principal loads its optional dependents first. A derived type's
+  indexes and foreign keys follow its root; an **owned** type cannot name its owner's column in a
+  key or index of its own, so what it declares stays plain — give such a reference an entity of
+  its own. **Install-scoped entities keep their plain keys**, and a foreign key from a tenant row onto one stays plain: it is the same
   row for every tenant.
 
 **The primary key does not move.** It stays `Id` alone in every mode; the tenant is a column

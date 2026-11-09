@@ -92,7 +92,7 @@ public sealed class TenantConstraintTests : IAsyncLifetime
 
         await using (var db = new ConstraintDbContext(_options, Lumina))
         {
-            var row = await db.Set<CLoose>().SingleAsync();
+            _ = await db.Set<CLoose>().SingleAsync();
             var principal = await db.Set<CParent>().SingleAsync();
 
             db.Remove(principal);
@@ -161,7 +161,38 @@ public sealed class TenantConstraintTests : IAsyncLifetime
 
         again.Add(new CParent { Id = Guid.NewGuid(), Code = "SAME", Slug = "other" });
 
-        await Assert.ThrowsAsync<DbUpdateException>(() => again.SaveChangesAsync());
+        var refusal = await Assert.ThrowsAsync<DbUpdateException>(() => again.SaveChangesAsync());
+
+        Assert.Equal(PostgresErrorCodes.UniqueViolation, ((PostgresException)refusal.InnerException!).SqlState);
+    }
+
+    [Fact]
+    public async Task A_unique_index_declared_on_a_derived_type_is_per_tenant()
+    {
+        foreach (var tenant in new[] { Lumina, Vision })
+        {
+            await using var db = new ConstraintDbContext(_options, tenant);
+
+            db.Add(new CDerived { Id = Guid.NewGuid(), Tag = "SAME" });
+
+            await db.SaveChangesAsync();
+        }
+
+        await using var again = new ConstraintDbContext(_options, Lumina);
+
+        again.Add(new CDerived { Id = Guid.NewGuid(), Tag = "SAME" });
+
+        var refusal = await Assert.ThrowsAsync<DbUpdateException>(() => again.SaveChangesAsync());
+
+        Assert.Equal(PostgresErrorCodes.UniqueViolation, ((PostgresException)refusal.InnerException!).SqlState);
+    }
+
+    [Fact]
+    public void An_owned_type_with_a_reference_of_its_own_builds_the_model()
+    {
+        using var db = new ConstraintDbContext(_options, Lumina);
+
+        Assert.NotNull(db.Model.FindEntityType(typeof(COwned)));
     }
 
     [Fact]
@@ -274,6 +305,16 @@ sealed class ConstraintSetup : IDbContextSetup
         {
             row.HasBaseType<CBase>();
             row.HasOne<CParent>().WithMany().HasForeignKey(r => r.OwnerId).OnDelete(DeleteBehavior.Restrict);
+            row.HasIndex(r => r.Tag).IsUnique();
+        });
+
+        modelBuilder.Entity<COwner>(row =>
+        {
+            row.ToTable("Owners");
+            row.OwnsOne(r => r.Held, held =>
+            {
+                held.HasOne<CParent>().WithMany().HasForeignKey(h => h.ParentId).OnDelete(DeleteBehavior.Restrict);
+            });
         });
 
         modelBuilder.Entity<CLoose>(row =>
@@ -335,4 +376,18 @@ public class CBase
 public sealed class CDerived : CBase
 {
     public Guid? OwnerId { get; set; }
+
+    public string? Tag { get; set; }
+}
+
+public sealed class COwner
+{
+    public Guid Id { get; set; }
+
+    public COwned? Held { get; set; }
+}
+
+public sealed class COwned
+{
+    public Guid? ParentId { get; set; }
 }

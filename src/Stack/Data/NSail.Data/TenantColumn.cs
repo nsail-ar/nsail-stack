@@ -78,13 +78,22 @@ static class TenantColumn
         // own, and the principal may come later in the model.
         foreach (var (entity, tenant) in owned)
         {
-            LeadIndexesWithTenant(entity, tenant);
             ScopeKeys(entity, tenant);
         }
 
-        // Every type, not only the roots: a derived type or an owned one shares its root's row and
-        // may declare a foreign key of its own, which names the same tenant.
-        var sharing = model.GetEntityTypes().ToArray();
+        // Every type but the owned ones, not only the roots: a derived type shares its root's row
+        // and may declare an index or a foreign key of its own, which names the same tenant. An
+        // owned type cannot name its owner's column in a key or an index of its own, so what it
+        // declares stays plain.
+        var sharing = model.GetEntityTypes().Where(entity => !entity.IsOwned()).ToArray();
+
+        foreach (var entity in sharing)
+        {
+            if (TenantOf(entity, owned) is { } tenant)
+            {
+                LeadIndexesWithTenant(entity, tenant);
+            }
+        }
 
         foreach (var entity in sharing)
         {
@@ -106,9 +115,11 @@ static class TenantColumn
     }
 
     // The tenant column of the row a type shares or is: its root's — the base of a hierarchy, the
-    // owner of an aggregate — and only where the root took one. Asked of the marker's outcome and not of the column, because TenantState carries a
-    // TenantId of its own that is not the wall's.
-    static IMutableProperty? TenantOf(IMutableEntityType entity, Dictionary<IMutableEntityType, IMutableProperty> owned)
+    // owner of an aggregate — and only where the root took one. Asked of the marker's outcome and
+    // not of the column, because TenantState carries a TenantId of its own that is not the wall's.
+    static IMutableProperty? TenantOf(
+        IMutableEntityType entity,
+        Dictionary<IMutableEntityType, IMutableProperty> owned)
     {
         var root = entity;
 
@@ -294,7 +305,7 @@ static class TenantColumn
     // come back beside these.
     static void LeadIndexesWithTenant(IMutableEntityType entity, IMutableProperty tenant)
     {
-        foreach (var index in entity.GetIndexes().ToArray())
+        foreach (var index in entity.GetDeclaredIndexes().ToArray())
         {
             if (index.Properties[0] != tenant)
             {
@@ -343,7 +354,7 @@ static class TenantColumn
         // the tenant in front of a foreign key that is the key itself included.
         if (entity.FindPrimaryKey() is { } key
             && (Leads(key.Properties, foreignKey.Properties)
-                || (lead is null && foreignKey.Properties[0].Name == Name && Leads(key.Properties, foreignKey.Properties.Skip(1).ToArray()))))
+                || (lead is null && foreignKey.Properties.Count > 1 && foreignKey.Properties[0].Name == Name && Leads(key.Properties, foreignKey.Properties.Skip(1).ToArray()))))
         {
             return;
         }
