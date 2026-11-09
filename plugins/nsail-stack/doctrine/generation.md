@@ -302,10 +302,17 @@ same thing.
 | `NSG014` | Error | A `[Queue]` message implements `IMessage<T>` — a durable send answers "accepted" and never the outcome, so there is no result to hand back. |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` — each registers an `ISender`, so every send would meet `MultipleSenders` at runtime. |
 | `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) — it would cap no account, silently, and go on doing so after a rename. |
+| `NSG017` | Error | An `[Http]` route segment mixes a token with literal text. |
+| `NSG018` | Error | A route-bound member (`[AsRoute]`) has no token in the route — it would be required from a value the template never carries. |
+| `NSG019` | Error | Two `[Http]` messages in one scope share a verb and a path once token names are ignored (a constraint still tells routes apart) — the endpoints would meet `AmbiguousMatchException` at request time. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only
 surface as a 404 at runtime.
+
+A route token is a whole segment, with an optional constraint, `?`, default or `*` (`{id:guid}`,
+`{id?}`, `{*rest}`): the member is bound by the name alone. Text beside a token in one segment
+(`v{version}`, `{a}.{b}`) is `NSG017`, because the client writes a token as one escaped segment.
 
 `NSG011` and `NSG012` are warnings: the mapping works, it just loses the data, and a partial
 message or a narrow row is often exactly what was meant. An app that wants them refused raises

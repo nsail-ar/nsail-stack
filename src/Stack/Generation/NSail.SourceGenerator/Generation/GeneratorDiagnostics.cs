@@ -155,4 +155,31 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "The ceiling reads the JSON body; a name that matches nothing there caps no account, and goes on capping nothing after the property it meant is renamed.");
+
+    public static readonly DiagnosticDescriptor MixedRouteSegment = new(
+        id: "NSG017",
+        title: "Route segment mixes a token with literal text",
+        messageFormat: "Route '{0}' on message '{1}' has the segment '{2}', which mixes a token with other text. A token is a whole segment: '{{name}}', optionally with a constraint, '?' or '*'.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The client writes each token as one escaped segment; a segment of literal and token together has no value to write.");
+
+    public static readonly DiagnosticDescriptor RouteMemberWithoutToken = new(
+        id: "NSG018",
+        title: "[AsRoute] member has no token in the route",
+        messageFormat: "'{0}.{1}' is bound from the route, but the route '{2}' has no token '{{{1}}}'. Add the token to the route, or drop [AsRoute].",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The member would be required from a route value the template never carries, and every request would fail.");
+
+    public static readonly DiagnosticDescriptor DuplicateRoute = new(
+        id: "NSG019",
+        title: "Two messages share a verb and route",
+        messageFormat: "'{0}' and '{1}' both answer {2} '{3}' (token names do not tell routes apart). Give one of them another route.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Both endpoints would be registered and every request to the route would fail with an ambiguous match.");
 }
