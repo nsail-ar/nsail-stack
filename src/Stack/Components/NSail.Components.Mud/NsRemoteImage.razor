@@ -3,6 +3,8 @@
 
 @namespace NSail.Components
 @using System.Collections.Concurrent
+@using System.Net
+@using System.Runtime.CompilerServices
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.JSInterop
 @using NSail.Icons
@@ -26,13 +28,16 @@
 @code {
 
     // A URL identifies content the same way an AssetId does for NsImage, so one probe per
-    // URL serves every instance and every later render of it -- but a URL is not a proof of
-    // immutability the way an AssetId is (a replacement there is a new id). The one real
-    // caller today (Branding's logo route) documents its own short revalidation window
-    // server-side rather than eternal bytes, so a resource that flips content type after
-    // boot picks that up only on the next app start: the same trade the server already
-    // accepts, not solved a second time on the client.
-    static readonly ConcurrentDictionary<string, (RemoteImageKind Kind, string? Markup)> Contents = new();
+    // URL serves every instance and every later render of it.
+    // Keyed by the service scope (a circuit, a server-rendered request, a client app), so a
+    // logo one tenant's host resolved is never served to another's, and no answer outlives
+    // its scope.
+    // Only a verdict is remembered -- a success or a 404; a transient failure (5xx, timeout,
+    // network, a URL that cannot resolve) is shown as unavailable for that render and probed
+    // again on the next parameter set.
+    static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<string, (RemoteImageKind Kind, string? Markup)>> Scopes = new();
+
+    ConcurrentDictionary<string, (RemoteImageKind Kind, string? Markup)> Contents => Scopes.GetOrCreateValue(Services);
 
     enum RemoteImageKind
     {
@@ -44,6 +49,7 @@
     RemoteImageKind? _kind;
     string? _markup;
     string? _probed;
+    bool _transient;
     string? _fitted;
     ElementReference _box;
 
@@ -80,6 +86,12 @@
 
     protected override void OnParametersSet()
     {
+        if (_transient)
+        {
+            _transient = false;
+            _probed = null;
+        }
+
         Build();
     }
 
@@ -107,7 +119,27 @@
 
         _probed = url;
 
-        Contents[url] = await Probe(clients, url);
+        var (result, remember) = await Probe(clients, url);
+
+        if (remember)
+        {
+            Contents[url] = result;
+        }
+        else
+        {
+            // The await above suspends: Url may have moved on, and this verdict is then not for what is shown.
+            if (Url != url)
+            {
+                return;
+            }
+
+            _transient = true;
+            _kind = RemoteImageKind.Unavailable;
+            _markup = null;
+            StateHasChanged();
+
+            return;
+        }
 
         Build();
 
@@ -140,7 +172,7 @@
         }
     }
 
-    static async Task<(RemoteImageKind Kind, string? Markup)> Probe(IHttpClientFactory clients, string url)
+    static async Task<((RemoteImageKind Kind, string? Markup) Result, bool Remember)> Probe(IHttpClientFactory clients, string url)
     {
         try
         {
@@ -152,12 +184,12 @@
 
             if (!response.IsSuccessStatusCode)
             {
-                return (RemoteImageKind.Unavailable, null);
+                return ((RemoteImageKind.Unavailable, null), response.StatusCode == HttpStatusCode.NotFound);
             }
 
             if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "image/svg+xml", StringComparison.OrdinalIgnoreCase))
             {
-                return (RemoteImageKind.Raster, null);
+                return ((RemoteImageKind.Raster, null), true);
             }
 
             var markup = await response.Content.ReadAsStringAsync();
@@ -167,12 +199,12 @@
             // Nothing drawable survives the allowlist: the file still shows as an image,
             // which cannot execute in the app's origin.
             return SvgSanitizer.HasDrawing(clean)
-                ? (RemoteImageKind.Svg, clean)
-                : (RemoteImageKind.Raster, null);
+                ? ((RemoteImageKind.Svg, clean), true)
+                : ((RemoteImageKind.Raster, null), true);
         }
-        catch (HttpRequestException)
+        catch (Exception e) when (e is HttpRequestException or OperationCanceledException or InvalidOperationException or UriFormatException)
         {
-            return (RemoteImageKind.Unavailable, null);
+            return ((RemoteImageKind.Unavailable, null), false);
         }
     }
 
