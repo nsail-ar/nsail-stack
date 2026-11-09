@@ -145,6 +145,19 @@ the files it leaves.
   worker's `Max` caps its own jobs. Past the agent's quota wall (a refused run) only the agents stop.
   A build turn whose holder died returns to the line once older than the longest step the machine's
   enabled workers run (a main gate counts twice its minutes) plus ten.
+- **The release andon** (`Planning/ReleaseAndon.cs`). A product's failed cut leaves its one open red
+  story (`Regression red on main ({product})`, Texts `SuiteRedTitle`); while that story is out of
+  Released, QA and Closed, the release takes the whole harness. The plan holds only: that story's
+  analysis, build, PR rounds, gate, review and merge (and a red main's story, which may be what keeps
+  the suite red); main's gate; the product's own cut (the day's, or the red fix's on its release
+  branch) and the walk of its published release. No other story, PR, QA walk, Watch or cut starts, a
+  `bug` included, and the WIP limit does not hold the release's stories. Jobs already running finish.
+  Its items carry the `andon` tier, above `bug`: a customer's bug still waits behind the release
+  because the release is the line's one way back to a shipped day. `take-new` off still holds the
+  start of a story the andon would take — it is the operator's switch. The status page shows the
+  product, since when and what it waits for (`/status` carries it as `Last.Plan.Andon`). It lifts when
+  the red story ships (its walk moves it to Released) or a hand closes it; a story a hand holds
+  (`ruling`, `hand`, `blocked`, `stalled`) keeps it lit and says so.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the

@@ -401,6 +401,24 @@ public sealed class HarnessLoop(
         return item is { Kind: WorkKind.Qa, Story: { } n } && _walked.TryGetValue(n, out var at) && (lastCut is null || at > lastCut);
     }
 
+    // A story started from the queue: the tiers that start one, and the release's own build or analysis of a story no PR carries yet.
+    // `take-new` off holds them all, the andon's included: it is the operator's switch.
+    internal static bool StartsStory(WorkItem item)
+    {
+        return Capacity.Starting.Contains(item.Tier) || (item.Tier == ReleaseAndon.Tier && item is { Kind: WorkKind.Dev or WorkKind.Analyze, Pr: null });
+    }
+
+    IReadOnlyList<string> _andon = [];
+
+    // The andon lights and lifts out loud: nothing else says why the harness runs one product's work only.
+    void NoteAndon(IReadOnlyList<Andon> lit)
+    {
+        var now = lit.Select(a => a.Product).Order().ToList();
+        foreach (var product in now.Except(_andon)) log.LogWarning("release andon lit ({Product}): only its fix and cut start until it ships", product);
+        foreach (var product in _andon.Except(now)) log.LogWarning("release andon lifted ({Product}): the line runs again", product);
+        _andon = now;
+    }
+
     internal bool BackedOff(WorkItem item)
     {
         var key = BackoffKey(item);
@@ -499,7 +517,8 @@ public sealed class HarnessLoop(
             var plan = WorkerPlanner.Make(snapshot, _workers, PlannerOptionsOf(o, limits.Agents), w => WhenHolds(w, o, down));
             _stalled = snapshot.Issues.Count(i => i.Has(Labels.Stalled));
             Planned(plan.Items, started);
-            var runnable = plan.Items.Where(i => !BackedOff(i) && !WalkedSinceCut(i, snapshot.LastCutAt) && (TakeNew || !Capacity.Starting.Contains(i.Tier)));
+            var runnable = plan.Items.Where(i => !BackedOff(i) && !WalkedSinceCut(i, snapshot.LastCutAt) && (TakeNew || !StartsStory(i)));
+            NoteAndon(plan.Andon);
             // Past the agent's quota wall only the agents stop: gates, builds and releases go on.
             if (AgentsOffUntil is not null) limits = limits with { Agents = 0 };
             var take = Paused is null ? Capacity.Pick(runnable, InUse(), limits, WorkerMax(), RunningByWorker()) : [];
@@ -652,6 +671,7 @@ public sealed class HarnessLoop(
             WipLimit = o.WipLimit ?? agents ?? o.Agents,
             OrphanGrace = TimeSpan.FromMinutes(o.OrphanGraceMinutes),
             UnrunnableDrivers = o.UnrunnableDrivers,
+            SuiteRedTitle = suite,
             SuiteRedPrefix = slot < 0 ? suite : suite[..slot],
             MainRedPrefix = o.Texts.MainRedTitle,
         };

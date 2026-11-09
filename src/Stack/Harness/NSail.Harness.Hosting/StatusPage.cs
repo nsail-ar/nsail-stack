@@ -69,6 +69,7 @@ static partial class StatusPage
         {
             html.Append($"<p class=muted style=\"font-size:12px\">Last pass {Local(pass.At):HH:mm:ss}, {pass.Took.TotalSeconds:F1}s</p>");
             if (pass.Error is not null) html.Append($"<p style=\"color:var(--bad)\">The pass failed: {Esc(pass.Error)}</p>");
+            if (pass.Plan is { Andon.Count: > 0 } lit) PlanPage.Banner(html, o, lit.Andon, now);
             if (pass.Plan is { } plan) PlanPage.Summary(html, o, plan);
         }
 
@@ -136,6 +137,7 @@ static partial class StatusPage
     {
         html.Append("<div class=badges>");
         if (loop.Paused is { } why) html.Append($"<span class=\"b warn\">paused: {Esc(why)}</span>");
+        if (loop.Last is { Plan: { } lit }) foreach (var a in lit.Andon) html.Append($"<span class=\"b bad\">release andon: {Esc(a.Product)}</span>");
         if (loop.AgentsOffUntil is { } wall) html.Append($"<span class=\"b warn\">agents off: out of quota until {HarnessLoop.WallClock(Local(wall), Local(now))}; builds go on</span>");
         html.Append($"<span class=\"b acc\">{running} running</span>");
         if (loop.Last is { Plan: { } plan } pass) html.Append($"<span class=b>{Math.Max(0, plan.Items.Count - pass.Started.Count)} waiting</span>");
