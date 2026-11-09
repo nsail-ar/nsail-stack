@@ -794,7 +794,7 @@ sealed partial class MapperEmitter
                 return null;
             }
 
-            var converted = Convert(value, from.Type, member.Type);
+            var converted = Convert(value, from.Type, member.Type, member.Name, !Keys(target).Any(k => k.Name == member.Name));
 
             if (converted is null)
             {
@@ -1091,7 +1091,7 @@ sealed partial class MapperEmitter
 
     /// <summary>The expression that turns <paramref name="expression"/>, a <paramref name="from"/>,
     /// into a <paramref name="to"/>; null when there is none worth writing.</summary>
-    string? Convert(string expression, ITypeSymbol from, ITypeSymbol to)
+    string? Convert(string expression, ITypeSymbol from, ITypeSymbol to, string? field = null, bool strict = false)
     {
         from = Plain(from);
         to = Plain(to);
@@ -1113,11 +1113,18 @@ sealed partial class MapperEmitter
         var fromNullable = !SymbolEqualityComparer.Default.Equals(fromValue, from);
         var toNullable = !SymbolEqualityComparer.Default.Equals(toValue, to);
 
+        // A nullable source into a member that cannot be null would write a default for "no value";
+        // a key is the exception, where no value is the id still to be made.
+        if (strict && fromNullable && !toNullable && to.SpecialType != SpecialType.System_String)
+        {
+            return null;
+        }
+
         // A nullable source: its value converted, or the target's default where it has none.
         if (fromNullable)
         {
             var value = $"v{_next++}";
-            var inner = Convert(value, fromValue, toNullable ? toValue : to);
+            var inner = Convert(value, fromValue, toNullable ? toValue : to, field, strict);
 
             if (inner is null)
             {
@@ -1130,19 +1137,24 @@ sealed partial class MapperEmitter
         // An empty string is no value: the target's default, which for a nullable one is null.
         if (from.SpecialType == SpecialType.System_String && to.SpecialType != SpecialType.System_String)
         {
-            var parse = Parse(expression, toValue);
+            var parse = Parse(expression, toValue, field);
 
             return parse is null ? null : $"(string.IsNullOrEmpty({expression}) ? default({Name(to)}) : ({Name(to)})({parse}))";
         }
 
         if (toNullable)
         {
-            var inner = Convert(expression, from, toValue);
+            var inner = Convert(expression, from, toValue, field, strict);
 
             return inner is null ? null : $"({Name(to)})({inner})";
         }
 
-        if (conversion.IsExplicit && (conversion.IsNumeric || conversion.IsEnumeration))
+        if (conversion.IsExplicit && conversion.IsNumeric)
+        {
+            return $"checked(({Name(to)})({expression}))";
+        }
+
+        if (conversion.IsExplicit && conversion.IsEnumeration)
         {
             return $"({Name(to)})({expression})";
         }
@@ -1161,27 +1173,26 @@ sealed partial class MapperEmitter
 
         if (from.TypeKind == TypeKind.Enum && to.TypeKind == TypeKind.Enum)
         {
-            return $"global::System.Enum.Parse<{Name(to)}>({expression}.ToString())";
+            return $"{Runtime}.Maps.ParseEnum<{Name(to)}>({expression}.ToString(), {Literal(field)})";
         }
 
         return null;
     }
 
-    string? Parse(string expression, ITypeSymbol to)
+    string? Parse(string expression, ITypeSymbol to, string? field)
     {
         var type = Name(to);
 
         if (to.TypeKind == TypeKind.Enum)
         {
-            return $"global::System.Enum.Parse<{type}>({expression}, true)";
+            return $"{Runtime}.Maps.ParseEnum<{type}>({expression}, {Literal(field)})";
         }
 
         switch (to.SpecialType)
         {
-            case SpecialType.System_Boolean:
-                return $"bool.Parse({expression})";
             case SpecialType.System_Char:
                 return $"{expression}[0]";
+            case SpecialType.System_Boolean:
             case SpecialType.System_Byte:
             case SpecialType.System_SByte:
             case SpecialType.System_Int16:
@@ -1194,19 +1205,22 @@ sealed partial class MapperEmitter
             case SpecialType.System_Double:
             case SpecialType.System_Decimal:
             case SpecialType.System_DateTime:
-                return $"{type}.Parse({expression}, global::System.Globalization.CultureInfo.InvariantCulture)";
+                return $"{Runtime}.Maps.ParseValue<{type}>({expression}, {Literal(field)})";
         }
 
         var name = to.ToDisplayString();
 
         if (name is "System.Guid" or "System.DateTimeOffset" or "System.TimeSpan" or "System.DateOnly" or "System.TimeOnly")
         {
-            return name == "System.Guid"
-                ? $"global::System.Guid.Parse({expression})"
-                : $"{type}.Parse({expression}, global::System.Globalization.CultureInfo.InvariantCulture)";
+            return $"{Runtime}.Maps.ParseValue<{type}>({expression}, {Literal(field)})";
         }
 
         return null;
+    }
+
+    static string Literal(string? text)
+    {
+        return SymbolDisplay.FormatLiteral(text ?? "", quote: true);
     }
 
     // ---- Symbols ------------------------------------------------------------------------

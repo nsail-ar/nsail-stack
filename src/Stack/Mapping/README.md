@@ -97,7 +97,7 @@ behaviors): `CompositeCollectionBehavior` (`Merge` deletes what the source no lo
 |---|---|---|
 | NSG004 | error | An organization member would be mapped by name alone; say `[MapFrom(typeof(M), "OrganizationId")]` or `[MapIgnore]` |
 | NSG005 | error | A `[Primitive]` member's type differs from the source's |
-| NSG006 | error | A paired member has no conversion between the two types |
+| NSG006 | error | A paired member has no conversion between the two types, or reads a nullable into a non-nullable member that is not a key |
 | NSG007 | error | A created target has no parameterless constructor |
 | NSG008 | error | `[MapFrom]` names a type that is not a class |
 | NSG009 | error | A projection cannot carry a derived type |
@@ -120,3 +120,5 @@ Warnings can be raised to errors in `.editorconfig` or `WarningsAsErrors`.
 - Doctrine: the Mapping section of [data.md](../../../plugins/nsail-stack/doctrine/data.md), and the [`new-mapping` skill](../../../plugins/nsail-stack/skills/new-mapping/SKILL.md)
 - Sample: [NSail.Sample.Data](../Sample/NSail.Sample.Data) (`Mappings.cs`, `Entities`)
 - Tests: [NSail.Mapping.Tests](../../../test/Stack/Mapping/NSail.Mapping.Tests) (graph rules without a store), [NSail.Data.Tests/Mapping](../../../test/Stack/Data/NSail.Data.Tests/Mapping) (over EF), [NSail.SourceGenerator.Tests/Mappers](../../../test/Stack/Generation/NSail.SourceGenerator.Tests/Mappers) (every diagnostic)
+
+Conversions at run time: a narrowing numeric cast is `checked` (an `OverflowException`, never a wrapped value); text read as a number, bool, date, `Guid` or enum that does not parse throws a `BusinessException` (`InvalidModel`, issue `InvalidValue` sourced at the member).

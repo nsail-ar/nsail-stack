@@ -29,10 +29,26 @@ public sealed class MapPrimitive
     }
 
     [Fact]
+    public void map_narrowing_throws_instead_of_wrapping()
+    {
+        Assert.Equal(5, Mappings.Map(new Wide { Number = 5L, Money = 5m }, new Narrow()).Number);
+        Assert.Throws<OverflowException>(() => Mappings.Map(new Wide { Number = long.MaxValue }, new Narrow()));
+        Assert.Throws<OverflowException>(() => Mappings.Map(new Wide { Money = 1e12m }, new Narrow()));
+    }
+
+    [Fact]
+    public void map_unparsable_text_is_an_input_problem()
+    {
+        var number = Assert.Throws<NSail.Problems.BusinessException>(() => Mappings.Map(new Strings { Number = "abc" }, new Values()));
+        Assert.Equal("InvalidModel", number.Code);
+        Assert.Equal("Number", Assert.Single(number.Issues).Source);
+
+        Assert.Throws<NSail.Problems.BusinessException>(() => Mappings.Map(new Strings { Flag = "maybe" }, new Values()));
+    }
+
+    [Fact]
     public void map_nullable_same_base()
     {
-        Assert.Equal(0, Mappings.Map(new Nullables { NullableToValue = null }, new Converted()).NullableToValue);
-        Assert.Equal(1, Mappings.Map(new Nullables { NullableToValue = 1 }, new Converted()).NullableToValue);
         Assert.Equal(1, Mappings.Map(new Nullables { ValueToNullable = 1 }, new Converted()).ValueToNullable);
         Assert.Equal(1, Mappings.Map(new Nullables { NullableToNullable = 1 }, new Converted()).NullableToNullable);
     }
@@ -67,8 +83,6 @@ public sealed class MapPrimitive
 
     public sealed class Nullables
     {
-        public int? NullableToValue { get; set; }
-
         public int ValueToNullable { get; set; }
 
         public int? NullableToNullable { get; set; }
@@ -81,8 +95,6 @@ public sealed class MapPrimitive
     [MapFrom(typeof(Nullables))]
     public sealed class Converted
     {
-        public int NullableToValue { get; set; }
-
         public int? ValueToNullable { get; set; }
 
         public int? NullableToNullable { get; set; }
@@ -90,5 +102,20 @@ public sealed class MapPrimitive
         public int? StringToNullable { get; set; }
 
         public string? NullableToString { get; set; }
+    }
+
+    public sealed class Wide
+    {
+        public long Number { get; set; }
+
+        public decimal Money { get; set; }
+    }
+
+    [MapFrom(typeof(Wide))]
+    public sealed class Narrow
+    {
+        public int Number { get; set; }
+
+        public int Money { get; set; }
     }
 }
