@@ -174,8 +174,8 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   line waits for the server to be holding one** (`Severance.Held` / `Drop`, `PushTests.cs`).
   The handshake a `HubConnection.StartAsync` returns on goes out before the server runs the
   hub's `OnConnectedAsync` — where the connection joins the audience a publish goes to — and
-  nothing orders the two; an event stream's head is flushed before its own hold for the same
-  reason. A drop aimed at a line the server does not hold yet cuts nothing, and a feed with
+  nothing orders the two (an event stream registers its line before its head goes out, so only
+  the hub keeps that window). A drop aimed at a line the server does not hold yet cuts nothing, and a feed with
   nothing to answer is indistinguishable from one that never reconnects: half the hosted runs
   of `PushTests`'s drop, each burning its full patience (nsail#2082). The cure is the wait, never
   a longer patience. The load that lands it is concurrent test hosts, as it is for the bUnit
