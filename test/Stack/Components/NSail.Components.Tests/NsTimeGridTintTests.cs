@@ -199,6 +199,18 @@ public sealed class NsTimeGridTintTests : BunitContext
         Assert.DoesNotContain("z-index", rule, StringComparison.Ordinal);
     }
 
+    /// <summary>A tint color that is not a color paints no wash: the text never reaches the style.</summary>
+    [Fact]
+    public void ATintThatIsNotAColor_NeverReachesTheStyle()
+    {
+        var cut = Week(Map(Day, "red;background:url(//x)"));
+
+        var style = cut.Find(".ns-time-grid-tint").GetAttribute("style") ?? string.Empty;
+
+        Assert.DoesNotContain("url(", style, StringComparison.Ordinal);
+        Assert.DoesNotContain("red", style, StringComparison.Ordinal);
+    }
+
     IRenderedComponent<NsTimeGrid> Week(IReadOnlyDictionary<DateOnly, NsTimeTint>? tints)
     {
         return Render<NsTimeGrid>(p => p
