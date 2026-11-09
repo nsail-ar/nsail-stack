@@ -45,6 +45,33 @@ public class ShellTests
     }
 
     [Fact]
+    public async Task LinesTheCallerKeepSurviveTheCutOfTheHead()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var result = await Shell.Run("seq", ["1", "20000"], Path.GetTempPath(), tailChars: 1000, keep: l => l == "7" || l == "19999");
+
+        var lines = result.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal("7", lines[0]);
+        Assert.Contains("19999", lines);
+        Assert.Equal("20000", lines[^1]);
+    }
+
+    [Fact]
+    public void StreamSignalsAreRecognisedWhole()
+    {
+        Assert.True(NSail.Harness.Claude.StreamSignals.IsSignal("{\"type\":\"rate_limit_event\"}"));
+        Assert.False(NSail.Harness.Claude.StreamSignals.IsSignal("plain hit your weekly limit"));
+    }
+
+    [Fact]
+    public void GateFailureLinesAreKept()
+    {
+        Assert.True(Jobs.GateJob.IsFailureLine("  Failed Foo.Bar [2 ms]"));
+        Assert.False(Jobs.GateJob.IsFailureLine("  Passed Foo.Bar [2 ms]"));
+    }
+
+    [Fact]
     public async Task AShortOutputComesBackWhole()
     {
         if (OperatingSystem.IsWindows()) return;

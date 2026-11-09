@@ -7,7 +7,8 @@ using System.Text;
 namespace NSail.Harness.Lanes;
 
 // A process with its own environment and working folder; the whole output, stdout and
-// stderr, goes to the log as it comes and its last TailChars characters back to the caller.
+// stderr, goes to the log as it comes and its last TailChars characters back to the caller,
+// preceded by the lines of the cut-off head that `keep` accepts.
 public static class Shell
 {
     // What the harness's own git (clone, fetch, push) authenticates with: set once at startup, never
@@ -15,6 +16,9 @@ public static class Shell
     public static IReadOnlyDictionary<string, string> GitEnvironment { get; set; } = new Dictionary<string, string>();
 
     public const int TailChars = 1 << 20;
+
+    // Lines a caller's `keep` saves from the cut-off head, so what it reads (failures, quota signals) survives the tail.
+    public const int KeptLines = 20_000;
 
     static readonly string[] InheritedNames =
     [
@@ -40,7 +44,7 @@ public static class Shell
 
     public static async Task<ShellResult> Run(
         string file, IEnumerable<string> args, string workDir, IDictionary<string, string>? env = null,
-        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false, int tailChars = TailChars)
+        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false, int tailChars = TailChars, Func<string, bool>? keep = null)
     {
         var psi = new ProcessStartInfo(file)
         {
@@ -74,6 +78,7 @@ public static class Shell
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
         var tail = new Queue<string>();
         var tailLength = 0;
+        var kept = new List<string>();
         var gate = new object();
         void Line(string? l)
         {
@@ -84,7 +89,9 @@ public static class Shell
                 tailLength += l.Length + Environment.NewLine.Length;
                 while (tailLength > tailChars && tail.Count > 1)
                 {
-                    tailLength -= tail.Dequeue().Length + Environment.NewLine.Length;
+                    var evicted = tail.Dequeue();
+                    tailLength -= evicted.Length + Environment.NewLine.Length;
+                    if (keep is not null && kept.Count < KeptLines && keep(evicted)) kept.Add(evicted);
                 }
                 log?.WriteLine(l);
             }
@@ -120,7 +127,7 @@ public static class Shell
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         if (timeout is { } t) cts.CancelAfter(t);
         // A child that never reads stdin blocks the write: it runs inside the timeout window, and the kill breaks its pipe.
-        var written = stdin is null ? Task.CompletedTask : WriteStdin(p, stdin);
+        if (stdin is not null) _ = WriteStdin(p, stdin);
         var timedOut = false;
         try
         {
@@ -150,6 +157,7 @@ public static class Shell
         {
             log?.Flush();
             var output = new StringBuilder();
+            foreach (var l in kept) output.AppendLine(l);
             foreach (var l in tail) output.AppendLine(l);
             return new ShellResult(timedOut ? -1 : p.ExitCode, output.ToString(), timedOut);
         }

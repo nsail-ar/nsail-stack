@@ -139,7 +139,8 @@ the files it leaves.
   default), set in the unit file that runs the harness: the unit's stop kills every process in
   its cgroup. A child whose group join fails is killed at once.
 - **A process's output** goes to the job log line by line as it comes; the caller gets the last
-  `Shell.TailChars` characters. Its stdin is written inside the same timeout window, so a child
+  `Shell.TailChars` characters, preceded by the cut-off lines a caller's `keep` accepts (the gate's
+  failure lines, the agent's quota signals). Its stdin is written inside the same timeout window, so a child
   that never reads it is killed with its tree.
 - **Modes**: `Debug` reads and plans and starts nothing; `Live` acts.
 

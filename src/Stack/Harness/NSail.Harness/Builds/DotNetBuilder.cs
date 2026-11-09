@@ -202,7 +202,7 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
             var left = until - DateTimeOffset.UtcNow;
             if (left <= TimeSpan.Zero) return new ShellResult(124, _output.ToString(), TimedOut: true);
             await log.WriteLineAsync($"> dotnet {string.Join(' ', args)}");
-            var r = await Shell.Run(DotnetCli, args, dir, with ?? env, left, log, ct: ct, lowPriority: true);
+            var r = await Shell.Run(DotnetCli, args, dir, with ?? env, left, log, ct: ct, lowPriority: true, keep: Jobs.GateJob.IsFailureLine);
             _output.Append(r.Output);
             return r with { Output = _output.ToString() };
         }
