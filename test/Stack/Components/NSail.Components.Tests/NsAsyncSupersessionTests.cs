@@ -3,7 +3,9 @@
 
 using Bunit;
 using Bunit.TestDoubles;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
@@ -56,27 +58,13 @@ public sealed class NsAsyncSupersessionTests : BunitContext, IAsyncLifetime
         get { return (BunitNavigationManager)Services.GetRequiredService<NavigationManager>(); }
     }
 
-    /// <summary>AC1: run 1 is still waiting on its gate when the route moves; its answer
-    /// arrives last and is neither a redirect nor a pass for the page that replaced it.</summary>
+    /// <summary>AC1: run 1 is still waiting on its gate when the route moves; its redirect
+    /// arrives last and does not move the visitor off the page that replaced it.</summary>
     [Fact]
-    public async Task ASupersededGateAnswerNeitherNavigatesNorAllows()
+    public void ASupersededRedirectDoesNotNavigate()
     {
-        var slow = new ScriptedRouteGate();
-
-        Services.AddSingleton<IRouteGate>(slow);
-
-        var table = new RouteTable(typeof(ProbePage).Assembly, []);
+        var (slow, cut) = RenderSuperseded();
         var before = Navigation.History.Count;
-
-        var cut = Render<NsRouteGate>(p => p
-            .AddCascadingValue(table)
-            .Add(x => x.PageType, typeof(ProbePage))
-            .Add(x => x.ChildContent, "page"));
-
-        cut.Render(p => p.Add(x => x.PageType, typeof(ProbeAdminPage)));
-
-        Assert.Equal(2, slow.Asks.Count);
-
         var drawn = cut.RenderCount;
 
         slow.Asks[0].SetResult(typeof(ProbeOtherPage));
@@ -86,6 +74,25 @@ public sealed class NsAsyncSupersessionTests : BunitContext, IAsyncLifetime
         cut.WaitForState(() => cut.RenderCount > drawn);
 
         Assert.Equal(before, Navigation.History.Count);
+        Assert.DoesNotContain("page", cut.Markup);
+
+        slow.Asks[1].SetResult(null);
+
+        cut.WaitForAssertion(() => Assert.Contains("page", cut.Markup));
+    }
+
+    /// <summary>AC1: run 1's gate lets the old page through while the new page's gate is still
+    /// thinking; that pass is not the new page's, which stays undrawn until its own answer.</summary>
+    [Fact]
+    public void ASupersededPassDoesNotDrawTheNewPage()
+    {
+        var (slow, cut) = RenderSuperseded();
+        var drawn = cut.RenderCount;
+
+        slow.Asks[0].SetResult(null);
+
+        cut.WaitForState(() => cut.RenderCount > drawn);
+
         Assert.DoesNotContain("page", cut.Markup);
 
         slow.Asks[1].SetResult(null);
@@ -117,8 +124,8 @@ public sealed class NsAsyncSupersessionTests : BunitContext, IAsyncLifetime
         var arranger = new SequencedArrangement();
         var menu = new NavMenu([new FixedNavContributor()], [], arrangements: [arranger], handoff: handoff.State);
 
-        var first = menu.GetItems(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(new System.Security.Claims.ClaimsPrincipal())));
-        var second = menu.GetItems(Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(new System.Security.Claims.ClaimsPrincipal())));
+        var first = menu.GetItems(Task.FromResult(new AuthenticationState(new ClaimsPrincipal())));
+        var second = menu.GetItems(Task.FromResult(new AuthenticationState(new ClaimsPrincipal())));
 
         arranger.Answers[1].SetResult(Placed("New", 2));
         await second;
@@ -172,6 +179,24 @@ public sealed class NsAsyncSupersessionTests : BunitContext, IAsyncLifetime
         {
             Entries = [new NavMenuArrangementEntry { Name = name, Order = order }]
         };
+    }
+
+    (ScriptedRouteGate Slow, IRenderedComponent<NsRouteGate> Cut) RenderSuperseded()
+    {
+        var slow = new ScriptedRouteGate();
+
+        Services.AddSingleton<IRouteGate>(slow);
+
+        var cut = Render<NsRouteGate>(p => p
+            .AddCascadingValue(new RouteTable(typeof(ProbePage).Assembly, []))
+            .Add(x => x.PageType, typeof(ProbePage))
+            .Add(x => x.ChildContent, "page"));
+
+        cut.Render(p => p.Add(x => x.PageType, typeof(ProbeAdminPage)));
+
+        Assert.Equal(2, slow.Asks.Count);
+
+        return (slow, cut);
     }
 
     sealed class ScriptedRouteGate : IRouteGate
