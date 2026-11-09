@@ -7,7 +7,10 @@ using NSail.Data;
 
 namespace NSail.BaseServices.WebApi;
 
-/// <summary>Who the tenant is, decided before anything else in the pipeline runs. The proxy
+/// <summary>Who the tenant is, decided before anything else in the pipeline runs. Where
+/// <c>Tenancy:ProxySecret</c> is set the first decision is whether the caller proved to be the
+/// proxy: a request without it in <c>X-Proxy-Secret</c> is refused 403 before any tenant is
+/// resolved or created. The proxy
 /// is the whitelist and this header is its word — the app never parses the Host, so a
 /// wildcard demo label and a custom domain arrive indistinguishable, two sources of one
 /// header. Under a per-tenant connection an unknown slug has no database, and no database is a

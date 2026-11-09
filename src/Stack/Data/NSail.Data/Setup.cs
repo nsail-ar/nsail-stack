@@ -93,12 +93,11 @@ public static class Setup
 
         if (tenancy.Connection == TenancyScope.Tenant)
         {
-            // Constructed here rather than from a factory so a cell that names its product or
-            // its cell badly is refused at startup, not on the first request that needs one.
+            // Built once here only so a cell that names its product or its cell badly is refused
+            // at startup, not on the first request; the instance that serves comes from the factory.
             _ = new TenantDatabases(tenancy, connectionString, TimeProvider.System);
 
-            // A factory so the memo's clock is the host's own, registered ahead of this call.
-            services.TryAddSingleton(TimeProvider.System);
+            // A factory so the memo's clock is the host's own.
             services.AddSingleton(provider => new TenantDatabases(tenancy, connectionString, provider.GetRequiredService<TimeProvider>()));
 
             // The roster of the wall that has a registry: the databases themselves, so a tenant

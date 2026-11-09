@@ -424,7 +424,8 @@ a third runtime dependency buys nothing Caddy and Postgres are not already telli
   creating nothing. Only the database moves per tenant; server, user and password stay the
   install's. The lookup is memoised per name — longer for a hit, shorter for a miss
   (`Tenancy:DatabaseHitSeconds`, `DatabaseMissSeconds`) — so a flood of one unknown slug is one
-  round trip, and a tenant Ops provisions is served within the miss window.
+  round trip, and a tenant Ops provisions is served within the miss window, and one Ops drops or moves still
+  resolves until the hit window lapses, failing on connect rather than 404.
 
 Under `SingleDb` there is no registry and no database name, so the install's **declared roster**
 (`TenantRoster`, below) is the truth that a tenant exists: a cell that declares one — a

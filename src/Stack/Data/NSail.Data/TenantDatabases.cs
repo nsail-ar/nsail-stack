@@ -9,8 +9,9 @@ namespace NSail.Data;
 /// <summary>Postgres is the registry. A tenant's database name derives as
 /// <c>{product}_{cell}_{tenant}</c> — product and cell from the cell's own configuration,
 /// tenant from whoever resolved it — and its row in <c>pg_database</c> IS the truth that the
-/// tenant exists: no catalog database, no third runtime dependency in a request's path.
-/// Nothing here creates anything; provisioning writes the registry, the request path only
+/// tenant exists, as of at most <c>DatabaseHitSeconds</c> ago: the lookup is memoised, so a
+/// database dropped or moved inside that window still resolves and the request fails on connect.
+/// No catalog database, no third runtime dependency in a request's path. Nothing here creates anything; provisioning writes the registry, the request path only
 /// reads it, and a slug with no database is simply not a tenant.</summary>
 public class TenantDatabases
 {

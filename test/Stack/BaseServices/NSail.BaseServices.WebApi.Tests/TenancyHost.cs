@@ -90,7 +90,8 @@ public sealed class TenancyHost : IAsyncDisposable
     /// <paramref name="logs"/> is what the install said on its way up;
     /// <paramref name="features"/> is the <c>IFeatureContributor</c> this build composes, which is
     /// what the install publishes about itself; <paramref name="tenants"/> and
-    /// <paramref name="tenantsFile"/> are the roster it declares.</summary>
+    /// <paramref name="tenantsFile"/> are the roster it declares; <paramref name="proxySecret"/> is
+    /// the secret the proxy must present.</summary>
     public static Task<TenancyHost> Start(
         TenancyMode mode,
         bool bootstraps = false,
