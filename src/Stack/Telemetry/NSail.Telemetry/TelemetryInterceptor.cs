@@ -46,7 +46,7 @@ public sealed class TelemetryInterceptor<TMessage> : IInterceptor<TMessage>
         }
         catch (Exception exception)
         {
-            MessageSpan.Fail(activity, exception);
+            MessageSpan.Fail(activity, exception, cancellationToken);
             throw;
         }
 
@@ -82,7 +82,7 @@ public sealed class TelemetryInterceptor<TMessage, TResult> : IInterceptor<TMess
         }
         catch (Exception exception)
         {
-            MessageSpan.Fail(activity, exception);
+            MessageSpan.Fail(activity, exception, cancellationToken);
             throw;
         }
 

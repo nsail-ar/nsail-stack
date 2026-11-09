@@ -22,29 +22,66 @@ public sealed class ScrubberTests
         });
 
         Assert.Null(span.GetTagItem("url.query"));
-        Assert.Equal("/api/directory/parties", span.GetTagItem("url.path"));
     }
 
     [Fact]
-    public void The_query_string_is_cut_off_a_client_spans_url()
+    public void The_path_is_the_route_template_and_never_the_literal_values()
     {
         var span = Ended(activity =>
         {
-            activity.SetTag("url.full", $"https://app.nsail.ar/api/directory/parties{Search}");
+            activity.SetTag("url.path", "/api/directory/parties/20123456789");
+            activity.SetTag("http.route", "/api/directory/parties/{id}");
         });
 
-        Assert.Equal("https://app.nsail.ar/api/directory/parties", span.GetTagItem("url.full"));
+        Assert.Equal("/api/directory/parties/{id}", span.GetTagItem("url.path"));
     }
 
     [Fact]
-    public void A_url_with_no_query_is_left_alone()
+    public void A_literal_path_with_no_template_is_dropped()
     {
         var span = Ended(activity =>
         {
-            activity.SetTag("url.full", "https://app.nsail.ar/api/directory/parties");
+            activity.SetTag("url.path", "/api/directory/parties/20123456789");
         });
 
-        Assert.Equal("https://app.nsail.ar/api/directory/parties", span.GetTagItem("url.full"));
+        Assert.Null(span.GetTagItem("url.path"));
+    }
+
+    [Fact]
+    public void A_tag_off_the_allow_list_is_dropped()
+    {
+        var span = Ended(activity =>
+        {
+            activity.SetTag("enduser.id", "juan");
+            activity.SetTag("user_agent.original", "Mozilla/5.0");
+            activity.SetTag("x.custom", "value");
+            activity.SetTag("nsail.outcome", "ok");
+            activity.SetTag("http.request.method", "GET");
+        });
+
+        Assert.Equal(["http.request.method", "nsail.outcome"], span.TagObjects.Select(t => t.Key).Order().ToArray());
+    }
+
+    [Fact]
+    public void A_client_spans_url_is_cut_to_its_origin()
+    {
+        var span = Ended(activity =>
+        {
+            activity.SetTag("url.full", $"https://app.nsail.ar/api/directory/parties/20123456789{Search}");
+        });
+
+        Assert.Equal("https://app.nsail.ar", span.GetTagItem("url.full"));
+    }
+
+    [Fact]
+    public void A_url_with_no_path_is_left_alone()
+    {
+        var span = Ended(activity =>
+        {
+            activity.SetTag("url.full", "https://app.nsail.ar");
+        });
+
+        Assert.Equal("https://app.nsail.ar", span.GetTagItem("url.full"));
     }
 
     [Fact]
