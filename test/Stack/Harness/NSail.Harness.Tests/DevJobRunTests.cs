@@ -30,7 +30,7 @@ public class DevJobRunTests : IDisposable
     }
 
     // The repository as the job reaches it: pushes go to the slot's origin, and the story has no PR and no push yet.
-    sealed class FileRepository(string remote) : IRepository
+    internal sealed class FileRepository(string remote) : IRepository
     {
         readonly GitHubRepository _git = new(null!, new RepositoryOptions { Name = "acme/app" }, new StoryNames("app", ["story"]), "t");
 
@@ -202,7 +202,7 @@ public class DevJobRunTests : IDisposable
         }
     }
 
-    sealed class Lines : ILoggerFactory, ILogger
+    internal sealed class Lines : ILoggerFactory, ILogger
     {
         public List<(LogLevel Level, string Text)> Written { get; } = [];
 
