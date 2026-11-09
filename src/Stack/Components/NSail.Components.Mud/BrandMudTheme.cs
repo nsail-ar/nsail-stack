@@ -6,7 +6,6 @@ using MudBlazor.Utilities;
 
 namespace NSail.Components;
 
-/// <summary>Translates the vendor-agnostic <see cref="Brand"/> into a MudBlazor theme.</summary>
 internal static class BrandMudTheme
 {
     public static MudTheme From(Brand brand)

@@ -16,7 +16,7 @@ namespace NSail.Components.Tests;
 /// <c>mud-theme-primary</c> — the brand's primary at full strength, its text from
 /// <c>primary-text</c> — and the appbar palette the brand actually fills was painted over and
 /// never seen. Whatever a brand puts in its chrome slot reaches the eye through these classes,
-/// which is why the bar takes no colour of its own.</summary>
+/// which is why the bar takes no colour of its own. Also pins the menu button's accessible name.</summary>
 public sealed class NsAppBarPaletteTests : BunitContext, IAsyncLifetime
 {
     // The bar pulls MudBlazor's popover service into the container and that one only implements
