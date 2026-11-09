@@ -75,6 +75,9 @@ public static class Setup
         builder.Services.AddScoped(typeof(IInterceptor<>), typeof(TenantStateInterceptor<>));
         builder.Services.AddScoped(typeof(IInterceptor<,>), typeof(TenantStateInterceptor<,>));
         builder.Services.AddScoped<CredentialMiddleware>();
+        builder.Services.TryAddSingleton(sp => new MembershipStampMemo(
+            sp.GetService<TenancyOptions>() ?? new TenancyOptions(),
+            sp.GetService<TimeProvider>() ?? TimeProvider.System));
 
         // The install's own say over the credentials it mints, loaded here because this is where
         // the configuration is in hand: AddSecurity's TryAdd leaves this one standing, and a

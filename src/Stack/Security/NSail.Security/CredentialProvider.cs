@@ -21,4 +21,14 @@ public class CredentialProvider
     {
         return Task.FromResult(true);
     }
+
+    /// <summary>The fingerprint of the memberships and roles this party holds now, for the
+    /// install to compare with the one the ticket was minted with (<see cref="Session.MembershipStamp"/>).
+    /// Null means this host keeps no such record, and nothing is compared. Any change to the
+    /// party's memberships or their roles must change the value; an unchanged party must
+    /// answer the same one every time.</summary>
+    public virtual Task<string?> MembershipStamp(Guid partyId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<string?>(null);
+    }
 }

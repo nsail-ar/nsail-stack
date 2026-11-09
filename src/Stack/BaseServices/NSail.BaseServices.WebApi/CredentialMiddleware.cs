@@ -25,6 +25,9 @@ namespace NSail.BaseServices.WebApi;
 /// client that was holding a session turns that 401 into a bounce to the door — carrying the
 /// reason on the anonymous state it rebuilds (<c>SignInRoutes.StaleClaim</c>), because the cookie
 /// the document arm would have been asked about is already gone.</para>
+/// <para>The ticket's memberships and roles are as of sign-in, so a party whose set changed
+/// since (<c>CredentialProvider.MembershipStamp</c>) has its ticket refused the same way, within
+/// <c>Tenancy:StateCacheSeconds</c>: no live rebuild, the person signs in again.</para>
 /// <para>Bound worth knowing: an interactive circuit that is already open built its session
 /// from the document request that started it and does not pass through here again. It picks
 /// the refusal up on its next document load, which is also the first thing a 500 makes
@@ -70,7 +73,7 @@ public sealed class CredentialMiddleware : IMiddleware
         // Nothing to check: a request carrying no credential names nobody, so there is no row
         // it could have outlived. This is also what keeps the query off the anonymous flood a
         // public door takes.
-        if (services.GetService<SessionProvider>()?.Session is not { IsAuthenticated: true })
+        if (services.GetService<SessionProvider>()?.Session is not { IsAuthenticated: true } session)
         {
             return true;
         }
@@ -84,7 +87,36 @@ public sealed class CredentialMiddleware : IMiddleware
             return true;
         }
 
-        return await credentials.Holds(context.RequestAborted);
+        if (!await credentials.Holds(context.RequestAborted))
+        {
+            return false;
+        }
+
+        return await StampHolds(context, services, credentials, session);
+    }
+
+    // Memberships and roles ride the ticket as of sign-in, so a change to them makes the ticket
+    // stale: it is refused and the person signs in again with the new ones. The current stamp is
+    // read once per party per window; a system session or a party-less one has none to compare.
+    static async Task<bool> StampHolds(
+        HttpContext context,
+        IServiceProvider services,
+        CredentialProvider credentials,
+        Session session)
+    {
+        if (session is not { IsSystem: false, PartyId: { } party }
+            || services.GetService<MembershipStampMemo>() is not { } memo)
+        {
+            return true;
+        }
+
+        var current = await memo.Of(
+            session.Tenant,
+            party,
+            token => credentials.MembershipStamp(party, token),
+            context.RequestAborted);
+
+        return current is null || current == session.MembershipStamp;
     }
 
     static async Task Refuse(HttpContext context)

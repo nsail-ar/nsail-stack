@@ -59,6 +59,13 @@ public class Session
     /// never raised it, which is also what a ticket minted before the cut reads as.</summary>
     public int TicketEpoch { get; set; }
 
+    /// <summary>The fingerprint of <see cref="Memberships"/> and their roles when the ticket was
+    /// minted (<c>CredentialProvider.MembershipStamp</c>). <c>CredentialMiddleware</c> compares
+    /// it with the party's current one, at most once per <c>Tenancy:StateCacheSeconds</c>, and a
+    /// ticket that differs — the unstamped one included — is refused as stale. Null off a host
+    /// that stamps nothing.</summary>
+    public string? MembershipStamp { get; set; }
+
     /// <summary>Every membership the actor held when this Session was built, wherever it
     /// stands, each with the organizations above it already walked — what the selector offers;
     /// what grants is <see cref="Standing"/>. Materialized here because it is a graph query
