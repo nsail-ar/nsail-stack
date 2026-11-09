@@ -8,5 +8,5 @@
     "types": [],
     "customConditions": []
   },
-  "exclude": ["src/**/*.test.ts", "src/**/*.test-support.ts"]
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.test-support.ts"]
 }

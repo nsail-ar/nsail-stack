@@ -140,7 +140,7 @@ describe("useForm.submit", () => {
     });
     await act(async () => {
       refusal.reject(
-        new BusinessError({ code: "InvalidModel", issues: [{ code: "TooLong", source: "Number", message: "x" }] } as never),
+        new BusinessError({ title: "Invalid", code: "InvalidModel", issues: [{ code: "TooLong", source: "Number", message: "x" }] }),
       );
 
       expect(await refused).toBe(false);
