@@ -114,7 +114,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
         return text;
     }
 
-    async Task<Ending> Decide(int prNumber, int? n, string sha, string head, string findings, AgentResult result, ILogger log, CancellationToken ct)
+    internal async Task<Ending> Decide(int prNumber, int? n, string sha, string head, string findings, AgentResult result, ILogger log, CancellationToken ct)
     {
         var board = ctx.Board;
         var text = File.Exists(findings) ? await File.ReadAllTextAsync(findings, ct) : "";

@@ -52,10 +52,12 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
 
         if (run.Marketplace is not null && options.Plugins.Count > 0)
         {
-            await Shell.Run(command, ["plugin", "marketplace", "add", run.Marketplace], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct);
+            var added = await Shell.Run(command, ["plugin", "marketplace", "add", run.Marketplace], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct);
+            if (Failure(added) is { } addFailure) return Unequipped($"marketplace {run.Marketplace}", addFailure);
             foreach (var plugin in options.Plugins)
             {
-                await Shell.Run(command, ["plugin", "install", plugin], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct);
+                var installed = await Shell.Run(command, ["plugin", "install", plugin], run.WorkDir, env, TimeSpan.FromMinutes(5), log, ct: ct);
+                if (Failure(installed) is { } failure) return Unequipped($"plugin {plugin}", failure);
             }
         }
 
@@ -73,6 +75,17 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
         var signals = StreamSignals.Read(result.Output);
         Heard(signals);
         return new AgentResult(result.ExitCode, result.TimedOut, signals.QuotaUntil, signals.QuotaRefused, signals.Result);
+    }
+
+    static string? Failure(ShellResult r)
+    {
+        return r.TimedOut ? "timed out" : r.ExitCode != 0 ? $"exit {r.ExitCode}" : null;
+    }
+
+    // A seat without its doctrine must not start: the job fails here, naming what did not install.
+    static AgentResult Unequipped(string what, string why)
+    {
+        return new AgentResult(-1, false, null, false, $"{what} did not install ({why}); the agent was not started");
     }
 
     // A seat's access in Claude Code's tools. A reader writes only through Write (its out files) and

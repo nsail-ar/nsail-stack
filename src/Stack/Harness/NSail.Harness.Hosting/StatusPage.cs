@@ -110,17 +110,22 @@ static class StatusPage
     // address on to the PR's).
     internal static string Linked(HarnessOptions o, string text)
     {
-        var escaped = Esc(text);
-        if (o.DefaultRepository.Provider != "GitHub") return escaped;
+        if (o.DefaultRepository.Provider != "GitHub") return Esc(text);
+        // Linked on the raw text and escaped piece by piece: escaping first would let `&#39;` read as #39.
         // Another repository's PR is named by its short name (`nsail-stack PR #130`); any other #N is the
         // default repository's.
-        return System.Text.RegularExpressions.Regex.Replace(escaped, @"(?:\b([\w.-]+) PR )?#(\d+)", m =>
+        var html = new StringBuilder();
+        var last = 0;
+        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(text, @"(?:\b([\w.-]+) PR )?#(\d+)"))
         {
             var named = m.Groups[1].Success ? o.Repositories.FirstOrDefault(r => r.Provider == "GitHub" && r.Name.EndsWith($"/{m.Groups[1].Value}", StringComparison.Ordinal)) : null;
             var repo = named?.Name ?? o.DefaultRepository.Name;
-            var lead = m.Groups[1].Success ? $"{m.Groups[1].Value} PR " : "";
-            return $"{lead}<a href=\"https://github.com/{Esc(repo)}/issues/{m.Groups[2].Value}\">#{m.Groups[2].Value}</a>";
-        });
+            var lead = m.Groups[1].Success ? $"{Esc(m.Groups[1].Value)} PR " : "";
+            html.Append(Esc(text[last..m.Index])).Append(lead)
+                .Append($"<a href=\"https://github.com/{Esc(repo)}/issues/{m.Groups[2].Value}\">#{m.Groups[2].Value}</a>");
+            last = m.Index + m.Length;
+        }
+        return html.Append(Esc(text[last..])).ToString();
     }
 
     static void Badges(StringBuilder html, HarnessLoop loop, int running, JobHistory history, BuildLeases leases, LoadSamples load, DateTimeOffset now)

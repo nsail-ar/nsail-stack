@@ -30,6 +30,36 @@ public class ProcessGroupTests
         Assert.All(spawned, p => Assert.True(p.WaitForExit(10000)));
     }
 
+    [Fact]
+    public async Task ATimedOutShellTakesItsGrandchildWithItOnLinux()
+    {
+        if (OperatingSystem.IsWindows()) return;
+        // The shell reports the pid of the sleeper it started: only that process is looked at, never a name.
+        var result = await Shell.Run("sh", ["-c", "sleep 300 & echo $!; wait"], Path.GetTempPath(), timeout: TimeSpan.FromSeconds(2));
+
+        Assert.True(result.TimedOut);
+        var pid = int.Parse(result.Output.Trim().Split('\n')[0], System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True(Gone(pid));
+    }
+
+    static bool Gone(int pid)
+    {
+        for (var i = 0; i < 50; i++)
+        {
+            try
+            {
+                using var p = Process.GetProcessById(pid);
+                if (p.HasExited) return true;
+            }
+            catch (ArgumentException)
+            {
+                return true;
+            }
+            Thread.Sleep(100);
+        }
+        return false;
+    }
+
     static Process? WaitFor(Func<Process?> find)
     {
         for (var i = 0; i < 50; i++)
