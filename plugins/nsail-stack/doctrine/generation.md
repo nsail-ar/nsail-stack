@@ -310,6 +310,7 @@ same thing.
 | `NSG022` | Error | A holder has no `IServiceCollection` parameter — the registrations have no receiver; the generated body uses the parameter's own name. |
 | `NSG023` | Error | An `[Http]` message declares no path — it has no route to map or call. |
 | `NSG024` | Error | A header-bound member (`[AsHeader]`) is a collection — HTTP joins a repeated header into one line, which the endpoint binds as one element. |
+| `NSG025` | Error | A `[MapFrom]` member reads a nullable value into a non-nullable member that is not the target's key — nothing says what "no value" becomes. A `[MapTo]` row reads it as the default, since a query provider translates the projection; a null or empty text reads the target's default. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only

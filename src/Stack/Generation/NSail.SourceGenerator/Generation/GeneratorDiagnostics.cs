@@ -226,4 +226,13 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "HTTP joins repeated values of a header into one line and the endpoint binds that line as a single element, so the collection would arrive wrong or be refused.");
+
+    public static readonly DiagnosticDescriptor MappedNullableIntoNonNullable = new(
+        id: "NSG025",
+        title: "A nullable member is mapped into a non-nullable one",
+        messageFormat: "'{0}.{1}' ({2}) is written from '{3}.{4}' ({5}), which can hold no value, and nothing says what that becomes. Make '{0}.{1}' nullable, make '{3}.{4}' non-nullable, or mark the entity's member [MapIgnore].",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Writing the type's default for \"no value\" would turn an absent amount into zero without a word; a key is exempt, where no value is the id still to be made. A text source is not a nullable value: a null or empty string reads the target's default.");
 }

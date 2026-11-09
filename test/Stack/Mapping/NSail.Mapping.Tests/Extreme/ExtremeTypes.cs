@@ -112,9 +112,10 @@ public sealed class ExtremeTypes
     }
 
     [Fact]
-    public void an_unparsable_string_throws_rather_than_guessing()
+    public void an_unparsable_string_is_an_input_problem_rather_than_a_guess()
     {
-        Assert.ThrowsAny<FormatException>(() => Mappings.Map<ScalarsDto, Scalars>(new ScalarsDto { Day = "not a date" }));
+        var problem = Assert.Throws<NSail.Problems.BusinessException>(() => Mappings.Map<ScalarsDto, Scalars>(new ScalarsDto { Day = "not a date" }));
+        Assert.Equal("Day", Assert.Single(problem.Issues).Source);
     }
 
     [Fact]

@@ -93,6 +93,19 @@ public class MapperDiagnosticsTests
     }
 
     [Fact]
+    public void A_nullable_into_a_non_nullable_is_refused()
+    {
+        var diagnostics = Generate("""
+            public class Source { public int? Count { get; set; } }
+
+            [MapFrom(typeof(Source))]
+            public class Target { public int Count { get; set; } }
+            """);
+
+        Assert.Equal("NSG025", Assert.Single(diagnostics).Id);
+    }
+
+    [Fact]
     public void A_target_with_no_parameterless_constructor_is_refused()
     {
         var diagnostics = Generate("""
