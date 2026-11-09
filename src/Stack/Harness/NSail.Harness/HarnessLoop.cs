@@ -147,8 +147,8 @@ public sealed class HarnessLoop(
     // has to come back and finish it.
     public void Restart(string why)
     {
-        Pause($"restart: {why}");
         _restarting = true;
+        Pause($"restart: {why}");
         StopIfDrained();
     }
 
@@ -161,10 +161,10 @@ public sealed class HarnessLoop(
         lifetime.StopApplication();
     }
 
-    // Under _gate. Take-new is kept only when a hand moved it off the configuration's.
+    // Under _gate. A restart's pause is not kept: the next run starts working. Take-new is kept only when a hand moved it off the configuration's.
     void Persist()
     {
-        state.Set(_paused, _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
+        state.Set(_restarting ? null : _paused, _restarting ? null : _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
     }
 
     public void Resume()
@@ -263,13 +263,17 @@ public sealed class HarnessLoop(
 
     // Once, at the first board read: the In-Progress stories no job of this run holds, the ones a
     // crash or a hard kill left waiting for nobody.
-    void SayOrphans(IEnumerable<Issue> issues)
+    async Task SayOrphans(BoardSnapshot read, CancellationToken ct)
     {
         if (_orphansSaid) return;
         _orphansSaid = true;
         var held = _running.Values.Select(r => r.Item.Story).ToHashSet();
-        foreach (var i in issues.Where(i => i.Stage == Stages.InProgress && i.SubIssues == 0 && !held.Contains(i.Number)))
+        foreach (var i in read.Issues.Where(i => i.Stage == Stages.InProgress && i.SubIssues == 0 && !held.Contains(i.Number)))
         {
+            // Another machine's or instance's lock is a job somewhere else; this instance's own is a dead run's.
+            if (read.LockHolders.ContainsKey(i.Number)
+                && await locks.Holder(i.Number, ct) is { } h
+                && (h.Machine != options.Value.Machine || h.Instance != _instance)) continue;
             log.LogWarning("#{Story}: In-Progress with no job running ({Claimed}) — nothing holds it", i.Number, i.Has(Labels.Claimed) ? "claimed" : "unclaimed");
         }
     }
@@ -375,7 +379,7 @@ public sealed class HarnessLoop(
             var marks = await jobs.Repo.Statuses(ct: stop);
             call = PassCall.Stories;
             var read = await reader.Read(OwnFlight(), stop);
-            SayOrphans(read.Issues);
+            await SayOrphans(read, stop);
             call = PassCall.Planning;
             var snapshot = read with
             {
