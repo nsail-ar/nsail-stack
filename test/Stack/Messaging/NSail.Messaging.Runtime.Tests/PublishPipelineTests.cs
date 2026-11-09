@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.Extensions.DependencyInjection;
@@ -149,5 +149,82 @@ public sealed class PublishPipelineTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             mediator.Publish(new EventMessage()));
+    }
+
+    private sealed class ThrowingHandler(bool sync, string text) : IHandler<EventMessage>
+    {
+        public Task Handle(EventMessage message, CancellationToken ct)
+        {
+            if (sync)
+            {
+                throw new InvalidOperationException(text);
+            }
+
+            return Task.FromException(new InvalidOperationException(text));
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Publish_runs_every_listener_and_reports_every_failure(bool sync)
+    {
+        var after = new CounterHandler();
+        var subscribed = 0;
+
+        var sp = Build(s =>
+        {
+            s.AddSingleton<IHandler<EventMessage>>(new ThrowingHandler(sync, "a"));
+            s.AddSingleton<IHandler<EventMessage>>(after);
+            s.AddSingleton<IHandler<EventMessage>>(new ThrowingHandler(sync, "b"));
+        });
+        var mediator = sp.GetRequiredService<Mediator>();
+        mediator.Subscribe<EventMessage>((m, ct) =>
+        {
+            subscribed++;
+            return Task.CompletedTask;
+        });
+
+        var ex = await Assert.ThrowsAsync<AggregateException>(() => mediator.Publish(new EventMessage()));
+
+        Assert.Equal(new[] { "a", "b" }, ex.InnerExceptions.Select(e => e.Message));
+        Assert.Equal(1, after.Count);
+        Assert.Equal(1, subscribed);
+    }
+
+    private sealed class SlowHandler(Probe probe) : IHandler<EventMessage>
+    {
+        public async Task Handle(EventMessage message, CancellationToken ct)
+        {
+            if (Interlocked.Increment(ref probe.Running) > 1)
+            {
+                probe.Overlapped = true;
+            }
+
+            await Task.Delay(30, ct);
+            Interlocked.Decrement(ref probe.Running);
+        }
+    }
+
+    private sealed class Probe
+    {
+        public int Running;
+        public bool Overlapped;
+    }
+
+    [Fact]
+    public async Task Publish_runs_handlers_one_after_another()
+    {
+        var probe = new Probe();
+        var sp = Build(s =>
+        {
+            s.AddSingleton(probe);
+            s.AddSingleton<IHandler<EventMessage>, SlowHandler>();
+            s.AddSingleton<IHandler<EventMessage>, SlowHandler>();
+        });
+
+        await sp.GetRequiredService<Mediator>().Publish(new EventMessage());
+
+        Assert.False(probe.Overlapped);
     }
 }

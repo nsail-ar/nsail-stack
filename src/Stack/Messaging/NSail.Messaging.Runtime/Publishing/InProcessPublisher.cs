@@ -1,6 +1,8 @@
 ﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Runtime.ExceptionServices;
+
 namespace NSail.Messaging.Runtime.Publishing;
 
 public class InProcessPublisher<TMessage> : IPublisher<TMessage>
@@ -19,22 +21,41 @@ public class InProcessPublisher<TMessage> : IPublisher<TMessage>
 
     public async Task Publish(TMessage message, CancellationToken cancellationToken)
     {
-        var tasks = new Task[_handlers.Length + _subscriptions.Actions.Count];
-        var tindex = 0;
+        var failures = new List<Exception>();
 
         for (int i = 0; i < _handlers.Length; i++)
         {
-            tasks[tindex] = _handlers[i].Handle(message, cancellationToken);
-            tindex++;
+            var handler = _handlers[i];
+            await Run(() => handler.Handle(message, cancellationToken), failures).ConfigureAwait(false);
         }
 
         var actions = _subscriptions.Actions;
         for (int i = 0; i < actions.Count; i++)
         {
-            tasks[tindex] = (actions[i])(message, cancellationToken);
-            tindex++;
+            var action = actions[i];
+            await Run(() => action(message, cancellationToken), failures).ConfigureAwait(false);
         }
-        
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        if (failures.Count == 1)
+        {
+            ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        }
+
+        if (failures.Count > 1)
+        {
+            throw new AggregateException(failures);
+        }
+    }
+
+    static async Task Run(Func<Task> start, List<Exception> failures)
+    {
+        try
+        {
+            await start().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            failures.Add(ex);
+        }
     }
 }
