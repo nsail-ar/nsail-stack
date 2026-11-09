@@ -110,9 +110,10 @@ public class BuildLeasesTests
         var now = fired.AddMinutes(200);
         StatusMark Held(bool ok, int minutes) => new("c", Markers.HeldContext(p), ok, fired.AddMinutes(minutes));
 
-        Assert.True(HarnessLoop.CutHeld([Held(false, 150)], worker, fired, now));
-        Assert.False(HarnessLoop.CutHeld([Held(false, 10)], worker, fired, now));
-        Assert.False(HarnessLoop.CutHeld([Held(false, 150), Held(true, 160)], worker, fired, now));
-        Assert.False(HarnessLoop.CutHeld([], worker, fired, now));
+        Assert.True(HarnessLoop.CutHeld([Held(false, 190)], p, fired, now));
+        Assert.False(HarnessLoop.CutHeld([Held(false, 10)], p, fired, now));
+        Assert.False(HarnessLoop.CutHeld([Held(false, 150), Held(true, 160)], p, fired, now));
+        Assert.False(HarnessLoop.CutHeld([], p, fired, now));
+        Assert.True(HarnessLoop.CutHeld([Held(true, 100), Held(false, 195)], p, fired, now));
     }
 }

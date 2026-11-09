@@ -261,15 +261,15 @@ public sealed class HarnessLoop(
         return _workers.Where(w => w.Kind == WorkKind.Release && w.Options.When.Schedule is not null)
             .Where(w => Conditions.LastFiring(w.Options.When.Schedule!, now) is { } fired
                 && (StatusMark.LastAt(marks, Markers.CutContext(w.Options.Product!.ToLowerInvariant())) is not { } tried || tried < fired)
-                && !CutHeld(marks, w, fired, now))
+                && !CutHeld(marks, w.Options.Product!.ToLowerInvariant(), fired, now))
             .Select(w => w.Options.Workflow!).ToList();
     }
 
-    // Another harness holds the cut while its newest claim since the firing is unreleased and inside the step's minutes.
-    internal static bool CutHeld(IReadOnlyList<StatusMark> marks, Worker w, DateTimeOffset fired, DateTimeOffset now)
+    // A harness holds the cut while its newest claim since the firing is unreleased and was renewed inside the lapse.
+    internal static bool CutHeld(IReadOnlyList<StatusMark> marks, string product, DateTimeOffset fired, DateTimeOffset now)
     {
-        var claim = marks.Where(m => m.Context == Markers.HeldContext(w.Options.Product!.ToLowerInvariant()) && m.At >= fired).OrderByDescending(m => m.At).FirstOrDefault();
-        return claim is { Ok: false } && now - claim.At < TimeSpan.FromMinutes((w.Options.Minutes ?? w.Type.Minutes) + 10);
+        var claim = marks.Where(m => m.Context == Markers.HeldContext(product) && m.At >= fired).OrderByDescending(m => m.At).FirstOrDefault();
+        return claim is { Ok: false } && now - claim.At < Markers.ClaimLapse;
     }
 
     // A Watch worker's pass is due its period after the last one read, and never twice at once.

@@ -37,10 +37,14 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", "--prune", ctx.Workspace.Url, $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*"]);
         var head = await Shell.Git(dir, "rev-parse", "HEAD");
-        // The claim keeps the fleet's other harnesses off the cut while this one works; the cut mark,
-        // written once the cut reached a verdict, keeps the day. A cut that threw lets go of the claim
-        // and leaves the day due; one whose harness died is due again when its claim lapses.
-        await ctx.Repo.SetStatus(head, Markers.HeldContext(p), "failure", $"cut running on {ctx.Options.Machine}", ct);
+        // The claim keeps the fleet's other harnesses off the cut while this one works, renewed while
+        // the job lives (a wait for a build turn has no bound); the cut mark, written once the cut
+        // reached a verdict, keeps the day. A cut that threw lets go of the claim and leaves the day
+        // due; one whose harness died is due again when its claim lapses.
+        var held = Markers.HeldContext(p);
+        await ctx.Repo.SetStatus(head, held, "failure", $"cut running on {ctx.Options.Machine}", ct);
+        using var beating = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var beat = Beat(head, held, beating.Token);
         JobOutcome outcome;
         try
         {
@@ -48,11 +52,42 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         }
         catch
         {
-            await ctx.Repo.SetStatus(head, Markers.HeldContext(p), "success", $"cut let go on {ctx.Options.Machine}", CancellationToken.None);
+            await EndBeat(beat, beating);
+            await ctx.Repo.SetStatus(head, held, "success", $"cut let go on {ctx.Options.Machine}", CancellationToken.None);
             throw;
         }
+        await EndBeat(beat, beating);
         await ctx.Repo.SetStatus(head, Markers.CutContext(p), "success", $"cut tried on {ctx.Options.Machine}", ct);
+        await ctx.Repo.SetStatus(head, held, "success", $"cut let go on {ctx.Options.Machine}", ct);
         return outcome;
+    }
+
+    async Task Beat(string head, string held, CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(Markers.ClaimBeat);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                try
+                {
+                    await ctx.Repo.SetStatus(head, held, "failure", $"cut running on {ctx.Options.Machine}", ct);
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    // A missed beat is covered by the lapse's slack.
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    static async Task EndBeat(Task beat, CancellationTokenSource beating)
+    {
+        await beating.CancelAsync();
+        await beat;
     }
 
     async Task<JobOutcome> Cut(string p, string product, JobStep step, string dir, string head, int slot, StreamWriter w, string logPath, CancellationToken ct)
@@ -192,7 +227,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
             return null;
         }
         var tip = await Shell.Git(dir, "rev-parse", "HEAD");
-        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", "--force", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
         await w.WriteLineAsync($"carried {string.Join(", ", fixes.Select(f => f[..8]))} to {branch} at {tip[..8]}; again: {string.Join(", ", failed)}");
 
         var result = await Suite(product, Filter(failed), dir, step, w, ct);
