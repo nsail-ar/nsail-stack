@@ -262,14 +262,14 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         return await FailureOf(runs.GetProperty("workflow_runs").EnumerateArray().ToList(), ct);
     }
 
-    // A run's failed jobs never change once it completed: each attempt is read once.
-    readonly ConcurrentDictionary<(long Run, int Attempt), List<(string Job, string Step, string Log)>> _failedJobs = new();
+    // A run's failed jobs never change once it completed: each attempt is read once, and kept reduced.
+    readonly ConcurrentDictionary<(long Run, int Attempt), List<CiFailure>> _failedJobs = new();
 
     async Task<CiFailure?> FailureOf(List<JsonElement> runs, CancellationToken ct)
     {
         var failed = Latest(runs).Where(r => r.GetProperty("status").GetString() == "completed" && IsRed(Conclusion(r))).ToList();
         if (failed.Count == 0) return null;
-        var jobs = new List<(string Job, string Step, string Log)>();
+        var jobs = new List<CiFailure>();
         foreach (var run in failed)
         {
             var key = (run.GetProperty("id").GetInt64(), run.TryGetProperty("run_attempt", out var a) ? a.GetInt32() : 1);
@@ -279,10 +279,10 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
                 var page = await gh.GetAll($"repos/{repo}/actions/runs/{key.Item1}/jobs?per_page=100", b => b.GetProperty("jobs"), ct: ct);
                 foreach (var (id, job, step) in FailedJobs(page))
                 {
-                    hit.Add((job, step, await LogOf(id, ct)));
+                    hit.Add(CiFailure.Of(job, step, await LogOf(id, ct)));
                 }
                 // A run red with no job failed (a workflow that never started) is named by itself.
-                if (hit.Count == 0) hit.Add((run.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "", Conclusion(run), ""));
+                if (hit.Count == 0) hit.Add(CiFailure.Of(run.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "", Conclusion(run), ""));
                 _failedJobs[key] = hit;
             }
             jobs.AddRange(hit);

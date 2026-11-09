@@ -15,25 +15,37 @@ public sealed partial record CiFailure(IReadOnlyList<string> Steps, IReadOnlySet
     const int LineLength = 300;
     const int TailJobs = 3;
 
-    // A failed job as the code host reports it: its name, its failed step, and its whole log.
-    public static CiFailure Of(IEnumerable<(string Job, string Step, string Log)> jobs)
+    // One failed job as the code host reports it, reduced at once: its whole log is never kept.
+    public static CiFailure Of(string job, string step, string log)
+    {
+        var lines = log.Split('\n').Select(Plain).ToList();
+        var failed = GateJob.FailureSet(string.Join('\n', lines), "");
+        var end = EndOfStep(lines);
+        var kept = lines.Take(end < 0 ? lines.Count : end + 1).Where(l => l.Length > 0).TakeLast(TailLines);
+        var tail = new List<string> { $"== {job} › {step}" };
+        tail.AddRange(kept.Select(l => l.Length > LineLength ? l[..LineLength] + " …" : l));
+        return new CiFailure([$"{job} › {step}"], failed, string.Join('\n', tail));
+    }
+
+    // Every failed job of a head or of main, the tails of the first few only.
+    public static CiFailure Of(IEnumerable<CiFailure> jobs)
     {
         var list = jobs.ToList();
-        var failed = new HashSet<string>(StringComparer.Ordinal);
-        var tail = new List<string>();
-        var laid = 0;
-        foreach (var (job, step, log) in list)
-        {
-            var lines = log.Split('\n').Select(Plain).ToList();
-            failed.UnionWith(GateJob.FailureSet(string.Join('\n', lines), ""));
-            if (laid++ >= TailJobs) continue;
-            // A failed step ends at its last error line; what follows is the job's cleanup.
-            var end = lines.FindLastIndex(l => l.StartsWith("##[error]", StringComparison.Ordinal));
-            var kept = lines.Take(end < 0 ? lines.Count : end + 1).Where(l => l.Length > 0).TakeLast(TailLines);
-            tail.Add($"== {job} › {step}");
-            tail.AddRange(kept.Select(l => l.Length > LineLength ? l[..LineLength] + " …" : l));
-        }
-        return new CiFailure(list.Select(j => $"{j.Job} › {j.Step}").ToList(), failed, string.Join('\n', tail));
+        return new CiFailure(list.SelectMany(j => j.Steps).ToList(), list.SelectMany(j => j.Failed).ToHashSet(StringComparer.Ordinal),
+            string.Join('\n', list.Take(TailJobs).Select(j => j.Tail)));
+    }
+
+    public static CiFailure Of(IEnumerable<(string Job, string Step, string Log)> jobs)
+    {
+        return Of(jobs.Select(j => Of(j.Job, j.Step, j.Log)));
+    }
+
+    // The failed step is the job's first: it closes on the runner's exit-code error, and a later step
+    // that runs anyway (an upload, a post step) is not its tail. Without that line, the last error.
+    static int EndOfStep(List<string> lines)
+    {
+        var exit = lines.FindIndex(l => l.StartsWith("##[error]Process completed with exit code", StringComparison.Ordinal));
+        return exit >= 0 ? exit : lines.FindLastIndex(l => l.StartsWith("##[error]", StringComparison.Ordinal));
     }
 
     // The failed tests' names, else the build errors, as a builder reads them.

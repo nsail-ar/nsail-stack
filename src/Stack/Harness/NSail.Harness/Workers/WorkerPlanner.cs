@@ -63,7 +63,7 @@ public static class WorkerPlanner
             }
         }
 
-        foreach (var pr in board.Prs.Where(p => p.Shared))
+        foreach (var pr in board.Prs.Where(p => p.Shared && issues.Any(i => i.Number == p.Story && i.Stage == Stages.InProgress && Planner.HoldOf(i, options) is null)))
         {
             notes.Add($"#{pr.Story}: {(pr.Repo == board.Repo ? "" : pr.Repo.Split('/')[1] + " ")}PR #{pr.Number} red only where main's own CI is red — no round until main moves");
         }

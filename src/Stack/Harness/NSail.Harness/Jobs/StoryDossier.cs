@@ -84,7 +84,7 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
         return await repo.Failure(pr.HeadSha, ct) is { } failure ? Red(pr.HeadSha, failure) : null;
     }
 
-    internal static string Red(string sha, CiFailure failure)
+    static string Red(string sha, CiFailure failure)
     {
         var what = new StringBuilder();
         what.AppendLine("Failed jobs and steps:");

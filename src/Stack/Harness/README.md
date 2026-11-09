@@ -156,7 +156,7 @@ the files it leaves.
   (the owners and the crew, empty by default). Under an open PR it says why its head is not green where no
   gate verdict does: the head does not merge with the default branch, or the CI that runs outside the harness is
   red there — its failed jobs and steps, failed tests (else build errors) and the last 40 lines of the first three
-  failed steps' logs, fenced as data. A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
+  failed jobs' logs, each cut where its failed step closes, fenced as data. A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
   watch files it in Analyze, never Ready.
   Every harness on the board reads the same: main's `harness/gate` mark written `pending` holds that head from
   a second gate on any harness for twice the longest `Minutes` among that harness's own Main

@@ -95,7 +95,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         return options.Releases.Any(r => r.Workflow == workflow);
     }
 
-    async Task<List<StoryPr>> ReadPrs(IRepository repo, string main, CancellationToken ct)
+    internal async Task<List<StoryPr>> ReadPrs(IRepository repo, string main, CancellationToken ct)
     {
         var home = repo == repos.Default;
         var result = new List<StoryPr>();
@@ -118,7 +118,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
             }
             else
             {
-                FailureBySha.TryRemove((pr.Repo, pr.Sha), out _);
+                FailureByPr.TryRemove((pr.Repo, pr.Number), out _);
             }
             // The default repository's heads always need their threads (the gate's verdict lives there);
             // another's head only once its own CI is green.
@@ -131,14 +131,15 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         return result;
     }
 
-    // What a red head's CI failed is read once while it stays red: a run again turns it pending first.
-    static readonly ConcurrentDictionary<(string Repo, string Sha), CiFailure?> FailureBySha = new();
+    // What a red head's CI failed is read once while it stays red (a run again turns it pending
+    // first), one entry per PR, as its thread is.
+    static readonly ConcurrentDictionary<(string Repo, int Pr), (string Sha, CiFailure? Failure)> FailureByPr = new();
 
     static async Task<CiFailure?> FailureOf(IRepository repo, OpenPr pr, CancellationToken ct)
     {
-        if (FailureBySha.TryGetValue((pr.Repo, pr.Sha), out var hit)) return hit;
+        if (FailureByPr.TryGetValue((pr.Repo, pr.Number), out var hit) && hit.Sha == pr.Sha) return hit.Failure;
         var failure = await repo.Failure(pr.Sha, ct);
-        FailureBySha[(pr.Repo, pr.Sha)] = failure;
+        FailureByPr[(pr.Repo, pr.Number)] = (pr.Sha, failure);
         return failure;
     }
 
