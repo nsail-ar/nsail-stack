@@ -88,7 +88,7 @@ static class JobsPage
             "failed" => ("warn", "failed"),
             "broke" => ("bad", "broke"),
             HarnessLoop.ProviderResult => ("warn", Label(result)),
-            "quiet" => ("", "nothing to do"),
+            "quiet" => ("", Label(result)),
             "running" => ("acc", "running"),
             "stale" => ("bad", "stale"),
             _ => ("", "—"),

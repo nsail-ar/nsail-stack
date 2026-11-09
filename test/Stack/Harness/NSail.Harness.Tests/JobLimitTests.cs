@@ -92,6 +92,11 @@ public sealed class JobLimitTests : IDisposable
 
         Assert.Empty(_board.Cards[Story].Comments);
         Assert.DoesNotContain(Labels.Stalled, _board.Cards[Story].Labels);
+
+        await End(new InvalidOperationException("boom"));
+
+        Assert.Equal(1, Broke());
+        Assert.DoesNotContain(Labels.Stalled, _board.Cards[Story].Labels);
     }
 
     [Fact]
@@ -126,7 +131,19 @@ public sealed class JobLimitTests : IDisposable
         Assert.InRange(HarnessLoop.HeldFor(_loop.LimitedUntil, before)!.Value, HarnessLoop.MaxLimitBackoff, HarnessLoop.MaxLimitBackoff + TimeSpan.FromMinutes(1));
         Assert.Null(HarnessLoop.HeldFor(_loop.LimitedUntil, before + HarnessLoop.MaxLimitBackoff + TimeSpan.FromMinutes(1)));
         Assert.Equal(HarnessLoop.MaxLimitBackoff, HarnessLoop.ProviderWait(Limited(TimeSpan.FromHours(2))));
-        Assert.Equal(TimeSpan.FromSeconds(30), HarnessLoop.ProviderWait(Limited(TimeSpan.FromSeconds(30))));
+        Assert.Equal(TimeSpan.FromMinutes(4), HarnessLoop.ProviderWait(Limited(TimeSpan.FromMinutes(4))));
+    }
+
+    // A wait already past (a Retry-After of 0, a reset the clock reads as gone) still holds the item.
+    [Fact]
+    public async Task ALimitThatAsksNoWaitStillHoldsItsItemForTheFloor()
+    {
+        var before = DateTimeOffset.UtcNow;
+        await End(Limited(TimeSpan.Zero));
+
+        Assert.True(_loop.BackedOff(Dev()));
+        Assert.InRange(HarnessLoop.HeldFor(_loop.LimitedUntil, before)!.Value, HarnessLoop.MinLimitBackoff, HarnessLoop.MinLimitBackoff + TimeSpan.FromSeconds(30));
+        Assert.Equal(HarnessLoop.MinLimitBackoff, HarnessLoop.ProviderWait(Limited(TimeSpan.FromSeconds(30))));
     }
 
     [Fact]
@@ -152,7 +169,7 @@ public sealed class JobLimitTests : IDisposable
         Assert.Equal(HarnessLoop.ProviderResult, limited.Result);
         Assert.Equal("rate limited — 403 GET /repos/acme/app/pulls/287/files, retry in 42m", limited.Outcome);
         Assert.Equal(HarnessLoop.ProviderResult, down.Result);
-        Assert.Equal("provider answered 502 — 502 GET /repos/acme/app/pulls?state=closed", down.Outcome);
+        Assert.Equal("provider failed — 502 GET /repos/acme/app/pulls?state=closed", down.Outcome);
         Assert.Equal("broke", broke.Result);
         Assert.Equal(new[] { "provider", "provider", "broke" }, jobs.Outcomes);
     }

@@ -111,9 +111,9 @@ the files it leaves.
     it names all three. A job that ends on the provider's limit (a `ProviderException` with its
     `RetryAfter`) or on a 5xx is not a break: nothing is said on its story and nothing counts toward
     `stalled`; its lock label and lock come off and a Dev with no PR goes back to Ready, as a break's do.
-    A limit holds the item and every pass for the wait it asked, up to `MaxLimitBackoff`; a 5xx backs the
+    A limit holds the item and every pass for the wait it asked, at least `MinLimitBackoff` and up to `MaxLimitBackoff`; a 5xx backs the
     item off as a break. Its run's result is `provider` (`/jobs`, the pill, `harness.jobs{outcome=provider}`),
-    its outcome `rate limited — <call>, retry in <wait>` or the status the provider answered. A bare 403
+    its outcome `rate limited — <call>, retry in <wait>` or `provider failed — <status> <call>`. A bare 403
     or a 404 is an answer, and breaks. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
     its analysis and before its first voyage (`Board/WrittenBlockers.cs`); a `Waits` line that answers
@@ -172,8 +172,8 @@ the files it leaves.
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its
   role's tally in its hour (kept two days) and its day (ninety, on the machine's clock), its time and
   its wait in a histogram, so the status page and `GET /api/harness/stats?range=24h|7d|30d` read
-  small sums and never walk the jobs. A job that found nothing to do or met the quota wall is not
-  counted; a PR the reviewer lands closes its story's lead time (first job to merged).
+  small sums and never walk the jobs. A job that found nothing to do, met the quota wall or ended on the
+  provider (its limit or a 5xx) is not counted; a PR the reviewer lands closes its story's lead time (first job to merged).
 - **Locks** are the board's labels plus a story lock (a git ref per story on GitHub), created
   atomically, so any number of harnesses can share one board.
 - **A job's processes die with the harness** (`Lanes/ProcessGroup.cs`): a restart never leaves a

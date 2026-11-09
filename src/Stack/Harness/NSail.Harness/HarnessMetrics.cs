@@ -6,9 +6,9 @@ using System.Diagnostics.Metrics;
 namespace NSail.Harness;
 
 // What an alert reads, as instruments and not log lines (a telemetry pipeline may cut a log's
-// strings; a metric keeps its tags): every job that ends, by kind and outcome (ok, broke, provider), every
-// pass, by outcome (ok, failed) and a failed one's provider status, and how long the harness has
-// stood paused.
+// strings; a metric keeps its tags): every job that ends, by kind and outcome (ok, broke,
+// provider), every pass, by outcome (ok, failed) and a failed one's provider status, and how long
+// the harness has stood paused.
 public sealed class HarnessMetrics : IDisposable
 {
     public const string MeterName = "NSail.Harness";

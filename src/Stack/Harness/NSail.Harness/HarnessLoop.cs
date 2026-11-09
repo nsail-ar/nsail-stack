@@ -42,6 +42,10 @@ public sealed class HarnessLoop(
     // The longest a provider's rate-limit wait holds the next pass.
     internal static readonly TimeSpan MaxLimitBackoff = TimeSpan.FromMinutes(10);
 
+    // The least a limited job's item waits: a `Retry-After` already past, or a reset the machine's
+    // clock reads as gone, asks for nothing, and the item would start again at once and end the same way.
+    internal static readonly TimeSpan MinLimitBackoff = TimeSpan.FromMinutes(1);
+
     // A job's result when it ended on the provider's limit or its server's failure, not on its own.
     public const string ProviderResult = "provider";
 
@@ -228,7 +232,8 @@ public sealed class HarnessLoop(
 
         while (!stop.IsCancellationRequested)
         {
-            if (HeldFor(LimitedUntil, DateTimeOffset.UtcNow) is { } held)
+            // A job that ends limited while the loop waits pushes the hold further: it is read again.
+            while (HeldFor(LimitedUntil, DateTimeOffset.UtcNow) is { } held)
             {
                 log.LogWarning("a job hit the provider's rate limit — next pass in {Seconds:F0}s", held.TotalSeconds);
                 try
@@ -237,7 +242,7 @@ public sealed class HarnessLoop(
                 }
                 catch (OperationCanceledException) when (stop.IsCancellationRequested)
                 {
-                    break;
+                    return;
                 }
             }
             _limitedFor = null;
@@ -555,13 +560,13 @@ public sealed class HarnessLoop(
     }
 
     // How long an item whose job ended on the provider waits, or null when the ending is a break: a
-    // limit announced with its wait (GitHubClient.LimitWait), up to the ceiling a limited pass uses,
-    // or a 5xx, the provider's own failure, as long as a break. A bare 403 or a 404 is an answer.
+    // limit announced with its wait (GitHubClient.LimitWait), between a floor and the ceiling a limited
+    // pass uses, or a 5xx, the provider's own failure, as long as a break. A bare 403 or a 404 is an answer.
     internal static TimeSpan? ProviderWait(Exception e)
     {
         return e switch
         {
-            ProviderException { RetryAfter: { } after } => after < MaxLimitBackoff ? after : MaxLimitBackoff,
+            ProviderException { RetryAfter: { } after } => after < MinLimitBackoff ? MinLimitBackoff : after < MaxLimitBackoff ? after : MaxLimitBackoff,
             ProviderException { Status: >= 500 } => Backoff,
             _ => null,
         };
@@ -573,7 +578,7 @@ public sealed class HarnessLoop(
         var call = e.Message.Split(": ", 2)[0];
         return e.RetryAfter is { } after
             ? $"rate limited — {call}, retry in {(after.TotalMinutes >= 1 ? $"{Math.Ceiling(after.TotalMinutes):F0}m" : $"{Math.Ceiling(after.TotalSeconds):F0}s")}"
-            : $"provider answered {e.Status} — {call}";
+            : $"provider failed — {call}";
     }
 
     // A failed read starts nothing: a half board reads as an empty queue. A request that timed out
@@ -860,8 +865,7 @@ public sealed class HarnessLoop(
         Wake();
     }
 
-    // The story goes back where the next pass can take it again: its job's lock label off, and a Dev
-    // cut off mid-voyage with no PR to Ready, or it would sit In-Progress, where nothing takes a story.
+    // The story goes back where the next pass can take it again: its job's lock label off.
     async Task LockLabelOff(WorkItem item, int n)
     {
         var lockLabel = item.Kind switch
@@ -874,6 +878,7 @@ public sealed class HarnessLoop(
         if (lockLabel is not null) await Quietly(() => board.RemoveLabel(n, lockLabel), $"#{n} {lockLabel} off");
     }
 
+    // A Dev cut off mid-voyage with no PR goes to Ready, or it would sit In-Progress, where nothing takes a story.
     async Task BackToReady(WorkItem item, int n)
     {
         if (item.Kind == WorkKind.Dev && item.Pr is null)
