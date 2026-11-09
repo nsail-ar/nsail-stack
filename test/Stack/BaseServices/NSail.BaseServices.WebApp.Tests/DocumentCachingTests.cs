@@ -9,20 +9,32 @@ namespace NSail.BaseServices.WebApp.Tests;
 public class DocumentCachingTests
 {
     [Fact]
-    public void Apply_OverridesNoStore_OnHtmlDocument()
+    public void Apply_LeavesNoStoreAndPragma_OnHtmlDocument()
     {
         var context = new DefaultHttpContext();
 
         context.Response.ContentType = "text/html; charset=utf-8";
         context.Response.Headers.CacheControl = "no-cache,no-store";
         context.Response.Headers.Pragma = "no-cache";
-        context.Response.Headers.Expires = "Thu, 01 Jan 1970 00:00:00 GMT";
 
         DocumentCaching.Apply(context);
 
-        Assert.Equal("no-cache", context.Response.Headers.CacheControl.ToString());
-        Assert.True(string.IsNullOrEmpty(context.Response.Headers.Pragma.ToString()));
-        Assert.True(string.IsNullOrEmpty(context.Response.Headers.Expires.ToString()));
+        Assert.Equal("no-cache,no-store", context.Response.Headers.CacheControl.ToString());
+        Assert.Equal("no-cache", context.Response.Headers.Pragma.ToString());
+    }
+
+    [Fact]
+    public void Apply_AnswersPrivateNoStore_OnAnAuthenticatedDocument()
+    {
+        var context = new DefaultHttpContext();
+
+        context.User = new System.Security.Claims.ClaimsPrincipal(
+            new System.Security.Claims.ClaimsIdentity("test"));
+        context.Response.ContentType = "text/html";
+
+        DocumentCaching.Apply(context);
+
+        Assert.Equal("private, no-store", context.Response.Headers.CacheControl.ToString());
     }
 
     [Fact]
