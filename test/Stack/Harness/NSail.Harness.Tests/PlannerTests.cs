@@ -313,7 +313,8 @@ public class PlannerTests
             .Story(2, "In-Progress").Pr(2, 20)
             .Story(3, "Ready", title: "Regression red on main (Shop)");
 
-        Assert.Equal(["dev #3 (red)", "dev #1 (p1)", "review PR #20 (story #2)"], Lines(f));
+        // A red suite story lights the andon: the release is all that is planned.
+        Assert.Equal(["dev #3 (red)"], Lines(f));
     }
 
     [Fact]

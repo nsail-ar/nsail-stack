@@ -13,7 +13,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
 {
 
     const string IssuesQuery = """
-        query($o:String!,$n:String!,$c:String,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title updatedAt projectItems(first:10){nodes{id updatedAt project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}} milestone{number} labels(first:30){nodes{name}} subIssuesSummary{total percentCompleted} parent{number subIssuesSummary{percentCompleted}} blockedBy(first:30){nodes{number state}}}}}}
+        query($o:String!,$n:String!,$c:String,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title createdAt updatedAt projectItems(first:10){nodes{id updatedAt project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}} milestone{number} labels(first:30){nodes{name}} subIssuesSummary{total percentCompleted} parent{number subIssuesSummary{percentCompleted}} blockedBy(first:30){nodes{number state}}}}}}
         """;
 
     const string ClosedQuery = """
@@ -113,6 +113,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
             allBlockers.Count)
         {
             TouchedAt = TouchedIn(n, project),
+            CreatedAt = n.TryGetProperty("createdAt", out var created) && created.ValueKind == JsonValueKind.String ? created.GetDateTimeOffset() : null,
         };
     }
 
