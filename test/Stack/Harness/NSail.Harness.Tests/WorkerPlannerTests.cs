@@ -190,6 +190,10 @@ public class WorkerPlannerTests
         Assert.Contains("Debug", HarnessLoop.ForceRefusal(HarnessMode.Debug, null, null, WorkKind.Dev));
         Assert.Contains("paused", HarnessLoop.ForceRefusal(HarnessMode.Live, "drain", null, WorkKind.Dev));
         Assert.Contains("quota", HarnessLoop.ForceRefusal(HarnessMode.Live, null, wall, WorkKind.Dev));
+        Assert.Null(HarnessLoop.ForceRefusal(HarnessMode.Live, null, wall, WorkKind.Release));
+        var now = new DateTimeOffset(2026, 11, 9, 14, 0, 0, TimeSpan.Zero);
+        Assert.Equal("17:15", HarnessLoop.WallClock(now.AddHours(3).AddMinutes(15), now));
+        Assert.Equal("Mon 14:00", HarnessLoop.WallClock(now.AddDays(7), now));
     }
 }
 

@@ -288,8 +288,14 @@ public sealed class HarnessLoop(
     {
         if (mode == HarnessMode.Debug) return "the harness is in Debug mode: it starts nothing";
         if (paused is { } why) return $"the harness is paused ({why})";
-        if (wall is { } until && Capacity.Needs(kind).Contains(Resource.Agent)) return $"out of quota until {until:HH:mm} UTC";
+        if (wall is { } until && Capacity.Needs(kind).Contains(Resource.Agent)) return $"out of quota until {WallClock(until, DateTimeOffset.UtcNow)} UTC";
         return null;
+    }
+
+    // A wall can last days: past 20 hours the day goes with the hour, as the quota windows' resets do.
+    public static string WallClock(DateTimeOffset at, DateTimeOffset now)
+    {
+        return at - now < TimeSpan.FromHours(20) ? $"{at:HH:mm}" : $"{at:ddd HH:mm}";
     }
 
     internal static DateTimeOffset LaterWall(DateTimeOffset? held, DateTimeOffset until)
@@ -582,7 +588,7 @@ public sealed class HarnessLoop(
             {
                 DateTimeOffset wall;
                 lock (_gate) _quotaUntil = wall = LaterWall(_quotaUntil, until);
-                log.LogWarning("out of quota until {Until:HH:mm} UTC — no agent starts; builds go on", wall);
+                log.LogWarning("out of quota until {Until} UTC — no agent starts; builds go on", WallClock(wall, DateTimeOffset.UtcNow));
             }
             // What the job's ending does on the board: its worker's actions, or its type's when the
             // steps planned it. Under the story's lock still: nobody moves it between the two.
