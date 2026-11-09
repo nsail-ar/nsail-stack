@@ -157,6 +157,8 @@ public class HttpRouteDiagnosticTests
     [InlineData("api/items/{id?}")]
     [InlineData("api/items/{id:int?}")]
     [InlineData("api/items/{*id}")]
+    [InlineData("api/items/{**id}")]
+    [InlineData("api/items/{id=5}")]
     public void A_token_with_a_constraint_optional_marker_or_catch_all_binds_by_name(string route)
     {
         var diagnostics = Run(RouteSource($"[Http(Method.Get, \"{route}\")]", "[AsRoute] public System.Guid Id { get; set; }"));
