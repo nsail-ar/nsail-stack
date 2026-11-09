@@ -3,6 +3,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using NSail.SourceGenerator.Generation;
@@ -193,7 +194,11 @@ static class SdkReader
         MetadataKeys metadata,
         TypeCatalog catalog)
     {
-        var field = new FieldShape(TypeCatalog.WireName(property), metadata.KeyFor(message, property.Name), catalog.Describe(property.Type))
+        // The endpoint reads a route, query or header member by its lowered property name; only the body honours [JsonPropertyName].
+        var wireName = binding.Source != "body" && TypeCatalog.WireName(property) != JsonNamingPolicy.CamelCase.ConvertName(property.Name)
+            ? property.Name.ToLowerInvariant()
+            : TypeCatalog.WireName(property);
+        var field = new FieldShape(wireName, metadata.KeyFor(message, property.Name), catalog.Describe(property.Type))
         {
             Binding = binding.Source,
         };

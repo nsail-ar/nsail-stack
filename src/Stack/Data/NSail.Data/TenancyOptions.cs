@@ -26,6 +26,21 @@ public class TenancyOptions
     /// startup, so a slug the install cannot name is refused there.</summary>
     public string? Tenants { get; set; }
 
+    /// <summary>The word the proxy writes beside the tenant header (<c>X-Proxy-Secret</c>). When
+    /// set, a request whose tenant header does not arrive with it is refused 403 before any
+    /// tenant is resolved or created, so a caller that reaches the app port directly cannot pick
+    /// a tenant. Empty means the listener itself must be bound to the proxy only.</summary>
+    public string? ProxySecret { get; set; }
+
+    /// <summary>How long a database that exists is remembered, in seconds.</summary>
+    [Range(1, 3600)]
+    public int DatabaseHitSeconds { get; set; } = 30;
+
+    /// <summary>How long a database that does not exist is remembered, in seconds — shorter, so
+    /// a tenant provisioned by Ops is served within this window.</summary>
+    [Range(1, 3600)]
+    public int DatabaseMissSeconds { get; set; } = 5;
+
     /// <summary>A file holding the same roster, one slug per line, unioned with
     /// <see cref="Tenants"/> and read again on every sweep and every request — so whoever
     /// provisions a tenant can write it where this install reads it and have its next visit served

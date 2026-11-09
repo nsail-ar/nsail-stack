@@ -69,10 +69,106 @@ public class TenantDatabasesTests
         Assert.Equal(install.Password, connection.Password);
     }
 
+    // The registry is read once per window: a database created after the first miss stays unseen
+    // across 100 more lookups, which is what a memo that spared the connections looks like.
+    [Fact]
+    public async Task AnUnknownSlugIsLookedUpOnceForAHundredRequests()
+    {
+        var cell = "m" + Guid.NewGuid().ToString("N")[..10];
+        var install = ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres");
+        var databases = new TenantDatabases(
+            new TenancyOptions { Mode = TenancyMode.MultiDb, Product = "memo", Cell = cell, DatabaseMissSeconds = 60 },
+            install,
+            TimeProvider.System);
+        var name = databases.NameFor("ghost")!;
+
+        await using var admin = new NpgsqlConnection(install);
+
+        await admin.OpenAsync();
+
+        try
+        {
+            Assert.Null(await databases.Resolve("ghost"));
+
+            await using (var create = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", admin))
+            {
+                await create.ExecuteNonQueryAsync();
+            }
+
+            for (var i = 0; i < 100; i++)
+            {
+                Assert.Null(await databases.Resolve("ghost"));
+            }
+        }
+        finally
+        {
+            await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{name}\"", admin);
+
+            await drop.ExecuteNonQueryAsync();
+        }
+    }
+
+    // The memo has to let go: a miss lapses before a hit does, and a database provisioned after
+    // the miss is served once its window has passed.
+    [Fact]
+    public async Task AMissLapsesBeforeAHitAndTheNewDatabaseIsSeen()
+    {
+        var cell = "m" + Guid.NewGuid().ToString("N")[..10];
+        var install = ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres");
+        var clock = new WoundClock();
+        var databases = new TenantDatabases(
+            new TenancyOptions { Mode = TenancyMode.MultiDb, Product = "memo", Cell = cell, DatabaseHitSeconds = 30, DatabaseMissSeconds = 5 },
+            install,
+            clock);
+        var name = databases.NameFor("late")!;
+
+        await using var admin = new NpgsqlConnection(install);
+
+        await admin.OpenAsync();
+
+        try
+        {
+            Assert.Null(await databases.Resolve("late"));
+
+            await using (var create = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", admin))
+            {
+                await create.ExecuteNonQueryAsync();
+            }
+
+            clock.Advance(TimeSpan.FromSeconds(4));
+
+            Assert.Null(await databases.Resolve("late"));
+
+            clock.Advance(TimeSpan.FromSeconds(2));
+
+            Assert.NotNull(await databases.Resolve("late"));
+
+            await using (var drop = new NpgsqlCommand($"DROP DATABASE \"{name}\"", admin))
+            {
+                await drop.ExecuteNonQueryAsync();
+            }
+
+            clock.Advance(TimeSpan.FromSeconds(29));
+
+            Assert.NotNull(await databases.Resolve("late"));
+
+            clock.Advance(TimeSpan.FromSeconds(2));
+
+            Assert.Null(await databases.Resolve("late"));
+        }
+        finally
+        {
+            await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{name}\"", admin);
+
+            await drop.ExecuteNonQueryAsync();
+        }
+    }
+
     static TenantDatabases Databases(string? product = "optical", string? cell = "sa1")
     {
         return new TenantDatabases(
             new TenancyOptions { Mode = TenancyMode.MultiDb, Product = product, Cell = cell },
-            Install);
+            Install,
+            TimeProvider.System);
     }
 }
