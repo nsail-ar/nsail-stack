@@ -1670,7 +1670,7 @@ else
             // (NSail.Exporting).
             using var file = new MemoryStream();
 
-            await writer.WriteAsync(book, file, RegionCulture.For(Language), _export.Token);
+            await writer.WriteAsync(book, file, RegionCulture.For(Language), TimeZoneInfo.Local, _export.Token);
 
             file.Position = 0;
 
