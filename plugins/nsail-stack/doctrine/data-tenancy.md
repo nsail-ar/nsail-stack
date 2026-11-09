@@ -411,13 +411,18 @@ a third runtime dependency buys nothing Caddy and Postgres are not already telli
   takes its slug from the host's label (`{labels.N}`), a custom domain from its own block: same
   header, two sources, and **the app never parses the Host**, so it cannot tell them apart.
   `TenancyMiddleware` (`NSail.BaseServices.WebApi`) reads that header and nothing else; the
-  header arriving twice is not a slug and is refused like any malformed one.
+  header arriving twice is not a slug and is refused like any malformed one. The proxy also
+  writes `X-Proxy-Secret` (`Tenancy:ProxySecret`): when configured, a request without it is
+  **403** before any tenant is resolved or created; unconfigured, startup warns that the
+  listener must be bound to the proxy only.
 - **Postgres is the registry — under `MultiDb`.** `TenantDatabases` derives the name as
   `{product}_{cell}_{tenant}` — `Tenancy:Product` and `Tenancy:Cell` from the cell's own
   configuration, the tenant from the header — and the row in `pg_database` **is** the truth that
   the tenant exists. Unknown slug → no database → **404, answered before authentication** and
   creating nothing. Only the database moves per tenant; server, user and password stay the
-  install's.
+  install's. The lookup is memoised per name — longer for a hit, shorter for a miss
+  (`Tenancy:DatabaseHitSeconds`, `DatabaseMissSeconds`) — so a flood of one unknown slug is one
+  round trip, and a tenant Ops provisions is served within the miss window.
 
 Under `SingleDb` there is no registry and no database name, so the install's **declared roster**
 (`TenantRoster`, below) is the truth that a tenant exists: a cell that declares one — a

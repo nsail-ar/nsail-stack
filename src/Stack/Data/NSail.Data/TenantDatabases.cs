@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
 using Npgsql;
 
 namespace NSail.Data;
@@ -24,6 +25,13 @@ public class TenantDatabases
 
     readonly FirstTouch _first = new();
 
+    // Bounded by the lookups themselves: a name is only memoised after Resolve derived it
+    // within the identifier limit, and expired entries are swept as new ones arrive.
+    readonly ConcurrentDictionary<string, long> _known = new();
+    readonly long _hitTicks;
+    readonly long _missTicks;
+    long _swept;
+
     readonly string _installConnectionString;
     readonly string _product;
     readonly string _cell;
@@ -34,6 +42,8 @@ public class TenantDatabases
         ArgumentException.ThrowIfNullOrWhiteSpace(installConnectionString);
 
         _installConnectionString = installConnectionString;
+        _hitTicks = tenancy.DatabaseHitSeconds * 1000L;
+        _missTicks = tenancy.DatabaseMissSeconds * 1000L;
         _product = Named(tenancy.Product, nameof(tenancy.Product));
         _cell = Named(tenancy.Cell, nameof(tenancy.Cell));
     }
@@ -105,7 +115,44 @@ public class TenantDatabases
             return null;
         }
 
-        return await Exists(database, cancellationToken) ? Tenant.For(tenant, database) : null;
+        var exists = await Remembered(database, cancellationToken);
+
+        return exists ? Tenant.For(tenant, database) : null;
+    }
+
+    // The registry is read once per window per name: a flood of one unknown slug costs one round
+    // trip, and a database provisioned meanwhile is seen once the shorter miss window lapses.
+    async Task<bool> Remembered(string database, CancellationToken cancellationToken)
+    {
+        var now = Environment.TickCount64;
+
+        if (_known.TryGetValue(database, out var until) && now < Math.Abs(until))
+        {
+            return until > 0;
+        }
+
+        var exists = await Exists(database, cancellationToken);
+
+        now = Environment.TickCount64;
+
+        if (now - Interlocked.Read(ref _swept) > _missTicks * 4)
+        {
+            Interlocked.Exchange(ref _swept, now);
+
+            foreach (var entry in _known)
+            {
+                if (now >= Math.Abs(entry.Value))
+                {
+                    _known.TryRemove(entry);
+                }
+            }
+        }
+
+        var ttl = (exists ? _hitTicks : _missTicks) + now;
+
+        _known[database] = exists ? ttl : -ttl;
+
+        return exists;
     }
 
     /// <summary>Runs <paramref name="migrate"/> at most once per tenant database, and never

@@ -69,6 +69,44 @@ public class TenantDatabasesTests
         Assert.Equal(install.Password, connection.Password);
     }
 
+    // The registry is read once per window: a database created after the first miss stays unseen
+    // across 100 more lookups, which is what a memo that spared the connections looks like.
+    [Fact]
+    public async Task AnUnknownSlugIsLookedUpOnceForAHundredRequests()
+    {
+        var cell = "m" + Guid.NewGuid().ToString("N")[..10];
+        var install = ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres");
+        var databases = new TenantDatabases(
+            new TenancyOptions { Mode = TenancyMode.MultiDb, Product = "memo", Cell = cell, DatabaseMissSeconds = 60 },
+            install);
+        var name = databases.NameFor("ghost")!;
+
+        await using var admin = new NpgsqlConnection(install);
+
+        await admin.OpenAsync();
+
+        try
+        {
+            Assert.Null(await databases.Resolve("ghost"));
+
+            await using (var create = new NpgsqlCommand($"CREATE DATABASE \"{name}\"", admin))
+            {
+                await create.ExecuteNonQueryAsync();
+            }
+
+            for (var i = 0; i < 100; i++)
+            {
+                Assert.Null(await databases.Resolve("ghost"));
+            }
+        }
+        finally
+        {
+            await using var drop = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{name}\"", admin);
+
+            await drop.ExecuteNonQueryAsync();
+        }
+    }
+
     static TenantDatabases Databases(string? product = "optical", string? cell = "sa1")
     {
         return new TenantDatabases(

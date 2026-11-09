@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Security.Cryptography;
+using System.Text;
 using NSail.Data;
 
 namespace NSail.BaseServices.WebApi;
@@ -21,6 +23,10 @@ public sealed class TenancyMiddleware : IMiddleware
 {
     public const string TenantHeader = "X-NSail-Tenant";
 
+    // Not X-NSail-*: every header of that prefix becomes a delivery header, and the secret must
+    // never travel into one.
+    public const string ProxySecretHeader = "X-Proxy-Secret";
+
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -31,6 +37,14 @@ public sealed class TenancyMiddleware : IMiddleware
         // dependency on a service that a mode does not register fails the container's own
         // startup validation for hosts that never install it.
         var services = context.RequestServices;
+
+        if (services.GetService<TenancyOptions>()?.ProxySecret is { Length: > 0 } secret
+            && !Proven(context.Request.Headers[ProxySecretHeader].ToString(), secret))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+
+            return;
+        }
 
         // ToString rather than the first value: a request carrying the header twice renders as
         // one comma-joined word, which no slug can be, so a smuggled second copy is refused
@@ -65,6 +79,11 @@ public sealed class TenancyMiddleware : IMiddleware
         }
 
         await next(context);
+    }
+
+    static bool Proven(string presented, string secret)
+    {
+        return CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(presented), Encoding.UTF8.GetBytes(secret));
     }
 
     static async Task<Tenant?> Resolve(string slug, TenantRoster? roster, CancellationToken cancellationToken)
