@@ -33,6 +33,7 @@ public sealed class NsLinkSchemeTests : BunitContext
     [Theory]
     [InlineData("javascript:alert(1)")]
     [InlineData("data:text/html,x")]
+    [InlineData("vbscript:msgbox(1)")]
     [InlineData("ftp://acme.com/x")]
     [InlineData("file:///etc/passwd")]
     public void NsLinkDrawsAForbiddenSchemeWithNoHref(string href)
@@ -46,6 +47,7 @@ public sealed class NsLinkSchemeTests : BunitContext
     [Theory]
     [InlineData("javascript:alert(1)")]
     [InlineData("data:text/html,x")]
+    [InlineData("vbscript:msgbox(1)")]
     [InlineData("ftp://acme.com/x")]
     [InlineData("file:///etc/passwd")]
     public void NsChipDrawsAForbiddenSchemeWithNoHref(string href)
@@ -71,6 +73,7 @@ public sealed class NsLinkSchemeTests : BunitContext
     [InlineData("tel:+54 11 5555-5555")]
     [InlineData("https://optica.example/mi local")]
     [InlineData("/parties/new")]
+    [InlineData("#frag")]
     public void TheSchemesADoorOpensKeepTheirHref(string href)
     {
         var cut = Render<NsLink>(p => p.Add(x => x.Href, href).Add(x => x.Label, "Sitio"));

@@ -410,7 +410,9 @@ other end, the surface this session was on would be gone and no route brings it 
   and `SurfaceContext.IsInert` asks it plus `tel:` and `otpauth:`, the schemes a link may carry
   that the drawer does not draw — each hands the address to an installed app and runs nothing in
   the page: `NsLink` and `NsChip` hand an address to the browser as written, so a `tel:` with a
-  space in it still calls, while a scheme no door opens is no `href`.
+  space in it still calls, while a scheme no door opens (`javascript:`, `data:`, `vbscript:`) is no
+  `href`: the rule is on the output, whatever the string came from. A relative path or a
+  `#fragment` is no scheme and renders as written.
 
 ## A leaf running a `Command`
 
