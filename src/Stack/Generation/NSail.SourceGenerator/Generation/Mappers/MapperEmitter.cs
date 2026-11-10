@@ -86,7 +86,22 @@ sealed partial class MapperEmitter
 
     public string Emit()
     {
-        foreach (var target in _compilation.FindTypesInScope(_method, Diagnostics))
+        var targets = _compilation.FindTypesInScope(_method, Diagnostics).ToList();
+
+        // Every declaration's withdrawals are known before any pair is written: a part reached
+        // first through its owner is written once, with its own declaration's Ignore already read.
+        foreach (var target in targets)
+        {
+            foreach (var declaration in target.GetAttributes(MapFromName))
+            {
+                if (declaration.ConstructorArguments.Length > 0 && declaration.ConstructorArguments[0].Value is INamedTypeSymbol source)
+                {
+                    _withdrawn[$"{Name(source)}=>{Name(target)}"] = Withdrawn(declaration);
+                }
+            }
+        }
+
+        foreach (var target in targets)
         {
             if (target.IsGenericType && (target.HasAttribute(MapFromName) || target.HasAttribute(MapToName)))
             {
@@ -107,7 +122,6 @@ sealed partial class MapperEmitter
                     continue;
                 }
 
-                _withdrawn[$"{Name(source)}=>{Name(target)}"] = Withdrawn(declaration);
                 Root(source, target);
                 Dropped(declaration, source, target);
             }

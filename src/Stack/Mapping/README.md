@@ -65,7 +65,7 @@ await _db.SaveChangesAsync(cancellationToken);                            // the
 |---|---|---|
 | `[MapFrom(typeof(Source))]` | entity | Generate a mapper that writes `Source` onto the entity, graph included. Repeatable |
 | `[MapFrom(typeof(Source), "Member")]` | property | Read this member from `Source.Member` where the names differ |
-| `[MapFrom(..., Ignore = [...])]` | entity | Source members deliberately not stored (silences NSG011) |
+| `[MapFrom(..., Ignore = [...])]` | entity | Source members deliberately not stored (silences NSG011); withdrawn from that declaration's pairing, so the save never writes them and NSG025 stops for them, while `[MapTo]` projections still read them |
 | `[MapTo(typeof(Target))]` | entity | Generate the projection that reads the entity as `Target`. Repeatable |
 | `[MapTo(typeof(Target), "Member")]` | property | Read into `Target.Member` where the names differ |
 | `[MapTo(..., Ignore = [...])]` | entity | Target members deliberately left empty (silences NSG012) |

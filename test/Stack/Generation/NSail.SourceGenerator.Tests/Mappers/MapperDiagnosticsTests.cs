@@ -134,6 +134,30 @@ public class MapperDiagnosticsTests
         Assert.DoesNotContain("target.Kind =", source);
     }
 
+    // The owner is declared first and reaches the part's pair before the part's own declaration.
+    [Fact]
+    public void A_MapFrom_Ignore_on_a_part_declared_after_its_owner_still_withdraws()
+    {
+        var diagnostics = Generate("""
+            public class SaveLine { public int Id { get; set; } public int? Kind { get; set; } }
+            public class SaveOrder { public int Id { get; set; } public System.Collections.Generic.List<SaveLine> Lines { get; set; } }
+
+            [Entity, MapFrom(typeof(SaveOrder))]
+            public class Order
+            {
+                public int Id { get; set; }
+
+                [Composition]
+                public System.Collections.Generic.List<Line> Lines { get; set; }
+            }
+
+            [Entity, MapFrom(typeof(SaveLine), Ignore = [nameof(SaveLine.Kind)])]
+            public class Line { public int Id { get; set; } public int Kind { get; set; } }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
     [Fact]
     public void A_nullable_on_another_pairing_is_still_refused_beside_an_Ignore()
     {

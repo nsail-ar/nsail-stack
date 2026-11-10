@@ -60,7 +60,7 @@ public static class GeneratorDiagnostics
     public static readonly DiagnosticDescriptor MappedMemberNotConvertible = new(
         id: "NSG006",
         title: "A mapped member has no conversion",
-        messageFormat: "'{0}.{1}' ({2}) cannot be written from '{3}.{4}' ({5}): no conversion between the two types. Pair it with another member by [MapFrom] or [MapTo], mark the entity's member [MapIgnore], or withdraw it from this pairing with Ignore = [nameof({3}.{4})] on the [MapFrom].",
+        messageFormat: "'{0}.{1}' ({2}) cannot be written from '{3}.{4}' ({5}): no conversion between the two types. Pair it with another member by [MapFrom] or [MapTo], or mark the entity's member [MapIgnore].",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
