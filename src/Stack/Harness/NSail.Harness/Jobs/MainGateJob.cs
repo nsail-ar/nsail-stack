@@ -60,11 +60,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
 
         var ok = result.ExitCode == 0;
         await ctx.Repo.SetStatus(head, Markers.GateContext, ok ? "success" : "failure", $"main's gate {(ok ? "green" : "red")} on {ctx.Options.Machine}", ct);
-        if (ok)
-        {
-            var broke = await CloseFixedReds(head, dir, ct);
-            return new JobOutcome($"main green at {head[..8]}{(broke.Count > 0 ? $"; could not close {string.Join(", ", broke.Select(n => $"#{n}"))}" : "")}", Failed: broke.Count > 0);
-        }
+        if (ok) return await Green(head, dir, ct);
 
         var why = result.TimedOut ? "timed out" : "red";
         Reds[head] = result.TimedOut ? new HashSet<string>() : GateJob.FailureSet(result.Output, dir);
@@ -76,6 +72,14 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
     // merge: nothing else says it is done, and left open the dispatcher sends it out again and again.
     // Only that evidence closes (Landing.Fixed); a red with no merged PR of its story is a hand's. The
     // stories it could not close come back, so the job fails loud instead of leaving the red story open.
+    internal async Task<JobOutcome> Green(string head, string dir, CancellationToken ct)
+    {
+        var broke = await CloseFixedReds(head, dir, ct);
+        return new JobOutcome($"main green at {head[..8]}{(broke.Count > 0 ? $"; could not close {string.Join(", ", broke.Select(n => $"#{n}"))}" : "")}", Failed: broke.Count > 0);
+    }
+
+    // A close that broke partway is finished by the next green gate: its comment, said once since the
+    // merge, is not said again.
     async Task<List<int>> CloseFixedReds(string head, string dir, CancellationToken ct)
     {
         var log = ctx.Logs.CreateLogger("gate-main");
@@ -86,8 +90,9 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
             {
                 var merge = await ctx.Repo.MergeOf(story.Number, ct);
                 if (Landing.Fixed(await ctx.Repos.PrsOf(story.Number, "open", ct), merge, await Holds(merge, head, dir), head) is not { } evidence) continue;
-                await ctx.Board.Comment(story.Number, $"{HarnessTexts.Fill(ctx.Texts.MainRedFixed, ("evidence", evidence))} {ctx.Texts.Signature}");
-                await ctx.Board.SetStage(story.Number, Stages.Closed, ct);
+                var said = (await ctx.Board.Comments(story.Number, ct)).Any(c => c.At >= merge!.At && c.Body.Contains(Markers.RedFixed, StringComparison.Ordinal));
+                if (!said) await ctx.Board.Comment(story.Number, $"{HarnessTexts.Fill(ctx.Texts.MainRedFixed, ("evidence", evidence))} {ctx.Texts.Signature}\n{Markers.RedFixed}");
+                if (story.Stage != Stages.Closed) await ctx.Board.SetStage(story.Number, Stages.Closed, ct);
                 await ctx.Board.Close(story.Number, ct);
                 log.LogInformation("#{Story}: red main fixed — {Evidence}; closed", story.Number, evidence);
             }

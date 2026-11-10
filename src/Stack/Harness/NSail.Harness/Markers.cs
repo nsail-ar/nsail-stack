@@ -47,6 +47,9 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
     public const string AnalysisDied = "<!-- harness:analysis-died -->";
     public const string Broke = "<!-- harness:broke -->";
 
+    // A red main's story closed as fixed: a close that broke after its comment does not say it twice.
+    public const string RedFixed = "<!-- harness:red-fixed -->";
+
     // How many comments carrying the marker close the thread in a row since a hand lifted a hold:
     // any other word between them (a seat's, a person's) breaks the run.
     public static int InARow(IEnumerable<Board.StoryComment> comments, string marker, DateTimeOffset? since = null)
