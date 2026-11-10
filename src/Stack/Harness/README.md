@@ -183,7 +183,7 @@ the files it leaves.
   main's, `HarnessTexts.IsRed`) never asks a hand: a builder's question sends it to Analyze with no
   `ruling` (event `Reanalyze`; with a PR open, the next round decides it), a reviewer's crack goes
   back to its builder as `Findings`, and an analysis that ends `ruling` is refused and counted as a
-  death (`RedQuestion`, `RedRulingRefused`).
+  death (`RedQuestion`, `RedRulingRefused`). A builder's `wall.md` (something outside the story must change first) ends the round as `Walled`, an event configurable under `On` like the others: the story goes to Backlog wearing `blocked`, and a blocker the wall names (`blocked by #N`) is linked so the rule that lifts `blocked` on its blockers lifts it; a wall that names none waits for a hand. A red story's wall goes the way of its question, with no hold.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the

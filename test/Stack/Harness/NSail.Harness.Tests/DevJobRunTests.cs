@@ -381,6 +381,32 @@ public class DevJobRunTests : IDisposable
     }
 
     [Fact]
+    public async Task AWallOnAReleaseRedGoesToTheAnalystWithNoHold()
+    {
+        await Seed();
+        var board = new MemoryBoard();
+        board.Add(1, title: "CI red on main", stage: Stages.Ready);
+
+        var outcome = await Run(new Asking("wall.md", "main is red from another story"), board, new Lines());
+
+        Assert.Equal("Reanalyze", outcome.Event);
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("waits for no hand"));
+    }
+
+    [Fact]
+    public async Task AWallLinksTheBlockerItNamesSoTheBlockedRuleCanLiftIt()
+    {
+        await Seed();
+        var board = Board();
+        board.Add(2, title: "other", stage: Stages.Ready);
+
+        await Run(new Asking("wall.md", "main is red. Blocked by #2"), board, new Lines());
+
+        Assert.Equal([2], board.Cards[1].Blockers);
+    }
+
+    [Fact]
     public async Task AWallOnAStoryWithNothingToBuildLandsInstead()
     {
         await Seed();
