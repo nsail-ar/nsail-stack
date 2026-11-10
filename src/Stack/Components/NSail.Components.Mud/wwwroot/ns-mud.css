@@ -1385,6 +1385,7 @@
 }
 
 .ns-chip-ellipsis .mud-chip-content {
+    display: block;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1536,13 +1537,13 @@
 /* Every row ends at the same right edge. The vendor sets a nested entry's end padding to
    unset (zero) from the second level down, and chains a selector per depth to do it, so a
    count in Soporte > Tickets sat against the drawer's edge while the group chevrons above
-   kept 16px. Restated with !important because no single selector outranks that chain at
+   kept their chevron clear of the edge. Restated with !important because no single selector outranks that chain at
    every depth. */
 .ns-nav-drawer .mud-nav-link {
     padding-inline-end: var(--ns-nav-inset) !important;
 }
 
-.ns-nav-drawer .mud-navmenu > .mud-nav-link,
+.ns-nav-drawer .mud-navmenu > .mud-nav-item > .mud-nav-link,
 .ns-nav-drawer .mud-navmenu > .mud-nav-group > .mud-nav-link {
     padding-inline-start: calc(var(--ns-nav-gutter) - var(--ns-nav-inset));
 }

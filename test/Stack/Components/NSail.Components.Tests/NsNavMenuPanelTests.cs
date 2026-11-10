@@ -172,6 +172,16 @@ public sealed class NsNavMenuPanelTests : BunitContext, IAsyncLifetime
         }
     }
 
+    /// <summary>The stylesheet's start-edge rule targets a top-level entry's row as
+    /// <c>.mud-navmenu &gt; .mud-nav-item &gt; .mud-nav-link</c>; the vendor must still render that shape.</summary>
+    [Fact]
+    public void ATopLevelEntryRowIsAChildOfTheNavItemWrapper()
+    {
+        var cut = RenderMenuWithBrand();
+
+        Assert.NotEmpty(cut.FindAll(".mud-navmenu > .mud-nav-item > .mud-nav-link"));
+    }
+
     static AngleSharp.Dom.IElement Scroller(IRenderedComponent<NsNavMenu> cut)
     {
         return cut.Find(".ns-scroll-shadow");

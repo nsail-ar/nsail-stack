@@ -393,6 +393,9 @@ takes: an icon that reports no state is the ink of whatever it names.
 `TextOn*` ink picked to read on it ([branding.md](branding.md)) — for a state that has to read
 from across the screen. No white override: no one ink serves every fill.
 
+Every `NsChip` ends a label that does not fit in `…` (`ns-chip-ellipsis`: `min-width:0` on the chip,
+clipped content); the side menu's cap on it is in [navigation.md](navigation.md).
+
 **Colour goes on the datum, never on the container.** A card is never tinted as a whole — a
 permanently coloured tile is an alarm nobody sees by Thursday — so what carries the tone is the
 number, the name or the dot beside it, and only while it has something to say: *Vencidas* reads
