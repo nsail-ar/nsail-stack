@@ -192,7 +192,9 @@ the files it leaves.
   judged head is the only evidence of the fix: a red at a head that does not hold the story's newest
   merge (a gate that started before it) leaves a landed story in its column, and its comment says
   so (`HarnessTexts.MainRedWithoutFix`); while no gate verdict sits on a head that holds it Develop
-  does not take it. The first green gate of such a head closes the story; a voyage on a story closed
+  does not take it. The first green gate of such a head closes the story: its comment
+  (`HarnessTexts.MainRedFixed`), the `Closed` column, the issue closed. A close that breaks partway fails the
+  gate's job (`could not close #N`) and the next green gate finishes it, without saying the comment a second time for the same merge; a voyage on a story closed
   under it pushes nothing and says nothing, and keeps the quota wall its seat met.
 - **The count** (`Lanes/JobStats.cs`, `stats.json` beside the history): each job that ends adds to its
   role's tally in its hour (kept two days) and its day (ninety, on the machine's clock), its time and
