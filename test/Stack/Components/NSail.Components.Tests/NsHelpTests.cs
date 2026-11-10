@@ -125,28 +125,9 @@ public sealed class NsHelpTests : BunitContext, IAsyncLifetime
         await cut.InvokeAsync(() => cut.Find(".ns-help button").Click());
         Assert.Contains(Paragraph, cut.Markup, StringComparison.Ordinal);
 
-        await cut.InvokeAsync(() => cut.Find(".ns-help").KeyDown(new KeyboardEventArgs { Key = "Escape" }));
+        await cut.Find(".ns-help").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
 
-        cut.WaitForAssertion(() => Assert.DoesNotContain(Paragraph, cut.Markup, StringComparison.Ordinal));
-    }
-
-    /// <summary>Two nested open things and one Escape: the help takes it and the surface around
-    /// it hears nothing; the next Escape, with the help closed, reaches the surface.</summary>
-    [Fact]
-    public async Task Escape_IsTakenByTheHelpFirstAndByTheSurfaceNext()
-    {
-        var cut = Render<HelpInSurfaceHost>(p => p.Add(x => x.Key, "Directory.Organization.DomainHelper"));
-        var escape = new KeyboardEventArgs { Key = "Escape" };
-
-        await cut.InvokeAsync(() => cut.Find(".ns-help button").Click());
-        await cut.InvokeAsync(() => cut.Find(".ns-help").KeyDown(escape));
-
-        cut.WaitForAssertion(() => Assert.DoesNotContain(Paragraph, cut.Markup, StringComparison.Ordinal));
-        Assert.Equal(0, cut.Instance.Escapes);
-
-        await cut.InvokeAsync(() => cut.Find(".ns-help").KeyDown(escape));
-
-        Assert.Equal(1, cut.Instance.Escapes);
+        Assert.DoesNotContain(Paragraph, cut.Markup, StringComparison.Ordinal);
     }
 
     /// <summary>A key that is not Escape leaves it open — the dismissal is a decision, not

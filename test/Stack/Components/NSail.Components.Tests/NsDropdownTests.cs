@@ -73,14 +73,14 @@ public sealed class NsDropdownTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void Escape_AsksTheHostToClose()
+    public async Task Escape_AsksTheHostToClose()
     {
         bool? seen = null;
         var cut = Render(open: true, v => seen = v);
 
-        cut.Find(".ns-dropdown").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        await cut.Find(".ns-dropdown").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
 
-        cut.WaitForAssertion(() => Assert.False(seen));
+        Assert.False(seen);
         Assert.Empty(_provider.FindAll(".ns-dropdown-panel"));
     }
 
@@ -109,14 +109,14 @@ public sealed class NsDropdownTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void Escape_InsideThePanelAsksTheHostToClose()
+    public async Task Escape_InsideThePanelAsksTheHostToClose()
     {
         bool? seen = null;
         Render(open: true, v => seen = v);
 
-        _provider.Find(".ns-dropdown-body").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        await _provider.Find(".ns-dropdown-body").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
 
-        _provider.WaitForAssertion(() => Assert.False(seen));
+        Assert.False(seen);
     }
 
     [Fact]

@@ -98,6 +98,7 @@
     {
         if (args.Key == "Escape")
         {
+            // Next turn, as ui/menus.md says: the stop is bound to the open state.
             await Task.Yield();
             await Close();
         }
