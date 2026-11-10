@@ -16,6 +16,10 @@ namespace NSail.Harness;
 public sealed class OpsReporter(IServiceScopeFactory scopes, HarnessOptions options, IHttpClientFactory clients, OpsLedger ledger, ILogger<OpsReporter> log) : BackgroundService
 {
     const string Route = "api/ops/node/harness";
+    // A failure's outcome can carry a whole command's output; cut on the wire, every job fits a report.
+    internal const int OutcomeChars = 1000;
+    // Under this a report holds no job beside a busy status.
+    internal const int MinBytes = 16 * 1024;
 
     protected override async Task ExecuteAsync(CancellationToken stop)
     {
@@ -57,7 +61,10 @@ public sealed class OpsReporter(IServiceScopeFactory scopes, HarnessOptions opti
     async Task Report(HarnessReport report, CancellationToken stop)
     {
         var ops = options.Ops;
-        var (body, sent) = Piece(report, ledger.Owed(), ops.MaxBytes);
+        var owed = ledger.Owed();
+        var limit = Math.Max(MinBytes, ops.MaxBytes);
+        var (body, sent) = Piece(report, owed, limit);
+        if (sent.Count == 0 && owed.Count > 0) log.LogWarning("{Owed} ended jobs are owed to {Url} and none fits a report under {Limit} bytes", owed.Count, ops.Url, limit);
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{ops.Url!.TrimEnd('/')}/{Route}") { Content = new ByteArrayContent(body) };
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ops.ResolveToken());
@@ -66,8 +73,8 @@ public sealed class OpsReporter(IServiceScopeFactory scopes, HarnessOptions opti
         ledger.Accepted(sent);
     }
 
-    // The report with the owed jobs that fit under the limit; a job too large to fit waits for a
-    // lighter report rather than holding back the ones after it.
+    // The report with the owed jobs that fit under the limit; a job that does not fit beside the
+    // others waits for the next report rather than holding back the ones after it.
     static (byte[] Body, IReadOnlyList<JobRecord> Sent) Piece(HarnessReport report, IReadOnlyList<JobRecord> owed, int limit)
     {
         var size = With(report, []).Length;
@@ -75,7 +82,7 @@ public sealed class OpsReporter(IServiceScopeFactory scopes, HarnessOptions opti
         var jobs = new List<EndedJob>();
         foreach (var job in owed)
         {
-            var ended = new EndedJob(job.Id, job.Work, job.Story, job.Started, job.Ended!.Value, job.Outcome, job.Result);
+            var ended = new EndedJob(job.Id, job.Work, job.Story, job.Started, job.Ended!.Value, Cut(job.Outcome), job.Result);
             var cost = JsonSerializer.SerializeToUtf8Bytes(ended, Json).Length + (jobs.Count > 0 ? 1 : 0);
             if (size + cost > limit) continue;
             size += cost;
@@ -83,6 +90,13 @@ public sealed class OpsReporter(IServiceScopeFactory scopes, HarnessOptions opti
             sent.Add(job);
         }
         return (With(report, jobs), sent);
+    }
+
+    static string? Cut(string? outcome)
+    {
+        if (outcome is not { Length: > OutcomeChars }) return outcome;
+        var keep = char.IsHighSurrogate(outcome[OutcomeChars - 2]) ? OutcomeChars - 2 : OutcomeChars - 1;
+        return outcome[..keep] + "…";
     }
 
     static byte[] With(HarnessReport report, IReadOnlyList<EndedJob> jobs)

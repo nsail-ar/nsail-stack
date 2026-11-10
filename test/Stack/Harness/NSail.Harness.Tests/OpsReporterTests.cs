@@ -15,8 +15,6 @@ namespace NSail.Harness.Tests;
 public sealed class OpsReporterTests : IDisposable
 {
     const string Token = "s3cret-ops-token";
-    // Ops' own ceiling (HarnessReports.BodyCeiling there): the Harness's limit stays under it.
-    const int OpsCeiling = 64 * 1024;
 
     readonly string _root = Directory.CreateTempSubdirectory("ops-reporter").FullName;
     readonly DateTimeOffset _start = new(2026, 11, 9, 10, 0, 0, TimeSpan.Zero);
@@ -120,6 +118,37 @@ public sealed class OpsReporterTests : IDisposable
         Assert.Equal(new EndedJob("job-0", "Dev #42", 42, _start, _start.AddMinutes(38), "opened a PR for the story after a long round of building, testing and reading the thread", "failed"), job);
         Assert.DoesNotContain("job-0.log", ops.Bodies[0]);
         Assert.DoesNotContain("logPath", ops.Bodies[0], StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AJobWhoseOutcomeOutweighsTheLimitStillGoesWithItsOutcomeCut()
+    {
+        var history = History();
+        Ran(history, 1);
+        history.Record(new JobRecord("job-huge", "Dev #42", 42, _start, _start.AddMinutes(5), "failed: push refused: " + new string('é', 200_000), "/work/logs/job-huge.log", "broke"));
+        Ran(history, 1, from: 1);
+        var ops = new Ops();
+
+        await Reporter(history, _root, ops).Tick(_ => Read(running: 16), default);
+
+        Assert.Equal(["job-0", "job-huge", "job-1"], ops.Jobs(0).Select(j => j.Id));
+        var huge = ops.Jobs(0)[1];
+        Assert.Equal(OpsReporter.OutcomeChars, huge.Outcome!.Length);
+        Assert.StartsWith("failed: push refused: ", huge.Outcome);
+        Assert.True(Encoding.UTF8.GetByteCount(ops.Bodies[0]) <= new OpsOptions().MaxBytes);
+    }
+
+    [Fact]
+    public async Task ALimitConfiguredTooLowStillCarriesJobs()
+    {
+        var history = History();
+        Ran(history, 3);
+        var ops = new Ops();
+        var options = new HarnessOptions { Machine = "box", Ops = new OpsOptions { Url = "https://ops.example.com/", Token = Token, MaxBytes = 0 } };
+
+        await new OpsReporter(null!, options, new Clients(ops), new OpsLedger(_root, history), new Warnings()).Tick(_ => Read(running: 16), default);
+
+        Assert.Equal(["job-0", "job-1", "job-2"], ops.Jobs(0).Select(j => j.Id));
     }
 
     [Fact]
@@ -231,7 +260,6 @@ public sealed class OpsReporterTests : IDisposable
 
         await Reporter(history, _root, ops).Tick(_ => Read(running: 16), default);
 
-        Assert.True(new OpsOptions().MaxBytes < OpsCeiling);
         Assert.True(Encoding.UTF8.GetByteCount(ops.Bodies[0]) <= new OpsOptions().MaxBytes);
         Assert.NotEmpty(ops.Jobs(0));
         Assert.Equal(16, JsonSerializer.Deserialize<HarnessReport>(ops.Bodies[0], JsonSerializerOptions.Web)!.Status.Running.Count);

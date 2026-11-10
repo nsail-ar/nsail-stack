@@ -258,11 +258,13 @@ page), `GET /plan` the whole plan and every held story (searched, filtered by ti
 The report to Ops (`OpsReporter`, `Harness:Ops`: `Url`, `Token` or `TokenFile`, every `Minutes`): a
 `HarnessReport` POSTed to `api/ops/node/harness` — the machine, its version, its status and its stats,
 and the ended jobs Ops has not accepted yet (`EndedJob`: id, work, story, started, ended, outcome and
-result; never the log nor its path; a job is its machine, id and start). Which ones Ops accepted lives
+result, the outcome cut to `OpsReporter.OutcomeChars`; never the log nor its path; a job is its
+machine, id and start). Which ones Ops accepted lives
 in `ops.json` beside `jobs.json`, moved only by a 2xx, so a refused post or a restart sends them again
 and Ops keeps each once. Never accepted, every ended job the list holds is owed; one trimmed off the
-list no longer is. The jobs go oldest first, as many as keep the body under `MaxBytes` (default 60 KB,
-under Ops' own ceiling); the rest go with the next reports. The token travels only in the header. Ops
+list no longer is. The jobs go oldest first, as many as keep the body under `MaxBytes` (its default in
+`OpsOptions`, under Ops' own ceiling, never below `OpsReporter.MinBytes`); the rest go with the next
+reports, and a report that owes jobs and fits none costs a warning. The token travels only in the header. Ops
 down or refusing costs one warning per report and never touches a pass.
 
 A running job (`RunningJob`, in the status, the jobs and the report to Ops) says what it is doing

@@ -12,6 +12,7 @@ public sealed class OpsOptions
     public int Minutes { get; set; } = 5;
 
     // The most a report's body weighs, in bytes: under Ops' own ceiling, which refuses rather than cuts.
+    // Never less than OpsReporter.MinBytes.
     public int MaxBytes { get; set; } = 60 * 1024;
 
     public string? ResolveToken()
