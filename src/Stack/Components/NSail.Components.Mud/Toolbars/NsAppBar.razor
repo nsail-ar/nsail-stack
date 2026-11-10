@@ -17,9 +17,10 @@
 
     @if (ShowDrawerButton && LayoutState != null)
     {
-        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+        <MudIconButton Icon="@NsIcons.Menu.Markup"
                        Edge="Edge.Start"
                        Color="Color.Inherit"
+                       aria-label="@Strings.Translate("Common.Menu")"
                        OnClick="LayoutState.ToggleDrawer" />
     }
 
