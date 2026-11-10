@@ -99,4 +99,12 @@ public sealed class NsLinkSchemeTests : BunitContext
 
         Assert.Equal(Authenticator, cut.Find("[href]").GetAttribute("href"));
     }
+
+    [Fact]
+    public void NsLinkResolvesAFragmentThroughTheSurface()
+    {
+        var cut = Render<NsLink>(p => p.Add(x => x.Href, "#frag").Add(x => x.Label, "Sitio"));
+
+        Assert.Equal("/#frag", cut.Find("a[href]").GetAttribute("href"));
+    }
 }

@@ -409,8 +409,8 @@ other end, the surface this session was on would be gone and no route brings it 
   scheme alone (`WebAddress.OpensScheme`), for an address already parsed — `NsUrlField` asks it,
   and `SurfaceContext.IsInert` asks it plus `tel:` and `otpauth:`, the schemes a link may carry
   that the drawer does not draw — each hands the address to an installed app and runs nothing in
-  the page: `NsLink` and `NsChip` hand an address to the browser, `NsChip` as written, so a `tel:` with a
-  space in it still calls, while a scheme no door opens (`javascript:`, `data:`, `vbscript:`) is no
+  the page: `NsLink` and `NsChip` hand an address that carries its own scheme to the browser as
+  written, so a `tel:` with a space in it still calls, while a scheme no door opens (`javascript:`, `data:`, `vbscript:`) is no
   `href`: the rule is on the output, whatever the string came from. A relative path or a
   `#fragment` is no scheme and is not inert: it takes the usual road, the surface resolves it
   (`NsLink`'s `Fragment` is the parameter for a place inside the destination), and only `NsChip`
