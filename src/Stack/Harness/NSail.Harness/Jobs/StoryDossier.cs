@@ -36,7 +36,7 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
         text.AppendLine("## Thread");
         text.AppendLine();
         text.AppendLine(Thread(await board.Comments(story, ct), trusted));
-        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), text.ToString(), ct);
+        await Lay(Path.Combine(outDir, "story.md"), text.ToString(), ct);
     }
 
     public async Task WritePrs(int story, string outDir, CancellationToken ct)
@@ -71,7 +71,7 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
                 }
             }
         }
-        await File.WriteAllTextAsync(Path.Combine(outDir, "prs.md"), text.Length == 0 ? "(no PR for this story)\n" : text.ToString(), ct);
+        await Lay(Path.Combine(outDir, "prs.md"), text.Length == 0 ? "(no PR for this story)\n" : text.ToString(), ct);
     }
 
     // Why an open PR's head is not green where no gate verdict says it: it does not merge, or the CI
@@ -162,7 +162,14 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
             text.AppendLine(Tail(job.LogPath));
             text.AppendLine();
         }
-        await File.WriteAllTextAsync(Path.Combine(outDir, "runs.md"), text.Length == 0 ? "(no job of this story on this machine)\n" : text.ToString(), ct);
+        await Lay(Path.Combine(outDir, "runs.md"), text.Length == 0 ? "(no job of this story on this machine)\n" : text.ToString(), ct);
+    }
+
+    // A dossier reads the same on every host: `\n` lines, whatever the platform's newline or the
+    // line ends of the logs and bodies it quotes.
+    static Task Lay(string path, string text, CancellationToken ct)
+    {
+        return File.WriteAllTextAsync(path, text.ReplaceLineEndings("\n"), ct);
     }
 
     // A job's log is the agent's stream plus the harness's own lines: what it said last, and the
