@@ -200,7 +200,7 @@ public sealed class BrandTheme
     // would ride to a coloured page under a vivid chrome — Surface and SurfaceRaised sit AT white,
     // which the ceiling below holds there.
     static readonly LadderMask LightLadder = new(
-        Background: "#faf9f8",
+        Background: "#fcfbfa",
         Surface: "#ffffff",
         SurfaceRaised: "#ffffff",
         TextPrimary: "#262624",

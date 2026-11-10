@@ -394,7 +394,7 @@ public sealed class BrandThemeContrastTests
     public void TheHouseBrandsAccentInkIsPinned()
     {
         Assert.Equal("#efb575", BrandTheme.DefaultDark().AccentInk);
-        Assert.Equal("#8e5a21", BrandTheme.DefaultLight().AccentInk);
+        Assert.Equal("#985f21", BrandTheme.DefaultLight().AccentInk);
     }
 
     // The band's own accent ink, which answers to two free picks rather than one — the accent
