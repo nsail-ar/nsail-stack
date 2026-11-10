@@ -53,16 +53,17 @@ public class PassFailureTests
     }
 
     [Fact]
-    public void ALimitedPassWaitsWhatItWasAskedUpToTheCeiling()
+    public void ALimitedPassWaitsWhatItWasAskedBetweenTheFloorAndTheCeiling()
     {
         var o = new HarnessOptions { Mode = HarnessMode.Live };
         var busy = TimeSpan.FromSeconds(o.BusyFloorSeconds);
 
         Assert.Equal(TimeSpan.FromSeconds(o.IdlePollSeconds), HarnessLoop.NextWait(true, o));
         Assert.Equal(busy, HarnessLoop.NextWait(false, o));
-        Assert.Equal(TimeSpan.FromMinutes(8), HarnessLoop.PassHold(TimeSpan.FromMinutes(8)));
-        Assert.Equal(HarnessLoop.MaxLimitBackoff, HarnessLoop.PassHold(TimeSpan.FromMinutes(50)));
-        Assert.Equal(TimeSpan.FromSeconds(1), HarnessLoop.PassHold(TimeSpan.FromSeconds(1)));
+        Assert.Equal(TimeSpan.FromMinutes(8), HarnessLoop.LimitHold(TimeSpan.FromMinutes(8)));
+        Assert.Equal(HarnessLoop.MaxLimitBackoff, HarnessLoop.LimitHold(TimeSpan.FromMinutes(50)));
+        Assert.Equal(HarnessLoop.MinLimitBackoff, HarnessLoop.LimitHold(TimeSpan.FromSeconds(1)));
+        Assert.Equal(HarnessLoop.MinLimitBackoff, HarnessLoop.LimitHold(TimeSpan.Zero));
     }
 
     // Limited at 02:18 with the reset at 02:30: nothing goes out before 02:28 (the ceiling), a wake
@@ -84,6 +85,25 @@ public class PassFailureTests
         Assert.Equal(sent, hub.Count);
         Assert.Same(limited, harness.Loop.Last);
         Assert.InRange(HarnessLoop.HeldFor(harness.Loop.LimitedUntil, before)!.Value, HarnessLoop.MaxLimitBackoff - TimeSpan.FromSeconds(5), HarnessLoop.MaxLimitBackoff + TimeSpan.FromSeconds(5));
+    }
+
+    // A reset the clock reads as gone asks for no wait: the client sends again at once, the second
+    // refusal reaches the pass with a zero wait, and the floor still holds the passes after it.
+    [Fact]
+    public async Task ALimitWhoseResetReadsAsGoneStillHoldsThePassesForTheFloor()
+    {
+        var hub = new FakeGitHub { RestLimitedFor = TimeSpan.FromMinutes(-1) };
+        using var harness = new FakeGitHub.Harness(hub);
+        var before = DateTimeOffset.UtcNow;
+
+        var limited = await harness.Start();
+        var sent = hub.Count;
+        harness.Loop.Wake();
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+
+        Assert.NotNull(limited.Error);
+        Assert.Equal(sent, hub.Count);
+        Assert.InRange(HarnessLoop.HeldFor(harness.Loop.LimitedUntil, before)!.Value, HarnessLoop.MinLimitBackoff - TimeSpan.FromSeconds(5), HarnessLoop.MinLimitBackoff + TimeSpan.FromSeconds(5));
     }
 
     [Fact]
