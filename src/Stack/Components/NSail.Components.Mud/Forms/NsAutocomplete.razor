@@ -6,10 +6,14 @@
 @typeparam TValue
 @using System.Diagnostics.CodeAnalysis
 @using System.Reflection
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Routing
 @inherits NsAsyncFieldBase<TValue>
 
 @inject NavigationManager Navigation
+@inject IServiceProvider Services
+@inject IJSRuntime Js
 
 @* The open list is floored at the field's width and bounded by its own results, never capped at
    the field. MudBlazor 9.10.0 defaults RelativeWidth to DropdownWidth.Relative, whose popover
@@ -68,7 +72,7 @@
                  Error="@HasError()"
                  ErrorText="@GetErrorText()"
                  UserAttributes="InputAttributes"
-                 ListClass="ns-lookup-list"
+                 ListClass="@ListClass"
                  ItemDisabledFunc="@ItemDisabledFunc"
                  NoItemsTemplate="@CreateContent"
                  AfterItemsTemplate="@CreateContent" />
@@ -86,6 +90,15 @@
     // reflection; MudVendorContractTests pins the name.
     static readonly FieldInfo? SkipEnterKeyUp =
         typeof(MudAutocomplete<TItem>).GetField("_skipNextEnterKeyUp", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    // The row the vendor highlights and the rows its arrows can reach, which the create entry
+    // below the last of them has to read to know when ArrowDown has run out of rows. Both are
+    // private; MudVendorContractTests pins the names.
+    static readonly FieldInfo? HighlightedRow =
+        typeof(MudAutocomplete<TItem>).GetField("_selectedListItemIndex", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    static readonly FieldInfo? ReachableRows =
+        typeof(MudAutocomplete<TItem>).GetField("_enabledItemIndices", BindingFlags.Instance | BindingFlags.NonPublic);
 
     [Parameter]
     public IEnumerable<TItem>? Items { get; set; }
@@ -132,8 +145,9 @@
     /// Set it and the entry renders in every open state — with results, with partial matches
     /// and on empty; leave it null and there is none. The caller passes a route and not a
     /// finished href: the entry carries this field's own surface cascade across the popover
-    /// portal, so its link resolves the address exactly once, at the anchor
-    /// (intentional-ui-cases.md). The label is composed here, so no entity carries that string
+    /// portal, so its link resolves the address at the anchor
+    /// (intentional-ui-cases.md), and the keyboard's Enter resolves it through the same surface.
+    /// The label is composed here, so no entity carries that string
     /// and no caller writes the link.</summary>
     [Parameter]
     public string? CreateRoute { get; set; }
@@ -246,6 +260,17 @@
     // walk repeats.
     bool _refocusIsStale;
 
+    // The create entry is the list's last row to the keyboard: ArrowDown from the last row the
+    // vendor can reach lands here, and Enter opens the route as a click does. The vendor knows
+    // nothing of it, so the entry is this field's own state, drawn through the class the list
+    // carries (ListClass) and dropped whenever the list is not the one it was reached in.
+    bool _onEntry;
+
+    // The row the vendor highlighted when the last key finished, and null until one did: a list
+    // that has only just opened says nothing about whether ArrowDown is walking it or opened it.
+    // The vendor clamps at its last row, so "did not move" is only readable against this.
+    int? _walkedTo;
+
     /// <summary>The Runner the RESOLVE runs on, separate from the field's own because they are
     /// two unrelated reads: the search answers "what can I pick", the resolve answers "what does
     /// the value I am already holding read as". One Runner carrying both is two ways to lose —
@@ -257,6 +282,12 @@
     Runner Resolver => field ??= new(this);
 
     bool IsBusy => Runner.IsRunning || Resolver.IsRunning;
+
+    string ListClass => _onEntry ? "ns-lookup-list ns-lookup-on-entry" : "ns-lookup-list";
+
+    // The create entry exists for the keyboard exactly where it exists for the mouse
+    // (CreateContent): a route and a concept to name it by.
+    bool HasCreateEntry => !string.IsNullOrEmpty(CreateRoute) && TryGetConcept(out _);
 
     // A field bound to a page-local value has no message property to derive a label from —
     // the item type's own key (MetadataProvider.KeyFor, area-qualified) names the concept and
@@ -347,7 +378,7 @@
                 @<CascadingValue Value="Surface" IsFixed="true">
                     @if (label is not null)
                     {
-                        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ns-lookup-create">
+                        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="@(_onEntry ? "ns-lookup-create ns-lookup-create-active" : "ns-lookup-create")">
                             <NsIcon Icon="@NsIcons.Add" />
                             @* The one open the app makes that is not a place: the window it opens
                                exists to hand a value back to the form standing underneath, which
@@ -497,10 +528,81 @@
     /// empty or settled box does. Eaten in those states it would die: a filter bar whose Enter
     /// sends the question from every other box would answer nothing from this one. A browsed
     /// lookup never takes it — its whole set is on screen from the focus, so the vendor answers
-    /// that Enter off the list already open.</summary>
+    /// that Enter off the list already open. The one exception is the create entry once the arrow
+    /// keys have reached it: that Enter opens the create route and is nobody else's.</summary>
     protected override bool TakesEnter
     {
-        get { return Resolves(_typed); }
+        get { return _onEntry || Resolves(_typed); }
+    }
+
+    // ArrowDown past the last row the vendor can reach lands on the create entry, ArrowUp from it
+    // returns to that row. The vendor clamps at its ends, so the key that ran out of rows is the
+    // one that left its highlight where it already was — read against the row the last key left
+    // it on. An empty list has no row to run out of: the entry is the only thing there to reach, and the
+    // vendor's end it clamps at.
+    // Reaching the entry clears the vendor's highlight; a return writes the last row back.
+    void Walk(bool down)
+    {
+        if (!HasCreateEntry || _autocomplete is not { Open: true })
+        {
+            return;
+        }
+
+        var reachable = (ReachableRows?.GetValue(_autocomplete) as IEnumerable<int> ?? []).ToList();
+        var at = HighlightedRow?.GetValue(_autocomplete) as int?;
+
+        if (_onEntry && down)
+        {
+            HighlightedRow?.SetValue(_autocomplete, -1);
+            _walkedTo = -1;
+
+            return;
+        }
+
+        if (down && !_onEntry)
+        {
+            if (reachable.Count == 0 || (at == reachable[^1] && _walkedTo == at))
+            {
+                _onEntry = true;
+
+                // One place is lit: the vendor's highlight leaves the last option for the entry.
+                HighlightedRow?.SetValue(_autocomplete, -1);
+
+                StateHasChanged();
+            }
+        }
+        else if (!down && _onEntry && reachable.Count > 0)
+        {
+            _onEntry = false;
+
+            HighlightedRow?.SetValue(_autocomplete, reachable[^1]);
+
+            StateHasChanged();
+        }
+
+        _walkedTo = HighlightedRow?.GetValue(_autocomplete) as int?;
+    }
+
+    // The entry opens as the mouse's click does: the surface this field stands on resolves the
+    // route and Follow branches on the target, as every programmatic activation of a destination.
+    async Task OpenCreateAsync()
+    {
+        // Asked of the container only here: a field that never opens a create route stands
+        // where no root surface is registered.
+        var surface = Surface ?? Services.GetRequiredService<RootSurface>().Surface;
+
+        var href = surface.GetHref(CreateRoute!, CreateTarget);
+
+        // A browser target leaves the surfaces behind: Follow opens no surface for it, so the
+        // tab is opened here, as the anchor's own click opens it, and the form stays standing.
+        if (CreateTarget?.IsBrowser == true)
+        {
+            await Js.InvokeVoidAsync("open", href, CreateTarget.Value.Name);
+
+            return;
+        }
+
+        surface.Follow(href, CreateTarget, noHistory: true);
     }
 
     // What the keystroke has to resolve, and the mark above's own answer, so the key is taken
@@ -579,8 +681,33 @@
         // gone the instant it was taken, with the list it was holding down left open.
         _refocusIsStale = false;
 
-        if (args.Key is not ("Enter" or "NumpadEnter") || _autocomplete is null)
+        if (_autocomplete is null)
         {
+            return;
+        }
+
+        // This runs after the vendor has taken the key, so the highlight read below is where the
+        // key left it.
+        if (args.Key is "ArrowDown" or "ArrowUp")
+        {
+            Walk(args.Key == "ArrowDown");
+
+            return;
+        }
+
+        if (args.Key is not ("Enter" or "NumpadEnter"))
+        {
+            return;
+        }
+
+        if (_onEntry)
+        {
+            // The vendor picks on this Enter's key UP: the key is the entry's, so it is handed
+            // back.
+            SkipEnterKeyUp?.SetValue(_autocomplete, true);
+
+            await OpenCreateAsync();
+
             return;
         }
 
@@ -683,6 +810,9 @@
     // close and no list to flicker.
     async Task OnOpenChanged(bool open)
     {
+        _onEntry = false;
+        _walkedTo = null;
+
         if (!open || !_reopenIsStale || _autocomplete is null)
         {
             return;
@@ -858,6 +988,8 @@
         // that ask for no search at all.
         _reopenIsStale = false;
         _refocusIsStale = false;
+        _onEntry = false;
+        _walkedTo = null;
         _searchesOut++;
 
         try

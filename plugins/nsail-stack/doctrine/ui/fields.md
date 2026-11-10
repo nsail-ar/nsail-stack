@@ -783,8 +783,17 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
 - **A lookup is complete only when it is keyboard-complete.** On a `Lazy` lookup whose term
   has several answers: type, Enter, Arrow Down/Up, Enter picks, Esc closes. One answer is taken by
   the first Enter; a browsed lookup or a settled list leaves Enter to the vendor, which picks the
-  highlighted row. The create entry, the quick add and the caller's offer sit outside the vendor's
-  list and are reached by the mouse only.
+  highlighted row. The quick add and the caller's offer sit outside the vendor's list and are
+  reached by the mouse only. The create entry is the list's synthetic last row: Arrow Down from
+  the last option the vendor can reach (the only row of an empty answer) lands on it, Enter
+  opens the create route exactly as its click does, Arrow Up returns to the last option, and
+  Esc closes the list without choosing. Reaching it is not a pick — the bound value never
+  moves — and a lookup with no create route grows no such row. The vendor clamps at its last
+  option, so the field reads its highlight after each key (`NsAutocomplete.Walk`); the
+  vendor's highlight leaves the last option while the entry is reached, so one place is lit, and
+  a one-row list needs a second Arrow Down to reach it. The entry stays a link, not an `option`
+  of the box: a combobox names its active row by `aria-activedescendant`, which the vendor owns.
+  A browser `CreateTarget` opens its tab as the click does and leaves the form standing.
 - **That held text is also what the field hands the vendor BACK as its `Text`, and it is what
   carries a half-typed term across a redraw.** The vendor refreshes its own box from the value it
   holds on every parameter set it is not FOCUSED for, and the text event above is dispatched into
