@@ -407,6 +407,37 @@ public class DevJobRunTests : IDisposable
     }
 
     [Fact]
+    public async Task AHandOffThatPushedNothingAndNamesAnOpenBlockerIsAWall()
+    {
+        await Seed();
+        var board = Board();
+        board.Add(2, title: "other", stage: Stages.Ready);
+
+        var outcome = await Run(new Asking("handoff.md", "Nothing changed: this waits on #2."), board, new Lines());
+
+        Assert.Equal("Walled", outcome.Event);
+        Assert.Equal([2], board.Cards[1].Blockers);
+        Assert.Contains(Labels.Blocked, board.Cards[1].Labels);
+        Assert.DoesNotContain(board.Cards[1].Comments, c => c.Body.Contains(Markers.Voyage));
+    }
+
+    [Fact]
+    public async Task TwoHandOffsInARowThatPushedNothingStallTheStory()
+    {
+        await Seed();
+        var board = Board();
+
+        var first = await Run(new Asking("handoff.md", "Nothing to change yet."), board, new Lines());
+        await Run(new Asking("handoff.md", "Still nothing to change."), board, new Lines());
+        var third = await Run(new Asking("handoff.md", "never written"), board, new Lines());
+
+        Assert.Equal("HandedOff", first.Event);
+        Assert.Contains(Labels.Stalled, board.Cards[1].Labels);
+        Assert.Equal("two dead voyages — stalled", third.Summary);
+        Assert.DoesNotContain(board.Cards[1].Comments, c => c.Body.Contains("never written"));
+    }
+
+    [Fact]
     public async Task AWallOnAStoryWithNothingToBuildLandsInstead()
     {
         await Seed();

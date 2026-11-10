@@ -83,6 +83,25 @@ public sealed class RepositorySet(IReadOnlyList<(IRepository Repository, Reposit
         return landing;
     }
 
+    // A story routed to a pinned repository: its merge there reaches the default branch through the pin.
+    public bool IsPinned(IEnumerable<string> labels)
+    {
+        return repositories.Any(r => r.Options is { Label: { } label, Pin: not null } && labels.Contains(label));
+    }
+
+    // A merge of the story in a pinned repository that the default branch's pin does not hold yet:
+    // what depends on it cannot be built there. False with no merge in one — nothing waits.
+    public async Task<bool> AwaitsPin(int story, CancellationToken ct = default)
+    {
+        foreach (var (repository, options) in repositories)
+        {
+            if (options.Label is null || options.Pin is not { } pin) continue;
+            if (await repository.MergeOf(story, ct) is not { } merge) continue;
+            if (await Pinned(repository, pin, merge, ct) is null) return true;
+        }
+        return false;
+    }
+
     async Task<Merge?> Pinned(IRepository repository, PinOptions pin, Merge merge, CancellationToken ct)
     {
         if (_landed.TryGetValue((repository.Name, merge.Sha), out var found)) return found;

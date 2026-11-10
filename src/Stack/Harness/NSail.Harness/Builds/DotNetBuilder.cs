@@ -147,7 +147,9 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         if (tests.Count == 0) return run.Say("No test project is affected by this change.");
         var testFilter = Filter(dir, "affected-tests.slnf", tests);
         string[] filter = options.TestFilter is { } f ? ["--filter", f] : [];
-        return await run.Dotnet(["test", testFilter, "--configuration", options.Configuration, "--no-build", "--verbosity", "normal", .. filter]);
+        // Minimal still writes every failed test and each assembly's count; a line per passed test is
+        // megabytes nobody reads.
+        return await run.Dotnet(["test", testFilter, "--configuration", options.Configuration, "--no-build", "--verbosity", "minimal", .. filter]);
     }
 
     public async Task<ShellResult> Suite(string dir, string project, string? filter, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default)
@@ -173,6 +175,7 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         }
 
         string[] narrowed = filter is null ? [] : ["--filter", filter];
+        // Normal names each test as it passes: a suite cut by its timeout says where it stood.
         return await run.Dotnet(["test", project, "--configuration", options.Configuration, "--no-build", "--verbosity", "normal", .. narrowed]);
     }
 

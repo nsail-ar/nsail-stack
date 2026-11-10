@@ -106,9 +106,11 @@ sealed class MemoryBoard : IBoard
         return Task.FromResult<IReadOnlyDictionary<string, DateTimeOffset>>(new Dictionary<string, DateTimeOffset>());
     }
 
+    public Dictionary<int, DateTimeOffset> Lifts { get; } = [];
+
     public Task<DateTimeOffset?> LastLift(int story, IReadOnlyCollection<string> labels, CancellationToken ct = default)
     {
-        return Task.FromResult<DateTimeOffset?>(null);
+        return Task.FromResult<DateTimeOffset?>(Lifts.TryGetValue(story, out var at) ? at : null);
     }
 
     public Task Comment(int story, string body)

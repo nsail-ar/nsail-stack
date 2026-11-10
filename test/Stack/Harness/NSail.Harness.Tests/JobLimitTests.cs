@@ -17,6 +17,7 @@ namespace NSail.Harness.Tests;
 // A job that ends on the provider's limit or its server's failure is not the story's break: nothing
 // is said on the story, nothing counts toward stalled, the story goes back as a break puts it, and
 // the item waits what the provider asked. Any other ending still breaks.
+[Collection(nameof(JobLimitTests))]
 public sealed class JobLimitTests : IDisposable
 {
     const int Story = 5;
@@ -208,7 +209,7 @@ public sealed class JobLimitTests : IDisposable
         }
     }
 
-    sealed class Locks : IStoryLock
+    internal sealed class Locks : IStoryLock
     {
         public List<int> Released { get; } = [];
 

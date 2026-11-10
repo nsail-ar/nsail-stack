@@ -200,7 +200,8 @@ public sealed class OpsReporterTests : IDisposable
         var reporter = Reporter(history, _root, ops);
 
         await reporter.Tick(_ => Read(), default);
-        Ran(history, 500, from: 10);
+        var later = 10 + (int)JobHistory.Keep.TotalMinutes;
+        Ran(history, 500, from: later);
         for (var tick = 0; tick < 6; tick++)
         {
             await reporter.Tick(_ => Read(), default);
@@ -209,7 +210,7 @@ public sealed class OpsReporterTests : IDisposable
         var sent = Enumerable.Range(1, ops.Bodies.Count - 1).SelectMany(ops.Jobs).Select(j => j.Id).ToList();
         Assert.Equal(500, sent.Count);
         Assert.DoesNotContain("job-9", sent);
-        Assert.Equal("job-10", sent[0]);
+        Assert.Equal($"job-{later}", sent[0]);
     }
 
     [Fact]

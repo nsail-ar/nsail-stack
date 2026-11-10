@@ -35,7 +35,7 @@ public static class WorkerPlanner
         {
             notes.Add($"release andon ({a.Product}): nothing but the release starts until its cut ships — waits for {a.Waits}");
         }
-        var lookup = new StoryLookup(issues, board.Prs, board.MergedStories);
+        var lookup = new StoryLookup(issues, board.Prs, board.MergedStories, board.AwaitingPin);
         var flight = board.Flight;
         var prsByStory = board.Prs.GroupBy(p => p.Story).ToDictionary(g => g.Key, g => g.OrderBy(p => p.Number).ToList());
 
