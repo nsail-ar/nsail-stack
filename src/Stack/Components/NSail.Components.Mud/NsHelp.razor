@@ -66,10 +66,13 @@
         _open = false;
     }
 
-    void OnKeyDown(KeyboardEventArgs args)
+    // Closes on the next turn: the stop above is bound to _open and Blazor reads it after this
+    // handler returns, so closing in the same dispatch would let the same Escape through.
+    async Task OnKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Escape")
         {
+            await Task.Yield();
             Close();
         }
     }

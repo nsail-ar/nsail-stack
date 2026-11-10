@@ -80,7 +80,7 @@ public sealed class NsDropdownTests : BunitContext, IAsyncLifetime
 
         cut.Find(".ns-dropdown").KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
-        Assert.False(seen);
+        cut.WaitForAssertion(() => Assert.False(seen));
         Assert.Empty(_provider.FindAll(".ns-dropdown-panel"));
     }
 
@@ -116,7 +116,7 @@ public sealed class NsDropdownTests : BunitContext, IAsyncLifetime
 
         _provider.Find(".ns-dropdown-body").KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
-        Assert.False(seen);
+        _provider.WaitForAssertion(() => Assert.False(seen));
     }
 
     [Fact]

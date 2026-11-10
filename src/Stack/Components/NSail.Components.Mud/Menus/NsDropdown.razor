@@ -98,6 +98,7 @@
     {
         if (args.Key == "Escape")
         {
+            await Task.Yield();
             await Close();
         }
     }

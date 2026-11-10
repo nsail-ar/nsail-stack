@@ -65,10 +65,11 @@
 
     // Anything that opens on a click owes the same click a way back out; the chevron is that way
     // and never leaves the screen, so the key is the courtesy and not the exit.
-    void OnKeyDown(KeyboardEventArgs args)
+    async Task OnKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Escape")
         {
+            await Task.Yield();
             _open = false;
         }
     }

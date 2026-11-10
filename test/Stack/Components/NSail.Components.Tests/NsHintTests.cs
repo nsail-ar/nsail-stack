@@ -89,7 +89,7 @@ public sealed class NsHintTests : BunitContext, IAsyncLifetime
 
         await cut.InvokeAsync(() => cut.Find(".ns-help").KeyDown(new KeyboardEventArgs { Key = "Escape" }));
 
-        Assert.Empty(cut.FindAll(".ns-help-text"));
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".ns-help-text")));
     }
 
     [Fact]
