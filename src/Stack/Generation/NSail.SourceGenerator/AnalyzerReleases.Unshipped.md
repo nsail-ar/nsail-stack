@@ -7,7 +7,7 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 NSG001 | NSail.Generation | Error | A route token has no route-bound property on the message.
 NSG002 | NSail.Generation | Error | A [Pushed] type does not implement IMessage.
-NSG003 | NSail.Generation | Error | A [Pushed] event declares a public property.
+NSG003 | NSail.Generation | Error | A [Pushed] event declares or inherits a public property.
 NSG004 | NSail.Generation | Error | An organization axis would be mapped by name alone.
 NSG005 | NSail.Generation | Error | A [Primitive] member's type differs from its source's.
 NSG006 | NSail.Generation | Error | A mapped member has no conversion from its source.

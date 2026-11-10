@@ -21,7 +21,7 @@ sealed class JobMeter : IDisposable
     const int Unswept = -1;
 
     readonly Meter _meter = new(BackgroundJobMetrics.MeterName);
-    readonly ConcurrentDictionary<string, Job> _jobs = new(StringComparer.Ordinal);
+    readonly ConcurrentDictionary<Type, Job> _jobs = new();
     readonly Counter<long> _passes;
 
     public JobMeter()
@@ -42,12 +42,12 @@ sealed class JobMeter : IDisposable
             description: "Time since the job last completed a pass, in its own declared intervals.");
     }
 
-    public void Scheduled(string job, TimeSpan interval)
+    public void Scheduled(Type job, TimeSpan interval)
     {
         _jobs[job] = new Job(interval);
     }
 
-    public void Swept(string job, int passes)
+    public void Swept(Type job, int passes)
     {
         if (_jobs.TryGetValue(job, out var scheduled))
         {
@@ -55,11 +55,11 @@ sealed class JobMeter : IDisposable
         }
     }
 
-    public void Passed(string job, bool succeeded)
+    public void Passed(Type job, bool succeeded)
     {
         _passes.Add(
             1,
-            new KeyValuePair<string, object?>(BackgroundJobMetrics.JobTag, job),
+            new KeyValuePair<string, object?>(BackgroundJobMetrics.JobTag, job.Name),
             new KeyValuePair<string, object?>(BackgroundJobMetrics.OutcomeTag, succeeded ? BackgroundJobMetrics.Succeeded : BackgroundJobMetrics.Failed));
 
         if (succeeded && _jobs.TryGetValue(job, out var scheduled))
@@ -70,11 +70,11 @@ sealed class JobMeter : IDisposable
 
     // Another replica holds the pass: it counts as completed for the overdue clock, because the
     // job is being run and this runner is not the one late.
-    public void Skipped(string job)
+    public void Skipped(Type job)
     {
         _passes.Add(
             1,
-            new KeyValuePair<string, object?>(BackgroundJobMetrics.JobTag, job),
+            new KeyValuePair<string, object?>(BackgroundJobMetrics.JobTag, job.Name),
             new KeyValuePair<string, object?>(BackgroundJobMetrics.OutcomeTag, BackgroundJobMetrics.Skipped));
 
         if (_jobs.TryGetValue(job, out var scheduled))
@@ -90,26 +90,26 @@ sealed class JobMeter : IDisposable
 
     IEnumerable<Measurement<int>> ObserveRoster()
     {
-        foreach (var (name, job) in _jobs)
+        foreach (var (type, job) in _jobs)
         {
             if (job.Roster != Unswept)
             {
-                yield return new Measurement<int>(job.Roster, Tag(name));
+                yield return new Measurement<int>(job.Roster, Tag(type));
             }
         }
     }
 
     IEnumerable<Measurement<double>> ObserveOverdue()
     {
-        foreach (var (name, job) in _jobs)
+        foreach (var (type, job) in _jobs)
         {
-            yield return new Measurement<double>(job.Overdue, Tag(name));
+            yield return new Measurement<double>(job.Overdue, Tag(type));
         }
     }
 
-    static KeyValuePair<string, object?> Tag(string job)
+    static KeyValuePair<string, object?> Tag(Type job)
     {
-        return new KeyValuePair<string, object?>(BackgroundJobMetrics.JobTag, job);
+        return new KeyValuePair<string, object?>(BackgroundJobMetrics.JobTag, job.Name);
     }
 
     // One job's standing state, read by the gauge callbacks on the exporter's thread and

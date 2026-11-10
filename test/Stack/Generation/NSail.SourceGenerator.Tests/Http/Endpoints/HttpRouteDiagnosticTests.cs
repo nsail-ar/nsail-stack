@@ -187,6 +187,7 @@ public class HttpRouteDiagnosticTests
     [Theory]
     [InlineData("[AsHeader] public int[]? Attempts { get; set; }")]
     [InlineData("[AsHeader] public System.Collections.Generic.List<string>? Attempts { get; set; }")]
+    [InlineData("[AsHeader] public System.Collections.Immutable.ImmutableArray<string> Attempts { get; set; }")]
     public void A_collection_header_is_a_build_error(string member)
     {
         var diagnostics = Run(RouteSource("[Http(Method.Get, \"api/items\")]", member));

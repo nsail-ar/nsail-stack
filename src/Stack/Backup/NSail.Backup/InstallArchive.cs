@@ -210,7 +210,7 @@ public static class InstallArchive
         }
     }
 
-    static async Task AddFile(ZipArchive archive, string path, string entryName, ArchiveCipher? cipher, CancellationToken cancelToken)
+    internal static async Task AddFile(ZipArchive archive, string path, string entryName, ArchiveCipher? cipher, CancellationToken cancelToken)
     {
         // A sealed entry is incompressible.
         var level = cipher is not null
@@ -231,7 +231,7 @@ public static class InstallArchive
         await cipher.Encrypt(file, entryStream, entryName, cancelToken);
     }
 
-    static async Task Extract(ZipArchiveEntry entry, string path, ArchiveCipher? cipher, CancellationToken cancelToken)
+    internal static async Task Extract(ZipArchiveEntry entry, string path, ArchiveCipher? cipher, CancellationToken cancelToken)
     {
         await using var entryStream = entry.Open();
         await using var file = File.Create(path);

@@ -96,7 +96,7 @@ not a silent skip.
 |---|---|---|
 | `NSG001` | Error | An `[Http]` route token has no route-bound property |
 | `NSG002` | Error | A `[Pushed]` type is not an `IMessage` |
-| `NSG003` | Error | A `[Pushed]` event declares a public property |
+| `NSG003` | Error | A `[Pushed]` event declares or inherits a public property |
 | `NSG014` | Error | A `[Queue]` message returns a result (`IMessage<T>`) |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` |
 | `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) |

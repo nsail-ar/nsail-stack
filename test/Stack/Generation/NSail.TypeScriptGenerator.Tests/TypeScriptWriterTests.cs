@@ -90,6 +90,30 @@ public class TypeScriptWriterTests
         Assert.Contains("plus: { kind: \"string\", key: \"Shop.AddOrderLine.Plus\", binding: \"body\", pattern: \"^\\\\\\u002B\\u002B$\" }", text);
     }
 
+    [Theory]
+    [InlineData("winPath", "WinPath")]
+    [InlineData("starClass", "StarClass")]
+    [InlineData("questClass", "QuestClass")]
+    [InlineData("braceClass", "BraceClass")]
+    public void A_pattern_that_only_looks_dotnet_only_is_emitted_for_the_client(string field, string member)
+    {
+        var text = Orders();
+
+        Assert.Contains($"{field}: {{ kind: \"string\", key: \"Shop.AddOrderLine.{member}\", binding: \"body\", pattern: ", text);
+    }
+
+    [Theory]
+    [InlineData("Anchored")]
+    [InlineData("Atomic")]
+    [InlineData("Possessive")]
+    [InlineData("Subtracted")]
+    public void A_dotnet_only_construct_stays_a_server_rule(string member)
+    {
+        var text = Orders();
+
+        Assert.Contains($"{char.ToLowerInvariant(member[0])}{member[1..]}: {{ kind: \"string\", key: \"Shop.AddOrderLine.{member}\", binding: \"body\", serverRules: [\"RegularExpression\"] }}", text);
+    }
+
     [Fact]
     public void Int64_and_decimal_members_are_strings_of_their_own_kind()
     {

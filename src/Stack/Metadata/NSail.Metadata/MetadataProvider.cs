@@ -40,7 +40,7 @@ public class MetadataProvider
     }
 
     /// <summary>Canonical key for a type: "{Area}.{Object}" plus an optional member
-    /// ("Directory.PartyIdentity.Name") — used for localization and settings storage.
+    /// ("Acme.Invoice.Number") — used for localization and settings storage.
     /// Defined in terms of Get: overriding Get affects every derived key.</summary>
     public virtual string KeyFor(Type type, string? member = null)
     {
@@ -51,7 +51,7 @@ public class MetadataProvider
         return member is null ? key : $"{key}.{member}";
     }
 
-    /// <summary>Canonical key for an enum value ("Directory.PartyKind.Individual").</summary>
+    /// <summary>Canonical key for an enum value ("Acme.InvoiceStatus.Paid").</summary>
     public string KeyFor(Enum value)
     {
         ArgumentNullException.ThrowIfNull(value);

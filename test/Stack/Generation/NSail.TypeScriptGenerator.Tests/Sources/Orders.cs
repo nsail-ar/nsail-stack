@@ -107,6 +107,30 @@ public class AddOrderLine : IMessage
     [RegularExpression(@"^\++$")]
     public string Plus { get; set; } = string.Empty;
 
+    [RegularExpression(@"^C:\\Archive$")]
+    public string WinPath { get; set; } = string.Empty;
+
+    [RegularExpression(@"^[*+]+$")]
+    public string StarClass { get; set; } = string.Empty;
+
+    [RegularExpression(@"^[?+]+$")]
+    public string QuestClass { get; set; } = string.Empty;
+
+    [RegularExpression(@"^[{}+]+$")]
+    public string BraceClass { get; set; } = string.Empty;
+
+    [RegularExpression(@"\Aabc\z")]
+    public string Anchored { get; set; } = string.Empty;
+
+    [RegularExpression(@"^(?>a+)b$")]
+    public string Atomic { get; set; } = string.Empty;
+
+    [RegularExpression(@"^a++$")]
+    public string Possessive { get; set; } = string.Empty;
+
+    [RegularExpression(@"^[a-z-[aeiou]]+$")]
+    public string Subtracted { get; set; } = string.Empty;
+
     public long Batch { get; set; }
 
     public ulong? Serial { get; set; }

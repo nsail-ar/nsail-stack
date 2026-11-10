@@ -229,6 +229,45 @@ public sealed class JobMetricsTests
         Assert.Equal(1, meters.Passes(nameof(MeteredInstallJob), BackgroundJobMetrics.Succeeded));
     }
 
+    // Two kits' jobs of one simple name are two jobs to the meter too: each keeps its own state,
+    // so one's completed pass cannot reset the other's overdue clock.
+    [Fact]
+    public async Task Two_jobs_of_one_simple_name_report_a_roster_each()
+    {
+        using var meters = new Meters();
+        var gate = new Gate();
+        var twins = new Twins();
+
+        await using var provider = Harness.Build(services =>
+        {
+            services.AddSingleton(gate);
+            services.AddSingleton(twins);
+            services.AddBackgroundJob<KitOne.CleanupJob>();
+            services.AddBackgroundJob<KitTwo.CleanupJob>();
+        });
+
+        var runner = Harness.Runner(provider);
+
+        try
+        {
+            await runner.StartAsync(CancellationToken.None);
+
+            await twins.One.Reached.WaitAsync(TimeSpan.FromSeconds(10));
+            await twins.Two.Reached.WaitAsync(TimeSpan.FromSeconds(10));
+
+            meters.Poll();
+
+            Assert.Equal(2, meters.Readings(BackgroundJobMetrics.Roster, nameof(KitOne.CleanupJob)).Count);
+            Assert.Equal(2, meters.Readings(BackgroundJobMetrics.Overdue, nameof(KitOne.CleanupJob)).Count);
+        }
+        finally
+        {
+            gate.Open.TrySetResult();
+
+            await runner.StopAsync(CancellationToken.None);
+        }
+    }
+
     // A job whose loop dies before it has a cadence has no cadence to be late against, so it
     // emits no gauge at all — the counter is the only place it can say anything.
     [Fact]
