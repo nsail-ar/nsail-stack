@@ -40,10 +40,18 @@ public class MainGateTests
         Assert.DoesNotContain(SampleWorkers.Plan(board, new PlannerOptions(Gate: true)).Items, i => i.Kind == WorkKind.Main);
     }
 
+    // The harness files as "harness"; "fleet" is another harness of the fleet; `area:stack` routes a story
+    // to a second repository.
     static MainGateJob Job(MemoryBoard board, DevJobRunTests.FileRepository repo, string head, DevJobRunTests.Lines? logs = null)
     {
-        var options = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }] };
-        var ctx = new JobContext(board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace>(),
+        var options = new HarnessOptions
+        {
+            Repositories = [new RepositoryOptions { Name = "acme/app" }, new RepositoryOptions { Name = "acme/stack", Label = "area:stack" }],
+            MarkerAuthors = ["fleet"],
+            RedLabels = [.. RedLabels],
+        };
+        var repos = new RepositorySet([(repo, options.Repositories[0]), (new DevJobRunTests.FileRepository(repo.CloneUrl), options.Repositories[1])]);
+        var ctx = new JobContext(board, repos, new Dictionary<string, Workspace>(),
             new NoAgent(), options, [], logs ?? new DevJobRunTests.Lines(), new BuildLeases(1));
         return new MainGateJob(new WorkItem(WorkKind.Main, null, null, "main", "main moved", Sha: head), ctx);
     }
@@ -78,7 +86,7 @@ public class MainGateTests
     {
         using var main = await MainHistory.Create();
         var board = new MemoryBoard();
-        board.Add(1, title: Red, stage: stage);
+        board.Add(1, title: Red, stage: stage).Author = "harness";
 
         await ReportRed(board, main, main.Merge, main.Parent);
 
@@ -92,7 +100,7 @@ public class MainGateTests
     {
         using var main = await MainHistory.Create();
         var board = new MemoryBoard();
-        board.Add(1, title: Red, stage: Stages.Merged);
+        board.Add(1, title: Red, stage: Stages.Merged).Author = "harness";
 
         await ReportRed(board, main, main.Merge, main.Fix);
 
@@ -106,7 +114,7 @@ public class MainGateTests
     {
         using var main = await MainHistory.Create();
         var board = new MemoryBoard();
-        board.Add(1, title: Red, stage: Stages.Qa);
+        board.Add(1, title: Red, stage: Stages.Qa).Author = "harness";
 
         await ReportRed(board, main, null, main.Parent);
 
@@ -121,9 +129,96 @@ public class MainGateTests
 
         await ReportRed(board, main, null, main.Fix);
 
-        var (_, card) = Assert.Single(board.Cards);
+        var (n, card) = Assert.Single(board.Cards);
         Assert.StartsWith(Red, card.Title);
         Assert.Equal(Stages.Ready, card.Stage);
+        Assert.Equal(RedLabels, card.Labels);
+
+        await ReportRed(board, main, null, main.Fix);
+
+        Assert.Single(board.Cards);
+        Assert.Single(board.Cards[n].Comments);
+    }
+
+    static readonly HashSet<string> RedLabels = ["red", "p1"];
+
+    const string StackLookAlike = "CI red on main (nsail-stack): NSail.Messaging.Tests red";
+
+    // A story named like main's red that the gate did not file for this repository's main.
+    public static TheoryData<string, string, string?> LookAlikes => new()
+    {
+        { StackLookAlike, "someone", "area:stack" },
+        { Red, "someone", null },
+        { Red, "fleet", "area:stack" },
+        { Red, "", null },
+    };
+
+    [Theory]
+    [MemberData(nameof(LookAlikes))]
+    public async Task AnOlderLookAlikeIsPassedOverForTheGatesOwnRedStory(string title, string author, string? area)
+    {
+        using var main = await MainHistory.Create();
+        var board = new MemoryBoard();
+        board.Add(1, title: title, stage: Stages.Ready, labels: area is null ? [] : [area]).Author = author;
+        board.Add(2, title: Red, stage: Stages.Ready).Author = "fleet";
+
+        await ReportRed(board, main, null, main.Fix);
+
+        Assert.Empty(board.Cards[1].Comments);
+        Assert.Single(board.Cards[2].Comments);
+        Assert.Equal(2, board.Cards.Count);
+    }
+
+    [Theory]
+    [MemberData(nameof(LookAlikes))]
+    public async Task ARedWithOnlyALookAlikeOpenFilesItsOwnStory(string title, string author, string? area)
+    {
+        using var main = await MainHistory.Create();
+        var board = new MemoryBoard();
+        board.Add(1, title: title, stage: Stages.Merged, labels: area is null ? [] : [area]).Author = author;
+
+        await ReportRed(board, main, main.Merge, main.Fix);
+
+        Assert.Empty(board.Cards[1].Comments);
+        Assert.Equal(Stages.Merged, board.Cards[1].Stage);
+        var (_, filed) = Assert.Single(board.Cards, c => c.Key != 1);
+        Assert.Equal(Red, filed.Title);
+        Assert.Equal(Stages.Ready, filed.Stage);
+    }
+
+    [Fact]
+    public async Task ARedAtAHeadThatHoldsALookAlikesMergeReportsOnlyOnTheRealStory()
+    {
+        using var main = await MainHistory.Create();
+        var board = new MemoryBoard();
+        board.Add(1, title: StackLookAlike, stage: Stages.Merged, labels: ["area:stack"]).Author = "someone";
+        board.Add(2, title: Red, stage: Stages.InProgress).Author = "harness";
+
+        await ReportRed(board, main, main.Merge, main.Fix);
+
+        Assert.Empty(board.Cards[1].Comments);
+        Assert.Equal(Stages.Merged, board.Cards[1].Stage);
+        Assert.Single(board.Cards[2].Comments);
+        Assert.Equal(2, board.Cards.Count);
+    }
+
+    [Fact]
+    public async Task AGreenHeadThatHoldsALookAlikesMergeLeavesItOpenAndClosesTheRealStory()
+    {
+        using var main = await MainHistory.Create();
+        var board = new MemoryBoard();
+        board.Add(1, title: StackLookAlike, stage: Stages.Merged, labels: ["area:stack"]).Author = "someone";
+        board.Add(2, title: Red, stage: Stages.Merged).Author = "harness";
+
+        var outcome = await Green(board, main, new DevJobRunTests.FileRepository(main.Dir) { Landed = main.Merge }, main.Fix);
+
+        Assert.False(outcome.Failed);
+        Assert.Null(board.Cards[1].ClosedAt);
+        Assert.Equal(Stages.Merged, board.Cards[1].Stage);
+        Assert.Empty(board.Cards[1].Comments);
+        Assert.NotNull(board.Cards[2].ClosedAt);
+        Assert.Equal(Stages.Closed, board.Cards[2].Stage);
+        Assert.Equal(1, Closings(board, 2));
     }
 
     [Fact]
@@ -131,7 +226,7 @@ public class MainGateTests
     {
         using var main = await MainHistory.Create();
         var board = new MemoryBoard();
-        board.Add(1, title: Red, stage: Stages.Merged);
+        board.Add(1, title: Red, stage: Stages.Merged).Author = "harness";
 
         var outcome = await Green(board, main, new DevJobRunTests.FileRepository(main.Dir) { Landed = main.Merge }, main.Fix);
 
@@ -148,7 +243,7 @@ public class MainGateTests
     {
         using var main = await MainHistory.Create();
         var board = new MemoryBoard();
-        board.Add(1, title: Red, stage: Stages.Merged);
+        board.Add(1, title: Red, stage: Stages.Merged).Author = "harness";
         if (stageWrite) board.NextSetStageThrows = Refused();
         else board.NextCloseThrows = Refused();
         var repo = new DevJobRunTests.FileRepository(main.Dir) { Landed = main.Merge };
@@ -174,7 +269,7 @@ public class MainGateTests
     {
         using var main = await MainHistory.Create();
         var board = new MemoryBoard();
-        board.Add(1, title: Red, stage: Stages.Merged);
+        board.Add(1, title: Red, stage: Stages.Merged).Author = "harness";
         board.NextCloseThrows = Refused();
         var repo = new DevJobRunTests.FileRepository(main.Dir) { Landed = main.Merge };
         await Green(board, main, repo, main.Fix);
@@ -194,7 +289,7 @@ public class MainGateTests
     {
         using var main = await MainHistory.Create();
         var board = new MemoryBoard();
-        board.Add(1, title: Red, stage: Stages.Merged);
+        board.Add(1, title: Red, stage: Stages.Merged).Author = "harness";
         var repo = new DevJobRunTests.FileRepository(main.Dir) { Landed = why == "no merge" ? null : main.Merge };
         if (why == "open PR") repo.Open.Add(new PrRef(7, "nsail#1: fix", "story/nsail-1", null, "acme/app"));
 

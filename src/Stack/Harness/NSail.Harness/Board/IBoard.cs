@@ -60,6 +60,10 @@ public interface IBoard
     // all of labels when given; a consistent read, never a lagging index. Identity is the title: labels are edited by hand.
     Task<int?> FindOpen(string title, IReadOnlyCollection<string> labels, bool exact = true, CancellationToken ct = default);
 
+    // Every open story whose title starts so, oldest first, with who filed it and its labels: a consistent
+    // read, never a lagging index. Where the title alone is not identity, the filer is.
+    Task<IReadOnlyList<OpenStory>> OpenTitled(string prefix, CancellationToken ct = default);
+
     // The stories closed since this instant, with the stage each one stands in: one closed outside
     // the harness (a hand, a script) keeps whatever column it had until something moves it.
     Task<IReadOnlyList<(int Number, string Stage)>> ClosedSince(DateTimeOffset since, CancellationToken ct = default);

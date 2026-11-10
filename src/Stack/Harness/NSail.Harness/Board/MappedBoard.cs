@@ -138,6 +138,11 @@ public sealed class MappedBoard(IBoard board, IReadOnlyDictionary<string, string
         return board.FindOpen(title, labels.Select(LabelOut).ToList(), exact, ct);
     }
 
+    public async Task<IReadOnlyList<OpenStory>> OpenTitled(string prefix, CancellationToken ct = default)
+    {
+        return (await board.OpenTitled(prefix, ct)).Select(s => s with { Labels = LabelsIn(s.Labels) }).ToList();
+    }
+
     public async Task<IReadOnlyList<(int Number, string Stage)>> ClosedSince(DateTimeOffset since, CancellationToken ct = default)
     {
         return (await board.ClosedSince(since, ct)).Select(c => (c.Number, StageIn(c.Stage))).ToList();
