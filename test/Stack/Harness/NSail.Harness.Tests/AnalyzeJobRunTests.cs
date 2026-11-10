@@ -25,7 +25,7 @@ public class AnalyzeJobRunTests : IDisposable
     }
 
     // A seat that writes a Ready verdict and, when given, the paths its story's change must touch.
-    sealed class Analyst(string? protectedPaths, string verdict = "ready") : IAgent
+    sealed class Analyst(string? protectedPaths, string verdict = "ready", string? labels = null) : IAgent
     {
         public string Prompt { get; private set; } = "";
 
@@ -39,6 +39,7 @@ public class AnalyzeJobRunTests : IDisposable
             await File.WriteAllTextAsync(Path.Combine(dir, "body.md"), "The shaped body.", ct);
             await File.WriteAllTextAsync(Path.Combine(dir, "comment.md"), "Claim, Done, Readers.", ct);
             if (protectedPaths is not null) await File.WriteAllTextAsync(Path.Combine(dir, "protected.txt"), protectedPaths, ct);
+            if (labels is not null) await File.WriteAllTextAsync(Path.Combine(dir, "labels.txt"), labels, ct);
             return new AgentResult(0, false, null, false, null);
         }
 
@@ -78,6 +79,7 @@ public class AnalyzeJobRunTests : IDisposable
 
         var board = new MemoryBoard();
         board.Add(1, title: title, stage: Stages.Analyze, labels: labels);
+        board.Add(2, stage: Stages.Closed, labels: [Labels.NoWalk, Labels.P1, "area:shop", "other"]);
         var options = new HarnessOptions
         {
             WorkRoot = Path.Combine(_root, "work"),
@@ -92,6 +94,16 @@ public class AnalyzeJobRunTests : IDisposable
             seat, options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
         var job = new AnalyzeJob(new WorkItem(WorkKind.Analyze, 1, null, "rest", "rest", Worker: "analyze"), ctx, new JobHistory(Path.Combine(_root, "history")));
         return (board, await job.Run(1, Path.Combine(_root, "job.log"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task TheAnalystMarksAStoryNoWalkAndNeverAHandsLabel()
+    {
+        var board = await Analyze(new Analyst(null, labels: "no-walk\narea:shop\np1\nother\n"));
+
+        Assert.Superset(new HashSet<string> { Labels.NoWalk, "area:shop" }, board.Cards[1].Labels);
+        Assert.DoesNotContain(Labels.P1, board.Cards[1].Labels);
+        Assert.DoesNotContain("other", board.Cards[1].Labels);
     }
 
     [Fact]

@@ -40,6 +40,10 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     async Task<JobOutcome> Walk(int n, int slot, string logPath, JobStep step, CancellationToken ct)
     {
         var started = DateTimeOffset.UtcNow;
+        if ((await ctx.Board.Labels(n, ct)).Contains(Labels.NoWalk))
+        {
+            return new JobOutcome("not walked: no-walk", Event: "NotApplicable", Report: $"{ctx.Texts.NoWalk} {ctx.Texts.Signature}");
+        }
         if (await Quiet(n, step, started, ct)) return new JobOutcome("waiting on its ask, nothing new since its last walk", Idle: true);
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };

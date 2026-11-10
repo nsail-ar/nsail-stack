@@ -183,6 +183,6 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
 
     async Task<IEnumerable<string>> KnownLabels(CancellationToken ct)
     {
-        return (await ctx.Board.KnownLabels(ct)).Where(l => l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal) || l.StartsWith(ctx.Agent.Driver + ":", StringComparison.Ordinal));
+        return (await ctx.Board.KnownLabels(ct)).Where(l => l == Labels.NoWalk || l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal) || l.StartsWith(ctx.Agent.Driver + ":", StringComparison.Ordinal));
     }
 }
