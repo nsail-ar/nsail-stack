@@ -106,6 +106,72 @@ public class MapperDiagnosticsTests
     }
 
     [Fact]
+    public void A_MapFrom_Ignore_withdraws_a_nullable_from_the_pairing()
+    {
+        var diagnostics = Generate("""
+            public class CreateAccount { public int Id { get; set; } public int? Kind { get; set; } }
+
+            [Entity, MapFrom(typeof(CreateAccount), Ignore = [nameof(CreateAccount.Kind)])]
+            public class Account { public int Id { get; set; } public int Kind { get; set; } }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void A_MapFrom_Ignore_leaves_the_MapTo_projection_reading_the_member()
+    {
+        var (diagnostics, source) = Run("""
+            public class CreateAccount { public int Id { get; set; } public int? Kind { get; set; } }
+            public class AccountRow { public int Id { get; set; } public int Kind { get; set; } }
+
+            [Entity, MapFrom(typeof(CreateAccount), Ignore = [nameof(CreateAccount.Kind)]), MapTo(typeof(AccountRow))]
+            public class Account { public int Id { get; set; } public int Kind { get; set; } }
+            """);
+
+        Assert.Empty(diagnostics);
+        Assert.Contains("Kind = ", source);
+        Assert.DoesNotContain("target.Kind =", source);
+    }
+
+    // The owner is declared first and reaches the part's pair before the part's own declaration.
+    [Fact]
+    public void A_MapFrom_Ignore_on_a_part_declared_after_its_owner_still_withdraws()
+    {
+        var diagnostics = Generate("""
+            public class SaveLine { public int Id { get; set; } public int? Kind { get; set; } }
+            public class SaveOrder { public int Id { get; set; } public System.Collections.Generic.List<SaveLine> Lines { get; set; } }
+
+            [Entity, MapFrom(typeof(SaveOrder))]
+            public class Order
+            {
+                public int Id { get; set; }
+
+                [Composition]
+                public System.Collections.Generic.List<Line> Lines { get; set; }
+            }
+
+            [Entity, MapFrom(typeof(SaveLine), Ignore = [nameof(SaveLine.Kind)])]
+            public class Line { public int Id { get; set; } public int Kind { get; set; } }
+            """);
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public void A_nullable_on_another_pairing_is_still_refused_beside_an_Ignore()
+    {
+        var diagnostics = Generate("""
+            public class CreateAccount { public int Id { get; set; } public int? Kind { get; set; } public int? Level { get; set; } }
+
+            [Entity, MapFrom(typeof(CreateAccount), Ignore = [nameof(CreateAccount.Kind)])]
+            public class Account { public int Id { get; set; } public int Kind { get; set; } public int Level { get; set; } }
+            """);
+
+        Assert.Equal("NSG025", Assert.Single(diagnostics).Id);
+    }
+
+    [Fact]
     public void A_target_with_no_parameterless_constructor_is_refused()
     {
         var diagnostics = Generate("""
@@ -574,6 +640,11 @@ public class MapperDiagnosticsTests
 
     static IReadOnlyList<Diagnostic> Generate(string types, ReportDiagnostic? nsg011 = null)
     {
+        return Run(types, nsg011).Diagnostics;
+    }
+
+    static (IReadOnlyList<Diagnostic> Diagnostics, string Source) Run(string types, ReportDiagnostic? nsg011 = null)
+    {
         Compilation compilation = new CompilationUnitBuilder()
             .AddSource("Types.cs", $$"""
                 using Microsoft.Extensions.DependencyInjection;
@@ -607,7 +678,9 @@ public class MapperDiagnosticsTests
         Assert.Empty(output.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error && !d.Id.StartsWith("NSG")));
 
         // A build leaves out what a #pragma marked suppressed.
-        return diagnostics.Where(d => d.Id.StartsWith("NSG") && !d.IsSuppressed).ToList();
+        var source = string.Concat(output.SyntaxTrees.Skip(1).Select(tree => tree.ToString()));
+
+        return (diagnostics.Where(d => d.Id.StartsWith("NSG") && !d.IsSuppressed).ToList(), source);
     }
 
     // An .editorconfig section's dotnet_diagnostic.<id>.severity, as the compiler reads it per tree.

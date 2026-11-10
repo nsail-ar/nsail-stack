@@ -230,7 +230,7 @@ public static class GeneratorDiagnostics
     public static readonly DiagnosticDescriptor MappedNullableIntoNonNullable = new(
         id: "NSG025",
         title: "A nullable member is mapped into a non-nullable one",
-        messageFormat: "'{0}.{1}' ({2}) is written from '{3}.{4}' ({5}), which can hold no value, and nothing says what that becomes. Make '{0}.{1}' nullable, make '{3}.{4}' non-nullable, or mark the entity's member [MapIgnore].",
+        messageFormat: "'{0}.{1}' ({2}) is written from '{3}.{4}' ({5}), which can hold no value, and nothing says what that becomes. Make '{0}.{1}' nullable, make '{3}.{4}' non-nullable, mark the entity's member [MapIgnore], or withdraw it from this pairing with Ignore = [nameof({3}.{4})] on the [MapFrom].",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,

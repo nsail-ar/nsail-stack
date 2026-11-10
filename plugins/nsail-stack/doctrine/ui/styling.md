@@ -323,6 +323,8 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   task that inlines it (one resize, not two), and sizes the opposite way — width,
   not height: its logo, its name and its progress bar all take the width its own script measures
   off the install's name, so the three read as one block instead of three widths of their own.
+  The first-frame `<picture>`/`<img>` and the inlined `<svg>` are all `display:block`, so no baseline
+  band sits under the mark and the swap moves nothing: the only space below it is the block's gap.
   A brand's dark mark (`DarkLogoUrl`) is the one it wears when its own painted ground is dark.
 - **Inlined SVG passes `SvgSanitizer` (`NSail.Icons`) and no other inlined SVG reaches the DOM**:
   a `Glyph`, a fetched logo and the splash mark share its one allowlist of drawing elements and
@@ -392,6 +394,9 @@ takes: an icon that reports no state is the ink of whatever it names.
 **`NsChip Severity` is the soft tint; `Solid` is its filled face** — the severity's fill with the
 `TextOn*` ink picked to read on it ([branding.md](branding.md)) — for a state that has to read
 from across the screen. No white override: no one ink serves every fill.
+
+Every `NsChip` ends a label that does not fit in `…` (`ns-chip-ellipsis`: `min-width:0` on the chip,
+clipped content); the side menu's cap on it is in [navigation.md](navigation.md).
 
 **Colour goes on the datum, never on the container.** A card is never tinted as a whole — a
 permanently coloured tile is an alarm nobody sees by Thursday — so what carries the tone is the

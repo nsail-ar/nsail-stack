@@ -51,8 +51,16 @@ sealed class MemoryBoard : IBoard
         return Task.FromResult(Cards[story].Stage);
     }
 
+    // A provider's refusal thrown by the next SetStage or Close, once.
+    public Exception? NextSetStageThrows { get; set; }
+
+    public Exception? NextCloseThrows { get; set; }
+
     public Task SetStage(int story, string stage, CancellationToken ct = default)
     {
+        var refused = NextSetStageThrows;
+        NextSetStageThrows = null;
+        if (refused is not null) throw refused;
         Cards[story].Stage = stage;
         return Task.CompletedTask;
     }
@@ -117,6 +125,9 @@ sealed class MemoryBoard : IBoard
 
     public Task Close(int story, CancellationToken ct = default)
     {
+        var refused = NextCloseThrows;
+        NextCloseThrows = null;
+        if (refused is not null) throw refused;
         Cards[story].ClosedAt = DateTimeOffset.UtcNow;
         return Task.CompletedTask;
     }

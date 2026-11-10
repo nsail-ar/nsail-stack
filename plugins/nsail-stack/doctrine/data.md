@@ -687,12 +687,16 @@ The graph rules are Detached Mapper's:
   normal shape of both. The answer is the member-level rename (`[MapFrom(typeof(M), "X")]`,
   `[MapTo(typeof(T), "X")]`), `[MapIgnore]` on the entity's member, or the drop declared on the
   entity's declaration — `Ignore = [nameof(M.X)]`, `Ignore = [nameof(T.X)]`, since the Sdk that
-  holds M and T never sees the Data project. An `Ignore` naming a member that does not exist is
+  holds M and T never sees the Data project. A `[MapFrom]`'s `Ignore` withdraws the member from
+  that declaration's pairing, so it is not NSG025 either. An `Ignore` naming a member that does not exist is
   NSG013. Both are warnings, so an app refuses them through its own `.editorconfig` or
   `WarningsAsErrors`.
 - **"No value" is never silently zero** (NSG025): a `[MapFrom]` that reads a nullable value
   (`int?`, `decimal?`, an enum`?`) into a non-nullable member does not build — make the member
-  nullable, the source non-nullable, or `[MapIgnore]` it and let the handler decide. A message
+  nullable, the source non-nullable, `[MapIgnore]` it and let the handler decide (in both
+  directions), or withdraw it from that one pairing with `Ignore = [nameof(M.X)]` on the
+  `[MapFrom]`: the save no longer writes it, the entity's `[MapTo]` projections still read it,
+  and the handler writes it around the mapper's run. A message
   field left nullable so an enum can stay unchosen ([messaging.md](messaging.md)) meets this
   rule here. The target's key (its `[Key]`, else its `Id`) is exempt: a `Guid?` Id is the id
   still to be made. Text is not covered: a null or empty string read into a number, bool, date,
