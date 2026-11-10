@@ -50,7 +50,7 @@ public class ReviewDecideTests : IDisposable
         }
     }
 
-    (ReviewJob Job, Repo Repo, MemoryBoard Board) Arrange()
+    (ReviewJob Job, Repo Repo, MemoryBoard Board) Arrange(string title = "a story")
     {
         Directory.CreateDirectory(_root);
         var options = new HarnessOptions
@@ -62,7 +62,7 @@ public class ReviewDecideTests : IDisposable
         };
         var repo = new Repo(Path.Combine(_root, "remote.git"));
         var board = new MemoryBoard();
-        board.Add(1, title: "a story", stage: Stages.InProgress, labels: [Labels.Review, Labels.Claimed]);
+        board.Add(1, title: title, stage: Stages.InProgress, labels: [Labels.Review, Labels.Claimed]);
         var workspace = new Workspace(Path.Combine(_root, "ws"), repo.CloneUrl, null, 1, "Gru", "gru@example.com");
         var ctx = new JobContext(board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace> { [repo.Name] = workspace },
             new DevJobRunTests.NoSeat(), options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
@@ -167,6 +167,18 @@ public class ReviewDecideTests : IDisposable
         Assert.Equal("Ruling", ending.Event);
         Assert.Empty(repo.Merges);
         Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("The criteria contradict."));
+    }
+
+    [Fact]
+    public async Task AReleaseRedsCrackGoesBackToItsBuilderAndWaitsForNoHand()
+    {
+        var (job, _, board) = Arrange("Regression red on main (Acme)");
+
+        var ending = await Decide(job, "VERDICT: ruling\nThe fix belongs in the Stack.");
+
+        Assert.Equal("Findings", ending.Event);
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("waits for no hand") && c.Body.Contains("The fix belongs in the Stack."));
     }
 
     [Fact]

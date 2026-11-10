@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using NSail.Harness.Agents;
+using NSail.Harness.Jobs;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 using NSail.Harness.Repositories;
@@ -24,7 +25,7 @@ public class AnalyzeJobRunTests : IDisposable
     }
 
     // A seat that writes a Ready verdict and, when given, the paths its story's change must touch.
-    sealed class Analyst(string? protectedPaths) : IAgent
+    sealed class Analyst(string? protectedPaths, string verdict = "ready") : IAgent
     {
         public string Prompt { get; private set; } = "";
 
@@ -34,7 +35,7 @@ public class AnalyzeJobRunTests : IDisposable
         {
             Prompt = run.Prompt;
             var dir = Path.Combine(run.WorkDir, ".analysis");
-            await File.WriteAllTextAsync(Path.Combine(dir, "verdict.txt"), "VERDICT: ready\n", ct);
+            await File.WriteAllTextAsync(Path.Combine(dir, "verdict.txt"), $"VERDICT: {verdict}\n", ct);
             await File.WriteAllTextAsync(Path.Combine(dir, "body.md"), "The shaped body.", ct);
             await File.WriteAllTextAsync(Path.Combine(dir, "comment.md"), "Claim, Done, Readers.", ct);
             if (protectedPaths is not null) await File.WriteAllTextAsync(Path.Combine(dir, "protected.txt"), protectedPaths, ct);
@@ -54,6 +55,13 @@ public class AnalyzeJobRunTests : IDisposable
 
     async Task<MemoryBoard> Analyze(Analyst seat, params string[] labels)
     {
+        var (board, outcome) = await Run(seat, "a story", labels);
+        Assert.Equal("Ready", outcome.Event);
+        return board;
+    }
+
+    async Task<(MemoryBoard Board, JobOutcome Outcome)> Run(Analyst seat, string title, params string[] labels)
+    {
         Directory.CreateDirectory(_root);
         await Shell.Git(_root, "init", "-q", "--bare", "-b", "main", Remote);
         var seed = Path.Combine(_root, "seed");
@@ -63,7 +71,7 @@ public class AnalyzeJobRunTests : IDisposable
         await Shell.Git(seed, "push", "-q", "origin", "main");
 
         var board = new MemoryBoard();
-        board.Add(1, title: "a story", stage: Stages.Analyze, labels: labels);
+        board.Add(1, title: title, stage: Stages.Analyze, labels: labels);
         var options = new HarnessOptions
         {
             WorkRoot = Path.Combine(_root, "work"),
@@ -77,9 +85,7 @@ public class AnalyzeJobRunTests : IDisposable
         var ctx = new JobContext(board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace> { [repo.Name] = workspace },
             seat, options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
         var job = new AnalyzeJob(new WorkItem(WorkKind.Analyze, 1, null, "rest", "rest", Worker: "analyze"), ctx, new JobHistory(Path.Combine(_root, "history")));
-        var outcome = await job.Run(1, Path.Combine(_root, "job.log"), CancellationToken.None);
-        Assert.Equal("Ready", outcome.Event);
-        return board;
+        return (board, await job.Run(1, Path.Combine(_root, "job.log"), CancellationToken.None));
     }
 
     [Fact]
@@ -121,5 +127,24 @@ public class AnalyzeJobRunTests : IDisposable
 
         Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
         Assert.Single(board.Cards[1].Comments);
+    }
+
+    [Fact]
+    public async Task AReleaseRedsAnalysisIsNeverARulingAndTheAskIsCountedAsADeath()
+    {
+        var (board, outcome) = await Run(new Analyst(null, "ruling"), "Regression red on main (Acme)");
+
+        Assert.NotEqual("Ruling", outcome.Event);
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("never `ruling`"));
+        Assert.Equal(Stages.Analyze, board.Cards[1].Stage);
+    }
+
+    [Fact]
+    public async Task AnOrdinaryStorysRulingStillWaitsForAHand()
+    {
+        var (board, outcome) = await Run(new Analyst(null, "ruling"), "a story");
+
+        Assert.Equal("Ruling", outcome.Event);
     }
 }

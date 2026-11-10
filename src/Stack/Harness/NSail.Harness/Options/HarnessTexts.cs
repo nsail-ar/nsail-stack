@@ -53,6 +53,16 @@ public sealed class HarnessTexts
     public string MainRedTitle { get; set; } = "CI red on main";
     public string MainRed { get; set; } = "`main`'s gate went {why} at `{sha}` — the commits in {range} are the suspects.\n\n**What went red:**\n```\n{failed}\n```\n\nThe gate's log: `{log}` on {machine}.";
     public string MainRedWithoutFix { get; set; } = "`{sha}` does not hold this story's merge `{merge}`: its red is no news about the fix, and the story stays in {stage}.";
+    public string RedQuestion { get; set; } = "A release red waits for no hand: the crew rules its question by doctrine, and the work goes on.";
+    public string RedRulingRefused { get; set; } = "An analysis of a release red ends `ready` or `done`, never `ruling`: its questions are the analyst's to rule by doctrine. Sent again.";
+
+    // A story the harness filed for a red suite or a red main: the release's work, which no hand rules.
+    public bool IsRed(string title)
+    {
+        var slot = SuiteRedTitle.IndexOf("{product}", StringComparison.Ordinal);
+        var suite = slot < 0 ? SuiteRedTitle : SuiteRedTitle[..slot];
+        return title.StartsWith(suite, StringComparison.Ordinal) || title.StartsWith(MainRedTitle, StringComparison.Ordinal);
+    }
 
     // The template with its `{name}` slots filled.
     public static string Fill(string template, params (string Name, object? Value)[] values)

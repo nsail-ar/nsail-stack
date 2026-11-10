@@ -309,6 +309,54 @@ public class DevJobRunTests : IDisposable
         return board;
     }
 
+    // A seat that commits nothing and asks a question.
+    sealed class Asking : IAgent
+    {
+        public string Driver => "test";
+
+        public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
+        {
+            await File.WriteAllTextAsync(Path.Combine(run.WorkDir, ".voyage", "out", "ruling.md"), "Where does the fix land? 1. the Stack 2. here — I'd pick 1.", ct);
+            return new AgentResult(0, false, null, false, null);
+        }
+
+        public IReadOnlyDictionary<string, string> ScriptEnvironment(string name)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        public (bool Refused, DateTimeOffset? Until) Quota(string output)
+        {
+            return (false, null);
+        }
+    }
+
+    [Fact]
+    public async Task AReleaseRedsQuestionGoesToTheAnalystWithNoHold()
+    {
+        await Seed();
+        var board = new MemoryBoard();
+        board.Add(1, title: "Regression red on main (Acme)", stage: Stages.Ready);
+
+        var outcome = await Run(new Asking(), board, new Lines());
+
+        Assert.Equal("Reanalyze", outcome.Event);
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("Where does the fix land?"));
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("waits for no hand"));
+    }
+
+    [Fact]
+    public async Task AnOrdinaryStorysQuestionStillWaitsForAHand()
+    {
+        await Seed();
+        var board = Board();
+
+        var outcome = await Run(new Asking(), board, new Lines());
+
+        Assert.Equal("Ruling", outcome.Event);
+    }
+
     [Fact]
     public async Task ACancelledSeatsCommitsReachARescueRefAndTheCancellationPropagates()
     {

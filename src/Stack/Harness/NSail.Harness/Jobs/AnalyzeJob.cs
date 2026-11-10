@@ -11,7 +11,8 @@ namespace NSail.Harness.Jobs;
 
 // The analyst shapes one story in Analyze into what a cold builder needs, or reads why a
 // `stalled` one died. Four ways out: no question fired a trigger -> Ready; one did -> stays in
-// Analyze wearing `ruling` with only that question on the thread; a Ready story whose change must
+// Analyze wearing `ruling` with only that question on the thread (never a release red's: its ruling is
+// refused and counted as a death, since the release waits for no hand); a Ready story whose change must
 // touch a path the screen holds (its protected.txt) -> Ready wearing `ruling` and `screened` until a
 // hand adds `allow-protected`; the story is already built (its PR merged and main meets every
 // criterion) -> Merged, so no empty voyage is sent. A death with no verdict is sent again on the
@@ -83,7 +84,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 LogPath: logPath,
                 Marketplace: dir), ct);
 
-            var ending = await Act(n, outDir, stalled, result, log, ct);
+            var ending = await Act(n, title, outDir, stalled, result, log, ct);
             return ending.Outcome(result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : null);
         }
         finally
@@ -92,7 +93,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
         }
     }
 
-    async Task<Ending> Act(int n, string outDir, bool stalled, AgentResult result, ILogger log, CancellationToken ct)
+    async Task<Ending> Act(int n, string title, string outDir, bool stalled, AgentResult result, ILogger log, CancellationToken ct)
     {
         var board = ctx.Board;
         string Read(string f)
@@ -139,6 +140,10 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 }
                 // The move is the Ready event's (WorkerTypes), once the lock is off.
                 return new Ending("Ready", "Ready");
+            case "VERDICT: ruling" when ctx.Texts.IsRed(title):
+                // Counted as a death below: a seat that asks twice is stalled, loudly, not obeyed.
+                await board.Comment(n, $"{ctx.Texts.RedRulingRefused} {ctx.Texts.Signature}");
+                break;
             case "VERDICT: ruling" when comment.Trim().Length > 0:
                 await Post();
                 await WrittenBlockers.Link(board, n, comment, ctx.Names.Key, ct);
