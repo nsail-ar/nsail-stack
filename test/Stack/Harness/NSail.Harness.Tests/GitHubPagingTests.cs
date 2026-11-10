@@ -100,4 +100,36 @@ public class GitHubPagingTests
         await repo.OpenPrs();
         Assert.Contains(routed.Requests, r => r.Contains("head_sha=old777"));
     }
+
+    // Answers 304 to the ETag it gave; each page names the next, as GitHub's Link header does.
+    sealed class Tagged : HttpMessageHandler
+    {
+        public List<(string Path, HttpStatusCode Status)> Answered { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var page = int.Parse(System.Web.HttpUtility.ParseQueryString(request.RequestUri!.Query)["page"] ?? "1");
+            var tag = $"\"p{page}\"";
+            var status = request.Headers.IfNoneMatch.Any(t => t.Tag == tag) ? HttpStatusCode.NotModified : HttpStatusCode.OK;
+            Answered.Add((request.RequestUri.PathAndQuery, status));
+            var response = new HttpResponseMessage(status) { Content = new StringContent(status == HttpStatusCode.OK ? $"[{page}]" : "", Encoding.UTF8, "application/json") };
+            response.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue(tag);
+            if (page < 2) response.Headers.Add("Link", "<https://api.github.com/x?page=2>; rel=\"next\"");
+            return Task.FromResult(response);
+        }
+    }
+
+    [Fact]
+    public async Task AnUnchangedListingIsAnsweredFromWhatItKeptPageByPage()
+    {
+        var tagged = new Tagged();
+        var client = new GitHubClient(new HttpClient(tagged) { BaseAddress = new Uri("https://api.github.com/") });
+
+        var first = await client.GetAll("x");
+        var again = await client.GetAll("x");
+
+        Assert.Equal([1, 2], first.Select(e => e.GetInt32()));
+        Assert.Equal([1, 2], again.Select(e => e.GetInt32()));
+        Assert.Equal([HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.NotModified, HttpStatusCode.NotModified], tagged.Answered.Select(a => a.Status));
+    }
 }
