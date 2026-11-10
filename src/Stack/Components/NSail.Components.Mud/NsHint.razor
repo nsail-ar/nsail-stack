@@ -64,10 +64,17 @@
         _open = false;
     }
 
-    void OnKeyDown(KeyboardEventArgs args)
+    // Closes on the next turn (ui/menus.md, "The innermost open thing wins Escape").
+    async Task OnKeyDown(KeyboardEventArgs args)
     {
+        if (!_open)
+        {
+            return;
+        }
+
         if (args.Key == "Escape")
         {
+            await Task.Yield();
             Close();
         }
     }

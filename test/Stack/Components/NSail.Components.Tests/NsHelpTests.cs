@@ -125,7 +125,7 @@ public sealed class NsHelpTests : BunitContext, IAsyncLifetime
         await cut.InvokeAsync(() => cut.Find(".ns-help button").Click());
         Assert.Contains(Paragraph, cut.Markup, StringComparison.Ordinal);
 
-        await cut.InvokeAsync(() => cut.Find(".ns-help").KeyDown(new KeyboardEventArgs { Key = "Escape" }));
+        await cut.Find(".ns-help").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
 
         Assert.DoesNotContain(Paragraph, cut.Markup, StringComparison.Ordinal);
     }
