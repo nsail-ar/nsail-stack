@@ -104,17 +104,18 @@ public sealed class StateFileTests : IDisposable
     [InlineData("{\"Hours\": [")]
     public void A_zero_length_or_torn_file_is_moved_aside_and_the_state_starts_empty(string content)
     {
-        foreach (var name in new[] { "jobs.json", "stats.json", "watch.json", "state.json" })
+        foreach (var name in new[] { "jobs.json", "stats.json", "watch.json", "state.json", "ops.json" })
         {
             File.WriteAllText(Path.Combine(_root, name), content);
         }
 
         Assert.Empty(new JobHistory(_root).Jobs());
+        Assert.Empty(new OpsLedger(_root, new JobHistory(_root)).Owed());
         _ = new JobStats(_root);
         Assert.Null(new WatchState(_root).ReadUntil("any"));
         Assert.Null(new HarnessState(_root).Paused);
 
-        foreach (var name in new[] { "jobs.json", "stats.json", "watch.json", "state.json" })
+        foreach (var name in new[] { "jobs.json", "stats.json", "watch.json", "state.json", "ops.json" })
         {
             Assert.False(File.Exists(Path.Combine(_root, name)));
             Assert.Single(Directory.GetFiles(_root, name + ".bad-*"));
