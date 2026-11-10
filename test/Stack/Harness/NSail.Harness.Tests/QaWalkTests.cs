@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Text.Json;
 using NSail.Harness.Board;
 using NSail.Harness.Jobs;
 
@@ -76,5 +77,47 @@ public class QaWalkTests
         Assert.Equal("9b206cccb3479b464369556b9f34f93119351d21", QaJob.BuildRef("1.0.0+9b206cccb3479b464369556b9f34f93119351d21", "admin/v"));
         Assert.Equal("admin/v1.0.0", QaJob.BuildRef("1.0.0", "admin/v"));
         Assert.Null(QaJob.BuildRef("dev", "admin/v"));
+    }
+
+    const string Missing = "Executable /home/leonardo/.cache/ms-playwright/chromium-1252/chrome-linux/chrome is not installed; expected executable at /home/leonardo/.cache/ms-playwright/chromium-1252/chrome-linux/chrome";
+
+    static string Called(string id, string name)
+    {
+        return JsonSerializer.Serialize(new { type = "assistant", message = new { role = "assistant", content = new object[] { new { type = "tool_use", id, name, input = new { } } } } });
+    }
+
+    static string Answered(string id, string text)
+    {
+        return JsonSerializer.Serialize(new { type = "user", message = new { role = "user", content = new object[] { new { type = "tool_result", tool_use_id = id, content = new object[] { new { type = "text", text } } } } } });
+    }
+
+    static string Said(string text)
+    {
+        return JsonSerializer.Serialize(new { type = "assistant", message = new { role = "assistant", content = new object[] { new { type = "text", text } } } });
+    }
+
+    [Fact]
+    public void AThreadQuotingTheMissingBrowserBesideABrowserThatAnsweredIsNotBrowserless()
+    {
+        var log = string.Join('\n',
+            $"== walk nsail#2878 on m slot 1 — {Missing}",
+            Called("r1", "Read"),
+            Answered("r1", $"--- QA walk\nwalk void: {Missing}"),
+            Called("b1", "mcp__playwright__browser_navigate"),
+            Answered("b1", "### Page\n- Page URL: https://o.test/"),
+            Said($"The thread quotes: {Missing}"));
+
+        Assert.False(QaJob.Browserless(log, ["playwright"]));
+    }
+
+    [Fact]
+    public void ABrowserToolsOwnResultSayingTheBrowserIsMissingIsBrowserlessForTheServersTheWorkerNames()
+    {
+        var log = string.Join('\n',
+            Called("b1", "mcp__web__browser_navigate"),
+            Answered("b1", $"Error: {Missing}"));
+
+        Assert.True(QaJob.Browserless(log, ["web"]));
+        Assert.False(QaJob.Browserless(log, ["playwright"]));
     }
 }
