@@ -7,6 +7,7 @@ namespace NSail.Harness.Tests;
 // on GitHub's REST quota, times about 120 passes an hour, is the token's hourly spend. A read whose
 // answer has not moved since the last pass is sent with its ETag and answered 304, which GitHub does
 // not count; only what changed is billed.
+[Collection(nameof(PassFailureTests))]
 public sealed class PassBudgetTests
 {
     const int Prs = 10;

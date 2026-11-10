@@ -113,7 +113,12 @@ the files it leaves.
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for
-    it names all three. A job that ends on the provider's limit (a `ProviderException` with its
+    it names all three. A pass the provider limited (a 403 or 429 with its wait, `Retry-After` or the
+    quota's reset) holds every pass after it for that wait, up to `MaxLimitBackoff`, and a wake (a job's
+    end, the API) does not end the hold; outside one, a wake runs the next pass at once. Every GitHub
+    REST read is sent with the ETag of its last answer: one that has not moved comes back 304, which GitHub
+    does not count against the token's rate limit, so a pass over an unchanged board bills no REST call
+    (`PassBudgetTests`). A job that ends on the provider's limit (a `ProviderException` with its
     `RetryAfter`) or on a 5xx is not a break: nothing is said on its story and nothing counts toward
     `stalled`; its lock label and lock come off and a Dev with no PR goes back to Ready, as a break's do.
     A limit holds the item and every pass for the wait it asked, at least `MinLimitBackoff` and up to `MaxLimitBackoff`; a 5xx backs the

@@ -71,8 +71,7 @@ public sealed class HarnessLoop(
     Pass? _last;
     string? _paused = state.Paused;
     DateTimeOffset? _quotaUntil = state.QuotaUntil;
-    TimeSpan? _limitedFor;
-    // Until when a job's limited ending holds every pass; under _gate. A pass resets _limitedFor, and a job ends on its own task.
+    // Until when a limited pass or a job's limited ending holds every pass; under _gate, as a job ends on its own task.
     DateTimeOffset? _limitedUntil;
     volatile bool _restarting;
     DateTimeOffset? _pausedSince = state.PausedSince;
@@ -232,10 +231,10 @@ public sealed class HarnessLoop(
 
         while (!stop.IsCancellationRequested)
         {
-            // A job that ends limited while the loop waits pushes the hold further: it is read again.
+            // A wake ends the wait below, never this hold; a job that ends limited while it holds pushes it further.
             while (HeldFor(LimitedUntil, DateTimeOffset.UtcNow) is { } held)
             {
-                log.LogWarning("a job hit the provider's rate limit — next pass in {Seconds:F0}s", held.TotalSeconds);
+                log.LogWarning("provider rate limit — next pass in {Seconds:F0}s", held.TotalSeconds);
                 try
                 {
                     await Task.Delay(held, stop);
@@ -245,15 +244,10 @@ public sealed class HarnessLoop(
                     return;
                 }
             }
-            _limitedFor = null;
             var pass = await RunPass(o, stop);
             lock (_gate) _last = pass;
             var idle = _running.IsEmpty && pass.WouldTake.Count == 0;
-            var wait = NextWait(idle, o, _limitedFor);
-            if (_limitedFor is not null && wait > NextWait(idle, o, null))
-            {
-                log.LogWarning("provider rate limit — next pass in {Seconds:F0}s", wait.TotalSeconds);
-            }
+            var wait = NextWait(idle, o);
             try
             {
                 await _wake.WaitAsync(wait, stop);
@@ -548,7 +542,10 @@ public sealed class HarnessLoop(
         }
         catch (Exception e) when (!stop.IsCancellationRequested)
         {
-            if (e is ProviderException { RetryAfter: { } after }) _limitedFor = after;
+            if (e is ProviderException { RetryAfter: { } after })
+            {
+                lock (_gate) _limitedUntil = LaterWall(_limitedUntil, DateTimeOffset.UtcNow + PassHold(after));
+            }
             return Failed(log, metrics, e, call, started);
         }
     }
@@ -561,15 +558,16 @@ public sealed class HarnessLoop(
         return plan.Chores.Where(c => !WorkerPlanner.IsStarting(c) || starts.Any(s => s.Value == c.Story && c.Why.StartsWith($"{s.Worker}: ", StringComparison.Ordinal))).ToList();
     }
 
-    // The provider limited the pass: the next one waits out what it asked, up to a ceiling; a wake still ends it.
-    internal static TimeSpan NextWait(bool idle, HarnessOptions o, TimeSpan? limited)
+    // The wait a wake ends: the idle poll, or the busy floor while jobs run.
+    internal static TimeSpan NextWait(bool idle, HarnessOptions o)
     {
-        var wait = TimeSpan.FromSeconds(idle || o.Mode == HarnessMode.Debug ? o.IdlePollSeconds : o.BusyFloorSeconds);
-        if (limited is { } asked && asked > wait)
-        {
-            return asked < MaxLimitBackoff ? asked : MaxLimitBackoff;
-        }
-        return wait;
+        return TimeSpan.FromSeconds(idle || o.Mode == HarnessMode.Debug ? o.IdlePollSeconds : o.BusyFloorSeconds);
+    }
+
+    // How long a pass the provider limited holds the next: what it asked, up to the ceiling.
+    internal static TimeSpan PassHold(TimeSpan asked)
+    {
+        return asked < MaxLimitBackoff ? asked : MaxLimitBackoff;
     }
 
     // What is left of a limited job's hold on the passes; a wake does not end it.

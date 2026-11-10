@@ -15,6 +15,7 @@ namespace NSail.Harness.Tests;
 // A pass whose read fails starts nothing, and its record carries what the provider answered in the
 // only kinds the log scrubber lets reach the store: the status and the rate limit left as numbers,
 // the call as an enum. The provider's body stays in the exception's message, which never travels.
+[Collection(nameof(PassFailureTests))]
 public class PassFailureTests
 {
     const string Template = HarnessLoop.FailedAnswered;
@@ -57,11 +58,46 @@ public class PassFailureTests
         var o = new HarnessOptions { Mode = HarnessMode.Live };
         var busy = TimeSpan.FromSeconds(o.BusyFloorSeconds);
 
-        Assert.Equal(TimeSpan.FromSeconds(o.IdlePollSeconds), HarnessLoop.NextWait(true, o, null));
-        Assert.Equal(busy, HarnessLoop.NextWait(false, o, null));
-        Assert.Equal(TimeSpan.FromMinutes(8), HarnessLoop.NextWait(false, o, TimeSpan.FromMinutes(8)));
-        Assert.Equal(HarnessLoop.MaxLimitBackoff, HarnessLoop.NextWait(true, o, TimeSpan.FromMinutes(50)));
-        Assert.Equal(busy, HarnessLoop.NextWait(false, o, TimeSpan.FromSeconds(1)));
+        Assert.Equal(TimeSpan.FromSeconds(o.IdlePollSeconds), HarnessLoop.NextWait(true, o));
+        Assert.Equal(busy, HarnessLoop.NextWait(false, o));
+        Assert.Equal(TimeSpan.FromMinutes(8), HarnessLoop.PassHold(TimeSpan.FromMinutes(8)));
+        Assert.Equal(HarnessLoop.MaxLimitBackoff, HarnessLoop.PassHold(TimeSpan.FromMinutes(50)));
+        Assert.Equal(TimeSpan.FromSeconds(1), HarnessLoop.PassHold(TimeSpan.FromSeconds(1)));
+    }
+
+    // Limited at 02:18 with the reset at 02:30: nothing goes out before 02:28 (the ceiling), a wake
+    // from a job's end or the API included. GitHub may ban an integration that calls while limited.
+    [Fact]
+    public async Task AWakeInsideALimitSendsNothingUntilTheWaitEnds()
+    {
+        var hub = new FakeGitHub { RestLimitedFor = TimeSpan.FromMinutes(12) };
+        using var harness = new FakeGitHub.Harness(hub);
+        var before = DateTimeOffset.UtcNow;
+
+        var limited = await harness.Start();
+        var sent = hub.Count;
+        harness.Loop.Wake();
+        harness.Loop.Wake();
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+
+        Assert.NotNull(limited.Error);
+        Assert.Equal(sent, hub.Count);
+        Assert.Same(limited, harness.Loop.Last);
+        Assert.InRange(HarnessLoop.HeldFor(harness.Loop.LimitedUntil, before)!.Value, HarnessLoop.MaxLimitBackoff - TimeSpan.FromSeconds(5), HarnessLoop.MaxLimitBackoff + TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task OutsideALimitAWakeRunsTheNextPassAtOnce()
+    {
+        var hub = new FakeGitHub();
+        using var harness = new FakeGitHub.Harness(hub);
+
+        var first = await harness.Start();
+        harness.Loop.Wake();
+        var next = await harness.NextPass(first, TimeSpan.FromSeconds(5));
+
+        Assert.Null(next.Error);
+        Assert.Null(harness.Loop.LimitedUntil);
     }
 
     [Fact]
@@ -177,7 +213,7 @@ public class PassFailureTests
     }
 
     // harness.passes as the exporter reads it, by name and with its tags. Only HarnessLoop counts a
-    // pass, and no other test class builds one.
+    // pass, and the classes that run one share this class's collection, so none runs while it listens.
     sealed class Passes : IDisposable
     {
         readonly MeterListener _listener = new();
