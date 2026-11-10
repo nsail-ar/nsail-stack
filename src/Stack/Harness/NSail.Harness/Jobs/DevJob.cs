@@ -13,7 +13,7 @@ namespace NSail.Harness.Jobs;
 
 // One builder per story, up to an open PR: the story is named by the planner, the harness lays the
 // round's branch and the story's dossier in the slot, the builder codes, builds and commits, and
-// leaves its ending in .voyage/out/ — a PR's words, a ruling, a hand-off. The builder holds no
+// leaves its ending in .voyage/out/ — a PR's words, a ruling, a hand-off, a wall. The builder holds no
 // token and pushes nothing: the harness pushes what it committed and acts on its ending, and the
 // gate decides what follows.
 public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : IJob
@@ -320,7 +320,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     }
 
     // What the builder committed goes up first, unless it touches a protected path: work is never lost to the axe.
-    // Then its ending, exactly one: a PR's words, a ruling, a hand-off; none is a dead voyage. Commits the
+    // Then its ending, exactly one: a PR's words, a ruling, a hand-off, a wall; none is a dead voyage. Commits the
     // screen refuses are kept on this machine and the story held for a hand's word.
     async Task<Ending> Deliver(int n, string title, IRepository repo, string dir, string branch, string? startedAt, DateTimeOffset claimedAt, AgentResult result, ILogger log, CancellationToken ct)
     {
@@ -420,18 +420,30 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             return new Ending($"nothing left to build — {evidence}", "Landed");
         }
 
+        // A release red never waits for a hand: its question goes to the analyst, or to the next round when a PR is open.
+        async Task<Ending?> RedQuestion()
+        {
+            if (!ctx.Texts.IsRed(title)) return null;
+            await board.Comment(n, $"{ctx.Texts.RedQuestion} {ctx.Texts.Signature}");
+            return (await repo.PrsOf(n, "open", ct)).Count == 0
+                ? new Ending("a release red's question — to the analyst", "Reanalyze")
+                : new Ending("a release red's question — the next round decides it", "HandedOff");
+        }
+
+        if (Out("wall.md") is { Length: > 0 } wall)
+        {
+            if (await NothingToBuild(wall) is { } landed) return landed;
+            await board.Comment(n, JobContext.Signed(wall, Seat));
+            if (await RedQuestion() is { } red) return red;
+            await WrittenBlockers.Link(board, n, wall, ctx.Names.Key, ct);
+            return new Ending("a wall — blocked until it is lifted", "Walled");
+        }
+
         if (Out("ruling.md") is { Length: > 0 } question)
         {
             if (await NothingToBuild(question) is { } landed) return landed;
             await board.Comment(n, JobContext.Signed(question, Seat));
-            if (ctx.Texts.IsRed(title))
-            {
-                // The analyst only takes a story with no open PR: with one, the next round decides it.
-                await board.Comment(n, $"{ctx.Texts.RedQuestion} {ctx.Texts.Signature}");
-                return (await repo.PrsOf(n, "open", ct)).Count == 0
-                    ? new Ending("a release red's question — to the analyst", "Reanalyze")
-                    : new Ending("a release red's question — the next round decides it", "HandedOff");
-            }
+            if (await RedQuestion() is { } red) return red;
             return new Ending("ruling", "Ruling");
         }
 

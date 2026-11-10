@@ -193,6 +193,7 @@ public class EventDefaultsTests
         Assert.Equal(["Ruling: AddLabel ruling", "Ruling: RemoveLabel stalled"], Of(WorkKind.Analyze, new JobOutcome("ruling", Event: "Ruling")));
         Assert.Equal(["Ruling: AddLabel ruling", "Ruling: MoveTo Analyze"], Of(WorkKind.Dev, new JobOutcome("ruling", Event: "Ruling")));
         Assert.Equal(["HandedOff: MoveTo Ready"], Of(WorkKind.Dev, new JobOutcome("handed off", Event: "HandedOff")));
+        Assert.Equal(["Walled: AddLabel blocked", "Walled: MoveTo Backlog"], Of(WorkKind.Dev, new JobOutcome("a wall", Event: "Walled")));
         Assert.Equal(["Landed: MoveTo Merged"], Of(WorkKind.Dev, new JobOutcome("landed", Event: "Landed")));
         Assert.Empty(Of(WorkKind.Dev, new JobOutcome("PR #1 opened", Event: "Opened")));
         Assert.Equal(["Clean: MoveTo Merged", "Clean: RemoveLabel claimed,stalled"], Of(WorkKind.Review, new JobOutcome("landed", Event: "Clean")));

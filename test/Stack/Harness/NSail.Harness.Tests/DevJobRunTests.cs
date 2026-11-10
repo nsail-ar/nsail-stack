@@ -319,14 +319,14 @@ public class DevJobRunTests : IDisposable
         return board;
     }
 
-    // A seat that commits nothing and asks a question.
-    sealed class Asking : IAgent
+    // A seat that commits nothing and ends with one file.
+    sealed class Asking(string file = "ruling.md", string words = "Where does the fix land? 1. the Stack 2. here — I'd pick 1.") : IAgent
     {
         public string Driver => "test";
 
         public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
         {
-            await File.WriteAllTextAsync(Path.Combine(run.WorkDir, ".voyage", "out", "ruling.md"), "Where does the fix land? 1. the Stack 2. here — I'd pick 1.", ct);
+            await File.WriteAllTextAsync(Path.Combine(run.WorkDir, ".voyage", "out", file), words, ct);
             return new AgentResult(0, false, null, false, null);
         }
 
@@ -365,6 +365,58 @@ public class DevJobRunTests : IDisposable
         var outcome = await Run(new Asking(), board, new Lines());
 
         Assert.Equal("Ruling", outcome.Event);
+    }
+
+    [Fact]
+    public async Task AWallEndsTheRoundWalledWithItsWordsAndNoRuling()
+    {
+        await Seed();
+        var board = Board();
+
+        var outcome = await Run(new Asking("wall.md", "main is red from another story"), board, new Lines());
+
+        Assert.Equal("Walled", outcome.Event);
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("main is red from another story") && c.Body.Contains("— Gru"));
+    }
+
+    [Fact]
+    public async Task AWallOnAReleaseRedGoesToTheAnalystWithNoHold()
+    {
+        await Seed();
+        var board = new MemoryBoard();
+        board.Add(1, title: "CI red on main", stage: Stages.Ready);
+
+        var outcome = await Run(new Asking("wall.md", "main is red from another story"), board, new Lines());
+
+        Assert.Equal("Reanalyze", outcome.Event);
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("waits for no hand"));
+    }
+
+    [Fact]
+    public async Task AWallLinksTheBlockerItNamesSoTheBlockedRuleCanLiftIt()
+    {
+        await Seed();
+        var board = Board();
+        board.Add(2, title: "other", stage: Stages.Ready);
+
+        await Run(new Asking("wall.md", "main is red. Blocked by #2"), board, new Lines());
+
+        Assert.Equal([2], board.Cards[1].Blockers);
+    }
+
+    [Fact]
+    public async Task AWallOnAStoryWithNothingToBuildLandsInstead()
+    {
+        await Seed();
+        var board = Board();
+        var repo = Repo;
+        repo.Merged.Add(new PrRef(7, "done", "story/app-1", DateTimeOffset.UtcNow.AddDays(-1), "acme/app"));
+
+        var outcome = await Run(new Asking("wall.md", "main is red"), board, new Lines());
+
+        Assert.Equal("Landed", outcome.Event);
     }
 
     [Fact]

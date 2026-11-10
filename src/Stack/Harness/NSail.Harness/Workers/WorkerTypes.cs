@@ -78,15 +78,17 @@ public static class WorkerTypes
             }, Minutes: 45),
         // Opened, Pushed: the gate decides what follows. Ruling: the builder's question goes back to
         // the analyst. Reanalyze: a release red's question, which goes to the analyst with no hold.
-        // HandedOff: the next voyage takes it. Landed: it rode main meanwhile.
+        // HandedOff: the next voyage takes it. Walled: something outside the story must change first, so
+        // it waits blocked in Backlog, where the rule that lifts `blocked` lifts it. Landed: it rode main meanwhile.
         ["Develop"] = new("Develop", WorkKind.Dev, true, true,
             new FilterOptions { Status = Stages.Ready, SubIssues = "0", Pr = "none", Unblocked = true, Labels = Holds },
-            [.. WorkerType.BaseEvents, "Opened", "Pushed", "Ruling", "Reanalyze", "HandedOff", "Landed"],
+            [.. WorkerType.BaseEvents, "Opened", "Pushed", "Ruling", "Reanalyze", "HandedOff", "Walled", "Landed"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {
                 ["Ruling"] = [Add(Labels.Ruling), MoveTo(Stages.Analyze)],
                 ["Reanalyze"] = [MoveTo(Stages.Analyze)],
                 ["HandedOff"] = [MoveTo(Stages.Ready)],
+                ["Walled"] = [Add(Labels.Blocked), MoveTo(Stages.Backlog)],
                 ["Landed"] = [MoveTo(Stages.Merged)],
             }, Minutes: 240),
         // Clean: merged, nothing of the story left open. StillOpen: merged, another PR of it open.
