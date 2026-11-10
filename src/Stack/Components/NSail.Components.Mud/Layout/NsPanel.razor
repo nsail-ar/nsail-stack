@@ -78,9 +78,12 @@
 
     // ns-container: the screen's chrome is what d-c-* utilities measure against, so a
     // control collapses on the width this panel has, not the browser window's.
-    string GetClasses() => new NsClassBuilder("ns-container d-flex flex-column min-h-0 gap-4")
-        .Add("flex-1", Grow)
-        .ToString();
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-container d-flex flex-column min-h-0 gap-4")
+            .Add("flex-1", Grow)
+            .ToString();
+    }
 
     [Parameter]
     public RenderFragment? Header { get; set; }

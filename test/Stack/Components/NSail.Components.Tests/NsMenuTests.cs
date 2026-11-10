@@ -66,6 +66,16 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void TheTriggerIsANativeButtonInTheTabOrder()
+    {
+        var trigger = Render<MenuHost>().Find(".mud-menu button");
+
+        Assert.Equal("BUTTON", trigger.TagName);
+        Assert.NotEqual("-1", trigger.GetAttribute("tabindex"));
+        Assert.Null(trigger.GetAttribute("disabled"));
+    }
+
+    [Fact]
     public async Task TheItemsExistOnlyOnceTheTriggerIsClicked()
     {
         var cut = Render<MenuHost>();

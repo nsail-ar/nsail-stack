@@ -108,5 +108,8 @@ else
         return Severity is null ? Size.Medium : Size.Small;
     }
 
-    void Close(MudChip<string> chip) => OnClose?.Invoke();
+    void Close(MudChip<string> chip)
+    {
+        OnClose?.Invoke();
+    }
 }

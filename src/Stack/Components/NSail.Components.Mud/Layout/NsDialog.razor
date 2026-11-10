@@ -57,7 +57,10 @@
         }
     }
 
-    void OnSurfaceStateChanged() => _ = InvokeAsync(StateHasChanged);
+    void OnSurfaceStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     public void Dispose()
     {
@@ -70,7 +73,10 @@
     // Was a hardcoded 1300/1299 pair — that only ever wins against a drawer that happens to
     // mount below it. Surface.ZIndex is the stack position instead: a modal escalated from
     // an open aside always lands one tier above it, however many drawers came before.
-    int GetZIndex() => Surface?.ZIndex ?? 1300;
+    int GetZIndex()
+    {
+        return Surface?.ZIndex ?? 1300;
+    }
 
     // Both axes are fixed against the viewport, never against the content: a min-height would
     // let content past it grow the box, so the paper takes a real height instead. Custom

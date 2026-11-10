@@ -54,6 +54,19 @@ public sealed class NsTableActionsChromeTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_open_rows_actions_are_native_buttons_in_the_tab_order()
+    {
+        var cut = Render<TableAddHost>(p => p.Add(x => x.AddControl, false));
+
+        await cut.InvokeAsync(() => cut.Find("#outside").Click());
+
+        var actions = cut.FindAll("td.ns-actions button");
+
+        Assert.NotEmpty(actions);
+        Assert.All(actions, action => Assert.NotEqual("-1", action.GetAttribute("tabindex")));
+    }
+
+    [Fact]
     public async Task An_open_rows_action_cell_carries_the_compact_chrome()
     {
         var cut = Render<TableAddHost>(p => p.Add(x => x.AddControl, false));

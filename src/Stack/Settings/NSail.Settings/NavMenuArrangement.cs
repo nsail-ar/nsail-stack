@@ -27,11 +27,10 @@ public sealed class NavMenuArrangementEntry
     /// cannot be read here, so whatever validates the list enforces this one.</summary>
     public const int LabelLength = 100;
 
-    /// <summary>How much markup a glyph is. An icon is a path, not a picture: past this it is
-    /// something else pasted into a menu row. What the markup may hold is SvgSanitizer's
-    /// allowlist: a Glyph is already inert when read, and a validator refusing a row
-    /// refuses a Glyph whose Altered is true.</summary>
-    public const int IconLength = 8000;
+    /// <summary>How much markup a glyph is: <see cref="Glyph.MaxLength"/>. What the markup may hold
+    /// is SvgSanitizer's allowlist: a Glyph is already inert when read, and a validator refusing
+    /// a row refuses a Glyph whose Altered is true, which a glyph past this length is.</summary>
+    public const int IconLength = Glyph.MaxLength;
 
     /// <summary>The entry this row is about — the same Name the module contributed, which is
     /// the merge key.</summary>

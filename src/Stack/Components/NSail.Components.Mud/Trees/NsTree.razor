@@ -174,45 +174,54 @@
         return Expanded || _found is not null;
     }
 
-    string GetText(TItem item) => ItemText?.Invoke(item) ?? item.ToString() ?? string.Empty;
+    string GetText(TItem item)
+    {
+        return ItemText?.Invoke(item) ?? item.ToString() ?? string.Empty;
+    }
 
     // MudTreeViewItem shows the expand arrow whenever ChildContent is set, even if it
     // renders nothing — a named section like <ChildContent> has to be an unconditional
     // top-level child of the component tag (Razor won't compile it inside an @if), so a
     // leaf node needs its own tag that omits the section entirely, not just CanExpand="false".
-    RenderFragment Render(TItem item) => __builder =>
+    RenderFragment Render(TItem item)
     {
-        var children = Children(item);
-
-        if (children.Count > 0)
+        return __builder =>
         {
-            <MudTreeViewItem T="TItem" Value="@item" CanExpand="true" Expanded="@IsExpanded(item)" Visible="@IsShown(item)">
-                <BodyContent Context="_">@RenderBody(item)</BodyContent>
-                <ChildContent>
-                    @foreach (var child in children)
-                    {
-                        @Render(child)
-                    }
-                </ChildContent>
-            </MudTreeViewItem>
-        }
-        else
-        {
-            <MudTreeViewItem T="TItem" Value="@item" CanExpand="false" Visible="@IsShown(item)">
-                <BodyContent Context="_">@RenderBody(item)</BodyContent>
-            </MudTreeViewItem>
-        }
-    };
+            var children = Children(item);
 
-    RenderFragment RenderBody(TItem item) => __builder =>
+            if (children.Count > 0)
+            {
+                <MudTreeViewItem T="TItem" Value="@item" CanExpand="true" Expanded="@IsExpanded(item)" Visible="@IsShown(item)">
+                    <BodyContent Context="_">@RenderBody(item)</BodyContent>
+                    <ChildContent>
+                        @foreach (var child in children)
+                        {
+                            @Render(child)
+                        }
+                    </ChildContent>
+                </MudTreeViewItem>
+            }
+            else
+            {
+                <MudTreeViewItem T="TItem" Value="@item" CanExpand="false" Visible="@IsShown(item)">
+                    <BodyContent Context="_">@RenderBody(item)</BodyContent>
+                </MudTreeViewItem>
+            }
+        };
+    }
+
+    RenderFragment RenderBody(TItem item)
     {
-        if (ItemTemplate is not null)
+        return __builder =>
         {
-            @ItemTemplate(item)
-        }
-        else
-        {
-            <MudText>@GetText(item)</MudText>
-        }
-    };
+            if (ItemTemplate is not null)
+            {
+                @ItemTemplate(item)
+            }
+            else
+            {
+                <MudText>@GetText(item)</MudText>
+            }
+        };
+    }
 }

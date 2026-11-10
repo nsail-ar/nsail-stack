@@ -57,6 +57,17 @@ public sealed class NsTablePagerShrinkTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void EveryPagerControlIsANativeButtonInTheTabOrder()
+    {
+        var cut = Render<ScrollTableHost>(parameters => parameters.Add(p => p.Mode, NsTableMode.Page));
+
+        var controls = cut.FindAll(".ns-table .mud-table-pagination button");
+
+        Assert.NotEmpty(controls);
+        Assert.All(controls, control => Assert.NotEqual("-1", control.GetAttribute("tabindex")));
+    }
+
+    [Fact]
     public void TheStylesheetTakesThePagerOutOfTheShrinkDistribution()
     {
         var css = ReadStylesheet();

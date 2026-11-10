@@ -128,8 +128,8 @@
                            policy). *@
                         <NsTd>
                             <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Justify="NsAlign.End">
-                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-commit" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
-                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-commit" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" Disabled="IsRunning" OnClick="@(() => Commit(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" Disabled="IsRunning" OnClick="@(() => Cancel(item))" />
                             </NsStack>
                         </NsTd>
                     </CascadingValue>
@@ -149,7 +149,7 @@
                             <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-edit" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Chord="@NsKeys.Edit" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
                             @if (OnRowRemove.HasDelegate)
                             {
-                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-delete" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy" OnClick="@(() => Remove(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-delete" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy || IsRunning" OnClick="@(() => Remove(item))" />
                             }
                         </NsStack>
                     </NsTd>
@@ -235,7 +235,7 @@
     RenderFragment? readFailed = _failed && !IsRunning
         ? @<NsStack Gap="NsSize.Sm" Align="NsAlign.Center" Margin="NsSize.Md" Class="ns-table-failed">
               <NsText Secondary>@Strings.Translate("Common.LoadFailed")</NsText>
-              <NsButton Label="@Strings.Translate("Common.Retry")" OnClick="Retry" Class="ns-table-retry" />
+              <NsButton Label="@Strings.Translate("Common.Retry")" Disabled="IsRunning" OnClick="Retry" Class="ns-table-retry" />
           </NsStack>
         : null;
 
@@ -248,7 +248,7 @@
        order: the hand's way in is the one the page drew, and a second control under the same
        name is the shape the one-seat rule refuses (hosts.md). *@
     RenderFragment? undrawnAdd = Editable && NewRow is not null && !BarAdds
-        ? @<button type="button" class="ns-cells-add ns-cells-add-undrawn" tabindex="-1" aria-hidden="true" disabled="@IsBusy" @onclick="Add"></button>
+        ? @<button type="button" class="ns-cells-add ns-cells-add-undrawn" tabindex="-1" aria-hidden="true" disabled="@(IsBusy || IsRunning)" @onclick="Add"></button>
         : null;
 }
 
@@ -281,7 +281,7 @@
             }
             @if (BarAdds)
             {
-                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-cells-add" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
+                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-cells-add" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy || IsRunning" OnClick="Add" />
             }
         </NsStack>
     </NsStack>
@@ -918,8 +918,8 @@ else
     }
 
     /// <summary>Opens a new row for editing, as the table's own add control does — for a page
-    /// that adds from its own chrome (<see cref="AddControl"/> off). Inert while a row is open,
-    /// the same one-row-at-a-time rule the control keeps by being disabled.</summary>
+    /// that adds from its own chrome (<see cref="AddControl"/> off). Inert while a row is open
+    /// or the Runner is running, the same rule the control keeps by being disabled.</summary>
     public void Add()
     {
         if (!Editable || NewRow is null || IsBusy || IsRunning)
@@ -1277,6 +1277,12 @@ else
     // down is not hammered once per scroll event.
     Task Retry()
     {
+        // A row commit or remove in flight owns the Runner; the strip is only withdrawn at the next render.
+        if (IsRunning)
+        {
+            return Task.CompletedTask;
+        }
+
         _failed = false;
 
         if (Scrolls)
@@ -1347,7 +1353,20 @@ else
             PageSize = ScrollPageSize
         };
 
-        var outcome = await Read(args, options);
+        ReadOutcome outcome;
+
+        try
+        {
+            outcome = await Read(args, options);
+        }
+        finally
+        {
+            // A reload that superseded this page owns the flag now.
+            if (generation == _generation)
+            {
+                _fetching = false;
+            }
+        }
 
         // A reload that landed while this page was in flight already owns the list, and this
         // answer describes the result set it replaced — appending it would mix two searches.
@@ -1358,15 +1377,12 @@ else
 
         if (outcome == ReadOutcome.Superseded)
         {
-            _fetching = false;
-
             return;
         }
 
         if (outcome == ReadOutcome.Failed)
         {
             _failed = true;
-            _fetching = false;
 
             StateHasChanged();
 
@@ -1382,7 +1398,6 @@ else
         // pages, would otherwise keep asking forever, and an empty answer is the only
         // end-of-list signal a count cannot give.
         _exhausted = Rows.Items.Count == 0 || _scrolled.Count >= Rows.TotalCount;
-        _fetching = false;
 
         StateHasChanged();
     }

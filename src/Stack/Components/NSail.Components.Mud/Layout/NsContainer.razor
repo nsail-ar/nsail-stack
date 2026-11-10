@@ -36,7 +36,10 @@
         }
     }
 
-    void OnSurfaceStateChanged() => _ = InvokeAsync(StateHasChanged);
+    void OnSurfaceStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     public void Dispose()
     {

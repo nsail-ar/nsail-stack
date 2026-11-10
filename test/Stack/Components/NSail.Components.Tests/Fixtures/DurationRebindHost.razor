@@ -1,0 +1,40 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using Microsoft.AspNetCore.Components.Forms
+@using NSail.Components
+
+@* One duration field under an edit context the host replaces in place: the field keeps its
+   position in the tree while the document it answers to changes, as a row editor's context
+   does when another row opens. *@
+<CascadingValue TValue="EditContext" Value="_context" IsFixed="false">
+    <NsDurationField TValue="TimeSpan?" @bind-Value="_model.Length" />
+</CascadingValue>
+
+@code {
+
+    public sealed class FormModel
+    {
+        public TimeSpan? Length { get; set; }
+    }
+
+    FormModel _model = new();
+
+    EditContext _context = default!;
+
+    protected override void OnInitialized()
+    {
+        _context = new EditContext(_model);
+    }
+
+    public EditContext Context => _context;
+
+    public void Rebind()
+    {
+        _model = new FormModel();
+        _context = new EditContext(_model);
+        StateHasChanged();
+    }
+}

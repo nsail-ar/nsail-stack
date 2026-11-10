@@ -53,17 +53,17 @@ public sealed class NsPasswordFieldEyeTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void TheEyeTogglesTheBoxBetweenPasswordAndText()
+    public async Task TheEyeTogglesTheBoxBetweenPasswordAndText()
     {
         var cut = Render();
 
         Assert.Equal("password", cut.Find("input").GetAttribute("type"));
 
-        cut.Find(EyeSelector).Click();
+        await cut.InvokeAsync(() => cut.Find(EyeSelector).Click());
 
         Assert.Equal("text", cut.Find("input").GetAttribute("type"));
 
-        cut.Find(EyeSelector).Click();
+        await cut.InvokeAsync(() => cut.Find(EyeSelector).Click());
 
         Assert.Equal("password", cut.Find("input").GetAttribute("type"));
     }
@@ -71,13 +71,13 @@ public sealed class NsPasswordFieldEyeTests : BunitContext, IAsyncLifetime
     [Theory]
     [InlineData("es", "Mostrar contraseña", "Ocultar contraseña")]
     [InlineData("en", "Show password", "Hide password")]
-    public void TheEyeIsNamedForWhatItWillDo(string language, string show, string hide)
+    public async Task TheEyeIsNamedForWhatItWillDo(string language, string show, string hide)
     {
         var cut = Render(language);
 
         Assert.Equal(show, cut.Find(EyeSelector).GetAttribute("aria-label"));
 
-        cut.Find(EyeSelector).Click();
+        await cut.InvokeAsync(() => cut.Find(EyeSelector).Click());
 
         Assert.Equal(hide, cut.Find(EyeSelector).GetAttribute("aria-label"));
     }
