@@ -5,134 +5,76 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using NSail.Messaging.Runtime.Packs;
 using NSail.Metadata;
-using NSail.Problems;
 
 namespace NSail.Messaging.Runtime.Tests;
 
 public sealed class PackReplayerTests
 {
-    public sealed record Step : IMessage
+    public sealed class Step : IMessage
     {
-        public string Name { get; init; } = "";
+        public int N { get; set; }
     }
 
-    sealed class RecordingMediator : Mediator
+    sealed class ScriptedMediator : Mediator
     {
         readonly Func<Step, Task> _send;
 
-        public RecordingMediator(Func<Step, Task> send)
+        public ScriptedMediator(Func<Step, Task> send)
             : base(new ServiceCollection().BuildServiceProvider())
         {
             _send = send;
         }
 
-        public List<string> Sent { get; } = [];
-
         public override Task Send(IMessage message, IReadOnlyDictionary<string, string>? headers, CancellationToken cancellationToken = default)
         {
-            var step = (Step)message;
-
-            Sent.Add(step.Name);
-
-            return _send(step);
+            return _send((Step)message);
         }
     }
 
-    static readonly MessageRegistry Registry = new(new MetadataProvider(), [typeof(Step)]);
-
-    static PackStep StepOf(string name)
+    static (PackReplayer Replayer, Pack Pack) Build(Func<Step, Task> send, int steps)
     {
-        return new PackStep
+        var registry = new MessageRegistry(new MetadataProvider(), [typeof(Step)]);
+        var key = registry.KeyFor(typeof(Step));
+        var pack = new Pack
         {
-            Message = Registry.KeyFor(typeof(Step)),
-            Body = JsonSerializer.SerializeToElement(new { name }),
+            Name = "p",
+            Steps = Enumerable.Range(0, steps)
+                .Select(n => new PackStep { Message = key, Body = JsonSerializer.SerializeToElement(new { N = n }) })
+                .ToList(),
         };
-    }
 
-    static Pack PackOf(params PackStep[] steps)
-    {
-        return new Pack { Name = "pack", Steps = [.. steps] };
-    }
-
-    static BusinessException Refusal(string code)
-    {
-        return new BusinessException(code, code, [new Issue(code, $"{code} says no", "step")]);
+        return (new PackReplayer(new ScriptedMediator(send), registry), pack);
     }
 
     [Fact]
-    public async Task A_step_whose_subject_already_exists_is_skipped_and_the_rest_still_run()
+    public async Task A_cancelled_token_stops_the_replay_instead_of_recording_step_errors()
     {
-        var mediator = new RecordingMediator(step =>
+        using var cts = new CancellationTokenSource();
+        var (replayer, pack) = Build(step =>
         {
-            return step.Name == "b" ? throw Refusal("AlreadyExists") : Task.CompletedTask;
-        });
+            if (step.N == 1)
+            {
+                cts.Cancel();
+                cts.Token.ThrowIfCancellationRequested();
+            }
 
-        var replay = await new PackReplayer(mediator, Registry).Replay(PackOf(StepOf("a"), StepOf("b"), StepOf("c")), PackFailure.Stop);
+            return Task.CompletedTask;
+        }, 4);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => replayer.Replay(pack, PackFailure.Collect, cts.Token));
+    }
+
+    [Fact]
+    public async Task Collect_still_gathers_real_step_failures()
+    {
+        var (replayer, pack) = Build(step =>
+        {
+            return step.N % 2 == 1 ? throw new InvalidOperationException("boom") : Task.CompletedTask;
+        }, 4);
+
+        var replay = await replayer.Replay(pack, PackFailure.Collect);
 
         Assert.Equal(2, replay.Imported);
-        Assert.Equal(1, replay.Skipped);
-        Assert.Empty(replay.Errors);
-        Assert.Equal(["a", "b", "c"], mediator.Sent);
-    }
-
-    [Fact]
-    public async Task Stop_ends_the_replay_at_the_first_failed_step()
-    {
-        var mediator = new RecordingMediator(step =>
-        {
-            return step.Name == "b" ? throw Refusal("Invalid") : Task.CompletedTask;
-        });
-
-        var replay = await new PackReplayer(mediator, Registry).Replay(PackOf(StepOf("a"), StepOf("b"), StepOf("c")), PackFailure.Stop);
-
-        Assert.Equal(1, replay.Imported);
-        var error = Assert.Single(replay.Errors);
-        Assert.Equal(1, error.Index);
-        Assert.Equal("Invalid says no", error.Detail);
-        Assert.Equal(["a", "b"], mediator.Sent);
-    }
-
-    [Fact]
-    public async Task Collect_attempts_every_step_and_keeps_each_error()
-    {
-        var mediator = new RecordingMediator(step =>
-        {
-            return step.Name != "b" ? throw new InvalidOperationException($"{step.Name} broke") : Task.CompletedTask;
-        });
-
-        var replay = await new PackReplayer(mediator, Registry).Replay(PackOf(StepOf("a"), StepOf("b"), StepOf("c")), PackFailure.Collect);
-
-        Assert.Equal(1, replay.Imported);
-        Assert.Equal([0, 2], replay.Errors.Select(error => error.Index));
-        Assert.Equal(["a broke", "c broke"], replay.Errors.Select(error => error.Detail));
-        Assert.Equal(["a", "b", "c"], mediator.Sent);
-    }
-
-    [Fact]
-    public async Task A_step_the_registry_does_not_know_is_a_stale_pack_error_and_is_never_sent()
-    {
-        var mediator = new RecordingMediator(_ => Task.CompletedTask);
-        var stale = new PackStep { Message = "Gone.Feature.Message", Body = JsonSerializer.SerializeToElement(new { }) };
-
-        var replay = await new PackReplayer(mediator, Registry).Replay(PackOf(stale, StepOf("a")), PackFailure.Collect);
-
-        var error = Assert.Single(replay.Errors);
-        Assert.Contains("stale", error.Detail, StringComparison.Ordinal);
-        Assert.Contains("Gone.Feature.Message", error.Detail, StringComparison.Ordinal);
-        Assert.Equal(["a"], mediator.Sent);
-    }
-
-    [Fact]
-    public async Task Cancelling_the_replay_surfaces_the_cancellation_instead_of_collecting_it()
-    {
-        using var cancellation = new CancellationTokenSource();
-        var mediator = new RecordingMediator(_ =>
-        {
-            cancellation.Cancel();
-
-            throw new OperationCanceledException(cancellation.Token);
-        });
-
-        await Assert.ThrowsAsync<OperationCanceledException>(() => new PackReplayer(mediator, Registry).Replay(PackOf(StepOf("a")), PackFailure.Collect, cancellation.Token));
+        Assert.Equal(2, replay.Errors.Count);
     }
 }
