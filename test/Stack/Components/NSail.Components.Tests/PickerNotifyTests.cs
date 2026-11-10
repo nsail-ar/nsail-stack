@@ -13,7 +13,8 @@ namespace NSail.Components.Tests;
 /// their *Changed callback when a value is pushed INTO them from the model, not only when
 /// someone picks one — measured here, this host counted 1 notification for a value nobody
 /// typed before NsFieldBase learned to tell an echo from an edit. The form's own arrival
-/// tests (FieldArrivalProbeTests) show what that cost the user; this one shows why.</summary>
+/// tests (FieldArrivalProbeTests) show what that cost the user; this one shows why, and
+/// PickerEchoTests holds that the echo reaches the page as no ValueChanged either.</summary>
 public sealed class PickerNotifyTests : BunitContext, IAsyncLifetime
 {
     public PickerNotifyTests()
@@ -49,7 +50,7 @@ public sealed class PickerNotifyTests : BunitContext, IAsyncLifetime
         await host.InvokeAsync(host.Instance.FillInPlace);
 
         // The picker still echoed — the value reached it and it called back — but the echo
-        // carried the value the field already displayed, so nothing was reported as changed.
+        // carried the value the field was handed, so nothing was reported as changed.
         Assert.Equal(0, host.Instance.Notifications);
         Assert.Equal(new DateOnly(2026, 4, 8), model.DateOnlyValue);
     }
