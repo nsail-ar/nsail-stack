@@ -586,7 +586,7 @@ public class MapperDiagnosticsTests
 
                 {{Holder}}
                 """)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<MapFromAttribute>()

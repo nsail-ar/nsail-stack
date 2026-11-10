@@ -517,7 +517,7 @@ else
     public bool Compact { get; set; }
 
     /// <summary>Names the table in a bar rendered above it, with the add control at the bar's
-    /// right edge — the collection-editor chrome (Seña). Unset draws no bar at all, so there is
+    /// right edge — the collection-editor chrome. Unset draws no bar at all, so there is
     /// no add control a hand can press: a grid wired to add rows and left unnamed is refused by
     /// the Architecture suite rather than shipped with nothing for a hand to reach. The
     /// keystroke's way in the grid keeps either way, undrawn where no bar draws it.</summary>
@@ -846,7 +846,10 @@ else
 
     string Counted(string key, int count)
     {
-        return string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Translate(key, count), count);
+        // Formatted here, not by the template: a plain {0} writes an int with no thousands separator.
+        var culture = RegionCulture.For(Language);
+
+        return string.Format(culture, Strings.Translate(key, count), count.ToString("N0", culture));
     }
 
     // Auto asks the device, not the size: the answer rides in on the request, so it is already

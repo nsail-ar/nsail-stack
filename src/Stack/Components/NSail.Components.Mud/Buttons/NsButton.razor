@@ -203,12 +203,12 @@
             {
                 ["aria-label"] = Label,
                 // A SEPARATE attribute from aria-label above, on purpose: aria-label IS the
-                // accessible name, and the name stays the word (nsail#2272) — the chord joining
-                // it would be nsail#2259 again, one layer up. data-ns-whisper is read by ns.js,
-                // never by the accessible-name computation, so the bubble can say more than the
-                // name does. Written whether or not there is a chord to add: it is the bubble's
-                // whole text, and whether the bubble opens at all is one question about the
-                // rendered control that ns.js asks and nothing here can answer.
+                // accessible name, and the name stays the word — the chord joining
+                // it would put the chord in the name, one layer up. data-ns-whisper is read by
+                // ns.js, never by the accessible-name computation, so the bubble can say more
+                // than the name does. Written whether or not there is a chord to add: it is the
+                // bubble's whole text, and whether the bubble opens at all is one question
+                // about the rendered control that ns.js asks and nothing here can answer.
                 ["data-ns-whisper"] = LabelWithChord!
             };
         }

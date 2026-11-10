@@ -58,7 +58,7 @@ public class PolicyHandlersTests
                     public static partial void AddClinicPolicyHandlers(this IServiceCollection services);
                 }
                 """)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()
@@ -155,7 +155,7 @@ public class PolicyHandlersTests
                     public static partial void AddClinicPolicyHandlers(this IServiceCollection services);
                 }
                 """)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()
@@ -225,7 +225,7 @@ public class PolicyHandlersTests
                     public static partial void AddClinicPolicyHandlers(this IServiceCollection services);
                 }
                 """)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()

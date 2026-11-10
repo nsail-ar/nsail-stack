@@ -46,6 +46,9 @@ the files it leaves.
     Release's `Suite` (a test project, `{Product}` its name) runs there — no script. Another repository
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):
     a release holds that repository's merges when the version its tag pins does.
+    A PR no gate judges (another repository's, or any with no Verify worker) whose red CI failed only
+    tests or build errors that main's newest completed CI run failed too waits for main the same way,
+    read again each pass; nothing re-runs it.
   - `ProtectedPaths` (default `.github/workflows/**`): a builder whose commits touch one is not pushed,
     since CI would run the changed workflow with the repository's secrets before review; `AllowProtectedPaths`
     lifts it for the harness, the `allow-protected` label for one story. A refused story waits where it stands wearing `ruling` and
@@ -95,15 +98,17 @@ the files it leaves.
     seat's `PromptFile` beside the harness's configuration (`prompts/`) is the harness's, for every
     repository; any other is the repository's. A pass: the UpdateBoard keepers, every story worker over
     the `bug` stories (broken where a customer runs: before a release too, and past the WIP limit), the
-    workers on their own, then every story worker over the p1 stories, then over the rest; one job per
-    story per pass. A keeper's (`On.Executed`) `MoveTo` is written only while the story's column is
-    still the one the pass read: one a hand set since stays, the pass logs the dropped move, and the
-    story gets no other chore that pass. A keeper whose filter asks for no open PR (`Pr: none`) reads
-    an absence, so it takes a story In-Progress only when no job on any harness of the fleet holds
-    the story's lock and nothing touched it (a comment, a label, a column move) for `OrphanGraceMinutes`
-    (default 10, as long as a lock with no job behind it waits): a job's ending takes its label off
-    before its PR opens. Right before its move is written, the open PRs are read again in every
-    repository; one of the story drops the move and its comment, and the pass logs the PR it found.
+    workers on their own, then every story worker over the p1 stories and a red main's or suite's
+    (the red first, and past the WIP limit too), then over the rest; at the limit, its note names the
+    first story it holds; one job per story per pass. A keeper's (`On.Executed`) `MoveTo` is written
+    only while the story's column is still the one the pass read: one a hand set since stays, the pass
+    logs the dropped move, and the story gets no other chore that pass. A keeper whose filter asks for
+    no open PR (`Pr: none`) reads an absence, so it takes a story In-Progress only when no job on any
+    harness of the fleet holds the story's lock and nothing touched it (a comment, a label, a column
+    move) for `OrphanGraceMinutes` (default 10, as long as a lock with no job behind it waits): a
+    job's ending takes its label off before its PR opens. Right before its move is written, the open
+    PRs are read again in every repository; one of the story drops the move and its comment, and the
+    pass logs the PR it found.
     Every other keeper moves on the pass that sees its story. A story worker's `On.Starting` `MoveTo` goes with its job and
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
@@ -143,6 +148,19 @@ the files it leaves.
   worker's `Max` caps its own jobs. Past the agent's quota wall (a refused run) only the agents stop.
   A build turn whose holder died returns to the line once older than the longest step the machine's
   enabled workers run (a main gate counts twice its minutes) plus ten.
+- **The release andon** (`Planning/ReleaseAndon.cs`). A product's failed cut leaves its one open red
+  story (`Regression red on main ({product})`, Texts `SuiteRedTitle`); while that story is out of
+  Released, QA and Closed, the release takes the whole harness. The plan holds only: that story's
+  analysis, build, PR rounds, gate, review and merge (and a red main's story, which may be what keeps
+  the suite red); main's gate; the product's own cut (the day's, or the red fix's on its release
+  branch) and the walk of its published release. No other story, PR, QA walk, Watch or cut starts, a
+  `bug` included, and the WIP limit does not hold the release's stories. Jobs already running finish.
+  Its items carry the `andon` tier, above `bug`: a customer's bug still waits behind the release
+  because the release is the line's one way back to a shipped day. `take-new` off still holds the
+  start of a story the andon would take — it is the operator's switch. The status page shows the
+  product, since when and what it waits for (`/status` carries it as `Last.Plan.Andon`). It lifts when
+  the red story ships (its walk moves it to Released, or its product published a release after the fix merged) or a hand closes it; a story a hand holds
+  (`ruling`, `hand`, `blocked`, `stalled`) keeps it lit and says so.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the
@@ -151,7 +169,10 @@ the files it leaves.
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   The dossier a seat reads lays a comment or PR note by any other login fenced and labelled untrusted; the
   logins whose words reach it as the crew's are the harness's own, `Harness:MarkerAuthors` and `Harness:TrustedAuthors`
-  (the owners and the crew, empty by default). A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
+  (the owners and the crew, empty by default). Under an open PR it says why its head is not green where no
+  gate verdict does: the head does not merge with the default branch, or the CI that runs outside the harness is
+  red there — its failed jobs and steps and failed tests (else build errors), the first 30 of each, and the last 40
+  non-empty lines of the first three failed jobs' logs, each cut where its failed step closes, fenced as data. A Watch story (its `telemetry` label, or the fingerprint its body carries) is laid in the dossier with its title fenced as data and its body under a line naming the log text it quotes as data (its criteria stay the seat's work; the analyst's `original.md` fences whole a body the watch filed unfenced), and the
   watch files it in Analyze, never Ready.
   Every harness on the board reads the same: main's `harness/gate` mark written `pending` holds that head from
   a second gate on any harness for twice the longest `Minutes` among that harness's own Main

@@ -19,8 +19,8 @@ public readonly record struct Glyph
     public string Markup { get; }
 
     /// <summary>True when the value handed in was not well-formed XML or held something outside
-    /// the allowlist, and it was dropped. <see cref="Markup"/> is inert either way; a store that refuses rather than
-    /// cleans (NavMenuArrangementValidator) reads this, because it only ever sees the Glyph.</summary>
+    /// the allowlist, and it was dropped. <see cref="Markup"/> is inert either way; a store that
+    /// refuses rather than cleans reads this, because it only ever sees the Glyph.</summary>
     public bool Altered { get; }
 
     public Glyph(string markup)

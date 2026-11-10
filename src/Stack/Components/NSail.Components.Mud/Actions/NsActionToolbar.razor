@@ -109,7 +109,7 @@
     }
     @if (_items.Count > MaxVisible)
     {
-        @* The kebab now CLOSES the row (Leonardo, 2026-08-11): the constant is the fixed
+        @* The kebab CLOSES the row: the constant is the fixed
            target muscle memory aims at, and a row that just grew a fourth verb must not
            shove that target sideways every time the overflow appears or disappears — the
            kebab is the one whose presence is conditional, so it is the one that moves. Left
@@ -198,8 +198,8 @@
     public NsBreakpoint? Breakpoint { get; set; }
 
     /// <summary>What the action column reserves: the cap, the overflow beside it, and the
-    /// constant when the row carries one — the whole cell, honestly, now that the whole cell
-    /// is this one toolbar.</summary>
+    /// constant when the row carries one — the whole cell, since the whole cell is this one
+    /// toolbar.</summary>
     int Slots => MaxVisible + 1 + (_constant is null ? 0 : 1);
 
     protected override async Task OnParametersSetAsync()
@@ -240,7 +240,7 @@
     async Task<bool> Allows(ActionItem item)
     {
         // Resolved, never injected: a host with no security registered (a component test, a
-        // surface without Iam) must still render its markup rather than fail to construct it
+        // surface without security) must still render its markup rather than fail to construct it
         // — the permissive default NsPartial.CanSend already takes. A command carries no
         // destination, so there is nothing to ask about it.
         if (item.PageType is null || Services.GetService(typeof(PageGate)) is not PageGate gate)
@@ -258,7 +258,8 @@
 
     // The row's door is the one link the house draws the same everywhere: a page-link constant
     // handed no glyph wears the chevron, so no page names it; a glyph passed is drawn as passed
-    // (the lápiz of a row with no ficha). A Content (an avatar) is the door's own face.
+    // (a pencil, on a row whose door edits rather than opens). A Content (an avatar) is the
+    // door's own face.
     static ActionItem WithDoorGlyph(ActionItem item)
     {
         if (item.PageType is null || item.Icon is not null || item.Content is not null)

@@ -67,6 +67,7 @@ Defined in `NSail.SourceGeneration.Annotations`:
 | `[Generated(Push.Clients)]` | `Push.Clients` | a `PushedMessage<TMessage>` entry per `[Pushed]` message, the closed list a client's feed publishes from |
 | `[Generated(Queue.Producers)]` | `Queue.Producers` | `ISender<TMessage> → QueueSender<TMessage>` for `[Queue]` messages (the durable send side) |
 | `[Generated(Queue.Consumers)]` | `Queue.Consumers` | a `QueueConsumer<TMessage>` entry per `[Queue]` message, the closed list the drain delivers from |
+| `[Generated(Policies.Handlers)]` | `Policies.Handlers` | a `PolicyHandler` per `IMessage` in scope, plus their DI factories |
 | `[Generated(Mappers.Entities)]` | `Mappers.Entities` | an `IEntityMapper<TSource, TEntity>` per `[MapFrom]` and an `IProjection<TEntity, TRow>` per `[MapTo]` in scope |
 
 Each transport groups its artifacts in one enum. For HTTP: `Clients` is the remote send side, `Endpoints` the receive side, and `InProcess` the local counterpart of `Clients` — same `[Http]` contract, dispatched directly to the handler in the host that exposes the endpoints.
@@ -88,7 +89,7 @@ find. The generated `Add{Kit}PushPublishers` composes the push's own services fi
 both transports' server halves and the install's `PushAudience`), so a composition that mounts
 the kit alone — a handler harness — resolves every publisher it registers; a host that composed
 the push earlier keeps its own.
-`PushMountTests` (`NSail.Architecture.Tests`) holds both roots of every product to the
+`PushMountTests` (`NSail.Architecture.Tests`, enforced in the products' repository) holds both roots of every product to the
 `[Pushed]` messages its host carries, so a forgotten holder fails the build instead of leaving
 a screen stale. Runtime semantics: [messaging.md](messaging.md) (Pushed to clients).
 
@@ -172,7 +173,7 @@ public class GetPrescription : IMessage<Prescription>
 
 Only public, instance, non-indexer properties with a public `set` or `init` and no `[JsonIgnore]` enter the model, read once as the most derived declaration; any other member is not on the wire.
 
-Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Head and Options are mapped with `MapMethods`; their members bind from the query string (route tokens and `[AsRoute]`/`[AsHeader]` still win).
+Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Members bind from the query string on Get, Delete, Head and Options and from the JSON body on Post, Put and Patch. Head and Options are mapped with `MapMethods` (route tokens and `[AsRoute]`/`[AsHeader]` still win).
 
 Sdk projects import `static NSail.Messaging.Annotations.Method` via global usings.
 
@@ -289,7 +290,7 @@ same thing.
 | `NSG001` | Error | An `[Http]` route token has no route-bound property on the message. |
 | `NSG002` | Error | A `[Pushed]` type does not implement `IMessage` — only an event can be published, so nothing would ever be pushed. |
 | `NSG003` | Error | A `[Pushed]` event declares or inherits a public property — the body reaches every seat of the tenant, so a property is a row crossing the org wall. |
-| `NSG004` | Error | A `[MapFrom]` would write `OrganizationId` by name alone — moving a row between branches is a decision (org-map.md), so it is named on the member or `[MapIgnore]`d. |
+| `NSG004` | Error | A `[MapFrom]` would write `OrganizationId` by name alone — moving a row between branches is a decision (nsail's `plugins/nsail-kits/doctrine/org-map.md`), so it is named on the member or `[MapIgnore]`d. |
 | `NSG005` | Error | A `[Primitive]` member's type differs from its source's — copied whole, it cannot be converted. |
 | `NSG006` | Error | A mapped member has no conversion from its source; for a projection, none a query can translate (no parsing). |
 | `NSG007` | Error | A mapped type cannot be built: no parameterless constructor, or abstract with no discriminator to pick a derived type. |
@@ -373,7 +374,7 @@ An edit must not re-read the project. A generator's pipeline holds only value-eq
 
 ## What gets generated
 
-- **Endpoints** — for each `[Http]` message with a matching `[Injectable]` handler, an
+- **Endpoints** — for each `[Http]` message in scope (the handler is resolved at send time), an
   `IEndpointEntry` that maps the route to `Mediator.Send`. Every emitted entry carries two
   things the runtime reads off the route table, never a per-endpoint decision:
   `MessageEndpointMetadata`, which names the message before ASP.NET binds anything (so the

@@ -29,6 +29,7 @@
         <ProjectReference Include="..\..\..\..\src\Stack\Configuration\NSail.Configuration\NSail.Configuration.csproj" />
         <ProjectReference Include="..\..\..\..\src\Stack\Data\NSail.Data\NSail.Data.csproj" />
         <ProjectReference Include="..\..\..\..\src\Stack\Data\NSail.Data.Testing\NSail.Data.Testing.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Sample\NSail.Sample.Data\NSail.Sample.Data.csproj" />
         <ProjectReference Include="..\..\..\..\src\Stack\Generation\NSail.SourceGeneration.Annotations\NSail.SourceGeneration.Annotations.csproj" />
     </ItemGroup>
 

@@ -1,6 +1,6 @@
 ---
 name: new-mapping
-description: Write or convert a handler so the generated entity mapper copies the data — [MapFrom] a Create/Update message onto an entity graph, [MapTo] a Row/Model/Ref as a projection, EntityMapper.Map/Upsert/Project, compositions and aggregations. Use when a handler would assign `entity.X = message.X` by hand, build `new Entity { ... }` from a message, merge a child collection by key, or `.Select(e => new XRow { ... })`; when adding a Create/Update/List/Get/Lookup to a kit; or when a build says NSG004 to NSG013 or NSG025.
+description: Write or convert a handler so the generated entity mapper copies the data — [MapFrom] a message onto an entity graph, [MapTo] a Row/Model/Ref projection, EntityMapper.Map/Upsert/Project. Use when a handler would assign entity.X = message.X by hand, build a new Entity from a message, merge a child collection by key, or project with .Select; when adding a Create/Update/List/Get/Lookup to a kit; or when a build says NSG004 to NSG013 or NSG025.
 ---
 
 # New mapping

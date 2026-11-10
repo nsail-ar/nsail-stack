@@ -21,7 +21,7 @@ public sealed class ActionItem
     /// <summary>Renders instead of the glyph on icon chrome — a contributor whose action IS
     /// its own image (a person's avatar) rather than a fixed catalog entry. A plain Blazor
     /// primitive, so Stack stays domain-free: the contributor's own kit builds the fragment
-    /// (an AssetId-based image), never named or typed here. Mutually exclusive with Icon in
+    /// (a stored image), never named or typed here. Mutually exclusive with Icon in
     /// spirit, never combined — the glyph is what a contributor with no image falls back to.</summary>
     public RenderFragment? Content { get; init; }
 

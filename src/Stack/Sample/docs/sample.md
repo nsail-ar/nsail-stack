@@ -31,13 +31,17 @@ the rule — the row the index names stays open under it.
 
 It lives under `src/Stack` but is written the way a kit or an app is: it is the code a
 stranger copies first, so it keeps the consumer-side rules: no vendor types, no doc comments, every
-endpoint behind the gate. No test in this repository sweeps it yet; a review does.
+endpoint behind the gate. `SampleRoleTests` covers its role; no test composes its security, so a review does.
 
-No Iam is composed: there is no sign-in. The gate is on all the same — the messages are open
-through one anonymous built-in policy (`Policies.cs`), registered on both sides: the
-server enforces it, the client draws by it. Pages keep their `[Authorize<TMessage>]`; what
+**Not for production.** No Iam is composed: there is no sign-in, so anyone who can reach the port
+can read, change and delete the contacts, which are `[Personal]` data. Run it on localhost only;
+never put it on a network the internet can see. The gate is on all the same — the messages are
+open through one anonymous built-in policy (`Policies.cs`) that names each of them, never
+`Sample.*`, registered on both sides: the server enforces it, the client draws by it. A new
+message is refused until that list names it. Pages keep their `[Authorize<TMessage>]`; what
 changes is the default page policy, which asks for anyone instead of a signed-in user
-(`Screens.cs`). No tenancy either: the install is one database.
+(`Screens.cs`). A collection on a message declares its maximum count (`UpdateContact.Addresses`).
+No tenancy either: the install is one database.
 
 ## Layout
 
@@ -60,6 +64,14 @@ dotnet build src/Stack/Sample/NSail.Sample.Web
 dotnet run --project src/Stack/Sample/NSail.Sample.Web --launch-profile http
 ```
 
+The host connects as a role without superuser rights. On start,
+`SampleRole.MigrateAndGrant` runs the migration chain through `Sample:AdminConnectionString`,
+creates the role if it is missing, strips it of superuser, `BYPASSRLS` and role or database
+creation whether it was just created or not, then grants it reads and writes on the tables,
+nothing more. Both strings leave the password out: it arrives in `PGPASSWORD`, and
+`sample_app` takes that same value. `dotnet ef` reads `Sample:AdminConnectionString` too, from
+the command line or the environment.
+
 Blazor answers at the host's root, React under `/react`. The build writes `sdk.ts`,
 typechecks the client and builds it into `react/` beside the host project (gitignored). Without
 the root `node_modules` the host still builds, Blazor runs, and `/react` answers a line saying
@@ -79,6 +91,6 @@ The sample owns the **41xx** block of NSail's port nomenclature.
 | `--launch-profile https` (VS F5) | 4000 (https), 4001 (http) |
 | Vite dev server | 4002 |
 
-The connection string is `Sample:ConnectionString` (`appsettings.json`: `localhost`, database
-`sample_main`, user `postgres`; Npgsql reads the password from `PGPASSWORD`). The first run
-creates the database.
+The connection strings are `Sample:ConnectionString` and `Sample:AdminConnectionString` in
+`appsettings.json`; Npgsql reads the password from `PGPASSWORD`. The first run creates the
+database.

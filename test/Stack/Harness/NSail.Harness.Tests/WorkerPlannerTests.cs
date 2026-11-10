@@ -74,13 +74,13 @@ public class WorkerPlannerTests
     [Fact]
     public void TheRedStoryJumpsEveryQueue()
     {
-        // A red story is born p1 (RedLabels): it leads the p1 sweep, ahead of the other p1 stories.
+        // A red suite story lights the andon: it is the only story planned.
         var f = new Fixture()
             .Story(1, "Ready", "p1")
             .Story(2, "In-Progress").Pr(2, 20)
             .Story(3, "Ready", "p1", title: "Regression red on main (Shop)");
 
-        Assert.Equal(["dev #3 (red)", "dev #1 (p1)", "review PR #20 (story #2)"], Lines(f));
+        Assert.Equal(["dev #3 (red)"], Lines(f));
     }
 
     [Fact]
@@ -94,6 +94,12 @@ public class WorkerPlannerTests
 
         Assert.Equal(["dev #1 (p1)"], plan.Items.Select(i => i.ToString()));
         Assert.Contains(plan.Notes, n => n.StartsWith("#3:", StringComparison.Ordinal));
+
+        var full = f.Story(4, "In-Progress").Pr(4, 40).Story(5, "In-Progress").Pr(5, 50).Build() with { UnjudgedFixes = new HashSet<int> { 3 } };
+        var held = WorkerPlanner.Make(full, Workers, new PlannerOptions { WipLimit = 2 });
+
+        Assert.DoesNotContain(held.Items, i => i.Story == 3);
+        Assert.Contains(held.Notes, n => n.StartsWith("#3:", StringComparison.Ordinal) && n.EndsWith("Develop waits", StringComparison.Ordinal));
     }
 
     // The gate's verdicts along main, as IRepository.Statuses reads them: a running gate's pending mark is none.

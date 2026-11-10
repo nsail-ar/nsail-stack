@@ -505,7 +505,7 @@ Which channel a screen is in — state versus condition — is the core doc's
   the thread's own, not either speaker's. The warning wash says a hand is owed, which is what
   both of its uses are: a note the staff wrote on a ticket and nobody said out loud
   (`TicketPage`), and the card the assistant draws for an action it will not carry out until
-  the person clicks (`AssistantPage`, assistant.md).
+  the person clicks (`AssistantPage`, the product's assistant page).
 - **A handful of facts said as a list is a real `<ul class="ns-bullets">`**, so they are
   announced as a list and not as one sentence that wrapped — the browser's own marker kept, its
   indent and margin corrected to the one the house's markdown lists wear, and the gap between

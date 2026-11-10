@@ -13,6 +13,8 @@ namespace NSail.Harness.Workers;
 //   3. the workers that run on their own (a release, main's verification, a QA drain), by Priority;
 //   4. the workers over stories, by Priority, over the p1 stories (and a red main's or suite's);
 //   5. the same workers over every other story.
+// At the WIP limit no new story starts but a `bug`, a red main's or suite's (their fix is finishing
+// work) and, while an andon is lit, the release's own.
 // Inside a worker, stories go by the configured Order (epic progress, then age). A story gets one
 // job per pass: the first worker that takes it. Locks (a job's own labels), a story already worked
 // here and a driver this machine cannot run hold it below any filter.
@@ -26,6 +28,13 @@ public static class WorkerPlanner
         var chores = new List<Chore>();
         var notes = new List<string>();
         var issues = Planner.ReleaseStaleLocks(board, options, chores, notes);
+        // A failed cut holds the harness: only the release's own work is planned below.
+        var andon = ReleaseAndon.Read(issues, board.ShippedFixes, workers, options);
+        var release = ReleaseAndon.Stories(issues, andon, options);
+        foreach (var a in andon)
+        {
+            notes.Add($"release andon ({a.Product}): nothing but the release starts until its cut ships — waits for {a.Waits}");
+        }
         var lookup = new StoryLookup(issues, board.Prs, board.MergedStories);
         var flight = board.Flight;
         var prsByStory = board.Prs.GroupBy(p => p.Story).ToDictionary(g => g.Key, g => g.OrderBy(p => p.Number).ToList());
@@ -63,12 +72,19 @@ public static class WorkerPlanner
             }
         }
 
+        foreach (var pr in board.Prs.Where(p => p.Shared && issues.Any(i => i.Number == p.Story && i.Stage == Stages.InProgress && Planner.HoldOf(i, options) is null)))
+        {
+            notes.Add($"#{pr.Story}: {(pr.Repo == board.Repo ? "" : pr.Repo.Split('/')[1] + " ")}PR #{pr.Number} red only where main's own CI is red — no round until main moves");
+        }
+
         var items = new List<WorkItem>();
         var taken = new HashSet<int>();
         var wip = prsByStory.Keys.Where(n => issues.FirstOrDefault(i => i.Number == n) is { } i && Planner.HoldOf(i, options) is not (Labels.Ruling or Labels.Blocked or Labels.Hand or Labels.Stalled))
             .Union(flight.DevStories).Distinct().Count();
         var full = options.WipLimit > 0 && wip >= options.WipLimit;
-        if (full) notes.Add($"{wip} stories under way (limit {options.WipLimit}): no new story starts until one closes");
+        var limit = full && andon.Count == 0 ? notes.Count : -1;
+        int? next = null;
+        if (limit >= 0) notes.Add($"{wip} stories under way (limit {options.WipLimit}): no new story starts until one closes");
 
         // A red-main story whose fix merged waits for main's gate to judge a head that holds it: only
         // Develop waits, everything else goes on.
@@ -81,23 +97,26 @@ public static class WorkerPlanner
             .SelectMany(i => i.Labels.Where(l => l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal)))
             .ToHashSet();
 
-        // A bug goes before everything: the workers on their own (a release, main's gate) wait behind it,
-        // and the WIP limit does not hold it.
+        // A lit andon goes before everything, a bug included: only the release's own work is planned, and
+        // the WIP limit does not hold it. With none lit, a bug goes first: the workers on their own (a
+        // release, main's gate) wait behind it, and the WIP limit does not hold it.
         Sweep(i => i.Has(Labels.Bug), bug: true);
         foreach (var w in workers.Where(w => w.Kind is not null && !w.OverStories && may(w)))
         {
-            items.AddRange(OnItsOwn(w, board, issues, options));
+            items.AddRange(OnItsOwn(w, board, issues, options).Where(item => andon.Count == 0 || ReleaseAndon.Owns(item, andon)).Select(item => andon.Count == 0 ? item : item with { Tier = ReleaseAndon.Tier }));
         }
-        // A red main's or red suite's story is swept with the p1 ones, whatever its labels.
+        // A red main's or red suite's story is swept with the p1 ones, whatever its labels, and the WIP
+        // limit does not hold it; the limit's note names the first story it holds.
         Sweep(i => !i.Has(Labels.Bug) && (i.Has(Labels.P1) || Red(i, options)), bug: false);
         Sweep(i => !i.Has(Labels.Bug) && !i.Has(Labels.P1) && !Red(i, options), bug: false);
-        return new Plan(items, chores, notes);
+        if (limit >= 0 && next is { } held) notes[limit] += $" — #{held} would be next";
+        return new Plan(items, chores, notes) { Andon = andon };
 
         void Sweep(Func<Issue, bool> which, bool bug)
         {
             foreach (var w in workers.Where(w => w.Kind is not null && w.OverStories && may(w)))
             {
-                if (w.TakesNew && full && !bug) continue;
+                var holding = w.TakesNew && full && !bug;
                 var stories = Ordered(issues.Where(which), w, options);
                 // Lanes in different parts of the tree conflict less: a new story in an area no lane
                 // builds goes first.
@@ -105,12 +124,20 @@ public static class WorkerPlanner
                 foreach (var i in stories)
                 {
                     if (taken.Contains(i.Number) || Busy(i, flight, options)) continue;
+                    var owned = andon.Count > 0 && release.Contains(i.Number);
+                    if (andon.Count > 0 && !owned) continue;
                     if (w.Kind == WorkKind.Dev && board.UnjudgedFixes.Contains(i.Number)) continue;
                     var (pr, state) = Deciding(i, w, prsByStory.GetValueOrDefault(i.Number), board, options, lookup);
                     if (!w.Takes(i, w.Filter.Pr == "open" ? pr : null, state, lookup)) continue;
+                    if (holding && !owned && !Red(i, options))
+                    {
+                        next ??= i.Number;
+                        continue;
+                    }
                     taken.Add(i.Number);
                     chores.AddRange(ChoresOf(w, "Starting", i));
-                    items.Add(ItemOf(w, i, w.Filter.Pr == "open" ? pr : null, state, board, options));
+                    var item = ItemOf(w, i, w.Filter.Pr == "open" ? pr : null, state, board, options);
+                    items.Add(owned ? item with { Tier = ReleaseAndon.Tier } : item);
                 }
             }
         }
@@ -183,6 +210,8 @@ public static class WorkerPlanner
         {
             switch (pr.Ci)
             {
+                // A red main's own CI shares waits for main to move, as the gate's does.
+                case CiState.Red when pr.Shared: return "pending";
                 case CiState.Pending: return "pending";
                 case CiState.Red: return "red";
                 case CiState.Conflict: return "conflict";

@@ -37,8 +37,7 @@
 
     readonly FigureConverter<TValue> _figures = new();
 
-    // Percent is the numeric family too (Story: "los campos se seleccionan al recibir
-    // foco").
+    // Percent is the numeric family too: it selects on focus.
     protected override bool SelectOnFocus => true;
 
     // And the same decimal comma as NsNumericField's: the vendor's default is invariant.

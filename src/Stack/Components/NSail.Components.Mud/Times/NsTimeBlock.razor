@@ -12,11 +12,11 @@
     @if (IsClickable)
     {
         @* A real button, so focus, Enter, Space and the role come from the browser rather
-           than from a div taught to imitate one. ReadOnly no longer refuses a click outright
-           (single-calendar-draft's overlay detail, 2026-08-12): a read-only block may open an
-           informational dialog about what it is, which is not an edit affordance — the caller
-           is the one who must never wire an edit here, and ReadOnly's own class keeps the
-           block's dotted, muted look regardless of which kind of click it carries. *@
+           than from a div taught to imitate one. ReadOnly does not refuse a click outright: a
+           read-only block may open an informational dialog about what it is, which is not an
+           edit affordance — the caller is the one who must never wire an edit here, and
+           ReadOnly's own class keeps the block's dotted, muted look regardless of which kind
+           of click it carries. *@
         <button type="button" class="@GetClasses()" style="@GetStyle()" aria-label="@AriaLabel" title="@Tooltip" @ref="_button" @onclick="Click">
             <div class="ns-time-block-lines">
                 @ChildContent
@@ -29,7 +29,7 @@
             @* Everything the caller hands over goes inside this box and never straight into
                the block: how many of those lines the block has room to draw WHOLE is decided
                in ns-mud.css against the height above, and a line drawn half is what the box
-               exists to prevent (nsail#787). The caller orders them — what a short block gives
+               exists to prevent. The caller orders them — what a short block gives
                up is its trailing lines, so the first line is the one that must matter. *@
             <div class="ns-time-block-lines">
                 @ChildContent

@@ -31,6 +31,8 @@ public sealed class FieldProbeModel
 
     public Guid RequiredChoice { get; set; }
 
+    public IReadOnlyList<Guid>? Choices { get; set; }
+
     public static void FillInPlace(FieldProbeModel target)
     {
         var loaded = Preset();
@@ -48,6 +50,7 @@ public sealed class FieldProbeModel
         target.Flag = loaded.Flag;
         target.DateOnlyValue = loaded.DateOnlyValue;
         target.RequiredChoice = loaded.RequiredChoice;
+        target.Choices = loaded.Choices;
     }
 
     public static FieldProbeModel Preset()
@@ -67,6 +70,11 @@ public sealed class FieldProbeModel
             Flag = true,
             DateOnlyValue = new DateOnly(2026, 4, 8),
             RequiredChoice = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            Choices =
+            [
+                Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            ],
         };
     }
 }

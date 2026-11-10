@@ -96,7 +96,7 @@
         _label = Label ?? Strings.Translate(Metadata.KeyFor(typeof(TPage), "Title"));
 
         // The same single gate the nav menu, a lookup's create entry and a link ActionItem
-        // ask (ce3d6110's CanSend/page-gate twin) -- a hidden menu entry, a hidden create
+        // ask (PageGate, CanSend's twin for pages) -- a hidden menu entry, a hidden create
         // entry and a hidden NsPageLink must never disagree about the same destination.
         _allowed = await Gate.Allows(typeof(TPage), AuthenticationState);
     }

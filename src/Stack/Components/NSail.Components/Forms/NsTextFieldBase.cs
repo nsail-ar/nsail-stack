@@ -113,8 +113,8 @@ public abstract class NsTextFieldBase<TValue> : NsFieldBase<TValue>
     }
 
     /// <summary>What the box holds since the entry began, which is not always what `Value`
-    /// says: a box bound by `Value` alone — PolicyConstraintsEditor's reference id, which reads
-    /// the text only once it parses — never has the keystroke written back to it, and the commit
+    /// says: a box bound by `Value` alone — a reference id that reads the text only once it
+    /// parses — never has the keystroke written back to it, and the commit
     /// is still about the text that was typed.</summary>
     protected override async Task SetValue(TValue? value)
     {

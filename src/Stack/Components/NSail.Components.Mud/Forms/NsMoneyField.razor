@@ -110,7 +110,6 @@
     // the region's own sign whatever currency the amount is really in.
     CultureInfo MoneyCulture => RegionCulture.For(Language);
 
-    // Money is the mostrador field itself (Story: "los campos se seleccionan al recibir
-    // foco") — tab into Importe showing 0,00, type 500, it replaces.
+    // Money is the select-on-focus field itself: tab into 0,00, type 500, it replaces.
     protected override bool SelectOnFocus => true;
 }

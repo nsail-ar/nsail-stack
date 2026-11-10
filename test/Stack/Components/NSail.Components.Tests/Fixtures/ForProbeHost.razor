@@ -60,6 +60,11 @@
                 case "textarea-for":
                     <NsTextArea Value="context.Text" ValueChanged="v => context.Text = v" For="() => _model.Text" />
                     break;
+                case "multiselect-for":
+                    <NsMultiSelect TItem="SelectOption" TValue="Guid" Value="context.Choices" ValueChanged="v => context.Choices = v"
+                                   For="() => _model.Choices"
+                                   Items="Options" ItemValue="o => o.Id" ItemText="o => o.Name" />
+                    break;
             }
             <NsSubmit Class="tracked-submit" />
         </NsForm>

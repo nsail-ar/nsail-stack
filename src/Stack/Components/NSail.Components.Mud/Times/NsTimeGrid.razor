@@ -10,14 +10,15 @@
 
 @inject IJSRuntime JS
 @inject StringManager Strings
+@inject LanguageProvider Language
 
 <div class="@GetClasses()" style="@GetStyle()">
 
     @* Same container query that hides the aside columns, read the other way: the note
        says out loud what the collapse otherwise leaves unspoken. Rendered whenever there is
        more than one day to lose — CSS alone decides whether that is actually happening at
-       the width on screen, so the two never disagree (Emmanuel, 2026-08-04: six days gone
-       with nothing on the page to say so). *@
+       the width on screen, so the two never disagree: six days gone
+       with nothing on the page to say so is the defect. *@
     @if (_dates.Count > 1)
     {
         <div class="ns-time-grid-note">
@@ -36,7 +37,7 @@
             @foreach (var hour in Hours)
             {
                 <div class="ns-time-grid-hour">
-                    <span class="ns-time-grid-mark">@hour.ToString("t")</span>
+                    <span class="ns-time-grid-mark">@hour.ToString("t", Culture)</span>
                 </div>
             }
         </div>
@@ -47,7 +48,7 @@
                 @foreach (var date in _dates)
                 {
                     <div class="@GetColumnClasses(date)">
-                        <span class="ns-time-grid-mark">@date.ToString("ddd d")</span>
+                        <span class="ns-time-grid-mark">@date.ToString("ddd d", Culture)</span>
                     </div>
                 }
             </div>
@@ -98,6 +99,7 @@
 </div>
 
 @code {
+    CultureInfo Culture => RegionCulture.For(Language);
 
     const int HoursInDay = 24;
 
@@ -364,7 +366,7 @@
 
         return Strings.Translate(key, new Dictionary<string, string>
         {
-            ["day"] = Focused().ToString("D", CultureInfo.CurrentCulture),
+            ["day"] = Focused().ToString("D", Culture),
             ["count"] = hidden.ToString(CultureInfo.InvariantCulture),
         });
     }

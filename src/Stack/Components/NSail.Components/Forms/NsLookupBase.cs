@@ -21,7 +21,7 @@ public abstract class NsLookupBase<TItem, TValue, TSaved> : NsPickerBase
     where TSaved : ISaved
 {
     // One token per mounted lookup, minted here rather than derived from anything the screen
-    // can repeat: two PartyLookups on one form are two askers, and only the one whose create
+    // can repeat: two lookups of one type on one form are two askers, and only the one whose create
     // page was opened may take the row that page saved.
     readonly string _token = Guid.NewGuid().ToString("N");
 
@@ -39,7 +39,7 @@ public abstract class NsLookupBase<TItem, TValue, TSaved> : NsPickerBase
     // NsFieldBase.SetValue is what a click on a real option runs through, and it is what
     // tells the EditContext a field changed. A save this picker adopts never touches it —
     // ValueChanged is invoked directly, below — so without this the model gets the new id
-    // and Guardar never learns anything happened (nsail#1569).
+    // and Guardar never learns anything happened.
     [CascadingParameter]
     EditContext? EditContext { get; set; }
 
@@ -153,7 +153,7 @@ public abstract class NsLookupBase<TItem, TValue, TSaved> : NsPickerBase
 
         // Whatever the create form THIS lookup opened saves becomes this field's value; the
         // autocomplete's own OnLoad resolves the display, so nothing here carries text around.
-        // Every party-typed lookup on the screen hears the same PartySaved — who adopts it is
+        // Every lookup of that type on the screen hears the same saved message — who adopts it is
         // decided by the token the delivery carries, never by who was listening.
         Subscribe<TSaved>((message, _) =>
         {

@@ -161,8 +161,8 @@ public sealed partial class RouteTable
     }
 
     // A parameter that names no {token} in the template is not a route value — it is a
-    // deep-link filter (PartiesPage's RoleIds, opened pre-filtered from Optical's
-    // "Patients" menu entry) and travels as a query string instead of being dropped.
+    // deep-link filter (a list's RoleIds, opened pre-filtered from a menu entry) and travels as
+    // a query string instead of being dropped.
     static string BuildUrl(string template, IReadOnlyDictionary<string, object?>? parameters)
     {
         var url = template.StartsWith('/') ? template : "/" + template;

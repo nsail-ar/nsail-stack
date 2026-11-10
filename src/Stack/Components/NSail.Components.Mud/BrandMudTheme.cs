@@ -81,7 +81,7 @@ internal static class BrandMudTheme
 
         // The ink EVERY refused control is drawn in — a disabled button's word, a greyed menu
         // row, a disabled glyph — so it is the scheme's own third ink rung and never a state of
-        // the accent: "no puedo tocar esto todavía" wearing the tenant's colour is
+        // the accent: "not available yet" wearing the tenant's colour is
         // NsAs.Important's soft accent, a live act at low emphasis. Both vendor slots take it:
         // the vendor styles a refused control from either one depending on the control, and a
         // rung that is the ladder's third in one slot and the vendor's own translucent grey in
@@ -93,9 +93,9 @@ internal static class BrandMudTheme
         palette.TableLines = new MudColor(theme.Lines);
         palette.Divider = new MudColor(theme.Lines);
 
-        // An outlined field's border is read as a boundary and not as a decoration (nsail#2744:
-        // the vendor's own LinesInputs default measured 1.79:1 on the light canvas), so it owes
-        // the large floor the decorative Lines rung above does not.
+        // An outlined field's border is read as a boundary and not as a decoration (the
+        // vendor's own LinesInputs default measured 1.79:1 on the light canvas), so it owes the
+        // large floor the decorative Lines rung above does not.
         palette.LinesInputs = new MudColor(theme.LinesInputs);
 
         // TableStriped is left at the vendor's own default and never reached: no table in the
@@ -125,7 +125,7 @@ internal static class BrandMudTheme
     // Material's shadows are black at 12-20%, which is invisible on a dark surface. Each
     // level here casts further and darker, and carries a translucent ring: in dark it is a
     // white top edge that reads as "lifted", in light a black one is the card's actual edge
-    // (nsail#2744 — a white ring on a near-white surface is invisible, which left a light card
+    // (a white ring on a near-white surface is invisible, which left a light card
     // standing on its shadow alone). The ring reads --ns-elevation-ring, which NsTheme is the
     // one place with both schemes to choose between (Shadows is one array shared by
     // PaletteLight and PaletteDark, so the CSS value is what has to branch); the fallback is
@@ -154,7 +154,7 @@ internal static class BrandMudTheme
     /// body's) when nothing is picked — <c>Typography.Default</c>, every table, field and
     /// figure, stays untouched either way. A pick reaches only the heading ranks: NsText's own
     /// "Title" treatment is <see cref="Typo.h6"/>, and the brand name itself renders through
-    /// it (BrandingBar), so one family on H1-H6 is both the titles and the name.</summary>
+    /// it, so one family on H1-H6 is both the titles and the name.</summary>
     static Typography BuildTypography(Typeface? typeface)
     {
         var typography = new Typography();

@@ -22,6 +22,9 @@ public sealed record Issue(
 {
     public DateTimeOffset? TouchedAt { get; init; }
 
+    // When the board says the story was filed.
+    public DateTimeOffset? CreatedAt { get; init; }
+
     public bool Has(string label)
     {
         return Labels.Contains(label);

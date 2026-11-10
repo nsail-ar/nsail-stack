@@ -128,6 +128,16 @@ public class DevJobRunTests : IDisposable
             throw new NotSupportedException();
         }
 
+        public virtual Task<CiFailure?> Failure(string sha, CancellationToken ct = default)
+        {
+            return Task.FromResult<CiFailure?>(null);
+        }
+
+        public virtual Task<CiFailure?> MainFailure(CancellationToken ct = default)
+        {
+            return Task.FromResult<CiFailure?>(null);
+        }
+
         public Task<string> Head(string branch, CancellationToken ct = default)
         {
             throw new NotSupportedException();

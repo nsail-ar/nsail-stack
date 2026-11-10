@@ -9,8 +9,8 @@ namespace NSail.Components;
 // The reader's notation, plus the one key the keyboard has. A numeric keypad carries a single
 // separator key and it is a DOT, whatever the reader's notation is, so under es-AR a graduation
 // typed "-2.25" reached the vendor's parser as "-225" — the dot read as a grouping, and the
-// receta that travelled to the taller ground a lens nobody prescribed (nsail#2165). A dot is
-// the decimal separator here, and the box still reads and writes the reader's own comma.
+// model kept a figure nobody typed. A dot is the decimal separator here, and the box still
+// reads and writes the reader's own comma.
 //
 // The vendor's DefaultConverter is sealed, so this wraps one rather than deriving from it, and
 // is an ICultureAwareConverter for the same reason that one is: a Mud form component fills the
@@ -69,12 +69,12 @@ sealed class FigureConverter<T> : IReversibleConverter<T?, string?>, ICultureAwa
 
         // A notation that groups with the dot keeps the one reading a dot still has in it: a
         // group is three digits and the figure ends there ("48.600", "1.234.567"), which is
-        // what an operator typing a factura number or a price means and is already what the
+        // what an operator typing an invoice number or a price means and is already what the
         // parser answers. The LAST dot is the one that decides it — a keypad with no comma
         // still writes every earlier group correctly, and only runs out of its one key at the
         // decimal point, so a trailing group of any other length — two decimals, one, nine — is
         // that key pressed for a decimal point, however many grouping dots came before it
-        // (nsail#2392: "1.040.456.062096373" read every dot as a thousand and the tope landed
+        // ("1.040.456.062096373" read every dot as a thousand and the tope landed
         // in the quadrillions).
         if (format.NumberGroupSeparator == "." && IsGrouping(text, dot))
         {
