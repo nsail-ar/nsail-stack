@@ -320,7 +320,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     }
 
     // What the builder committed goes up first, unless it touches a protected path: work is never lost to the axe.
-    // Then its ending, exactly one: a PR's words, a ruling, a hand-off; none is a dead voyage. Commits the
+    // Then its ending, exactly one: a PR's words, a ruling, a hand-off, a wall; none is a dead voyage. Commits the
     // screen refuses are kept on this machine and the story held for a hand's word.
     async Task<Ending> Deliver(int n, string title, IRepository repo, string dir, string branch, string? startedAt, DateTimeOffset claimedAt, AgentResult result, ILogger log, CancellationToken ct)
     {
@@ -418,6 +418,13 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.LandedNothingToBuild, ("evidence", evidence))} {ctx.Texts.Signature}");
             log.LogInformation("#{Story}: nothing left to build — {Evidence}", n, evidence);
             return new Ending($"nothing left to build — {evidence}", "Landed");
+        }
+
+        if (Out("wall.md") is { Length: > 0 } wall)
+        {
+            if (await NothingToBuild(wall) is { } landed) return landed;
+            await board.Comment(n, JobContext.Signed(wall, Seat));
+            return new Ending("a wall — blocked until it is lifted", "Walled");
         }
 
         if (Out("ruling.md") is { Length: > 0 } question)
