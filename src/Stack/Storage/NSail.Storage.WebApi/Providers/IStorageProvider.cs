@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 namespace NSail.Storage.Providers;
 
 // The contract is frozen: S3 and Git shaped it, and a change reaches every provider. Enumerate
-// is the one optional member, so no implementer breaks.
+// is the one optional verb, so no implementer breaks.
 //
 // Every operation takes the target rather than reading the settings itself: a provider is a
 // stateless translator of these verbs into one protocol, and the store's configuration is

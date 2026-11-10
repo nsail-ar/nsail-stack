@@ -9,8 +9,8 @@ using System.Runtime.CompilerServices;
 
 namespace NSail.Storage.Objects;
 
-// Storage's whole outward API: put, get, list and delete a named object, and say where one can
-// be read. Nothing here knows a vendor — it resolves its store's target once and hands it to
+// Storage's whole outward API: put, get, list, enumerate and delete a named object, and say where
+// one can be read. Nothing here knows a vendor — it resolves its store's target once and hands it to
 // whichever provider answers to the target's own name.
 //
 // One manager per store name, resolved as a keyed service: a consumer takes

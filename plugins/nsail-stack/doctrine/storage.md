@@ -68,9 +68,9 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   store is the INSTALL's, not a tenant's — Storage guards a key against climbing out of its
   container, and where the wall is the tenant column (SingleDb) it enforces the segment itself:
   a key whose tenant segment is not the scope's is refused (`ObjectKeyOutsideTenant`), a `List`
-  answers only the scope's own objects, and a scope in no tenant reads nothing (`Get` is null,
-  `List` empty) and writes, deletes or links nothing (`NoTenantForStorage`) — the data stamp's
-  rule. `StorageManager.Key(kind, leaf)` builds a key in that shape.
+  or `Enumerate` answers only the scope's own objects, and a scope in no tenant reads nothing
+  (`Get` is null, a listing empty) and writes, deletes or links nothing (`NoTenantForStorage`) —
+  the data stamp's rule. `StorageManager.Key(kind, leaf)` builds a key in that shape.
   One flat directory per tenant per kind, no deeper, so a copy that walks one level under
   `<kind>/<tenant:N>` brings across everything the convention wrote. Under a tenancy mode whose
   wall is not the column (MultiDb, None) the tenant segment is one zeroed guid, and that is
@@ -83,7 +83,7 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   there is the store's own access policy, not Storage's.
 - **The provider contract is frozen.** S3 and Git, the two vendors after the filesystem, have
   shaped it; a change to `IStorageProvider` is a change to every provider and to the screen
-  that reads it. It grew by one optional member, `Enumerate`, whose default drains `List`, so
+  that reads it. It grew by one optional verb, `Enumerate`, whose default drains `List`, so
   no implementer breaks.
 - **A key never escapes its container.** `StorageManager.Guard` is the one door every key
   comes through, and the filesystem and git providers check the RESOLVED path behind it. The
@@ -96,10 +96,10 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   no partial file; `List` skips exactly that name form. A process killed mid-put leaves its
   staging file behind: it is garbage and safe to delete.
 - **A filesystem listing walks the prefix's directory, not the container.** `List(prefix)`
-  enumerates the directory the prefix names up to its last slash and filters the names inside
-  it, reading length and time from the directory entry. A directory the host cannot read fails
-  the walk loudly rather than yielding a short listing; a prefix that resolves outside the
-  container lists nothing.
+  enumerates the directory the prefix names up to its last slash (a prefix with none walks the
+  container) and filters the names inside it, reading length and time from the directory
+  entry. A directory the host cannot read fails the walk loudly rather than yielding a short
+  listing; a prefix that resolves outside the container lists nothing.
 - **`IsConfigured` answers the refusal before there is anything to put.** A caller that
   queues the writing for later — a request filed now and written by a job — would otherwise
   accept the ask, read a whole database and fail on its last line. It is false for both of
@@ -140,8 +140,7 @@ reaches `Enumerate` through the contract, so a caller that streams holds one pag
 every send at 100 seconds — a clock that covers the whole body, so an object of any real size
 dies mid-transfer — so the registered client is given `Timeout.InfiniteTimeSpan`
 (`S3TransportTests.TheRegisteredClientCarriesNoWallClockCeiling` holds it). How long a
-transfer may take is the caller's to decide, through the `CancellationToken` all four verbs
-take.
+transfer may take is the caller's to decide, through the `CancellationToken` every verb takes.
 
 **What is proven and what is not.** What the provider BUILDS — the path-style address, the
 payload hash it declares, the body that follows it, the continuation it walks, the store's
@@ -165,7 +164,9 @@ link; the symlink check reads the committed tree, which holds on any platform. A
 the branch out; a read fetches the tree without its files and then only the files it answers with — the key's for a get, those under the prefix for a list,
 whose lengths need them — so a small object costs no more in a large repository. A server that
 does not filter sends every file instead: slower, still right. A push the remote rejected because
-the branch moved is fetched and committed again a few times before it is refused. The content is re-sent from the position the caller's stream started at, as S3's is, and a stream that cannot seek is refused rather than retried.
+the branch moved is fetched and committed again a few times before it is refused. The content
+is re-sent from the position the caller's stream started at, as S3's is, and a stream that
+cannot seek is refused rather than retried.
 
 The credential travels in the environment of the one process, as an HTTP basic header scoped to
 the repository's origin, and never on a command line. git would carry that header on to wherever

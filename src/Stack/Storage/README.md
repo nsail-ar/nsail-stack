@@ -117,7 +117,7 @@ Saving a changed `Provider`, `Endpoint` or `Container` with no new secret clears
 
 Every key passes `StorageManager.Guard`, which refuses one that would climb out of its container.
 A key is `<kind>/<tenant:N>/<leaf>`; where the tenant is the row wall, the manager refuses a key
-carrying another's segment (`ObjectKeyOutsideTenant`) and `List` answers only the scope's own; a
+carrying another's segment (`ObjectKeyOutsideTenant`) and `List` and `Enumerate` answer only the scope's own; a
 scope in no tenant reads nothing (null, empty) and a write there is refused (`NoTenantForStorage`),
 as the data stamp does. `Key(kind, leaf)` builds the shape. Under None and MultiDb nothing
 is checked.

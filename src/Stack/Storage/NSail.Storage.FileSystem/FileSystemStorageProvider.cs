@@ -114,6 +114,8 @@ public class FileSystemStorageProvider : IStorageProvider
             return Task.FromResult<IReadOnlyList<StoredObject>>([]);
         }
 
+        // The constructor's defaults skip hidden files and swallow unreadable directories; these two
+        // keep a dot-leaf listed and a short listing loud.
         var options = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0, IgnoreInaccessible = false };
         var entries = new FileSystemEnumerable<StoredObject>(
             directory,
