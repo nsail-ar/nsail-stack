@@ -108,6 +108,8 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
         await Press(cut, "ArrowDown");
 
         Assert.True(OnEntry(cut));
+        Assert.Equal(["false", "false"], Selected(cut));
+        Assert.Equal("true", cut.Find("[role=option]:not(.mud-list-item)").GetAttribute("aria-selected"));
 
         await Press(cut, "Enter");
 

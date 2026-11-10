@@ -789,8 +789,9 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   opens the create route exactly as its click does, Arrow Up returns to the last option, and
   Esc closes the list without choosing. Reaching it is not a pick — the bound value never
   moves — and a lookup with no create route grows no such row. The vendor clamps at its last
-  option, so the field reads its highlight after each key (`NsAutocomplete.Walk`); on a list
-  that has only just opened the first Arrow Down only establishes where the highlight is.
+  option, so the field reads its highlight after each key (`NsAutocomplete.Walk`); the
+  vendor's highlight leaves the last option while the entry is reached (the entry is the
+  `option` the screen reader hears), and a one-row list needs a second Arrow Down to reach it.
 - **That held text is also what the field hands the vendor BACK as its `Text`, and it is what
   carries a half-typed term across a redraw.** The vendor refreshes its own box from the value it
   holds on every parameter set it is not FOCUSED for, and the text event above is dispatched into
