@@ -69,7 +69,7 @@ static partial class StatusPage
         {
             html.Append($"<p class=muted style=\"font-size:12px\">Last pass {Local(pass.At):HH:mm:ss}, {pass.Took.TotalSeconds:F1}s</p>");
             if (pass.Error is not null) html.Append($"<p style=\"color:var(--bad)\">The pass failed: {Esc(pass.Error)}</p>");
-            if (pass.Plan is { Andon.Count: > 0 } lit) PlanPage.Banner(html, o, lit.Andon, now);
+            if (pass.Plan is { Andon.Count: > 0 } lit) PlanPage.Banner(html, o, lit.Andon, loop.AndonStillSince, now);
             if (pass.Plan is { } plan) PlanPage.Summary(html, o, plan);
         }
 

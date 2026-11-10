@@ -50,7 +50,10 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
         {
             var started = DateTimeOffset.UtcNow;
             var dir = await ctx.Workspace.Prepare(slot);
+            // An analysis's out folder is its own: what an earlier story left there (a stalled mark, a
+            // verdict) would be read as this one's.
             var outDir = Path.Combine(dir, Out);
+            if (Directory.Exists(outDir)) Directory.Delete(outDir, recursive: true);
             Directory.CreateDirectory(outDir);
             await File.WriteAllTextAsync(Path.Combine(outDir, "original.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), title, labels, body)}\n\n{StoryDossier.Filed(body, labels)}", ct);
             var dossier = new StoryDossier(ctx, history);

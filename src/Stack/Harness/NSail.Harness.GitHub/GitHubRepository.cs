@@ -21,7 +21,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         """;
 
     const string MergedQuery = """
-        query($q:String!){search(query:$q,type:ISSUE,first:30){nodes{... on PullRequest{title headRefName mergedAt mergeCommit{oid} headRepository{nameWithOwner} author{login}}}}}
+        query($o:String!,$n:String!,$c:String){repository(owner:$o,name:$n){pullRequests(first:100,states:MERGED,orderBy:{field:UPDATED_AT,direction:DESC},after:$c){pageInfo{hasNextPage endCursor} nodes{number title headRefName mergedAt updatedAt mergeCommit{oid} headRepository{nameWithOwner} author{login}}}}}
         """;
 
     readonly string repo = options.Name;
@@ -82,33 +82,81 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
 
     public async Task<IReadOnlyList<PrRef>> PrsOf(int story, string state, CancellationToken ct = default)
     {
-        var result = new List<PrRef>();
-        var q = Uri.EscapeDataString($"repo:{repo} is:pr is:{(state == "open" ? "open" : "merged")} {names.Key}-{story} OR {names.Ref(story)}");
-        var found = await gh.Get($"search/issues?q={q}&per_page=50", ct);
-        foreach (var item in found.GetProperty("items").EnumerateArray())
+        if (state != "open")
         {
-            var n = item.GetProperty("number").GetInt32();
-            var pr = await gh.Get($"repos/{repo}/pulls/{n}", ct);
+            return (await Merged(ct)).Where(m => m.Story == story).Select(m => m.Pr).OrderBy(pr => pr.MergedAt).ToList();
+        }
+        var result = new List<PrRef>();
+        foreach (var pr in await gh.GetAll($"repos/{repo}/pulls?state=open&per_page=100", ct: ct))
+        {
             var title = pr.GetProperty("title").GetString() ?? "";
             var head = pr.GetProperty("head").GetProperty("ref").GetString() ?? "";
-            if (names.StoryOf(title, head) != story) continue;
-            if (!IsOwnHead(pr)) continue;
-            if (state == "open" && pr.GetProperty("state").GetString() != "open") continue;
-            var merged = MergedAt(pr);
-            if (state == "merged" && merged is null) continue;
-            result.Add(new PrRef(n, title, head, merged, repo, MergeSha(pr)));
-        }
-        // The search index lags a push by minutes: the plain head is read directly too.
-        var direct = await gh.GetAll($"repos/{repo}/pulls?state={(state == "open" ? "open" : "closed")}&head={Owner}:{names.Branch(prefix, story)}&per_page=20", ct: ct);
-        foreach (var pr in direct)
-        {
-            var n = pr.GetProperty("number").GetInt32();
-            if (result.Any(p => p.Number == n) || !IsOwnHead(pr)) continue;
-            var merged = MergedAt(pr);
-            if (state == "merged" && merged is null) continue;
-            result.Add(new PrRef(n, pr.GetProperty("title").GetString() ?? "", pr.GetProperty("head").GetProperty("ref").GetString() ?? "", merged, repo, MergeSha(pr)));
+            if (names.StoryOf(title, head) != story || !IsOwnHead(pr)) continue;
+            result.Add(new PrRef(pr.GetProperty("number").GetInt32(), title, head, null, repo));
         }
         return result;
+    }
+
+    // Every merged PR of the crew that names a story, by its number. The provider lists them newest
+    // change first: the first read takes them all, and a later one stops at the first PR last changed
+    // before the newest the read before it saw, less an overlap for a merge the list showed late.
+    internal TimeSpan MergedFresh { get; set; } = TimeSpan.FromSeconds(10);
+    static readonly TimeSpan MergedOverlap = TimeSpan.FromMinutes(10);
+    readonly ConcurrentDictionary<int, (PrRef Pr, int Story)> _merged = new();
+    readonly SemaphoreSlim _mergedGate = new(1, 1);
+    DateTimeOffset? _mergedThrough;
+    DateTimeOffset _mergedReadAt;
+
+    async Task<IReadOnlyCollection<(PrRef Pr, int Story)>> Merged(CancellationToken ct)
+    {
+        await _mergedGate.WaitAsync(ct);
+        try
+        {
+            if (DateTimeOffset.UtcNow - _mergedReadAt < MergedFresh) return _merged.Values.ToList();
+            var since = _mergedThrough - MergedOverlap;
+            DateTimeOffset? newest = null;
+            string? cursor = null;
+            do
+            {
+                var data = await gh.GraphQl(MergedQuery, new { o = Owner, n = repo.Split('/')[1], c = cursor }, ct);
+                var page = data.GetProperty("repository").GetProperty("pullRequests");
+                var info = page.GetProperty("pageInfo");
+                cursor = info.GetProperty("hasNextPage").GetBoolean() ? info.GetProperty("endCursor").GetString() : null;
+                foreach (var pr in page.GetProperty("nodes").EnumerateArray())
+                {
+                    var updated = pr.GetProperty("updatedAt").GetDateTimeOffset();
+                    newest ??= updated;
+                    if (updated < since)
+                    {
+                        cursor = null;
+                        break;
+                    }
+                    Keep(pr);
+                }
+            }
+            while (cursor is not null);
+            _mergedThrough = newest ?? _mergedThrough;
+            _mergedReadAt = DateTimeOffset.UtcNow;
+            return _merged.Values.ToList();
+        }
+        finally
+        {
+            _mergedGate.Release();
+        }
+    }
+
+    void Keep(JsonElement pr)
+    {
+        var number = pr.GetProperty("number").GetInt32();
+        var title = pr.GetProperty("title").GetString() ?? "";
+        var head = pr.GetProperty("headRefName").GetString() ?? "";
+        if (names.StoryOf(title, head) is not { } story || !IsCrews(NestedString(pr, "headRepository", "nameWithOwner"), NestedString(pr, "author", "login")))
+        {
+            _merged.TryRemove(number, out _);
+            return;
+        }
+        var sha = pr.GetProperty("mergeCommit").ValueKind == JsonValueKind.Object ? pr.GetProperty("mergeCommit").GetProperty("oid").GetString() : null;
+        _merged[number] = (new PrRef(number, title, head, pr.GetProperty("mergedAt").GetDateTimeOffset(), repo, sha), story);
     }
 
     // The planner's own rule (SnapshotReader.IsCrews) over the REST shape.
@@ -123,16 +171,6 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
     {
         return string.Equals(headRepo, repo, StringComparison.OrdinalIgnoreCase)
             && (options.Authors.Count == 0 || options.Authors.Contains(author, StringComparer.OrdinalIgnoreCase));
-    }
-
-    static DateTimeOffset? MergedAt(JsonElement pr)
-    {
-        return pr.TryGetProperty("merged_at", out var m) && m.ValueKind == JsonValueKind.String ? m.GetDateTimeOffset() : null;
-    }
-
-    static string? MergeSha(JsonElement pr)
-    {
-        return MergedAt(pr) is not null && pr.TryGetProperty("merge_commit_sha", out var s) && s.ValueKind == JsonValueKind.String ? s.GetString() : null;
     }
 
     public async Task<PullRequest> Pr(int number, CancellationToken ct = default)
@@ -218,8 +256,13 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         var read = await Pr(pr, ct);
         var head = read.HeadRef;
         var ownHead = string.Equals(read.HeadRepo, repo, StringComparison.OrdinalIgnoreCase);
-        await gh.Send(HttpMethod.Put, $"repos/{repo}/pulls/{pr}/merge", new { merge_method = "squash", sha }, ct);
+        var merged = await gh.Send(HttpMethod.Put, $"repos/{repo}/pulls/{pr}/merge", new { merge_method = "squash", sha }, ct);
         if (!ownHead) return;
+        // The provider's list shows a merge a moment late: this harness's own is known at once.
+        if (names.StoryOf(read.Title, head) is { } story && merged.ValueKind == JsonValueKind.Object && merged.TryGetProperty("sha", out var commit) && commit.ValueKind == JsonValueKind.String)
+        {
+            _merged[pr] = (new PrRef(pr, read.Title, head, DateTimeOffset.UtcNow, repo, commit.GetString()), story);
+        }
         try
         {
             await gh.Send(HttpMethod.Delete, $"repos/{repo}/git/refs/heads/{head}", ct: ct);
@@ -231,15 +274,8 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
 
     public async Task<Merge?> MergeOf(int story, CancellationToken ct = default)
     {
-        var data = await gh.GraphQl(MergedQuery, new { q = $"repo:{repo} is:pr is:merged {names.Ref(story)}" }, ct);
-        var merge = data.GetProperty("search").GetProperty("nodes").EnumerateArray()
-            .Where(n => n.TryGetProperty("title", out _))
-            .Where(n => IsCrews(NestedString(n, "headRepository", "nameWithOwner"), NestedString(n, "author", "login")))
-            .Where(n => names.StoryOf(n.GetProperty("title").GetString() ?? "", n.GetProperty("headRefName").GetString() ?? "") == story)
-            .OrderBy(n => n.GetProperty("mergedAt").GetString())
-            .LastOrDefault();
-        if (merge.ValueKind != JsonValueKind.Object || merge.GetProperty("mergeCommit").ValueKind != JsonValueKind.Object) return null;
-        return new Merge(merge.GetProperty("mergeCommit").GetProperty("oid").GetString()!, merge.GetProperty("mergedAt").GetDateTimeOffset());
+        var newest = (await Merged(ct)).Where(m => m.Story == story).Select(m => m.Pr).MaxBy(pr => pr.MergedAt);
+        return newest is { MergeSha: { } sha, MergedAt: { } at } ? new Merge(sha, at) : null;
     }
 
     public async Task<CiState> Ci(string branch, string sha, CancellationToken ct = default)
@@ -461,6 +497,29 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         catch (GitHubException e) when (e.HttpStatus == HttpStatusCode.NotFound)
         {
             return false;
+        }
+    }
+
+    public async Task<IReadOnlyList<Merge>> Changes(string path, DateTimeOffset since, CancellationToken ct = default)
+    {
+        var at = since.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
+        var commits = await gh.GetAll($"repos/{repo}/commits?sha={Uri.EscapeDataString(options.DefaultBranch)}&path={Uri.EscapeDataString(path)}&since={at}&per_page=100", ct: ct);
+        return commits
+            .Select(c => new Merge(c.GetProperty("sha").GetString()!, c.GetProperty("commit").GetProperty("committer").GetProperty("date").GetDateTimeOffset()))
+            .OrderBy(c => c.At).ToList();
+    }
+
+    public async Task<string?> FileAt(string path, string reference, CancellationToken ct = default)
+    {
+        try
+        {
+            var file = await gh.Get($"repos/{repo}/contents/{string.Join('/', path.Split('/').Select(Uri.EscapeDataString))}?ref={Uri.EscapeDataString(reference)}", ct);
+            if (file.ValueKind != JsonValueKind.Object || !file.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.String) return null;
+            return System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(content.GetString()!));
+        }
+        catch (GitHubException e) when (e.HttpStatus == HttpStatusCode.NotFound)
+        {
+            return null;
         }
     }
 

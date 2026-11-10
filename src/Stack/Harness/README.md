@@ -45,7 +45,12 @@ the files it leaves.
     missing solution in the PR is its red), and a
     Release's `Suite` (a test project, `{Product}` its name) runs there — no script. Another repository
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):
-    a release holds that repository's merges when the version its tag pins does.
+    a release holds that repository's merges when the version its tag pins does, and a story merged
+    there has landed on the default branch at the oldest commit whose pin names a version holding
+    that merge (`RepositorySet.LandingOf`): until then a red fix is not cut, QA does not walk it
+    and main's gate has not judged it.
+    A story's merged PRs are read off the repository's own list of merged PRs, whole once and then
+    only what changed since (never the search index, whose budget every job on the token shares).
     A PR no gate judges (another repository's, or any with no Verify worker) whose red CI failed only
     tests or build errors that main's newest completed CI run failed too waits for main the same way,
     read again each pass; nothing re-runs it.
@@ -167,7 +172,10 @@ the files it leaves.
   Its items carry the `andon` tier, above `bug`: a customer's bug still waits behind the release
   because the release is the line's one way back to a shipped day. `take-new` off still holds the
   start of a story the andon would take — it is the operator's switch. The status page shows the
-  product, since when and what it waits for (`/status` carries it as `Last.Plan.Andon`). It lifts when
+  product, since when and what it waits for (`/status` carries it as `Last.Plan.Andon`). A lit andon
+  with none of its work planned and nothing running holds the whole harness on something outside
+  it: past `HarnessLoop.AndonStill` it logs an error once and the status page says so
+  (`AndonStillSince` on `/status`); nothing unsticks it but what it waits for. It lifts when
   the red story ships (its walk moves it to Released, or its product published a release after the fix merged) or a hand closes it; a story a hand holds
   (`ruling`, `hand`, `blocked`, `stalled`) keeps it lit and says so. A red story (a suite's or a red
   main's, `HarnessTexts.IsRed`) never asks a hand: a builder's question sends it to Analyze with no
@@ -265,7 +273,7 @@ is read last, so it outranks the command line.
 
 The API is the Sdk's messages, under `/api/harness/` — browsable at `/scalar`, described at
 `/openapi/v1.json`: the status and last pass, the jobs and build turns, pause/resume/wake,
-new stories on or off, a job sent by hand (`POST runs {"kind":"Dev","story":N}`), the build
+new stories on or off (`status` also says what runs: `Version`, the harness's build, and `HostVersion`, its host's), a job sent by hand (`POST runs {"kind":"Dev","story":N}`), the build
 turns the lanes' shim takes and gives back, and the crew's count (`stats?range=`). For a browser:
 `GET /` is the status page (`?range=24h|7d|30d`: the crew's jobs by role as plain SVG, their
 outcomes and times, the agent's quota and the rework, then what runs, ten rows of the plan and of

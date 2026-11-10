@@ -87,5 +87,11 @@ public interface IRepository
     // Whether the history of the reference (a tag, a branch, a commit) holds the commit.
     Task<bool> Holds(string reference, string sha, CancellationToken ct = default);
 
+    // The default branch's commits that change the file since this instant, oldest first.
+    Task<IReadOnlyList<Merge>> Changes(string path, DateTimeOffset since, CancellationToken ct = default);
+
+    // The file's text at the reference; null when the reference has no such file.
+    Task<string?> FileAt(string path, string reference, CancellationToken ct = default);
+
     Task<string?> Variable(string name, CancellationToken ct = default);
 }

@@ -89,7 +89,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
         {
             try
             {
-                var merge = await ctx.Repo.MergeOf(story.Number, ct);
+                var merge = await ctx.Repos.LandingOf(story.Number, ct);
                 if (Landing.Fixed(await ctx.Repos.PrsOf(story.Number, "open", ct), merge, await Holds(merge, head, dir), head) is not { } evidence) continue;
                 var said = (await ctx.Board.Comments(story.Number, ct)).Any(c => c.At >= merge!.At && c.Body.Contains(Markers.RedFixed, StringComparison.Ordinal));
                 if (!said) await ctx.Board.Comment(story.Number, $"{HarnessTexts.Fill(ctx.Texts.MainRedFixed, ("evidence", evidence))} {ctx.Texts.Signature}\n{Markers.RedFixed}");
@@ -149,7 +149,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
             }
             // A head without the story's merge carries no news about its fix: a gate that started before
             // the merge reports the red it fixed. With no merge there is no fix, and any red reopens it.
-            if (await ctx.Repo.MergeOf(n, ct) is { } merge && !await Holds(merge, head, dir))
+            if (await ctx.Repos.LandingOf(n, ct) is { } merge && !await Holds(merge, head, dir))
             {
                 var stays = HarnessTexts.Fill(ctx.Texts.MainRedWithoutFix, ("sha", head[..8]), ("merge", merge.Sha[..8]), ("stage", stage));
                 await ctx.Board.Comment(n, $"{report}\n\n{stays}\n\n{ctx.Texts.Signature}");

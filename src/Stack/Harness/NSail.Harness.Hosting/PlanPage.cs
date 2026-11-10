@@ -19,12 +19,15 @@ static partial class PlanPage
     private static partial Regex HeldNote();
 
     // The release andon, above the plan: which product, since when, what it waits for.
-    internal static void Banner(StringBuilder html, HarnessOptions o, IReadOnlyList<Andon> lit, DateTimeOffset now)
+    internal static void Banner(StringBuilder html, HarnessOptions o, IReadOnlyList<Andon> lit, DateTimeOffset? stillSince, DateTimeOffset now)
     {
+        var still = stillSince is { } idle && now - idle >= HarnessLoop.AndonStill
+            ? $"<br><b>Standing still since {StatusPage.Local(idle):HH:mm} ({StatusPage.Time((now - idle).TotalSeconds)}): nothing of it to start, nothing running.</b>"
+            : "";
         foreach (var a in lit)
         {
             var since = a.Since is { } at ? $" since {StatusPage.Local(at):yyyy-MM-dd HH:mm} ({StatusPage.Time((now - at).TotalSeconds)})" : "";
-            html.Append($"<div style=\"background:var(--badbg);color:var(--bad);border-radius:8px;padding:10px 14px;margin:10px 0\"><b>Release andon — {StatusPage.Esc(a.Product)}</b>{StatusPage.Esc(since)}<br>Only its fix and its cut start; everything else waits behind them.<br>Waits for: {StatusPage.Linked(o, a.Waits)}</div>");
+            html.Append($"<div style=\"background:var(--badbg);color:var(--bad);border-radius:8px;padding:10px 14px;margin:10px 0\"><b>Release andon — {StatusPage.Esc(a.Product)}</b>{StatusPage.Esc(since)}<br>Only its fix and its cut start; everything else waits behind them.<br>Waits for: {StatusPage.Linked(o, a.Waits)}{still}</div>");
         }
     }
 
