@@ -71,8 +71,15 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
         await cut.InvokeAsync(() => cut.FindComponent<MudDatePicker>().Instance.DateChanged
             .InvokeAsync(local.Date));
 
-        // Same day picked again: the instant is the one held, whatever the host's offset.
-        Assert.Equal(held, captured);
+        // The same day back is the instant already held, whatever the host's offset: an echo.
+        Assert.Null(captured);
+
+        await cut.InvokeAsync(() => cut.FindComponent<MudDatePicker>().Instance.DateChanged
+            .InvokeAsync(local.Date.AddDays(1)));
+
+        // The next day keeps the hour as the reader's clock shows it.
+        Assert.NotNull(captured);
+        Assert.Equal(local.DateTime.AddDays(1), TimeZoneInfo.ConvertTime(captured.Value, TimeZoneInfo.Local).DateTime);
     }
 
     [Fact]
