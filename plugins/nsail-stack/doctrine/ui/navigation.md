@@ -52,10 +52,10 @@ just places `<NsNavMenu />`.
   entries, group rows, the page index, the divider, the no-match row, command entries and the
   session foot end on that same right line. The inset is the outer menu's alone: a group's
   nested menu adds none, so a nested row's highlight spans what a top-level row's spans and
-  only its content is indented, by the vendor's padding per depth. The three distances are `--ns-nav-gutter`,
-  `--ns-nav-inset` and `--ns-nav-gap` in `ns-mud.css`; the phone title row does not move. A chip
-  in the brand row ends a long label in `…` (`ns-chip-ellipsis`, which every `NsChip` wears) and
-  is capped at half the row.
+  only its content is indented, by the vendor's padding per depth. The three distances are
+  `--ns-nav-gutter`, `--ns-nav-inset` and `--ns-nav-gap` in `ns-mud.css`; the phone title row
+  does not move. A chip in the brand row ends a long label in `…` (`ns-chip-ellipsis`, which
+  every `NsChip` wears) and is capped at half the row.
 - **The mechanism for the group order is weight bands**, so contributors compose without
   coordinating: domain groups 10–50, system groups 80+.
 - **A page missing from the route table throws at startup** rather than 404-ing on click

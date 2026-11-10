@@ -172,8 +172,9 @@ public sealed class NsNavMenuPanelTests : BunitContext, IAsyncLifetime
         }
     }
 
-    /// <summary>The stylesheet's start-edge rule targets a top-level entry's row as
-    /// <c>.mud-navmenu &gt; .mud-nav-item &gt; .mud-nav-link</c>; the vendor must still render that shape.</summary>
+    /// <summary>The stylesheet's start-edge rule targets a top-level entry's row as a
+    /// <c>.mud-nav-link</c> child of a <c>.mud-nav-item</c> child of the outer menu (one with no
+    /// <c>.mud-navmenu</c> above it); the vendor must still render that shape.</summary>
     [Fact]
     public void ATopLevelEntryRowIsAChildOfTheNavItemWrapper()
     {

@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Text.RegularExpressions;
+using NSail.Components.Tests.Fixtures;
 
 namespace NSail.Components.Tests;
 
@@ -45,6 +46,36 @@ public sealed class NsNavMenuNestedCountEdgeTests
         foreach (var selector in rule.Groups["selectors"].Value.Split(','))
         {
             Assert.Contains(".mud-navmenu:not(.mud-navmenu .mud-navmenu) >", selector);
+        }
+    }
+
+    /// <summary>With the house zeroing a nested menu's margin and padding, a nested row's indent
+    /// is the vendor's start padding per depth alone. Read verbatim, so a vendor upgrade that
+    /// drops or flattens that chain cannot set a group's rows on the top-level line in silence.</summary>
+    [Fact]
+    public void TheVendorIndentsANestedEntryFurtherAtEveryDepth()
+    {
+        var vendor = VendorStylesheet.Read();
+
+        var top = Regex.Match(vendor, @"(?:^|\})\.mud-nav-link\{[^}]*padding:\s*\S+\s+\S+\s+\S+\s+(?<start>\d+)px");
+        Assert.True(top.Success, "The vendor's .mud-nav-link no longer states its padding as four lengths.");
+
+        var depths = Regex
+            .Matches(vendor, @"\}(?<selector>\.mud-nav-group \* \.mud-navmenu[^{}]*\.mud-nav-item \.mud-nav-link)\{[^}]*padding-inline-start:\s*(?<start>\d+)px")
+            .Select(match => (
+                Depth: Regex.Count(match.Groups["selector"].Value, @"\.mud-navmenu"),
+                Start: int.Parse(match.Groups["start"].Value)))
+            .OrderBy(rule => rule.Depth)
+            .ToList();
+
+        Assert.True(depths.Count >= 2, $"The vendor indents nested entries at {depths.Count} depth(s).");
+
+        var previous = int.Parse(top.Groups["start"].Value);
+
+        foreach (var (depth, start) in depths)
+        {
+            Assert.True(start > previous, $"A nested entry at depth {depth} starts at {start}px, not past {previous}px.");
+            previous = start;
         }
     }
 
