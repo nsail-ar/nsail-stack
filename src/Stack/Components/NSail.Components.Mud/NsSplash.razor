@@ -51,12 +51,12 @@
                     @* The first frame, before the inlined mark replaces it: the OS scheme picks the
                        file here, and the script below picks by the ground the splash is actually
                        painted on once it has measured it. *@
-                    <picture>
+                    <picture style="display:block;">
                         @if (DarkLogoUrl is not null)
                         {
                             <source media="(prefers-color-scheme: dark)" srcset="@DarkLogoUrl" />
                         }
-                        <img src="@LogoUrl" alt="" style="width:100%; height:auto; max-width:100%; aspect-ratio:auto 1 / 1; object-fit:contain;"
+                        <img src="@LogoUrl" alt="" style="display:block; width:100%; height:auto; max-width:100%; aspect-ratio:auto 1 / 1; object-fit:contain;"
                              onerror="this.style.display='none'; this.closest('#ns-splash-logo').dataset.failed='1';" />
                     </picture>
                 </div>

@@ -48,6 +48,16 @@ public sealed class NsSplashTests : BunitContext
 
         Assert.Contains("root.style.display = \"block\";", script, StringComparison.Ordinal);
         Assert.True(
-            script.IndexOf("root.style.display", StringComparison.Ordinal) < script.IndexOf("window.nsapp.fitMark(root)", StringComparison.Ordinal));
+            script.IndexOf("root.style.display", StringComparison.Ordinal) < script.IndexOf("window.nsapp.fitMark(root)", StringComparison.Ordinal),
+            "the svg must be a block before fitMark measures it");
+    }
+
+    [Fact]
+    public void TheFirstFrameIsABlockToo()
+    {
+        var cut = Render<NsSplash>(p => p.Add(c => c.LogoUrl, "api/branding/logo"));
+
+        Assert.Contains("display:block", cut.Find("#ns-splash-logo > picture").GetAttribute("style"), StringComparison.Ordinal);
+        Assert.Contains("display:block", cut.Find("#ns-splash-logo img").GetAttribute("style"), StringComparison.Ordinal);
     }
 }

@@ -323,6 +323,8 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   task that inlines it (one resize, not two), and sizes the opposite way — width,
   not height: its logo, its name and its progress bar all take the width its own script measures
   off the install's name, so the three read as one block instead of three widths of their own.
+  The first-frame `<picture>`/`<img>` and the inlined `<svg>` are all `display:block`, so no baseline
+  band sits under the mark and the swap moves nothing: the only space below it is the block's gap.
   A brand's dark mark (`DarkLogoUrl`) is the one it wears when its own painted ground is dark.
 - **Inlined SVG passes `SvgSanitizer` (`NSail.Icons`) and no other inlined SVG reaches the DOM**:
   a `Glyph`, a fetched logo and the splash mark share its one allowlist of drawing elements and
