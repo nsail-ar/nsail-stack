@@ -26,8 +26,15 @@ sealed class FakeGitHub : HttpMessageHandler
     public const string Repo = "acme/app";
     const string Api = $"/repos/{Repo}/";
 
+    static int _instances;
+
     readonly Lock _gate = new();
     readonly List<(string Call, bool Billed)> _calls = [];
+    // RefLock keeps a lock's tag and SnapshotReader a PR's thread by its updatedAt for the process: each
+    // fake's tags and PR updates are its own, so what one test read is never another's.
+    readonly int _instance = Interlocked.Increment(ref _instances);
+    string Tags => $"tag{_instance}x";
+    string PrUpdated => new DateTimeOffset(2026, 11, 8, 0, 0, 0, TimeSpan.Zero).AddSeconds(_instance).ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture);
 
     public int Prs { get; init; }
     public int[] Locked { get; init; } = [];
@@ -117,7 +124,7 @@ sealed class FakeGitHub : HttpMessageHandler
                 nodes = Enumerable.Range(1, Prs).Select(n => new
                 {
                     number = 100 + n, title = $"app#{n}: story {n}", headRefName = $"story/app-{n}", headRefOid = Sha(n), isDraft = false,
-                    mergeable = "MERGEABLE", updatedAt = "2026-11-08T00:00:00Z", headRepository = new { nameWithOwner = Repo }, author = new { login = "bot" },
+                    mergeable = "MERGEABLE", updatedAt = PrUpdated, headRepository = new { nameWithOwner = Repo }, author = new { login = "bot" },
                 }),
             } } } as object,
             "Statuses" => new { repository = new { defaultBranchRef = new { target = new { history = new { nodes = Array.Empty<object>() } } } } },
@@ -151,8 +158,8 @@ sealed class FakeGitHub : HttpMessageHandler
             _ when path.StartsWith("actions/runs", StringComparison.Ordinal) => """{"workflow_runs":[]}""",
             _ when path.StartsWith("commits/", StringComparison.Ordinal) => JsonSerializer.Serialize(new { sha = Main }),
             _ when path.StartsWith("releases", StringComparison.Ordinal) => "[]",
-            _ when path.StartsWith("git/matching-refs/locks/", StringComparison.Ordinal) => JsonSerializer.Serialize(Locked.Select(n => new { @ref = $"refs/locks/app-{n}", @object = new { sha = $"tag{n}", type = "tag" } })),
-            _ when path.StartsWith("git/ref/locks/app-", StringComparison.Ordinal) => JsonSerializer.Serialize(new { @object = new { sha = $"tag{path.Split('-').Last()}", type = "tag" } }),
+            _ when path.StartsWith("git/matching-refs/locks/", StringComparison.Ordinal) => JsonSerializer.Serialize(Locked.Select(n => new { @ref = $"refs/locks/app-{n}", @object = new { sha = $"{Tags}{n}", type = "tag" } })),
+            _ when path.StartsWith("git/ref/locks/app-", StringComparison.Ordinal) => JsonSerializer.Serialize(new { @object = new { sha = $"{Tags}{path.Split('-').Last()}", type = "tag" } }),
             _ when path.StartsWith("git/tags/", StringComparison.Ordinal) => JsonSerializer.Serialize(new { message = holder }),
             _ when path.Contains("/events", StringComparison.Ordinal) => """[{"event":"labeled","label":{"name":"claimed"},"created_at":"2026-11-08T00:00:00Z"}]""",
             _ when path.Contains("/reviews", StringComparison.Ordinal) || path.Contains("/comments", StringComparison.Ordinal) => "[]",

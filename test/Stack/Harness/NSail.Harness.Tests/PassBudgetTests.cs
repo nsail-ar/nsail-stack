@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Text.RegularExpressions;
+
 namespace NSail.Harness.Tests;
 
 // An idle harness passes every IdlePollSeconds, and every pass reads the whole board: what a pass bills
@@ -8,7 +10,7 @@ namespace NSail.Harness.Tests;
 // answer has not moved since the last pass is sent with its ETag and answered 304, which GitHub does
 // not count; only what changed is billed.
 [Collection(nameof(PassFailureTests))]
-public sealed class PassBudgetTests
+public sealed partial class PassBudgetTests
 {
     const int Prs = 10;
     static readonly int[] Locked = [21, 22, 23, 24, 25, 26];
@@ -44,8 +46,8 @@ public sealed class PassBudgetTests
         Assert.Equal([$"GET /repos/{FakeGitHub.Repo}/commits/main"], hub.Billed(warm));
     }
 
-    // The first pass reads everything once: four listings of the running workflows, main's head, the
-    // newest PR runs and one per quiet head, the releases, and the label events of each locked story.
+    // The first pass reads everything once, and each call site is pinned by its count: a read added to
+    // the pass turns this red, even one whose ETag would leave the passes after it unbilled.
     [Fact]
     public async Task TheFirstPassReadsEachCallSiteOnce()
     {
@@ -54,9 +56,28 @@ public sealed class PassBudgetTests
 
         await harness.Start();
 
-        var billed = hub.Billed();
-        Assert.Equal(4, billed.Count(c => c.Contains("actions/runs?status=", StringComparison.Ordinal)));
-        Assert.Equal(Prs, billed.Count(c => c.Contains("actions/runs?head_sha=", StringComparison.Ordinal)));
-        Assert.Equal(Locked.Length, billed.Count(c => c.Contains("/events", StringComparison.Ordinal)));
+        var sites = hub.Billed().Select(c => Number().Replace(c[(c.IndexOf(' ', StringComparison.Ordinal) + 1)..], "#")).GroupBy(c => c).ToDictionary(g => g.Key, g => g.Count());
+        var api = $"/repos/{FakeGitHub.Repo}/";
+        Assert.Equal(new Dictionary<string, int>
+        {
+            [$"{api}actions/runs?status=queued&per_page=#"] = 1,
+            [$"{api}actions/runs?status=in_progress&per_page=#"] = 1,
+            [$"{api}actions/runs?status=waiting&per_page=#"] = 1,
+            [$"{api}actions/runs?status=pending&per_page=#"] = 1,
+            [$"{api}commits/main"] = 1,
+            [$"{api}actions/runs?event=pull_request&per_page=#"] = 1,
+            [$"{api}actions/runs?head_sha=head#&event=pull_request&per_page=#"] = Prs,
+            [$"{api}pulls/#/reviews?per_page=#"] = Prs,
+            [$"{api}issues/#/comments?per_page=#"] = Prs,
+            ["/user"] = 1,
+            [$"{api}releases?per_page=#"] = 1,
+            [$"{api}issues/#/events?per_page=#"] = Locked.Length,
+            [$"{api}git/matching-refs/locks/app-"] = 1,
+            [$"{api}git/tags/tag#x#"] = Locked.Length,
+            [$"{api}git/ref/locks/app-#"] = Locked.Length,
+        }, sites);
     }
+
+    [GeneratedRegex("[0-9]+")]
+    private static partial Regex Number();
 }
