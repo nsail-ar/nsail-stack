@@ -83,7 +83,7 @@ public class GitHubRateLimitTests
         var e = await Assert.ThrowsAsync<GitHubException>(() => client.Get("x"));
 
         Assert.Equal(TimeSpan.FromSeconds(5), e.RetryAfter);
-        Assert.Equal(3, script.Sent.Count);
+        Assert.Equal(2, script.Sent.Count);
     }
 
     [Fact]

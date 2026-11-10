@@ -113,7 +113,11 @@ the files it leaves.
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for
-    it names all three. A job that ends on the provider's limit (a `ProviderException` with its
+    it names all three. A GitHub call refused for its rate limit (a 403 or 429 naming `Retry-After`, or
+    `x-ratelimit-reset` with no calls left) waits that out once, when it is at most a minute away, and is
+    sent again; the limit is shared by every job and lane on the token, so a second refusal, one that names
+    no wait or a farther one, throws. A read that gets a 5xx is sent again up to twice; any other refusal
+    throws at once. A job that ends on the provider's limit (a `ProviderException` with its
     `RetryAfter`) or on a 5xx is not a break: nothing is said on its story and nothing counts toward
     `stalled`; its lock label and lock come off and a Dev with no PR goes back to Ready, as a break's do.
     A limit holds the item and every pass for the wait it asked, at least `MinLimitBackoff` and up to `MaxLimitBackoff`; a 5xx backs the
