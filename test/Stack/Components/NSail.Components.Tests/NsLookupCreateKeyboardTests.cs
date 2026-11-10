@@ -64,14 +64,14 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
         get { return (BunitNavigationManager)Services.GetRequiredService<NavigationManager>(); }
     }
 
-    async Task<IRenderedComponent<LookupCreateHost>> Open(string? route = CreateRoute)
+    async Task<IRenderedComponent<LookupCreateHost>> Open(string? route = CreateRoute, Surface? target = null)
     {
         Navigation.NavigateTo("/directory/parties/new");
 
         var cut = Render<LookupCreateHost>(p => p
             .Add(x => x.Items, Two)
             .Add(x => x.CreateRoute, route)
-            .Add(x => x.CreateTarget, Surfaces.Aside)
+            .Add(x => x.CreateTarget, target ?? Surfaces.Aside)
             .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _changes.Add(value))));
 
         await cut.Find("input").FocusAsync(new FocusEventArgs());
@@ -109,7 +109,6 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
 
         Assert.True(OnEntry(cut));
         Assert.Equal(["false", "false"], Selected(cut));
-        Assert.Equal("true", cut.Find("[role=option]:not(.mud-list-item)").GetAttribute("aria-selected"));
 
         await Press(cut, "Enter");
 
@@ -132,6 +131,36 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
         await Press(cut, "Enter");
 
         Assert.Contains("aside=directory%2Fparties%2Fcreate", Navigation.History.Last().Uri, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task EnterOnTheEntryOpensABrowserTargetAsATabAndLeavesTheForm()
+    {
+        var cut = await Open(target: Surfaces.Blank);
+        var before = Navigation.History.Count;
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowDown");
+        await Press(cut, "Enter");
+
+        var open = JSInterop.Invocations["open"].Single();
+
+        Assert.Equal("_blank", open.Arguments[1]);
+        Assert.Equal(before, Navigation.History.Count);
+    }
+
+    [Fact]
+    public async Task ArrowUpFromTheEntryOfAnEmptyAnswerStaysOnIt()
+    {
+        var cut = await Open();
+
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "zzz9" });
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-list-item")), TimeSpan.FromSeconds(5));
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowUp");
+
+        Assert.True(OnEntry(cut));
     }
 
     [Fact]

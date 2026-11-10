@@ -7,11 +7,13 @@
 @using System.Diagnostics.CodeAnalysis
 @using System.Reflection
 @using Microsoft.Extensions.DependencyInjection
+@using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Routing
 @inherits NsAsyncFieldBase<TValue>
 
 @inject NavigationManager Navigation
 @inject IServiceProvider Services
+@inject IJSRuntime Js
 
 @* The open list is floored at the field's width and bounded by its own results, never capped at
    the field. MudBlazor 9.10.0 defaults RelativeWidth to DropdownWidth.Relative, whose popover
@@ -144,7 +146,8 @@
     /// and on empty; leave it null and there is none. The caller passes a route and not a
     /// finished href: the entry carries this field's own surface cascade across the popover
     /// portal, so its link resolves the address at the anchor
-    /// (intentional-ui-cases.md), and the keyboard's Enter resolves it through the same surface. The label is composed here, so no entity carries that string
+    /// (intentional-ui-cases.md), and the keyboard's Enter resolves it through the same surface.
+    /// The label is composed here, so no entity carries that string
     /// and no caller writes the link.</summary>
     [Parameter]
     public string? CreateRoute { get; set; }
@@ -259,9 +262,8 @@
 
     // The create entry is the list's last row to the keyboard: ArrowDown from the last row the
     // vendor can reach lands here, and Enter opens the route as a click does. The vendor knows
-    // nothing of it — it keeps its own highlight on the last row it has — so the entry is this
-    // field's own state, drawn through the class the list carries (ListClass) and dropped
-    // whenever the list is not the one it was reached in.
+    // nothing of it, so the entry is this field's own state, drawn through the class the list
+    // carries (ListClass) and dropped whenever the list is not the one it was reached in.
     bool _onEntry;
 
     // The row the vendor highlighted when the last key finished, and null until one did: a list
@@ -376,8 +378,7 @@
                 @<CascadingValue Value="Surface" IsFixed="true">
                     @if (label is not null)
                     {
-                        <div role="option" aria-selected="@(_onEntry ? "true" : "false")">
-<NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="@(_onEntry ? "ns-lookup-create ns-lookup-create-active" : "ns-lookup-create")">
+                        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="@(_onEntry ? "ns-lookup-create ns-lookup-create-active" : "ns-lookup-create")">
                             <NsIcon Icon="@NsIcons.Add" />
                             @* The one open the app makes that is not a place: the window it opens
                                exists to hand a value back to the form standing underneath, which
@@ -387,7 +388,6 @@
                                lookup and no future lookup has to remember it. *@
                             <NsLink Href="@CreateRoute" Target="@CreateTarget" Label="@label" NoHistory />
                         </NsStack>
-</div>
                     }
                     @quick
                     @* The offer is an ENTRY of the list, so the geometry an entry wears is restated
@@ -538,9 +538,9 @@
     // ArrowDown past the last row the vendor can reach lands on the create entry, ArrowUp from it
     // returns to that row. The vendor clamps at its ends, so the key that ran out of rows is the
     // one that left its highlight where it already was — read against the row the last key left
-    // it on. An empty list has no row to run out of: the entry is the only thing there to reach.
-    // The vendor moves up from the row it still highlights, one too far for a return from the
-    // entry, so that row is written back.
+    // it on. An empty list has no row to run out of: the entry is the only thing there to reach, and the
+    // vendor's end it clamps at.
+    // Reaching the entry clears the vendor's highlight; a return writes the last row back.
     void Walk(bool down)
     {
         if (!HasCreateEntry || _autocomplete is not { Open: true })
@@ -565,21 +565,17 @@
             {
                 _onEntry = true;
 
-                // The row the screen reader announces is the one Enter acts on: the vendor's
-                // highlight leaves the last option for the entry.
+                // One place is lit: the vendor's highlight leaves the last option for the entry.
                 HighlightedRow?.SetValue(_autocomplete, -1);
 
                 StateHasChanged();
             }
         }
-        else if (!down && _onEntry)
+        else if (!down && _onEntry && reachable.Count > 0)
         {
             _onEntry = false;
 
-            if (reachable.Count > 0)
-            {
-                HighlightedRow?.SetValue(_autocomplete, reachable[^1]);
-            }
+            HighlightedRow?.SetValue(_autocomplete, reachable[^1]);
 
             StateHasChanged();
         }
@@ -589,13 +585,24 @@
 
     // The entry opens as the mouse's click does: the surface this field stands on resolves the
     // route and Follow branches on the target, as every programmatic activation of a destination.
-    void OpenCreate()
+    async Task OpenCreateAsync()
     {
         // Asked of the container only here: a field that never opens a create route stands
         // where no root surface is registered.
         var surface = Surface ?? Services.GetRequiredService<RootSurface>().Surface;
 
-        surface.Follow(surface.GetHref(CreateRoute!, CreateTarget), CreateTarget, noHistory: true);
+        var href = surface.GetHref(CreateRoute!, CreateTarget);
+
+        // A browser target leaves the surfaces behind: Follow opens no surface for it, so the
+        // tab is opened here, as the anchor's own click opens it, and the form stays standing.
+        if (CreateTarget?.IsBrowser == true)
+        {
+            await Js.InvokeVoidAsync("open", href, CreateTarget.Value.Name);
+
+            return;
+        }
+
+        surface.Follow(href, CreateTarget, noHistory: true);
     }
 
     // What the keystroke has to resolve, and the mark above's own answer, so the key is taken
@@ -695,11 +702,11 @@
 
         if (_onEntry)
         {
-            // The vendor picks the row it highlights on this Enter's key UP, and its highlight is
-            // still on the last row: the key is the entry's, so it is handed back.
+            // The vendor picks on this Enter's key UP: the key is the entry's, so it is handed
+            // back.
             SkipEnterKeyUp?.SetValue(_autocomplete, true);
 
-            OpenCreate();
+            await OpenCreateAsync();
 
             return;
         }

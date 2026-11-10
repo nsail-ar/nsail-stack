@@ -1865,8 +1865,8 @@
 }
 
 /* The keyboard has reached the create entry (NsAutocomplete.Walk): it wears the highlight a
-   reached row wears — the primary wash under the accent ink — and the last row,
-   where the vendor still keeps its own highlight, gives it up, so one place is lit. The vendor
+   reached row wears — the primary wash under the accent ink — and a row the vendor still
+   marks gives it up, so one place is lit. The vendor
    states its highlight with !important, which is what the release has to answer in kind. */
 .ns-lookup-on-entry .mud-list-item.mud-selected-item {
     background-color: transparent !important;

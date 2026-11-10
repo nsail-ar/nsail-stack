@@ -324,7 +324,7 @@ a block-level flex box in the card, and the whole line is already the widest a f
 whole line). Nothing asks a width below `md`, so nothing under the stacked block needs taking
 back.
 
-## Why the cascade crosses the popover and the create-link resolves once, at the leaf
+## Why the cascade crosses the popover and the create-link resolves at the leaf
 
 `MudAutocomplete` renders its dropdown templates through the popover provider — a sibling of the
 router — so a link built inside a template sees none of the `CascadingValue`s the hosting page
@@ -336,7 +336,9 @@ The cascade crosses with the fragment instead. `NsAutocomplete` holds the hostin
 cascading parameter of its own, and a `CascadingValue` provides where it RENDERS, not where it
 was written — so the create entry opens with one, and the `NsLink` inside it sees the surface
 the lookup stands on. The lookup hands down the raw route (`CreateRoute`) and the target
-(`CreateTarget`); the leaf resolves them; the keyboard's Enter on the entry resolves through the same surface and `Follow`, which branches on the target. A field with no cascade provides null and
+(`CreateTarget`); the leaf resolves them; the keyboard's Enter on the entry resolves through the same surface and `Follow`; a browser
+target never reaches `Follow` (it opens no surface), so Enter opens that tab itself, as the anchor's
+click does. A field with no cascade provides null and
 `NsLink` falls back to `RootSurface`, the main surface's own answer — the fallback every
 portal-rendered link relies on ([cases: surfaces](intentional-ui-cases-surfaces.md), *Why a
 target is never dropped for want of a cascade*).
