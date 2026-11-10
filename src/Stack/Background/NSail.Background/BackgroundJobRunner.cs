@@ -92,7 +92,7 @@ sealed class BackgroundJobRunner : BackgroundService
         {
             var declared = Declared(jobType);
 
-            _meter.Scheduled(jobType.Name, declared.Interval);
+            _meter.Scheduled(jobType, declared.Interval);
 
             using var timer = new PeriodicTimer(declared.Interval);
 
@@ -121,7 +121,7 @@ sealed class BackgroundJobRunner : BackgroundService
             // Counted as a failed pass because it is the one failure the gauges cannot carry:
             // a job that never got a cadence has no cadence to be late against, so it would
             // emit no roster and no overdue and the standing rules would never see it.
-            _meter.Passed(jobType.Name, succeeded: false);
+            _meter.Passed(jobType, succeeded: false);
         }
     }
 
@@ -132,7 +132,7 @@ sealed class BackgroundJobRunner : BackgroundService
     {
         if (tenancy == TenancyScope.Install || _tenants is null)
         {
-            _meter.Swept(jobType.Name, passes: 1);
+            _meter.Swept(jobType, passes: 1);
 
             await Run(jobType, tenant: null, stoppingToken).ConfigureAwait(false);
 
@@ -155,7 +155,7 @@ sealed class BackgroundJobRunner : BackgroundService
 
             // The same number an empty roster reports, because it is the same outcome for the
             // job: this tick entered nobody. What tells the two apart is the error beside it.
-            _meter.Swept(jobType.Name, passes: 0);
+            _meter.Swept(jobType, passes: 0);
 
             return;
         }
@@ -164,7 +164,7 @@ sealed class BackgroundJobRunner : BackgroundService
         // purpose: a sweep cut short by shutdown — a pass cancelled mid-flight takes the whole
         // loop with it — would otherwise report no roster at all for that tick, and a gauge that
         // goes silent on a deploy is the one reading an alert cannot interpret.
-        _meter.Swept(jobType.Name, roster.Count);
+        _meter.Swept(jobType, roster.Count);
 
         if (roster.Count == 0 && _emptyRosterSaid.TryAdd(jobType, 0))
         {
@@ -193,7 +193,7 @@ sealed class BackgroundJobRunner : BackgroundService
         // And the correction, because the roster is no longer the answer to what the gauge is
         // for: a suspended tenant is on the roster and is not swept. An install whose every
         // tenant is suspended reports zero, which is exactly what it is doing.
-        _meter.Swept(jobType.Name, swept);
+        _meter.Swept(jobType, swept);
     }
 
     // Its own async method, and that is load-bearing twice over: the tenant is entered on an
@@ -212,7 +212,7 @@ sealed class BackgroundJobRunner : BackgroundService
         {
             if (!inFlight.IsCompleted)
             {
-                _meter.Passed(jobType.Name, succeeded: false);
+                _meter.Passed(jobType, succeeded: false);
 
                 if (tenant is null)
                 {
@@ -291,7 +291,7 @@ sealed class BackgroundJobRunner : BackgroundService
                 // A sibling is doing this pass: the job is not overdue and not failing, and the
                 // outcome is its own so an alert can tell a replica that yields from one that
                 // does nothing.
-                _meter.Skipped(jobType.Name);
+                _meter.Skipped(jobType);
 
                 if (tenant is null)
                 {
@@ -324,7 +324,7 @@ sealed class BackgroundJobRunner : BackgroundService
                 throw;
             }
 
-            _meter.Passed(jobType.Name, succeeded: true);
+            _meter.Passed(jobType, succeeded: true);
 
             return true;
         }
@@ -336,7 +336,7 @@ sealed class BackgroundJobRunner : BackgroundService
         {
             // The budget fired, not the host and not the job's own cancellation: the pass is
             // counted failed so the sweep reaches the next tenant.
-            _meter.Passed(jobType.Name, succeeded: false);
+            _meter.Passed(jobType, succeeded: false);
 
             if (tenant is null)
             {
@@ -355,7 +355,7 @@ sealed class BackgroundJobRunner : BackgroundService
         }
         catch (Exception exception)
         {
-            _meter.Passed(jobType.Name, succeeded: false);
+            _meter.Passed(jobType, succeeded: false);
 
             // Every occurrence, not the first one only. A job failing on a minutes-scale
             // cadence is not log spam, and degrading the repeats to Debug — the shape used

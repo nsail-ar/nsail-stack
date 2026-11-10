@@ -100,7 +100,9 @@ The runners read three things from the host:
   sentence. The tenant is re-entered on the item's own scope.
 - One consumer, one item at a time, each with a `DeferredTimeout` budget; a failure or timeout is
   logged and counted and the queue continues. Work that ignores its token is abandoned after a
-  short grace and logged.
+  short grace and logged. Its scope stays open until it ends and the queue moves on at once, so
+  an item that ignores its token holds a scope (and what it resolved, a connection included) for
+  as long as it hangs, one per such item and with no ceiling: honour the token.
 - The queue is in memory: an item queued when the process dies is lost. Work that must survive
   goes through a `[Queue]` message instead ([Messaging](../Messaging/README.md)).
 - `DrainAll(scopes, ct)` runs everything queued inline, for test hosts that start no runner;

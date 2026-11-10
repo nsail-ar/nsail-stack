@@ -76,6 +76,19 @@ public sealed class Meters : IDisposable
         }
     }
 
+    /// <summary>Every value a gauge answered in its last poll for one job: two series under
+    /// one name are two readings.</summary>
+    public IReadOnlyList<double> Readings(string instrument, string job)
+    {
+        lock (_readings)
+        {
+            return _readings
+                .Where(reading => reading.Instrument == instrument && reading.Job == job)
+                .Select(reading => reading.Value)
+                .ToList();
+        }
+    }
+
     public void Dispose()
     {
         _listener.Dispose();
