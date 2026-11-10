@@ -252,6 +252,68 @@ public sealed class RestoreAtomicityTests : IAsyncLifetime
         }
     }
 
+    [Fact]
+    public async Task AnArchiveWithoutKeysLeavesTheInstallsRingAsItIs()
+    {
+        var empty = Directory.CreateTempSubdirectory("nsail-ring");
+        var ring = Directory.CreateTempSubdirectory("nsail-ring");
+
+        try
+        {
+            await using var archive = new MemoryStream();
+
+            var manifest = await InstallArchive.Create(Descriptor(empty), archive);
+
+            Assert.False(manifest.HasKeyRing);
+
+            using (var zip = new System.IO.Compression.ZipArchive(archive, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: true))
+            {
+                Assert.DoesNotContain(zip.Entries, entry => entry.FullName.StartsWith(KeyRing.ArchiveFolder, StringComparison.Ordinal) && entry.Name.Length > 0);
+            }
+
+            await File.WriteAllTextAsync(Path.Combine(ring.FullName, "key-live.xml"), "live");
+            await Sql(Install, "UPDATE notes SET body = 'changed'");
+
+            archive.Position = 0;
+
+            await InstallArchive.Restore(Descriptor(ring), archive);
+
+            Assert.Equal("before", await Scalar("SELECT body FROM notes WHERE id = 1"));
+            Assert.Equal(["key-live.xml"], ring.GetFileSystemInfos().Select(entry => entry.Name).ToArray());
+        }
+        finally
+        {
+            empty.Delete(recursive: true);
+            ring.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task AnArchiveCarriesTheRingsKeysAndSaysSo()
+    {
+        var ring = Directory.CreateTempSubdirectory("nsail-ring");
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(ring.FullName, "key-a.xml"), "a");
+            await File.WriteAllTextAsync(Path.Combine(ring.FullName, "note.txt"), "not a key");
+
+            await using var archive = new MemoryStream();
+
+            var manifest = await InstallArchive.Create(Descriptor(ring), archive);
+
+            Assert.True(manifest.HasKeyRing);
+
+            using var zip = new System.IO.Compression.ZipArchive(archive, System.IO.Compression.ZipArchiveMode.Read, leaveOpen: true);
+
+            Assert.Equal([KeyRing.ArchiveFolder + "key-a.xml"], zip.Entries.Where(entry => entry.FullName.StartsWith(KeyRing.ArchiveFolder, StringComparison.Ordinal)).Select(entry => entry.FullName).ToArray());
+        }
+        finally
+        {
+            ring.Delete(recursive: true);
+        }
+    }
+
     InstallDescriptor Descriptor(DirectoryInfo ring)
     {
         return new InstallDescriptor

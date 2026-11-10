@@ -9,7 +9,7 @@ using NSail.Localization;
 
 namespace NSail.Components.Tests;
 
-/// <summary>A confirm dialog has nothing to type into, so what the cursor opens on is what a
+/// <summary>The NsConfirmDialog contract: a confirm dialog has nothing to type into, so what the cursor opens on is what a
 /// bare Enter presses (ui/forms.md, <em>Focus on open</em>): an ordinary confirmation opens on
 /// the act it offers, one that DESTROYS something opens on the way out. What is held here is the
 /// word the dialog hands the focus trap and the order its two faces are drawn in — the trap does

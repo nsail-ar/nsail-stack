@@ -71,7 +71,13 @@ public sealed class PublishPipelineTests
 
         var mediator = sp.GetRequiredService<Mediator>();
 
-        await mediator.Publish(new EventMessage());
+        var published = mediator.Publish(new EventMessage());
+
+        Assert.True(published.IsCompletedSuccessfully);
+
+        await published;
+
+        Assert.Empty(sp.GetServices<IHandler<EventMessage>>());
     }
 
     [Fact]

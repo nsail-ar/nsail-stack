@@ -85,10 +85,19 @@ public sealed class QueueCompositionTests
     [Fact]
     public async Task Naming_the_in_process_transport_is_what_naming_nothing_already_means()
     {
-        using var host = Host(("Queue:Transport", "InProcess"));
+        using var named = Host(("Queue:Transport", "InProcess"));
+        using var unnamed = Host();
 
-        await host.StartAsync(CancellationToken.None);
-        await host.StopAsync(CancellationToken.None);
+        await named.StartAsync(CancellationToken.None);
+        await unnamed.StartAsync(CancellationToken.None);
+
+        Assert.Equal("InProcess", named.Services.GetRequiredService<QueueOptions>().Transport);
+        Assert.Equal(
+            unnamed.Services.GetServices<IHostedService>().Select(service => service.GetType()).OrderBy(type => type.FullName),
+            named.Services.GetServices<IHostedService>().Select(service => service.GetType()).OrderBy(type => type.FullName));
+
+        await named.StopAsync(CancellationToken.None);
+        await unnamed.StopAsync(CancellationToken.None);
     }
 
     /// <summary>The figures the delivery loop is judged by are the install's, read off the
