@@ -113,12 +113,15 @@ the files it leaves.
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for
-    it names all three. A pass the provider limited (a 403 or 429 with its wait, `Retry-After` or the
-    quota's reset) holds every pass after it for that wait, up to `MaxLimitBackoff`, and a wake (a job's
-    end, the API) does not end the hold; outside one, a wake runs the next pass at once. Every GitHub
-    REST read is sent with the ETag of its last answer: one that has not moved comes back 304, which GitHub
-    does not count against the token's rate limit, so a pass over an unchanged board bills no REST call
-    (`PassBudgetTests`). A job that ends on the provider's limit (a `ProviderException` with its
+    it names all three. A GitHub call refused for its rate limit (a 403 or 429 naming `Retry-After`, or
+    `x-ratelimit-reset` with no calls left) waits that out once, when it is at most a minute away, and is
+    sent again; the limit is shared by every job and lane on the token, so a second refusal, one that names
+    no wait or a farther one, throws. A read that gets a 5xx is sent again up to twice; any other refusal
+    throws at once. A pass the provider limited holds every pass after it for that wait, up to
+    `MaxLimitBackoff`, and a wake (a job's end, the API) does not end the hold; outside one, a wake runs the
+    next pass at once. Every GitHub REST read is sent with the ETag of its last answer: one that has not
+    moved comes back 304, which GitHub does not count against the token's rate limit, so a pass over an
+    unchanged board bills no REST call (`PassBudgetTests`). A job that ends on the provider's limit (a `ProviderException` with its
     `RetryAfter`) or on a 5xx is not a break: nothing is said on its story and nothing counts toward
     `stalled`; its lock label and lock come off and a Dev with no PR goes back to Ready, as a break's do.
     A limit holds the item and every pass for the wait it asked, at least `MinLimitBackoff` and up to `MaxLimitBackoff`; a 5xx backs the
@@ -259,6 +262,18 @@ what it holds, and the last ten jobs; a list that can grow shows a few rows and 
 page), `GET /plan` the whole plan and every held story (searched, filtered by tier, 25 a page each),
 `GET /jobs` every job this machine remembers (searched, filtered by role, result and story, 25 a page),
 `GET /jobs/{id}` one job and its log, and `GET /jobs/{id}/log?tail=` its log as plain text (both need the control token: a header, or the `/login` cookie).
+
+The report to Ops (`OpsReporter`, `Harness:Ops`: `Url`, `Token` or `TokenFile`, every `Minutes`): a
+`HarnessReport` POSTed to `api/ops/node/harness` — the machine, its version, its status and its stats,
+and the ended jobs Ops has not accepted yet (`EndedJob`: id, work, story, started, ended, outcome and
+result, the outcome cut to `OpsReporter.OutcomeChars`; never the log nor its path; a job is its
+machine, id and start). Which ones Ops accepted lives
+in `ops.json` beside `jobs.json`, moved only by a 2xx, so a refused post or a restart sends them again
+and Ops keeps each once. Never accepted, every ended job the list holds is owed; one trimmed off the
+list no longer is. The jobs go oldest first, as many as keep the body under `MaxBytes` (its default in
+`OpsOptions`, under Ops' own ceiling, never below `OpsReporter.MinBytes`); the rest go with the next
+reports, and a report that owes jobs and fits none costs a warning. The token travels only in the header. Ops
+down or refusing costs one warning per report and never touches a pass.
 
 A running job (`RunningJob`, in the status, the jobs and the report to Ops) says what it is doing
 and when its log last moved, read off the log at each look (`JobActivity`): an agent's job (dev,

@@ -25,7 +25,9 @@ public sealed class JobHistory
         {
             _jobs.RemoveAll(j => j.Id == job.Id);
             _jobs.Add(job);
-            // The newest few hundred are enough to read what happened; the logs keep the rest.
+            // The newest few hundred are enough to read what happened; the logs keep the rest. This
+            // also bounds what is owed to Ops (OpsLedger): a job trimmed before Ops accepts it is lost
+            // to the fleet's record, so a smaller number shortens how long Ops may be down.
             if (_jobs.Count > 500) _jobs.RemoveRange(0, _jobs.Count - 500);
             StateFile.Write(_path, _jobs);
         }

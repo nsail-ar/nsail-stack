@@ -124,21 +124,23 @@ public sealed partial class GitHubClient(HttpClient http)
         return await Read(response, ct);
     }
 
-    // A rate-limited answer (403/429 with a wait) is waited out and sent again, a few times; a 5xx
-    // is sent again only when the call reads (a GET, a GraphQL query). What still fails is returned for Read to throw.
+    // A rate-limited answer (403/429 with a wait) is waited out once and sent again: the limit is shared
+    // with every job and lane on the token, so a second refusal is thrown. A 5xx is sent again, a few
+    // times, only when the call reads (a GET, a GraphQL query). What still fails is returned for Read to throw.
     async Task<HttpResponseMessage> Dispatch(Func<HttpRequestMessage> build, bool reads, CancellationToken ct)
     {
+        var waitedLimit = false;
         for (var attempt = 1; ; attempt++)
         {
             using var request = build();
             var response = await http.SendAsync(request, ct);
-            if (attempt >= Attempts) return response;
             TimeSpan? wait = null;
             if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
             {
-                wait = LimitWait(response);
+                wait = waitedLimit ? null : LimitWait(response);
+                waitedLimit = wait is not null;
             }
-            else if ((int)response.StatusCode >= 500 && reads)
+            else if ((int)response.StatusCode >= 500 && reads && attempt < Attempts)
             {
                 wait = TimeSpan.FromSeconds(attempt);
             }

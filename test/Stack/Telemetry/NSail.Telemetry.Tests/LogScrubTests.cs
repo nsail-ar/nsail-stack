@@ -22,6 +22,8 @@ public sealed class LogScrubTests
 
     const string ErrorTemplate = "Exception mapped to problem {Code}: {Message}";
 
+    const string RequestTemplate = "Request starting {Path}";
+
     const string Category = "Consulting";
 
     [Fact]
@@ -63,6 +65,18 @@ public sealed class LogScrubTests
         Assert.DoesNotContain(Name, record.Flattened, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(Document, record.Flattened, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(Clinical, record.Flattened, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("/calendar/feeds/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
+    [InlineData("/account/sign-in/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
+    [InlineData("/appointments/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM/calendar.ics")]
+    public void A_token_in_a_logged_path_does_not_travel(string path)
+    {
+        var record = Scrubbed(logger => logger.LogInformation(RequestTemplate, path));
+
+        Assert.Equal(RequestTemplate, record.Body);
+        Assert.DoesNotContain("Zm9vYmFy", record.Flattened, StringComparison.Ordinal);
     }
 
     // An id and a timing are what the story leaves a log free to carry, and their types are
