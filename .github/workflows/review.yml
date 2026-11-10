@@ -191,7 +191,7 @@ jobs:
 
             Write your report to `${{ env.FINDINGS }}` with the Write tool. Its FIRST line is exactly `VERDICT: clean` (nothing blocking; nits allowed below) or `VERDICT: findings`. Then the report in Spanish, ending with `— Vigía (QA)`. When clean with no nits, the body is the single line `Sin hallazgos.` Post nothing yourself.
 
-            ${{ steps.pr.outputs.reads >= 2 && format('This PR already had {0} reads with findings and did not converge, so this read is NARROW. Only three things can block: (1) the PR''s own work since your last read at `{1}` (`git diff {1} HEAD`; if that sha is empty or gone, the commits after your last review in the thread; what arrived by merging main is context, not the PR''s work); (2) whether each finding of your earlier reads is closed, answered with a right reason counts as closed; (3) what the merge with main broke in what this PR built. Do not reread the rest for fresh findings. If you still see something real outside those three, it does not block: put it under a last section headed exactly `## Fuera de alcance`, each item self-contained and file-anchored, because it is filed verbatim as a story of its own. `VERDICT: findings` only for the in-scope kind.', steps.pr.outputs.reads, steps.last.outputs.last) || '' }}
+            ${{ steps.pr.outputs.reads >= 2 && format('This PR already had {0} reads with findings and did not converge, so this read is NARROW. Only three things can block: (1) the PR''s own work since your last read at `{1}` (`git diff {1} HEAD`; if that sha is empty or gone, the commits after your last review in the thread; what arrived by merging main is context, not the PR''s work); (2) whether each finding of your earlier reads is closed, answered with a right reason counts as closed; (3) what the merge with main broke in what this PR built. Do not reread the rest for fresh findings. If you still see something real outside those three, it does not block: put it under a last section headed exactly `## Fuera de alcance`, each item self-contained and file-anchored, because it stays on the record in this review and is read without the diff at hand. `VERDICT: findings` only for the in-scope kind.', steps.pr.outputs.reads, steps.last.outputs.last) || '' }}
           claude_args: |
             --allowedTools "Read,Glob,Grep,Write,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh issue view:*),Bash(gh run view:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*)"
             --disallowedTools "Edit,MultiEdit,SendMessage,Agent,Task"
@@ -240,14 +240,8 @@ jobs:
 
           [ -z "$N" ] && { echo "PR #$PR is not a story branch — reviewed, nothing else"; exit 0; }
 
-          # A narrow read's out-of-scope section enters the queue like any story instead of
-          # holding this PR.
-          OUT=$(awk '/^## Fuera de alcance/{on=1; next} on && /^## /{on=0} on' "$FINDINGS" | sed '/^— Vigía (QA)/d')
-          if [ -n "$(printf '%s' "$OUT" | tr -d '[:space:]')" ]; then
-            FILED=$(gh issue create -R "$Q" --title "follow-up(nsail#$N): what review of nsail-stack PR #$PR left out of scope" \
-              --body "$(printf 'Visto por Vigía leyendo PR #%s de nsail-stack (nsail#%s), fuera del alcance de una lectura angosta.\n\n%s\n\n— Vigía (QA)' "$PR" "$N" "$OUT")" 2>/dev/null | tail -1)
-            echo "out of scope filed: ${FILED:-failed}"
-          fi
+          # A narrow read's out-of-scope section stays in the review above, on the record: it is not
+          # filed as a story of its own, which bred follow-ups faster than the queue closed them.
 
           if [ "$KIND" = "findings" ]; then
             OWN='.[] | select(.user.login == "github-actions[bot]" or .user.login == "'"$CREW"'") | (.body // "")'
