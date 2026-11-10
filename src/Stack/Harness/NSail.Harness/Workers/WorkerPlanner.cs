@@ -29,7 +29,7 @@ public static class WorkerPlanner
         var notes = new List<string>();
         var issues = Planner.ReleaseStaleLocks(board, options, chores, notes);
         // A failed cut holds the harness: only the release's own work is planned below.
-        var andon = ReleaseAndon.Read(issues, workers, options);
+        var andon = ReleaseAndon.Read(issues, board.ShippedFixes, workers, options);
         var release = ReleaseAndon.Stories(issues, andon, options);
         foreach (var a in andon)
         {

@@ -159,7 +159,7 @@ the files it leaves.
   because the release is the line's one way back to a shipped day. `take-new` off still holds the
   start of a story the andon would take — it is the operator's switch. The status page shows the
   product, since when and what it waits for (`/status` carries it as `Last.Plan.Andon`). It lifts when
-  the red story ships (its walk moves it to Released) or a hand closes it; a story a hand holds
+  the red story ships (its walk moves it to Released, or its product published a release after the fix merged) or a hand closes it; a story a hand holds
   (`ruling`, `hand`, `blocked`, `stalled`) keeps it lit and says so.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
