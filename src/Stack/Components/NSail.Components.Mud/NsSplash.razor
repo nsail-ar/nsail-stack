@@ -261,6 +261,9 @@
                 root.style.width = "100%";
                 root.style.height = "auto";
                 root.style.maxWidth = "100%";
+                // An inline svg sits on the line box's baseline and adds the descender gap
+                // under the mark; a block has none, so the block's own gap is all that is left.
+                root.style.display = "block";
                 // Same fallback as the <img> this replaces, kept here too for an SVG
                 // with no viewBox of its own to give the browser a ratio before this.
                 root.style.aspectRatio = "auto 1 / 1";
