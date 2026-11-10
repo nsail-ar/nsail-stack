@@ -1865,7 +1865,7 @@
 }
 
 /* The keyboard has reached the create entry (NsAutocomplete.Walk): it wears the highlight a
-   reached row wears — the vendor's own, primary text over the primary wash — and the last row,
+   reached row wears — the primary wash under the accent ink — and the last row,
    where the vendor still keeps its own highlight, gives it up, so one place is lit. The vendor
    states its highlight with !important, which is what the release has to answer in kind. */
 .ns-lookup-on-entry .mud-list-item.mud-selected-item {
@@ -1875,7 +1875,7 @@
 
 .ns-lookup-create-active {
     background-color: var(--mud-palette-primary-hover);
-    color: var(--mud-palette-primary);
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary));
 }
 
 /* The measure the open list stops at, since the field does not cap it at whatever box it
