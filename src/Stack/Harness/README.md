@@ -69,7 +69,7 @@ the files it leaves.
     protected-paths screen (a held rescue logs a warning naming the label that lifts it); the refs accumulate and a hand
     reconciles them.
   - A seat's `close-pr.md` closes only a PR of its own story, and an analyst's `labels.txt` sets only the
-    board's `area:` and driver labels.
+    board's `area:` and driver labels and `no-walk`.
   - `Workers` (by name, ordered by `Priority`): everything the harness takes.
     Each has a `Type` (Analyze, Develop, Review, Verify, Test, Release, Watch, UpdateBoard) whose defaults
     (`Workers/WorkerTypes.cs`: filter, events, what each event does on the board, minutes) it changes only
@@ -89,6 +89,8 @@ the files it leaves.
     after `QaJob.NotLiveRecheck` rather than at the next cut, because a deploy lands after its cut — and attaches
     the walk's shots to the board (on GitHub, the attachments a pasted file becomes). A story waiting on
     its ask is asked once, and walked again only when someone wrote on it or after `Recheck` minutes.
+    A story wearing `no-walk` (the analyst's word that nothing of it shows on a screen; a hand takes
+    it off to have it walked) closes as `n/a` with no walker and no browser: its gate and tests are its proof.
     The walker writes `VERDICT: ok|n/a|bug|asked|waiting|not-live|doubt` and its report: the verdict is
     the event, and the board is the harness's. Every verdict leaves the story where a walk reads it
     again: Released, or QA wearing `qa-asked` (a doubt is an ask) — a story in QA with neither is a

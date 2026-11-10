@@ -4,6 +4,9 @@
 using System.Text.Json;
 using NSail.Harness.Board;
 using NSail.Harness.Jobs;
+using NSail.Harness.Lanes;
+using NSail.Harness.Planning;
+using NSail.Harness.Repositories;
 
 namespace NSail.Harness.Tests;
 
@@ -22,6 +25,29 @@ public class QaWalkTests
     {
         Assert.Equal("Clinic", QaJob.ProductOf(new HashSet<string> { "area:clinic", "p1" }, Products)!.Name);
         Assert.Equal("Shop", QaJob.ProductOf(new HashSet<string> { "area:sales" }, Products)!.Name);
+    }
+
+    [Fact]
+    public async Task AStoryMarkedNoWalkClosesAsNotApplicableWithNoWalker()
+    {
+        var board = new MemoryBoard();
+        board.Add(1, stage: Stages.Released, labels: [Labels.NoWalk]);
+        var options = new HarnessOptions
+        {
+            Repositories = [new RepositoryOptions { Name = "acme/app" }],
+            Seats = { ["qa"] = new AgentOptions { Signature = "— QA", Model = "m", Prompt = "walk" } },
+            Workers = { ["test"] = new WorkerOptions { Type = "Test", Seat = "qa" } },
+        };
+        var repo = new DevJobRunTests.FileRepository("nowhere");
+        var ctx = new JobContext(board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace>(),
+            new NoAgent(), options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
+        var job = new QaJob(new WorkItem(WorkKind.Qa, 1, null, "rest", "rest", Worker: "test"), ctx, new JobHistory(Path.Combine(Path.GetTempPath(), "harness-nowalk-" + Guid.NewGuid().ToString("N"))));
+
+        var outcome = await job.Run(1, "unwritten.log", CancellationToken.None);
+
+        Assert.Equal("NotApplicable", outcome.Event);
+        Assert.Contains("no-walk", outcome.Report);
+        Assert.False(outcome.Failed);
     }
 
     [Fact]

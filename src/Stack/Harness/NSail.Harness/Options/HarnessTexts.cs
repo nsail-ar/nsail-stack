@@ -39,6 +39,8 @@ public sealed class HarnessTexts
 
     public string AnalysisDiedTwice { get; set; } = "The analysis died twice in a row without a verdict — `stalled` and `ruling`: it is not taken again until a hand looks. The log is in the harness ({machine}).";
 
+    public string NoWalk { get; set; } = "Not walked: the analysis marked it `no-walk` (nothing of it shows on a screen), so the gate and its tests are its proof. Closed with its release.";
+
     public string GateVerdict { get; set; } = "**Gate (harness), {word} at `{sha}`** — {text}";
     public string GateGreen { get; set; } = "build and affected tests green.";
     public string GateRed { get; set; } = "{why}. That is the next round's work:";
