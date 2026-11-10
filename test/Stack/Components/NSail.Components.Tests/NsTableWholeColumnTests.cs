@@ -118,7 +118,7 @@ public sealed class NsTableWholeColumnTests : BunitContext, IAsyncLifetime
         Assert.Contains("rung >= 0", body, StringComparison.Ordinal);
         Assert.Contains("scroller.scrollWidth > scroller.clientWidth", body, StringComparison.Ordinal);
         Assert.Contains("ns-table-editing", body, StringComparison.Ordinal);
-        Assert.Contains("table.tHead.getClientRects().length", body, StringComparison.Ordinal);
+        Assert.Contains("head.getClientRects().length", body, StringComparison.Ordinal);
         Assert.Contains("!whole[index]", body, StringComparison.Ordinal);
         Assert.Contains("[\"sm\", \"md\", \"lg\", \"xl\"]", script, StringComparison.Ordinal);
     }

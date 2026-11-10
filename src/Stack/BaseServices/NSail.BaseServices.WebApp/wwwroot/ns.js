@@ -1458,7 +1458,7 @@
                 shedMark(table, columns, index, false);
         });
         var wholes = table.querySelectorAll("td.ns-col-whole");
-        if (!wholes.length || root.classList.contains("ns-table-editing") || !table.tHead.getClientRects().length)
+        if (!wholes.length || root.classList.contains("ns-table-editing") || !head.getClientRects().length)
             return;
         var whole = {};
         Array.prototype.forEach.call(wholes, function (cell) {
