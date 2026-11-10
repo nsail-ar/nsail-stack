@@ -159,6 +159,19 @@ public sealed class NsNavMenuPanelTests : BunitContext, IAsyncLifetime
         Assert.Empty(Scroller(cut).QuerySelectorAll(".probe-brand"));
     }
 
+    /// <summary>The header's left and right lines come from ns-mud.css's tokens on the two rows, so
+    /// neither row may carry a padding utility of its own that would move its edge off them.</summary>
+    [Fact]
+    public void TheBrandAndSearchRowsTakeTheirEdgesFromTheStylesheet()
+    {
+        var cut = RenderMenuWithBrand();
+
+        foreach (var row in new[] { cut.Find(".ns-nav-brand"), cut.Find(".ns-nav-find") })
+        {
+            Assert.DoesNotContain(row.ClassList, c => c.StartsWith("pa-") || c.StartsWith("px-") || c.StartsWith("pl-") || c.StartsWith("pr-"));
+        }
+    }
+
     static AngleSharp.Dom.IElement Scroller(IRenderedComponent<NsNavMenu> cut)
     {
         return cut.Find(".ns-scroll-shadow");

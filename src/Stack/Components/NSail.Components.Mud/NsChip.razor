@@ -13,12 +13,12 @@
    controls that whisper; the bubble's link is the chip's own Href. *@
 @if (OnClose is null)
 {
-    <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
+    <MudChip T="string" Class="ns-chip-ellipsis" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
              Size="@GetSize()" Href="@SafeHref" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()">@Text</MudChip>
 }
 else
 {
-    <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
+    <MudChip T="string" Class="ns-chip-ellipsis" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
              Size="@GetSize()" Href="@SafeHref" OnClose="Close" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()">@Text</MudChip>
 }
 
