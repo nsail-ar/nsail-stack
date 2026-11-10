@@ -82,4 +82,15 @@ public sealed class MudVendorContractTests
         Assert.NotNull(field);
         Assert.Equal(typeof(bool), field.FieldType);
     }
+
+    [Theory]
+    [InlineData("_selectedListItemIndex", typeof(int))]
+    [InlineData("_enabledItemIndices", typeof(List<int>))]
+    public void MudAutocomplete_still_has_the_rows_NsAutocomplete_reads(string name, Type type)
+    {
+        var field = typeof(MudAutocomplete<object>).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(field);
+        Assert.True(type.IsAssignableFrom(field.FieldType));
+    }
 }
