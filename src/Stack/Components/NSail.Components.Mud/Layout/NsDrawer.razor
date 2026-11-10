@@ -81,8 +81,8 @@
     DrawerVariant GetVariant() => IsDocked ? DrawerVariant.Persistent : DrawerVariant.Temporary;
 
     // Always clips below the app bar when the layout has one; with no Header slot
-    // (nsail#609) there is no bar to sit under, and MudBlazor's own clipped-always
-    // geometry would otherwise reserve a bar-height gap nothing ever draws (nsail#666).
+    // there is no bar to sit under, and MudBlazor's own clipped-always
+    // geometry would otherwise reserve a bar-height gap nothing ever draws.
     DrawerClipMode GetClipMode()
     {
         return (LayoutState?.HasHeader ?? true) ? DrawerClipMode.Always : DrawerClipMode.Never;

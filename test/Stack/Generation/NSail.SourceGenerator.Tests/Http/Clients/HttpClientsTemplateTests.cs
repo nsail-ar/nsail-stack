@@ -45,7 +45,7 @@ public class HttpClientsTemplateTests
                     public partial void AddWeirdClients(this IServiceCollection services);
                 }
                 """)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()

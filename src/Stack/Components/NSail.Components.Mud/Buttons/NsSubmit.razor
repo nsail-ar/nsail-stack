@@ -87,7 +87,7 @@
     [Parameter]
     public string? Label { get; set; }
 
-    /// <summary>Same word as NsForm's own knob, same idea: a transition (Entregar, Revisar,
+    /// <summary>Same word as NsForm's own knob, same idea: a transition (deliver, review,
     /// any confirm-shaped door) is an act, not an edit — its hero has nothing to wait on, so
     /// it stays enabled from arrival even inside a form that otherwise tracks changes.</summary>
     [Parameter]
@@ -189,8 +189,8 @@
         _claimed = claimed;
         _chordHint = chordHint;
 
-        // aria-label pinned to the bare word is what keeps the accessible name the word
-        // (nsail#2259): the key is a decoration, and a decoration joining the name is the defect
+        // aria-label pinned to the bare word is what keeps the accessible name the word: the
+        // key is a decoration, and a decoration joining the name is the defect
         // whether it is drawn beside it or written into it. data-ns-whisper is a different
         // attribute the name computation never reads, and it carries the longer string the
         // bubble shows (THE WHISPER, ns-mud.css).

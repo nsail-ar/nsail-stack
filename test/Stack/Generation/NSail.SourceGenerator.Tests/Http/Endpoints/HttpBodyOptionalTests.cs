@@ -87,7 +87,7 @@ public class HttpBodyOptionalTests
     {
         var compilation = new CompilationUnitBuilder()
             .AddSourceFiles("./Http/Endpoints/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()

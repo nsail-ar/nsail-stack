@@ -29,9 +29,11 @@
     <None Include="harness-settings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!-- Which PRs nsail-stack's review.yml reads: the tests run the script the workflow runs. -->
+  <!-- Which PRs nsail-stack's review.yml reads and what verdict it decides on: the tests run the
+       script and read the workflow as they ship. -->
   <ItemGroup>
     <None Include="..\..\..\..\.github\review-reads.sh" Link="review-reads.sh" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\.github\workflows\review.yml" Link="review.yml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

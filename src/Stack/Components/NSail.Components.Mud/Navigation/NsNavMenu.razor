@@ -305,7 +305,7 @@
     // still has to be reapplied, because a deep-link filter in the query is what tells two
     // entries naming one page apart (FindActive). Counted on the aside's own close, this was a
     // round trip per contributor plus a full redraw of the drawer inside the window of every
-    // save taken in an overlay (nsail#1934).
+    // save taken in an overlay.
     void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         ApplyRoute();
@@ -623,8 +623,8 @@
                 : current.Equals(url, StringComparison.OrdinalIgnoreCase)
                     || current.StartsWith(url + "/", StringComparison.OrdinalIgnoreCase);
 
-            // Two leaves can name one page and differ only by a deep-link filter (Personas
-            // bare, Pacientes with RoleIds): the path ties, so the query decides. A leaf
+            // Two leaves can name one page and differ only by a deep-link filter (one
+            // bare, one with a role filter): the path ties, so the query decides. A leaf
             // carrying parameters is active only where the URL carries them too, and there
             // it outranks the bare leaf that matches everywhere else.
             if (!matches || !query.All(currentQuery.Contains))
@@ -632,8 +632,8 @@
                 continue;
             }
 
-            // Two doors onto one page tie on both keys above — Optical's Mi Cuenta > Turnos and
-            // Contactología > Turnos are the same route with the same query — and the URL holds
+            // Two doors onto one page tie on both keys above — "Account > Appointments" and
+            // "Clinic > Appointments" are the same route with the same query — and the URL holds
             // nothing that tells them apart. The open branch does: a person reaches the page
             // through the door they could see, so the section they have open is the one that
             // keeps the mark and stays open. Arriving on the route cold, with nothing expanded,

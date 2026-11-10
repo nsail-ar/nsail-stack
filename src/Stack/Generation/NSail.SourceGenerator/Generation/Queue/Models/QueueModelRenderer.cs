@@ -27,13 +27,21 @@ public static class QueueModelRenderer
     // message with no producer holder anywhere cannot be sent at all.
     static void Render(SourceProductionContext spc, QueueModel model, string templateName, bool reportDiagnostics)
     {
+        foreach (var diagnostic in model.HolderDiagnostics)
+        {
+            diagnostic.Report(spc);
+        }
+
         if (reportDiagnostics)
         {
             foreach (var diagnostic in model.Diagnostics)
             {
-                spc.ReportDiagnostic(diagnostic);
+                diagnostic.Report(spc);
             }
         }
+
+        if (model.Unusable)
+            return;
 
         var template = SourceTemplateRegistry.Instance.Get(templateName);
         var sourceCode = template.Render(model);

@@ -21,6 +21,7 @@ sealed class Fixture
     DateTimeOffset? _lastQa;
     DateTimeOffset? _lastCut;
     readonly HashSet<int> _merged = [];
+    readonly HashSet<int> _shippedFixes = [];
     readonly Dictionary<string, string> _unshipped = [];
     readonly DateTimeOffset _now = DateTimeOffset.UtcNow;
 
@@ -37,9 +38,9 @@ sealed class Fixture
         return this;
     }
 
-    public Fixture Pr(int story, int number, CiState ci = CiState.Green, string? word = null, string repo = Repo, string sha = "abcdef1234567890", CiState? gate = null, TimeSpan? greenFor = null)
+    public Fixture Pr(int story, int number, CiState ci = CiState.Green, string? word = null, string repo = Repo, string sha = "abcdef1234567890", CiState? gate = null, TimeSpan? greenFor = null, bool shared = false)
     {
-        _prs.Add(new StoryPr(story, number, sha, ci, repo, word, gate, _now - greenFor));
+        _prs.Add(new StoryPr(story, number, sha, ci, repo, word, gate, _now - greenFor, shared));
         return this;
     }
 
@@ -70,6 +71,12 @@ sealed class Fixture
     public Fixture Shipping(string tag)
     {
         _flight = _flight with { ShipTags = _flight.ShipTags.Append(tag).ToHashSet() };
+        return this;
+    }
+
+    public Fixture FixShipped(int story)
+    {
+        _shippedFixes.Add(story);
         return this;
     }
 
@@ -112,6 +119,7 @@ sealed class Fixture
             DueReleases = _due,
             MergedStories = _merged,
             Unshipped = _unshipped,
+            ShippedFixes = _shippedFixes,
         };
     }
 }

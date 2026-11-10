@@ -1,0 +1,36 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using NSail.Components
+
+@* A duration the page writes behind the field after the person typed, the way a read lands. *@
+<NsForm TModel="FormModel" Model="Model" OnSubmit="HandleSubmit">
+    <NsDurationField TValue="TimeSpan?" @bind-Value="context.Length" />
+</NsForm>
+
+@code {
+
+    public sealed class FormModel
+    {
+        public TimeSpan? Length { get; set; }
+    }
+
+    [Parameter, EditorRequired]
+    public FormModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback Submitted { get; set; }
+
+    public void Write(TimeSpan? length)
+    {
+        Model.Length = length;
+        StateHasChanged();
+    }
+
+    Task HandleSubmit()
+    {
+        return Submitted.InvokeAsync();
+    }
+}

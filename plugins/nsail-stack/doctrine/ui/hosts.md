@@ -40,7 +40,7 @@ being read and dropped the status word onto a ground it had not been measured ag
 **A collection that offers a way IN names itself, and the name's bar is the only seat Agregar
 has.** `Title` draws that bar above the grid — heading left, add control at the right edge, one
 baseline — and unset there is no bar at all, so no face a hand can press: a grid wiring `NewRow`
-with no `Title` is refused by the Architecture suite rather than shipped with nothing for a hand
+with no `Title` is refused by the Architecture suite (enforced in the products' repository) rather than shipped with nothing for a hand
 to reach. There is no second position to drift to; an Agregar under the rows is the shape this
 rule replaced, after it had already split the house in two (cases). **It is the family's rule,
 not the table's** — `NsListEditor`'s bar is the same `.ns-collection-bar`, so the two collection
@@ -203,6 +203,10 @@ own word is the control's name, so there is no string, no glyph and no handler a
   own is not blank and orders by them.
 - **An order and the list's own filter do not reach each other**: both narrow the same rows in
   hand, so a filter press keeps the order and a heading press keeps the filter.
+- **The order is computed once per list, column, direction and culture**, not on every render: a
+  held list of a few thousand rows re-sorted on each parent render is the cost. "The list" is the
+  instance of `Rows.Items` and its length, so **a host that edits a row in place hands the grid
+  a new list** — the same list with a changed cell keeps the row where its old value put it.
 - **The file Exportar writes is the order on screen** ([exporting.md](../exporting.md)).
 - **Stacked, the list has no headings to press**: a card draws no header row, on a phone or in
   a container under 740px alike, so the order offered there is the one already in effect.

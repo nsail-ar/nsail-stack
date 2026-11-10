@@ -10,7 +10,7 @@ namespace NSail.Components;
 // for two reasons that one cannot cover: its parse is TryParseExact against a single pattern,
 // so "7/8/2026" and "07082026" are refused where a person means the same day; and text it
 // cannot read it throws on, which the picker turns into ITS OWN English sentence over a box
-// wiped to blank — a typed date silently gone (nsail#1196).
+// wiped to blank — a typed date silently gone.
 //
 // It remembers the text it refused, against the vendor's own "prefer pure" advice and
 // deliberately: the picker rewrites the box from whatever Convert hands back the moment its

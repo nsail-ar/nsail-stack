@@ -67,11 +67,12 @@ Defined in `NSail.SourceGeneration.Annotations`:
 | `[Generated(Push.Clients)]` | `Push.Clients` | a `PushedMessage<TMessage>` entry per `[Pushed]` message, the closed list a client's feed publishes from |
 | `[Generated(Queue.Producers)]` | `Queue.Producers` | `ISender<TMessage> → QueueSender<TMessage>` for `[Queue]` messages (the durable send side) |
 | `[Generated(Queue.Consumers)]` | `Queue.Consumers` | a `QueueConsumer<TMessage>` entry per `[Queue]` message, the closed list the drain delivers from |
+| `[Generated(Policies.Handlers)]` | `Policies.Handlers` | a `PolicyHandler` per `IMessage` in scope, plus their DI factories |
 | `[Generated(Mappers.Entities)]` | `Mappers.Entities` | an `IEntityMapper<TSource, TEntity>` per `[MapFrom]` and an `IProjection<TEntity, TRow>` per `[MapTo]` in scope |
 
 Each transport groups its artifacts in one enum. For HTTP: `Clients` is the remote send side, `Endpoints` the receive side, and `InProcess` the local counterpart of `Clients` — same `[Http]` contract, dispatched directly to the handler in the host that exposes the endpoints.
 
-A sender writes each route value through `HttpRequestMessageBuilder.Segment` (one escaped segment, invariant culture) and each query value invariantly, dates and times round-trip (`O`): the server parses invariantly, and a value must not change the path.
+A sender writes each route value through `HttpRequestMessageBuilder.Segment` (one escaped segment, invariant culture) and each query and header value invariantly, dates and times round-trip (`O`): the server parses invariantly, and a value must not change the path.
 
 `Http.InProcess` is declared in the kit's WebApi setup (same assembly as the handlers) and called from `Add{Kit}WebApi()`. It makes `Mediator.Send` dispatch locally in the host that owns the handlers — required for server-side prerendering of components that send messages. There is no implicit sender fallback and `[Http]` is the gate — the sender-registration semantics live in [messaging.md](messaging.md) (In-process vs remote).
 
@@ -88,7 +89,7 @@ find. The generated `Add{Kit}PushPublishers` composes the push's own services fi
 both transports' server halves and the install's `PushAudience`), so a composition that mounts
 the kit alone — a handler harness — resolves every publisher it registers; a host that composed
 the push earlier keeps its own.
-`PushMountTests` (`NSail.Architecture.Tests`) holds both roots of every product to the
+`PushMountTests` (`NSail.Architecture.Tests`, enforced in the products' repository) holds both roots of every product to the
 `[Pushed]` messages its host carries, so a forgotten holder fails the build instead of leaving
 a screen stale. Runtime semantics: [messaging.md](messaging.md) (Pushed to clients).
 
@@ -167,10 +168,12 @@ public class GetPrescription : IMessage<Prescription>
 |---|---|
 | `[AsRoute]` | Path segment |
 | `[AsQuery]` | Query string |
-| `[AsHeader]` | Request header |
+| `[AsHeader]` | Request header (one value; a collection is `NSG024`) |
 | (default on POST/PUT) | JSON body |
 
-Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc.
+Only public, instance, non-indexer properties with a public `set` or `init` and no `[JsonIgnore]` enter the model, read once as the most derived declaration; any other member is not on the wire.
+
+Use `Method` enum (Get, Post, Put, Delete, Patch, Head, Options) — not ASP.NET `[HttpGet]` etc. Members bind from the query string on Get, Delete, Head and Options and from the JSON body on Post, Put and Patch. Head and Options are mapped with `MapMethods` (route tokens and `[AsRoute]`/`[AsHeader]` still win).
 
 Sdk projects import `static NSail.Messaging.Annotations.Method` via global usings.
 
@@ -287,7 +290,7 @@ same thing.
 | `NSG001` | Error | An `[Http]` route token has no route-bound property on the message. |
 | `NSG002` | Error | A `[Pushed]` type does not implement `IMessage` — only an event can be published, so nothing would ever be pushed. |
 | `NSG003` | Error | A `[Pushed]` event declares or inherits a public property — the body reaches every seat of the tenant, so a property is a row crossing the org wall. |
-| `NSG004` | Error | A `[MapFrom]` would write `OrganizationId` by name alone — moving a row between branches is a decision (org-map.md), so it is named on the member or `[MapIgnore]`d. |
+| `NSG004` | Error | A `[MapFrom]` would write `OrganizationId` by name alone — moving a row between branches is a decision (nsail's `plugins/nsail-kits/doctrine/org-map.md`), so it is named on the member or `[MapIgnore]`d. |
 | `NSG005` | Error | A `[Primitive]` member's type differs from its source's — copied whole, it cannot be converted. |
 | `NSG006` | Error | A mapped member has no conversion from its source; for a projection, none a query can translate (no parsing). |
 | `NSG007` | Error | A mapped type cannot be built: no parameterless constructor, or abstract with no discriminator to pick a derived type. |
@@ -300,10 +303,23 @@ same thing.
 | `NSG014` | Error | A `[Queue]` message implements `IMessage<T>` — a durable send answers "accepted" and never the outcome, so there is no result to hand back. |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` — each registers an `ISender`, so every send would meet `MultipleSenders` at runtime. |
 | `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) — it would cap no account, silently, and go on doing so after a rename. |
+| `NSG017` | Error | An `[Http]` route segment mixes a token with literal text. |
+| `NSG018` | Error | A route-bound member (`[AsRoute]`) has no token in the route — it would be required from a value the template never carries. |
+| `NSG019` | Error | Two `[Http]` messages in one scope share a verb and a path once token names are ignored (a constraint still tells routes apart) — the endpoints would meet `AmbiguousMatchException` at request time. |
+| `NSG020` | Error | `[Source(Assembly = ...)]` names an assembly the compilation does not reference — the holder would register nothing and look finished. |
+| `NSG021` | Error | A holder's class is nested, generic, not `partial` or in the global namespace — the generated half re-declares the class and cannot match it. |
+| `NSG022` | Error | A holder has no `IServiceCollection` parameter — the registrations have no receiver; the generated body uses the parameter's own name. |
+| `NSG023` | Error | An `[Http]` message declares no path — it has no route to map or call. |
+| `NSG024` | Error | A header-bound member (`[AsHeader]`) is a collection — HTTP joins a repeated header into one line, which the endpoint binds as one element. |
+| `NSG025` | Error | A `[MapFrom]` member reads a nullable value into a non-nullable member that is not the target's key — nothing says what "no value" becomes. A `[MapTo]` row reads it as the default, since a query provider translates the projection; a null or empty text reads the target's default. |
 
 `NSG001` is an error, not a warning: an unbound token is dropped from the mapped route, so
 the endpoint would answer at a URL the message never declared and the mismatch would only
 surface as a 404 at runtime.
+
+A route token is a whole segment, with an optional constraint, `?`, default or `*` (`{id:guid}`,
+`{id?}`, `{*rest}`): the member is bound by the name alone. Text beside a token in one segment
+(`v{version}`, `{a}.{b}`) is `NSG017`, because the client writes a token as one escaped segment.
 
 `NSG011` and `NSG012` are warnings: the mapping works, it just loses the data, and a partial
 message or a narrow row is often exactly what was meant. An app that wants them refused raises
@@ -326,9 +342,39 @@ Use when registration must pull types from a referenced assembly.
 
 ---
 
+## Incremental pipelines
+
+An edit must not re-read the project. A generator's pipeline holds only value-equal data:
+
+- **Models are records of equatable data** — names, declarations, spans, arguments; lists are
+  `EquatableList<T>`. A model never holds a symbol, a `Diagnostic` or a `Location`: findings
+  travel as `DiagnosticInfo` (descriptor, tree, span, arguments) and become diagnostics in the
+  renderer.
+- **The holder comes from the attribute provider** (`FindGeneratedTargets`), and the types in
+  scope are inspected from their own declarations (`GatherInScope`), so an edit re-reads the
+  types of the edited file only.
+- **A step reads the compilation in two cases only**: a holder with `[Source]`, whose scopes are
+  referenced assemblies reachable no other way, and the mapper emission, which walks the types
+  reachable from the declarations. Either step's output is an equatable model, so nothing after
+  it reruns.
+- **Mappers** emit inside a pipeline step and register only the text and findings; the entities
+  the store's model declares (`Entity<T>()`, `DbSet<T>`) are gathered from the syntax.
+- **Caching skips work, never changes the result**: an edit to a fact another file's type reads
+  (a base class in `A.cs` under a `[Pushed]` or `[MapFrom]` type in `B.cs`) regenerates `B`'s
+  output on that edit.
+- **A finding is reported inside its file's tree**, so the compiler applies that file's
+  `#pragma warning` and `.editorconfig` severity to it as it does to its own warnings. The tree
+  compares by reference: an unedited file keeps its tree and the finding stays equal; a location
+  rebuilt from a path is outside every tree, and neither reaches it.
+- **A new generator owes the proof**: `IncrementalityTests` runs it twice over an unrelated edit
+  and every step but the compiler's own inputs, and every output, must be `Cached` or
+  `Unchanged`.
+
+---
+
 ## What gets generated
 
-- **Endpoints** — for each `[Http]` message with a matching `[Injectable]` handler, an
+- **Endpoints** — for each `[Http]` message in scope (the handler is resolved at send time), an
   `IEndpointEntry` that maps the route to `Mediator.Send`. Every emitted entry carries two
   things the runtime reads off the route table, never a per-endpoint decision:
   `MessageEndpointMetadata`, which names the message before ASP.NET binds anything (so the

@@ -69,4 +69,39 @@ public sealed class NsMultiSelectTests : BunitContext, IAsyncLifetime
 
         Assert.DoesNotContain("mud-shrink", cut.Find("div.mud-input").ClassList);
     }
+
+    [Fact]
+    public void NsMultiSelect_IsDisabledLikeAnyField()
+    {
+        var cut = Render<MultiSelectValueHost<SelectRef, Guid>>(ps => ps
+            .Add(p => p.Items, new[] { Alpha, Beta })
+            .Add(p => p.ItemValue, item => item.Id)
+            .Add(p => p.ItemText, item => item.DisplayName)
+            .Add(p => p.Label, "Recursos")
+            .Add(p => p.Disabled, true)
+            .Add(p => p.Value, new[] { Beta.Id }));
+
+        Assert.Contains("mud-disabled", cut.Find("div.mud-input").ClassList);
+    }
+
+    [Fact]
+    public async Task NsMultiSelect_ShowsTheBoundRefusalOnSubmitWhenEmpty()
+    {
+        var cut = Render<MultiSelectFormHost>(ps => ps.Add(p => p.Model, new MultiSelectFormHost.FormModel()));
+
+        await cut.InvokeAsync(() => cut.Find("form").Submit());
+
+        Assert.NotEmpty(cut.FindAll(".mud-input-error"));
+        Assert.Contains("Problems.Required", cut.Markup);
+    }
+
+    [Fact]
+    public void NsMultiSelect_FollowsTheFormFreeze()
+    {
+        var cut = Render<MultiSelectFormHost>(ps => ps
+            .Add(p => p.Model, new MultiSelectFormHost.FormModel())
+            .Add(p => p.Disabled, true));
+
+        Assert.Contains("mud-disabled", cut.Find("div.mud-input").ClassList);
+    }
 }

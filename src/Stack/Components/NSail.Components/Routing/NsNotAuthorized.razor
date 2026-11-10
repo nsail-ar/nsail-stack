@@ -43,7 +43,7 @@
         // every ancestor between the router and this component re-renders on that, and the
         // second pass would escape the address it had just written into the first one. Each
         // round roughly doubles the URL, which is what pegs a whole browser tab rather than
-        // merely looping (nsail#469). NsRouteGate guards its own redirect the same way.
+        // merely looping. NsRouteGate guards its own redirect the same way.
         if (_forbidden || _redirected)
         {
             return;
@@ -85,8 +85,9 @@
         return query.Count is 0 ? signInPath : $"{signInPath}?{string.Join('&', query)}";
     }
 
-    // The app that never names a sign-in page keeps the Iam kit's own route, which is where
-    // every product's sign-in lives today; naming the page overrides it without a path.
+    // An app that names no sign-in page is sent to /iam/sign-in, the path its sign-in page
+    // routes at by convention; naming the page (SignInPage) reads its path from the route
+    // table instead.
     string GetSignInPath()
     {
         if (SignInPage is null || RouteTable is null)

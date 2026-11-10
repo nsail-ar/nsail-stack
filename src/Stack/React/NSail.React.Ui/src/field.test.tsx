@@ -14,6 +14,7 @@ import { NsForm } from "./form";
 interface Reprice {
   price?: string;
   floor?: string | null;
+  qty?: number;
 }
 
 const Reprice = defineMessage<Reprice, Reprice>({
@@ -25,6 +26,7 @@ const Reprice = defineMessage<Reprice, Reprice>({
   fields: {
     price: { kind: "decimal", key: "Shop.Reprice.Price", binding: "body" },
     floor: { kind: "decimal", key: "Shop.Reprice.Floor", binding: "body", nullable: true },
+    qty: { kind: "integer", key: "Shop.Reprice.Qty", binding: "body" },
   },
 });
 
@@ -47,6 +49,7 @@ function render(): { value: () => Reprice; type: (name: keyof Reprice, text: str
       <NsForm form={form} onSubmit={async () => {}}>
         <NsField<Reprice> name="price" />
         <NsField<Reprice> name="floor" />
+        <NsField<Reprice> name="qty" />
       </NsForm>
     );
   }
@@ -90,5 +93,13 @@ describe("NsField", () => {
     screen.type("price", "");
     screen.type("floor", "");
     expect(screen.value()).toEqual({ price: undefined, floor: null });
+  });
+
+  it("refuses a fraction on an integer field as it is typed", () => {
+    const screen = render();
+
+    screen.type("qty", "3");
+    screen.type("qty", "1.5");
+    expect(screen.value().qty).toBe(3);
   });
 });

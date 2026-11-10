@@ -19,6 +19,31 @@ public static class TableExport
     /// accepts, because the round trips are the cost and no page is held (PagedMessage).</summary>
     public const int PageSize = PagedMessage.MaxPageSize;
 
+    /// <summary>The rows an export may carry unless the grid says otherwise.</summary>
+    public const int DefaultRowCap = 100_000;
+
+    /// <summary>The rows, until one past <paramref name="cap"/> is pulled: that row is never
+    /// written and <see cref="ExportTooLarge"/> is thrown, so no file is offered.</summary>
+    public static async IAsyncEnumerable<ExportRow> Capped(
+        IAsyncEnumerable<ExportRow> rows,
+        int cap,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(rows);
+
+        var seen = 0;
+
+        await foreach (var row in rows.WithCancellation(cancellationToken))
+        {
+            if (++seen > cap)
+            {
+                throw new ExportTooLarge(cap);
+            }
+
+            yield return row;
+        }
+    }
+
     /// <summary>The rows of a list the client already HOLDS — a register whose every row arrived
     /// in one read, so there is no server to ask. The pages are cut off the rows in hand and read
     /// by <see cref="Rows"/>: where a list ends and how a row becomes values stay in one place
@@ -110,4 +135,10 @@ public sealed class ExportInterrupted : Exception
         : base(message, inner)
     {
     }
+}
+
+/// <summary>The list has more rows than the export may carry.</summary>
+public sealed class ExportTooLarge(int cap) : Exception($"The export has more than {cap} rows.")
+{
+    public int Cap { get; } = cap;
 }

@@ -79,7 +79,7 @@ public class CsvExportWriterTests
     {
         using var stream = new MemoryStream();
 
-        await new CsvExportWriter().WriteAsync(Books.One(), stream, Books.Argentina, CancellationToken.None);
+        await new CsvExportWriter().WriteAsync(Books.One(), stream, Books.Argentina, TimeZoneInfo.Utc, CancellationToken.None);
 
         Assert.True(stream.CanWrite);
     }

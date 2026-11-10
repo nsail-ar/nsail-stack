@@ -46,8 +46,7 @@
 
     // The vendor is the picker and nothing else: its own file list is suppressed with an
     // empty SelectedTemplate, or it draws a chip of its own beside the house's thumbnail --
-    // the same file named twice, once in chrome this component does not own (Leonardo, twice:
-    // "sigue mostrando ese pill feo").
+    // the same file named twice, once in chrome this component does not own.
     RenderFragment Trigger =>
     @<span class="ns-upload-trigger">
         <MudFileUpload T="IBrowserFile" FilesChanged="Pick" Accept="@Accept" Disabled="@IsTriggerDisabled()">

@@ -111,7 +111,7 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
     // is that moment for every placement on the context — the host that owns it and the open
     // row inside it alike. Without this the row's own store is the one nobody can lift: the
     // form clears its own and then validates, the row's messages still count, Validate() answers
-    // false and the submit returns having drawn nothing — a Guardar that goes mute (nsail#1912).
+    // false and the submit returns having drawn nothing — a Guardar that goes mute.
     // Nothing is lost by lifting it: what still refuses re-posts in the same pass (every field's
     // own problem, the annotations validator's), so the submit answers or runs, never neither. The
     // one answer that cannot re-post itself is a refusal a page's OnCommit decided, which nobody
@@ -170,10 +170,10 @@ sealed class RefusalPlacement(StringManager strings) : IFieldTracker
         {
             var message = Describe(issue, problem);
 
-            // Being a real property is not enough — the counter sale's tenders were a real
-            // property of the message and the screen bound its own local list, so the refusal
-            // went under an input that never rendered and disappeared (6062c3fb). Only a field
-            // that announced itself here can carry a message.
+            // Being a real property is not enough — a property of the message the screen
+            // binds through a local list of its own has no input rendered for it, and a
+            // refusal placed there would disappear. Only a field that announced itself here can
+            // carry a message.
             var identifier = string.IsNullOrWhiteSpace(issue.Source)
                 ? null
                 : TryCreateFieldIdentifier(model, issue.Source);

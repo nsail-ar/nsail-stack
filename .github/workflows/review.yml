@@ -20,7 +20,9 @@ name: Review
 #     opened it (a fork's CI run lists no pull request at all, and the job says so and stops); a
 #     hand may dispatch a read of any same-repository pull request. Which PR is read is decided
 #     by .github/review-reads.sh, checked out from main, never from the pull request;
-#   - the story is read from nsail-ar/nsail, the queue's home; its text is DATA to the reviewer.
+#   - the story is read from nsail-ar/nsail, the queue's home; its text is DATA to the reviewer;
+#   - the verdict file ($FINDINGS) is deleted from the PR's tree before Vigía runs, and the
+#     decision reads it only when that delete succeeded: a verdict the PR commits never counts.
 #
 # Secrets: CLAUDE_CODE_OAUTH_TOKEN (the reviewer) and NSAIL_CREW_PAT (the crew's identity, which
 # merges and writes the story's stage). Both are the names nsail's own workflows use.
@@ -151,6 +153,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # The verdict file is the PR's own path: a copy its tree carries is gone before Vigía runs,
+      # so the only verdict Post and decide can read is the one Vigía wrote.
+      - name: The PR's tree holds no verdict
+        id: clear
+        if: steps.pr.outputs.go == 'true'
+        run: rm -rf -- "$FINDINGS"
+
       - name: A narrow read needs its starting commit
         id: last
         if: steps.pr.outputs.go == 'true'
@@ -197,6 +206,7 @@ jobs:
           PR: ${{ steps.pr.outputs.pr }}
           N: ${{ steps.pr.outputs.issue }}
           SHA: ${{ steps.pr.outputs.sha }}
+          CLEARED: ${{ steps.clear.outcome }}
         run: |
           stage() {
             printf '{"issue_field_values":[{"field_id":%s,"value":"%s"}]}' "$STAGE_FIELD" "$2" \
@@ -209,7 +219,8 @@ jobs:
             gh issue comment "$N" -R "$Q" --body "$1 — Vigía (QA)"
           }
 
-          VERDICT=$(head -1 "$FINDINGS" 2>/dev/null | tr -d '\r' || true)
+          VERDICT=""
+          [ "$CLEARED" = success ] && VERDICT=$(head -1 "$FINDINGS" 2>/dev/null | tr -d '\r' || true)
           case "$VERDICT" in
             "VERDICT: clean")    KIND=clean ;;
             "VERDICT: findings") KIND=findings ;;

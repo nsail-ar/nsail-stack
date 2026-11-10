@@ -152,11 +152,172 @@ public class HttpRouteDiagnosticTests
         Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
     }
 
+    [Theory]
+    [InlineData("api/items/{id:guid}")]
+    [InlineData("api/items/{id?}")]
+    [InlineData("api/items/{id:int?}")]
+    [InlineData("api/items/{*id}")]
+    [InlineData("api/items/{**id}")]
+    [InlineData("api/items/{id=5}")]
+    public void A_token_with_a_constraint_optional_marker_or_catch_all_binds_by_name(string route)
+    {
+        var diagnostics = Run(RouteSource($"[Http(Method.Get, \"{route}\")]", "[AsRoute] public System.Guid Id { get; set; }"));
+
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+    }
+
+    [Fact]
+    public void A_mixed_segment_is_a_build_error_naming_the_template()
+    {
+        var diagnostics = Run(RouteSource("[Http(Method.Get, \"api/v{version}/items\")]", "public int Version { get; set; }"));
+
+        var reported = Assert.Single(diagnostics.Where(d => d.Id == "NSG017"));
+
+        Assert.Contains("api/v{version}/items", reported.GetMessage());
+    }
+
+    [Fact]
+    public void A_route_member_with_no_token_is_a_build_error()
+    {
+        var diagnostics = Run(RouteSource("[Http(Method.Get, \"api/items\")]", "[AsRoute] public System.Guid Id { get; set; }"));
+
+        Assert.Single(diagnostics.Where(d => d.Id == "NSG018"));
+    }
+
+    [Theory]
+    [InlineData("[AsHeader] public int[]? Attempts { get; set; }")]
+    [InlineData("[AsHeader] public System.Collections.Generic.List<string>? Attempts { get; set; }")]
+    public void A_collection_header_is_a_build_error(string member)
+    {
+        var diagnostics = Run(RouteSource("[Http(Method.Get, \"api/items\")]", member));
+
+        var reported = Assert.Single(diagnostics.Where(d => d.Id == "NSG024"));
+
+        Assert.Equal(DiagnosticSeverity.Error, reported.Severity);
+        Assert.Contains("Attempts", reported.GetMessage());
+    }
+
+    [Fact]
+    public void A_single_value_header_is_no_error()
+    {
+        var diagnostics = Run(RouteSource("[Http(Method.Get, \"api/items\")]", "[AsHeader] public string? Trace { get; set; }"));
+
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+    }
+
+    [Fact]
+    public void Two_messages_on_one_verb_and_normalised_path_are_a_build_error()
+    {
+        var same = Run(TwoRoutes("Method.Get", "api/x/{a}", "Method.Get", "api/x/{b}"));
+        var constrained = Run(TwoRoutes("Method.Get", "api/x/{a}", "Method.Get", "api/x/{b:guid}"));
+        var otherVerb = Run(TwoRoutes("Method.Get", "api/x/{a}", "Method.Post", "api/x/{a}"));
+
+        Assert.Single(same.Where(d => d.Id == "NSG019"));
+        Assert.Empty(otherVerb.Where(d => d.Id == "NSG019"));
+        Assert.Empty(constrained.Where(d => d.Id == "NSG019"));
+    }
+
+    static string RouteSource(string http, string member)
+    {
+        return $$"""
+            using Microsoft.Extensions.DependencyInjection;
+            using Microsoft.AspNetCore.Routing;
+            using NSail.Messaging;
+            using NSail.Messaging.Annotations;
+            using NSail.SourceGeneration.Annotations;
+
+            namespace Acme.Clinic.Items;
+
+            {{http}}
+            public class GetItem : IMessage
+            {
+                {{member}}
+            }
+
+            public static partial class Endpoints
+            {
+                [Generated(NSail.SourceGeneration.Annotations.Http.Endpoints)]
+                public static partial void AddClinicEndpoints(this IServiceCollection services);
+            }
+            """;
+    }
+
+    [Fact]
+    public void A_duplicate_route_names_the_messages_as_written()
+    {
+        var scoped = Assert.Single(Run(TwoRoutes("Method.Get", "api/x/{a}", "Method.Get", "api/x/{b}")).Where(d => d.Id == "NSG019"));
+        var global = Assert.Single(Run(GlobalRoutes).Where(d => d.Id == "NSG019"));
+
+        Assert.Contains("'Acme.Clinic.Items.MessageB'", scoped.GetMessage());
+        Assert.Contains("'Acme.Clinic.Items.MessageA'", scoped.GetMessage());
+        Assert.Contains("'MessageB'", global.GetMessage());
+        Assert.Contains("'MessageA'", global.GetMessage());
+    }
+
+    const string GlobalRoutes = """
+        using Microsoft.Extensions.DependencyInjection;
+        using NSail.Messaging;
+        using NSail.Messaging.Annotations;
+        using NSail.SourceGeneration.Annotations;
+
+        [Http(Method.Get, "api/x/{a}")]
+        public class MessageA : IMessage
+        {
+            [AsRoute] public string A { get; set; } = "";
+        }
+
+        [Http(Method.Get, "api/x/{b}")]
+        public class MessageB : IMessage
+        {
+            [AsRoute] public string B { get; set; } = "";
+        }
+
+        namespace Acme.Clinic.Items
+        {
+            public static partial class Endpoints
+            {
+                [Generated(NSail.SourceGeneration.Annotations.Http.Endpoints)]
+                public static partial void AddClinicEndpoints(this IServiceCollection services);
+            }
+        }
+        """;
+
+    static string TwoRoutes(string verbA, string pathA, string verbB, string pathB)
+    {
+        return $$"""
+            using Microsoft.Extensions.DependencyInjection;
+            using Microsoft.AspNetCore.Routing;
+            using NSail.Messaging;
+            using NSail.Messaging.Annotations;
+            using NSail.SourceGeneration.Annotations;
+
+            namespace Acme.Clinic.Items;
+
+            [Http({{verbA}}, "{{pathA}}")]
+            public class MessageA : IMessage
+            {
+                [AsRoute] public string A { get; set; } = "";
+            }
+
+            [Http({{verbB}}, "{{pathB}}")]
+            public class MessageB : IMessage
+            {
+                [AsRoute] public string B { get; set; } = "";
+            }
+
+            public static partial class Endpoints
+            {
+                [Generated(NSail.SourceGeneration.Annotations.Http.Endpoints)]
+                public static partial void AddClinicEndpoints(this IServiceCollection services);
+            }
+            """;
+    }
+
     static ImmutableArray<Diagnostic> Run(string source)
     {
         var builder = new CompilationUnitBuilder()
             .AddSource("Messages.cs", source)
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<IMessage>()
             .AddContainingAssembly<HttpAttribute>()

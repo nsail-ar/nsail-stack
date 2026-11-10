@@ -65,7 +65,15 @@ await mediator.send(CreateContact, { id, name });   // reads like the C# send
 - **Models and enums travel too.** Every type a message reaches is emitted: a model as an
   interface plus a `defineModel` descriptor (keys and kinds for a table header and a cell),
   a generic definition (`DataPage<T>`) as a generic interface, an enum as a union of its
-  names (the wire's shape, generation.md) plus a `defineEnum` with its key.
+  names (the wire's shape, generation.md) plus a `defineEnum` with its key. An enum with
+  no members is `never`; a `[Flags]` enum is `string` (the wire writes the names joined) and
+  its fields carry kind `string`, so `display()` shows the combination as it came. `Uri` and
+  `Version` are `string`; `JsonElement`, `JsonNode` and kin are `unknown`, since the wire
+  writes them as free JSON; `BigInteger`, `Int128` and `UInt128` are `unknown` too, since no
+  converter in `JsonOptions` pins them as text and a JSON number that wide loses digits in a
+  `number`. A property renamed with `[JsonPropertyName]` keeps that name in the body, quoted
+  when it is not an identifier; in a route, query or header member the name is the lowered
+  property name, as the endpoint reads it.
 - **One namespace.** Two reachable types sharing a simple name fail the build
   (`NSTS001`), as does a route token no member binds (NSG001's twin) — a generator that
   guessed would emit a client that compiles and calls the wrong thing.
@@ -146,12 +154,12 @@ is always a `BusinessError` carrying a `Problem`: the server's own when it sent 
 
 | Piece | Package | Does |
 |---|---|---|
-| `NsApp` | ui | `StackProvider` plus the catalog read before the first paint (`useCatalog`) and the one confirmation surface |
-| `Strings` | stack | `StringManager`'s resolution: a miss renders the key; `Problems.{Code}.{Source}` → `Problems.{Code}` → the message; the `entity` argument is a key |
+| `NsApp` | ui | `StackProvider` plus the catalog read before the first paint (`useCatalog`) (a regional `language` such as `es-AR` uses its base language's Stack strings) and the one confirmation surface |
+| `Strings` | stack | `StringManager`'s resolution: a miss renders the key; `Problems.{Code}.{Source}` → `Problems.{Code}` → the message; the `entity` argument is a key and `at` an ISO instant shown in the reader's zone |
 | `useLoad` + `NsLoad` | stack + ui | A region owns its read (convert-to-nsload's contract): a spinner the first time, the last answer dimmed while it re-reads, a failure in place with a retry — never a toast |
-| `useForm` + `NsForm` + `NsField` | stack + ui | A form over one message: `NsField name="…"` picks its input from the member's kind, its label from the member's key, its bounds from the message; refusals are checked as the user types and the server's land under the field they name; anything no field can show is drawn above the fields; `onReload` is offered only for a `Conflict` |
-| `NsTable`, `NsPager`, `NsSearch`, `NsEnumSelect` | ui | A projection's rows with headers from keys and cells formatted by kind; a `DataPage`'s pager; a debounced search bound by its member; an enum pick whose options come from the descriptor |
-| `NsPage`, `NsButton`, `useConfirm` | ui | A titled page; a button whose `text` is a key, never a sentence; one native `<dialog>` for confirmations, opening on the act it offers and on the way out when `danger` says the act destroys ([ui/forms.md](ui/forms.md), *Focus on open*) |
+| `useForm` + `NsForm` + `NsField` | stack + ui | A form over one message, one send at a time (a call while one is in flight returns `false`), `saved` only while nothing changed since the send, `reset` clearing it unless `keepSaved` marks the re-read of what was just sent: `NsField name="…"` picks its input from the member's kind, its label from the member's key, its bounds from the message; refusals are checked as the user types and the server's land under the field they name; anything no field can show is drawn above the fields; `onReload` is offered only for a `Conflict` |
+| `NsTable`, `NsPager`, `NsSearch`, `NsEnumSelect` | ui | A projection's rows with headers from keys and cells formatted by kind (`ungrouped` columns skip digit grouping), rows that open by click also open from the keyboard; a `DataPage`'s pager; a debounced search bound by its member; an enum pick whose options come from the descriptor |
+| `NsPage`, `NsButton`, `useConfirm` | ui | A titled page; a button whose `text` is a key, never a sentence; one native `<dialog>` for confirmations (a second `confirm()` resolves the first `false`, as does an unmount), opening on the act it offers and on the way out when `danger` says the act destroys ([ui/forms.md](ui/forms.md), *Focus on open*) |
 
 **The Stack's sentences are the Blazor catalog's.** `Strings` reads `Common.*`,
 `Actions.*` and `Problems.*` from the very `strings*.json` that

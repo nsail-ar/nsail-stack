@@ -44,10 +44,12 @@ public sealed class EntityMapper
         ArgumentNullException.ThrowIfNull(sources);
 
         var result = new List<TEntity>();
+        var parameters = new MapParameters { MissingRootBehavior = MissingRootBehavior.Create };
+        var created = new Dictionary<Type, StoreMapContext.CreatedRows>();
 
         foreach (var source in sources)
         {
-            result.Add(await Upsert<TSource, TEntity>(source, cancellationToken).ConfigureAwait(false));
+            result.Add(await Run<TSource, TEntity>(source, parameters, created, cancellationToken).ConfigureAwait(false));
         }
 
         return result;
@@ -67,10 +69,11 @@ public sealed class EntityMapper
         };
 
         var result = new List<TEntity>();
+        var created = new Dictionary<Type, StoreMapContext.CreatedRows>();
 
         foreach (var source in sources)
         {
-            result.Add(await Run<TSource, TEntity>(source, parameters, cancellationToken).ConfigureAwait(false));
+            result.Add(await Run<TSource, TEntity>(source, parameters, created, cancellationToken).ConfigureAwait(false));
         }
 
         return result;
@@ -88,7 +91,13 @@ public sealed class EntityMapper
         return query.Select(projection.Expression);
     }
 
-    async Task<TEntity> Run<TSource, TEntity>(TSource source, MapParameters parameters, CancellationToken cancellationToken)
+    Task<TEntity> Run<TSource, TEntity>(TSource source, MapParameters parameters, CancellationToken cancellationToken)
+        where TEntity : class
+    {
+        return Run<TSource, TEntity>(source, parameters, null, cancellationToken);
+    }
+
+    async Task<TEntity> Run<TSource, TEntity>(TSource source, MapParameters parameters, Dictionary<Type, StoreMapContext.CreatedRows>? created, CancellationToken cancellationToken)
         where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -96,7 +105,7 @@ public sealed class EntityMapper
         var mapper = _services.GetService<IEntityMapper<TSource, TEntity>>()
             ?? throw new InvalidOperationException($"No mapper writes {typeof(TSource).Name} onto {typeof(TEntity).Name}. Declare [MapFrom(typeof({typeof(TSource).Name}))] on {typeof(TEntity).Name} and call the kit's [Generated(Mappers.Entities)] holder.");
 
-        var context = new StoreMapContext(_db, parameters);
+        var context = new StoreMapContext(_db, parameters, created);
         var root = await mapper.Map(source, null, context, cancellationToken).ConfigureAwait(false);
 
         context.WriteRootWithParts(root);

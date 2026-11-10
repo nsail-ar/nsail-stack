@@ -13,8 +13,8 @@ namespace NSail.Components;
 //
 // It is asked NOW rather than left to the document's own pass, because a row that passes is
 // about to UNMOUNT: the ambient validator would then discover the refusal on a field nobody is
-// listening to any more, and the submit would answer false with nothing on screen to explain it
-// (nsail#1029). Both row hosts ask it here, so what a row owes its own declarations cannot come
+// listening to any more, and the submit would answer false with nothing on screen to explain
+// it. Both row hosts ask it here, so what a row owes its own declarations cannot come
 // to mean two things.
 static class RowAnnotations
 {

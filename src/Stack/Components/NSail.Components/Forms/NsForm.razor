@@ -133,14 +133,14 @@ else if (HasDocument)
     // Two independent reasons a screen counts as "create", either one enough: the naming
     // convention every create message follows (messaging.md), which also catches a create
     // screen whose model needs a server round trip before it can be blank (OnLoad answering
-    // a NEW model, not reading an existing one — CreateAppointmentNotePage); and a tracked
+    // a NEW model, not reading an existing one); and a tracked
     // form handed a model directly with no read behind it at all, the newborn document itself
-    // regardless of what verb named it (RegisterClient, OpenTicket — naming.md's closed verb
-    // set does not cover every message that mints one). FocusFirstField overrides either
+    // regardless of what verb named it (naming.md's closed verb set does not cover
+    // every message that mints one). FocusFirstField overrides either
     // answer for where it lies instead: a Create*-shaped model reused to EDIT something that
-    // already exists (UpdatePartyPage locks Kind and reads through OnLoad — the name says
-    // create, OnLoad says otherwise, and the name wins unless told not to), or an Untracked
-    // form that still mints a document (RegisterPractitionerForm, inside a dialog).
+    // already exists (an update screen that locks a field and reads through OnLoad — the
+    // name says create, OnLoad says otherwise, and the name wins unless told not to), or an
+    // Untracked form that still mints a document (inside a dialog).
     static readonly bool NameSaysCreate = typeof(TModel).Name.StartsWith("Create", StringComparison.Ordinal);
 
     bool IsCreate => FocusFirstField ?? (NameSaysCreate || (!Untracked && !OnLoad.HasDelegate));
@@ -194,11 +194,11 @@ else if (HasDocument)
 
     /// <summary>Overrides the derived create/edit answer where both of its signals get it
     /// wrong — a Create*-shaped model reused to edit something that already exists
-    /// (<c>UpdatePartyPage</c> locks Kind and loads through <see cref="OnLoad"/>, so the name
-    /// outvotes <see cref="Untracked"/>/<see cref="OnLoad"/> and still needs telling), or a
-    /// repeatable inline form that is not a screen of its own (<c>PriceListItemAdder</c>) or an
-    /// Untracked form that still mints a document in a dialog (<c>RegisterPractitionerForm</c>),
-    /// where <see cref="Untracked"/> itself answers wrong. Unset keeps the derived
+    /// (an update page that loads through <see cref="OnLoad"/> while its model's name still
+    /// says Create, so the name outvotes <see cref="Untracked"/>/<see cref="OnLoad"/> and still
+    /// needs telling), or a repeatable inline form that is not a screen of its own, or an
+    /// Untracked form that still mints a document in a dialog, where <see cref="Untracked"/>
+    /// itself answers wrong. Unset keeps the derived
     /// answer.</summary>
     [Parameter]
     public bool? FocusFirstField { get; set; }
@@ -378,12 +378,12 @@ else if (HasDocument)
 
         // The rows left open are settled first, and a refusal from one ends the submit here: the
         // row's values are already in the document, so its own rule answers for them instead of
-        // the server answering later in its own words at this form's foot (nsail#2014). It runs
+        // the server answering later in its own words at this form's foot. It runs
         // BEFORE Validate() for two reasons — a row nothing refuses closes, so the pass that
         // follows validates the document the save is actually about; and the refusal a row just
         // drew would be wiped by that pass, which lifts every placement on this context
         // (RefusalPlacement). Before the spend below too, so a commit that takes reports the
-        // surface dirty in time for this submit to spend it and the popup still closes (#1420).
+        // surface dirty in time for this submit to spend it and the popup still closes.
         if (!await Settle())
         {
             return;
@@ -401,16 +401,16 @@ else if (HasDocument)
         // Spent before the handler runs: the unsaved-changes lock must not fire on a successful
         // save. Not this form's report alone — the editors' beside it too, because a collection
         // editor's rows are not in the EditContext, so every one of them reports the surface
-        // itself (SetDirty(this) — LocationsEditor, EyesEditor, every *LinesEditor) and those
+        // itself (SetDirty(this) — every collection editor does) and those
         // rows are part of the very document this submit is saving. Left to each page to spend
         // by hand, "a successful save closes the surface" is a rule every page has to remember,
-        // and one that forgets never closes its popup (nsail#1420). An untracked form holds no
+        // and one that forgets never closes its popup. An untracked form holds no
         // document — a filter applied in an aside is not the save of what stands beside it — so
         // it spends nobody's report but its own. Held, because a refusal owes them back.
         //
         // The spend BRACKETS the handler (BeginSave/EndSave) rather than merely preceding it: the
         // handler's own publishes provoke a render that re-files a report from inside it, in time
-        // to arm the exit guard against the navigation the handler ends with (nsail#1450). The
+        // to arm the exit guard against the navigation the handler ends with. The
         // window belongs to THIS call and is closed by the same one, so another submit — a
         // sibling's, or a second press of this form's own — neither closes it nor reads what it
         // holds; an untracked form closes no window because it opens none.
@@ -418,7 +418,7 @@ else if (HasDocument)
         // The window opens BEFORE the spend, not after it: the spend's own answer re-renders this
         // surface (SurfaceContext.StateChanged, which NsPage turns into StateHasChanged), and an
         // editor re-entered by that render reports again — outside a window that had not opened
-        // yet, so nothing would hold it and nothing would ever spend it (nsail#1471).
+        // yet, so nothing would hold it and nothing would ever spend it.
         IReadOnlyCollection<object> spent = [];
         SurfaceContext.SaveWindow? window = null;
 
@@ -500,9 +500,9 @@ else if (HasDocument)
     }
 
     /// <summary>A popup's document is finished when it saves, so the surface closes — the
-    /// honest signal that the save took, in every case (Leonardo, 2026-08-05: the user was
-    /// left "esperando a que pase algo"). The main surface is the opposite case and stays
-    /// open, repopulating instead (intentional-ui.md, master/detail).</summary>
+    /// honest signal that the save took, in every case: a user left waiting for something to
+    /// happen is the defect. The main surface is the opposite case and stays open, repopulating
+    /// instead (intentional-ui.md, master/detail).</summary>
     bool Finishes(SurfaceContext? surface)
     {
         // A multi-add loop says so itself.

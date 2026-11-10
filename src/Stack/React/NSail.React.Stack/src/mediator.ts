@@ -58,7 +58,17 @@ export class Mediator {
       throw new BusinessError(requestFailed(null, null));
     }
 
-    const text = await response.text();
+    let text: string;
+
+    try {
+      text = await response.text();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw error;
+      }
+
+      throw new BusinessError(requestFailed(response.status, "DeserializationFailed"));
+    }
 
     if (!response.ok) {
       throw new BusinessError(this.problemOf(response.status, text));
@@ -68,14 +78,18 @@ export class Mediator {
       return undefined as TResult;
     }
 
-    return JSON.parse(text) as TResult;
+    try {
+      return JSON.parse(text) as TResult;
+    } catch {
+      throw new BusinessError(requestFailed(response.status, "DeserializationFailed"));
+    }
   }
 
   url<TRequest>(message: MessageType<TRequest, unknown>, request: TRequest): string {
     const values = request as Record<string, unknown>;
     const fields = Object.entries(message.fields) as [string, Field][];
 
-    const path = message.path.replace(/{([^{}:?]+)[^{}]*}/g, (_, token: string) => {
+    const path = message.path.replace(/{\*{0,2}([^{}:?=*]+)[^{}]*}/g, (_, token: string) => {
       const name = fields.find(([candidate]) => candidate.toLowerCase() === token.toLowerCase())?.[0] ?? token;
 
       return encodeURIComponent(format(values[name]));

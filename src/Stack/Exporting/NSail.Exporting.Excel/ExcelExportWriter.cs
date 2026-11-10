@@ -28,11 +28,12 @@ public sealed class ExcelExportWriter : IExportWriter
 
     public string ContentType => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-    public async Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, CancellationToken cancellationToken)
+    public async Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, TimeZoneInfo zone, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(book);
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentNullException.ThrowIfNull(culture);
+        ArgumentNullException.ThrowIfNull(zone);
 
         var sheets = new Dictionary<string, object>();
         var columns = new List<DynamicExcelColumn>();
@@ -62,7 +63,7 @@ public sealed class ExcelExportWriter : IExportWriter
                     });
                 }
 
-                sheets[SheetName(table, page, sheets.Keys)] = Rows(table, keys, cancellationToken);
+                sheets[SheetName(table, page, sheets.Keys)] = Rows(table, keys, zone, cancellationToken);
                 sheet++;
             }
         }
@@ -87,6 +88,7 @@ public sealed class ExcelExportWriter : IExportWriter
     static async IAsyncEnumerable<IDictionary<string, object?>> Rows(
         ExportTable table,
         string[] keys,
+        TimeZoneInfo zone,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var row in table.Rows.WithCancellation(cancellationToken))
@@ -101,7 +103,7 @@ public sealed class ExcelExportWriter : IExportWriter
 
             for (var index = 0; index < keys.Length; index++)
             {
-                cells[keys[index]] = Cell(index < row.Values.Count ? row.Values[index] : null);
+                cells[keys[index]] = Cell(index < row.Values.Count ? row.Values[index] : null, zone);
             }
 
             yield return cells;
@@ -111,12 +113,15 @@ public sealed class ExcelExportWriter : IExportWriter
     // A date the sheet can hold is a DateTime: the serial number under the cell has no other
     // shape, and handing the vendor anything else leaves it to guess between a date and text.
     // Whatever the vendor would write as a string (a Guid, a Uri, a char) is defused like one.
-    static object? Cell(object? value)
+    static object? Cell(object? value, TimeZoneInfo zone)
     {
         return value switch
         {
             DateOnly date => date.ToDateTime(TimeOnly.MinValue),
-            DateTimeOffset offset => offset.LocalDateTime,
+            DateTimeOffset offset => TimeZoneInfo.ConvertTime(offset, zone).DateTime,
+            DateTime { Kind: DateTimeKind.Utc } utc => TimeZoneInfo.ConvertTimeFromUtc(utc, zone),
+            double.NaN or double.PositiveInfinity or double.NegativeInfinity => null,
+            float.NaN or float.PositiveInfinity or float.NegativeInfinity => null,
             TimeOnly time => time.ToTimeSpan(),
             Enum word => ExportText.Defused(word.ToString()),
             string text => ExportText.Defused(text),

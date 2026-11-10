@@ -11,7 +11,7 @@
 @* The layout-level catch for an unhandled render/load error (a 500 SenderNotFound, a raw
    Problem the caller never turned into a message on screen): without this, Blazor's own
    ErrorBoundary is absent entirely and the exception surfaces however the host renders it
-   -- the raw JSON the story reports. ErrorContent gets NsPageError instead, the same
+   -- as raw JSON. ErrorContent gets NsPageError instead, the same
    splash-faced chrome NsPageNotFound already wears for "nothing routed here". *@
 <ErrorBoundary @ref="_boundary">
     <ChildContent>

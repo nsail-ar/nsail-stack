@@ -35,8 +35,9 @@ a guide is content a module already knows, not state anybody saves.
   weight, ties keeping contribution order.
 - **The body is fetched when the chapter opens** (`GuideReader`, registered by `AddGuide`):
   the UI culture's file first, then `GuideItem.DefaultCulture` (`es`) — a guide nobody
-  translated is read in one language. Every chapter read stays read for the scope, so paging
-  back and forth costs one request per chapter. **The read happens after the first render, never
+  translated is read in one language. Every chapter found (or answered 404) stays read for the scope, so paging
+  back and forth costs one request per chapter; a 5xx, 429 or network failure is not kept and
+  the next read retries. **The read happens after the first render, never
   in `OnInitialized`**: a server prerender that fetched it would be the host asking itself for
   its own static file.
 - **Registration is the whole composition, and nothing filters afterwards.** An app that never
@@ -142,9 +143,11 @@ and it is the table of contents and the navigation at once.
 ## Anchors
 
 **Chapter = route segment, section = the heading's slug.** Every heading `Markdown.ToHtml`
-draws carries `id="{slug}"` — lowercase, accents stripped, everything else a hyphen — and
-`Markdown.Headings` reads the same slug off the same text, so the index and the anchors it
-points at are one derivation. `/guide/{chapter}#{slug}` scrolls to that section on arrival and
+draws carries `id="{slug}"` — lowercase, accents stripped, everything else a hyphen — and a
+repeated heading's slug takes `-1`, `-2`… in document order. `Markdown.Headings` reads the
+same ids off the same document, so the index and the anchors it points at are one derivation;
+a link from another chapter to a repeat reads them from `Headings`, never `Markdown.Slug`.
+`/guide/{chapter}#{slug}` scrolls to that section on arrival and
 again whenever the fragment changes (`nsapp.scrollToId`).
 
 **A fragment rides the resolved href, not the route** — `NsLink Fragment`

@@ -38,9 +38,9 @@
     public RenderFragment? ChildContent { get; set; }
 
     /// <summary>Acts drawn at the far end of the strip, after the last tab — the page's own acts
-    /// on the collections the tabs partition (Nueva Venta's Agregar: a card or a line, by the tab
-    /// that shows), never a toolbar of one tab's: the page decides which panel they belong to and
-    /// renders them only while it shows.</summary>
+    /// on the collections the tabs partition (an add that makes a card or a line, by the
+    /// tab that shows), never a toolbar of one tab's: the page decides which panel they belong
+    /// to and renders them only while it shows.</summary>
     [Parameter]
     public RenderFragment? Actions { get; set; }
 
@@ -67,9 +67,9 @@
     /// Opt-in per screen, and one screen has at most one bound tabs control: the key is the
     /// fixed word "tab", so a second control would be writing over the first. Most tabs
     /// deep-link into nothing and would only dirty the address, which is why the default is off;
-    /// the screens that turn it on are the ones something comes BACK to (My Profile, where an
-    /// identity provider's callback has to land on Cuentas). Hosted in a dialog it is inert —
-    /// a dialog is routed by nothing and carries no query to hold.</summary>
+    /// the screens that turn it on are the ones something comes BACK to (a profile page, where
+    /// an identity provider's callback has to land on the tab that started it). Hosted in a
+    /// dialog it is inert — a dialog is routed by nothing and carries no query to hold.</summary>
     [Parameter]
     public bool BindQuery { get; set; }
 

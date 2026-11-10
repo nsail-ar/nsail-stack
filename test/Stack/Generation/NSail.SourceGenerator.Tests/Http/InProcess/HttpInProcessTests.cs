@@ -20,11 +20,22 @@ public class HttpInProcessTests
     {
         var builder = new CompilationUnitBuilder()
             .AddSourceFiles("./Http/InProcess/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()
-            .AddContainingAssembly<IEndpointRouteBuilder>();
+            .AddContainingAssembly<IEndpointRouteBuilder>()
+            .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
+            .AddContainingAssembly<System.Net.Http.IHttpClientFactory>()
+            .AddContainingAssembly<NSail.Messaging.IMessage>()
+            .AddContainingAssembly<NSail.Messaging.Runtime.Sending.ISender<NSail.Messaging.IMessage>>()
+            .AddContainingAssembly<NSail.Messaging.Http.HttpSender<NSail.Messaging.IMessage>>()
+            .AddContainingAssembly<NSail.Messaging.Runtime.Pipelines.InProcessSendPipeline<NSail.Messaging.IMessage>>()
+            .AddContainingAssembly<NSail.Messaging.WebApi.IEndpointEntry>()
+            .AddContainingAssembly<NSail.Metadata.MetadataProvider>()
+            .AddContainingAssembly<Microsoft.AspNetCore.Mvc.FromQueryAttribute>()
+            .AddContainingAssembly<Microsoft.AspNetCore.Http.HttpContext>()
+            .AddContainingAssembly<System.Text.Json.JsonSerializerOptions>();
 
         var compilation = builder.Build("HttpInProcessTestAssembly");
 
@@ -34,6 +45,7 @@ public class HttpInProcessTests
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
         Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
 
         var runResult = driver.GetRunResult();
         var generatedTrees = runResult.GeneratedTrees;

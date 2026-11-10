@@ -35,6 +35,18 @@ public sealed partial class GitHubClient(HttpClient http)
         return await Read(response, ct);
     }
 
+    // A plain-text answer, a job's log: its redirect to the signed address is followed.
+    public async Task<string> GetText(string path, CancellationToken ct = default)
+    {
+        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Get, path), reads: true, ct);
+        var text = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} GET {path}: {Truncate(text)}", RateLimitRemaining(response));
+        }
+        return text;
+    }
+
     // Follows the Link header; `select` picks the array out of each page (the page itself
     // when it is an array, `workflow_runs` or `runners` when it is wrapped). A next link left at
     // `maxPages` throws: a prefix is never returned as the whole.

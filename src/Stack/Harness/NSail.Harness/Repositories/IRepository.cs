@@ -55,6 +55,12 @@ public interface IRepository
     // The verdict of the CI that runs outside the harness on this head.
     Task<CiState> Ci(string branch, string sha, CancellationToken ct = default);
 
+    // What failed in that CI at this head (its newest run per workflow); null when none of them failed.
+    Task<CiFailure?> Failure(string sha, CancellationToken ct = default);
+
+    // What failed in the newest completed CI run per workflow on the default branch; null when none did.
+    Task<CiFailure?> MainFailure(CancellationToken ct = default);
+
     Task<string> Head(string branch, CancellationToken ct = default);
 
     // Commit times on every branch of the story ahead of main: progress forgives a dead voyage.

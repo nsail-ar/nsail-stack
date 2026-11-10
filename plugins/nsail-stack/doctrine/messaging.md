@@ -425,7 +425,7 @@ same tenant**, published again through the client's own Mediator. A screen hears
 - **The audience is the tenant, so a pushed event carries no row and no words.** Every seat
   of the tenant hears it whatever its branch. It says that something moved; the listener
   re-reads through its own org-scoped read and decides. Channels' `ConversationsMoved` is the
-  shape: empty, answered by `ConversationWatch` asking the seat's own stamp (inventory-kits.md,
+  shape: empty, answered by `ConversationWatch` asking the seat's own stamp (the product's inventory-kits page,
   Channels). The generator holds the rule: a `[Pushed]` event with a public property is
   `NSG003`, and `[Pushed]` on a type that is not an `IMessage` is `NSG002` — build errors,
   never a silent skip (generation.md, Diagnostics).
@@ -598,7 +598,7 @@ public class PrescriptionHandler :
 
 Avoid large multi-purpose handlers and hidden side effects.
 
-**A handler that reads or writes an org-scoped entity owes org-map.md a row** (Messages — where
+**A handler that reads or writes an org-scoped entity owes nsail's `plugins/nsail-kits/doctrine/org-map.md` a row** (Messages — where
 each send stands), and so does the `IValidator<T>` beside it: whether the message names a branch
 or consolidates over the seat's, what protects a row it names by id, and what a write that can
 move the row between branches puts to the policy. `OrgAxisMessageTests` fails on a message with
@@ -645,7 +645,8 @@ business rules.
   `MessageValidator` also refuses a member (or each element of a collection, `Kinds[1]`)
   holding a number no enum member defines — `OutOfRange` on the field; a `[Flags]` enum by its
   mask. Consequence: a non-nullable enum without a zero member that a message leaves unchosen
-  is refused — declare the zero member or make the field nullable.
+  is refused — declare the zero member or make the field nullable (mapped onto a non-nullable
+  entity member, a nullable field is NSG025: see the Mapping section of [data.md](data.md)).
 - **Refusal speaks `Problem`.** The pipeline turns a returned `Problem` into the same
   `BusinessException` a handler throws; nothing new travels on the wire.
 - **Order is structural, not registration order.** `SendPipeline` runs DataAnnotations and
@@ -681,10 +682,16 @@ business rules.
     field (`[Cuit]`, Directory).
   - **The numbers its sentence names travel with it**: `Arguments` ({`from`}, {`to`}) fills
     the catalog's tokens from the same bound the attribute refuses by, so moving a bound
-    needs no second edit.
+    needs no second edit. Every problem argument is culture-neutral (invariant numbers, ISO
+    8601 dates and instants). The client localizes two by name — `entity` (a concept key) and
+    `at` (an instant, on the reader's clock in the app language's region); every other argument
+    reaches the sentence as the wire carries it, so name an instant `at` and write the catalog
+    sentence for the rest knowing the number is invariant.
   - **Every declared code has its sentence in every language**: `CodedValidationStringTests`
-    (`NSail.Architecture.Tests`) sweeps the tree's declarations, not its attribute types — a
-    code may be derived from the attribute's argument.
+    (`NSail.Architecture.Tests`, enforced in the products' repository) sweeps the tree's declarations, not its attribute types — a
+    code may be derived from the attribute's argument. The Stack's own copy,
+    `test/Stack/Messaging/NSail.Messaging.Declarations.Tests/CodedValidationStringTests.cs`, checks the codes
+    the Stack mints (its coded attributes and the BCL vocabulary) against the shared catalogs' two languages.
 - **A rule a HANDLER owns names a code the same way.** `InputProblemBuilder.AddInvalid(code,
   field, message, arguments)` is the shape; the two-argument sibling puts every rule on one
   field under the shared `Invalid` code, so none of them can be worded or placed apart (the
@@ -711,7 +718,10 @@ business rules.
   collection or not — the rows of a `[Composition]` a message does not open with `[Validated]`
   are enforced by neither end, same as a lone nested model today.
 - **A number or a code declares its bound, or says on the record that it has none.**
-  `DeclaredBoundTests` (`NSail.Architecture.Tests`) walks exactly `MessageValidator`'s reach —
+  `DeclaredBoundTests` (the products' `NSail.Architecture.Tests`, enforced in the products'
+  repository; the Stack's own messages in
+  `test/Stack/Messaging/NSail.Messaging.Declarations.Tests/DeclaredBoundTests.cs`,
+  which checks bounds and walks `[Validated]` element types but keeps no identifier-format list) walks exactly `MessageValidator`'s reach —
   every shipped `IMessage` plus any model opened with `[Validated]`, into a collection's
   ELEMENT type rather than the collection itself — and fails the build when
   a numeric or `string` member declares nothing. A number wants a range (`[Range]` **or a
@@ -772,7 +782,8 @@ router's content-type matcher decides during endpoint *selection*, before any en
 metadata exists to gate on. It is transport negotiation: it names no field, spends no query,
 and answers every caller identically.
 
-`EndpointGateTests` (`NSail.Architecture.Tests`) pins the contract: every generated endpoint,
+`EndpointGateTests` (the products' `NSail.Architecture.Tests`, enforced in the products' repository;
+the Sample's endpoints in `test/Stack/BaseServices/NSail.BaseServices.WebApi.Tests/EndpointGateTests.cs`) pins the contract: every generated endpoint,
 probed anonymously with no body and no content type, must answer the gate's denial. It runs
 against a host with **no policy registered at all**, so the sweep is total, with no
 anonymous-exception list to maintain.
@@ -828,7 +839,7 @@ recognise a refusal by status number alone.
   An anonymous send never counts against it, so a public door spends only its own ceiling.
 - **An in-process `Send` spends nothing.** The middleware reads the attribute of the message
   the *request* names, so a door that relays a message somebody else chose — the Assistant's
-  confirm (assistant.md) — would carry a metered one past its own ceiling. Such a door refuses
+  confirm (the product's assistant page) — would carry a metered one past its own ceiling. Such a door refuses
   the metered messages instead of relaying them; the exclusion is read off the attribute, never
   listed.
 - **Write the number for the worse reading of "one caller".** An install that does not set

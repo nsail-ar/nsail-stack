@@ -41,7 +41,8 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
 - **Masks**: `NsTextField` takes a `Mask` in NSail's own vocabulary (`0` digit, `a` letter,
   `*` either, everything else a literal), presentation only — the bound value stays raw. The
   patterns are the consuming kit's knowledge (`PartyMasks`). **A date field wears none**, and
-  that is a rule rather than an omission: see the typing contract below.
+  that is a rule rather than an omission: see the typing contract below. A masked box also
+  carries no select-on-focus marker: the mask engine owns its caret. An empty `Mask` is no mask.
 - **`NsTextField` copies its value behind `Copy`** — one boolean, for a value shown once and
   carried elsewhere by hand (a generated password, a token, a link). An end button writes the
   bound value — raw, as a `Mask` leaves it — through `navigator.clipboard.writeText` and is
@@ -288,6 +289,16 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   `IsStored` has nothing to show and keeps its check, and the eye comes with the first character;
   a disabled or read-only box draws none. The reveal is the field's own state, never a parameter
   and never kept past the page.
+- **`NsPasswordField` always carries an `autocomplete` token**: `current-password`, or
+  `new-password` under `IsNew` or `IsStored` — a stored third-party secret is never this site's
+  login, and a box the browser fills with it stops being blank, which the save reads as a
+  replacement (settings.md); a caller's `Autocomplete` wins.
+- **`NsDurationField` refuses a span `TimeSpan` cannot hold** as its own field problem and keeps
+  the model's value; the refusal lifts on the next readable keystroke or when the page writes
+  another value behind the field — a read that lands is not a reason to keep blocking Save.
+  `NsMultiSelect` is an `NsFieldBase<IReadOnlyList<TValue>>` like any field;
+  the vendor re-raises a selection the model hands it, so a set equal to the held one is an echo,
+  never an edit (forms.md).
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
   6-digit hex — no alpha channel — matching what every caller already stores; text that
   isn't a color never reaches the model (`NsColorText` is the second line behind the
@@ -383,7 +394,7 @@ when the entry ENDS — Enter pressed, or the box left — carrying what the box
   screen moves itself reaches the box unheard, and a field still holding the old text would
   commit it on the next leave — a value nobody typed, over one somebody did.
 - **A bUnit suite proving a take or a save acts through the end of the entry** — `Input(…)` then
-  `Blur()` or `KeyDown(Key.Enter)` — and `AwaitedActTests` gates those two acts like the other
+  `Blur()` or `KeyDown(Key.Enter)` — and `AwaitedActTests` (enforced in the products' repository) gates those two acts like the other
   four ([testing.md](../testing.md)).
 
 ---
@@ -951,5 +962,6 @@ decides whether what is held is shown. **No parameter turns one into the other**
   A field with no `Accept` keeps the client's type: declare `Accept` on anything served back.
 - **Where bytes go is `IFileStore`, not the field's business.** The app's registered store
   answers for ordinary screens; a screen whose files belong to somebody other than the
-  session's organization hands its own `Store`. A store that cannot build a preview URL from an
+  session's organization hands its own `Store`. `FileStore` remembers a saved file's name and
+  content type for the scope, never its bytes. A store that cannot build a preview URL from an
   id answers null and the field shows no image.

@@ -495,6 +495,12 @@ else
     // act right there, before the NsTh in the header have declared a single column (Declaring).
     TaskCompletionSource? _declaring;
 
+    /// <summary>The most rows an export writes, at least 1; a list longer than that is not
+    /// exported and a message says so, because the file is held whole in the circuit until it is
+    /// handed to the browser.</summary>
+    [Parameter]
+    public int MaxExportRows { get; set; } = TableExport.DefaultRowCap;
+
     [Parameter]
     public string? Class { get; set; }
 
@@ -511,7 +517,7 @@ else
     public bool Compact { get; set; }
 
     /// <summary>Names the table in a bar rendered above it, with the add control at the bar's
-    /// right edge — the collection-editor chrome (Seña). Unset draws no bar at all, so there is
+    /// right edge — the collection-editor chrome. Unset draws no bar at all, so there is
     /// no add control a hand can press: a grid wired to add rows and left unnamed is refused by
     /// the Architecture suite rather than shipped with nothing for a hand to reach. The
     /// keystroke's way in the grid keeps either way, undrawn where no bar draws it.</summary>
@@ -840,7 +846,10 @@ else
 
     string Counted(string key, int count)
     {
-        return string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Translate(key, count), count);
+        // Formatted here, not by the template: a plain {0} writes an int with no thousands separator.
+        var culture = RegionCulture.For(Language);
+
+        return string.Format(culture, Strings.Translate(key, count), count.ToString("N0", culture));
     }
 
     // Auto asks the device, not the size: the answer rides in on the request, so it is already
@@ -1505,9 +1514,36 @@ else
                 return Rows.Items;
             }
 
-            return TableOrder.Sort(Rows.Items, column, _columns.Descending, RegionCulture.For(Language));
+            var rows = Rows.Items;
+            var culture = RegionCulture.For(Language);
+
+            // Sorted once per (rows, column, direction, culture): HeldRows is read by every render
+            // and a few thousand rows re-sorting on each parent render is the cost.
+            if (_sorted is null
+                || !ReferenceEquals(_sortedFrom, rows)
+                || _sortedCount != rows.Count
+                || !ReferenceEquals(_sortedBy, column)
+                || _sortedDescending != _columns.Descending
+                || !ReferenceEquals(_sortedCulture, culture))
+            {
+                _sorted = TableOrder.Sort(rows, column, _columns.Descending, culture);
+                _sortedFrom = rows;
+                _sortedCount = rows.Count;
+                _sortedBy = column;
+                _sortedDescending = _columns.Descending;
+                _sortedCulture = culture;
+            }
+
+            return _sorted;
         }
     }
+
+    IReadOnlyList<TRow>? _sorted;
+    IReadOnlyList<TRow>? _sortedFrom;
+    int _sortedCount;
+    TableColumn? _sortedBy;
+    bool _sortedDescending;
+    System.Globalization.CultureInfo? _sortedCulture;
 
     protected override void OnInitialized()
     {
@@ -1530,6 +1566,8 @@ else
 
     protected override void OnParametersSet()
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxExportRows);
+
         // Said by the table, because the table is what knows whether it holds the whole list, and
         // read by every heading under it: a column that declares itself sortable where nothing
         // can be ordered draws no control instead of one that would lie.
@@ -1659,7 +1697,7 @@ else
         var book = ExportBook.Of(name, new ExportTable
         {
             Columns = [.. columns.Select(column => new ExportColumn { Key = column.Key, Title = column.Title, Format = column.Format })],
-            Rows = Count(rows)
+            Rows = Count(TableExport.Capped(rows, MaxExportRows))
         });
 
         try
@@ -1670,7 +1708,7 @@ else
             // (NSail.Exporting).
             using var file = new MemoryStream();
 
-            await writer.WriteAsync(book, file, RegionCulture.For(Language), _export.Token);
+            await writer.WriteAsync(book, file, RegionCulture.For(Language), TimeZoneInfo.Local, _export.Token);
 
             file.Position = 0;
 
@@ -1688,6 +1726,20 @@ else
         {
             // The refusal is already on screen, placed by the Runner that raised the read. There
             // is nothing to add, and half a file is not offered.
+        }
+        catch (ExportTooLarge)
+        {
+            // Refused before a file exists: the cap is the memory the file may take in the circuit.
+            var arguments = new Dictionary<string, string>
+            {
+                ["max"] = MaxExportRows.ToString("N0", RegionCulture.For(Language))
+            };
+
+            var message = Strings.Translate("Common.ExportTooLarge", arguments);
+
+            await Report(new ProblemEventArgs(
+                new NSail.Problems.Problem("ExportTooLarge", message, [new NSail.Problems.Issue("ExportTooLarge", message, arguments: arguments)], null),
+                this));
         }
         catch (OperationCanceledException)
         {

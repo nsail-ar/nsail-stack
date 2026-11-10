@@ -9,4 +9,7 @@ public class SampleOptions
 {
     [Required]
     public string ConnectionString { get; set; } = string.Empty;
+
+    [Required]
+    public string AdminConnectionString { get; set; } = string.Empty;
 }

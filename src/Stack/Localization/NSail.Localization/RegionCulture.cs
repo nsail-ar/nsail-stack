@@ -2,9 +2,8 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Globalization;
-using NSail.Localization;
 
-namespace NSail.Components;
+namespace NSail.Localization;
 
 // A vendor formatter (currency symbol, date pattern) needs a real region: the app's own
 // language is a neutral two-letter code (LanguageProvider, translation lookup only), and a

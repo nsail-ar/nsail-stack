@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -12,74 +12,93 @@ public static class ServiceRegistrationModelFactory
     const string AsParameterName = "As";
     const string LifetimeParameterName = "Lifetime";
 
-    public static AddServicesModel Create(IMethodSymbol methodSymbol, Compilation compilation)
+    public static AddServicesModel Create(Scoped<EquatableList<InjectableModel>> scoped)
     {
+        var target = scoped.Target;
         var model = new AddServicesModel
         {
-            Namespace = methodSymbol.ContainingNamespace.ToDisplayString(),
-            ClassName = methodSymbol.ContainingType.Name,
-            ClassDeclaration = methodSymbol.ContainingType.GetDeclaration(),
-            MethodName = methodSymbol.Name,
-            MethodDeclaration = methodSymbol.GetDeclaration(),
+            Namespace = target.Namespace,
+            ClassName = target.ClassName,
+            ClassDeclaration = target.ClassDeclaration,
+            MethodName = target.MethodName,
+            MethodDeclaration = target.MethodDeclaration,
         };
 
-        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol))
+        model.ReadHolder(target);
+
+        if (model.Unusable)
         {
-            if (typeSymbol.IsAbstract)
-                continue;
+            return model;
+        }
 
-            foreach (var injectableAttribute in typeSymbol.GetAttributes(InjectableAttributeName))
+        model.HolderDiagnostics.AddRange(scoped.Diagnostics);
+
+        foreach (var injectables in scoped.Fragments)
+        {
+            model.Injectables.AddRange(injectables);
+        }
+
+        return model;
+    }
+
+    public static EquatableList<InjectableModel>? Inspect(INamedTypeSymbol typeSymbol)
+    {
+        var injectables = new EquatableList<InjectableModel>();
+
+        if (typeSymbol.IsAbstract)
+            return null;
+
+        foreach (var injectableAttribute in typeSymbol.GetAttributes(InjectableAttributeName))
+        {
+            var lifetime = GetLifetime(injectableAttribute);
+            var asTypes = injectableAttribute.GetNamedArgument<INamedTypeSymbol[]>(AsParameterName);
+            var implType = new TypeModel(typeSymbol);
+
+            if (asTypes != null)
             {
-                var lifetime = GetLifetime(injectableAttribute);
-                var asTypes = injectableAttribute.GetNamedArgument<INamedTypeSymbol[]>(AsParameterName);
-                var implType = new TypeModel(typeSymbol);
-
-                if (asTypes != null)
+                foreach (var asType in asTypes)
                 {
-                    foreach (var asType in asTypes)
+                    injectables.Add(new InjectableModel
                     {
-                        model.Injectables.Add(new InjectableModel
-                        {
-                            ServiceType = new TypeModel(asType),
-                            ImplementationType = implType,
-                            Lifetime = lifetime
-                        });
-                    }
-                }
-                else
-                {
-                    model.Injectables.Add(new InjectableModel
-                    {
-                        ServiceType = implType,
+                        ServiceType = new TypeModel(asType),
                         ImplementationType = implType,
                         Lifetime = lifetime
                     });
+                }
+            }
+            else
+            {
+                injectables.Add(new InjectableModel
+                {
+                    ServiceType = implType,
+                    ImplementationType = implType,
+                    Lifetime = lifetime
+                });
 
-                    if (typeSymbol.BaseType != null &&
-                        typeSymbol.BaseType.HasAttribute(injectableAttribute.AttributeClass!))
+                if (typeSymbol.BaseType != null &&
+                    typeSymbol.BaseType.HasAttribute(injectableAttribute.AttributeClass!))
+                {
+                    injectables.Add(new InjectableModel
                     {
-                        model.Injectables.Add(new InjectableModel
-                        {
-                            ServiceType = new TypeModel(typeSymbol.BaseType),
-                            AliasType = implType,
-                            Lifetime = lifetime
-                        });
-                    }
+                        ServiceType = new TypeModel(typeSymbol.BaseType),
+                        AliasType = implType,
+                        Lifetime = lifetime
+                    });
+                }
 
-                    foreach (var iface in typeSymbol.AllInterfaces)
+                foreach (var iface in typeSymbol.AllInterfaces)
+                {
+                    injectables.Add(new InjectableModel
                     {
-                        model.Injectables.Add(new InjectableModel
-                        {
-                            ServiceType = new TypeModel(iface),
-                            AliasType = implType,
-                            Lifetime = lifetime
-                        });
-                    }
+                        ServiceType = new TypeModel(iface),
+                        AliasType = implType,
+                        Lifetime = lifetime
+                    });
                 }
             }
         }
 
-        return model;
+        return injectables.Count > 0 ? injectables : null;
     }
 
     static string GetLifetime(AttributeData injectableAttribute)

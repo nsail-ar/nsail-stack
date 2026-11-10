@@ -34,7 +34,12 @@ Stack sets and no product writes:
   detached entity handed to `Update` (default tenant) or a hand-set value throws
   `InvalidOperationException` naming the entity. The rule holds in every mode, judged by value:
   where every row carries the same key (`None`, `MultiDb`) nothing differs. Load the row under
-  its tenant and change its fields.
+  its tenant and change its fields. Where no stamp runs — a context `AddDataAccess` did not
+  build, a design-time factory's or a retrofit's — the column's value generator writes the
+  install's `Guid.Empty`: EF refuses to insert a row whose shadow key it does not know, and the
+  column sits in a key wherever another table names the row (below). The generator never writes
+  the context's tenant, because EF also generates on `Attach` and `Update`, and a detached entity
+  arriving with the resolved tenant would pass the refusal above.
 - **Every index leads with the tenant**, foreign keys included, on every entity that has the
   column; an install-scoped entity keeps the plain indexes its own foreign keys earn, restored
   by the same pass. A filter is cheap only when its index leads with the tenant; otherwise the
@@ -120,9 +125,12 @@ refused rather than stored.
   never in a startup pass: a chain is what CI applies to an empty database, so schema written
   outside it is schema no test ever sees. The tables are NAMED there, because a migration's own
   `TargetModel` is the snapshot's and its entity types carry no CLR type to ask the marker of.
-- **One database role, with `FORCE ROW LEVEL SECURITY`.** A table's owner bypasses its policies
-  unless the table forces them, and the app role owns the tables because it runs the chain; a
-  second, non-owner role would owe a grant pass on every table every migration adds.
+- **One database role by default, with `FORCE ROW LEVEL SECURITY`.** A table's owner bypasses
+  its policies unless the table forces them, and the app role owns the tables because it runs the
+  chain. Splitting them — the chain under an admin role, the app under a non-owner one — is
+  allowed and owes what the Sample's `SampleRole` does on every start, after the chain: the grant
+  pass over every table a migration added, and the role's attributes re-stated (`NOSUPERUSER
+  NOBYPASSRLS`), because a role that already exists keeps whatever someone gave it.
 - **The tenant reaches the connection as a session setting written on connection open**
   (`TenantSession`), from `TenancyProvider.RowKey` and from nothing else — **left unwritten
   where the wall IS the column and nothing resolved**, so the policy compares against NULL and
@@ -296,7 +304,7 @@ the branch that now owns the work. Whoever moves the head owes that question an 
 granted, because after the move the destination is the one branch that may authorize it and the
 one branch that cannot read the attempts already made for it.
 
-**An in-use guard that must NOT find a row fails open when it is filtered** (org-map.md, G2): a
+**An in-use guard that must NOT find a row fails open when it is filtered** (nsail's `plugins/nsail-kits/doctrine/org-map.md`, G2): a
 delete asking whether any org-scoped row still names the id it is about to remove reads only the
 caller's own subtree, so a row standing in another branch answers "free" and the delete hits the
 provider's `Restrict` constraint instead of the `InUse` refusal it exists to pre-empt. The guard
@@ -309,7 +317,7 @@ is.
 **This filter does NOT answer which branch a caller may name.** It reads the message's field;
 the gate says whether this caller may put that value there — so a marked field no policy
 constrains is a filter pointed wherever the caller likes. Which messages carry the field, which
-consolidate without one, and what the shipped policies pin it to: org-map.md's message table,
+consolidate without one, and what the shipped policies pin it to: nsail's `plugins/nsail-kits/doctrine/org-map.md`'s message table,
 held by `OrgAxisMessageTests`. The two halves lean on each other on purpose: because this filter
 answers an omitted field with the seat's own subtree, a policy pinning that field to
 `@memberOfOrDescendant` — the one symbol whose permitted set CONTAINS that subtree — lets the
@@ -317,7 +325,7 @@ omission through rather than refusing every by-id site. `@current` and `@memberO
 because there the fallback reaches below what the symbol allows (permissions.md, Null
 semantics).
 
-**The party axis** is the other half, answered in org-map.md (The party axis) on purpose. A
+**The party axis** is the other half, answered in nsail's `plugins/nsail-kits/doctrine/org-map.md` (The party axis) on purpose. A
 membership and a relationship are EDGES the scope is computed FROM, so no model-wide filter can
 touch them without circularity; the two lists of one person's edges write the subtree WHERE
 themselves, against the set this filter compares to, read from `OrgScopeProvider` rather than
@@ -331,7 +339,8 @@ schema that is already there and rows that are nobody's. `TenantBootstrap` — t
 the app says a tenant is born with (`ITenantSeed`, registered with `AddTenantSeed`), once per
 slug. So **provisioning a tenant is writing the Caddy block and, on a cell that declares a
 roster, filing the slug on it first** — off the roster the first visit is a 404 and plants
-nothing (Caddy assigns the tenant, below). Nothing else exists to do.
+nothing (Caddy assigns the tenant, below). Nothing else exists to do; the proxy secret is the
+installation's, set once.
 
 - **The seed is a chain, and the tenant has a history of it.** `ITenantSeed` is an ordered list
   of named `TenantSeedStep`s and each touch runs the ones this tenant has not, so a step added
@@ -428,14 +437,21 @@ a third runtime dependency buys nothing Caddy and Postgres are not already telli
   incoming copy of `X-NSail-Tenant` and writes its own (`header_up`). The wildcard demo route
   takes its slug from the host's label (`{labels.N}`), a custom domain from its own block: same
   header, two sources, and **the app never parses the Host**, so it cannot tell them apart.
-  `TenancyMiddleware` (`NSail.BaseServices.WebApi`) reads that header and nothing else; the
+  `TenancyMiddleware` (`NSail.BaseServices.WebApi`) reads that header; the
   header arriving twice is not a slug and is refused like any malformed one.
+- **The installation's proxy secret.** The proxy also writes `X-Proxy-Secret`
+  (`Tenancy:ProxySecret`), one value for the whole installation, not per block: when configured, a
+  request without it is **403** before any tenant is resolved or created; unconfigured outside
+  Development, startup warns that the listener must be bound to the proxy only.
 - **Postgres is the registry — under `MultiDb`.** `TenantDatabases` derives the name as
   `{product}_{cell}_{tenant}` — `Tenancy:Product` and `Tenancy:Cell` from the cell's own
   configuration, the tenant from the header — and the row in `pg_database` **is** the truth that
   the tenant exists. Unknown slug → no database → **404, answered before authentication** and
   creating nothing. Only the database moves per tenant; server, user and password stay the
-  install's.
+  install's. The lookup is memoised per name — longer for a hit, shorter for a miss
+  (`Tenancy:DatabaseHitSeconds`, `DatabaseMissSeconds`) — so a flood of one unknown slug is one
+  round trip, and a tenant Ops provisions is served within the miss window, and one Ops drops or moves still
+  resolves until the hit window lapses, failing on connect rather than 404.
 
 Under `SingleDb` there is no registry and no database name, so the install's **declared roster**
 (`TenantRoster`, below) is the truth that a tenant exists: a cell that declares one — a

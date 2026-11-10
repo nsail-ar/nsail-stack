@@ -4,13 +4,15 @@
 using System.Text;
 using System.Text.Json;
 using NSail.Harness.Lanes;
+using NSail.Harness.Repositories;
 using NSail.Harness.Watching;
 
 namespace NSail.Harness.Jobs;
 
 // What a seat reads about its story, laid on disk by the harness before the seat starts: the
 // seat never asks the board itself, so it spends no turns on it, holds no token for it, and reads
-// every word as data. `prs.md` is the story's PRs with their files, reviews and gate verdicts;
+// every word as data. `prs.md` is the story's PRs with their files, reviews and gate verdicts, and
+// an open one's conflict or the red its own CI found at its head;
 // `runs.md` is how the story's last jobs on this machine ended, for a seat reading why it died.
 public sealed class StoryDossier(JobContext ctx, JobHistory history)
 {
@@ -34,7 +36,7 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
         text.AppendLine("## Thread");
         text.AppendLine();
         text.AppendLine(Thread(await board.Comments(story, ct), trusted));
-        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), text.ToString(), ct);
+        await Lay(Path.Combine(outDir, "story.md"), text.ToString(), ct);
     }
 
     public async Task WritePrs(int story, string outDir, CancellationToken ct)
@@ -50,12 +52,14 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
                 text.AppendLine($"Branch: {pr.Head}");
                 // Each PR is read from its own repository: a story built in another repository has its reviews on that repository's PR.
                 var repo = ctx.Repos.Of(pr.Repo);
-                var description = (await repo.Pr(pr.Number, ct)).Body.Trim();
+                var read = await repo.Pr(pr.Number, ct);
+                var description = read.Body.Trim();
                 if (description.Length > 0)
                 {
                     text.AppendLine("Description:");
                     text.AppendLine(description);
                 }
+                if (which == "open" && await Ci(repo, read, ct) is { } ci) text.AppendLine(ci);
                 text.AppendLine("Files:");
                 foreach (var f in await repo.Files(pr.Number, ct)) text.AppendLine($"- {f}");
                 text.AppendLine();
@@ -67,7 +71,37 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
                 }
             }
         }
-        await File.WriteAllTextAsync(Path.Combine(outDir, "prs.md"), text.Length == 0 ? "(no PR for this story)\n" : text.ToString(), ct);
+        await Lay(Path.Combine(outDir, "prs.md"), text.Length == 0 ? "(no PR for this story)\n" : text.ToString(), ct);
+    }
+
+    // Why an open PR's head is not green where no gate verdict says it: it does not merge, or the CI
+    // that runs outside the harness is red there, with what failed fenced as data. The default
+    // repository's red is its gate's to say, on the thread.
+    async Task<string?> Ci(IRepository repo, PullRequest pr, CancellationToken ct)
+    {
+        if (pr.Conflicting) return $"CI: conflict — the head {Short(pr.HeadSha)} does not merge with {repo.DefaultBranch}; merge {repo.DefaultBranch} into the branch.";
+        if (ctx.Options.Gate && ctx.Repos.IsDefault(repo.Name)) return null;
+        return await repo.Failure(pr.HeadSha, ct) is { } failure ? Red(pr.HeadSha, failure) : null;
+    }
+
+    static string Red(string sha, CiFailure failure)
+    {
+        var what = new StringBuilder();
+        what.AppendLine("Failed jobs and steps:");
+        foreach (var s in CiFailure.Listing(failure.Steps)) what.AppendLine($"- {s}");
+        if (failure.Failed.Count > 0)
+        {
+            what.AppendLine("Failed:");
+            foreach (var f in CiFailure.Listing(failure.Names)) what.AppendLine($"- {f}");
+        }
+        what.AppendLine("Log tail:");
+        what.Append(failure.Tail);
+        return $"CI: red at {Short(sha)} — what failed, as its run reports it:\n{Untrusted.Fence(what.ToString().TrimEnd())}";
+    }
+
+    static string Short(string sha)
+    {
+        return sha[..Math.Min(8, sha.Length)];
     }
 
     // A Watch story is one the log filed (its label, or the fingerprint its body carries): its title is log
@@ -128,7 +162,14 @@ public sealed class StoryDossier(JobContext ctx, JobHistory history)
             text.AppendLine(Tail(job.LogPath));
             text.AppendLine();
         }
-        await File.WriteAllTextAsync(Path.Combine(outDir, "runs.md"), text.Length == 0 ? "(no job of this story on this machine)\n" : text.ToString(), ct);
+        await Lay(Path.Combine(outDir, "runs.md"), text.Length == 0 ? "(no job of this story on this machine)\n" : text.ToString(), ct);
+    }
+
+    // A dossier reads the same on every host: `\n` lines, whatever the platform's newline or the
+    // line ends of the logs and bodies it quotes.
+    static Task Lay(string path, string text, CancellationToken ct)
+    {
+        return File.WriteAllTextAsync(path, text.ReplaceLineEndings("\n"), ct);
     }
 
     // A job's log is the agent's stream plus the harness's own lines: what it said last, and the

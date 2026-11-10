@@ -96,7 +96,7 @@ function EditForm({ model, reload }: { model: ContactModel; reload: () => void }
 
   // Saving keeps the page open and re-reads it: what is shown is what the server holds.
   useEffect(() => {
-    reset(toUpdate(model));
+    reset(toUpdate(model), { keepSaved: true });
   }, [model, reset]);
 
   async function save(value: UpdateContact) {

@@ -25,6 +25,13 @@ describe("Strings", () => {
     expect(strings.issue({ code: "NotFound", message: "x", arguments: { entity: "Shop.Invoice" } })).toBe("No se encontró Invoice");
   });
 
+  it("reads the at argument on the reader's clock in the app language", () => {
+    const at = "2026-03-04T05:06:07Z";
+    const expected = new Date(at).toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
+
+    expect(strings.issue({ code: "ConflictAt", message: "x", arguments: { at } })).toContain(expected);
+  });
+
   it("renders a missing key as itself and an enum value by its key", () => {
     expect(strings.translate("Shop.Nowhere")).toBe("Shop.Nowhere");
     expect(strings.enumValue(defineEnum("Shop.Status", ["Open", "Shipped"]), "Open")).toBe("Abierto");
@@ -35,5 +42,10 @@ describe("Strings", () => {
     expect(strings.translate("Common.Submit")).toBe("Guardar");
     expect(strings.problem({ code: "Conflict", title: "x", issues: [] })).toBe("Conflicto de concurrencia");
     expect(strings.format("Mud.MudDataGridPager_InfoFormat", ["1", "10", "42"])).toBe("1-10 de 42");
+  });
+
+  it("reads a regional language as its base language's catalog", () => {
+    expect(stackStrings("es-AR")).toEqual(stackStrings("es"));
+    expect(stackStrings("fr")).toEqual(stackStrings("en"));
   });
 });

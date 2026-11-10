@@ -3,6 +3,7 @@
 
 using NSail.Harness.Planning;
 using NSail.Messaging;
+using System.ComponentModel.DataAnnotations;
 
 namespace NSail.Harness.Api;
 
@@ -13,7 +14,10 @@ namespace NSail.Harness.Api;
 public class RunJob : IMessage<string>
 {
     public required WorkKind Kind { get; set; }
+    [Range(1, 1_000_000)]
     public int? Story { get; set; }
+    [Range(1, 1_000_000)]
     public int? Pr { get; set; }
+    [MaxLength(50)]
     public string? Product { get; set; }
 }

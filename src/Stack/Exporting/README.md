@@ -42,7 +42,7 @@ var book = ExportBook.Of("Contacts", new ExportTable
 
 var writer = writers.For(ExportKind.Csv)!;
 
-await writer.WriteAsync(book, stream, CultureInfo.CurrentCulture, cancellationToken);
+await writer.WriteAsync(book, stream, CultureInfo.CurrentCulture, TimeZoneInfo.Local, cancellationToken);
 var name = ExportWriters.FileName(book, writer);    // "Contacts.csv"
 ```
 
@@ -59,7 +59,7 @@ There are no configuration keys. The registration is the configuration.
 | `ExportRow` | `Values` positionally against the columns, as values and not printed text; `ExportRow.Of(...)`. |
 | `ExportFormat` | `Text`, `Number`, `Money`, `Date`, `Percent`. |
 | `ExportKind` | `Excel`, `Csv`, `Pdf`. Only `Excel` and `Csv` have a writer here. |
-| `IExportWriter` | `Kind`, `Icon`, `Extension`, `ContentType`, `WriteAsync(book, destination, culture, ct)`. The culture is passed in, never read from the thread. |
+| `IExportWriter` | `Kind`, `Icon`, `Extension`, `ContentType`, `WriteAsync(book, destination, culture, zone, ct)`. The culture and time zone are passed in, never read from the thread or the process. |
 | `ExportWriters` | The registered writers in `ExportKind` order: `All`, `IsEmpty`, `For(kind)`, and `FileName(book, writer)`, which replaces characters a file name cannot carry. |
 
 The two writers differ on purpose:

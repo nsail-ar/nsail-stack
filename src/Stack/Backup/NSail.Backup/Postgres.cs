@@ -157,7 +157,37 @@ public static class Postgres
         return separator < 0 ? version : version[..separator];
     }
 
-    static async Task Run(string executable, IReadOnlyList<string> arguments, string? password, CancellationToken cancelToken)
+    static void Kill(Process process)
+    {
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or Win32Exception or AggregateException)
+        {
+            // The child already exited; the cancel is what the caller must see.
+        }
+
+        try
+        {
+            process.WaitForExit(TimeSpan.FromSeconds(5));
+        }
+        catch (InvalidOperationException)
+        {
+            // Never started, or already disposed: nothing to wait for.
+        }
+    }
+
+    static int running;
+
+    // Only while a child runs does the verb own the interrupt, so a signal at a prompt or in
+    // synchronous work still ends the process.
+    internal static bool ChildRunning
+    {
+        get => Volatile.Read(ref running) > 0;
+    }
+
+    internal static async Task Run(string executable, IReadOnlyList<string> arguments, string? password, CancellationToken cancelToken)
     {
         var start = new ProcessStartInfo(executable)
         {
@@ -179,6 +209,20 @@ public static class Postgres
 
         using var process = new Process { StartInfo = start };
 
+        Interlocked.Increment(ref running);
+
+        try
+        {
+            await Execute(process, executable, cancelToken);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref running);
+        }
+    }
+
+    static async Task Execute(Process process, string executable, CancellationToken cancelToken)
+    {
         try
         {
             process.Start();
@@ -190,11 +234,31 @@ public static class Postgres
 
         // Both pipes drained at once: psql prints the rows of the dump's SELECTs, and a full
         // stdout pipe would block it while the restore's transaction holds every lock.
-        var output = process.StandardOutput.ReadToEndAsync(cancelToken);
-        var error = await process.StandardError.ReadToEndAsync(cancelToken);
+        var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+        var errors = process.StandardError.ReadToEndAsync(CancellationToken.None);
 
-        await output;
-        await process.WaitForExitAsync(cancelToken);
+        string error;
+
+        try
+        {
+            await process.WaitForExitAsync(cancelToken);
+
+            await output;
+            error = await errors;
+
+            // Ctrl-C reaches the child through the process group too: its exit is the cancel, not a failure.
+            cancelToken.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException)
+        {
+            // A cancelled backup must not leave the dump running against the database.
+            Kill(process);
+
+            _ = output.ContinueWith(static task => task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+            _ = errors.ContinueWith(static task => task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+
+            throw;
+        }
 
         if (process.ExitCode != 0)
         {

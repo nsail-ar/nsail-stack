@@ -36,6 +36,10 @@ public sealed record BoardSnapshot(
     // red that sent them back may be from a head older than the fix (SnapshotReader.ReadUnjudged).
     public IReadOnlySet<int> UnjudgedFixes { get; init; } = new HashSet<int>();
 
+    // The red-suite stories in Merged whose product published a release after their fix merged: out,
+    // whatever the walk of that release has moved (SnapshotReader.ReadRedFixes).
+    public IReadOnlySet<int> ShippedFixes { get; init; } = new HashSet<int>();
+
     // Per product (lowercase), its newest published release whose stories are not walked yet.
     public IReadOnlyDictionary<string, string> Unshipped { get; init; } = new Dictionary<string, string>();
 }

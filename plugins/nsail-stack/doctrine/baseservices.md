@@ -68,8 +68,11 @@ the app (the suspended page, below).
 - HTTPS redirection
 - `TenancyMiddleware` — **only where a tenant is resolved** (`host.ResolvesTenants()`: either
   switch), so under `Tenancy:Mode=None` the pipeline has no tenancy step. Before authentication
-  on purpose: under a per-tenant connection a slug that names no database answers 404, and
-  under `SingleDb` so does a slug off the roster a cell declares, and nothing about it is
+  on purpose: the refusals below come ahead of any sign-in. It refuses first **403** when
+  `Tenancy:ProxySecret` is set and the request does not carry it in `X-Proxy-Secret`, ahead of any
+  tenant being resolved or created; unset, outside Development, startup warns that the listener
+  must be bound to the proxy only. Then, under a per-tenant connection a slug that names no
+  database answers 404, and under `SingleDb` so does a slug off the roster a cell declares, and nothing about it is
   reachable by signing in. See [data-tenancy.md](data-tenancy.md#caddy-assigns-the-tenant-postgres-is-the-registry).
 - `TenantStateMiddleware` — whether this install is serving this tenant at all, **only where a
   tenant is resolved**, immediately behind the step above: a customer the install has suspended is
@@ -383,9 +386,15 @@ its own name.
   statement run that way by a role a policy applies to — `FORCE ROW LEVEL SECURITY` subjects
   even the table's owner (data-tenancy.md, The second wall) — so on a cell that has provisioned
   the app a role without `BYPASSRLS`, `backup` is a credential of its own: a superuser or a
-  `BYPASSRLS` role on the same database. The verb asks before it starts the process and refuses
+  `BYPASSRLS` role on the same database, supplied as `Backup:ConnectionString` (the dump uses it;
+  restore keeps the app's; a different host, port or database is refused, since the manifest
+  names the app's). The verb asks before it starts the process and refuses
   by name, rather than ending in pg_dump's exit code on the first tenant table. Restore is not
   affected: an archive's data lands before its policies do.
+- **Under MultiDb both verbs refuse** (`REFUSED:`, exit `4`): the install has no one database,
+  and the tenants' own are not covered.
+- **A cancel kills the child.** A Ctrl-C or SIGTERM while a child tool runs kills it and its tree, and the verb exits
+  `130`; at a prompt the signal ends the process as usual.
 - **A restore refuses before it writes.** `RestorePlan.For` throws `BackupFailure` on an
   archive whose schema this build does not know (newer), whose product is another product,
   whose Postgres major differs, or whose archive format this build cannot read. An encrypted
@@ -393,7 +402,7 @@ its own name.
   wrong one, or a truncated entry. Then the plan says
   what it will overwrite — database and key ring — and stops unless the operator passes
   `--confirm RESTORE` (and types the word again when stdin is a terminal). Exit codes: `0`
-  done, `2` usage, `3` not confirmed, `4` refused.
+  done, `2` usage, `3` not confirmed, `4` refused, `130` cancelled.
 - **Restore is replace, not merge.** The public schema is dropped whole and rebuilt from the
   dump — `pg_restore --clean` would leave behind anything the install grew after the backup —
   in one transaction (`pg_restore` renders the dump to a script, `psql --single-transaction` runs

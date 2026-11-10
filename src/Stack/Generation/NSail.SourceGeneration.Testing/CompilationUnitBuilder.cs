@@ -119,22 +119,26 @@ namespace NSail.SourceGeneration.Testing
         }
 
         /// <summary>
-        /// Adds references for a given .NET framework (e.g., netstandard2.0, net8.0).
+        /// Adds every assembly the running host can load (its trusted platform assemblies) as a
+        /// reference, so a compilation sees the same set whichever tests ran before it.
         /// </summary>
-        public CompilationUnitBuilder AddFrameworkReferences(string targetFramework)
+        public CompilationUnitBuilder AddFrameworkReferences()
         {
-            // Use Microsoft.NETCore.App.Ref or Microsoft.NETStandard.Library.Ref for real projects.
-            // For test purposes, use the current runtime assemblies.
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies()
-                .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-                .Select(a => MetadataReference.CreateFromFile(a.Location));
+            var paths = (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string)?
+                .Split(new[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
 
-            _references.AddRange(assemblies);
+            // A host without the list (not CoreCLR) falls back to what it has loaded.
+            paths ??= AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
+                .Select(a => a.Location)
+                .ToArray();
+
+            _references.AddRange(paths.Select(path => MetadataReference.CreateFromFile(path)));
             return this;
         }
 
         /// <summary>
-        /// Builds a CSharpCompilation for the specified target framework.
+        /// Builds a CSharpCompilation for the assembly.
         /// </summary>
         public CSharpCompilation Build(string assemblyName)
         {

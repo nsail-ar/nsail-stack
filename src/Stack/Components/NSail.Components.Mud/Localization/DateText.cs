@@ -13,7 +13,7 @@ namespace NSail.Components;
 // field order is the ACTIVE culture's and is never negotiable — the same eight digits are a
 // different day under es-AR than under en-US — but the separators are: the shape already says
 // where they fall, so a bare digit run reaches the same date as the punctuated one (nobody has
-// to type the slashes, Leonardo 2026-08-07).
+// to type the slashes).
 static class DateText
 {
     const string RefusalKey = "Problems.UnreadableDate";

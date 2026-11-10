@@ -84,7 +84,7 @@ else if (_items.Count > 0)
         var user = await PageGate.UserOf(AuthenticationState);
 
         // Resolved, never injected: a host with no security registered (a component test, a
-        // surface without Iam) must still render, the same permissive default CanSend takes.
+        // surface without security) must still render, the same permissive default CanSend takes.
         var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
         var session = (Services.GetService(typeof(SessionProvider)) as SessionProvider)?.Session;
 
@@ -116,7 +116,7 @@ else if (_items.Count > 0)
 
             // Main is said here and nowhere else: every dashboard card is a screen the session
             // stays in, never a panel passed through, so the door is minted in one place rather
-            // than left for a card to declare (Leonardo, 2026-09-16: "todos en main").
+            // than left for a card to declare.
             doors[item.CardType!] = new CardDoor(
                 routes.GetUrl(pageType),
                 strings.Translate(metadata.KeyFor(item.CardType!, "Title")),
@@ -162,7 +162,7 @@ else if (_items.Count > 0)
 
             // The coarse gate answers "may this session ever send this message" — a card whose
             // own use of it is inherently org-wide or professional-only can pass that on a
-            // portal session's constrained grant and then have nothing to show (nsail#1607).
+            // portal session's constrained grant and then have nothing to show.
             // Eligible is the card's own, narrower answer for exactly that gap.
             if (item.Eligible?.Invoke(security, session) == false)
             {

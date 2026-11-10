@@ -45,8 +45,14 @@ the method name; buttons without content from `Common.{As}`.
   the context differs. A field bound to a page-local value labels itself with no `Label` at all.
   **A refusal reads the same label**: `BusinessProblem`'s entity slot carries the concept key and
   `Translate(Issue)` resolves it before filling `{entity}`, falling back to the key's last segment
-  (types.md). An entity a problem can name owes its bare key in `en` and `es`, and
-  `ProblemEntityStringTests` fails the build without it.
+  (types.md). The `at` argument (ISO 8601 UTC) is rewritten the same way, to the reader's clock
+  in `RegionCulture.For(Language)`'s pattern; the argument's name is what triggers it.
+  An entity a problem can name owes its bare key in `en` and `es`, and
+  `ProblemEntityStringTests` (enforced in the products' repository) fails the build without it.
+- **A Mud component's accessible names are keys too.** A `Mud.<Key>` the wrapped components request
+  owes an entry in `strings.json` and `strings.es.json` of `NSail.Components.Mud`, or the name
+  shows in English; `MudVendorContractTests` lists the keys, checks them against MudBlazor's own
+  resources and fails the build on a missing one.
 - **A search box hints itself.** `NsSearchField` falls back to `Common.Search` — one word, *Buscar*,
   so it fits beside the box's key mark in every language; a caller wanting different words sets
   the inherited `Placeholder`, or `SearchPlaceholder` on `NsPageHeader`, `NsNavMenu` and `NsTree`,

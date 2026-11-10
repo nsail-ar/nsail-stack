@@ -21,10 +21,9 @@ public partial class NsTextField
     [Inject]
     IJSRuntime JS { get; init; } = default!;
 
-    // Text is the mostrador family (Story: "los campos se seleccionan al recibir foco") — a
-    // masked field (a CUIT, a DNI) opts in too: the raw characters are what select() grabs,
-    // the mask only reformats what is typed back over them.
-    protected override bool SelectOnFocus => true;
+    // Text selects on focus; a masked field (a CUIT, a DNI) stays out, its caret
+    // bookkeeping belongs to the vendor's mask engine.
+    protected override bool SelectOnFocus => Mask is not { Length: > 0 };
 
     /// <summary>The shape the value is typed in, as a pattern in NSail's own vocabulary:
     /// <c>0</c> is a digit, <c>a</c> a letter, <c>*</c> either, and every other character is
@@ -56,8 +55,8 @@ public partial class NsTextField
     /// <summary>Floats the label always, whether or not there is text or focus. Off by default —
     /// the vendor already floats the label the moment either arrives, which is right for a plain
     /// field. A caller opts in only where the resting label itself is the problem —
-    /// <c>MailAddressField</c>'s own is long enough to print straight through its permanent
-    /// <see cref="Suffix"/> while the field is empty and untouched (nsail#1373/#1571/#1663), and
+    /// an address field's own is long enough to print straight through its permanent
+    /// <see cref="Suffix"/> while the field is empty and untouched, and
     /// there the label has to float always, not on a value that may never come.</summary>
     [Parameter]
     public bool ShrinkLabel { get; set; }

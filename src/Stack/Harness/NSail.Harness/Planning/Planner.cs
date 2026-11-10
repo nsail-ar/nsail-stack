@@ -14,8 +14,15 @@ public sealed record PlannerOptions(bool Gate = false)
     public IReadOnlyCollection<string> UnrunnableDrivers { get; init; } = [];
 
     // How the stories the harness files for a red suite and a red main are titled: they come first.
+    // SuiteRedTitle is the template of the first, `{product}` its slot.
+    public string SuiteRedTitle { get; init; } = "Regression red on main ({product})";
     public string SuiteRedPrefix { get; init; } = "Regression red on main (";
     public string MainRedPrefix { get; init; } = "CI red on main";
+
+    public string SuiteRedTitleOf(string product)
+    {
+        return HarnessTexts.Fill(SuiteRedTitle, ("product", product));
+    }
 
     // A lock with no job behind it for this long is a dispatch that never started.
     public TimeSpan StaleLock { get; init; } = TimeSpan.FromMinutes(10);
@@ -44,6 +51,7 @@ public static class Planner
     {
         return tier switch
         {
+            "andon" => -2,
             "bug" => -1,
             "release" or "manual" => 0,
             "red" => 1,

@@ -160,7 +160,8 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
     // with the slot's own path and a test's time taken out.
     internal static IReadOnlySet<string> FailureSet(string output, string dir)
     {
-        var lines = output.Split('\n').Select(l => l.TrimEnd('\r').Replace(dir.TrimEnd('/', '\\'), "", StringComparison.Ordinal).Trim()).ToList();
+        var root = dir.TrimEnd('/', '\\');
+        var lines = output.Split('\n').Select(l => (root.Length == 0 ? l.TrimEnd('\r') : l.TrimEnd('\r').Replace(root, "", StringComparison.Ordinal)).Trim()).ToList();
         var failed = lines.Where(l => FailedTest().IsMatch(l)).Select(l => TestTime().Replace(l, "")).ToHashSet();
         return failed.Count > 0 ? failed : lines.Where(l => BuildError().IsMatch(l)).ToHashSet();
     }
