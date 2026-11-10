@@ -22,6 +22,8 @@ public sealed class LogScrubTests
 
     const string ErrorTemplate = "Exception mapped to problem {Code}: {Message}";
 
+    const string RequestTemplate = "Request starting {Path}";
+
     const string Category = "Consulting";
 
     [Fact]
@@ -71,9 +73,9 @@ public sealed class LogScrubTests
     [InlineData("/appointments/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM/calendar.ics")]
     public void A_token_in_a_logged_path_does_not_travel(string path)
     {
-        var record = Scrubbed(logger => logger.LogInformation("Request starting {Path}", path));
+        var record = Scrubbed(logger => logger.LogInformation(RequestTemplate, path));
 
-        Assert.Equal("Request starting {Path}", record.Body);
+        Assert.Equal(RequestTemplate, record.Body);
         Assert.DoesNotContain("Zm9vYmFy", record.Flattened, StringComparison.Ordinal);
     }
 

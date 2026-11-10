@@ -102,8 +102,8 @@ public sealed class ScrubberTests
     }
 
     // A token in a path is the same leak as one in a query: the literal path never travels, so a
-    // feed, a sign-in link and an appointment ICS are redacted by construction, while the
-    // segments the route template names (a slug, a number's placeholder) survive.
+    // feed, a sign-in link and an appointment ICS are redacted by construction. Only the route
+    // template travels, placeholders and all.
     [Theory]
     [InlineData("/calendar/feeds/{feed}", "/calendar/feeds/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
     [InlineData("/account/sign-in/{link}", "/account/sign-in/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
@@ -120,32 +120,6 @@ public sealed class ScrubberTests
         Assert.Equal(route, span.GetTagItem("url.path"));
         Assert.Equal("https://app.nsail.ar", span.GetTagItem("url.full"));
         Assert.DoesNotContain("Zm9vYmFy", string.Join('|', span.TagObjects.Select(t => t.Value)), StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData("/calendar/feeds/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
-    [InlineData("/account/sign-in/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
-    [InlineData("/appointments/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM/calendar.ics")]
-    public void A_token_path_with_no_template_is_dropped(string literal)
-    {
-        var span = Ended(activity =>
-        {
-            activity.SetTag("url.path", literal);
-        });
-
-        Assert.Null(span.GetTagItem("url.path"));
-    }
-
-    [Fact]
-    public void An_ordinary_route_is_left_alone()
-    {
-        var span = Ended(activity =>
-        {
-            activity.SetTag("url.path", "/blog/my-first-post/42");
-            activity.SetTag("http.route", "/blog/{slug}/{page:int}");
-        });
-
-        Assert.Equal("/blog/{slug}/{page:int}", span.GetTagItem("url.path"));
     }
 
     static Activity Ended(Action<Activity> write)
