@@ -101,6 +101,27 @@ public sealed class ScrubberTests
         Assert.Equal("postgresql", span.GetTagItem("db.system.name"));
     }
 
+    // A token in a path is the same leak as one in a query: the literal path never travels, so a
+    // feed, a sign-in link and an appointment ICS are redacted by construction. Only the route
+    // template travels, placeholders and all.
+    [Theory]
+    [InlineData("/calendar/feeds/{feed}", "/calendar/feeds/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
+    [InlineData("/account/sign-in/{link}", "/account/sign-in/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
+    [InlineData("/appointments/{ics}/calendar.ics", "/appointments/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM/calendar.ics")]
+    public void A_token_in_the_path_never_reaches_a_span(string route, string literal)
+    {
+        var span = Ended(activity =>
+        {
+            activity.SetTag("url.path", literal);
+            activity.SetTag("http.route", route);
+            activity.SetTag("url.full", $"https://app.nsail.ar{literal}");
+        });
+
+        Assert.Equal(route, span.GetTagItem("url.path"));
+        Assert.Equal("https://app.nsail.ar", span.GetTagItem("url.full"));
+        Assert.DoesNotContain("Zm9vYmFy", string.Join('|', span.TagObjects.Select(t => t.Value)), StringComparison.Ordinal);
+    }
+
     static Activity Ended(Action<Activity> write)
     {
         using var source = new ActivitySource($"NSail.Telemetry.Tests.{Guid.NewGuid()}");
