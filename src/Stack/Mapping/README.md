@@ -105,7 +105,7 @@ behaviors): `CompositeCollectionBehavior` (`Merge` deletes what the source no lo
 | NSG011 | warning | A `[MapFrom]` source member is written nowhere |
 | NSG012 | warning | A settable `[MapTo]` row member is filled by nothing |
 | NSG013 | error | An `Ignore` names a member that does not exist |
-| NSG025 | error | A `[MapFrom]` member reads a nullable value into a non-nullable member that is not a key; a `[MapTo]` row reads it as the default, and a null or empty text reads the target's default |
+| NSG025 | error | A `[MapFrom]` member reads a nullable value into a non-nullable member that is not a key; a `[MapTo]` row reads it as the default, and a null or empty text reads the target's default. `Ignore = [nameof(M.X)]` on the `[MapFrom]` withdraws it from that pairing |
 
 Warnings can be raised to errors in `.editorconfig` or `WarningsAsErrors`.
 

@@ -56,6 +56,7 @@ sealed partial class MapperEmitter
     readonly Dictionary<string, IReadOnlyList<string>> _includes = new();
     readonly HashSet<string> _including = new();
     readonly Dictionary<string, HashSet<string>> _read = new();
+    readonly Dictionary<string, HashSet<string>> _withdrawn = new();
     readonly List<(INamedTypeSymbol Source, HashSet<string> Members)> _reading = new();
 
     HashSet<string>? _filled;
@@ -106,6 +107,7 @@ sealed partial class MapperEmitter
                     continue;
                 }
 
+                _withdrawn[$"{Name(source)}=>{Name(target)}"] = Withdrawn(declaration);
                 Root(source, target);
                 Dropped(declaration, source, target);
             }
@@ -311,21 +313,21 @@ sealed partial class MapperEmitter
             {
                 text.AppendLine($"                    case {Name(derived[i].Type)} derived{i}:");
                 text.AppendLine("                    {");
-                text.Append(MemberAssignments(source, derived[i].Type, keys, "                        ", $"derived{i}"));
+                text.Append(MemberAssignments(id, source, derived[i].Type, keys, "                        ", $"derived{i}"));
                 text.AppendLine("                        break;");
                 text.AppendLine("                    }");
             }
 
             text.AppendLine("                    default:");
             text.AppendLine("                    {");
-            text.Append(MemberAssignments(source, target, keys, "                        "));
+            text.Append(MemberAssignments(id, source, target, keys, "                        "));
             text.AppendLine("                        break;");
             text.AppendLine("                    }");
             text.AppendLine("                }");
         }
         else
         {
-            text.Append(MemberAssignments(source, target, keys, "                "));
+            text.Append(MemberAssignments(id, source, target, keys, "                "));
         }
 
         text.AppendLine("            }");
@@ -614,7 +616,7 @@ sealed partial class MapperEmitter
         text.AppendLine("            cancellationToken.ThrowIfCancellationRequested();");
         text.AppendLine($"            await {Runtime}.Maps.Descend();");
         text.AppendLine();
-        text.Append(MemberAssignments(source, target, new List<IPropertySymbol>(), "            "));
+        text.Append(MemberAssignments(id, source, target, new List<IPropertySymbol>(), "            "));
         text.AppendLine();
         text.AppendLine("            return target;");
         text.AppendLine("        }");
@@ -713,7 +715,7 @@ sealed partial class MapperEmitter
 
     // ---- Members ------------------------------------------------------------------------
 
-    string MemberAssignments(INamedTypeSymbol source, INamedTypeSymbol target, List<IPropertySymbol> keys, string indent, string variable = "target")
+    string MemberAssignments(string id, INamedTypeSymbol source, INamedTypeSymbol target, List<IPropertySymbol> keys, string indent, string variable = "target")
     {
         var text = new StringBuilder();
         var previous = _var;
@@ -731,6 +733,14 @@ sealed partial class MapperEmitter
             if (member.HasAttribute(MapIgnoreName))
             {
                 Consume(source, SourceMember(source, member, out _));
+                continue;
+            }
+
+            // An Ignore on the [MapFrom] withdraws the member from this pairing alone; a [MapTo]
+            // projection of the same entity still reads it.
+            if (_withdrawn.TryGetValue(id, out var withdrawn) && SourceMember(source, member, out _) is { } named && withdrawn.Contains(named.Name))
+            {
+                Consume(source, named);
                 continue;
             }
 

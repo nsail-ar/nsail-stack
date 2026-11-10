@@ -93,5 +93,8 @@ speaking: `NSG004` an organization axis mapped by name alone, `NSG005` a `[Primi
 type, `NSG006` a member with no conversion, `NSG007` no parameterless constructor, `NSG008`
 a `[MapFrom]` that names a non-class, `NSG009` a projection that cannot carry a derived type,
 `NSG010` an open generic, `NSG013` an `Ignore` naming a member that does not exist, `NSG025` a
-`[MapFrom]` reading a nullable into a non-nullable member that is not the key. `NSG011` and
+`[MapFrom]` reading a nullable into a non-nullable member that is not the key (answer: make a
+side nullable or non-nullable, `[MapIgnore]` the member in both directions, or
+`Ignore = [nameof(M.X)]` on the `[MapFrom]` to drop it from that pairing only, so `[MapTo]`
+projections still read it). `NSG011` and
 `NSG012` are warnings, not errors: the build is green and the data is gone.
