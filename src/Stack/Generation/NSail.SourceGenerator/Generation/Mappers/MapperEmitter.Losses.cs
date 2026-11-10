@@ -120,6 +120,30 @@ sealed partial class MapperEmitter
         return result;
     }
 
+    // Quiet: NSG013 is said once, by Dropped.
+    static HashSet<string> Withdrawn(AttributeData declaration)
+    {
+        var result = new HashSet<string>();
+
+        foreach (var argument in declaration.NamedArguments)
+        {
+            if (argument.Key != IgnoreArgument || argument.Value.Kind != TypedConstantKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var value in argument.Value.Values)
+            {
+                if (value.Value is string name)
+                {
+                    result.Add(name);
+                }
+            }
+        }
+
+        return result;
+    }
+
     // The declaration itself, so the warning lands where the answer is written.
     static Location? Where(AttributeData declaration, ISymbol fallback)
     {
