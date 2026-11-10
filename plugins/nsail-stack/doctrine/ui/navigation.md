@@ -50,7 +50,9 @@ just places `<NsNavMenu />`.
   full-bleed. The gap from the brand row to the search box equals the gap from the box to the
   first entry, and the brand row keeps the height that centers it on the page's title row. Nested
   entries, group rows, the page index, the divider, the no-match row, command entries and the
-  session foot end on that same right line. The three distances are `--ns-nav-gutter`,
+  session foot end on that same right line. The inset is the outer menu's alone: a group's
+  nested menu adds none, so a nested row's highlight spans what a top-level row's spans and
+  only its content is indented, by the vendor's padding per depth. The three distances are `--ns-nav-gutter`,
   `--ns-nav-inset` and `--ns-nav-gap` in `ns-mud.css`; the phone title row does not move. A chip
   in the brand row ends a long label in `…` (`ns-chip-ellipsis`, which every `NsChip` wears) and
   is capped at half the row.
