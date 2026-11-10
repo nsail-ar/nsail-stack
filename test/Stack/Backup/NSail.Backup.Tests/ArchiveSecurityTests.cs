@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.IO.Compression;
 using System.Text.Json;
 
 namespace NSail.Backup.Tests;
@@ -88,5 +89,60 @@ public sealed class ArchiveSecurityTests
 
         Assert.False(manifest.Encrypted);
         Assert.Equal(BackupManifest.PlainArchiveVersion, manifest.ArchiveVersion);
+    }
+
+    [Fact]
+    public async Task SealedKeyRingEntriesRoundTripThroughTheZipOnAWriteOnlyFile()
+    {
+        var workspace = Directory.CreateTempSubdirectory("nsail-sealed-zip");
+
+        try
+        {
+            var keys = new Dictionary<string, byte[]>
+            {
+                ["key-one.xml"] = new byte[] { 1, 2, 3, 4 },
+                ["key-two.xml"] = new byte[ArchiveCipher.ChunkSize + 5]
+            };
+
+            Random.Shared.NextBytes(keys["key-two.xml"]);
+
+            var salt = Convert.ToBase64String(ArchiveCipher.NewSalt());
+            var archivePath = Path.Combine(workspace.FullName, "install.nsail.zip");
+
+            await using (var file = InstallArchive.CreateFile(archivePath))
+            {
+                var sealer = ArchiveCipher.Derive("correct horse", Convert.FromBase64String(salt), 1000);
+
+                using var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: true);
+
+                foreach (var (name, bytes) in keys)
+                {
+                    var source = Path.Combine(workspace.FullName, name);
+
+                    await File.WriteAllBytesAsync(source, bytes);
+                    await InstallArchive.AddFile(zip, source, KeyRing.ArchiveFolder + name, sealer, CancellationToken.None);
+                }
+            }
+
+            await using var read = File.OpenRead(archivePath);
+
+            using var archive = new ZipArchive(read, ZipArchiveMode.Read);
+
+            var opener = ArchiveCipher.Derive("correct horse", Convert.FromBase64String(salt), 1000);
+
+            foreach (var (name, bytes) in keys)
+            {
+                var entry = archive.GetEntry(KeyRing.ArchiveFolder + name)!;
+                var target = Path.Combine(workspace.FullName, "out-" + name);
+
+                await InstallArchive.Extract(entry, target, opener, CancellationToken.None);
+
+                Assert.Equal(bytes, await File.ReadAllBytesAsync(target));
+            }
+        }
+        finally
+        {
+            workspace.Delete(recursive: true);
+        }
     }
 }
