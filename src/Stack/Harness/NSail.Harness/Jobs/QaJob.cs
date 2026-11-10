@@ -110,7 +110,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
             Mcp: mcp,
             Tools: tools), ct);
         // A walker whose browser is not there still writes a verdict from the story alone: the walk is void, and loud.
-        if (File.Exists(logPath) && (await File.ReadAllTextAsync(logPath, ct)).Contains(NoBrowser, StringComparison.Ordinal))
+        if (File.Exists(logPath) && Browserless(await File.ReadAllTextAsync(logPath, ct), step.Worker.Mcp.Keys))
         {
             await File.AppendAllTextAsync(logPath, $"{ctx.Names.Ref(n)} — the walker had no browser: walk void{Environment.NewLine}", ct);
             return new JobOutcome("walk void: the walker's browser is not installed on this machine (npx @playwright/mcp install-browser chromium)", Event: "NoVerdict", Failed: true, Report: "");
@@ -182,6 +182,68 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
             lines.Add("");
         }
         return string.Join('\n', lines).TrimEnd();
+    }
+
+    // Whether a browser tool's own result says its browser is not installed. Only the stream's objects
+    // are read — a result tied through its tool_use_id to a `mcp__<server>__` call, whatever its
+    // is_error says — since the thread the walker reads can quote an earlier walk's failure.
+    internal static bool Browserless(string log, IEnumerable<string> servers)
+    {
+        var prefixes = servers.Select(k => $"mcp__{k}__").ToList();
+        var browser = new HashSet<string>(StringComparer.Ordinal);
+        var failed = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var line in log.Split('\n'))
+        {
+            var t = line.Trim();
+            if (t.Length == 0 || t[0] != '{') continue;
+            JsonElement o;
+            try
+            {
+                using var doc = JsonDocument.Parse(t);
+                o = doc.RootElement.Clone();
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
+            if (o.ValueKind != JsonValueKind.Object || !o.TryGetProperty("message", out var message) || message.ValueKind != JsonValueKind.Object) continue;
+            if (!message.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array) continue;
+            foreach (var c in content.EnumerateArray())
+            {
+                if (c.ValueKind != JsonValueKind.Object) continue;
+                var kind = Str(c, "type");
+                if (kind == "tool_use" && Str(c, "id") is { } id && Str(c, "name") is { } name && prefixes.Any(p => name.StartsWith(p, StringComparison.Ordinal)))
+                {
+                    browser.Add(id);
+                }
+                if (kind == "tool_result" && Str(c, "tool_use_id") is { } answers && c.TryGetProperty("content", out var result) && Strings(result).Any(s => s.Contains(NoBrowser, StringComparison.Ordinal)))
+                {
+                    failed.Add(answers);
+                }
+            }
+        }
+        return failed.Overlaps(browser);
+    }
+
+    static string? Str(JsonElement o, string name)
+    {
+        return o.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+    }
+
+    static IEnumerable<string> Strings(JsonElement e)
+    {
+        if (e.ValueKind == JsonValueKind.String)
+        {
+            yield return e.GetString()!;
+        }
+        else if (e.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var s in e.EnumerateArray().SelectMany(Strings)) yield return s;
+        }
+        else if (e.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var s in e.EnumerateObject().SelectMany(p => Strings(p.Value))) yield return s;
+        }
     }
 
     // The product a story is walked on: the one its labels name, else the default.
