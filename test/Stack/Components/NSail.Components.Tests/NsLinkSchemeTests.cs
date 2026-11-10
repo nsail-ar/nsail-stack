@@ -13,8 +13,8 @@ using NSail.Metadata;
 namespace NSail.Components.Tests;
 
 /// <summary>An address that arrives written is never trusted on its scheme: NsLink and NsChip
-/// draw javascript:, data:, ftp: and file: as inert text, an empty Href as a disabled link, and
-/// keep https:, mailto:, tel:, otpauth: and in-app routes as links.</summary>
+/// draw javascript:, data:, vbscript:, ftp: and file: as inert text, an empty Href as a disabled link, and
+/// keep http:, https:, mailto:, tel:, otpauth: and in-app routes as links.</summary>
 public sealed class NsLinkSchemeTests : BunitContext
 {
     public NsLinkSchemeTests()
@@ -73,7 +73,7 @@ public sealed class NsLinkSchemeTests : BunitContext
     [InlineData("tel:+54 11 5555-5555")]
     [InlineData("https://optica.example/mi local")]
     [InlineData("/parties/new")]
-    [InlineData("#frag")]
+    [InlineData("http://acme.com/x")]
     public void TheSchemesADoorOpensKeepTheirHref(string href)
     {
         var cut = Render<NsLink>(p => p.Add(x => x.Href, href).Add(x => x.Label, "Sitio"));
