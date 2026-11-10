@@ -117,10 +117,15 @@ the files it leaves.
     `x-ratelimit-reset` with no calls left) waits that out once, when it is at most a minute away, and is
     sent again; the limit is shared by every job and lane on the token, so a second refusal, one that names
     no wait or a farther one, throws. A read that gets a 5xx is sent again up to twice; any other refusal
-    throws at once. A job that ends on the provider's limit (a `ProviderException` with its
+    throws at once. A limit, on a pass or at a job's end, holds every pass after it for the wait it asked,
+    at least `MinLimitBackoff` and up to `MaxLimitBackoff`, and a wake (a job's end, the API) does not end the
+    hold; outside one, a wake runs the next pass at once. Every GitHub REST read is sent with the ETag of its last answer: one that has not
+    moved comes back 304, which GitHub does not count against the token's rate limit, so a pass over an
+    unchanged board bills no REST call (`PassBudgetTests`). A full page kept with no next link is read again
+    without its ETag, as items appended behind it leave its answer unchanged. A job that ends on the provider's limit (a `ProviderException` with its
     `RetryAfter`) or on a 5xx is not a break: nothing is said on its story and nothing counts toward
     `stalled`; its lock label and lock come off and a Dev with no PR goes back to Ready, as a break's do.
-    A limit holds the item and every pass for the wait it asked, at least `MinLimitBackoff` and up to `MaxLimitBackoff`; a 5xx backs the
+    A limit holds the item for the same wait as the passes; a 5xx backs the
     item off as a break. Its run's result is `provider` (`/jobs`, the pill, `harness.jobs{outcome=provider}`),
     its outcome `rate limited — <call>, retry in <wait>` or `provider failed — <status> <call>`. A bare 403
     or a 404 is an answer, and breaks. A story whose body or refinery comment names a blocker

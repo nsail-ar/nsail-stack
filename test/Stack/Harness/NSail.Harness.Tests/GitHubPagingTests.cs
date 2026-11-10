@@ -100,4 +100,87 @@ public class GitHubPagingTests
         await repo.OpenPrs();
         Assert.Contains(routed.Requests, r => r.Contains("head_sha=old777"));
     }
+
+    // Answers 304 to the ETag it gave; each page names the next, as GitHub's Link header does.
+    sealed class Tagged : HttpMessageHandler
+    {
+        public List<(string Path, HttpStatusCode Status)> Answered { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var page = int.Parse(System.Web.HttpUtility.ParseQueryString(request.RequestUri!.Query)["page"] ?? "1");
+            var tag = $"\"p{page}\"";
+            var status = request.Headers.IfNoneMatch.Any(t => t.Tag == tag) ? HttpStatusCode.NotModified : HttpStatusCode.OK;
+            Answered.Add((request.RequestUri.PathAndQuery, status));
+            var response = new HttpResponseMessage(status) { Content = new StringContent(status == HttpStatusCode.OK ? $"[{page}]" : "", Encoding.UTF8, "application/json") };
+            response.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue(tag);
+            if (page < 2) response.Headers.Add("Link", "<https://api.github.com/x?page=2>; rel=\"next\"");
+            return Task.FromResult(response);
+        }
+    }
+
+    [Fact]
+    public async Task AnUnchangedListingIsAnsweredFromWhatItKeptPageByPage()
+    {
+        var tagged = new Tagged();
+        var client = new GitHubClient(new HttpClient(tagged) { BaseAddress = new Uri("https://api.github.com/") });
+
+        var first = await client.GetAll("x");
+        var again = await client.GetAll("x");
+
+        Assert.Equal([1, 2], first.Select(e => e.GetInt32()));
+        Assert.Equal([1, 2], again.Select(e => e.GetInt32()));
+        Assert.Equal([HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.NotModified, HttpStatusCode.NotModified], tagged.Answered.Select(a => a.Status));
+    }
+
+    // A listing that only grows at its end, as an issue's events do: its pages hold `size` items, and a
+    // page's ETag is its content, so a full first page keeps its tag when a second one appears behind it.
+    sealed class Growing(int size) : HttpMessageHandler
+    {
+        public int Items { get; set; }
+        public List<HttpStatusCode> Answered { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var page = int.Parse(System.Web.HttpUtility.ParseQueryString(request.RequestUri!.Query)["page"] ?? "1");
+            var items = Enumerable.Range((page - 1) * size + 1, Math.Clamp(Items - (page - 1) * size, 0, size)).ToList();
+            var tag = $"\"p{page}-{string.Join('.', items)}\"";
+            var status = request.Headers.IfNoneMatch.Any(t => t.Tag == tag) ? HttpStatusCode.NotModified : HttpStatusCode.OK;
+            Answered.Add(status);
+            var response = new HttpResponseMessage(status) { Content = new StringContent(status == HttpStatusCode.OK ? $"[{string.Join(',', items)}]" : "", Encoding.UTF8, "application/json") };
+            response.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue(tag);
+            if (page * size < Items) response.Headers.Add("Link", $"<https://api.github.com/x?per_page={size}&page={page + 1}>; rel=\"next\"");
+            return Task.FromResult(response);
+        }
+    }
+
+    [Fact]
+    public async Task AFullPageKeptAsTheLastIsReadAgainWhenItemsFollowIt()
+    {
+        var growing = new Growing(2) { Items = 2 };
+        var client = new GitHubClient(new HttpClient(growing) { BaseAddress = new Uri("https://api.github.com/") });
+
+        var first = await client.GetAll("x?per_page=2");
+        growing.Items = 3;
+        var grown = await client.GetAll("x?per_page=2");
+        var again = await client.GetAll("x?per_page=2");
+
+        Assert.Equal([1, 2], first.Select(e => e.GetInt32()));
+        Assert.Equal([1, 2, 3], grown.Select(e => e.GetInt32()));
+        Assert.Equal([1, 2, 3], again.Select(e => e.GetInt32()));
+        Assert.Equal([HttpStatusCode.OK, HttpStatusCode.NotModified, HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.NotModified, HttpStatusCode.NotModified], growing.Answered);
+    }
+
+    [Fact]
+    public async Task APageShortOfFullIsAnsweredFromWhatItKept()
+    {
+        var growing = new Growing(30) { Items = 2 };
+        var client = new GitHubClient(new HttpClient(growing) { BaseAddress = new Uri("https://api.github.com/") });
+
+        await client.GetAll("x");
+        var again = await client.GetAll("x");
+
+        Assert.Equal([1, 2], again.Select(e => e.GetInt32()));
+        Assert.Equal([HttpStatusCode.OK, HttpStatusCode.NotModified], growing.Answered);
+    }
 }

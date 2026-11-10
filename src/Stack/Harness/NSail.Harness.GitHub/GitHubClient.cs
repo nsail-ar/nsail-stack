@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -31,8 +32,7 @@ public sealed partial class GitHubClient(HttpClient http)
 
     public async Task<JsonElement> Get(string path, CancellationToken ct = default)
     {
-        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Get, path), reads: true, ct);
-        return await Read(response, ct);
+        return (await GetKept(path, conditional: true, ct)).Body;
     }
 
     // A plain-text answer, a job's log: its redirect to the signed address is followed.
@@ -56,17 +56,57 @@ public sealed partial class GitHubClient(HttpClient http)
         string? next = path;
         for (var page = 0; next is not null && page < maxPages; page++)
         {
-            using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Get, next), reads: true, ct);
-            var body = await Read(response, ct);
+            var (body, link, kept) = await GetKept(next, conditional: true, ct);
             var items = select is null ? body : select(body);
+            // A full page kept without a next link was the last only when it was read: items appended behind
+            // it leave its answer, and its 304, unchanged, so it is read again without its ETag.
+            if (kept && link is null && items.GetArrayLength() >= PerPage(next))
+            {
+                (body, link, _) = await GetKept(next, conditional: false, ct);
+                items = select is null ? body : select(body);
+            }
             all.AddRange(items.EnumerateArray());
-            next = NextLink(response);
+            next = link;
         }
         if (next is not null)
         {
             throw new GitHubPageLimitException(path, maxPages);
         }
         return all;
+    }
+
+    // A read's last answer, by its address, while its ETag stands: sent back as If-None-Match, an
+    // unchanged answer comes back 304, which GitHub does not count against the token's rate limit.
+    // Every pass reads the same board, so this is what keeps an idle harness inside its quota.
+    const int KeptReads = 512;
+    readonly ConcurrentDictionary<string, Kept> _kept = new();
+
+    sealed record Kept(string ETag, JsonElement Body, string? Next);
+
+    async Task<(JsonElement Body, string? Next, bool Kept)> GetKept(string path, bool conditional, CancellationToken ct)
+    {
+        var kept = conditional ? _kept.GetValueOrDefault(path) : null;
+        using var response = await Dispatch(() =>
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, path);
+            if (kept is not null) request.Headers.TryAddWithoutValidation("If-None-Match", kept.ETag);
+            return request;
+        }, reads: true, ct);
+        if (response.StatusCode == HttpStatusCode.NotModified && kept is not null) return (kept.Body, kept.Next, true);
+        var body = await Read(response, ct);
+        var next = NextLink(response);
+        if (response.Headers.ETag is { } etag)
+        {
+            if (_kept.Count >= KeptReads) _kept.Clear();
+            _kept[path] = new Kept(etag.ToString(), body, next);
+        }
+        return (body, next, false);
+    }
+
+    static int PerPage(string path)
+    {
+        var match = PerPageParameter().Match(path);
+        return match.Success && int.TryParse(match.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var size) ? size : 30;
     }
 
     public async Task<JsonElement> GraphQl(string query, object? variables = null, CancellationToken ct = default)
@@ -177,4 +217,7 @@ public sealed partial class GitHubClient(HttpClient http)
 
     [GeneratedRegex("<([^>]+)>;\\s*rel=\"next\"")]
     private static partial Regex NextRel();
+
+    [GeneratedRegex("[?&]per_page=([0-9]+)")]
+    private static partial Regex PerPageParameter();
 }
