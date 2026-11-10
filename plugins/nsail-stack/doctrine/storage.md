@@ -1,0 +1,191 @@
+# Storage
+
+The object store: put, get, list and delete a named object, and say where one can be read,
+with a provider per protocol behind it. It is infrastructure with no domain — no entity, no
+table, and nothing it knows about what it holds — so it is the Stack's, and an archive, an
+attachment, an export or an uploaded file that needs somewhere to land uses the same door.
+
+---
+
+## The shape
+
+| Project | Holds |
+|---|---|
+| `NSail.Storage.Sdk` | the settings screen's messages and models, and `StorageNames` — nothing about objects |
+| `NSail.Storage.WebApi` | `StorageManager` (the outward API), `AddStore`, `IStorageProvider` (the seam), the sealed `StorageSettings` |
+| `NSail.Storage.Shared` | the settings screen |
+| `NSail.Storage.FileSystem` | a directory on the host's own disk |
+| `NSail.Storage.S3` | anything speaking the S3 REST API |
+| `NSail.Storage.Git` | a git repository |
+
+No `.Data` project: Storage keeps no entity of its own and the target rides a `NSail.Settings`
+row. The proof is `test/Stack/Storage/NSail.Storage.WebApi.Tests`, which needs no database, and the
+settings screen's is `NSail.Storage.Shared.Tests` beside it.
+
+## Rules
+
+- **`Stream` in, `Stream` out — never `byte[]`.** An archive larger than memory is neither
+  loaded nor buffered whole, and that is a test, not a promise
+  (`FileSystemStorageTests.WritesWhileTheSourceIsStillProducing`). A get hands back an open
+  read the caller disposes. That open read is shared for delete too (`FileShare.Delete`
+  alongside `FileShare.Read`), so a caller that reads and then deletes is never refused for
+  it — not that the two operating systems then agree: POSIX drops the name at once, Windows
+  leaves the delete pending until the read is disposed, and until then the key still
+  answers `List` and a `Put` on it still fails.
+- **No vendor word in the API.** `StorageTarget` is one flat vendor-free shape — address,
+  region, container, key pair, and a repository's branch and link template — and a provider
+  reads what it needs. That is what keeps the settings screen ONE form instead of one per
+  vendor, and it is a deliberate trade against a sealed opaque blob per provider, which would
+  have cost an Sdk and a Shared assembly each.
+- **`AddStorageWebApi` registers no provider.** Where a host may write is the app's decision,
+  asked for by name (`AddFileSystemStorage`, `AddS3Storage`, `AddGitStorage`), so a product
+  that must never write to a disk does not compose the one that can.
+- **Stores have names, and `default` is the one every install has.** A kit that keeps its
+  objects apart (reports in one place, backups in another) names its store with a constant and
+  declares it with `AddStore`; its code takes `[FromKeyedServices(name)] StorageManager`, and
+  the unkeyed manager is the default's. A name is a keyed service and not a type per store:
+  .NET's own keyed services are the standard, and a typed store can be built on a name, never
+  the other way. A name the host never declared is refused on the wire (`StorageNotDeclared`),
+  because the settings row keeps a slot per declared name and an undeclared slot is one no
+  consumer reads.
+- **A business's own target is a row; the install's is configuration.** One `StorageSettings`
+  row holds every store: its own fields are the default's, so a row saved before stores had
+  names still reads as the default, and `Stores` holds each other name's. A store resolves most
+  specific first — its own row slot, its own `StorageOptions` (`Storage:{name}`, passed to
+  `AddStore`), then the default's row and the default's `StorageOptions` (`Storage`, passed to
+  `AddStorageWebApi`). `StorageCredentialProvider` is that one seam, so every caller inherits
+  it, a name with no target of its own writes where the default writes, and a business that
+  never opened the settings screen still uploads a logo. An install that passes no options
+  stores nowhere until a row says otherwise; an app whose floor is the host's own disk says so by
+  name, with `AddFileSystemStorage`'s `OnDisk`, and names the directory its deploy mounts a
+  volume at. The install bounds what a row may name (`StorageGuardOptions`, passed to
+  `AddStorageWebApi`): a `file` container under its roots, an endpoint on its scheme and host
+  allow-list and off private addresses; save and test both refuse with a coded issue, and the
+  install's own targets are trusted. A provider named with no container is refused at startup, where a person is
+  looking, not at the first upload.
+- **A key is `<kind>/<tenant:N>/<leaf>`, and no kind is outside it.** The kind leads so one
+  container holds every kind without a collision; the tenant leads inside it because an object
+  store is the INSTALL's, not a tenant's — Storage guards a key against climbing out of its
+  container, and where the wall is the tenant column (SingleDb) it enforces the segment itself:
+  a key whose tenant segment is not the scope's is refused (`ObjectKeyOutsideTenant`), a `List`
+  answers only the scope's own objects, and a scope in no tenant reads nothing (`Get` is null,
+  `List` empty) and writes, deletes or links nothing (`NoTenantForStorage`) — the data stamp's
+  rule. `StorageManager.Key(kind, leaf)` builds a key in that shape.
+  One flat directory per tenant per kind, no deeper, so a copy that walks one level under
+  `<kind>/<tenant:N>` brings across everything the convention wrote. Under a tenancy mode whose
+  wall is not the column (MultiDb, None) the tenant segment is one zeroed guid, and that is
+  right: those hosts are one container per tenant already. Each kind that writes keys says its
+  shape in one place, and a scope that can name no tenant stores nothing rather than keying it
+  under nobody.
+- **A provider says where an object can be read, or that it cannot.** `Link` is computed from
+  the target and the key with no call to the store — S3 answers the path-style address, the
+  git provider answers its template, the filesystem null — and whether a reader is let in
+  there is the store's own access policy, not Storage's.
+- **The provider contract is frozen.** S3 and Git, the two vendors after the filesystem, have
+  shaped it; a change to `IStorageProvider` is a change to every provider and to the screen
+  that reads it.
+- **A key never escapes its container.** `StorageManager.Guard` is the one door every key
+  comes through, and the filesystem and git providers check the RESOLVED path behind it. The
+  git provider also refuses a `.git` segment at any depth and in any case: git skips it, so
+  the object would be dropped without a word. It also refuses a key that is, or passes
+  through, a symlink the committed tree holds (`KeyThroughSymlink`): it would write outside
+  the clone.
+- **The filesystem provider replaces atomically.** A put is copied to `.put-<32 hex>` beside
+  the key and renamed over it, so a cancel or a throwing source leaves the previous object and
+  no partial file; `List` skips exactly that name form. A process killed mid-put leaves its
+  staging file behind: it is garbage and safe to delete.
+- **`IsConfigured` answers the refusal before there is anything to put.** A caller that
+  queues the writing for later — a request filed now and written by a job — would otherwise
+  accept the ask, read a whole database and fail on its last line. It is false for both of
+  `Resolve`'s refusals, an install storing nowhere and a provider no host composed, because a
+  caller at the door can do nothing different about either.
+- **The credential is sealed with the key of the tenant it belongs to** (`KeyProtector`,
+  `NSail.Security`; `AddTenantKeys` reads one file per tenant). A tenant without a key makes the
+  seal throw. An open that cannot happen reads as an empty secret: the target is still
+  configured and a provider that signs with the secret refuses the write, so a stored secret
+  that no longer opens must be saved again. `AddStorageWebApi` does not register a
+  `KeyProtector` — the key is the host's — so a host that composes Storage without one fails by
+  name on first use rather than sealing under a key nobody chose.
+
+## The S3 provider
+
+Path-style addressing (`endpoint / container / key`), which every S3-compatible service
+serves, so one provider covers AWS, Cloudflare R2, MinIO and Backblaze. Region defaults to
+`auto`, which is what R2 documents.
+
+SigV4 is written here rather than taken from a vendor SDK: the whole of what an S3-compatible
+store asks of a caller is that signature, and pulling one vendor's client in would tie Storage
+to it to avoid ninety lines of HMAC. `S3SignatureTests` checks it against AWS's own published
+worked examples.
+
+Uploads declare `UNSIGNED-PAYLOAD` over https (a plaintext endpoint gets the payload hashed
+instead — the signature has nothing else to bind the body to). Both shapes are pinned in
+`S3TransportTests`, because that choice is the difference between a signature that binds the
+body and one that trusts the wire. The provider writes with a single PUT rather than S3's
+multipart upload, so the length has to be known before the first byte leaves and the object
+caps at 5 GiB; a non-seekable stream is refused out loud rather than half-written at the far
+end, and something generated on the fly is spooled to a seekable source first.
+
+**There is no wall-clock ceiling, and that is a decision.** `HttpClient`'s default would cut
+every send at 100 seconds — a clock that covers the whole body, so an object of any real size
+dies mid-transfer — so the registered client is given `Timeout.InfiniteTimeSpan`
+(`S3TransportTests.TheRegisteredClientCarriesNoWallClockCeiling` holds it). How long a
+transfer may take is the caller's to decide, through the `CancellationToken` all four verbs
+take.
+
+**What is proven and what is not.** What the provider BUILDS — the path-style address, the
+payload hash it declares, the body that follows it, the continuation it walks, the store's
+own XML refusal read back — is pinned offline in `S3TransportTests`, a stub transport behind
+a one-client `IHttpClientFactory` and no credential anywhere. What is NOT proven is whether a
+real store ACCEPTS what is built: that the socket connects, the TLS completes and AWS, R2 or
+MinIO answers the signature with a 200. Closing that needs a bucket and a credential from a
+deployed instance, and nothing smaller.
+
+## The Git provider
+
+The repository is `Endpoint/Container`, as S3's is, so one target names the server and the
+store names the repository. An object is a file at its key: a put or a delete is a commit pushed
+to `Branch`, a get or a list reads that branch's tree, and `Link` is the target's template with
+`{key}` replaced. It runs the host's `git` executable rather than carrying a library with a native
+binary, so composing it grants the host that executable and the remotes it can reach.
+
+Each verb works in a throwaway one-commit clone and keeps nothing between calls, so two hosts
+never share a checkout. Git runs with `core.symlinks=false`, so a checkout never materialises a
+link; the symlink check reads the committed tree, which holds on any platform. A write checks
+the branch out; a read fetches the tree without its files and then only the files it answers with — the key's for a get, those under the prefix for a list,
+whose lengths need them — so a small object costs no more in a large repository. A server that
+does not filter sends every file instead: slower, still right. A push the remote rejected because
+the branch moved is fetched and committed again a few times before it is refused.
+
+The credential travels in the environment of the one process, as an HTTP basic header scoped to
+the repository's origin, and never on a command line. git would carry that header on to wherever
+a redirect moved the address, so with a credential a redirect is refused, not followed: the call
+fails rather than hand the credential to an origin nobody configured. Its proof is
+`GitStorageTests`, against a bare repository on the local disk and loopback HTTP servers.
+
+## The settings screen
+
+`Configuración > Almacenamiento`, under Integraciones, wherever `AddStorageComponents()` is
+called (a product's Wasm composition root). It lists one row per declared store name
+(`ListStorageStores`), the default first, each with the target it resolves to now and whether
+that is the default's; a row opens that name's own form (`StorageStorePage`), where clearing
+Proveedor clears the name's row slot and nothing else — the name then resolves to its own
+`StorageOptions` when the host gave it one, and to the default only when it did not. A product
+parks the screen out of sight by leaving that one call out of both composition roots, which
+takes the route, the strings and the settings leaf with it, and keeps `AddStorageWebApi` for
+everything that still writes objects.
+The provider picker decides whether the address, the region and the key pair are asked for at
+all — `StorageProviderRef.IsRemote` is what the screen reads, and `IsRepository` for the
+branch and the link template. The secret key is never answered back: the read says only that
+one exists, and an empty field on save keeps it only while Provider, Endpoint and Container stay as they were — a moved target drops the stored secret, so it never travels to an origin the person did not set it for.
+
+The test action writes a small probe, reads it back, checks the bytes, lists it and removes
+it — against the name's **saved** target, because testing what the form currently holds would
+prove a configuration that exists in one browser.
+
+**A probe that fails is a refusal and answers nothing.** It carries no "did it work" flag: the
+install storing nowhere and a provider nobody composed are refused on `Provider`, which the
+screen renders as Proveedor and marks, and the probe's own verdicts carry a rule each and stand
+at the foot of the form — both drawn by the form the act is pressed inside, never as a toast
+that fades ([forms.md](ui/forms.md), *Placing a refusal*). Success is a `Notify`, which is news
+and not a refusal.

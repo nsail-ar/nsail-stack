@@ -4,6 +4,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NSail.Data;
 using NSail.Security;
 
@@ -23,16 +24,53 @@ namespace NSail.BaseServices.WebApi;
 // beside TenantStates.
 sealed class FeaturePublisher : IHostedService
 {
-    readonly IServiceScopeFactory _scopes;
+    const int Attempts = 3;
 
-    public FeaturePublisher(IServiceScopeFactory scopes)
+    readonly IServiceScopeFactory _scopes;
+    readonly ILogger<FeaturePublisher> _logger;
+
+    public FeaturePublisher(IServiceScopeFactory scopes, ILogger<FeaturePublisher> logger)
     {
         ArgumentNullException.ThrowIfNull(scopes);
+        ArgumentNullException.ThrowIfNull(logger);
 
         _scopes = scopes;
+        _logger = logger;
     }
 
+    // Advisory: the publish never stops the host. A rolling deploy starts two processes together,
+    // and the loser of a race on a key fails its save; it reads again, now seeing the winner's
+    // rows, and amends them, after a short wait. Whatever still fails is logged, and the next
+    // start publishes.
     public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= Attempts; attempt++)
+        {
+            try
+            {
+                await Publish(cancellationToken).ConfigureAwait(false);
+
+                return;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                if (attempt == Attempts)
+                {
+                    _logger.LogWarning(exception, "The declared features could not be published; startup continues without them.");
+
+                    return;
+                }
+
+                await Task.Delay(TimeSpan.FromMilliseconds(250 * attempt), cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    async Task Publish(CancellationToken cancellationToken)
     {
         await using var scope = _scopes.CreateAsyncScope();
 

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Bunit;
@@ -133,7 +132,7 @@ public sealed class NsTableRowClickableTests : BunitContext, IAsyncLifetime
     public void TheClickableClassIsTheOnlyThingThatPointsAtARow()
     {
         var rules = Regex
-            .Matches(VendorStylesheet(), @"([^{}]*)\{[^{}]*cursor:\s*pointer[^{}]*\}")
+            .Matches(VendorStylesheet.Read(), @"([^{}]*)\{[^{}]*cursor:\s*pointer[^{}]*\}")
             .Select(match => match.Groups[1].Value.Trim())
             .Where(selector => selector.Contains("mud-table-row", StringComparison.Ordinal))
             .ToList();
@@ -141,32 +140,18 @@ public sealed class NsTableRowClickableTests : BunitContext, IAsyncLifetime
         Assert.Equal([".mud-table-row-clickable"], rules);
     }
 
-    static string VendorStylesheet()
+    /// <summary>Known red (keyboard.md, Known reds): a clickable row is a bare tr with a click
+    /// handler, so Tab does not reach it and Enter does not open it. This pins what is drawn
+    /// today: the day a row gains a tab stop, this fails and the row goes.</summary>
+    [Fact]
+    public void AClickableRowIsNotATabStopYet()
     {
-        // Through the build's own static-asset manifest, not beside the assembly: the test host
-        // copies MudBlazor.dll into its output but none of the package's wwwroot, so the
-        // stylesheet is only ever where the manifest's content roots say it is.
-        var manifest = Path.Combine(
-            AppContext.BaseDirectory,
-            "NSail.Components.Mud.staticwebassets.runtime.json");
+        var cut = Render<RowClickTableHost>(parameters => parameters
+            .Add(p => p.RowClicked, EventCallback.Factory.Create<TestModel>(this, _ => { })));
 
-        Assert.True(File.Exists(manifest), $"The static asset manifest is missing: {manifest}");
-
-        using var document = JsonDocument.Parse(File.ReadAllText(manifest));
-
-        foreach (var root in document.RootElement.GetProperty("ContentRoots").EnumerateArray())
-        {
-            var css = Path.Combine(root.GetString()!, "MudBlazor.min.css");
-
-            if (File.Exists(css))
-            {
-                return File.ReadAllText(css);
-            }
-        }
-
-        Assert.Fail("MudBlazor.min.css was not found under any of the manifest's content roots.");
-
-        return string.Empty;
+        var rows = Rows(cut);
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, row => Assert.Null(row.GetAttribute("tabindex")));
     }
 
     static IReadOnlyList<IElement> Rows(IRenderedComponent<RowClickTableHost> cut)

@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="NSail.Harness" />
+    <Using Include="NSail.Harness.Board" />
+    <Using Include="NSail.Harness.Jobs" />
+    <Using Include="NSail.Harness.Locks" />
+    <Using Include="NSail.Harness.Planning" />
+    <Using Include="NSail.Harness.Repositories" />
+  </ItemGroup>
+
+  <!-- A whole crew's configuration, the shape a host ships: what the planner tests plan with. -->
+  <ItemGroup>
+    <None Include="harness-settings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Which PRs nsail-stack's review.yml reads and what verdict it decides on: the tests run the
+       script and read the workflow as they ship. -->
+  <ItemGroup>
+    <None Include="..\..\..\..\.github\review-reads.sh" Link="review-reads.sh" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\.github\workflows\review.yml" Link="review.yml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness\NSail.Harness.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.GitHub\NSail.Harness.GitHub.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.OpenObserve\NSail.Harness.OpenObserve.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.Claude\NSail.Harness.Claude.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.Hosting\NSail.Harness.Hosting.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -14,9 +14,8 @@ namespace NSail.Components.Tests;
 
 /// <summary>nsail#605, the scroll branch that took the whole screen down on a phone. Two facts
 /// are pinned: the branch renders every accumulated row (it carries no pager, so nothing may
-/// slice the list it was handed), and neither of its two interop paths — the scroll listener
-/// and the viewport subscription — may let an exception out of OnAfterRenderAsync, where
-/// NsErrorBoundary would take @Body and the page header with it.</summary>
+/// slice the list it was handed), and its scroll listener may not let an exception out of
+/// OnAfterRenderAsync, where NsErrorBoundary would take @Body and the page header with it.</summary>
 public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
 {
     public NsTableScrollTests()
@@ -85,16 +84,20 @@ public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
     // that ONE declaration: the container's own overflow stays, because a box whose height is its
     // rows' has nothing to scroll and the two axes cannot be set apart (measured, nsail#2595).
     // Read off the file the app ships, like NsTablePagerShrinkTests, since bUnit paints nothing.
+    // Two queries stack a table — the vendor's window and, on a wide one, the container — so
+    // the release sits in each and nowhere else.
     [Fact]
-    public void TheStylesheetReleasesTheStackedPagedGridOnlyUnderTheVendorsStackingQuery()
+    public void TheStylesheetReleasesTheStackedPagedGridOnlyUnderTheStackingQueries()
     {
         var rules = StackedPagedRules(HouseStylesheet.Read());
 
-        var rule = Assert.Single(rules);
+        Assert.Equal(["@media (max-width: 960px)", "@container (max-width: 739.98px)"], rules.Select(rule => rule.Query));
 
-        Assert.Equal("@media (max-width: 960px)", rule.Query);
-        Assert.Contains("min-height: auto;", rule.Body, StringComparison.Ordinal);
-        Assert.DoesNotContain("overflow", rule.Body, StringComparison.Ordinal);
+        foreach (var rule in rules)
+        {
+            Assert.Contains("min-height: auto;", rule.Body, StringComparison.Ordinal);
+            Assert.DoesNotContain("overflow", rule.Body, StringComparison.Ordinal);
+        }
     }
 
     /// <summary>Every rule whose selector names the stacked paged grid, each with the at-rule it
@@ -157,17 +160,18 @@ public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void AViewportServiceThatThrowsLeavesTheTableStanding()
+    public void AnAutoTableNeverAsksTheViewport()
     {
-        Services.AddScoped<IBrowserViewportService, ThrowingViewportService>();
+        var viewport = new RecordingViewportService();
+        Services.AddScoped<IBrowserViewportService>(_ => viewport);
 
         var cut = Render<ScrollTableHost>(parameters => parameters.Add(p => p.Mode, NsTableMode.Auto));
 
-        // A viewport nobody can measure costs the measurement and nothing else: the branch was
-        // decided by the device seam before any of this, so the pager is there and so is the
-        // table, which is what "degrades" has to mean.
+        // Auto's branch is the device seam's answer, never the window's: off a phone the pager
+        // is drawn with its rows, and nothing was measured to get there.
         Assert.NotEmpty(cut.FindAll(".ns-table .mud-table-pagination"));
         Assert.NotEmpty(cut.FindAll(".ns-table .mud-table-body tr"));
+        Assert.Equal(0, viewport.Asked);
     }
 
     sealed class ThrowingScrollListenerFactory : IScrollListenerFactory
@@ -183,8 +187,10 @@ public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
         }
     }
 
-    sealed class ThrowingViewportService : IBrowserViewportService
+    sealed class RecordingViewportService : IBrowserViewportService
     {
+        public int Asked { get; private set; }
+
         public ResizeOptions ResizeOptions
         {
             get { return new ResizeOptions(); }
@@ -192,16 +198,22 @@ public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
 
         public Task SubscribeAsync(IBrowserViewportObserver observer, bool fireImmediately = true)
         {
+            Asked++;
+
             throw new InvalidOperationException("no browser to measure");
         }
 
         public Task SubscribeAsync(Guid observerId, Action<BrowserViewportEventArgs> lambda, ResizeOptions? options = null, bool fireImmediately = true)
         {
+            Asked++;
+
             throw new InvalidOperationException("no browser to measure");
         }
 
         public Task SubscribeAsync(Guid observerId, Func<BrowserViewportEventArgs, Task> lambda, ResizeOptions? options = null, bool fireImmediately = true)
         {
+            Asked++;
+
             throw new InvalidOperationException("no browser to measure");
         }
 
@@ -232,11 +244,15 @@ public sealed class NsTableScrollTests : BunitContext, IAsyncLifetime
 
         public Task<Breakpoint> GetCurrentBreakpointAsync()
         {
+            Asked++;
+
             throw new InvalidOperationException("no browser to measure");
         }
 
         public Task<BrowserWindowSize> GetCurrentBrowserWindowSizeAsync()
         {
+            Asked++;
+
             throw new InvalidOperationException("no browser to measure");
         }
 

@@ -21,8 +21,8 @@ namespace NSail.Components.Tests;
 /// the app, which this door never does.</summary>
 public sealed class NsNavMenuExternalEntryTests : BunitContext, IAsyncLifetime
 {
-    // The drawer draws a tooltip (the "?" door), and the vendor's popover service behind one is
-    // IAsyncDisposable only — a synchronous dispose of the container throws on it.
+    // The vendor's popover service AddMudServices registers is IAsyncDisposable only — a
+    // synchronous dispose of the container throws on it.
     Task IAsyncLifetime.InitializeAsync()
     {
         return Task.CompletedTask;
@@ -36,7 +36,6 @@ public sealed class NsNavMenuExternalEntryTests : BunitContext, IAsyncLifetime
     IRenderedComponent<NsNavMenu> RenderMenu(NavMenuItem entry)
     {
         Services.AddMudServices(config => config.PopoverOptions.CheckForPopoverProvider = false);
-        Services.AddSingleton<DialogManager>(new CountingDialogManager());
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();

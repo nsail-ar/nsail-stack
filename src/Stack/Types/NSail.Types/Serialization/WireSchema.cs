@@ -40,6 +40,16 @@ public static class WireSchema
 
     static JsonNode Transform(JsonSchemaExporterContext context, JsonNode schema)
     {
+        // A converter-written type has no schema of its own; these travel as strings.
+        var type = Nullable.GetUnderlyingType(context.TypeInfo.Type) ?? context.TypeInfo.Type;
+
+        if (type == typeof(long) || type == typeof(ulong) || type == typeof(decimal))
+        {
+            var nullable = Nullable.GetUnderlyingType(context.TypeInfo.Type) is not null;
+
+            return new JsonObject { ["type"] = nullable ? new JsonArray("string", "null") : "string" };
+        }
+
         // The attribute sits on the property, but the required list belongs to the object
         // that declares it, so the type's own node is where its properties are swept.
         if (context.PropertyInfo is not null || context.TypeInfo.Kind != JsonTypeInfoKind.Object || schema is not JsonObject node)

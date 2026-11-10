@@ -3,6 +3,8 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using NSail.SourceGenerator.Generation;
 using NSail.SourceGenerator.Generation.Http.Models;
@@ -54,7 +56,7 @@ static class SdkReader
         {
             var model = HttpModelFactory.Create(holder, compilation, "ClientParameters");
 
-            if (model.Diagnostics.FirstOrDefault(d => d.Severity == DiagnosticSeverity.Error) is { } error)
+            if (model.HolderDiagnostics.Concat(model.Diagnostics).Select(d => d.ToDiagnostic()).FirstOrDefault(d => d.Severity == DiagnosticSeverity.Error) is { } error)
             {
                 throw new SdkReadException($"{error.Id}: {error.GetMessage(CultureInfo.InvariantCulture)}");
             }
@@ -113,7 +115,7 @@ static class SdkReader
 
     static MessageShape ReadMessage(Compilation compilation, MessageModel message, MetadataKeys metadata, TypeCatalog catalog)
     {
-        var type = compilation.GetTypeByMetadataName($"{message.MessageType.Namespace}.{message.MessageType.ClassName}")
+        var type = compilation.GetTypeByMetadataName(message.MessageType.MetadataName)
             ?? throw new SdkReadException($"'{message.MessageType.Declaration}' cannot be resolved in {compilation.AssemblyName}.");
 
         var fields = new List<FieldShape>();
@@ -161,6 +163,30 @@ static class SdkReader
         return null;
     }
 
+    // Constructs .NET reads and JavaScript does not: inline options, \A \z \Z \G anchors, atomic
+    // groups, possessive quantifiers, character-class subtraction (a `-[` inside an open class).
+    static readonly Regex DotNetOnly = new(
+        @"\(\?[imnsx-]+[:)]|\\[AzZG]|\(\?>|(?<!\\)[*+?}]\+|\[[^\]]*-\[",
+        RegexOptions.CultureInvariant);
+
+    static string RuleName(INamedTypeSymbol attribute)
+    {
+        return attribute.Name.EndsWith("Attribute", StringComparison.Ordinal) ? attribute.Name[..^"Attribute".Length] : attribute.Name;
+    }
+
+    static FieldShape WithPattern(FieldShape field, INamedTypeSymbol message, IPropertySymbol property, string pattern, string rule, List<string> serverRules)
+    {
+        if (!DotNetOnly.IsMatch(pattern))
+        {
+            return field with { Pattern = pattern };
+        }
+
+        Console.Error.WriteLine($"warning NSTS002: {message.Name}.{property.Name} has a [RegularExpression] with a construct only .NET reads; only the server checks it");
+        serverRules.Add(rule);
+
+        return field;
+    }
+
     static FieldShape ReadField(
         INamedTypeSymbol message,
         IPropertySymbol property,
@@ -168,7 +194,11 @@ static class SdkReader
         MetadataKeys metadata,
         TypeCatalog catalog)
     {
-        var field = new FieldShape(TypeCatalog.WireName(property), metadata.KeyFor(message, property.Name), catalog.Describe(property.Type))
+        // The endpoint reads a route, query or header member by its lowered property name; only the body honours [JsonPropertyName].
+        var wireName = binding.Source != "body" && TypeCatalog.WireName(property) != JsonNamingPolicy.CamelCase.ConvertName(property.Name)
+            ? property.Name.ToLowerInvariant()
+            : TypeCatalog.WireName(property);
+        var field = new FieldShape(wireName, metadata.KeyFor(message, property.Name), catalog.Describe(property.Type))
         {
             Binding = binding.Source,
         };
@@ -187,7 +217,7 @@ static class SdkReader
             // sentence the server never answers.
             if (attribute.AllInterfaces.Any(i => i.ToDisplayString() == CodedValidation) || Construct(data) is not { } rule)
             {
-                serverRules.Add(attribute.Name.EndsWith("Attribute", StringComparison.Ordinal) ? attribute.Name[..^"Attribute".Length] : attribute.Name);
+                serverRules.Add(RuleName(attribute));
 
                 continue;
             }
@@ -206,7 +236,7 @@ static class SdkReader
                 EmailAddressAttribute => field with { Format = "email" },
                 PhoneAttribute => field with { Format = "phone" },
                 UrlAttribute => field with { Format = "url" },
-                RegularExpressionAttribute pattern => field with { Pattern = pattern.Pattern },
+                RegularExpressionAttribute pattern => WithPattern(field, message, property, pattern.Pattern, RuleName(attribute), serverRules),
                 _ => field,
             };
         }

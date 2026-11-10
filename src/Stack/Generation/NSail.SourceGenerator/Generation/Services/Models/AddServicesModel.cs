@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Services.Models;
 
-public class AddServicesModel
+public record AddServicesModel : GeneratedModel
 {
     public string? Namespace { get; set; }
 
@@ -15,5 +15,5 @@ public class AddServicesModel
 
     public string? MethodDeclaration { get; set; }
 
-    public List<InjectableModel> Injectables { get; } = new();
+    public EquatableList<InjectableModel> Injectables { get; set; } = new();
 }

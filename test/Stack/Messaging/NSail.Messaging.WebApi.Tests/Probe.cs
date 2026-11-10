@@ -41,6 +41,23 @@ public sealed class DeliveryProbeHandler : IHandler<ReadDelivery, string>
     }
 }
 
+// A body whose members the Wire writes as strings, echoed back as it was read.
+[Http(Method.Post, "api/probe/exact")]
+public sealed class EchoExact : IMessage<EchoExact>
+{
+    public long Id { get; set; }
+
+    public decimal Price { get; set; }
+}
+
+public sealed class EchoExactHandler : IHandler<EchoExact, EchoExact>
+{
+    public Task<EchoExact> Handle(EchoExact message, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(message);
+    }
+}
+
 // The real generated code on both ends of the hop: the endpoints the host maps and the senders
 // the caller sends through are the ones every kit ships, emitted from the same templates.
 public static partial class Wire

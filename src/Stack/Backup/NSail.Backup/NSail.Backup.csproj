@@ -5,6 +5,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<InternalsVisibleTo Include="NSail.Backup.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\..\Data\NSail.Data\NSail.Data.csproj" />
 		<ProjectReference Include="..\..\Types\NSail.Types\NSail.Types.csproj" />
 	</ItemGroup>

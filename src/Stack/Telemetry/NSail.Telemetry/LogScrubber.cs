@@ -21,7 +21,8 @@ public sealed class LogScrubber : BaseProcessor<LogRecord>
     const string StackTag = "exception.stacktrace";
 
     // The message template, which is the record's body and the one string that travels: it is
-    // a literal at every call site, and CA2254 is what keeps it one.
+    // a literal at every call site, and CA2254 as an error (.editorconfig here, NSail.globalconfig in
+    // the NSail.Types package for products) is what keeps it one.
     const string Template = "{OriginalFormat}";
 
     public override void OnEnd(LogRecord data)

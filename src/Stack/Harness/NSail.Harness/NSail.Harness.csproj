@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>NSail.Harness</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Microsoft.Extensions.Logging" />
+    <Using Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Cronos" Version="0.13.0" />
+    <ProjectReference Include="../../Messaging/NSail.Messaging.WebApi/NSail.Messaging.WebApi.csproj" />
+    <ProjectReference Include="../../Injection/NSail.Injection.Annotations/NSail.Injection.Annotations.csproj" />
+    <ProjectReference Include="../../Types/NSail.Types/NSail.Types.csproj" />
+    <ProjectReference Include="../../Generation/NSail.SourceGeneration.Annotations/NSail.SourceGeneration.Annotations.csproj" />
+    <ProjectReference Include="../../Generation/NSail.SourceGenerator/NSail.SourceGenerator.csproj" OutputItemType="Analyzer" PrivateAssets="all" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\NSail.Harness.Sdk\NSail.Harness.Sdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="NSail.Harness.Tests" />
+  </ItemGroup>
+
+</Project>

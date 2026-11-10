@@ -2,14 +2,15 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
+@implements IAsyncDisposable
 
-@* NsHelp's own mechanism (nsail#182) — an icon that carries a paragraph nothing else on the
+@* NsHelp's own mechanism — an icon that carries a paragraph nothing else on the
    row has room for, unloaded from the document until asked for, dismissed the same three ways
    — generalized for a caller whose text is not one fixed translation key: a per-row fact
-   (nsail#679-sibling, "Solo quedan {0} en stock") that changes with the data, and an icon that
+   ("Solo quedan {0} en stock") that changes with the data, and an icon that
    is not always the Help glyph. NsHelp keeps its own single-parameter contract (its own test
    guards it); this is the sibling for everyone else. *@
-<span class="ns-help d-inline-flex align-center @Class" @onkeydown="OnKeyDown">
+<span class="ns-help d-inline-flex align-center @Class" @onkeydown="OnKeyDown" @onkeydown:stopPropagation="_open">
     <NsButton As="@NsAs.Inline" Breakpoint="NsBreakpoint.Never"
               Icon="@Icon"
               Size="@NsSize.Sm"
@@ -22,6 +23,7 @@
         <MudPopover Open="true"
                     AnchorOrigin="@Origin.BottomLeft"
                     TransformOrigin="@Origin.TopLeft"
+                    Style="@($"z-index:{SurfaceContext.VendorZIndex}")"
                     Class="ns-help-popover">
             <div class="ns-help-text">@Text</div>
         </MudPopover>
@@ -36,6 +38,9 @@
 @code {
 
     bool _open;
+
+    [CascadingParameter]
+    EscapeHolds? Holds { get; set; }
 
     [Parameter, EditorRequired]
     public Glyph Icon { get; set; }
@@ -64,6 +69,19 @@
         if (args.Key == "Escape")
         {
             Close();
+        }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return Holds?.Set(this, _open) ?? Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Holds is not null)
+        {
+            await Holds.Set(this, false);
         }
     }
 }

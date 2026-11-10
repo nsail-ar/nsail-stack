@@ -1,6 +1,6 @@
 ---
 name: new-icon
-description: Add an icon to an NSail icon catalog (NsIcons, a kit's like ProductsIcons, an app's like OpticalIcons, or a Stack library's own like ExportingIcons) from a Material Symbols path. Use when a screen, menu entry, button or field needs a glyph no catalog carries yet, instead of reaching for Icons.Material.*, or when a pasted icon renders as nothing or a dot. Covers the 20px asset, the 960-grid viewBox transform, catalog choice, one drawing per entry and icon sizing.
+description: Add an icon to an NSail icon catalog (NsIcons, a kit's or app's like ProductsIcons or OpticalIcons, a Stack library's own) from a Material Symbols path. Use when a screen, menu entry, button or field needs a glyph no catalog has, instead of Icons.Material.*, or when a pasted icon renders as nothing or a dot. Covers the 960-grid viewBox transform, catalog choice and sizing.
 ---
 
 # Adding an icon
@@ -71,6 +71,11 @@ why.
 **Gotcha**: the **24px optical size** is the 960 grid too, so it renders — heavier. Nothing
 fails, and the glyph reads a stroke thicker than the card beside it. The optical size is not
 visible in the markup; only the URL it was fetched from says which one it is.
+
+**Gotcha**: `Glyph` keeps only what `SvgSanitizer` allows, silently. A brand mark exported with
+«Internal CSS» (`class` + `<style>`), a `style="fill:…"` attribute, or `<symbol>`/`<use xlink:href>`
+loses its fills or its references and draws black or nothing: write the fills as `fill`/`stroke`
+attributes and inline each shape (`ui/styling.md`, inlined SVG).
 
 ## Sizing is set once, not per icon
 

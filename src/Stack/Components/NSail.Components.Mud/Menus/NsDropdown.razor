@@ -1,0 +1,128 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@using Microsoft.AspNetCore.Components.Forms
+@implements IAsyncDisposable
+
+@* The host decides when it is open (a field typed into, a key pressed); the panel hangs under
+   the anchor in the anchor's own width at least, and scrolls past its bound. It is the vendor's
+   popover and not a box inside the wrapper: drawn inside, it would be clipped by NsPanel's
+   scrolling content and grow its scrollable area, and nothing would turn it over where the
+   room under the field runs out. The panel writes no role — the rows are the host's. *@
+@* While open the wrapper says so (data-ns-dropdown-open), which ns.js reads the way it reads
+   a combobox's aria-expanded: the field the host drew cannot be handed that attribute from
+   here, and Enter and the arrows belong to the list all the same. While open the wrapper also
+   stops the key events it hears, so the Escape that closes the list never reaches the surface
+   around it; Enter and the arrows are ns.js's native listeners, which that stop does not touch. *@
+<div class="ns-dropdown @Class"
+     data-ns-dropdown-open="@(Open ? "true" : null)"
+     @onkeydown="OnKeyDown"
+     @onkeydown:stopPropagation="Open">
+    @Anchor
+
+    @if (Open)
+    {
+        <MudPopover Open="true"
+                    AnchorOrigin="@Origin.BottomLeft"
+                    TransformOrigin="@Origin.TopLeft"
+                    RelativeWidth="DropdownWidth.Adaptive"
+                    OverflowBehavior="OverflowBehavior.FlipOnOpen"
+                    MaxHeight="NsMenu.Measure"
+                    Style="@($"z-index:{SurfaceContext.VendorZIndex}")"
+                    Class="ns-dropdown-panel">
+            @* The popover renders under the provider, a sibling of the router, and a
+               CascadingValue provides where it RENDERS: this is the one component standing on
+               both sides of the portal, so it carries across what a row asks of the page. *@
+            <CascadingValue Value="Surface" IsFixed="true">
+                <CascadingValue Value="ParentDisabled" Name="ParentDisabled">
+                    <CascadingValue Value="ParentReadOnly" Name="ParentReadOnly">
+                        <CascadingValue Value="EditContext">
+                            <div class="ns-dropdown-body" @onkeydown="OnKeyDown">
+                                @ChildContent
+                            </div>
+                        </CascadingValue>
+                    </CascadingValue>
+                </CascadingValue>
+            </CascadingValue>
+        </MudPopover>
+
+        @* The popover draws no catcher of its own, and anything that opens owes a click
+           elsewhere a way back out; one tier under the popover ceiling, as NsHelp pairs it. The
+           panel names its own tier: the vendor script reads the popover tier before the theme
+           writes it and seats the panel at its default, under this catcher, where the first
+           click on a row lands on the catcher and closes the panel instead. *@
+        <MudOverlay Visible="true"
+                    LockScroll="false"
+                    ZIndex="@(SurfaceContext.VendorZIndex - 1)"
+                    OnClick="Close" />
+    }
+</div>
+
+@code {
+
+    [CascadingParameter]
+    SurfaceContext? Surface { get; set; }
+
+    [CascadingParameter]
+    EscapeHolds? Holds { get; set; }
+
+    [CascadingParameter(Name = "ParentDisabled")]
+    bool ParentDisabled { get; set; }
+
+    [CascadingParameter(Name = "ParentReadOnly")]
+    bool ParentReadOnly { get; set; }
+
+    [CascadingParameter]
+    EditContext? EditContext { get; set; }
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The field the panel hangs under.</summary>
+    [Parameter]
+    public RenderFragment? Anchor { get; set; }
+
+    /// <summary>What the panel holds, rendered only while open.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    async Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await Close();
+        }
+    }
+
+    async Task Close()
+    {
+        if (!Open)
+        {
+            return;
+        }
+
+        Open = false;
+        await OpenChanged.InvokeAsync(false);
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return Holds?.Set(this, Open) ?? Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Holds is not null)
+        {
+            await Holds.Set(this, false);
+        }
+    }
+}

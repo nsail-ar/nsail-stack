@@ -162,7 +162,7 @@ whole* makes (`Menu.cs`, a root `Cards.cs`, `Onboarding.cs`, `Skills.cs`). How t
 
 ## Setup
 
-A kit or app project's local composition entry point is named by **the capability the project contributes**, never by its segment plus `Setup` — the file names and the shadowing rule that constrains them are the table in [naming.md](naming.md), which this file does not repeat. Stack projects have a single setup each and no ambiguity to resolve, so they stay at plain `Setup.cs`.
+A kit or app project's local composition entry point is named by **the capability the project contributes**, never by its segment plus `Setup` — the file names and the shadowing rule that constrains them are the table in [naming.md](naming.md), which this file does not repeat. A Stack project that contributes one thing has a single setup and no ambiguity to resolve, so it stays at plain `Setup.cs`. A Stack area split into Sdk, WebApi and Shared segments (Storage) carries messages, handlers and screens like a kit, so those segments follow the same table; a provider project beside them (`NSail.Storage.S3`) contributes one thing, so it stays at `Setup.cs`, as `NSail.Exporting.Excel` does.
 
 The class matches the file and the method keeps naming the kit: `public static class Persistence` in `Persistence.cs`, holding `AddIamData`. `Configuration`, `ModuleConfiguration` and `ServiceRegistration` are the mechanism words the rule exists to keep out.
 

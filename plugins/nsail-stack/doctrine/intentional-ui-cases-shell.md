@@ -163,8 +163,9 @@ state and none of them survives being drawn inside the control it names:
   area for as long as it shows — which is the page gaining a scrollbar on hover (nsail#2197). A
   top-layer element is in no scroll box at all.
 - **Only after a steady dwell.** `WHISPER_DELAY` in `ns.js` is 2.5 s and is the whole of the
-  bubble's timing, for every control in the house: a name that opens on the way past is noise.
-  It closes on leave, press, key, scroll and resize, and the keyboard takes the same dwell —
+  bubble's timing under a pointer or a keyboard, for every control in the house: a name that opens
+  on the way past is noise. The one exception is a finger's tap on an `NsChip`, which opens at once
+  (below). It closes on leave, press, key, scroll and resize, and the keyboard takes the same dwell —
   `:focus-visible` is what tells a keyboard's focus from the one a press leaves behind, so a
   button still focused after its own click does not re-open its name over what the click opened.
 
@@ -190,6 +191,23 @@ not the CSS's: a disabled control receives hover and never a press, a focus or a
 response that would have outlived both is the vendor's ripple, a document-level `pointerdown` over
 whatever carries its class, so **a refused face declares no ripple**.
 
+**On touch, an `NsChip`'s sentence opens on the tap.** A finger has no hover, so the dwell is a
+pointer's and a tap is not one: a chip declares `data-ns-whisper-tap`, and a tap on it opens the
+same bubble at once — the toggletip (WAI-ARIA APG), where the first touch shows what a hover
+would. Touch is the press's own `pointerType`, never `(pointer: coarse)`, so a touchscreen laptop
+driven by a mouse keeps the dwell. When the chip has an `Href`, the first tap does not navigate —
+the sentence would go before it was read — and the bubble's sentence is a link to that `Href`,
+which is the one bubble that takes hits. It is read rather than glanced at, so it takes the body's
+size, and the link fills the whole bubble at the touch floor: a finger in its padding reaches the
+link instead of closing the sentence. A second tap on the chip or a tap outside closes it, as do
+a key, a scroll and a resize; a tap inside it closes it after its link runs. The chip's close
+button is never the tap, and the double cartel gates the tap as it gates the dwell: a chip whose
+sentence is its text navigates as it always did. Because a bubble is never the only copy, the
+chip's accessible name says it too — the visible `Text`, then the sentence (WCAG 2.5.3, Label in
+Name), or the sentence alone where it already opens with the text. A chip with no `Href` is the
+vendor's bare `div`, which no browser names, so it takes `role="group"` to carry that name. The
+tap is `NsChip`'s alone: every other face keeps "hover is a pointer's" ([ui/actions.md](ui/actions.md)).
+
 What is left to `ns-mud.css` is the look, once (`.ns-whisper`), read from the vendor tooltip's own
 variables so the bubble is the tooltip the house always had to the eye. A render test sees the
 declaration and no more: whether the browser paints it where it should is a browser's question,
@@ -214,13 +232,19 @@ and the bubble is drawn nowhere near the control, so there is nothing on the ele
 computation to fold in at all. This is not the double cartel either: that rule is one string shown
 twice, and the key is a second fact the visible word never carried — which is why a chorded
 control whispers where the word stays on screen (`NsSubmit`'s hero, the worded `NsClose`'s
-Cancelar, a chromed `NsButton` claiming a chord of its own) and a chordless one with its word on
-screen says nothing. Their word is a string via `NsSubmit.Label`/`NsClose.Label` (`ChildContent`
+Cancelar, a chromed `NsButton` claiming a chord of its own, a menu entry carrying a `Chord`) and
+a chordless one with its word on screen says nothing. Their word is a string via `NsSubmit.Label`/`NsClose.Label` (`ChildContent`
 cannot give one back) or `NsButton.Label` directly; the claim in `aria-keyshortcuts` is unchanged,
 so a reader announcing the chord once is still exactly once. `NsLink` and `NsPageLink` carry the
 same `Chord` for the door a screen offers (F2 on a record's Editar), and the worded ANCHOR carries
 no `aria-label` at all: its word is its whole name, with no generated content of its own to
 outrank.
+
+**The rule is an act's, and it ends at an `NsChip`'s sentence.** A key is a second fact about how
+to press a control, and a name that grew it stopped matching its own word. A chip's sentence is
+what the chip means, and on a reader or a phone the bubble is not there to say it, so it goes in
+the name after the visible `Text` (above). A role query for a chip that carries a sentence asks
+for the name's start (`Modo prueba` as a prefix), never for the bare word exactly.
 
 **A search box is the one control that draws its key.** It has no word to hover, so there is no
 bubble to carry one: `NsSearchField` paints the first key it claims inside the box at the
@@ -228,13 +252,16 @@ trailing edge (`.ns-search-key`, `aria-hidden`, and only while the box is empty)
 the convention every application that spends a chord on a search box follows. Never in the
 PLACEHOLDER — a placeholder is an input's name FALLBACK, so a key written there lands in the
 accessible name, nsail#2259 one layer up, and it moves a string every browser walk reaches the
-box by.
+box by. **While the mark is drawn the input gives up its room** (`.ns-search-keyed`, sized by
+the key's own length), so a placeholder in any language ends before the key and is cut with an
+ellipsis where the box is narrower than the sentence — which is also why the default is one word,
+`Common.Search`.
 
-## Ctrl+K is the drawer's own search, and "?" the door beside it
+## Ctrl+K is the drawer's own search, and "?" its Help group's first entry
 
 Both chords are the FRAME's and not a page's (nsail#2207): a screen that draws no header of its
 own still answers them, and a phone, where the drawer is closed, answers neither — the box and
-the door are both inside it, and a chord no live control declares does nothing.
+the entry are both inside it, and a chord no live control declares does nothing.
 
 - **Ctrl+K lands in the menu's search** (`NsSearchField.Map`, planted by `NsNavMenu`), and there
   is no second palette: the menu is the one list of where a session may go, permission gate
@@ -246,7 +273,12 @@ the door are both inside it, and a chord no live control declares does nothing.
   there first — plus what a module answered the term with (`INavMenuSearch`, under the matches
   and marked as entries: the records a session is looking FOR, which the map was never the list
   of) — plus, for a question neither lists an answer to, whatever the app put at the end of it.
-- **"?" opens a sheet of the claims on screen** (`NsKeySheet`, hosted through
+- **"?" presses *Ayuda > Atajos de Teclado*** — a command entry of the Stack's own Help group
+  (`HelpMenu`, ui/navigation.md), not a glyph on the box's row: a door the map can list is an
+  entry, so the search finds it and an app's own help stands beside it. The chord is claimed
+  outside the groups and the filter (ui/navigation.md, a leaf running a `Command`), so it answers
+  with the group shut and with a term in the box that filtered the entry away.
+- **The sheet lists the claims on screen** (`NsKeySheet`, hosted through
   `DialogManager.Open`, so Escape and the X close it through the guard everything else goes
   through). Its lines are read off the DOM at the instant the door is pressed (`nsapp.chords`) —
   each line the declaring control's own word, already in the install's language — and the three
@@ -287,7 +319,9 @@ there the key is the character the hand meant.
 
 - `container-type: inline-size` stops the element sizing itself from its content — safe on
   `NsPanel`/`NsCard` (flex columns taking width from the parent), exactly what would break a
-  `fit-content` element. Pick the node deliberately.
+  `fit-content` element. Pick the node deliberately — a vendor node most of all: the pager's
+  `.mud-table-pagination-toolbar` is one, safe because it is a block child of
+  `.mud-table-pagination` and already took its parent's width.
 - The stacked mobile layout outranking hidden columns is specificity, measured (WorkOrdersPage's
   saldos): `.mud-{bp}-table .mud-table-cell { display: flex }` (0-2-0) beats `.d-c-none`
   (0-1-0), so a hidden column reappeared as a card line. Fixed at the specificity the card needs,
@@ -295,10 +329,11 @@ there the key is the character the hand meant.
   (0-4-0), off by default once stacked, and a matching `.d-c-{bp}-table-cell` selector at the
   same weight nested in the same `@container` thresholds — written second, so it wins exactly when
   its own condition matches.
-- `MudTable.Breakpoint` is pure vendor CSS (`mud-sm-table` + a 960px media query), so *when the
-  table stacks* stays viewport-bound — porting those rules to `@container` means owning a copy of
-  vendor CSS. That copy is taken only for the case that has no other answer: a table with a row
-  OPEN, whose inputs never hide ([cases: hosts](intentional-ui-cases-hosts.md), *The open row
-  stacks where its container cannot seat it*). A table nobody is editing stacks by viewport alone.
+- `MudTable.Breakpoint` is pure vendor CSS (`mud-sm-table` + a 960px media query), so the
+  vendor's *when the table stacks* is viewport-bound — answering a container means owning a copy
+  of vendor CSS. That copy is taken, once, for every table on a wide window: hiding columns cannot
+  seat every list in an aside, and an open row's inputs never hide at all
+  ([cases: hosts](intentional-ui-cases-hosts.md), *A table stacks where its container cannot seat
+  it*).
 - No fallback needed: container queries ship in every browser since 2022–23; a browser without
   them ignores the rule and leaves labels visible.

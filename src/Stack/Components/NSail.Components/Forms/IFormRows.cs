@@ -25,8 +25,10 @@ interface IFormRow
     // document saves in one tap — and for a host with no row open at all. False means the row
     // refused, and the host owes the person that answer where they are looking: the submit returns
     // on a false having drawn nothing of its own, so a host that answers false mutely is a Guardar
-    // that does nothing (nsail#1029). The one mute false the doctrine allows is the Abort shape,
+    // that does nothing. The one mute false the doctrine allows is the Abort shape,
     // a "no" the person just gave (intentional-ui.md, Refusal placement) — the constraint is
-    // written where a host reads it, on RowEditEventArgs.Cancel.
+    // written where a host reads it, on RowEditEventArgs.Cancel. The other is a host whose Runner
+    // is busy: the row stays as it was and the save does not happen, since closing it would raise
+    // on a Runner that refuses a second run.
     Task<bool> Settle();
 }

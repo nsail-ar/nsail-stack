@@ -14,6 +14,45 @@ public enum OrderStatus
     Shipped
 }
 
+public enum NoStatus
+{
+}
+
+[Flags]
+public enum Perks
+{
+    None = 0,
+    Gift = 1,
+    Rush = 2
+}
+
+public class Extras
+{
+    [System.Text.Json.Serialization.JsonPropertyName("first-name")]
+    public string FirstName { get; set; } = string.Empty;
+
+    public Uri? Link { get; set; }
+
+    public Version Build { get; set; } = new();
+
+    public System.Text.Json.JsonElement Raw { get; set; }
+
+    public System.Text.Json.Nodes.JsonNode? Node { get; set; }
+
+    public System.Numerics.BigInteger Big { get; set; }
+
+    public Int128 Wide { get; set; }
+
+    public NoStatus Empty { get; set; }
+
+    public Perks Perks { get; set; }
+}
+
+[Http(Get, "api/shop/extras")]
+public class GetExtras : IMessage<Extras>
+{
+}
+
 public class OrderRow
 {
     public Guid Id { get; set; }
@@ -59,11 +98,28 @@ public class AddOrderLine : IMessage
     [NotNegative]
     public decimal Discount { get; set; }
 
+    [RegularExpression(@"^[A-Z]{2}-[0-9]{4}$")]
+    public string Code { get; set; } = string.Empty;
+
+    [RegularExpression(@"(?i)^[a-z]+$")]
+    public string Slug { get; set; } = string.Empty;
+
+    [RegularExpression(@"^\++$")]
+    public string Plus { get; set; } = string.Empty;
+
+    public long Batch { get; set; }
+
+    public ulong? Serial { get; set; }
+
     [EmailAddress]
     public string? NotifyEmail { get; set; }
 
     [AsQuery]
     public bool Preview { get; set; }
+
+    [AsQuery]
+    [System.Text.Json.Serialization.JsonPropertyName("page-size")]
+    public int PageSize { get; set; }
 
     [AsHeader]
     public string? Idempotency { get; set; }

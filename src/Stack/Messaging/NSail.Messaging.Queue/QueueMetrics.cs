@@ -25,8 +25,8 @@ public static class QueueMetrics
     /// <summary>One attempt failed and the row is due again after its backoff.</summary>
     public const string Failed = NSail.Background.BackgroundJobMetrics.Failed;
 
-    /// <summary>The row has failed <see cref="QueueOptions.MaxAttempts"/> times and will not
-    /// be attempted again — kept apart from <see cref="Failed"/> because a retry that will
+    /// <summary>The row has failed <see cref="QueueOptions.MaxAttempts"/> times and is not
+    /// attempted again until an operator requeues it — kept apart from <see cref="Failed"/> because a retry that will
     /// come back is a different alert from work the install has stopped doing.</summary>
     public const string DeadLettered = "dead-lettered";
 }

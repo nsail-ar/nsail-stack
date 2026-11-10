@@ -17,6 +17,36 @@ public static class Maps
         }
     }
 
+    /// <summary>The text read as a <typeparamref name="T"/> in the invariant culture; a text that
+    /// is none is the caller's invalid input, not a crash.</summary>
+    public static T ParseValue<T>(string text, string field)
+        where T : IParsable<T>
+    {
+        if (T.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var value))
+        {
+            return value;
+        }
+
+        throw Invalid(field);
+    }
+
+    /// <summary>The text read as an enum member, by name or number, ignoring case.</summary>
+    public static T ParseEnum<T>(string text, string field)
+        where T : struct, Enum
+    {
+        if (Enum.TryParse<T>(text, true, out var value))
+        {
+            return value;
+        }
+
+        throw Invalid(field);
+    }
+
+    static Exception Invalid(string field)
+    {
+        return NSail.Problems.InputProblem.For<object>().InvalidFormat(field);
+    }
+
     /// <summary>A new list of mapped items, in the source's order; null for no source. A list of
     /// plain values or objects has no identity to merge by, so it is rebuilt.</summary>
     public static async Task<List<TTarget>?> List<TSource, TTarget>(IEnumerable<TSource>? source, Func<TSource, Task<TTarget>> map)

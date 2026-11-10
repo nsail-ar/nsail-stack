@@ -72,6 +72,31 @@ public sealed class ServerBuildTests
         Assert.True(build.Moved);
     }
 
+    // An unstamped host answers `1.0.0+<sha>` and a developer's pair differs only in that sha:
+    // build metadata is not a different build.
+    [Fact]
+    public void TheSameVersionWithAnotherRevisionIsSilence()
+    {
+        var build = new ServerBuild();
+        var release = BuildVersion.Current.Split('+')[0];
+
+        build.Answered(release + "+aaaaaaa");
+        build.Answered(release + "+bbbbbbb");
+        build.Answered(release);
+
+        Assert.False(build.Moved);
+    }
+
+    [Fact]
+    public void AnotherVersionIsAMoveWhateverItsRevision()
+    {
+        var build = new ServerBuild();
+
+        build.Answered("9.9.9+aaaaaaa");
+
+        Assert.True(build.Moved);
+    }
+
     [Fact]
     public void TheBuildThisProcessRunsIsNeverBlank()
     {

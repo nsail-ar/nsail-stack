@@ -1,0 +1,122 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
+
+using NSail.Injection.Annotations;
+using NSail.Security;
+using NSail.Settings;
+using NSail.Storage.Objects;
+using NSail.Storage.Providers;
+using System.Security.Cryptography;
+
+namespace NSail.Storage.Settings;
+
+// The one place that knows the stored secret is protected. Reading and sealing live together
+// because they are the two ends of the same representation: splitting them is how a save
+// starts writing a shape the read no longer understands.
+[Injectable]
+public sealed class StorageCredentialProvider
+{
+    readonly SettingsManager _settings;
+    readonly KeyProtector _keys;
+    readonly StorageStores _stores;
+
+    public StorageCredentialProvider(SettingsManager settings, KeyProtector keys, StorageStores stores)
+    {
+        _settings = settings;
+        _keys = keys;
+        _stores = stores;
+    }
+
+    // The one seam a store falls back at, so every caller inherits it, most specific first: the
+    // name's own row, the install's target for the name, then the default store's row and the
+    // install's default (StorageOptions). An install that named none of them is still
+    // StorageTarget.None.
+    public async Task<StorageTarget> Get(string name, CancellationToken cancellationToken = default)
+    {
+        var settings = await _settings.Get<StorageSettings>(cancellationToken);
+
+        return Own(settings, name) ?? Own(settings, StorageNames.Default) ?? StorageTarget.None;
+    }
+
+    // Every name's target from one read of the row, each with whether it is the name's own
+    // rather than the default store's.
+    public async Task<List<(string Name, StorageTarget Target, bool Own)>> Get(IEnumerable<string> names, CancellationToken cancellationToken = default)
+    {
+        var settings = await _settings.Get<StorageSettings>(cancellationToken);
+        var fallback = Own(settings, StorageNames.Default) ?? StorageTarget.None;
+
+        return names
+            .Select(name => Own(settings, name) is { } own ? (name, own, true) : (name, fallback, false))
+            .ToList();
+    }
+
+    // The settings row that answers for the name, or null where the install's own target does:
+    // only a row is written by someone the install does not control.
+    public async Task<StorageTargetSettings?> Row(string name, CancellationToken cancellationToken = default)
+    {
+        var settings = await _settings.Get<StorageSettings>(cancellationToken);
+
+        foreach (var candidate in name == StorageNames.Default ? new[] { name } : new[] { name, StorageNames.Default })
+        {
+            if (settings.For(candidate) is { Provider.Length: > 0 } row)
+            {
+                return row;
+            }
+
+            if (_stores.Install(candidate)?.Target() is { Provider.Length: > 0 })
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    StorageTarget? Own(StorageSettings settings, string name)
+    {
+        var row = settings.For(name);
+
+        if (row.Provider is { Length: > 0 })
+        {
+            return new StorageTarget(
+                row.Provider.Trim(),
+                row.Endpoint?.Trim() ?? "",
+                row.Region?.Trim() ?? "",
+                row.Container?.Trim() ?? "",
+                row.AccessKey?.Trim() ?? "",
+                Unprotect(row.SecretKey),
+                row.Branch?.Trim() ?? "",
+                row.LinkTemplate?.Trim() ?? "");
+        }
+
+        var install = _stores.Install(name)?.Target();
+
+        return install is { Provider.Length: > 0 } ? install : null;
+    }
+
+    public string? Protect(string? secret)
+    {
+        return secret is { Length: > 0 } ? _keys.Protect(secret) : null;
+    }
+
+    string Unprotect(string? stored)
+    {
+        if (stored is not { Length: > 0 })
+        {
+            return "";
+        }
+
+        try
+        {
+            return _keys.Unprotect(stored);
+        }
+        catch (Exception exception) when (exception is FormatException or CryptographicException or MissingEncryptionKeyException)
+        {
+            // The secret was sealed under another key (a previous shared one, another tenant's)
+            // or the tenant has no key. It reads as an empty secret rather than throwing, which
+            // would take every reader down with it; the target is still accepted and a provider
+            // that signs with the secret refuses the write. Sealing is the loud side.
+            return "";
+        }
+    }
+}

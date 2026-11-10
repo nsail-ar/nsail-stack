@@ -30,9 +30,10 @@ public static class SecurityProblem
     }
 
     /// <summary>What a door open to the whole internet answers a caller who is asking too
-    /// often. It is not a refusal of the caller — it says nothing about whether they were
-    /// allowed, or whether what they asked for exists — so it is the one verdict here that a
-    /// second attempt, later, can turn into a different one.</summary>
+    /// often, and what a tenant past its request budget is answered. It is not a refusal of the
+    /// caller — it says nothing about whether they were allowed, or whether what they asked for
+    /// exists — so it is the one verdict here that a second attempt, later, can turn into a
+    /// different one.</summary>
     public static Problem TooManyRequests(string action)
     {
         return new(
@@ -42,7 +43,7 @@ public static class SecurityProblem
             {
                 new Issue(
                     code: "TooManyRequests",
-                    message: $"Too many requests for {action}. Wait a moment and try again",
+                    message: $"Too many requests for {action}. Wait a moment and retry",
                     source: action)
             },
             status: 429);

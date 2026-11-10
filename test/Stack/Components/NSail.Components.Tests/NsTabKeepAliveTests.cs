@@ -19,7 +19,7 @@ public sealed class NsTabKeepAliveTests : BunitContext
     public NsTabKeepAliveTests()
     {
         Services.AddMudServices();
-        Services.AddScoped<MudBlazor.IKeyInterceptorService, Fixtures.NoopKeyInterceptorService>();
+        Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddSingleton(new StringCatalog([]));
         Services.AddSingleton<LanguageProvider>();
         Services.AddSingleton<MetadataProvider>();

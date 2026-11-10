@@ -26,8 +26,10 @@ public sealed class PushStreams
     readonly Dictionary<string, List<Channel<string>>> _open = new(StringComparer.Ordinal);
 
     /// <summary>Holds one line open for <paramref name="audience"/>, handing every frame it owes
-    /// to <paramref name="write"/>, until the request it belongs to ends.</summary>
-    public async Task Hold(string audience, Func<string, CancellationToken, Task> write, CancellationToken cancellationToken)
+    /// to <paramref name="write"/>, until <paramref name="cancellationToken"/> ends it.
+    /// <paramref name="opened"/> runs once the line is registered, so whatever it announces to
+    /// the client cannot precede an event the line would receive.</summary>
+    public async Task Hold(string audience, Func<string, CancellationToken, Task> write, CancellationToken cancellationToken, Func<CancellationToken, Task>? opened = null)
     {
         ArgumentNullException.ThrowIfNull(write);
 
@@ -37,6 +39,11 @@ public sealed class PushStreams
 
         try
         {
+            if (opened is not null)
+            {
+                await opened(cancellationToken);
+            }
+
             while (true)
             {
                 string frame;

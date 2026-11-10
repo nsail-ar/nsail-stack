@@ -8,7 +8,8 @@
    handling at all. The wrapper is focusable and takes focus once, because the click that
    opened the surface left focus on the link that opened it — a handler on an element
    nothing inside has focused never sees the key. Closing goes through Surface.Close(), so
-   the unsaved-changes guard answers exactly as it does for the X. *@
+   the unsaved-changes guard answers exactly as it does for the X. Something open inside that
+   answers Escape itself stops the key while open, so this hears only the next one. *@
 <div class="@Class" tabindex="-1" @ref="_element" @onkeydown="OnKeyDown">
     @ChildContent
 </div>

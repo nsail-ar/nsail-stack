@@ -191,8 +191,8 @@ over the backdrop MudBlazor paints for it — the mobile degradation, not a leak
 
 On the main surface the page's title bar draws its own row and announces it. `NsTitleBar` — and
 `NsPageHeader`, which composes it — decides by where it lives: on main (`Surface.IsMain`) it draws
-the hamburger (below the drawer's breakpoint), the glyph/spinner slot, the title and the
-utilities, with no X, and announces its title, its derived glyph and its utility-actions
+the hamburger and, below the drawer's breakpoint, the install's brand while the drawer is
+shut, the glyph/spinner slot, the title and the utilities, with no X, and announces its title, its derived glyph and its utility-actions
 fragment to its surface (`SurfaceContext.Announce`). **Pages are unchanged** — the component
 decides by where it lives.
 
@@ -290,7 +290,8 @@ acts. A control that governs the subject
 *beside the acts on it* is neither: it rides `Actions`, at the row's right edge with them (no
 header in the tree carries such a control today). **The right side has one more seat, and no
 page fills it by hand**: the export trigger a list hands up, between the spacer and `Actions` so
-Exportar never competes with Nuevo for the row's room ([exporting.md](../exporting.md)). A page
+Exportar never competes with Nuevo for the row's room — or, when it is all the toolbar would
+hold, in the title row ahead of the `?` with no toolbar row ([exporting.md](../exporting.md)). A page
 that names `Search` for something nobody searches with reads false at the call site and is sized
 by a box it is not; a field laid out by hand in any of these slots takes `ns-field-slot`
 ([styling.md](styling.md)).

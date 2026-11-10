@@ -92,6 +92,94 @@ public sealed class NsPartialHandoffTests : BunitContext
         Assert.Equal(7, handoff.Read<ProbeAnswer>(Key)?.Count);
     }
 
+    /// <summary>One card drawn twice in one document is one key, and the state takes one
+    /// write per key: the prerender persists it once rather than throwing on the second copy,
+    /// which would empty every handoff of the page.</summary>
+    [Fact]
+    public async Task ACardDrawnTwicePersistsItsAnswerOnce()
+    {
+        var handoff = await Handoff.Empty();
+
+        Services.AddSingleton(handoff.State);
+
+        var cut = Render<HandoffProbePair>();
+
+        cut.WaitForAssertion(() => Assert.Equal(["7", "7"], cut.FindAll("#figure").Select(figure => figure.TextContent)));
+
+        await handoff.Manager.PersistStateAsync(handoff, Renderer);
+
+        Assert.Equal(7, handoff.Read<ProbeAnswer>(Key)?.Count);
+    }
+
+    /// <summary>The client half: the key is taken once, and the second copy adopts the same
+    /// answer instead of finding the key gone and reading again.</summary>
+    [Fact]
+    public async Task BothCopiesOfACardAdoptTheOneAnswer()
+    {
+        Services.AddSingleton((await Handoff.Carrying(Key, new ProbeAnswer { Count = 42 })).State);
+
+        var cut = Render<HandoffProbePair>();
+
+        Assert.Equal(0, _mediator.Sends);
+        Assert.Equal(["42", "42"], cut.FindAll("#figure").Select(figure => figure.TextContent));
+    }
+
+    /// <summary>An instance adopts once: asking again under the same key — a Reload, a Retry, a
+    /// saved event — is a re-read and sends, whatever another copy still holds.</summary>
+    [Fact]
+    public async Task ACardAskingAgainReadsForReal()
+    {
+        Services.AddSingleton((await Handoff.Carrying(Key, new ProbeAnswer { Count = 42 })).State);
+
+        var cut = Render<HandoffProbeCard>();
+
+        Assert.Equal("42", cut.Find("#figure").TextContent);
+
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.Equal("7", cut.Find("#figure").TextContent));
+
+        Assert.Equal(1, _mediator.Sends);
+    }
+
+    /// <summary>A copy that read again has outdated the arrival's answer: a copy mounted after it
+    /// sends rather than adopting what its sibling already read past.</summary>
+    [Fact]
+    public async Task ACardMountedAfterACopyReReadSendsToo()
+    {
+        Services.AddSingleton((await Handoff.Carrying(Key, new ProbeAnswer { Count = 42 })).State);
+
+        var pair = Render<HandoffProbePair>();
+        var copy = pair.FindComponents<HandoffProbeCard>()[0];
+
+        copy.Render();
+
+        copy.WaitForAssertion(() => Assert.Equal("7", copy.Find("#figure").TextContent));
+
+        var cut = Render<HandoffProbeCard>();
+
+        cut.WaitForAssertion(() => Assert.Equal("7", cut.Find("#figure").TextContent));
+
+        Assert.Equal(2, _mediator.Sends);
+    }
+
+    /// <summary>The shared answer lives as long as a copy holds it: a card mounted after every
+    /// copy is gone reads afresh rather than adopting the arrival's answer.</summary>
+    [Fact]
+    public async Task ACardMountedAfterTheCopiesAreGoneReadsAgain()
+    {
+        Services.AddSingleton((await Handoff.Carrying(Key, new ProbeAnswer { Count = 42 })).State);
+
+        Render<HandoffProbePair>();
+        await DisposeComponentsAsync();
+
+        var cut = Render<HandoffProbeCard>();
+
+        cut.WaitForAssertion(() => Assert.Equal("7", cut.Find("#figure").TextContent));
+
+        Assert.Equal(1, _mediator.Sends);
+    }
+
     /// <summary>The subject is what tells two instances of one card type apart, so a card about
     /// a party is handed its own party's answer and nobody else's.</summary>
     [Fact]

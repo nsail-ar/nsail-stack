@@ -24,11 +24,13 @@ public sealed class SecurityInterceptor<TMessage> : IInterceptor<TMessage>
 {
     readonly SecurityManager _security;
     readonly SessionProvider _sessions;
+    readonly SecurityOptions _options;
 
-    public SecurityInterceptor(SecurityManager security, SessionProvider sessions)
+    public SecurityInterceptor(SecurityManager security, SessionProvider sessions, SecurityOptions? options = null)
     {
         _security = security;
         _sessions = sessions;
+        _options = options ?? new SecurityOptions();
     }
 
     public async Task Invoke(TMessage message, PipelineDelegate<TMessage> next, CancellationToken cancellationToken)
@@ -46,6 +48,9 @@ public sealed class SecurityInterceptor<TMessage> : IInterceptor<TMessage>
         }
 
         var session = _sessions.Session;
+
+        StaleTicket.Guard(session, _options);
+
         var result = await _security.Authorize(message, session, cancellationToken).ConfigureAwait(false);
 
         if (!result.Allowed)
@@ -65,11 +70,13 @@ public sealed class SecurityInterceptor<TMessage, TResult> : IInterceptor<TMessa
 {
     readonly SecurityManager _security;
     readonly SessionProvider _sessions;
+    readonly SecurityOptions _options;
 
-    public SecurityInterceptor(SecurityManager security, SessionProvider sessions)
+    public SecurityInterceptor(SecurityManager security, SessionProvider sessions, SecurityOptions? options = null)
     {
         _security = security;
         _sessions = sessions;
+        _options = options ?? new SecurityOptions();
     }
 
     public async Task<TResult> Invoke(TMessage message, PipelineDelegate<TMessage, TResult> next, CancellationToken cancellationToken)
@@ -83,6 +90,9 @@ public sealed class SecurityInterceptor<TMessage, TResult> : IInterceptor<TMessa
         }
 
         var session = _sessions.Session;
+
+        StaleTicket.Guard(session, _options);
+
         var result = await _security.Authorize(message, session, cancellationToken).ConfigureAwait(false);
 
         if (!result.Allowed)
@@ -92,6 +102,23 @@ public sealed class SecurityInterceptor<TMessage, TResult> : IInterceptor<TMessa
         return await AmbientAuthorization
             .Vetting(new AmbientGrant(result.FieldsVetted, result.EveryOrganization), () => next(message, cancellationToken))
             .ConfigureAwait(false);
+    }
+}
+
+/// <summary>The ticket-epoch wall for a send. <c>TicketEpochMiddleware</c> stands on the HTTP
+/// request, and an open Blazor circuit's sends never pass it again: its session was built from
+/// the document request that opened it. Asked here, on every gated send, the cut reaches the
+/// circuit on its next send as the same 401 a stale ticket meets anywhere else.</summary>
+static class StaleTicket
+{
+    internal static void Guard(Session session, SecurityOptions options)
+    {
+        if (options.TicketEpoch != 0
+            && session is { IsAuthenticated: true, IsSystem: false }
+            && session.TicketEpoch != options.TicketEpoch)
+        {
+            throw new BusinessException(SecurityProblem.Unauthorized());
+        }
     }
 }
 

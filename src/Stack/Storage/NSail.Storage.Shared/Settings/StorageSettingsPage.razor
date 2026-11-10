@@ -1,0 +1,65 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/settings/storage"
+@namespace NSail.Storage.Settings
+
+@using NSail.Storage
+@using NSail.Storage.Settings
+@using NSail.Storage.Settings.Models
+
+@attribute [Authorize<SaveStorageSettings>]
+@inherits NsPage
+
+<NsPanel>
+    <Header>
+        <NsTitleBar Title="@GetTitle()" />
+    </Header>
+    <Content>
+        <NsLoad OnLoad="Load" @ref="_load">
+            <NsTable TRow="StorageStoreRow" Rows="_stores">
+                <HeaderContent>
+                    <NsTh For="() => context.Name" />
+                    <NsTh For="() => context.Provider" />
+                    <NsTh For="() => context.Container" Breakpoint="Sm" />
+                    <NsTh For="() => context.UsesDefault" Breakpoint="Sm" />
+                    <NsTh />
+                </HeaderContent>
+                <RowTemplate Context="row">
+                    <NsTd For="() => row.Name">@StorageNames.Display(row.Name, Translate("Storage.DefaultStore"))</NsTd>
+                    <NsTd For="() => row.Provider">@ProviderName(row.Provider)</NsTd>
+                    <NsTd For="() => row.Container">@row.Container</NsTd>
+                    <NsTd For="() => row.UsesDefault">@(row.UsesDefault ? "✓" : "")</NsTd>
+                    <NsTd>
+                        <NsActionToolbar Constant="@(GetLink<StorageStorePage>(NsIcons.Edit, new { name = row.Name }, Aside))" />
+                    </NsTd>
+                </RowTemplate>
+            </NsTable>
+        </NsLoad>
+    </Content>
+</NsPanel>
+
+@code {
+
+    List<StorageStoreRow> _stores = [];
+
+    List<StorageProviderRef> _providers = [];
+
+    NsLoad? _load;
+
+    protected override void OnCreated()
+    {
+        Subscribe<StorageStoreSaved>((_, _) => _load?.Reload() ?? Task.CompletedTask);
+    }
+
+    async Task Load(ReadEventArgs args)
+    {
+        _providers = await Send(new LookupStorageProviders(), args.CancellationToken);
+        _stores = await Send(new ListStorageStores(), args.CancellationToken);
+    }
+
+    string? ProviderName(string? type)
+    {
+        return _providers.FirstOrDefault(provider => provider.Type == type)?.DisplayName ?? type;
+    }
+}

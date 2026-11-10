@@ -29,7 +29,7 @@ public static class NamespaceSymbolExtensions
         {
             yield return typeSymbol;
 
-            foreach (var nestedTypeSymbol in typeSymbol.GetTypeMembers())
+            foreach (var nestedTypeSymbol in typeSymbol.GetNestedTypes())
             {
                 yield return nestedTypeSymbol;
             }

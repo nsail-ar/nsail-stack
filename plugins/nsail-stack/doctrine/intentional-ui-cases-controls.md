@@ -50,7 +50,8 @@ a footer Cancelar that went grey, and a press mid-save closes a surface whose sa
 running. The X's word travels up through the surface and back down into the title row
 (`SurfaceContext.FormRefuses` on its own `RefusalChanged`, `NsDialogExit`); Escape — the vendor's
 own handler, which never reaches `Surface.Close()` — is withdrawn for the length of the save by
-flipping `CloseOnEscapeKey` on the live dialog. **Escape answers the save, not the standing
+flipping `CloseOnEscapeKey` on the live dialog, and while something open inside answers Escape
+itself ([menus.md](ui/menus.md)). **Escape answers the save, not the standing
 refusal, on purpose**: the X greys for a merely `Disabled` form too, and a dialog has no backdrop
 click and no Back, so withdrawing Escape for a refusal with no end would leave no exit at all.
 Neither exit asks the unsaved-changes question: a dialog closes through its host, not a
@@ -289,15 +290,17 @@ that could not pay loses its own Confirmar. Below `md` one number cannot tell ro
 712px container Nuevo Asiento's row has 103px of slack while Nuevo Comprobante's is 52px past
 its table.
 
-**Below `md` the open row stacks; a width preference was rejected.** A `width` preference moves
-the column's max-content, never the table's min-content, so the row grants the basis out of its
-surplus: Cuenta went from a 35px box to 106px against a 76px account code, Producto stayed put,
+**Below `md` the open row seats its fields in its own width, and under 740px it stacks; a width
+preference was rejected.** A `width` preference moves the column's max-content, never the table's
+min-content, so the row grants the basis out of its surplus: Cuenta went from a 35px box to 106px against a 76px account code, Producto stayed put,
 and a two-column row was pulled back from 305px to 192. Not enough: in a 688px aside Precio
 unitario sat in a 56px box against 110px of "125.430,50" with every column already at its share.
 **An edit row has to fit** — hiding is per container but an input never hides (ui/hosts.md), so
-the open row is the widest thing a grid draws — and what fits under `md` is the stack
-([cases: hosts](intentional-ui-cases-hosts.md), *The open row stacks where its container cannot
-seat it*).
+the open row is the widest thing a grid draws — and what fits an aside is the stack
+([cases: hosts](intentional-ui-cases-hosts.md), *A table stacks where its container cannot seat
+it*). Between 740px and `md` the row stays a row of columns with no floor: that is a main page's
+list, whose line editor is handed the row's own width rather than a minimum one row could not
+pay.
 
 **Reach of the floor** (column mode, `md` and up): the product lookups in `SaleLinesEditor`,
 `PurchaseOrderLinesEditor`, `VoucherLinesEditor` and `PriceRulesEditor`, the `RoleLookup` in
@@ -371,7 +374,7 @@ which one, does not open it).
 
 On the Branding Logo tab, a field that rendered as a list because a second binding happened to
 be supplied was one component wearing two shapes — a logo tab, where the tabs ARE the variant
-split, read as a multi-file control. Hence: same parameters, and no parameter turns
+split, read as a multi-file control. Hence: same parameters (the list adds a selection total cap), and no parameter turns
 `NsFileUpload` into `NsMultiFileUpload`.
 
 ---

@@ -13,10 +13,10 @@
 @if (Offers(Action))
 {
     <NsButton As="@As"
-              Icon="@(_running ? NsIcons.Progress : Action?.Icon)"
+              Icon="@(Busy ? NsIcons.Progress : Action?.Icon)"
               Breakpoint="@Breakpoint"
-              Label="@(_running ? Strings.Translate("Common.Loading") : Action?.GetLabel(Strings, Metadata))"
-              Disabled="@(Disabled || _running || (Action?.Disabled ?? false))"
+              Label="@(Busy ? Strings.Translate("Common.Loading") : Action?.GetLabel(Strings, Metadata))"
+              Disabled="@(Disabled || Busy || (Action?.Disabled ?? false))"
               Class="@Class"
               Size="@Size"
               OnClick="HandleClick" />
@@ -58,20 +58,24 @@
     [CascadingParameter]
     IFormProblems? Form { get; set; }
 
-    // Holds the icon at NsIcons.Progress for as long as the call is in flight (nsail#1346):
+    // Holds the icon at NsIcons.Progress for as long as the call is in flight:
     // this is the one seam every contributed action's OnClick renders through, so the fix
     // lands here rather than per contributor. No Runner: the handler already runs through
     // one where that matters — NsPartial.GetAction wraps a host's own act, and a contributed
-    // OnClick reports its own refusals (WhatsAppTemplateSyncContributor) — so a second one
+    // OnClick reports its own refusals — so a second one
     // here would report the same refusal twice. The guard below is what a Runner's own
     // "already running" throw stands for elsewhere: Disabled keeps a re-entrant click from
     // reaching the vendor's button at all, and this is the fallback for whatever reaches
     // HandleClick anyway.
     bool _running;
 
+    // One face for both: the click this component is awaiting, and the work the page says is
+    // still going after it (ActionItem.Running).
+    bool Busy => _running || (Action?.Running ?? false);
+
     async Task HandleClick()
     {
-        if (Action?.OnClick is null || _running)
+        if (Action?.OnClick is null || Busy)
         {
             return;
         }

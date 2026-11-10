@@ -1,0 +1,27 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Web
+
+@* A hosted body holding two of the things that answer Escape themselves: a help, and a dropdown
+   the probe button opens the way a host's typing would. The dialog instance is exposed for the
+   test to read its live options off. *@
+<div class="dialog-escape-body">
+    <NsHelp Key="Common.Help" />
+    <button class="probe-open" @onclick="() => DropdownOpen = true">open</button>
+    <NsDropdown @bind-Open="DropdownOpen">
+        <Anchor><input class="field" /></Anchor>
+        <ChildContent><div class="row">one</div></ChildContent>
+    </NsDropdown>
+</div>
+
+@code {
+
+    bool DropdownOpen { get; set; }
+
+    [CascadingParameter]
+    public IMudDialogInstance? Dialog { get; set; }
+}

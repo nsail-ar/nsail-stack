@@ -78,6 +78,13 @@ sealed class TypeCatalog(MetadataKeys metadata)
         return described;
     }
 
+    const string Flags = "System.FlagsAttribute";
+
+    static bool IsFlags(INamedTypeSymbol type)
+    {
+        return type.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == Flags);
+    }
+
     static bool Ignored(IPropertySymbol property)
     {
         var ignore = property.GetAttributes().FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == JsonIgnore);
@@ -102,7 +109,10 @@ sealed class TypeCatalog(MetadataKeys metadata)
 
         if (type.TypeKind == TypeKind.Enum && type is INamedTypeSymbol enumeration)
         {
-            return new TsType(RegisterEnum(enumeration), "enum", Enum: enumeration.Name);
+            var enumName = RegisterEnum(enumeration);
+
+            // A [Flags] value is written as its names joined, which no union of single names covers.
+            return IsFlags(enumeration) ? new TsType(enumName, "string") : new TsType(enumName, "enum", Enum: enumeration.Name);
         }
 
         switch (type.SpecialType)
@@ -118,12 +128,15 @@ sealed class TypeCatalog(MetadataKeys metadata)
             case SpecialType.System_UInt16:
             case SpecialType.System_Int32:
             case SpecialType.System_UInt32:
+                return new TsType("number", "integer");
+            // Past 2^53 or 15 digits a JSON number is not exact in JavaScript: these travel as strings.
             case SpecialType.System_Int64:
             case SpecialType.System_UInt64:
-                return new TsType("number", "integer");
+                return new TsType("string", "bigint");
+            case SpecialType.System_Decimal:
+                return new TsType("string", "decimal");
             case SpecialType.System_Single:
             case SpecialType.System_Double:
-            case SpecialType.System_Decimal:
                 return new TsType("number", "number");
             case SpecialType.System_DateTime:
                 return new TsType("string", "datetime");
@@ -131,7 +144,7 @@ sealed class TypeCatalog(MetadataKeys metadata)
                 return new TsType("unknown", "unknown");
         }
 
-        switch (type.ToDisplayString())
+        switch (type.WithNullableAnnotation(NullableAnnotation.NotAnnotated).ToDisplayString())
         {
             case "System.Guid":
                 return new TsType("string", "guid");
@@ -143,6 +156,20 @@ sealed class TypeCatalog(MetadataKeys metadata)
                 return new TsType("string", "time");
             case "System.TimeSpan":
                 return new TsType("string", "duration");
+            case "System.Uri":
+            case "System.Version":
+                return new TsType("string", "string");
+            case "System.Numerics.BigInteger":
+            case "System.Int128":
+            case "System.UInt128":
+                return new TsType("unknown", "unknown");
+            case "System.Text.Json.JsonElement":
+            case "System.Text.Json.JsonDocument":
+            case "System.Text.Json.Nodes.JsonNode":
+            case "System.Text.Json.Nodes.JsonObject":
+            case "System.Text.Json.Nodes.JsonArray":
+            case "System.Text.Json.Nodes.JsonValue":
+                return new TsType("unknown", "unknown");
         }
 
         if (type is IArrayTypeSymbol array)
@@ -240,7 +267,7 @@ sealed class TypeCatalog(MetadataKeys metadata)
         {
             var values = type.GetMembers().OfType<IFieldSymbol>().Where(f => f.HasConstantValue).Select(f => f.Name).ToList();
 
-            _enums.Add(new EnumShape(type.Name, metadata.KeyFor(type), values));
+            _enums.Add(new EnumShape(type.Name, metadata.KeyFor(type), values, IsFlags(type)));
         }
 
         return type.Name;

@@ -353,6 +353,7 @@ public static class Web
         services.AddTasksInProcessClients();
 
         services.AddSecurityEnforcement();
+        services.AcceptPermissiveProviders();
         services.AddTasksPermissions();
         services.AddTasksPolicies();
 
@@ -562,5 +563,6 @@ dotnet ef migrations add StackUpdate --project src/Acme.Tasks.Data --startup-pro
 ## What next
 
 - The [Sample](../src/Stack/Sample/docs/sample.md) is the same shape with both clients, over a contact list.
+- The [area READMEs](../README.md#the-stack) hold each package's registration and options.
 - The [doctrine](../plugins/nsail-stack/doctrine) holds every rule; the Claude Code plugin hands it
   to an agent working on your app (see the repository [README](../README.md)).

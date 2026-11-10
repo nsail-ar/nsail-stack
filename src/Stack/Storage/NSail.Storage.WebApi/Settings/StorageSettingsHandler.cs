@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
+
+using NSail.Injection.Annotations;
+using NSail.Messaging;
+using NSail.Settings;
+using NSail.Storage.Objects;
+using NSail.Storage.Providers;
+using NSail.Storage.Settings.Models;
+
+namespace NSail.Storage.Settings;
+
+[Injectable]
+public class StorageSettingsHandler :
+    IHandler<GetStorageSettings, StoredSettings<StorageSettingsModel>>,
+    IHandler<SaveStorageSettings>,
+    IHandler<LookupStorageProviders, List<StorageProviderRef>>,
+    IHandler<ListStorageStores, List<StorageStoreRow>>
+{
+    readonly SettingsManager _settings;
+    readonly StorageCredentialProvider _credentials;
+    readonly StorageStores _stores;
+    readonly IEnumerable<IStorageProvider> _providers;
+    readonly StorageTargetPolicy _policy;
+
+    public StorageSettingsHandler(
+        SettingsManager settings,
+        StorageCredentialProvider credentials,
+        StorageStores stores,
+        IEnumerable<IStorageProvider> providers,
+        StorageTargetPolicy policy)
+    {
+        _policy = policy;
+        _settings = settings;
+        _credentials = credentials;
+        _stores = stores;
+        _providers = providers;
+    }
+
+    public async Task<List<StorageStoreRow>> Handle(ListStorageStores message, CancellationToken cancellationToken = default)
+    {
+        var resolved = await _credentials.Get(_stores.Names, cancellationToken);
+
+        return resolved
+            .Select(store => new StorageStoreRow
+            {
+                Name = store.Name,
+                Provider = store.Target.Provider is { Length: > 0 } provider ? provider : null,
+                Container = store.Target.Container is { Length: > 0 } container ? container : null,
+                UsesDefault = store.Name != StorageNames.Default && !store.Own,
+            })
+            .ToList();
+    }
+
+    public async Task<StoredSettings<StorageSettingsModel>> Handle(GetStorageSettings message, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        var name = _stores.Require(message.Name);
+        var stored = await _settings.Read<StorageSettings>(cancellationToken);
+        var settings = stored.Value.For(name);
+
+        return new StoredSettings<StorageSettingsModel>
+        {
+            Version = stored.Version,
+            Value = new StorageSettingsModel
+            {
+                Provider = settings.Provider,
+                Endpoint = settings.Endpoint,
+                Region = settings.Region,
+                Container = settings.Container,
+                AccessKey = settings.AccessKey,
+                Branch = settings.Branch,
+                LinkTemplate = settings.LinkTemplate,
+                HasSecretKey = settings.SecretKey is { Length: > 0 },
+            },
+        };
+    }
+
+    public async Task Handle(SaveStorageSettings message, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        var name = _stores.Require(message.Name);
+
+        // One row for every store, so a save of one carries every other back as it was read.
+        var settings = await _settings.Get<StorageSettings>(cancellationToken);
+
+        var provider = message.Provider?.Trim();
+        var endpoint = message.Endpoint?.Trim();
+        var container = message.Container?.Trim();
+
+        await _policy.Check(provider, container, endpoint, cancellationToken);
+
+        var current = settings.For(name);
+
+        // The sealed secret opens one destination. A destination that moved takes it along only
+        // if the person typed a new one, or the stored token would travel to the new origin.
+        var moved = !string.Equals(current.Provider ?? "", provider ?? "", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(current.Endpoint ?? "", endpoint ?? "", StringComparison.Ordinal)
+            || !string.Equals(current.Container ?? "", container ?? "", StringComparison.Ordinal);
+
+        settings.Set(name, new StorageTargetSettings
+        {
+            Provider = provider,
+            Endpoint = endpoint,
+            Region = message.Region?.Trim(),
+            Container = container,
+            AccessKey = message.AccessKey?.Trim(),
+            Branch = message.Branch?.Trim(),
+            LinkTemplate = message.LinkTemplate?.Trim(),
+            // The screen never receives the key, so an empty field is "unchanged" for the same
+            // target — otherwise every edit of the region would silently take the store offline.
+            SecretKey = message.SecretKey is { Length: > 0 }
+                ? _credentials.Protect(message.SecretKey.Trim())
+                : moved ? null : current.SecretKey,
+        });
+
+        await _settings.Save(settings, message.Version, cancellationToken);
+    }
+
+    public Task<List<StorageProviderRef>> Handle(LookupStorageProviders message, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_providers
+            .Select(provider => new StorageProviderRef
+            {
+                Type = provider.Type,
+                DisplayName = provider.DisplayName,
+                IsRemote = provider.IsRemote,
+                IsRepository = provider.IsRepository,
+            })
+            .OrderBy(provider => provider.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList());
+    }
+}

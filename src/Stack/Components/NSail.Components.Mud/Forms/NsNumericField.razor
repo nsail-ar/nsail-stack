@@ -23,6 +23,8 @@
                  OnBlur="Leaving"
                  OnKeyDown="Pressing"
                  @attributes="StepAttribute"
+                 HideSpinButtons="Compact"
+                 Class="@(Compact ? "ns-numeric-compact" : null)"
                  Format="@(Format ?? NsQuantityText.Format)"
                  Culture="@FigureCulture"
                  Converter="_figures"
@@ -49,6 +51,12 @@
     [Parameter]
     public string? Format { get; set; }
 
+    /// <summary>The figure between a stepper's own − and + buttons: narrow enough for a few
+    /// digits, centered, and without the vendor's spin buttons, which would be a second way to
+    /// step it beside the caller's. Typing still writes the value.</summary>
+    [Parameter]
+    public bool Compact { get; set; }
+
     /// <summary>The spin/keyboard increment (the vendor's own Step knob, never named in a
     /// page). Unset keeps the vendor's default (1) — the sentinel is whether the parameter was
     /// ever assigned, not a null check, since TValue may itself be a non-nullable numeric
@@ -69,10 +77,9 @@
 
     // MudFormComponent's Culture defaults to CultureInfo.InvariantCulture, which reads the
     // decimal comma a Spanish keyboard types as a THOUSANDS separator: "0,5" parses to 5 and
-    // "-0,25" to -25 (nsail#1620, the cristal's window). Same source as NsMoneyField's.
+    // "-0,25" to -25. Same source as NsMoneyField's.
     CultureInfo FigureCulture => RegionCulture.For(Language);
 
-    // Numeric is the mostrador family too (Story: "los campos se seleccionan al recibir
-    // foco") — a quantity typed over rather than edited digit by digit.
+    // Numeric selects on focus too: a quantity is typed over, not edited digit by digit.
     protected override bool SelectOnFocus => true;
 }

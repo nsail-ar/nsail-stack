@@ -3,7 +3,7 @@
 
 namespace NSail.SourceGenerator.Generation.Http.Models;
 
-public class MessageModel
+public record MessageModel
 {
     public TypeModel MessageType { get; set; } = null!;
 
@@ -15,7 +15,7 @@ public class MessageModel
 
     public RouteModel Route { get; set; } = new();
 
-    public List<BindingModel> Bindings { get; set; } = [];
+    public EquatableList<BindingModel> Bindings { get; set; } = [];
 
     public string ReturnType { get; set; } = string.Empty;
 

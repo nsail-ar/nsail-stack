@@ -8,8 +8,9 @@ using NSail.Components.Tests.Fixtures;
 
 namespace NSail.Components.Tests;
 
-/// <summary>A chip names a value; given a severity it names a state, tinted and not filled,
-/// and given an Href the whole chip is its link.</summary>
+/// <summary>A chip names a value; given a severity it names a state, tinted — or filled when
+/// Solid — and given an Href the whole chip is its link; given a Tooltip its name says the
+/// sentence after the text.</summary>
 public sealed class NsChipTests : BunitContext
 {
     public NsChipTests()
@@ -42,6 +43,19 @@ public sealed class NsChipTests : BunitContext
     }
 
     [Fact]
+    public void A_solid_chip_wears_its_severity_as_the_filled_face()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo de prueba")
+            .Add(c => c.Severity, NsSeverity.Warning)
+            .Add(c => c.Solid, true));
+
+        Assert.Contains("mud-chip-filled", cut.Markup);
+        Assert.Contains("mud-chip-color-warning", cut.Markup);
+        Assert.DoesNotContain("mud-chip-text", cut.Markup);
+    }
+
+    [Fact]
     public void A_chip_with_an_href_is_an_anchor_to_it()
     {
         var cut = Render<NsChip>(p => p
@@ -49,5 +63,127 @@ public sealed class NsChipTests : BunitContext
             .Add(c => c.Href, "/settings/test-mode"));
 
         Assert.Equal("/settings/test-mode", cut.Find("a").GetAttribute("href"));
+    }
+
+    [Fact]
+    public void A_chip_with_a_tooltip_is_named_by_its_text_and_then_the_sentence()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Rol")
+            .Add(c => c.Tooltip, "Asignado por el administrador")
+            .Add(c => c.Href, "/roles"));
+
+        Assert.Equal("Rol: Asignado por el administrador", cut.Find("a").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void A_sentence_that_opens_with_the_text_is_the_whole_name()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo prueba")
+            .Add(c => c.Tooltip, "Modo prueba: los cobros, las facturas y los mensajes no son reales")
+            .Add(c => c.OnClose, () => { }));
+
+        Assert.Equal("Modo prueba: los cobros, las facturas y los mensajes no son reales",
+            cut.Find(".mud-chip").GetAttribute("aria-label"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Rol")]
+    public void A_chip_with_no_sentence_beyond_its_text_keeps_its_bare_text_as_its_name(string? tooltip)
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Rol")
+            .Add(c => c.Tooltip, tooltip));
+
+        Assert.False(cut.Find(".mud-chip").HasAttribute("aria-label"));
+        Assert.False(cut.Find(".mud-chip").HasAttribute("role"));
+        Assert.Equal("Rol", cut.Find(".mud-chip").TextContent.Trim());
+    }
+
+    /// <summary>A name on the vendor's bare div is one no browser computes: with no Href the
+    /// chip is a group, the role that takes it; an anchor is a link and keeps its own.</summary>
+    [Fact]
+    public void A_chip_with_no_href_is_a_group_so_its_name_is_computed()
+    {
+        var plain = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo prueba")
+            .Add(c => c.Tooltip, "Modo prueba: los cobros no son reales"))
+            .Find(".mud-chip");
+
+        var linked = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo prueba")
+            .Add(c => c.Tooltip, "Modo prueba: los cobros no son reales")
+            .Add(c => c.Href, "/settings/test-mode"))
+            .Find(".mud-chip");
+
+        Assert.Equal("DIV", plain.TagName);
+        Assert.Equal("group", plain.GetAttribute("role"));
+        Assert.Equal("Modo prueba: los cobros no son reales", plain.GetAttribute("aria-label"));
+        Assert.Equal("A", linked.TagName);
+        Assert.False(linked.HasAttribute("role"));
+    }
+
+    [Fact]
+    public void A_chip_declares_that_a_tap_opens_its_whisper()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(c => c.Text, "Modo prueba")
+            .Add(c => c.Tooltip, "Modo prueba: los cobros no son reales"));
+
+        Assert.True(cut.Find(".mud-chip").HasAttribute("data-ns-whisper-tap"));
+    }
+
+    /// <summary>The stylesheet's half of the tap, which no render can show: the tapped bubble
+    /// alone takes hits, so its link can be reached, and the link fills the bubble, so a finger
+    /// in its padding reaches the link rather than closing the sentence.</summary>
+    [Fact]
+    public void The_stylesheet_lets_the_tapped_bubble_alone_take_a_finger()
+    {
+        var css = ReadStylesheet().ReplaceLineEndings("\n");
+
+        Assert.Contains(".ns-whisper {", css);
+        Assert.Contains("    pointer-events: none;\n    z-index: var(--mud-zindex-tooltip);", css);
+        Assert.Contains(".ns-whisper.ns-whisper-tap {\n    pointer-events: auto;", css);
+        Assert.Contains(".ns-whisper-tap a {\n    display: flex;\n    align-items: center;\n    margin: -4px -8px;\n    padding: 4px 8px;", css);
+    }
+
+    /// <summary>The script's half of the tap, which no render can run: touch is the press's
+    /// pointerType, a finger's enter never arms the dwell, the close button is never the tap,
+    /// and the tap asks the same double-cartel rule the dwell asks.</summary>
+    [Fact]
+    public void The_script_reads_the_tap_from_the_press_and_never_from_the_close_button()
+    {
+        var script = ReadSource("src/Stack/BaseServices/NSail.BaseServices.WebApp/wwwroot/ns.js").ReplaceLineEndings("\n");
+
+        Assert.Contains("const WHISPER_TAP_SELECTOR = \"[data-ns-whisper-tap]\";", script);
+        Assert.Contains("target.closest(\".mud-chip-close-button\"))\n            return null;", script);
+        Assert.Contains("return text.length > 0 && whisperAdds(el, text) ? el : null;", script);
+        Assert.Contains("if (e.pointerType !== \"touch\")\n            armWhisper(e.target, false);", script);
+        Assert.Contains("pressedByTouch = e.pointerType === \"touch\";", script);
+    }
+
+    static string ReadStylesheet()
+    {
+        return ReadSource("src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css");
+    }
+
+    static string ReadSource(string path)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
+            {
+                return File.ReadAllText(Path.Combine(directory.FullName, path));
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException($"NSail.sln was not found above {AppContext.BaseDirectory}.");
     }
 }

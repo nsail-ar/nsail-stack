@@ -72,6 +72,7 @@ public sealed record RestorePlan
             $"  Archive      {Manifest.Product}, taken {Manifest.TakenAtUtc:u}",
             $"  Schema       {Manifest.SchemaVersion}",
             $"  PostgreSQL   {Manifest.PostgresVersion} (this install: {TargetPostgresVersion})",
+            $"  Encryption   {(Manifest.Encrypted ? "sealed with a passphrase" : "NONE — this archive is not encrypted")}",
             $"  Key ring     {(Manifest.HasKeyRing ? "carried by the archive" : "NOT in this archive — sealed secrets will stay unreadable")}",
             "",
             "WILL BE OVERWRITTEN:",
@@ -79,7 +80,7 @@ public sealed record RestorePlan
             $"  Key ring     {Target.KeyRingPath}",
             "",
             "Every row and every key currently in the target is dropped and rebuilt from the archive.",
-            "A restore that fails partway leaves the install empty — the archive is then the only copy."
+            "A restore that fails changes nothing: the database rolls back, and the key ring is swapped only once it restored."
         };
 
         return string.Join(Environment.NewLine, lines);

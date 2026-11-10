@@ -44,6 +44,7 @@ public static class Setup
         services.TryAddSingleton<QueueMeter>();
         services.TryAddSingleton(provider => new QueueConsumers(provider.GetServices<QueueConsumer>()));
         services.TryAddScoped<QueueDrain>();
+        services.TryAddScoped<QueueDeadLetters>();
 
         services.AddBackgroundJob<QueueDrainJob>();
 

@@ -76,8 +76,9 @@ ahead of `blazor.*.js` in `<head>`, so it is already there before Blazor's own e
 and `focusFirst` arms it only for a lookup, whose `OpenOnFocus` would otherwise react to this
 focus exactly like a click and open its popover over the page. The signal for that is
 `aria-autocomplete="list"`, not `role="combobox"`: a select publishes the role too and opens on a
-mousedown instead. A plain field's own `onfocus="this.select()"` (`NsFieldBase`) never
-loses the event, because the swallow is never armed for it to begin with.
+mousedown instead. The swallow is armed only for a lookup because only a lookup's `OpenOnFocus` reacts to a
+focus; a plain field's select-on-focus marker (`NsFieldBase`) is acted on by a separate `focusin`
+listener, so it is not what the swallow guards.
 
 **In a popup the cursor is placed twice.** The hosted dialog wraps its content in a focus trap
 that puts the cursor on its own non-interactive fallback div when it opens, and it does so AFTER

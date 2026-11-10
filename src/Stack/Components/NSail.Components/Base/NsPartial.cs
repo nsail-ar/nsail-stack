@@ -4,7 +4,6 @@
 using NSail.Icons;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using NSail.Localization;
 using NSail.Messaging;
 using NSail.Messaging.Runtime;
@@ -21,8 +20,7 @@ namespace NSail.Components;
 /// through NsPage; widgets that only render parameters stay on NsComponent.</summary>
 public abstract class NsPartial : NsComponent
 {
-    Dictionary<string, Action>? _handed;
-    PersistentComponentState? _state;
+    HandoffLedger? _ledger;
     bool _looked;
 
     [Inject]
@@ -58,7 +56,7 @@ public abstract class NsPartial : NsComponent
     protected bool CanSend<TMessage>()
     {
         // Resolved, never injected: a host with no security registered (a component test, a
-        // surface without Iam) must still render its markup rather than fail to construct it
+        // surface without security) must still render its markup rather than fail to construct it
         // — the permissive default the endpoint gate and the relation provider already take.
         var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
         var sessions = Services.GetService(typeof(SessionProvider)) as SessionProvider;
@@ -74,6 +72,19 @@ public abstract class NsPartial : NsComponent
     /// decide on its own, so a control the caller may not tick is not drawn at all rather
     /// than drawn and refused on submit; the server's gate stays the one that decides.</summary>
     protected bool CanSend<TMessage>(string field, bool value)
+    {
+        var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
+        var sessions = Services.GetService(typeof(SessionProvider)) as SessionProvider;
+
+        return security is null
+            || sessions is null
+            || security.Permits(typeof(TMessage), field, value, sessions.Session);
+    }
+
+    /// <summary>Whether the session could send this message naming this id in this party or
+    /// organization field — the id twin of the flag check above. A card about one subject asks
+    /// it with the subject's id; the server's gate stays the one that decides.</summary>
+    protected bool CanSend<TMessage>(string field, Guid value)
     {
         var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
         var sessions = Services.GetService(typeof(SessionProvider)) as SessionProvider;
@@ -232,7 +243,7 @@ public abstract class NsPartial : NsComponent
     // Which acts destroy, read off the one word a message is already required to open with:
     // Delete is the closed verb set's own name for it (naming.md), the same way NsForm reads
     // Create to tell a newborn document from an edited one. Nothing else in that set destroys —
-    // an Update rewrites, and a send outside the set (RegisterClient, OpenTicket) mints.
+    // an Update rewrites, and a send outside the set (a Register*, an Open*) mints.
     static bool Destroys(Type message)
     {
         return message.Name.StartsWith("Delete", StringComparison.Ordinal);
@@ -342,7 +353,9 @@ public abstract class NsPartial : NsComponent
     /// The key is derived rather than written — the component's own type names the card (both
     /// dashboards already key their cells by it) and the message type names the read, so a card
     /// with two reads hands both over. Scope is what tells two instances of one card type apart
-    /// on the same page: a subject card passes its subject.</summary>
+    /// on the same page: a subject card passes its subject. Two instances under one key — one
+    /// card drawn twice — share one answer, persisted once and adopted by each on its first read.
+    /// An instance asking again sends, and once any copy has sent, a copy mounted later sends too.</summary>
     protected async Task<TResult> Handoff<TResult>(
         IMessage<TResult> message, object? scope = null, CancellationToken? cancellationToken = null)
     {
@@ -350,14 +363,14 @@ public abstract class NsPartial : NsComponent
 
         var key = GetHandoffKey(message.GetType(), scope);
 
-        if (GetHandoffState() is { } state && state.TryTakeFromJson<TResult>(key, out var handed) && handed is not null)
+        if (GetHandoffLedger() is { } ledger && ledger.TryAdopt<TResult>(key, this, out var handed))
         {
             return handed;
         }
 
         var result = await Send(message, cancellationToken);
 
-        Remember(key, result);
+        GetHandoffLedger()?.Remember(key, this, result);
 
         return result;
     }
@@ -370,67 +383,41 @@ public abstract class NsPartial : NsComponent
     }
 
     // Resolved, never injected, for CanSend's reason: a host without the handoff registered —
-    // a component test, a surface that is not a Blazor Web App — must still render.
-    PersistentComponentState? GetHandoffState()
+    // a component test, a surface that is not a Blazor Web App — must still render. Shared per
+    // state rather than held per instance: two instances under one key are one answer.
+    HandoffLedger? GetHandoffLedger()
     {
         if (!_looked)
         {
             _looked = true;
-            _state = Services.GetService(typeof(PersistentComponentState)) as PersistentComponentState;
+
+            if (Services.GetService(typeof(PersistentComponentState)) is PersistentComponentState state)
+            {
+                _ledger = HandoffLedger.For(state);
+
+                Using<IDisposable>(new Released(_ledger, this));
+            }
         }
 
-        return _state;
+        return _ledger;
     }
 
-    void Remember<TResult>(string key, TResult result)
+    sealed class Released(HandoffLedger ledger, NsPartial holder) : IDisposable
     {
-        if (GetHandoffState() is not { } state)
+        public void Dispose()
         {
-            return;
+            ledger.Release(holder);
         }
-
-        // The render mode is named rather than left to .NET, even though this callback belongs
-        // to a component and the tree could in principle be read for it: the reading happens at
-        // the END of the prerender, and a component that read on the way to a screen it does not
-        // reach is gone by then. AuthorizeRouteView draws its Authorizing placeholder inside the
-        // DEFAULT layout, so every page's arrival mounts that layout's cards for as long as the
-        // session takes to resolve, and a page whose own layout is a different one drops them
-        // when the answer lands. Asked for the render mode of a component the renderer no longer
-        // holds, the framework dereferences a null state and the whole document answers 500 —
-        // a card's optimisation taking the screen with it. WebAssembly and only WebAssembly for
-        // DeviceProvider's reason: it is the one client that starts a second time in a second
-        // process, with no request left to read.
-        if (_handed is null)
-        {
-            _handed = [];
-
-            Using<IDisposable>(state.RegisterOnPersisting(PersistHanded, RenderMode.InteractiveWebAssembly));
-        }
-
-        // Assigned rather than added: a card that re-read before the prerender ended would
-        // otherwise persist the same key twice, and the second one throws.
-        _handed[key] = () => state.PersistAsJson(key, result);
-    }
-
-    Task PersistHanded()
-    {
-        foreach (var persist in _handed!.Values)
-        {
-            persist();
-        }
-
-        return Task.CompletedTask;
     }
 
     /// <summary>Subscribes to a published message for the lifetime of this component (marshalled
     /// to the renderer). InvokeAsync only dispatches the handler onto the render thread — it is
     /// not one of Blazor's own automatic-render points the way OnParametersSet or a bound event
     /// is, so a handler that only mutates a field left the change invisible until something else
-    /// happened to redraw the component (stories.md 2026-08-07: the client ficha's own address
-    /// card, the OT grid — both subscribed correctly and both went stale the moment 1bb12a22
-    /// stopped tearing the tree down on every navigation and hiding it). Redrawing after every
-    /// handler is this method's job precisely because Subscribe is what promised "stays current"
-    /// to begin with; a handler that manages its own redraw (NsTable.Reload) just gets a second,
+    /// happened to redraw the component (a card and a grid, both subscribed correctly, go stale
+    /// once the tree is no longer torn down on every navigation). Redrawing after every handler
+    /// is this method's job precisely because Subscribe is what promised "stays current" to
+    /// begin with; a handler that manages its own redraw (NsTable.Reload) just gets a second,
     /// harmless one.</summary>
     protected IDisposable Subscribe<TMessage>(SubscriptionDelegate<TMessage> handler)
         where TMessage : IMessage

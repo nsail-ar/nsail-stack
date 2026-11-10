@@ -118,8 +118,19 @@ opens a list of withheld rows is a button that does nothing.
   answered anywhere. The span (`ns-menu-keys`, `display: contents`, so it is not a box) is the
   first ancestor on the bubble the house owns. Tab belongs there beside Escape because leaving
   the trigger IS a dismissal: the next field takes the cursor, and a list still standing over it
-  answers for nothing. **Nothing is stopped** — the same Escape still reaches the surface
-  behind, exactly as it does today past an open lookup list ([surfaces.md](surfaces.md)).
+  answers for nothing.
+- **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
+  surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
+  make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint` and
+  `NsExpander` stop the key's propagation on their own wrapper **only while open**
+  (`@onkeydown:stopPropagation` bound to their state); closed, they let it through. That stop cuts
+  every key bubbling to a Blazor ancestor, not only Escape, which is harmless because the house's
+  other keys (the dropdown's Enter and arrows) are ns.js's native listeners. Inside a hosted
+  dialog the dialog's Escape is the vendor's native listener, which no Blazor stop reaches, so the
+  four report their open state up and `NsOpenDialog` withdraws `CloseOnEscapeKey` while any is
+  open ([actions.md](actions.md)). **A menu the pointer opened is the one exception**: the vendor
+  publishes no open state to bind the stop to and a flag of the house's own would drift from it,
+  so its Escape closes the list and still reaches the surface behind.
 - **An outside click is already the vendor's**, through the overlay it draws for an open menu;
   the house adds nothing there.
 - **`Disabled` is the menu offered and not yet answerable**, for a list with nothing to say YET
@@ -171,3 +182,40 @@ The toolbar's own overflow kebab is the other rider — the same `NsMenu` and `N
 the items the cap pushed out of the row. Both of the toolbar's menus declare `Writes="false"`:
 what a form withholds fell out where authorization did, before the cap, so a second filter at
 the face could only take away what already passed one.
+
+---
+
+## `NsDropdown`: a panel the host opens
+
+A menu opens from its own trigger; `NsDropdown` is opened by its host from code — results hung
+from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is the only state;
+`Anchor` is the field and `ChildContent` the panel, rendered only while open.
+
+- **The panel is the vendor's popover, not a box inside the wrapper.** Drawn inside, it is
+  clipped by the nearest scrolling ancestor (`NsPanel`'s content) and grows that scrollable area
+  for as long as it shows. As a popover it hangs from the anchor's bottom-left edge, at least as
+  wide as it, stops at the same measure a menu does and scrolls past it, and is turned over
+  where the room under the field runs out.
+- **The wrapper is transparent to layout.** It is the flex item the field was and can shrink
+  under its content, so the field's `Grow` still pays.
+- **The panel writes no role; the wrapper marks the list open.** The rows are the host's, so a
+  role written here could only disagree with them. A plain field cannot be handed
+  `role="combobox"`, so while open the wrapper carries `data-ns-dropdown-open` and `ns.js` reads
+  it as it reads `aria-expanded`: Enter over the panel never submits the form, and inside
+  `.ns-cells` the arrows are not the cell cursor's ([fields.md](fields.md)). The field must
+  carry `data-ns-field` (every `Ns*` field does).
+- **It stands on both sides of the portal, so it carries across what a row asks of the page.**
+  The panel renders under the popover provider, where nothing cascaded from the page reaches:
+  the dropdown re-cascades the surface, `ParentDisabled`, `ParentReadOnly` and the
+  `EditContext`, as `NsMenu` does, so an `NsLink` with a `Target` resolves from the surface the
+  field stands on and an act inside a read-only form is withdrawn.
+- **The panel names its own tier, one above its catcher.** The click-outside catcher sits one
+  tier under the popover ceiling (`SurfaceContext.VendorZIndex - 1`), and the vendor script seats
+  a popover from a tier it reads before the theme writes it — under the catcher, where the first
+  click on a row would close the panel instead. So the panel carries `z-index` at the ceiling
+  itself; `NsHelp` and `NsHint` build the same pair and do the same.
+- **Closing is the dropdown's.** A click outside lands on an overlay one tier under the popover
+  (as `NsHelp`'s), and Escape from the wrapper or from inside the panel does the same: both set
+  `Open` false and tell the host through `OpenChanged`, and neither reaches the surface around the
+  field while the list was open. The overlay covers the field while the
+  panel shows, so a click on the field closes it.

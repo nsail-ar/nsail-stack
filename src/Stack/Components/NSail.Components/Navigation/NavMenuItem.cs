@@ -5,10 +5,10 @@ using NSail.Icons;
 
 namespace NSail.Components;
 
-/// <summary>Flat navigation entry: a leaf names its destination page, a group has Items. An
-/// internal destination's URL is resolved from PageType through the RouteTable, never written;
-/// Url is the one written address, for a leaf whose destination the route table does not
-/// hold.</summary>
+/// <summary>Flat navigation entry: a leaf names its destination page or the Command it runs, a
+/// group has Items. An internal destination's URL is resolved from PageType through the
+/// RouteTable, never written; Url is the one written address, for a leaf whose destination the
+/// route table does not hold.</summary>
 public sealed class NavMenuItem
 {
     public required string Name { get; init; }
@@ -28,6 +28,19 @@ public sealed class NavMenuItem
     /// never tracked as the active route and is never asked of the PageGate, which has no page
     /// to ask it about.</summary>
     public string? Url { get; init; }
+
+    /// <summary>An act this leaf runs in place instead of opening a destination — a sheet, a
+    /// dialog, anything that leaves the person on the screen they were on. It is found by the
+    /// drawer's search and gated by Permission like any leaf, and like a Url it is never the
+    /// active route and never asked of the PageGate. A destination wins where an entry carries
+    /// both, the same first-non-null as PageType and Url (Merge).</summary>
+    public Func<Task>? Command { get; init; }
+
+    /// <summary>The chord that presses a Command entry (NsKeys), claimed by the drawer outside
+    /// its groups and its search filter, so the key runs exactly what the click runs, answers
+    /// whether or not the row is drawn, and leaves with the entry wherever the gate or a Visible
+    /// false takes it.</summary>
+    public string? Chord { get; init; }
 
     public IReadOnlyList<NavMenuItem> Items { get; init; } = [];
 
@@ -81,22 +94,23 @@ public sealed class NavMenuItem
     /// is a string an app registers after the kit's and never a field here.
     ///
     /// A kit plants its menu and the app arranges it: Weight, Icon, Parent, Visible and
-    /// Permission take the LAST non-null value contributed, so a contributor registered after the kits emits
-    /// the same Name carrying only the fields it wants to change and leaves the rest as the
-    /// kit put them. PageType, Parameters and Url go the other way — the first non-null wins —
-    /// because they are what the entry IS, not where it sits. Parent moves the entry under
-    /// the named group, where it merges with whatever already answers to its Name; Visible
-    /// false takes it and its branch out of the drawer without taking it out of the tree.
-    /// A separator is exempt from all of it: it carries no name to merge on, so it passes
-    /// through by identity and takes its place among the merged entries by Weight alone.</summary>
+    /// Permission take the LAST non-null value contributed, so a contributor registered after
+    /// the kits emits the same Name carrying only the fields it wants to change and leaves the
+    /// rest as the kit put them. PageType, Parameters, Url, Command and Chord go the other way —
+    /// the first non-null wins — because they are what the entry IS, not where it sits. Parent
+    /// moves the entry under the named group, where it merges with whatever already answers to
+    /// its Name; Visible false takes it and its branch out of the drawer without taking it out
+    /// of the tree. A separator is exempt from all of it: it carries no name to merge on, so it
+    /// passes through by identity and takes its place among the merged entries by Weight
+    /// alone.</summary>
     /// <param name="collapseSingleChildGroups">Whether a group left holding exactly one child
     /// gives up its level to that child. The SETTINGS tree asks for it, and only it: a
     /// settings group is a list of screens, so a fold around a single screen is empty
-    /// ceremony (Leonardo, on Talleres). The main nav never asks, because the fold hands the
-    /// place to the CHILD, label and all, and there the section's name is the map: Compras
-    /// stays Compras, it does not become Órdenes de Compra (Leonardo, on Compras: "me gustaba
-    /// el menu compras, que vuelva"). A main-nav section with one screen is written flat by
-    /// its own contributor instead, keeping the name (navigation.md).</param>
+    /// ceremony. The main nav never asks, because the fold hands the
+    /// place to the CHILD, label and all, and there the section's name is the map: a
+    /// "Purchasing" section stays "Purchasing", it does not become its one screen's name.
+    /// A main-nav section with one screen is written flat by its own contributor instead,
+    /// keeping the name (navigation.md).</param>
     public static IReadOnlyList<NavMenuItem> Merge(
         IEnumerable<NavMenuItem> items,
         bool collapseSingleChildGroups = false)
@@ -215,6 +229,8 @@ public sealed class NavMenuItem
                 PageType = group.Select(item => item.PageType).FirstOrDefault(pageType => pageType is not null),
                 Parameters = group.Select(item => item.Parameters).FirstOrDefault(parameters => parameters is not null),
                 Url = group.Select(item => item.Url).FirstOrDefault(url => url is not null),
+                Command = group.Select(item => item.Command).FirstOrDefault(command => command is not null),
+                Chord = group.Select(item => item.Chord).FirstOrDefault(chord => chord is not null),
                 Parent = group.Select(item => item.Parent).LastOrDefault(parent => parent is not null),
                 Weight = group.Select(item => item.Weight).LastOrDefault(weight => weight is not null),
                 Visible = group.Select(item => item.Visible).LastOrDefault(visible => visible is not null),
@@ -304,6 +320,8 @@ public sealed class NavMenuItem
             PageType = item.PageType,
             Parameters = item.Parameters,
             Url = item.Url,
+            Command = item.Command,
+            Chord = item.Chord,
             Parent = item.Parent,
             Weight = item.Weight,
             Visible = item.Visible,
@@ -322,6 +340,8 @@ public sealed class NavMenuItem
             PageType = item.PageType,
             Parameters = item.Parameters,
             Url = item.Url,
+            Command = item.Command,
+            Chord = item.Chord,
             Weight = item.Weight,
             Visible = item.Visible,
             Label = item.Label,
@@ -359,6 +379,8 @@ public sealed class NavMenuItem
             PageType = only.PageType,
             Parameters = only.Parameters,
             Url = only.Url,
+            Command = only.Command,
+            Chord = only.Chord,
             Parent = item.Parent,
             Weight = item.Weight,
             Visible = only.Visible,

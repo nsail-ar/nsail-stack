@@ -16,7 +16,6 @@
 @inject LanguageProvider Language
 @inject IJSRuntime JS
 @inject IScrollListenerFactory ScrollListeners
-@inject IBrowserViewportService Viewport
 @inject IServiceProvider Services
 
 @{
@@ -31,7 +30,11 @@
     // on an answer nobody has yet — exactly the claim _hasLoaded exists to refuse. Null while
     // the overlay's own condition holds (IsRunning || !_hasLoaded) is the other face of
     // loadingOverlay below; once it is false either a real empty list draws here or rows do.
-    RenderFragment? scrollNoRecords = IsRunning || !_hasLoaded ? null : noRecords;
+    RenderFragment? scrollNoRecords = IsRunning || !_hasLoaded || _failed ? null : noRecords;
+
+    // Page mode draws NoRecordsContent with zero rows and no Loading, so a failed first read
+    // would print "No records" above the failure strip; _failed withholds it.
+    RenderFragment? pagedNoRecords = _failed ? null : noRecords;
 
     // Built once per render whether or not it draws here: a page header elsewhere on this
     // surface may be the one putting it on screen (ShowExportInline, Surface.Export), and
@@ -219,11 +222,21 @@
        so the header and the rows it is reading never move. Null while nothing is running is
        what keeps the wrapper from drawing an empty hit-testing layer over a table that
        answered. *@
-    RenderFragment? loadingOverlay = IsRunning || !_hasLoaded
+    RenderFragment? loadingOverlay = IsRunning || (!_hasLoaded && !_failed)
         ? @<div class="ns-table-loading-overlay" role="status" aria-label="@Strings.Translate("Common.Loading")">
               <div class="ns-table-loading-scrim"></div>
               <NsIcon Icon="@NsIcons.Progress" Size="NsSize.Lg" />
           </div>
+        : null;
+
+    // A read that did not land is neither rows nor an empty list: it says so and offers the
+    // read again (hosts.md, a failed read is not an empty read). The words of the refusal were
+    // already reported through the host; this is the grid's own state beside it.
+    RenderFragment? readFailed = _failed && !IsRunning
+        ? @<NsStack Gap="NsSize.Sm" Align="NsAlign.Center" Margin="NsSize.Md" Class="ns-table-failed">
+              <NsText Secondary>@Strings.Translate("Common.LoadFailed")</NsText>
+              <NsButton Label="@Strings.Translate("Common.Retry")" OnClick="Retry" Class="ns-table-retry" />
+          </NsStack>
         : null;
 
     @* The keyboard's way in where the bar does not draw one — a page adding from chrome of its
@@ -303,10 +316,11 @@
         @undrawnAdd
     </div>
 
+    @readFailed
     @* The floor the scroll listener aims at, and the way past it for anyone who cannot reach
        a floor: a first page shorter than the viewport never produces a scroll event, and a
        keyboard has no scroll gesture at all. *@
-    @if (_hasLoaded && !_exhausted)
+    @if (_hasLoaded && !_exhausted && !_failed)
     {
         <NsStack Horizontal Justify="NsAlign.Center" Class="pa-2 ns-table-more">
             <NsButton Label="@Strings.Translate("Common.LoadMore")" Disabled="_fetching" OnClick="FetchNext" />
@@ -336,7 +350,7 @@ else if (OnQuery.HasDelegate)
                 @problemRow(context)
             </ChildRowContent>
             <NoRecordsContent>
-                @noRecords
+                @pagedNoRecords
             </NoRecordsContent>
             <PagerContent>
                 <MudTablePager />
@@ -345,6 +359,7 @@ else if (OnQuery.HasDelegate)
         @loadingOverlay
         @undrawnAdd
     </div>
+    @readFailed
 }
 else
 {
@@ -426,16 +441,23 @@ else
     // vendor's scroll listener to THIS table's container rather than the first one on screen.
     readonly string _instance = $"ns-table-{Guid.NewGuid():N}";
     readonly List<TRow> _scrolled = [];
-    readonly Guid _viewportSubscription = Guid.NewGuid();
     IScrollListener? _listener;
     IDeviceProvider? _devices;
-    Breakpoint? _breakpoint;
     bool _askedDevice;
     int _nextPage;
     bool _started;
     bool _listenerStarted;
     bool _fetching;
     bool _exhausted;
+
+    // The last read did not land (a refusal, a throw, a cancellation nobody superseded). What
+    // is on screen is the answer before it, and the next page is the one that failed.
+    bool _failed;
+    bool _reading;
+    bool _readReported;
+    int _readEpoch;
+    int? _serveShown;
+    int _shownPage;
 
     // Which read is the current one, in both branches. Replacing a read only cancels it, and a
     // handler is free to ignore its token — most do, since reloading an NsLoad region does not
@@ -473,14 +495,29 @@ else
     // act right there, before the NsTh in the header have declared a single column (Declaring).
     TaskCompletionSource? _declaring;
 
+    /// <summary>The most rows an export writes, at least 1; a list longer than that is not
+    /// exported and a message says so, because the file is held whole in the circuit until it is
+    /// handed to the browser.</summary>
+    [Parameter]
+    public int MaxExportRows { get; set; } = TableExport.DefaultRowCap;
+
     [Parameter]
     public string? Class { get; set; }
 
     [Parameter]
     public bool Grow { get; set; } = true;
 
+    /// <summary>Opts this table into the compact phone form: where it would fall to the stacked
+    /// card on a phone, each row is one line instead — the lead column, the action cell beside
+    /// it, the other surviving cells under them — so a list read to find a person shows several
+    /// times as many rows. Off keeps the stacked card; desktop and tablet read the same either
+    /// way. Which list takes it is ui/hosts.md's, and NsTh/NsTd's Compact place each cell on the
+    /// line.</summary>
+    [Parameter]
+    public bool Compact { get; set; }
+
     /// <summary>Names the table in a bar rendered above it, with the add control at the bar's
-    /// right edge — the collection-editor chrome (Seña). Unset draws no bar at all, so there is
+    /// right edge — the collection-editor chrome. Unset draws no bar at all, so there is
     /// no add control a hand can press: a grid wired to add rows and left unnamed is refused by
     /// the Architecture suite rather than shipped with nothing for a hand to reach. The
     /// keystroke's way in the grid keeps either way, undrawn where no bar draws it.</summary>
@@ -515,14 +552,12 @@ else
     // flex container (inert otherwise) and keeps the pager pinned at the bottom
     // (see .ns-table rules in ns-mud.css).
     //
-    // ns-table-editing says a row is open, and ns-mud.css asks it two things. In column mode it
-    // is the other half of "an edit input never hides": the editor's cells drop their hide
-    // classes, and a table still laid out as a table would then have more cells in that row than
-    // in its header, which lands the inputs under the wrong columns — so the WHOLE table stops
-    // hiding while a row is open, header and read rows with it, and the counts stay equal. Under
-    // md it is what stacks the table by CONTAINER instead (nsail#1614): no arithmetic seats an
-    // open row in a container that narrow, so it becomes the form a phone already reads, where
-    // there is no header and no count to match.
+    // ns-table-editing says a row is open. In column mode it is the other half of "an edit input
+    // never hides": the editor's cells drop their hide classes, and a table still laid out as a
+    // table would then have more cells in that row than in its header, which lands the inputs
+    // under the wrong columns — so the WHOLE table stops hiding while a row is open, header and
+    // read rows with it, and the counts stay equal. Under 740px the table stacks by its container
+    // whether or not a row is open (ns-mud.css), and there is no header and no count to match.
     //
     // ns-cells says the rows of this grid are TYPED INTO, which is what gives Enter its meaning
     // inside one: confirm the row and keep going down the column, never submit the document the
@@ -533,8 +568,11 @@ else
     // hand to the surface's own scroll once they stack as cards (ns-mud.css): the branch under it
     // reads the container's own scroll to fetch the next page, and there is no third answer a
     // class could be read as. Said in C# because only this component knows which branch rendered
-    // — whether the grid STACKED is the vendor's own breakpoint call, which is why the CSS rule
-    // needs both.
+    // — whether the grid STACKED is a query's call (the window's or the container's), which is
+    // why the CSS rule needs both.
+    //
+    // ns-table-compact says this grid opted into the compact phone form: in a container under
+    // the tablet's width the stacked card becomes one line per row (ns-mud.css, the compact block).
     string GetClasses()
     {
         return new NsClassBuilder("ns-table d-flex flex-column min-h-0")
@@ -542,6 +580,7 @@ else
             .Add("ns-cells", Editable)
             .Add("ns-table-editing", _editing is not null)
             .Add("ns-table-pages", OnQuery.HasDelegate && !Scrolls)
+            .Add("ns-table-compact", Compact)
             .Add(_instance)
             .Add(Class)
             .ToString();
@@ -807,7 +846,10 @@ else
 
     string Counted(string key, int count)
     {
-        return string.Format(System.Globalization.CultureInfo.CurrentCulture, Strings.Translate(key, count), count);
+        // Formatted here, not by the template: a plain {0} writes an int with no thousands separator.
+        var culture = RegionCulture.For(Language);
+
+        return string.Format(culture, Strings.Translate(key, count), count.ToString("N0", culture));
     }
 
     // Auto asks the device, not the size: the answer rides in on the request, so it is already
@@ -880,7 +922,7 @@ else
     /// the same one-row-at-a-time rule the control keeps by being disabled.</summary>
     public void Add()
     {
-        if (!Editable || NewRow is null || IsBusy)
+        if (!Editable || NewRow is null || IsBusy || IsRunning)
         {
             return;
         }
@@ -919,6 +961,12 @@ else
         // change the row's own rule answers for (hosts.md).
         if (_editingIsNew && NewRowEmpty is not null && NewRowEmpty(row))
         {
+            // The remove notification cannot go out on a busy Runner; the row stays open.
+            if (IsRunning)
+            {
+                return false;
+            }
+
             await Discard(row);
 
             return true;
@@ -932,6 +980,12 @@ else
     /// the row is either closed or standing there with its reason drawn.</summary>
     async Task<bool> Commit(TRow item)
     {
+        // A second press while the first is being answered does nothing.
+        if (IsRunning)
+        {
+            return false;
+        }
+
         // What the last press refused is lifted before this one runs: a message standing beside
         // a value the user has already corrected says the row is still refused when it is not.
         Placement.Clear();
@@ -976,6 +1030,11 @@ else
     {
         ArgumentNullException.ThrowIfNull(args);
 
+        if (_reading)
+        {
+            _readReported = true;
+        }
+
         if (!args.Handled && _editing is { } row && Placement.Place(args.Problem, row))
         {
             args.Handled = true;
@@ -986,6 +1045,11 @@ else
 
     async Task Cancel(TRow item)
     {
+        if (IsRunning)
+        {
+            return;
+        }
+
         // A row that was never confirmed exists only because the user asked for one; backing
         // out of it leaves nothing to fall back to, so it goes.
         if (_editingIsNew)
@@ -1013,6 +1077,11 @@ else
 
     Task Remove(TRow item)
     {
+        if (IsRunning)
+        {
+            return Task.CompletedTask;
+        }
+
         return Raise(OnRowRemove, new RowEditEventArgs<TRow> { Row = item });
     }
 
@@ -1036,6 +1105,19 @@ else
     /// count only the rows in hand and conclude there is a single page.</summary>
     async Task<TableData<TRow>> LoadPage(TableState state, CancellationToken cancellationToken)
     {
+        // The pager going back to the page shown after a failed read asks for that page again:
+        // the rows are in hand, so the answer is theirs and no second query is made.
+        if (_serveShown == state.Page)
+        {
+            _serveShown = null;
+
+            return new TableData<TRow>
+            {
+                Items = _page.Items,
+                TotalItems = _page.TotalCount
+            };
+        }
+
         var generation = ++_generation;
 
         var args = new QueryEventArgs
@@ -1048,7 +1130,7 @@ else
         // while the previous page is still arriving asks again at once, and a second run on a
         // busy Runner throws — the vendor swallows that, so the search was simply lost and the
         // grid kept showing rows the new filter excludes.
-        await Raise(OnQuery, args, RunOptions.Replace);
+        var outcome = await Read(args, RunOptions.Replace);
 
         // The page asked for last is also the one whose answer wins. A read superseded while it
         // was in flight still gets here — its handler ignored the cancellation, or honoured it
@@ -1058,9 +1140,28 @@ else
         // either, which the vendor bounds against that total right after the assign. Throwing
         // instead is not available — nothing in MudTable catches, and the escape lands on
         // NsErrorBoundary, which wraps the whole @Body, header and NUEVO link included.
-        if (generation == _generation)
+        if (generation == _generation && outcome == ReadOutcome.Superseded)
+        {
+            // Another read took the Runner: its rows are what the grid shows now.
+        }
+        else if (generation == _generation && outcome == ReadOutcome.Failed)
+        {
+            // Not an answer: the rows stay the page that was shown, and so does the pager, which
+            // the vendor already moved to the page asked for.
+            _failed = true;
+            StateHasChanged();
+
+            if (_table is { } table && table.CurrentPage != _shownPage)
+            {
+                _serveShown = _shownPage;
+                table.NavigateTo(_shownPage);
+            }
+        }
+        else if (generation == _generation)
         {
             _hasLoaded = true;
+            _failed = false;
+            _shownPage = state.Page;
 
             // The page assigns Rows while handling the query, so the fresh value is read from
             // the parameter right after — it is the same DataPage the caller just fetched.
@@ -1091,11 +1192,6 @@ else
             _declaring = null;
 
             declaring.SetResult();
-        }
-
-        if (firstRender && Mode == NsTableMode.Auto)
-        {
-            await SubscribeToViewport();
         }
 
         if (!OnQuery.HasDelegate || !Scrolls)
@@ -1160,48 +1256,9 @@ else
         }
     }
 
-    // Same reason, same blast radius: SubscribeAsync is raw JS interop (ListenForResize, plus
-    // GetBrowserWindowSize for the immediate answer) and lets a JSException straight out. A
-    // viewport that cannot be measured costs the measurement and nothing else — no branch of
-    // this table depends on one arriving.
-    async Task SubscribeToViewport()
-    {
-        try
-        {
-            await Viewport.SubscribeAsync(
-                _viewportSubscription,
-                OnViewportChanged,
-                new ResizeOptions { NotifyOnBreakpointOnly = true },
-                fireImmediately: true);
-        }
-        catch
-        {
-            _breakpoint = null;
-        }
-    }
-
-    void OnViewportChanged(BrowserViewportEventArgs args)
-    {
-        // A width of zero is not a narrow window, it is nobody measuring: the service answers
-        // its immediate notification from whatever the JS side hands back, which off a browser
-        // (bUnit, prerender) is an empty size that classifies as the smallest breakpoint.
-        if (args.BrowserWindowSize is not { Width: > 0 })
-        {
-            return;
-        }
-
-        if (_breakpoint == args.Breakpoint)
-        {
-            return;
-        }
-
-        _breakpoint = args.Breakpoint;
-        _ = InvokeAsync(StateHasChanged);
-    }
-
     void HandleScroll(object? sender, ScrollEventArgs args)
     {
-        if (_fetching || _exhausted)
+        if (_fetching || _exhausted || _failed)
         {
             return;
         }
@@ -1216,10 +1273,63 @@ else
         _ = InvokeAsync(FetchNext);
     }
 
+    // The read again, by hand: scrolling does not ask again after a failure, so a server that is
+    // down is not hammered once per scroll event.
+    Task Retry()
+    {
+        _failed = false;
+
+        if (Scrolls)
+        {
+            return Fetch(_generation, _hasLoaded ? RunOptions.None : RunOptions.Replace);
+        }
+
+        return _table is null ? Task.CompletedTask : _table.ReloadServerData();
+    }
+
+    // Raise reports a refusal or a throw to the host and returns normally, so whether the read
+    // landed is read off the report; a cancellation nobody superseded leaves no report at all.
+    async Task<ReadOutcome> Read(QueryEventArgs args, RunOptions options)
+    {
+        var epoch = ++_readEpoch;
+        _reading = true;
+        _readReported = false;
+
+        try
+        {
+            await Raise(OnQuery, args, options);
+        }
+        finally
+        {
+            _reading = false;
+        }
+
+        if (_readReported || args.Problem is not null)
+        {
+            return ReadOutcome.Failed;
+        }
+
+        if (args.CancellationToken.IsCancellationRequested)
+        {
+            // Cancelled by another read (an export takes the Runner too) is that read's to
+            // answer; cancelled with nobody after it is a read that never landed.
+            return epoch == _readEpoch ? ReadOutcome.Failed : ReadOutcome.Superseded;
+        }
+
+        return ReadOutcome.Landed;
+    }
+
+    enum ReadOutcome
+    {
+        Landed,
+        Failed,
+        Superseded
+    }
+
     Task FetchNext()
     {
         // One append at a time: pages have to arrive in order to be appended in order.
-        if (_fetching || _exhausted)
+        if (_fetching || _exhausted || _failed)
         {
             return Task.CompletedTask;
         }
@@ -1237,7 +1347,7 @@ else
             PageSize = ScrollPageSize
         };
 
-        await Raise(OnQuery, args, options);
+        var outcome = await Read(args, options);
 
         // A reload that landed while this page was in flight already owns the list, and this
         // answer describes the result set it replaced — appending it would mix two searches.
@@ -1246,6 +1356,24 @@ else
             return;
         }
 
+        if (outcome == ReadOutcome.Superseded)
+        {
+            _fetching = false;
+
+            return;
+        }
+
+        if (outcome == ReadOutcome.Failed)
+        {
+            _failed = true;
+            _fetching = false;
+
+            StateHasChanged();
+
+            return;
+        }
+
+        _failed = false;
         _scrolled.AddRange(Rows.Items);
         _nextPage++;
         _hasLoaded = true;
@@ -1290,9 +1418,12 @@ else
             _nextPage = 0;
             _exhausted = false;
             _fetching = false;
+            _failed = false;
 
             return Fetch(_generation, RunOptions.Replace);
         }
+
+        _serveShown = null;
 
         if (_table is null)
         {
@@ -1383,9 +1514,36 @@ else
                 return Rows.Items;
             }
 
-            return TableOrder.Sort(Rows.Items, column, _columns.Descending, RegionCulture.For(Language));
+            var rows = Rows.Items;
+            var culture = RegionCulture.For(Language);
+
+            // Sorted once per (rows, column, direction, culture): HeldRows is read by every render
+            // and a few thousand rows re-sorting on each parent render is the cost.
+            if (_sorted is null
+                || !ReferenceEquals(_sortedFrom, rows)
+                || _sortedCount != rows.Count
+                || !ReferenceEquals(_sortedBy, column)
+                || _sortedDescending != _columns.Descending
+                || !ReferenceEquals(_sortedCulture, culture))
+            {
+                _sorted = TableOrder.Sort(rows, column, _columns.Descending, culture);
+                _sortedFrom = rows;
+                _sortedCount = rows.Count;
+                _sortedBy = column;
+                _sortedDescending = _columns.Descending;
+                _sortedCulture = culture;
+            }
+
+            return _sorted;
         }
     }
+
+    IReadOnlyList<TRow>? _sorted;
+    IReadOnlyList<TRow>? _sortedFrom;
+    int _sortedCount;
+    TableColumn? _sortedBy;
+    bool _sortedDescending;
+    System.Globalization.CultureInfo? _sortedCulture;
 
     protected override void OnInitialized()
     {
@@ -1408,10 +1566,13 @@ else
 
     protected override void OnParametersSet()
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(MaxExportRows);
+
         // Said by the table, because the table is what knows whether it holds the whole list, and
         // read by every heading under it: a column that declares itself sortable where nothing
         // can be ordered draws no control instead of one that would lie.
         _columns.Orders = OrdersInHand;
+        _columns.Compact = Compact;
 
         Placement.Parent = Tracker;
         Placement.Bind(RowContext);
@@ -1536,7 +1697,7 @@ else
         var book = ExportBook.Of(name, new ExportTable
         {
             Columns = [.. columns.Select(column => new ExportColumn { Key = column.Key, Title = column.Title, Format = column.Format })],
-            Rows = Count(rows)
+            Rows = Count(TableExport.Capped(rows, MaxExportRows))
         });
 
         try
@@ -1547,7 +1708,7 @@ else
             // (NSail.Exporting).
             using var file = new MemoryStream();
 
-            await writer.WriteAsync(book, file, RegionCulture.For(Language), _export.Token);
+            await writer.WriteAsync(book, file, RegionCulture.For(Language), TimeZoneInfo.Local, _export.Token);
 
             file.Position = 0;
 
@@ -1565,6 +1726,20 @@ else
         {
             // The refusal is already on screen, placed by the Runner that raised the read. There
             // is nothing to add, and half a file is not offered.
+        }
+        catch (ExportTooLarge)
+        {
+            // Refused before a file exists: the cap is the memory the file may take in the circuit.
+            var arguments = new Dictionary<string, string>
+            {
+                ["max"] = MaxExportRows.ToString("N0", RegionCulture.For(Language))
+            };
+
+            var message = Strings.Translate("Common.ExportTooLarge", arguments);
+
+            await Report(new ProblemEventArgs(
+                new NSail.Problems.Problem("ExportTooLarge", message, [new NSail.Problems.Issue("ExportTooLarge", message, arguments: arguments)], null),
+                this));
         }
         catch (OperationCanceledException)
         {
@@ -1624,6 +1799,7 @@ else
 
             // Replace, for the same reason LoadPage replaces: a page the pager asked for may still
             // be in flight, and a second run on a busy Runner throws.
+            _readEpoch++;
             await Raise(OnQuery, args, RunOptions.Replace);
 
             refused = args.Problem is not null;
@@ -1632,9 +1808,8 @@ else
         }
     }
 
-    // The two JS-side subscriptions are dropped without awaiting them: NsComponent's teardown is
-    // synchronous, and the JS side of a listener whose circuit is going away has nothing left
-    // to report to.
+    // The scroll listener is dropped without awaiting it: NsComponent's teardown is synchronous,
+    // and the JS side of a listener whose circuit is going away has nothing left to report to.
     protected override void Dispose(bool disposing)
     {
         if (disposing)
@@ -1645,8 +1820,6 @@ else
                 _ = _listener.DisposeAsync();
                 _listener = null;
             }
-
-            _ = Viewport.UnsubscribeAsync(_viewportSubscription);
 
             // An export in flight has a screen to put its file on no longer, and its next page
             // would be a round trip asked for by nobody.

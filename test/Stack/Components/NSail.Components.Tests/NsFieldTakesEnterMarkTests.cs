@@ -59,6 +59,33 @@ public sealed class NsFieldTakesEnterMarkTests : BunitContext, IAsyncLifetime
         Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-commits"));
     }
 
+    /// <summary>A box that names its commit key draws it as a key cap while empty, aria-hidden and
+    /// out of the placeholder; typed text takes the room back.</summary>
+    [Fact]
+    public void ABoxWithAKeyHint_DrawsTheKeyWhileEmpty()
+    {
+        var cut = Render<NsTextField>(ps => ps
+            .Add(p => p.Placeholder, "Name or code")
+            .Add(p => p.KeyHint, "Enter"));
+
+        var mark = cut.Find(".ns-search-box.ns-search-keyed .ns-search-key");
+        Assert.Equal("Enter", mark.TextContent.Trim());
+        Assert.Equal("true", mark.GetAttribute("aria-hidden"));
+        Assert.DoesNotContain("Enter", cut.Find("input").GetAttribute("placeholder") ?? string.Empty, StringComparison.Ordinal);
+
+        cut.Render(ps => ps.Add(p => p.Value, "rayban"));
+
+        Assert.Empty(cut.FindAll(".ns-search-key"));
+    }
+
+    [Fact]
+    public void ABoxWithoutAKeyHint_HasNoWrapper()
+    {
+        var cut = Render<NsTextField>(ps => ps.Add(p => p.Value, "hello"));
+
+        Assert.Empty(cut.FindAll(".ns-search-box"));
+    }
+
     /// <summary>The whole reason the mark is derived: a field that only binds has no second
     /// meaning for the key to collide with, and taking Enter from those forms would cost every
     /// one-field screen its own habit.</summary>

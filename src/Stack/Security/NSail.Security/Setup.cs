@@ -3,6 +3,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using NSail.Messaging.Runtime;
 using NSail.Messaging.Runtime.Pipelines;
 
@@ -32,17 +33,29 @@ public static class Setup
         services.TryAddScoped<FeatureProvider>();
         services.TryAddScoped<CredentialProvider>();
         services.TryAddScoped<RequestOrganizationProvider>();
+        services.TryAddSingleton<BuiltInHandlers>();
         services.TryAddScoped<SecurityManager>();
     }
 
     /// <summary>Turns the gate on: every Mediator send is authorized (deny by default).
-    /// Server-side only — the client stays permissive and lets the server refuse.</summary>
+    /// Server-side only — the client stays permissive and lets the server refuse. The host fails
+    /// at startup while RelationProvider or CredentialProvider is still the permissive default.</summary>
     public static void AddSecurityEnforcement(this IServiceCollection services)
     {
         services.AddSecurity();
         services.AddSingleton<SecurityEnforcement>();
         services.AddScoped(typeof(IInterceptor<>), typeof(SecurityInterceptor<>));
         services.AddScoped(typeof(IInterceptor<,>), typeof(SecurityInterceptor<,>));
+        services.TryAddSingleton(services);
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, SecurityProviderCheck>());
+    }
+
+    /// <summary>Declares that this enforcing host runs over the permissive RelationProvider and
+    /// CredentialProvider (a fixture, a sample, a product without Iam). Without it the host
+    /// refuses to start unless both were replaced.</summary>
+    public static void AcceptPermissiveProviders(this IServiceCollection services)
+    {
+        services.TryAddSingleton<PermissiveProvidersAccepted>();
     }
 
     /// <summary>Registers the entitlement keys a module owns, beside the code that enforces

@@ -40,7 +40,7 @@ being read and dropped the status word onto a ground it had not been measured ag
 **A collection that offers a way IN names itself, and the name's bar is the only seat Agregar
 has.** `Title` draws that bar above the grid — heading left, add control at the right edge, one
 baseline — and unset there is no bar at all, so no face a hand can press: a grid wiring `NewRow`
-with no `Title` is refused by the Architecture suite rather than shipped with nothing for a hand
+with no `Title` is refused by the Architecture suite (enforced in the products' repository) rather than shipped with nothing for a hand
 to reach. There is no second position to drift to; an Agregar under the rows is the shape this
 rule replaced, after it had already split the house in two (cases). **It is the family's rule,
 not the table's** — `NsListEditor`'s bar is the same `.ns-collection-bar`, so the two collection
@@ -80,10 +80,35 @@ because a control out of the layout is how the keystroke reads "this collection 
 ### Columns and widths
 
 **Which columns survive to which width.** Xl shows every column; md keeps the 2–4 important
-ones; sm falls to the vendor's stacked form-mode and shows the phone's 2–3 — the important ones
-survive (a work order's Estado is *where the order is*, core, not hideable), the less-important
-hide. **The phone's 2–3 is a default, not a cap: 4–5 there is allowed with a justification** —
-the burden is naming why, not staying under three. The comfort curve itself is the core doc's.
+ones; sm falls to the stacked form-mode (or, opted in, the compact line below) and shows
+the phone's 2–3 — the important ones survive (a work order's Estado is *where the order is*, core,
+not hideable), the less-important hide. **The phone's 2–3 is a default, not a cap: 4–5 there is
+allowed with a justification** — the burden is naming why, not staying under three. The comfort
+curve itself is the core doc's.
+
+**A list read to reach a person takes the compact phone form (`NsTable Compact`).** Where the
+stacked card is a record read field by field, a contact list on a phone is scanned for a name and
+left by a call or a message: one line per row — the lead column, the action cell beside it, the
+other surviving cells under them, no labels — shows several times as many people per screen. It
+replaces the card only in a container under the tablet's width — a phone's, or a narrow aside's
+on a wide screen; wider, the table reads as one that did not opt in. Opt in where that is what
+the phone is for (a patient list), never by default: a list whose rows are read whole (orders,
+documents, tickets) keeps the card.
+
+- **`NsCompact` places a cell on that line**, declared on `NsTh` like `Breakpoint` and followed by
+  its cells: `Hidden` leaves a column off the line — still declared, so still a column of the file
+  (a phone number the row's own call act carries) — and `Only` draws a cell there and nowhere
+  else, which is how a row gains one-tap acts without the column and tablet faces changing. A cell
+  with no column behind it says `Only` on its own `NsTd`. Such an act is an `NsLink` or
+  `NsPageLink`, and every one of them — a `tel:` the browser follows itself included — keeps its
+  tap from the row's own `OnRowClick`, so the row does not open its record under the call.
+- **The lead is the first column the header declares that the line draws**, and nothing else on
+  the line competes with it; a column hidden by its `Breakpoint` stays off the line as it does off
+  the card, and a reading the row needs below that width is an `Only` cell that says it.
+- **The line carries no `data-label`**, so a value that needs its word ("Debe $ 5.000") writes it
+  in its own `Only` cell — which names itself with `DataLabel`, as a computed column does (below):
+  a cell with no `For` and no `DataLabel` is the action column, and on the line it is drawn with
+  the acts beside the lead, not under it.
 
 **Every column a header declares is also a column of the FILE the list exports, and the same
 `For` expression is the whole declaration** — its key, its heading, what its values are and how to
@@ -91,6 +116,21 @@ read one off a row. `NsTh Format=` adds only what a CLR type cannot say (an amou
 both decimals), the action column is not a column either way, and a column this grid stops
 declaring leaves the file with it: [exporting.md](../exporting.md), which also has where Exportar
 rides the page's header and why a list is the only grid offered one.
+
+**A figure's column aligns itself, right against right, from the same `Format`** — Number, Money
+and Percent read as `ns-col-numeric` on the header and on every cell under it, a screen asks
+nothing. A `tfoot` cell carries it the way it carries a `Breakpoint`: through the column's own key,
+never declared twice. A Money column also wears `ns-col-money` on the header and on every cell,
+the `tfoot` included, which drops the end padding so figures and header share the column's edge
+(see [styling.md](styling.md)). A date's own digits are a position on a calendar rather than a
+quantity to compare at a glance, so `Format.Date` stays left, with everything else that is read as
+a word.
+
+**`Whole` on `NsTh`** keeps a column's values on one line — no break at a hyphen or a space, for a
+code such as `ARM-TEST-01` — also when an aside narrows the list. Declared once, on the header; the
+cells follow through the column's key (`ns-col-whole`); the heading itself still wraps (also as a
+stacked card's label), so a long heading buys no width. A computed column has no key to follow:
+its `NsTd` says `Whole` itself.
 
 **`Breakpoint` on `NsTh`** (`NsSize`, default `None`) reads *"the column appears from this
 container width up"*. A six-column grid gives up its least important columns one at a time
@@ -115,13 +155,18 @@ looks up its own. No `<NsColumn>`, no `<NsTr>`.
 - **The stacked mobile layout honors the same declaration** — a hidden column's cell stays gone
   as a card line too, at the same container threshold. A card has vertical room a table does not,
   but that room is not a reason to show what the grid already ruled unimportant (cases).
-- **When a table with no row open stacks is still viewport-bound** — columns degrade per
-  container, and only the open row's stack answers the container too (below, cases).
-- **Under 600px the pager drops its page-size label and keeps everything else.** The vendor's
-  pager row is one shrink-proof width at every screen, wider than a phone's content box, so the
-  arrows would end up past the edge; the select, the row counter and the arrows stay, and the row
-  is allowed to wrap under them. A stacked tablet has room for the label and keeps it — the line
-  is the width, not the stack (cases).
+- **A table stacks where its container cannot seat it, not only where the window cannot.** The
+  vendor stacks by viewport, so on a wide screen a list in an aside would stay a table of columns
+  squeezed into the aside — cells overlapping, the row scrolling sideways. Under a container of
+  740px the rows are the phone's cards, read row or open row alike, column importance still
+  hiding (cases). The line sits past the widest aside that cannot seat a table (`NsDrawer` `Lg`,
+  720px; `Xl` and `Xxl` seat one) and short of the narrowest main surface, so such an aside
+  stacks and a list on a main page reads as a table on a desktop.
+- **The pager compacts by its own width.** Under 600px of pager it drops its page-size label and
+  the first/last arrows and keeps the select, the row counter and previous/next, so the row stays
+  one line on a phone and in an aside alike. The vendor's row is one shrink-proof width, and a
+  window query cannot see an aside's box; a stacked list with room for the label keeps it — the
+  line is the width, not the stack (cases).
 
 ### Order (`NsTh Sortable`)
 
@@ -158,7 +203,13 @@ own word is the control's name, so there is no string, no glyph and no handler a
   own is not blank and orders by them.
 - **An order and the list's own filter do not reach each other**: both narrow the same rows in
   hand, so a filter press keeps the order and a heading press keeps the filter.
+- **The order is computed once per list, column, direction and culture**, not on every render: a
+  held list of a few thousand rows re-sorted on each parent render is the cost. "The list" is the
+  instance of `Rows.Items` and its length, so **a host that edits a row in place hands the grid
+  a new list** — the same list with a changed cell keeps the row where its old value put it.
 - **The file Exportar writes is the order on screen** ([exporting.md](../exporting.md)).
+- **Stacked, the list has no headings to press**: a card draws no header row, on a phone or in
+  a container under 740px alike, so the order offered there is the one already in effect.
 
 ### Inline editing (`RowEditor`)
 
@@ -215,7 +266,11 @@ are asked in that same breath, for the reason and through the walk the list's ar
   Cancelar already uses — and the save goes through, which is what makes the keyboard's own
   trailing row cost nothing (Enter on the last row adds one, below). Asked only of a
   never-confirmed row: reopening a row and emptying its boxes is an EDIT, and the row's own rule
-  answers for that. **A grid that answers nothing commits or refuses every open row**, so no
+  answers for that. A row's Confirmar, Cancelar, Eliminar and Agregar, and the submit's close of
+  the row, do nothing while the host's Runner is busy: the row stays as it was, and a Guardar pressed
+  in that window saves nothing — the one mute `false` besides `Abort`, because closing the row would
+  raise on a Runner that refuses a second run.
+  **A grid that answers nothing commits or refuses every open row**, so no
   screen quietly sends a row its own rule would have thrown back — and the Stack derives nothing
   from `TRow`, where a default quantity and a blank description cannot be told from a line
   somebody meant. The counter sale is the screen that asked the question (cases);
@@ -258,22 +313,22 @@ are asked in that same breath, for the reason and through the walk the list's ar
   (`ns-cell-editing`) and `ns-mud.css` shapes them, so no editor lays its own row out and every
   stacked editor reads the same way (cases).
 - **A growing lookup's cell asks for its width floor from `md` up and for nothing below it.** The
-  floor is column arithmetic and below `md` there is no column to do it in: the open row stacks
-  (next bullet) and a card line is already the widest a field can be, so there is nothing left to
-  ask for and nothing to take back (cases).
-- **A table with a row open stacks where its container is under `md`, whatever the window is
-  doing.** An edit input never hides, so the open row is the one thing in a grid that cannot be
-  narrowed, and under `md` it does not fit any line editor in the tree: in the 688px container a
-  `Lg` aside leaves, four inputs that need over 950px between them were handed 104, 74, 57 and 47,
-  and "125.430,50" read "50". The shape is the phone's — same card lines, same label above the
-  field — and only the QUESTION differs: the vendor's stack asks the viewport, this asks the
-  container. **A table nobody is editing is untouched**: a row being read already answers a
-  narrow container by hiding columns.
+  floor is column arithmetic, and below `md` one number cannot tell rows apart: one row has slack
+  where another is already past its table. Between 740px and `md` the open row seats its fields
+  in the row's own width; under 740px it stacks (next bullet) and a card line is already the
+  widest a field can be, so there is nothing left to ask for and nothing to take back (cases).
+- **An open row stacks with its table where the container is under 740px, whatever the window is
+  doing** — the container rule of *Columns and widths*, and the row that most needs it. An edit
+  input never hides, so the open row is the one thing in a grid that cannot be narrowed, and in
+  an aside it does not fit any line editor in the tree: in the 688px container a `Lg` aside leaves,
+  four inputs that need over 950px between them were handed 104, 74, 57 and 47, and "125.430,50"
+  read "50". The shape is the phone's — same card lines, same label above the field — and only
+  the QUESTION differs: the vendor's stack asks the viewport, this asks the container.
 - **In column mode the whole table stops hiding while a row is open**, header and read rows with
   it (`ns-table-editing`). A `display: none` cell generates no box, so a freed editor row would
   otherwise own more columns than the header does and drop every input one column off. That is
-  the band between `md` and a column's own threshold — under `md` the row has stopped being a row
-  of columns — and it is still no phone's case: a 1000px container on a laptop hides a `Lg`
+  the band between 740px and a column's own threshold — under 740px the row has stopped being a
+  row of columns — and it is still no phone's case: a 1000px container on a laptop hides a `Lg`
   column from a row it frees. **The reading list only stays shorter where nothing is being
   aligned**: stacked, a cell is a card line and the read rows go on hiding.
 
@@ -281,18 +336,20 @@ are asked in that same breath, for the reason and through the walk the list's ar
 
 - **`Mode` (`NsTableMode`, default `Auto`) decides whether an arriving page replaces the rows on
   screen or joins them.** `Page` is the pager. `Scroll` appends: the rows accumulate, reaching the
-  bottom asks for the next page, and there is no pager row at all. `Auto` reads the viewport and
-  resolves to `Scroll` at sm and below, `Page` above — the same threshold stacking answers at, so
-  the phone that reads a row as a card also reads the list as one list. **Nothing about the
-  server contract moves**: the same `OnQuery`, the same page asked for and answered, so no grid
-  is edited to get any of it.
-- **`Auto` answers `Page` until a browser has reported a width.** A bUnit render and a server
-  prerender have no viewport, and MudBlazor's immediate notification classifies an unmeasured
-  size as the *smallest* breakpoint — taking that answer would drop the pager out of every
-  server-rendered grid before a browser ever disagreed.
+  bottom asks for the next page, and there is no pager row at all. `Auto` asks the device, never
+  a width: `Scroll` on a phone, `Page` everywhere else (`IDeviceProvider.IsPhone`). The endless
+  list is a touch gesture, not an answer to narrow columns, so a phone held sideways scrolls, a
+  desktop window dragged small pages, and a list stacked in an aside keeps its pager. **Nothing
+  about the server contract moves**: the same `OnQuery`, the same page asked for and answered,
+  so no grid is edited to get any of it.
+- **`Auto`'s answer is in hand on the first render.** The device rides in on the request and
+  is handed from the prerender to the WebAssembly client (`DeviceProvider`), so no browser has
+  to be measured and no grid swaps branches after it paints; a host with no device seam (a
+  component test) answers `Page`, as a desktop does.
 - **Scrolling keeps `Cargar más` under the rows.** A first page shorter than the viewport never
   produces a scroll event to ask for the second, and a keyboard has no floor gesture at all; the
-  control disappears only when the list is exhausted.
+  control disappears when the list is exhausted, or when a read failed: the failure strip with
+  Retry takes its place and scrolling asks for nothing until Retry.
 - **Reloading in scroll mode always starts the list over**, `first` or not: the accumulated rows
   *are* the position, so a search, a filter or a sort leaves no row of the previous result set on
   screen. A page still in flight is superseded (`RunOptions.Replace` plus a generation counter),
@@ -308,7 +365,9 @@ are asked in that same breath, for the reason and through the walk the list's ar
   instead is the answer already on screen, so a superseded read changes neither the rows nor the
   total the pager bounds itself against, and so not the page either. It cannot refuse by
   throwing: nothing in the vendor's grid catches, and the escape reaches `NsErrorBoundary`,
-  which wraps the whole screen.
+  which wraps the whole screen. A page whose read *failed* is no answer either: the pager goes
+  back to the page shown, answered from the rows in hand with no second query, and the failure
+  strip with Retry (which rereads the shown page) stands over them.
 
 ### Selection
 
@@ -414,6 +473,11 @@ so it reads as a stretch of time; the label sits at the hour the frame opens, an
 answers the pointer on bare closed time with the day's name, while every block — positioned,
 with a z-index — stays above it and keeps its own click and hover.
 
+**A color reaches a `style` only through `NsColorText`**: a block's `Color` and a tint's `Color`
+are strings a model can carry, so each is written only if it is a hex, an `rgb()`/`rgba()` of
+numbers or a bare keyword. Anything else — `hsl()`, `var(--x)`, text with a `;` or a `url()` —
+is dropped without a message and the block or the wash is drawn uncolored.
+
 **A block draws only the lines it can draw WHOLE, and always draws the first.** A block's
 height IS its time, so it is the one box that cannot be clipped anywhere convenient: what a
 half-hour block on a dense grid has room for is one line, and a second one rendered into it is
@@ -480,20 +544,25 @@ with no `SecurityManager`/`Session`**, so an `Eligible` on a subject-dashboard i
 by the permissive default (`security is null || session is null || …`, every existing `Eligible`
 lambda's own guard) and never actually narrows anything there — today no subject-dashboard
 contributor declares one; a card that means to needs its own field check inside the card, the way
-a card without `Eligible` at all already has to.
+a card without `Eligible` at all already has to: `NsPartial.CanSend<T>(field, subjectId)`, which
+answers no when no grant can admit that subject (permissions.md, The client consumes policies).
 
 **A card reads through `NsPartial.Handoff`, never `Send`** — the prerender resolves the read and
 persists the answer, the WebAssembly client adopts it, and the page load costs one query per card
-instead of two. A subject card passes its subject as the scope. **The handoff is take-once, so
-where the card reads matters as much as how**: a card with no subject reads once on mount —
-inside `NsLoad`'s `OnLoad` where it has a region, in `OnInitializedAsync` where it does not — and
-a subject card keeps `OnParametersSetAsync` but guards on the subject a read has STARTED for,
-claimed before the await. Both hosts rebuild the parameter dictionary on every render, so
-anything else asks twice anyway (cases). **A card shows nothing until its read has answered**: a
-zero, an "empty" or a "clear" painted while the read is in flight is a claim, and a false one —
-the region below is what holds that for a card that has one, and the header holds the cell
-meanwhile. Held by an architecture test (`CardHandoffTests`), whose exemption list is one card
-that defers deliberately (cases).
+instead of two. A subject card passes its subject as the scope. **One key is one answer for the
+copies of a card**: a card drawn twice (the same card in two hosts) is persisted once and adopted by each copy on its first read, for as long as one copy stays
+mounted — the state takes one write per key, and the second one throwing would empty every handoff
+of the page; the guard is `NsPartial`'s, so a host mounts what it likes. A copy that reads again
+sends, and its read outdates the arrival's answer: a copy mounted after it sends too, as does a
+card mounted after every copy is gone. **The handoff is take-once, so where the card reads matters
+as much as how**: a card with no subject reads once on mount — inside `NsLoad`'s `OnLoad` where it
+has a region, in `OnInitializedAsync` where it does not — and a subject card keeps
+`OnParametersSetAsync` but guards on the subject a read has STARTED for, claimed before the await.
+Both hosts rebuild the parameter dictionary on every render, so anything else asks twice anyway
+(cases). **A card shows nothing until its read has answered**: a zero, an "empty" or a "clear"
+painted while the read is in flight is a claim, and a false one — the region below is what holds
+that for a card that has one, and the header holds the cell meanwhile. Held by an architecture
+test (`CardHandoffTests`), whose exemption list is one card that defers deliberately (cases).
 
 **A card RE-READS when what it shows is saved somewhere else** — `Subscribe<TEvent>` in
 `OnInitialized`, reloading its own region (`TillCard` is the shape). A card is the surface that
@@ -554,6 +623,9 @@ about the data instead of an answer about the network.
   had none.
 - **The words are the sender's**, resolved through `ProblemManager.GetMessage` — the Stack
   invents no wording, so a reason that reads badly is fixed in its own kit's strings.
+- **NsTable's own page reads follow the same rule.** A page whose `OnQuery` failed or was cancelled
+  is not an answer: scroll mode appends nothing and does not advance, paged mode keeps the pager on
+  the page shown, and the grid draws a failure strip with Retry instead of "No records".
 - A failed read **replaces** the content rather than sitting above it: a filter that could not
   be applied leaves the previous filter's rows on screen, which is its own lie.
 

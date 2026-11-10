@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -10,6 +11,7 @@ using NSail.Configuration;
 using NSail.Data;
 using NSail.Messaging.Queue;
 using NSail.Messaging.Runtime;
+using NSail.Messaging.Runtime.Pipelines;
 using NSail.Messaging.WebApi.Push;
 using NSail.Messaging.WebApi;
 using NSail.Localization;
@@ -47,13 +49,35 @@ public static class Setup
         // one built per request would count to one and cap nothing.
         builder.Services.AddSingleton<ThrottleMiddleware>();
 
+        // The tenant's budget counts the same way, and asks its figure of a provider whose base
+        // has none: TryAdd, so a product that reads its plan registers its own either side of
+        // this call.
+        builder.Services.AddSingleton<RequestBudgetMiddleware>();
+        builder.Services.TryAddScoped<RequestBudgetProvider>();
+
         builder.Services.AddSingleton<BuildVersionMiddleware>();
+        builder.Services.AddSingleton<ResponseHeadersMiddleware>();
+
+        // Subdomains are tenants of the same install, all served over HTTPS; preload is left off
+        // because it is a one-way commitment for every subdomain of the registrable domain.
+        builder.Services.AddHsts(options =>
+        {
+            options.IncludeSubDomains = true;
+        });
 
         builder.Services.AddScoped<TenancyMiddleware>();
         builder.Services.AddScoped<TenantStateMiddleware>();
         builder.Services.AddScoped<TenantClaimMiddleware>();
         builder.Services.AddScoped<TicketEpochMiddleware>();
+
+        // The wall for what the middleware cannot reach: an open circuit's sends and the push
+        // feeds are not requests, so the suspension is asked again on every send.
+        builder.Services.AddScoped(typeof(IInterceptor<>), typeof(TenantStateInterceptor<>));
+        builder.Services.AddScoped(typeof(IInterceptor<,>), typeof(TenantStateInterceptor<,>));
         builder.Services.AddScoped<CredentialMiddleware>();
+        builder.Services.TryAddSingleton(sp => new MembershipStampMemo(
+            sp.GetService<TenancyOptions>() ?? new TenancyOptions(),
+            sp.GetService<TimeProvider>() ?? TimeProvider.System));
 
         // The install's own say over the credentials it mints, loaded here because this is where
         // the configuration is in hand: AddSecurity's TryAdd leaves this one standing, and a
@@ -96,9 +120,11 @@ public static class Setup
         // The key ring's home is the install's own, not the framework default: the default is a
         // machine-dependent profile folder nothing can package, so an install restored elsewhere
         // would come back with every sealed secret unreadable. Under the content root it travels
-        // in the backup archive (KeyRing).
+        // in the backup archive (KeyRing). The application name is set because the default
+        // isolates by content-root path, so a restore to another path could not unprotect it.
         builder.Services
             .AddDataProtection()
+            .SetApplicationName(builder.Environment.ApplicationName)
             .PersistKeysToFileSystem(KeyRing.Home(builder.Environment.ContentRootPath));
 
         builder.Services.AddAuthorization();
@@ -135,23 +161,57 @@ public static class Setup
 
     public static void UseBaseWebApi(this WebApplication app)
     {
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("NSail.BaseServices.WebApi");
+
         if (app.Configuration.GetValue("ASPNETCORE_FORWARDEDHEADERS_ENABLED", false))
         {
-            var forwardedHeadersOptions = new ForwardedHeadersOptions
+            var trusted = app.Services.GetRequiredService<SecurityOptions>().TrustedProxies;
+
+            if (trusted.Length == 0)
             {
-                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-            };
+                // Two empty lists make the framework skip the peer check and believe everyone,
+                // so with nobody named the middleware is not installed at all.
+                logger.LogWarning("ASPNETCORE_FORWARDEDHEADERS_ENABLED is on but Security:TrustedProxies is empty: no forwarded header is believed. Behind a proxy every caller shares the proxy's address and every request reads as http, so HSTS is not sent and HTTPS redirection can loop. Name the proxy in Security:TrustedProxies.");
+            }
+            else
+            {
+                var forwardedHeadersOptions = new ForwardedHeadersOptions
+                {
+                    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+                };
 
-            forwardedHeadersOptions.KnownIPNetworks.Clear();
-            forwardedHeadersOptions.KnownProxies.Clear();
+                // Only the proxies the install names are believed; the framework's loopback
+                // default goes too, so the list is the whole trust.
+                forwardedHeadersOptions.KnownIPNetworks.Clear();
+                forwardedHeadersOptions.KnownProxies.Clear();
 
-            app.UseForwardedHeaders(forwardedHeadersOptions);
+                foreach (var entry in trusted)
+                {
+                    if (entry.Contains('/'))
+                    {
+                        forwardedHeadersOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(entry));
+                    }
+                    else
+                    {
+                        forwardedHeadersOptions.KnownProxies.Add(IPAddress.Parse(entry));
+                    }
+                }
+
+                app.UseForwardedHeaders(forwardedHeadersOptions);
+            }
+        }
+        else if (!app.Environment.IsDevelopment())
+        {
+            // Development runs on the machine itself, with no proxy in front, so the warning
+            // would only be noise there.
+            logger.LogWarning("Forwarded headers are off: behind a proxy every caller shares the proxy's address, so one flood closes every public door for everyone. Set ASPNETCORE_FORWARDEDHEADERS_ENABLED and Security:TrustedProxies.");
         }
 
-        // Outermost, so the build that answered rides on every answer this host gives — a
-        // refusal, a 404 and a redirect included. It only registers a callback, so nothing
-        // below it can drop the stamp by rewriting the response.
+        // Outermost, and both only register an OnStarting callback, so nothing below can drop
+        // the headers by rewriting the response. The build rides on a signed-in caller's
+        // answers, a refusal included, but not on one cut short before authentication.
         app.UseMiddleware<BuildVersionMiddleware>();
+        app.UseMiddleware<ResponseHeadersMiddleware>();
 
         app.UseErrorHandler();
         app.UseHttpsRedirection();
@@ -162,6 +222,12 @@ public static class Setup
         // pipeline is the one that shipped before the seam existed.
         if (app.ResolvesTenants())
         {
+            if (!app.Environment.IsDevelopment()
+                && string.IsNullOrWhiteSpace(app.Services.GetRequiredService<TenancyOptions>().ProxySecret))
+            {
+                logger.LogWarning("Tenancy:ProxySecret is not set: X-NSail-Tenant is believed from whoever sends it, so the listener must be bound to the proxy only.");
+            }
+
             app.UseMiddleware<TenancyMiddleware>();
 
             // Immediately behind it, because a tenant the install has suspended is as unreachable
@@ -196,6 +262,10 @@ public static class Setup
         // evaluation on it. Like the gate, it reads the message off the matched route, so it
         // needs routing to have run and nothing else.
         app.UseMiddleware<ThrottleMiddleware>();
+
+        // Beside the throttle and for the same reason, a tenant's whole volume rather than one
+        // caller's on one door: refused before the credential wall buys its query.
+        app.UseMiddleware<RequestBudgetMiddleware>();
 
         // Behind the throttle, because asking the database whether a ticket still names anybody
         // costs a query and a flood must be refused before it buys one; ahead of the gate and of

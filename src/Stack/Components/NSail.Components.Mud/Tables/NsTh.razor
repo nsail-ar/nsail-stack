@@ -54,6 +54,20 @@
     [Parameter]
     public NsSize Breakpoint { get; set; } = NsSize.None;
 
+    /// <summary>Where the column is drawn on the compact row of a table that opted into it
+    /// (<c>NsTable Compact</c>). Declared here like Breakpoint, and the cells below follow.
+    /// </summary>
+    [Parameter]
+    public NsCompact Compact { get; set; } = NsCompact.Shown;
+
+    /// <summary>Keeps each value of the column on one line, never broken at a hyphen or a space —
+    /// for a code such as <c>ARM-TEST-01</c>, also when an aside narrows the list. Declared here
+    /// like Breakpoint, and the cells below follow. The heading itself still wraps, also as a stacked
+    /// card's label. A column that names no field has no key for its cells to follow: they say
+    /// Whole themselves.</summary>
+    [Parameter]
+    public bool Whole { get; set; }
+
     /// <summary>What this column's values are in an exported file, for the one thing the member's
     /// own type cannot say: an amount and a share are both decimals. Unset is derived — a date
     /// member is a date, a numeric one a number, everything else text — so a column says this
@@ -73,10 +87,16 @@
     // A header that names no field and shows no text is the action column: it is the one
     // column with nothing to key on, which is already why it never hides. Deriving it here
     // is what lets the column's width belong to the column instead of to every grid.
+    //
+    // No heading is on the compact line — the stacked regimes hide the head row — so the one
+    // compact marker a heading carries is the one that keeps an Only column off every other face.
     string GetClasses()
     {
         return new NsClassBuilder(NsResponsive.CellClasses(Breakpoint))
             .Add("ns-actions", For is null && ChildContent is null)
+            .Add("ns-col-numeric", Columns?.IsNumericFor(_key) ?? false)
+            .Add("ns-col-money", Columns?.IsMoneyFor(_key) ?? false)
+            .Add("ns-compact-only", Compact == NsCompact.Only)
             .ToString();
     }
 
@@ -94,17 +114,24 @@
             return;
         }
 
-        Columns?.Declare(_key, Breakpoint);
-
         // The same expression, the same key and the same heading the column already resolved,
         // handed on as what a file's column IS: a header that declares itself once is the whole
         // reason an export needs nothing from the screen.
         _column = TableColumn.Of(field.Type, field.Member, _label ?? _key, _key, Format, Strings);
 
+        Columns?.Declare(_key, Breakpoint, Compact, IsNumeric(_column?.Format), _column?.Format == ExportFormat.Money, Whole);
+
         if (_column is { } column)
         {
             Columns?.Declare(column);
         }
+    }
+
+    // Number, Money and Percent are figures; Text and Date read as words, a date's own digits
+    // meaning a position on a calendar rather than a quantity to compare at a glance.
+    static bool IsNumeric(ExportFormat? format)
+    {
+        return format is ExportFormat.Number or ExportFormat.Money or ExportFormat.Percent;
     }
 
     // A heading is pressable where the column asked for it, named a member to order by, and

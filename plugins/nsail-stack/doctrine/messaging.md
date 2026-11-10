@@ -279,12 +279,19 @@ process over that database delivers it.
   find changed therefore belongs in the handler, where a refusal is that handler's own failure
   and not a second verdict on a message already accepted.
 - **Retry, backoff, dead letter — the Stack's own, and configuration.** `Queue:MaxAttempts`,
-  `Queue:Backoff` (doubling per attempt), `Queue:Interval` and `Queue:BatchSize`. A row that
-  fails its last attempt is dead-lettered: it stays, it is never attempted again, and it is
-  counted on `nsail.queue.delivered` tagged by message and outcome. A meter and not a log line
-  because `LogScrubber` drops the name out of an exported record — and the meter is subscribed
-  for every server host by `AddBaseWebApi`, since a counter nothing exports is the same silence
-  (baseservices.md, *Telemetry*).
+  `Queue:Backoff` (doubling per attempt), `Queue:Interval`, `Queue:BatchSize` and `Queue:Lease`. A row that
+  fails its last attempt is dead-lettered: it stays, unattempted until `QueueDeadLetters`
+  requeues or purges it (a kit's operator message calls it), and it is counted on
+  `nsail.queue.delivered` tagged by message and outcome — a meter and not a log line because
+  `LogScrubber` drops the name out of an exported record, subscribed for every server host by
+  `AddBaseWebApi`, since a counter nothing exports is the same silence
+  (baseservices.md, *Telemetry*). A row whose type this process has no consumer for is not a
+  failure: it stays pending, waits the longest rung, is not metered and does not spend its
+  attempts. It waits for a process that registers **the name stored on the row**, so a rolling
+  deploy delivers it with the full ladder; a message renamed or moved to another namespace
+  leaves rows no process will ever register, and `QueueDeadLetters` does not reach them (they
+  are pending, not dead-lettered): the Stack gives the operator no tool for them, so a rename
+  of a `[Queue]` message waits until its pending rows have drained.
 - **Queueing is a save point of the sending operation.** The producer writes its row with
   `SaveChangesAsync`, which saves the *context* and not one entity: everything the operation
   has tracked so far goes to the database with it, inside the operation's transaction. A
@@ -292,6 +299,14 @@ process over that database delivers it.
   that half-built graph's own constraints at the send, not at its own save. Assemble first,
   queue last — or save what is tracked before the send, which is the same thing said in the
   handler where the reader can see it.
+- **A row is claimed before it is delivered.** One conditional update moves its
+  `NextAttemptAt` out by `Queue:Lease`, and only the drain whose update changed the row delivers
+  it, so drains over one database (a rolling deploy, a second replica) never deliver a row twice
+  and a drain that loses one moves on to the next. The drain is a background job whose pass holds
+  an advisory lock per tenant, so a sibling replica yields the pass instead of splitting its rows:
+  a tenant's drain throughput is one replica's. A drain that dies mid-delivery leaves a row due
+  again when the lease ends; a delivery slower than the lease can run twice, so the lease outlasts
+  the slowest handler.
 - **Delivery is at least once.** A process that dies between a handler's commit and the pass
   that deletes its row delivers that row again. The alternative — delete first — loses the
   work, which is the one thing a durable queue may not do.
@@ -316,7 +331,12 @@ Something happened and others react: `Mediator.Publish`. The past participle nam
   the **Sdk** — it crosses module boundaries inside the host, not the wire, so another kit or
   the app handles it referencing only the contract. Consumers declare an ordinary
   `[Injectable]` `IHandler<TEvent>`; `InProcessPublisher` invokes every registered handler
-  plus every subscription. Example: `AppointmentCompleted` in `NSail.Scheduling.Sdk`.
+  plus every subscription, one after another on the publisher's scope (so two that send or share a
+  `DbContext` never collide). A listener that throws does not stop the rest; one failure is rethrown
+  as is, several as an `AggregateException` — except cancellations and `BusinessException`s only,
+  which end as the first of them, because the HTTP layer, the client runner and the queue classify
+  by exception type and cannot see inside an aggregate. A publish with N subscribers pays the sum
+  of their work, not the longest. Example: `AppointmentCompleted` in `NSail.Scheduling.Sdk`.
 - The producer publishes after the operation succeeds:
   `await Mediator.Publish(new PartySaved { Id = ... })`.
 - In-process publish is always available: `AddMessaging` registers `IPublisher<>` →
@@ -405,7 +425,7 @@ same tenant**, published again through the client's own Mediator. A screen hears
 - **The audience is the tenant, so a pushed event carries no row and no words.** Every seat
   of the tenant hears it whatever its branch. It says that something moved; the listener
   re-reads through its own org-scoped read and decides. Channels' `ConversationsMoved` is the
-  shape: empty, answered by `ConversationWatch` asking the seat's own stamp (inventory-kits.md,
+  shape: empty, answered by `ConversationWatch` asking the seat's own stamp (the product's inventory-kits page,
   Channels). The generator holds the rule: a `[Pushed]` event with a public property is
   `NSG003`, and `[Pushed]` on a type that is not an `IMessage` is `NSG002` — build errors,
   never a silent skip (generation.md, Diagnostics).
@@ -413,8 +433,10 @@ same tenant**, published again through the client's own Mediator. A screen hears
   `UseBaseWebApi` under `api/` so an anonymous connect is a 401 and not a redirect to a
   sign-in page a feed cannot follow: `PushHub` (`[Authorize]`) joins each connection to its
   scope's `PushAudience`, and the event-stream endpoint (`RequireAuthorization`) holds its line
-  in the audience its own request resolved — a stream IS its request, so that answer stands for
-  as long as the line does. A publish reaches the same audience on both. The Stack's
+  in the audience its own request resolved — a stream IS its request. The answer is asked again
+  while the line is held: `PushAudience.Watch()` is the seam, and the hub and the stream end the
+  connection once it says the right to listen is gone (`TenantPushAudience`: the tenant is
+  suspended, within `Tenancy:StateCacheSeconds` plus the second it polls at). A publish reaches the same audience on both. The Stack's
   messaging knows no tenant, so the audience is a seam: the install's one by default, the
   tenant's under `AddBaseWebApi` (`TenantPushAudience`) — the tenant `TenancyMiddleware`
   resolved for the request, after `TenantClaimMiddleware` refused a ticket minted for another.
@@ -426,7 +448,11 @@ same tenant**, published again through the client's own Mediator. A screen hears
   connect, a drop, and a line the server closed cleanly (a deploy stopping, an aborted
   connection), which SignalR's own reconnect leaves closed (`PushTests`, the drop) — except when
   the server refuses the session (401/403: a cookie that expired, a ticket for another tenant):
-  then it stops, and the sign-in that follows reloads the app and opens a feed of its own. A
+  then it stops, and the sign-in that follows reloads the app and opens a feed of its own. The
+  ladder starts over only for a line that stayed up `PushRetry.Steady`, however it ended, on
+  either transport; one that closed sooner — a 200 and a hang-up — climbs on, so a server
+  answering and ending the body is not met with a connect and a catch-up per cycle, at the
+  price of a catch-up up to the last step late. A
   line that falls so far behind that its queue fills is dropped rather than held, for the same
   reason: the reconnect is the catch-up. A listener that throws on a pushed event or on
   `PushConnected` is logged, never swallowed.
@@ -516,8 +542,9 @@ generated sender and endpoint over one real request; the halves are pinned in
 
 ### The answer says which build gave it
 
-**Every response carries `X-NSail-Version`**, the server's build (`BuildVersionMiddleware`,
-baseservices.md), and the client compares it against the build it booted with. Otherwise a
+**Every response to a signed-in caller carries `X-NSail-Version`**, the server's build
+(`BuildVersionMiddleware`, baseservices.md; an anonymous answer, or one given before
+authentication runs, carries none), and the client compares it against the build it booted with. Otherwise a
 tab opened before a release keeps calling the new API with old generated senders until a
 value that build cannot read arrives (an enum member added since, travelling as a string) and
 dies in the browser over a 200.
@@ -528,8 +555,14 @@ dies in the browser over a 200.
   unconfigured name is covered, and so is the **non-2xx** path, which leaves `HttpSender`
   through `HandleError` without returning a response.
 - **The comparison is one rule in one place**, `ServerBuild.Answered` (`NSail.Builds`,
-  types.md): a missing header, a blank one, and this process's own build are all silence.
-  **Nothing stamps a version outside the container build** (`deploy/Dockerfile` passes
+  types.md): a missing header, a blank one, and this process's own build are all silence, and
+  so is the same version under another `+revision` — build metadata is ignored when versions
+  are compared (SemVer 2.0, 10), while a different version, an older one included, still moves.
+  **A response a cache can replay is not read at all** (`Cache-Control` with `max-age` above
+  zero, or `immutable`): a browser hands it back with the build word of the day it was
+  stored, so an `immutable` image fetched before a deploy told every later boot that the server
+  had moved. Responses that must be revalidated, and the API's own, are answered live and are
+  read. **Nothing stamps a version outside the container build** (`deploy/Dockerfile` passes
   `InformationalVersion` to the whole publish, client assembly included), so at a developer's
   desk both halves read the same default and compare equal.
 - **It fires once, and offers**: the chrome above every page raises a non-blocking bar and
@@ -565,7 +598,7 @@ public class PrescriptionHandler :
 
 Avoid large multi-purpose handlers and hidden side effects.
 
-**A handler that reads or writes an org-scoped entity owes org-map.md a row** (Messages — where
+**A handler that reads or writes an org-scoped entity owes nsail's `plugins/nsail-kits/doctrine/org-map.md` a row** (Messages — where
 each send stands), and so does the `IValidator<T>` beside it: whether the message names a branch
 or consolidates over the seat's, what protects a row it names by id, and what a write that can
 move the row between branches puts to the policy. `OrgAxisMessageTests` fails on a message with
@@ -608,6 +641,12 @@ itself) and `IValidator` (what a *module downstream* declares about the message)
 different jobs. Both run structurally after every interceptor — DataAnnotations first, then
 business rules.
 
+- **An undefined enum number is refused with no attribute.** The wire reads enum numbers, so
+  `MessageValidator` also refuses a member (or each element of a collection, `Kinds[1]`)
+  holding a number no enum member defines — `OutOfRange` on the field; a `[Flags]` enum by its
+  mask. Consequence: a non-nullable enum without a zero member that a message leaves unchosen
+  is refused — declare the zero member or make the field nullable (mapped onto a non-nullable
+  entity member, a nullable field is NSG025: see the Mapping section of [data.md](data.md)).
 - **Refusal speaks `Problem`.** The pipeline turns a returned `Problem` into the same
   `BusinessException` a handler throws; nothing new travels on the wire.
 - **Order is structural, not registration order.** `SendPipeline` runs DataAnnotations and
@@ -643,10 +682,16 @@ business rules.
     field (`[Cuit]`, Directory).
   - **The numbers its sentence names travel with it**: `Arguments` ({`from`}, {`to`}) fills
     the catalog's tokens from the same bound the attribute refuses by, so moving a bound
-    needs no second edit.
+    needs no second edit. Every problem argument is culture-neutral (invariant numbers, ISO
+    8601 dates and instants). The client localizes two by name — `entity` (a concept key) and
+    `at` (an instant, on the reader's clock in the app language's region); every other argument
+    reaches the sentence as the wire carries it, so name an instant `at` and write the catalog
+    sentence for the rest knowing the number is invariant.
   - **Every declared code has its sentence in every language**: `CodedValidationStringTests`
-    (`NSail.Architecture.Tests`) sweeps the tree's declarations, not its attribute types — a
-    code may be derived from the attribute's argument.
+    (`NSail.Architecture.Tests`, enforced in the products' repository) sweeps the tree's declarations, not its attribute types — a
+    code may be derived from the attribute's argument. The Stack's own copy,
+    `test/Stack/Messaging/NSail.Messaging.Declarations.Tests/CodedValidationStringTests.cs`, checks the codes
+    the Stack mints (its coded attributes and the BCL vocabulary) against the shared catalogs' two languages.
 - **A rule a HANDLER owns names a code the same way.** `InputProblemBuilder.AddInvalid(code,
   field, message, arguments)` is the shape; the two-argument sibling puts every rule on one
   field under the shared `Invalid` code, so none of them can be worded or placed apart (the
@@ -673,7 +718,10 @@ business rules.
   collection or not — the rows of a `[Composition]` a message does not open with `[Validated]`
   are enforced by neither end, same as a lone nested model today.
 - **A number or a code declares its bound, or says on the record that it has none.**
-  `DeclaredBoundTests` (`NSail.Architecture.Tests`) walks exactly `MessageValidator`'s reach —
+  `DeclaredBoundTests` (the products' `NSail.Architecture.Tests`, enforced in the products'
+  repository; the Stack's own messages in
+  `test/Stack/Messaging/NSail.Messaging.Declarations.Tests/DeclaredBoundTests.cs`,
+  which checks bounds and walks `[Validated]` element types but keeps no identifier-format list) walks exactly `MessageValidator`'s reach —
   every shipped `IMessage` plus any model opened with `[Validated]`, into a collection's
   ELEMENT type rather than the collection itself — and fails the build when
   a numeric or `string` member declares nothing. A number wants a range (`[Range]` **or a
@@ -722,6 +770,9 @@ which `UseBaseWebApi` runs after authentication and ahead of `MapEndpoints`:
 - **Opt-in like the interceptor.** `AddSecurityEnforcement` registers the
   `SecurityEnforcement` marker; without it the middleware no-ops, so a client or Wasm host
   stays permissive and lets the server say 403.
+- **Enforcement over the permissive providers does not start.** `AddSecurityEnforcement` adds a
+  startup check: `RelationProvider` and `CredentialProvider` must have been replaced (Iam does),
+  or the host says `AcceptPermissiveProviders()`. `AddSecurity()` alone stays permissive.
 
 An authorized caller notices nothing: binding runs as before, and a malformed request gets
 the same `400`/`422`.
@@ -731,7 +782,8 @@ router's content-type matcher decides during endpoint *selection*, before any en
 metadata exists to gate on. It is transport negotiation: it names no field, spends no query,
 and answers every caller identically.
 
-`EndpointGateTests` (`NSail.Architecture.Tests`) pins the contract: every generated endpoint,
+`EndpointGateTests` (the products' `NSail.Architecture.Tests`, enforced in the products' repository;
+the Sample's endpoints in `test/Stack/BaseServices/NSail.BaseServices.WebApi.Tests/EndpointGateTests.cs`) pins the contract: every generated endpoint,
 probed anonymously with no body and no content type, must answer the gate's denial. It runs
 against a host with **no policy registered at all**, so the sweep is total, with no
 anonymous-exception list to maintain.
@@ -742,10 +794,33 @@ anonymous-exception list to maintain.
 a message over HTTP. `ThrottleMiddleware` (`NSail.BaseServices.WebApi`) reads it off the same
 `MessageEndpointMetadata` the gate reads and partitions .NET's fixed-window limiter per
 **message and caller**, the caller being `Connection.RemoteIpAddress` (already rewritten by
-`UseForwardedHeaders` where the install runs behind a proxy). Refusal is a `Problem`,
+`UseForwardedHeaders` where the install runs behind a proxy) — an IPv4 address, or the /64 of
+an IPv6 one, because a client owns its whole /64 and a full-address key would hand it a fresh
+budget per request. Forwarded headers are believed only from `Security:TrustedProxies`. Refusal is a `Problem`,
 `SecurityProblem.TooManyRequests` — 429, code `TooManyRequests` — so a client never has to
 recognise a refusal by status number alone.
 
+- **A door that guesses a secret also caps the account.** `[Throttled(perMinute, Identity = nameof(SignIn.Login), IdentityPerMinute = n)]`
+  names the property that identifies the account (sign-in's login, a code request's address);
+  `nameof` because NSG016 refuses a name that matches no readable property, and a bare literal would
+  silence the cap after a rename. After the per-address window admits the send, the middleware
+  reads the identity before binding and chains a second fixed window per message and identity,
+  from every address together (case and spaces folded, length bounded). The per-address ceiling
+  stays, so a shared address is not penalized beyond it; a per-address ceiling alone is never met
+  by a botnet or an IPv6 /64 rotating against one known account.
+- **The identity is a member of the JSON body.** The generated endpoint binds a body message's
+  members from the body, so that is the one place the cap and the handler agree on; NSG016
+  refuses an `Identity` that is a route, query or header member, that is not a `string`, or that
+  carries `[JsonPropertyName]`: the middleware reads the string under the property's own name,
+  so a number or a renamed wire name would leave every send in the shared partition. Where a name repeats in the body the last occurrence wins, as it
+  does when the binder assigns the members, so the sender cannot pick a partition apart from
+  the value the handler sees. A send whose identity cannot be read — a body past 16 KB, not
+  JSON, or without the property — is counted in one shared partition rather than exempted, so
+  padding or omitting the field is no way out of the cap. The body is buffered in memory only,
+  within that bound.
+- **The cap has a price**: a stranger can spend a known account's budget and leave its owner on
+  429 from their own address for the rest of the minute. That is the trade for bounding guesses
+  against one account; set `IdentityPerMinute` with it in mind.
 - **The declaration rides the message, never a path**: the route is derived from the
   message, so a path-based declaration could only name an address that had moved.
 - **It stands in FRONT of the gate.** Volume is not a permission question; a flood is refused
@@ -753,17 +828,24 @@ recognise a refusal by status number alone.
 - **Who declares one**: a message whose endpoint is reachable by somebody the install never
   authenticated — a door opened by a token in a URL (`Channels.Replies.*`), a webhook. A
   message behind a policy is already bounded by who holds the grant; a ceiling there would
-  only refuse a customer mid-work. The budget is per message, not shared, so a flood on one
+  only refuse a customer mid-work. The ceiling is per message, not shared, so a flood on one
   public door cannot close the others.
+- **The one exception is the tenant's request budget**, and it is not a `[Throttled]`: it
+  counts every authenticated send of a tenant, whatever the message, against the figure the
+  product sells (`RequestBudgetMiddleware`, baseservices.md). It refuses behind a policy because
+  it is a rate: the work it refuses is deferred rather than lost, and without it one tenant's
+  flood is spent out of every other tenant's share of the install
+  ([data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-what-the-plan-includes-and-what-it-is-born-with)).
+  An anonymous send never counts against it, so a public door spends only its own ceiling.
 - **An in-process `Send` spends nothing.** The middleware reads the attribute of the message
   the *request* names, so a door that relays a message somebody else chose — the Assistant's
-  confirm (assistant.md) — would carry a metered one past its own ceiling. Such a door refuses
+  confirm (the product's assistant page) — would carry a metered one past its own ceiling. Such a door refuses
   the metered messages instead of relaying them; the exclusion is read off the attribute, never
   listed.
 - **Write the number for the worse reading of "one caller".** An install that does not set
   `ASPNETCORE_FORWARDEDHEADERS_ENABLED` sees the proxy's address for everybody, so the ceiling
-  must hold for a whole shop; an install that turns the header on gets the per-person reading
-  for free. On a token door a ceiling limits the cost of being hammered, not guessing — 32
+  must hold for a whole shop; an install that turns the header on and names its proxies in
+  `Security:TrustedProxies` gets the per-person reading. On a token door a ceiling limits the cost of being hammered, not guessing — 32
   bytes of entropy makes guessing infeasible at any rate.
 
 Proof: `ThrottleTests` (`NSail.BaseServices.WebApi.Tests`), through `AddBaseWebApi`/

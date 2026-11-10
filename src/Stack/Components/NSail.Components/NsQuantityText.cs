@@ -13,7 +13,7 @@ public static class NsQuantityText
     // places vanish when empty, and there are as many as a decimal can hold (28 significant
     // digits) because a format that rounds the box also rounds the value: MudNumericField parses
     // the text it wrote back into the binding when the field is left. No grouping on purpose —
-    // the same field holds a factura's number, and "12.345" is not the voucher 12345.
+    // the same field holds an invoice number, and "12.345" is not the voucher 12345.
     public static readonly string Format = "0." + new string('#', 28);
 
     public static string Of(decimal quantity)

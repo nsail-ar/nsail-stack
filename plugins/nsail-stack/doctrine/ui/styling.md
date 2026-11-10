@@ -38,18 +38,28 @@ marked *(cases)* has its story there.
     level.
   - `.ns-money-slot` holds a price at `--ns-money-slot`'s 10rem beside the article it prices in
     a horizontal `NsStack` — a token because a sheet's add row ends in that slot and the column
-    reserved under it spends the same figure from outside the row (the mirror, below).
+    reserved under it spends the same figure from outside the row (the mirror, below). A
+    column with `Format=ExportFormat.Money` wears `.ns-col-money` on its `NsTh` and `NsTd`: no end
+    padding, so the header and the figures under it share one right edge, the column's. In a
+    mirror's last column that edge is the price field's: the reserve beside the slot (the act and
+    a gap) stays as end padding, and a cell that saves its own entry seats its save glyph
+    (`.ns-title-icon-slot` after the `.ns-money-slot`) inside that padding, so the field keeps
+    the whole slot.
     `.ns-field-slot` is the other half of that row — a field laid out by hand reading the same
     `--ns-field-width` the grid's items read, so `ns-field-wide` means 20rem
     wherever a field is placed (a job card's Armazón, which spans the whole card's row and is
     not the whole card's business).
   - `.ns-select-gutter` mirrors a selecting `NsTable`'s own checkbox column width, by hand, on
     a persistent add row laid out beside the table rather than inside it — so the row's fields
-    start under the table's own columns instead of its leading edge. Hidden below the width
-    `NsTable` itself stacks at (`Breakpoint.Sm`), where there is no checkbox column left to
-    mirror. `.ns-row-submit` marks a submit act that shares that same row with labeled fields
-    instead of sitting in a form's own footer, so `align-items: flex-start` would otherwise
+    start under the table's own columns instead of its leading edge. Hidden wherever `NsTable`
+    itself stacks — below its window width (`Breakpoint.Sm`) or its container's — where there is
+    no checkbox column left to mirror. `.ns-row-submit` marks a submit act that shares that same
+    row with labeled fields instead of sitting in a form's own footer, so `align-items: flex-start` would otherwise
     leave it floating on the fields' label gutter rather than reading as their row partner.
+    A list's filter submit (`NsSubmit As="Filter"`) is the same partner with its own mark,
+    `ns-filter-submit`, put there by the component: `.ns-row-submit` also keys the add row's
+    floor and would resize the filter's fields. Its cell is the button's own width, not a field's,
+    so it wraps only when the line truly has no room for it.
     **`.ns-row-submit-gutter` is the mirror at the other end**, and goes on the `NsTable`: the
     add row ends in that act where the rows below it end in a cell's padding, so the table's
     **last column** is pinned to what the add row spends from the trailing edge inward — the
@@ -97,9 +107,11 @@ marked *(cases)* has its story there.
     only narrow a phone's fields for nothing.
     A **boolean control** is the same mismatch and takes the same answer: it draws neither the
     label gutter nor the outline its row partners draw, so `NsRecordState` and `NsCheckBox` mark
-    their own control (`ns-record-state`, `ns-form-check`) and the grid centres that cell. The
-    mark is on the component, not on the grid — a row of nothing but booleans keeps its
-    flex-start — and the selector reaches a DIRECT child only, so a check nested in a stack
+    their own control (`ns-record-state`, `ns-form-check`) and the grid lines it up with the
+    neighbour's INPUT, not the row: the field's own 8px label gutter above and a 40px box the
+    control is centred in, so a neighbour with a hint under its box — which makes the row taller
+    than the input — does not pull the check low. The mark is on the component, not on the grid,
+    and the selector reaches a DIRECT child only, so a check nested in a stack
     beside an `NsHelp` owns its line already and is left alone.
   - A field cell whose content draws nothing (`StoreSelect HideLone`) collapses.
 - **`Gap` and `Margin` read off one `NsSize` scale** — room *between* children and room *around*
@@ -155,7 +167,10 @@ marked *(cases)* has its story there.
     from a cascaded `CardDoor`, in the vendor's own header-actions slot and opening on `Main`, the
     one target every door carries ([actions.md](actions.md), [hosts.md](hosts.md)); **nothing is
     positioned absolutely against a card**: the door is a button among the card's own, and it
-    wears its own intention's ink.
+    wears its own intention's ink. **The header compacts its block padding, never its acts** —
+    `.ns-card-header` halves the vendor's block padding on every card (`ns-mud.css`), so a header
+    sits close to its square rather than doubling it; the squares keep the `Md` box and the touch
+    floor, and the inline padding keeps the title in line with the content.
   - **A card with no title draws no header at all** — `NsCard` renders the box only while
     `Header` (or `Door`) is non-null, so a titleless card never pays for a near-empty row above
     the content for its lone act. The act rides the content instead, as the sibling of whatever
@@ -223,8 +238,15 @@ marked *(cases)* has its story there.
     rows draws no pager to pin over anything. Scoped by the branch in C# (`.ns-table-pages`,
     `NsTable`) **and** by the vendor's own stacking query in the stylesheet — `.mud-sm-table`
     rides the root at every width, so a rule keyed off it alone reaches the desktop grid too.
-- **A scroll box INSIDE a surface wears the house's own bar** (`.ns-scroll-thin`): thin, the
-  theme's line colour, no track. The shell's own scrollbars stay the platform's.
+- **The house draws one scrollbar, on every scroller, in dark and in light** (`ns-mud.css`): thin,
+  no track, the thumb a low-alpha mix of the lit palette's secondary ink — on the nav rail, of the
+  band's own ink, since the chrome is a free pick that can sit light under a dark scheme
+  ([branding.md](branding.md)). The platform's bar is
+  unreadable-bright on a dark surface, so the standard `scrollbar-color` / `scrollbar-width` come
+  first and `::-webkit-scrollbar` is only the fallback, under `@supports not (scrollbar-color:
+  auto)`. `NsTheme` turns the vendor's own scrollbar block off: its `html, body *` grey
+  out-matches what every scroller inherits from `:root`. `NsTheme` declares `color-scheme` on `:root` for the lit scheme so native controls,
+  and any bar the house's does not reach, follow it.
 
 ---
 
@@ -291,9 +313,27 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   transport to probe with — and the mark keeps its own proportion inside it, by
   `preserveAspectRatio` when it is inlined and by `object-fit` when it is a file. A width
   ceiling that bites takes the drawn mark down with it; it never clips one side alone.
-  `NsSplash` draws its own markup rather than `NsRemoteImage` and fits the opposite way — width,
+  **An inlined mark is drawn to its artwork, never to its file's viewBox** (`nsapp.fitMark`,
+  `ns.js`): a logo's viewBox often carries unpainted margin, and the box would draw it as space.
+  After the markup is in the DOM, the root's `viewBox` becomes the ink's measured extent (the
+  union of the rendered children's client rects, strokes, caps and joins included), so no
+  painted pixel is cut and no margin is added; an SVG with no `viewBox` gets one. The fit is
+  the brand mark's alone — a product's picture keeps its file's own box.
+  `NsSplash` draws its own markup rather than `NsRemoteImage`, fits the same artwork in the same
+  task that inlines it (one resize, not two), and sizes the opposite way — width,
   not height: its logo, its name and its progress bar all take the width its own script measures
   off the install's name, so the three read as one block instead of three widths of their own.
+  A brand's dark mark (`DarkLogoUrl`) is the one it wears when its own painted ground is dark.
+- **Inlined SVG passes `SvgSanitizer` (`NSail.Icons`) and no other inlined SVG reaches the DOM**:
+  a `Glyph`, a fetched logo and the splash mark share its one allowlist of drawing elements and
+  presentation attributes. Scripts, event handlers, `style`, `<image>`, `<a>`, `<foreignObject>`,
+  non-fragment `href` (`xlink:href` included) and non-local `url(...)` are dropped, so an «Internal CSS» logo keeps its
+  geometry and loses its fills. A file with nothing drawable left falls back to the `<img>`
+  branch, which cannot execute in the app's origin. The splash applies the same lists, injected
+  from the sanitizer, because C# cannot run before boot.
+- **A color string a model carries passes `NsColorText` (`NSail.Components`) before it is
+  written into a `style`**: hex, `rgb()`/`rgba()` of numbers or a bare keyword, nothing else; a
+  product that paints a stored color uses it rather than write its own gate.
 - `NsTooltip` takes `Text` and wraps what it explains, declaring the whisper on a box of its own
   (cases: shell, *The bubble a control whispers*) — **detail on demand, never the only place a
   fact lives**. A phone has no hover, so what rides here is the long form of something
@@ -302,6 +342,16 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   on a line of its own, only where more than one source of that article survives — what tells
   two rows apart is on the row. A tooltip carrying the only copy of a value is the smell, and no
   screen in the tree wears one.
+- `NsBarChart` is stacked bars over ordered buckets (an hour, a day), drawn as plain SVG — `Buckets`
+  (label and a value per series key), `Series` (key, translated name, `NsChartColor`), `Markers`
+  (a vertical line at a bucket index with its hover text) and `AriaLabel`. Use it for counts over
+  time; lines, pies and zoom are not in it. Colours are palette slots, never a hex, so both schemes
+  read. `Info`, `Success`, `Warning`, `Error` and `Neutral` are scheme constants and always tell
+  apart; `Primary` is the install's accent and can land on one of them. Secondary and Tertiary
+  are states of that accent and are not offered. The hover is the segment's
+  `<title>` and the legend sits under the chart; the exact value living only on a hover is the
+  one deliberate exception to the tooltip rule above. Nothing to draw (no buckets, or all zero)
+  keeps the axis and says "no data", never a blank box.
 - `NsSince` is how long ago something happened, said in the one unit a person would say it in
   ("hace 5 min", "3 d ago") with the exact moment on the whisper — `At`, `Missing`, `StaleAfter`,
   `Format`, and nothing else. Days is as coarse as it gets: a cell dumped three weeks ago and one
@@ -338,6 +388,10 @@ string is the palette-in-a-screen these exist to end. `NsStatusText` takes `NsTe
 `Size`, so a state is worn at whatever scale the datum is set in — a card's figure and a grid
 cell's word alike. **On the glyph, null is the ordinary icon and not the neutral paint** the dot
 takes: an icon that reports no state is the ink of whatever it names.
+
+**`NsChip Severity` is the soft tint; `Solid` is its filled face** — the severity's fill with the
+`TextOn*` ink picked to read on it ([branding.md](branding.md)) — for a state that has to read
+from across the screen. No white override: no one ink serves every fill.
 
 **Colour goes on the datum, never on the container.** A card is never tinted as a whole — a
 permanently coloured tile is an alarm nobody sees by Thursday — so what carries the tone is the
@@ -451,7 +505,7 @@ Which channel a screen is in — state versus condition — is the core doc's
   the thread's own, not either speaker's. The warning wash says a hand is owed, which is what
   both of its uses are: a note the staff wrote on a ticket and nobody said out loud
   (`TicketPage`), and the card the assistant draws for an action it will not carry out until
-  the person clicks (`AssistantPage`, assistant.md).
+  the person clicks (`AssistantPage`, the product's assistant page).
 - **A handful of facts said as a list is a real `<ul class="ns-bullets">`**, so they are
   announced as a list and not as one sentence that wrapped — the browser's own marker kept, its
   indent and margin corrected to the one the house's markdown lists wear, and the gap between
@@ -496,8 +550,11 @@ used together on the two faces of one slot, so neither face is ever on screen wi
 CSS cannot decide — a vendor *parameter*, `NsDrawer` picking its variant — still measures with
 `IBrowserViewportService`, and that is the only reason left to.
 
-**One media query in `ns-mud.css` is not a design measuring the window but a rule staying out of
-the vendor's way**: the stacked-by-container block for a table with a row open is wrapped in
-`@media (min-width: 960px)` because below that width MudBlazor's own stack is already the answer,
-and two regimes answering for one table is what the wrapper prevents (cases). It names the
-vendor's own number for the same reason the helpers above do.
+**The `@media (min-width: 960px)` around the stacked-by-container rules is not a design measuring
+the window but a rule staying out of the vendor's way**: the card stack and the three add-row
+gutters it releases each sit in that wrapper because below that width MudBlazor's own stack is
+already the answer, and two regimes answering for one table is what the wrapper prevents (cases).
+It names the vendor's own number for the same reason the helpers above do. The container
+query inside it has a number of its own, 740px: past the widest aside that cannot seat a table
+(`NsDrawer` `Lg`, 720px) and short of the narrowest main surface, so that aside stacks and a main
+page's list keeps its columns (cases).

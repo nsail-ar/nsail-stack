@@ -28,6 +28,7 @@
         <!-- The sweep a product's suite runs over its own migrated chain, run here over this
              suite's: what a walled table looks like is one answer, read from one place. -->
         <ProjectReference Include="..\..\..\..\src\Stack\Data\NSail.Data.Testing\NSail.Data.Testing.csproj" />
+        <ProjectReference Include="..\..\..\..\src\Stack\Sample\NSail.Sample.Web\NSail.Sample.Web.csproj" />
         <!-- Both client ends of the push, so a test listens through either feed a browser runs
              and neither transport can answer differently. -->
         <ProjectReference Include="..\..\..\..\src\Stack\Messaging\NSail.Messaging.SignalR\NSail.Messaging.SignalR.csproj" />

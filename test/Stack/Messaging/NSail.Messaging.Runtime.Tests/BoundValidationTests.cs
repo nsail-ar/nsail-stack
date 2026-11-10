@@ -218,6 +218,34 @@ public sealed class BoundValidationTests
             problem.Issues!.Select(issue => (issue.Code, issue.Source)));
     }
 
+    [Fact]
+    public void AListPastItsMaxLengthIsRefusedAsAWhole()
+    {
+        Assert.Null(MessageValidator.Validate(new Listed { Rows = [new(), new()] }));
+
+        var problem = MessageValidator.Validate(new Listed { Rows = [new(), new(), new()] });
+
+        Assert.NotNull(problem);
+
+        var issue = Assert.Single(problem.Issues!);
+
+        Assert.Equal("MaxLength", issue.Code);
+        Assert.Equal(nameof(Listed.Rows), issue.Source);
+    }
+
+    sealed class Listed
+    {
+        [Validated]
+        [MaxLength(2)]
+        public List<Row> Rows { get; set; } = [];
+    }
+
+    sealed class Row
+    {
+        [MaxLength(3)]
+        public string? Code { get; set; }
+    }
+
     sealed class Sized
     {
         [MaxLength(3)]

@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NSail.Messaging;
 using NSail.Messaging.Annotations;
 using NSail.Messaging.WebApi;
@@ -47,7 +49,8 @@ public sealed class ThrottleTests
 
     // A message that declares no ceiling is not throttled at all: everything behind a policy is
     // already bounded by who holds the grant, and a limit there would only refuse a customer
-    // in the middle of their work.
+    // in the middle of their work. The one ceiling that reaches it is the tenant's request
+    // budget, a rate over every send of the tenant (RequestBudgetTests).
     [Fact]
     public async Task An_endpoint_whose_message_declares_nothing_is_never_refused()
     {
@@ -95,6 +98,189 @@ public sealed class ThrottleTests
         Assert.Equal(StatusCodes.Status200OK, await host.From("203.0.113.8", Capped.Path));
     }
 
+    [Fact]
+    public async Task Addresses_of_one_IPv6_64_share_a_budget_and_another_64_does_not()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From($"2001:db8:1:2::{attempt + 1}", Capped.Path));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("2001:db8:1:2:ffff::9", Capped.Path));
+        Assert.Equal(StatusCodes.Status200OK, await host.From("2001:db8:1:3::1", Capped.Path));
+    }
+
+    [Fact]
+    public async Task A_forwarded_header_from_a_peer_that_is_not_a_trusted_proxy_is_ignored()
+    {
+        await using var host = await ThrottleHost.Start(forwarded: true, "10.0.0.0/8");
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From("203.0.113.7", Capped.Path, $"198.51.100.{attempt + 1}"));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("203.0.113.7", Capped.Path, "198.51.100.99"));
+    }
+
+    [Fact]
+    public async Task With_no_proxy_named_no_forwarded_header_is_believed()
+    {
+        await using var host = await ThrottleHost.Start(forwarded: true);
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From("203.0.113.7", Capped.Path, $"198.51.100.{attempt + 1}"));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("203.0.113.7", Capped.Path, "198.51.100.99"));
+    }
+
+    [Fact]
+    public async Task A_forwarded_header_from_a_trusted_proxy_names_the_caller()
+    {
+        await using var host = await ThrottleHost.Start(forwarded: true, "10.0.0.0/8");
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.1"));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("10.1.2.3", Capped.Path, "198.51.100.1"));
+        Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.2"));
+    }
+
+    [Fact]
+    public async Task A_trusted_proxy_named_by_its_address_names_the_caller()
+    {
+        await using var host = await ThrottleHost.Start(forwarded: true, "10.1.2.3");
+
+        for (var attempt = 0; attempt < Capped.PerMinute; attempt++)
+        {
+            Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.1"));
+        }
+
+        Assert.Equal(StatusCodes.Status429TooManyRequests, await host.From("10.1.2.3", Capped.Path, "198.51.100.1"));
+        Assert.Equal(StatusCodes.Status200OK, await host.From("10.1.2.3", Capped.Path, "198.51.100.2"));
+    }
+
+    // Behind a proxy with the flag off every caller is the proxy, and the Stack cannot see the
+    // proxy, so the warning is the only thing that tells the install its ceiling is shared.
+    [Fact]
+    public async Task With_forwarded_headers_off_outside_Development_startup_warns_that_callers_share_one_address()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await ThrottleHost.Start(Environments.Production, trail);
+
+        var warning = Assert.Single(trail.Warnings, said => said.Contains("shares the proxy's address", StringComparison.Ordinal));
+
+        Assert.Contains("ASPNETCORE_FORWARDEDHEADERS_ENABLED", warning, StringComparison.Ordinal);
+        Assert.Contains("Security:TrustedProxies", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task With_forwarded_headers_off_in_Development_startup_says_nothing()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await ThrottleHost.Start(Environments.Development, trail);
+
+        Assert.DoesNotContain(trail.Warnings, said => said.Contains("proxy", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task With_forwarded_headers_on_and_no_proxy_named_startup_warns_that_nothing_is_believed()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await ThrottleHost.Start(Environments.Production, trail, forwarded: true);
+
+        var warning = Assert.Single(trail.Warnings, said => said.Contains("proxy", StringComparison.Ordinal));
+
+        Assert.Contains("no forwarded header is believed", warning, StringComparison.Ordinal);
+        Assert.Contains("HSTS", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task With_a_proxy_named_startup_says_nothing()
+    {
+        var trail = new WallTrail();
+
+        await using var host = await ThrottleHost.Start(Environments.Production, trail, forwarded: true, "10.0.0.0/8");
+
+        Assert.DoesNotContain(trail.Warnings, said => said.Contains("proxy", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task An_identity_is_capped_across_addresses_and_the_address_ceiling_stays()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", $"{{\"account\":\"Admin\",\"password\":\"p{attempt}\"}}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"account\":\" admin \"}"));
+        Assert.Equal(200, await host.Post("10.0.1.1", "{\"account\":\"other\"}"));
+
+        for (var attempt = 0; attempt < Login.AddressPerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post("10.0.2.1", $"{{\"account\":\"u{attempt}\"}}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.2.1", "{\"account\":\"fresh\"}"));
+    }
+
+    [Fact]
+    public async Task A_query_value_beside_a_json_body_does_not_pick_the_partition()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", "{\"account\":\"admin\"}", $"?account=decoy{attempt}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"account\":\"admin\"}", "?account="));
+    }
+
+    [Fact]
+    public async Task A_repeated_identity_name_is_read_as_the_binder_reads_it_last_wins()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            var json = attempt % 2 == 0
+                ? $"{{\"account\":\"decoy{attempt}\",\"account\":\"admin\"}}"
+                : $"{{\"Account\":\"decoy{attempt}\",\"account\":\"admin\"}}";
+
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", json));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", "{\"account\":\"admin\"}"));
+    }
+
+    [Fact]
+    public async Task A_send_whose_identity_cannot_be_read_shares_one_budget()
+    {
+        await using var host = await ThrottleHost.Start();
+
+        var padded = "{\"pad\":\"" + new string('x', 20_000) + "\",\"account\":\"admin\"}";
+
+        for (var attempt = 0; attempt < Login.PerMinute; attempt++)
+        {
+            Assert.Equal(200, await host.Post($"10.0.0.{attempt + 1}", attempt % 2 == 0 ? padded : "{\"password\":\"p\"}"));
+        }
+
+        Assert.Equal(429, await host.Post("10.0.1.1", padded));
+        Assert.Equal(200, await host.Post("10.0.1.1", "{\"account\":\"admin\"}"));
+    }
+
     static async Task<string> Code(HttpResponseMessage response)
     {
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -112,6 +298,19 @@ public sealed class Capped : IMessage
     public const string Path = "api/probe/capped";
 
     public const int PerMinute = 3;
+}
+
+[Http(Method.Post, Login.Path)]
+[Throttled(Login.AddressPerMinute, Identity = nameof(Login.Account), IdentityPerMinute = Login.PerMinute)]
+public sealed class Login : IMessage
+{
+    public const string Path = "api/probe/login";
+
+    public const int PerMinute = 3;
+
+    public const int AddressPerMinute = 6;
+
+    public string? Account { get; set; }
 }
 
 [Http(Method.Get, AlsoCapped.Path)]
@@ -138,9 +337,32 @@ sealed class ThrottleHost : IAsyncDisposable
 
     HttpClient Client { get; set; } = null!;
 
-    public static async Task<ThrottleHost> Start()
+    public static Task<ThrottleHost> Start(bool forwarded = false, params string[] trustedProxies)
     {
-        var builder = WebApplication.CreateBuilder();
+        return Start(WebApplication.CreateBuilder(), forwarded, trustedProxies);
+    }
+
+    public static Task<ThrottleHost> Start(string environment, WallTrail logs, bool forwarded = false, params string[] trustedProxies)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
+
+        builder.Logging.AddProvider(logs);
+
+        return Start(builder, forwarded, trustedProxies);
+    }
+
+    static async Task<ThrottleHost> Start(WebApplicationBuilder builder, bool forwarded, string[] trustedProxies)
+    {
+
+        if (forwarded)
+        {
+            builder.Configuration["ASPNETCORE_FORWARDEDHEADERS_ENABLED"] = "true";
+        }
+
+        for (var index = 0; index < trustedProxies.Length; index++)
+        {
+            builder.Configuration[$"Security:TrustedProxies:{index}"] = trustedProxies[index];
+        }
 
         builder.WebHost.UseTestServer();
 
@@ -152,6 +374,7 @@ sealed class ThrottleHost : IAsyncDisposable
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Capped), Capped.Path));
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(AlsoCapped), AlsoCapped.Path));
         builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Uncapped), Uncapped.Path));
+        builder.Services.AddTransient<IEndpointEntry>(_ => new Probe(typeof(Login), Login.Path, post: true));
 
         var app = builder.Build();
 
@@ -174,7 +397,7 @@ sealed class ThrottleHost : IAsyncDisposable
     /// <summary>The same request from a named address. The client cannot state one — TestServer
     /// leaves the connection bare — so the context is built by hand, which is the only way the
     /// per-caller half of the partition can be asked at all.</summary>
-    public async Task<int> From(string address, string path)
+    public async Task<int> From(string address, string path, string? forwardedFor = null)
     {
         var context = await _app.GetTestServer().SendAsync(request =>
         {
@@ -182,6 +405,28 @@ sealed class ThrottleHost : IAsyncDisposable
             request.Request.Method = HttpMethods.Get;
             request.Request.Host = new HostString("localhost");
             request.Request.Path = "/" + path;
+            request.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(address);
+
+            if (forwardedFor is not null)
+            {
+                request.Request.Headers["X-Forwarded-For"] = forwardedFor;
+            }
+        });
+
+        return context.Response.StatusCode;
+    }
+
+    public async Task<int> Post(string address, string json, string query = "")
+    {
+        var context = await _app.GetTestServer().SendAsync(request =>
+        {
+            request.Request.Scheme = "https";
+            request.Request.Method = HttpMethods.Post;
+            request.Request.Host = new HostString("localhost");
+            request.Request.Path = "/" + Login.Path;
+            request.Request.QueryString = new QueryString(query);
+            request.Request.ContentType = "application/json";
+            request.Request.Body = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
             request.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(address);
         });
 
@@ -203,18 +448,21 @@ sealed class Probe : IEndpointEntry
 {
     readonly Type _message;
     readonly string _path;
+    readonly bool _post;
 
-    public Probe(Type message, string path)
+    public Probe(Type message, string path, bool post = false)
     {
         _message = message;
         _path = path;
+        _post = post;
     }
 
     public void Configure(IEndpointRouteBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.MapGet(_path, () => Results.Ok())
-            .WithMetadata(new MessageEndpointMetadata(_message));
+        var route = _post ? builder.MapPost(_path, () => Results.Ok()) : builder.MapGet(_path, () => Results.Ok());
+
+        route.WithMetadata(new MessageEndpointMetadata(_message));
     }
 }

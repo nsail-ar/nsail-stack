@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { Mediator } from "./mediator";
 import { BusinessError } from "./problems";
-import { ListOrders, UpdateOrder } from "./fixtures.test-support";
+import { ListOrders, RepriceOrder, UpdateOrder } from "./fixtures.test-support";
 
 function recording(status = 200, body = "") {
   const calls: { url: string; init: RequestInit }[] = [];
@@ -70,5 +70,43 @@ describe("Mediator.send", () => {
 
     expect((error as BusinessError).problem.code).toBe("RequestFailed");
     expect((error as BusinessError).problem.issues.map((i) => i.code)).toEqual(["HttpStatus", "DeserializationFailed"]);
+  });
+
+  it("throws a BusinessError when a 200 carries a body that is not JSON", async () => {
+    const { mediator } = recording(200, "<html>index</html>");
+    const error = await mediator.send(ListOrders, { search: "ana" }).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(BusinessError);
+    expect((error as BusinessError).problem.code).toBe("RequestFailed");
+    expect((error as BusinessError).problem.issues.map((i) => i.code)).toEqual(["HttpStatus", "DeserializationFailed"]);
+  });
+
+  it("throws a BusinessError when the body cannot be read", async () => {
+    const fetcher = (async () => ({ ok: true, status: 200, text: () => Promise.reject(new TypeError("network error")) })) as unknown as typeof fetch;
+    const error = await new Mediator({ fetch: fetcher }).send(ListOrders, {}).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(BusinessError);
+  });
+});
+
+describe("Mediator.send route token forms", () => {
+  it.each(["{id}", "{id:guid}", "{id?}", "{id=5}", "{*id}", "{**id}"])("binds %s to the member by name", async (token) => {
+    const { calls, mediator } = recording(200);
+    const route = { ...UpdateOrder, path: `api/files/${token}` };
+
+    await mediator.send(route, { id: "a/b", number: "A" });
+
+    expect(calls[0].url).toBe("https://host/api/files/a%2Fb");
+  });
+});
+
+describe("Mediator.send exact numbers", () => {
+  it("sends a long and a decimal as the strings they are and reads them back the same", async () => {
+    const order = { id: "9007199254740993", price: "1234567890.123456789" };
+    const { calls, mediator } = recording(200, JSON.stringify(order));
+    const result = await mediator.send(RepriceOrder, order);
+
+    expect(JSON.parse(calls[0].init.body as string)).toEqual(order);
+    expect(result).toEqual(order);
   });
 });

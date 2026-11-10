@@ -2,14 +2,17 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
+@implements IAsyncDisposable
 
 @using NSail.Localization
 
 @inject StringManager Strings
 
 @* The wrapper is what the trigger's key events bubble to: the bubble itself is a portal and
-   shares no subtree with the button that opened it, so Escape is caught here or nowhere. *@
-<span class="ns-help d-inline-flex align-center" @onkeydown="OnKeyDown">
+   shares no subtree with the button that opened it, so Escape is caught here or nowhere. While
+   open it stops the key there: the innermost open thing wins Escape, and the surface around it
+   hears only the next one. *@
+<span class="ns-help d-inline-flex align-center" @onkeydown="OnKeyDown" @onkeydown:stopPropagation="_open">
     <NsButton As="@NsAs.Inline" Breakpoint="NsBreakpoint.Never"
               Icon="@NsIcons.Help"
               Size="@NsSize.Sm"
@@ -25,6 +28,7 @@
         <MudPopover Open="true"
                     AnchorOrigin="@Origin.BottomLeft"
                     TransformOrigin="@Origin.TopLeft"
+                    Style="@($"z-index:{SurfaceContext.VendorZIndex}")"
                     Class="ns-help-popover">
             <div class="ns-help-text">@Strings.Translate(Key)</div>
         </MudPopover>
@@ -42,6 +46,9 @@
 @code {
 
     bool _open;
+
+    [CascadingParameter]
+    EscapeHolds? Holds { get; set; }
 
     /// <summary>The localization key of the paragraph this ? carries. Global, because the
     /// component cannot see the page whose prefix would scope it — the same full key a page
@@ -64,6 +71,19 @@
         if (args.Key == "Escape")
         {
             Close();
+        }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return Holds?.Set(this, _open) ?? Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Holds is not null)
+        {
+            await Holds.Set(this, false);
         }
     }
 }

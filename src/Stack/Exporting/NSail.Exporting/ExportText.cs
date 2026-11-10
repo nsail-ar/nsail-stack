@@ -14,9 +14,10 @@ public static class ExportText
     /// format is a character that has to be told apart from the field separator by whoever reads
     /// the file back, and es-AR writes the two the same way round as en-US writes them swapped.
     /// </summary>
-    public static string Of(object? value, ExportFormat format, CultureInfo culture)
+    public static string Of(object? value, ExportFormat format, CultureInfo culture, TimeZoneInfo zone)
     {
         ArgumentNullException.ThrowIfNull(culture);
+        ArgumentNullException.ThrowIfNull(zone);
 
         if (value is null)
         {
@@ -25,32 +26,57 @@ public static class ExportText
 
         return format switch
         {
-            ExportFormat.Number => Figure(value, "0.##########", culture),
-            ExportFormat.Money => Figure(value, "0.00", culture),
-            ExportFormat.Percent => Figure(value, "0.00%", culture),
-            ExportFormat.Date => Moment(value, culture),
+            ExportFormat.Number when IsFigure(value, format) => Figure(value, "0.##########", culture),
+            ExportFormat.Money when IsFigure(value, format) => Figure(value, "0.00", culture),
+            ExportFormat.Percent when IsFigure(value, format) => Figure(value, "0.00%", culture),
+            ExportFormat.Date => Moment(value, culture, zone),
             _ => Word(value, culture)
         };
     }
 
-    static string Figure(object value, string pattern, CultureInfo culture)
+    /// <summary>Whether <see cref="Of"/> prints the value as a figure — the only text that may
+    /// open with a minus and still be a number — rather than as words.</summary>
+    public static bool IsFigure(object? value, ExportFormat format)
     {
-        if (value is IConvertible and not string and not bool)
-        {
-            return Convert.ToDecimal(value, culture).ToString(pattern, culture);
-        }
-
-        return Word(value, culture);
+        return format is ExportFormat.Number or ExportFormat.Money or ExportFormat.Percent
+            && value is IConvertible and not string and not bool;
     }
 
-    static string Moment(object value, CultureInfo culture)
+    /// <summary>A spreadsheet runs a text cell that opens with one of these as a formula, so the
+    /// apostrophe makes it text. Everything but a figure: a negative one starts with a minus
+    /// and is a number.</summary>
+    public static string Defused(string text)
+    {
+        return text.Length > 0 && text[0] is '=' or '+' or '-' or '@' or '\t' or '\r' ? "'" + text : text;
+    }
+
+    static string Figure(object value, string pattern, CultureInfo culture)
+    {
+        // NaN and Infinity have no decimal and no cell, and a double past decimal's range has no
+        // decimal either: throwing here would abort the stream after the headers are out.
+        if (value is double.NaN or double.PositiveInfinity or double.NegativeInfinity
+            or float.NaN or float.PositiveInfinity or float.NegativeInfinity)
+        {
+            return string.Empty;
+        }
+
+        if (value is double or float && Math.Abs(Convert.ToDouble(value, CultureInfo.InvariantCulture)) > (double)decimal.MaxValue)
+        {
+            return Convert.ToDouble(value, CultureInfo.InvariantCulture).ToString("R", culture);
+        }
+
+        return Convert.ToDecimal(value, culture).ToString(pattern, culture);
+    }
+
+    static string Moment(object value, CultureInfo culture, TimeZoneInfo zone)
     {
         // A date-only member and a timestamp at midnight are the same fact to a reader, and
         // printing 00:00 on every row of a date column is noise the screen never showed.
         var moment = value switch
         {
             DateOnly date => date.ToDateTime(TimeOnly.MinValue),
-            DateTimeOffset offset => offset.LocalDateTime,
+            DateTimeOffset offset => TimeZoneInfo.ConvertTime(offset, zone).DateTime,
+            DateTime { Kind: DateTimeKind.Utc } utc => TimeZoneInfo.ConvertTimeFromUtc(utc, zone),
             DateTime stamp => stamp,
             _ => (DateTime?)null
         };

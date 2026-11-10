@@ -4,7 +4,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using NSail.Serialization;
 
 namespace NSail.Telemetry;
 
@@ -24,6 +23,10 @@ public sealed class OpenObserveFailureLog : IFailureLog
     const string NameColumn = "span_name";
 
     const string TimeColumn = "start_time";
+
+    // The store's own JSON, not the NSail wire: its bounds are JSON numbers, which the wire
+    // would write as strings.
+    static readonly JsonSerializerOptions StoreJson = new(JsonSerializerDefaults.Web);
 
     public OpenObserveFailureLog(HttpClient client, TelemetryOptions options)
     {
@@ -50,7 +53,7 @@ public sealed class OpenObserveFailureLog : IFailureLog
 
         using var request = new HttpRequestMessage(HttpMethod.Post, Options.SearchUri())
         {
-            Content = JsonContent.Create(search, options: JsonOptions.Wire),
+            Content = JsonContent.Create(search, options: StoreJson),
         };
 
         // The credential arrives whole, scheme included, so nothing is composed here: the day
@@ -76,7 +79,7 @@ public sealed class OpenObserveFailureLog : IFailureLog
 
         try
         {
-            answer = JsonSerializer.Deserialize<Answer>(body, JsonOptions.Wire);
+            answer = JsonSerializer.Deserialize<Answer>(body, StoreJson);
         }
         catch (JsonException exception)
         {

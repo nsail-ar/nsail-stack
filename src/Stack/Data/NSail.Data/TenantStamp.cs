@@ -50,7 +50,8 @@ sealed class TenantStamp : SaveChangesInterceptor
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
-            if (entry.State != EntityState.Added || entry.Metadata.FindProperty(TenantColumn.Name) is null)
+            if (entry.State is not (EntityState.Added or EntityState.Modified)
+                || entry.Metadata.FindProperty(TenantColumn.Name) is null)
             {
                 continue;
             }
@@ -62,6 +63,22 @@ sealed class TenantStamp : SaveChangesInterceptor
             // happened to be reading it.
             if (typeof(IInstallScoped).IsAssignableFrom(entry.Metadata.ClrType))
             {
+                continue;
+            }
+
+            // A row's tenant never moves. An UPDATE carries no tenant filter, so a detached entity
+            // handed to Update (its shadow column at the default) or a column set by hand would
+            // rewrite the row under another tenant, or reach a known id in one. Judged by value: a
+            // column marked modified at the resolved tenant's own value rewrites the same value, and
+            // the queue's retry and the mapper's concurrency carrier both rely on marking it.
+            if (entry.State == EntityState.Modified)
+            {
+                if (tenant is { } own && !Equals(entry.Property(TenantColumn.Name).CurrentValue, own))
+                {
+                    throw new InvalidOperationException(
+                        $"Updating a {entry.Metadata.DisplayName()} would carry a tenant other than the resolved one. A row's tenant is fixed when it is added and the stamp owns it; load the row under its tenant and change its fields instead of handing a detached entity to Update.");
+                }
+
                 continue;
             }
 

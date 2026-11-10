@@ -1,4 +1,4 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -11,16 +11,13 @@ public class HttpEndpointsSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var generatedMethods = context.FindGeneratedSymbols(outputType: TargetIds.Http_Endpoints);
+        var targets = context.FindGeneratedTargets(outputType: TargetIds.Http_Endpoints);
 
-        var addServicesModel = generatedMethods
-                .Combine(context.CompilationProvider)
-                .Select(static (parameters, _) =>
-                {
-                    var (methodSymbol, compilation) = parameters;
-                    return HttpModelFactory.Create(methodSymbol, compilation, "EndpointParameters");
-                });
+        var models = context.GatherInScope(targets, static type => HttpModelFactory.Inspect(type, "EndpointParameters"))
+            .Combine(context.FindMetadataTemplate())
+            .Select(static (pair, _) => HttpModelFactory.Create(pair.Left, pair.Right))
+            .WithTrackingName("Model");
 
-        context.RegisterSourceOutput(addServicesModel, HttpModelRenderer.RenderEndpoints);
+        context.RegisterSourceOutput(models, HttpModelRenderer.RenderEndpoints);
     }
-} 
+}

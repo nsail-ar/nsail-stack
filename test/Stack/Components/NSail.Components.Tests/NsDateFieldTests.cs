@@ -107,6 +107,19 @@ public sealed class NsDateFieldTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void AnOffsetValue_ShowsTheDayOnTheLocalCalendar()
+    {
+        Compose("es");
+
+        var held = new DateTimeOffset(2026, 11, 6, 23, 30, 0, TimeSpan.FromHours(-3));
+        var local = TimeZoneInfo.ConvertTime(held, TimeZoneInfo.Local);
+
+        var cut = Render<NsDateField<DateTimeOffset>>(ps => ps.Add(p => p.Value, held));
+
+        Assert.Equal(local.ToString("dd/MM/yyyy"), cut.Find("input").GetAttribute("value"));
+    }
+
+    [Fact]
     public async Task ADateLeftInTheBox_InSpanish_ReadsDayBeforeMonth()
     {
         Compose("es");

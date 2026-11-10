@@ -102,10 +102,11 @@ public sealed class NsLookupListWidthTests : BunitContext, IAsyncLifetime
 
         // And BELOW md no cell in a grid asks for a width at all. nsail#1242 handed a narrow row
         // the basis as a preference there — the most a column could take out of a row's own
-        // surplus — and nsail#1614 ended the arithmetic instead: under md the open row stops
+        // surplus — and nsail#1614 ended the arithmetic instead: in an aside the open row stops
         // being a row of columns and every field takes its own card line, 654px of the same
-        // 688px aside the preference could only find 192 in. A rule left behind to decide
-        // nothing is the drift this list exists to catch.
+        // 688px aside the preference could only find 192 in; between 740px and md the row seats
+        // its fields in its own width, which a preference would only skew. A rule left behind to
+        // decide nothing is the drift this list exists to catch.
         Assert.Empty(Sized(css, ".ns-table", "width"));
     }
 

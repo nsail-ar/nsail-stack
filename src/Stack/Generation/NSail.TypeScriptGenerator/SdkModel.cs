@@ -9,7 +9,7 @@ sealed record SdkModel(
     IReadOnlyList<ModelShape> Models,
     IReadOnlyList<EnumShape> Enums);
 
-sealed record EnumShape(string Name, string Key, IReadOnlyList<string> Values);
+sealed record EnumShape(string Name, string Key, IReadOnlyList<string> Values, bool Flags = false);
 
 // Key is null on a generic definition: a key names a concept, and DataPage<T> is a shape.
 sealed record ModelShape(string Name, string? Key, IReadOnlyList<string> TypeParameters, IReadOnlyList<FieldShape> Fields);

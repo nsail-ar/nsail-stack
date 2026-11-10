@@ -17,6 +17,10 @@ public sealed record RefusedPatient : IMessage;
 
 public sealed record CrashedPatient : IMessage;
 
+public sealed record AbortedPatient : IMessage;
+
+public sealed record TimedOutPatient : IMessage;
+
 public sealed record RuledPatient : IMessage;
 
 public sealed class CreatePatientHandler : IHandler<CreatePatient, Guid>
@@ -51,6 +55,22 @@ public sealed class CrashedPatientHandler : IHandler<CrashedPatient>
     public Task Handle(CrashedPatient message, CancellationToken cancellationToken)
     {
         throw new InvalidOperationException("Juan Perez has no record");
+    }
+}
+
+public sealed class AbortedPatientHandler : IHandler<AbortedPatient>
+{
+    public Task Handle(AbortedPatient message, CancellationToken cancellationToken)
+    {
+        throw new OperationCanceledException();
+    }
+}
+
+public sealed class TimedOutPatientHandler : IHandler<TimedOutPatient>
+{
+    public Task Handle(TimedOutPatient message, CancellationToken cancellationToken)
+    {
+        throw new TaskCanceledException("The dependency timed out.", new TimeoutException());
     }
 }
 

@@ -12,6 +12,9 @@ public static class HttpModelRenderer
     public static void RenderEndpoints(SourceProductionContext spc, TransportModel model)
     {
         ReportDiagnostics(spc, model);
+        if (model.Unusable)
+            return;
+
         RenderSetup(spc, model, "HttpEndpointSetup");
         RenderMessages(spc, model, "HttpEndpointEntry");
         RenderParameters(spc, model);
@@ -20,23 +23,33 @@ public static class HttpModelRenderer
     public static void RenderClients(SourceProductionContext spc, TransportModel model)
     {
         ReportDiagnostics(spc, model);
+        if (model.Unusable)
+            return;
+
         RenderSetup(spc, model, "HttpClientSetup");
         RenderMessages(spc, model, "HttpClientSender");
-        RenderParameters(spc, model);
     }
 
     // The in-process setup builds no route, and it is declared in the same assembly as the
     // endpoints: reporting here would list every route finding twice in one build.
     public static void RenderInProcess(SourceProductionContext spc, TransportModel model)
     {
+        foreach (var diagnostic in model.HolderDiagnostics)
+        {
+            diagnostic.Report(spc);
+        }
+
+        if (model.Unusable)
+            return;
+
         RenderSetup(spc, model, "HttpInProcessSetup");
     }
 
     static void ReportDiagnostics(SourceProductionContext spc, TransportModel model)
     {
-        foreach (var diagnostic in model.Diagnostics)
+        foreach (var diagnostic in model.HolderDiagnostics.Concat(model.Diagnostics))
         {
-            spc.ReportDiagnostic(diagnostic);
+            diagnostic.Report(spc);
         }
     }
 
@@ -62,7 +75,7 @@ public static class HttpModelRenderer
         foreach (var message in model.Messages)
         {
             var sourceCode = template.Render(message);
-            var hintName = $"{message.MessageType.Namespace}.{message.MessageType.ClassName}_{model.MethodName}.g.cs";
+            var hintName = $"{message.MessageType.HintName}_{model.MethodName}.g.cs";
 
             spc.AddSource(hintName, sourceCode);
         }
@@ -80,7 +93,7 @@ public static class HttpModelRenderer
         foreach (var dto in dtos)
         {
             var sourceCode = template.Render(dto!);
-            var hintName = $"{dto.Namespace}.{dto.ClassName}.g.cs";
+            var hintName = $"{dto.Namespace}.{dto.ClassName}_{model.MethodName}.g.cs";
 
             spc.AddSource(hintName, sourceCode);
         }

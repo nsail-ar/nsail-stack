@@ -20,8 +20,9 @@
    prevented anywhere on its way up is prevented for the whole event. The anchor keeps its href
    either way, so the address stays copyable and deep-linkable; only how the click stacks
    changes.
-   A link that leaves the page renders no wrapper at all — a bare anchor Blazor pushes, with
-   no handler to dispatch to the server on every ordinary click in the app.
+   A link that leaves the page keeps no handler of its own — an anchor Blazor pushes, with
+   nothing to dispatch to the server on every ordinary click in the app — and only its wrapper's
+   stopPropagation flag, below.
    The prevention itself is not written here: a markup `@onclick:preventDefault` is decided
    when the element renders, and whether a click deserves preventing is a property of the
    CLICK — ctrl+click and middle-click are the user asking the browser for the address, which
@@ -29,7 +30,7 @@
    hook a document listener answers on, per click, on those same terms (ns.js); Follow reads
    the same flags below so the two ends cannot disagree.
    Stopping propagation too (not just the default) is what keeps this link honest wherever it
-   renders: a grid row with its own OnRowClick (the counter door's Clientes grid) would
+   renders: a grid row with its own OnRowClick would
    otherwise see the same click a beat after Follow already fired, and NavigationManager's
    second call wins — the row's own destination silently replaces whatever the link just
    opened. It is unconditional, modifier click included: a new tab opening is no reason for
@@ -50,7 +51,11 @@
     }
     else
     {
-        @Chrome
+        @* A link the browser follows itself — a tel:, a new tab — owes the row under it the same
+           guard: the tap is the link's, and a row's OnRowClick opening its record too would leave
+           the reader somewhere else when the call ends. A flag and no handler, so an ordinary
+           click still dispatches nothing to the server. *@
+        <span class="ns-link-leaves" @onclick:stopPropagation="true">@Chrome</span>
     }
 </CascadingValue>
 
@@ -64,14 +69,13 @@
    (NsButton draws the same two faces).
    The word-and-icon anchor never reads Breakpoint, unlike NsButton's own worded Inline face:
    it sets no aria-label, so the word IS its whole accessible name, and hiding it below a
-   container width would leave the anchor nameless rather than iconed (nsail#1726 review,
-   actions.md). *@
+   container width would leave the anchor nameless rather than iconed (actions.md). *@
 @if (As == NsAs.Inline && !Wordless)
 {
     @* No aria-label on this face, keyed or not: the word IS the accessible name (the reason
        above), and the bubble that names the chord is drawn nowhere near the anchor — ns.js puts
        it in the top layer, where nothing it says can join a name computed from this element's
-       own content (nsail#2259 is what that rules out). *@
+       own content (a name carrying the chord is what that rules out). *@
     <a href="@ActiveHref" target="@BrowserTarget" class="@GetAnchorClasses()" data-ns-whisper="@LabelWithChord" data-ns-probe="@Probe" data-ns-keys="@ClaimedKeys" aria-keyshortcuts="@AnnouncedKeys">
         @if (Icon is not null)
         {
@@ -149,6 +153,7 @@ else
 
     string _href = string.Empty;
     bool _intercepts;
+    bool _inert;
 
     [CascadingParameter]
     SurfaceContext? Cascaded { get; set; }
@@ -233,7 +238,7 @@ else
     /// an Icon (or a Content standing in for one): there would be nothing left to
     /// click.
     /// <para>No effect either on the Inline rank's bare-anchor face once it carries both an
-    /// Icon and a Label (nsail#1726): that anchor sets no aria-label of its own, so the word
+    /// Icon and a Label: that anchor sets no aria-label of its own, so the word
     /// is its whole accessible name and collapsing it away would leave the anchor nameless
     /// rather than iconed. It stays on screen at every width.</para></summary>
     [Parameter]
@@ -285,7 +290,7 @@ else
     string? AnnouncedKeys => NsKeys.Declare(ClaimedKeys).GetValueOrDefault("aria-keyshortcuts") as string;
 
     // The bubble's text, on all three faces: a SEPARATE attribute from aria-label, on purpose —
-    // aria-label IS the accessible name and the name stays the word (nsail#2272), while this
+    // aria-label IS the accessible name and the name stays the word, while this
     // is read by ns.js and by nothing that computes a name.
     string? LabelWithChord => Chord is { Length: > 0 } ? $"{Label} ({Chord})" : Label;
 
@@ -298,19 +303,17 @@ else
     // breakpoint's hooks — there is no width at which a word of its own comes back.
     string LabelClasses => Wordless ? "ns-button-label" : NsResponsive.LabelClasses(Icon, Breakpoint);
 
-    // The bare anchor is one text node by default; a caller that also hands it an Icon needs the
-    // glyph laid out beside the word rather than wherever the browser's own inline flow drops
-    // it — ns-link-iconed is that row (ns-mud.css).
-    // Null rather than NsClassBuilder's own "" once there is nothing to add: Blazor omits an
-    // attribute whose value is null (Probe below relies on the same rule), so a plain anchor
-    // with no Class and no Icon renders no class attribute at all instead of an empty one.
-    string? GetAnchorClasses()
+    // The bare anchor draws no box of its own (a vendor anchor has none to grow), so ns-link
+    // gives it one — inline-flex with nothing else it needs for the word alone — which is also
+    // what lets a coarse pointer's 44px floor reach it (ns-mud.css). A caller that also hands it
+    // an Icon needs the glyph laid out beside the word rather than wherever the browser's own
+    // inline flow drops it — ns-link-iconed is that row, on the same box.
+    string GetAnchorClasses()
     {
-        var classes = new NsClassBuilder(Class)
+        return new NsClassBuilder(Class)
+            .Add("ns-link")
             .Add("ns-link-iconed", Icon is not null)
             .ToString();
-
-        return classes.Length == 0 ? null : classes;
     }
 
     // The vendor has no soft-accent variant, so Important is painted from a class over its
@@ -354,11 +357,11 @@ else
     // that stops working with nothing on screen saying so, which is worse than the one thing it
     // has to offer. Its own Disabled still drops it (ActiveHref), because a destination that is
     // not reachable yet has no address to hand the browser in the first place.
-    bool IsDisabled => Disabled || ParentRefuses;
+    bool IsDisabled => Disabled || _inert || ParentRefuses;
 
     // A disabled control keeps the chrome but must not navigate: MudBlazor renders an
     // anchor whenever Href is set, and an anchor ignores the disabled attribute.
-    string? ActiveHref => Disabled ? null : _href;
+    string? ActiveHref => Disabled || _inert ? null : _href;
 
     string? BrowserTarget => Target?.IsBrowser == true ? Target.Value.Name : null;
 
@@ -372,7 +375,18 @@ else
         // A destination that carries its own scheme (https:, mailto:, tel:, ...) is outside
         // this app's routes and passes through unchanged; everything else is a route this
         // surface resolves. The question is asked of SurfaceContext.IsExternal and never of
-        // Uri directly — the platform trap that cost this story four sessions is named there.
+        // Uri directly — the platform trap is named there.
+        // An empty destination or a scheme no door may open (javascript:, data:) has no address
+        // to hand the browser: the link draws disabled.
+        _inert = string.IsNullOrEmpty(Href) || SurfaceContext.IsInert(Href);
+
+        if (_inert)
+        {
+            _href = string.Empty;
+            _intercepts = false;
+            return;
+        }
+
         if (SurfaceContext.IsExternal(Href))
         {
             _href = Anchored(Href);

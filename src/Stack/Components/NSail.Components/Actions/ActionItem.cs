@@ -21,7 +21,7 @@ public sealed class ActionItem
     /// <summary>Renders instead of the glyph on icon chrome — a contributor whose action IS
     /// its own image (a person's avatar) rather than a fixed catalog entry. A plain Blazor
     /// primitive, so Stack stays domain-free: the contributor's own kit builds the fragment
-    /// (an AssetId-based image), never named or typed here. Mutually exclusive with Icon in
+    /// (a stored image), never named or typed here. Mutually exclusive with Icon in
     /// spirit, never combined — the glyph is what a contributor with no image falls back to.</summary>
     public RenderFragment? Content { get; init; }
 
@@ -58,6 +58,13 @@ public sealed class ActionItem
     public Enum? Group { get; init; }
 
     public bool Disabled { get; init; }
+
+    /// <summary>Whether the work this act starts is still going, by the page's own state — a
+    /// task still on the box, long after the click returned. The act wears the face of a click
+    /// in flight (the turning glyph, the loading word) and refuses presses until the page hands
+    /// a new item with this false. The click's own moment needs nothing here: NsAction holds
+    /// it.</summary>
+    public bool Running { get; init; }
 
     /// <summary>Whether this act changes what the form around it holds. True is the default and
     /// covers every deed, so an act drawn under an NsForm that refuses writes — ReadOnly,

@@ -199,6 +199,56 @@ public sealed class HostDialogSurfaceTests : BunitContext, IAsyncLifetime
         Assert.False(host.Find(".mud-dialog-title button").HasAttribute("disabled"));
     }
 
+    /// <summary>The innermost open thing wins Escape on a hosted dialog too, where the dialog's
+    /// own Escape is the vendor's native listener and no Blazor stop reaches it: while a help or a
+    /// dropdown inside is open the key is withdrawn from the dialog, and it is given back once
+    /// that thing has closed, so the next Escape closes the dialog. What the vendor's listener does
+    /// with the option against a real key is a browser's to see.</summary>
+    [Theory]
+    [InlineData(".ns-help button", ".ns-help button")]
+    [InlineData(".probe-open", ".field")]
+    public async Task Escape_IsWithdrawnWhileSomethingInsideIsOpen_AndGivenBackOnceItCloses(string opens, string escapes)
+    {
+        var host = Render<DialogHostFixture>();
+        var dialogs = Services.GetRequiredService<DialogManager>();
+
+        // Open completes when the dialog CLOSES, so awaiting it here would hang the test.
+        _ = host.InvokeAsync(() => dialogs.Open<DialogEscapeProbeBody>("Dialog title"));
+
+        host.WaitForAssertion(() => Assert.True(EscapeCloses(host)));
+
+        await host.Find(opens).ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        host.WaitForAssertion(() => Assert.False(EscapeCloses(host)));
+
+        await host.Find(escapes).KeyDownAsync(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
+
+        host.WaitForAssertion(() => Assert.True(EscapeCloses(host)));
+        Assert.Single(host.FindAll(".dialog-escape-body"));
+    }
+
+    /// <summary>A dialog closed by its X with a help still open inside gives no trouble on the
+    /// way out: the help's release reaches a dialog that is already going.</summary>
+    [Fact]
+    public async Task ADialogClosedWithSomethingOpenInside_ClosesCleanly()
+    {
+        var host = Render<DialogHostFixture>();
+        var dialogs = Services.GetRequiredService<DialogManager>();
+
+        // Open completes when the dialog CLOSES, so awaiting it here would hang the test.
+        _ = host.InvokeAsync(() => dialogs.Open<DialogEscapeProbeBody>("Dialog title"));
+
+        await host.WaitForElement(".ns-help button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+        await host.InvokeAsync(() => host.Find(".mud-dialog-title button").Click());
+
+        Assert.Empty(host.FindAll(".dialog-escape-body"));
+    }
+
+    static bool EscapeCloses(IRenderedComponent<DialogHostFixture> host)
+    {
+        return host.FindComponent<DialogEscapeProbeBody>().Instance.Dialog!.Options.CloseOnEscapeKey == true;
+    }
+
     static Dictionary<string, object?> Body(
         bool disabled = false,
         TaskCompletionSource? gate = null,

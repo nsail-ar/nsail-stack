@@ -97,7 +97,7 @@ public sealed class PushTests
 
         await client.Connected(times: 2, after: cut);
 
-        // The second line is the client's word, and the server registers it after the handshake
+        // The second line is the client's word, and the hub registers it after the handshake
         // the client returns on: a publish aimed at an audience the line has not joined yet
         // reaches nobody.
         await host.Held(lines: 2);
@@ -424,8 +424,8 @@ sealed class PushHost : IAsyncDisposable
     }
 
     /// <summary>A signed-in client listening over this transport, handed back once the SERVER
-    /// holds its line — never on the client's word alone, which is a line the server may not
-    /// have registered yet and so an audience a publish does not reach.</summary>
+    /// holds its line — never on the client's word alone, which for the hub is a line the server
+    /// may not have registered yet and so an audience a publish does not reach.</summary>
     public async Task<PushClient> Listen(Transport transport)
     {
         var client = await PushClient.Listen(Server, transport, await SignIn());

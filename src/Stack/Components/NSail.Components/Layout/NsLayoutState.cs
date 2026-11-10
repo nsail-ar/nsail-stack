@@ -1,6 +1,8 @@
 ﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.AspNetCore.Components;
+
 namespace NSail.Components;
 
 public class NsLayoutState
@@ -28,6 +30,12 @@ public class NsLayoutState
 
     public void ToggleDrawer()
     {
-        DrawerIsOpen = !DrawerIsOpen;
+        if (_open)
+        {
+            DrawerIsOpen = false;
+            return;
+        }
+
+        DrawerIsOpen = true;
     }
 }

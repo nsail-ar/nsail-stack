@@ -20,8 +20,8 @@
    where the form refuses writes, and the kit that drew the menu names nothing. *@
 @if (_allowed && Offers(Action))
 {
-    <MudMenuItem Icon="@(Action.Icon?.Markup)"
-                 Disabled="@Action.Disabled"
+    <MudMenuItem Icon="@(Action.Running ? NsIcons.Progress.Markup : Action.Icon?.Markup)"
+                 Disabled="@(Action.Disabled || Action.Running)"
                  Class="@(Selected == true ? "ns-menu-item ns-menu-item-selected" : "ns-menu-item")"
                  UserAttributes="@Choice"
                  OnClick="Run">
@@ -77,7 +77,7 @@
     }
 
     // Deny-by-default only once a gate exists to ask: a command row carries no destination and
-    // a host with no security registered (a component test, a surface without Iam) must still
+    // a host with no security registered (a component test, a surface without security) must still
     // render, which is why the flag starts true and only OnParametersSetAsync can turn it off.
     bool _allowed = true;
 
@@ -144,7 +144,7 @@
         // host below is not the render tree's, so the work outlives the menu; the bar still
         // shows it while it runs (Enter/Exit need no subscriber), but Anchored falls back to
         // the root surface here, and nobody's OnProblem answers that one — a refusal reaches
-        // no screen (nsail#1676). A command whose handler can be refused catches its own
+        // no screen. A command whose handler can be refused catches its own
         // BusinessException and answers with an Alert (ui/fields.md).
         using var runner = new Runner(new Detached(Anchored));
 

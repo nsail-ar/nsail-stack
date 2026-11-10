@@ -22,8 +22,9 @@ public class SecurityManager
     readonly MessageRegistry _messages;
     readonly RelationProvider _relations;
     readonly Dictionary<Type, PolicyHandlerFactory> _factories;
-    readonly List<PolicyHandler> _builtIn = [];
-    readonly List<PolicyHandler> _stored = [];
+    readonly IReadOnlyList<PolicyHandler> _builtIn;
+    IReadOnlyList<PolicyHandler> _stored = [];
+    IReadOnlyList<PolicyDrop> _drops = [];
     readonly List<DependencyPolicyHandler> _dependencies = [];
     readonly ILogger<SecurityManager> _logger;
     readonly FeatureProvider _features;
@@ -36,7 +37,8 @@ public class SecurityManager
         IEnumerable<PolicyHandlerFactory> factories,
         IEnumerable<Policy> builtInPolicies,
         ILogger<SecurityManager>? logger = null,
-        FeatureProvider? features = null)
+        FeatureProvider? features = null,
+        BuiltInHandlers? shared = null)
     {
         _messages = messages;
         _relations = relations;
@@ -46,12 +48,25 @@ public class SecurityManager
 
         // Built-ins are code: a built-in that fails to hydrate is a deploy-time bug, not a
         // stale row, so it stays a hard failure — the loop below exists for stored rows only.
-        foreach (var policy in builtInPolicies)
-        {
-            _builtIn.AddRange(Hydrate(policy, PolicyOrigin.BuiltIn));
-        }
+        // Code does not change between scopes, so a process hydrates it once when the host
+        // registered the holder; a manager built by hand hydrates its own.
+        _builtIn = shared is null
+            ? HydrateBuiltIn(builtInPolicies)
+            : shared.Get(() => HydrateBuiltIn(builtInPolicies));
 
         Imply();
+    }
+
+    List<PolicyHandler> HydrateBuiltIn(IEnumerable<Policy> policies)
+    {
+        var handlers = new List<PolicyHandler>();
+
+        foreach (var policy in policies)
+        {
+            handlers.AddRange(Hydrate(policy, PolicyOrigin.BuiltIn));
+        }
+
+        return handlers;
     }
 
     /// <summary>The [Requires] declarations, turned into handlers once at boot. Nobody names
@@ -83,6 +98,12 @@ public class SecurityManager
     {
         return _builtIn.Concat(_stored).Concat(_dependencies);
     }
+
+    /// <summary>The stored rows the last load put in force with something excused: the
+    /// message keys the registry no longer knows and the constrained fields their departure
+    /// left unbound. What an administrator reads to find a stale row, beside the log. The
+    /// grant is unchanged — the list exists so the excuse is visible.</summary>
+    public IReadOnlyList<PolicyDrop> Drops => _drops;
 
     /// <summary>The code-owned policies, for an editor that has to show them read-only.
     /// Listed from the hydrated set rather than from the injected one: a built-in that did
@@ -177,7 +198,10 @@ public class SecurityManager
     {
         ArgumentNullException.ThrowIfNull(policies);
 
-        _stored.Clear();
+        // Built aside and swapped whole: a scope sharing this manager enumerates the old list
+        // or the new one, never a half-filled one.
+        var stored = new List<PolicyHandler>();
+        var drops = new List<PolicyDrop>();
 
         foreach (var policy in policies)
         {
@@ -185,7 +209,7 @@ public class SecurityManager
 
             try
             {
-                _stored.AddRange(Hydrate(policy, PolicyOrigin.Stored, drift));
+                stored.AddRange(Hydrate(policy, PolicyOrigin.Stored, drift));
             }
             catch (Exception exception)
             {
@@ -195,9 +219,13 @@ public class SecurityManager
 
             if (drift.Messages.Count > 0)
             {
+                drops.Add(new PolicyDrop(policy.Id, policy.Name, drift.Messages, drift.Excused));
                 OnDropped(policy, drift.Messages, drift.Excused);
             }
         }
+
+        _stored = stored;
+        _drops = drops;
     }
 
     /// <summary>Called once per stored policy that failed to hydrate. The log lives here
@@ -425,6 +453,35 @@ public class SecurityManager
             var constraint = handler.Policy.Fields?.GetValueOrDefault(field);
 
             if (constraint is null || constraint.Kind == PolicyConstraintKind.Any || constraint.Flag == value)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Whether some policy that could allow this send admits this id in this field —
+    /// the party and organization axes' client-derived field state (permissions.md, The client
+    /// consumes policies). Optimistic only where the graph is needed: a no is a refusal the
+    /// gate would give.</summary>
+    public bool Permits(Type messageType, string field, Guid value, Session session)
+    {
+        ArgumentNullException.ThrowIfNull(messageType);
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (session.IsSystem)
+        {
+            return true;
+        }
+
+        var key = KeyFor(messageType);
+        var today = BusinessDate.Today;
+
+        foreach (var handler in Handlers())
+        {
+            if (handler.AppliesTo(key, session, today) && handler.Permits(field, value, session))
             {
                 return true;
             }

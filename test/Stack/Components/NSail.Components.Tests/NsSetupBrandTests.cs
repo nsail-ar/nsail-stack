@@ -57,11 +57,10 @@ public sealed class NsSetupBrandTests : BunitContext, IAsyncLifetime
 
         JSInterop.Mode = JSRuntimeMode.Loose;
 
-        // Every brand this file paints is dark by its own default (Brand.DefaultDark), so the OS
-        // reading NsTheme asks for after mount (nsail#2744) is set to agree with it: this file's
-        // own RenderCount assertions are about the BRAND handoff, not the OS theme query, and an
-        // answer that disagreed would cost a second, unrelated render.
-        JSInterop.Setup<bool>("mudThemeProvider.isDarkMode", _ => true).SetResult(true);
+        // The OS reading NsTheme asks for after mount is held unanswered: this file's RenderCount
+        // assertions are about the BRAND handoff, and the first answer under an unset preference
+        // costs NsTheme a render of its own (NsThemeSystemPreferenceTests).
+        JSInterop.Setup<bool>("mudThemeProvider.isDarkMode", _ => true);
     }
 
     // MudPopoverProvider, which NsSetup mounts, resolves a MudBlazor service that only
@@ -106,6 +105,9 @@ public sealed class NsSetupBrandTests : BunitContext, IAsyncLifetime
 
         var cut = Render<NsSetup>();
 
+        // Unset preference, unanswered device: the grey's light scheme is lit and its dark one
+        // waits in the prefers-color-scheme block.
+        Assert.Contains(NeutralLight, cut.Markup);
         Assert.Contains(NeutralDark, cut.Markup);
         Assert.DoesNotContain(Organization, cut.Markup);
         Assert.DoesNotContain(FrameworkDefault, cut.Markup);

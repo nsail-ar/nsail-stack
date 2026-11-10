@@ -18,9 +18,9 @@ public static class Setup
     public static void AddRouteTable(this IServiceCollection services)
     {
         // The root surface is the route table plus somewhere to navigate, so it is registered
-        // here rather than left to a host to remember: a link that cannot see a surface used
-        // to drop its target and hand back the bare route, which navigates correctly and
-        // therefore shows nothing. Missing now is a failure to resolve, not a silent one.
+        // here rather than left to a host to remember: a link that cannot see a surface fails
+        // to resolve rather than silently handing back the bare route, which would navigate
+        // correctly and therefore show nothing.
         services.TryAddScoped<RootSurface>();
 
         // Beside the root surface for the same reason, and scoped for one more: the surface
@@ -147,7 +147,7 @@ public static class Setup
         services.AddScoped<IGuideContributor, TContributor>();
     }
 
-    /// <summary>Registers a module's playbooks for the Assistant, the same shape AddGuide
+    /// <summary>Registers a module's playbooks for an assistant, the same shape AddGuide
     /// registers chapters — no reader to add beside it, because a skill's body is read from
     /// the contributor's own assembly (EmbeddedSkillBody), never fetched.</summary>
     public static void AddSkills<TContributor>(this IServiceCollection services)

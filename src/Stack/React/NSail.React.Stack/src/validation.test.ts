@@ -22,6 +22,49 @@ describe("validate", () => {
     expect(validateField(UpdateOrder.fields.number, "   ").map((i) => i.code)).toEqual(["Required"]);
   });
 
+  it("bounds an exact number carried as text", () => {
+    const price = { kind: "decimal" as const, key: "Shop.UpdateOrder.Price", min: 0, max: 10 };
+
+    expect(validateField(price, "9.999999999999999999").map((i) => i.code)).toEqual([]);
+    expect(validateField(price, "10.5").map((i) => i.code)).toEqual(["OutOfRange"]);
+    expect(validateField({ ...price, kind: "bigint" as const }, "-1").map((i) => i.code)).toEqual(["OutOfRange"]);
+
+    const id = { kind: "bigint" as const, key: "Shop.UpdateOrder.Id", max: 9007199254740992 };
+
+    expect(validateField(id, "9007199254740992").map((i) => i.code)).toEqual([]);
+    expect(validateField(id, "9007199254740993").map((i) => i.code)).toEqual(["OutOfRange"]);
+  });
+
+  it("reads a .NET pattern with Unicode classes and leaves an uncompilable one to the server", () => {
+    const name = { kind: "string" as const, key: "Shop.UpdateOrder.Name", pattern: "^[\\p{L} ]+$" };
+
+    expect(validateField(name, "Ana")).toEqual([]);
+    expect(validateField(name, "A1").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    const phone = { ...name, pattern: "^\\d{3}\\-\\d{4}$" };
+
+    expect(validateField(phone, "555-1234")).toEqual([]);
+    expect(validateField(phone, "5551234").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    expect(validateField({ ...name, pattern: "(?<x" }, "anything")).toEqual([]);
+
+    const block = { ...name, pattern: "^[\\p{IsBasicLatin}]+$" };
+
+    expect(validateField(block, "Ana")).toEqual([]);
+  });
+
+  // The text input takes anything; what the server's parse would refuse is refused here first.
+  it("refuses a long or decimal text the server cannot read", () => {
+    const price = { kind: "decimal" as const, key: "Shop.UpdateOrder.Price" };
+    const id = { kind: "bigint" as const, key: "Shop.UpdateOrder.Id" };
+
+    expect(validateField(price, "1234567890.123456789").map((i) => i.code)).toEqual([]);
+    expect(validateField(price, "-1.5e3").map((i) => i.code)).toEqual([]);
+    expect(validateField(price, "1234,56").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    expect(validateField(price, "abc").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    expect(validateField(id, "9007199254740993").map((i) => i.code)).toEqual([]);
+    expect(validateField(id, "1.5").map((i) => i.code)).toEqual(["InvalidFormat"]);
+    expect(validateField(id, " +9007199254740993 ").map((i) => i.code)).toEqual([]);
+  });
+
   it("bounds a query member like a body one", () => {
     expect(validate(ListOrders, { search: "x".repeat(11) })?.issues[0].code).toBe("MaxLength");
   });

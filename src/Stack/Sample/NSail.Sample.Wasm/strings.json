@@ -2,7 +2,7 @@
   "NavMenu.Home": "Home",
   "NavMenu.Contacts": "Contacts",
   "Sample.HomePage.Title": "NSail Sample",
-  "Sample.HomePage.Intro": "One API, two clients: the same messages, validation and texts, drawn by Blazor here and by React in its own build.",
+  "Sample.HomePage.Intro": "One API, two clients: the same messages, validation and texts, drawn by Blazor and by React.",
   "Sample.HomePage.Blazor": "Contacts in Blazor",
   "Sample.HomePage.React": "Open the React client",
   "Sample.Contact": "Contact",

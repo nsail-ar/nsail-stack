@@ -57,6 +57,26 @@ public sealed class NsListEditorTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public async Task ASecondRemoveWhileTheFirstRunsDoesNothing()
+    {
+        var cut = Render<ListEditorHost>();
+        var gate = new TaskCompletionSource();
+
+        cut.Instance.Gate = gate;
+
+        var button = cut.FindAll("button[aria-label='Eliminar']")[0];
+        var first = cut.InvokeAsync(() => button.Click());
+
+        await Click(cut, "Eliminar");
+
+        gate.SetResult();
+        await first;
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.Instance.Rows));
+        Assert.Equal(1, cut.Instance.Removes);
+    }
+
+    [Fact]
     public void TheChromeIsBuiltIn()
     {
         var cut = Render<ListEditorHost>();

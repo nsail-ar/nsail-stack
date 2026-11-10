@@ -39,7 +39,7 @@ spreadsheet nothing to total.
 ## The writers
 
 `IExportWriter` announces its `Kind`, its `Extension` and its `ContentType`, and writes a book
-into a `Stream`. **The culture is handed in, never read off the thread**: the file is for the
+into a `Stream`. **The culture and the time zone are handed in, never read off the thread or the process**: the file is for the
 person who asked for it, and on a server that person is a request and never the process.
 
 **What each writer does with that culture differs, and the difference is not a style choice.** A
@@ -54,6 +54,14 @@ all, so it prints every figure in the reader's own separators.
 | Pages | one sheet per table, named after the table or its page | flattened in order, a blank line between tables |
 | Encoding | OOXML | UTF-8 **with a byte-order mark** |
 | Separator | — | derived from the decimal mark: `;` where it is a comma, `,` otherwise |
+
+**A text cell is never a formula, in either writer.** One that opens with `=`, `+`, `-`, `@`, tab
+or CR is written with a leading `'`, which is part of the value: the reader of a `.xlsx` sees it.
+The CSV leaves a figure untouched, since a negative one starts with a minus: a value in a Number,
+Money or Percent column that printed as a number; a string in such a column is text and is defused
+too. The `.xlsx` decides by type, not by column format: numbers, booleans, dates and times stay
+typed cells, and every other value (a string, an enum word, a heading, a `Guid`) is text and is
+defused.
 
 **The CSV separator is derived and never configured.** A culture that writes `1.234,56` cannot
 separate fields with the comma inside its own figures; reading the separator off the region
@@ -92,7 +100,9 @@ it hands its export up to its `SurfaceContext` instead (`AnnounceExport`, the sa
 `Title` already makes the other way: a table reads the page's own name, a header reads the
 table's own control), and `NsPageHeader` draws that export's trigger in its toolbar, before
 `Actions`, where it claims the slot (`SurfaceContext.ClaimsExport`, asked from its own render,
-first header wins). An unnamed grid whose surface has no header to claim the slot — an embedded
+first header wins). When Exportar is all the toolbar would hold (no `Lead`, search, filter toggle
+or `Actions`), the header draws it in the title row ahead of the guide's `?` and no toolbar row
+opens. An unnamed grid whose surface has no header to claim the slot — an embedded
 grid, a dialog — keeps drawing its own, same as a named one. First unnamed, exportable grid to
 announce on a surface wins the slot the same way (`SurfaceContext.AnnounceExport`): a second
 grid's render, exportable or not, is simply not read while another grid holds it, and a grid's
@@ -124,7 +134,8 @@ neither.
 **`Run` answers the rows the file carries, or null where no file was written.** A reader sees the
 download; a caller away from the screen sees nothing, and "it worked" is the one thing it cannot
 be left to assume — a read that does not land leaves no file (below), a kind nobody registered
-has no writer, an export already in flight writes no second file, and all three are null. What
+has no writer, an export already in flight writes no second file, a list with more rows than
+`NsTable.MaxExportRows` is refused (below), and all four are null. What
 null never means is **"not yet"**: the announcement is handed out from the top of the grid's own
 render pass, before the header's `NsTh` have declared a single column, and an act run right there
 waits for that pass to land rather than answering as though the list had nothing to export — a
@@ -183,10 +194,17 @@ read, so a row type's other members are none of an export's business.**
   "Proveedor" is the list mistranslated.
 - **A boolean reads as Sí or No** (`Common.Yes`/`Common.No`), the same promise one step down:
   `True` under a heading that says Activo is the CLR's word for it and nobody else's.
-- **A timestamp the server stamped reads in the reader's own clock.** Every cell in the house
-  prints a UTC moment through `ToLocalTime`, and a file three hours off the list it came from is
+- **A timestamp the server stamped reads in the reader's own clock.** Every grid cell prints
+  a UTC moment through `ToLocalTime`, and a file three hours off the list it came from is
   nobody's reading. Only a `DateTime` that says it is UTC: any other kind is already local, or is
   a date with no zone to it.
+- **Writers are handed the culture and the time zone, never the thread's or the process's.** A
+  UTC `DateTimeOffset` or `DateTime` reaching a writer is converted to the zone given. A grid's
+  column reader has already turned a UTC `DateTime` into local time (`TableColumn.Value`), so in a
+  grid's book the zone reaches only `DateTimeOffset` values; a non-finite figure
+  (NaN, Infinity) is an empty cell, since it has no decimal and throwing would abort a stream whose
+  headers are already out. File names lose a fixed set (`" \ / : * ? < > |` and control
+  characters), the same on every OS (`ExportWriters.FileName`).
 - **A collection reads as its members, comma-separated** (a party's roles): no cell type holds a
   list, and left alone the file would print the type's name.
 - **A column with no `For` is not a column** — the action column has nothing to put in a file and
@@ -218,3 +236,8 @@ what a page that does not answer means are settled with no renderer in the way.
 (`nsapp.download`, a `DotNetStreamReference` so the bytes cross once and never as base64), so the
 writer's output stays in hand — a megabyte or two for tens of thousands of rows — while the result
 set it came from is read a page at a time and dropped.
+
+The file's size is bounded by `NsTable.MaxExportRows` (default `TableExport.DefaultRowCap`, at
+least 1): the row past it ends the export with a message and no file, so a large `OnQuery` list
+cannot grow the circuit without limit. The refusal is `Problems.ExportTooLarge`, whose `{max}`
+names the cap.

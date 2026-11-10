@@ -25,7 +25,7 @@ public sealed class TenantStateFeatureProvider : FeatureProvider
     readonly TenantStates? _states;
     readonly TenantStateMemo? _memo;
 
-    Guid? _parsedFor;
+    string? _parsedFor;
     Entitlements? _parsed;
 
     public TenantStateFeatureProvider(
@@ -66,7 +66,7 @@ public sealed class TenantStateFeatureProvider : FeatureProvider
                 return held;
             }
 
-            if (_memo is null || _tenancy?.RowKey is not { } key || !_memo.Holds(key, out var state))
+            if (_memo is null || _tenancy?.StateKey is not { } key || !_memo.Holds(key, out var state))
             {
                 return Entitlements.Unrestricted;
             }
@@ -87,12 +87,12 @@ public sealed class TenantStateFeatureProvider : FeatureProvider
 
     Entitlements? Parsed()
     {
-        return _parsed is { } parsed && _parsedFor == _tenancy?.RowKey ? parsed : null;
+        return _parsed is { } parsed && _parsedFor == _tenancy?.StateKey ? parsed : null;
     }
 
     Entitlements Remember(Entitlements entitlements)
     {
-        _parsedFor = _tenancy?.RowKey;
+        _parsedFor = _tenancy?.StateKey;
         _parsed = entitlements;
 
         return entitlements;

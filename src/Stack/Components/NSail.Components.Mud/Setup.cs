@@ -40,6 +40,10 @@ public static class Setup
         services.TryAddScoped<PageGate>();
         services.TryAddScoped<NavMenu>();
 
+        // Here and not in an app's mount list: registered before every kit's and the app's own
+        // contributor, so an app arranging the group is the later word, as with any kit's door.
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<INavMenuContributor, HelpMenu>());
+
         // The layout's companion region: scoped, because the region belongs to the one frame a
         // person is looking at, and its content and whatever door opens it both inject this.
         services.TryAddScoped<Companion>();

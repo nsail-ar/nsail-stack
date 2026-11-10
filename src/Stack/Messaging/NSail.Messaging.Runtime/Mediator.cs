@@ -1,6 +1,7 @@
 ﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using NSail.BclExtensions;
 using NSail.Messaging.Runtime.Pipelines;
@@ -10,6 +11,10 @@ namespace NSail.Messaging.Runtime;
 
 public class Mediator
 {
+    static readonly ConcurrentDictionary<(Type Message, Type Result), Type> ResultPipelines = new();
+    static readonly ConcurrentDictionary<Type, Type> SendPipelines = new();
+    static readonly ConcurrentDictionary<Type, Type> PublishPipelines = new();
+
     readonly IServiceProvider _serviceProvider;
 
     public Mediator(IServiceProvider serviceProvider)
@@ -34,7 +39,8 @@ public class Mediator
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var pipelineType = typeof(SendPipeline<,>).MakeGenericType(message.GetType(), typeof(TResult));
+        var pipelineType = ResultPipelines.GetOrAdd(
+            (message.GetType(), typeof(TResult)), key => typeof(SendPipeline<,>).MakeGenericType(key.Message, key.Result));
         var pipeline = (IPipeline<TResult>)_serviceProvider.GetRequiredService(pipelineType);
 
         return pipeline.Execute(message, headers, cancellationToken);
@@ -51,7 +57,7 @@ public class Mediator
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var pipelineType = typeof(SendPipeline<>).MakeGenericType(message.GetType());
+        var pipelineType = SendPipelines.GetOrAdd(message.GetType(), type => typeof(SendPipeline<>).MakeGenericType(type));
         var pipeline = (IPipeline)_serviceProvider.GetRequiredService(pipelineType);
 
         return pipeline.Execute(message, headers, cancellationToken);
@@ -69,7 +75,7 @@ public class Mediator
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var pipelineType = typeof(PublishPipeline<>).MakeGenericType(message.GetType());
+        var pipelineType = PublishPipelines.GetOrAdd(message.GetType(), type => typeof(PublishPipeline<>).MakeGenericType(type));
         var pipeline = (IPipeline)_serviceProvider.GetRequiredService(pipelineType);
 
         return pipeline.Execute(message, headers, cancellationToken);

@@ -158,7 +158,7 @@ public sealed class BrandTheme
     // it lies between a bare rung and the tenth below it, and the ink is never between the two,
     // so the pair bounds it.
     // A ROW UNDER THE POINTER is not among them, unlike the status channel's grounds
-    // (BrandThemeContrastTests, nsail#1935): nothing in the house sets a word in this ink inside a
+    // (BrandThemeContrastTests): nothing in the house sets a word in this ink inside a
     // grid row — a RowEditor cell's field asks for no visible label at all (ui/hosts.md), so there
     // is no floating label to promote there. Adding it anyway would cost the default brand two
     // more steps of its own hue on every tab in the app, to answer a screen that does not exist.
@@ -200,7 +200,7 @@ public sealed class BrandTheme
     // would ride to a coloured page under a vivid chrome — Surface and SurfaceRaised sit AT white,
     // which the ceiling below holds there.
     static readonly LadderMask LightLadder = new(
-        Background: "#faf9f8",
+        Background: "#fcfbfa",
         Surface: "#ffffff",
         SurfaceRaised: "#ffffff",
         TextPrimary: "#262624",

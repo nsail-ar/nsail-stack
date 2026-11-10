@@ -8,11 +8,15 @@ namespace NSail.Backup;
 /// schema — so the combination the dump was taken with travels inside the archive.</summary>
 public sealed record BackupManifest
 {
-    public const int CurrentArchiveVersion = 1;
+    public const int PlainArchiveVersion = 1;
+
+    /// <summary>Written only by an encrypted archive, so a build that cannot unseal one refuses
+    /// it by version instead of restoring ciphertext.</summary>
+    public const int CurrentArchiveVersion = 2;
 
     public const string EntryName = "manifest.json";
 
-    public int ArchiveVersion { get; init; } = CurrentArchiveVersion;
+    public int ArchiveVersion { get; init; } = PlainArchiveVersion;
 
     public required string Product { get; init; }
 
@@ -28,4 +32,13 @@ public sealed record BackupManifest
     public required DateTime TakenAtUtc { get; init; }
 
     public bool HasKeyRing { get; init; }
+
+    /// <summary>The dump and the key ring are sealed under the operator's passphrase. False
+    /// says the archive is readable by anyone who holds the file.</summary>
+    public bool Encrypted { get; init; }
+
+    /// <summary>Base64 salt of the passphrase key derivation; empty when not encrypted.</summary>
+    public string KeySalt { get; init; } = "";
+
+    public int KeyIterations { get; init; }
 }

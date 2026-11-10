@@ -5,7 +5,8 @@ namespace NSail.Messaging.Runtime.Publishing;
 
 /// <summary>How long a client's feed waits before trying the line again — the first connect, a
 /// drop, and a line the server closed cleanly alike. One ladder for every transport: a tab left
-/// open keeps knocking forever, and only a refused session stops.</summary>
+/// open keeps knocking forever, and only a refused session stops. The ladder starts over only for a
+/// line that stayed up <see cref="Steady"/>.</summary>
 public static class PushRetry
 {
     // After the first try, how long to wait before the next one; the last figure repeats for as
@@ -18,6 +19,11 @@ public static class PushRetry
         TimeSpan.FromSeconds(10),
         TimeSpan.FromSeconds(30),
     ];
+
+    /// <summary>How long a line must stay up to count as held, and so start the ladder over. Past
+    /// the server's heartbeat: a line that closed sooner is a server or proxy answering and
+    /// hanging up, which climbs on.</summary>
+    public static readonly TimeSpan Steady = TimeSpan.FromSeconds(30);
 
     public static TimeSpan Delay(int attempt)
     {

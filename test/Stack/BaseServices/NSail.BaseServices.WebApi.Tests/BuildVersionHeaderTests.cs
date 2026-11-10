@@ -5,11 +5,14 @@ using System.Net;
 using NSail.Builds;
 using NSail.Data;
 using NSail.Messaging.Runtime.Context;
+using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace NSail.BaseServices.WebApi.Tests;
 
 // The server half of a deploy reaching a client that is already open (nsail#1452): nothing asks
-// for the build the server is running, so every answer carries it. Run through the real
+// for the build the server is running, so every answer to a signed-in caller carries it. Run through the real
 // pipeline, because the two things that could drop it are pipeline facts — where the middleware
 // stands, and that ErrorMiddleware clears the response it rewrites.
 public sealed class BuildVersionHeaderTests : IAsyncLifetime
@@ -27,12 +30,57 @@ public sealed class BuildVersionHeaderTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AnAnswerCarriesTheBuildThatGaveIt()
+    public async Task ASignedInCallerIsAnsweredWithTheBuildThatGaveIt()
+    {
+        var ticket = await _host.SignIn(tenant: null);
+
+        using var response = await _host.Client.SendAsync(_host.Get("/where", tenant: null, ticket: ticket));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(BuildVersion.Current, Version(response));
+    }
+
+    [Fact]
+    public async Task AnAnonymousCallerIsNotToldTheBuild()
     {
         using var response = await _host.Client.SendAsync(_host.Get("/where", tenant: null));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(BuildVersion.Current, Version(response));
+        Assert.Null(Version(response));
+    }
+
+    [Fact]
+    public async Task EveryAnswerCarriesTheBrowserHardeningHeaders()
+    {
+        using var response = await _host.Client.SendAsync(_host.Get("/where", tenant: null));
+
+        Assert.Equal("nosniff", Single(response, "X-Content-Type-Options"));
+        Assert.Equal("strict-origin-when-cross-origin", Single(response, "Referrer-Policy"));
+
+        var permissions = Single(response, "Permissions-Policy");
+        Assert.Contains("camera=()", permissions);
+        Assert.Contains("microphone=()", permissions);
+        Assert.Contains("geolocation=()", permissions);
+    }
+
+    [Fact]
+    public async Task ARefusalCarriesThemToo()
+    {
+        using var response = await _host.Client.SendAsync(_host.Get("/guarded", tenant: null));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("nosniff", Single(response, "X-Content-Type-Options"));
+    }
+
+    [Fact]
+    public void HstsCoversSubdomains()
+    {
+        Assert.True(_host.Services.GetRequiredService<IOptions<HstsOptions>>().Value.IncludeSubDomains);
+    }
+
+    static string? Single(HttpResponseMessage response, string name)
+    {
+        return response.Headers.TryGetValues(name, out var values) ? string.Join(",", values) : null;
     }
 
     // The answer a client running last week's build is likeliest to get, and the one a header
@@ -40,20 +88,11 @@ public sealed class BuildVersionHeaderTests : IAsyncLifetime
     [Fact]
     public async Task AProblemTheErrorHandlerRewroteCarriesItToo()
     {
-        using var response = await _host.Client.SendAsync(_host.Get("/boom", tenant: null));
+        var ticket = await _host.SignIn(tenant: null);
+
+        using var response = await _host.Client.SendAsync(_host.Get("/boom", tenant: null, ticket: ticket));
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(BuildVersion.Current, Version(response));
-    }
-
-    // A refusal written by the authentication handler rather than by an endpoint: the stamp is
-    // the pipeline's, so it does not depend on anything downstream running at all.
-    [Fact]
-    public async Task ARefusalCarriesItBeforeAnyEndpointRuns()
-    {
-        using var response = await _host.Client.SendAsync(_host.Get("/guarded", tenant: null));
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Equal(BuildVersion.Current, Version(response));
     }
 

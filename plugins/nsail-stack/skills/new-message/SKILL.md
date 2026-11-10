@@ -1,6 +1,6 @@
 ---
 name: new-message
-description: Add an NSail operation end to end — a message in the Sdk ([Http] route, validation), its IHandler in WebApi, the Row/Ref/Model projection, BusinessException failures and strings; endpoint, DI and HTTP client are generated. Use when adding a query or command such as ListInvoices, GetInvoice, CreatePayment or LookupSuppliers, when choosing a verb (there is no Save), or when a send fails with SenderNotFound.
+description: Add an NSail operation end to end — a message in the Sdk ([Http] route, validation), its IHandler in WebApi, the Row/Ref/Model projection, BusinessException failures and strings; endpoint, DI and client are generated. Use for a query or command such as ListInvoices or CreatePayment, when choosing a verb (there is no Save), or on SenderNotFound.
 ---
 
 # New message

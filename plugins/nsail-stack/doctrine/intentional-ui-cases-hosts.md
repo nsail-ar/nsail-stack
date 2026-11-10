@@ -63,7 +63,7 @@ Keeping both and defaulting to the bar was refused: a default is a drift that ha
 yet (principles.md 4 — remove the possibility, not the instance). Removing the bottom one costs
 something real, though — it makes `Title` load-bearing, and a grid that forgets it loses its way
 in SILENTLY, which is the worst failure there is. So the cost is paid where it cannot be
-forgotten: the Architecture suite reads every `.razor` in `src` and refuses a `NewRow` with no
+forgotten: the Architecture suite (enforced in the products' repository) reads every `.razor` in `src` and refuses a `NewRow` with no
 `Title`. The six grids that moved had the heading already — four printed it as a loose
 `NsText As="Title"` line above the grid, which the bar now carries, and the two wizard steps took
 the name the wizard's own rail already owns. Nothing new was translated.
@@ -240,7 +240,7 @@ unless it declares it changes nothing the form holds** (`ActionItem.Writes`, def
 **The blunt gate — every act under a form's cascade goes dark — was refused, not on taste.**
 `NsForm` cascades `Disabled || IsRunning`, so the gate fires on every submit of every screen, not
 just on read-only screens. The census of acts under a form is small and three of them are not
-ways in — `StorageSettingsPage`'s `TestTarget` probes and writes nothing back, `ChannelsEditor`'s
+ways in — `StorageStorePage`'s `TestTarget` probes and writes nothing back, `ChannelsEditor`'s
 `Contact` opens WhatsApp, and a toolbar's view links go somewhere. All three would blink away
 once per save, forever.
 
@@ -379,20 +379,25 @@ The comfort curve reads per width — the phone shows the optimal 2–3 and a wi
 
 ## The action cell's hole, and the Roles zigzag
 
-Markup beside the outlet left the slot reserve stranded mid-cell — a hole before the lupa, and a
+Markup beside the outlet left the slot reserve stranded mid-cell — a hole before the door, and a
 zigzag on the Roles grid when two row shapes each aligned themselves. Hence: the cell
 right-aligns, the toolbar packs to its own trailing edge, and a page's own row actions travel as
 `ActionItem`s into the same toolbar.
 
-## The pager row at phone width
+## The pager row compacts by its own width
 
 Measured: every box in `MudTablePager`'s toolbar is `flex-shrink: 0`, so the row has one width
-at every screen — 392px with the Spanish caption — while a 428px phone's content box is about
-380; `.mud-table-pagination` carries `overflow: auto`, turning the difference into a horizontal
-scroll nobody looks for. The page-size caption is a plain `div`, never a `<label>` bound to the
-combobox, so dropping it loses nothing to a screen reader. The threshold is 599.98px, not the
-960px the table stacks at: the defect is width, and a stacked tablet has the room. The test pins
-the DOM shape those selectors depend on, so a vendor that moves the captions is caught.
+at every screen — 392px with the Spanish caption and all four arrows — while a 428px phone's
+content box is about 380, and a default (`Md`, 480px) aside's is narrower still once its padding
+is spent; the vendor's toolbar wraps what it cannot seat to a second line. A window query
+compacts the phone and leaves the aside wrapping, so the toolbar is its own `inline-size`
+container (it takes its width from the table, never from its content) and the compaction asks
+it. What goes is the page-size caption and the first/last arrows — the pair the vendor's own
+stacked pager drops; previous and next walk the pages. The caption is a plain `div`, never a
+`<label>` bound to the combobox, so dropping it loses nothing to a screen reader. The threshold is
+599.98px, not the 740px the table stacks at: the defect is width, and a stacked list with the
+room keeps the label. `PagerFooterTests` pins the DOM shape those selectors depend on and the rule
+itself, so a vendor that moves the captions or the arrows is caught.
 
 ## The stacked open row is a form
 
@@ -420,7 +425,7 @@ rows — `PurchaseOrderLinesEditor`, `SaleLinesEditor`, `VoucherLinesEditor`, `P
 measured in a phone-shaped browser at 375px (`StackedEditorRowTests`); bUnit can pin the class
 contract, never an edge.
 
-## The open row stacks where its container cannot seat it
+## A table stacks where its container cannot seat it
 
 Nueva Orden de Compra in a `Lg` aside: Producto 104px, Descripción 74, Cantidad 57, **Precio
 unitario 47**, where "125430,50" read "50". Editar Orden de Compra, at `Xl` (1160px), read the same
@@ -441,28 +446,66 @@ aside. What kept it off this screen is that the vendor's stack asks the VIEWPORT
 under its own `max-width: 960px`) while hiding asks the container, so a 720px panel on a 1600px
 screen fell between the two. So `ns-mud.css` asks the container as well, under
 `@media (min-width: 960px)` — a wide viewport, where the vendor's stack is not already the
-answer — and only while a row is open (`ns-table-editing`). A table nobody is editing is
-untouched: a row being read already answers a narrow container by hiding columns.
+answer.
 
-- **The gate is an overlap, not a complement.** The two regimes meet at exactly 960px, where both
-  fire and say the same thing. Complementing `max-width: 960px` with `min-width: 960.02px` would
-  leave a fractional gap where neither does — the trap the `ns-table-editing` rule above the
-  block already documents for its own pair.
-- **The vendor's base is copied** — display, the `::before` on `data-label`, the dense stacked
-  padding, the body's top line and the row's separator — because `.mud-sm-table` is the
-  viewport's word and nothing may put it on. That is the vendor-CSS-copy cost named in
-  *Container queries: the measured facts* ([cases: shell](intentional-ui-cases-shell.md)); the
+**And for every table, not only one with a row open.** Hiding columns is not an answer a row
+being read can always reach: a list whose surviving columns still outgrow the aside overlaps its
+cells or scrolls sideways, at 1280px with any aside open. The card is the phone's answer to the
+same width, so it is the aside's — the same card lines and receding label, the action strip packed
+right with its reserve gone, the foot kept as its own card without blank lines, a paged grid
+growing to its cards so the pager lands under the last one instead of pinned over it, and the add
+row's mirrors (`.ns-select-gutter`, `.ns-row-submit-gutter`, the row's own floor) dropped with the
+columns they mirror. The compact line follows by itself: a container under 600px is stacked at
+any window, so it asks the container alone (`ContainerStackTests`).
+
+- **The container stacks under 740px** (`@container (max-width: 739.98px)`), the aside's line and
+  not the main page's. The widest aside that cannot seat a table is `NsDrawer` `Lg` at 720px;
+  the narrowest surface a desktop gives a main page's list is around 760px. Between the two, an
+  aside is cards and a default `Md` main page is a table of columns, its `Md` columns hidden by
+  their own 960px rung until its container reaches it. `Xl` (the surface's own width) and `Xxl`
+  (1140px) are asides wide enough to seat a table, so they are never the case: a list in one
+  keeps its columns, as a main page's does. A threshold at the window's 960px would catch every
+  main list on a desktop (a `Md` page seats its table in about 928px), which is a list read as
+  cards where it has room for a table.
+- **The gate is an overlap, not a complement.** The window regimes meet at exactly 960px, where
+  both fire and say the same thing. Complementing `max-width: 960px` with `min-width: 960.02px`
+  would leave a fractional gap where neither does — the trap the `ns-table-editing` rule above
+  the block already documents for its own pair.
+- **The vendor's base is copied** — the hidden head, display, the `::before` on `data-label`, the
+  dense stacked padding, the body's top line and the row's separator — because the vendor's rules
+  are a media query nothing can put on. The selectors are the phone block's own: `.mud-sm-table`
+  rides the root at every width, so the same specificities settle the same ties. That is the
+  vendor-CSS-copy cost named in *Container queries: the measured facts* ([cases: shell](intentional-ui-cases-shell.md)); the
   alternative is a row that cannot be typed into.
-- **One pair of hide/re-enable rules, not four.** Inside a container under 960px the `md`, `lg`
+- **One pair of hide/re-enable rules, not four.** Inside a container under 740px the `md`, `lg`
   and `xl` thresholds cannot match, so only the `sm` half is reachable; the other three would be
   rules no width can reach.
 - **Per-row stacking is not available.** A `tr` that is not a table-row is wrapped in an
   anonymous table-row and cell, which lands in column 1 and takes that column's width — the whole
   table is what stacks, in the vendor's rules and in these.
 
-What the column-mode rule keeps is the band between `md` and a column's own threshold: a 1000px
+What the column-mode rule keeps is the band between 740px and a column's own threshold: a 1000px
 container hides Nuevo Comprobante's `Lg` column and frees it again while the row is open
 (`EditorRowColumnModeTests`). The geometry itself is in `OpenRowFitsItsContainerTests` — the
 aside walked through its own door, and the other three line editors at the same container width —
 and the failing reading is an input's box against its own value (`Ui.ClippedFields`): a cell
 holding a shrunken field is not clipped itself, which is how a green suite kept missing it.
+
+## A tool's grid row stays one line tall
+
+Seen on the Ops grids, where a row is a machine or a task and its data runs long: a node's note, a
+task's result, its warnings. Written into the cell, one row wraps to five lines and the next stays
+at one, so the column a reader scans down is no longer a line of equals; and a phone, which has no
+hover, cannot read what a whisper alone carries. Hence one word, a figure or a chip per cell, and
+the rest behind a disclosure that opens on a tap too.
+
+- **The Servers grid** (Máquinas, `ServersPage`) is the status cell: one word, with the state's
+  detail on its whisper. It is cited for that shape; its chip goes against the status rule above
+  (*State paints its text*) and is not the example.
+- **The Tareas grid** (`ServerTaskList`) is the rest of the rule: the state as `NsStatusText`, the
+  note, a failure's words and the result each behind an `NsHint`, so the row is a line and every
+  paragraph is one tap away.
+- **A running act** was a page's own work: a backup whose task is still on the box redrew its
+  verb by hand, with a glyph of the product's and `Disabled`. `ActionItem.Running` is that face
+  in the Stack, the one a click in flight already wears, so every presenter that draws the item
+  as an act draws it.
