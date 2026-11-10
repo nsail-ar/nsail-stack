@@ -13,22 +13,31 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
 {
 
     const string IssuesQuery = """
-        query($o:String!,$n:String!,$c:String,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title projectItems(first:10){nodes{id project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}} milestone{number} labels(first:30){nodes{name}} subIssuesSummary{total percentCompleted} parent{number subIssuesSummary{percentCompleted}} blockedBy(first:30){nodes{number state}}}}}}
+        query($o:String!,$n:String!,$c:String,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title createdAt updatedAt projectItems(first:10){nodes{id updatedAt project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}} milestone{number} labels(first:30){nodes{name}} subIssuesSummary{total percentCompleted} parent{number subIssuesSummary{percentCompleted}} blockedBy(first:30){nodes{number state}}}}}}
         """;
 
     const string ClosedQuery = """
-        query($o:String!,$n:String!,$s:DateTime!,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:CLOSED,filterBy:{since:$s},orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number closedAt projectItems(first:10){nodes{id project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}
+        query($o:String!,$n:String!,$s:DateTime!,$c:String,$sf:String!){repository(owner:$o,name:$n){issues(first:100,states:CLOSED,after:$c,filterBy:{since:$s},orderBy:{field:UPDATED_AT,direction:DESC}){pageInfo{hasNextPage endCursor} nodes{number closedAt projectItems(first:10){nodes{id project{number} fieldValueByName(name:$sf){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}}
         """;
 
     public string Name => repo;
 
     public async Task<IReadOnlyList<(int Number, string Stage)>> ClosedSince(DateTimeOffset since, CancellationToken ct = default)
     {
-        var data = await gh.GraphQl(ClosedQuery, new { o = Owner, n = RepoName, s = since.UtcDateTime.ToString("O"), sf = options.StatusField }, ct);
-        return data.GetProperty("repository").GetProperty("issues").GetProperty("nodes").EnumerateArray()
-            .Where(n => n.GetProperty("closedAt").GetDateTimeOffset() >= since)
-            .Select(n => (n.GetProperty("number").GetInt32(), StageIn(n, options.Project)))
-            .ToList();
+        var closed = new List<(int, string)>();
+        string? cursor = null;
+        do
+        {
+            var data = await gh.GraphQl(ClosedQuery, new { o = Owner, n = RepoName, s = since.UtcDateTime.ToString("O"), c = cursor, sf = options.StatusField }, ct);
+            var page = data.GetProperty("repository").GetProperty("issues");
+            closed.AddRange(page.GetProperty("nodes").EnumerateArray()
+                .Where(n => n.GetProperty("closedAt").GetDateTimeOffset() >= since)
+                .Select(n => (n.GetProperty("number").GetInt32(), StageIn(n, options.Project))));
+            var info = page.GetProperty("pageInfo");
+            cursor = info.GetProperty("hasNextPage").GetBoolean() ? info.GetProperty("endCursor").GetString() : null;
+        }
+        while (cursor is not null);
+        return closed;
     }
 
     // Where a story stands: its column on the board's project, a dash when it has none there.
@@ -101,7 +110,31 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
             n.GetProperty("milestone").ValueKind == JsonValueKind.Object,
             hasParent ? parent.GetProperty("number").GetInt32() : 0,
             Percent(subs),
-            allBlockers.Count);
+            allBlockers.Count)
+        {
+            TouchedAt = TouchedIn(n, project),
+            CreatedAt = n.TryGetProperty("createdAt", out var created) && created.ValueKind == JsonValueKind.String ? created.GetDateTimeOffset() : null,
+        };
+    }
+
+    // The issue's updatedAt moves on a comment or a label; a column move moves only its item's on the project.
+    internal static DateTimeOffset? TouchedIn(JsonElement n, int project)
+    {
+        var at = Time(n);
+        if (n.TryGetProperty("projectItems", out var items))
+        {
+            foreach (var item in items.GetProperty("nodes").EnumerateArray())
+            {
+                if (item.GetProperty("project").GetProperty("number").GetInt32() != project) continue;
+                if (Time(item) is { } moved && (at is null || moved > at)) at = moved;
+            }
+        }
+        return at;
+
+        static DateTimeOffset? Time(JsonElement e)
+        {
+            return e.TryGetProperty("updatedAt", out var u) && u.ValueKind == JsonValueKind.String ? u.GetDateTimeOffset() : null;
+        }
     }
 
     static double Percent(JsonElement summary)
@@ -147,6 +180,16 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         return StageIn(data.GetProperty("repository").GetProperty("issue"), options.Project);
     }
 
+    async Task<(JsonElement Issue, string? Item)> ItemOf(int story, int project, CancellationToken ct)
+    {
+        var issue = (await gh.GraphQl(IssueStageQuery, new { o = Owner, n = RepoName, i = story, sf = options.StatusField }, ct)).GetProperty("repository").GetProperty("issue");
+        var item = issue.GetProperty("projectItems").GetProperty("nodes").EnumerateArray()
+            .Where(i => i.GetProperty("project").GetProperty("number").GetInt32() == project)
+            .Select(i => i.GetProperty("id").GetString())
+            .FirstOrDefault();
+        return (issue, item);
+    }
+
     // The story's column; the issue joins the project if it is not in it yet.
     public async Task SetStage(int story, string stage, CancellationToken ct = default)
     {
@@ -156,19 +199,61 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         {
             throw new InvalidOperationException($"project {number}'s {options.StatusField} has no column {stage} ({string.Join(", ", ids.Options.Keys)})");
         }
-        var issue = (await gh.GraphQl(IssueStageQuery, new { o = Owner, n = RepoName, i = story, sf = options.StatusField }, ct)).GetProperty("repository").GetProperty("issue");
-        var item = issue.GetProperty("projectItems").GetProperty("nodes").EnumerateArray()
-            .Where(i => i.GetProperty("project").GetProperty("number").GetInt32() == number)
-            .Select(i => i.GetProperty("id").GetString())
-            .FirstOrDefault();
+        var (issue, item) = await ItemOf(story, number, ct);
+        var addedHere = false;
         if (item is null)
         {
-            var added = await gh.GraphQl("mutation($p:ID!,$c:ID!){addProjectV2ItemById(input:{projectId:$p,contentId:$c}){item{id}}}",
-                new { p = ids.Project, c = issue.GetProperty("id").GetString() }, ct);
-            item = added.GetProperty("addProjectV2ItemById").GetProperty("item").GetProperty("id").GetString();
+            try
+            {
+                var added = await gh.GraphQl("mutation($p:ID!,$c:ID!){addProjectV2ItemById(input:{projectId:$p,contentId:$c}){item{id}}}",
+                    new { p = ids.Project, c = issue.GetProperty("id").GetString() }, ct);
+                item = added.GetProperty("addProjectV2ItemById").GetProperty("item").GetProperty("id").GetString();
+                addedHere = true;
+            }
+            // A story just created is added by the project's own workflow while this adds it too: the
+            // item is there, read it again.
+            catch (GitHubException e) when (e.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+            {
+                item = (await ItemOf(story, number, ct)).Item;
+                if (item is null) throw;
+            }
         }
-        await gh.GraphQl("mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{singleSelectOptionId:$o}}){projectV2Item{id}}}",
-            new { p = ids.Project, i = item, f = ids.Field, o = option }, ct);
+        try
+        {
+            await WriteColumn(ids, item!, option, ct);
+        }
+        catch (GitHubException) when (addedHere)
+        {
+            // An item with no column reads as lost: take back the one this call added.
+            try
+            {
+                await gh.GraphQl("mutation($p:ID!,$i:ID!){deleteProjectV2Item(input:{projectId:$p,itemId:$i}){deletedItemId}}",
+                    new { p = ids.Project, i = item }, ct);
+            }
+            catch (GitHubException)
+            {
+            }
+            throw;
+        }
+    }
+
+    const int ColumnWriteAttempts = 3;
+
+    async Task WriteColumn((string Project, string Field, IReadOnlyDictionary<string, string> Options) ids, string item, string option, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await gh.GraphQl("mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{singleSelectOptionId:$o}}){projectV2Item{id}}}",
+                    new { p = ids.Project, i = item, f = ids.Field, o = option }, ct);
+                return;
+            }
+            catch (GitHubException) when (attempt < ColumnWriteAttempts)
+            {
+                await Task.Delay(options.RetryDelay * attempt, ct);
+            }
+        }
     }
 
     // GitHub's own attachments, the ones a pasted file becomes: uploaded to the repository's id.
@@ -265,17 +350,19 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         await gh.Send(HttpMethod.Patch, $"repos/{repo}/issues/{story}", new { state = "closed" }, ct);
     }
 
-    public async Task<int> CreateStory(string title, string body, CancellationToken ct = default)
+    public async Task<int> CreateStory(string title, string body, IReadOnlyCollection<string> labels, CancellationToken ct = default)
     {
-        var created = await gh.Send(HttpMethod.Post, $"repos/{repo}/issues", new { title, body }, ct);
+        var created = await gh.Send(HttpMethod.Post, $"repos/{repo}/issues", new { title, body, labels }, ct);
         return created.GetProperty("number").GetInt32();
     }
 
-    public async Task<int?> FindOpen(string title, bool exact = true, CancellationToken ct = default)
+    public async Task<int?> FindOpen(string title, IReadOnlyCollection<string> labels, bool exact = true, CancellationToken ct = default)
     {
-        var q = Uri.EscapeDataString($"repo:{repo} is:issue is:open in:title \"{title}\"");
-        var found = await gh.Get($"search/issues?q={q}&per_page=30&sort=created&order=asc", ct);
-        return found.GetProperty("items").EnumerateArray()
+        var query = $"repos/{repo}/issues?state=open&sort=created&direction=asc&per_page=100"
+            + (labels.Count > 0 ? $"&labels={Uri.EscapeDataString(string.Join(',', labels))}" : "");
+        var found = await gh.GetAll(query, ct: ct);
+        return found
+            .Where(i => !i.TryGetProperty("pull_request", out _))
             .Where(i => exact ? i.GetProperty("title").GetString() == title : (i.GetProperty("title").GetString() ?? "").StartsWith(title, StringComparison.Ordinal))
             .Select(i => (int?)i.GetProperty("number").GetInt32())
             .FirstOrDefault();
@@ -320,5 +407,29 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
     {
         var created = await gh.Send(HttpMethod.Post, $"repos/{repo}/milestones", new { title }, ct);
         return created.GetProperty("number").GetInt32();
+    }
+
+    public async Task<IReadOnlyList<FiledStory>> Labelled(string label, CancellationToken ct = default)
+    {
+        var all = await gh.GetAll($"repos/{repo}/issues?labels={Uri.EscapeDataString(label)}&state=all&per_page=100", ct: ct);
+        return all.Where(i => !i.TryGetProperty("pull_request", out _))
+            .Select(i => new FiledStory(i.GetProperty("number").GetInt32(), i.GetProperty("title").GetString() ?? "",
+                i.TryGetProperty("body", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString()! : "",
+                i.TryGetProperty("closed_at", out var c) && c.ValueKind == JsonValueKind.String ? c.GetDateTimeOffset() : null,
+                i.TryGetProperty("state_reason", out var r) && r.GetString() == "not_planned"))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<int>> BlockedBy(int story, CancellationToken ct = default)
+    {
+        var all = await gh.GetAll($"repos/{repo}/issues/{story}/dependencies/blocked_by?per_page=100", ct: ct);
+        return all.Select(i => i.GetProperty("number").GetInt32()).ToList();
+    }
+
+    // GitHub links a blocker by its issue id, not its number.
+    public async Task Block(int story, int blocker, CancellationToken ct = default)
+    {
+        var id = (await gh.Get($"repos/{repo}/issues/{blocker}", ct)).GetProperty("id").GetInt64();
+        await gh.Send(HttpMethod.Post, $"repos/{repo}/issues/{story}/dependencies/blocked_by", new { issue_id = id }, ct);
     }
 }

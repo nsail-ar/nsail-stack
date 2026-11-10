@@ -98,11 +98,16 @@ scope's `TenancyProvider`), enlists the context in the ambient unit of work and 
 |---|---|---|
 | `Mode` | `None` | `None`: one customer, install's own database. `MultiDb`: a database per tenant (`{Product}_{Cell}_{tenant}`). `SingleDb`: one database, a `TenantId` column on every entity |
 | `Product`, `Cell` | none | Required under `MultiDb`; lowercase alphanumerics and hyphens, refused at startup otherwise |
-| `Tenants` | none | Comma-separated slugs for work outside a request. Only read under `SingleDb` |
-| `TenantsFile` | none | A file with one slug per line, unioned with `Tenants` and read again on every sweep; replace it atomically |
+| `Tenants` | none | Comma-separated slugs: the roster background jobs sweep and requests are checked against. Only read under `SingleDb` |
+| `TenantsFile` | none | A file with one slug per line, unioned with `Tenants` and read again on every sweep and request; replace it atomically. Named but unreadable fails the request |
 | `StateCacheSeconds` | `120` | How long this process holds a tenant's state; range 1 to 3600 |
 | `SupportContact` | none | Shown as a line on the suspended page |
+| `ProxySecret` | none | When set, a request must carry it in `X-Proxy-Secret` (the proxy writes it) or is refused 403 before any tenant is resolved; unset, outside Development, logs a warning at startup that the listener must be bound to the proxy only |
+| `DatabaseHitSeconds` / `DatabaseMissSeconds` | `30` / `5` | How long MultiDb remembers that a tenant database exists / does not; a tenant provisioned meanwhile is served once the miss window lapses, and a database dropped or moved still resolves until the hit window lapses (the request then fails on connect, not 404) |
 | `RequireRowSecurity` | `false` | Refuse to start if the Postgres role can bypass the tenant row policies. Valid only under `SingleDb` |
+
+Under `SingleDb`, a cell that declares a roster (either key) answers 404 to a slug not on it and
+plants nothing; one that declares none serves every well-formed slug.
 
 `Connection` and `Rows` are derived from `Mode`, never written. Under `SingleDb` the connection
 string may not set Npgsql `Multiplexing` or `No Reset On Close`; startup refuses both.
@@ -135,8 +140,8 @@ a data migration that must touch tenants' rows. Scaffold migrations with the Dat
 startup project.
 
 **Stack tables.** `ApplySetups` also maps `AppliedSeedSteps`, `TenantStates` (status, plan,
-entitlements, suspension window; written from outside the app) and `DeclaredFeatures`, so a
-migration for them lands in your app's chain.
+entitlements, the request a tenant is born with, suspension window; written from outside the
+app) and `DeclaredFeatures`, so a migration for them lands in your app's chain.
 
 **Tests** (`NSail.Data.Testing`). `TestDatabase` connects to `Host=localhost;Username=postgres` and
 caps live fixtures per server (default 4; override with `NSAIL_TESTDB_CONCURRENCY`).

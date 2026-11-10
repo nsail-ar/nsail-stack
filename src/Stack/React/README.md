@@ -11,7 +11,7 @@ Both are npm packages (not NuGet), released at the same version as the NuGet pac
 
 | Package | Folder | What it is | Peer dependencies |
 |---|---|---|---|
-| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm` | `react >= 19` |
+| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm` | `react >= 19`, `react-dom >= 19` |
 | `@nsail/ui` | `NSail.React.Ui` | The components (`NsApp`, `NsLoad`, `NsForm`, `NsField`, `NsTable`, ...) and the `@nsail/ui/ns.css` stylesheet; depends on `@nsail/stack` | `react >= 19`, `react-dom >= 19` |
 
 The contract itself comes from the Sdk, through the build-time package `NSail.TypeScriptGenerator`
@@ -69,8 +69,12 @@ is mandatory only when the message cannot do without it) and a `defineMessage` d
 same name: method, path, and per member its wire kind, localization key, binding and the
 DataAnnotations (`required`, `maxLength`, `minLength`, `min`/`max`, `format`, `pattern`).
 Rules the generator cannot construct are listed in `serverRules` and left to the server. Models
-become interfaces plus `defineModel`, enums a union of names plus `defineEnum`. Two reachable types
-with the same simple name fail the build (`NSTS001`).
+become interfaces plus `defineModel`, enums a union of names plus `defineEnum` (an empty enum
+`never`, a `[Flags]` enum `string`). Two reachable types with the same simple name fail the
+build (`NSTS001`).
+A `[RegularExpression]` using a .NET-only construct (`(?i)`, `\A`, atomic groups) warns `NSTS002`
+and is left to the server; the client compiles each pattern once, with the `u` flag, retrying
+without it only when the pattern has no `\p{}`, `\P{}` or `\u{}`.
 
 **`Mediator`** (`new Mediator(options?)`):
 
@@ -93,9 +97,9 @@ with keys. `useCatalog` and `StackProvider` are the pieces underneath when you n
 | Component | Props worth knowing |
 |---|---|
 | `NsLoad` | `load` (from `useLoad`) and a render function over the data; spinner the first time, dimmed while re-reading, failure in place with retry |
-| `NsForm` + `useForm` | `form`, `onSubmit`, `onReload?` (offered only for a `Conflict`); `NsSaved` shows the saved state |
+| `NsForm` + `useForm` | `form`, `onSubmit`, `onReload?` (offered only for a `Conflict`); `NsSaved` shows the saved state, which `form.reset(value, { keepSaved: true })` keeps over the re-read of what was just sent |
 | `NsField` | `name`, `multiline?`, `autoFocus?`, `label?` (a string key); input, label and bounds come from the descriptor |
-| `NsTable` | `model`, `rows`, `columns`, `rowKey`, `onRowClick?`, `actions?`, `empty?` (a key) |
+| `NsTable` | `model`, `rows`, `columns`, `rowKey`, `onRowClick?` (rows also open from Enter and Space), `actions?`, `empty?` (a key), `ungrouped?` (columns shown without digit grouping, for numbers that are identifiers) |
 | `NsPager` | `page` (`pageIndex`, `pageSize`, `totalCount`), `onPage` |
 | `NsSearch` | `field`, `value`, `onSearch`, `delay?` (300 ms) |
 | `NsEnumSelect` | `field`, `value`, `onChange`, `none?` (a key, default `Common.All`) |

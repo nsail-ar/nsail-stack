@@ -41,7 +41,18 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
 - **Masks**: `NsTextField` takes a `Mask` in NSail's own vocabulary (`0` digit, `a` letter,
   `*` either, everything else a literal), presentation only — the bound value stays raw. The
   patterns are the consuming kit's knowledge (`PartyMasks`). **A date field wears none**, and
-  that is a rule rather than an omission: see the typing contract below.
+  that is a rule rather than an omission: see the typing contract below. A masked box also
+  carries no select-on-focus marker: the mask engine owns its caret. An empty `Mask` is no mask.
+- **`NsTextField` copies its value behind `Copy`** — one boolean, for a value shown once and
+  carried elsewhere by hand (a generated password, a token, a link). An end button writes the
+  bound value — raw, as a `Mask` leaves it — through `navigator.clipboard.writeText` and is
+  named `Components.NsTextField.Copy`; once pressed it turns into the check, named
+  `Components.NsTextField.Copied`, until the value changes. The answer sits where the press was,
+  never a toast. The box stays typeable and an empty box draws no button, like the password's
+  eye. A browser that refuses the clipboard (an http origin, a `Permissions-Policy`) leaves the
+  button unchecked and the page standing: the value shown once must not go with an exception,
+  and the box selects it on focus for a copy by hand. The button takes the end slot a `Suffix`
+  would print in, so a box with both and a value draws the button.
 - **`NsHelp` takes one parameter, `Key`** — a **global** localization key, because the
   component cannot see the page whose prefix would scope it.
 
@@ -90,8 +101,11 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
       wants the escaped canonical form and refuses a space, a brace, a backslash Chromium
       normalizes), and `TryCreate` alone is loose the other way (it reads `//acme.com/x` as a
       path under a `file` scheme the text never carried, which Chromium refuses). **Where a
-      match is impossible, the gap is ONE named class and its cost is written down** — here, a
-      domain no parser can read: Chromium takes `https://acme example/x`,
+      match is impossible, the gap is a named class and its cost is written down** — here two.
+      A scheme no door opens (`WebAddress.OpensScheme`: `https`, `http`, `mailto`): `tel:`,
+      `ftp:`, `javascript:` and `data:` are absolute URLs a `type="url"` takes, and the value
+      is drawn back as a link by whoever reads it, so an install holding one opens the screen
+      clean but cannot save it until the link is fixed. And a domain no parser can read: Chromium takes `https://acme example/x`,
       `http://ac me.com`, `https:/acme.com` and `C:\x\y` as valid, `Uri` refuses all four
       (measured, Chrome 154 and Playwright's own build). Kept refused, because the house's one
       URL box is a link that travels literally into a message somebody receives — so the cost
@@ -99,8 +113,9 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
       cannot save it until the link is fixed.
     - **A refusal names its own motive, not the kind's.** `Problems.UnreadableAddress` says to
       write the address whole, which is a lie over `https://acme example/x` — that one is whole.
-      The second motive gets the second row (`Problems.UnreadableAddressDomain`): a field owning
-      a gate owes as many sentences as the gate has reasons to refuse.
+      The second motive gets the second row (`Problems.UnreadableAddressDomain`), the scheme the
+      third (`Problems.UnreadableAddressScheme`): a field owning a gate owes as many sentences as
+      the gate has reasons to refuse.
     - **A refusal read off `Value` rather than off a keystroke posts through `GetOwnProblem`
       ONLY**, never through a `GetErrorText` of the field's own: the date boxes and
       `MailCopyAddressesField` can draw theirs straight because it is empty until somebody
@@ -129,6 +144,13 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   rule it is: money's bound is the **caller's** (a range no annotation can express, said on the
   field), a date's is the **message's**, and a page that wrote it beside the declaration would be
   keeping a second copy of it.
+- **A `DateTimeOffset` binds as an instant read on the reader's clock.** Both date fields show the
+  day and hour of that instant in the host's local zone (`TimeZoneInfo.Local`, the zone
+  `BusinessDate.Today` and the `[NotFuture]` ceiling already use), never the wall clock of the
+  offset stored with it, and what they hand back is the picked local wall time with that zone's
+  offset — so an untouched value saves the same instant. A reader east of UTC therefore sees the
+  next day for a late-evening UTC value. A business date stays `DateOnly` (`data.md`): the
+  offset is for instants, not for dates.
 
 ### Numbers and money
 
@@ -245,20 +267,44 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   bar is hidden while the field is empty, and it moves on the keystroke because every box in
   the family does. **It is advice and never a gate** — NSail has no password policy,
   and giving it one reaches `SetPassword`, the invitation flow and every seeded account.
-- **`NsPasswordField` says a secret is on file behind `IsStored`.** A write-only credential never
-  travels back, so the box opens empty on every visit and "nothing is stored" looks exactly like
-  "the secret is stored and not shown": the flag fills the hint with the Stack's own
-  `Components.NsPasswordField.Stored`, which says both that there is one and that leaving the box
-  alone keeps it. **False renders no helper node at all**, never an empty one, and an explicit
-  `Helper` still wins — the flag only fills a hint the caller wrote none of. It is one boolean
-  rather than a per-screen string so no screen copies the sentence by hand; the server side of
-  the same contract is a derived `HasXxx` on the settings type ([settings.md](settings.md),
-  *A secret is write-only*) and a save that reads a blank field as "unchanged".
+- **`NsPasswordField` says a secret is on file behind `IsStored`, inside the box.** A write-only
+  credential never travels back, so the box opens empty on every visit and "nothing is stored"
+  looks exactly like "the secret is stored and not shown". While the flag is on and the box is
+  empty, the label stays floated, the placeholder reads `Components.NsPasswordField.Stored` (the mask alone, no word)
+  and a check at the end of the box carries `Components.NsPasswordField.StoredHint` (the whole
+  sentence, leave it empty to keep it) as its whisper (`NsTooltip`) and its label, and the input
+  carries the same sentence as `aria-description`, since the check is a sibling no reference from
+  the input reaches; the glyph takes
+  the field's ink, since the status ink is a list's channel ([styling.md](styling.md)). There is no helper row, so a narrow settings
+  grid keeps its row height; the mask alone cannot hold the sentence and an icon alone is
+  invisible at a glance. An explicit `Helper` or `Placeholder` still wins, and once something is
+  typed both go. It is one boolean rather than a per-screen string so no screen copies the
+  sentence by hand; the server side of the same contract is a derived `HasXxx` on the settings
+  type ([settings.md](settings.md), *A secret is write-only*) and a save that reads a blank field
+  as "unchanged" (Storage: unless the target moved).
+- **`NsPasswordField` draws an eye that reveals what is typed.** A pasted secret is long and a box of
+  dots cannot be checked before it is saved, so every password box carries an end button that
+  flips it between password and text (`Components.NsPasswordField.Show` / `.Hide` as its label).
+  It reveals **only what is typed**: a stored secret never travels back, so an empty box under
+  `IsStored` has nothing to show and keeps its check, and the eye comes with the first character;
+  a disabled or read-only box draws none. The reveal is the field's own state, never a parameter
+  and never kept past the page.
+- **`NsPasswordField` always carries an `autocomplete` token**: `current-password`, or
+  `new-password` under `IsNew` or `IsStored` — a stored third-party secret is never this site's
+  login, and a box the browser fills with it stops being blank, which the save reads as a
+  replacement (settings.md); a caller's `Autocomplete` wins.
+- **`NsDurationField` refuses a span `TimeSpan` cannot hold** as its own field problem and keeps
+  the model's value; the refusal lifts on the next readable keystroke or when the page writes
+  another value behind the field — a read that lands is not a reason to keep blocking Save.
+  `NsMultiSelect` is an `NsFieldBase<IReadOnlyList<TValue>>` like any field;
+  the vendor re-raises a selection the model hands it, so a set equal to the held one is an echo,
+  never an edit (forms.md).
 - **`NsColorField` takes a typed hex, not only a dropdown pick.** The box holds a plain
   6-digit hex — no alpha channel — matching what every caller already stores; text that
-  isn't a color never reaches the model. *Accepted debt: the box itself keeps showing the
-  refused text on screen — the vendor never calls back into `TextChanged` for text it
-  rejects, so nothing tells the field to redraw over it.*
+  isn't a color never reaches the model (`NsColorText` is the second line behind the
+  vendor's own filter). *Accepted debt: the box itself keeps showing the refused text on
+  screen — the vendor never calls back into `TextChanged` for text it rejects, so nothing
+  tells the field to redraw over it.*
 
 ---
 
@@ -348,7 +394,7 @@ when the entry ENDS — Enter pressed, or the box left — carrying what the box
   screen moves itself reaches the box unheard, and a field still holding the old text would
   commit it on the next leave — a value nobody typed, over one somebody did.
 - **A bUnit suite proving a take or a save acts through the end of the entry** — `Input(…)` then
-  `Blur()` or `KeyDown(Key.Enter)` — and `AwaitedActTests` gates those two acts like the other
+  `Blur()` or `KeyDown(Key.Enter)` — and `AwaitedActTests` (enforced in the products' repository) gates those two acts like the other
   four ([testing.md](../testing.md)).
 
 ---
@@ -491,6 +537,14 @@ words land under it and the label then travels off them.
 - **Not CSS.** `ns-mud.css` restates the vendor's shrink geometry once, under
   `:-webkit-autofill`, and that is for a state C# genuinely cannot see: the browser writing a
   saved credential straight into the DOM. A state the component knows is declared in C#.
+- **An autofilled field keeps its own surface and ink.** The browser paints its tint on the
+  `<input>` alone, so an adornment beside it (the password's eye) would read as a second box;
+  the tint is the browser's own value and no sibling can match it. One `:-webkit-autofill` rule
+  in `ns-mud.css`, beside the geometry, paints nothing: it holds the input's background where it
+  was and writes its text in the field's ink, for every Ns `<input>` the browser fills.
+- **A search box reads `Common.Search` by default (*Buscar* / *Search*).** `NsSearchField.Placeholder`
+  replaces it; `NsPageHeader`, `NsNavMenu` and `NsTree`, which draw one, forward
+  `SearchPlaceholder`. The text comes from a key, never a literal.
 - **A stepper's figure is `NsNumericField.Compact`.** Between a caller's own − and + buttons the
   box is sized for a few digits, centered, and draws no spin buttons of its own — two ways to
   step one value side by side is one too many. Typing still writes it.
@@ -709,11 +763,14 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   resolved to nothing and the hand was holding a reader that did not work. So a `Lazy` lookup
   reads that keystroke itself and answers it the way the scan box over a grid answers one
   (`ProductScanField`): **one** answer is taken, with no arrow-down; **several** are left in the
-  list to choose from, because an exact code that also spells other articles is a choice and not a
-  match; **none** leaves the box exactly as it was, which is what the caller's own offer and the
-  create entry quote. **The one answer it takes closes the list, whichever side of the pick that
-  list is on** — the pick promise above read on the one path the vendor cannot keep it on, since it
-  was never told a selection happened. Where the key WAITED for its answer the list opened on the
+  list to choose from — **open, with the first row highlighted and the focus still in the box**,
+  so arrow-down walks it and Enter picks (the vendor takes its highlighted row on the Enter's key
+  UP, so the field withholds that key-up from it, raising the withholding before it awaits the
+  answer because the key-up does not wait), because an exact code that also spells other articles
+  is a choice and not a match; **none** leaves the box exactly as it was, which is what the
+  caller's own offer and the create entry quote. **The one answer it takes closes the list,
+  whichever side of the pick that list is on** — the pick promise above read on the one path the
+  vendor cannot keep it on, since it was never told a selection happened. Where the key WAITED for its answer the list opened on the
   way in and is already up at the pick; where the key BEAT the vendor's interval nothing is open
   yet and what is pending is the vendor's own debounced search for the same text, whose answer
   would open over the row just taken. One close answers both: it takes the vendor's pending
@@ -723,6 +780,11 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   started for it (`NsTextFieldBase.HoldTyped`'s reason). Derived from the posture and never a
   parameter: a browsed lookup has its whole set on screen from the focus, so the vendor answers
   off the list already open.
+- **A lookup is complete only when it is keyboard-complete.** On a `Lazy` lookup whose term
+  has several answers: type, Enter, Arrow Down/Up, Enter picks, Esc closes. One answer is taken by
+  the first Enter; a browsed lookup or a settled list leaves Enter to the vendor, which picks the
+  highlighted row. The create entry, the quick add and the caller's offer sit outside the vendor's
+  list and are reached by the mouse only.
 - **That held text is also what the field hands the vendor BACK as its `Text`, and it is what
   carries a half-typed term across a redraw.** The vendor refreshes its own box from the value it
   holds on every parameter set it is not FOCUSED for, and the text event above is dispatched into
@@ -866,7 +928,7 @@ is a place nobody opens (core doc's rule and its exception; cases). Contract:
 
 **One file is one field; a set of them is a different field.** `NsFileUpload` holds ONE value
 (`@bind-Value`, `Guid?`); `NsMultiFileUpload` holds an ordered set (`IReadOnlyList<Guid>`).
-They take **the same parameters** — the list field's `Value` is simply the list — and `Preview`
+They take **the same parameters** (the list field adds `MaxTotalSize`) — the list field's `Value` is simply the list — and `Preview`
 decides whether what is held is shown. **No parameter turns one into the other** (cases).
 
 - **A field line carries exactly ONE action icon.** Without a preview it is the upload trigger
@@ -890,9 +952,16 @@ decides whether what is held is shown. **No parameter turns one into the other**
 - **Empty states show the shape of what will land there** plus the trigger, so the box does not
   change size when the first file arrives — the dashed frame carries `NsIcons.Image` as an
   **illustration**, the one case `ns-mud.css` sizes a glyph outside the three steps.
-- **`MaxSize` defaults to 5 MB and is per control**; a file over it is refused *on the field*
-  with the limit in the sentence, never dropped silently. `Accept` is per control.
+- **`MaxSize` defaults to 5 MB and is per control**; `NsMultiFileUpload` also caps one selection
+  with `MaxTotalSize`. A file over either is refused *on the field*, named, with the limit in
+  the unit a person reads (KB under 1 MB), never dropped silently; every refusal of a selection
+  stays shown. `Accept` is per control and is **enforced, not a hint**: a file whose extension or
+  leading bytes fall outside it is refused, and the stored content type comes from the Stack's
+  allow-list, never the client. A wildcard never admits svg/html — name them to allow them. An extension the allow-list does
+  not know is admitted only when named or fitted by a token, stored as `application/octet-stream`.
+  A field with no `Accept` keeps the client's type: declare `Accept` on anything served back.
 - **Where bytes go is `IFileStore`, not the field's business.** The app's registered store
   answers for ordinary screens; a screen whose files belong to somebody other than the
-  session's organization hands its own `Store`. A store that cannot build a preview URL from an
+  session's organization hands its own `Store`. `FileStore` remembers a saved file's name and
+  content type for the scope, never its bytes. A store that cannot build a preview URL from an
   id answers null and the field shows no image.

@@ -56,7 +56,7 @@ public abstract class NsPartial : NsComponent
     protected bool CanSend<TMessage>()
     {
         // Resolved, never injected: a host with no security registered (a component test, a
-        // surface without Iam) must still render its markup rather than fail to construct it
+        // surface without security) must still render its markup rather than fail to construct it
         // — the permissive default the endpoint gate and the relation provider already take.
         var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
         var sessions = Services.GetService(typeof(SessionProvider)) as SessionProvider;
@@ -72,6 +72,19 @@ public abstract class NsPartial : NsComponent
     /// decide on its own, so a control the caller may not tick is not drawn at all rather
     /// than drawn and refused on submit; the server's gate stays the one that decides.</summary>
     protected bool CanSend<TMessage>(string field, bool value)
+    {
+        var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
+        var sessions = Services.GetService(typeof(SessionProvider)) as SessionProvider;
+
+        return security is null
+            || sessions is null
+            || security.Permits(typeof(TMessage), field, value, sessions.Session);
+    }
+
+    /// <summary>Whether the session could send this message naming this id in this party or
+    /// organization field — the id twin of the flag check above. A card about one subject asks
+    /// it with the subject's id; the server's gate stays the one that decides.</summary>
+    protected bool CanSend<TMessage>(string field, Guid value)
     {
         var security = Services.GetService(typeof(SecurityManager)) as SecurityManager;
         var sessions = Services.GetService(typeof(SessionProvider)) as SessionProvider;
@@ -230,7 +243,7 @@ public abstract class NsPartial : NsComponent
     // Which acts destroy, read off the one word a message is already required to open with:
     // Delete is the closed verb set's own name for it (naming.md), the same way NsForm reads
     // Create to tell a newborn document from an edited one. Nothing else in that set destroys —
-    // an Update rewrites, and a send outside the set (RegisterClient, OpenTicket) mints.
+    // an Update rewrites, and a send outside the set (a Register*, an Open*) mints.
     static bool Destroys(Type message)
     {
         return message.Name.StartsWith("Delete", StringComparison.Ordinal);
@@ -401,11 +414,10 @@ public abstract class NsPartial : NsComponent
     /// to the renderer). InvokeAsync only dispatches the handler onto the render thread — it is
     /// not one of Blazor's own automatic-render points the way OnParametersSet or a bound event
     /// is, so a handler that only mutates a field left the change invisible until something else
-    /// happened to redraw the component (stories.md 2026-08-07: the client ficha's own address
-    /// card, the OT grid — both subscribed correctly and both went stale the moment 1bb12a22
-    /// stopped tearing the tree down on every navigation and hiding it). Redrawing after every
-    /// handler is this method's job precisely because Subscribe is what promised "stays current"
-    /// to begin with; a handler that manages its own redraw (NsTable.Reload) just gets a second,
+    /// happened to redraw the component (a card and a grid, both subscribed correctly, go stale
+    /// once the tree is no longer torn down on every navigation). Redrawing after every handler
+    /// is this method's job precisely because Subscribe is what promised "stays current" to
+    /// begin with; a handler that manages its own redraw (NsTable.Reload) just gets a second,
     /// harmless one.</summary>
     protected IDisposable Subscribe<TMessage>(SubscriptionDelegate<TMessage> handler)
         where TMessage : IMessage

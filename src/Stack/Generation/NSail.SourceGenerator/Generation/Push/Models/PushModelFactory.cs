@@ -13,52 +13,69 @@ public static class PushModelFactory
 
     /// <summary>One walk for both ends: the hub registers a publisher and the client an entry
     /// for exactly the same set, so what one side sends the other can name.</summary>
-    public static PushModel Create(IMethodSymbol methodSymbol, Compilation compilation)
+    public static PushModel Create(Scoped<NamedFragment> scoped)
     {
+        var target = scoped.Target;
         var model = new PushModel
         {
-            Namespace = methodSymbol.ContainingNamespace.ToDisplayString(),
-            ClassName = methodSymbol.ContainingType.Name,
-            MethodName = methodSymbol.Name,
-            ClassDeclaration = methodSymbol.ContainingType.GetDeclaration(),
-            MethodDeclaration = methodSymbol.GetDeclaration(),
-            ServicesParameterName = methodSymbol.Parameters.Length > 0 ? methodSymbol.Parameters[0].Name : "services",
+            Namespace = target.Namespace,
+            ClassName = target.ClassName,
+            MethodName = target.MethodName,
+            ClassDeclaration = target.ClassDeclaration,
+            MethodDeclaration = target.MethodDeclaration,
         };
 
-        foreach (var typeSymbol in compilation.FindTypesInScope(methodSymbol))
+        model.ReadHolder(target);
+
+        if (model.Unusable)
         {
-            if (typeSymbol.GetAttribute(PushedAttributeName) is null)
-                continue;
+            return model;
+        }
 
-            var name = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        model.HolderDiagnostics.AddRange(scoped.Diagnostics);
 
-            // An event, never a command: Publish is the only door a push rides, and only an
-            // IMessage can be published. Reported rather than skipped — a type left out here
-            // is a push that silently never arrives.
-            if (!typeSymbol.AllInterfaces.Any(i => i.Name == IMessageInterfaceName))
+        foreach (var fragment in scoped.Fragments)
+        {
+            model.Diagnostics.AddRange(fragment.Diagnostics);
+
+            if (fragment.Name is not null)
             {
-                model.Diagnostics.Add(Diagnostic.Create(GeneratorDiagnostics.PushedNotAMessage, Location(typeSymbol), typeSymbol.ToDisplayString()));
-                continue;
+                model.Messages.Add(fragment.Name);
             }
-
-            // The body goes to every connection of the tenant, so a property on it is a row
-            // crossing the org wall; the event says that something moved and nothing more.
-            foreach (var property in typeSymbol.GetMembers().OfType<IPropertySymbol>())
-            {
-                if (!property.IsStatic && property.DeclaredAccessibility == Accessibility.Public)
-                {
-                    model.Diagnostics.Add(Diagnostic.Create(GeneratorDiagnostics.PushedCarriesData, Location(property), typeSymbol.ToDisplayString(), property.Name));
-                }
-            }
-
-            model.Messages.Add(name);
         }
 
         return model;
     }
 
-    static Location Location(ISymbol symbol)
+    public static NamedFragment? Inspect(INamedTypeSymbol typeSymbol)
     {
-        return symbol.Locations.FirstOrDefault(l => l.IsInSource) ?? Microsoft.CodeAnalysis.Location.None;
+        if (typeSymbol.GetAttribute(PushedAttributeName) is null)
+        {
+            return null;
+        }
+
+        var diagnostics = new EquatableList<DiagnosticInfo>();
+        var name = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        // An event, never a command: Publish is the only door a push rides, and only an
+        // IMessage can be published. Reported rather than skipped — a type left out here
+        // is a push that silently never arrives.
+        if (!typeSymbol.AllInterfaces.Any(i => i.Name == IMessageInterfaceName))
+        {
+            diagnostics.Add(DiagnosticInfo.Create(GeneratorDiagnostics.PushedNotAMessage, typeSymbol, typeSymbol.ToDisplayString()));
+            return new NamedFragment(null, diagnostics);
+        }
+
+        // The body goes to every connection of the tenant, so a property on it is a row
+        // crossing the org wall; the event says that something moved and nothing more.
+        foreach (var property in typeSymbol.GetAllProperties())
+        {
+            if (!property.IsStatic && property.DeclaredAccessibility == Accessibility.Public)
+            {
+                diagnostics.Add(DiagnosticInfo.Create(GeneratorDiagnostics.PushedCarriesData, property, typeSymbol.ToDisplayString(), property.Name));
+            }
+        }
+
+        return new NamedFragment(name, diagnostics);
     }
 }

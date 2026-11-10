@@ -29,8 +29,7 @@
         @if (Brand is not null)
         {
             @* The drawer draws the brand — full height on desktop, the header of the
-               temporary sheet on mobile. Shut behind the hamburger, the title row draws it
-               too (NsLayoutState.Brand), and each hides while the other shows. *@
+               temporary sheet on mobile. *@
             <div class="d-flex align-center px-4 ns-nav-brand">
                 @Brand
             </div>
@@ -44,7 +43,7 @@
            ns-nav-find is also the hook the Enter policy answers on: Enter in this box opens the
            first entry still shown (ns.js). *@
         <div class="pa-2 d-flex align-center gap-1 ns-nav-find">
-            <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Grow Map />
+            <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Placeholder="@SearchPlaceholder" Grow Map />
             @* Where an app places a door of its own beside the frame's two keys — the companion
                region's (NsMainLayout). Empty draws nothing: what is left is the box and what the
                frame itself owns. *@
@@ -169,12 +168,7 @@
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
 
-    [CascadingParameter]
-    NsLayoutState? LayoutState { get; set; }
-
-    /// <summary>The install's own name and logo, always at the top of the drawer header — and,
-    /// where the drawer is closed behind the phone's hamburger, in the title row beside it, so what rides under
-    /// the name reads without opening the menu.</summary>
+    /// <summary>The install's own name and logo, at the top of the drawer header.</summary>
     [Parameter]
     public RenderFragment? Brand { get; set; }
 
@@ -187,6 +181,10 @@
     /// companion's, nothing else today. Empty draws nothing.</summary>
     [Parameter]
     public RenderFragment? Tools { get; set; }
+
+    /// <summary>The search box's hint. Absent reads Common.Search.</summary>
+    [Parameter]
+    public string? SearchPlaceholder { get; set; }
 
     /// <summary>The one entry drawn where the typing left nothing at all — no map entry and no
     /// result a module contributed through INavMenuSearch — given the text that was
@@ -232,11 +230,6 @@
 
         _recount?.Dispose();
 
-        if (LayoutState is not null)
-        {
-            LayoutState.Brand = null;
-        }
-
         if (Surface is not null)
         {
             Surface.IndexChanged -= HandleIndexChanged;
@@ -259,11 +252,6 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (LayoutState is not null)
-        {
-            LayoutState.Brand = Brand;
-        }
-
         // What is drawn is a function of two things: the tree NavMenu holds, and the session the
         // permission gate reads it against. A parameter set is a signal that neither changed —
         // a RenderFragment parameter never compares equal to itself, so every render of whatever
@@ -317,7 +305,7 @@
     // still has to be reapplied, because a deep-link filter in the query is what tells two
     // entries naming one page apart (FindActive). Counted on the aside's own close, this was a
     // round trip per contributor plus a full redraw of the drawer inside the window of every
-    // save taken in an overlay (nsail#1934).
+    // save taken in an overlay.
     void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         ApplyRoute();
@@ -635,8 +623,8 @@
                 : current.Equals(url, StringComparison.OrdinalIgnoreCase)
                     || current.StartsWith(url + "/", StringComparison.OrdinalIgnoreCase);
 
-            // Two leaves can name one page and differ only by a deep-link filter (Personas
-            // bare, Pacientes with RoleIds): the path ties, so the query decides. A leaf
+            // Two leaves can name one page and differ only by a deep-link filter (one
+            // bare, one with a role filter): the path ties, so the query decides. A leaf
             // carrying parameters is active only where the URL carries them too, and there
             // it outranks the bare leaf that matches everywhere else.
             if (!matches || !query.All(currentQuery.Contains))
@@ -644,8 +632,8 @@
                 continue;
             }
 
-            // Two doors onto one page tie on both keys above — Optical's Mi Cuenta > Turnos and
-            // Contactología > Turnos are the same route with the same query — and the URL holds
+            // Two doors onto one page tie on both keys above — "Account > Appointments" and
+            // "Clinic > Appointments" are the same route with the same query — and the URL holds
             // nothing that tells them apart. The open branch does: a person reaches the page
             // through the door they could see, so the section they have open is the one that
             // keeps the mark and stays open. Arriving on the route cold, with nothing expanded,

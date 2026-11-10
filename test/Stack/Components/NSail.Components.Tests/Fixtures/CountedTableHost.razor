@@ -1,0 +1,47 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+
+@* A held list whose cells count how often they are read: a sort reads each once, so the count
+   says whether a render sorted again. *@
+
+<MudPopoverProvider />
+
+<NsTable TRow="CountedRow" Rows="_rows">
+    <HeaderContent>
+        <NsTh For="() => context.Name" Sortable />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    public sealed class CountedRow
+    {
+        public static int Reads;
+
+        public int Index { get; init; }
+
+        public string Name
+        {
+            get
+            {
+                Interlocked.Increment(ref Reads);
+
+                return "n" + Index;
+            }
+        }
+    }
+
+    readonly DataPage<CountedRow> _rows = DataPage<CountedRow>.From([.. Enumerable.Range(0, 50).Select(i => new CountedRow { Index = i })]);
+
+    [Parameter]
+    public int Unrelated { get; set; }
+}

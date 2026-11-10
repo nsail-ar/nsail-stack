@@ -24,11 +24,28 @@ public sealed class ServerBuildHandler : DelegatingHandler
     {
         var response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-        if (response.Headers.TryGetValues(WireHeaders.Version, out var values))
+        if (!CanBeReplayed(response) && response.Headers.TryGetValues(WireHeaders.Version, out var values))
         {
             _build.Answered(values.FirstOrDefault());
         }
 
         return response;
+    }
+
+    // A cache hands back the response it stored, header and all: the build word on it is the
+    // one that answered then, and reading it as the server's today is how an `immutable` image
+    // taught every later boot that the server had moved. A response that must be revalidated
+    // (no-cache, no-store, no freshness) is answered live, and a 304 carries the word too.
+    static bool CanBeReplayed(HttpResponseMessage response)
+    {
+        var control = response.Headers.CacheControl;
+
+        if (control is null || control.NoStore || control.NoCache)
+        {
+            return false;
+        }
+
+        return control.MaxAge > TimeSpan.Zero
+            || control.Extensions.Any(extension => string.Equals(extension.Name, "immutable", StringComparison.OrdinalIgnoreCase));
     }
 }

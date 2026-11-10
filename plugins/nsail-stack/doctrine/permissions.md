@@ -45,7 +45,7 @@ policy {
 }
 ```
 
-- Symbols, party axis: `@me` (must equal actor's party), `related as X` (Relationships edge with actor's party as role X), literal. Org axis: `@current` (the active organization), `@memberOf` (any org the actor belongs to), `@memberOfOrDescendant` (explicit symbol — replaces a cascade flag), literal. `*` = any value, including null.
+- Symbols, party axis: `@me` (must equal actor's party), `related as X` (Relationships edge with actor's party as role X — never the actor's own party: a relation joins two parties, so a grant meant for the people the actor serves never reaches the actor's own record), literal. Org axis: `@current` (the active organization), `@memberOf` (any org the actor belongs to), `@memberOfOrDescendant` (explicit symbol — replaces a cascade flag), literal. `*` = any value, including null.
 - Constraint value shapes (self-discriminating in JSON): symbol string (`"@me"`), parameterized object (`{"relatedAs": "medico"}`), literal, **array of literals** (contains — one policy pins several orgs), **`true`/`false`** (a flag field, pinned to that value — canonically `{"kind":"Literal","flag":false}`, and a values array beside it is refused at load). Arrays hold literals only — symbols don't mix into lists; "symbol OR literal" = two policies (policy-level OR already exists). Field absent from `fields` = free; `fields` absent = flat policy (full capability).
 - **Policy vs validation discriminator**: a policy constraint always relates the value to the ACTOR. A rule that is true regardless of who asks (`Date > today`) is validation — it lives in the contract, is not editable, and must not creep into the policy vocabulary.
 - **Null semantics**: a constrained field rejects null (you must pass the qualifying value); `*` allows null (= no voluntary filter). Message fields are voluntary filters; constraints make them mandatory. **One constraint reads an omitted claim differently, and only because a second door answers for it: the ORG axis pinned to `@memberOfOrDescendant` allows null**, because a message naming no branch is scoped by the row filter to the seat's own subtree (data-tenancy.md, The org filter — "every by-id read and every transition"), which is inside what that symbol already permits. Refusing it would refuse every by-id site while widening nothing. **`@current` and `@memberOf` do NOT get it**, and the difference is exactly the subtree: they permit the seat alone and the seat's memberships without descending, so an omission would hand back branches that naming them would have refused — widening by omission. A **literal** branch list rejects null from the other end: there the author named branches and the seat is not one of them (`PolicyHandler.Omitted`).
@@ -98,7 +98,8 @@ the failure is the size of the mistake instead of the size of a role. Bounds:
   unrelated authoring typo rides out on the first dead key its row carries — deliberate and
   cheap: under lenient fields a constraint no surviving member declares binds nothing, so the
   grant is unchanged and only the signal was at stake. The signal is kept: each excused field
-  is named in the drop report.
+  is named in the drop report and listed in `SecurityManager.Drops` (`PolicyDrop`: row, dropped
+  keys, excused fields) for an administrator surface to show beside the log.
 - **The report is once per store load, not once per hydration.** The stored set re-hydrates on
   every request, so an unconditional log would print the same stale row dozens of times a
   second. The drop and its amnesty are one report, throttled together.
@@ -246,7 +247,7 @@ Seeds may *also* grant lookups broadly — `[Requires]` guarantees UI correctnes
   stored and built-in handlers ALONE (one hop), its fields verdict is unconditional (flat),
   and it is asked **alongside** the direct policies, never only when they fail (guardrail 3).
   Guardrail 2's review half — only lookup-shaped messages in the attribute — stays in the
-  `NSail.Architecture.Tests` sweep, never the evaluator.
+  `NSail.Architecture.Tests` sweep enforced in the products' repository, never the evaluator.
 - **A match names its source**: `Origin: Dependency` plus the primary's key, so "why do I have
   access" answers "because you may send `Optical.WorkOrders.CreateWorkOrder`".
 - Optical's Vendedor preset relies on it for `LookupParties`, `LookupPrescriptions` and
@@ -268,7 +269,7 @@ Security mirrors the messaging architecture: **`Policy` is data** (entity at res
 
 - **Contract is non-generic**: `Authorize(object message, Session session)` (+ `Fields`, `Name`, `Origin`). No generic interface (`PolicyHandler<T>` rejected — no utility): an object contract lets one handler cover *all* messages (the Admin wildcard) or a whole feature. Generated handlers type-test and cast once.
 - **Home: `NSail.Security`** — Session, PolicyHandler, SecurityManager, SecurityInterceptor, RelationProvider, and the feature half the gate asks ahead of every policy (`FeatureProvider`, `Entitlements`, `Features`), plus `NSail.Security.Annotations` for the Sdk-facing attributes. Iam implements: the DB-backed `DbRelationProvider`, the `SessionAdapter`/`HttpSessionProvider` edge, built-ins, the stored set (`PolicyStore`, `DbSecurityManager`) and the effective-policies endpoint; `TenantStateFeatureProvider` (`NSail.BaseServices.WebApi`) is the row-backed twin of `DbRelationProvider`.
-- **`PolicyHandlerBase`** (NSail.Security, hand-written): owns ALL evaluation semantics — audience matching, symbol evaluation (`@me`, `relatedAs` graph query, org symbols). Generated code only dispatches to it (same split as the HttpClient generator): a symbol bug is fixed in one Stack file, never by regenerating.
+- **`PolicyHandler`** (NSail.Security, hand-written): owns ALL evaluation semantics — audience matching, symbol evaluation (`@me`, `relatedAs` graph query, org symbols). Generated code only dispatches to it (same split as the HttpClient generator): a symbol bug is fixed in one Stack file, never by regenerating.
 - **Generated per message** (`[Generated(Policies.Handlers)]` holder per Sdk, scanning `IMessage`s in scope): `GetPartyPolicyHandler` with its `Fields` (name, kind, typed getter delegates — no per-send reflection, AOT-safe). `[Requires]` additionally yields an in-memory dependency handler, `Origin: Dependency`.
 - **Flat/wildcard documents expand at load** against the boot-computed registry into per-type generated handlers, exactly like lists — one evaluation path.
 - **Registry**: message key → generated handler type. Keys are **metadata keys computed at boot by MetadataProvider** (never baked literals, never `Type.FullName`: wildcards match on the `{Area}.{Feature}.*` rendering, the editor tree groups by it, and CLR refactors must not invalidate stored rows).
@@ -281,7 +282,7 @@ Security mirrors the messaging architecture: **`Policy` is data** (entity at res
 
 ## Attributes: kind, not rule
 
-- **Message fields** (Sdk): **`[PolicyField(RestrictAs.Party)]` / `[PolicyField(RestrictAs.Organization)]`** — the attribute names exactly what the field becomes: an entry in the metamodel's `Fields: IPolicyField[]`, and the enum supplies the security verb (restricted in its capacity as a Party). Declares the field's *nature* — the rule lives in the policy (data, admin-editable). Unmarked fields (Date, Rows) are invisible to security. Buys: evaluator type-safety, grants-UI discovery (which fields are constrainable, with which vocabulary), and validation on policy save (constraint on unmarked field = loud error). Strong value types (PartyId struct + converters) are rejected: the type marks every field of that type, the attribute marks only what you choose.
+- **Message fields** (Sdk): **`[PolicyField(RestrictAs.Party)]` / `[PolicyField(RestrictAs.Organization)]`** — the attribute names exactly what the field becomes: an entry in the metamodel's `Fields: IPolicyField[]`, and the enum supplies the security verb (restricted in its capacity as a Party). Declares the field's *nature* — the rule lives in the policy (data, admin-editable). An override keeps its base's mark without repeating it (the attribute is inherited, so the generated handler and a reflection reader see the same fields); a member hidden with `new` is a redeclaration and carries its own. Unmarked fields (Date, Rows) are invisible to security. Buys: evaluator type-safety, grants-UI discovery (which fields are constrainable, with which vocabulary), and validation on policy save (constraint on unmarked field = loud error). Strong value types (PartyId struct + converters) are rejected: the type marks every field of that type, the attribute marks only what you choose.
 - **Naming rule: no enum may share a name with an NSail namespace segment or entity.** Inside `namespace NSail.*` the sibling namespace resolves before a using-imported enum, so names like `Party.Id`, `Iam.Party`, `Security.Party`, `Policy.Party` break by entity or namespace shadowing. The same rule names the generator target `[Generated(Policies.Handlers)]`, not `Security.Policies`.
 - **Entities carry NO contracts** — no `[Owner]`/`IOwned`/`IOrganizationOwned`. `IOrgScoped` is not one: it classifies a row for the org filter ([data-tenancy.md](data-tenancy.md), The org filter), plumbing behind the gate that no policy reads. The generated handler compares decorated *message* fields against the policy's values (`message.PatientId == policy value`, `IsRelated`, …). By-id operations are handler doctrine, not framework machinery (see Evaluation). Attributes live in a shared annotations assembly.
 
@@ -320,7 +321,7 @@ with a read that does not carry it: a narrower response model, or no grant at al
 hiding a column on screen, and never by a field constraint, which answers a different
 question. A wildcard grant cannot be audited at all, because it also grants whatever is filed
 under that feature next. Optical's Vendedor is the worked example and
-`VendedorSeesNoMoneyTests` (`NSail.Architecture.Tests`) is that walk, run on every build.
+`VendedorSeesNoMoneyTests` (`NSail.Architecture.Tests`, enforced in the products' repository) is that walk, run on every build.
 
 ### `RestrictAs.Reference`, `RestrictAs.Flag` and collections
 
@@ -410,16 +411,17 @@ Optical fixture with no overriding wildcard, so the preset itself answers).
 ## Evaluation
 
 1. **Gate** — a filter in the Mediator pipeline. Full evaluation against actor + message fields: audience, message key, field constraints. Deny → a refusal Problem, and **which one depends on the caller** (`SecurityProblem.Denied`, see [The three refusals](#the-three-refusals)): 403 for a session, 401 for none — unless the message belongs to a feature the install was not sold, which is answered ahead of every policy and is about the install, not the caller. Covers queries-by-fields AND creates with zero DB loads beyond the graph edge checks. A constrained field rejects a null claim — the evaluator fails closed, so a nullable marked filter cannot widen a scoped caller's view by omission; the admin's free view arrives through an Any constraint, never through leaving the field out. `@memberOfOrDescendant` is the one exception, and the reason is that omission under that symbol alone is not a widening (Null semantics above).
+   **The evaluator shares nothing mutable across scopes.** `LoadPolicies` builds the stored set aside and swaps the reference, so a manager shared by a circuit never enumerates a half-loaded list. Built-ins are hydrated once per process (`BuiltInHandlers`; a derived manager passes it to the base constructor or keeps hydrating per scope), and `Session.Standing()` is computed once per organization and membership list, published as one reference because parallel handlers read the same session.
 2. **By-id operations are handler doctrine** (no framework machinery):
-   - **Gets/Deletes by id**: the handler bakes the check into the query (scoped WHERE via graph helpers) and returns empty — hides existence (no 403 oracle). On the ORG axis the handler writes nothing wherever the row wears `IOrgScoped`: the model carries that WHERE (data-tenancy.md, The org filter). A hand-written scoped WHERE is what is left: a list of one person's EDGES, which no model-wide filter can reach without circularity, and a `Conversation`, whose organization is NULLABLE so `OrgFilter.Axes` has no column to join (`ConversationHandler.Read`) — and it compares against the operation's own `OrgScopeProvider`, never a second walk down the chart (org-map.md, The party axis).
+   - **Gets/Deletes by id**: the handler bakes the check into the query (scoped WHERE via graph helpers) and returns empty — hides existence (no 403 oracle). On the ORG axis the handler writes nothing wherever the row wears `IOrgScoped`: the model carries that WHERE (data-tenancy.md, The org filter). A hand-written scoped WHERE is what is left: a list of one person's EDGES, which no model-wide filter can reach without circularity, and a `Conversation`, whose organization is NULLABLE so `OrgFilter.Axes` has no column to join (`ConversationHandler.Read`) — and it compares against the operation's own `OrgScopeProvider`, never a second walk down the chart (nsail's `plugins/nsail-kits/doctrine/org-map.md`, The party axis).
    - **The by-id carve-out**: a verb whose success asserts a credential is dead (revoke, rotate) answers NotFound on missing and foreign alike instead of succeeding silently — both answers hide existence equally well, and a refused revocation must never read as success. The owner's retry still succeeds — a soft disable finds the disabled row and matches.
-   - **Which by-id operation is answered by which of these is written down per message** (org-map.md, Messages — where each send stands): the filter alone, the filter plus a handler that refuses a stored organization differing from the claimed one, a WHERE the handler writes because the row is not `IOrgScoped`, or nothing on this axis because the id names a tenant-level row. The last is where guard reads go wrong — a delete whose in-use check reads an org-scoped table is narrowed by the filter and fails OPEN.
+   - **Which by-id operation is answered by which of these is written down per message** (nsail's `plugins/nsail-kits/doctrine/org-map.md`, Messages — where each send stands): the filter alone, the filter plus a handler that refuses a stored organization differing from the claimed one, a WHERE the handler writes because the row is not `IOrgScoped`, or nothing on this axis because the id names a tenant-level row. The last is where guard reads go wrong — a delete whose in-use check reads an org-scoped table is narrowed by the filter and fails OPEN.
    - **Updates by id — the input-only residual risk**: the gate validates *claimed* fields; the stored row may differ. Primary defense is the **contract shape**: Create/Update specific messages — `UpdatePrescription` simply doesn't carry `PatientId`, so the lie is unrepresentable. Where a mutable field still needs a graph check, the handler verifies the *loaded* value via the provider before writing.
    - **A write that MOVES a row between branches carries both ends as marked fields.** The rule
      is about rows this axis protects — an `IOrgScoped` row, one the org filter reaches; a
      tenant-level row whose `OrganizationId` is a plain attribute is outside it and takes no
      source field (`UpdateRelationship` re-stamps one and is right to: an edge is the tenant's,
-     org-map.md, The party axis). For the rest: an update that re-stamps `OrganizationId` over a
+     nsail's `plugins/nsail-kits/doctrine/org-map.md`, The party axis). For the rest: an update that re-stamps `OrganizationId` over a
      loaded row puts only the DESTINATION in front of the gate, and the branch the row is leaving
      is not a field, so no policy can see it: whoever held one branch could pull another branch's
      row into it. So the message declares the source too — `UpdateStore.FromOrganizationId` and
@@ -433,7 +435,7 @@ Optical fixture with no overriding wildcard, so the preset itself answers).
      foreign key as a 500, so both handlers ask the destination exists
      (`EnsureOrganizationExists`) like every other dangling reference their kit checks. And the
      handler **refuses a stored organization that differs from the claimed source**, because the
-     gate vetted the claim and only the row can confirm it (org-map.md's `filter + claimed=stored`,
+     gate vetted the claim and only the row can confirm it (nsail's `plugins/nsail-kits/doctrine/org-map.md`'s `filter + claimed=stored`,
      here as `StoreNotOfOrganization` / `PointOfSaleNotOfOrganization`). The destination keeps the
      name the axis wears everywhere, `OrganizationId`: renaming it `To…` would free the constraint
      on every stored row that had narrowed it. **The corollary for whoever narrows the axis: a
@@ -474,7 +476,7 @@ Optical fixture with no overriding wildcard, so the preset itself answers).
    `QueueIdentityTests` (`NSail.Messaging.Queue.Tests`) is the queue's twin of the first.
 
 Graph questions go through a **provider** (`RelationProvider` — Provider family, lives in NSail.Security, covers both edges: `IsRelated(partyA, partyB, role)` over Relationships, `IsMember(party, org, role)` over Memberships, plus `GetAncestors`/`GetDescendants` over the chart — in-query always; post-query filtering is banned: paging, counts, existence leaks). Two implementations:
-- **Optimistic default** (TryAdd, returns true) — serves the WASM client AND apps without Iam (the Null pattern). Client flow for `relatedAs`: handler passes optimistically → UI attempts → server 403 → Forbidden toast. Few cases, acceptable UX.
+- **Optimistic default** (TryAdd, returns true) — serves the WASM client AND apps without Iam (the Null pattern); a host with the gate on (`AddSecurityEnforcement`) refuses to start over it unless Iam replaced it or the host says `AcceptPermissiveProviders()`. Client flow for `relatedAs`: the one part the client decides without the graph is that the id is not the caller's own (`SecurityManager.Permits`, below); past that the handler passes optimistically → UI attempts → server 403 → Forbidden toast. Few cases, acceptable UX.
 - **Iam registers the real DB-backed one** server-side.
 
 Consequences: **`Authorize` is async** (the graph is DB, even with policies preloaded). And no `WasmSecurityManager`/`WebSecurityManager` split: ONE SecurityManager — the environment difference is which provider and policy source get registered (composition, not class proliferation).
@@ -518,13 +520,14 @@ flight, because `GetSession` travels the same pipeline that reported the refusal
 
 Proof: `NSail.Security.Tests`, `NSail.Iam.Shared.Tests` (the renewal, the 403 that must not
 trigger it, the anonymous client that must not loop, the re-entrancy bound), and the
-`NSail.Architecture.Tests` endpoint sweep, which requires **401** from every mapped endpoint
+`NSail.Architecture.Tests` endpoint sweep enforced in the products' repository, which requires **401** from every mapped endpoint
 for an anonymous probe.
 
 ## Session
 
 Built once per request; the gate and helpers consume it (never `HttpContext.User` directly). The .NET-free identity; lives in Stack; `GetSession` returns `NSail.Security.Session` (the PartyId rides as a claim in the cookie).
 - Who: UserId, PartyId, roles — the ones standing where the session stands (`Session.Standing()`, the Core doctrine). Where: **OrganizationId with a setter** (session-state semantics: the active org changes at runtime from the user menu, a tree of the user's memberships; `@current` resolves against it), and **Domain**, the bare host the request arrived on.
+- `SessionProvider` prefers its own assignment over the flow's and puts the flow's previous session back when its scope disposes, so one scope's assignment never changes another request's.
 - **ClaimsPrincipal is adapted ONCE at the edge** (Iam.WebApi). Effective-policy caches key on **(user, active org)**; an org switch is a *security event*: caches invalidate, the client refetches effective policies, and the roles are re-derived.
 - **Where a sign-in lands is operational, and decides nothing about what a grant reads**: the saved preference while it still names a membership, else `OrganizationHierarchy.PickDefault` — the shallowest membership, then by name. It says which sucursal somebody *operates* from (which one a sale is written in); there is no ordering of roles behind it and no classification of roles anywhere. What crosses the branches is the grant (Core doctrine).
 - **`Domain` is read exactly once, in `SessionAdapter.FromRequest`** — the one place that touches `HttpContext.Request.Host`, so every door carries the same value and nothing below the edge reaches for HttpContext. It is a *fact*, never an authorization input: it feeds `RequestOrganizationProvider`, which places an ANONYMOUS request (the organization whose `Slug` is exactly the one label `Domain` carries under `TenantInfo.Domain`, the tenant's own base; else the single root organization; else `RequestOrganization.Ambiguous`, which every consumer treats as "no organization" and the sign-in page turns into an error screen). It cannot be resolved at Session build — the provider is async, the session provider a synchronous property — so the parse and the resolution are two steps.
@@ -540,9 +543,9 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   `TicketEpochMiddleware` refuses anything else — signing the ticket out, then answering as it
   would anyone with none, marked stale like the credential wall's own refusal.
   **It is the install's only cut across its own sessions**, because the DataProtection key ring
-  is the SERVER's: every install on a box unprotects with the same keys, so deleting or revoking
-  one is not a per-install act at all — it signs out the whole box AND leaves every secret ever
-  sealed on it unreadable for good. Raising a number instead touches nothing that was sealed.
+  is the INSTALL's (`<content root>/data/keyring`): deleting or revoking a key is not a
+  per-session act at all — it signs out every session of the install AND leaves every secret
+  ever sealed under it unreadable for good. Raising a number instead touches nothing that was sealed.
   What it is owed to is a **tenancy-mode flip**, the one change that leaves every old ticket
   decrypting perfectly and naming rows the row filter now hides: under `MultiDb` the seeded rows
   are their own ids, under `SingleDb` the same rows belong to a tenant derived from its slug, so
@@ -554,6 +557,14 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   `Tenant` (Iam's `PrincipalFactory`, the `epoch` claim); the gate is installed under every
   tenancy mode, unlike the tenant wall's
   ([baseservices.md](baseservices.md#webapi-bootstrap)).
+  **It also stands on every send**, because an open circuit never passes the middleware again: the
+  next send of a session from another generation is a 401, drawn where it was asked. Nothing on a
+  server circuit turns that 401 into a navigation (`SessionInterceptor` is the WebAssembly arm's),
+  so the person reaches sign-in on the circuit's next document load, which the request wall
+  refuses and signs out. The bound that remains: a circuit that sends nothing is not asked, a push feed is not asked at all
+  (it is held by the tenant's state, not the ticket's), and `SecurityOptions` is read at startup, so
+  raising the number takes a restart. A tenant suspension is bounded by `Tenancy:StateCacheSeconds`
+  plus one second on circuits and push feeds alike (`TenantStateInterceptor`, `PushAudience.Watch`).
 - **`IsProvisional`** says the actor's own Party was founded by an external sign-up out of a
   provider's claims alone (`Party.IsProvisional`, Directory's, because Directory's own list and
   lookups are what must not show it). It is **not an authorization input** — no policy names it
@@ -564,7 +575,7 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
 - **A credential is re-read against its own records on every request, and that is one place.**
   The ticket is signed, so nothing in it can go wrong — and everything it NAMES can: a party
   merged away, a user disabled, a user deleted, a user repointed at another party. `CredentialProvider`
-  (Stack, permissive floor; `DbCredentialProvider` in Iam) answers one lookup by primary key, and
+  (Stack, permissive floor that an enforcing host must replace or accept; `DbCredentialProvider` in Iam) answers one lookup by primary key, and
   `CredentialMiddleware` ([baseservices.md](baseservices.md#webapi-bootstrap)) acts on it: a user
   **repointed** has its credential re-issued and the request carries the new party, a user **gone
   or disabled** is signed out and challenged. **No validation interval**, and that is the point —
@@ -574,6 +585,20 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   a cold WebAssembly load is dozens of them; the skip is a deny-list and not an allow-list so a
   host's own new endpoint is walled by default. **A guard per handler is the wrong shape**: every
   write that takes `PartyId` off the Session is the same defect, and there is no counting them.
+- **Memberships and roles are frozen in the ticket, so a change to them makes the ticket stale —
+  within `Tenancy:StateCacheSeconds`.** `Session.MembershipStamp` is the fingerprint of the
+  party's memberships and roles at sign-in; `CredentialProvider.MembershipStamp` answers the
+  current one (null in the floor: nothing compared), read through `MembershipStampMemo` once per
+  party per window, not per request. A removed or demoted member is refused like any stale ticket
+  — signed out, challenged, marked stale — at the first request past the window, and signs in
+  again with the new roles (a mismatch is confirmed at the source before it refuses, so a sign-in
+  after the change is honoured at once). There is no live session rebuild, so unsaved input can be
+  lost; a change inside the window is not yet seen, and a circuit already open keeps the old roles
+  until its next document load. A provider that re-issues the credential in `Holds` leaves
+  `Session.MembershipStamp` current for the party the request will carry; null never means "no
+  memberships". An unchanged party never re-signs-in. The unstamped
+  ticket is refused once a provider answers a stamp (a one-time re-login at rollout); `TicketEpoch`
+  still signs out everyone. Proof: `MembershipStampTests` (`NSail.BaseServices.WebApi.Tests`).
 - **The refusal says why, on both arms, because the ticket is gone by the time the person reads
   it.** The browser's redirect carries `SignInRoutes.StaleParameter` and the sign-in page draws
   one sentence for all three ways (marked on the challenge as `SignInRoutes.StaleProperty`, turned
@@ -585,9 +610,10 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   `NsNotAuthorized` puts `StaleParameter` on the address it bounces to. Without that the person
   lands on a door that looks like it forgot them and no later document load can say otherwise —
   the cookie went out with the 401. Bound: an interactive circuit built its session from the
-  document request that started it and does not pass the pipeline again, so it picks the refusal
-  up on its next document load. Proof: `CredentialWallTests` (`NSail.Iam.WebApi.Tests`) on a real
-  host behind the real pipeline — a ticket is what the subject is, so no handler send can hold it
+  document request that started it and does not pass the pipeline again, so it picks this
+  refusal up on its next document load. The epoch is the exception: `SecurityInterceptor` asks it
+  on every gated send, so a circuit meets a stale ticket as a 401 on its next send. Proof:
+  `CredentialWallTests` (`NSail.Iam.WebApi.Tests`) on a real host behind the real pipeline — a ticket is what the subject is, so no handler send can hold it
   — plus `SessionExpiryTests` and `AnonymousRedirectTests` for the two halves of the client arm.
 - `Session.System()` for background jobs; hand-built in tests; WASM builds its own from `GetSession` + effective policies.
 - **A system session bypasses evaluation entirely** (`SecurityManager` short-circuits
@@ -602,7 +628,7 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
 
 The client fetches its **effective policies** once per session (twin of GetSession). From them it *derives* — never from role checks:
 
-- Field states: `@me`/`@current`/literals → client-derivable (locked/prefilled/hidden, or restricted to the literal set); a pinned **flag** is the sharpest case — `SecurityManager.Permits(message, field, value, session)` answers whether any matching policy leaves that value possible, `NsPartial.CanSend<T>(field, value)` is the markup half, and a control the caller may not tick is **not drawn** rather than drawn and refused; `*` → free (admin view sends null); `relatedAs` → **not client-evaluable** (no graph client-side): the optimistic provider passes it, the field renders free, the server gate validates — wrong picks get a Forbidden toast; apps may ship scoped lookup messages ("my patients") so the dropdown only offers values that will pass. No satisfiable policy for the message → the view/menu/link doesn't exist for this user.
+- Field states: `@me`/`@current`/literals → client-derivable (locked/prefilled/hidden, or restricted to the literal set); a pinned **flag** is the sharpest case — `SecurityManager.Permits(message, field, value, session)` answers whether any matching policy leaves that value possible, `NsPartial.CanSend<T>(field, value)` is the markup half, and a control the caller may not tick is **not drawn** rather than drawn and refused; `*` → free (admin view sends null); `relatedAs` → **not client-evaluable** past one fact (no graph client-side): the actor's own party, which it never reaches — `SecurityManager.Permits(message, field, id, session)`, the id twin of the flag question and exact for `@me`/`@current`/literals, answers no for that id when a relation is all that could admit it, and `NsPartial.CanSend<T>(field, id)` leaves a card about the actor **undrawn** rather than drawn and refused (a subject card asks it with the subject's id); for anyone else the optimistic provider passes it, the field renders free, the server gate validates — wrong picks get a Forbidden toast; apps may ship scoped lookup messages ("my patients") so the dropdown only offers values that will pass. No satisfiable policy for the message → the view/menu/link doesn't exist for this user.
 - "Doctor view" and "Admin view" are the same page with fields in different derived states — no `if (IsAdmin)` in pages, ever. The client asks "what may I send?", not "what am I?".
 - Defense in depth: the client is best-effort; the gate validates regardless. Stale client policies degrade to refusals, never to exposure — and a stale client *session* degrades to 401s, which the client acts on rather than absorbs ([The three refusals](#the-three-refusals)).
 
@@ -690,8 +716,9 @@ Field constraints in the editor:
 - **`ValidateDocument` refuses the two half-authored shapes** the converter refuses at load —
   a literal list with no value, a relation with no role — in front of the person who can
   still fix them, instead of arriving later as a quarantined row.
-- `relatedAs` stays the one shape no client decides: the panel renders a relationship-role
-  picker, the optimistic provider passes it, and the server gate answers.
+- `relatedAs` stays the one shape no client decides beyond the caller's own party: the panel
+  renders a relationship-role picker, the optimistic provider passes it, and the server gate
+  answers.
 
 Proof (`NSail.Iam.WebApi.Tests`): the `PolicyGate` collection — the fixture that registers
 NO policy at all, so a denial it observes is the stored constraint's and never an absent

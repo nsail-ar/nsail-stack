@@ -17,6 +17,16 @@ public interface IAgent
     // Whether such a script's output says it died on the account's usage wall, and until when.
     (bool Refused, DateTimeOffset? Until) Quota(string output);
 
+    // A line of this agent's output that Quota or Run reads, kept whole when the output is cut to its tail.
+    bool IsSignal(string line)
+    {
+        return false;
+    }
+
     // The account's quota windows as the newest run reported them; empty until one has.
     IReadOnlyList<UsageWindow> Usage => [];
+
+    // The longest one command of the agent may run in the foreground: a job silent past it has no
+    // command left that could still be running. Null where the agent sets none.
+    TimeSpan? LongestCommand => null;
 }

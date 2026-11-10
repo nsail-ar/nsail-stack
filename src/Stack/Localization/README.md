@@ -9,8 +9,10 @@ and a key with no text renders as itself, so a missing translation is visible in
 | Package | What it is | Referenced by |
 |---|---|---|
 | `NSail.Localization` | `StringManager`, `StringCatalog`, `IStringSource`, `LanguageProvider`, `LanguageOptions`, `Languages`, `AddLocalization()`, `AddStringsFromAssembly()` | Web, client; reached through `NSail.Components` and `NSail.BaseServices.WebApi` |
+| `NSail.Localization.Testing` | `SpanishCopy`: the slang list and the sweep over every `strings.es.json` under a root (`Offenders(root)`, `Find(text)`); assistant-profile keys are skipped | test projects |
 
-It depends on `NSail.Metadata` and `NSail.Types` (for `Issue` and `Problem`).
+It depends on `NSail.Metadata` and `NSail.Types` (for `Issue` and `Problem`). `NSail.Localization.Testing`
+depends on nothing: a test asserts `SpanishCopy.Offenders(root)` is empty.
 
 ## Use it
 
@@ -87,7 +89,9 @@ first and the language overlays it, so gaps fall back to the base text. Register
 
 **Current language.** `LanguageProvider.Current` defaults to the ambient UI culture's two-letter
 code; set it to switch language without a reload. `StringCatalog` holds one merged dictionary per
-language requested, built on first use.
+supported language, built on first use; an unsupported language answers the `Default`'s without
+adding an entry. `GetAsync(language)` awaits the sources; `Get(language)` serves the cache and
+builds only from sources that complete synchronously, throwing on a pending one.
 
 **Custom sources.** Implement `IStringSource` (`Languages` and `GetStrings(language)`) and
 register it as a singleton to add texts from somewhere other than embedded files.

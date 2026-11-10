@@ -14,20 +14,36 @@ public sealed record PlannerOptions(bool Gate = false)
     public IReadOnlyCollection<string> UnrunnableDrivers { get; init; } = [];
 
     // How the stories the harness files for a red suite and a red main are titled: they come first.
+    // SuiteRedTitle is the template of the first, `{product}` its slot.
+    public string SuiteRedTitle { get; init; } = "Regression red on main ({product})";
     public string SuiteRedPrefix { get; init; } = "Regression red on main (";
     public string MainRedPrefix { get; init; } = "CI red on main";
+
+    public string SuiteRedTitleOf(string product)
+    {
+        return HarnessTexts.Fill(SuiteRedTitle, ("product", product));
+    }
 
     // A lock with no job behind it for this long is a dispatch that never started.
     public TimeSpan StaleLock { get; init; } = TimeSpan.FromMinutes(10);
 
+    // A green head in another repository unread for this long has no review coming: the read its CI
+    // starts gives up by then (nsail-stack's .github/workflows/review.yml, timeout-minutes).
+    public TimeSpan UnreadElsewhere { get; init; } = TimeSpan.FromMinutes(60);
+
     // How many stories may be under way at once (an open PR nobody holds, or a voyage still
     // without one) before a new one leaves the queue: closing comes before starting. 0 is no limit.
     public int WipLimit { get; init; }
+
+    // A story In-Progress is moved by a keeper with no open PR (`Pr: none`) only once nothing touched
+    // it for this long: a job's ending (its label off, its PR opening) lands inside it. As long as
+    // StaleLock, the age a `claimed` with no job behind it is lifted at.
+    public TimeSpan OrphanGrace { get; init; } = TimeSpan.FromMinutes(10);
 }
 
 // What every planner shares: the urgency of a tier for whoever waits for a turn, the holds that
-// keep a story waiting, and the release of a lock no job holds. The order of the work is the
-// workers' (WorkerPlanner).
+// keep a story waiting, and the release of a lock no job holds and of a hold the screen set. The
+// order of the work is the workers' (WorkerPlanner).
 public static class Planner
 {
     // How urgent a tier is, for whoever must wait for a turn: the planner's own order, 0 first.
@@ -35,6 +51,8 @@ public static class Planner
     {
         return tier switch
         {
+            "andon" => -2,
+            "bug" => -1,
             "release" or "manual" => 0,
             "red" => 1,
             "round" => 2,
@@ -61,7 +79,8 @@ public static class Planner
         return null;
     }
 
-    // A lock with no job behind it comes off, out loud, and the story is simply in the queue again.
+    // A lock with no job behind it comes off, out loud, and the story is simply in the queue again; so
+    // does the screen's hold once a hand allows the protected paths.
     internal static List<Issue> ReleaseStaleLocks(BoardSnapshot board, PlannerOptions options, List<Chore> chores, List<string> notes)
     {
         var reviewByStory = board.Prs.Where(p => p.Repo == board.Repo).GroupBy(p => p.Story)
@@ -97,6 +116,8 @@ public static class Planner
                 chores.Add(new Chore(ChoreKind.Unlock, i.Number, label, $"`{label}` with no job behind it"));
                 notes.Add($"#{i.Number} wore `{label}` with no job behind it — released, back in the queue");
             }
+            var lifted = LiftScreen(i, chores, notes);
+            drop.AddRange(lifted);
             result.Add(drop.Count == 0 ? i : i with { Labels = i.Labels.Except(drop).ToHashSet() });
         }
         return result;
@@ -107,4 +128,20 @@ public static class Planner
         }
     }
 
+    // The screen's hold is the harness's own: `allow-protected` lifts it with no hand removing a label.
+    // A `screened` left after a hand lifted the `ruling` itself is only a stale mark.
+    static List<string> LiftScreen(Issue i, List<Chore> chores, List<string> notes)
+    {
+        if (!i.Has(Labels.Screened)) return [];
+        if (!i.Has(Labels.Ruling))
+        {
+            chores.Add(new Chore(ChoreKind.Unlock, i.Number, Labels.Screened, $"`{Labels.Ruling}` already lifted"));
+            return [Labels.Screened];
+        }
+        if (!i.Has(Labels.AllowProtected)) return [];
+        chores.Add(new Chore(ChoreKind.Unlock, i.Number, Labels.Ruling, $"`{Labels.AllowProtected}` lifts the screen"));
+        chores.Add(new Chore(ChoreKind.Unlock, i.Number, Labels.Screened, $"`{Labels.AllowProtected}` lifts the screen"));
+        notes.Add($"#{i.Number} wears `{Labels.AllowProtected}` — the screen's `{Labels.Ruling}` lifted, back in the queue");
+        return [Labels.Ruling, Labels.Screened];
+    }
 }

@@ -10,5 +10,9 @@
         <ProjectReference Include="..\NSail.Messaging.Runtime\NSail.Messaging.Runtime.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="NSail.Messaging.WebApi.Tests" />
+    </ItemGroup>
+
 </Project>
 

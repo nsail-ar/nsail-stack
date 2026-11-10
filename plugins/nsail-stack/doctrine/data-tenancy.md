@@ -28,7 +28,18 @@ Stack sets and no product writes:
 - **The write is stamped from the resolved identity**, in a `SaveChanges` interceptor
   registered by `AddDataAccess` — where the unit of work sits, never in a handler. A payload
   cannot name a tenant: the column is a shadow property, so no message and no entity carries
-  it. Even a caller that reached the change tracker itself is overwritten.
+  it. Even a caller that reached the change tracker itself is overwritten. A **Modified** entry
+  is never restamped, it is refused when its `TenantId` differs from the resolved tenant's: a
+  row's tenant is fixed when it is added, and an `UPDATE` carries no tenant filter, so a
+  detached entity handed to `Update` (default tenant) or a hand-set value throws
+  `InvalidOperationException` naming the entity. The rule holds in every mode, judged by value:
+  where every row carries the same key (`None`, `MultiDb`) nothing differs. Load the row under
+  its tenant and change its fields. Where no stamp runs — a context `AddDataAccess` did not
+  build, a design-time factory's or a retrofit's — the column's value generator writes the
+  install's `Guid.Empty`: EF refuses to insert a row whose shadow key it does not know, and the
+  column sits in a key wherever another table names the row (below). The generator never writes
+  the context's tenant, because EF also generates on `Attach` and `Update`, and a detached entity
+  arriving with the resolved tenant would pass the refusal above.
 - **Every index leads with the tenant**, foreign keys included, on every entity that has the
   column; an install-scoped entity keeps the plain indexes its own foreign keys earn, restored
   by the same pass. A filter is cheap only when its index leads with the tenant; otherwise the
@@ -36,6 +47,23 @@ Stack sets and no product writes:
   This is why a product's context calls `configurationBuilder.ApplyTenancy()` in
   `ConfigureConventions`: it removes EF's `ForeignKeyIndexConvention`, which would otherwise put
   its single-column index back beside each tenant-leading one.
+- **Keys carry the tenant too.** A foreign key between two tenant-scoped entities is the
+  composite `(TenantId, Fk)` onto `(TenantId, Key)`, and the principal gains the unique
+  `(TenantId, Key)` it names. Referential checks bypass the row policy, so a plain `Fk` would
+  accept any Guid that exists: the database itself refuses a row naming another tenant's. An
+  alternate key and a unique index are unique **per tenant** — two tenants hold the same value,
+  and a unique violation never reveals that another tenant holds one. Nothing here is written by
+  a product: the pass derives it from the model, so the migration of every product's foreign
+  keys is the one `dotnet ef migrations add` scaffolds. An optional foreign key with a null `Fk` is
+  not checked (Postgres's default match), so it names nothing; `DeleteBehavior.SetNull` becomes
+  `ClientSetNull`: EF Core's DDL for `ON DELETE SET NULL` on a composite key nulls the tenant
+  column too, so the database no longer clears it. EF clears the key of every dependent it has
+  **loaded** when the principal is deleted; one it has not loaded makes the `DELETE` fail with
+  23503, so a handler that deletes a principal loads its optional dependents first. A derived type's
+  indexes and foreign keys follow its root; an **owned** type cannot name its owner's column in a
+  key or index of its own, so what it declares stays plain — give such a reference an entity of
+  its own. **Install-scoped entities keep their plain keys**, and a foreign key from a tenant row onto one stays plain: it is the same
+  row for every tenant.
 
 **The primary key does not move.** It stays `Id` alone in every mode; the tenant is a column
 BESIDE it. A row is globally unique by its id and the wall is the filter, not the key — two
@@ -97,9 +125,12 @@ refused rather than stored.
   never in a startup pass: a chain is what CI applies to an empty database, so schema written
   outside it is schema no test ever sees. The tables are NAMED there, because a migration's own
   `TargetModel` is the snapshot's and its entity types carry no CLR type to ask the marker of.
-- **One database role, with `FORCE ROW LEVEL SECURITY`.** A table's owner bypasses its policies
-  unless the table forces them, and the app role owns the tables because it runs the chain; a
-  second, non-owner role would owe a grant pass on every table every migration adds.
+- **One database role by default, with `FORCE ROW LEVEL SECURITY`.** A table's owner bypasses
+  its policies unless the table forces them, and the app role owns the tables because it runs the
+  chain. Splitting them — the chain under an admin role, the app under a non-owner one — is
+  allowed and owes what the Sample's `SampleRole` does on every start, after the chain: the grant
+  pass over every table a migration added, and the role's attributes re-stated (`NOSUPERUSER
+  NOBYPASSRLS`), because a role that already exists keeps whatever someone gave it.
 - **The tenant reaches the connection as a session setting written on connection open**
   (`TenantSession`), from `TenancyProvider.RowKey` and from nothing else — **left unwritten
   where the wall IS the column and nothing resolved**, so the policy compares against NULL and
@@ -273,7 +304,7 @@ the branch that now owns the work. Whoever moves the head owes that question an 
 granted, because after the move the destination is the one branch that may authorize it and the
 one branch that cannot read the attempts already made for it.
 
-**An in-use guard that must NOT find a row fails open when it is filtered** (org-map.md, G2): a
+**An in-use guard that must NOT find a row fails open when it is filtered** (nsail's `plugins/nsail-kits/doctrine/org-map.md`, G2): a
 delete asking whether any org-scoped row still names the id it is about to remove reads only the
 caller's own subtree, so a row standing in another branch answers "free" and the delete hits the
 provider's `Restrict` constraint instead of the `InUse` refusal it exists to pre-empt. The guard
@@ -286,7 +317,7 @@ is.
 **This filter does NOT answer which branch a caller may name.** It reads the message's field;
 the gate says whether this caller may put that value there — so a marked field no policy
 constrains is a filter pointed wherever the caller likes. Which messages carry the field, which
-consolidate without one, and what the shipped policies pin it to: org-map.md's message table,
+consolidate without one, and what the shipped policies pin it to: nsail's `plugins/nsail-kits/doctrine/org-map.md`'s message table,
 held by `OrgAxisMessageTests`. The two halves lean on each other on purpose: because this filter
 answers an omitted field with the seat's own subtree, a policy pinning that field to
 `@memberOfOrDescendant` — the one symbol whose permitted set CONTAINS that subtree — lets the
@@ -294,19 +325,22 @@ omission through rather than refusing every by-id site. `@current` and `@memberO
 because there the fallback reaches below what the symbol allows (permissions.md, Null
 semantics).
 
-**The party axis** is the other half, answered in org-map.md (The party axis) on purpose. A
+**The party axis** is the other half, answered in nsail's `plugins/nsail-kits/doctrine/org-map.md` (The party axis) on purpose. A
 membership and a relationship are EDGES the scope is computed FROM, so no model-wide filter can
 touch them without circularity; the two lists of one person's edges write the subtree WHERE
 themselves, against the set this filter compares to, read from `OrgScopeProvider` rather than
 walked again. It is the one place a handler writes this WHERE.
 
-## First touch bootstraps, and onboarding is the proxy's block plus this
+## First touch bootstraps, and onboarding is the proxy's block, the roster and this
 
 Under `SingleDb` there is no database to create and no chain to apply: a new slug arrives at a
 schema that is already there and rows that are nobody's. `TenantBootstrap` — the twin of
 `TenantMigrator`, over the same advisory lock and per-process memo (`FirstTouch`) — plants what
 the app says a tenant is born with (`ITenantSeed`, registered with `AddTenantSeed`), once per
-slug. So **provisioning a tenant is writing the Caddy block; nothing else exists to do.**
+slug. So **provisioning a tenant is writing the Caddy block and, on a cell that declares a
+roster, filing the slug on it first** — off the roster the first visit is a 404 and plants
+nothing (Caddy assigns the tenant, below). Nothing else exists to do; the proxy secret is the
+installation's, set once.
 
 - **The seed is a chain, and the tenant has a history of it.** `ITenantSeed` is an ordered list
   of named `TenantSeedStep`s and each touch runs the ones this tenant has not, so a step added
@@ -348,8 +382,9 @@ slug. So **provisioning a tenant is writing the Caddy block; nothing else exists
 
 The tree names some rows by constant — every id in `SeededRoles.All`, and the accounts and the
 currency `AccountingSettings` defaults to. Where rows belong to a tenant, those constants name
-the install's row, which the tenant cannot see: the foreign key is satisfied physically, nothing
-throws, and the join answers nothing. **`TenancyProvider.Row(wellKnown)` answers "that row, in
+the install's row, which the tenant cannot see: a read joins nothing, and a write naming it is
+refused by the tenant-carrying foreign key (23503) — the request fails where it used to save a row
+that joined nothing. **`TenancyProvider.Row(wellKnown)` answers "that row, in
 this scope"** — the identity where rows are the install's, `TenantKey.For(slug, id)` where they
 are a tenant's. It is the function the first touch derives with, so a handler resolving a frozen
 id lands on the row the tenant was born with.
@@ -402,29 +437,45 @@ a third runtime dependency buys nothing Caddy and Postgres are not already telli
   incoming copy of `X-NSail-Tenant` and writes its own (`header_up`). The wildcard demo route
   takes its slug from the host's label (`{labels.N}`), a custom domain from its own block: same
   header, two sources, and **the app never parses the Host**, so it cannot tell them apart.
-  `TenancyMiddleware` (`NSail.BaseServices.WebApi`) reads that header and nothing else; the
+  `TenancyMiddleware` (`NSail.BaseServices.WebApi`) reads that header; the
   header arriving twice is not a slug and is refused like any malformed one.
+- **The installation's proxy secret.** The proxy also writes `X-Proxy-Secret`
+  (`Tenancy:ProxySecret`), one value for the whole installation, not per block: when configured, a
+  request without it is **403** before any tenant is resolved or created; unconfigured outside
+  Development, startup warns that the listener must be bound to the proxy only.
 - **Postgres is the registry — under `MultiDb`.** `TenantDatabases` derives the name as
   `{product}_{cell}_{tenant}` — `Tenancy:Product` and `Tenancy:Cell` from the cell's own
   configuration, the tenant from the header — and the row in `pg_database` **is** the truth that
   the tenant exists. Unknown slug → no database → **404, answered before authentication** and
   creating nothing. Only the database moves per tenant; server, user and password stay the
-  install's.
+  install's. The lookup is memoised per name — longer for a hit, shorter for a miss
+  (`Tenancy:DatabaseHitSeconds`, `DatabaseMissSeconds`) — so a flood of one unknown slug is one
+  round trip, and a tenant Ops provisions is served within the miss window, and one Ops drops or moves still
+  resolves until the hit window lapses, failing on connect rather than 404.
 
-Under `SingleDb` there is no registry and no database name: a well-formed slug **is** the
-tenant, and `TenancyMiddleware` enters it. A malformed one is still 404, ahead of everything.
+Under `SingleDb` there is no registry and no database name, so the install's **declared roster**
+(`TenantRoster`, below) is the truth that a tenant exists: a cell that declares one — a
+`Tenancy:Tenants` naming a slug, or a `Tenancy:TenantsFile` at all — answers **404** to a slug the
+roster does not name, ahead of authentication and **before anything is planted for it**. A site
+the proxy still routes to a cell its tenant has left must not get a second, empty copy of that
+tenant there. The file is read again on every such request, so a tenant filed by whoever
+provisions it is served on its next visit with no restart; a named file that cannot be read
+**fails the request** — never served as if the slug were known. A cell that declares no roster
+has only the proxy's whitelist, and a well-formed slug **is** its tenant. A malformed one is 404
+in every mode, ahead of everything.
 
 `TenantSlug.Normalize` is the one gate between the header and a database name: lowercase
 alphanumerics and the hyphen, case folded, **anything else refused rather than repaired** —
 stripping a character folds two words onto one tenant, which is the leak, not the fix. A
 composed name Postgres would truncate at 63 bytes is refused for the same reason.
 
-## The install's own record of a tenant: its state, its plan and what the plan includes
+## The install's own record of a tenant: its state, its plan, what the plan includes and what it is born with
 
 Everything above is a tenant's own rows. **`TenantState` is the install's record ABOUT a
-tenant** — whether it is served at all, why, until when, which plan it is on and what that plan
-includes — and that is the whole of why it is the Stack's and not a product's: the state of a
-customer is identical in every product, and answered twice it would be answered differently.
+tenant** — whether it is served at all, why, until when, which plan it is on, what that plan
+includes and what the tenant is to be born with — and that is the whole of why it is the
+Stack's and not a product's: the state of a customer is identical in every product, and
+answered twice it would be answered differently.
 It is the second of the three tables the Stack
 owns (`DbContextExtensions.ApplySetups`, beside the seed history, for the same reason: a
 product that forgot to compose it would serve a suspended customer).
@@ -440,6 +491,7 @@ the contract and the Stack only reads:
 | `Plan` | `varchar(32)`, null | The plan's word, carried and not interpreted — **the Stack names no plan and knows none** |
 | `Entitlements` | `jsonb`, null | What that plan includes: one key against a flag or a number — **the Stack names no key and knows none** either. `jsonb` and not text because this writer amends ONE key of the bag in plain SQL |
 | `EntitlementsUpdatedAt` | `timestamptz`, null | When the bag was last written. "Has my write landed" is a real question asked of this row, and the memo below is why the answer is not immediate |
+| `Bootstrap` | `jsonb`, null | What the tenant is to be born with — its first user, the house login's password hash — read by the product's own first-touch seed step. **The Stack names no key and knows none**: the bag is the writer's contract with the product, carried here like `Entitlements`. Written before the tenant's first request, because a tenant already planted reads it no more; it stays on the row afterwards as what was asked, and a move carries it with the rest. Null is the tenant every product seeds with nothing asked. `[NotPersonal]` like its sibling bag, though a login name and a customer's name ride in it: no kind fakes a `jsonb` object and keeps it one, and the hash is a secret, which [data.md](data.md) leaves to whoever restores a copy |
 | `Reason` | `varchar(32)`, null | Why it is paused: `Maintenance` (a deploy, a big change, a maintenance stop), `Move` (between rings or servers), `Payment`. Compared, never parsed — it changes nothing about whether the tenant is served, only the words its page gets |
 | `SuspendedFrom` | `timestamptz`, null | When the pause opens. No `SuspendedFrom`, no window |
 | `SuspendedUntil` | `timestamptz`, null | When it closes, or null for a window with no end. It is also what the page says the service comes back at |
@@ -471,7 +523,8 @@ the contract and the Stack only reads:
   behind `TenantStates`, for `Tenancy:StateCacheSeconds` — a few minutes, whose default and floor
   are `TenancyOptions`'; zero is refused rather than read as "no memo").
   A primary-key lookup on every request of every tenant bought almost nothing: what it read was
-  the same absent row. So the row is held per tenant, a missing one included, and whether a held
+  the same absent row. So the row is held per tenant (`TenancyProvider.StateKey`: the slug under `MultiDb`, where every
+  tenant's `RowKey` is the install's own `Guid.Empty`; the row key elsewhere), a missing one included, and whether a held
   row's window is open is still asked of the clock on each request — the memo delays the *row*,
   never the *cut*. **What it costs is stated and not hidden:** the row is written by a program
   outside this process, so a suspension written now reaches a running install when its entry
@@ -536,6 +589,18 @@ the contract and the Stack only reads:
   one `RequestNegotiation.PrefersDocument`. 503 and not 403 because nothing is wrong with the
   caller or their credential and nothing they can do changes the answer. The refusal stands ahead
   of authentication, so a suspended tenant cannot mint a ticket either.
+- **What is not a request is asked too.** An open circuit's sends never pass the pipeline again,
+  so `TenantStateInterceptor` (registered by `AddBaseWebApi`) asks the same memoed state on every
+  send and answers the same 503 `Suspended`. The send's outermost scope is its own and never
+  the circuit's, so it reads the tenant from the flow: `TenancyCircuit` enters the circuit's
+  tenant on every inbound activity, which is also what the send's `DbContext` connects by. A
+  held push feed — an SSE line, a hub connection — is asked once a second through
+  `PushAudience.Watch` and is closed when the answer turns.
+  Both read the memo, so the bound is `Tenancy:StateCacheSeconds` (plus that second for a feed),
+  and a feed opens a scope only when the memo's window for its tenant has expired. A failed ask
+  is logged and asked again next tick: the watch never ends on an error, because a feed whose
+  watch ended keeps listening past every later suspension. A system session is exempt — the
+  runner has its own check, below.
 - **The page carries its own styling and links nothing.** Every asset of an install is an
   endpoint, and endpoints run behind every middleware — so a document that linked a stylesheet
   would be refused its own stylesheet and arrive bare. That is the design and not its cost: a
@@ -578,12 +643,17 @@ operator the keys *its own* build knows, which is a different list the moment a 
 | `Enabled` | `boolean`, not null | What a flag answers where a tenant's bag is silent |
 | `Limit` | `numeric`, null | What a ceiling answers there, or null for no ceiling at all |
 
-- **Rewritten whole at startup, which is the only moment it can change.** The catalog is gathered
+- **Rewritten whole at startup, which is the only moment it can change — and advisory.** The catalog is gathered
   from the modules composed into the process, so what a build declares is a compile-time fact and
   a deploy is the one event that moves it (`FeaturePublisher`, `NSail.BaseServices.WebApi` — the
   one composition that reaches both the catalog and the context, since `NSail.Data` references no
   `NSail.Security`). The table then says what THIS build declares: a key that left the build
-  leaves the table with it, and the same build twice says the same thing.
+  leaves the table with it, and the same build twice says the same thing. Publishing is advisory
+  and never stops the host: two processes starting together race on a key, so the loser reads
+  again and amends what the winner wrote, and a store that keeps refusing (three attempts, spaced)
+  is logged at warning and the host comes up. **The table can then still say what the previous
+  build declared** until the next start publishes — a reader treats it as what the install last
+  managed to report, not as a guarantee about the running build.
 - **Amended, never emptied and refilled.** A program outside this process reads it, and a
   delete-then-insert would show it empty to whoever read between the two.
 - **An empty table is an honest answer and the reader owes it no entry.** A build that composes no
@@ -621,7 +691,7 @@ every authenticated request:
 - **Changing the MODE is re-authentication for everybody, and the install has to say so.** A
   flip rewrites which tenant every row belongs to — under `MultiDb` a seeded row is its own id,
   under `SingleDb` the same row belongs to a tenant derived from its slug — while the ticket
-  minted before it keeps decrypting, because the key ring is the server's and no deploy touches
+  minted before it keeps decrypting, because the key ring is the install's and no deploy touches
   it. That session names rows the filter now hides and reads `NotFound` on a party that is
   right there. Raising `Security:TicketEpoch` is what voids it, and nothing else can: see
   [permissions.md](permissions.md#session).
@@ -647,7 +717,9 @@ and a child scope that could not see the tenant would answer the refusal on a pa
 had already answered. Entering reaches every scope the request opens and no request beside it.
 **Work that outlives its request pins instead**: `ResolvedTenancyProvider.Enter` also fixes the
 tenant onto its own scope, and `TenancyCircuit` (`NSail.BaseServices.WebApp`) does that at
-circuit-open — the one moment a Blazor circuit's scope is still inside the connect request.
+circuit-open — the one moment a Blazor circuit's scope is still inside the connect request. The
+pin reaches the circuit's scope alone, and an event's outermost send runs in a scope of its own,
+so `TenancyCircuit` also enters that tenant on the flow of every inbound activity.
 
 **First touch migrates**, under `TenantMigrator`: a provisioned database carries no schema until
 the first request reaches it, and that request applies the chain. The lock is a Postgres
@@ -682,11 +754,34 @@ reads nothing and cannot write at all.
   never runs again in the life of the process.
 - **A tenant that fails costs its own pass.** The catch is per pass, not per tick; the log line
   names the tenant and the sweep continues with the next one.
+- **A pass has a budget and a hung one is abandoned.** Sequential means one pass that never
+  returns (a dead socket, a lock) would stop every later tenant, so each pass gets
+  `BackgroundOptions.JobTimeout`, overridable per job in `JobTimeouts`: the token is cancelled at
+  the budget and, after a short grace, the runner stops waiting, counts the pass failed and logs
+  job and tenant; while the abandoned pass runs, that tenant's later ticks are skipped (counted and
+  logged) so a hang holds one scope. `DeferredWork` abandons an item that ignores its token the same way
+  (`DeferredTimeout`).
 - **A suspended tenant is not swept at all.** The runner asks the install's record once the
   tenant is entered and before the job is resolved, so nothing of the job runs (The install's own
-  record, above) — the request edge's answer, applied to the one kind of work that has no
-  request. It is not a failed pass and not a pass: a failure is the job's problem, a suspension
-  is the install's answer about the customer.
+  record, above) — the request edge's answer, applied to work no caller started: an open
+  circuit and a held push feed have no request either, and are asked on the send and on the
+  feed (A suspended tenant's requests, above). It is not a failed pass and not a pass: a
+  failure is the job's problem, a suspension is the install's answer about the customer.
+- **A pass holds a lock, so two replicas never run one together.** The runner takes a Postgres
+  advisory lock per job and tenant (`AdvisoryLock`, the one `FirstTouch` uses) on a connection of
+  its own, inside the pass's budget and held until the pass ends — an abandoned pass keeps its
+  scope **and** its lock until it does. The key names the job by its full type name: a lock key
+  identifies its resource, and two kits' `CleanupJob`s are two resources; `JobTimeouts`, the log
+  lines and the metrics keep the simple name. A runner that cannot take it yields the pass:
+  counted `skipped`, neither ok nor failed, and the job reads as completed for the overdue clock,
+  because a sibling is running it. It fences **overlap**, not repetition: replicas tick on their
+  own clocks, so a job whose passes do not overlap still runs once per replica per interval — a
+  job that must run once per interval across replicas needs a lease, not this. A store that is
+  not Postgres takes no lock. Install-wide work under a per-tenant connection has no install
+  database, so it locks on the cluster's maintenance database, the one the roster is read from,
+  under a key of the cell's `{product}_{cell}_` prefix and the job's full name: a neighbouring
+  cell or product on the server is not a sibling. The durable queue's drain is a job like any
+  other: a tenant's drain runs on one replica at a time.
 - **A job runs in the install's default language, and so does a deferred item.** No request sets
   a culture on a loop or on a queue's consumer, so the runner sets `Language:Default` as
   `UseRequestLanguage` does on a request; `LanguageProvider` then seeds itself with "es" instead
@@ -695,10 +790,11 @@ reads nothing and cannot write at all.
   request. A host that configures none keeps the ambient culture, which is what
   `HandlerHost`'s inline drain leaves a fixture on — so the language a deferred send asks for is
   proven in `NSail.Background.Tests` and nowhere a fixture reaches.
-- **The roster is declared, never guessed** (`TenantRoster`). Where the wall is the connection,
-  the provisioned databases ARE the registry and are read whole — the same truth a request
-  resolves against. Where the wall is the tenant column there is no registry: the proxy's
-  whitelist is the roster, so the install states it — in **`Tenancy:Tenants`**, comma-separated,
+- **The roster is declared, never guessed** (`TenantRoster`), and under `SingleDb` it gates
+  requests as well as sweeps (the 404 above). Where the wall is the connection, the provisioned
+  databases ARE the registry and are read whole — the same truth a request
+  resolves against. Where the wall is the tenant column there is no registry, so the install
+  states it — in **`Tenancy:Tenants`**, comma-separated,
   read once and refused at startup if one entry cannot be a slug, and in the file
   **`Tenancy:TenantsFile`** names, one slug per line, the union of the two. Rows cannot answer
   the question — a query spanning tenants is what the filter refuses, and `DISTINCT TenantId`
@@ -714,9 +810,10 @@ reads nothing and cannot write at all.
   beside it and renamed over it, never truncated and rewritten in place, because the read takes
   no lock and a sweep landing inside that window would enter a shortened roster, or a cut slug
   no tenant owns, in silence. The cost is unchanged: a tenant has to appear in a second place
-  under `SingleDb`, and a slug in Caddy that is in neither of these serves requests and gets no
-  jobs — which is why an **empty roster under a tenant-scoped mode is logged at warning**, once
-  per job, **and reported as a metric**.
+  under `SingleDb`. On a cell that declares a roster, a slug in Caddy that is not on it is a 404;
+  on one that declares none, it serves requests and gets no jobs — which is why an **empty
+  roster under a tenant-scoped mode is logged at warning**, once per job, **and reported as a
+  metric**.
 - **An install that names the file empties `Tenancy:Tenants`.** The two are unioned so that an
   install nobody has re-composed keeps sweeping exactly what it sweeps today: the key is
   honoured, never retired. Left populated beside the file, though, it pins whoever it names —
@@ -728,7 +825,7 @@ reads nothing and cannot write at all.
   Three instruments, one per way a job goes quiet, each tagged `nsail.job` (the type's name —
   not `job`, which the Prometheus side of an OTLP gateway spends on the service):
   - `nsail.background.job.passes`, a counter also tagged `nsail.outcome` (`ok`/`failed`, the
-    Mediator span's vocabulary) — **it fails**;
+    Mediator span's vocabulary, and `skipped` for a pass a sibling replica held) — **it fails**;
   - `nsail.background.job.roster`, the passes the last tick swept: the tenants ENTERED for a
     per-tenant job (the roster less whoever is suspended), **one** for install-wide work and for
     an install that resolves no tenant, **zero** for the job that runs for nobody — so the two

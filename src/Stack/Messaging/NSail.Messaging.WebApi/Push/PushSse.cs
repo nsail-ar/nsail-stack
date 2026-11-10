@@ -3,6 +3,9 @@
 
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSail.Messaging.Runtime.Publishing;
 
 namespace NSail.Messaging.WebApi.Push;
@@ -12,9 +15,9 @@ namespace NSail.Messaging.WebApi.Push;
 /// path. The push only ever flows server → browser, so a client says nothing on it.</summary>
 static class PushSse
 {
-    /// <summary>Holds the line open until the client goes away. The stream IS this request, so
-    /// the audience the edge resolved for it — the tenant, after the ticket was checked — stands
-    /// for as long as the line does.</summary>
+    /// <summary>Holds the line open until the client goes away, or until the audience the edge
+    /// resolved for it — the tenant, after the ticket was checked — loses the right to listen
+    /// (<see cref="PushAudience.Watch"/>).</summary>
     public static async Task Listen(HttpContext context, PushStreams streams, PushAudience audience)
     {
         var response = context.Response;
@@ -26,13 +29,19 @@ static class PushSse
         response.Headers.CacheControl = "no-cache,no-transform";
         response.Headers["X-Accel-Buffering"] = "no";
 
-        // The client counts itself connected on the response head, so it goes out before the
-        // first event rather than with it.
-        await response.Body.FlushAsync(context.RequestAborted);
+        using var line = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted);
+
+        var watch = audience.Watch() is { } holds
+            ? PushWatch.Over(holds, line.Cancel, Logger(context), line.Token)
+            : Task.CompletedTask;
 
         try
         {
-            await streams.Hold(audience.Current, (frame, cancellationToken) => Write(response, frame, cancellationToken), context.RequestAborted);
+            await streams.Hold(audience.Current, (frame, cancellationToken) => Write(response, frame, cancellationToken), line.Token,
+                // The client counts itself connected on the response head and reads then, so the
+                // head goes out only once the line is registered: an event published in between
+                // reaches the stream rather than neither the catch-up nor the line.
+                cancellationToken => response.Body.FlushAsync(cancellationToken));
         }
         catch (OperationCanceledException)
         {
@@ -42,6 +51,16 @@ static class PushSse
         catch (IOException)
         {
         }
+        finally
+        {
+            await line.CancelAsync();
+            await watch;
+        }
+    }
+
+    static ILogger Logger(HttpContext context)
+    {
+        return context.RequestServices.GetService<ILoggerFactory>()?.CreateLogger(typeof(PushSse)) ?? NullLogger.Instance;
     }
 
     static async Task Write(HttpResponse response, string frame, CancellationToken cancellationToken)

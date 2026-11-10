@@ -36,7 +36,7 @@ Infrastructure only. No domain entities, no shared DbContext type.
 | `DbContextExtensions.SetDefaultDbContext<T>` | `AddScoped<DbContext, T>()` for handler injection |
 | `Setup.AddDataAccess<T>` | The tenancy seam plus the app's context — what a host calls instead of `AddDbContext` |
 | `TenancyOptions` / `TenancyProvider` / `Tenant` / `ITenanted` | The seam itself — see Tenancy |
-| `TenantRoster` | Who the install's tenants are, for work outside a request — data-tenancy.md, Background jobs |
+| `TenantRoster` | Who the install's tenants are: what a sweep enters, and under `SingleDb` what a request's slug must be on — data-tenancy.md |
 | `IInstallScoped` / `ITenantSeed` | What a tenant does NOT own, and what it is born with — data-tenancy.md |
 | `TenantSeedStep` / `AppliedSeedStep` | One named step of that seed, and the tenant's history of which it has run — one of the Stack's three tables (data-tenancy.md, First touch bootstraps) |
 | `TenantState` / `TenantStates` / `TenantStateMemo` | What the install records ABOUT a tenant — whether it is served, why, until when, and which plan it is on, written from outside the app — the scoped reader of it, and what holds that reading for minutes: the second Stack table (data-tenancy.md, The install's own record) |
@@ -98,7 +98,7 @@ The rest lives in [data-tenancy.md](data-tenancy.md), under these headings:
 - **A frozen id is a row's NAME** — `TenancyProvider.Row`, `WellKnownRows`.
 - **A document is a caller too** — `TenancyProvider.Owned`, `PackLoader`.
 - **Caddy assigns the tenant, Postgres is the registry** — `X-NSail-Tenant`,
-  `TenancyMiddleware`, `TenantSlug.Normalize`.
+  `TenancyMiddleware`, `TenantSlug.Normalize`, and under `SingleDb` the declared roster.
 - **The credential is stamped, and checked on every request** — the `tenant` claim,
   `TenantClaimMiddleware`, `AmbientTenant`, `TenantMigrator`.
 - **The install's own record of a tenant** — `TenantState`, `TenantStates`, `TenantStateMemo`,
@@ -690,6 +690,20 @@ The graph rules are Detached Mapper's:
   holds M and T never sees the Data project. An `Ignore` naming a member that does not exist is
   NSG013. Both are warnings, so an app refuses them through its own `.editorconfig` or
   `WarningsAsErrors`.
+- **"No value" is never silently zero** (NSG025): a `[MapFrom]` that reads a nullable value
+  (`int?`, `decimal?`, an enum`?`) into a non-nullable member does not build — make the member
+  nullable, the source non-nullable, or `[MapIgnore]` it and let the handler decide. A message
+  field left nullable so an enum can stay unchosen ([messaging.md](messaging.md)) meets this
+  rule here. The target's key (its `[Key]`, else its `Id`) is exempt: a `Guid?` Id is the id
+  still to be made. Text is not covered: a null or empty string read into a number, bool, date,
+  `Guid` or enum is the target's default, so a field that must be filled says `[Required]` on
+  the message. A `[MapTo]` row reads the default, because a query provider translates the
+  projection.
+- **A conversion that cannot hold fails out loud**: on the `[MapFrom]` path a narrowing number
+  or enum is `checked` (`OverflowException`, never a wrapped value), and text that does not parse
+  as a number, bool, date, `Guid` or enum is the `InvalidFormat` input problem, sourced at the
+  source member the caller sent. A projection stays unchecked and parses nothing — the query
+  provider translates it.
 - **A row may be init-only** (`{ get; init; }`, a record): a projection builds it with an
   initializer. A `[MapFrom]` target merges in place, so its members need a setter.
 - **An entity is what the model declares**: a `DbSet<T>`, a `ModelBuilder.Entity<T>()`, an
@@ -760,7 +774,8 @@ machine that already refuses the illegal move) never carry it — their invarian
   `DbUpdateConcurrencyException` to `BusinessProblem.Conflict` — 409, code `Conflict`. It sits in
   the **pipeline**, not at the HTTP edge, because an in-process caller never passes that edge.
   The row's `UpdatedAt` narrates it when the entity has one (issue code `ConflictAt`, `{at}`
-  argument); the token decides, the audit field only says when. Nothing records a **who** yet.
+  argument, ISO 8601 UTC, localized by the client); the token decides, the audit field only
+  says when. Nothing records a **who** yet.
 - **The screen keeps the user's values** and draws the Problem where every refusal draws
   (intentional-ui.md). A conflict — only a conflict — adds one act: `NsForm`'s `OnReload`, the
   screen's first read run again. Re-applying the edit is the user's; a merge is never attempted

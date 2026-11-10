@@ -18,6 +18,12 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
 
     JobStep Step => ctx.StepOf(Item);
 
+    // How long its build and tests may run, from the moment it holds its build turn.
+    internal static TimeSpan Timeout(JobStep step)
+    {
+        return TimeSpan.FromMinutes(step.Minutes);
+    }
+
     public async Task<JobOutcome> Run(int slot, string logPath, CancellationToken ct)
     {
         var prNumber = Item.Pr!.Value;
@@ -30,12 +36,25 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         {
             return await Gate(prNumber, sha, slot, logPath, log, ct);
         }
+        catch (Exception e) when (!ct.IsCancellationRequested && IsOwnRed(e))
+        {
+            await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", ctx.Texts.GateRedTests)), e.Message, log);
+            return new JobOutcome($"red — {e.Message}", Failed: true);
+        }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
-            // A gate that broke says so on the head, so nobody reads its silence as a verdict.
-            await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateBroke, ("error", e.Message)), null, log);
+            // Infrastructure is not the PR's red: the comment carries no gate marker and no status is set,
+            // so the head stays ungated and the next pass gates it again.
+            await Broke(prNumber, sha, e.Message, log);
             throw;
         }
+    }
+
+    // The builder reads the PR's own files (solution, projects) before it builds: a malformed project or
+    // a missing solution is the PR's red; any other exception (git, provider, disk) is infrastructure.
+    internal static bool IsOwnRed(Exception e)
+    {
+        return e is System.Xml.XmlException or FileNotFoundException or DirectoryNotFoundException;
     }
 
     async Task<JobOutcome> Gate(int prNumber, string sha, int slot, string logPath, ILogger log, CancellationToken ct)
@@ -59,14 +78,16 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         ShellResult result;
         try
         {
-            var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(Step.Minutes), Item, Step, ct);
+            // The log moves as the turn comes: its silence while in line is not the build's (JobActivity).
+            await w.WriteLineAsync("== build turn taken");
+            var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(Step.Minutes), Item, Step, ct, runsCode: true);
             env["HARNESS_LEASE_HELD"] = "1";
             env["GATE_WORK"] = Path.Combine(ctx.Options.WorkRoot, "gate", $"slot-{slot}");
             env["TEST_OUTPUT"] = Path.Combine(env["GATE_WORK"], "test-output.txt");
             Directory.CreateDirectory(env["GATE_WORK"]);
             result = Step.Command is { } command
-                ? await ctx.Run(command, [main], dir, env, TimeSpan.FromMinutes(Step.Minutes), w, ct)
-                : await ctx.Builder!.Gate(dir, main, env, TimeSpan.FromMinutes(Step.Minutes), w, ct);
+                ? await ctx.Run(command, [main], dir, env, Timeout(Step), w, ct, keep: IsFailureLine)
+                : await ctx.Builder!.Gate(dir, main, env, Timeout(Step), w, ct);
         }
         finally
         {
@@ -106,6 +127,20 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         }
     }
 
+    async Task Broke(int pr, string sha, string error, ILogger log)
+    {
+        var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", "broke"), ("sha", sha[..8]), ("text", HarnessTexts.Fill(ctx.Texts.GateBroke, ("error", error))))
+            + $"\n\n{ctx.Texts.Signature}";
+        try
+        {
+            await ctx.Repo.Comment(pr, body);
+        }
+        catch (ProviderException e)
+        {
+            log.LogDebug("no gate-broke comment on {Sha}: {Error}", sha[..8], e.Message);
+        }
+    }
+
     async Task Waits(int pr, string sha, string main, ILogger log)
     {
         var body = HarnessTexts.Fill(ctx.Texts.GateVerdict, ("word", "red"), ("sha", sha[..8]), ("text", HarnessTexts.Fill(ctx.Texts.GateWaits, ("main", main[..8]))))
@@ -125,9 +160,16 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
     // with the slot's own path and a test's time taken out.
     internal static IReadOnlySet<string> FailureSet(string output, string dir)
     {
-        var lines = output.Split('\n').Select(l => l.TrimEnd('\r').Replace(dir.TrimEnd('/', '\\'), "", StringComparison.Ordinal).Trim()).ToList();
+        var root = dir.TrimEnd('/', '\\');
+        var lines = output.Split('\n').Select(l => (root.Length == 0 ? l.TrimEnd('\r') : l.TrimEnd('\r').Replace(root, "", StringComparison.Ordinal)).Trim()).ToList();
         var failed = lines.Where(l => FailedTest().IsMatch(l)).Select(l => TestTime().Replace(l, "")).ToHashSet();
         return failed.Count > 0 ? failed : lines.Where(l => BuildError().IsMatch(l)).ToHashSet();
+    }
+
+    // A line the failure sets read: kept through the output's cut, since failures come all along a run.
+    internal static bool IsFailureLine(string line)
+    {
+        return FailedTest().IsMatch(line) || BuildError().IsMatch(line);
     }
 
     // What a builder needs to start: the failed test names, else the build errors, else the tail.

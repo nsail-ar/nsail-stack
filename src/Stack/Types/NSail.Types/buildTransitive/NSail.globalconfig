@@ -1,0 +1,4 @@
+is_global = true
+
+# LogScrubber forwards the log template to the collector as written: it must be a literal.
+dotnet_diagnostic.CA2254.severity = error

@@ -13,4 +13,14 @@ public class PushAudience
     {
         get { return "install"; }
     }
+
+    /// <summary>What a held feed asks again while it stays open: true while this audience still
+    /// has the right to hear. A connection authorizes once at connect, so whatever can be
+    /// withdrawn afterwards has to be asked through this, and null — the install's own
+    /// audience, which nothing withdraws — is never asked. The check outlives this scope, so
+    /// it must open what it reads from.</summary>
+    public virtual Func<CancellationToken, Task<bool>>? Watch()
+    {
+        return null;
+    }
 }

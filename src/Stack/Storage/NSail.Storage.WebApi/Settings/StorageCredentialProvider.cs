@@ -50,6 +50,28 @@ public sealed class StorageCredentialProvider
             .ToList();
     }
 
+    // The settings row that answers for the name, or null where the install's own target does:
+    // only a row is written by someone the install does not control.
+    public async Task<StorageTargetSettings?> Row(string name, CancellationToken cancellationToken = default)
+    {
+        var settings = await _settings.Get<StorageSettings>(cancellationToken);
+
+        foreach (var candidate in name == StorageNames.Default ? new[] { name } : new[] { name, StorageNames.Default })
+        {
+            if (settings.For(candidate) is { Provider.Length: > 0 } row)
+            {
+                return row;
+            }
+
+            if (_stores.Install(candidate)?.Target() is { Provider.Length: > 0 })
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
     StorageTarget? Own(StorageSettings settings, string name)
     {
         var row = settings.For(name);
@@ -88,11 +110,12 @@ public sealed class StorageCredentialProvider
         {
             return _keys.Unprotect(stored);
         }
-        catch (Exception exception) when (exception is FormatException or CryptographicException)
+        catch (Exception exception) when (exception is FormatException or CryptographicException or MissingEncryptionKeyException)
         {
-            // The install's encryption key changed under a stored secret. Answering "no
-            // secret" makes the target refuse and the screen ask for it again, which is the
-            // only recovery there is; throwing would take every reader down with it.
+            // The secret was sealed under another key (a previous shared one, another tenant's)
+            // or the tenant has no key. It reads as an empty secret rather than throwing, which
+            // would take every reader down with it; the target is still accepted and a provider
+            // that signs with the secret refuses the write. Sealing is the loud side.
             return "";
         }
     }

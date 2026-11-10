@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.ComponentModel;
 using System.Diagnostics;
 using Npgsql;
 
@@ -27,6 +28,29 @@ public static class Postgres
                 JOIN pg_namespace n ON n.oid = c.relnamespace
                 WHERE n.nspname = current_schema() AND c.relkind = 'r' AND c.relforcerowsecurity)
             AND NOT (SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user)
+        """;
+
+    // The audit table lives in the schema the restore drops: its rows wait in a temp table and
+    // come back after the dump's own copy (if any) is in, so the trail keeps what the archive
+    // never saw. The epilogue runs after pg_restore's script has emptied the search_path.
+    const string Prelude = $$"""
+        do $$ begin
+            if to_regclass('public.{{BackupAudit.TableName}}') is not null then
+                create temp table nsail_audit_keep (like public.{{BackupAudit.TableName}} including all);
+                insert into pg_temp.nsail_audit_keep select * from public.{{BackupAudit.TableName}};
+            end if;
+        end $$;
+        drop schema public cascade;
+        create schema public;
+        """;
+
+    const string Epilogue = $$"""
+        do $$ begin
+            if to_regclass('pg_temp.nsail_audit_keep') is not null then
+                create table if not exists public.{{BackupAudit.TableName}} (like pg_temp.nsail_audit_keep including all);
+                insert into public.{{BackupAudit.TableName}} select * from pg_temp.nsail_audit_keep on conflict do nothing;
+            end if;
+        end $$;
         """;
 
     public static async Task<string> ServerVersion(string connectionString, CancellationToken cancelToken = default)
@@ -63,29 +87,48 @@ public static class Postgres
 
     /// <summary>Restore is replace, not merge: the schema is dropped whole and rebuilt from the
     /// dump, so neither a row deleted after the backup nor a table created after it survives
-    /// the restore.</summary>
+    /// the restore. The drop and the rebuild are one transaction: a dump that cannot be read is
+    /// refused before the database is touched, and one that fails midway leaves the database as
+    /// it was. The backup audit trail is carried across it.</summary>
     public static async Task Restore(string connectionString, string dumpFilePath, CancellationToken cancelToken = default)
     {
         var target = new NpgsqlConnectionStringBuilder(connectionString);
 
-        // Not pg_restore --clean: that drops only what the dump itself owns, so anything the
-        // install grew after the backup would outlive the restore and the database would come
-        // back as a mixture of two moments.
-        await Reset(connectionString, cancelToken);
+        var workspace = Directory.CreateTempSubdirectory("nsail-restore-script");
 
-        var arguments = new[]
+        try
         {
-            "--no-owner",
-            "--no-privileges",
-            "--single-transaction",
-            $"--host={target.Host}",
-            $"--port={target.Port}",
-            $"--username={target.Username}",
-            $"--dbname={target.Database}",
-            dumpFilePath
-        };
+            var dataFilePath = Path.Combine(workspace.FullName, "dump.sql");
 
-        await Run("pg_restore", arguments, target.Password, cancelToken);
+            // No database connection: a corrupt dump fails here, with nothing yet dropped.
+            await Run("pg_restore", ["--no-owner", "--no-privileges", $"--file={dataFilePath}", dumpFilePath], null, cancelToken);
+
+            // Not pg_restore --clean: that drops only what the dump itself owns, so anything the
+            // install grew after the backup would outlive the restore and the database would come
+            // back as a mixture of two moments. --single-transaction wraps every -c and -f in one
+            // transaction, in order.
+            await Run(
+                "psql",
+                [
+                    "--no-psqlrc",
+                    "--quiet",
+                    "--single-transaction",
+                    "--set=ON_ERROR_STOP=1",
+                    $"--host={target.Host}",
+                    $"--port={target.Port}",
+                    $"--username={target.Username}",
+                    $"--dbname={target.Database}",
+                    $"--command={Prelude}",
+                    $"--file={dataFilePath}",
+                    $"--command={Epilogue}"
+                ],
+                target.Password,
+                cancelToken);
+        }
+        finally
+        {
+            workspace.Delete(recursive: true);
+        }
     }
 
     // Only the dump: pg_restore writes an archive's data before it creates its policies, so a
@@ -107,17 +150,6 @@ public static class Postgres
             "This database's tenant tables force row-level security and this role is subject to them, so pg_dump — which reads with row_security off — is refused on the first of them. Take the backup as a role that is a superuser or carries BYPASSRLS.");
     }
 
-    static async Task Reset(string connectionString, CancellationToken cancelToken)
-    {
-        await using var connection = new NpgsqlConnection(connectionString);
-
-        await connection.OpenAsync(cancelToken);
-
-        await using var command = new NpgsqlCommand("drop schema public cascade; create schema public", connection);
-
-        await command.ExecuteNonQueryAsync(cancelToken);
-    }
-
     public static string MajorVersion(string version)
     {
         var separator = version.IndexOf('.');
@@ -125,7 +157,37 @@ public static class Postgres
         return separator < 0 ? version : version[..separator];
     }
 
-    static async Task Run(string executable, IReadOnlyList<string> arguments, string? password, CancellationToken cancelToken)
+    static void Kill(Process process)
+    {
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or Win32Exception or AggregateException)
+        {
+            // The child already exited; the cancel is what the caller must see.
+        }
+
+        try
+        {
+            process.WaitForExit(TimeSpan.FromSeconds(5));
+        }
+        catch (InvalidOperationException)
+        {
+            // Never started, or already disposed: nothing to wait for.
+        }
+    }
+
+    static int running;
+
+    // Only while a child runs does the verb own the interrupt, so a signal at a prompt or in
+    // synchronous work still ends the process.
+    internal static bool ChildRunning
+    {
+        get => Volatile.Read(ref running) > 0;
+    }
+
+    internal static async Task Run(string executable, IReadOnlyList<string> arguments, string? password, CancellationToken cancelToken)
     {
         var start = new ProcessStartInfo(executable)
         {
@@ -145,16 +207,58 @@ public static class Postgres
             start.Environment["PGPASSWORD"] = password;
         }
 
-        using var process = Process.Start(start);
+        using var process = new Process { StartInfo = start };
 
-        if (process is null)
+        Interlocked.Increment(ref running);
+
+        try
+        {
+            await Execute(process, executable, cancelToken);
+        }
+        finally
+        {
+            Interlocked.Decrement(ref running);
+        }
+    }
+
+    static async Task Execute(Process process, string executable, CancellationToken cancelToken)
+    {
+        try
+        {
+            process.Start();
+        }
+        catch (Win32Exception)
         {
             throw new BackupFailure($"'{executable}' could not be started. The runtime image needs postgres-client.");
         }
 
-        var error = await process.StandardError.ReadToEndAsync(cancelToken);
+        // Both pipes drained at once: psql prints the rows of the dump's SELECTs, and a full
+        // stdout pipe would block it while the restore's transaction holds every lock.
+        var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+        var errors = process.StandardError.ReadToEndAsync(CancellationToken.None);
 
-        await process.WaitForExitAsync(cancelToken);
+        string error;
+
+        try
+        {
+            await process.WaitForExitAsync(cancelToken);
+
+            await output;
+            error = await errors;
+
+            // Ctrl-C reaches the child through the process group too: its exit is the cancel, not a failure.
+            cancelToken.ThrowIfCancellationRequested();
+        }
+        catch (OperationCanceledException)
+        {
+            // A cancelled backup must not leave the dump running against the database.
+            Kill(process);
+
+            _ = output.ContinueWith(static task => task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+            _ = errors.ContinueWith(static task => task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+
+            throw;
+        }
 
         if (process.ExitCode != 0)
         {

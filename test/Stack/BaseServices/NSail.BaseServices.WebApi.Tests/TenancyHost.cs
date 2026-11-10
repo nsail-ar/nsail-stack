@@ -20,6 +20,8 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 using NSail.Data;
 using NSail.Data.Testing;
+using NSail.Messaging;
+using NSail.Messaging.Runtime.Sending;
 using NSail.Security;
 
 namespace NSail.BaseServices.WebApi.Tests;
@@ -42,6 +44,10 @@ public sealed class TenancyHost : IAsyncDisposable
     // Iam's other one, retyped for the same reason: what the pipeline is checked on is
     // Session.TicketEpoch, and the claim behind it is the kit's business.
     const string TicketEpochClaimType = "epoch";
+
+    // The party and membership stamp the ticket carries, retyped for the same reason.
+    const string PartyClaimType = "party";
+    const string MembershipStampClaimType = "ms";
 
     static readonly string Server = ConnectionStrings.Complete("Host=localhost;Username=postgres;Database=postgres");
 
@@ -87,7 +93,9 @@ public sealed class TenancyHost : IAsyncDisposable
     /// without waiting; <paramref name="contact"/> is who its suspended page names;
     /// <paramref name="logs"/> is what the install said on its way up;
     /// <paramref name="features"/> is the <c>IFeatureContributor</c> this build composes, which is
-    /// what the install publishes about itself.</summary>
+    /// what the install publishes about itself; <paramref name="tenants"/> and
+    /// <paramref name="tenantsFile"/> are the roster it declares; <paramref name="proxySecret"/> is
+    /// the secret the proxy must present.</summary>
     public static Task<TenancyHost> Start(
         TenancyMode mode,
         bool bootstraps = false,
@@ -99,7 +107,10 @@ public sealed class TenancyHost : IAsyncDisposable
         bool bypassable = false,
         bool provisions = true,
         ILoggerProvider? logs = null,
-        Type? features = null)
+        Type? features = null,
+        string? tenants = null,
+        string? tenantsFile = null,
+        string? proxySecret = null)
     {
         return Start(
             mode,
@@ -113,7 +124,10 @@ public sealed class TenancyHost : IAsyncDisposable
             bypassable,
             provisions,
             logs,
-            features);
+            features,
+            tenants,
+            tenantsFile,
+            proxySecret);
     }
 
     /// <summary>The same install again, carrying whatever chain that build carries — a deploy,
@@ -121,11 +135,11 @@ public sealed class TenancyHost : IAsyncDisposable
     /// the same database. It provisions nothing and drops nothing: the database is the host it
     /// was started beside. <paramref name="features"/> is what THAT build declares, which is how a
     /// deploy that sells one key more or one key fewer is reachable at all.</summary>
-    public static Task<TenancyHost> Redeploy(TenancyHost host, Type? seed = null, Type? features = null)
+    public static Task<TenancyHost> Redeploy(TenancyHost host, Type? seed = null, Type? features = null, ILoggerProvider? logs = null)
     {
         ArgumentNullException.ThrowIfNull(host);
 
-        return Start(TenancyMode.SingleDb, seed, host.Cell, features: features);
+        return Start(TenancyMode.SingleDb, seed, host.Cell, features: features, logs: logs);
     }
 
     public static async Task<TenancyHost> Start(
@@ -140,7 +154,10 @@ public sealed class TenancyHost : IAsyncDisposable
         bool bypassable = false,
         bool provisions = true,
         ILoggerProvider? logs = null,
-        Type? features = null)
+        Type? features = null,
+        string? tenants = null,
+        string? tenantsFile = null,
+        string? proxySecret = null)
     {
         var owned = cell is null;
 
@@ -153,6 +170,9 @@ public sealed class TenancyHost : IAsyncDisposable
             Cell = cell,
             SupportContact = contact,
             RequireRowSecurity = requireWall,
+            Tenants = tenants,
+            TenantsFile = tenantsFile,
+            ProxySecret = proxySecret,
         };
 
         // The app connects as a role that is NEITHER a superuser NOR BYPASSRLS, because a
@@ -251,6 +271,11 @@ public sealed class TenancyHost : IAsyncDisposable
         // the real adapter reads the real claim is Iam's to prove, and its tests do.
         builder.Services.AddScoped<SessionProvider, TicketSessionProvider>();
 
+        // Iam's DbCredentialProvider in miniature: the party is always there, and the stamp it
+        // answers is whatever the test has set on the book — the memberships changing underneath.
+        builder.Services.AddSingleton<MembershipBook>();
+        builder.Services.AddScoped<CredentialProvider, BookCredentialProvider>();
+
         // Ahead of AddDataAccess, which registers the machine's clock with TryAdd: a host that
         // states its own keeps it, which is the seam the state memo and the pause window are
         // reached through.
@@ -267,6 +292,11 @@ public sealed class TenancyHost : IAsyncDisposable
         }
 
         PushProbes.Register(builder.Services);
+
+        // A send a circuit makes (TenantStateOpenWorkTests), through the real pipeline: the
+        // outermost send opens a scope of its own and every interceptor is built from it.
+        builder.Services.AddScoped<IHandler<Knocked>, KnockedHandler>();
+        builder.Services.AddScoped<ISender<Knocked>, InProcessSender<Knocked>>();
 
         // The push's lines, so a listener here is waited for on the server's side as it is in
         // PushTests: the handshake a client returns on precedes the audience it joins.
@@ -478,11 +508,17 @@ public sealed class TenancyHost : IAsyncDisposable
         return client;
     }
 
-    public async Task<string> SignIn(string? tenant, bool stamp = true, int? epoch = null)
+    public MembershipBook Memberships
+    {
+        get { return Services.GetRequiredService<MembershipBook>(); }
+    }
+
+    public async Task<string> SignIn(string? tenant, bool stamp = true, int? epoch = null, Guid? party = null, string? memberships = null)
     {
         var generation = epoch is { } stated ? $"&epoch={stated}" : string.Empty;
+        var who = party is { } named ? $"&party={named}&ms={memberships}" : string.Empty;
 
-        using var response = await Client.SendAsync(Get($"/sign-in?stamp={stamp}{generation}", tenant));
+        using var response = await Client.SendAsync(Get($"/sign-in?stamp={stamp}{generation}{who}", tenant));
 
         response.EnsureSuccessStatusCode();
 
@@ -636,9 +672,19 @@ public sealed class TenancyHost : IAsyncDisposable
         // sign-in here is the one a person makes after the cut. `epoch` overrides it, which is
         // the only way to hold a ticket from before: zero mints no claim at all — the ticket
         // from before the cut existed — and any other number is one generation behind or ahead.
-        app.MapGet("/sign-in", async (HttpContext context, TenancyProvider tenancy, SecurityOptions security, bool stamp, int? epoch) =>
+        app.MapGet("/sign-in", async (HttpContext context, TenancyProvider tenancy, SecurityOptions security, bool stamp, int? epoch, Guid? party, string? ms) =>
         {
             var claims = new List<Claim>();
+
+            if (party is { } named)
+            {
+                claims.Add(new Claim(PartyClaimType, named.ToString()));
+
+                if (ms is not null)
+                {
+                    claims.Add(new Claim(MembershipStampClaimType, ms));
+                }
+            }
 
             if (stamp && tenancy.Current is { IsResolved: true, Slug: { } slug })
             {
@@ -691,6 +737,8 @@ public sealed class TenancyHost : IAsyncDisposable
                 {
                     IsAuthenticated = true,
                     Tenant = user.FindFirst(TenantClaimType)?.Value,
+                    PartyId = Guid.TryParse(user.FindFirst(PartyClaimType)?.Value, out var party) ? party : null,
+                    MembershipStamp = user.FindFirst(MembershipStampClaimType)?.Value,
                     TicketEpoch = int.TryParse(
                         user.FindFirst(TicketEpochClaimType)?.Value,
                         CultureInfo.InvariantCulture,
@@ -710,3 +758,43 @@ public sealed record Where(string? Slug, string? Database, string Connection);
 /// <summary>The two worked keys of the entitlements bag, as the gate's own reader answers them:
 /// a flag and a ceiling, each at its permissive default where the bag says nothing.</summary>
 public sealed record Bag(bool WhatsApp, decimal? Organizations);
+
+/// <summary>The memberships a test host's parties hold now, as the stamp that fingerprints them,
+/// and how many times the install asked.</summary>
+public sealed class MembershipBook
+{
+    readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, string> _stamps = new();
+    int _reads;
+
+    public int Reads
+    {
+        get { return _reads; }
+    }
+
+    public void Set(Guid party, string stamp)
+    {
+        _stamps[party] = stamp;
+    }
+
+    internal string? Read(Guid party)
+    {
+        Interlocked.Increment(ref _reads);
+
+        return _stamps.TryGetValue(party, out var stamp) ? stamp : null;
+    }
+}
+
+sealed class BookCredentialProvider : CredentialProvider
+{
+    readonly MembershipBook _book;
+
+    public BookCredentialProvider(MembershipBook book)
+    {
+        _book = book;
+    }
+
+    public override Task<string?> MembershipStamp(Guid partyId, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_book.Read(partyId));
+    }
+}

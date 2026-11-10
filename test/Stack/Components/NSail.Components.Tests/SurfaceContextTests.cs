@@ -758,4 +758,23 @@ public sealed class SurfaceContextTests
         Assert.False(surface.HasExportHeader);
         Assert.Equal(1, raised);
     }
+
+    [Fact]
+    public async Task Report_awaits_every_subscriber_not_only_the_last()
+    {
+        var surface = Build();
+        var first = new TaskCompletionSource();
+        var second = new TaskCompletionSource();
+        surface.OnProblem += _ => first.Task;
+        surface.OnProblem += _ => second.Task;
+
+        var report = surface.Report(new ProblemEventArgs(new NSail.Problems.Problem("c", "t", Array.Empty<NSail.Problems.Issue>())));
+        second.SetResult();
+        await Task.Yield();
+
+        Assert.False(report.IsCompleted);
+
+        first.SetResult();
+        await report;
+    }
 }

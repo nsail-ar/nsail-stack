@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using NSail.Harness.Api;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 
@@ -16,6 +17,17 @@ public static class Pages
         app.MapGet("/", (HarnessLoop loop, HarnessOptions o, JobHistory history, BuildLeases leases, JobStats stats, LoadSamples load, Agents.IAgent agent, string? range) =>
             Results.Content(StatusPage.Render(loop, o, history, leases, stats, load, agent, range), "text/html; charset=utf-8"))
             .ExcludeFromDescription();
+        app.MapGet("/login", () =>
+            Results.Content("<form method=\"post\" action=\"/login\"><label>Control token <input type=\"password\" name=\"token\" autofocus></label> <button>Sign in</button></form>", "text/html; charset=utf-8"))
+            .ExcludeFromDescription();
+        app.MapPost("/login", async (HttpContext http, HarnessOptions o) =>
+        {
+            var form = await http.Request.ReadFormAsync();
+            var token = form["token"].ToString();
+            if (!ControlGate.IsControl(o, token)) return Results.StatusCode(StatusCodes.Status401Unauthorized);
+            ControlGate.SignIn(http, token);
+            return Results.Redirect("/jobs");
+        }).ExcludeFromDescription();
         app.MapGet("/jobs", (HarnessOptions o, JobHistory history, string? role, string? result, int? story, int? page, string? q) =>
             Results.Content(JobsPage.List(o, history, role, result, story, page, q), "text/html; charset=utf-8"))
             .ExcludeFromDescription();
@@ -24,12 +36,13 @@ public static class Pages
             .ExcludeFromDescription();
         app.MapGet("/jobs/{id}", (string id, HarnessOptions o, JobHistory history, int? tail) =>
             JobsPage.One(o, history, id, tail) is { } html ? Results.Content(html, "text/html; charset=utf-8") : Results.NotFound())
+            .WithMetadata(new ControlOnlyAttribute())
             .ExcludeFromDescription();
         app.MapGet("/jobs/{id}/log", (string id, JobHistory history, int? tail) =>
         {
             var job = history.Jobs().LastOrDefault(j => j.Id == id);
             if (job is null || !File.Exists(job.LogPath)) return Results.NotFound();
             return Results.Text(JobsPage.Tail(job.LogPath, tail ?? 200), "text/plain; charset=utf-8");
-        });
+        }).WithMetadata(new ControlOnlyAttribute());
     }
 }

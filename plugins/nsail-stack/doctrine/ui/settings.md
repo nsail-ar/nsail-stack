@@ -48,7 +48,8 @@ route — **no dynamic form engine, no settings shell**. Abstraction in `NSail.S
 - **A secret is write-only, and a derived `HasXxx` is how the screen still knows.**
   The read blanks the credential and answers a flag beside it; the save reads a blank field as
   *unchanged*, never as *clear it*, so editing any other field cannot silently take the install
-  offline. The flag is `[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]`: a
+  offline. Storage is the exception where the target moves: a changed Provider, Endpoint or
+  Container drops the stored secret. The flag is `[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]`: a
   plain `[JsonIgnore]` would keep it out of the stored row AND out of the answer, and this one
   attribute serves both ends — the save builds a fresh row that never sets it, so `false` is
   omitted from storage, and the read fills it, so `true` rides the wire. The screen draws it
@@ -56,8 +57,8 @@ route — **no dynamic form engine, no settings shell**. Abstraction in `NSail.S
   **A property derived from the credential has to learn the flag too** — `WhatsAppSettings`
   `IsInForce` reads either arm, because the browser holds the flag over a blank field and every
   server-side reader holds the real credential off the stored row, where the flag is absent.
-  The consequence, shared by the Meta/Google/Storage handlers: a stored secret can be replaced
-  but not cleared through its own save.
+  The consequence, shared by the Meta/Google handlers: a stored secret can be replaced
+  but not cleared through its own save (Storage clears it only when its target moves).
   Reference: `SmtpSettingsHandler`, `WhatsAppSettingsHandler`, `SmtpSettingsWireShapeTests`.
 - **A POCO the STACK reads is still an ordinary settings type** — `ThemeSettings` and
   `NavMenuArrangement` (`NSail.Settings`) both live beside the abstraction, and the kit's Sdk

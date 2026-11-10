@@ -23,13 +23,13 @@ Namespaces are named for a capability, not for the project.
 | Namespace | Contents |
 |---|---|
 | `NSail.Problems` | `Problem` (code, title, issues, status), `Issue`, `BusinessException`, and factories per family: `BusinessProblem`, `InputProblem` (`For<T>()` builds through `InputProblemBuilder`), `SecurityProblem`, `SystemProblem`, `ExternalProblem`, `MessagingProblem`, `NetworkProblem`, `TenancyProblem` |
-| `NSail.Paging` | `DataPage<T>`, `PagedMessage` (`PageIndex`, `PageSize`, `MaxPageSize` = 1000), `Selection` (ids or "all rows the filter answers") |
-| `NSail.Serialization` | `JsonOptions.Wire` (web defaults, enums as names), `WireSchema.For(type)` (JSON Schema of a wire payload) |
+| `NSail.Paging` | `DataPage<T>`, `PagedMessage` (`PageIndex`, `PageSize`, `MaxPageSize` = 1000, `MaxPageIndex`), `Selection` (ids or "all rows the filter answers") |
+| `NSail.Serialization` | `JsonOptions.Wire` (web defaults, enums as names, `long`/`ulong`/`decimal` as strings), `WireSchema.For(type)` (JSON Schema of a wire payload) |
 | `NSail.Text` | `Markdown` (`ToHtml`, `Headings`, `Slug`, `ToText`) with `MarkdownOptions.Prose` / `Document`, `NamedTokens` (`In`, `Fill` for `{name}`), `WebAddress.IsNavigable` |
 | `NSail.Privacy` | `PersonalData` (Name, Document, Email, Phone, Address, WebAddress, FreeText, BirthDate) and `PersonalDataComment` |
 | `NSail.Builds` | `BuildVersion.Current` (the entry assembly's informational version, `dev` if unstamped), `ServerBuild` (client side of the build handshake) |
 | `NSail.Tones` | `BrandTone`: derives an ink or a state from a picked colour |
-| `NSail.Icons` | `Glyph`, the SVG markup of one catalog icon, serialized as the markup string |
+| `NSail.Icons` | `Glyph`, the SVG markup of one catalog icon, serialized as the markup string and sanitized on construction; `SvgSanitizer`, the one allowlist every inlined SVG passes (`Sanitize`; `IsClean` tests raw markup before a `Glyph` exists). A store that refuses instead of cleaning reads `Glyph.Altered`: `Markup` is always clean, so `IsClean` on it never fails |
 | `NSail.Dates` | `BusinessDate.Today`, the host's local date, never UTC |
 | `NSail.References` | `IRef`, the key of every `*Ref` projection |
 
@@ -45,12 +45,20 @@ messaging layer refuses with is a `Problem`; do not add a parallel exception hie
 
 ## Configuration
 
-None. These are types, not services. Two behaviours worth knowing:
+None. These are types, not services. Three behaviours worth knowing:
+
+- The package ships `buildTransitive/NSail.Types.props` and `NSail.globalconfig`, which make
+  CA2254 an **error** in every project that references it: a log call's template must be a
+  literal, because `LogScrubber` forwards it to the collector as written. A product that moves
+  its pin and fails with `error CA2254` replaces `LogError($"... {x}")` with
+  `LogError("... {X}", x)`; an entry of its own in its `.editorconfig` wins over the global one.
 
 - `JsonOptions.Wire` is the only `JsonSerializerOptions` for message traffic; a host that owns its
-  own options copies `JsonOptions.Converters` instead of constructing a second contract.
+  own options copies `JsonOptions.Converters` instead of constructing a second contract. A vendor's
+  API is not message traffic: its client keeps its own options.
 - `PagedMessage.PageSize` of 0 means the caller did not choose, and the handler's own default
-  answers; sizes above `MaxPageSize` are refused.
+  answers; sizes above `MaxPageSize` and indexes above `MaxPageIndex` (so
+  `PageIndex * PageSize` fits an int) are refused.
 
 ## How it fits
 

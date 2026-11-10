@@ -122,6 +122,9 @@ public sealed class Worker
         foreach (var u in w.When.Use.Where(u => !o.Conditions.ContainsKey(u))) yield return $"{where}: When uses {u}, not in Harness:Conditions";
         foreach (var p in Conditions.Problems($"{where}:When", w.When)) yield return p;
         if (type.Name == "Release" && w.When.Schedule is null) yield return $"{where}: a Release needs When.Schedule (its day's cut)";
+        if (type.Name == "Watch" && string.IsNullOrWhiteSpace(w.Source)) yield return $"{where}: a Watch needs a Source (a log source provider's name)";
+        if (type.Name == "Watch" && w.Every is <= 0) yield return $"{where}: Every is minutes, more than zero";
+        if (type.Name == "Watch" && w.IngestLag is < 0) yield return $"{where}: IngestLag is minutes, zero or more";
         if (type.Name == "UpdateBoard" && !w.On.TryGetValue("Executed", out _)) yield return $"{where}: an UpdateBoard does nothing without On Executed";
         var alone = !type.OverStories || (type.Name == "Verify" && string.Equals(w.Target, "main", StringComparison.OrdinalIgnoreCase));
         if (alone && w.On.Count > 0) yield return $"{where}: a worker on its own has no story to act on — no On";

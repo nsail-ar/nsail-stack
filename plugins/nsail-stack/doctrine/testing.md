@@ -10,7 +10,7 @@ Each layer proves one kind of truth. A test in the wrong layer proves nothing tw
 
 | Layer | Proves | Lives in |
 |---|---|---|
-| `Architecture.Tests` | **form** — doctrine made mechanical: a rule over the whole tree (no `Mud*` in pages, migrations drift, the gate answers first on every endpoint) | `test/Architecture` |
+| `Architecture.Tests` | **form** — doctrine made mechanical: a rule over the whole tree (no `Mud*` in pages, migrations drift, the gate answers first on every endpoint) | `test/Architecture` in the products' repository |
 | Stack unit tests | a Stack module's own behavior, offline (localization merge, problem shapes, the JWS codec against a fake JWKS) | `test/Stack/...` |
 | Kit handler harnesses | **handler doctrine against real Postgres** — round trips, Problem contracts (AlreadyExists names the typed value, dangling refs answer NotFound), invariants (double entry balances), `@me` denial through the real evaluator | `test/Kits/.../WebApi.Tests` on `NSail.Data.Testing` |
 | Shared/bUnit | screen behavior through real DOM events (dirty tracking, validation speaking first, vocabulary gating) | `test/Kits/.../Shared.Tests`, `test/Stack/Components` |
@@ -23,7 +23,7 @@ sends. When an app story touches a seam, the seam's test rides the story.
 
 **No coverage target, deliberately.** A target breeds filler in the layers already covered;
 the question is *which layer owes the proof*, not how much. The honest-count rule lives in
-commits.md: the suite total is the tree's, verified against
+the product's commits page (a product page): the suite total is the tree's, verified against
 `find test -name '*.Tests.csproj' | wc -l`, never a number carried from memory.
 
 ## Rulings
@@ -38,7 +38,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
    Aesthetic calls, third-party round trips needing real credentials, and one-shot
    migrations stay prose — named honestly as such. A queue issue claiming "unproven"
    names the test that would close it.
-3. **Form rules go to `Architecture.Tests`.** A doctrine sentence quantified over the
+3. **Form rules go to `Architecture.Tests`** (the products' repository; a rule over the Stack's own tree is a test in `test/Stack`). A doctrine sentence quantified over the
    tree ("every generated endpoint denies before binding") is an architecture test with an
    explicit, documented exemption list — never a recurring manual audit. The exemption list
    is part of the test, and shrinking it is progress a diff can show.
@@ -77,7 +77,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
      awaiting the dispatch is not enough. It carries its reason in the code.
    - **Never both at one site, and never a bare `Task.Delay`.** A site already read through
      a `WaitForAssertion` is cured; adding the await on top is the opposite mistake.
-   - The bar is **`AwaitedActTests`**, not a grep and not a count: greps over-report so badly
+   - The bar is **`AwaitedActTests`** (enforced in the products' repository), not a grep and not a count: greps over-report so badly
      (hundreds of act sites, a handful of defects) that judging hits by hand is the recurring
      audit ruling 3 refuses. The test reads statements, so the awaited form spread over three
      lines is not a hit. A site that is neither dispatched nor polled says why with
@@ -116,7 +116,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
 11. **A number or a code on a message declares its bound, and the gate refuses the silence.**
     No test finds a rule that does not exist (a sphere of +45, a negative price, a CAE of any
     text all passed), so the answer is not coverage — it is ruling 3's shape over field
-    bounds. `DeclaredBoundTests` walks exactly `MessageValidator`'s reach and fails the build
+    bounds. `DeclaredBoundTests` (the products' repository; the Stack's own messages in `test/Stack`) walks exactly `MessageValidator`'s reach and fails the build
     on a numeric or `string` member that declares nothing (messaging.md has what satisfies it,
     and the identifier escalation). **The exemption list is `[Unbounded("why")]`, per member,
     so it is read where the decision matters** rather than in the test.
@@ -152,7 +152,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
     `FullyQualifiedName!~.E2E.`) and run at the nightly regression and at a release, so a
     path's proof is the builder's own run before the push. This bounds nothing in ruling 7:
     an outcome the product promises is a contract, and the anecdote it refuses is a second
-    test of the same outcome. What it costs a story: story-template.md (nsail: `docs/agents/story-template.md`);
+    test of the same outcome. What it costs a story: the product's story template (a product page);
     the guide half: [ui/guide.md](ui/guide.md).
 
 ## Harness lore (paid for, do not re-buy)
@@ -174,14 +174,18 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   line waits for the server to be holding one** (`Severance.Held` / `Drop`, `PushTests.cs`).
   The handshake a `HubConnection.StartAsync` returns on goes out before the server runs the
   hub's `OnConnectedAsync` — where the connection joins the audience a publish goes to — and
-  nothing orders the two; an event stream's head is flushed before its own hold for the same
-  reason. A drop aimed at a line the server does not hold yet cuts nothing, and a feed with
+  nothing orders the two (an event stream registers its line before its head goes out, so only
+  the hub keeps that window). A drop aimed at a line the server does not hold yet cuts nothing, and a feed with
   nothing to answer is indistinguishable from one that never reconnects: half the hosted runs
   of `PushTests`'s drop, each burning its full patience (nsail#2082). The cure is the wait, never
   a longer patience. The load that lands it is concurrent test hosts, as it is for the bUnit
   races below — ten isolated runs of the two cases pass on a hosted runner, six at once do not.
   What a wait that ends in nothing may not do is keep why to itself: the drop says what it cut
   and the client composes a logging provider, so the timeout carries both ends' story.
+- **A test that cannot run on this platform reports a skip, never a pass.** An early `return;`
+  off-platform is green in every total, so a lane that never ran it reads as proof. Mark it
+  with the platform (`[FactOn("linux")]`, `[TheoryOn("unix")]` in the Harness tests'
+  `FactOnAttribute.cs`) so the skip is counted where it happens.
 
 ### Handler harnesses
 
@@ -324,7 +328,7 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   finished text is a PASTE and not a typing**, which is how three per-keystroke defects sat
   under eight green acts: a suite about the keystroke types the prefixes one at a time
   (`TypedValueCommitTests`), and the whole box arrives on each one because that is what a
-  browser sends. `AwaitedActTests` gates `Blur` and `KeyDown` like the other four acts.
+  browser sends. `AwaitedActTests` (enforced in the products' repository) gates `Blur` and `KeyDown` like the other four acts.
 - **A figure is typed in the notation the suite declared it reads in.** Every numeric box
   parses in `RegionCulture.For(Language)`, so the same literal is two numbers: Optical reads
   `es` and takes `"-1,25"`, Therapy reads `en` and takes `"-1.25"` — and the wrong one is not a

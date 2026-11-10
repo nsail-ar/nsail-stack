@@ -23,12 +23,14 @@ public sealed class NavMenuArrangementEntry
 {
     /// <summary>How long a word an install may give one of its own doors. Generous for a label
     /// and mean for a drawer: past it the entry is no longer a name, it is a sentence, and the
-    /// drawer it has to fit in is one gutter wide. Refused on the wire by
-    /// NavMenuArrangementValidator, which is where a bound on a list's ITEMS can be read.</summary>
+    /// drawer it has to fit in is one gutter wide. A bound on a list's ITEMS
+    /// cannot be read here, so whatever validates the list enforces this one.</summary>
     public const int LabelLength = 100;
 
     /// <summary>How much markup a glyph is. An icon is a path, not a picture: past this it is
-    /// something else pasted into a menu row.</summary>
+    /// something else pasted into a menu row. What the markup may hold is SvgSanitizer's
+    /// allowlist: a Glyph is already inert when read, and a validator refusing a row
+    /// refuses a Glyph whose Altered is true.</summary>
     public const int IconLength = 8000;
 
     /// <summary>The entry this row is about — the same Name the module contributed, which is

@@ -125,7 +125,53 @@ public sealed class NsFileUploadTests : UploadBunitContext
 
         Pick(cut, "grande.png", "0123456789");
 
-        Assert.Contains("El archivo supera los 0 MB", cut.Markup);
+        Assert.Contains("El archivo supera los 4 B", cut.Markup);
+        Assert.Empty(FileStore.Saved);
+    }
+
+    [Theory]
+    [InlineData(512 * 1024, "512 KB")]
+    [InlineData(1536 * 1024, "1.5 MB")]
+    [InlineData(5 * 1024 * 1024, "5 MB")]
+    public void TheLimit_ReadsInTheUnitAPersonReads(long limit, string text)
+    {
+        var cut = Render<NsFileUpload>(ps => ps.Add(p => p.MaxSize, limit));
+
+        PickBytes(cut, "grande.png", new byte[limit + 1]);
+
+        Assert.Contains("El archivo supera los " + text, cut.Markup);
+    }
+
+    [Fact]
+    public void ASvgInAPngField_IsRefusedAndNeverStored()
+    {
+        var cut = Render<NsFileUpload>(ps => ps.Add(p => p.Accept, "image/png"));
+
+        Pick(cut, "logo.svg");
+
+        Assert.Contains("Tipo no aceptado", cut.Markup);
+        Assert.Empty(FileStore.Saved);
+    }
+
+    [Fact]
+    public void AnImageWildcard_DoesNotAdmitASvg_AndAPngIsStoredWithTheAllowListType()
+    {
+        var cut = Render<NsFileUpload>(ps => ps.Add(p => p.Accept, "image/*"));
+
+        Pick(cut, "logo.svg");
+        Assert.Empty(FileStore.Saved);
+
+        Pick(cut, "foto.png");
+        Assert.Equal("image/png", Assert.Single(FileStore.Saved).ContentType);
+    }
+
+    [Fact]
+    public void APngNameWithHtmlBytes_IsRefused()
+    {
+        var cut = Render<NsFileUpload>(ps => ps.Add(p => p.Accept, "image/png"));
+
+        Pick(cut, "foto.png", "<script>alert(1)</script>");
+
         Assert.Empty(FileStore.Saved);
     }
 

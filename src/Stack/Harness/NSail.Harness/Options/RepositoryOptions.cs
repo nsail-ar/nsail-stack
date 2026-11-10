@@ -12,6 +12,9 @@ public sealed class RepositoryOptions
     public string BranchPrefix { get; set; } = "story";
     public string? Label { get; set; }
 
+    // The logins whose PRs are the crew's here; none: any author of a PR headed in this repository.
+    public List<string> Authors { get; set; } = [];
+
     // The branch stories land on and every slot starts from.
     public string DefaultBranch { get; set; } = "main";
 

@@ -17,10 +17,11 @@ methods. BaseServices must not reference Kits or Apps.
 In app hosts:
 
 1. `AddBaseWebApi` / `AddBaseWebApp` / Wasm equivalents
-2. `AddHttpClients` (clients only)
-3. Kit setup (`AddIamWebApi`, etc.)
-4. App setup (`AddOpticalWebApi`, etc.)
-5. After `Build()`, the pipeline: `UseBaseWebApi`/`UseBaseWebApp`, and a Blazor host
+2. `AddTenantKeys`, in a host that composes Storage (the `KeyProtector` it seals with)
+3. `AddHttpClients` (clients only)
+4. Kit setup (`AddIamWebApi`, etc.)
+5. App setup (`AddOpticalWebApi`, etc.)
+6. After `Build()`, the pipeline: `UseBaseWebApi`/`UseBaseWebApp`, and a Blazor host
    closes with `app.MapRazorApp<App>()` — skip it and the host serves no page.
 
 ---
@@ -41,23 +42,38 @@ app.Run();
 `AddBaseWebApi(builder)` registers: telemetry (`AddTelemetry`, first — see below), messaging
 runtime (`AddMessaging`), error handler middleware, authorization services, Swagger/OpenAPI,
 and the push's server end — both transports, their two doors, and the tenant as its audience
-(`TenantPushAudience`; messaging.md, Pushed to clients). It also contributes a string catalog of
-its own, the words of the one page this project draws without the app (the suspended page, below).
+(`TenantPushAudience`; messaging.md, Pushed to clients). It registers
+`TenantStateInterceptor`, the tenant-state wall on every send of a caller's, because an open
+circuit's sends never pass `TenantStateMiddleware` again; where no tenant is resolved there is no
+state to read and it asks nothing (data-tenancy.md, The install's own record). It also
+contributes a string catalog of its own, the words of the one page this project draws without
+the app (the suspended page, below).
 
 `UseBaseWebApi(app)` configures, in order:
 
-- `BuildVersionMiddleware` — the build this host is running (`BuildVersion.Current`) on
-  **every** response, under `X-NSail-Version`. Outermost, and stamped through
-  `Response.OnStarting` rather than on the way in, because `ErrorMiddleware` clears the
-  response it rewrites — and a refusal is exactly the answer a client left open across a
-  deploy is likeliest to get. It is the whole server half of the handshake: no endpoint, no
-  polling. Client half: [messaging.md](messaging.md).
+- Forwarded headers, when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is on: believed only from the
+  proxies in `Security:TrustedProxies`; with none named the middleware is not installed, so
+  behind a proxy the scheme reads as `http` too (no HSTS, and HTTPS redirection can loop).
+- `BuildVersionMiddleware` — the build this host is running (`BuildVersion.Current`) under
+  `X-NSail-Version` on the response to a **signed-in caller**: an anonymous probe is not told
+  the build, and neither is an answer cut short before authentication (the HTTPS redirect, an
+  unknown tenant's 404, the suspension page). Stamped through `Response.OnStarting` rather
+  than on the way in, because `ErrorMiddleware` clears the response it rewrites — so a
+  signed-in caller's refusal still carries it. It is the whole server half of the handshake:
+  no endpoint, no polling. Client half: [messaging.md](messaging.md).
+- `ResponseHeadersMiddleware` — `X-Content-Type-Options: nosniff`, a `Referrer-Policy` and a
+  `Permissions-Policy` on every response, through `OnStarting` for the same reason; a header
+  already set is kept. `frame-ancestors` and cookie flags are not its business.
 - Error handler
 - HTTPS redirection
 - `TenancyMiddleware` — **only where a tenant is resolved** (`host.ResolvesTenants()`: either
   switch), so under `Tenancy:Mode=None` the pipeline has no tenancy step. Before authentication
-  on purpose: under a per-tenant connection a slug that names no database answers 404 and
-  nothing about it is reachable by signing in. See [data-tenancy.md](data-tenancy.md#caddy-assigns-the-tenant-postgres-is-the-registry).
+  on purpose: the refusals below come ahead of any sign-in. It refuses first **403** when
+  `Tenancy:ProxySecret` is set and the request does not carry it in `X-Proxy-Secret`, ahead of any
+  tenant being resolved or created; unset, outside Development, startup warns that the listener
+  must be bound to the proxy only. Then, under a per-tenant connection a slug that names no
+  database answers 404, and under `SingleDb` so does a slug off the roster a cell declares, and nothing about it is
+  reachable by signing in. See [data-tenancy.md](data-tenancy.md#caddy-assigns-the-tenant-postgres-is-the-registry).
 - `TenantStateMiddleware` — whether this install is serving this tenant at all, **only where a
   tenant is resolved**, immediately behind the step above: a customer the install has suspended is
   as unreachable as one that does not exist, so it is refused ahead of a cookie, a session, a
@@ -65,7 +81,7 @@ its own, the words of the one page this project draws without the app (the suspe
   `Suspended` problem to a program, worded by the row's reason and carrying its message. A tenant
   with no state row is active; a pause can also be a window, and the clock it opens and closes on
   is read here, on every request. See
-  [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-and-what-the-plan-includes).
+  [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-what-the-plan-includes-and-what-it-is-born-with).
 - Authentication + authorization middleware (schemes are registered by kits, e.g. Iam registers cookie auth in `AddIamWebApi`)
 - `TenantClaimMiddleware` — the identity half of the tenant wall, **only where a tenant is
   resolved**, like the one above. After authentication, because the claim only exists once the ticket is read,
@@ -82,12 +98,13 @@ its own, the words of the one page this project draws without the app (the suspe
 - `ThrottleMiddleware` — the ceiling on a public door, in FRONT of the gate: volume is not a
   permission question, and a flood is refused before any policy evaluation. It reads
   `[Throttled(perMinute)]` off the message the matched route names, so an endpoint whose
-  message declares none passes untouched; see messaging.md.
+  message declares none passes untouched; a message that names an `Identity` is also counted per
+  submitted identity; see messaging.md.
 - `RequestBudgetMiddleware` — a tenant's whole volume, beside the throttle: the authenticated
   message sends of each tenant per minute, against the figure `RequestBudgetProvider` answers
   (none in the base; the Stack names no key), refused past it with 429 and `Retry-After`. The
   one ceiling that refuses; see
-  [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-and-what-the-plan-includes).
+  [data-tenancy.md](data-tenancy.md#the-installs-own-record-of-a-tenant-its-state-its-plan-what-the-plan-includes-and-what-it-is-born-with).
 - `CredentialMiddleware` — the wall between a signed ticket and the rows it names. A credential
   outlives them (a party merged away, a user disabled or deleted), and until it is asked the
   session keeps naming the dead id and writes it into every row it touches — a foreign key
@@ -98,13 +115,15 @@ its own, the words of the one page this project draws without the app (the suspe
   asset — `MapStaticAssets` maps behind this middleware, and a cold WebAssembly load is dozens of
   files that can neither write a row nor draw a notice. Installed by every host; what it asks is
   `CredentialProvider`, whose permissive floor leaves a host that composed no identity exactly as
-  it was. See [permissions.md](permissions.md#session).
+  it was. It also refuses a ticket whose memberships changed since sign-in, at one cached read per
+  party per `Tenancy:StateCacheSeconds` (`MembershipStampMemo`). See [permissions.md](permissions.md#session).
 - `EndpointGateMiddleware` — the security gate, ahead of model binding. After authentication so
   it reads the session the pipeline's own gate will read, and before `MapEndpoints` so a caller
   with no permission is refused before a missing body or query member can be. It no-ops unless
   a kit called `AddSecurityEnforcement`; see messaging.md.
 - Swagger (development)
-- HSTS (production)
+- HSTS (production), with `includeSubDomains`; `preload` stays off — it commits every subdomain
+  of the domain for good
 - `MapEndpoints()` — maps all generated `IEndpointEntry` implementations
 - `MapPush()` — the `PushHub` at `PushFeed.Path`, behind the same tenant wall and
   authentication as every endpoint, so a host that publishes always has the door its clients
@@ -226,7 +245,7 @@ Area `Optical`), `service.namespace` = `nsail`, `deployment.environment`, `nsail
 is not judged here: the column that holds one declares it, and the model carries the
 declaration to the schema (data.md § Provider). This is shape, not
 discipline. NSail's own span never reads a message's members: it carries `nsail.outcome`
-(`ok`/`refused`/`failed`), `nsail.user` (who asked), and, to say how it ended,
+(`ok`/`refused`/`failed`/`cancelled` — a client abort is not a failure and sets no Error status), `nsail.user` (who asked), and, to say how it ended,
 `nsail.problem` on a refusal — the Problem's **Code**, never its Title — plus `nsail.rule`,
 the key that refusal's own sentence lives at, or `nsail.failure` on a crash, the exception's
 type. **`nsail.rule` exists because the code cannot tell two rules apart**: every rule of the
@@ -237,8 +256,10 @@ halves are written by the source (a rule's name, a field's, an entity's); the is
 **message**, the one part free to quote the value that caused the refusal, stays out — and so
 does the exception's, which opens every rendered stack. No `RecordException` and no status
 description either. For code NSail did not write, `Scrubber` is a span
-processor that drops `url.query`, `db.statement`, `db.query.text` and every
-`db.query.parameter.*`, and cuts the query string off `url.full`. A processor rather than
+processor and an **allow-list**: only `nsail.*` and the closed list in `Scrubber.cs` survive,
+so a tag a new package version adds fails closed. It cuts `url.full` to its origin and sets
+`url.path` to the route template, since a literal path carries the values the route was filled
+with. Blazor's spans keep only the component type, method and circuit id. A processor rather than
 vendor options on purpose: an instrumentation option can be removed or renamed by the next
 package version (`SetDbStatementForText`, which suppressed SQL text, was removed from the EF
 Core instrumentation), and then fails open silently.
@@ -247,11 +268,17 @@ Core instrumentation), and then fails open silently.
 writes log lines, and the OTLP exporter sends every attribute, the exception's message and a
 stack trace rendered from `ToString()` (which opens with that message). `ErrorMiddleware` logs
 `"Exception mapped to problem {Code}: {Message}"`, and for a refusal that `{Message}` **is**
-the Problem's Title. So `LogScrubber`, the logs-side sibling of `Scrubber`, cuts at the export
+the Problem's Title. Level is read off what the exception is: a bug-class exception wearing a 404 or
+403 (`KeyNotFoundException`, `UnauthorizedAccessException`) and a `BusinessException` answering
+500 or above log at Error with the exception, because a failure the client sees as 500 that
+leaves no stack cannot be diagnosed; a cancellation of the request's own token logs nothing.
+`LogScrubber`, the logs-side sibling of `Scrubber`, cuts at the export
 seam:
 
 - What travels is what the **source** declares — category, level, event id and the **message
-  template** (the record's body, a literal at every call site).
+  template** (the record's body, a literal at every call site: CA2254 is an error in this
+  repository's `.editorconfig` and, through `NSail.Types`'s `buildTransitive` global config, in
+  every product that takes the packages).
 - An attribute's value travels only if its **type cannot carry prose**: `Guid`, a number, a
   `bool`, an enum, a date or a duration. Every string is dropped, a code included — a
   Problem's Code and a patient's name are the same type, so the Code rides the span and the
@@ -329,7 +356,7 @@ if (InstallConsole.Requested(args))
 ```
 
 ```
-optical backup [<file or directory>]
+optical backup [<file or directory>] [--encrypt]
 optical restore <archive> --confirm RESTORE
 ```
 
@@ -341,7 +368,16 @@ its own name.
   `keyring/*.xml`. The key ring lives in `<content root>/data/keyring`
   (`PersistKeysToFileSystem`, wired in `AddBaseWebApi`) rather than the framework default,
   which is machine-dependent and could not travel — without it every sealed secret in a
-  restored install is unreadable. That folder is git-ignored.
+  restored install is unreadable. That folder is git-ignored. The application name is the
+  host's `ApplicationName`, not the content-root path DataProtection would isolate by, so a
+  restore elsewhere reads the same secrets. The name is the first link of DataProtection's
+  purpose chain, so changing it — an assembly rename included — leaves everything sealed under
+  the previous one unreadable, archives and their dumps with it. Each install keeps its own
+  keys; what installs of a product share on a box is the name, not the ring.
+- **The archive is created `0600` and can be sealed.** `--encrypt` encrypts the dump and keys
+  under an operator passphrase (`NSAIL_BACKUP_PASSPHRASE` or a prompt, never an argument); the
+  manifest records `Encrypted`, and an unencrypted archive says so. Archives from before this
+  restore unchanged.
 - **`pg_dump`, not a structured export**: a backup returns an install to its exact state, byte
   for byte; an export that survives a schema change is a different feature. So the runtime
   image carries `postgres-client` at the production server's major.
@@ -350,18 +386,31 @@ its own name.
   statement run that way by a role a policy applies to — `FORCE ROW LEVEL SECURITY` subjects
   even the table's owner (data-tenancy.md, The second wall) — so on a cell that has provisioned
   the app a role without `BYPASSRLS`, `backup` is a credential of its own: a superuser or a
-  `BYPASSRLS` role on the same database. The verb asks before it starts the process and refuses
+  `BYPASSRLS` role on the same database, supplied as `Backup:ConnectionString` (the dump uses it;
+  restore keeps the app's; a different host, port or database is refused, since the manifest
+  names the app's). The verb asks before it starts the process and refuses
   by name, rather than ending in pg_dump's exit code on the first tenant table. Restore is not
   affected: an archive's data lands before its policies do.
+- **Under MultiDb both verbs refuse** (`REFUSED:`, exit `4`): the install has no one database,
+  and the tenants' own are not covered.
+- **A cancel kills the child.** A Ctrl-C or SIGTERM while a child tool runs kills it and its tree, and the verb exits
+  `130`; at a prompt the signal ends the process as usual.
 - **A restore refuses before it writes.** `RestorePlan.For` throws `BackupFailure` on an
   archive whose schema this build does not know (newer), whose product is another product,
-  whose Postgres major differs, or whose archive format this build cannot read. Then it says
+  whose Postgres major differs, or whose archive format this build cannot read. An encrypted
+  archive adds a refusal `Restore` raises before it touches the database: no passphrase, a
+  wrong one, or a truncated entry. Then the plan says
   what it will overwrite — database and key ring — and stops unless the operator passes
   `--confirm RESTORE` (and types the word again when stdin is a terminal). Exit codes: `0`
-  done, `2` usage, `3` not confirmed, `4` refused.
+  done, `2` usage, `3` not confirmed, `4` refused, `130` cancelled.
 - **Restore is replace, not merge.** The public schema is dropped whole and rebuilt from the
   dump — `pg_restore --clean` would leave behind anything the install grew after the backup —
-  and the key ring is emptied before the archive's keys land in it.
+  in one transaction (`pg_restore` renders the dump to a script, `psql --single-transaction` runs
+  drop and rebuild together), so a failed restore leaves the database as it was. The rendered
+  script is the whole database as plain SQL in the temp directory, which the README's Temp space
+  line names. The archive's
+  keys are staged in a folder inside the ring and swapped in after the database restored. The
+  audit rows written before the restore are carried across it.
 - **Both operations are audited** into `nsail_backup_audit`: who, when, product, both version
   stamps, and which archive. It is created if absent by raw SQL rather than being an entity
   with a migration, because it must be writable into a database whose schema is whatever the
@@ -377,7 +426,9 @@ Entry component: `NsApp.razor`.
 
 - `AddBaseWebApp` registers `TenancyCircuit`, the `CircuitHandler` that pins the request's
   tenant onto the circuit's scope while the connect request is still on the stack — a circuit
-  outlives that request, and every later render runs in its own flow. It no-ops under
+  outlives that request, and every later render runs in its own flow — and enters it on the
+  flow of every inbound activity, so an event's send, whose scope is its own, connects and meets
+  the tenant-state wall in the circuit's tenant. It no-ops under
   `Tenancy:Mode=None`; see [data-tenancy.md](data-tenancy.md#the-credential-is-stamped-and-checked-on-every-request).
 - `AddBaseWebApp` also calls `AddMessagePolicies`, which lets a page's `[Authorize<TMessage>]`
   resolve. It lives here rather than in `AddBaseWebApi` because it serves pages: an API-only
@@ -422,7 +473,7 @@ Three things are not in any source's `Languages` and are declared instead:
   offers `[es]`; a practice that attends in two languages says so.
 
 Two derivations in `NSail.Localization` read them. **`Languages.Supported`** (called by the
-middleware and `GetLanguageSettings`) is every language the catalogs can render, English
+middleware, `GetLanguageSettings` and `StringCatalog`) is every language the catalogs can render, English
 included *by construction* (`Base` is `en`); it is the settings picker's list and what a
 forced choice is validated against. **`Languages.Offered`** (middleware only) is the
 narrower one, and the only one a browser is resolved against — conflating them served

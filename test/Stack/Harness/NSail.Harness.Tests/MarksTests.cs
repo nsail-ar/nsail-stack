@@ -13,6 +13,26 @@ public class MarksTests
     }
 
     [Fact]
+    public void AnotherHarnessesPendingGateMarkKeepsTheHeadFromASecondGateWhileItCanStillBeRunning()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var hold = HarnessLoop.PendingGate(100);
+
+        Assert.Equal("c1", HarnessLoop.MainGatedOf([new StatusMark("c1", Markers.GateContext, false, now.AddMinutes(-200), Pending: true)], now, hold));
+        Assert.Null(HarnessLoop.MainGatedOf([new StatusMark("c1", Markers.GateContext, false, now.AddHours(-5), Pending: true)], now, hold));
+        Assert.Null(StatusMark.Newest([new StatusMark("c1", Markers.GateContext, false, now, Pending: true)], Markers.GateContext));
+    }
+
+    [Fact]
+    public void ThePendingHoldIsTheLongestMainWorkersCutPlusAnHour()
+    {
+        var longest = SampleWorkers.Workers.Where(w => w.Kind == WorkKind.Main).Max(w => w.Options.Minutes ?? w.Type.Minutes);
+
+        Assert.Equal(TimeSpan.FromMinutes(longest * 2 + 60), HarnessLoop.MainPendingFor(SampleWorkers.Workers));
+        Assert.Equal(TimeSpan.Zero, HarnessLoop.MainPendingFor(SampleWorkers.Workers.Where(w => w.Kind != WorkKind.Main).ToList()));
+    }
+
+    [Fact]
     public void BreaksCountOnlyWhileNothingElseIsSaidBetweenThem()
     {
         var comments = new[]

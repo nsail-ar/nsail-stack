@@ -59,11 +59,6 @@
 			<TargetPathWithTargetPlatformMoniker Include="$(PkgScriban)\lib\netstandard2.0\Scriban.dll" IncludeRuntimeDependency="false" />
 		</ItemGroup>
 	</Target>
- 
-	<ItemGroup>
-		<EmbeddedResource LogicalName="Microsoft.CodeAnalysis.dll" Include="$(PkgMicrosoft_CodeAnalysis_Common)\lib\netstandard2.0\Microsoft.CodeAnalysis.dll" Visible="false" />
-		<EmbeddedResource LogicalName="Microsoft.CodeAnalysis.CSharp.dll" Include="$(PkgMicrosoft_CodeAnalysis_CSharp)\lib\netstandard2.0\Microsoft.CodeAnalysis.CSharp.dll" Visible="false" />
-		<EmbeddedResource LogicalName="Scriban.dll" Include="$(PkgScriban)\lib\netstandard2.0\Scriban.dll" Visible="false" />
-	</ItemGroup>
+
 
 </Project>

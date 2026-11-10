@@ -3,8 +3,19 @@
 
 import type { Field, Strings } from "@nsail/stack";
 
+const whole = /^-?\d+$/;
+const fixed = /^-?\d*(\.\d+)?$/;
+
+export interface DisplayOptions {
+  /** False renders a number without digit grouping. */
+  grouped?: boolean;
+}
+
 /** A wire value as a person reads it: the member's kind decides, the language formats. */
-export function display(strings: Strings, field: Field, value: unknown): string {
+export function display(strings: Strings, field: Field, value: unknown, options?: DisplayOptions): string {
+  // Omitted, not true: true forces grouping of four digits, which the language's own default does not.
+  const useGrouping = options?.grouped === false ? false : undefined;
+
   if (value === null || value === undefined || value === "") {
     return "";
   }
@@ -22,10 +33,28 @@ export function display(strings: Strings, field: Field, value: unknown): string 
     }
     case "datetime":
       return new Date(String(value)).toLocaleString(strings.language, { dateStyle: "short", timeStyle: "short" });
+    // A value that is not the wire's text (a Number a product still writes) shows as a figure.
+    case "bigint":
+      return whole.test(String(value)) ? BigInt(String(value)).toLocaleString(strings.language, { useGrouping }) : Number(value).toLocaleString(strings.language, { useGrouping });
+    case "decimal":
+      return fixed.test(String(value)) ? decimal(strings.language, String(value), useGrouping) : Number(value).toLocaleString(strings.language, { useGrouping });
     case "integer":
     case "number":
-      return Number(value).toLocaleString(strings.language);
+      return Number(value).toLocaleString(strings.language, { useGrouping });
     default:
       return String(value);
   }
+}
+
+// A decimal carries up to 28 fraction digits and Intl stops at 20 (and reads a string as a
+// Number before Intl V3): the whole part is grouped as a BigInt and the fraction kept as sent.
+function decimal(language: string, text: string, useGrouping: boolean | undefined): string {
+  const negative = text.startsWith("-");
+  const [whole, fraction] = (negative ? text.slice(1) : text).split(".");
+  const parts = new Intl.NumberFormat(language).formatToParts(-0.5);
+  const point = parts.find((part) => part.type === "decimal")?.value ?? ".";
+  const minus = parts.find((part) => part.type === "minusSign")?.value ?? "-";
+  const grouped = BigInt(whole === "" ? "0" : whole).toLocaleString(language, { useGrouping });
+
+  return `${negative ? minus : ""}${grouped}${fraction ? `${point}${fraction}` : ""}`;
 }

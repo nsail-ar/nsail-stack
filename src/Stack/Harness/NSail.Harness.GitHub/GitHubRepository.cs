@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json;
 using NSail.Harness.Repositories;
@@ -12,7 +13,7 @@ namespace NSail.Harness.GitHub;
 public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options, StoryNames names, string token) : IRepository
 {
     const string PrsQuery = """
-        query($o:String!,$n:String!,$c:String){repository(owner:$o,name:$n){pullRequests(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title headRefName headRefOid isDraft mergeable updatedAt}}}}
+        query($o:String!,$n:String!,$c:String){repository(owner:$o,name:$n){pullRequests(first:100,states:OPEN,after:$c){pageInfo{hasNextPage endCursor} nodes{number title headRefName headRefOid isDraft mergeable updatedAt headRepository{nameWithOwner} author{login}}}}}
         """;
 
     const string StatusesQuery = """
@@ -20,7 +21,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         """;
 
     const string MergedQuery = """
-        query($q:String!){search(query:$q,type:ISSUE,first:30){nodes{... on PullRequest{title headRefName mergedAt mergeCommit{oid}}}}}
+        query($q:String!){search(query:$q,type:ISSUE,first:30){nodes{... on PullRequest{title headRefName mergedAt mergeCommit{oid} headRepository{nameWithOwner} author{login}}}}}
         """;
 
     readonly string repo = options.Name;
@@ -50,17 +51,33 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         }
         while (cursor is not null);
 
-        // CI on every PR head in one read: the newest run per workflow for each sha.
-        var runs = await gh.GetAll($"repos/{repo}/actions/runs?event=pull_request&per_page=100", b => b.GetProperty("workflow_runs"), maxPages: 1, ct: ct);
-        var bySha = runs.GroupBy(r => r.GetProperty("head_sha").GetString() ?? "").ToDictionary(g => g.Key, g => g.ToList());
+        var open = raw.Where(pr => !pr.GetProperty("isDraft").GetBoolean()).ToList();
 
-        return raw.Where(pr => !pr.GetProperty("isDraft").GetBoolean()).Select(pr =>
+        // One wide read of the newest runs; a head it did not bring (a PR gone quiet) is read by its sha.
+        var window = await gh.Get($"repos/{repo}/actions/runs?event=pull_request&per_page=100", ct);
+        var bySha = window.GetProperty("workflow_runs").EnumerateArray()
+            .GroupBy(r => r.GetProperty("head_sha").GetString() ?? "")
+            .ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var sha in open.Select(pr => pr.GetProperty("headRefOid").GetString() ?? "").Distinct().Where(sha => !bySha.ContainsKey(sha)))
+        {
+            bySha[sha] = await gh.GetAll($"repos/{repo}/actions/runs?head_sha={Uri.EscapeDataString(sha)}&event=pull_request&per_page=100", b => b.GetProperty("workflow_runs"), ct: ct);
+        }
+
+        return open.Select(pr =>
         {
             var sha = pr.GetProperty("headRefOid").GetString() ?? "";
-            var ci = pr.GetProperty("mergeable").GetString() == "CONFLICTING" ? CiState.Conflict : CiOf(bySha.GetValueOrDefault(sha));
+            var shaRuns = bySha.GetValueOrDefault(sha);
+            var ci = pr.GetProperty("mergeable").GetString() == "CONFLICTING" ? CiState.Conflict : CiOf(shaRuns);
             return new OpenPr(pr.GetProperty("number").GetInt32(), pr.GetProperty("title").GetString() ?? "",
-                pr.GetProperty("headRefName").GetString() ?? "", sha, ci, repo, pr.GetProperty("updatedAt").GetString() ?? "");
+                pr.GetProperty("headRefName").GetString() ?? "", sha, ci, repo, pr.GetProperty("updatedAt").GetString() ?? "",
+                ci == CiState.Green ? GreenAtOf(shaRuns) : null,
+                NestedString(pr, "headRepository", "nameWithOwner"), NestedString(pr, "author", "login"));
         }).ToList();
+    }
+
+    static string NestedString(JsonElement e, string obj, string name)
+    {
+        return e.TryGetProperty(obj, out var o) && o.ValueKind == JsonValueKind.Object && o.TryGetProperty(name, out var v) ? v.GetString() ?? "" : "";
     }
 
     public async Task<IReadOnlyList<PrRef>> PrsOf(int story, string state, CancellationToken ct = default)
@@ -75,22 +92,37 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             var title = pr.GetProperty("title").GetString() ?? "";
             var head = pr.GetProperty("head").GetProperty("ref").GetString() ?? "";
             if (names.StoryOf(title, head) != story) continue;
+            if (!IsOwnHead(pr)) continue;
             if (state == "open" && pr.GetProperty("state").GetString() != "open") continue;
             var merged = MergedAt(pr);
             if (state == "merged" && merged is null) continue;
             result.Add(new PrRef(n, title, head, merged, repo, MergeSha(pr)));
         }
         // The search index lags a push by minutes: the plain head is read directly too.
-        var direct = await gh.GetAll($"repos/{repo}/pulls?state={(state == "open" ? "open" : "closed")}&head={Owner}:{names.Branch(prefix, story)}&per_page=20", maxPages: 1, ct: ct);
+        var direct = await gh.GetAll($"repos/{repo}/pulls?state={(state == "open" ? "open" : "closed")}&head={Owner}:{names.Branch(prefix, story)}&per_page=20", ct: ct);
         foreach (var pr in direct)
         {
             var n = pr.GetProperty("number").GetInt32();
-            if (result.Any(p => p.Number == n)) continue;
+            if (result.Any(p => p.Number == n) || !IsOwnHead(pr)) continue;
             var merged = MergedAt(pr);
             if (state == "merged" && merged is null) continue;
             result.Add(new PrRef(n, pr.GetProperty("title").GetString() ?? "", pr.GetProperty("head").GetProperty("ref").GetString() ?? "", merged, repo, MergeSha(pr)));
         }
         return result;
+    }
+
+    // The planner's own rule (SnapshotReader.IsCrews) over the REST shape.
+    bool IsOwnHead(JsonElement pr)
+    {
+        var head = pr.GetProperty("head");
+        var headRepo = head.TryGetProperty("repo", out var hr) && hr.ValueKind == JsonValueKind.Object && hr.TryGetProperty("full_name", out var fn) ? fn.GetString() ?? "" : "";
+        return IsCrews(headRepo, NestedString(pr, "user", "login"));
+    }
+
+    bool IsCrews(string headRepo, string author)
+    {
+        return string.Equals(headRepo, repo, StringComparison.OrdinalIgnoreCase)
+            && (options.Authors.Count == 0 || options.Authors.Contains(author, StringComparer.OrdinalIgnoreCase));
     }
 
     static DateTimeOffset? MergedAt(JsonElement pr)
@@ -110,7 +142,8 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         return new PullRequest(number, pr.GetProperty("title").GetString() ?? "", pr.GetProperty("state").GetString() == "open",
             head.GetProperty("ref").GetString() ?? "", head.GetProperty("sha").GetString() ?? "",
             pr.TryGetProperty("mergeable_state", out var ms) && ms.GetString() == "dirty",
-            pr.TryGetProperty("body", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString()! : "");
+            pr.TryGetProperty("body", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString()! : "",
+            head.TryGetProperty("repo", out var hr) && hr.ValueKind == JsonValueKind.Object ? hr.GetProperty("full_name").GetString() ?? "" : "");
     }
 
     public async Task<IReadOnlyList<PrNote>> Thread(int pr, CancellationToken ct = default)
@@ -120,19 +153,32 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         {
             if (r.TryGetProperty("submitted_at", out var at) && at.ValueKind == JsonValueKind.String)
             {
-                all.Add(new PrNote(at.GetDateTimeOffset(), r.GetProperty("body").GetString() ?? ""));
+                all.Add(new PrNote(at.GetDateTimeOffset(), r.GetProperty("body").GetString() ?? "", LoginOf(r)));
             }
         }
         foreach (var c in await gh.GetAll($"repos/{repo}/issues/{pr}/comments?per_page=100", ct: ct))
         {
-            all.Add(new PrNote(c.GetProperty("created_at").GetDateTimeOffset(), c.GetProperty("body").GetString() ?? ""));
+            all.Add(new PrNote(c.GetProperty("created_at").GetDateTimeOffset(), c.GetProperty("body").GetString() ?? "", LoginOf(c)));
         }
         return all.OrderBy(b => b.At).ToList();
     }
 
+    static string LoginOf(JsonElement e)
+    {
+        return e.TryGetProperty("user", out var u) && u.ValueKind == JsonValueKind.Object && u.TryGetProperty("login", out var l) ? l.GetString() ?? "" : "";
+    }
+
+    string? _login;
+
+    public async Task<string> Login(CancellationToken ct = default)
+    {
+        return _login ??= (await gh.Get("user", ct)).GetProperty("login").GetString() ?? "";
+    }
+
     public async Task<IReadOnlyList<string>> Files(int pr, CancellationToken ct = default)
     {
-        var files = await gh.GetAll($"repos/{repo}/pulls/{pr}/files?per_page=100", maxPages: 3, ct: ct);
+        // 30 pages of 100: GitHub lists no more than 3,000 files of a PR.
+        var files = await gh.GetAll($"repos/{repo}/pulls/{pr}/files?per_page=100", maxPages: 30, ct: ct);
         return files.Select(f => $"{f.GetProperty("filename").GetString()} (+{f.GetProperty("additions").GetInt32()} -{f.GetProperty("deletions").GetInt32()})").ToList();
     }
 
@@ -154,21 +200,26 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
     }
 
     // gh is the credential with the harness's own token; the empty helper first resets the list, so no
-    // machine-wide helper (a window waiting for a click) is asked.
-    public async Task Push(string workDir, string branch, CancellationToken ct = default)
+    // machine-wide helper (a window waiting for a click) is asked. The lease names its expected head
+    // outright: the remote-tracking refs live in a clone other slots fetch into.
+    public async Task Push(string workDir, string branch, string? startedAt, CancellationToken ct = default)
     {
         var env = new Dictionary<string, string> { ["GH_TOKEN"] = token, ["GIT_TERMINAL_PROMPT"] = "0" };
-        var result = await Lanes.Shell.Run("git", ["-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential", "push", "origin", $"HEAD:refs/heads/{branch}"],
+        var result = await Lanes.Shell.Run("git", ["-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential", "push",
+            $"--force-with-lease=refs/heads/{branch}:{startedAt}", "origin", $"HEAD:refs/heads/{branch}"],
             workDir, env, TimeSpan.FromMinutes(10), ct: ct);
         if (result.ExitCode != 0) throw new InvalidOperationException($"push to {branch} refused: {result.Output.Trim()}");
     }
 
-    public async Task Merge(int pr, CancellationToken ct = default)
+    public async Task Merge(int pr, string sha, CancellationToken ct = default)
     {
         // The head is read before the merge: once the merge has gone through, nothing after it may
         // throw, or the caller would report a merged PR as refused.
-        var head = (await Pr(pr, ct)).HeadRef;
-        await gh.Send(HttpMethod.Put, $"repos/{repo}/pulls/{pr}/merge", new { merge_method = "squash" }, ct);
+        var read = await Pr(pr, ct);
+        var head = read.HeadRef;
+        var ownHead = string.Equals(read.HeadRepo, repo, StringComparison.OrdinalIgnoreCase);
+        await gh.Send(HttpMethod.Put, $"repos/{repo}/pulls/{pr}/merge", new { merge_method = "squash", sha }, ct);
+        if (!ownHead) return;
         try
         {
             await gh.Send(HttpMethod.Delete, $"repos/{repo}/git/refs/heads/{head}", ct: ct);
@@ -183,6 +234,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         var data = await gh.GraphQl(MergedQuery, new { q = $"repo:{repo} is:pr is:merged {names.Ref(story)}" }, ct);
         var merge = data.GetProperty("search").GetProperty("nodes").EnumerateArray()
             .Where(n => n.TryGetProperty("title", out _))
+            .Where(n => IsCrews(NestedString(n, "headRepository", "nameWithOwner"), NestedString(n, "author", "login")))
             .Where(n => names.StoryOf(n.GetProperty("title").GetString() ?? "", n.GetProperty("headRefName").GetString() ?? "") == story)
             .OrderBy(n => n.GetProperty("mergedAt").GetString())
             .LastOrDefault();
@@ -192,25 +244,117 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
 
     public async Task<CiState> Ci(string branch, string sha, CancellationToken ct = default)
     {
-        var runs = await gh.GetAll($"repos/{repo}/actions/runs?branch={Uri.EscapeDataString(branch)}&per_page=20", b => b.GetProperty("workflow_runs"), maxPages: 1, ct: ct);
+        var runs = await gh.GetAll($"repos/{repo}/actions/runs?head_sha={Uri.EscapeDataString(sha)}&per_page=100", b => b.GetProperty("workflow_runs"), ct: ct);
         return CiOf(runs.Where(r => r.GetProperty("head_sha").GetString() == sha
             && r.GetProperty("event").GetString() is "pull_request" or "push").ToList());
+    }
+
+    public async Task<CiFailure?> Failure(string sha, CancellationToken ct = default)
+    {
+        var runs = await gh.GetAll($"repos/{repo}/actions/runs?head_sha={Uri.EscapeDataString(sha)}&per_page=100", b => b.GetProperty("workflow_runs"), ct: ct);
+        return await FailureOf(runs.Where(r => r.GetProperty("head_sha").GetString() == sha
+            && r.GetProperty("event").GetString() is "pull_request" or "push").ToList(), ct);
+    }
+
+    public async Task<CiFailure?> MainFailure(CancellationToken ct = default)
+    {
+        var runs = await gh.Get($"repos/{repo}/actions/runs?branch={Uri.EscapeDataString(options.DefaultBranch)}&event=push&status=completed&per_page=50", ct);
+        return await FailureOf(runs.GetProperty("workflow_runs").EnumerateArray().ToList(), ct);
+    }
+
+    // A run's failed jobs never change once it completed: each attempt is read once, and kept reduced,
+    // the newest few hundred runs only.
+    const int KeptRuns = 256;
+    readonly ConcurrentDictionary<(long Run, int Attempt), List<CiFailure>> _failedJobs = new();
+
+    async Task<CiFailure?> FailureOf(List<JsonElement> runs, CancellationToken ct)
+    {
+        var failed = Latest(runs).Where(r => r.GetProperty("status").GetString() == "completed" && IsRed(Conclusion(r))).ToList();
+        if (failed.Count == 0) return null;
+        var jobs = new List<CiFailure>();
+        foreach (var run in failed)
+        {
+            var key = (run.GetProperty("id").GetInt64(), run.TryGetProperty("run_attempt", out var a) ? a.GetInt32() : 1);
+            if (!_failedJobs.TryGetValue(key, out var hit))
+            {
+                hit = [];
+                var page = await gh.GetAll($"repos/{repo}/actions/runs/{key.Item1}/jobs?per_page=100", b => b.GetProperty("jobs"), ct: ct);
+                foreach (var (id, job, step) in FailedJobs(page))
+                {
+                    hit.Add(CiFailure.Of(job, step, await LogOf(id, ct)));
+                }
+                // A run red with no job failed (a workflow that never started) is named by itself.
+                if (hit.Count == 0) hit.Add(CiFailure.Of(run.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "", Conclusion(run), ""));
+                if (_failedJobs.Count >= KeptRuns) _failedJobs.Clear();
+                _failedJobs[key] = hit;
+            }
+            jobs.AddRange(hit);
+        }
+        return CiFailure.Of(jobs);
+    }
+
+    // A run's failed jobs, each with its first failed step.
+    internal static IEnumerable<(long Id, string Job, string Step)> FailedJobs(IEnumerable<JsonElement> jobs)
+    {
+        foreach (var job in jobs.Where(j => IsRed(Conclusion(j))))
+        {
+            var steps = job.TryGetProperty("steps", out var s) && s.ValueKind == JsonValueKind.Array ? s.EnumerateArray().ToList() : [];
+            var step = steps.FirstOrDefault(st => IsRed(Conclusion(st)));
+            yield return (job.GetProperty("id").GetInt64(), job.GetProperty("name").GetString() ?? "",
+                step.ValueKind == JsonValueKind.Object ? step.GetProperty("name").GetString() ?? "" : Conclusion(job));
+        }
+    }
+
+    // A job's log expires with the run's retention: what is gone is said, not thrown.
+    async Task<string> LogOf(long job, CancellationToken ct)
+    {
+        try
+        {
+            return await gh.GetText($"repos/{repo}/actions/jobs/{job}/logs", ct);
+        }
+        catch (GitHubException e) when (e.HttpStatus is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+        {
+            return "(log gone)";
+        }
+    }
+
+    static string Conclusion(JsonElement e)
+    {
+        return e.TryGetProperty("conclusion", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() ?? "" : "";
+    }
+
+    static bool IsRed(string conclusion)
+    {
+        return conclusion is "failure" or "timed_out" or "cancelled" or "startup_failure" or "stale";
+    }
+
+    // The newest run per workflow at a head.
+    static IEnumerable<JsonElement> Latest(List<JsonElement> runs)
+    {
+        return runs
+            .GroupBy(r => r.GetProperty("workflow_id").GetInt64())
+            .Select(g => g.OrderBy(r => r.TryGetProperty("run_started_at", out var s) ? s.GetString() : "").Last());
+    }
+
+    // When a green head's last workflow finished: a run's updated_at is its completion once completed.
+    internal static DateTimeOffset? GreenAtOf(List<JsonElement>? runs)
+    {
+        if (runs is null || runs.Count == 0) return null;
+        return Latest(runs).Select(r => r.TryGetProperty("updated_at", out var u) && u.ValueKind == JsonValueKind.String ? u.GetDateTimeOffset() : (DateTimeOffset?)null).Max();
     }
 
     internal static CiState CiOf(List<JsonElement>? runs)
     {
         if (runs is null || runs.Count == 0) return CiState.Pending;
-        var latest = runs
-            .GroupBy(r => r.GetProperty("workflow_id").GetInt64())
-            .Select(g => g.OrderBy(r => r.TryGetProperty("run_started_at", out var s) ? s.GetString() : "").Last());
+        var latest = Latest(runs);
         var pending = false;
         var red = false;
         foreach (var run in latest)
         {
             var status = run.GetProperty("status").GetString();
-            var conclusion = run.TryGetProperty("conclusion", out var c) && c.ValueKind == JsonValueKind.String ? c.GetString() : "";
+            var conclusion = Conclusion(run);
             if (status != "completed") pending = true;
-            else if (conclusion is "failure" or "timed_out" or "cancelled" or "startup_failure" or "stale") red = true;
+            else if (IsRed(conclusion)) red = true;
             else if (conclusion is not ("success" or "skipped" or "neutral")) pending = true;
         }
         return pending ? CiState.Pending : red ? CiState.Red : CiState.Green;
@@ -243,7 +387,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
                 times.AddRange(cmp.GetProperty("commits").EnumerateArray()
                     .Select(c => c.GetProperty("commit").GetProperty("committer").GetProperty("date").GetDateTimeOffset()));
             }
-            catch (GitHubException)
+            catch (GitHubException e) when (e.HttpStatus == HttpStatusCode.NotFound)
             {
             }
         }
@@ -266,8 +410,8 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
             if (commit.GetProperty("status").ValueKind != JsonValueKind.Object) continue;
             var sha = commit.GetProperty("oid").GetString()!;
             marks.AddRange(commit.GetProperty("status").GetProperty("contexts").EnumerateArray()
-                .Where(c => c.GetProperty("state").GetString() is "SUCCESS" or "FAILURE" or "ERROR")
-                .Select(c => new StatusMark(sha, c.GetProperty("context").GetString()!, c.GetProperty("state").GetString() == "SUCCESS", c.GetProperty("createdAt").GetDateTimeOffset()))
+                .Where(c => c.GetProperty("state").GetString() is "SUCCESS" or "FAILURE" or "ERROR" or "PENDING")
+                .Select(c => new StatusMark(sha, c.GetProperty("context").GetString()!, c.GetProperty("state").GetString() == "SUCCESS", c.GetProperty("createdAt").GetDateTimeOffset(), c.GetProperty("state").GetString() == "PENDING"))
                 .OrderByDescending(m => m.At));
         }
         return marks;
@@ -298,7 +442,8 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
 
     public async Task<IReadOnlyList<Release>> Releases(CancellationToken ct = default)
     {
-        var releases = await gh.GetAll($"repos/{repo}/releases?per_page=50", maxPages: 1, ct: ct);
+        // The newest 100: every reader takes the head of the list.
+        var releases = (await gh.Get($"repos/{repo}/releases?per_page=100", ct)).EnumerateArray();
         return releases
             .Where(r => !r.GetProperty("draft").GetBoolean() && r.TryGetProperty("published_at", out var p) && p.ValueKind == JsonValueKind.String)
             .Select(r => new Release(r.GetProperty("tag_name").GetString() ?? "", r.GetProperty("published_at").GetDateTimeOffset()))

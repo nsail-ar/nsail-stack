@@ -12,6 +12,7 @@ using NSail.Data;
 using NSail.Data.Testing;
 using NSail.Messaging.Annotations;
 using NSail.Messaging.Runtime;
+using NSail.Problems;
 using NSail.Messaging.Runtime.Context;
 using NSail.Messaging.Runtime.Sending;
 using NSail.Security;
@@ -120,6 +121,40 @@ public sealed class AlwaysFails : IMessage
 {
 }
 
+[QueueAttribute]
+public sealed class FailsWithRule : IMessage
+{
+}
+
+[QueueAttribute]
+public sealed class LoseRowThenFail : IMessage
+{
+}
+
+/// <summary>What the test hands the handler that loses its own row: the act that makes another
+/// drain finish it, which only the test can run against the database.</summary>
+public sealed class RowThief
+{
+    public Func<Task> Steal { get; set; } = () => Task.CompletedTask;
+}
+
+sealed class LoseRowThenFailHandler : IHandler<LoseRowThenFail>
+{
+    readonly RowThief _thief;
+
+    public LoseRowThenFailHandler(RowThief thief)
+    {
+        _thief = thief;
+    }
+
+    public async Task Handle(LoseRowThenFail message, CancellationToken cancellationToken = default)
+    {
+        await _thief.Steal();
+
+        throw new InvalidOperationException("The vendor is down.");
+    }
+}
+
 sealed class WriteLetterHandler : IHandler<WriteLetter>
 {
     readonly DbContext _db;
@@ -145,6 +180,14 @@ sealed class WriteLetterHandler : IHandler<WriteLetter>
         });
 
         await _db.SaveChangesAsync(cancellationToken);
+    }
+}
+
+sealed class FailsWithRuleHandler : IHandler<FailsWithRule>
+{
+    public Task Handle(FailsWithRule message, CancellationToken cancellationToken = default)
+    {
+        throw new BusinessException("NotFound", "Resource not found", [new Issue("NotFound", "Letter 42 does not exist.")]);
     }
 }
 
@@ -253,10 +296,13 @@ public static class QueueHarness
     public const string WriteLetterKey = "Messaging.Queue.WriteLetter";
 
     public const string AlwaysFailsKey = "Messaging.Queue.AlwaysFails";
+    public const string FailsWithRuleKey = "Messaging.Queue.FailsWithRule";
 
     public const string WriteLetterThenFailKey = "Messaging.Queue.WriteLetterThenFail";
 
     public const string WriteLetterAndQueueKey = "Messaging.Queue.WriteLetterAndQueue";
+
+    public const string LoseRowThenFailKey = "Messaging.Queue.LoseRowThenFail";
 
     public const string Clerk = "clerk";
 
@@ -281,8 +327,9 @@ public static class QueueHarness
         // Both registrations stand in for the Policies.Handlers generator, which emits the
         // factory and the registry entry from the same line.
         services.AddSingleton<SavePointProbe>();
+        services.AddSingleton<RowThief>();
 
-        foreach (var type in new[] { typeof(WriteLetter), typeof(AlwaysFails), typeof(WriteLetterThenFail), typeof(WriteLetterAndQueue) })
+        foreach (var type in new[] { typeof(WriteLetter), typeof(AlwaysFails), typeof(FailsWithRule), typeof(WriteLetterThenFail), typeof(WriteLetterAndQueue), typeof(LoseRowThenFail) })
         {
             services.AddSingleton(new PolicyHandlerFactory(type, policy => new FlatPolicyHandler(policy)));
             services.AddSingleton(new MessageRegistration(type));
@@ -291,20 +338,26 @@ public static class QueueHarness
         services.AddBuiltInPolicy(new Policy
         {
             Name = "Clerks queue their own work",
-            Messages = granted.Length > 0 ? granted : [WriteLetterKey, AlwaysFailsKey, WriteLetterThenFailKey, WriteLetterAndQueueKey],
+            Messages = granted.Length > 0 ? granted : [WriteLetterKey, AlwaysFailsKey, FailsWithRuleKey, WriteLetterThenFailKey, WriteLetterAndQueueKey, LoseRowThenFailKey],
             Audience = new PolicyAudience { HasRole = Clerk },
         });
 
         services.AddScoped<ISender<WriteLetter>, QueueSender<WriteLetter>>();
         services.AddScoped<ISender<AlwaysFails>, QueueSender<AlwaysFails>>();
+        services.AddScoped<ISender<FailsWithRule>, QueueSender<FailsWithRule>>();
+        services.AddScoped<ISender<LoseRowThenFail>, QueueSender<LoseRowThenFail>>();
         services.AddScoped<ISender<WriteLetterThenFail>, InProcessSender<WriteLetterThenFail>>();
         services.AddScoped<ISender<WriteLetterAndQueue>, InProcessSender<WriteLetterAndQueue>>();
 
         services.AddSingleton<QueueConsumer>(new QueueConsumer<WriteLetter>());
         services.AddSingleton<QueueConsumer>(new QueueConsumer<AlwaysFails>());
+        services.AddSingleton<QueueConsumer>(new QueueConsumer<FailsWithRule>());
+        services.AddSingleton<QueueConsumer>(new QueueConsumer<LoseRowThenFail>());
 
         services.AddScoped<IHandler<WriteLetter>, WriteLetterHandler>();
         services.AddScoped<IHandler<AlwaysFails>, AlwaysFailsHandler>();
+        services.AddScoped<IHandler<FailsWithRule>, FailsWithRuleHandler>();
+        services.AddScoped<IHandler<LoseRowThenFail>, LoseRowThenFailHandler>();
         services.AddScoped<IHandler<WriteLetterThenFail>, WriteLetterThenFailHandler>();
         services.AddScoped<IHandler<WriteLetterAndQueue>, WriteLetterAndQueueHandler>();
     }
@@ -321,8 +374,8 @@ public static class QueueHarness
 
         var bound = TimeSpan.FromSeconds(30);
 
-        // Every hosted service the composition holds, which is the runner and the transport
-        // guard: picking one by type would name a class NSail.Background keeps internal.
+        // Every hosted service the composition holds, which is the runner, the transport
+        // guard and the security provider check: picking one by type would name a class NSail.Background keeps internal.
         var reached = await host.Use<IEnumerable<IHostedService>, bool>(async hosted =>
         {
             var services = hosted.ToList();

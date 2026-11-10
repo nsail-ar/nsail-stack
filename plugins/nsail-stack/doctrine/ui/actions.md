@@ -70,7 +70,8 @@ complaint the rule answers: a phone's title row came out three different heights
 - **Stated once, for every container.** A height that changed with what the face is drawn
   inside would be the per-caller branch [principles.md](../principles.md) refuses — one
   declaration in `ns-mud.css`, reaching the worded face wherever the house draws one
-  (`NsButton`, `NsLink`, `NsSubmit`, `NsClose`, `NsMenu`'s labelled trigger).
+  (`NsButton`, `NsLink`, `NsSubmit`, `NsClose`, `NsMenu`'s labelled trigger) and the link a
+  tapped `NsChip`'s bubble carries.
 - **The icon-only square keeps its own box at every width and under either pointer**: it is
   already 44px by construction (12px around the Md glyph), so the floor leaves it exactly as
   it is. It is a `min-height` for that reason — a square whose box this grew would be the
@@ -89,7 +90,7 @@ complaint the rule answers: a phone's title row came out three different heights
 |---|---|---|
 | `NsButton` | plain command button — `OnClick`/`Icon`/`Label`/`Breakpoint`, plus `Submits` for the one that drives a form's `Submit()` (below) | `Default` (default), `Main`, `Important`, `Danger`, `Inline` |
 | `NsAction` | wraps `NsButton` with an `ActionItem` (`@GetAction(Delete, row, NsIcons.Delete)`): click, icon and label (`"Actions.{Method}"`) in one call. **Withholds itself inside a form that refuses writes** unless the item declares it writes nothing. **Holds `NsIcons.Progress` in the item's own glyph slot for as long as `OnClick` is in flight or the item is `Running`**, greyed out and deaf to a press, and returns to whatever the item's own face is once both end — the row's re-render decides what that is, never this component | same as `NsButton`, default `Inline` at `Never` — an act that wants its word writes `Breakpoint="NsBreakpoint.Always"` |
-| `NsLink` | plain navigation link (a real `<a>`) — `Href`/`Target`/`Fragment`/`Icon`/`Label`/`Breakpoint`; greyed by a disabled form, never by one that is merely saving (below) | `Inline` (default), `Default`, `Main`, `Important` |
+| `NsLink` | plain navigation link (a real `<a>`) — `Href`/`Target`/`Fragment`/`Icon`/`Label`/`Breakpoint`; greyed by a disabled form, never by one that is merely saving (below); an empty `Href` or a scheme no door opens (`javascript:`, `data:`) is drawn disabled with no `href` | `Inline` (default), `Default`, `Main`, `Important` |
 | `NsPageLink` | wraps `NsLink` for a destination page (`TPage=`/`Parameters=`): `Href` from the route table, `Label` from the page's own `Title` | same as `NsLink` |
 | `NsSubmit` | submits the form (`type=submit`, native Enter — except over an open lookup or select, where Enter picks the option and the form never sees it, [fields.md](fields.md)); greys out until the cascaded `FormTracked` reports changes (an `Untracked` form never gates); words itself through `ChildContent`, `Label` restating that word as a string (below) | hero (the accent), label pinned (`Breakpoint` `Always`); `Filter` = quiet search-bar look; `Send` = same hero chrome, paper-airplane glyph and `Enviar` as its own default word, for a submit that sends words rather than saves a document — the composer draws it ([forms.md](forms.md), *The composer*) |
 | `NsClose` | closes the hosted surface (`Surface.Close()`), self-wired; renders nothing on the default surface; refused by a form that is disabled or saving — both faces alike on every surface, the dialog's header X included, which reads the same name from outside the form's cascade (below); words itself the same way, `ChildContent` drawn and `Label` restating it | `Default` (default) = the footer's worded button; `Inline` = the header X, drawn by `NsButton` like every other glyph |
@@ -132,14 +133,14 @@ is a parameter a button or link beside it declares and this one does not:
 the spinner the form is running) and so `NsSubmit` and `NsClose` declare no `Icon`, while
 `NsButton`, `NsLink` and `NsPageLink` each do. The Razor compiler emits any attribute it does
 not recognize (the component might capture unmatched values; none of ours does,
-`UnmatchedParameterTests`), and at render time Blazor normalizes the `SetParametersAsync` throw
+`UnmatchedParameterTests`, enforced in the products' repository), and at render time Blazor normalizes the `SetParametersAsync` throw
 into a faulted Task and routes it to the nearest `IErrorBoundary` **without aborting the
 batch**. The rest of the tree ships. Inside a dialog — portaled as a sibling of the router, so
 outside `MainLayout`'s `NsErrorBoundary` — nothing catches it at all and the only report is an
 unhandled circuit error: a dialog renders complete and interactive with a footer missing its
 submit.
 
-What holds the line is `DialogRenderTests` — every component handed to `DialogManager.Open<T>`
+What holds the line is `DialogRenderTests` (enforced in the products' repository) — every component handed to `DialogManager.Open<T>`
 is rendered in that surface, and a form that draws no submit fails by name. Dialog-hosted forms
 are otherwise rendered by no test: a kit's `FakeDialogManager.Open` answers with a completed Task
 and never mounts anything. (`NsPanel.Footer` is not at fault here: `NsOpenDialog` already
@@ -213,7 +214,9 @@ precedent it looks like: that one originates above the X, so re-providing was th
 `CloseOnEscapeKey` handler closes the dialog instance directly, past `Surface.Close()` and past
 every refusal drawn on the X, and with `BackdropClick` off those two are the only ways out — so
 `NsOpenDialog` withdraws the key for the length of the save (`SetOptionsAsync`) and hands it back
-as the opener asked for it, never as a second literal. It reaches the host as a call from
+as the opener asked for it, never as a second literal. It is withdrawn too while a dropdown, help,
+hint or expander inside is open, because the innermost open thing wins Escape
+([menus.md](menus.md)); that one ends at the next Escape, which closes it. It reaches the host as a call from
 `NsDialogExit` rather than being read there: the dialog instance's own cascade does not reach
 `TitleContent`. **Not the whole refusal, and that bound is a constraint**: a form standing
 `Disabled` refuses writes for as long as its screen says so and the X greys with it, so a dialog
@@ -290,7 +293,7 @@ breakpoint anyway. There is no second knob.
   button, not who rendered it. **Two sweeps hold the rule**: every `NsButton`, `NsLink` and
   `NsMenu` handed an `Icon` writes a `Label` (`NamedGlyphTests` — those three draw a glyph of
   their own, every other face in the house being one of them underneath), and every act built
-  with `GetAction` has its `Actions.{Name}` text in both languages (`ScreenStringTests`) — with
+  with `GetAction` has its `Actions.{Name}` text in both languages (`ScreenStringTests`, both enforced in the products' repository) — with
   none, `ActionItem.GetLabel`'s last resort is the handler's own C# identifier, so the glyph
   wears `MarkGiven` and whispers it. Their bound is what no static reader can see: a name a
   vendor part carries itself, a name built at runtime, a face composed as child content with no
@@ -303,7 +306,9 @@ breakpoint anyway. There is no second knob.
   anonymous to a screen reader: **`NsSubmit` names itself with its CONTENT and must stay at
   `Always`** until it is given a name it can restate.
 - The honest cost: hover is a pointer's, so on touch a collapsed button is still a bare glyph
-  — **it suits universally-read icons, not obscure domain actions** (cases).
+  — **it suits universally-read icons, not obscure domain actions** (cases). **`NsChip` is the
+  one exception**: a touch tap on a chip with a `Tooltip` opens its whisper at once, through the
+  same bubble, its sentence a link to the chip's `Href` where it has one and its scheme is one a door opens (cases).
 
 ---
 
@@ -364,7 +369,9 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   **It hides an act whose message the caller was never granted, and nothing else**: where the
   same message is granted to both callers and only one of them may press it — the subject is
   the reader's OWN record rather than somebody else's — the allow list cannot tell them apart
-  and the act needs a gate that says so (Optical's `clients.md`, a warranty claim).
+  and the act needs a gate that says so: `NsPartial.CanSend<TMessage>(field, subjectId)` where
+  the difference is a party or organization pin (permissions.md, The client consumes policies),
+  the product's own where it is not (Optical's clients page: a warranty claim).
 - Labels resolve as `Actions.{Name}`, then — for a link — the destination page's own title, then
   the raw name; so moving a row's `NsPageLink` into an `ActionItem` writes no string. Pass a
   `name` only where the row reaches that page for a meaning its title does not carry.
@@ -376,11 +383,13 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
   contribution order), exposes `Actions` and `Resolving`. **Every contributor is asked before
   any of them answers**, so two slow ones cost the slower and not the sum; the answer is
   guarded by the ask it came from, so a `Context` that moves mid-flight drops the one that was
-  in flight for the model that left. **No markup.** A kit's outlet is one file
+  in flight for the model that left. **A contributor that throws is left out**: it is logged, its
+  own items are dropped, the rest of the cell draws and `Resolving` clears — one failing
+  contributor never reaches the page's error boundary. **No markup.** A kit's outlet is one file
   (`@inherits NsActionOutlet<PartyRowOutlet, PartyRow>`) delegating to a presenter and handing
   it **both** halves of what it resolved —
   `<NsActionToolbar Actions="Actions" Resolving="Resolving" …/>`, which
-  `ActionOutletPresenterTests` holds every outlet to; the host mounts
+  `ActionOutletPresenterTests` (enforced in the products' repository) holds every outlet to; the host mounts
   `<PartyRowOutlet Context="row" />`. A host that folds its own label when the outlet turns
   out empty (a drawer group with no children takes the same call) reads `HasActionsChanged`,
   fired once with whether any contributor answered — never polled, since the outlet already

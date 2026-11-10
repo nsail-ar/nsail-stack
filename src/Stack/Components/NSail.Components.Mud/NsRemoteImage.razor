@@ -3,13 +3,17 @@
 
 @namespace NSail.Components
 @using System.Collections.Concurrent
+@using System.Net
+@using System.Runtime.CompilerServices
 @using Microsoft.Extensions.DependencyInjection
+@using Microsoft.JSInterop
+@using NSail.Icons
 
 @inject IServiceProvider Services
 
 @if (Url is { } url && _kind != RemoteImageKind.Unavailable)
 {
-    <span class="@GetClasses()" style="@GetStyle()">
+    <span @ref="_box" class="@GetClasses()" style="@GetStyle()">
         @if (_kind == RemoteImageKind.Svg && _markup is { } markup)
         {
             @((MarkupString)markup)
@@ -23,14 +27,17 @@
 
 @code {
 
-    // A URL identifies content the same way an AssetId does for NsImage, so one probe per
-    // URL serves every instance and every later render of it -- but a URL is not a proof of
-    // immutability the way an AssetId is (a replacement there is a new id). The one real
-    // caller today (Branding's logo route) documents its own short revalidation window
-    // server-side rather than eternal bytes, so a resource that flips content type after
-    // boot picks that up only on the next app start: the same trade the server already
-    // accepts, not solved a second time on the client.
-    static readonly ConcurrentDictionary<string, (RemoteImageKind Kind, string? Markup)> Contents = new();
+    // A URL identifies content the way an asset id identifies a stored image, so one probe per
+    // URL serves every instance and every later render of it.
+    // Keyed by the service scope (a circuit, a server-rendered request, a client app), so a
+    // logo one tenant's host resolved is never served to another's, and no answer outlives
+    // its scope.
+    // Only a verdict is remembered -- a success or a 404; a transient failure (5xx, timeout,
+    // network, a URL that cannot resolve) is shown as unavailable for that render and probed
+    // again on the next parameter set.
+    static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<string, (RemoteImageKind Kind, string? Markup)>> Scopes = new();
+
+    ConcurrentDictionary<string, (RemoteImageKind Kind, string? Markup)> Contents => Scopes.GetOrCreateValue(Services);
 
     enum RemoteImageKind
     {
@@ -42,19 +49,19 @@
     RemoteImageKind? _kind;
     string? _markup;
     string? _probed;
+    bool _transient;
+    string? _fitted;
+    ElementReference _box;
 
     /// <summary>A well-known route this component fetches and decides by content type --
-    /// never an app- or kit-specific default, so Stack names no URL of its own. The route
-    /// must already serve sanitized SVG when it answers one: this component inlines the
-    /// response verbatim and has no sanitizer of its own to run it through (Stack cannot
-    /// depend on a Kit's), unlike NsImage, whose raw Assets route is unsanitized and so
-    /// sanitizes client-side.</summary>
+    /// never an app- or kit-specific default, so Stack names no URL of its own. An SVG
+    /// answer is inlined only after <see cref="SvgSanitizer"/>, whatever the route served.</summary>
     [Parameter]
     public string? Url { get; set; }
 
     /// <summary>Rendered on the &lt;img&gt; branch only. The inlined SVG branch carries
     /// whatever accessible name the served markup already baked in -- this component parses
-    /// nothing in that markup, sanitized or not, so it cannot stamp one on afterward.</summary>
+    /// nothing in that markup beyond the sanitizing, so it cannot stamp one on afterward.</summary>
     [Parameter]
     public string? Alt { get; set; }
 
@@ -69,8 +76,8 @@
     [Parameter]
     public int? Height { get; set; }
 
-    /// <summary>Chrome only, reusing NsAs rather than founding a second enum (an
-    /// NsImageAs.Primary would collide with NsAs.Main across the static imports):
+    /// <summary>Chrome only, reusing NsAs rather than founding a second enum (a
+    /// Primary of its own would collide with NsAs.Main across the static imports):
     /// Inline (default) inherits the surrounding colour, Primary maps to the .text-primary
     /// utility. Meaningful only on the inlined-SVG branch (currentColor); a raster &lt;img&gt;
     /// ignores it, same as CSS color always would.</summary>
@@ -79,6 +86,12 @@
 
     protected override void OnParametersSet()
     {
+        if (_transient)
+        {
+            _transient = false;
+            _probed = null;
+        }
+
         Build();
     }
 
@@ -87,6 +100,8 @@
     // until the content type says otherwise.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await Fit();
+
         if (Url is not { } url || _probed == url)
         {
             return;
@@ -104,14 +119,60 @@
 
         _probed = url;
 
-        Contents[url] = await Probe(clients, url);
+        var (result, remember) = await Probe(clients, url);
+
+        if (remember)
+        {
+            Contents[url] = result;
+        }
+        else
+        {
+            // The await above suspends: Url may have moved on, and this verdict is then not for what is shown.
+            if (Url != url)
+            {
+                return;
+            }
+
+            _transient = true;
+            _kind = RemoteImageKind.Unavailable;
+            _markup = null;
+            StateHasChanged();
+
+            return;
+        }
 
         Build();
 
         StateHasChanged();
     }
 
-    static async Task<(RemoteImageKind Kind, string? Markup)> Probe(IHttpClientFactory clients, string url)
+    // The inlined mark is drawn to its artwork, not to the viewBox its file carries: getBBox
+    // needs the element in the DOM, so it runs on the render that put the markup there, once
+    // per URL. A host with no JS (prerendering) keeps the viewBox it was given.
+    async Task Fit()
+    {
+        if (Url is not { } url || _kind != RemoteImageKind.Svg || _markup is null || _fitted == url)
+        {
+            return;
+        }
+
+        if (Services.GetService<IJSRuntime>() is not { } js)
+        {
+            return;
+        }
+
+        _fitted = url;
+
+        try
+        {
+            await js.InvokeVoidAsync("nsapp.fitMark", _box);
+        }
+        catch (Exception e) when (e is InvalidOperationException or JSException or JSDisconnectedException)
+        {
+        }
+    }
+
+    static async Task<((RemoteImageKind Kind, string? Markup) Result, bool Remember)> Probe(IHttpClientFactory clients, string url)
     {
         try
         {
@@ -123,23 +184,27 @@
 
             if (!response.IsSuccessStatusCode)
             {
-                return (RemoteImageKind.Unavailable, null);
+                return ((RemoteImageKind.Unavailable, null), response.StatusCode == HttpStatusCode.NotFound);
             }
 
             if (!string.Equals(response.Content.Headers.ContentType?.MediaType, "image/svg+xml", StringComparison.OrdinalIgnoreCase))
             {
-                return (RemoteImageKind.Raster, null);
+                return ((RemoteImageKind.Raster, null), true);
             }
 
             var markup = await response.Content.ReadAsStringAsync();
 
-            return string.IsNullOrWhiteSpace(markup)
-                ? (RemoteImageKind.Unavailable, null)
-                : (RemoteImageKind.Svg, markup);
+            var clean = SvgSanitizer.Sanitize(markup);
+
+            // Nothing drawable survives the allowlist: the file still shows as an image,
+            // which cannot execute in the app's origin.
+            return SvgSanitizer.HasDrawing(clean)
+                ? ((RemoteImageKind.Svg, clean), true)
+                : ((RemoteImageKind.Raster, null), true);
         }
-        catch (HttpRequestException)
+        catch (Exception e) when (e is HttpRequestException or OperationCanceledException or InvalidOperationException or UriFormatException)
         {
-            return (RemoteImageKind.Unavailable, null);
+            return ((RemoteImageKind.Unavailable, null), false);
         }
     }
 

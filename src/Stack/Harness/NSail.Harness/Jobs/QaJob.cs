@@ -44,7 +44,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await w.WriteLineAsync($"== walk {ctx.Names.Ref(n)} on {ctx.Options.Machine} slot {slot}");
-        await Shell.Git(dir, "fetch", "-q", "--force", "origin", "+refs/tags/*:refs/tags/*");
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", ctx.Workspace.Url, "+refs/tags/*:refs/tags/*"]);
 
         var labels = await ctx.Board.Labels(n, ct);
         var product = ProductOf(labels, ctx.Options.Products);
@@ -69,9 +69,10 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var shots = Path.Combine(outDir, "shots");
         Directory.CreateDirectory(shots);
         var story = await ctx.Board.Story(n, ct);
-        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), $"# {story.Title}\n\n{story.Body}", ct);
-        await new StoryDossier(ctx, history).WritePrs(n, outDir, ct);
-        var asked = labels.Contains(Labels.QaAsked) ? Asked(await ctx.Board.Comments(n, ct)) : "";
+        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), story.Title, labels, story.Body)}\n\n{StoryDossier.Body(story.Body, labels)}", ct);
+        var dossier = new StoryDossier(ctx, history);
+        await dossier.WritePrs(n, outDir, ct);
+        var asked = labels.Contains(Labels.QaAsked) ? Asked(await ctx.Board.Comments(n, ct), await dossier.Trusted(ct)) : "";
         await File.WriteAllTextAsync(Path.Combine(outDir, "asked.md"), asked, ct);
 
         var env = await ctx.LaneEnv(started.AddMinutes(step.Minutes), Item, step, ct);
@@ -96,7 +97,9 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         }, ct);
 
         var tools = step.Worker.Mcp.Keys.Select(k => $"mcp__{k}__*").Concat(step.Worker.Tools).ToList();
-        var result = await ctx.Agent.Run(new AgentRun(
+        // The agent opens this same log to append to it, and a second writer is refused while this one is open.
+        await w.DisposeAsync();
+        var result = await ctx.RunSeat(new AgentRun(
             prompt, dir, ctx.ModelOf(labels, seat),
             Access: AgentAccess.Walker,
             MaxTurns: 200,
@@ -109,7 +112,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         // A walker whose browser is not there still writes a verdict from the story alone: the walk is void, and loud.
         if (File.Exists(logPath) && (await File.ReadAllTextAsync(logPath, ct)).Contains(NoBrowser, StringComparison.Ordinal))
         {
-            await w.WriteLineAsync($"{ctx.Names.Ref(n)} — the walker had no browser: walk void");
+            await File.AppendAllTextAsync(logPath, $"{ctx.Names.Ref(n)} — the walker had no browser: walk void{Environment.NewLine}", ct);
             return new JobOutcome("walk void: the walker's browser is not installed on this machine (npx @playwright/mcp install-browser chromium)", Event: "NoVerdict", Failed: true, Report: "");
         }
         var quota = result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : (DateTimeOffset?)null;
@@ -122,7 +125,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         // A story waiting on a person is asked once: a walker that asks again, or doubts again, is still waiting.
         if (evt is "Asked" or "Doubt" && asked.Length > 0)
         {
-            await w.WriteLineAsync($"{ctx.Names.Ref(n)} — {evt} again while waiting on the first ask: waiting");
+            await File.AppendAllTextAsync(logPath, $"{ctx.Names.Ref(n)} — {evt} again while waiting on the first ask: waiting{Environment.NewLine}", ct);
             return new JobOutcome("walked: Waiting", quota, Event: "Waiting", Report: "");
         }
         report = $"{report}\n\n{await Evidence(n, dir, shots, started, ct)}\n\nLog: {Path.GetFileName(logPath)} on {ctx.Options.Machine}".Trim();
@@ -182,6 +185,17 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     }
 
     // The product a story is walked on: the one its labels name, else the default.
+    // A walk that found the tenant not running the story yet is asked again on a short clock, not
+    // at the next cut: a deploy lands after its cut (a ring follows the registry, a hand installs),
+    // so the cut that made the story live has always already passed when the tenant takes it.
+    public static readonly TimeSpan NotLiveRecheck = TimeSpan.FromMinutes(15);
+
+    // Whether a walk keeps its story until the next cut: every verdict but NotLive does.
+    internal static bool WaitsForTheCut(JobOutcome outcome)
+    {
+        return outcome.Event != "NotLive";
+    }
+
     internal static ProductOptions? ProductOf(IReadOnlySet<string> labels, IReadOnlyDictionary<string, ProductOptions> products)
     {
         return products.Values.FirstOrDefault(p => p.Labels.Any(labels.Contains)) ?? products.Values.FirstOrDefault(p => p.Default);
@@ -227,11 +241,11 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     }
 
     // What QA asked a person, and every comment since: the walk only looks for the answer.
-    internal static string Asked(IReadOnlyList<Board.StoryComment> comments)
+    internal static string Asked(IReadOnlyList<Board.StoryComment> comments, ISet<string> trusted)
     {
         var ordered = comments.OrderBy(c => c.At).ToList();
         var at = ordered.FindLastIndex(c => c.Body.Contains("<!-- qa-asked:", StringComparison.Ordinal));
-        return at < 0 ? "" : string.Join('\n', ordered.Skip(at).Select(c => $"--- {c.Author} {c.At:O}\n{c.Body}"));
+        return at < 0 ? "" : StoryDossier.Thread(ordered.Skip(at), trusted);
     }
 
     static string Value(IReadOnlyDictionary<string, string> env, string? name)
@@ -287,7 +301,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
 
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await w.WriteLineAsync($"== {Item} on {ctx.Options.Machine} slot {slot}");
-        var result = await ctx.Run(step.Command!, [], dir, env, TimeSpan.FromMinutes(step.Minutes), w, ct);
+        var result = await ctx.Run(step.Command!, [], dir, env, TimeSpan.FromMinutes(step.Minutes), w, ct, keep: ctx.Agent.IsSignal);
         var (refused, until) = ctx.Agent.Quota(result.Output);
         var quota = refused ? until ?? DateTimeOffset.UtcNow.AddHours(1) : (DateTimeOffset?)null;
         var ended = result.ExitCode == 0 ? "walked" : $"walk ended {(result.TimedOut ? "by timeout" : $"with exit {result.ExitCode}")}";

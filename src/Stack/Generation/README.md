@@ -48,7 +48,7 @@ attribute.
 | Holder | Declared in | Emits |
 |---|---|---|
 | `Services.Registration` | any project with `[Injectable]` types | `Add{Lifetime}` per injectable ([Injection](../Injection/README.md)) |
-| `Http.Endpoints` | the host | an `IEndpointEntry` per `[Http]` message that a handler in scope handles |
+| `Http.Endpoints` | the host | an `IEndpointEntry` per `[Http]` message |
 | `Http.InProcess` | the host | `ISender<T>` to `InProcessSender<T>` per `[Http]` message |
 | `Http.Clients` | the Sdk | an `HttpSender` per `[Http]` message, registered as its `ISender<T>` |
 | `Push.Publishers` | the host's endpoints holder, with `[Source]` on the Sdk | `AddPush` plus an `IPublisher<T>` to `PushPublisher<T>` per `[Pushed]` event |
@@ -76,11 +76,12 @@ public static partial void AddTasksPushPublishers(this IServiceCollection servic
 
 ### What an `[Http]` message derives
 
-- Members bind by `[Http]`'s route tokens, then by verb, then by `[AsRoute]`/`[AsQuery]`/`[AsHeader]`.
-  A route token with no route-bound member is `NSG001`.
+- Public instance properties with a public setter or `init` and no `[JsonIgnore]` bind, by `[Http]`'s route tokens, then by verb, then by `[AsRoute]`/`[AsQuery]`/`[AsHeader]`.
+  A route token with no route-bound member is `NSG001`. A token is a whole segment and may carry a
+  constraint, `?` or `*` (`{id:guid}`, `{id?}`, `{*rest}`); text beside it in a segment is `NSG017`.
 - A non-`required` query, header or body member is optional: an omitted one is never assigned, so the
   message's own initializer supplies the value. `required` carries into the generated body type.
-- Enums cross the wire as names (`JsonOptions.Wire`).
+- Enums cross the wire as names, and `long`, `ulong` and `decimal` as strings (`JsonOptions.Wire`).
 - The client's name is derived: the Area of the class that declares the `Http.Clients` holder, taken
   from `[assembly: MetadataTemplate]` when declared, else the second namespace segment
   ([Metadata](../Metadata/README.md)). The `HttpClients:{Area}` section overrides its address.
@@ -98,7 +99,16 @@ not a silent skip.
 | `NSG003` | Error | A `[Pushed]` event declares a public property |
 | `NSG014` | Error | A `[Queue]` message returns a result (`IMessage<T>`) |
 | `NSG015` | Error | A `[Queue]` message also carries `[Http]` |
-| `NSG004`-`NSG013` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
+| `NSG016` | Error | A `[Throttled]` `Identity` names no public string property bound from the body under its own name (no `[JsonPropertyName]`) |
+| `NSG017` | Error | An `[Http]` route segment mixes a token with literal text |
+| `NSG018` | Error | A route-bound member has no token in the route |
+| `NSG019` | Error | Two `[Http]` messages share a verb and a normalised route |
+| `NSG020` | Error | `[Source(Assembly = ...)]` names an assembly the compilation does not reference |
+| `NSG021` | Error | A `[Generated]` holder's class is nested, generic, not `partial` or in the global namespace |
+| `NSG022` | Error | A `[Generated]` holder has no `IServiceCollection` parameter |
+| `NSG023` | Error | An `[Http]` message declares no path |
+| `NSG024` | Error | A header-bound member (`[AsHeader]`) is a collection |
+| `NSG004`-`NSG013`, `NSG025` | Error / Warning | Entity mapping: see [Mapping](../Mapping/README.md). `NSG011` and `NSG012` are warnings; raise them in `.editorconfig` or `WarningsAsErrors` to refuse them |
 
 ### TypeScript client
 
@@ -115,8 +125,9 @@ Sdk's own sources and writes the file from the same `HttpModelFactory` the C# cl
 ```
 
 The Sdk must declare an `Http.Clients` holder; its messages are the ones carried. The target is
-incremental and an unchanged `sdk.ts` is not rewritten. A compile that does not resolve, two
-reachable types with one simple name, or an Sdk with no holder fails with `NSTS001`. Inside this
+incremental and an unchanged `sdk.ts` is not rewritten. A compile that does not resolve,
+two reachable types with one simple name, or an Sdk with no holder fails with `NSTS001`. A
+`[RegularExpression]` using a .NET-only construct warns `NSTS002` and is listed in `serverRules`, not emitted as `pattern`. Inside this
 repository an Sdk imports `NSail.TypeScriptGenerator.targets` from the project folder instead of
 the package ([NSail.Sample.Sdk](../Sample/NSail.Sample.Sdk/NSail.Sample.Sdk.csproj)).
 
@@ -125,13 +136,16 @@ the package ([NSail.Sample.Sdk](../Sample/NSail.Sample.Sdk/NSail.Sample.Sdk.cspr
 ```csharp
 var compilation = new CompilationUnitBuilder()
     .AddSourceFiles("./Services/Registration/Sources/**/*.cs")
-    .AddFrameworkReferences("net10.0")
+    .AddFrameworkReferences()
     .AddContainingAssembly<GeneratedAttribute>()
     .Build("TestAssembly");
 
 GeneratorDriver driver = CSharpGeneratorDriver.Create(new ServiceRegistrationSourceGenerator());
 driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var output, out var diagnostics);
 ```
+
+`AddFrameworkReferences` references every assembly the test host can load, not only those already
+loaded, so whether `output` compiles does not depend on which tests ran first.
 
 ## How it fits
 

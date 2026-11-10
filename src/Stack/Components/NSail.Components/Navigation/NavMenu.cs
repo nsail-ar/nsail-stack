@@ -4,6 +4,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.Logging;
 using NSail.Localization;
 using NSail.Settings;
 
@@ -38,9 +39,13 @@ public sealed class NavMenu : IDisposable
 
     readonly PersistentComponentState? _handoff;
 
+    readonly ILogger<NavMenu>? _log;
+
     Task<IReadOnlyList<NavMenuItem>>? _items;
 
     Task<AuthenticationState>? _session;
+
+    int _generation;
 
     IReadOnlyList<NavMenuArrangement>? _arranged;
 
@@ -59,7 +64,8 @@ public sealed class NavMenu : IDisposable
         IEnumerable<INavMenuSearch>? searches = null,
         IEnumerable<INavMenuArrangement>? arrangements = null,
         LanguageProvider? language = null,
-        PersistentComponentState? handoff = null)
+        PersistentComponentState? handoff = null,
+        ILogger<NavMenu>? log = null)
     {
         _contributors = contributors;
         _counts = counts;
@@ -67,6 +73,7 @@ public sealed class NavMenu : IDisposable
         _arrangements = arrangements ?? [];
         _language = language ?? new LanguageProvider();
         _handoff = handoff;
+        _log = log;
     }
 
     /// <summary>The tree, built once for the session it is asked against. The session is the
@@ -93,13 +100,17 @@ public sealed class NavMenu : IDisposable
         // answer between them.
         _arranged = null;
 
+        // Which build a late arrangement read belongs to: a build of a session that was
+        // replaced finishes for its own caller and writes nothing the new session reads.
+        var generation = ++_generation;
+
         // Taken SYNCHRONOUSLY, before Build is entered: the whole value of the handoff is that
         // the first build completes without a single await that has not already finished, so
         // the drawer carries its entries in the client's first render batch rather than in the
         // one after the splash has already come off over an empty map.
         Adopt();
 
-        return _items = Build();
+        return _items = Build(generation);
     }
 
     /// <summary>What each counting contributor says right now, by entry Name. Not remembered,
@@ -156,7 +167,7 @@ public sealed class NavMenu : IDisposable
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                continue;
+                _log?.LogWarning(exception, "Navigation search {Search} failed and was left out", search.GetType().Name);
             }
         }
 
@@ -185,7 +196,7 @@ public sealed class NavMenu : IDisposable
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                continue;
+                _log?.LogWarning(exception, "Navigation count for {Entry} failed and was left out", contributor.Name);
             }
         }
 
@@ -238,7 +249,7 @@ public sealed class NavMenu : IDisposable
         });
     }
 
-    async Task<IReadOnlyList<NavMenuItem>> Build()
+    async Task<IReadOnlyList<NavMenuItem>> Build(int generation)
     {
         var items = new List<NavMenuItem>();
 
@@ -253,7 +264,7 @@ public sealed class NavMenu : IDisposable
         // arrangement is read against everything said before it — the contributions, and any
         // arrangement ahead of it in the cascade — so a row can only arrange a door that is
         // really there, and the last word belongs to whoever sits last.
-        foreach (var arrangement in await Arranged())
+        foreach (var arrangement in await Arranged(generation))
         {
             if (arrangement.Entries.Count == 0)
             {
@@ -271,17 +282,17 @@ public sealed class NavMenu : IDisposable
     // this tree was actually built from. The rows and not the tree, because resolving them
     // against the contributions is local work and the LANGUAGE it resolves under is the
     // client's own.
-    Task<IReadOnlyList<NavMenuArrangement>> Arranged()
+    Task<IReadOnlyList<NavMenuArrangement>> Arranged(int generation)
     {
         if (_arranged is { } arranged)
         {
             return Task.FromResult(arranged);
         }
 
-        return Read();
+        return Read(generation);
     }
 
-    async Task<IReadOnlyList<NavMenuArrangement>> Read()
+    async Task<IReadOnlyList<NavMenuArrangement>> Read(int generation)
     {
         var arranged = new List<NavMenuArrangement>();
 
@@ -290,7 +301,10 @@ public sealed class NavMenu : IDisposable
             arranged.Add(await arranger.GetArrangement());
         }
 
-        _arranged = arranged;
+        if (generation == _generation)
+        {
+            _arranged = arranged;
+        }
 
         return arranged;
     }

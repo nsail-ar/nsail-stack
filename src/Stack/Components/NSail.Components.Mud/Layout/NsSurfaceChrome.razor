@@ -12,7 +12,7 @@
 
 @* An overlay's row is the SHELL's and stands from the first frame: the page inside is drawn by
    an NsForm, which renders neither of its branches until its first read answers, so a row drawn
-   in there is a blank box with no way out for the length of that read (nsail#2053). Every piece
+   in there is a blank box with no way out for the length of that read. Every piece
    of it is the title bar's own — the glyph/spinner slot, the name, the page's utilities and the
    X — handed what the page announced, or what its route derives until it does.
 
@@ -56,7 +56,7 @@
     // The page's own word while it has one, and the name its route derives before it renders at
     // all: a page's title bar passes the key its own type resolves (NsPartial.GetTitle), so the
     // name drawn at once is the page's and nothing swaps under the reader. A page that refines
-    // it from what it read (SettlementPage) replaces it the moment it announces.
+    // it from what it read replaces it the moment it announces.
     string? GetName()
     {
         if (Surface?.Title is { } announced)

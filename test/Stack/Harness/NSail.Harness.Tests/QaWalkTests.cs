@@ -34,12 +34,15 @@ public class QaWalkTests
             new(t.AddHours(2), "done, it works", "ana"),
         };
 
-        var asked = QaJob.Asked(comments);
+        var asked = QaJob.Asked(comments, new HashSet<string> { "crew-bot" });
 
         Assert.DoesNotContain("first ask", asked);
         Assert.Contains("second ask", asked);
         Assert.Contains("done, it works", asked);
-        Assert.Equal("", QaJob.Asked([new StoryComment(t, "nothing asked", "x")]));
+        Assert.Contains("--- ana ", asked);
+        Assert.Contains("(untrusted)", asked);
+        Assert.Contains("UNTRUSTED", asked);
+        Assert.Equal("", QaJob.Asked([new StoryComment(t, "nothing asked", "x")], new HashSet<string>()));
     }
 
     [Fact]
@@ -52,6 +55,19 @@ public class QaWalkTests
         Assert.Contains("\"command\":\"npx\"", json);
         Assert.Contains("https://o.test;https://t.test", json);
         Assert.Contains("/shots/7", json);
+    }
+
+    [Fact]
+    public void ANotLiveWalkIsAskedAgainOnItsClockAndEveryOtherVerdictWaitsForTheCut()
+    {
+        Assert.False(QaJob.WaitsForTheCut(new JobOutcome("walked: NotLive", Event: "NotLive")));
+
+        foreach (var verdict in new[] { "Ok", "Bug", "Asked", "Doubt", "NoVerdict" })
+        {
+            Assert.True(QaJob.WaitsForTheCut(new JobOutcome($"walked: {verdict}", Event: verdict)));
+        }
+
+        Assert.InRange(QaJob.NotLiveRecheck, TimeSpan.FromMinutes(5), TimeSpan.FromHours(1));
     }
 
     [Fact]

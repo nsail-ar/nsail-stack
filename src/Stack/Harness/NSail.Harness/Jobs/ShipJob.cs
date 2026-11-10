@@ -25,7 +25,7 @@ public sealed class ShipJob(WorkItem item, JobContext ctx) : IJob
         var p = Item.Product!;
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
-        await Shell.Git(dir, "fetch", "-q", "--force", "origin", $"+refs/tags/{p}/*:refs/tags/{p}/*");
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", ctx.Workspace.Url, $"+refs/tags/{p}/*:refs/tags/{p}/*"]);
         var tags = (await Shell.Git(dir, "tag", "-l", $"{p}/v*", "--sort=-v:refname")).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var last = tags.SkipWhile(t => t != tag).Skip(1).FirstOrDefault();
         var range = last is null ? tag : $"{last}..{tag}";
@@ -91,6 +91,6 @@ public sealed class ShipJob(WorkItem item, JobContext ctx) : IJob
     // The stories a release's commit messages name (`{key}#{n}`), once each.
     internal static IReadOnlyList<int> Named(string log, string key)
     {
-        return Regex.Matches(log, $@"\b{Regex.Escape(key)}#(\d+)").Select(m => int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)).Distinct().Order().ToList();
+        return Regex.Matches(log, $@"\b{Regex.Escape(key)}#(\d+)").Select(m => int.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : 0).Where(n => n > 0).Distinct().Order().ToList();
     }
 }

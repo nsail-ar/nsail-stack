@@ -53,10 +53,12 @@ public interface IBoard
         return Task.FromResult<Uri?>(null);
     }
 
-    Task<int> CreateStory(string title, string body, CancellationToken ct = default);
+    // The labels travel in the create call: a cut after it leaves a story the next pass can find.
+    Task<int> CreateStory(string title, string body, IReadOnlyCollection<string> labels, CancellationToken ct = default);
 
-    // The open story titled exactly so (exact) or whose title starts so (the oldest), if any.
-    Task<int?> FindOpen(string title, bool exact = true, CancellationToken ct = default);
+    // The open story titled exactly so (exact) or whose title starts so (the oldest), if any, narrowed to those carrying
+    // all of labels when given; a consistent read, never a lagging index. Identity is the title: labels are edited by hand.
+    Task<int?> FindOpen(string title, IReadOnlyCollection<string> labels, bool exact = true, CancellationToken ct = default);
 
     // The stories closed since this instant, with the stage each one stands in: one closed outside
     // the harness (a hand, a script) keeps whatever column it had until something moves it.
@@ -80,6 +82,25 @@ public interface IBoard
     }
 
     Task CloseVersion(string version, CancellationToken ct = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    // Every story wearing the label, open or closed, with its body: how a watcher finds the story it
+    // already filed. A board that cannot list them answers none, and the watcher files again.
+    Task<IReadOnlyList<FiledStory>> Labelled(string label, CancellationToken ct = default)
+    {
+        return Task.FromResult<IReadOnlyList<FiledStory>>([]);
+    }
+
+    // The stories the board links as blocking this one, open or closed.
+    Task<IReadOnlyList<int>> BlockedBy(int story, CancellationToken ct = default)
+    {
+        return Task.FromResult<IReadOnlyList<int>>([]);
+    }
+
+    // Links the blocker as blocking the story, where the board keeps such links.
+    Task Block(int story, int blocker, CancellationToken ct = default)
     {
         return Task.CompletedTask;
     }

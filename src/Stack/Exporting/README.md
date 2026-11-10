@@ -42,7 +42,7 @@ var book = ExportBook.Of("Contacts", new ExportTable
 
 var writer = writers.For(ExportKind.Csv)!;
 
-await writer.WriteAsync(book, stream, CultureInfo.CurrentCulture, cancellationToken);
+await writer.WriteAsync(book, stream, CultureInfo.CurrentCulture, TimeZoneInfo.Local, cancellationToken);
 var name = ExportWriters.FileName(book, writer);    // "Contacts.csv"
 ```
 
@@ -59,14 +59,14 @@ There are no configuration keys. The registration is the configuration.
 | `ExportRow` | `Values` positionally against the columns, as values and not printed text; `ExportRow.Of(...)`. |
 | `ExportFormat` | `Text`, `Number`, `Money`, `Date`, `Percent`. |
 | `ExportKind` | `Excel`, `Csv`, `Pdf`. Only `Excel` and `Csv` have a writer here. |
-| `IExportWriter` | `Kind`, `Icon`, `Extension`, `ContentType`, `WriteAsync(book, destination, culture, ct)`. The culture is passed in, never read from the thread. |
+| `IExportWriter` | `Kind`, `Icon`, `Extension`, `ContentType`, `WriteAsync(book, destination, culture, zone, ct)`. The culture and time zone are passed in, never read from the thread or the process. |
 | `ExportWriters` | The registered writers in `ExportKind` order: `All`, `IsEmpty`, `For(kind)`, and `FileName(book, writer)`, which replaces characters a file name cannot carry. |
 
 The two writers differ on purpose:
 
 | | `.xlsx` | `.csv` |
 |---|---|---|
-| Cells | Typed values with a per-column number format (`#,##0.####`, `#,##0.00`, `0.00%`, the culture's short date) | Text in the culture's separators |
+| Cells | Typed values with a per-column number format (`#,##0.####`, `#,##0.00`, `0.00%`, the culture's short date); a text cell starting with `=`, `+`, `-`, `@`, tab or CR gets a leading `'` that is part of the value, a typed number, date or time is untouched | Text in the culture's separators; a text cell starting with `=`, `+`, `-`, `@`, tab or CR gets a leading `'` so a spreadsheet does not run it |
 | Pages | One sheet per table (names cut to 31 characters), header row frozen, auto-filter on | Tables flattened in order with a blank line between them |
 | Encoding | OOXML | UTF-8 with a byte-order mark |
 | Separator | n/a | `;` where the culture's decimal mark is a comma, `,` otherwise; never configured |

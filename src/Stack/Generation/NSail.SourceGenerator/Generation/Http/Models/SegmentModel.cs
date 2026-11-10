@@ -9,7 +9,7 @@ public enum SegmentType
     Parameter
 }
 
-public class SegmentModel
+public record SegmentModel
 {
     public SegmentType Type { get; set; }
 

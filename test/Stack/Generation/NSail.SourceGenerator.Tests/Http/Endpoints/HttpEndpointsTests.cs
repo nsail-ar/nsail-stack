@@ -21,11 +21,24 @@ public class HttpEndpointsTests
     {
         var builder = new CompilationUnitBuilder()
             .AddSourceFiles("./Http/Endpoints/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>() 
-            .AddContainingAssembly<IEndpointRouteBuilder>();
+            .AddContainingAssembly<IEndpointRouteBuilder>()
+            .AddContainingAssembly<Microsoft.Extensions.DependencyInjection.IServiceCollection>()
+            .AddContainingAssembly<System.Net.Http.IHttpClientFactory>()
+            .AddContainingAssembly<NSail.Messaging.IMessage>()
+            .AddContainingAssembly<NSail.Messaging.Runtime.Sending.ISender<NSail.Messaging.IMessage>>()
+            .AddContainingAssembly<NSail.Messaging.Http.HttpSender<NSail.Messaging.IMessage>>()
+            .AddContainingAssembly<NSail.Messaging.Runtime.Pipelines.InProcessSendPipeline<NSail.Messaging.IMessage>>()
+            .AddContainingAssembly<NSail.Messaging.WebApi.IEndpointEntry>()
+            .AddContainingAssembly<NSail.Metadata.MetadataProvider>()
+            .AddContainingAssembly<Microsoft.AspNetCore.Mvc.FromQueryAttribute>()
+            .AddContainingAssembly<Microsoft.AspNetCore.Http.HttpContext>()
+            .AddContainingAssembly<Microsoft.AspNetCore.Http.HttpResults.Ok>()
+            .AddContainingAssembly<Microsoft.AspNetCore.Routing.RouteData>()
+            .AddContainingAssembly<System.Text.Json.JsonSerializerOptions>();
 
         var compilation = builder.Build("HttpEndpointsTestAssembly");
 
@@ -35,6 +48,7 @@ public class HttpEndpointsTests
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
 
         Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(outputCompilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error));
 
         var runResult = driver.GetRunResult();
         var generatedTrees = runResult.GeneratedTrees;
@@ -79,11 +93,36 @@ public class HttpEndpointsTests
         Assert.DoesNotContain("pipeline.Execute(message, null, cancellationToken)", source);
     }
 
+    [Theory]
+    [InlineData("TestHeadMessage", "HEAD")]
+    [InlineData("TestOptionsMessage", "OPTIONS")]
+    public void HttpEndpoints_Map_head_and_options_through_MapMethods(string messageName, string verb)
+    {
+        var source = GenerateEntry(messageName);
+
+        Assert.Contains("builder.MapMethods(", source);
+        Assert.Contains($"new[] {{ \"{verb}\" }}", source);
+        Assert.DoesNotContain("builder.MapHead(", source);
+        Assert.DoesNotContain("builder.MapOptions(", source);
+        Assert.Contains("[FromQuery] string? tag", source);
+    }
+
+    [Theory]
+    [InlineData("TestPutMessage", "MapPut")]
+    [InlineData("TestPatchMessage", "MapPatch")]
+    [InlineData("TestDeleteMessage", "MapDelete")]
+    public void HttpEndpoints_Map_the_remaining_verbs_through_their_own_method(string messageName, string method)
+    {
+        var source = GenerateEntry(messageName);
+
+        Assert.Contains($"builder.{method}(", source);
+    }
+
     static string GenerateEntry(string messageName)
     {
         var builder = new CompilationUnitBuilder()
             .AddSourceFiles("./Http/Endpoints/Sources/**/*.cs")
-            .AddFrameworkReferences("net10.0")
+            .AddFrameworkReferences()
             .AddContainingAssembly<GeneratedAttribute>()
             .AddContainingAssembly<TestGetMessage>()
             .AddContainingAssembly<HttpAttribute>()

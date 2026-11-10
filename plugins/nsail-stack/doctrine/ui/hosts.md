@@ -40,7 +40,7 @@ being read and dropped the status word onto a ground it had not been measured ag
 **A collection that offers a way IN names itself, and the name's bar is the only seat Agregar
 has.** `Title` draws that bar above the grid — heading left, add control at the right edge, one
 baseline — and unset there is no bar at all, so no face a hand can press: a grid wiring `NewRow`
-with no `Title` is refused by the Architecture suite rather than shipped with nothing for a hand
+with no `Title` is refused by the Architecture suite (enforced in the products' repository) rather than shipped with nothing for a hand
 to reach. There is no second position to drift to; an Agregar under the rows is the shape this
 rule replaced, after it had already split the house in two (cases). **It is the family's rule,
 not the table's** — `NsListEditor`'s bar is the same `.ns-collection-bar`, so the two collection
@@ -203,6 +203,10 @@ own word is the control's name, so there is no string, no glyph and no handler a
   own is not blank and orders by them.
 - **An order and the list's own filter do not reach each other**: both narrow the same rows in
   hand, so a filter press keeps the order and a heading press keeps the filter.
+- **The order is computed once per list, column, direction and culture**, not on every render: a
+  held list of a few thousand rows re-sorted on each parent render is the cost. "The list" is the
+  instance of `Rows.Items` and its length, so **a host that edits a row in place hands the grid
+  a new list** — the same list with a changed cell keeps the row where its old value put it.
 - **The file Exportar writes is the order on screen** ([exporting.md](../exporting.md)).
 - **Stacked, the list has no headings to press**: a card draws no header row, on a phone or in
   a container under 740px alike, so the order offered there is the one already in effect.
@@ -262,7 +266,11 @@ are asked in that same breath, for the reason and through the walk the list's ar
   Cancelar already uses — and the save goes through, which is what makes the keyboard's own
   trailing row cost nothing (Enter on the last row adds one, below). Asked only of a
   never-confirmed row: reopening a row and emptying its boxes is an EDIT, and the row's own rule
-  answers for that. **A grid that answers nothing commits or refuses every open row**, so no
+  answers for that. A row's Confirmar, Cancelar, Eliminar and Agregar, and the submit's close of
+  the row, do nothing while the host's Runner is busy: the row stays as it was, and a Guardar pressed
+  in that window saves nothing — the one mute `false` besides `Abort`, because closing the row would
+  raise on a Runner that refuses a second run.
+  **A grid that answers nothing commits or refuses every open row**, so no
   screen quietly sends a row its own rule would have thrown back — and the Stack derives nothing
   from `TRow`, where a default quantity and a blank description cannot be told from a line
   somebody meant. The counter sale is the screen that asked the question (cases);
@@ -340,7 +348,8 @@ are asked in that same breath, for the reason and through the walk the list's ar
   component test) answers `Page`, as a desktop does.
 - **Scrolling keeps `Cargar más` under the rows.** A first page shorter than the viewport never
   produces a scroll event to ask for the second, and a keyboard has no floor gesture at all; the
-  control disappears only when the list is exhausted.
+  control disappears when the list is exhausted, or when a read failed: the failure strip with
+  Retry takes its place and scrolling asks for nothing until Retry.
 - **Reloading in scroll mode always starts the list over**, `first` or not: the accumulated rows
   *are* the position, so a search, a filter or a sort leaves no row of the previous result set on
   screen. A page still in flight is superseded (`RunOptions.Replace` plus a generation counter),
@@ -356,7 +365,9 @@ are asked in that same breath, for the reason and through the walk the list's ar
   instead is the answer already on screen, so a superseded read changes neither the rows nor the
   total the pager bounds itself against, and so not the page either. It cannot refuse by
   throwing: nothing in the vendor's grid catches, and the escape reaches `NsErrorBoundary`,
-  which wraps the whole screen.
+  which wraps the whole screen. A page whose read *failed* is no answer either: the pager goes
+  back to the page shown, answered from the rows in hand with no second query, and the failure
+  strip with Retry (which rereads the shown page) stands over them.
 
 ### Selection
 
@@ -462,6 +473,11 @@ so it reads as a stretch of time; the label sits at the hour the frame opens, an
 answers the pointer on bare closed time with the day's name, while every block — positioned,
 with a z-index — stays above it and keeps its own click and hover.
 
+**A color reaches a `style` only through `NsColorText`**: a block's `Color` and a tint's `Color`
+are strings a model can carry, so each is written only if it is a hex, an `rgb()`/`rgba()` of
+numbers or a bare keyword. Anything else — `hsl()`, `var(--x)`, text with a `;` or a `url()` —
+is dropped without a message and the block or the wash is drawn uncolored.
+
 **A block draws only the lines it can draw WHOLE, and always draws the first.** A block's
 height IS its time, so it is the one box that cannot be clipped anywhere convenient: what a
 half-hour block on a dense grid has room for is one line, and a second one rendered into it is
@@ -528,13 +544,13 @@ with no `SecurityManager`/`Session`**, so an `Eligible` on a subject-dashboard i
 by the permissive default (`security is null || session is null || …`, every existing `Eligible`
 lambda's own guard) and never actually narrows anything there — today no subject-dashboard
 contributor declares one; a card that means to needs its own field check inside the card, the way
-a card without `Eligible` at all already has to.
+a card without `Eligible` at all already has to: `NsPartial.CanSend<T>(field, subjectId)`, which
+answers no when no grant can admit that subject (permissions.md, The client consumes policies).
 
 **A card reads through `NsPartial.Handoff`, never `Send`** — the prerender resolves the read and
 persists the answer, the WebAssembly client adopts it, and the page load costs one query per card
 instead of two. A subject card passes its subject as the scope. **One key is one answer for the
-copies of a card**: a card drawn twice (a title bar drawing the brand beside the drawer's own
-copy) is persisted once and adopted by each copy on its first read, for as long as one copy stays
+copies of a card**: a card drawn twice (the same card in two hosts) is persisted once and adopted by each copy on its first read, for as long as one copy stays
 mounted — the state takes one write per key, and the second one throwing would empty every handoff
 of the page; the guard is `NsPartial`'s, so a host mounts what it likes. A copy that reads again
 sends, and its read outdates the arrival's answer: a copy mounted after it sends too, as does a
@@ -607,6 +623,9 @@ about the data instead of an answer about the network.
   had none.
 - **The words are the sender's**, resolved through `ProblemManager.GetMessage` — the Stack
   invents no wording, so a reason that reads badly is fixed in its own kit's strings.
+- **NsTable's own page reads follow the same rule.** A page whose `OnQuery` failed or was cancelled
+  is not an answer: scroll mode appends nothing and does not advance, paged mode keeps the pager on
+  the page shown, and the grid draws a failure strip with Retry instead of "No records".
 - A failed read **replaces** the content rather than sitting above it: a filter that could not
   be applied leaves the previous filter's rows on screen, which is its own lie.
 

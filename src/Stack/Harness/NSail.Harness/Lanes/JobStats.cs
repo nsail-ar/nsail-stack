@@ -15,7 +15,7 @@ namespace NSail.Harness.Lanes;
 // history it is a log, never state: a file lost or unreadable starts the count again.
 public sealed class JobStats
 {
-    public static readonly string[] Roles = ["analyst", "dev", "gate", "reviewer", "qa", "release"];
+    public static readonly string[] Roles = ["analyst", "dev", "gate", "reviewer", "qa", "release", "watch"];
 
     // A histogram's upper edges in seconds: 15 s, each half again the one before, the last past
     // two days; one more bucket holds what passes it.
@@ -31,7 +31,7 @@ public sealed class JobStats
     readonly StatsData _data;
 
     // No root keeps the count in memory only.
-    public JobStats(string? root, TimeZoneInfo? zone = null)
+    public JobStats(string? root, TimeZoneInfo? zone = null, ILogger? log = null)
     {
         _zone = zone ?? TimeZoneInfo.Local;
         if (root is null)
@@ -41,19 +41,7 @@ public sealed class JobStats
         }
         Directory.CreateDirectory(root);
         _path = Path.Combine(root, "stats.json");
-        _data = Load(_path);
-    }
-
-    static StatsData Load(string path)
-    {
-        try
-        {
-            return File.Exists(path) ? JsonSerializer.Deserialize<StatsData>(File.ReadAllText(path), Json) ?? new StatsData() : new StatsData();
-        }
-        catch (JsonException)
-        {
-            return new StatsData();
-        }
+        _data = StateFile.Read(_path, () => new StatsData(), Json, log);
     }
 
     public static string RoleOf(WorkKind kind)
@@ -65,7 +53,9 @@ public sealed class JobStats
             WorkKind.Review => "reviewer",
             WorkKind.Qa => "qa",
             WorkKind.Release or WorkKind.Ship => "release",
-            _ => "gate",
+            WorkKind.Gate or WorkKind.Main => "gate",
+            WorkKind.Watch => "watch",
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
     }
 
@@ -91,7 +81,8 @@ public sealed class JobStats
     }
 
     // A job ended: with no outcome it broke. One that found nothing to do, or met the quota wall, is
-    // not the crew's work and is not counted.
+    // not the crew's work and is not counted; nor is one that ended on the provider, which the caller
+    // never hands here.
     public void Ended(WorkKind kind, int? story, DateTimeOffset started, DateTimeOffset ended, TimeSpan? waited, JobOutcome? outcome)
     {
         if (outcome is { Quiet: true }) return;
@@ -269,9 +260,7 @@ public sealed class JobStats
         if (_path is null) return;
         try
         {
-            var tmp = _path + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(_data, Json));
-            File.Move(tmp, _path, overwrite: true);
+            StateFile.Write(_path, _data, Json);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

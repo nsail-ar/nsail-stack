@@ -18,6 +18,13 @@ public class FileSystemStorageProvider : IStorageProvider
     // constructor overload that takes useAsync has no default to fall back on.
     const int BufferSize = 81920;
 
+    // Marks a Put still being copied; List never reports one. Only this exact form is skipped
+    // (prefix plus the 32 hex digits of Guid "N"), so a key that merely starts with the prefix
+    // stays listable.
+    const string StagingPrefix = ".put-";
+
+    static readonly int StagingNameLength = StagingPrefix.Length + 32;
+
     public string Type
     {
         get { return ProviderType; }
@@ -41,9 +48,32 @@ public class FileSystemStorageProvider : IStorageProvider
 
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
-        await using var file = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+        // Copied beside the target and renamed over it: a cancel or a throwing source leaves the
+        // previous object untouched and never a partial file under the key.
+        var staging = Path.Combine(Path.GetDirectoryName(path)!, StagingPrefix + Guid.NewGuid().ToString("N"));
 
-        await content.CopyToAsync(file, BufferSize, cancelToken);
+        try
+        {
+            await using (var file = new FileStream(staging, FileMode.CreateNew, FileAccess.Write, FileShare.None, BufferSize, useAsync: true))
+            {
+                await content.CopyToAsync(file, BufferSize, cancelToken);
+            }
+
+            File.Move(staging, path, overwrite: true);
+        }
+        catch
+        {
+            try
+            {
+                File.Delete(staging);
+            }
+            catch (Exception)
+            {
+                // The original failure is the one the caller must see.
+            }
+
+            throw;
+        }
     }
 
     public Task<ObjectContent?> Get(StorageTarget target, string key, CancellationToken cancelToken = default)
@@ -78,6 +108,7 @@ public class FileSystemStorageProvider : IStorageProvider
 
         var objects = Directory
             .EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Where(path => !IsStaging(Path.GetFileName(path)))
             .Select(path => new { Path = path, Key = Path.GetRelativePath(root, path).Replace('\\', '/') })
             .Where(entry => prefix is not { Length: > 0 } || entry.Key.StartsWith(prefix, StringComparison.Ordinal))
             .Select(entry => new StoredObject
@@ -94,7 +125,13 @@ public class FileSystemStorageProvider : IStorageProvider
 
     public Task Delete(StorageTarget target, string key, CancellationToken cancelToken = default)
     {
-        File.Delete(Resolve(target, key));
+        var path = Resolve(target, key);
+
+        // File.Delete throws when the directory is absent; a missing object is not a failure.
+        if (Directory.Exists(Path.GetDirectoryName(path)))
+        {
+            File.Delete(path);
+        }
 
         return Task.CompletedTask;
     }
@@ -103,6 +140,13 @@ public class FileSystemStorageProvider : IStorageProvider
     public Uri? Link(StorageTarget target, string key)
     {
         return null;
+    }
+
+    static bool IsStaging(string name)
+    {
+        return name.Length == StagingNameLength
+            && name.StartsWith(StagingPrefix, StringComparison.Ordinal)
+            && name.AsSpan(StagingPrefix.Length).IndexOfAnyExcept("0123456789abcdef") < 0;
     }
 
     static string Root(StorageTarget target)

@@ -5,40 +5,85 @@ using System.Collections.Concurrent;
 
 namespace NSail.Localization;
 
-/// <summary>Holds one merged dictionary per language for the whole process, built from the
-/// registered IStringSources on first use. A server ends up holding every language it was
-/// asked for; a client asks for one and never pays for the rest.</summary>
+/// <summary>Holds one merged dictionary per supported language for the whole process, built from
+/// the registered IStringSources on first use. A language the install does not carry answers the
+/// default's dictionary, so the cache is bounded by the supported set whatever the caller passes;
+/// that set is fixed at first use, as request localization is configured once.
+/// GetAsync awaits the sources; Get serves the cache and builds only from sources that complete
+/// synchronously, so it never blocks on a pending task.</summary>
 public sealed class StringCatalog
 {
     readonly IEnumerable<IStringSource> _sources;
+    readonly LanguageOptions _options;
+    readonly Lazy<IReadOnlyCollection<string>> _supported;
     readonly ConcurrentDictionary<string, IReadOnlyDictionary<string, string>> _languages = new();
 
-    public StringCatalog(IEnumerable<IStringSource> sources)
+    public StringCatalog(IEnumerable<IStringSource> sources, LanguageOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(sources);
 
         _sources = sources;
+        _options = options ?? new LanguageOptions();
+        _supported = new Lazy<IReadOnlyCollection<string>>(() => Languages.Supported(_sources, _options).ToArray());
     }
 
-    public IReadOnlyDictionary<string, string> Get(string language)
+    public async Task<IReadOnlyDictionary<string, string>> GetAsync(string language)
     {
-        return _languages.GetOrAdd(language, Load);
-    }
+        var key = Resolve(language);
 
-    IReadOnlyDictionary<string, string> Load(string language)
-    {
+        if (_languages.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
         var entries = new Dictionary<string, string>();
 
         foreach (var source in _sources)
         {
-            // Embedded sources complete synchronously; a future async source (database)
-            // will be preloaded before first render instead of resolved here.
-            foreach (var entry in source.GetStrings(language).GetAwaiter().GetResult())
+            foreach (var entry in await source.GetStrings(key).ConfigureAwait(false))
             {
                 entries[entry.Key] = entry.Value;
             }
         }
 
-        return entries;
+        return _languages.GetOrAdd(key, entries);
+    }
+
+    /// <summary>The cached dictionary, built now when every source answers synchronously. A source
+    /// still pending throws: await GetAsync for that language first.</summary>
+    public IReadOnlyDictionary<string, string> Get(string language)
+    {
+        var key = Resolve(language);
+
+        if (_languages.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        var entries = new Dictionary<string, string>();
+
+        foreach (var source in _sources)
+        {
+            var pending = source.GetStrings(key);
+
+            if (!pending.IsCompleted)
+            {
+                throw new InvalidOperationException(
+                    $"The strings for '{key}' are not loaded and a source is asynchronous: await StringCatalog.GetAsync('{key}') before Get.");
+            }
+
+            foreach (var entry in pending.GetAwaiter().GetResult())
+            {
+                entries[entry.Key] = entry.Value;
+            }
+        }
+
+        return _languages.GetOrAdd(key, entries);
+    }
+
+    string Resolve(string language)
+    {
+        return _supported.Value.FirstOrDefault(l => string.Equals(l, language, StringComparison.OrdinalIgnoreCase))
+            ?? _options.Default;
     }
 }

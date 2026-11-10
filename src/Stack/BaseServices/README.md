@@ -28,6 +28,7 @@ Web host (`Microsoft.NET.Sdk.Web`):
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddBaseWebApi();
+builder.AddTenantKeys();                       // the KeyProtector Storage seals with
 builder.AddBaseWebApp();                       // only if the host renders Blazor
 
 builder.Services.AddSampleWebApi(builder.Configuration);   // your kits and app
@@ -61,41 +62,57 @@ A host that offers `backup` and `restore` calls `InstallConsole.Requested(args)`
 ## What each call does
 
 `AddBaseWebApi` registers telemetry (`AddTelemetry`), the messaging runtime, the error handler,
-the middleware below, the permissive `RequestBudgetProvider`, `SecurityOptions` (from
-`Security`), the tenant feature provider and a hosted service that publishes the declared
+the middleware below, the `MembershipStampMemo`, the permissive `RequestBudgetProvider`,
+`SecurityOptions` (from `Security`), the tenant feature provider and a hosted service that publishes the declared
 features, the push server end with the tenant as its audience, authorization, metadata, Swagger
 with schema ids derived from `MetadataProvider`, and a DataProtection key ring persisted under
-`<content root>/data/keyring` (so a backup carries it). It sets `RouteHandlerOptions.ThrowOnBadRequest` in every environment so a binding failure takes
+`<content root>/data/keyring` (so a backup carries it) under the host's `ApplicationName` as its DataProtection application name (the first link of the purpose chain: renaming the application leaves what was sealed under the old name unreadable). It sets `RouteHandlerOptions.ThrowOnBadRequest` in every environment so a binding failure takes
 the same exception path everywhere.
+
+`AddTenantKeys` registers the `KeyProtector` that seals with the current tenant's key, one
+`{slug}.key` file per tenant under `Security:KeysDirectory`. A tenant with no file makes a seal
+or an open throw `MissingEncryptionKeyException`. Outside Development a host without the
+directory refuses to compose; Development without it seals under a fixed key.
 
 `UseBaseWebApi` builds the pipeline in this order:
 
 1. Forwarded headers, only when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is true (`X-Forwarded-For`
-   and `X-Forwarded-Proto`, any proxy trusted).
-2. `BuildVersionMiddleware`: `BuildVersion.Current` on every response as `X-NSail-Version`.
+   and `X-Forwarded-Proto`), believed only from the peers in `Security:TrustedProxies`
+   (addresses or CIDR networks). Empty trusts nobody and logs a warning: behind a proxy every
+   request then reads as `http`, so HSTS is not sent and HTTPS redirection can loop, and naming
+   the proxy is required to keep both. With the flag off outside Development, startup logs a
+   warning that behind a proxy all callers share one address.
+2. `BuildVersionMiddleware` (`X-NSail-Version`, signed-in callers only) and `ResponseHeadersMiddleware` (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, every response).
 3. Error handler, then HTTPS redirection.
-4. `TenancyMiddleware` and `TenantStateMiddleware`, only where the host resolves a tenant.
+4. `TenancyMiddleware` (403 first when `Tenancy:ProxySecret` is set and `X-Proxy-Secret` does not carry it) and `TenantStateMiddleware`, only where the host resolves a tenant.
 5. Authentication and authorization.
 6. `TenantClaimMiddleware`, only where the host resolves a tenant.
 7. `TicketEpochMiddleware`, every host: refuses a ticket stamped with a generation other than
    `Security:TicketEpoch` (0 refuses nothing).
-8. `ThrottleMiddleware`: a per-caller, per-message fixed window of one minute, read from the
-   message's `[Throttled(perMinute)]` attribute; messages without it pass.
+8. `ThrottleMiddleware`: a per-caller (IPv4 address, or IPv6 /64), per-message fixed window of one minute, read from the
+   message's `[Throttled(perMinute)]` attribute; messages without it pass. `Identity = nameof(Msg.Prop)` adds a second window per message and
+   submitted identity (`IdentityPerMinute`, default `PerMinute`), across all addresses. The property must be a public `string` of the body without `[JsonPropertyName]`; NSG016 refuses any other.
 9. `RequestBudgetMiddleware`: a per-tenant fixed window of one minute over every authenticated message send,
    against `RequestBudgetProvider.PerMinute` (the base answers null, no budget; a product
    registers its own, before or after `AddBaseWebApi`). Past it: 429 and `Retry-After`.
-10. `CredentialMiddleware`: asks `CredentialProvider` whether the ticket still names a live party and signs the caller out and challenges if not (the default provider holds every ticket).
+10. `CredentialMiddleware`: asks `CredentialProvider` whether the ticket still names a live party, and whether the party's memberships and roles (`Session.MembershipStamp`) are still those of sign-in; either failing signs the caller out and challenges (the default provider holds every ticket and answers no stamp). The current stamp is read once per party per `Tenancy:StateCacheSeconds` through `MembershipStampMemo`, so a change reaches a ticket within that window.
 11. `EndpointGateMiddleware`: the security gate, ahead of model binding; a no-op unless a kit called
     `AddSecurityEnforcement`.
-12. Swagger UI in Development, HSTS otherwise.
+12. Swagger UI in Development, HSTS (with `includeSubDomains`) otherwise.
 13. `MapEndpoints()` and `MapPush()`.
 
+The tenant-state wall also stands on every send (`TenantStateInterceptor`, registered by
+`AddBaseWebApi`) and on every held push feed (`PushAudience.Watch`, polled once a second), because an
+open circuit and a push line are not requests: a suspension reaches them within
+`Tenancy:StateCacheSeconds` plus that second, as the 503 or a closed feed. A system session is exempt.
+
 `AddBaseWebApp` registers Razor components with server and WebAssembly render modes, the
-`TenancyCircuit` that carries the tenant onto the circuit, `AddMessagePolicies` (so a page's
+`TenancyCircuit` that carries the tenant onto the circuit and onto every event's send, `AddMessagePolicies` (so a page's
 `[Authorize<TMessage>]` resolves), the per-request `IDeviceProvider` and the
 `IProblemDocumentProvider` that draws the error page for a document navigation.
-`UseBaseWebApp` adds request localization, antiforgery, `Cache-Control: no-cache` on every HTML
-document and `MapStaticAssets`. `MapRazorApp<TApp>` maps the components with both render modes,
+`UseBaseWebApp` adds request localization, antiforgery, `Cache-Control: no-cache` on every anonymous HTML
+document (`private, no-store` on an authenticated one; a response already saying `no-store` is left alone) and
+`MapStaticAssets`. `MapRazorApp<TApp>` maps the components with both render modes,
 adds the assemblies of every `IRouteContributor` and installs the 404 fallback that lets the
 router render its NotFound (it leaves `/api` and file-looking paths alone).
 
@@ -104,15 +121,15 @@ router render its NotFound (it leaves `/api` and file-looking paths alone).
 | Section | Keys | Read by |
 |---|---|---|
 | `Language` | `Base` (default `en`), `Default` (default `en`), `Offered` (default empty, meaning `Default` alone) | `UseBaseWebApp` request localization, the suspended page |
-| `Security` | `TicketEpoch` (int, default 0) | `TicketEpochMiddleware` |
-| `Tenancy` | `Mode`, `StateCacheSeconds`, `SupportContact`, ... | the tenant steps; options are `TenancyOptions` in `NSail.Data` |
+| `Security` | `TicketEpoch` (int, default 0); `TrustedProxies` (addresses or CIDR networks, default none); `KeysDirectory` (the per-tenant key files) | `TicketEpochMiddleware`; forwarded headers; `AddTenantKeys` |
+| `Tenancy` | `Mode`, `StateCacheSeconds`, `SupportContact`, ... | the tenant steps and the credential wall's stamp read; options are `TenancyOptions` in `NSail.Data` |
 | `Telemetry` | see [Telemetry](../Telemetry/README.md) | `AddBaseWebApi` |
 | `HttpClients` | `<Area>:BaseUrl`, `<Area>:TimeoutSeconds` | `AddHttpClients` (Wasm), from `NSail.Messaging.Http` |
 
 ```json
 {
   "Language": { "Base": "en", "Default": "es", "Offered": ["es", "en"] },
-  "Security": { "TicketEpoch": 0 },
+  "Security": { "TicketEpoch": 0, "TrustedProxies": [] },
   "HttpClients": { "Tasks": { "BaseUrl": "{scheme}://{host}:{port}", "TimeoutSeconds": 30 } }
 }
 ```

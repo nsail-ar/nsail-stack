@@ -10,6 +10,7 @@ public static class Security
     public static void AddSampleSecurity(this IServiceCollection services)
     {
         services.AddSecurityEnforcement();
+        services.AcceptPermissiveProviders();
         services.AddSamplePermissions();
         services.AddSamplePolicies();
     }

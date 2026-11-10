@@ -12,16 +12,13 @@ public class HttpInProcessSourceGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var generatedMethods = context.FindGeneratedSymbols(outputType: TargetIds.Http_InProcess);
+        var targets = context.FindGeneratedTargets(outputType: TargetIds.Http_InProcess);
 
-        var addSendersModel = generatedMethods
-                .Combine(context.CompilationProvider)
-                .Select(static (parameters, _) =>
-                {
-                    var (methodSymbol, compilation) = parameters;
-                    return HttpModelFactory.Create(methodSymbol, compilation, "InProcessParameters");
-                });
+        var models = context.GatherInScope(targets, static type => HttpModelFactory.Inspect(type, "InProcessParameters"))
+            .Combine(context.FindMetadataTemplate())
+            .Select(static (pair, _) => HttpModelFactory.Create(pair.Left, pair.Right))
+            .WithTrackingName("Model");
 
-        context.RegisterSourceOutput(addSendersModel, HttpModelRenderer.RenderInProcess);
+        context.RegisterSourceOutput(models, HttpModelRenderer.RenderInProcess);
     }
 }

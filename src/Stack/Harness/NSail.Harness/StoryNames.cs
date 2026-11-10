@@ -37,7 +37,7 @@ public sealed class StoryNames(string key, IReadOnlyCollection<string> prefixes)
     public int? StoryOf(string title, string head)
     {
         var t = Regex.Match(title, $@"^{Regex.Escape(Key)}#(\d+):");
-        if (t.Success) return int.Parse(t.Groups[1].Value, CultureInfo.InvariantCulture);
+        if (t.Success && int.TryParse(t.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var n)) return n;
         return BranchStory(head);
     }
 
@@ -46,7 +46,7 @@ public sealed class StoryNames(string key, IReadOnlyCollection<string> prefixes)
         foreach (var prefix in prefixes)
         {
             var h = Regex.Match(head, $@"^{Regex.Escape(prefix)}/{Regex.Escape(Key)}-(\d+)(-|$)");
-            if (h.Success) return int.Parse(h.Groups[1].Value, CultureInfo.InvariantCulture);
+            if (h.Success && int.TryParse(h.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var n)) return n;
         }
         return null;
     }

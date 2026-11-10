@@ -238,8 +238,15 @@ marked *(cases)* has its story there.
     rows draws no pager to pin over anything. Scoped by the branch in C# (`.ns-table-pages`,
     `NsTable`) **and** by the vendor's own stacking query in the stylesheet — `.mud-sm-table`
     rides the root at every width, so a rule keyed off it alone reaches the desktop grid too.
-- **A scroll box INSIDE a surface wears the house's own bar** (`.ns-scroll-thin`): thin, the
-  theme's line colour, no track. The shell's own scrollbars stay the platform's.
+- **The house draws one scrollbar, on every scroller, in dark and in light** (`ns-mud.css`): thin,
+  no track, the thumb a low-alpha mix of the lit palette's secondary ink — on the nav rail, of the
+  band's own ink, since the chrome is a free pick that can sit light under a dark scheme
+  ([branding.md](branding.md)). The platform's bar is
+  unreadable-bright on a dark surface, so the standard `scrollbar-color` / `scrollbar-width` come
+  first and `::-webkit-scrollbar` is only the fallback, under `@supports not (scrollbar-color:
+  auto)`. `NsTheme` turns the vendor's own scrollbar block off: its `html, body *` grey
+  out-matches what every scroller inherits from `:root`. `NsTheme` declares `color-scheme` on `:root` for the lit scheme so native controls,
+  and any bar the house's does not reach, follow it.
 
 ---
 
@@ -306,9 +313,27 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   transport to probe with — and the mark keeps its own proportion inside it, by
   `preserveAspectRatio` when it is inlined and by `object-fit` when it is a file. A width
   ceiling that bites takes the drawn mark down with it; it never clips one side alone.
-  `NsSplash` draws its own markup rather than `NsRemoteImage` and fits the opposite way — width,
+  **An inlined mark is drawn to its artwork, never to its file's viewBox** (`nsapp.fitMark`,
+  `ns.js`): a logo's viewBox often carries unpainted margin, and the box would draw it as space.
+  After the markup is in the DOM, the root's `viewBox` becomes the ink's measured extent (the
+  union of the rendered children's client rects, strokes, caps and joins included), so no
+  painted pixel is cut and no margin is added; an SVG with no `viewBox` gets one. The fit is
+  the brand mark's alone — a product's picture keeps its file's own box.
+  `NsSplash` draws its own markup rather than `NsRemoteImage`, fits the same artwork in the same
+  task that inlines it (one resize, not two), and sizes the opposite way — width,
   not height: its logo, its name and its progress bar all take the width its own script measures
   off the install's name, so the three read as one block instead of three widths of their own.
+  A brand's dark mark (`DarkLogoUrl`) is the one it wears when its own painted ground is dark.
+- **Inlined SVG passes `SvgSanitizer` (`NSail.Icons`) and no other inlined SVG reaches the DOM**:
+  a `Glyph`, a fetched logo and the splash mark share its one allowlist of drawing elements and
+  presentation attributes. Scripts, event handlers, `style`, `<image>`, `<a>`, `<foreignObject>`,
+  non-fragment `href` (`xlink:href` included) and non-local `url(...)` are dropped, so an «Internal CSS» logo keeps its
+  geometry and loses its fills. A file with nothing drawable left falls back to the `<img>`
+  branch, which cannot execute in the app's origin. The splash applies the same lists, injected
+  from the sanitizer, because C# cannot run before boot.
+- **A color string a model carries passes `NsColorText` (`NSail.Components`) before it is
+  written into a `style`**: hex, `rgb()`/`rgba()` of numbers or a bare keyword, nothing else; a
+  product that paints a stored color uses it rather than write its own gate.
 - `NsTooltip` takes `Text` and wraps what it explains, declaring the whisper on a box of its own
   (cases: shell, *The bubble a control whispers*) — **detail on demand, never the only place a
   fact lives**. A phone has no hover, so what rides here is the long form of something
@@ -317,6 +342,16 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   on a line of its own, only where more than one source of that article survives — what tells
   two rows apart is on the row. A tooltip carrying the only copy of a value is the smell, and no
   screen in the tree wears one.
+- `NsBarChart` is stacked bars over ordered buckets (an hour, a day), drawn as plain SVG — `Buckets`
+  (label and a value per series key), `Series` (key, translated name, `NsChartColor`), `Markers`
+  (a vertical line at a bucket index with its hover text) and `AriaLabel`. Use it for counts over
+  time; lines, pies and zoom are not in it. Colours are palette slots, never a hex, so both schemes
+  read. `Info`, `Success`, `Warning`, `Error` and `Neutral` are scheme constants and always tell
+  apart; `Primary` is the install's accent and can land on one of them. Secondary and Tertiary
+  are states of that accent and are not offered. The hover is the segment's
+  `<title>` and the legend sits under the chart; the exact value living only on a hover is the
+  one deliberate exception to the tooltip rule above. Nothing to draw (no buckets, or all zero)
+  keeps the axis and says "no data", never a blank box.
 - `NsSince` is how long ago something happened, said in the one unit a person would say it in
   ("hace 5 min", "3 d ago") with the exact moment on the whisper — `At`, `Missing`, `StaleAfter`,
   `Format`, and nothing else. Days is as coarse as it gets: a cell dumped three weeks ago and one
@@ -470,7 +505,7 @@ Which channel a screen is in — state versus condition — is the core doc's
   the thread's own, not either speaker's. The warning wash says a hand is owed, which is what
   both of its uses are: a note the staff wrote on a ticket and nobody said out loud
   (`TicketPage`), and the card the assistant draws for an action it will not carry out until
-  the person clicks (`AssistantPage`, assistant.md).
+  the person clicks (`AssistantPage`, the product's assistant page).
 - **A handful of facts said as a list is a real `<ul class="ns-bullets">`**, so they are
   announced as a list and not as one sentence that wrapped — the browser's own marker kept, its
   indent and margin corrected to the one the house's markdown lists wear, and the gap between
@@ -500,7 +535,7 @@ purpose**: what it hosts is a routed page composing `NsPanel` (cases).
 The exception the rule above allows, and its whole extent: **whether the nav drawer is docked or
 behind the hamburger is a window fact** (`MudDrawer`'s `Breakpoint.Md`, `NsMainLayout`), so
 anything that trades places with the drawer flips on that same edge and on no other — chrome that
-stands in for it while it is hidden (the title row's hamburger and brand), and content that moves *into* it while
+stands in for it while it is hidden (the title row's hamburger), and content that moves *into* it while
 it is (the guide's index rail). Two helpers say it, and a window decision is written with them or
 it is not written:
 

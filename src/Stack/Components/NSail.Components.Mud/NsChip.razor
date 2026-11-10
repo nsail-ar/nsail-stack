@@ -8,16 +8,18 @@
 @* The note rides the chip itself rather than a wrapper of its own: the whisper is one element
    in the top layer (ns-mud.css, THE WHISPER), so what declares it needs no box around it, and
    a chip in a flex row keeps the row's own geometry. A note that only repeats the chip's text
-   is never shown — that is ns.js's own rule and nothing here gates on it. *@
+   is never shown — that is ns.js's own rule and nothing here gates on it. data-ns-whisper-tap
+   is what lets a touch tap open the note at once (ns.js, THE TAP), the chip's alone among the
+   controls that whisper; the bubble's link is the chip's own Href. *@
 @if (OnClose is null)
 {
     <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
-             Size="@GetSize()" Href="@Href" data-ns-whisper="@Tooltip">@Text</MudChip>
+             Size="@GetSize()" Href="@SafeHref" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()">@Text</MudChip>
 }
 else
 {
     <MudChip T="string" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
-             Size="@GetSize()" Href="@Href" OnClose="Close" data-ns-whisper="@Tooltip">@Text</MudChip>
+             Size="@GetSize()" Href="@SafeHref" OnClose="Close" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()">@Text</MudChip>
 }
 
 @code {
@@ -56,6 +58,33 @@ else
     /// way NsPageLink does; a chip never takes a literal address.</summary>
     [Parameter]
     public string? Href { get; set; }
+
+    // A scheme no door may open (javascript:, data:) is drawn as no address at all.
+    string? SafeHref => SurfaceContext.IsInert(Href) ? null : Href;
+
+    // Label in Name (WCAG 2.5.3): the visible text first, then the sentence, so a reader that
+    // never sees the bubble hears it and a voice command by the visible word still matches. A
+    // sentence that already opens with the text is said once.
+    string? GetName()
+    {
+        var sentence = Tooltip?.Trim();
+        var text = (Text ?? "").Trim();
+
+        if (string.IsNullOrEmpty(sentence) || string.Equals(sentence, text, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return sentence.StartsWith(text, StringComparison.OrdinalIgnoreCase) ? sentence : $"{text}: {sentence}";
+    }
+
+    // With no Href the vendor's root is a bare div, a generic that ARIA forbids a name and the
+    // browsers drop it from; a group takes the name and keeps the close button inside it
+    // reachable. An anchor is a link and is named as it is.
+    string? GetRole()
+    {
+        return string.IsNullOrEmpty(SafeHref) && GetName() is not null ? "group" : null;
+    }
 
     Color GetColor()
     {

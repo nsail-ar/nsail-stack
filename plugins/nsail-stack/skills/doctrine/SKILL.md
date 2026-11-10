@@ -16,7 +16,7 @@ read your row. Every page is a file of this plugin, under `${CLAUDE_PLUGIN_ROOT}
 | A message, a handler, an endpoint, an HTTP client | `${CLAUDE_PLUGIN_ROOT}/doctrine/messaging.md` + `${CLAUDE_PLUGIN_ROOT}/doctrine/generation.md` (the `new-message` skill walks it) |
 | An entity, `DbContextSetup`, a migration, a seed, the mapper | `${CLAUDE_PLUGIN_ROOT}/doctrine/data.md` (the `new-mapping` skill walks the mapper) |
 | Tenancy, the row policies, the org filter, tenant ids, background jobs | `${CLAUDE_PLUGIN_ROOT}/doctrine/data-tenancy.md` |
-| Classifying an entity or a message against the org axis | the codebase's own org map — the law is `${CLAUDE_PLUGIN_ROOT}/doctrine/data-tenancy.md` (The org is the other axis); the map of a codebase's entities and messages lives with them (in nsail, the `nsail-kits` plugin's `org-map.md`) |
+| Classifying an entity or a message against the org axis | the codebase's own org map — the law is `${CLAUDE_PLUGIN_ROOT}/doctrine/data-tenancy.md` (The org is the other axis); the map of a codebase's entities and messages lives with them (in nsail, the `plugins/nsail-kits/doctrine/org-map.md`) |
 | A new type, project, namespace or folder | `${CLAUDE_PLUGIN_ROOT}/doctrine/structure.md` + `${CLAUDE_PLUGIN_ROOT}/doctrine/naming.md` |
 | Authorization, policies, `Session` | `${CLAUDE_PLUGIN_ROOT}/doctrine/permissions.md` |
 | Localization keys, Swagger tags, `{Area}.{Feature}` | `${CLAUDE_PLUGIN_ROOT}/doctrine/metadata.md` |
@@ -28,6 +28,7 @@ read your row. Every page is a file of this plugin, under `${CLAUDE_PLUGIN_ROOT}
 | A React client, an `@nsail/*` package, `sdk.ts` | `${CLAUDE_PLUGIN_ROOT}/doctrine/react.md` |
 | A glyph a screen needs that no catalog carries | the `new-icon` skill |
 | A kit's playbook for the Assistant, `ISkillContributor`, `Skills.cs` | `${CLAUDE_PLUGIN_ROOT}/doctrine/ui/skills.md` |
+| Spanish copy — a `strings.es.json` string, a word for money or a payment | `${CLAUDE_PLUGIN_ROOT}/doctrine/ui/copy.md` |
 | Deciding whether to write the code at all | `${CLAUDE_PLUGIN_ROOT}/doctrine/lesscode.md` |
 
 The pages name files of the codebase they were written against: `src/Stack/...` and

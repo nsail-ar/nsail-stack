@@ -5,6 +5,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<None Include="buildTransitive\*" Pack="true" PackagePath="buildTransitive" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\..\Metadata\NSail.Metadata\NSail.Metadata.csproj" />
 	</ItemGroup>
 

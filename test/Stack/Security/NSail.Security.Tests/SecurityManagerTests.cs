@@ -189,6 +189,71 @@ public sealed class SecurityManagerTests
         return new SecurityManager(Registry.For(factories), relations ?? new FakeRelations(), factories, builtIns);
     }
 
+    [Fact]
+    public async Task Drops_lists_the_row_whose_constraint_was_excused_and_the_grant_survives()
+    {
+        var manager = Recording();
+        var id = Guid.NewGuid();
+
+        manager.LoadPolicies(
+        [
+            new Policy
+            {
+                Id = id,
+                Name = "stale",
+                Messages = [Gone, UpdateKey],
+                Audience = new() { Authenticated = true },
+                Fields = new Dictionary<string, PolicyConstraint> { ["PartyId"] = PolicyConstraint.Me },
+            },
+        ]);
+
+        var drop = Assert.Single(manager.Drops);
+        Assert.Equal(id, drop.PolicyId);
+        Assert.Equal([Gone], drop.Messages);
+        Assert.Equal(["PartyId"], drop.ExcusedFields);
+        Assert.True((await manager.Authorize(new UpdateTestMessage(), Doctor())).Allowed);
+
+        manager.LoadPolicies([]);
+
+        Assert.Empty(manager.Drops);
+    }
+
+    [Fact]
+    public void LoadPolicies_never_exposes_a_half_loaded_list_to_a_reader()
+    {
+        var manager = Manager();
+        var session = Doctor();
+        var seen = new List<bool>();
+
+        IEnumerable<Policy> Source()
+        {
+            yield return new Policy { Name = "a", Messages = [Key], Audience = new() { Authenticated = true } };
+
+            seen.Add(manager.PreAuthorize(typeof(TestMessage), session));
+
+            yield return new Policy { Name = "b", Messages = [UpdateKey], Audience = new() { Authenticated = true } };
+        }
+
+        manager.LoadPolicies(Source());
+
+        Assert.Equal([false], seen);
+        Assert.True(manager.PreAuthorize(typeof(TestMessage), session));
+    }
+
+    [Fact]
+    public void Built_in_handlers_are_hydrated_once_for_every_manager_sharing_the_holder()
+    {
+        var factories = Factories();
+        var registry = Registry.For(factories);
+        var shared = new BuiltInHandlers();
+        var open = new Policy { Name = "open", Messages = [Key], Audience = new() { Authenticated = true } };
+
+        var first = new SecurityManager(registry, new FakeRelations(), factories, [open], shared: shared);
+        var second = new SecurityManager(registry, new FakeRelations(), factories, [], shared: shared);
+
+        Assert.Same(Assert.Single(first.BuiltInPolicies), Assert.Single(second.BuiltInPolicies));
+    }
+
     static RecordingSecurityManager Recording(params Policy[] builtIns)
     {
         var factories = Factories();
@@ -707,13 +772,7 @@ public sealed class SecurityManagerTests
 
     static Policy Pinning(PolicyConstraint constraint)
     {
-        return new Policy
-        {
-            Name = "the exception is a grant",
-            Messages = [Key],
-            Audience = new() { HasRole = "medico" },
-            Fields = new Dictionary<string, PolicyConstraint> { ["Exceptional"] = constraint },
-        };
+        return Pinning("Exceptional", constraint);
     }
 
     // Universal quantification: the constraint holds for every element or the message is
@@ -909,6 +968,27 @@ public sealed class SecurityManagerTests
 
         relations.Related = false;
         Assert.False((await manager.Authorize(new TestMessage { PartyId = Other }, Doctor())).Allowed);
+    }
+
+    [Fact]
+    public async Task RelatedAs_never_reaches_the_callers_own_party_even_when_the_graph_says_related()
+    {
+        var relations = new FakeRelations { Related = true };
+        var manager = Manager(relations, RelatedOnly());
+
+        Assert.False((await manager.Authorize(new TestMessage { PartyId = Me }, Doctor())).Allowed);
+        Assert.True((await manager.Authorize(new TestMessage { PartyId = Other }, Doctor())).Allowed);
+    }
+
+    [Fact]
+    public async Task RelatedAs_on_a_collection_never_reaches_the_callers_own_party_even_when_the_graph_says_related()
+    {
+        var relations = new FakeRelations { Related = true };
+        var manager = Manager(relations, Pinning("AttendeePartyIds", PolicyConstraint.RelatedAs("medico")));
+
+        Assert.False((await manager.Authorize(new TestMessage { AttendeePartyIds = [Other, Me] }, Doctor())).Allowed);
+        Assert.False((await manager.Authorize(new TestMessage { AttendeePartyIds = [Me] }, Doctor())).Allowed);
+        Assert.True((await manager.Authorize(new TestMessage { AttendeePartyIds = [Other] }, Doctor())).Allowed);
     }
 
     [Fact]
@@ -1243,6 +1323,89 @@ public sealed class SecurityManagerTests
         });
 
         Assert.False(manager.RequiresMe(typeof(TestMessage), "PartyId", Session.System()));
+    }
+
+    // The client's half of the self rule: a card about the caller whose only grant is a
+    // relation to others is not drawn, and the gate would refuse the same send.
+    [Fact]
+    public async Task Permits_answers_no_for_the_callers_own_party_under_a_relatedAs_only_policy()
+    {
+        var manager = Manager(new FakeRelations { Related = true }, RelatedOnly());
+
+        Assert.False(manager.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.False((await manager.Authorize(new TestMessage { PartyId = Me }, Doctor())).Allowed);
+    }
+
+    // The graph is not the client's, so a relation to someone else stays optimistic.
+    [Fact]
+    public void Permits_answers_yes_for_another_party_under_a_relatedAs_only_policy()
+    {
+        Assert.True(Manager(null, RelatedOnly()).Permits(typeof(TestMessage), "PartyId", Other, Doctor()));
+    }
+
+    [Fact]
+    public void Permits_answers_yes_for_the_callers_own_party_under_me_and_no_for_another()
+    {
+        var manager = Manager(null, Pinning("PartyId", PolicyConstraint.Me));
+
+        Assert.True(manager.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.False(manager.Permits(typeof(TestMessage), "PartyId", Other, Doctor()));
+    }
+
+    [Fact]
+    public void Permits_answers_yes_for_anyone_under_a_free_field()
+    {
+        var flat = Manager(null, new Policy { Name = "staff", Messages = [Key], Audience = new() { HasRole = "medico" } });
+        var star = Manager(null, Pinning("PartyId", PolicyConstraint.Any));
+
+        Assert.True(flat.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.True(flat.Permits(typeof(TestMessage), "PartyId", Other, Doctor()));
+        Assert.True(star.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+    }
+
+    // Policies OR: the patient's own @me row gives back what the relation cannot reach.
+    [Fact]
+    public void Permits_answers_yes_for_the_callers_own_party_when_a_second_policy_pins_it_to_me()
+    {
+        var manager = Manager(null, RelatedOnly(), Pinning("PartyId", PolicyConstraint.Me));
+
+        Assert.True(manager.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+    }
+
+    [Fact]
+    public void Permits_answers_literals_and_the_current_organization_exactly()
+    {
+        var literal = Manager(null, Pinning("PartyId", PolicyConstraint.Literal(Other)));
+        var current = Manager(null, Pinning("OrganizationId", PolicyConstraint.Current));
+        var seated = MemberOf(Hospital);
+
+        Assert.True(literal.Permits(typeof(TestMessage), "PartyId", Other, Doctor()));
+        Assert.False(literal.Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.True(current.Permits(typeof(TestMessage), "OrganizationId", Hospital, seated));
+        Assert.False(current.Permits(typeof(TestMessage), "OrganizationId", Elsewhere, seated));
+    }
+
+    [Fact]
+    public void Permits_answers_no_when_no_policy_covers_the_message_and_yes_for_the_system()
+    {
+        Assert.False(Manager().Permits(typeof(TestMessage), "PartyId", Me, Doctor()));
+        Assert.True(Manager().Permits(typeof(TestMessage), "PartyId", Me, Session.System()));
+    }
+
+    static Policy RelatedOnly()
+    {
+        return Pinning("PartyId", PolicyConstraint.RelatedAs("medico"));
+    }
+
+    static Policy Pinning(string field, PolicyConstraint constraint)
+    {
+        return new Policy
+        {
+            Name = $"{field} pinned to {constraint.Kind}",
+            Messages = [Key],
+            Audience = new() { HasRole = "medico" },
+            Fields = new Dictionary<string, PolicyConstraint> { [field] = constraint },
+        };
     }
 
     [Fact]

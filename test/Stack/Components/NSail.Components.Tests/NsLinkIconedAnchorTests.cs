@@ -83,7 +83,7 @@ public sealed class NsLinkIconedAnchorTests : BunitContext
 
         // The file carries a second @media (pointer: coarse) block above this one, so the search
         // is keyed off the full compound selector, not the media query.
-        var start = css.IndexOf(".mud-button, .ns-link {", StringComparison.Ordinal);
+        var start = css.IndexOf(".mud-button, .ns-link, .ns-whisper-tap a {", StringComparison.Ordinal);
         Assert.True(start >= 0, "the .ns-link touch-target floor was not found in the stylesheet.");
 
         var end = css.IndexOf('}', start);

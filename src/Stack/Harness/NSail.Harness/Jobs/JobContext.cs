@@ -33,9 +33,12 @@ public sealed class JobContext(
     public HarnessOptions Options { get; } = options;
     public HarnessTexts Texts => Options.Texts;
     public StoryNames Names { get; } = options.Names();
-    public Markers Markers { get; } = new(options.ReviewMarker);
+    public Markers Markers { get; } = new(options.ReviewMarker, options.MarkerAuthors);
     public ILoggerFactory Logs { get; } = logs;
     public BuildLeases Leases { get; } = leases;
+
+    // The log sources a Watch worker reads, by Name: the host's providers (AddOpenObserve, ...).
+    public IReadOnlyList<Watching.ILogSource> LogSources { get; init; } = [];
 
     // How the default repository builds and tests, when it says (Repositories[].Build).
     public IBuilder? Builder { get; } = Builders.For(options.DefaultRepository.Build, options.BuildNodes);
@@ -55,6 +58,30 @@ public sealed class JobContext(
         return new JobStep(w, agent, command, w.Minutes ?? WorkerTypes.All[w.Type].Minutes, w.Variables);
     }
 
+    // A seat's run, and the end of its reach: every clone it shared is rewritten as the harness wrote it
+    // before any other git runs there. A restore that fails costs nothing here: the next Prepare redoes it,
+    // and the work the seat left is still to be delivered.
+    public async Task<AgentResult> RunSeat(AgentRun run, CancellationToken ct)
+    {
+        try
+        {
+            return await Agent.Run(run, ct);
+        }
+        finally
+        {
+            foreach (var w in workspaces.Values)
+            {
+                try
+                {
+                    await w.Restore();
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
+                {
+                }
+            }
+        }
+    }
+
     // A repository's own slots: a story it holds is built and pushed there.
     public Workspace WorkspaceOf(IRepository repository)
     {
@@ -64,7 +91,7 @@ public sealed class JobContext(
     // The name a job's build turns are held under, so they all come back when the job ends.
     public static string HolderOf(WorkItem item)
     {
-        return $"{item.Kind.ToString().ToLowerInvariant()}-{item.Story?.ToString(CultureInfo.InvariantCulture) ?? item.Product ?? (item.Kind == WorkKind.Main ? "head" : "drain")}";
+        return $"{item.Kind.ToString().ToLowerInvariant()}-{item.Story?.ToString(CultureInfo.InvariantCulture) ?? item.Product ?? (item.Kind == WorkKind.Main ? "head" : item.Kind == WorkKind.Watch ? item.Worker ?? "watch" : "drain")}";
     }
 
     public string LogPath(WorkItem item, DateTimeOffset at)
@@ -75,15 +102,16 @@ public sealed class JobContext(
         return Path.Combine(dir, name);
     }
 
-    // The environment every lane's tools see: the providers' credentials, the harness's build-turn
+    // The environment every lane's tools see: the providers' credentials (a step that runs code, only if it declares them), the harness's build-turn
     // door, the clock, and the project's variables (HarnessOptions.Variables, then the worker's own).
-    public async Task<Dictionary<string, string>> LaneEnv(DateTimeOffset axe, WorkItem item, JobStep? step = null, CancellationToken ct = default)
+    public async Task<Dictionary<string, string>> LaneEnv(DateTimeOffset axe, WorkItem item, JobStep? step = null, CancellationToken ct = default, bool runsCode = false)
     {
         var shims = Path.Combine(AppContext.BaseDirectory, "shims");
         var env = await VariableReferences.Resolve(Options.Variables.Concat(step?.Variables ?? new Dictionary<string, string>()), RepositoryVariable, ct);
         env["PATH"] = shims + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
         // The doorman first on the PATH: build-heavy commands wait for a turn (shims/).
         env["HARNESS_URL"] = Options.PublicUrl;
+        env["HARNESS_LEASE_TOKEN"] = Options.Control.ResolveLeaseToken();
         env["HARNESS_HOLDER"] = HolderOf(item);
         env["HARNESS_BUILD_NODES"] = Options.BuildNodes.ToString(CultureInfo.InvariantCulture);
         env["HARNESS_RANK"] = Planner.Rank(item.Tier).ToString(CultureInfo.InvariantCulture);
@@ -96,7 +124,9 @@ public sealed class JobContext(
         env["VOYAGE_AXE"] = axe.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
         env["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
         env["DOTNET_NOLOGO"] = "1";
-        foreach (var e in environments) e.Lane(env);
+        // A step that runs a PR's or a branch's code holds a credential only where its Variables name one (GH_TOKEN).
+        var credentials = !runsCode || step?.Variables.ContainsKey("GH_TOKEN") == true;
+        foreach (var e in environments) e.Lane(env, credentials);
         return env;
     }
 
@@ -122,9 +152,9 @@ public sealed class JobContext(
     }
 
     // A configured command in a checkout, with the step's arguments after its own.
-    public Task<ShellResult> Run(CommandOptions command, IEnumerable<string> args, string dir, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default)
+    public Task<ShellResult> Run(CommandOptions command, IEnumerable<string> args, string dir, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, Func<string, bool>? keep = null)
     {
-        return Commands.Run(command, args, Options, dir, CommandEnv(dir, env), timeout, log, ct, lowPriority: true);
+        return Commands.Run(command, args, Options, dir, CommandEnv(dir, env), timeout, log, ct, lowPriority: true, keep: keep);
     }
 
     // A command's environment: its checkout as HARNESS_WORKSPACE, and whatever names the providers'

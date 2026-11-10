@@ -5,9 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace NSail.Data;
 
-/// <summary>First touch bootstraps: where the wall is the column, a tenant is a slug the proxy
-/// let through and nothing else — no database to create, no chain to apply, so onboarding is the
-/// Caddy block plus this. The first request a slug ever makes plants its own rows
+/// <summary>First touch bootstraps: where the wall is the column there is no database to create
+/// and no chain to apply, so onboarding is the Caddy block, the slug on the declared roster where
+/// the install declares one (<see cref="TenantRoster"/>), and this. The first request a slug that
+/// got through ever makes plants its own rows
 /// (<see cref="ITenantSeed"/>); every request after it costs nothing. Abstract so nothing
 /// outside the seam has to name the app's <c>DbContext</c> to ask for it.
 ///

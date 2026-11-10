@@ -6,6 +6,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\NSail.Mapping.Annotations\NSail.Mapping.Annotations.csproj" />
+		<ProjectReference Include="..\..\Types\NSail.Types\NSail.Types.csproj" />
 	</ItemGroup>
 
 </Project>

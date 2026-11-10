@@ -5,6 +5,7 @@
 @typeparam TItem
 @typeparam TValue
 @using System.Diagnostics.CodeAnalysis
+@using System.Reflection
 @using Microsoft.AspNetCore.Components.Routing
 @inherits NsAsyncFieldBase<TValue>
 
@@ -14,7 +15,7 @@
    the field. MudBlazor 9.10.0 defaults RelativeWidth to DropdownWidth.Relative, whose popover
    script writes max-width = the anchor's width inline on every open (measured, mudpopoverHelper
    — and .mud-popover-relative-width is the one width case the vendor ships CSS for); in a line
-   editor the anchor is a table cell, so an option reading "CR-150 - Orgánico CR-39 1.50 (1,00)"
+   editor the anchor is a table cell, so an option reading "Code - Name (detail)"
    — 353px of text — came out three lines tall in 191px. Adaptive writes min-width instead and
    leaves the width to the content, so a narrow anchor no longer decides how a result reads and a
    wide one is unchanged: min-width holds the list at the field it drops from. What bounds it
@@ -26,8 +27,8 @@
 
    A LAZY field draws none. Its list is what a term answers, so the one gesture that button
    offers it cannot keep: pressing it focuses the box and opens nothing, which is a control
-   that says a lookup can be browsed when the whole point of Lazy is that it cannot
-   (nsail#2168). What the field is for is said by the word in the box — the "Buscar
+   that says a lookup can be browsed when the whole point of Lazy is that it cannot.
+   What the field is for is said by the word in the box — the "Buscar
    {concept}" placeholder, which GetPlaceholder composes — and that reads at every width,
    which a glyph never did. *@
 
@@ -78,6 +79,13 @@
     TItem? _selectedItem;
 
     MudAutocomplete<TItem>? _autocomplete;
+
+    // The vendor takes the option it highlights on the Enter's key UP; its own flag is the one way
+    // to hand that Enter back, so the key this field answers with a choice does not also pick the
+    // first row of the list it leaves open. The flag is private, so it is written through
+    // reflection; MudVendorContractTests pins the name.
+    static readonly FieldInfo? SkipEnterKeyUp =
+        typeof(MudAutocomplete<TItem>).GetField("_skipNextEnterKeyUp", BindingFlags.Instance | BindingFlags.NonPublic);
 
     [Parameter]
     public IEnumerable<TItem>? Items { get; set; }
@@ -177,7 +185,7 @@
     // rather than reading it back off the binding (NsTextFieldBase.HoldTyped).
     //
     // It is also handed BACK as the vendor's Text, which is what carries a half-typed term
-    // across a redraw (nsail#2695). The vendor refreshes its own box from the value it holds on
+    // across a redraw. The vendor refreshes its own box from the value it holds on
     // every parameter set it is not focused for — and a keystroke redraws this field, because
     // the text event above is dispatched into it — so a term given to a box nobody is in left
     // with the first redraw and the debounced search went out empty, which is the one search a
@@ -243,7 +251,7 @@
     /// the value I am already holding read as". One Runner carrying both is two ways to lose —
     /// a Run that starts while another is in flight throws, and every search opens by cancelling
     /// whatever it finds running — so a value arriving from OUTSIDE a pick (a create page's
-    /// saved event, nsail#857) either faulted the render or had its own read eaten, leaving a
+    /// saved event) either faulted the render or had its own read eaten, leaving a
     /// box that could never fill again. NsPage splits the same two for the same reason
     /// (surfaces.md).</summary>
     Runner Resolver => field ??= new(this);
@@ -251,7 +259,7 @@
     bool IsBusy => Runner.IsRunning || Resolver.IsRunning;
 
     // A field bound to a page-local value has no message property to derive a label from —
-    // the item type names the concept ("Directory.OrganizationRef" → "Organizaciones") and
+    // the item type's own key (MetadataProvider.KeyFor, area-qualified) names the concept and
     // one template turns it into the prompt, so no entity carries a search string of its
     // own. The concept keeps its own capital, which is what the label rule asks for.
     protected override string? FallbackLabel(string key)
@@ -307,8 +315,7 @@
     //
     // The entry is the list's last ITEM, so it has to measure like one — the vendor renders
     // these two seams as bare padded divs rather than through its own list item, which left
-    // the create entry visibly smaller than every row above it (Leonardo, on the Paciente
-    // lookup: "se sigue viendo más chico.. debería ser igual o más grande"). ns-lookup-create
+    // the create entry visibly smaller than every row above it. ns-lookup-create
     // is where the item's own geometry is restated; ListClass is the handle it is reached
     // through, the popover being a portal this component's own tree does not contain.
     //
@@ -549,7 +556,7 @@
     // it is HIGHLIGHTING, which is nothing at all at that instant, so the code resolves to
     // nothing and the counter is holding a reader that does not work. The field answers the key
     // itself instead: it asks the search the box was about to ask and reads the answer the way
-    // the scan box over the grid reads it (ProductScanField, nsail#2337) — ONE answer is taken,
+    // the scan box over the grid reads it — ONE answer is taken,
     // several are left in the list to choose from, and none leaves the box exactly as it was,
     // which is what the caller's own offer and the create entry are about.
     //
@@ -586,14 +593,27 @@
             return;
         }
 
+        // Raised before the await: the key UP of this Enter does not wait for the answer, and a
+        // flag written after it would miss that key and wait armed for the next one.
+        SkipEnterKeyUp?.SetValue(_autocomplete, true);
+
         var rows = await Answered(typed);
 
         // One answer is the only one this key can take. Several are a choice, which is the list
         // the vendor's own search is about to open; none is the text the offer quotes.
         if (rows.Count != 1)
         {
+            if (rows.Count == 0)
+            {
+                // Nothing is highlighted to pick, so a key-up held or not changes nothing; lowered
+                // only so the flag does not outlive the answer.
+                SkipEnterKeyUp?.SetValue(_autocomplete, false);
+            }
+
             return;
         }
+
+        SkipEnterKeyUp?.SetValue(_autocomplete, false);
 
         // Take, and not OnItemChanged: the list the answer this key read opened on the way landed
         // while the keystroke was waiting for that answer, so it is already up by the time the
@@ -883,8 +903,8 @@
             // latency, the two answers landing in whichever order the network hands them back
             // rather than the order they were asked in. The vendor writes its own list from
             // whatever this call returns with no regard for that order, and its own catch
-            // writes an EMPTY list regardless of what a cancelled search throws or returns
-            // (nsail#1672): the row a person is looking at would flicker closed on an answer
+            // writes an EMPTY list regardless of what a cancelled search throws or returns:
+            // the row a person is looking at would flicker closed on an answer
             // for a term nobody is reading anymore. Typing forward and back onto the SAME term
             // leaves an outlived call whose OWN term still matches the box, so a term compare
             // alone is not enough — the cancellation itself has to be checked too, the same
@@ -907,7 +927,7 @@
     // The vendor redraws its own list off what Search returns, never this field, and the create
     // entries are this field's fragments: without the redraw they would stay as they were drawn
     // while the search was still out. Search already refuses to reach here for an outlived call
-    // — one superseded by a term the box has moved past, or by a cancellation (nsail#1672) —
+    // — one superseded by a term the box has moved past, or by a cancellation —
     // every other caller is synchronous, so term always names the current text.
     void Answer(string term, IEnumerable<TItem> results)
     {

@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Text.RegularExpressions;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
+using MudBlazor.Utilities;
 using NSail.Components.Tests.Fixtures;
 
 namespace NSail.Components.Tests;
 
-/// <summary>nsail#2744 (folded from #2730): a page with no saved preference — an anonymous
-/// visitor, or a signed-in reader who never touched Mi Cuenta's Apariencia — used to paint the
-/// brand's own <see cref="BrandTheme.IsDark"/> rather than the visitor's own OS scheme, because
-/// NsTheme only ever read <see cref="NsTheme.Dark"/> (null) against that default. The OS query is
-/// a client fact (<c>window.matchMedia</c>), so it is asked once after the first interactive
-/// render and kept current by the vendor's own change watcher — a saved Claro/Oscuro still wins
-/// outright, and a prerender with no client to ask yet keeps the brand's own default until one
-/// answers.</summary>
+/// <summary>A page with no saved preference — an anonymous visitor, or a signed-in reader who
+/// never touched Mi Cuenta's Apariencia — paints the device's scheme, never the brand's
+/// <see cref="Brand.DefaultDark"/>. Until a client answers, the stylesheet reads the device
+/// itself (<c>prefers-color-scheme</c>); the OS query (<c>window.matchMedia</c>) is asked once
+/// after the first interactive render and kept current by the vendor's own change watcher. A
+/// saved Claro/Oscuro wins outright.</summary>
 public sealed class NsThemeSystemPreferenceTests : BunitContext
 {
     static readonly Brand TwoSchemeBrand = new();
@@ -37,7 +37,8 @@ public sealed class NsThemeSystemPreferenceTests : BunitContext
             .Add(x => x.Brand, TwoSchemeBrand)
             .Add(x => x.Dark, (bool?)null));
 
-        cut.WaitForAssertion(() => Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultLight().AccentInk};", cut.Markup));
+        cut.WaitForAssertion(() => Assert.DoesNotContain("prefers-color-scheme", cut.Markup));
+        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultLight().AccentInk};", cut.Markup);
     }
 
     [Fact]
@@ -75,21 +76,52 @@ public sealed class NsThemeSystemPreferenceTests : BunitContext
     // ever answers at all, stays here forever. The gate holds the JS call open exactly the way
     // GatedBrandProvider holds a brand read open in NsSetupBrandTests, so the un-resolved state is
     // actually observed rather than assumed from timing.
-    [Fact]
-    public void QueryUnavailableKeepsTheBrandsOwnDefaultUntilItResolves()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AnUnansweredDeviceIsReadByTheStylesheetWhateverTheBrandsDefault(bool brandDefaultDark)
     {
         var gate = JSInterop.Setup<bool>("mudThemeProvider.isDarkMode", _ => true);
 
-        var brand = new Brand { DefaultDark = true };
-
         var cut = Render<NsTheme>(p => p
-            .Add(x => x.Brand, brand)
+            .Add(x => x.Brand, new Brand { DefaultDark = brandDefaultDark })
             .Add(x => x.Dark, (bool?)null));
 
-        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultDark().AccentInk};", cut.Markup);
+        var device = Regex.Match(cut.Markup, @"@media \(prefers-color-scheme: dark\)\{(?<dark>.*?\})\}", RegexOptions.Singleline);
+
+        Assert.True(device.Success, "An unset preference with no answer yet carries no prefers-color-scheme block.");
+
+        var lit = cut.Markup[..device.Index];
+        var dark = device.Groups["dark"].Value;
+
+        Assert.Contains("color-scheme:light;", lit);
+        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultLight().AccentInk};", lit);
+        Assert.Contains($"--mud-palette-background: {Rgba(BrandTheme.DefaultLight().Background)};", lit);
+        Assert.Contains("color-scheme:dark;", dark);
+        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultDark().AccentInk};", dark);
+        Assert.Contains($"--mud-palette-background: {Rgba(BrandTheme.DefaultDark().Background)};", dark);
+        Assert.Contains("--mud-native-html-color-scheme: dark;", dark);
 
         gate.SetResult(false);
 
-        cut.WaitForAssertion(() => Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultLight().AccentInk};", cut.Markup));
+        cut.WaitForAssertion(() => Assert.DoesNotContain("prefers-color-scheme", cut.Markup));
+        Assert.Contains($"--ns-accent-ink:{BrandTheme.DefaultLight().AccentInk};", cut.Markup);
+    }
+
+    [Fact]
+    public void ASavedPreferenceCarriesNoDeviceBlock()
+    {
+        JSInterop.Setup<bool>("mudThemeProvider.isDarkMode", _ => true);
+
+        var cut = Render<NsTheme>(p => p
+            .Add(x => x.Brand, TwoSchemeBrand)
+            .Add(x => x.Dark, false));
+
+        Assert.DoesNotContain("prefers-color-scheme", cut.Markup);
+    }
+
+    static string Rgba(string hex)
+    {
+        return new MudColor(hex).ToString(MudColorOutputFormats.RGBA);
     }
 }

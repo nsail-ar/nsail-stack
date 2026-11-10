@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Text;
+
 namespace NSail.Harness.Lanes;
 
 // One bare clone per machine and a fixed set of worktree slots on it. A slot is reused
@@ -35,6 +37,13 @@ public sealed class Workspace
 
     // The remote default branch every slot starts from.
     public string Tip => $"origin/{_branch}";
+
+    // The remote by its address, never by the name `origin` the shared config resolves: the harness's
+    // network git goes where it was configured to, whatever a seat wrote in the common git directory.
+    public string Url => _repoUrl;
+
+    // Prefix of a git that reaches the remote: the helper list is the harness's own alone.
+    public string[] Guard => ["-c", "credential.helper=", .. Helper()];
 
     string[] Helper()
     {
@@ -74,6 +83,75 @@ public sealed class Workspace
         return PrepareAt(Path.Combine(_root, $"doctrine-{slot}"));
     }
 
+    // The clone's configuration and hooks are the harness's alone: a seat shares the common git
+    // directory, so whatever it planted there is gone before the harness runs git in it again.
+    public async Task Restore()
+    {
+        await _git.WaitAsync();
+        try
+        {
+            await WriteConfig();
+        }
+        finally
+        {
+            _git.Release();
+        }
+    }
+
+    // What the platform decides about its filesystem, measured once on a throwaway clone: the
+    // shared config is the seat's to write, so nothing is read back from it.
+    string[]? _platform;
+
+    async Task<string[]> Platform()
+    {
+        if (_platform is not null) return _platform;
+        var probe = Path.Combine(_root, "probe.git");
+        if (Directory.Exists(probe)) Directory.Delete(probe, recursive: true);
+        await Shell.Git(_root, "init", "-q", "--bare", probe);
+        var lines = new List<string>();
+        foreach (var key in new[] { "core.filemode", "core.symlinks", "core.ignorecase", "core.precomposeunicode" })
+        {
+            var r = await Shell.Run("git", ["config", "--file", Path.Combine(probe, "config"), "--get", key], _root);
+            if (r.ExitCode == 0) lines.Add($"\t{key["core.".Length..]} = {r.Output.Trim()}");
+        }
+        Directory.Delete(probe, recursive: true);
+        return _platform = [.. lines];
+    }
+
+    static string Quote(string value)
+    {
+        return "\"" + value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
+    }
+
+    // Caller holds _git. The file is written whole, never edited.
+    async Task WriteConfig()
+    {
+        var config = Path.Combine(Bare, "config");
+        var text = new StringBuilder();
+        text.Append("[core]\n\trepositoryformatversion = 0\n\tbare = true\n");
+        foreach (var line in await Platform()) text.Append(line).Append('\n');
+        // A slot checks files out as the repository holds them (LF), as on Linux: a CRLF checkout
+        // makes a test reading a file or a template see bytes CI never sees.
+        text.Append("\tautocrlf = false\n\teol = lf\n");
+        text.Append($"[remote \"origin\"]\n\turl = {Quote(_repoUrl)}\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n");
+        // The empty helper first resets the list: a machine-wide helper (Git Credential Manager
+        // under WSL) would wait on a window.
+        text.Append("[credential]\n\thelper = \"\"\n");
+        if (_credential is not null) text.Append($"\thelper = {Quote(_credential)}\n");
+        // Commits attribute by email, whoever's token pushes.
+        text.Append($"[user]\n\tname = {Quote(_name)}\n\temail = {Quote(_email)}\n");
+
+        var fresh = config + ".harness";
+        File.WriteAllText(fresh, text.ToString());
+        File.Move(fresh, config, overwrite: true);
+
+        var hooks = Path.Combine(Bare, "hooks");
+        if (Directory.Exists(hooks)) Directory.Delete(hooks, recursive: true);
+        var worktrees = Path.Combine(Bare, "worktrees");
+        var dirs = Directory.Exists(worktrees) ? Directory.GetDirectories(worktrees).Prepend(Bare) : [Bare];
+        foreach (var d in dirs) File.Delete(Path.Combine(d, "config.worktree"));
+    }
+
     async Task<string> PrepareAt(string path)
     {
         await _git.WaitAsync();
@@ -92,26 +170,19 @@ public sealed class Workspace
                     if (Directory.Exists(Bare)) Directory.Delete(Bare, recursive: true);
                     throw;
                 }
-                await Shell.Git(Bare, "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*");
-                // The empty helper first resets the list: a machine-wide helper (Git Credential Manager
-                // under WSL) would wait on a window.
-                await Shell.Git(Bare, "config", "--add", "credential.helper", "");
-                if (_credential is not null) await Shell.Git(Bare, "config", "--add", "credential.helper", _credential);
             }
-            // Commits attribute by email, whoever's token pushes.
-            await Shell.Git(Bare, "config", "user.name", _name);
-            await Shell.Git(Bare, "config", "user.email", _email);
-            // A slot checks files out as the repository holds them (LF), as on Linux: a CRLF checkout
-            // makes a test reading a file or a template see bytes CI never sees.
-            await Shell.Git(Bare, "config", "core.autocrlf", "false");
-            await Shell.Git(Bare, "config", "core.eol", "lf");
-            await Shell.Git(Bare, "fetch", "--prune", "-q", "origin");
+            await WriteConfig();
+            await Shell.Git(Bare, [.. Guard, "fetch", "--prune", "-q", _repoUrl, "+refs/heads/*:refs/remotes/origin/*"]);
             // A local story branch left by an earlier job would shadow the remote one a
-            // later round must continue; every branch not checked out in a slot goes.
+            // later round must continue; every branch not checked out in a slot goes, unless it holds commits no remote has.
             var heads = await Shell.Git(Bare, "for-each-ref", "--format=%(refname:short)", "refs/heads");
             foreach (var head in heads.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                if (head != _branch) await Shell.Run("git", ["branch", "-D", head], Bare);
+                if (head == _branch) continue;
+                // A branch with commits no remote ref holds is unpushed work: it stays.
+                var unpushed = await Shell.Run("git", ["rev-list", "--count", $"refs/heads/{head}", "--not", "--remotes"], Bare);
+                if (unpushed.ExitCode == 0 && int.TryParse(unpushed.Output.Trim(), out var n) && n > 0) continue;
+                await Shell.Run("git", ["branch", "-D", head], Bare);
             }
 
             if (!Directory.Exists(Path.Combine(path, ".git")) && !File.Exists(Path.Combine(path, ".git")))

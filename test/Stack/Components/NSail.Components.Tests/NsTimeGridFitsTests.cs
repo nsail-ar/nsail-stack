@@ -67,6 +67,6 @@ public sealed class NsTimeGridFitsTests : BunitContext
 
         Assert.Contains("--ns-time-window: 12", cut.Find(".ns-time-grid").GetAttribute("style"));
         Assert.Equal(24, cut.FindAll(".ns-time-grid-column .ns-time-grid-hour").Count);
-        Assert.Contains("ns-scroll-thin", cut.Find(".ns-time-grid-scroll").GetAttribute("class"));
+        Assert.DoesNotContain("ns-scroll-thin", cut.Find(".ns-time-grid-scroll").GetAttribute("class"));
     }
 }

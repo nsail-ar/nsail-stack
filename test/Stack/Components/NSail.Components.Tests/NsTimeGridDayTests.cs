@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
@@ -22,7 +23,7 @@ public sealed class NsTimeGridDayTests : BunitContext
     {
         Services.AddMudServices();
         Services.AddSingleton(new StringCatalog([]));
-        Services.AddSingleton<LanguageProvider>();
+        Services.AddSingleton(new LanguageProvider { Current = "en" });
         Services.AddSingleton<MetadataProvider>();
         Services.AddSingleton<StringManager>();
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -45,8 +46,8 @@ public sealed class NsTimeGridDayTests : BunitContext
         // The marks are clock hours from midnight, so the first names 00 and the last 23.
         var marks = cut.FindAll(".ns-time-grid-gutter .ns-time-grid-mark");
         Assert.Equal(24, marks.Count);
-        Assert.Equal(new TimeOnly(0, 0).ToString("t"), marks[0].TextContent.Trim());
-        Assert.Equal(new TimeOnly(23, 0).ToString("t"), marks[23].TextContent.Trim());
+        Assert.Equal(new TimeOnly(0, 0).ToString("t", CultureInfo.GetCultureInfo("en-US")), marks[0].TextContent.Trim());
+        Assert.Equal(new TimeOnly(23, 0).ToString("t", CultureInfo.GetCultureInfo("en-US")), marks[23].TextContent.Trim());
     }
 
     /// <summary>The reported defect, pinned: 20:01 against an 08–20 window. The line is drawn,
@@ -81,7 +82,7 @@ public sealed class NsTimeGridDayTests : BunitContext
     }
 
     /// <summary>The window survives as the visible height: the component owns a vertical scroll
-    /// of its own, sized by the framed hours and wearing the house's thin scrollbar.</summary>
+    /// of its own, sized by the framed hours and wearing the house bar every scroller wears.</summary>
     [Fact]
     public void TheWindow_BecomesTheVisibleHeightOfTheComponentsOwnScroll()
     {
@@ -93,7 +94,7 @@ public sealed class NsTimeGridDayTests : BunitContext
 
         var scroll = cut.Find(".ns-time-grid-scroll");
 
-        Assert.Contains("ns-scroll-thin", scroll.GetAttribute("class"));
+        Assert.DoesNotContain("ns-scroll-thin", scroll.GetAttribute("class"));
         Assert.Contains("--ns-time-window: 12", cut.Find(".ns-time-grid").GetAttribute("style"));
     }
 

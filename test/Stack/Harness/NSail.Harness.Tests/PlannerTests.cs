@@ -85,6 +85,39 @@ public class PlannerTests
         Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#7:", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void AStackPrGreenAndUnreadPastItsReviewsLimitIsSaidOutLoud()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(8, "In-Progress").Pr(8, 174, repo: Fixture.Stack, greenFor: TimeSpan.FromMinutes(61)).Build());
+
+        Assert.Contains(plan.Notes, n => n.StartsWith("#8: framework PR #174 green and unread", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AStackPrGreenForLessThanItsReviewsLimitIsNotSaid()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(8, "In-Progress").Pr(8, 174, repo: Fixture.Stack, greenFor: TimeSpan.FromMinutes(59)).Build());
+
+        Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#8:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AStackPrOfAStoryAHandHoldsIsNotSaid()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(8, "In-Progress", "hand").Pr(8, 142, repo: Fixture.Stack, greenFor: TimeSpan.FromMinutes(61)).Build());
+
+        Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#8:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AHomePrGreenAndUnreadIsReviewedHereNotSaid()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(8, "In-Progress").Pr(8, 140, greenFor: TimeSpan.FromMinutes(61)).Build());
+
+        Assert.Equal(["review PR #140 (story #8)"], plan.Items.Select(i => i.ToString()));
+        Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#8:", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("ruling")]
     [InlineData("blocked")]
@@ -111,6 +144,43 @@ public class PlannerTests
         var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "claimed").LockAge(7, "claimed", TimeSpan.FromMinutes(11)).Build());
 
         Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.Unlock, Story: 7, Value: "claimed" });
+        Assert.Equal(["dev #7 (rest)"], plan.Items.Select(i => i.ToString()));
+    }
+
+    [Fact]
+    public void AllowProtectedLiftsTheScreensRulingAndTheStoryIsTaken()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "ruling,screened,allow-protected").Build());
+
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.Unlock, Story: 7, Value: "ruling" });
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.Unlock, Story: 7, Value: "screened" });
+        Assert.Equal(["dev #7 (rest)"], plan.Items.Select(i => i.ToString()));
+    }
+
+    [Fact]
+    public void AllowProtectedLeavesARulingTheScreenDidNotSet()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "ruling,allow-protected").Build());
+
+        Assert.Empty(plan.Chores);
+        Assert.Empty(plan.Items);
+    }
+
+    [Fact]
+    public void TheScreensRulingWaitsForAllowProtected()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "ruling,screened").Build());
+
+        Assert.Empty(plan.Chores);
+        Assert.Empty(plan.Items);
+    }
+
+    [Fact]
+    public void AScreenedMarkWithItsRulingLiftedComesOff()
+    {
+        var plan = SampleWorkers.Plan(new Fixture().Story(7, "Ready", "screened").Build());
+
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.Unlock, Story: 7, Value: "screened" });
         Assert.Equal(["dev #7 (rest)"], plan.Items.Select(i => i.ToString()));
     }
 
@@ -243,7 +313,8 @@ public class PlannerTests
             .Story(2, "In-Progress").Pr(2, 20)
             .Story(3, "Ready", title: "Regression red on main (Shop)");
 
-        Assert.Equal(["dev #3 (red)", "dev #1 (p1)", "review PR #20 (story #2)"], Lines(f));
+        // A red suite story lights the andon: the release is all that is planned.
+        Assert.Equal(["dev #3 (red)"], Lines(f));
     }
 
     [Fact]

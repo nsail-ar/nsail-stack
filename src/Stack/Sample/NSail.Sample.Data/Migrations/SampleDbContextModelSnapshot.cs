@@ -78,6 +78,9 @@ namespace NSail.Sample.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Bootstrap")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("Entitlements")
                         .HasColumnType("jsonb");
 
@@ -227,7 +230,8 @@ namespace NSail.Sample.Migrations
                 {
                     b.HasOne("NSail.Sample.Entities.Contact", "Contact")
                         .WithMany("Addresses")
-                        .HasForeignKey("ContactId")
+                        .HasForeignKey("TenantId", "ContactId")
+                        .HasPrincipalKey("TenantId", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

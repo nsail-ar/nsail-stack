@@ -1,6 +1,6 @@
 ---
 name: new-mapping
-description: Write or convert a handler so the generated entity mapper copies the data — [MapFrom] a message onto an entity graph, [MapTo] a Row/Model/Ref projection, EntityMapper.Map/Upsert/Project. Use when a handler would assign entity.X = message.X by hand, build a new Entity from a message, merge a child collection by key, or when a build says NSG004 to NSG013.
+description: Write or convert a handler so the generated entity mapper copies the data — [MapFrom] a message onto an entity graph, [MapTo] a Row/Model/Ref projection, EntityMapper.Map/Upsert/Project. Use when a handler would assign entity.X = message.X by hand, build a new Entity from a message, merge a child collection by key, or project with .Select; when adding a Create/Update/List/Get/Lookup to a kit; or when a build says NSG004 to NSG013 or NSG025.
 ---
 
 # New mapping
@@ -92,5 +92,6 @@ guards its parts (data.md, *Mapping*) — and a zero version not held; a missing
 speaking: `NSG004` an organization axis mapped by name alone, `NSG005` a `[Primitive]` of another
 type, `NSG006` a member with no conversion, `NSG007` no parameterless constructor, `NSG008`
 a `[MapFrom]` that names a non-class, `NSG009` a projection that cannot carry a derived type,
-`NSG010` an open generic, `NSG013` an `Ignore` naming a member that does not exist. `NSG011` and
+`NSG010` an open generic, `NSG013` an `Ignore` naming a member that does not exist, `NSG025` a
+`[MapFrom]` reading a nullable into a non-nullable member that is not the key. `NSG011` and
 `NSG012` are warnings, not errors: the build is green and the data is gone.

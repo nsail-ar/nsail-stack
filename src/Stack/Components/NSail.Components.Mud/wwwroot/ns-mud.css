@@ -75,12 +75,10 @@
    divides a table's own header from its body carries the seam here too. One rule and one
    class, so the two cannot come to look like different components.
 
-   The horizontal inset carried here (stories.md, "Sales: el 'sin margenes' se modera")
-   belongs to the whole family, not just the bar: Leonardo's original "sin margenes" ruling
-   on the Seña killed the wrapper's own lateral pa-4 outright (SaleLinesEditor/TendersEditor
-   both wrap in Class="py-4", horizontal dropped on purpose), so the bar, a list row, an
-   empty collection's own message and the foot's totals all sat flush against the card's
-   border — moderated, not reverted ("un padding minimo por favor"): the house's smallest
+   The horizontal inset carried here belongs to the whole family, not just the bar:
+   a wrapper with no lateral padding of its own (Class="py-4", horizontal dropped on purpose)
+   leaves the bar, a list row, an empty collection's own message and the foot's totals flush
+   against the card's border unless this rule insets them: the house's smallest
    step, the same 0.5rem this rule already spent on its own vertical seam, shared by every
    selector in the family below so nothing in one collection lines up against a different
    edge than its neighbour. */
@@ -131,7 +129,7 @@
        aside included. Safe for NsPanel's own reason: a block taking its width from the parent,
        never from its content. Note for whatever is put INSIDE a row: an unnamed @container
        query resolves to the nearest container whatever its name, so a button's own collapse
-       inside a row now measures this <ul> and not the panel — the panel's padding narrower. */
+       inside a row measures this <ul> and not the panel — the panel's padding narrower. */
     container-type: inline-size;
 }
 
@@ -176,7 +174,7 @@
     min-width: 0;
 }
 
-/* A handful of FACTS said as a list — Inicio's Notificaciones, one line per state. A real
+/* A handful of FACTS said as a list — a home card's notices, one line per state. A real
    <ul> for the same reason as above, and here the browser's bullets are kept: the mark is what
    makes two short facts read as two facts instead of one wrapped sentence. Only the indent and
    the block's own margin are corrected, to the one the house's markdown lists already wear;
@@ -199,11 +197,10 @@
     flex: 1 1 12rem;
 }
 
-/* Iam.AccountLoginsList: one connected account, visually contained (Emmanuel's story,
-   2026-08-11). Two glyphs at two different depths — unlink the account, disconnect a
-   service — used to read as the same action; the border is what tells them apart. Same
-   hairline and radius the house's other subtle borders already use (.ns-form-problem,
-   .ns-tree), never a new token. */
+/* One connected account, visually contained. Two glyphs at two different depths — unlink the
+   account, disconnect a service — read as the same action without one; the border is what
+   tells them apart. Same hairline and radius the house's other subtle borders already use
+   (.ns-form-problem, .ns-tree), never a new token. */
 .ns-account-block {
     border: 1px solid var(--mud-palette-table-lines);
     border-radius: var(--mud-default-borderradius);
@@ -222,10 +219,10 @@
     padding-left: 1.5rem;
 }
 
-/* The session menu's identity block, for the actor's picture: PartyAvatar sizes its photo
-   branch itself but leaves its glyph fallback unsized, so neither branch alone guarantees a
-   square footprint. Fixed dimensions here give both the same frame; Size on PartyAvatar (40)
-   matches the number below so the photo fills it exactly. */
+/* The session menu's identity block, for the actor's picture: an avatar that sizes its photo
+   branch itself but leaves its glyph fallback unsized guarantees no square footprint in either
+   branch alone. Fixed dimensions here give both the same frame; the avatar's own size (40) has
+   to match the number below so the photo fills it exactly. */
 .ns-session-avatar {
     width: 40px;
     height: 40px;
@@ -234,7 +231,7 @@
 
 /* A plain NsLink (As="Inline") renders a bare anchor with no color or underline of its own —
    honest chrome for a link that reads as clickable text rather than a button pretending to be
-   one (the Sesión dialog's Mi Perfil, stories.md). The house has no primary+underlined link
+   one (the session dialog's profile link). The house has no primary+underlined link
    mode yet; this is the minimal class until a second caller earns one. The accent AS INK and
    not the accent, like every other text in the house that carries the brand's hue
    (--ns-accent-ink below). */
@@ -261,13 +258,13 @@
 
 /* ONE FRAME PER TABLE. A MudTable is itself a raised sheet: measured on 9.10.0, its root renders
    mud-table mud-elevation-1 — Surface for a fill, the house radius, and elevation 1, whose own
-   1px 6% white ring BrandMudTheme.BuildElevations casts IS an edge (ui/styling.md, Card chrome).
-   So a table placed inside a sheet of its own — NsPaper or NsCard: every lines editor, the
-   Venta's Artículos — framed one thing twice. Inside one, the enclosing sheet is the edge and the
-   table is flat on it. (MudTableBase.Outlined is NOT what draws it: its doc remark says true and
-   the property is false, so no mud-table-outlined is rendered at all. The border is stated here
-   anyway — a table that one day asks for Outlined inside a card must not reintroduce the second
-   frame.)
+   1px 6% white ring BrandMudTheme.BuildElevations casts IS an edge (ui/styling.md, Card
+   chrome). So a table placed inside a sheet of its own — NsPaper or NsCard: every lines editor,
+   a document's line list — would frame one thing twice. Inside one, the enclosing sheet is the
+   edge and the table is flat on it. (MudTableBase.Outlined is NOT what draws it: its doc
+   remark says true and the property is false, so no mud-table-outlined is rendered at all. The
+   border is stated here anyway — a table that one day asks for Outlined inside a card must not
+   reintroduce the second frame.)
 
    Derived from where the table STANDS rather than asked for per call site: a parameter would be a
    styling decision nine pages make and a tenth forgets, and the one fact that decides it — is
@@ -291,10 +288,10 @@
     overflow-y: auto;
 }
 
-/* nsail#579 — Leonardo, Catálogo mobile: the pager row itself (page-size select, counter,
+/* On mobile the pager row itself (page-size select, counter,
    arrows) rendered cut off at the bottom of the list, not just the container's rows.
 
-   Catálogo's NsTable (like every NsTable in this codebase — none sets Mode explicitly)
+   An NsTable that sets no Mode
    resolves Mode="Auto", which answers Scroll only on a phone (NsTable.razor's Scrolls, asking
    IDeviceProvider); everything else — a tablet, a desktop window dragged short, a host with no
    device seam — stays on the Page branch, the real MudTablePager. The squeeze this rule guards
@@ -375,7 +372,7 @@
     color: var(--mud-palette-primary);
 }
 
-/* A STACKED GRID GROWS TO ITS ROWS, SO ITS CONTAINER HAS NOTHING LEFT TO SCROLL (nsail#2595).
+/* A STACKED GRID GROWS TO ITS ROWS, SO ITS CONTAINER HAS NOTHING LEFT TO SCROLL.
    What the container's own scroll above buys is the pager pinned at the box's foot while the
    rows move under it. A card is ten times a row's height, so on a stacked list that collapses
    into its opposite: the page's own region is tall enough for two cards and a half, the eight
@@ -398,7 +395,7 @@
    takes overflow-x: visible with it — and a stacked card wider than the row (measured 1060
    against 380) then escapes the grid's box and is CLIPPED by the Content div's overflow-x:
    hidden instead of scrolling sideways inside the container, which is what that hidden was
-   written to leave it doing (nsail#1004, Leonardo's Personas screenshot).
+   written to leave it doing.
 
    Scoped to the PAGED branch (ns-table-pages, NsTable.GetClasses) and not to every stacked
    grid: in Scroll mode — Auto's answer on a real phone — that same container IS the surface the
@@ -408,9 +405,9 @@
    Inside the query and not keyed off mud-sm-table alone: that class is what Breakpoint="Sm"
    stamps on the ROOT at every width (NsTable.razor), and the stacking it names is the vendor's
    own max-width: 960px — so without the query a paged desktop grid carries both hooks and
-   loses the container scroll its pinned pager stands on, which is this story's own fault 3
-   moved to the desktop. Same query the rest of the file's stacked rules live in (the block
-   further down), matched rather than translated for the same reason.
+   loses the container scroll its pinned pager stands on. Same query the rest of the file's
+   stacked rules live in (the block further down), matched rather than translated for the same
+   reason.
 
    ns-table-loading-host (NsTable.GetHostClasses) sits above the grid and carries the same
    min-h-0 the grid's own root does, for the same reason — so it owes the grid's auto back here
@@ -474,10 +471,9 @@
 /* MudChip carries a vendor margin: 4px on every side, meant for a chip sitting loose among
    siblings — inside a table cell there are no siblings to space from, so the 4px becomes 8px
    of unearned row height stacked on the pill's own 32px, still the tallest thing in a row
-   whose text sits comfortably in far less (1ac15086 grew the action icons for the same
-   inversion; the pill itself stays exactly as large — killing the MARGIN is not the slimming
-   Leonardo vetoed). Scoped to a table cell only: a chip anywhere else keeps the vendor's own
-   spacing. */
+   whose text sits comfortably in far less. The pill itself stays exactly as large — killing
+   the MARGIN is not the slimming a flush chip would need. Scoped to a table cell only: a chip
+   anywhere else keeps the vendor's own spacing. */
 .ns-table .mud-table-cell .mud-chip {
     margin: 0;
 }
@@ -517,12 +513,12 @@
 
 /* A GROWING lookup's cell has a floor, and the ROW is what answers whether it can be paid. An
    auto-layout table sizes a column from the min-content of its cells, and a vendor input
-   contributes none of its own, so the cell a line editor opens its Artículo field in took
+   contributes none of its own, so the cell a line editor opens its article lookup in took
    whatever the other columns left over: 174px on a 1366px window and 100px in a 700px container,
    where the box showed 14px of a 353px value (measured). Every other cell in that row holds
    something legible from its first characters — a quantity, a price, a description the
    operator typed — while a lookup's
-   value is a composed reading the user never wrote ("CR-150 - Orgánico CR-39 1.50 (Depósito)"):
+   value is a composed reading the user never wrote ("Code - Name (detail)"):
    its head is the SKU and its middle is which article it actually is, so a fragment of it names
    nothing. The floor is the grow basis, the same number a growing field is never squeezed below
    in a form row (.ns-grid > .ns-form-field-grow), and it is the width at which the box inside the
@@ -532,12 +528,12 @@
    says when its value is a composed reading whose head alone names nothing, so the cell reads the
    class that declaration renders (NsFieldBase.GrowClass) rather than the presence of a lookup,
    and a floor under a short reading spends the row's width on a column that never asked for it.
-   Whether a lookup is right to declare nothing is its model's answer, not its markup's: an
-   Alícuota is TaxRateRef.DisplayName ("IVA 21%") and a Tercero is a plain PartyRef.DisplayName,
-   both legible from their first characters. A Cuenta is neither — AccountRef.DisplayName is
-   "Code — Name", the composed shape this floor exists for — and AccountSelect declares its own
-   Grow and forwards it to the autocomplete underneath, so the caller that wants the floor asks
-   for it the same way any other growing field does (nsail#1171).
+   Whether a lookup is right to declare nothing is its model's answer, not its markup's: a tax
+   rate's display name ("VAT 21%") and a party's plain name are both legible from their first
+   characters, while an account's "Code — Name" is the composed shape this floor exists for —
+   so the select that wraps such a lookup declares its own Grow and forwards it to the
+   autocomplete underneath, and the caller that wants the floor asks for it the same way any
+   other growing field does.
 
    WHETHER is the row's own answer, and the word this asks in is a DEMAND: a min-width raises the
    table's min-content, so where the row has no surplus left the minimum is not redistributed but
@@ -546,14 +542,14 @@
    with it. Which is why the container is asked first.
 
    So the cell DEMANDS the basis from md up, and md is where it is always affordable: at the
-   smallest container past it (968px) the widest line editor in the tree, the comprobante's
-   eight-column row, asks 856px of a 934px table and clears it by 78px. Below md the demand is
-   not safe — at a 712px container the asiento's row has 103px of slack while the comprobante's
-   is already 52px past its own table — so between 740px and md the open row seats its fields
+   smallest container past it (968px) the widest line editor measured, an eight-column row,
+   asks 856px of a 934px table and clears it by 78px. Below md the demand is not safe — at a
+   712px container a narrower row has 103px of slack while the eight-column one is already
+   52px past its own table — so between 740px and md the open row seats its fields
    in the row's own width, and under 740px it stops being a row of columns at all and every
    field takes its own card line (the container block below, where a table stacks). A
    preference is what this rule used to hand a narrow row instead, 192px out of its own
-   surplus (nsail#1242); the stack gives the same cell 654px in the same 688px aside, so the
+   surplus; the stack gives the same cell 654px in the same 688px aside, so the
    word that was only ever the best of a bad width is gone rather than left to decide nothing. */
 @container (min-width: 960px) {
     .ns-table .mud-table-cell:has(.mud-autocomplete .mud-input-control.flex-1) {
@@ -569,18 +565,18 @@
    two of them, and the reserve below is --ns-action-slots of those less that last separation
    — the toolbar's own cap, the kebab overflow raises, and the row's constant where it carries
    one, held whether the kebab renders or not. The cell IS one toolbar (intentional-ui, grids:
-   the page's fixed verbs ride in as Leading), so that reserve now covers the whole cell
+   the page's fixed verbs ride in as Leading), so that reserve covers the whole cell
    rather than a fragment of it sitting between two hand-written icons — which is what the
-   hole Leonardo marked before the lupa was made of.
+   hole a fragment leaves.
 
    width:1% is the shrink-to-fit idiom for an auto-layout table: the cell asks for nothing
    past its content and the data columns take the rest. The strip packs to the column's
    trailing edge — the cell aligns the toolbar (it is inline-flex, so text-align reaches it)
    and the toolbar packs its own icons the same way, which pins whichever control closes the
-   row (the kebab when the row overflows — Leonardo, 2026-08-11: "el kebab cierra la fila" —
-   the constant otherwise) at the fixed edge, and lets the rest grow leftward from it. Rows
-   sharing the same overflow state then line their trailing control up on the same x; a row
-   that overflows sits its constant one slot short of that edge, the kebab past it. */
+   row (the kebab when the row overflows, the constant otherwise) at the fixed edge, and lets
+   the rest grow leftward from it. Rows sharing the same overflow state then line their trailing
+   control up on the same x; a row that overflows sits its constant one slot short of that edge,
+   the kebab past it. */
 /* The selection tick is the action column's mirror at the leading edge: it asks for nothing
    past the box it draws. */
 .ns-table .ns-select {
@@ -636,16 +632,13 @@
    which is two icon boxes in one row and the raggedness this column exists to end. The
    column decides instead, so there is nothing left for a page to forget.
 
-   The glyph takes the middle step of the icon scale, not the small one (Leonardo, on the OT
-   grid: "icons sube! en todos lados.. son re chiquitos" — and, of the same row, "por qué el
-   pill es más grande que el ícono?"). A 16px glyph beside a 32px status chip inverted the
-   hierarchy: the passive label outweighed the controls that actually do something. The
-   padding is deliberately NOT touched — 3px is what keeps the desktop grid dense — and the
-   correction was the glyph alone: 16px to 20px, box 22px to 26px.
+   The glyph takes the middle step of the icon scale, not the small one. A 16px glyph beside a
+   32px status chip inverted the hierarchy: the passive label outweighed the controls that
+   actually do something. The padding is deliberately NOT touched — 3px is what keeps the
+   desktop grid dense — so the glyph alone carries it: 20px, in a 26px box.
 
-   Leonardo asked again (2026-08-11, "íconos de los comandos de la tabla un poco más grandes,
-   igual que en las cards de Organization"): measured against OrganizationsPage's row actions
-   (Directory.Shared, no Size override — MudBlazor's own unmodified Medium, the vendor's base
+   Measured against a card's row actions
+   (no Size override — MudBlazor's own unmodified Medium, the vendor's base
    .mud-icon-button rule, no `-size-medium` modifier class exists), the card's glyph is
    1.5rem/24px, one step past this column's 1.25rem/20px. The column grows to match it — 20px
    to 24px, box 26px to 30px — and padding stays untouched again: matching the card's GLYPH is
@@ -699,17 +692,17 @@
     padding: 3px;
 }
 
-/* A coarse pointer hits an area, not a point (Leonardo, on Android: "en mobile me cuesta
-   meter el garfio"). The compact chrome above measures 30px, which is well under half of what
-   a finger lands on, so the BOX grows to 48px. Padding alone carries it now: the glyph is
-   already at 1.5rem above (and matches the card's own glyph, so nothing here shrinks it).
+/* A coarse pointer hits an area, not a point. The compact chrome above measures 30px, which is
+   well under half of what a finger lands on, so the BOX grows to 48px. Padding alone carries
+   it: the glyph is already at 1.5rem above (and matches the card's own glyph, so nothing here
+   shrinks it).
 
    The grid's action column is the one ICON scope to correct here. Everywhere else an Ns icon
    action is MudBlazor's own medium — 12px of padding around that same 1.5rem glyph, 48px by
-   construction — which is also what NsActionToolbar renders outside a table (Organization's
-   cards among them), so restating either property for .ns-action-toolbar would only re-derive
-   what the size already gives, and the font-size half of it used to shrink the app bar's
-   deliberately larger icons. The WORDED face is the block below.
+   construction — which is also what NsActionToolbar renders outside a table (a
+   card's row actions among them), so restating either property for .ns-action-toolbar would
+   only re-derive what the size already gives, and its font-size half would shrink the app
+   bar's deliberately larger icons. The WORDED face is the block below.
 
    The slot grows with the button, or the reserve would stop matching what it reserves for:
    12 + 24 + 12 plus the 4px between two of them is 3.25rem, as 3 + 24 + 3 + 4 is 2.125rem. The
@@ -757,15 +750,16 @@
    wherever the house draws one — NsButton, NsSubmit, NsClose, NsMenu's labelled trigger —
    through .mud-button, that face and nothing else wears, and NsLink's own Inline face too —
    a bare anchor that draws no `.mud-button` at all — through `.ns-link` beside it in the same
-   declaration, one floor stated once for both. */
+   declaration, and the link a tapped chip's bubble carries (THE TAPPED BUBBLE), one floor
+   stated once for all three. */
 @media (pointer: coarse) {
-    .mud-button, .ns-link {
+    .mud-button, .ns-link, .ns-whisper-tap a {
         min-height: 44px;
     }
 }
 
-/* While a row is open for editing, a table still laid out AS A TABLE stops hiding columns
-   (nsail#480). An edit input never hides (ui/hosts.md), so NsTd drops the hide classes for
+/* While a row is open for editing, a table still laid out AS A TABLE stops hiding columns.
+   An edit input never hides (ui/hosts.md), so NsTd drops the hide classes for
    the cells of that one row — but a display:none cell generates no box, so in column mode
    the row would then own more boxes than the header and the read rows do, and every input
    would land one column off. Freeing the whole table for as long as the editor is open is
@@ -775,8 +769,7 @@
    What that reaches is the band between 740px and a column's own threshold. A table stacks
    wherever its container cannot seat it (the container block below), so a table still laid
    out in columns has a container of 740px or more, and the only columns hidden that far up
-   are the ones a grid declared Md (under a 960px container), Lg or Xl —
-   EditorRowColumnModeTests measures it in a 1000px container, on the comprobante's Lg column.
+   are the ones a grid declared Md (under a 960px container), Lg or Xl.
 
    Deliberately NOT scoped by a media query of its own: complementing the vendor's
    max-width:960px with a min-width would leave a fractional gap between the two, so this
@@ -818,28 +811,16 @@
    full width back, and the empty pseudo goes — left in, it would hold its own 16px against
    whichever edge the strip packs to.
 
-   Leonardo asked for the right edge first ("la botonera se tiene que ver alineada a la
-   derecha", 4718a5a7), then a device screenshot of that build read as CENTERED rather than
-   right-aligned, so ec20a9a2 tried the left edge instead — same defect, mirrored, because
-   flipping this rule's own justify-content was never the fix. THE ACTUAL BUG lived one level
-   down: NsActionToolbar renders even a single icon inside a span reserved for MaxVisible + 1
-   slots (--ns-action-slots, min-width below), so it can hold its width across rows with
-   different counts — correct on desktop, where the reserve sits to the RIGHT of a
-   left-packed icon and nothing downstream cares. Here the toolbar is one flex item among
-   others in the actions cell (NsStack, gap-1), so its own default packing (flex-start) left
-   the dead reserve BETWEEN the toolbar's visible icon and its neighbour (the row's own
-   NsPageLink, e.g. the lupa) — a gap invariant to whichever edge THIS rule packed the whole
-   cluster to, which is exactly why every flip "did nothing": the bounding box moved, the hole
-   inside it did not. The toolbar packs its own content to ITS box's trailing edge here, so
-   the reserve moves to the toolbar's leading side (against its neighbour, hidden inside the
-   cluster) instead of sitting in the gap that used to read as "not quite aligned either way";
-   the icons then read as one strip, and the cell packs that strip to the right — Leonardo's
-   final ruling ("donde sea menos ahí en el centro"), reached this time by closing the hole
-   that was defeating the justify-content, not by flipping it again. The toolbar's own packing
-   is no longer restated in this block: it is the action column's at every width now (above),
-   since the cell it fills is one toolbar and whichever control closes the row (the constant,
-   or the kebab past it once the row overflows) belongs at the trailing edge in a card exactly
-   as in a row. */
+   The cell packs the strip to the trailing edge, and justify-content alone cannot get it
+   there: NsActionToolbar renders even a single icon inside a span reserved for MaxVisible + 1
+   slots (--ns-action-slots, min-width below), so it holds its width across rows with
+   different counts. Left to its default packing (flex-start), that reserve sits BETWEEN the
+   toolbar's visible icon and its neighbour in the actions cell (the row's own NsPageLink) — a
+   hole that moves with the cluster whichever edge this rule packs it to. The toolbar packs its
+   own content to ITS box's trailing edge, at every width (the action column's rule above), so
+   the reserve sits on its leading side, hidden inside the cluster; the icons read as one
+   strip, and whichever control closes the row (the constant, or the kebab past it once the
+   row overflows) stands at the trailing edge in a card exactly as in a row. */
 @media (max-width: 960px) {
     .ns-table.mud-sm-table .ns-actions {
         width: auto;
@@ -850,31 +831,26 @@
         display: none;
     }
 
-    /* A second, later defect (Leonardo's stacked screenshot on Clientes, stories.md
-       2026-08-07/08): "three packed left, one far right" — not a misalignment this time, the
-       block above already reads as flush right. The toolbar's own min-width (--ns-action-slots
-       worth, ns-mud.css above) is a SIZE, and justify-content only ever chose which side of
-       that size the visible icon sits on. Zeroing the reserve is what actually removes the
-       gap: a desktop COLUMN'S rows need it to stay the same width regardless of how many
-       actions each row contributed, and a stacked card has no column to serve, so nothing
-       downstream needs that width held once the row has already become its own box. Central
-       here means every grid using NsActionToolbar inherits the fix, not just Clientes'. */
+    /* The reserve itself goes in a card: the toolbar's own min-width (--ns-action-slots worth,
+       above) is a SIZE, and justify-content only chooses which side of that size the visible
+       icons sit on, so a card with fewer acts than the reserve would read "packed left, one far
+       right". Zeroing the reserve removes the gap: a desktop COLUMN'S rows need it to stay the
+       same width regardless of how many actions each row contributed, and a stacked card has no
+       column to serve, so nothing downstream needs that width held once the row has already
+       become its own box. Central here means every grid using NsActionToolbar inherits it. */
     .ns-table.mud-sm-table .ns-action-toolbar {
         min-width: 0;
     }
 
-    /* The stacked label RECEDES so the value leads (Leonardo, 2026-08-12, Clientes on a
-       phone: "'Nombre para mostrar' atrae toda mi atención, casi ni miro el nombre de la
-       persona" — ruling: "NO quites la etiqueta, mejorale el color con opacity para que el
-       valor tenga más importancia"). In a stacked card every cell is drawn label-then-value,
-       and the label is the column header echoed through data-label on the vendor's ::before.
-       The vendor paints that pseudo at font-weight:500 (.mud-sm-table .mud-table-cell:before,
-       0-2-1) while the value inherits the cell's own 400 — the header outweighs the datum,
-       the inversion Leonardo saw. Muting the LABEL (secondary text, the house's receding-text
-       token used by every hint/helper) and dropping it to the value's weight lets the datum
-       lead without removing the label a card still needs to name its lines. Scoped to
-       .ns-table.mud-sm-table (0-3-1) so it beats the vendor, and to the pseudo that only
-       exists once stacked — column-mode headers are their own <th> and never match. */
+    /* The stacked label RECEDES so the value leads. In a stacked card every cell is drawn
+       label-then-value, and the label is the column header echoed through data-label on the
+       vendor's ::before. The vendor paints that pseudo at font-weight:500 (.mud-sm-table
+       .mud-table-cell:before, 0-2-1) while the value inherits the cell's own 400 — the header
+       outweighs the datum, the inversion. Muting the LABEL (secondary text, the house's
+       receding-text token used by every hint/helper) and dropping it to the value's weight lets
+       the datum lead without removing the label a card still needs to name its lines. Scoped to
+       .ns-table.mud-sm-table (0-3-1) so it beats the vendor, and to the pseudo that only exists
+       once stacked — column-mode headers are their own <th> and never match. */
     .ns-table.mud-sm-table .mud-table-cell::before {
         color: var(--mud-palette-text-secondary);
         font-weight: 400;
@@ -923,13 +899,12 @@
         display: none;
     }
 
-    /* THE OPEN ROW IS A FORM, so its cells draw the label ABOVE the field (nsail#1492 —
-       Leonardo, Nueva Orden de Compra on a phone). The vendor lays every stacked cell out as
-       one flex ROW, label then value, and .mud-input-control is flex: 1 1 auto, so each field
-       begins exactly where its own label ends: Producto, Descripción, Cantidad and Precio
-       unitario at four different offsets in one card, and a label that wraps to two lines
-       ("Precio unitario") pushes its own field further than the rest. Four boxes on four left
-       edges is not a form anybody fills with a thumb.
+    /* THE OPEN ROW IS A FORM, so its cells draw the label ABOVE the field (a purchase-order
+       line on a phone). The vendor lays every stacked cell out as one flex ROW, label then
+       value, and .mud-input-control is flex: 1 1 auto, so each field begins exactly where its
+       own label ends: four labels of four lengths put four fields at four different offsets in
+       one card, and a label that wraps to two lines pushes its own field further than the rest.
+       Four boxes on four left edges is not a form anybody fills with a thumb.
 
        A row being READ keeps the vendor's shape, and that is the whole point of scoping this
        to the open row: label left, datum right is the card line the rule above already ruled
@@ -952,9 +927,8 @@
         row-gap: 2px;
     }
 
-    /* Column importance survives the stack (stories.md, "el modo stackeado respeta los
-       Breakpoint de columna" — Leonardo 2026-08-08, on WorkOrdersPage: "ocultar saldo
-       paciente y a cobrar obra social... así en mobile no se hace tan largo"). NsTh/NsTd
+    /* Column importance survives the stack (a stacked row on a phone would
+       otherwise grow too long). NsTh/NsTd
        already compute a column's importance into d-c-none d-c-{bp}-table-cell
        (NsResponsive.CellClasses) — sized for a table COLUMN's display:table-cell, and
        overruled here by the vendor's own stacked rule (.mud-sm-table .mud-table-cell {
@@ -1251,8 +1225,7 @@
 }
 
 /* NsDrawer: width follows Surface.Size (animated for runtime resizes), and never covers the
-   nav gutter. An aside is WIDE, never full-bleed (Leonardo, with Nueva OT open on a desktop:
-   "sigue full screen y me tapa el menu"): the menu is how you leave the document you are
+   nav gutter. An aside is WIDE, never full-bleed: the menu is how you leave the document you are
    looking at, so an overlay that paints over it has taken the app's only exit away.
 
    The gutter is not restated here — it is read from --mud-drawer-width-left, the custom
@@ -1316,7 +1289,7 @@
     color: var(--mud-palette-text-primary);
 
     /* A ring BuildElevations' own comment does not reach, this box-shadow being written here
-       instead of an elevation level — so it reads --ns-elevation-ring the same way (nsail#2744):
+       instead of an elevation level — so it reads --ns-elevation-ring the same way:
        the aside IS the content surface above, and a white ring is as invisible on its light
        reading as on any other card's. The rail draws the other hand-written ring, below, and
        reads a different token for the same reason it reads TextOnChrome and not the scheme's
@@ -1334,7 +1307,7 @@
    The ring itself cannot be --ns-elevation-ring: that token answers which of the two FIXED
    schemes is lit, and the rail's surface is Chrome, a free pick neither scheme owns — the
    house's own light chrome (#fcfbf9) sits a hair under its own light Background, where either
-   literal ring would be invisible (nsail#2744, round 2). --ns-rail-edge is the rail's existing
+   literal ring would be invisible. --ns-rail-edge is the rail's existing
    answer to the same question for every other hairline it draws (the brand block and the
    session chip's own borders): a wash of the chrome's own ink, so it reads against whatever
    luminance the chrome happens to be instead of assuming one. */
@@ -1346,13 +1319,13 @@
    work — the menu inside it owns its own overflow, the same doctrine everywhere else: only
    what is marked scrolls, and the region marked is the one that actually holds too much.
 
-   That owner is now NsNavMenu's own panel content, one box further IN than this: the drawer
+   That owner is NsNavMenu's own panel content, one box further IN than this: the drawer
    holds a search field that has to stay reachable while the entries move under it, so a
-   scroller out here would carry the field off the top of the screen with them (Leonardo,
-   2026-08-10, screenshot of "Escribí para buscar" half cut). What this region owes the panel
-   is only the definite height it grows against — MudBlazor already gives it height:100% and a
-   flex column; min-height:0 is the link that lets a flex child shrink below its content, and
-   without it the chain breaks here and the panel never scrolls internally at all. */
+   scroller out here would carry the field off the top of the screen with them. What this region
+   owes the panel is only the definite height it grows against — MudBlazor already gives it
+   height:100% and a flex column; min-height:0 is the link that lets a flex child shrink below
+   its content, and without it the chain breaks here and the panel never scrolls internally at
+   all. */
 .ns-nav-drawer .mud-drawer-content {
     min-height: 0;
 }
@@ -1374,12 +1347,11 @@
     min-height: var(--mud-appbar-height);
 }
 
-/* The rail: the brand's OWN chrome, in both scales (Leonardo, nsail#665). With no app bar
+/* The rail: the brand's OWN chrome, in both scales. With no app bar
    above it the rail is the only chrome on screen — the piece the eye reads the install's
    colour off, and its Header (the brand block) and Footer (the session chip) are the two
    places that ground shows bare. A graphite mixed from a few percent of the primary put a
-   fixed grey there in every install and every scale, which is what "el color del tema no se
-   aplica al header y al footer, se ve siempre gris" names: a few percent of a hue is not a
+   fixed grey there in every install and every scale: a few percent of a hue is not a
    colour, and a constant cannot be a tenant's.
 
    Every slot here reads the chrome or the ink derived from it, and none reads the content's
@@ -1409,6 +1381,13 @@
        body reading a different slot than the two blocks around it is a stripe down the
        rail. */
     --ns-panel-surface: var(--ns-rail-ground);
+
+    /* The house bar (:root below) mixes the content's ink; the rail's panel scrolls on the
+       band, so its thumb mixes the band's. scrollbar-color is restated because the inherited
+       value was resolved against :root's variables. */
+    --ns-scrollbar-thumb: color-mix(in srgb, var(--mud-palette-drawer-text) 40%, transparent);
+    --ns-scrollbar-thumb-hover: color-mix(in srgb, var(--mud-palette-drawer-text) 70%, transparent);
+    scrollbar-color: var(--ns-scrollbar-thumb) transparent;
 
     background-color: var(--ns-rail-ground);
     color: var(--ns-rail-text);
@@ -1454,20 +1433,20 @@
 
 /* The active entry is the one place the brand's own hue marks the rail: the rail carries only a
    trace of it, so the trace cannot also be what says where the user is. Secondary/Tertiary were
-   evaluated for this slot (nsail#561) and refused: where the user IS is the brand's own
+   evaluated for this slot and refused: where the user IS is the brand's own
    business, and a second hue here would put two identities in the one piece of chrome that never
    changes. Secondary and Tertiary stay what they are — accents for DATA (states, badges), where
    a colour means a value and not a place.
 
    The hue arrives as the band's own INK and not as the accent at full strength: the default
-   light chrome under the house orange read 2.14:1 in the browser, so the one word that says "you
-   are here" was the least readable word in the gutter (nsail#1940).
+   light chrome under the house orange reads 2.14:1 in the browser, which would make the one
+   word that says "you are here" the least readable word in the gutter.
 
    Six classes because the vendor's own rule carries five —
    .mud-navmenu.mud-navmenu-default .mud-nav-link.active:not(.mud-nav-link-disabled), which paints
    the accent AND a ground mixed from the content's action ink — and this rule, at three, was
    losing to it outright: the wash named here never reached the screen either, which is only
-   visible to a layout engine (AccentInkTests, Optical E2E). Out-ranked rather than left to the
+   visible to a layout engine (AccentInkTests, the E2E suites). Out-ranked rather than left to the
    sheet order NsAssets happens to give, and the two classes added are the drawer's own, so
    nothing here depends on which colour variant the vendor's menu is rendering. */
 .ns-nav-drawer.mud-drawer .mud-navmenu .mud-nav-link.active:not(.mud-nav-link-disabled) {
@@ -1582,7 +1561,7 @@
    it display:contents — and Chromium skips a display:contents element in sequential focus
    navigation and refuses focus() on it outright, so every one of those is unreachable and a
    mouse click on the face leaves the document focused on <body> with nothing for the arrow keys
-   to move from (nsail#1304). Given a box it is focusable, and the vendor's own keyboard works.
+   to move from. Given a box it is focusable, and the vendor's own keyboard works.
 
    It has to stay transparent to layout, because the width both faces in the tree ask for is
    asked of the menu and passed down through here: a flex item that takes whatever room the menu
@@ -1633,7 +1612,7 @@
     height: 32px;
 }
 
-/* From the drawer's own breakpoint up there is no app bar at all (nsail#517): the drawer is
+/* From the drawer's own breakpoint up there is no app bar at all: the drawer is
    docked and carries the brand and the session, and every screen names itself in its own title
    bar. The bar's own width gate is what this reads — the same class NsResponsive wrote on it —
    so the space it reserved cannot outlive the bar that reserved it.
@@ -1649,7 +1628,7 @@
 }
 
 /* MudBlazor's own .mud-main-content rule reserves --mud-appbar-height regardless of whether an
-   appbar is on screen. A layout with no Header slot (Optical, Therapy — nsail#609) never draws
+   appbar is on screen. A layout with no Header slot (a product shell) never draws
    one at any width, so the reservation is a permanent hole above the page's own title bar. */
 .ns-no-appbar.mud-main-content {
     padding-top: 0;
@@ -1769,26 +1748,26 @@
     overflow-y: auto;
 }
 
-/* nsail#660: the ? is an icon, not slack for the row it sits in to spend -- a flex row's
+/* The ? is an icon, not slack for the row it sits in to spend -- a flex row's
    default flex-shrink would otherwise squeeze it before the field it stands beside gives up
    any width. */
 .ns-help {
     flex-shrink: 0;
 }
 
-/* nsail#660, the half min-content could not reach: MudCheckbox's control ships width:100%,
-   so in a horizontal stack it claims the whole row and the shrink-proof ns-help beside it
-   has nowhere left -- it overflows the stack onto the neighbouring grid item, and the item's
-   own min-content collapses because a percentage-width child contributes nothing to it. A
-   control with a help icon at its side sizes to its content; lone controls keep the vendor
-   width, since nothing sits beside them to crush. */
-.ns-form .mud-input-control:has(+ .ns-help) {
+/* A control with a help icon beside it sizes to its content: MudCheckbox's control ships
+   width:100%, so in a horizontal stack it claims the whole row and the shrink-proof ns-help
+   beside it has nowhere left -- it overflows the stack onto the neighbouring grid item, and the
+   item's own min-content collapses because a percentage-width child contributes nothing to it.
+   Lone controls keep the vendor width, since nothing sits beside them to crush. */
+.ns-form .mud-input-control:has(+ .ns-help),
+.ns-form .ns-stored-box:has(+ .ns-help) {
     flex: 1 1 auto;
     min-width: 0;
     width: auto;
 }
 
-/* NsHint's warning variant (nsail#679-sibling, stock a row's Cantidad falls short of): the
+/* NsHint's warning variant (a per-row fact, such as stock falling short of a quantity): the
    glyph itself carries the severity, since the text it opens does not render until clicked. */
 .ns-hint-warning .mud-icon-root {
     color: var(--mud-palette-warning);
@@ -1807,9 +1786,8 @@
    the after-items and no-items seams, which is where the create entry lives, as bare divs
    padded 4px on every side, with the anchor inside falling back to the body's own 0.875rem.
    The entry came out at roughly 28px of 14px text against 48px of 16px, indented 4px where
-   every row above it is indented 16px: "se sigue viendo más chico" (Leonardo, on the Paciente
-   lookup), and the ruling is that an actionable last entry is never smaller than the passive
-   rows it follows.
+   every row above it is indented 16px, and an actionable last entry is never smaller than the
+   passive rows it follows.
 
    The seam's own padding goes and the entry carries the item's numbers instead — 12px is the
    item's 8px plus the 4px its text container contributes, so the two boxes come out the same
@@ -1828,7 +1806,7 @@
     line-height: var(--mud-typography-body1-lineheight);
 }
 
-/* The measure the open list stops at, now that the field no longer caps it at whatever box it
+/* The measure the open list stops at, since the field does not cap it at whatever box it
    stands in (NsAutocomplete's RelativeWidth note). 28rem is the aside's own content width — the
    448 the .ns-grid block below already reckons with — which is the narrowest surface a lookup
    opens on, so the list never outgrows the smallest place it can stand in, and a reading past
@@ -1859,7 +1837,7 @@
     width: 100%;
 }
 
-/* A row this same menu opens is also handed to the field's ItemDisabledFunc (nsail#1671), which
+/* A row this same menu opens is also handed to the field's ItemDisabledFunc, which
    is the only way to keep MudAutocomplete's own Enter and arrow-key selection from picking it
    whole, unasked. The vendor mutes a disabled row for every OTHER reason it draws one — cannot
    afford it, cannot pick it — muting pointer-events and the reading along with it, all three
@@ -1889,7 +1867,7 @@
 /* The focused outline border is the vendor's own accent-as-GROUND reflex (every other border
    state reads --mud-palette-action-default or -lines-inputs, a neutral), so this one line reads
    --ns-accent-ink instead: a border is thin enough that the eye reads it the way it reads a
-   glyph, not a fill, and the house gold measured 2.43:1 there (nsail#2744). */
+   glyph, not a fill, and the house gold measured 2.43:1 there. */
 .mud-input.mud-input-outlined:focus-within > .mud-input-outlined-border,
 .mud-input.mud-input-outlined:focus-within .mud-shrink > .mud-input-outlined-border {
     border-color: var(--ns-accent-ink, var(--mud-palette-text-primary));
@@ -1900,7 +1878,7 @@
    utility class kits and apps reach for directly. Both are the vendor's own classes, read
    here instead of restated per call site, so a screen that writes Color="Primary" on a text
    button or an icon never has to know the ink is derived. The accent itself is a ground
-   (2.43:1 for the house gold on white, nsail#2744); --ns-accent-ink is what the same pick reads
+   (2.43:1 for the house gold on white); --ns-accent-ink is what the same pick reads
    as text, the same variable the active tab and the focused label already use. */
 .mud-button-text.mud-button-text-primary {
     color: var(--ns-accent-ink, var(--mud-palette-text-primary));
@@ -1930,8 +1908,8 @@
     color: var(--ns-accent-on-chrome, var(--mud-palette-appbar-text)) !important;
 }
 
-/* The vendor's own placeholder is the field's text colour at 42% opacity (nsail#2744: ~2.5:1
-   on the light canvas, ~3.5:1 on the dark one — "Escribí para buscar" among them). The
+/* The vendor's own placeholder is the field's text colour at 42% opacity (~2.5:1
+   on the light canvas, ~3.5:1 on the dark one — a lookup's search prompt among them). The
    secondary rank reads as a hint everywhere else in the house, so the placeholder reads it
    outright instead of a fraction of a colour that was never tuned as one. */
 .mud-input > input.mud-input-root::placeholder,
@@ -1976,6 +1954,20 @@ div.mud-input-slot.mud-input-root::placeholder {
     padding: 0 5px;
 }
 
+/* The browser paints its autofill tint and ink on the <input> alone, with !important in its own
+   stylesheet, so an adornment beside it (NsPasswordField's eye) keeps the box's surface and
+   would read as a second box. The tint is a value of the browser that CSS cannot read and no
+   sibling can match, so the input keeps the field's own surface instead: a transition delayed
+   past any session holds its background where it was. The browser's ink is its FieldText, not
+   the field's text colour, and the text-fill colour is the one author rule that outranks it. An
+   outlined input is transparent over a card on one screen and the page on another, so no inset
+   paint of a single token stands in for it. */
+.mud-input > input.mud-input-root:-webkit-autofill {
+    transition: background-color 0s 600000s;
+    -webkit-text-fill-color: var(--mud-palette-text-primary);
+    caret-color: var(--mud-palette-text-primary);
+}
+
 /* The spin behind NsIcons.Progress. fill-box puts the origin at the centre of the shape
    itself, so it keeps spinning true whatever viewBox the icon is rendered into. Reduced
    motion slows it rather than stopping it — a frozen spinner still claims to be working. */
@@ -2004,10 +1996,10 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* On a phone the comfort width is already most of the row, so the row wraps and the box ends up
-   ALONE on its line (NsToolBar, nsail#2041) — but alone with the spacer, which is an empty
+   ALONE on its line — but alone with the spacer, which is an empty
    flex-grow-1 of base 0 (NsPageHeader): what the box does not take, the spacer does, and the
    search reads as a field that stopped short of the page rather than as the row's own. A basis
-   of the whole line is what closes that (nsail#2595): the box takes the line end to end, the
+   of the whole line is what closes that: the box takes the line end to end, the
    spacer gets nothing to hold, and the tools wrap under it at the trailing edge they already
    keep. The container and not the window, like every other narrow-box rule in this file: a list
    drawn in a drawer is this narrow on a desktop too. */
@@ -2017,18 +2009,16 @@ div.mud-input-slot.mud-input-root::placeholder {
     }
 }
 
-/* SignInPage's contributed provider buttons (AppleSignInButton, GoogleSignInButton, and
-   whatever ISignInContributor a future kit adds) render as square icon tiles, Symbaloo-style,
-   rather than the stacked full-width rows they used to be (nsail#638, Leonardo 2026-08-31:
-   icon tiles over full-width chips). Each vendor still renders one ordinary NsLink
-   As="NsAs.Default" (icon + label) — nothing per vendor changes beyond which string its Label
-   carries (the bare provider name) — this class is what turns that chromed button into a
-   tile: mud-button-label's own display/align/justify already read "inherit" from the button
-   root (MudBlazor.css), so pointing the root's flex-direction at column is enough to stack
-   the icon above the label without a second component.
+/* A sign-in page's contributed provider buttons (whatever each sign-in provider adds)
+   render as square icon tiles rather than stacked full-width rows. Each vendor still renders
+   one ordinary NsLink As="NsAs.Default" (icon + label) — nothing per vendor changes beyond
+   which string its Label carries (the bare provider name) — this class is what turns that
+   chromed button into a tile: mud-button-label's own display/align/justify already read
+   "inherit" from the button root (MudBlazor.css), so pointing the root's flex-direction at
+   column is enough to stack the icon above the label without a second component.
    .ns-button-label is NsResponsive's own hook for the label span (Breakpoint="Always" on every
-   vendor's NsLink keeps it always rendered, never collapsed to the icon alone), which is
-   what the caption's own smaller size below is scoped to. */
+   vendor's NsLink keeps it always rendered, never collapsed to the icon alone), which is what
+   the caption's own smaller size below is scoped to. */
 .ns-sign-in-providers .mud-button-root {
     flex-direction: column;
     gap: 4px;
@@ -2086,7 +2076,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     height: 1.25rem;
 }
 
-/* nsail#1006: the guide door (NsGuideLink) is the title row's own trailing edge — NsPageHeader
+/* The guide door (NsGuideLink) is the title row's own trailing edge — NsPageHeader
    places it last, past every other utility — so its RIGHT edge is the one the toolbar row's own
    last action (NUEVO) is measured against. Its Inline face is the vendor's unmodified medium
    icon button (.mud-icon-button, 12px of padding on every side, uncancelled here — nothing else
@@ -2120,7 +2110,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     color: var(--mud-palette-primary);
 }
 
-/* A card's title carries the word, and its glyph steps down to the muted rank (nsail#1051):
+/* A card's title carries the word, and its glyph steps down to the muted rank:
    a home is a wall of card headings, and a glyph sitting at the title's own ink makes each of
    them two things leading at once. Muted is the vendor's own default for an icon too, and the
    rank is stated here anyway so a vendor bump cannot move it in silence later. Said once where
@@ -2131,12 +2121,12 @@ div.mud-input-slot.mud-input-root::placeholder {
     color: var(--mud-palette-text-secondary);
 }
 
-/* ONE ROW FOR A HEADER'S ACTS (nsail#925). MudCardHeader is already a flex row of a content
+/* ONE ROW FOR A HEADER'S ACTS. MudCardHeader is already a flex row of a content
    box and an actions box, so the door NsCard puts in the second one lands beside whatever the
    card put in the first — the header needs no layout of its own, only these three corrections
    to the vendor's own assumption about what an actions slot holds. It offsets that slot up
    and out by 8px, for a bare glyph meant to hug the card's corner; the door is a filled
-   square now, the same box as the card's own acts, so it lines up WITH them instead: centred
+   square, the same box as the card's own acts, so it lines up WITH them instead: centred
    on the row and inset on the header's own padding line, one gap apart.
 
    min-width on the content box is what makes a long title give way rather than push the door
@@ -2176,7 +2166,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     color: var(--mud-palette-error);
 }
 
-/* THE UNDER-FIELD ZONE (nsail#796, intentional-ui, refusal placement). One strip under a
+/* THE UNDER-FIELD ZONE (intentional-ui, refusal placement). One strip under a
    field, two tenants that never occupy it together: the hint — this block, a plain sibling
    after the field — and the refusal, which rides the vendor's own
    .mud-input-control-helper-container and which the house styles NOWHERE. Both stand in normal
@@ -2395,9 +2385,9 @@ div.mud-input-slot.mud-input-root::placeholder {
 /* The wash's other form, for a list row that is FLUSH: the same CONDITION carried as a 3px
    mark at the row's start edge instead of a tint. A grid cell brings padding a wash can live
    in; a stacked row inside a card does not, and five full-bleed tinted bands read as a tinted
-   card — which colour on the container, not on the datum, is exactly what nsail#842 refused.
+   card — which colour on the container, not on the datum, is exactly what the tint rule refuses.
    A list row that takes padding and a rounded edge of its own is not flush and keeps the tint
-   (PartyWorkOrdersCard; ui/styling.md). Paired with one of the three classes above, whose
+   (ui/styling.md). Paired with one of the three classes above, whose
    background it trades for a border of that tone, so the semaphore keeps one vocabulary and no
    screen owns a palette. */
 .ns-row-mark {
@@ -2521,15 +2511,15 @@ div.mud-input-slot.mud-input-root::placeholder {
    .ns-rail-hover above is the same shape, and a frozen hex would paint one tenant's orange
    into every other tenant's buttons. Mixed against transparent rather than against a surface,
    so one value reads on the card, on the raised sheet and on the canvas alike; for the house
-   accent #F68E1E it evaluates to rgba(246, 142, 30, 0.13), nsail#842's own number.
+   accent #F68E1E it evaluates to rgba(246, 142, 30, 0.13).
 
    --ns-accent-ink, THE ACCENT AS INK, is NOT here and cannot be: the accent is a free pick,
    and which ink reads on it is a question about the pick's own luminance, which color-mix
    cannot ask (branding.md). BrandTone.AccentInk answers it and NsTheme emits the answer as this
    variable, per lit scheme. It is the one value every place the accent has to be TEXT reads —
    this label, a link, the active tab, the chapter the reader is on — because the accent itself
-   is made to be a GROUND: painted as text on a pale surface a free pick reads 2.3:1
-   (nsail#1940). Where that text stands on the CHROME instead, the drawer's own
+   is made to be a GROUND: painted as text on a pale surface a free pick reads 2.3:1.
+   Where that text stands on the CHROME instead, the drawer's own
    --ns-rail-accent is the answer, derived against the band. The fallback at each site is the
    scheme's plain ink, for the render that reaches a stylesheet before it reaches a theme. */
 :root {
@@ -2541,8 +2531,7 @@ div.mud-input-slot.mud-input-root::placeholder {
    filled accent a screen is allowed. MudBlazor has no such variant, so this paints over its
    filled-default one — a page never names a Variant.
 
-   ONLY THE FILL DIFFERS (Leonardo, nsail#925: "iguales, uno con accent y otro no — filled
-   disfrazado con accent, filled disfrazado con gray"). The vendor's filled shadow is left
+   ONLY THE FILL DIFFERS. The vendor's filled shadow is left
    standing, so Important and Default are one shape and one elevation with two washes on
    them, and a filled button is never flat; the one full-strength accent a screen may spend
    is still Main's, and that is what separates the two. */
@@ -2555,8 +2544,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     background-color: var(--ns-accent-soft-hover);
 }
 
-/* THE REFUSED ACT, and it is not a rank (Leonardo: "quizás el texto del botón deshabilitado
-   debería ser text secondary o algo así gris y no primary"). Its ink is answered a file away,
+/* THE REFUSED ACT, and it is not a rank. Its ink is answered a file away,
    in the palette — BrandMudTheme's ActionDisabled is the scheme's own TextDisabled, neutral and
    a clear step under the muted rank; this block is the other half, the fill under it.
 
@@ -2570,7 +2558,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 
    The vendor's !important is why this carries one: .mud-button-filled:disabled declares its
    background that way, and specificity does not out-rank it. Its box-shadow:none is left
-   standing and wanted — "a filled button is never flat" (nsail#925) separates two LIVE ranks,
+   standing and wanted — "a filled button is never flat" separates two LIVE ranks,
    and a refused one losing its lift is a third signal saying the same thing as the other two.
    Aimed at the filled face alone: the flat rung and every icon button carry no fill, and they
    read as refused from the ink they share with this. */
@@ -2582,7 +2570,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     background-color: var(--ns-inert-soft) !important;
 }
 
-/* THE ICON-ONLY FACE OF A RANK THAT HAS A BOX (nsail#925). There is one button in NSail and
+/* THE ICON-ONLY FACE OF A RANK THAT HAS A BOX. There is one button in NSail and
    what varies is its rank: an icon-only button is the same button with no word to draw, and
    the vendor's own button is a RECTANGLE — 64px of min-width and 16px of side padding for a
    label that is not coming. A glyph alone in it reads as a stretched pill, which is the shape
@@ -2825,7 +2813,7 @@ div.mud-input-slot.mud-input-root::placeholder {
    twelve hours already outgrow a laptop's content area once whatever sits under the grid is
    counted, and a frame widened to the whole day outgrows any screen — so the surface scrolls
    the grid instead, which carries the sticky day names and everything below it out of the
-   viewport and reads as two nested scrolls (Emma, 2026-09-03).
+   viewport and reads as two nested scrolls.
 
    Nothing here makes the grid taller: only min-height is touched, so a grid with room to spare
    still stands exactly at its frame. It is on both boxes because a flex item's automatic
@@ -2913,10 +2901,9 @@ div.mud-input-slot.mud-input-root::placeholder {
    It takes the pointer, and that is safe by stacking rather than by opting out: every block
    is positioned with a z-index of its own and paints above it, so the free time under it
    still books on a click and a band still answers its own hover — what the wash answers is
-   the pointer on bare closed time, which is where its title names the day (Emma, nsail#987:
-   hovering the feriado has to say which one it is). Nothing here has a start or a duration,
-   which is why a tinted day cannot widen the hours a consumer framed.
-   The edge is the background block's own — dashed, in the day's color — so the day reads as a
+   the pointer on bare closed time, which is where its title names the day. Nothing here has a
+   start or a duration, which is why a tinted day cannot widen the hours a consumer framed. The
+   edge is the background block's own — dashed, in the day's color — so the day reads as a
    stretch of closed time the way a free band reads as open time, and not as a column painted
    another ground. The color itself rides inline, like the block's. */
 .ns-time-grid-tint {
@@ -2952,7 +2939,7 @@ div.mud-input-slot.mud-input-root::placeholder {
    make that the whole column — the 2px gutters at each edge, and one more between lanes,
    charged against the share rather than added to it so the lanes always add up to the column. */
 .ns-time-block {
-    /* nsail#787: the block's own line, and the room it spends around its lines. A block's
+    /* The block's own line, and the room it spends around its lines. A block's
        height IS its time, so the only thing that can be made to land on a line boundary is
        how tall a line is — inheriting the theme's caption leading (0.75rem × 1.66 ≈ 20px)
        left a dense half hour, 22px of time, one line and a half of room. The line is 1rem
@@ -2975,7 +2962,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     border-inline-start: 3px solid var(--mud-palette-primary);
     border-radius: var(--mud-default-borderradius);
     background-color: var(--mud-palette-surface);
-    /* nsail#674: display:block does NOT disarm the UA button-layout algorithm (WHATWG
+    /* display:block does NOT disarm the UA button-layout algorithm (WHATWG
        "button layout") — Blink still centers a <button>'s content through its own internal
        anonymous box regardless of the button's own display, so a short label in a tall
        block (a two-hour free interval, or a segment resuming after the appointment that
@@ -2995,14 +2982,14 @@ div.mud-input-slot.mud-input-root::placeholder {
     /* After the shorthand above, not with the other box properties: `font` sets line-height
        too, so a line declared before it is thrown away — and what it was thrown away for is
        the ancestor's unitless factor, which every descendant then multiplies by its OWN font
-       size (a 0.75rem caption came out 17.16px inside a 16px block). Measured, nsail#787. */
+       size (a 0.75rem caption came out 17.16px inside a 16px block). Measured. */
     line-height: var(--ns-time-block-line);
     color: inherit;
     text-align: start;
     z-index: 1;
 }
 
-/* nsail#787: a block draws only the lines it can draw WHOLE. The block itself cannot be
+/* A block draws only the lines it can draw WHOLE. The block itself cannot be
    clipped anywhere else — its height is the time — so the lines are wrapped in a box capped
    at a whole number of them: round(down, …) over the room the block has left (100% of its
    content box, so nothing here restates the padding, the hour or the density) and over one
@@ -3020,7 +3007,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     /* The block's own column, moved in here with the lines: the caller's children were flex
        items of the block and a flex item is BLOCKIFIED, which is the only reason two caption
        spans (a place and a state) ever stood on two lines rather than flowing onto one. A
-       plain block wrapper here silently joined them (measured, nsail#787). */
+       plain block wrapper here silently joined them. */
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -3039,7 +3026,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     line-height: inherit;
 }
 
-/* The title line grows with the attendee names it now carries (nsail#701) — min-width:0
+/* The title line grows with the attendee names it now carries — min-width:0
    overrides the flex item's refusal to shrink below its own content, which is what the
    ellipsis needs to ever appear instead of pushing the icon beside it, or the lines below
    it, out of the block's own overflow:hidden. */
@@ -3060,10 +3047,9 @@ div.mud-input-slot.mud-input-root::placeholder {
 /* Time that is not this agenda's own: dotted all round and dimmed, so it can never be read as
    a booking. Nothing here touches width. The first cut of the overlay pinned these blocks to
    the trailing half of the column so an appointment could not hide them; the lanes above answer
-   that same question without charging for it when there is nothing to be hidden by (Emmanuel,
-   2026-08-12: "al estar solo, debería ocupar toda la columna"). It is clickable, because the
-   click opens the read-only detail dialog and pointer-events:none would leave that dialog
-   reachable by keyboard alone. */
+   that same question without charging for it when there is nothing to be hidden by. It is
+   clickable, because the click opens the read-only detail dialog and pointer-events:none would
+   leave that dialog reachable by keyboard alone. */
 .ns-time-block-readonly {
     border-style: dotted;
     opacity: 0.8;
@@ -3137,7 +3123,7 @@ div.mud-input-slot.mud-input-root::placeholder {
    centre, so the margin is neutralised — not restated — below each breakpoint, keeping
    MudBlazor free to change its own spacing.
 
-   A collapsed control IS an icon-only control (nsail#925), so it takes .ns-square's geometry
+   A collapsed control IS an icon-only control, so it takes .ns-square's geometry
    too, for as long as the query holds: one rank, one shape, whether the word was never
    written or the container took it away. Only the geometry is restated — the fill and the
    shadow are the rank's own and were never this block's business. */
@@ -3192,7 +3178,8 @@ div.mud-input-slot.mud-input-root::placeholder {
 /* THE WHISPER: a control says in full what it only half says on screen — the name of a button
    that gave up its word to the container, the name of a glyph that never had one, the key a
    worded button answers. A touch device has no hover and still relies on the glyph, so nothing
-   rides here that is only here (NsTooltip's own note).
+   rides here that is only here (NsTooltip's own note) — save an NsChip's sentence, which a tap
+   opens at once (ns.js, THE TAP) and whose name carries it anyway.
 
    ONE ELEMENT, IN THE TOP LAYER, PLACED FROM ns.js, and it has to be: a bubble drawn inside the
    control it names is clipped by the nearest scrolling ancestor (NsPanel's content box), grows
@@ -3237,6 +3224,26 @@ div.mud-input-slot.mud-input-root::placeholder {
    hidden, and this is the whole of its display. */
 .ns-whisper.ns-whisper-open {
     display: block;
+}
+
+/* THE TAPPED BUBBLE is the one that takes hits: its sentence may be a link to the chip's own
+   Href, reached by a second tap, so the hover bubble's pass-through is undone for it alone. It
+   is read on a phone rather than glanced at by a mouse, so it takes the body's size, not the
+   name's. The link wears the bubble's ink, says it is one by its underline, and fills the whole
+   bubble: a finger that lands in the padding has reached the link, not closed the sentence. Its
+   height is the touch floor's (.ns-whisper-tap a beside .ns-link). */
+.ns-whisper.ns-whisper-tap {
+    pointer-events: auto;
+    font-size: 14px;
+}
+
+.ns-whisper-tap a {
+    display: flex;
+    align-items: center;
+    margin: -4px -8px;
+    padding: 4px 8px;
+    color: inherit;
+    text-decoration: underline;
 }
 
 /* NsTooltip's own wrapper, the one caller that names something other than a control: it wraps
@@ -3289,27 +3296,22 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* Emphasis-ladder footers (NsPanel's own Footer wrapper above, "d-flex justify-end gap-2
-   ns-panel-footer" — shared by every document page in the house: WorkOrderPage, the
-   transition pages' Cobrar/Facturar/Entregar, PurchaseOrderPage, the Accounting document
-   pages). Leonardo, 2026-08-06 with a screenshot of the OT page cramped at phone width:
-   "los botones de abajo deberían hacerse íconos en este tamaño" — SECONDARY footer buttons
-   collapse to icon-only under the phone breakpoint; the HERO keeps its pinned text (his own
-   doctrine, "Important acts sit at the bottom with text").
+   ns-panel-footer" — shared by every document page that hosts one). A page cramped at phone
+   width: SECONDARY footer buttons collapse to icon-only under the phone breakpoint; the HERO
+   keeps its pinned text (ui doctrine: "Important acts sit at the bottom with text").
 
    Scoped once, centrally, rather than per page: :has(.mud-button-icon-start) is what makes
-   this safe against a secondary button with no icon (PurchaseOrderPage's Cancel/Issue/
-   Receive today) — nothing to collapse TO, so it is left alone rather than going blank —
-   and the two :not() clauses are what spare the hero, regardless of whatever Breakpoint
-   value the page's own button happens to carry (several pin NsSize.None, which this rule
-   simply outranks inside the footer). ns-button-label is NsResponsive's own stable hook
-   (NsButton/NsLink), present whether or not the caller's Breakpoint would have collapsed
-   it on its own.
+   this safe against a secondary button with no icon — nothing to collapse TO, so it is left
+   alone rather than going blank — and the two :not() clauses are what spare the hero,
+   regardless of whatever Breakpoint value the page's own button happens to carry (several pin
+   NsSize.None, which this rule simply outranks inside the footer). ns-button-label is
+   NsResponsive's own stable hook (NsButton/NsLink), present whether or not the caller's
+   Breakpoint would have collapsed it on its own.
 
-   THE HERO COMES IN TWO COLOURS, which is why there are two exclusions and not one
-   (Leonardo, 2026-08-10: "botón cerrar sesión sigue sin texto"). Primary is the hero of a
-   document footer (Save, Entregar); ERROR is the hero of a footer whose one act is
-   destructive — SessionMenuPage's full-width Cerrar Sesión, and every destructive confirm
-   that will wear the same face. That footer lives in a dialog measuring ~430px, so it is
+   THE HERO COMES IN TWO COLOURS, which is why there are two exclusions and not one.
+   Primary is the hero of a document footer (Save, Deliver); ERROR is the hero of a footer
+   whose one act is destructive — a full-width sign-out, and every destructive confirm that
+   wears the same face. That footer lives in a dialog measuring ~430px, so it is
    under this breakpoint on every screen there is, and the sign-out came out a bare icon.
    The rule spares by EMPHASIS, and emphasis is what the filled colour encodes: a footer
    button in neither colour is a secondary act by construction, which is exactly what
@@ -3329,7 +3331,7 @@ div.mud-input-slot.mud-input-root::placeholder {
         margin-inline: 0;
     }
 
-    /* Same square the Breakpoint collapse takes (nsail#925): a footer act that gave up its
+    /* Same square the Breakpoint collapse takes: a footer act that gave up its
        word is a filled rank in icon-only, and there is one shape for that in the house. */
     .ns-panel-footer .mud-button-filled:has(.mud-button-icon-start):not(.mud-button-filled-primary):not(.mud-button-filled-error) {
         min-width: 0;
@@ -3348,9 +3350,9 @@ div.mud-input-slot.mud-input-root::placeholder {
 
     /* A narrow footer's own group of acts takes a full line below the summary it carries
        whether or not it would have fitted beside it, so the figure keeps the first line alone
-       (WorkOrderPage, nsail#1385: Leonardo left the choice to the builder, "podría"). Opt-in —
+       (a work-order page). Opt-in —
        only a footer that grouped its own acts under this class asks for the unconditional
-       split, so nsail#1267's one-line footer (Nueva Venta) is untouched. Above this width the
+       split, so a one-line footer is untouched. Above this width the
        row's own wrap is what moves the group down, and only once it no longer fits. */
     .ns-footer-action-row {
         flex-basis: 100%;
@@ -3642,7 +3644,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 
 /* The chapter — or the section — the reader is on. The wash marks the row and the accent AS INK
    carries the word: on the surface beside the content that is --ns-accent-ink, measured against
-   a card (nsail#1940 — the accent itself read 1.87:1 there, on the one line that says where the
+   a card (the accent itself read 1.87:1 there, on the one line that says where the
    reader is). */
 .ns-guide-entry-current {
     background-color: var(--mud-palette-primary-hover);
@@ -3753,7 +3755,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     min-height: 2rem;
 }
 
-/* PartyContactCard's channel row: a chromed NsLink (As="NsAs.Default") stretched to the full
+/* A contact card's channel row: a chromed NsLink (As="NsAs.Default") stretched to the full
    width its vertical NsStack hands it (AlignItems.Stretch is the Stack's own default), so a
    long e-mail truncates against that width instead of pushing the card wider. The label
    span is what carries the text -- ns-button-label, NsResponsive's own hook -- so it is the
@@ -3761,8 +3763,11 @@ div.mud-input-slot.mud-input-root::placeholder {
    otherwise refuse to shrink the label below its own content (the ns-wizard-rail-title
    trick, restated because a flex ROW's shrink axis is what needs it here). The full value
    still reaches an assistive reader from the button's own aria-label (NsLink sets it from
-   the same Label on every chromed As, not only Icon). */
+   the same Label on every chromed As, not only Icon). The label is a value the person reads
+   and copies, not a verb, so it keeps its own case: the vendor's uppercase would print an
+   e-mail other than the one on file. */
 .ns-contact-channel .ns-button-label {
+    text-transform: none;
     display: inline-block;
     min-width: 0;
     max-width: 100%;
@@ -3784,7 +3789,8 @@ div.mud-input-slot.mud-input-root::placeholder {
    it at its own 100% -- so a content-width field renders at the item's width, never stretched to
    the row, and no vendor field CSS has to be fought. --ns-field-width is the one knob a field that
    wants a different natural width overrides; the default fits the known-width family (a date's
-   dd/mm/aaaa, a DNI, a CUIT "20-12345678-9", an importe, a short select) with its floating label. */
+   dd/mm/aaaa, a national id, a tax id "20-12345678-9", an amount, a short select) with its
+   floating label. */
 .ns-grid {
     display: flex;
     flex-wrap: wrap;
@@ -3794,7 +3800,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 
 /* Content-width (the default): the field's own bounded width, no grow, shrinking below it only
    down to its content's true minimum -- min-content, never lower -- so a row wider than 14rem
-   (nsail#660: a checkbox label beside its NsHelp) grows the field to hold it instead of
+   (a checkbox label beside its NsHelp) grows the field to hold it instead of
    spilling past it, since nothing here clips overflow. max-width still caps growth at the
    container's own edge, so the field never spills the other way either. */
 .ns-grid > .ns-form-field {
@@ -3842,27 +3848,27 @@ div.mud-input-slot.mud-input-root::placeholder {
     max-width: 100%;
 }
 
-/* nsail#388: Número/Piso/Depto hold 3-5 characters each, so the 14rem default meant for a
-   date or a CUIT leaves Calle's Grow no room on its own line. */
+/* A field that holds 3-5 characters (a street number, a floor, a unit) would leave the
+   growing field beside it no room on its own line at the 14rem default meant for a date or a
+   tax id. */
 .ns-field-narrow {
     --ns-field-width: 6rem;
 }
 
-/* nsail#1019: a select whose floating label is a whole sentence ("Cuenta de recargos y
-   descuentos financieros") needs more than the 14rem a date or a short select fits in --
-   content-width, never Grow, since Grow's basis is smaller still and the label is what is
-   bounded here, not the row. */
+/* A select whose floating label is a whole sentence needs more than the 14rem a date or a short
+   select fits in -- content-width, never Grow, since Grow's basis is smaller still and the
+   label is what is bounded here, not the row. */
 .ns-field-wide {
     --ns-field-width: 20rem;
 }
 
-/* nsail#2140/nsail#2336: a document's own subject field (Paciente, Proveedor, Cliente) reads at
-   ns-field-wide's 20rem from the tablet floor up, where it shares the header row with Fecha and
+/* A document's own subject field (the party it is about) reads at
+   ns-field-wide's 20rem from the tablet floor up, where it shares the header row with the date and
    whatever else stands beside it; alone on a phone's single-field row it is the row's only
    occupant, so it fills it the way Grow once did there, without Grow's own cost at a desktop
    width (it took every pixel the row had). Scoped to the header row itself (set beside
    ns-field-wide on the razor side, like ns-job-card-line below) rather than every ns-field-wide
-   call site: a sentence-length label (nsail#1019's own account select) wants its 20rem kept at
+   call site: a sentence-length label (an account select) wants its 20rem kept at
    every width, never stretched to fill a lonely phone row that was never crowded. */
 @container (max-width: 399.98px) {
     .ns-document-header > .ns-field-wide {
@@ -3870,24 +3876,24 @@ div.mud-input-slot.mud-input-root::placeholder {
     }
 }
 
-/* nsail#1906: a BLOCK of money figures read together -- Cerrar Caja's Fondo inicial, Efectivo
-   esperado, Efectivo contado and Diferencia -- where the 14rem default seats three on the line
-   and leaves the fourth alone on a row of its own. 10rem is the width .ns-money-slot already
-   calls a price's own ("six figures and cents and no more"), with room for the longest of those
-   floating labels, so what the row costs answers the figures rather than the gap after the
-   third. For a block whose members are read as one: a single importe among fields of other
-   kinds stays at the family's own 14rem, where it reads level with the date beside it. */
+/* A BLOCK of money figures read together -- four amounts a till count compares -- where the
+   14rem default seats three on the line and leaves the fourth alone on a row of its own. 10rem
+   is the width .ns-money-slot already calls a price's own ("six figures and cents and no
+   more"), with room for the longest of those floating labels, so what the row costs answers the
+   figures rather than the gap after the third. For a block whose members are read as one: a
+   single amount among fields of other kinds stays at the family's own 14rem, where it reads
+   level with the date beside it. */
 .ns-field-money {
     --ns-field-width: 10rem;
 }
 
-/* nsail#1411: Receta/Medida share the job card's own act row rather than owning a header row
-   above it (OpticalJobCard, #1347's guarantee), on an outer NsStack that never wraps -- so a
-   container too narrow for both fields at 20rem wraps the GRID instead, landing Medida under
-   Receta and the act's row between the two rather than sharing either. Two 20rem fields plus
+/* A job card's two wide fields share the card's own act row rather than owning a header row
+   above it, on an outer NsStack that never wraps -- so a container too narrow for both fields
+   at 20rem wraps the GRID instead, landing the second under the first and the act's row
+   between the two rather than sharing either. Two 20rem fields plus
    their 16px grid gap, the act's 44px and the row's own 8px gap ask for 708px; add the card's
-   32px padding and the docked-drawer tablet floor (1024px viewport, measured at a 712px card,
-   OpeningEntriesRowWidthTests' own probe) is short by 28px. 15rem clears that floor with room
+   32px padding and the docked-drawer tablet floor (1024px viewport, measured at a 712px card)
+   is short by 28px. 15rem clears that floor with room
    to spare and is scoped to this one grid (`ns-job-card-line`, set beside `ns-field-wide` on
    the razor side) rather than the shared class every other wide field also reads. */
 @container (max-width: 760px) {
@@ -3966,7 +3972,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     }
 }
 
-/* THE ADD ROW'S OWN FLOOR (nsail#2127). .ns-grid wraps before anything in it shrinks, so the
+/* THE ADD ROW'S OWN FLOOR. .ns-grid wraps before anything in it shrinks, so the
    items of a row laid out beside a table declare a sum the line either seats or breaks: once the
    window stops affording it the act drops to a second line, which leaves the last FIELD at the
    row's trailing edge instead of over the column reserved for it below, and the price axis the
@@ -3976,7 +3982,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 
    The floor is the window NsTable stops drawing columns at, since below it both halves of the
    mirror are dropped anyway: 961px, which leaves this grid 649px of content (the shell spends
-   312px of it, the same figure Optical's OpeningEntriesRowWidthTests probes its container at).
+   312px of it, the same figure the row-width tests probe the container at).
 
    A BOUNDED item takes 7rem as its BASIS and grows back to the width it declares for itself --
    the field family's own 14rem unless it says otherwise -- out of whatever the line has over the
@@ -4002,10 +4008,11 @@ div.mud-input-slot.mud-input-root::placeholder {
 
    That cell is also the one term of the three that is not free to be as narrow as its content
    reads: a field's min-width is min-content, so a cell declared under the act's own word grows
-   back to it and parts the mirror. 9rem is that word (Agregar draws 129px) and 15px, which is
-   not another word -- a longer one in another language grows the cell and shows up as the
-   consumer's mirror walk failing at every width, which is the only place it can be seen. The act
-   is worded at every width (ui/actions.md) and an icon-only face is not the room to spend.
+   back to it and parts the mirror. 9rem is that word (the add act's label draws 129px) and
+   15px, which is not another word -- a longer one in another language grows the cell and shows
+   up as the consumer's mirror walk failing at every width, which is the only place it can be
+   seen. The act is worded at every width (ui/actions.md) and an icon-only face is not the room
+   to spend.
 
    The five items then claim 2.5rem + 7rem + 7rem + 10rem + 9rem + four 1rem gaps = 632px, 17px
    inside the floor, and .ns-money-slot's own width -- read by three screens outside this one --
@@ -4073,13 +4080,13 @@ div.mud-input-slot.mud-input-root::placeholder {
     }
 }
 
-/* The same mirror at the OTHER end of the row (nsail#1820). An add row laid out beside the table
+/* The same mirror at the OTHER end of the row. An add row laid out beside the table
    ends in its own act -- .ns-row-submit in a grid cell of the field family's own width -- where
    the rows below it end in their last cell's padding, so the add row's last FIELD and the last
-   COLUMN under it part ways by exactly that act: the column a supplier's whole catalog is typed
-   into does not line up with itself (QA, 1366x768: the add row's price at 877, the rows' at
-   817). The leading gutter is mirrored on the ROW because the row is the side that draws less
-   there; here the table is, so the table is the side that reserves.
+   COLUMN under it part ways by exactly that act: the column a whole catalog is typed into
+   does not line up with itself (at 1366x768, the add row's price at 877, the rows' at 817). The
+   leading gutter is mirrored on the ROW because the row is the side that draws less there; here
+   the table is, so the table is the side that reserves.
 
    The last column is pinned to what the add row spends from the trailing edge inward: its last
    field (--ns-money-slot, the only width an add row's last field has), the grid's own gap, the
@@ -4147,16 +4154,16 @@ div.mud-input-slot.mud-input-root::placeholder {
     max-width: 100%;
 }
 
-/* A field cell whose content chose to draw nothing (StoreSelect's HideLone): an empty cell would
-   still hold its width and open a hole in the row. */
+/* A field cell whose content chose to draw nothing (a select hiding its one option): an empty
+   cell would still hold its width and open a hole in the row. */
 .ns-grid > .ns-form-field:empty {
     display: none;
 }
 
 /* The row above hides every cell that drew nothing, but the grid itself is not :empty -- it
    still holds those now-invisible cells as child nodes -- so a row left with no visible cell at
-   all (a single HideLone field, the óptica's only depósito) still stood as a sibling and still
-   charged the stack's own gap around a hole nobody could see (Vigía, nsail#1815 round 2). */
+   all (a single field hiding its one option) would still stand as a sibling and still charge
+   the stack's own gap around a hole nobody could see. */
 .ns-grid:not(:has(> *:not(:empty))) {
     display: none;
 }
@@ -4167,10 +4174,10 @@ div.mud-input-slot.mud-input-root::placeholder {
     min-height: 2.75rem;
 }
 
-/* NsRecordState (nsail#213) and NsCheckBox (nsail#2004) in a row of fields: every other field
+/* NsRecordState and NsCheckBox in a row of fields: every other field
    draws a label gutter and an outline, so the row's own flex-start leaves them flush at the top
    -- but a boolean control draws neither, is shorter than its labeled neighbour, and would
-   float high beside it ("Usar cotización manual" beside the Cotización manual it gates).
+   float high beside it (a toggle beside the field it gates).
 
    The line is the neighbour's INPUT, not the row: a field with a hint stands its helper text
    under the box, so the row's centre falls below the input's. The control takes the field's own
@@ -4194,7 +4201,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* A submit act sharing a line with labeled fields instead of owning the form's own footer
-   (PriceListItemAdder's Agregar, nsail#1820): align-self: center reads the ROW's full height,
+   (a repeatable add row's own add act): align-self: center reads the ROW's full height,
    label gutter included, which is 4px too high for an eye reading "row partner" -- the same
    gap .ns-job-card-remove closes by hand rather than by centering on the row. 8px label gutter
    plus half the gap between a field's 40px input and the button's own ~36.5px height. */
@@ -4202,7 +4209,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     margin-top: 0.609rem;
 }
 
-/* A list's filter submit (NsSubmit As="Filter", nsail#3038) beside the fields it applies: the same
+/* A list's filter submit (NsSubmit As="Filter") beside the fields it applies: the same
    row partner as .ns-row-submit and the same arithmetic onto the neighbour's INPUT, but its own
    mark, because .ns-row-submit also keys the add row's floor and would resize the filter's
    fields. Its cell is the button's own width rather than a field's 14rem: a field's basis is what
@@ -4213,24 +4220,23 @@ div.mud-input-slot.mud-input-root::placeholder {
     margin-top: 0.609rem;
 }
 
-/* NsPanel's scroll shadow (intentional-ui, Refusal placement's neighbour — Leonardo,
-   Nueva Receta dialog: "a veces no se nota que hay más cosas abajo"; ruled a SHADOW, not
-   a chevron). The scrolling-shadows technique (Lea Verou): two SOLID "cover" bands pinned
-   to the CONTENT (background-attachment: local, so they travel with the scroll) sit on top
-   of two low-alpha "shadow" gradients pinned to the VIEWPORT (attachment: scroll, so they
-   never move) at the same edges. At rest the cover exactly overlaps its shadow and hides
-   it; the moment a scroll reveals content past that edge, the cover slides out from under
-   it on its way past, and the shadow shows through where it used to sit — no JS, no class
-   toggled, nothing to fall out of sync with the DOM.
+/* NsPanel's scroll shadow.
+   A SHADOW signals more below, not a chevron. The scrolling-shadows technique (Lea Verou): two
+   SOLID "cover" bands pinned to the CONTENT (background-attachment: local, so they travel with
+   the scroll) sit on top of two low-alpha "shadow" gradients pinned to the VIEWPORT
+   (attachment: scroll, so they never move) at the same edges. At rest the cover exactly
+   overlaps its shadow and hides it; the moment a scroll reveals content past that edge, the
+   cover slides out from under it on its way past, and the shadow shows through where it used to
+   sit — no JS, no class toggled, nothing to fall out of sync with the DOM.
 
    THE COVER IS SOLID ACROSS THE WHOLE BAND, and that is the whole of it. Lea Verou's
    original covers fade out (solid to 30%, transparent by 100%) while the shadow under them
    fades over the full band — so from the point the cover starts thinning down to where the
    shadow finally reaches zero, part of the shadow is showing THROUGH the cover that is
    supposed to be hiding it. It peaks near mid-band at roughly 2.5% of text-primary and
-   never goes away, at any scroll position, with or without anything to scroll: Leonardo's
-   "queda una especie de barra transparente" (Nueva Venta) and the band drawn over the
-   Sesión dialog, which has nothing to scroll at all. The cover paints the exact solid the
+   never goes away, at any scroll position, with or without anything to scroll: a
+   leftover transparent bar on a long form and a band drawn over a short dialog, which has
+   nothing to scroll at all. The cover paints the exact solid the
    surface already paints, so its own ramp was never visible for its own sake — its only
    job is masking, and a mask has to be opaque everywhere the thing it masks is not.
 
@@ -4247,17 +4253,17 @@ div.mud-input-slot.mud-input-root::placeholder {
    wherever NsPanel mounts rather than assuming one background for all four.
 
    EACH SELECTOR BELOW IS THE ONE THAT CARRIES THE PAINT, never a house class riding along
-   with it — the var and the background it has to equal then cannot drift apart. Both
-   halves of that had already drifted: .ns-drawer named the aside alone, so the nav drawer's
-   own panel (8c0f65ac) fell through to the root default and painted a Background band over
-   a DrawerBackground drawer; .mud-dialog.mud-paper named a compound MudBlazor does not
-   render, so an ephemeral dialog's panel fell through the same way and painted a Background
-   band — read as black — over the dialog. Pinned per host in NsPanelHostSurfaceTests.
+   with it — the var and the background it has to equal then cannot drift apart. A house
+   class that names the aside alone lets the nav drawer's own panel fall through to the root
+   default and paint a Background band over a DrawerBackground drawer, and a compound
+   MudBlazor does not render (.mud-dialog.mud-paper) lets an ephemeral dialog's panel fall
+   through the same way, a band read as black over the dialog. Pinned per host in
+   NsPanelHostSurfaceTests.
 
    The shadow itself has no dedicated palette slot. It is a plain black at a low alpha, the
    same idiom .ns-drawer/.ns-nav-drawer already cast their own edge with (rgba(0, 0, 0, ...)
    below) rather than text-primary's -rgb companion: text-primary flips near-white in dark
-   mode, which painted the "shadow" as a glow instead of an edge (Leonardo, nsail#691). Black
+   mode, which painted the "shadow" as a glow instead of an edge. Black
    reads as a shadow against either theme's surface, so one shared value serves both — this
    file has no lasting light/dark selector to branch on anyway (the block comment at
    .ns-drawer.mud-drawer below). The alpha is a notch past the drawer casts' 0.16-0.18
@@ -4327,8 +4333,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     background-size: 100% 20px, 100% 20px, 100% 20px, 100% 20px;
     background-attachment: local, local, scroll, scroll;
 
-    /* Leonardo's Personas screenshot (stories.md, Clientes' grid row, AMPLIADA 2026-08-08):
-       a stacked table row wide enough to overflow scrolled with TWO bars, not one. NsPanel's
+    /* A stacked table row wide enough to overflow scrolled with TWO bars, not one. NsPanel's
        Content div carries the vendor utility overflow-y-auto and nothing for the other axis —
        the CSS Overflow spec computes an unset axis to auto (not visible) once its sibling
        axis is not visible, so Content became a SECOND horizontal-scroll owner one box out
@@ -4338,33 +4343,41 @@ div.mud-input-slot.mud-input-root::placeholder {
     overflow-x: hidden;
 }
 
-/* The house's own scrollbar, for a scroll box INSIDE a surface rather than at its edge — the
-   agenda's day sheet is the first. The shell's scrollbars stay the platform's: a user's
-   pointer settings own the bar they drag all day. This one is thin and the theme's line color
-   so it reads as part of the sheet, and it is declared twice on purpose — scrollbar-width /
-   scrollbar-color is the standard property Firefox honors, ::-webkit-scrollbar is what
-   Chromium and Safari still answer to; neither one covers both. */
-.ns-scroll-thin {
+/* The house's one scrollbar, on every scroller: the platform's bar is unreadable-bright on a
+   dark surface, so the thumb is the theme's secondary ink mixed thin against transparent and
+   follows Claro/Oscuro as the --mud-palette-* variables swap. scrollbar-color inherits, so
+   :root reaches every scroller; scrollbar-width does not, so it rides on every element. The
+   standard properties have no hover state; the stronger thumb on hover is the WebKit
+   fallback's, which applies only where scrollbar-color is not understood. */
+:root {
+    --ns-scrollbar-thumb: color-mix(in srgb, var(--mud-palette-text-secondary) 40%, transparent);
+    --ns-scrollbar-thumb-hover: color-mix(in srgb, var(--mud-palette-text-secondary) 70%, transparent);
+    scrollbar-color: var(--ns-scrollbar-thumb) transparent;
+}
+
+* {
     scrollbar-width: thin;
-    scrollbar-color: var(--mud-palette-lines-default) transparent;
 }
 
-.ns-scroll-thin::-webkit-scrollbar {
-    width: 0.5rem;
-    height: 0.5rem;
-}
+@supports not (scrollbar-color: auto) {
+    ::-webkit-scrollbar {
+        width: 0.5rem;
+        height: 0.5rem;
+    }
 
-.ns-scroll-thin::-webkit-scrollbar-track {
-    background: transparent;
-}
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-corner {
+        background: transparent;
+    }
 
-.ns-scroll-thin::-webkit-scrollbar-thumb {
-    background-color: var(--mud-palette-lines-default);
-    border-radius: 999px;
-}
+    ::-webkit-scrollbar-thumb {
+        background-color: var(--ns-scrollbar-thumb);
+        border-radius: 999px;
+    }
 
-.ns-scroll-thin:hover::-webkit-scrollbar-thumb {
-    background-color: var(--mud-palette-text-secondary);
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: var(--ns-scrollbar-thumb-hover);
+    }
 }
 
 /* NsMenuBlock: what a menu says rather than offers. It gets the item padding written here
@@ -4417,7 +4430,7 @@ div.mud-input-slot.mud-input-root::placeholder {
 /* THE TAB THE READER IS ON. The vendor paints its label with the accent at full strength
    (.mud-tab.mud-tab-active) over a tabbar it fills with --mud-palette-surface, which for a gold
    brand is 2.33:1 — the one word on the strip that says where the reader is, and the hardest one
-   on it to read (nsail#1940). The accent AS INK instead (--ns-accent-ink), the same value every
+   on it to read. The accent AS INK instead (--ns-accent-ink), the same value every
    other text in the house that carries the brand's hue reads. The slider under it keeps the
    accent at full strength and is meant to: it is a GROUND, which is what the accent is for.
 
@@ -4429,10 +4442,9 @@ div.mud-input-slot.mud-input-root::placeholder {
 
 /* NsTabs' own act slot, drawn after the last tab (Actions → MudTabs' Header): the vendor seats
    the header in the toolbar's flex row, where a button handed over bare is stretched to the
-   strip's whole height and reads as a second tab (Leonardo, nsail#1267: "queda feo asi ocupando
-   toda la altura del tab"). The box centers what it holds and keeps a margin of its own on both
-   axes, so the act breathes inside the strip instead of filling it. The inset is under the
-   toolbar's own 48px floor, so the strip does not grow to carry it. */
+   strip's whole height and reads as a second tab. The box centers what it holds and keeps a
+   margin of its own on both axes, so the act breathes inside the strip instead of filling it.
+   The inset is under the toolbar's own 48px floor, so the strip does not grow to carry it. */
 .ns-tabs-actions {
     display: flex;
     align-items: center;
@@ -4511,15 +4523,15 @@ div.mud-input-slot.mud-input-root::placeholder {
     transform: rotate(90deg);
 }
 
-/* The one place a button's face is a SENTENCE and not a verb: "Ya tengo una clave privada" is
-   something the person is telling the form, and the vendor's uppercase — right for Guardar, right
-   for Facturar — shouts a line that is read rather than pressed. Sentence case is also what the
+/* A button's face that is a SENTENCE and not a verb ("I already have a key") is something
+   the person is telling the form, and the vendor's uppercase — right for Save, right for any
+   verb — shouts a line that is read rather than pressed. Sentence case is also what the
    guide chapter prints it as, and a label a manual quotes has to be quotable. */
 .ns-disclosure .ns-button-label {
     text-transform: none;
 }
 
-/* A THREAD'S TWO SIDES (nsail#1475). A conversation reads as a chat or it does not read at all:
+/* A THREAD'S TWO SIDES. A conversation reads as a chat or it does not read at all:
    who said a thing is told by the side it sits on and the tone it wears, before any name is
    read — which is what lets the name above the words be the branch and the contact rather than
    a label saying "us".
@@ -4564,7 +4576,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     border-top-left-radius: 0;
 }
 
-/* Nota interna (nsail#1688): drawn apart from the two sides above by standing on neither edge
+/* An internal note: drawn apart from the two sides above by standing on neither edge
    and wearing neither's tone — the warning wash instead, since a note is for the staff and
    never for the person it is about. No tail: it did not travel a road. */
 .ns-bubble-note {
@@ -4609,11 +4621,11 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* ===========================================================================================
-   THE KEYBOARD (nsail#2207): the link that is only on screen while it has focus, a ring
+   THE KEYBOARD: the link that is only on screen while it has focus, a ring
    wherever the cursor can land, the key a search box shows inside itself, and the sheet "?"
    opens. The chord a control with a WORD answers is shown on its tooltip (THE WHISPER above,
    whose text is the name and the key together) and never drawn beside the word — a hint and
-   the word's own hover bubble turned out to be one mechanism, not two (nsail#2272); a box has
+   the word's own hover bubble are one mechanism, not two; a box has
    no word to hover and no bubble to carry one, which is the whole reason it is the one control
    that paints its key.
    The chords themselves are declared on the controls and dispatched in ns.js — nothing about
@@ -4659,9 +4671,9 @@ div.mud-input-slot.mud-input-root::placeholder {
    and this sheet second).
 
    The ring is drawn in the accent AS INK (--ns-accent-ink) and not the accent itself: a free
-   pick read as a 2px line on a pale surface is 2.43:1 for the house gold (nsail#2744's own
-   number), under the 3:1 a UI boundary owes. The same reason every other place the accent
-   becomes a line or a glyph reads this variable instead of the ground it is for.
+   pick read as a 2px line on a pale surface is 2.43:1 for the house gold (measured), under the
+   3:1 a UI boundary owes. The same reason every other place the accent becomes a line or a
+   glyph reads this variable instead of the ground it is for.
 
    The chrome is excluded from THIS rule and answered below: --ns-accent-ink is derived
    against the content's fixed surfaces (BrandTheme.AccentInk), and the band is a free pick
@@ -4688,19 +4700,40 @@ div.mud-input-slot.mud-input-root::placeholder {
 }
 
 /* NsAlert's Info face (NSail.Components.Mud/Layout/NsAlert.razor) is the one severity that
-   never carries news worth a loud block — a plain hint ("Sin cobertura vinculada…") painted as
-   solid as a real warning, which on the light scheme read as the heaviest object on the page
-   next to Inicio's own quiet icon-and-text notices (nsail#2744). Dark is left exactly as the
-   vendor ships it — its own pair of variables restates the flat fill, so there is nothing here
-   for it to move — and light reads a tint over the card plus the severity as its own border,
-   the same voice the soft NsAs.Important wash already speaks in. The three come from NsTheme,
-   which is the one place with both schemes to pick a light-only tint from (ns-mud.css cannot
-   key a rule off which scheme is lit, only the --mud-palette-* values MudThemeProvider swaps
-   in place without a lasting selector of its own). */
+   never carries news worth a loud block — a plain hint painted as solid as a real warning is,
+   on the light scheme, the heaviest object on the page next to quiet icon-and-text notices.
+   Dark is left exactly as the vendor ships it — its own pair of variables restates the flat
+   fill, so there is nothing here for it to move — and light reads a tint over the card plus the
+   severity as its own border, the same voice the soft NsAs.Important wash already speaks in.
+   The three come from NsTheme, which is the one place with both schemes to pick a light-only
+   tint from (ns-mud.css cannot key a rule off which scheme is lit, only the --mud-palette-*
+   values MudThemeProvider swaps in place without a lasting selector of its own). */
 .mud-alert-filled-info {
     background-color: var(--ns-alert-info-bg, var(--mud-palette-info));
     border: 1px solid var(--ns-alert-info-border, transparent);
     color: var(--ns-alert-info-ink, var(--mud-palette-info-text)) !important;
+}
+
+/* THE CHECK A STORED SECRET DRAWS INSIDE ITS BOX (NsPasswordField IsStored): the placeholder is the mask
+   and the check carries the whole sentence as a whisper, so it takes the pointer;
+   the input gives up the check's room so the placeholder is cut with an ellipsis
+   before it, never under it. */
+.ns-stored-box {
+    position: relative;
+}
+
+.ns-stored-mark {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    display: inline-flex;
+    line-height: 0;
+}
+
+.ns-stored-box.ns-stored .mud-input-control input.mud-input-slot.mud-input-root {
+    padding-inline-end: 36px;
+    text-overflow: ellipsis;
 }
 
 /* THE KEY A SEARCH BOX ANSWERS, drawn inside the box at its trailing edge (NsSearchField) —
@@ -4724,7 +4757,7 @@ div.mud-input-slot.mud-input-root::placeholder {
     border-radius: 4px;
 
     /* The disabled-text ink reads as "you cannot press this", which a shortcut hint is not —
-       nsail#2744, 2.77:1 on the light canvas. The secondary rank is the box's own ink everywhere
+       2.77:1 on the light canvas. The secondary rank is the box's own ink everywhere
        else a hint is quiet rather than refused. */
     color: var(--mud-palette-text-secondary);
     font-size: .6875rem;
@@ -4747,7 +4780,7 @@ div.mud-input-slot.mud-input-root::placeholder {
    carries no region of its own: left as the content's text-secondary, the hint flips with the
    scheme on the rail's fixed ground exactly the way ui/branding.md's ".ns-text-muted"
    restatement already guards against — the house's light chrome under a dark rail override
-   would fall under the body floor a .6875rem hint owes (nsail#2744). */
+   would fall under the body floor a .6875rem hint owes. */
 .ns-nav-drawer .ns-search-key {
     color: var(--ns-rail-text-muted);
 }
@@ -4825,4 +4858,51 @@ div.mud-input-slot.mud-input-root::placeholder {
 
 .ns-numeric-compact .mud-input-control-input-container input.mud-input-root {
     text-align: center;
+}
+
+/* NsBarChart: every stroke and fill is a palette variable, so both schemes read. */
+.ns-bar-chart-key {
+    display: inline-flex;
+    align-items: center;
+}
+
+.ns-bar-chart-grid {
+    stroke: var(--mud-palette-lines-default);
+    stroke-width: 1;
+}
+
+.ns-bar-chart-baseline {
+    stroke: var(--mud-palette-text-secondary);
+    stroke-width: 1;
+}
+
+.ns-bar-chart-marker {
+    stroke: var(--mud-palette-text-secondary);
+    stroke-width: 1;
+}
+
+.ns-bar-chart-axis {
+    font-size: 11px;
+    fill: var(--mud-palette-text-secondary);
+}
+
+.ns-bar-chart-empty {
+    font-size: 13px;
+    fill: var(--mud-palette-text-secondary);
+}
+
+.ns-bar-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.ns-bar-chart-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-inline-end: 4px;
 }

@@ -4,6 +4,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using NSail.Harness.Agents;
 using NSail.Harness.Api;
 using NSail.Harness.Lanes;
@@ -14,10 +15,10 @@ namespace NSail.Harness.Hosting;
 // The harness at a glance, refreshed every few seconds: where it stands, what the crew did over a
 // range (JobStats, drawn here as plain SVG: no script, no library), what runs, what the last pass
 // planned, what ended. Times are the machine's.
-static class StatusPage
+static partial class StatusPage
 {
     // One colour per role, in the order JobStats.Roles names them.
-    static readonly string[] Colors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#6250d6"];
+    static readonly string[] Colors = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#6250d6", "#0e9aa7"];
     static readonly string[] Ranges = ["24h", "7d", "30d"];
 
     internal const string Style = """
@@ -57,19 +58,18 @@ static class StatusPage
         html.Append($"<style>{Style}</style>");
         var version = view.Starts.LastOrDefault()?.Version;
         html.Append($"<h1>Harness <small class=muted>{Esc(o.DefaultRepository.Name)} · {Esc(o.Machine)} · {o.Mode}{(version is null ? "" : $" · {Esc(version)}")}</small></h1>");
-        Badges(html, loop, history, leases, load, now);
+        var running = loop.Running;
+        Badges(html, loop, running.Count, history, leases, load, now);
         Stats(html, view);
         Sides(html, view, o, agent, now);
 
-        var running = loop.Running;
-        html.Append($"<h2>Running ({running.Count})</h2>");
-        if (running.Count == 0) html.Append("<p class=muted>Nothing runs now.</p>");
-        else JobsPage.Table(html, o, running.OrderBy(r => r.Started).Select(r => new JobsPage.Row(r.Id, r.Started, r.Item.ToString(), r.Item.Story, "running", $"slot {r.Slot}", Time((now - r.Started).TotalSeconds))), now);
+        Running(html, o, running, now);
 
         if (loop.Last is { } pass)
         {
             html.Append($"<p class=muted style=\"font-size:12px\">Last pass {Local(pass.At):HH:mm:ss}, {pass.Took.TotalSeconds:F1}s</p>");
             if (pass.Error is not null) html.Append($"<p style=\"color:var(--bad)\">The pass failed: {Esc(pass.Error)}</p>");
+            if (pass.Plan is { Andon.Count: > 0 } lit) PlanPage.Banner(html, o, lit.Andon, now);
             if (pass.Plan is { } plan) PlanPage.Summary(html, o, plan);
         }
 
@@ -77,6 +77,13 @@ static class StatusPage
         html.Append($"<div class=logbar><h2>Recent jobs</h2><a href=\"/jobs\" style=\"font-size:13px\">All {ended.Count} jobs, with filters ›</a></div>");
         JobsPage.Table(html, o, ended.OrderByDescending(j => j.Started).Take(10).Select(JobsPage.RowOf), now);
         return html.ToString();
+    }
+
+    internal static void Running(StringBuilder html, HarnessOptions o, IReadOnlyCollection<RunningJob> running, DateTimeOffset now)
+    {
+        html.Append($"<h2>Running ({running.Count})</h2>");
+        if (running.Count == 0) html.Append("<p class=muted>Nothing runs now.</p>");
+        else JobsPage.Table(html, o, running.OrderBy(r => r.Started).Select(r => new JobsPage.Row(r.Id, r.Started, r.Item.ToString(), r.Item.Story, "running", $"slot {r.Slot}", Time((now - r.Started).TotalSeconds), r)), now);
     }
 
     internal static string Swatch(string role)
@@ -96,33 +103,43 @@ static class StatusPage
             "qa" => "qa",
             "release" => "release",
             "gate" => "gate",
+            "watch" => "watch",
             _ => "",
         };
     }
+
+    [GeneratedRegex(@"(?:\b([\w.-]+) PR )?#(\d+)")]
+    private static partial Regex Numbered();
 
     // A story's and a PR's number linked to the repository, where it is GitHub's (it sends an issue's
     // address on to the PR's).
     internal static string Linked(HarnessOptions o, string text)
     {
-        var escaped = Esc(text);
-        if (o.DefaultRepository.Provider != "GitHub") return escaped;
+        if (o.DefaultRepository.Provider != "GitHub") return Esc(text);
+        // Linked on the raw text and escaped piece by piece: escaping first would let `&#39;` read as #39.
         // Another repository's PR is named by its short name (`nsail-stack PR #130`); any other #N is the
         // default repository's.
-        return System.Text.RegularExpressions.Regex.Replace(escaped, @"(?:\b([\w.-]+) PR )?#(\d+)", m =>
+        var html = new StringBuilder();
+        var last = 0;
+        foreach (Match m in Numbered().Matches(text))
         {
             var named = m.Groups[1].Success ? o.Repositories.FirstOrDefault(r => r.Provider == "GitHub" && r.Name.EndsWith($"/{m.Groups[1].Value}", StringComparison.Ordinal)) : null;
             var repo = named?.Name ?? o.DefaultRepository.Name;
-            var lead = m.Groups[1].Success ? $"{m.Groups[1].Value} PR " : "";
-            return $"{lead}<a href=\"https://github.com/{Esc(repo)}/issues/{m.Groups[2].Value}\">#{m.Groups[2].Value}</a>";
-        });
+            var lead = m.Groups[1].Success ? $"{Esc(m.Groups[1].Value)} PR " : "";
+            html.Append(Esc(text[last..m.Index])).Append(lead)
+                .Append($"<a href=\"https://github.com/{Esc(repo)}/issues/{m.Groups[2].Value}\">#{m.Groups[2].Value}</a>");
+            last = m.Index + m.Length;
+        }
+        return html.Append(Esc(text[last..])).ToString();
     }
 
-    static void Badges(StringBuilder html, HarnessLoop loop, JobHistory history, BuildLeases leases, LoadSamples load, DateTimeOffset now)
+    static void Badges(StringBuilder html, HarnessLoop loop, int running, JobHistory history, BuildLeases leases, LoadSamples load, DateTimeOffset now)
     {
         html.Append("<div class=badges>");
         if (loop.Paused is { } why) html.Append($"<span class=\"b warn\">paused: {Esc(why)}</span>");
-        if (loop.AgentsOffUntil is { } wall) html.Append($"<span class=\"b warn\">agents off: out of quota until {Local(wall):HH:mm}; builds go on</span>");
-        html.Append($"<span class=\"b acc\">{loop.Running.Count} running</span>");
+        if (loop.Last is { Plan: { } lit }) foreach (var a in lit.Andon) html.Append($"<span class=\"b bad\">release andon: {Esc(a.Product)}</span>");
+        if (loop.AgentsOffUntil is { } wall) html.Append($"<span class=\"b warn\">agents off: out of quota until {HarnessLoop.WallClock(Local(wall), Local(now))}; builds go on</span>");
+        html.Append($"<span class=\"b acc\">{running} running</span>");
         if (loop.Last is { Plan: { } plan } pass) html.Append($"<span class=b>{Math.Max(0, plan.Items.Count - pass.Started.Count)} waiting</span>");
         html.Append(loop.Stalled > 0 ? $"<span class=\"b warn\">{loop.Stalled} stalled</span>" : "<span class=b>0 stalled</span>");
         if (history.Jobs().LastOrDefault(j => j.Work.StartsWith("gate main", StringComparison.Ordinal) && j.Outcome is not null) is { } main)
@@ -135,7 +152,7 @@ static class StatusPage
         html.Append("</div>");
     }
 
-    static void Stats(StringBuilder html, HarnessStatsView view)
+    internal static void Stats(StringBuilder html, HarnessStatsView view)
     {
         var span = view.Range switch { "7d" => "7 days", "30d" => "30 days", _ => "24 h" };
         html.Append("<div style=\"display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px\"><h2>The crew, last ").Append(span).Append("</h2><span class=ranges>");
@@ -203,16 +220,24 @@ static class StatusPage
         html.Append("</svg>");
     }
 
-    static void Sides(StringBuilder html, HarnessStatsView view, HarnessOptions o, IAgent agent, DateTimeOffset now)
+    // A role a machine may never run (no QA walker, no release, no watch) shows only once it has jobs.
+    internal static void RoleTable(StringBuilder html, HarnessStatsView view)
     {
-        html.Append("<div class=cols><div><h2>By role</h2><table class=r><tr><th>Role</th><th class=n>Jobs</th><th class=n>OK</th><th class=n>Failed</th><th class=n>Broke</th><th class=n>p50</th><th class=n>p95</th><th class=n>Wait</th></tr>");
+        html.Append("<h2>By role</h2><table class=r><tr><th>Role</th><th class=n>Jobs</th><th class=n>OK</th><th class=n>Failed</th><th class=n>Broke</th><th class=n>p50</th><th class=n>p95</th><th class=n>Wait</th></tr>");
         for (var i = 0; i < view.Roles.Count; i++)
         {
             var r = view.Roles[i];
-            if (r.Jobs == 0 && r.Role is "qa" or "release") continue;
+            if (r.Jobs == 0 && r.Role is "qa" or "release" or "watch") continue;
             html.Append($"<tr><td><span class=sw style=\"background:{Colors[i]}\"></span>{Esc(Title(r.Role))}</td><td class=n>{r.Jobs}</td><td class=n>{(r.Jobs == 0 ? "—" : $"{100.0 * r.Ok / r.Jobs:F0}%")}</td><td class=n>{r.Failed}</td><td class=n>{r.Broke}</td><td class=n>{Time(r.P50)}</td><td class=n>{Time(r.P95)}</td><td class=n>{Time(r.Wait)}</td></tr>");
         }
-        html.Append("</table><p class=muted style=\"font-size:12px\">Failed: its work went wrong (a red gate, a dead voyage). Broke: the harness's own break. Wait: from first planned to started. Times are a histogram's bucket edges.</p></div><div>");
+        html.Append("</table><p class=muted style=\"font-size:12px\">Failed: its work went wrong (a red gate, a dead voyage). Broke: the harness's own break. Wait: from first planned to started. Times are a histogram's bucket edges.</p>");
+    }
+
+    static void Sides(StringBuilder html, HarnessStatsView view, HarnessOptions o, IAgent agent, DateTimeOffset now)
+    {
+        html.Append("<div class=cols><div>");
+        RoleTable(html, view);
+        html.Append("</div><div>");
 
         html.Append("<h2>Agent quota</h2>");
         var seats = o.Seats.Count == 0 ? "" : $" <span class=muted>· {Esc(string.Join(", ", o.Seats.Keys))}</span>";

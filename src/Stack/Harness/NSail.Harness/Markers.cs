@@ -8,8 +8,12 @@ namespace NSail.Harness;
 
 // The harness's own protocol on a PR's thread, in HTML comments people do not see: the gate's verdict
 // at a head (`harness:gate:<green|red|void>:<sha>`, or `harness:gate:waits:<sha>:<main>`) and the reviewer's (`<review marker>:<clean|findings>:<sha>`).
-public sealed class Markers(string review)
+// A marker counts only as a whole HTML comment on its own line, written by the harness's own login or
+// by one of the fleet's (`authors`).
+public sealed class Markers(string review, IReadOnlyCollection<string>? authors = null)
 {
+    readonly IReadOnlyCollection<string> _authors = authors ?? [];
+
     // The commit statuses the harness keeps its verdicts in: the gate (on a PR head and on main), a
     // product's suite and its day's cut tried (on main's head), the last QA drain (on main's head).
     public const string GateContext = "harness/gate";
@@ -23,6 +27,17 @@ public sealed class Markers(string review)
     public static string CutContext(string product)
     {
         return $"harness/cut/{product}";
+    }
+
+    // A cut at work: failure (a state the marks read), renewed every beat while a harness runs it; success once it let go.
+    public static readonly TimeSpan ClaimBeat = TimeSpan.FromMinutes(10);
+
+    // A claim not renewed for this long belongs to a harness that died.
+    public static readonly TimeSpan ClaimLapse = ClaimBeat * 3;
+
+    public static string HeldContext(string product)
+    {
+        return $"harness/cut/{product}/held";
     }
 
     // What a dead voyage's comment on the story carries, so the next one can count them.
@@ -60,6 +75,23 @@ public sealed class Markers(string review)
         return $"<!-- {review}:{word}:{sha} -->";
     }
 
+    // The bodies on a thread that this harness or another of the fleet wrote: a marker from anyone else is a forgery.
+    public IEnumerable<string> Bodies(IEnumerable<PrNote> thread, string login)
+    {
+        return thread.Where(n => string.Equals(n.Author, login, StringComparison.OrdinalIgnoreCase) || _authors.Contains(n.Author, StringComparer.OrdinalIgnoreCase)).Select(n => n.Body);
+    }
+
+    // A text with the protocol's markers taken out until none remains (removing one can join the halves of another), for words that are not the harness's own.
+    public string Strip(string text)
+    {
+        var marker = new Regex($@"<!--\s*(harness:gate|{Regex.Escape(review)}):[^>]*-->");
+        for (var shorter = marker.Replace(text, ""); shorter != text; shorter = marker.Replace(text, ""))
+        {
+            text = shorter;
+        }
+        return text;
+    }
+
     // The gate's verdict at a head; `void` withdraws an earlier one, and the head is gated again. A
     // head waiting on main reads pending while main is still the head it waited on (none known: still).
     public static CiState? GateAt(IEnumerable<string> bodies, string sha, string? main = null)
@@ -67,7 +99,7 @@ public sealed class Markers(string review)
         CiState? word = null;
         foreach (var body in bodies)
         {
-            foreach (Match m in Regex.Matches(body, @"harness:gate:(green|red|void|waits):([0-9a-f]+)(?::([0-9a-f]+))?"))
+            foreach (Match m in Regex.Matches(body, @"^<!-- harness:gate:(green|red|void|waits):([0-9a-f]+)(?::([0-9a-f]+))? -->[ \t]*\r?$", RegexOptions.Multiline))
             {
                 if (m.Groups[2].Value != sha) continue;
                 word = m.Groups[1].Value switch
@@ -104,6 +136,6 @@ public sealed class Markers(string review)
 
     MatchCollection ReviewMatches(string body)
     {
-        return Regex.Matches(body, $@"{Regex.Escape(review)}:(clean|findings):([0-9a-f]+)");
+        return Regex.Matches(body, $@"^<!-- {Regex.Escape(review)}:(clean|findings):([0-9a-f]+) -->[ \t]*\r?$", RegexOptions.Multiline);
     }
 }

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.CodeAnalysis;
@@ -33,7 +33,7 @@ public static class GeneratorDiagnostics
     public static readonly DiagnosticDescriptor PushedCarriesData = new(
         id: "NSG003",
         title: "[Pushed] event carries data",
-        messageFormat: "'{0}' is marked [Pushed] and declares the public property '{1}'. A pushed event reaches every seat of the tenant, whatever its branch, so it carries nothing: it says that something moved, and each client re-reads through its own org-scoped read.",
+        messageFormat: "'{0}' is marked [Pushed] and declares or inherits the public property '{1}'. A pushed event reaches every seat of the tenant, whatever its branch, so it carries nothing: it says that something moved, and each client re-reads through its own org-scoped read.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
@@ -146,4 +146,93 @@ public static class GeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "Two senders for one message is a refusal the send pipeline can only make at runtime; the declaration is where it is visible.");
+
+    public static readonly DiagnosticDescriptor ThrottledIdentityNotFound = new(
+        id: "NSG016",
+        title: "[Throttled] Identity names no string body property the middleware can read",
+        messageFormat: "'{0}' declares [Throttled(Identity = \"{1}\")], but it has no public string property named '{1}' bound from the body and without [JsonPropertyName] (a route, query or header member, a non-string value or a renamed wire name is not read). Name the string property of the body that holds the account, with nameof.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The ceiling reads the JSON body; a name that matches nothing there caps no account, and goes on capping nothing after the property it meant is renamed.");
+
+    public static readonly DiagnosticDescriptor MixedRouteSegment = new(
+        id: "NSG017",
+        title: "Route segment mixes a token with literal text",
+        messageFormat: "Route '{0}' on message '{1}' has the segment '{2}', which mixes a token with other text. A token is a whole segment: '{{name}}', optionally with a constraint, '?' or '*'.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The client writes each token as one escaped segment; a segment of literal and token together has no value to write.");
+
+    public static readonly DiagnosticDescriptor RouteMemberWithoutToken = new(
+        id: "NSG018",
+        title: "[AsRoute] member has no token in the route",
+        messageFormat: "'{0}.{1}' is bound from the route, but the route '{2}' has no token '{{{1}}}'. Add the token to the route, or drop [AsRoute].",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The member would be required from a route value the template never carries, and every request would fail.");
+
+    public static readonly DiagnosticDescriptor DuplicateRoute = new(
+        id: "NSG019",
+        title: "Two messages share a verb and route",
+        messageFormat: "'{0}' and '{1}' both answer {2} '{3}' (token names do not tell routes apart). Give one of them another route.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Both endpoints would be registered and every request to the route would fail with an ambiguous match.");
+    public static readonly DiagnosticDescriptor UnknownSourceAssembly = new(
+        id: "NSG020",
+        title: "[Source] names an assembly the compilation does not reference",
+        messageFormat: "'{0}' declares [Source(Assembly = \"{1}\")], but no assembly of that name is referenced: the holder would generate for nothing",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A scope that matches no assembly is an empty one, and an empty registration looks the same as a working one until a send meets no sender.");
+
+    public static readonly DiagnosticDescriptor HolderNotDeclarable = new(
+        id: "NSG021",
+        title: "A generated holder cannot be completed",
+        messageFormat: "'{0}' is marked [Generated], but its class '{1}' {2}: the generator completes a partial method of a top-level, non-generic partial class in a namespace by declaring that class again, and cannot do so here",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The generated half re-declares the holder's class; a declaration that differs from the written one is a compile error in generated code nobody wrote.");
+
+    public static readonly DiagnosticDescriptor HolderWithoutServices = new(
+        id: "NSG022",
+        title: "A generated holder takes no IServiceCollection",
+        messageFormat: "'{0}' is marked [Generated], but none of its parameters is an IServiceCollection: there is nothing to register the generated services on",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Every holder registers on the collection it is handed; without one the generated body would have no receiver.");
+
+    public static readonly DiagnosticDescriptor HttpWithoutPath = new(
+        id: "NSG023",
+        title: "[Http] without a path",
+        messageFormat: "'{0}' declares [Http] without a path: the message has no route to map or call",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The route is the endpoint and the client's address; a message without one is skipped by neither and served by neither.");
+
+    public static readonly DiagnosticDescriptor CollectionHeader = new(
+        id: "NSG024",
+        title: "A header-bound member is a collection",
+        messageFormat: "'{0}.{1}' is bound from a header, but it is a collection: the client's values reach the endpoint as one comma-joined value, never as the elements. Send it in the query or the body.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "HTTP joins repeated values of a header into one line and the endpoint binds that line as a single element, so the collection would arrive wrong or be refused.");
+
+    public static readonly DiagnosticDescriptor MappedNullableIntoNonNullable = new(
+        id: "NSG025",
+        title: "A nullable member is mapped into a non-nullable one",
+        messageFormat: "'{0}.{1}' ({2}) is written from '{3}.{4}' ({5}), which can hold no value, and nothing says what that becomes. Make '{0}.{1}' nullable, make '{3}.{4}' non-nullable, or mark the entity's member [MapIgnore].",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "Writing the type's default for \"no value\" would turn an absent amount into zero without a word; a key is exempt, where no value is the id still to be made. A text source is not a nullable value: a null or empty string reads the target's default.");
 }

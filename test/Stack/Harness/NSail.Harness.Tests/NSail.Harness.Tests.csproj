@@ -29,9 +29,17 @@
     <None Include="harness-settings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Which PRs nsail-stack's review.yml reads and what verdict it decides on: the tests run the
+       script and read the workflow as they ship. -->
+  <ItemGroup>
+    <None Include="..\..\..\..\.github\review-reads.sh" Link="review-reads.sh" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\.github\workflows\review.yml" Link="review.yml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness\NSail.Harness.csproj" />
     <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.GitHub\NSail.Harness.GitHub.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.OpenObserve\NSail.Harness.OpenObserve.csproj" />
     <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.Claude\NSail.Harness.Claude.csproj" />
     <ProjectReference Include="..\..\..\..\src\Stack\Harness\NSail.Harness.Hosting\NSail.Harness.Hosting.csproj" />
   </ItemGroup>

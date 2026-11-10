@@ -58,12 +58,19 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
   never opened the settings screen still uploads a logo. An install that passes no options
   stores nowhere until a row says otherwise; an app whose floor is the host's own disk says so by
   name, with `AddFileSystemStorage`'s `OnDisk`, and names the directory its deploy mounts a
-  volume at. A provider named with no container is refused at startup, where a person is
+  volume at. The install bounds what a row may name (`StorageGuardOptions`, passed to
+  `AddStorageWebApi`): a `file` container under its roots, an endpoint on its scheme and host
+  allow-list and off private addresses; save and test both refuse with a coded issue, and the
+  install's own targets are trusted. A provider named with no container is refused at startup, where a person is
   looking, not at the first upload.
 - **A key is `<kind>/<tenant:N>/<leaf>`, and no kind is outside it.** The kind leads so one
   container holds every kind without a collision; the tenant leads inside it because an object
   store is the INSTALL's, not a tenant's — Storage guards a key against climbing out of its
-  container and knows nothing about whose data it holds, so the wall at this door is the prefix.
+  container, and where the wall is the tenant column (SingleDb) it enforces the segment itself:
+  a key whose tenant segment is not the scope's is refused (`ObjectKeyOutsideTenant`), a `List`
+  answers only the scope's own objects, and a scope in no tenant reads nothing (`Get` is null,
+  `List` empty) and writes, deletes or links nothing (`NoTenantForStorage`) — the data stamp's
+  rule. `StorageManager.Key(kind, leaf)` builds a key in that shape.
   One flat directory per tenant per kind, no deeper, so a copy that walks one level under
   `<kind>/<tenant:N>` brings across everything the convention wrote. Under a tenancy mode whose
   wall is not the column (MultiDb, None) the tenant segment is one zeroed guid, and that is
@@ -80,15 +87,25 @@ settings screen's is `NSail.Storage.Shared.Tests` beside it.
 - **A key never escapes its container.** `StorageManager.Guard` is the one door every key
   comes through, and the filesystem and git providers check the RESOLVED path behind it. The
   git provider also refuses a `.git` segment at any depth and in any case: git skips it, so
-  the object would be dropped without a word.
+  the object would be dropped without a word. It also refuses a key that is, or passes
+  through, a symlink the committed tree holds (`KeyThroughSymlink`): it would write outside
+  the clone.
+- **The filesystem provider replaces atomically.** A put is copied to `.put-<32 hex>` beside
+  the key and renamed over it, so a cancel or a throwing source leaves the previous object and
+  no partial file; `List` skips exactly that name form. A process killed mid-put leaves its
+  staging file behind: it is garbage and safe to delete.
 - **`IsConfigured` answers the refusal before there is anything to put.** A caller that
   queues the writing for later — a request filed now and written by a job — would otherwise
   accept the ask, read a whole database and fail on its last line. It is false for both of
   `Resolve`'s refusals, an install storing nowhere and a provider no host composed, because a
   caller at the door can do nothing different about either.
-- **The credential is sealed with the install's own key** (`KeyProtector`, `NSail.Security`).
-  `AddStorageWebApi` does not register one — the key is the host's — so a host that composes
-  Storage without it fails by name on first use rather than sealing under a key nobody chose.
+- **The credential is sealed with the key of the tenant it belongs to** (`KeyProtector`,
+  `NSail.Security`; `AddTenantKeys` reads one file per tenant). A tenant without a key makes the
+  seal throw. An open that cannot happen reads as an empty secret: the target is still
+  configured and a provider that signs with the secret refuses the write, so a stored secret
+  that no longer opens must be saved again. `AddStorageWebApi` does not register a
+  `KeyProtector` — the key is the host's — so a host that composes Storage without one fails by
+  name on first use rather than sealing under a key nobody chose.
 
 ## The S3 provider
 
@@ -133,8 +150,9 @@ to `Branch`, a get or a list reads that branch's tree, and `Link` is the target'
 binary, so composing it grants the host that executable and the remotes it can reach.
 
 Each verb works in a throwaway one-commit clone and keeps nothing between calls, so two hosts
-never share a checkout. A write checks the branch out; a read fetches the tree without its files
-and then only the files it answers with — the key's for a get, those under the prefix for a list,
+never share a checkout. Git runs with `core.symlinks=false`, so a checkout never materialises a
+link; the symlink check reads the committed tree, which holds on any platform. A write checks
+the branch out; a read fetches the tree without its files and then only the files it answers with — the key's for a get, those under the prefix for a list,
 whose lengths need them — so a small object costs no more in a large repository. A server that
 does not filter sends every file instead: slower, still right. A push the remote rejected because
 the branch moved is fetched and committed again a few times before it is refused.
@@ -159,7 +177,7 @@ everything that still writes objects.
 The provider picker decides whether the address, the region and the key pair are asked for at
 all — `StorageProviderRef.IsRemote` is what the screen reads, and `IsRepository` for the
 branch and the link template. The secret key is never answered back: the read says only that
-one exists, and an empty field on save means "unchanged", never "clear it".
+one exists, and an empty field on save keeps it only while Provider, Endpoint and Container stay as they were — a moved target drops the stored secret, so it never travels to an origin the person did not set it for.
 
 The test action writes a small probe, reads it back, checks the bytes, lists it and removes
 it — against the name's **saved** target, because testing what the form currently holds would

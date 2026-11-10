@@ -16,7 +16,7 @@ Namespaces use capability names, not the project name:
 | `NSail.Tones` | `BrandTone` — the one derivation of an ink or a state from a picked colour. Down here because both the API edge (a kit, at save) and the palette (the Stack, at paint) have to reach it; see [ui/branding.md](ui/branding.md) |
 | `NSail.Text` | Text somebody WROTE, which the app renders instead of deriving: `Markdown` (a guide chapter, a manual, a note), `NamedTokens` (the `{name}` a template travels as) and `WebAddress` — whether a written address may become an `href`, asked by every surface that draws one it did not derive; see [ui/navigation.md](ui/navigation.md) and [ui/guide.md](ui/guide.md) |
 | `NSail.Privacy` | `PersonalData` — what kind of person's datum a column holds — and `PersonalDataComment`, the words it is written with in the column's comment. Down here because both ends of that carriage read them and neither may own them: the model pass that writes the comment, and whatever reads the catalog back without knowing any product; see [data.md](data.md#provider) |
-| `NSail.Builds` | `BuildVersion.Current` — the build this process runs, the one word the menu prints, the server stamps on every answer and the client compares against — and `ServerBuild`, what the transport heard the far side answer. Down here for the same reason `Tones` is: the transport writes it and the chrome reads it; see [messaging.md](messaging.md) |
+| `NSail.Builds` | `BuildVersion.Current` — the build this process runs, the one word the menu prints, the server stamps on every answer to a signed-in caller and the client compares against — and `ServerBuild`, what the transport heard the far side answer. Down here for the same reason `Tones` is: the transport writes it and the chrome reads it; see [messaging.md](messaging.md) |
 
 ---
 
@@ -72,18 +72,25 @@ explicit is the machine's answer.** See [baseservices.md](baseservices.md).
 ## Serialization
 
 `JsonOptions.Wire` is the JSON shape of every NSail wire payload — web defaults plus
-enums as names. The generated HTTP client serializes with it directly; a host owns its
-own options instance and copies `JsonOptions.Converters` instead. Nothing else should
-construct `JsonSerializerOptions` for message traffic.
+enums as names, and `long`, `ulong` and `decimal` as strings: a JavaScript reader parses a
+JSON number as a double and drops digits past 2^53 or about 15 (react.md). Reading accepts a
+number too, so a client that still writes one keeps working; a text that does not parse is
+a `JsonException`, so the endpoint answers it `400` like any malformed body. The generated
+HTTP client serializes with it directly; a host owns its own options instance and copies
+`JsonOptions.Converters` instead. Nothing else should construct `JsonSerializerOptions` for
+message traffic — and a vendor's API is not message traffic: its client keeps its own
+options, or its numbers go out as strings.
 
 `WireSchema.For(type)` renders that contract as a JSON Schema for whoever authors a body
 from outside C# — a pack step, a tool call composed off the `MessageRegistry`
 (messaging.md, Naming a message). It speaks the wire (enum names, wire casing) and lists as
 `required` what a send would reject when absent: the C# `required` modifier and
 `[Required]` alike, since every send validates the message's DataAnnotations. It describes
-a well-formed body, not the reader's tolerance — a number is `integer`, never the
-`["string", "integer"]` the lenient read admits. `MessageSchemaTests` renders every
-registered message's schema.
+a well-formed body, not the reader's tolerance: an `int` is `integer`, never the
+`["string", "integer"]` the lenient read admits, and `long`, `ulong` and `decimal` are
+`string`. `MessageSchemaTests` (enforced in the products' repository) renders every registered message's schema;
+the Stack's own messages are swept by
+`test/Stack/Messaging/NSail.Messaging.Declarations.Tests/MessageSchemaTests.cs`.
 
 ---
 
@@ -96,7 +103,8 @@ components may raise query events that map to paging parameters.
 bounds, once, for every list in the tree (`public class ListProducts : PagedMessage,
 IMessage<DataPage<ProductRow>>`). `PageSize = 0` means "the caller did not choose" and the
 handler's own default answers it; `MaxPageSize` is where a page stops being a page and
-becomes an export.
+becomes an export; `MaxPageIndex` keeps `PageIndex * PageSize` inside an int for the
+`Skip(PageIndex * PageSize)` a handler writes.
 
 ---
 

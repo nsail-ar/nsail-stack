@@ -24,11 +24,12 @@ public sealed class CsvExportWriter : IExportWriter
 
     public string ContentType => "text/csv";
 
-    public async Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, CancellationToken cancellationToken)
+    public async Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, TimeZoneInfo zone, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(book);
         ArgumentNullException.ThrowIfNull(destination);
         ArgumentNullException.ThrowIfNull(culture);
+        ArgumentNullException.ThrowIfNull(zone);
 
         var separator = SeparatorFor(culture);
 
@@ -50,7 +51,7 @@ public sealed class CsvExportWriter : IExportWriter
 
                 first = false;
 
-                await text.WriteLineAsync(string.Join(separator, table.Columns.Select(column => Field(column.Title, separator))));
+                await text.WriteLineAsync(string.Join(separator, table.Columns.Select(column => Field(ExportText.Defused(column.Title), separator))));
 
                 await foreach (var row in table.Rows.WithCancellation(cancellationToken))
                 {
@@ -61,7 +62,12 @@ public sealed class CsvExportWriter : IExportWriter
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var cells = table.Columns.Select((column, index) =>
-                        Field(ExportText.Of(index < row.Values.Count ? row.Values[index] : null, column.Format, culture), separator));
+                    {
+                        var value = index < row.Values.Count ? row.Values[index] : null;
+                        var cell = ExportText.Of(value, column.Format, culture, zone);
+
+                        return Field(ExportText.IsFigure(value, column.Format) ? cell : ExportText.Defused(cell), separator);
+                    });
 
                     await text.WriteLineAsync(string.Join(separator, cells));
                 }

@@ -53,6 +53,37 @@ public class BoardReaderTests
     }
 
     [Fact]
+    public void AGreenHeadIsGreenSinceItsLastWorkflowFinished()
+    {
+        var runs = Runs("""
+            [
+              {"workflow_id":1,"run_started_at":"2026-10-25T10:00:00Z","updated_at":"2026-10-25T12:00:00Z","status":"completed","conclusion":"failure"},
+              {"workflow_id":1,"run_started_at":"2026-10-25T11:00:00Z","updated_at":"2026-10-25T11:20:00Z","status":"completed","conclusion":"success"},
+              {"workflow_id":2,"run_started_at":"2026-10-25T11:00:00Z","updated_at":"2026-10-25T11:05:00Z","status":"completed","conclusion":"success"}
+            ]
+            """);
+
+        Assert.Equal(DateTimeOffset.Parse("2026-10-25T11:20:00Z"), GitHubRepository.GreenAtOf(runs));
+    }
+
+    [Fact]
+    public void ARunsFailedJobsAreReadWithTheirFirstFailedStep()
+    {
+        var jobs = Runs("""
+            [
+              {"id":11,"name":"build","conclusion":"failure","steps":[
+                {"name":"Set up job","conclusion":"success"},
+                {"name":"Test","conclusion":"failure"},
+                {"name":"Pack","conclusion":"skipped"}]},
+              {"id":12,"name":"docs","conclusion":"success","steps":[{"name":"Lint","conclusion":"success"}]},
+              {"id":13,"name":"e2e","conclusion":"timed_out","steps":[]}
+            ]
+            """);
+
+        Assert.Equal([(11L, "build", "Test"), (13L, "e2e", "timed_out")], GitHubRepository.FailedJobs(jobs).ToList());
+    }
+
+    [Fact]
     public void OneRedWorkflowMakesItRedAndOneInFlightMakesItPending()
     {
         Assert.Equal(CiState.Red, GitHubRepository.CiOf(Runs("""[{"workflow_id":1,"run_started_at":"a","status":"completed","conclusion":"cancelled"}]""")));
@@ -67,7 +98,7 @@ public class BoardReaderTests
     public void TheReviewersWordIsTheLastMarkAtThatSha()
     {
         var markers = new Markers("reviewer");
-        var bodies = new[] { "x <!-- reviewer:findings:aaa -->", "y <!-- reviewer:clean:bbb -->", "z <!-- reviewer:findings:bbb -->" };
+        var bodies = new[] { "x\n<!-- reviewer:findings:aaa -->", "y\n<!-- reviewer:clean:bbb -->", "z\n<!-- reviewer:findings:bbb -->" };
 
         Assert.Equal("findings", markers.ReviewAt(bodies, "bbb"));
         Assert.Equal("findings", markers.ReviewAt(bodies, "aaa"));
@@ -96,5 +127,23 @@ public class BoardReaderTests
         Assert.Equal(9, issue.Parent);
         Assert.True(issue.Has("p1"));
         Assert.False(issue.InVersion);
+    }
+
+    // A comment or a label moves the issue's updatedAt; a column move moves only its project item's.
+    [Fact]
+    public void AStoryWasTouchedAtTheLatestOfItsIssueAndItsItemOnTheProject()
+    {
+        static Issue Parse(string issueAt, string itemAt)
+        {
+            return GitHubBoard.ParseIssue(JsonDocument.Parse($$$"""
+                {"number":5,"title":"t","milestone":null,"updatedAt":"{{{issueAt}}}",
+                 "labels":{"nodes":[]},"subIssuesSummary":{"total":0,"percentCompleted":0},"parent":null,"blockedBy":{"nodes":[]},
+                 "projectItems":{"nodes":[{"id":"i7","updatedAt":"2026-11-08T09:00:00Z","project":{"number":7},"fieldValueByName":null},
+                                          {"id":"i1","updatedAt":"{{{itemAt}}}","project":{"number":1},"fieldValueByName":{"name":"In-Progress"}}]}}
+                """).RootElement, 1);
+        }
+
+        Assert.Equal(DateTimeOffset.Parse("2026-11-08T07:48:00Z"), Parse("2026-11-08T07:48:00Z", "2026-11-08T07:30:00Z").TouchedAt);
+        Assert.Equal(DateTimeOffset.Parse("2026-11-08T07:47:30Z"), Parse("2026-11-08T07:30:00Z", "2026-11-08T07:47:30Z").TouchedAt);
     }
 }

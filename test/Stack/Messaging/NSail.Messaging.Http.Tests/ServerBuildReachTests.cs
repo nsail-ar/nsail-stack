@@ -46,11 +46,13 @@ public sealed class ServerBuildReachTests
 
         readonly string? _version;
         readonly HttpStatusCode _status;
+        readonly string? _cacheControl;
 
-        public Answering(string? version, HttpStatusCode status = HttpStatusCode.OK)
+        public Answering(string? version, HttpStatusCode status = HttpStatusCode.OK, string? cacheControl = null)
         {
             _version = version;
             _status = status;
+            _cacheControl = cacheControl;
         }
 
         protected override Task<HttpResponseMessage> SendAsync(
@@ -64,6 +66,11 @@ public sealed class ServerBuildReachTests
             if (_version is not null)
             {
                 response.Headers.TryAddWithoutValidation(WireHeaders.Version, _version);
+            }
+
+            if (_cacheControl is not null)
+            {
+                response.Headers.TryAddWithoutValidation("Cache-Control", _cacheControl);
             }
 
             return Task.FromResult(response);
@@ -97,9 +104,10 @@ public sealed class ServerBuildReachTests
         return services.BuildServiceProvider();
     }
 
-    static async Task<ServerBuild> Answered(string? version, HttpStatusCode status = HttpStatusCode.OK)
+    static async Task<ServerBuild> Answered(
+        string? version, HttpStatusCode status = HttpStatusCode.OK, string? cacheControl = null)
     {
-        await using var provider = Serving(new Answering(version, status));
+        await using var provider = Serving(new Answering(version, status, cacheControl));
 
         var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("NeverConfigured");
 
@@ -130,6 +138,33 @@ public sealed class ServerBuildReachTests
         var build = await Answered(null);
 
         Assert.False(build.Moved);
+    }
+
+    // A browser replays the response it stored, header and all: an `immutable` image fetched
+    // before a deploy comes back on every later boot carrying the OLD build word, and reading it
+    // as the server's today raised the offer on every reload, signed in with a logo (nsail#3104).
+    [Theory]
+    [InlineData("private, max-age=31536000, immutable")]
+    [InlineData("public, max-age=300")]
+    [InlineData("immutable")]
+    public async Task AResponseACacheCanReplayIsNotTheServerSpeaking(string cacheControl)
+    {
+        var build = await Answered("1.2.3", cacheControl: cacheControl);
+
+        Assert.False(build.Moved);
+    }
+
+    // What must be revalidated is answered live, so its word is today's.
+    [Theory]
+    [InlineData("no-cache")]
+    [InlineData("no-store")]
+    [InlineData("no-cache, max-age=3600")]
+    [InlineData("max-age=0")]
+    public async Task AResponseNoCacheCanReplayStillSpeaksForTheServer(string cacheControl)
+    {
+        var build = await Answered("1.2.3", cacheControl: cacheControl);
+
+        Assert.True(build.Moved);
     }
 
     // A refusal is a response too. The sender never returns it — HandleError throws over it —

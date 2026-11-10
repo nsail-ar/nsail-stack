@@ -163,8 +163,9 @@ state and none of them survives being drawn inside the control it names:
   area for as long as it shows — which is the page gaining a scrollbar on hover (nsail#2197). A
   top-layer element is in no scroll box at all.
 - **Only after a steady dwell.** `WHISPER_DELAY` in `ns.js` is 2.5 s and is the whole of the
-  bubble's timing, for every control in the house: a name that opens on the way past is noise.
-  It closes on leave, press, key, scroll and resize, and the keyboard takes the same dwell —
+  bubble's timing under a pointer or a keyboard, for every control in the house: a name that opens
+  on the way past is noise. The one exception is a finger's tap on an `NsChip`, which opens at once
+  (below). It closes on leave, press, key, scroll and resize, and the keyboard takes the same dwell —
   `:focus-visible` is what tells a keyboard's focus from the one a press leaves behind, so a
   button still focused after its own click does not re-open its name over what the click opened.
 
@@ -189,6 +190,23 @@ nothing BUT the bubble to say what it is (a row's grey pencil, the X under a fro
 not the CSS's: a disabled control receives hover and never a press, a focus or a click. The one
 response that would have outlived both is the vendor's ripple, a document-level `pointerdown` over
 whatever carries its class, so **a refused face declares no ripple**.
+
+**On touch, an `NsChip`'s sentence opens on the tap.** A finger has no hover, so the dwell is a
+pointer's and a tap is not one: a chip declares `data-ns-whisper-tap`, and a tap on it opens the
+same bubble at once — the toggletip (WAI-ARIA APG), where the first touch shows what a hover
+would. Touch is the press's own `pointerType`, never `(pointer: coarse)`, so a touchscreen laptop
+driven by a mouse keeps the dwell. When the chip has an `Href`, the first tap does not navigate —
+the sentence would go before it was read — and the bubble's sentence is a link to that `Href`,
+which is the one bubble that takes hits. It is read rather than glanced at, so it takes the body's
+size, and the link fills the whole bubble at the touch floor: a finger in its padding reaches the
+link instead of closing the sentence. A second tap on the chip or a tap outside closes it, as do
+a key, a scroll and a resize; a tap inside it closes it after its link runs. The chip's close
+button is never the tap, and the double cartel gates the tap as it gates the dwell: a chip whose
+sentence is its text navigates as it always did. Because a bubble is never the only copy, the
+chip's accessible name says it too — the visible `Text`, then the sentence (WCAG 2.5.3, Label in
+Name), or the sentence alone where it already opens with the text. A chip with no `Href` is the
+vendor's bare `div`, which no browser names, so it takes `role="group"` to carry that name. The
+tap is `NsChip`'s alone: every other face keeps "hover is a pointer's" ([ui/actions.md](ui/actions.md)).
 
 What is left to `ns-mud.css` is the look, once (`.ns-whisper`), read from the vendor tooltip's own
 variables so the bubble is the tooltip the house always had to the eye. A render test sees the
@@ -221,6 +239,12 @@ so a reader announcing the chord once is still exactly once. `NsLink` and `NsPag
 same `Chord` for the door a screen offers (F2 on a record's Editar), and the worded ANCHOR carries
 no `aria-label` at all: its word is its whole name, with no generated content of its own to
 outrank.
+
+**The rule is an act's, and it ends at an `NsChip`'s sentence.** A key is a second fact about how
+to press a control, and a name that grew it stopped matching its own word. A chip's sentence is
+what the chip means, and on a reader or a phone the bubble is not there to say it, so it goes in
+the name after the visible `Text` (above). A role query for a chip that carries a sentence asks
+for the name's start (`Modo prueba` as a prefix), never for the bare word exactly.
 
 **A search box is the one control that draws its key.** It has no word to hover, so there is no
 bubble to carry one: `NsSearchField` paints the first key it claims inside the box at the

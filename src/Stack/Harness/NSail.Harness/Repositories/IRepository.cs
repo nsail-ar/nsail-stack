@@ -27,6 +27,9 @@ public interface IRepository
     // Every review and comment on a PR, oldest first.
     Task<IReadOnlyList<PrNote>> Thread(int pr, CancellationToken ct = default);
 
+    // The login the harness writes as: its markers on a thread count, beside the fleet's (HarnessOptions.MarkerAuthors).
+    Task<string> Login(CancellationToken ct = default);
+
     // A PR's files with their line counts, as `path (+a -d)`.
     Task<IReadOnlyList<string>> Files(int pr, CancellationToken ct = default);
 
@@ -37,17 +40,26 @@ public interface IRepository
 
     Task ClosePr(int pr, string why, CancellationToken ct = default);
 
-    // Pushes the checked-out work to this branch of the remote, as the harness (never as a seat).
-    Task Push(string workDir, string branch, CancellationToken ct = default);
+    // Pushes the checked-out work to this branch of the remote, as the harness (never as a seat),
+    // replacing the head it started from (null: the branch is new) and refused if the remote moved
+    // past it: a rewritten branch goes up, work the voyage never saw is never overwritten.
+    Task Push(string workDir, string branch, string? startedAt, CancellationToken ct = default);
 
-    // Squash-merges and deletes the head branch; once the merge went through, nothing after it throws.
-    Task Merge(int pr, CancellationToken ct = default);
+    // Squash-merges the head the review read and deletes the head branch; the provider refuses when the
+    // head is no longer sha. Once the merge went through, nothing after it throws.
+    Task Merge(int pr, string sha, CancellationToken ct = default);
 
     // The story's newest merge onto the default branch, if it has one.
     Task<Merge?> MergeOf(int story, CancellationToken ct = default);
 
     // The verdict of the CI that runs outside the harness on this head.
     Task<CiState> Ci(string branch, string sha, CancellationToken ct = default);
+
+    // What failed in that CI at this head (its newest run per workflow); null when none of them failed.
+    Task<CiFailure?> Failure(string sha, CancellationToken ct = default);
+
+    // What failed in the newest completed CI run per workflow on the default branch; null when none did.
+    Task<CiFailure?> MainFailure(CancellationToken ct = default);
 
     Task<string> Head(string branch, CancellationToken ct = default);
 
@@ -56,8 +68,9 @@ public interface IRepository
 
     Task SetStatus(string sha, string context, string state, string description, CancellationToken ct = default);
 
-    // The harness's verdicts live on the commits they judged: every finished status (passed or not,
-    // pending left out) along the default branch, newest commit first, as far back as depth commits.
+    // The harness's verdicts live on the commits they judged: every status along the default branch,
+    // passed, failed or pending (StatusMark.Pending: a judgment under way on some harness, which keeps
+    // another from starting a second), newest commit first, as far back as depth commits.
     Task<IReadOnlyList<StatusMark>> Statuses(int depth = 100, CancellationToken ct = default);
 
     // The workflows (by file name) with a run queued or in progress.
@@ -71,7 +84,7 @@ public interface IRepository
     // The published releases, newest first: a tag pushed by a cut that died before publishing is not one.
     Task<IReadOnlyList<Release>> Releases(CancellationToken ct = default);
 
-    // Whether the history of the reference (a tag, a branch) holds the commit.
+    // Whether the history of the reference (a tag, a branch, a commit) holds the commit.
     Task<bool> Holds(string reference, string sha, CancellationToken ct = default);
 
     Task<string?> Variable(string name, CancellationToken ct = default);

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using NSail.Icons;
+using NSail.Text;
 
 namespace NSail.Components;
 
@@ -117,7 +118,7 @@ public sealed class SurfaceContext
     /// HasWork for everything that draws a spinner, and NsForm reports this from the after-render
     /// of the pass that decided it — so an event the page and the submit also listened to would
     /// make it a render that provokes a render, for a state change already announced.</summary>
-    public Action? RefusalChanged;
+    public event Action? RefusalChanged;
 
     // What a departure actually has to be asked about, which is not everything HasChanges counts:
     // a submit in flight answers for every report its own spend reaches, and the window that
@@ -125,7 +126,7 @@ public sealed class SurfaceContext
     // handler on what it just wrote). Reports covered by an open window are therefore the save's
     // WHEREVER in its life they were filed — before the window opened as well as inside it — so no
     // ordering between the spend and the window can leave one of them arming the guard against the
-    // navigation the save itself makes (nsail#1471). What no open window reaches is somebody's
+    // navigation the save itself makes. What no open window reaches is somebody's
     // unsaved work and still protests: another FORM's document is its own business (Spendable),
     // and with nothing saving this is HasChanges exactly.
     internal bool HasUnansweredChanges
@@ -163,7 +164,7 @@ public sealed class SurfaceContext
     /// <summary>Raised when the announcement changes. Separate from StateChanged on purpose:
     /// StateChanged re-renders the page itself (NsPage subscribes), and a page whose render
     /// re-announces would be re-rendering itself forever.</summary>
-    public Action? AnnouncementChanged;
+    public event Action? AnnouncementChanged;
 
     /// <summary>The page tells its surface what it is called and what utilities it offers.
     /// NsTitleBar announces on the main surface and still draws its own row there, since the
@@ -196,7 +197,7 @@ public sealed class SurfaceContext
     /// <summary>Raised when the announced index changes. Its own event, not AnnouncementChanged:
     /// the app bar has nothing to redraw when an index moves, and the drawer has nothing to
     /// redraw when a title does.</summary>
-    public Action? IndexChanged;
+    public event Action? IndexChanged;
 
     /// <summary>The page hands its index to the surface and stops deciding where it goes. Called
     /// again whenever what the index shows changed — the fragment is the page's own, so the
@@ -229,7 +230,7 @@ public sealed class SurfaceContext
     /// and whenever the slot the trigger is drawn in changes hands, which is the only thing the
     /// announcing side can be told by. A reader of either half redraws for the part of it its
     /// own render reads and no other (ui/surfaces.md, the announce seam).</summary>
-    public Action? ExportChanged;
+    public event Action? ExportChanged;
 
     /// <summary>The exporting grid's own call, once per render, whenever it is a candidate for
     /// the surface's one export slot — the same shape <see cref="ClaimsRow"/> stands for, but on
@@ -385,7 +386,7 @@ public sealed class SurfaceContext
         }
     }
 
-    public Action? StateChanged;
+    public event Action? StateChanged;
 
     public event Func<ProblemEventArgs, Task>? OnProblem;
 
@@ -713,9 +714,12 @@ public sealed class SurfaceContext
     /// <summary>Whether a destination belongs to somebody else — it carries its own scheme
     /// (https:, mailto:, tel:) — and so passes through untouched by any surface. Everything
     /// else is a route this app resolves.</summary>
-    public static bool IsExternal(string href)
+    public static bool IsExternal(string? href)
     {
-        ArgumentException.ThrowIfNullOrEmpty(href);
+        if (string.IsNullOrEmpty(href))
+        {
+            return false;
+        }
 
         // The rooted case is decided BEFORE Uri is asked anything, and that order is the fix:
         // Uri answers "is this absolute" about the operating system's file paths, not about a
@@ -727,6 +731,22 @@ public sealed class SurfaceContext
         // route with no surface query and no click interception, which navigates fine and so
         // shows nothing. A '/'-rooted value is one of ours by construction.
         return href[0] != '/' && Uri.TryCreate(href, UriKind.Absolute, out _);
+    }
+
+    /// <summary>Whether a destination carries a scheme no door may open: an external address
+    /// whose scheme is not http(s), mailto, tel or otpauth — "javascript:" and "data:" run or
+    /// draw what the address says on a click. Only the scheme is asked; the path is the caller's. A link
+    /// drawn over one is inert text, not an anchor.</summary>
+    public static bool IsInert(string? href)
+    {
+        if (!IsExternal(href) || !Uri.TryCreate(href, UriKind.Absolute, out var address))
+        {
+            return false;
+        }
+
+        return !WebAddress.OpensScheme(address.Scheme)
+            && !address.Scheme.Equals("tel", StringComparison.OrdinalIgnoreCase)
+            && !address.Scheme.Equals("otpauth", StringComparison.OrdinalIgnoreCase);
     }
 
     static string Rooted(string route)
@@ -786,7 +806,7 @@ public sealed class SurfaceContext
     /// address bar's own query, inside a named one the query of the inner route, which is
     /// merged IN PLACE inside the value of ?aside=/?modal= and re-encoded exactly once — the
     /// composition never resolves a route it did not read, which is what keeps a query from
-    /// nesting inside another (nsail#78). A host-managed surface (a dialog) is routed by
+    /// nesting inside another. A host-managed surface (a dialog) is routed by
     /// nothing and carries no query, so this is a no-op there rather than a write nobody could
     /// read. Always REPLACES the history entry: a tab or a filter is a view of the place the
     /// user is at, not a place of its own that Back owes them.</summary>
@@ -799,7 +819,7 @@ public sealed class SurfaceContext
 
     /// <summary>The batched form of SetQuery(name, value): every pair lands in the ONE
     /// navigation this makes. A caller clearing a filter whose own default another filter's
-    /// Query() reads off the first one's absence (nsail#1807) cannot write them as two
+    /// Query() reads off the first one's absence cannot write them as two
     /// separate calls — SetQuery reads the surface's own route fresh each time, and the second
     /// call would read it before the first call's navigation landed.</summary>
     public void SetQuery(IReadOnlyDictionary<string, object?> values)
@@ -1057,7 +1077,7 @@ public sealed class SurfaceContext
 
     // Inside a submit's own window (BeginSave) the report is held rather than taken: the handler
     // navigates from in there, so a report taken here would have the exit guard protest a departure
-    // the save itself caused (nsail#1450). Held, not dropped — the window answers for it at EndSave.
+    // the save itself caused. Held, not dropped — the window answers for it at EndSave.
     void Take(object source, bool inherited)
     {
         var raiseChanged = false;
@@ -1379,7 +1399,7 @@ public sealed class SurfaceContext
 
     // Hands reports back for a submit that ends refused: what its spend took and what its window
     // held. Not SetDirty — a window still open over them is about to navigate out of a save of its
-    // own, so it inherits them rather than the surface taking them (nsail#1450), and owes them back
+    // own, so it inherits them rather than the surface taking them, and owes them back
     // at its own close because it neither spent nor caused them.
     internal void PutBack(IEnumerable<object> reports)
     {
@@ -1436,10 +1456,20 @@ public sealed class SurfaceContext
 
         var handler = OnProblem;
 
-        if (handler is not null)
+        if (handler is null)
         {
-            await handler(args);
+            return;
         }
+
+        // Invoking the multicast delegate would hand back only the last subscriber's Task.
+        var pending = new List<Task>();
+
+        foreach (var subscriber in handler.GetInvocationList())
+        {
+            pending.Add(((Func<ProblemEventArgs, Task>)subscriber)(args));
+        }
+
+        await Task.WhenAll(pending);
     }
 
     /// <summary>The form an act the page hosts is standing INSIDE, for the length of that act's

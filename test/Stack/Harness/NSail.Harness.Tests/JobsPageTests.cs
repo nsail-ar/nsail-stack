@@ -63,6 +63,42 @@ public class JobsPageTests : IDisposable
     }
 
     [Fact]
+    public void AProviderEndingHasAResultAndPillOfItsOwn()
+    {
+        var history = History(
+            Job(1, "dev #5", 5, "rate limited — 403 GET /repos/acme/app/pulls/287/files, retry in 42m", HarnessLoop.ProviderResult),
+            Job(2, "dev #6", 6, "failed: boom", "broke"));
+
+        var limited = JobsPage.List(_options, history, null, HarnessLoop.ProviderResult, null, null);
+        var broke = JobsPage.List(_options, history, null, "broke", null, null);
+
+        Assert.Contains("1 job<", limited);
+        Assert.Contains("/jobs/job-1\"", limited);
+        Assert.Contains("<span class=\"b warn\">provider down</span>", limited);
+        Assert.Contains("rate limited — 403 GET", limited);
+        Assert.Contains("<option value=\"provider\" selected>provider down</option>", limited);
+        Assert.DoesNotContain("/jobs/job-1\"", broke);
+        Assert.Contains("provider down", JobsPage.One(_options, history, "job-1", null));
+    }
+
+    [Fact]
+    public void AWatchJobReadsWatchAndTheRoleFilterFindsIt()
+    {
+        var history = History(
+            Job(1, "watch telemetry", null, "failed: 401", "broke"),
+            Job(2, "gate PR #9 (story #5)", 5, "green", "ok"));
+
+        var all = JobsPage.List(_options, history, null, null, null, null);
+        var byRole = JobsPage.List(_options, history, "watch", null, null, null);
+
+        Assert.Contains("<option value=\"watch\">Watch</option>", all);
+        Assert.Contains("1 job<", byRole);
+        Assert.Contains("/jobs/job-1\"", byRole);
+        Assert.Contains("<td class=role><span class=sw style=\"background:#0e9aa7\"></span>Watch</td>", byRole);
+        Assert.Contains("<th>Role</th><td><span class=sw style=\"background:#0e9aa7\"></span>Watch</td>", JobsPage.One(_options, history, "job-1", null)!);
+    }
+
+    [Fact]
     public void TheListSearchesTheWorkAndTheOutcome()
     {
         var history = History(

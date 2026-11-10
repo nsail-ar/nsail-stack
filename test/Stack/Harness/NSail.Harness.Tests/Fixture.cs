@@ -21,20 +21,26 @@ sealed class Fixture
     DateTimeOffset? _lastQa;
     DateTimeOffset? _lastCut;
     readonly HashSet<int> _merged = [];
+    readonly HashSet<int> _shippedFixes = [];
     readonly Dictionary<string, string> _unshipped = [];
+    readonly DateTimeOffset _now = DateTimeOffset.UtcNow;
 
     public Fixture Story(int n, string stage = "Ready", string labels = "", string? title = null,
-        int subs = 0, int[]? blockers = null, double parentPercent = -1, int parent = 0, bool milestone = false, double ownPercent = 0, int? blockersTotal = null)
+        int subs = 0, int[]? blockers = null, double parentPercent = -1, int parent = 0, bool milestone = false, double ownPercent = 0, int? blockersTotal = null,
+        TimeSpan? quiet = null)
     {
         _issues.Add(new Issue(n, title ?? $"story {n}",
             labels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(),
-            stage, subs, blockers ?? [], parentPercent, milestone, parent, ownPercent, blockersTotal ?? (blockers?.Length ?? 0)));
+            stage, subs, blockers ?? [], parentPercent, milestone, parent, ownPercent, blockersTotal ?? (blockers?.Length ?? 0))
+        {
+            TouchedAt = _now - quiet,
+        });
         return this;
     }
 
-    public Fixture Pr(int story, int number, CiState ci = CiState.Green, string? word = null, string repo = Repo, string sha = "abcdef1234567890", CiState? gate = null)
+    public Fixture Pr(int story, int number, CiState ci = CiState.Green, string? word = null, string repo = Repo, string sha = "abcdef1234567890", CiState? gate = null, TimeSpan? greenFor = null, bool shared = false)
     {
-        _prs.Add(new StoryPr(story, number, sha, ci, repo, word, gate));
+        _prs.Add(new StoryPr(story, number, sha, ci, repo, word, gate, _now - greenFor, shared));
         return this;
     }
 
@@ -65,6 +71,12 @@ sealed class Fixture
     public Fixture Shipping(string tag)
     {
         _flight = _flight with { ShipTags = _flight.ShipTags.Append(tag).ToHashSet() };
+        return this;
+    }
+
+    public Fixture FixShipped(int story)
+    {
+        _shippedFixes.Add(story);
         return this;
     }
 
@@ -101,12 +113,13 @@ sealed class Fixture
 
     public BoardSnapshot Build()
     {
-        return new BoardSnapshot(_issues.OrderBy(i => i.Number).ToList(), _prs, _flight, _releases, _lastQa, _lastCut, _ages, DateTimeOffset.UtcNow, Repo)
+        return new BoardSnapshot(_issues.OrderBy(i => i.Number).ToList(), _prs, _flight, _releases, _lastQa, _lastCut, _ages, _now, Repo)
         {
             LockHolders = _holders,
             DueReleases = _due,
             MergedStories = _merged,
             Unshipped = _unshipped,
+            ShippedFixes = _shippedFixes,
         };
     }
 }

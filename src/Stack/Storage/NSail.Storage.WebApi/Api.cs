@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.Extensions.DependencyInjection;
+using NSail.Data;
 using NSail.Settings;
 using NSail.Storage.Objects;
 using NSail.Storage.Providers;
@@ -18,8 +19,9 @@ public static class Api
     // No provider is registered here. Which places a host may write to is the app's
     // decision, made by name — AddFileSystemStorage, AddS3Storage, AddGitStorage — so a product that must
     // never write to a disk simply does not compose the one that can.
-    public static void AddStorageWebApi(this IServiceCollection services, StorageOptions? install = null)
+    public static void AddStorageWebApi(this IServiceCollection services, StorageOptions? install = null, StorageGuardOptions? guard = null)
     {
+        services.AddSingleton(guard ?? new StorageGuardOptions());
         services.AddSingleton(new StorageDeclaration(StorageNames.Default, install));
         services.AddScoped(provider => Manager(provider, StorageNames.Default));
         services.AddKeyedScoped(StorageNames.Default, (provider, _) => Manager(provider, StorageNames.Default));
@@ -33,8 +35,8 @@ public static class Api
         // floor has to be resolvable even in a host that registers no settings of its own.
         services.AddSettings();
 
-        // KeyProtector is NOT registered here, and cannot be: it is constructed from the
-        // install's encryption key, which the host's identity composition owns. A host that
+        // KeyProtector is NOT registered here, and cannot be: it seals with the
+        // current tenant's key, which the host registers (AddTenantKeys). A host that
         // registers no KeyProtector fails to resolve StorageCredentialProvider on first use —
         // loudly, and by name, which is better than Storage inventing a key nobody chose and
         // sealing the credential under it.
@@ -62,6 +64,7 @@ public static class Api
         return new StorageManager(
             name,
             provider.GetRequiredService<StorageCredentialProvider>(),
-            provider.GetServices<IStorageProvider>());
+            provider.GetServices<IStorageProvider>(),
+            provider.GetService<TenancyProvider>());
     }
 }

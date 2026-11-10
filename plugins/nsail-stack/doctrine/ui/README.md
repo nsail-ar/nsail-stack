@@ -11,8 +11,9 @@ placing.
 | [actions.md](actions.md) | `NsButton`, `NsLink`, `NsAction`, `NsPageLink`, `NsSubmit`, `NsClose`, `NsActionOutlet`, `NsActionToolbar`, `ActionItem`, the contribution mechanism, a grid row's action cell |
 | [forms.md](forms.md) | `NsForm`: the read half (`OnLoad`, `Document`, the three states), tracking, the exit guard, closing, `ApplyProblem`, the Enter policy, `NsSendMessage` (the composer) |
 | [focus.md](focus.md) | Where a navigation's arrival hands the cursor — `NsArrivalFocus`, the marker `AutoFocus` writes and the typed box's own `FocusOnRender`, which is not it, `NsPageHeader.ArrivalFocus`, the screen's name as the focusable `h1`, the touch rule |
+| [keyboard.md](keyboard.md) | The keyboard contract per control, the walk a screen is done by, and the known reds |
 | [hosts.md](hosts.md) | `NsTable`/`NsTh`/`NsTd`, `NsTabs`/`NsTab`, `NsListEditor`, `NsTimeGrid`/`NsTimeBlock`, `NsDashboard`/`NsSubjectDashboard`, `NsLoad` |
-| [styling.md](styling.md) | `NsFormGrid`/`NsFormGridItem`, `NsStack`, `NsCard`, `NsPanel`, `NsPaper`, `NsExpander`, `NsText`, `NsRemoteImage`, `NsTooltip`, `NsSince`, `NsMeter`, `NsStatusText`/`NsStatusDot`, `ns-mud.css`, container queries |
+| [styling.md](styling.md) | `NsFormGrid`/`NsFormGridItem`, `NsStack`, `NsCard`, `NsPanel`, `NsPaper`, `NsExpander`, `NsText`, `NsRemoteImage`, `NsTooltip`, `NsSince`, `NsBarChart`, `NsMeter`, `NsStatusText`/`NsStatusDot`, `ns-mud.css`, container queries |
 | [surfaces.md](surfaces.md) | The base chain, and the query, size, stacking and announce seams |
 | [menus.md](menus.md) | `NsMenu`, `NsMenuItem`, `NsMenuBlock`, `NsMenuDivider`, `ActionItem.Menu`, `NsDropdown` |
 | [navigation.md](navigation.md) | `NavMenuItem`, `INavMenuContributor`, `INavMenuCount`, `INavMenuSearch`/`NavMenuResult`, `NavMenuCountsChanged`, `NsNavMenu` |
@@ -22,6 +23,7 @@ placing.
 | [skills.md](skills.md) | `ISkillContributor`, `SkillItem`, `EmbeddedSkillBody`, `SkillItem.Verify` |
 | [branding.md](branding.md) | `Brand`, `BrandTheme`, `IBrandProvider` |
 | [localization.md](localization.md) | `StringManager`, `IStringSource`, the derived keys, culture negotiation |
+| [copy.md](copy.md) | The Spanish copy: neutral words, one word per concept, the slang sweep |
 
 Not on the shelf, because nothing but the layout composes them: `NsDialog`, `NsOpenDialog`,
 `NsConfirmDialog` (the yes/no question `DialogManager.Confirm` opens, and where its cursor lands

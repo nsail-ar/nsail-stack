@@ -11,11 +11,11 @@ hold what building a screen does not need:
   section names; a rule marked *(cases)* has its story there. Read it before proposing to
   *change* a rule, never before building a screen.
 - **A component's API** is the [`ui/` shelf](ui/README.md), one page per thing you place:
-  [fields](ui/fields.md), [actions](ui/actions.md), [forms](ui/forms.md), [hosts](ui/hosts.md),
-  [styling](ui/styling.md), [navigation](ui/navigation.md), [menus](ui/menus.md),
+  [fields](ui/fields.md), [actions](ui/actions.md), [forms](ui/forms.md), [keyboard](ui/keyboard.md),
+  [hosts](ui/hosts.md), [styling](ui/styling.md), [navigation](ui/navigation.md), [menus](ui/menus.md),
   [wizard](ui/wizard.md), [settings](ui/settings.md), [guide](ui/guide.md),
   [skills](ui/skills.md), [branding](ui/branding.md), [localization](ui/localization.md),
-  [surfaces](ui/surfaces.md).
+  [copy](ui/copy.md), [surfaces](ui/surfaces.md).
   Read one when you place the thing it describes, not before.
 
 ---
@@ -229,7 +229,7 @@ add it (the `new-icon` skill) rather than borrow a neighbour's (cases).
 ## Files
 
 **One file is one field; a set of them is a different field.** `NsFileUpload` holds one value,
-`NsMultiFileUpload` an ordered set; they take **the same parameters**, and **no parameter turns
+`NsMultiFileUpload` an ordered set; they take **the same parameters** (the list adds a cap on a selection's total size), and **no parameter turns
 one into the other** (cases). The contract — one action icon per line, deletion riding the save,
 the order being the value, where the bytes go — is [ui/fields.md](ui/fields.md).
 
@@ -493,6 +493,8 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
     and the title keeps its own content width; it is never elided and never shortened. Both of
     the bar's faces hold it, the main surface's and an overlay's. A title row that shrinks its
     heading to a zero floor so the chrome can keep its full width has the trade backwards.
+    The install's brand is the drawer's alone: the title row draws none, so on a phone the toggle
+    and the page name are all it carries.
   - **Nor does a tool, so the toolbar row under it wraps too.** Where the tools do not all fit,
     **the row grows a line** and each control keeps its own content width, still at the trailing
     edge: a row that cannot wrap has only shrink left, and a shrunk worded button wraps its own
@@ -603,7 +605,8 @@ placement on its context, the row's included — but only a field and the annota
 re-answer inside that pass; a "no" a page's `OnCommit` decided has nobody to re-raise it, so the
 submit settles the open row BEFORE it validates at all (next paragraph) rather than replaying a
 verdict. A row left refused never makes Guardar go mute — the submit runs or it draws its reason,
-and a collection that leaves the screen takes its refusal with it (cases).
+and a collection that leaves the screen takes its refusal with it (cases). The one other mute
+answer is a host whose Runner is busy: its row stays as it was and that Guardar saves nothing.
 
 **A row left OPEN is settled by the submit before the document is validated at all.** Its values
 are already the document's — the host appended the row when it was added, not when it was
@@ -615,7 +618,8 @@ that lifted it and a page's `OnCommit` has nobody to re-raise it, so without the
 lifts the row's "no" and the bad row reaches the server, whose answer lands at the form's foot in
 its own words a round trip later (cases).
 
-**The one row a submit may DROP is a new one the screen says nobody typed into**, and the screen
+**The one row a submit may DROP is a new one the screen says nobody typed into** (unless the host's
+Runner is busy: then it stays and nothing saves), and the screen
 is who says it (`NsTable.NewRowEmpty`, ui/hosts.md): a row minted by the keystroke that asked for
 the next line is not a line, so the submit takes it back out and saves what was typed. Every
 other open row is committed or refused by name — a row somebody did type into is never dropped in
@@ -837,9 +841,9 @@ The contribution model, the scopes and the storage: [ui/settings.md](ui/settings
 
 Branding is a vendor-agnostic, serializable `Brand` in `NSail.Components`, supplied by
 `IBrandProvider`. **Components never read Mud palette types from app code — change the `Brand`,
-not the theme.** Default look: dark, warm grays with orange `#F68E1E`. **The prerender hands the
-brand over; the client does not resolve it again** — a brand arriving after the paint is the
-flash the one-arrival rule forbids.
+not the theme.** Default look: warm grays with orange `#F68E1E`, in the device's scheme until the
+reader picks one. **The prerender hands the brand over; the client does not resolve it again** —
+a brand arriving after the paint is the flash the one-arrival rule forbids.
 
 The `Brand` shape, the meaning of a null answer and the neutral fallback:
 [ui/branding.md](ui/branding.md).
@@ -932,9 +936,10 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   something ([ui/actions.md](ui/actions.md)).
 - **A cell holds one word, a figure or a chip.** Anything longer — a note, a result, a warning, a
   log — is a disclosure: a whisper (`NsTooltip`, `NsChip Tooltip`) for a short detail, and
-  `NsHint` for a paragraph, which opens on a tap as well as a hover. The whisper keeps its own
-  rule — the long form of what the cell already says, never the only copy — so a fact with no
-  word in the cell rides `NsHint`, whose glyph is that word.
+  `NsHint` for a paragraph, which opens on a tap as well as a hover. Of the whispers only
+  `NsChip Tooltip` opens on a tap. The whisper keeps its own rule — the long form of what the
+  cell already says, never the only copy — so a fact with no word in the cell rides `NsHint`,
+  whose glyph is that word.
 - **A status cell is one state**: quiet text (`NsStatusText`, still no chip), and that state's
   detail on its whisper (`NsTooltip`), never a second line. The detail is the long form of the
   word — why it failed, what it waits for — so the whisper stays the second copy; a fact the

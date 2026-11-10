@@ -47,6 +47,20 @@ public sealed class NsCheckBoxDirtyTrackingTests : BunitContext, IAsyncLifetime
         return new(typeof(NsCheckBoxDirtyTrackingTests).Assembly, Array.Empty<System.Reflection.Assembly>());
     }
 
+    /// <summary>A toggle is a native checkbox, so Tab reaches it and Space toggles it (keyboard.md).</summary>
+    [Fact]
+    public void TheToggleIsANativeCheckboxInTheTabOrder()
+    {
+        var host = Render<CheckBoxTrackingHost>(p => p
+            .Add(x => x.RouteTable, BuildRouteTable())
+            .Add(x => x.Model, new CheckBoxTrackingModel()));
+
+        var box = host.Find("input[type=checkbox]");
+
+        Assert.NotEqual("-1", box.GetAttribute("tabindex"));
+        Assert.Null(box.GetAttribute("disabled"));
+    }
+
     [Fact]
     public async Task TogglingTheCheckBoxAlone_MarksTheSurfaceDirtyAndEnablesSubmit()
     {

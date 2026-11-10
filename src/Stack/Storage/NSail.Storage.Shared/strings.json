@@ -16,9 +16,9 @@
   "Storage.StorageStorePage.UserHint": "The user the token belongs to.",
   "Storage.StorageStorePage.TokenHint": "The access token with permission to push.",
   "Storage.StorageStorePage.ContainerRepositoryHint": "The repository the objects are committed to, under the address above.",
-  "Storage.StorageStorePage.BranchHint": "The branch objects are committed to. Leave empty for main.",
+  "Storage.StorageStorePage.BranchHint": "The branch to commit to. Leave empty for main.",
   "Storage.StorageStorePage.LinkTemplateHint": "Where an object is read, with {key} for its path — for example https://raw.githubusercontent.com/org/repo/main/{key}.",
-  "Storage.StorageStorePage.TestHelp": "The test writes a small object, reads it back, lists it and removes it — against what is SAVED here, so save first if you have just changed something.",
+  "Storage.StorageStorePage.TestHelp": "The test writes a small object, reads it back, lists it and removes it, against what is SAVED. If you changed something, save first.",
   "Storage.StorageStorePage.TestSucceeded": "The storage target answered: an object was written, read back and removed.",
 
   "Storage.StorageStoreRow.Name": "Store",
@@ -44,9 +44,11 @@
   "Permissions.Area.Storage": "Storage",
   "Permissions.Feature.Storage.Settings": "Settings",
 
-  "Problems.NoStorageConfigured": "This install stores nowhere yet. Choose a storage provider and a container in Settings.",
+  "Problems.NoStorageConfigured": "This install has no storage. Choose a provider and a container in Settings.",
   "Problems.StorageProviderNotComposed": "No storage provider by that name is composed in this host.",
   "Problems.StorageEndpointRequired": "An S3 target needs the address of the service it lives at.",
+  "Problems.StorageContainerOutsideRoot": "The directory is not under a root this install allows.",
+  "Problems.StorageEndpointNotAllowed": "The endpoint's scheme or host is not allowed by this install.",
   "Problems.StorageGitBranchInvalid": "The branch name is not valid.",
   "Problems.StorageGitAddressInvalid": "The address of the repository is not valid.",
   "Problems.StorageGitEndpointRequired": "A Git target needs the address its repositories live under.",
@@ -55,9 +57,12 @@
   "Problems.RuleViolation.StorageNotDeclared": "No store named '{name}' is declared in this host.",
   "Problems.RuleViolation.KeyOutsideContainer": "'{key}' resolves outside the configured container.",
   "Problems.RuleViolation.StorageRefused": "The storage service answered {status}: {detail}",
+  "Problems.RuleViolation.KeyThroughSymlink": "'{key}' passes through a symbolic link of the repository.",
   "Problems.RuleViolation.GitRefused": "git answered: {detail}",
   "Problems.RuleViolation.StorageTestNotReadBack": "The test object was written but could not be read back.",
   "Problems.RuleViolation.StorageTestContentDiffers": "The test object read back does not match what was written.",
   "Problems.RuleViolation.StorageTestNotListed": "The test object was written but does not appear when the container is listed.",
-  "Problems.RuleViolation.StorageTestFailed": "The storage target could not be used: {reason}"
+  "Problems.RuleViolation.StorageTestFailed": "The storage target could not be used. The server log has the detail.",
+  "Problems.RuleViolation.ObjectKeyOutsideTenant": "'{key}' does not carry this tenant's segment.",
+  "Problems.RuleViolation.NoTenantForStorage": "Storage in this scope needs a tenant and none resolved."
 }

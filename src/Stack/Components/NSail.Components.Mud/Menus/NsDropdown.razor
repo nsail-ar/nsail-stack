@@ -4,6 +4,7 @@
 @namespace NSail.Components
 
 @using Microsoft.AspNetCore.Components.Forms
+@implements IAsyncDisposable
 
 @* The host decides when it is open (a field typed into, a key pressed); the panel hangs under
    the anchor in the anchor's own width at least, and scrolls past its bound. It is the vendor's
@@ -12,10 +13,13 @@
    room under the field runs out. The panel writes no role — the rows are the host's. *@
 @* While open the wrapper says so (data-ns-dropdown-open), which ns.js reads the way it reads
    a combobox's aria-expanded: the field the host drew cannot be handed that attribute from
-   here, and Enter and the arrows belong to the list all the same. *@
+   here, and Enter and the arrows belong to the list all the same. While open the wrapper also
+   stops the key events it hears, so the Escape that closes the list never reaches the surface
+   around it; Enter and the arrows are ns.js's native listeners, which that stop does not touch. *@
 <div class="ns-dropdown @Class"
      data-ns-dropdown-open="@(Open ? "true" : null)"
-     @onkeydown="OnKeyDown">
+     @onkeydown="OnKeyDown"
+     @onkeydown:stopPropagation="Open">
     @Anchor
 
     @if (Open)
@@ -61,6 +65,9 @@
     [CascadingParameter]
     SurfaceContext? Surface { get; set; }
 
+    [CascadingParameter]
+    EscapeHolds? Holds { get; set; }
+
     [CascadingParameter(Name = "ParentDisabled")]
     bool ParentDisabled { get; set; }
 
@@ -104,5 +111,18 @@
 
         Open = false;
         await OpenChanged.InvokeAsync(false);
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return Holds?.Set(this, Open) ?? Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Holds is not null)
+        {
+            await Holds.Set(this, false);
+        }
     }
 }

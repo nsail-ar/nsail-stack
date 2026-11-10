@@ -50,6 +50,17 @@ public sealed class PersonalDataTests : IClassFixture<PersonalSchema>
         Assert.Null(comments["TenantId"]);
     }
 
+    // The install's record carries two jsonb bags, and no kind fakes a jsonb object and keeps it
+    // one: a fake there would break the bag the product reads, so neither tells the runner to.
+    [Fact]
+    public void The_bags_on_the_installs_record_of_a_tenant_carry_no_comment()
+    {
+        var comments = _schema.Comments("TenantStates");
+
+        Assert.Null(comments[nameof(TenantState.Entitlements)]);
+        Assert.Null(comments[nameof(TenantState.Bootstrap)]);
+    }
+
     // The declaration is inherited, so a base class answering for its own property answers for
     // every entity built on it.
     [Fact]
@@ -82,7 +93,7 @@ public sealed class PersonalSchema : IAsyncLifetime
             await schema.Database.EnsureCreatedAsync();
         }
 
-        foreach (var table in new[] { "People", "Pets" })
+        foreach (var table in new[] { "People", "Pets", "TenantStates" })
         {
             _tables[table] = await Read(_database.ConnectionString, table);
         }

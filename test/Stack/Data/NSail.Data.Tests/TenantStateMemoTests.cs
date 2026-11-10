@@ -9,7 +9,7 @@ namespace NSail.Data.Tests;
 /// every unwritten tenant look like one nobody has looked up yet.</summary>
 public sealed class TenantStateMemoTests
 {
-    static readonly Guid Tenant = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    static readonly string Tenant = "alpha";
 
     static TenantStateMemo Memo(WoundClock clock, int seconds = 120)
     {
@@ -29,7 +29,7 @@ public sealed class TenantStateMemoTests
         var clock = new WoundClock();
         var memo = Memo(clock);
 
-        await memo.Of(Tenant, _ => Task.FromResult<TenantState?>(new TenantState { TenantId = Tenant, Plan = "max" }));
+        await memo.Of(Tenant, _ => Task.FromResult<TenantState?>(new TenantState { TenantId = Guid.Empty, Plan = "max" }));
 
         Assert.True(memo.Holds(Tenant, out var state));
         Assert.Equal("max", state!.Plan);
@@ -55,7 +55,7 @@ public sealed class TenantStateMemoTests
         var clock = new WoundClock();
         var memo = Memo(clock, seconds: 60);
 
-        await memo.Of(Tenant, _ => Task.FromResult<TenantState?>(new TenantState { TenantId = Tenant }));
+        await memo.Of(Tenant, _ => Task.FromResult<TenantState?>(new TenantState { TenantId = Guid.Empty }));
 
         clock.Advance(TimeSpan.FromSeconds(61));
 
@@ -67,9 +67,9 @@ public sealed class TenantStateMemoTests
     {
         var memo = Memo(new WoundClock());
 
-        await memo.Of(Tenant, _ => Task.FromResult<TenantState?>(new TenantState { TenantId = Tenant }));
+        await memo.Of(Tenant, _ => Task.FromResult<TenantState?>(new TenantState { TenantId = Guid.Empty }));
 
-        Assert.False(memo.Holds(Guid.Parse("22222222-2222-2222-2222-222222222222"), out _));
+        Assert.False(memo.Holds("beta", out _));
     }
 }
 

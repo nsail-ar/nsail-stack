@@ -35,9 +35,63 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
 
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
-        await Shell.Git(dir, "fetch", "-q", "--force", "--prune", "origin", $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*");
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", "--prune", ctx.Workspace.Url, $"+refs/tags/{p}/*:refs/tags/{p}/*", $"+refs/heads/{BranchPrefix(p)}*:refs/remotes/origin/{BranchPrefix(p)}*"]);
         var head = await Shell.Git(dir, "rev-parse", "HEAD");
+        // The claim keeps the fleet's other harnesses off the cut while this one works, renewed while
+        // the job lives (a wait for a build turn has no bound); the cut mark, written once the cut
+        // reached a verdict, keeps the day. A cut that threw lets go of the claim and leaves the day
+        // due; one whose harness died is due again when its claim lapses.
+        var held = Markers.HeldContext(p);
+        await ctx.Repo.SetStatus(head, held, "failure", $"cut running on {ctx.Options.Machine}", ct);
+        using var beating = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var beat = Beat(head, held, beating.Token);
+        JobOutcome outcome;
+        try
+        {
+            outcome = await Cut(p, product, step, dir, head, slot, w, logPath, ct);
+        }
+        catch
+        {
+            await EndBeat(beat, beating);
+            await ctx.Repo.SetStatus(head, held, "success", $"cut let go on {ctx.Options.Machine}", CancellationToken.None);
+            throw;
+        }
+        await EndBeat(beat, beating);
         await ctx.Repo.SetStatus(head, Markers.CutContext(p), "success", $"cut tried on {ctx.Options.Machine}", ct);
+        await ctx.Repo.SetStatus(head, held, "success", $"cut let go on {ctx.Options.Machine}", ct);
+        return outcome;
+    }
+
+    async Task Beat(string head, string held, CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(Markers.ClaimBeat);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                try
+                {
+                    await ctx.Repo.SetStatus(head, held, "failure", $"cut running on {ctx.Options.Machine}", ct);
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    // A missed beat is covered by the lapse's slack.
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    static async Task EndBeat(Task beat, CancellationTokenSource beating)
+    {
+        await beating.CancelAsync();
+        await beat;
+    }
+
+    async Task<JobOutcome> Cut(string p, string product, JobStep step, string dir, string head, int slot, StreamWriter w, string logPath, CancellationToken ct)
+    {
         var marks = await ctx.Repo.Statuses(ct: ct);
         // The last release is the newest one published: a tag whose cut died before publishing holds
         // nothing that reached anyone, and read as released it would skip every later cut.
@@ -87,15 +141,17 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         return $"release/{product}/";
     }
 
-    // The day's branch, at main's head; the oldest beyond the kept few go.
+    // The day's branch, at main's head (a retried cut reuses it); the oldest beyond the kept few go.
     async Task<string> OpenBranch(string p, string dir, TextWriter w)
     {
-        var branch = $"{BranchPrefix(p)}{DateTimeOffset.UtcNow:yyyyMMdd-HHmm}";
-        await Shell.Git(dir, "push", "-q", "origin", $"HEAD:refs/heads/{branch}");
+        var branch = $"{BranchPrefix(p)}{DateTimeOffset.UtcNow:yyyyMMdd}";
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", "--force", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
         await w.WriteLineAsync($"opened {branch}");
-        foreach (var old in (await Branches(p, dir)).Skip(BranchesKept))
+        // A push by address leaves no tracking ref, so the new branch joins the list here.
+        var known = (await Branches(p, dir)).Append(branch).Distinct().OrderByDescending(b => b, StringComparer.Ordinal);
+        foreach (var old in known.Skip(BranchesKept))
         {
-            var gone = await Shell.Run("git", ["push", "-q", "origin", "--delete", old], dir);
+            var gone = await Shell.Run("git", [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, "--delete", old], dir);
             await w.WriteLineAsync(gone.ExitCode == 0 ? $"deleted {old}" : $"could not delete {old}: {gone.Output.Trim()}");
         }
         return branch;
@@ -113,12 +169,12 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         var lease = await ctx.Leases.Acquire(JobContext.HolderOf(Item), Planner.Rank(Item.Tier), ct);
         try
         {
-            var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(step.Minutes), Item, step, ct);
+            var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(step.Minutes), Item, step, ct, runsCode: true);
             env["HARNESS_LEASE_HELD"] = "1";
             if (step.Command is { } command)
             {
                 string[] args = filter is null ? [product] : [product, filter];
-                return await ctx.Run(command, args, dir, env, TimeSpan.FromMinutes(step.Minutes), w, ct);
+                return await ctx.Run(command, args, dir, env, TimeSpan.FromMinutes(step.Minutes), w, ct, keep: GateJob.IsFailureLine);
             }
             var suite = step.Worker.Suite!.Replace("{Product}", product, StringComparison.Ordinal);
             return await ctx.Builder!.Suite(dir, suite, filter, env, TimeSpan.FromMinutes(step.Minutes), w, ct);
@@ -171,7 +227,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
             return null;
         }
         var tip = await Shell.Git(dir, "rev-parse", "HEAD");
-        await Shell.Git(dir, "push", "-q", "origin", $"HEAD:refs/heads/{branch}");
+        await Shell.Git(dir, [.. ctx.Workspace.Guard, "push", "-q", ctx.Workspace.Url, $"HEAD:refs/heads/{branch}"]);
         await w.WriteLineAsync($"carried {string.Join(", ", fixes.Select(f => f[..8]))} to {branch} at {tip[..8]}; again: {string.Join(", ", failed)}");
 
         var result = await Suite(product, Filter(failed), dir, step, w, ct);
@@ -215,15 +271,14 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         var body = HarnessTexts.Fill(ctx.Texts.SuiteRed, ("product", product), ("why", why), ("sha", sha), ("where", where), ("failed", failed), ("log", logPath), ("machine", ctx.Options.Machine))
             + $"\n\n{ctx.Texts.Signature}";
         if (FailedIn(failed) is { Count: > 0 } names) body += $"\n{FailedMarker} {string.Join('|', names)} -->";
-        if (await ctx.Board.FindOpen(title) is { } n)
+        if (await ctx.Board.FindOpen(title, []) is { } n)
         {
             await ctx.Board.Comment(n, body);
             var stage = await ctx.Board.StageOf(n);
             if (Stages.Landed.Contains(stage)) await ctx.Board.SetStage(n, Stages.Ready);
             return;
         }
-        var created = await ctx.Board.CreateStory(title, body);
-        await ctx.Board.AddLabels(created, ctx.Options.RedLabels.ToArray());
+        var created = await ctx.Board.CreateStory(title, body, ctx.Options.RedLabels.ToArray());
         await ctx.Board.SetStage(created, Stages.Ready);
     }
 
@@ -248,7 +303,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
     {
         return log.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(l => l.Trim().Split(' ', 2))
-            .Where(p => p.Length == 2 && SquashOf().Match(p[1]) is { Success: true } m && prs.Contains(int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture)))
+            .Where(p => p.Length == 2 && SquashOf().Match(p[1]) is { Success: true } m && int.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) && prs.Contains(n))
             .Select(p => p[0]).ToList();
     }
 

@@ -4,6 +4,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Text;
 
 namespace NSail.SourceGenerator.Roslyn;
@@ -286,10 +287,14 @@ public static class SymbolExtensions
             sb.Append('[')
               .Append(attr.AttributeClass?.ToDisplayString());
 
-            if (attr.ConstructorArguments.Length > 0)
+            var arguments = attr.ConstructorArguments.Select(ToLiteral)
+                .Concat(attr.NamedArguments.Select(n => $"{n.Key} = {ToLiteral(n.Value)}"))
+                .ToList();
+
+            if (arguments.Count > 0)
             {
                 sb.Append('(')
-                  .Append(string.Join(", ", attr.ConstructorArguments.Select(ToLiteral)))
+                  .Append(string.Join(", ", arguments))
                   .Append(')');
             }
 
@@ -338,13 +343,47 @@ public static class SymbolExtensions
             return $"(({constant.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}){constant.Value})";
         }
 
+        if (constant.Kind == TypedConstantKind.Type)
+        {
+            return $"typeof({((ITypeSymbol)constant.Value!).ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)})";
+        }
+
+        // Typed, not new[]: an empty array or one of null elements has no inferable type.
+        if (constant.Kind == TypedConstantKind.Array)
+        {
+            var elementType = constant.Type is IArrayTypeSymbol array
+                ? array.ElementType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                : "object";
+
+            return $"new {elementType}[] {{ {string.Join(", ", constant.Values.Select(ToLiteral))} }}";
+        }
+
         return constant.Value switch
         {
             string s => SymbolDisplay.FormatLiteral(s, quote: true),
             char c => SymbolDisplay.FormatLiteral(c, quote: true),
             bool b => b ? "true" : "false",
+            double d => FloatingLiteral(d, "double", d.ToString("R", CultureInfo.InvariantCulture), ""),
+            float f => FloatingLiteral(f, "float", f.ToString("R", CultureInfo.InvariantCulture), "f"),
+            IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
             _ => constant.Value?.ToString() ?? "null"
         };
+    }
+
+    // Infinity and NaN have no literal; the constants of the type are the only legal spelling.
+    private static string FloatingLiteral(double value, string type, string text, string suffix)
+    {
+        if (double.IsNaN(value))
+        {
+            return $"{type}.NaN";
+        }
+
+        if (double.IsInfinity(value))
+        {
+            return value > 0 ? $"{type}.PositiveInfinity" : $"{type}.NegativeInfinity";
+        }
+
+        return text + suffix;
     }
 
     static readonly HashSet<string> FilteredSystemAttributeNames = new HashSet<string>(StringComparer.Ordinal)

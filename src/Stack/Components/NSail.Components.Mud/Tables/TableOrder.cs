@@ -42,7 +42,7 @@ public static class TableOrder
     }
 
     // What the column prints as nothing at all: no value, or a word with no letters in it. A cell
-    // the screen fills with its own "sin backup" is not blank — it has text, and it orders by it.
+    // the screen fills with its own "none" is not blank — it has text, and it orders by it.
     static bool IsBlank(object? value)
     {
         return value is null || (value is string text && string.IsNullOrWhiteSpace(text));

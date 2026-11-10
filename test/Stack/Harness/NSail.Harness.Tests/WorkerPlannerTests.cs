@@ -74,13 +74,57 @@ public class WorkerPlannerTests
     [Fact]
     public void TheRedStoryJumpsEveryQueue()
     {
-        // A red story is born p1 (RedLabels): it leads the p1 sweep, ahead of the other p1 stories.
+        // A red suite story lights the andon: it is the only story planned.
         var f = new Fixture()
             .Story(1, "Ready", "p1")
             .Story(2, "In-Progress").Pr(2, 20)
             .Story(3, "Ready", "p1", title: "Regression red on main (Shop)");
 
-        Assert.Equal(["dev #3 (red)", "dev #1 (p1)", "review PR #20 (story #2)"], Lines(f));
+        Assert.Equal(["dev #3 (red)"], Lines(f));
+    }
+
+    [Fact]
+    public void AFixedRedStoryWaitsWhileNoGateJudgedAHeadThatHoldsItsMerge()
+    {
+        var f = new Fixture()
+            .Story(1, "Ready", "p1")
+            .Story(3, "Ready", "p1", title: "CI red on main: Foo");
+
+        var plan = WorkerPlanner.Make(f.Build() with { UnjudgedFixes = new HashSet<int> { 3 } }, Workers, new PlannerOptions());
+
+        Assert.Equal(["dev #1 (p1)"], plan.Items.Select(i => i.ToString()));
+        Assert.Contains(plan.Notes, n => n.StartsWith("#3:", StringComparison.Ordinal));
+
+        var full = f.Story(4, "In-Progress").Pr(4, 40).Story(5, "In-Progress").Pr(5, 50).Build() with { UnjudgedFixes = new HashSet<int> { 3 } };
+        var held = WorkerPlanner.Make(full, Workers, new PlannerOptions { WipLimit = 2 });
+
+        Assert.DoesNotContain(held.Items, i => i.Story == 3);
+        Assert.Contains(held.Notes, n => n.StartsWith("#3:", StringComparison.Ordinal) && n.EndsWith("Develop waits", StringComparison.Ordinal));
+    }
+
+    // The gate's verdicts along main, as IRepository.Statuses reads them: a running gate's pending mark is none.
+    static async Task<IReadOnlySet<int>> Unjudged(MainHistory main, Merge? merge, params StatusMark[] marks)
+    {
+        var options = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }] };
+        var repo = new DevJobRunTests.FileRepository(main.Dir) { Landed = merge };
+        var reader = new SnapshotReader(new MemoryBoard(), new RepositorySet([(repo, options.Repositories[0])]), null!, options);
+        var issues = new Fixture().Story(3, "Ready", "p1", title: "CI red on main: Foo").Build().Issues;
+        return await reader.ReadUnjudged(issues, marks);
+    }
+
+    [Fact]
+    public async Task AFixedRedStoryIsHeldUntilAHeadThatHoldsItsMergeGoesRed()
+    {
+        using var main = await MainHistory.Create();
+        var at = DateTimeOffset.UtcNow;
+
+        // No verdict at all, or only one at the head the fix merged on top of.
+        Assert.Equal([3], await Unjudged(main, main.Merge));
+        Assert.Equal([3], await Unjudged(main, main.Merge, new StatusMark(main.Parent, Markers.GateContext, false, at)));
+        // The head that holds the fix went red: Develop takes it, first.
+        Assert.Empty(await Unjudged(main, main.Merge, new StatusMark(main.Fix, Markers.GateContext, false, at), new StatusMark(main.Parent, Markers.GateContext, false, at)));
+        // With no merge there is no fix to wait for.
+        Assert.Empty(await Unjudged(main, null));
     }
 
     [Fact]
@@ -148,6 +192,53 @@ public class WorkerPlannerTests
 
         Assert.Equal(["dev #1 (round (PR #10: CI red))"], Lines(f, new PlannerOptions { WipLimit = 1 }));
     }
+
+    [Fact]
+    public void ARedPrStillGetsItsRoundBesideAGreenOneElsewhere()
+    {
+        var f = new Fixture()
+            .Story(5, "In-Progress")
+            .Pr(5, 50, repo: "acme/other").Pr(5, 51, CiState.Red);
+
+        Assert.Contains(Lines(f), l => l.Contains("PR #51"));
+    }
+
+    [Fact]
+    public void StartingChoresRunOnlyForItemsThatStart()
+    {
+        var plan = Plan(new Fixture().Story(2673, "Ready", "stalled"));
+        var started = HarnessLoop.ChoresToDo(plan, plan.Items);
+        var paused = HarnessLoop.ChoresToDo(plan, []);
+
+        Assert.Contains(started, c => c is { Kind: ChoreKind.MoveStage, Story: 2673, Value: "Analyze" });
+        Assert.DoesNotContain(paused, c => c.Story == 2673);
+    }
+
+    [Fact]
+    public void AnEarlierQuotaEndKeepsTheLaterWall()
+    {
+        var week = DateTimeOffset.UtcNow.AddDays(7);
+        var hours = DateTimeOffset.UtcNow.AddHours(5);
+
+        Assert.Equal(week, HarnessLoop.LaterWall(week, hours));
+        Assert.Equal(week, HarnessLoop.LaterWall(hours, week));
+        Assert.Equal(hours, HarnessLoop.LaterWall(null, hours));
+    }
+
+    [Fact]
+    public void AForcedJobRefusesInDebugWhilePausedAndInsideTheQuotaWall()
+    {
+        var wall = DateTimeOffset.UtcNow.AddHours(1);
+
+        Assert.Null(HarnessLoop.ForceRefusal(HarnessMode.Live, null, null, WorkKind.Dev));
+        Assert.Contains("Debug", HarnessLoop.ForceRefusal(HarnessMode.Debug, null, null, WorkKind.Dev));
+        Assert.Contains("paused", HarnessLoop.ForceRefusal(HarnessMode.Live, "drain", null, WorkKind.Dev));
+        Assert.Contains("quota", HarnessLoop.ForceRefusal(HarnessMode.Live, null, wall, WorkKind.Dev));
+        Assert.Null(HarnessLoop.ForceRefusal(HarnessMode.Live, null, wall, WorkKind.Release));
+        var now = new DateTimeOffset(2026, 11, 9, 14, 0, 0, TimeSpan.Zero);
+        Assert.Equal("17:15", HarnessLoop.WallClock(now.AddHours(3).AddMinutes(15), now));
+        Assert.Equal("Mon 14:00", HarnessLoop.WallClock(now.AddDays(7), now));
+    }
 }
 
 public class OrphanTests
@@ -185,6 +276,54 @@ public class OrphanTests
     public void ANotOrphanIsLeftAlone(string label)
     {
         Assert.Empty(Plan(new Fixture().Story(1, "In-Progress", label).LockAge(1, label, TimeSpan.FromMinutes(1))).Chores);
+    }
+
+    // A job's ending takes its label off before its PR opens; the fleet's lock and the grace span it.
+    [Fact]
+    public void AStoryAnotherHarnessHoldsIsNoOrphan()
+    {
+        Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromSeconds(10)).HeldBy(1, "box2")).Chores, c => c.Story == 1);
+        Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromHours(1)).HeldBy(1, "box2")).Chores, c => c.Story == 1);
+    }
+
+    [Fact]
+    public void AStoryTouchedWithinTheGraceIsNoOrphan()
+    {
+        Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromSeconds(10))).Chores, c => c.Story == 1);
+        Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromMinutes(9)).MergedPr(1)).Chores, c => c.Story == 1);
+    }
+
+    [Fact]
+    public void AStoryQuietPastTheGraceIsAnOrphan()
+    {
+        var plan = Plan(new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromMinutes(17)).Story(2, "In-Progress", quiet: TimeSpan.FromMinutes(11)).MergedPr(2));
+
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 1, Value: "Ready", NoPr: true });
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 2, Value: "Analyze", NoPr: true });
+    }
+
+    [Fact]
+    public void TheGraceIsTheOptions()
+    {
+        var f = new Fixture().Story(1, "In-Progress", quiet: TimeSpan.FromMinutes(3));
+
+        Assert.Contains(WorkerPlanner.Make(f.Build(), Workers, new PlannerOptions { OrphanGrace = TimeSpan.FromMinutes(2) }).Chores, c => c.Story == 1);
+        Assert.Equal(TimeSpan.FromMinutes(10), HarnessLoop.PlannerOptionsOf(new HarnessOptions()).OrphanGrace);
+        Assert.Equal(TimeSpan.FromMinutes(4), HarnessLoop.PlannerOptionsOf(new HarnessOptions { OrphanGraceMinutes = 4 }).OrphanGrace);
+    }
+
+    // Only a keeper that reads an absent PR waits: the others move the story on the pass that sees it.
+    [Fact]
+    public void EveryOtherKeeperMovesWithNoGrace()
+    {
+        var plan = Plan(new Fixture()
+            .Story(1, "-", quiet: TimeSpan.FromSeconds(5)).HeldBy(1, "box2")
+            .Story(2, "Backlog", "blocked", blockers: [9], quiet: TimeSpan.FromSeconds(5)).Story(9, "Merged")
+            .Story(100, "Ready", subs: 3, quiet: TimeSpan.FromSeconds(5)).Story(101, "In-Progress", parent: 100).Flying(dev: [101]));
+
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 1, Value: "Backlog", NoPr: false });
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 2, Value: "Analyze" });
+        Assert.Contains(plan.Chores, c => c is { Kind: ChoreKind.MoveStage, Story: 100, Value: "In-Progress" });
     }
 
     [Fact]

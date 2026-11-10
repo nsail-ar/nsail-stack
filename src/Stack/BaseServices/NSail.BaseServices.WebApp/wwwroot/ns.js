@@ -52,6 +52,53 @@
         return Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
     }
 
+    // Draws an inlined SVG mark to its artwork instead of its viewBox: a logo's file often
+    // carries an unpainted margin (a square viewBox around a wide drawing) that the box then
+    // draws as space. The ink is measured, not estimated: the union of the rendered
+    // children's client rects, which carry strokes, caps and joins that getBBox() leaves
+    // out, taken back into the root's units. An SVG with no viewBox gets one here; one that
+    // cannot be measured keeps what it has.
+    function fitMark(target) {
+        var host = typeof target === "string" ? document.querySelector(target) : target;
+        var svg = host instanceof SVGSVGElement ? host : host && host.querySelector(":scope > svg");
+        if (!svg)
+            return;
+        var box;
+        try {
+            box = svg.getBBox();
+        } catch (e) {
+            return;
+        }
+        if (!(box.width > 0 && box.height > 0))
+            return;
+        var rootScreen = svg.getScreenCTM();
+        var left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+        if (rootScreen) {
+            var toRoot = rootScreen.inverse();
+            svg.querySelectorAll("*").forEach(function (el) {
+                if (!(el instanceof SVGGraphicsElement) || el.closest("defs, clipPath, mask, marker, pattern, symbol"))
+                    return;
+                var r = el.getBoundingClientRect();
+                if (!(r.width > 0 || r.height > 0))
+                    return;
+                [[r.left, r.top], [r.right, r.top], [r.left, r.bottom], [r.right, r.bottom]].forEach(function (c) {
+                    var p = new DOMPoint(c[0], c[1]).matrixTransform(toRoot);
+                    left = Math.min(left, p.x);
+                    top = Math.min(top, p.y);
+                    right = Math.max(right, p.x);
+                    bottom = Math.max(bottom, p.y);
+                });
+            });
+        }
+        if (!(right > left && bottom > top)) {
+            left = box.x;
+            top = box.y;
+            right = box.x + box.width;
+            bottom = box.y + box.height;
+        }
+        svg.setAttribute("viewBox", [left, top, right - left, bottom - top].join(" "));
+    }
+
     // Where an anchor lands: the element carrying that id, brought into whatever box actually
     // scrolls around it. The browser's own fragment handling cannot do this one -- the address
     // carries the anchor before the document it names has been fetched, so the element the
@@ -792,9 +839,10 @@
     // scroll box to grow, and it is over every dialog and drawer without naming a z-index that
     // has to outrank theirs.
     //
-    // THE DELAY IS THE WHOLE OF THE BUBBLE'S TIMING, here and nowhere else: a name that opens
-    // on the way past is noise, so it opens only after a steady dwell and closes the instant
-    // anything else happens. pointerenter does not bubble, so the capture phase is the only way
+    // THE DELAY IS THE WHOLE OF THE BUBBLE'S TIMING under a pointer or a keyboard, here and
+    // nowhere else: a name that opens on the way past is noise, so it opens only after a steady
+    // dwell and closes the instant anything else happens. A finger's tap on a chip is the one
+    // exception (THE TAP, below). pointerenter does not bubble, so the capture phase is the only way
     // one document listener reaches every trigger; focusin bubbles and answers for the keyboard,
     // with :focus-visible telling a keyboard's focus from the one a press left behind.
     const WHISPER_DELAY = 2500;
@@ -806,9 +854,21 @@
     // anyway -- a menu's icon face and a lookup's end adornment.
     const WHISPER_SELECTOR = '[data-ns-whisper]:not([data-ns-whisper=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])';
 
+    // THE TAP: a finger has no hover, so on touch a chip that declares data-ns-whisper-tap
+    // (NsChip, and only it) opens its whisper on the tap itself, with no dwell, and the bubble's
+    // sentence is a link to the chip's own href when it has one -- the toggletip, where the
+    // first touch shows what a hover would have. Touch is the PRESS's pointerType and never a
+    // media query: a touchscreen laptop driven by a mouse is a mouse. The tap that opens it does
+    // not navigate (the sentence would go before it was read); a second tap on the chip or one
+    // anywhere outside closes it, and so does every exit below. The chip's close button is
+    // never the tap: it removes the chip.
+    const WHISPER_TAP_SELECTOR = "[data-ns-whisper-tap]";
+
     let whisperBubble = null;
     let whisperTarget = null;
     let whisperTimer = 0;
+    let whisperTapped = null;
+    let pressedByTouch = false;
 
     function whisperText(el) {
         return (el.getAttribute("data-ns-whisper") || el.getAttribute("aria-label") || "").trim();
@@ -851,15 +911,26 @@
         return whisperBubble;
     }
 
-    function openWhisper(el) {
+    function openWhisper(el, tapped) {
         const text = whisperText(el);
 
         if (!el.isConnected || text.length === 0 || !whisperAdds(el, text))
             return;
 
         const box = whisperBox();
+        const href = tapped === true && el.matches("a[href]:not(.mud-disabled)") ? el.getAttribute("href") : null;
 
-        box.textContent = text;
+        if (href) {
+            const link = document.createElement("a");
+
+            link.href = href;
+            link.textContent = text;
+            box.replaceChildren(link);
+        } else {
+            box.textContent = text;
+        }
+
+        box.classList.toggle("ns-whisper-tap", tapped === true);
         box.classList.add("ns-whisper-open");
 
         if (typeof box.showPopover === "function" && !box.classList.contains("ns-whisper-shown")) {
@@ -895,11 +966,12 @@
         clearTimeout(whisperTimer);
         whisperTimer = 0;
         whisperTarget = null;
+        whisperTapped = null;
 
         if (!whisperBubble)
             return;
 
-        whisperBubble.classList.remove("ns-whisper-open");
+        whisperBubble.classList.remove("ns-whisper-open", "ns-whisper-tap");
 
         if (whisperBubble.classList.contains("ns-whisper-shown")) {
             whisperBubble.classList.remove("ns-whisper-shown");
@@ -910,8 +982,31 @@
         }
     }
 
+    // Only a tapped bubble is ever under a pointer or a focus -- the hover one takes no hits --
+    // and arriving in it is reading it, never leaving the chip.
+    function inWhisper(node) {
+        return !!whisperBubble && whisperBubble.classList.contains("ns-whisper-tap")
+            && node instanceof Node && whisperBubble.contains(node);
+    }
+
+    // The chip a touch tap opens: one that declares the tap and has a sentence to add (the
+    // double cartel gates the tap as it gates the dwell), and never through its close button.
+    function tapTrigger(target) {
+        if (!target || typeof target.closest !== "function" || target.closest(".mud-chip-close-button"))
+            return null;
+
+        const el = target.closest(WHISPER_TAP_SELECTOR);
+
+        if (!el || !el.matches(WHISPER_SELECTOR))
+            return null;
+
+        const text = whisperText(el);
+
+        return text.length > 0 && whisperAdds(el, text) ? el : null;
+    }
+
     function armWhisper(target, keyboard) {
-        if (!target || typeof target.closest !== "function")
+        if (!target || typeof target.closest !== "function" || inWhisper(target))
             return;
 
         const el = target.closest(WHISPER_SELECTOR);
@@ -943,27 +1038,86 @@
         whisperTimer = setTimeout(() => openWhisper(el), WHISPER_DELAY);
     }
 
-    document.addEventListener("pointerenter", e => armWhisper(e.target, false), true);
+    // A finger's enter and leave are the two ends of a tap, not a hover: the dwell is a
+    // pointer's, and the tap is read from the press and the click below.
+    document.addEventListener("pointerenter", e => {
+        if (e.pointerType !== "touch")
+            armWhisper(e.target, false);
+    }, true);
     document.addEventListener("focusin", e => armWhisper(e.target, true));
 
     // The pointer leaving the trigger, read in the capture phase for the same reason the enter
     // is: pointerleave does not bubble, and it fires on every ancestor the pointer left as well
     // as on the trigger itself, so the one that matters is recognised rather than assumed.
     document.addEventListener("pointerleave", e => {
-        if (whisperTarget && e.target instanceof Node && e.target.contains(whisperTarget))
+        if (e.pointerType !== "touch" && whisperTarget && e.target instanceof Node && e.target.contains(whisperTarget))
             closeWhisper();
     }, true);
 
-    // Every other exit, and these are all of them: a press (what was pressed is opening, and the
-    // name of what pressed it is not what anyone is reading), a key, a scroll ANYWHERE -- the
-    // bubble is placed against a rectangle that just moved, and a tooltip that follows a scroll
-    // is a tooltip nobody asked for a second time -- and the window losing the pointer or
-    // changing size.
-    for (const exit of ["pointerdown", "pointercancel", "click", "keydown", "wheel"])
+    // Any press closes the bubble -- what was pressed is opening, and the name of what pressed
+    // it is not what anyone is reading -- save two that are not "outside": a press inside a
+    // tapped bubble is its link being reached, and a touch press on the chip whose bubble is
+    // open is the second tap, which the click closes.
+    document.addEventListener("pointerdown", e => {
+        pressedByTouch = e.pointerType === "touch";
+
+        if (inWhisper(e.target) || (pressedByTouch && whisperTapped && tapTrigger(e.target) === whisperTapped))
+            return;
+
+        closeWhisper();
+    }, true);
+
+    // The tap itself. The click is where it is read, not the press, so a finger that starts a
+    // scroll opens nothing. A keyboard's click says pointerType "" and is never a tap; any
+    // other takes its own word or its press's, for an engine that reports a tap's click as a
+    // mouse's or reports no pointerType at all. Stopped here, in the capture phase at the
+    // document, the click reaches neither the chip's own anchor nor Blazor's router; a click on
+    // the bubble's link runs first and closes the bubble after it.
+    document.addEventListener("click", e => {
+        if (inWhisper(e.target)) {
+            setTimeout(closeWhisper);
+
+            return;
+        }
+
+        const touch = e.pointerType === "touch" || (e.pointerType !== "" && pressedByTouch);
+        const chip = touch ? tapTrigger(e.target) : null;
+
+        if (!chip) {
+            closeWhisper();
+
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (chip === whisperTapped) {
+            closeWhisper();
+
+            return;
+        }
+
+        closeWhisper();
+        whisperTapped = chip;
+        openWhisper(chip, true);
+    }, true);
+
+    // Every other exit, and with the press and the click above these are all of them: a key, a
+    // scroll ANYWHERE -- the bubble is placed against a rectangle that just moved, and a tooltip
+    // that follows a scroll is a tooltip nobody asked for a second time -- and the window losing
+    // the pointer or changing size.
+    for (const exit of ["pointercancel", "keydown", "wheel"])
         document.addEventListener(exit, closeWhisper, true);
 
+    document.addEventListener("keydown", () => {
+        pressedByTouch = false;
+    }, true);
     document.addEventListener("scroll", closeWhisper, { capture: true, passive: true });
-    document.addEventListener("focusout", closeWhisper, true);
+    document.addEventListener("focusout", e => {
+        if (!inWhisper(e.relatedTarget))
+            closeWhisper();
+    }, true);
     window.addEventListener("blur", closeWhisper);
     window.addEventListener("resize", closeWhisper);
     // The candidate `focusFirst` is about to call .focus() on, for the one capture-phase
@@ -989,6 +1143,14 @@
             e.stopImmediatePropagation();
         }
     }, true);
+
+    // Select-on-focus: a field marks itself (NsFieldBase, SelectOnFocus) and focusin, which
+    // bubbles, reaches this one listener -- no inline handler, so the CSP needs no 'unsafe-inline'.
+    document.addEventListener("focusin", e => {
+        const t = e.target;
+        if (t && typeof t.select === "function" && t.getAttribute("data-ns-select-on-focus") === "true")
+            t.select();
+    });
 
     // The first editable control inside a freshly opened create form, so the person can type
     // at once instead of clicking into the page first. Scoped to the form's own id rather than
@@ -1058,9 +1220,9 @@
     // Only a MudAutocomplete's own input wires OpenOnFocus and reacts to THIS focus exactly like
     // a click, opening its popover over the page (Vigía, nsail#1815 round 2).
     // stopImmediatePropagation on the listener above halts the WHOLE dispatch, capture through
-    // target, not just Blazor's own listener -- arming it for a plain field would cost that field
-    // its own `onfocus="this.select()"` (NsFieldBase) for a popover it never opens (Vigía,
-    // round 4). `.focus()` dispatches its events synchronously, so the flag set right before it
+    // target, not just Blazor's own listener -- arming it for a plain field would suppress
+    // `focus` handlers it has no reason to lose, for a popover it never opens. `.focus()`
+    // dispatches its events synchronously, so the flag set right before it
     // is read and cleared by the listener above before this call returns; nothing is left armed
     // for a focus that happens not to fire (the candidate was already the active element).
     //
@@ -1252,5 +1414,5 @@
         setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, focusFirst, arrivalFocus, chords, recall, remember, download };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download };
 })();

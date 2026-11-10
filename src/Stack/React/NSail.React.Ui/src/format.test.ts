@@ -27,8 +27,28 @@ describe("display", () => {
     expect(display(strings, field("date"), "2026-01-01")).toBe(new Date(Date.UTC(2026, 0, 1)).toLocaleDateString("es", { timeZone: "UTC" }));
   });
 
+  it("keeps every digit of an exact number", () => {
+    expect(display(new Strings("en", stackStrings("en")), field("bigint"), "9007199254740993")).toBe("9,007,199,254,740,993");
+    expect(display(new Strings("en", stackStrings("en")), field("decimal"), "1234567890.123456789")).toBe("1,234,567,890.123456789");
+    expect(display(new Strings("en", stackStrings("en")), field("decimal"), "-0.1234567890123456789012345678")).toBe("-0.1234567890123456789012345678");
+    expect(display(strings, field("decimal"), "1234567.5")).toBe(`${(1234567).toLocaleString("es")},5`);
+    expect(display(new Strings("en", stackStrings("en")), field("bigint"), 1e21)).toBe((1e21).toLocaleString("en"));
+    expect(display(new Strings("en", stackStrings("en")), field("decimal"), "1e3")).toBe("1,000");
+  });
+
   it("renders absent as nothing", () => {
     expect(display(strings, field("string"), null)).toBe("");
     expect(display(strings, field("integer"), undefined)).toBe("");
+  });
+
+  it("leaves an integer ungrouped when the caller opts out", () => {
+    expect(display(strings, field("integer"), 12345, { grouped: false })).toBe("12345");
+    expect(display(strings, field("integer"), 12345)).toBe(Number(12345).toLocaleString("es"));
+  });
+
+  it("groups four digits as the language does when the caller does not opt out", () => {
+    expect(display(strings, field("integer"), 1234)).toBe("1234");
+    expect(display(strings, field("decimal"), "1234.5")).toBe("1234,5");
+    expect(display(new Strings("en", stackStrings("en")), field("integer"), 1234)).toBe("1,234");
   });
 });

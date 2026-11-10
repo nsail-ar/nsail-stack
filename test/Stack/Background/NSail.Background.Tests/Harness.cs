@@ -3,6 +3,8 @@
 
 using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
+using Npgsql;
+using NSail.Data;
 
 namespace NSail.Background.Tests;
 
@@ -180,12 +182,29 @@ static class Harness
         return services.BuildServiceProvider();
     }
 
+    public static IHostedService Runner(ServiceProvider provider)
+    {
+        return provider.GetServices<IHostedService>().Single(h => h.GetType().Name != "SecurityProviderCheck");
+    }
+
+    public static async Task Execute(string database, string statement)
+    {
+        await using var admin = new NpgsqlConnection(
+            ConnectionStrings.Complete($"Host=localhost;Username=postgres;Database={database}"));
+
+        await admin.OpenAsync();
+
+        await using var command = new NpgsqlCommand(statement, admin);
+
+        await command.ExecuteNonQueryAsync();
+    }
+
     /// <summary>Starts the runner, waits for the signal or the bound, and stops it. Stopping
     /// is awaited rather than fired: BackgroundService.StopAsync joins the loops, so the
     /// assertions that follow read a counter nothing is still writing to.</summary>
     public static async Task Run(ServiceProvider provider, Task signal)
     {
-        var runner = provider.GetServices<IHostedService>().Single();
+        var runner = Runner(provider);
 
         await runner.StartAsync(CancellationToken.None);
 
@@ -202,7 +221,7 @@ static class Harness
     /// moved proves as little here as it does about a cadence.</summary>
     public static async Task Run(ServiceProvider provider, Func<bool> reached)
     {
-        var runner = provider.GetServices<IHostedService>().Single();
+        var runner = Runner(provider);
 
         await runner.StartAsync(CancellationToken.None);
 

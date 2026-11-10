@@ -55,8 +55,9 @@ public static class HarnessServices
             return RepositoryProvider(sp, o.DefaultRepository).Locks(o.DefaultRepository, o.Key);
         });
         services.AddTransient<SnapshotReader>();
-        services.AddSingleton(sp => new JobHistory(sp.GetRequiredService<HarnessOptions>().WorkRoot));
-        services.AddSingleton(sp => new JobStats(sp.GetRequiredService<HarnessOptions>().WorkRoot));
+        services.AddSingleton(sp => new JobHistory(sp.GetRequiredService<HarnessOptions>().WorkRoot, Log<JobHistory>(sp)));
+        services.AddSingleton(sp => new JobStats(sp.GetRequiredService<HarnessOptions>().WorkRoot, log: Log<JobStats>(sp)));
+        services.AddSingleton(sp => new HarnessState(sp.GetRequiredService<HarnessOptions>().WorkRoot, Log<HarnessState>(sp)));
         services.AddSingleton(sp => new BuildLeases(sp.GetRequiredService<HarnessOptions>().Builds));
         services.AddSingleton(sp =>
         {
@@ -73,8 +74,12 @@ public static class HarnessServices
                 o,
                 sp.GetServices<ILaneEnvironment>(),
                 sp.GetRequiredService<ILoggerFactory>(),
-                sp.GetRequiredService<BuildLeases>());
+                sp.GetRequiredService<BuildLeases>())
+            {
+                LogSources = sp.GetServices<Watching.ILogSource>().ToList(),
+            };
         });
+        services.AddSingleton(sp => new Watching.WatchState(sp.GetRequiredService<HarnessOptions>().WorkRoot, Log<Watching.WatchState>(sp)));
         services.AddSingleton(sp => sp.GetRequiredService<JobContext>().Workspace);
         services.AddSingleton<HarnessMetrics>();
         // The load a worker may ask about over the longest window it may ask for.
@@ -97,12 +102,18 @@ public static class HarnessServices
     public static void MapHarnessApi(this WebApplication app)
     {
         app.UseErrorHandler();
+        app.UseMiddleware<ControlGate>();
         app.MapEndpoints();
     }
 
     static IEnumerable<int> LoadWindows(HarnessOptions o)
     {
         return o.Workers.Values.Select(w => w.When).Concat(o.Conditions.Values).SelectMany(c => new[] { c.Cpu?.Minutes ?? 0, c.Memory?.Minutes ?? 0 });
+    }
+
+    static ILogger Log<T>(IServiceProvider sp)
+    {
+        return sp.GetRequiredService<ILoggerFactory>().CreateLogger<T>();
     }
 
     static IRepositoryProvider RepositoryProvider(IServiceProvider sp, RepositoryOptions r)

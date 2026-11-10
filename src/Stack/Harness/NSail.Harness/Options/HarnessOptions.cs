@@ -60,6 +60,10 @@ public sealed class HarnessOptions
     // Stories under way at once before a new one starts (Planner's WipLimit); unset is the agent count, 0 none.
     public int? WipLimit { get; set; }
 
+    // A story In-Progress a keeper with no open PR (`Pr: none`) would move must have been quiet this
+    // long (Planner's OrphanGrace): a job's ending and its PR's opening land inside it.
+    public int OrphanGraceMinutes { get; set; } = 10;
+
     // Drivers a story's label may ask for (`{driver}` or `{driver}:{model}`) that this machine cannot run: they hold it.
     public List<string> UnrunnableDrivers { get; set; } = [];
 
@@ -84,9 +88,27 @@ public sealed class HarnessOptions
     // already puts it first by its title). Lists start empty: configuration appends to a default.
     public List<string> RedLabels { get; set; } = [];
 
+    // Paths a builder's commits may not touch: CI runs them with the repository's secrets before any
+    // review. Globs (`*` within a folder, `**` across); AllowProtectedPaths lifts the screen, the
+    // Labels.AllowProtected label lifts it for one story and releases the hold the screen set on it.
+    public List<string> ProtectedPaths { get; set; } = [".github/workflows/**"];
+    public bool AllowProtectedPaths { get; set; }
+
     // The marker a reviewer's verdict carries on a PR (`<marker>:<clean|findings>:<sha>`). Another
     // repository's own reviewer writes the same one.
     public string ReviewMarker { get; set; } = "harness:review";
+
+    // Who may drive this harness (ControlOptions).
+    public ControlOptions Control { get; set; } = new();
+
+    // The logins whose gate and review markers on a PR count beside this harness's own: every
+    // harness of the fleet, so one reads another's verdicts. The same list on every harness.
+    public List<string> MarkerAuthors { get; set; } = [];
+
+    // The logins whose comments reach a seat as the crew's words, beside this harness's own and the
+    // MarkerAuthors: the owners and the crew. Anyone else's text on a story or a PR is laid in the
+    // dossier fenced and labelled untrusted.
+    public List<string> TrustedAuthors { get; set; } = [];
 
     // The Ops this Harness reports to (OpsOptions).
     public OpsOptions Ops { get; set; } = new();
@@ -121,6 +143,10 @@ public sealed class HarnessOptions
             throw new InvalidOperationException("Harness:Repositories has an entry without a Name");
         }
         if (Workers.Count == 0) throw new InvalidOperationException("Harness:Workers names no worker: the harness would take nothing");
+        if (Control.ResolveToken() is { } control && control == Control.ResolveLeaseToken())
+        {
+            throw new InvalidOperationException("Harness:Control:Token and LeaseToken are the same: a seat holds the lease token, so it would hold the control one");
+        }
         _ = Harness.Workers.Worker.Compile(this);
     }
 }

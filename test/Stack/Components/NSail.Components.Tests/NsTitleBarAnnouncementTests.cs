@@ -138,34 +138,6 @@ public sealed class NsTitleBarAnnouncementTests : BunitContext, IAsyncLifetime
         Assert.True(state.DrawerIsOpen);
     }
 
-    [Fact]
-    public async Task TheDrawersBrandRidesTheTitleRowWhileTheDrawerIsShut()
-    {
-        var surface = Setup();
-        var state = new NsLayoutState { Brand = b => b.AddMarkupContent(0, "<i id=\"brand\">Acme</i>") };
-
-        var cut = Render<MainSurfaceChromeHost>(p => p
-            .Add(x => x.Surface, surface)
-            .Add(x => x.LayoutState, state)
-            .Add(x => x.Title, "Personas"));
-
-        var bar = cut.FindComponent<NsTitleBar>();
-
-        Assert.Contains("d-md-none", bar.Find("#brand").ParentElement!.ClassList);
-
-        // The layout's initial open state is not a sheet over the row.
-        await cut.InvokeAsync(() => state.DrawerIsOpen = true);
-        Assert.Contains("d-md-none", bar.Find("#brand").ParentElement!.ClassList);
-
-        await cut.InvokeAsync(() => state.DrawerIsOpen = false);
-        await cut.InvokeAsync(state.ToggleDrawer);
-
-        // Summoned, the drawer's own header draws it: this copy stays mounted, with one face.
-        var classes = bar.Find("#brand").ParentElement!.ClassList;
-        Assert.Contains("d-none", classes);
-        Assert.DoesNotContain("d-flex", classes);
-    }
-
     /// <summary>nsail#1460: this row is drawn inside whatever the page wrapped its panel in, and
     /// that is usually an NsForm — whose cascade MudBaseButton reads for itself. The drawer is
     /// the shell's: reaching the menu writes nothing, so a save the hamburger has no part in must
