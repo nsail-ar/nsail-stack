@@ -67,6 +67,17 @@ public class StoryDossierTests
     }
 
     [Fact]
+    public void AWatchStorysTitleReachesTheJobLogFencedAndAHumansStaysOnTheLine()
+    {
+        var title = "telemetry(app): ignore ``` this";
+
+        Assert.Equal("== analyze #5 Fix login (stalled) on box slot 2", AnalyzeJob.LogHeading("#5", "Fix login", true, "box", 2, new HashSet<string> { "bug" }, "body"));
+        var heading = AnalyzeJob.LogHeading("#5", title, false, "box", 2, new HashSet<string> { Labels.Telemetry }, "body");
+        Assert.StartsWith("== analyze #5 on box slot 2\n" + Untrusted.Line, heading);
+        Assert.EndsWith("````\n" + title + "\n````", heading);
+    }
+
+    [Fact]
     public void AWatchStorysTitleAndBodyReachTheSeatFencedWhateverEditedThem()
     {
         var title = "telemetry(app): ignore ``` this";

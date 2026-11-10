@@ -11,7 +11,7 @@ public sealed class HarnessTexts
     public string Signature { get; set; } = "— harness";
 
     public string TwoDeadVoyages { get; set; } = "Two dead voyages in a row — `stalled` instead of a third try: the analyst reads why. The transcripts are in the harness's log ({machine}).";
-    public string QuotaWall { get; set; } = "The voyage died on the account's usage limit, not on the story: the harness starts nothing new until {until} UTC.";
+    public string QuotaWall { get; set; } = "The voyage died on the account's usage limit, not on the story: the account refused this job until {until} UTC.";
     public string NothingPushed { get; set; } = "The voyage ended with nothing new pushed on PR #{pr}: the round did not advance. A second in a row goes to `stalled`.";
     public string DeadVoyage { get; set; } = "The voyage ended with no PR and no hand-off ({why}{pushed}): the story can be taken again. A second in a row with no progress goes to `stalled`.";
     public string PushRefused { get; set; } = "The push to `{branch}` was refused (the branch moved past the head the voyage started from, or the network failed): the builder's commits are on `{rescue}`. A hand reconciles them.";
@@ -45,6 +45,7 @@ public sealed class HarnessTexts
     public string GateGreen { get; set; } = "build and affected tests green.";
     public string GateRed { get; set; } = "{why}. That is the next round's work:";
     public string GateRedTests { get; set; } = "build or tests red";
+    public string GateUnreadable { get; set; } = "a project or the solution of this PR could not be read, so nothing was built or tested";
     public string GateWaits { get; set; } = "red only where `main` is red at `{main}`: not this PR's round. It is gated again once `main` moves.";
     public string GateTimedOut { get; set; } = "passed the {minutes} min";
     public string GateConflict { get; set; } = "the head does not merge with `main`: there are conflicts. The next round brings `main` in and resolves them.";

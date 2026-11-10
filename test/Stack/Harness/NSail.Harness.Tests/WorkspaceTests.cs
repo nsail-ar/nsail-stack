@@ -89,6 +89,18 @@ public class WorkspaceTests : IDisposable
     }
 
     [Fact]
+    public async Task RestoringARepositoryNeverClonedDoesNothing()
+    {
+        Directory.CreateDirectory(_root);
+        var ws = new Workspace(Path.Combine(_root, "ws"), Remote, null, 1, "Gru", "gru@example.com");
+
+        await ws.Restore();
+
+        Assert.False(Directory.Exists(Bare));
+        Assert.False(Directory.Exists(Path.Combine(_root, "ws", "probe.git")));
+    }
+
+    [Fact]
     public async Task AWarmSlotKeepsWhatGitIgnores()
     {
         var ws = await Warm();

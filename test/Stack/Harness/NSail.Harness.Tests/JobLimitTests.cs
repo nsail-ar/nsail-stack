@@ -30,8 +30,12 @@ public sealed class JobLimitTests : IDisposable
     public JobLimitTests()
     {
         _history = new JobHistory(Path.Combine(_root, "history"));
-        _loop = new HarnessLoop(null!, _board, _locks, new Workspace(Path.Combine(_root, "ws"), "https://example.com/acme/app.git", null, 1, "Gru", "gru@example.com"),
-            _history, new JobStats(null), null!, new BuildLeases(1), null!, Options.Create(new HarnessOptions { Machine = "box" }), null!, _metrics,
+        var options = new HarnessOptions { Machine = "box", Repositories = [new RepositoryOptions { Name = "acme/app" }] };
+        var workspace = new Workspace(Path.Combine(_root, "ws"), "https://example.com/acme/app.git", null, 1, "Gru", "gru@example.com");
+        var repo = new DevJobRunTests.FileRepository("unused");
+        var jobs = new JobContext(_board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace> { [repo.Name] = workspace }, new NoAgent(), options, [], NullLoggerFactory.Instance, new BuildLeases(1));
+        _loop = new HarnessLoop(null!, _board, _locks, workspace,
+            _history, new JobStats(null), jobs, new BuildLeases(1), null!, Options.Create(options), null!, _metrics,
             new WatchState(null), new HarnessState(Path.Combine(_root, "state")), NullLogger<HarnessLoop>.Instance);
         _board.Add(Story, stage: Stages.InProgress, labels: [Labels.Claimed]);
     }

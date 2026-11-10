@@ -66,7 +66,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
             var env = await ctx.LaneEnv(started.AddMinutes(Step.Minutes), Item, Step, ct);
             await using (var w = new StreamWriter(logPath, append: true) { AutoFlush = true })
             {
-                await w.WriteLineAsync($"== analyze {ctx.Names.Ref(n)} {title}{(stalled ? " (stalled)" : "")} on {ctx.Options.Machine} slot {slot}");
+                await w.WriteLineAsync(LogHeading(ctx.Names.Ref(n), title, stalled, ctx.Options.Machine, slot, labels, body));
                 await ctx.Prepare(dir, env, w);
             }
 
@@ -94,6 +94,13 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
         {
             await board.RemoveLabel(n, Labels.Analyzing);
         }
+    }
+
+    // The job log's first line; a Watch story's title is log text, so it follows fenced, as in original.md.
+    internal static string LogHeading(string reference, string title, bool stalled, string machine, int slot, IEnumerable<string> labels, string body)
+    {
+        var tail = $"{(stalled ? " (stalled)" : "")} on {machine} slot {slot}";
+        return StoryDossier.IsWatch(labels, body) ? $"== analyze {reference}{tail}\n{Untrusted.Fence(title)}" : $"== analyze {reference} {title}{tail}";
     }
 
     async Task<Ending> Act(int n, string title, string outDir, bool stalled, AgentResult result, ILogger log, CancellationToken ct)
@@ -162,7 +169,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
         // a story already stalled had its first death before this one.
         // Each death is said on the story with its marker, so any harness counts the same run.
         var since = await board.LastLift(n, Labels.Lifts, ct);
-        var deaths = Markers.InARow(await board.Comments(n, ct), Markers.AnalysisDied, since) + 1;
+        var deaths = ctx.Markers.InARow(await board.Comments(n, ct), Markers.AnalysisDied, await ctx.Repo.Login(ct), since) + 1;
         if (stalled || deaths >= 2)
         {
             await board.AddLabels(n, Labels.Stalled, Labels.Ruling);

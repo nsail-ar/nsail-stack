@@ -47,7 +47,7 @@ public static class Shell
 
     public static async Task<ShellResult> Run(
         string file, IEnumerable<string> args, string workDir, IDictionary<string, string>? env = null,
-        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false, string? runAs = null, int tailChars = TailChars, Func<string, bool>? keep = null)
+        TimeSpan? timeout = null, TextWriter? log = null, string? stdin = null, CancellationToken ct = default, bool lowPriority = false, string? runAs = null, int tailChars = TailChars, Func<string, bool>? keep = null, bool stdoutOnly = false)
     {
         var psi = new ProcessStartInfo(file)
         {
@@ -101,21 +101,28 @@ public static class Shell
             lowPriority = false;
         }
 
-        return await Execute(psi, stdin, timeout, log, ct, lowPriority, seat ? runAs : null, tailChars, keep);
+        return await Execute(psi, stdin, timeout, log, ct, lowPriority, seat ? runAs : null, tailChars, keep, stdoutOnly);
     }
 
-    static async Task<ShellResult> Execute(ProcessStartInfo psi, string? stdin, TimeSpan? timeout, TextWriter? log, CancellationToken ct, bool lowPriority, string? runAs, int tailChars, Func<string, bool>? keep)
+    static async Task<ShellResult> Execute(ProcessStartInfo psi, string? stdin, TimeSpan? timeout, TextWriter? log, CancellationToken ct, bool lowPriority, string? runAs, int tailChars, Func<string, bool>? keep, bool stdoutOnly)
     {
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
         var tail = new Queue<string>();
         var tailLength = 0;
         var kept = new List<string>();
+        var errors = new List<string>();
         var gate = new object();
-        void Line(string? l)
+        void Line(string? l, bool toTail = true)
         {
             if (l is null) return;
             lock (gate)
             {
+                if (!toTail)
+                {
+                    if (errors.Count < 50) errors.Add(l);
+                    log?.WriteLine(l);
+                    return;
+                }
                 tail.Enqueue(l);
                 tailLength += l.Length + Environment.NewLine.Length;
                 while (tailLength > tailChars && tail.Count > 1)
@@ -128,7 +135,7 @@ public static class Shell
             }
         }
         p.OutputDataReceived += (_, e) => Line(e.Data);
-        p.ErrorDataReceived += (_, e) => Line(e.Data);
+        p.ErrorDataReceived += (_, e) => Line(e.Data, !stdoutOnly);
         var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         p.Exited += (_, _) => exited.TrySetResult();
         p.Start();
@@ -192,7 +199,7 @@ public static class Shell
             var output = new StringBuilder();
             foreach (var l in kept) output.AppendLine(l);
             foreach (var l in tail) output.AppendLine(l);
-            return new ShellResult(timedOut ? -1 : p.ExitCode, output.ToString(), timedOut);
+            return new ShellResult(timedOut ? -1 : p.ExitCode, output.ToString(), timedOut, string.Join(Environment.NewLine, errors));
         }
     }
 
@@ -279,6 +286,15 @@ public static class Shell
             {
             }
         }
+    }
+
+    // A git command whose output the harness parses: stderr (a warning git chooses to print) is never part of what it reads.
+    public static async Task<string> GitOut(string workDir, params string[] args)
+    {
+        var r = await Run("git", args, workDir, new Dictionary<string, string> { ["GIT_TERMINAL_PROMPT"] = "0" }, TimeSpan.FromMinutes(10), stdoutOnly: true);
+        if (r.TimedOut) throw new InvalidOperationException($"git {string.Join(' ', args)}: timed out");
+        if (r.ExitCode != 0) throw new InvalidOperationException($"git {string.Join(' ', args)} exited {r.ExitCode}: {r.Error.Trim()}");
+        return r.Output.Trim();
     }
 
     // No git call may hang the harness: a credential helper waiting on a window, a network

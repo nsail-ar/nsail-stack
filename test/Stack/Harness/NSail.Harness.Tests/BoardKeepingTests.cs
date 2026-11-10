@@ -88,7 +88,7 @@ public class BoardKeepingTests
         Assert.Equal(CiState.Green, Markers.GateAt(bodies, "aaa"));
         Assert.Equal(CiState.Red, Markers.GateAt(bodies, "bbb"));
         Assert.Null(Markers.GateAt(bodies, "ccc"));
-        Assert.Null(Markers.GateAt([.. bodies, "anulado\n<!-- harness:gate:void:aaa -->"], "aaa"));
+        Assert.Equal(CiState.Green, Markers.GateAt([.. bodies, "anulado\n<!-- harness:gate:void:aaa -->"], "aaa"));
     }
 
     [Fact]

@@ -38,8 +38,9 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         }
         catch (Exception e) when (!ct.IsCancellationRequested && IsOwnRed(e))
         {
-            await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", ctx.Texts.GateRedTests)), e.Message, log);
-            return new JobOutcome($"red — {e.Message}", Failed: true);
+            var unreadable = InCheckout(e.Message, ctx.Workspace.SlotPath(slot));
+            await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", ctx.Texts.GateUnreadable)), unreadable, log);
+            return new JobOutcome($"red — {unreadable}", Failed: true);
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
@@ -48,6 +49,17 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             await Broke(prNumber, sha, e.Message, log);
             throw;
         }
+    }
+
+    // A message as the checkout would say it: the slot's own path is the machine's, never the PR's to read.
+    internal static string InCheckout(string message, string dir)
+    {
+        var root = dir.TrimEnd('/', '\\');
+        foreach (var form in new[] { root, root.Replace('\\', '/'), root.Replace('/', '\\') })
+        {
+            message = message.Replace(form + "/", "", StringComparison.Ordinal).Replace(form + "\\", "", StringComparison.Ordinal).Replace(form, "", StringComparison.Ordinal);
+        }
+        return message;
     }
 
     // The builder reads the PR's own files (solution, projects) before it builds: a malformed project or

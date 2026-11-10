@@ -342,7 +342,8 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     async Task<bool> BugBefore(int n, CancellationToken ct)
     {
         var since = await ctx.Board.LastLift(n, Labels.Lifts, ct);
-        return (await ctx.Board.Comments(n, ct)).Any(c => (since is null || c.At > since) && c.Body.Contains(WorkerTypes.QaBugMarker, StringComparison.Ordinal));
+        var login = await ctx.Repo.Login(ct);
+        return (await ctx.Board.Comments(n, ct)).Any(c => (since is null || c.At > since) && ctx.Markers.Says(c, WorkerTypes.QaBugMarker, login));
     }
 
     async Task<JobOutcome> Script(int slot, string logPath, JobStep step, CancellationToken ct)

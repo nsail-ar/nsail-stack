@@ -87,6 +87,7 @@ public sealed class Workspace
     // directory, so whatever it planted there is gone before the harness runs git in it again.
     public async Task Restore()
     {
+        if (!Directory.Exists(Bare)) return;
         await _git.WaitAsync();
         try
         {

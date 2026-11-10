@@ -75,8 +75,12 @@ sealed class MemoryBoard : IBoard
         return Task.FromResult(true);
     }
 
+    // The board does not answer a label read, as when the network is down.
+    public bool LabelsDown { get; set; }
+
     public Task<IReadOnlySet<string>> Labels(int story, CancellationToken ct = default)
     {
+        if (LabelsDown) throw new HttpRequestException("the board is down");
         return Task.FromResult<IReadOnlySet<string>>(Cards[story].Labels.ToHashSet());
     }
 

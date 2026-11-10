@@ -26,7 +26,7 @@ public sealed class ShipJob(WorkItem item, JobContext ctx) : IJob
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await Shell.Git(dir, [.. ctx.Workspace.Guard, "fetch", "-q", "--force", ctx.Workspace.Url, $"+refs/tags/{p}/*:refs/tags/{p}/*"]);
-        var tags = (await Shell.Git(dir, "tag", "-l", $"{p}/v*", "--sort=-v:refname")).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var tags = (await Shell.GitOut(dir, "tag", "-l", $"{p}/v*", "--sort=-v:refname")).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var last = tags.SkipWhile(t => t != tag).Skip(1).FirstOrDefault();
         var range = last is null ? tag : $"{last}..{tag}";
         var log = await Shell.Git(dir, "log", "--format=%B", range);

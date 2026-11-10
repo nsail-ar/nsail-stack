@@ -37,7 +37,7 @@ public static class Landing
 
     // Reads the story's evidence from where it lives. The merge counts in the repository the story's
     // own labels route it to: a Stack story rides the Stack's main, not the default repository's.
-    public static async Task<string?> NothingToBuild(RepositorySet repos, IBoard board, int story, IReadOnlySet<string> labels, string bugMarker, CancellationToken ct)
+    public static async Task<string?> NothingToBuild(RepositorySet repos, IBoard board, int story, IReadOnlySet<string> labels, string bugMarker, CancellationToken ct, Markers? markers = null, string? login = null)
     {
         var open = await repos.PrsOf(story, "open", ct);
         if (open.Count > 0) return null;
@@ -45,6 +45,7 @@ public static class Landing
         var merged = await repo.PrsOf(story, "merged", ct);
         if (merged.Count == 0) return null;
         var ahead = (await repo.PushTimes(story, ct)).Count;
-        return Evidence(open, merged, ahead, await board.Comments(story, ct), bugMarker);
+        var comments = await board.Comments(story, ct);
+        return Evidence(open, merged, ahead, markers is null ? comments : [.. comments.Where(c => markers.Says(c, bugMarker, login!) || !c.Body.Contains(bugMarker, StringComparison.Ordinal))], bugMarker);
     }
 }
