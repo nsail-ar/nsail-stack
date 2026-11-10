@@ -178,6 +178,16 @@ public class DevJobRunTests : IDisposable
             return (await Shell.Run("git", ["merge-base", "--is-ancestor", sha, reference], remote)).ExitCode == 0;
         }
 
+        public Task<IReadOnlyList<Merge>> Changes(string path, DateTimeOffset since, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<string?> FileAt(string path, string reference, CancellationToken ct = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<string?> Variable(string name, CancellationToken ct = default)
         {
             throw new NotSupportedException();

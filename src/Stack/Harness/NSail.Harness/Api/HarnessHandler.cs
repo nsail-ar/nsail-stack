@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Reflection;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 using NSail.Injection.Annotations;
@@ -30,13 +31,21 @@ public sealed class HarnessHandler(HarnessLoop loop, HarnessOptions options, Job
         {
             Repository = options.DefaultRepository.Name,
             Machine = options.Machine,
+            Version = VersionOf(typeof(HarnessLoop).Assembly),
+            HostVersion = Assembly.GetEntryAssembly() is { } host ? VersionOf(host) : null,
             Paused = loop.Paused,
             AgentsOffUntil = loop.AgentsOffUntil,
             Readings = Read(),
             TakeNew = loop.TakeNew,
+            AndonStillSince = loop.AndonStillSince,
             Running = [.. loop.Running],
             Last = loop.Last,
         });
+    }
+
+    static string? VersionOf(Assembly assembly)
+    {
+        return assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
     }
 
     MachineReadings Read()

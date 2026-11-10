@@ -200,7 +200,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         var judged = StatusMark.Newest(marks, Markers.GateContext)?.Sha;
         foreach (var i in issues.Where(i => i.Stage == Stages.Ready && i.Title.StartsWith(options.Texts.MainRedTitle, StringComparison.Ordinal)))
         {
-            if (await repos.Default.MergeOf(i.Number, ct) is not { } merge) continue;
+            if (await repos.LandingOf(i.Number, ct) is not { } merge) continue;
             if (judged is null || !await repos.Default.Holds(judged, merge.Sha, ct)) unjudged.Add(i.Number);
         }
         return unjudged;
@@ -220,7 +220,7 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
             // Only a red suite names its product; a red main's fix is cut with the next day's cut.
             var release = options.Releases.FirstOrDefault(r => i.Title == HarnessTexts.Fill(options.Texts.SuiteRedTitle, ("product", r.Product!)));
             if (release?.Workflow is not { } wf) continue;
-            if (await repos.Default.MergeOf(i.Number, ct) is not { } merge) continue;
+            if (await repos.LandingOf(i.Number, ct) is not { } merge) continue;
             var product = release.Product!;
             if (releases.Any(r => r.Tag.StartsWith($"{product.ToLowerInvariant()}/v", StringComparison.Ordinal) && r.PublishedAt > merge.At))
             {

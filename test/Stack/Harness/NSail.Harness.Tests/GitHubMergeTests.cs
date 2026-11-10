@@ -89,9 +89,7 @@ public class GitHubMergeTests
         {
             var path = request.RequestUri!.AbsolutePath;
             var pr = $$$$"""{"number":1,"title":"app#1: x","state":"open","user":{"login":"{{{{user}}}}"},"head":{"ref":"story/app-1","sha":"abc","repo":{"full_name":"{{{{headRepo}}}}"}}}""";
-            var body = path.EndsWith("/search/issues") ? """{"items":[{"number":1}]}"""
-                : path.EndsWith("/pulls") ? $"[{pr}]"
-                : pr;
+            var body = path.EndsWith("/pulls") ? $"[{pr}]" : pr;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
         }
     }

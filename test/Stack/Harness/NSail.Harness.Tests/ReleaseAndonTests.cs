@@ -175,6 +175,44 @@ public class ReleaseAndonTests
         return await reader.ReadRedFixes(issues, Flight.Empty, releases, CancellationToken.None);
     }
 
+    // A fix merged in a pinned repository: the default repository has no merge of the story, and the
+    // commit that moved the pin (an hour after the merge) is where its work reached the default branch.
+    static async Task<List<ReleaseCandidate>> PinnedFix(DateTimeOffset mergedAt, bool pinned)
+    {
+        var lib = new RepositoryOptions { Name = "acme/lib", Label = "area:lib", Pin = new PinOptions { File = "pin.props", Pattern = "<V>([^<]+)</V>", Ref = "v{version}" } };
+        var options = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }, lib] };
+        options.Workers["release-shop"] = new WorkerOptions { Type = "Release", Enabled = true, Product = "Shop", Workflow = "release-shop.yml" };
+        var app = Stub<IRepository>.Make(new Dictionary<string, Func<object?[], object?>>
+        {
+            ["get_Name"] = _ => "acme/app",
+            ["MergeOf"] = _ => Task.FromResult<Merge?>(null),
+            ["Changes"] = _ => Task.FromResult<IReadOnlyList<Merge>>(pinned ? [new Merge("bump", mergedAt.AddHours(1))] : []),
+            ["FileAt"] = _ => Task.FromResult<string?>("<V>1.0.1</V>"),
+            ["RunsSince"] = a => Task.FromResult((DateTimeOffset)a[1]! == mergedAt.AddHours(1) ? 0 : 9),
+        });
+        var libRepo = Stub<IRepository>.Make(new Dictionary<string, Func<object?[], object?>>
+        {
+            ["get_Name"] = _ => "acme/lib",
+            ["MergeOf"] = _ => Task.FromResult<Merge?>(new Merge("fixsha", mergedAt)),
+            ["Holds"] = a => Task.FromResult((string)a[0]! == "v1.0.1"),
+        });
+        var reader = new SnapshotReader(new MemoryBoard(), new RepositorySet([(app, options.Repositories[0]), (libRepo, lib)]), null!, options);
+        var issues = new Fixture().Story(1, "Merged", title: ShopRed).Build().Issues.ToList();
+        return (await reader.ReadRedFixes(issues, Flight.Empty, [], CancellationToken.None)).Candidates;
+    }
+
+    [Fact]
+    public async Task AFixMergedInAPinnedRepositoryIsCutOnceItsPinLands()
+    {
+        var merged = DateTimeOffset.UtcNow.AddHours(-3);
+
+        var waiting = await PinnedFix(merged, pinned: false);
+        var landed = await PinnedFix(merged, pinned: true);
+
+        Assert.Empty(waiting);
+        Assert.Equal(new ReleaseCandidate(1, "release-shop.yml", "bump"), Assert.Single(landed));
+    }
+
     [Fact]
     public async Task AReleaseOfTheProductAfterTheMergeShipsTheFix()
     {
@@ -221,6 +259,21 @@ public class ReleaseAndonTests
         Assert.Contains("builder", Assert.Single(plan.Andon).Waits, StringComparison.Ordinal);
         Assert.Contains("`ruling`", Assert.Single(held.Andon).Waits, StringComparison.Ordinal);
         Assert.Empty(held.Items);
+    }
+
+    [Fact]
+    public void ALitAndonWithNothingToStartAndNothingRunningStandsStillSinceItsFirstSuchPass()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var held = SampleWorkers.Plan(new Fixture().Story(1, "Ready", "ruling", title: ShopRed).Story(2, "Ready").Build(), Options());
+        var working = SampleWorkers.Plan(Lit().Build(), Options());
+        var unlit = SampleWorkers.Plan(new Fixture().Build(), Options());
+
+        Assert.Equal(now, HarnessLoop.StillSince(null, held, nothingRuns: true, now));
+        Assert.Equal(now.AddHours(-1), HarnessLoop.StillSince(now.AddHours(-1), held, nothingRuns: true, now));
+        Assert.Null(HarnessLoop.StillSince(now.AddHours(-1), held, nothingRuns: false, now));
+        Assert.Null(HarnessLoop.StillSince(now.AddHours(-1), working, nothingRuns: true, now));
+        Assert.Null(HarnessLoop.StillSince(null, unlit, nothingRuns: true, now));
     }
 
     [Fact]

@@ -98,10 +98,10 @@ sealed class FakeGitHub : HttpMessageHandler
 
     static string Name(string query)
     {
-        return query.Contains("pullRequests(", StringComparison.Ordinal) ? "OpenPrs"
+        return query.Contains("states:MERGED", StringComparison.Ordinal) ? "Merged"
+            : query.Contains("pullRequests(", StringComparison.Ordinal) ? "OpenPrs"
             : query.Contains("defaultBranchRef", StringComparison.Ordinal) ? "Statuses"
             : query.Contains("states:CLOSED", StringComparison.Ordinal) ? "ClosedSince"
-            : query.Contains("search(", StringComparison.Ordinal) ? "MergeOf"
             : query.Contains("issues(", StringComparison.Ordinal) ? "Stories"
             : "other";
     }
@@ -129,7 +129,7 @@ sealed class FakeGitHub : HttpMessageHandler
             } } } as object,
             "Statuses" => new { repository = new { defaultBranchRef = new { target = new { history = new { nodes = Array.Empty<object>() } } } } },
             "ClosedSince" => new { repository = new { issues = new { pageInfo = new { hasNextPage = false, endCursor = (string?)null }, nodes = Array.Empty<object>() } } },
-            "MergeOf" => new { search = new { nodes = Array.Empty<object>() } },
+            "Merged" => new { repository = new { pullRequests = new { pageInfo = new { hasNextPage = false, endCursor = (string?)null }, nodes = Array.Empty<object>() } } },
             _ => new { repository = new { issues = new
             {
                 pageInfo = new { hasNextPage = false, endCursor = (string?)null },

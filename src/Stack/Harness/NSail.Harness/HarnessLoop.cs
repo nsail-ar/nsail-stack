@@ -413,6 +413,37 @@ public sealed class HarnessLoop(
         _andon = now;
     }
 
+    // A lit andon with none of its work planned and nothing running holds the whole harness on
+    // something outside it (a hand, a publication). Past this long it says so, once.
+    public static readonly TimeSpan AndonStill = TimeSpan.FromMinutes(15);
+    DateTimeOffset? _stillSince;
+    bool _stillSaid;
+
+    public DateTimeOffset? AndonStillSince
+    {
+        get { lock (_gate) return _stillSince; }
+    }
+
+    void NoteStill(Plan plan, DateTimeOffset now)
+    {
+        var since = StillSince(AndonStillSince, plan, _running.IsEmpty, now);
+        lock (_gate) _stillSince = since;
+        if (since is null)
+        {
+            _stillSaid = false;
+            return;
+        }
+        if (_stillSaid || now - since < AndonStill) return;
+        _stillSaid = true;
+        log.LogError("release andon ({Products}): nothing of it to start and nothing running since {Since:HH:mm} UTC, the whole harness stands still — waits for {Waits}",
+            string.Join(", ", plan.Andon.Select(a => a.Product)), since.Value.UtcDateTime, string.Join("; ", plan.Andon.Select(a => a.Waits)));
+    }
+
+    internal static DateTimeOffset? StillSince(DateTimeOffset? since, Plan plan, bool nothingRuns, DateTimeOffset now)
+    {
+        return plan.Andon.Count > 0 && plan.Items.Count == 0 && nothingRuns ? since ?? now : null;
+    }
+
     internal bool BackedOff(WorkItem item)
     {
         var key = BackoffKey(item);
@@ -513,6 +544,7 @@ public sealed class HarnessLoop(
             Planned(plan.Items, started);
             var runnable = plan.Items.Where(i => !BackedOff(i) && !WalkedSinceCut(i, snapshot.LastCutAt) && (TakeNew || !StartsStory(i)));
             NoteAndon(plan.Andon);
+            NoteStill(plan, started);
             // Past the agent's quota wall only the agents stop: gates, builds and releases go on.
             if (AgentsOffUntil is not null) limits = limits with { Agents = 0 };
             var take = Paused is null ? Capacity.Pick(runnable, InUse(), limits, WorkerMax(), RunningByWorker()) : [];

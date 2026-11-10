@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
+
 namespace NSail.Harness.Repositories;
 
 // The repositories a story may be built in (HarnessOptions.Repositories), each with its options: the
@@ -58,5 +61,39 @@ public sealed class RepositorySet(IReadOnlyList<(IRepository Repository, Reposit
         var all = new List<PrRef>();
         foreach (var repo in All) all.AddRange(await repo.PrsOf(story, state, ct));
         return all;
+    }
+
+    // Where a pinned repository's merge reached the default branch never moves once found.
+    readonly ConcurrentDictionary<(string Repo, string Sha), Merge> _landed = new();
+
+    // The story's newest merge as the default branch holds it: its merge there, and for a merge in a
+    // pinned repository the oldest commit of the default branch whose pin names a version that holds
+    // it. Null with no merge, and while a pinned merge waits for its pin: the default branch does not
+    // hold the story's work yet.
+    public async Task<Merge?> LandingOf(int story, CancellationToken ct = default)
+    {
+        var landing = await Default.MergeOf(story, ct);
+        foreach (var (repository, options) in repositories)
+        {
+            if (options.Label is null || options.Pin is not { } pin) continue;
+            if (await repository.MergeOf(story, ct) is not { } merge) continue;
+            if (await Pinned(repository, pin, merge, ct) is not { } bump) return null;
+            if (landing is null || bump.At > landing.At) landing = bump;
+        }
+        return landing;
+    }
+
+    async Task<Merge?> Pinned(IRepository repository, PinOptions pin, Merge merge, CancellationToken ct)
+    {
+        if (_landed.TryGetValue((repository.Name, merge.Sha), out var found)) return found;
+        foreach (var change in await Default.Changes(pin.File, merge.At, ct))
+        {
+            if (await Default.FileAt(pin.File, change.Sha, ct) is not { } text) continue;
+            if (Regex.Match(text, pin.Pattern) is not { Success: true } version) continue;
+            if (!await repository.Holds(pin.Ref.Replace("{version}", version.Groups[1].Value, StringComparison.Ordinal), merge.Sha, ct)) continue;
+            _landed[(repository.Name, merge.Sha)] = change;
+            return change;
+        }
+        return null;
     }
 }

@@ -62,13 +62,19 @@ public class AnalyzeJobRunTests : IDisposable
 
     async Task<(MemoryBoard Board, JobOutcome Outcome)> Run(Analyst seat, string title, params string[] labels)
     {
-        Directory.CreateDirectory(_root);
-        await Shell.Git(_root, "init", "-q", "--bare", "-b", "main", Remote);
-        var seed = Path.Combine(_root, "seed");
-        await Shell.Git(_root, "clone", "-q", Remote, seed);
-        await Shell.Git(seed, "checkout", "-q", "-b", "main");
-        await Shell.Git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "M");
-        await Shell.Git(seed, "push", "-q", "origin", "main");
+        if (!Directory.Exists(Remote))
+        {
+            Directory.CreateDirectory(_root);
+            await Shell.Git(_root, "init", "-q", "--bare", "-b", "main", Remote);
+            var seed = Path.Combine(_root, "seed");
+            await Shell.Git(_root, "clone", "-q", Remote, seed);
+            await Shell.Git(seed, "checkout", "-q", "-b", "main");
+            // The repository ignores the analysis's folder, as a product's does: cleaning the slot leaves it.
+            await File.WriteAllTextAsync(Path.Combine(seed, ".gitignore"), ".analysis/\n");
+            await Shell.Git(seed, "add", ".gitignore");
+            await Shell.Git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "M");
+            await Shell.Git(seed, "push", "-q", "origin", "main");
+        }
 
         var board = new MemoryBoard();
         board.Add(1, title: title, stage: Stages.Analyze, labels: labels);
@@ -118,6 +124,17 @@ public class AnalyzeJobRunTests : IDisposable
         Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
         Assert.DoesNotContain(Labels.Screened, board.Cards[1].Labels);
         Assert.Equal("Claim, Done, Readers.", Assert.Single(board.Cards[1].Comments).Body);
+    }
+
+    [Fact]
+    public async Task WhatAnEarlierAnalysisLeftInTheSlotIsNotReadAsThisOnes()
+    {
+        await Analyze(new Analyst(".github/workflows/ci.yml\n"));
+
+        var board = await Analyze(new Analyst(null));
+
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+        Assert.Single(board.Cards[1].Comments);
     }
 
     [Fact]

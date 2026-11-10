@@ -49,7 +49,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var labels = await ctx.Board.Labels(n, ct);
         var product = ProductOf(labels, ctx.Options.Products);
         if (product is null) return new JobOutcome("no product to walk it on (Harness:Products)", Idle: true);
-        var merge = (await ctx.Repo.MergeOf(n, ct))?.Sha;
+        var merge = (await ctx.Repos.LandingOf(n, ct))?.Sha;
         var live = new List<(string Key, ProductOptions Product, string? Tag, string Answer)>();
         foreach (var (key, p) in ctx.Options.Products)
         {
@@ -294,7 +294,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     }
 
     // "yes" when the story's last merge is inside the tag, "no" when it is not, "unknown" when either
-    // is missing (no merge here: a story built in another repository).
+    // is missing (no merge the default branch holds: a pinned repository's merge waits for its pin).
     static async Task<string> LiveIn(string dir, string? merge, string? tag)
     {
         if (merge is null || tag is null) return "unknown";
