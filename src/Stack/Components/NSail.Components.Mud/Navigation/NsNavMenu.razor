@@ -30,7 +30,7 @@
         {
             @* The drawer draws the brand — full height on desktop, the header of the
                temporary sheet on mobile. *@
-            <div class="d-flex align-center px-4 ns-nav-brand">
+            <div class="d-flex align-center gap-2 ns-nav-brand">
                 @Brand
             </div>
         }
@@ -42,7 +42,7 @@
            still has them, and a phone, where the drawer is closed, has neither.
            ns-nav-find is also the hook the Enter policy answers on: Enter in this box opens the
            first entry still shown (ns.js). *@
-        <div class="pa-2 d-flex align-center gap-1 ns-nav-find">
+        <div class="d-flex align-center gap-1 ns-nav-find">
             <NsSearchField Value="@_search" ValueChanged="SetSearch" Debounce="150" Placeholder="@SearchPlaceholder" Grow Map />
             @* Where an app places a door of its own beside the frame's two keys — the companion
                region's (NsMainLayout). Empty draws nothing: what is left is the box and what the

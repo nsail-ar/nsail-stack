@@ -14,7 +14,7 @@ public sealed class NsNavMenuNestedCountEdgeTests
         var css = File.ReadAllText(Path.Combine(Root(), "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
 
         Assert.Matches(
-            @"\.ns-nav-drawer \.mud-nav-link\s*\{[^}]*padding-inline-end:\s*16px\s*!important;",
+            @"\.ns-nav-drawer \.mud-nav-link\s*\{[^}]*padding-inline-end:\s*var\(--ns-nav-inset\)\s*!important;",
             css);
     }
 

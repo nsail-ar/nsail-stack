@@ -1355,6 +1355,51 @@
     min-height: var(--mud-appbar-height);
 }
 
+/* The header is one block with two lines. Left: the logo, the search outline and the first
+   entry's icon start at 16px (--ns-nav-gutter). Right: the search outline, the chip and the
+   entries' highlight end 8px (--ns-nav-inset) from the drawer's edge, so the highlight is
+   inset rather than full-bleed and its own start sits at the inset, 8px of padding before the
+   icon. The two vertical gaps are the same 8px: brand row to search, search to first entry. */
+.ns-nav-drawer.mud-drawer {
+    --ns-nav-gutter: 16px;
+    --ns-nav-inset: 8px;
+    --ns-nav-gap: 8px;
+}
+
+.ns-nav-drawer .ns-nav-brand,
+.ns-nav-drawer .ns-nav-find {
+    padding-inline: var(--ns-nav-gutter) var(--ns-nav-inset);
+}
+
+.ns-nav-drawer .ns-nav-find {
+    padding-block: var(--ns-nav-gap);
+}
+
+.ns-nav-drawer .mud-navmenu,
+.ns-nav-drawer .ns-nav-index {
+    margin-inline: var(--ns-nav-inset);
+    padding: 0;
+}
+
+/* A chip that ends in an ellipsis instead of overflowing: the vendor's chip is a flex box
+   with no way to shrink below its content, and its label is the one child that may be cut.
+   Capped at half the row so the logo keeps the other half. */
+.ns-chip-ellipsis.mud-chip {
+    min-width: 0;
+}
+
+.ns-nav-brand .ns-chip-ellipsis.mud-chip {
+    max-width: 50%;
+}
+
+.ns-chip-ellipsis .mud-chip-content {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* The rail: the brand's OWN chrome, in both scales. With no app bar
    above it the rail is the only chrome on screen — the piece the eye reads the install's
    colour off, and its Header (the brand block) and Footer (the session chip) are the two
@@ -1500,10 +1545,15 @@
 /* Every row ends at the same right edge. The vendor sets a nested entry's end padding to
    unset (zero) from the second level down, and chains a selector per depth to do it, so a
    count in Soporte > Tickets sat against the drawer's edge while the group chevrons above
-   kept 16px. Restated with !important because no single selector outranks that chain at
+   kept their chevron clear of the edge. Restated with !important because no single selector outranks that chain at
    every depth. */
 .ns-nav-drawer .mud-nav-link {
-    padding-inline-end: 16px !important;
+    padding-inline-end: var(--ns-nav-inset) !important;
+}
+
+.ns-nav-drawer .mud-navmenu > .mud-nav-item > .mud-nav-link,
+.ns-nav-drawer .mud-navmenu > .mud-nav-group > .mud-nav-link {
+    padding-inline-start: calc(var(--ns-nav-gutter) - var(--ns-nav-inset));
 }
 
 /* How many things are waiting behind an entry. Pushed to the far edge of the row by its own
