@@ -52,6 +52,8 @@ public class GitStorageProvider : IStorageProvider
     {
         ArgumentNullException.ThrowIfNull(content);
 
+        var start = content.CanSeek ? content.Position : 0;
+
         for (var attempt = 1; ; attempt++)
         {
             using var clone = await Clone(target, Reach.WorkingTree, cancelToken);
@@ -76,7 +78,7 @@ public class GitStorageProvider : IStorageProvider
                 throw Refused("the push was rejected: the branch moved while the object was written");
             }
 
-            content.Position = 0;
+            content.Position = start;
         }
     }
 

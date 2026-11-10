@@ -147,6 +147,46 @@ public sealed class GitStorageTests : IDisposable
         Assert.Equal(payload, readBack.ToArray());
     }
 
+    [Fact]
+    public async Task ARetriedPutResendsFromTheStreamsStartOffset()
+    {
+        var bare = Path.Combine(_remote.Path, "store.git");
+        var moved = false;
+
+        // The branch moves while the object is being written, so the first push is rejected.
+        using var content = new MovingStream("0123456789REAL"u8.ToArray(), () =>
+        {
+            var rival = Directory.CreateTempSubdirectory("nsail-rival-").FullName;
+
+            try
+            {
+                Git(rival, "init", "--quiet", "--initial-branch=main");
+                File.WriteAllText(Path.Combine(rival, "rival.txt"), "r");
+                Git(rival, "add", "--all");
+                Git(rival, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "--quiet", "-m", "rival");
+                Git(rival, "push", "--quiet", bare, "HEAD:refs/heads/main");
+                moved = true;
+            }
+            finally
+            {
+                Directory.Delete(rival, recursive: true);
+            }
+        }) { Position = 10 };
+
+        await _provider.Put(Target, "reports/offset.txt", content, null);
+
+        Assert.True(moved);
+
+        using var stored = await _provider.Get(Target, "reports/offset.txt");
+
+        Assert.NotNull(stored);
+
+        using var readBack = new MemoryStream();
+        await stored.Content.CopyToAsync(readBack);
+
+        Assert.Equal("REAL", Encoding.UTF8.GetString(readBack.ToArray()));
+    }
+
     [Theory]
     [InlineData("a/.git/config")]
     [InlineData(".GIT/x")]
@@ -388,5 +428,33 @@ public sealed class GitStorageTests : IDisposable
     public void Dispose()
     {
         _remote.Dispose();
+    }
+
+    sealed class MovingStream(byte[] bytes, Action onFirstRead) : MemoryStream(bytes)
+    {
+        bool _fired;
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            Fire();
+
+            return base.Read(buffer, offset, count);
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            Fire();
+
+            return await base.ReadAsync(buffer, cancellationToken);
+        }
+
+        void Fire()
+        {
+            if (!_fired)
+            {
+                _fired = true;
+                onFirstRead();
+            }
+        }
     }
 }

@@ -60,12 +60,31 @@ public sealed class StorageTenantTests : IDisposable
         Assert.Empty(await a.List($"logos/{Tenant.For("beta").RowKey:N}/"));
     }
 
+    // The filesystem provider does not override Enumerate, so this also runs the contract's default.
+    [Fact]
+    public async Task AnEnumerationStaysInsideTheTenant()
+    {
+        var a = await Manager(Tenant.For("alpha"));
+        var b = await Manager(Tenant.For("beta"));
+        var keyA = $"logos/{Tenant.For("alpha").RowKey:N}/logo.png";
+        var keyB = $"logos/{Tenant.For("beta").RowKey:N}/logo.png";
+
+        await Put(a, keyA, 1);
+        await Put(b, keyB, 2);
+
+        Assert.Equal([keyA], await Keys(a.Enumerate()));
+        Assert.Equal([keyA], await Keys(a.Enumerate("logos/")));
+        Assert.Equal([keyB], await Keys(b.Enumerate("logos/")));
+        Assert.Empty(await Keys(a.Enumerate($"logos/{Tenant.For("beta").RowKey:N}/")));
+    }
+
     [Fact]
     public async Task AScopeInNoTenantReadsNothingAndStoresNothing()
     {
         var none = await Manager(Tenant.None, TenancyScope.Tenant);
 
         Assert.Empty(await none.List());
+        Assert.Empty(await Keys(none.Enumerate()));
         Assert.Null(await none.Get("logos/x/logo.png"));
         Assert.Throws<BusinessException>(() => none.Key("logos", "logo.png"));
         await Assert.ThrowsAsync<BusinessException>(() => Put(none, "logos/x/logo.png", 1));
@@ -92,6 +111,18 @@ public sealed class StorageTenantTests : IDisposable
         await Put(a, a.Key("probe", "x.txt"), 1);
 
         Assert.Single(await a.List("probe/"));
+    }
+
+    static async Task<List<string>> Keys(IAsyncEnumerable<StoredObject> listing)
+    {
+        var keys = new List<string>();
+
+        await foreach (var stored in listing)
+        {
+            keys.Add(stored.Key);
+        }
+
+        return keys;
     }
 
     static async Task Put(StorageManager manager, string key, byte value)

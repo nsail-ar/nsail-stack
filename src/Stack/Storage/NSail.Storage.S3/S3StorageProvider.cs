@@ -6,6 +6,7 @@ using NSail.Storage.Providers;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Xml.Linq;
 
@@ -116,6 +117,18 @@ public class S3StorageProvider : IStorageProvider
     public async Task<IReadOnlyList<StoredObject>> List(StorageTarget target, string? prefix, CancellationToken cancelToken = default)
     {
         var objects = new List<StoredObject>();
+
+        await foreach (var stored in Enumerate(target, prefix, cancelToken))
+        {
+            objects.Add(stored);
+        }
+
+        return objects;
+    }
+
+    // One page in memory at a time; reached through IStorageProvider.Enumerate.
+    public async IAsyncEnumerable<StoredObject> Enumerate(StorageTarget target, string? prefix, [EnumeratorCancellation] CancellationToken cancelToken = default)
+    {
         var token = default(string);
 
         // A container answers at most a thousand keys per call, so the continuation is followed
@@ -141,22 +154,21 @@ public class S3StorageProvider : IStorageProvider
 
             var document = XDocument.Parse(await response.Content.ReadAsStringAsync(cancelToken));
 
-            objects.AddRange(document.Root!
-                .Elements(S3Namespace + "Contents")
-                .Select(entry => new StoredObject
+            foreach (var entry in document.Root!.Elements(S3Namespace + "Contents"))
+            {
+                yield return new StoredObject
                 {
                     Key = (string)entry.Element(S3Namespace + "Key")!,
                     Length = (long?)entry.Element(S3Namespace + "Size") ?? 0,
                     ModifiedAt = (DateTimeOffset?)entry.Element(S3Namespace + "LastModified") ?? default,
-                }));
+                };
+            }
 
             token = (bool?)document.Root.Element(S3Namespace + "IsTruncated") == true
                 ? (string?)document.Root.Element(S3Namespace + "NextContinuationToken")
                 : null;
         }
         while (token is { Length: > 0 });
-
-        return objects;
     }
 
     public async Task Delete(StorageTarget target, string key, CancellationToken cancelToken = default)
