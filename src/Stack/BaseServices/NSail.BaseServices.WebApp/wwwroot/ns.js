@@ -1419,7 +1419,9 @@
     // column. This sheds columns until the row fits: the widest Breakpoint first, rightmost
     // among equals, marking the header and every cell of the column data-ns-shed (ns-mud.css).
     // A column with no Breakpoint, the action column and the Whole column are never candidates,
-    // and a table with no Whole cell, or one drawn stacked as cards, is left exactly as drawn.
+    // and a table with no Whole cell, one drawn stacked as cards, or with a row open for editing
+    // (which frees every column) is left exactly as drawn. A column whose cells are Whole never
+    // sheds, whatever Breakpoint it also declares.
     var shedRungs = ["sm", "md", "lg", "xl"];
     var shedWatched = new WeakSet();
     var shedQueued = false;
@@ -1455,12 +1457,17 @@
             if (cell.hasAttribute("data-ns-shed"))
                 shedMark(table, columns, index, false);
         });
-        if (!table.querySelector("td.ns-col-whole") || getComputedStyle(head).display !== "table-row")
+        var wholes = table.querySelectorAll("td.ns-col-whole");
+        if (!wholes.length || root.classList.contains("ns-table-editing") || !table.tHead.getClientRects().length)
             return;
+        var whole = {};
+        Array.prototype.forEach.call(wholes, function (cell) {
+            whole[Array.prototype.indexOf.call(cell.parentNode.children, cell)] = true;
+        });
         var candidates = [];
         Array.prototype.forEach.call(head.children, function (cell, index) {
             var rung = shedRung(cell);
-            if (rung >= 0 && getComputedStyle(cell).display !== "none")
+            if (rung >= 0 && !whole[index] && getComputedStyle(cell).display !== "none")
                 candidates.push({ index: index, rung: rung });
         });
         candidates.sort(function (a, b) {

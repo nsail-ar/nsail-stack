@@ -499,8 +499,9 @@
 
 /* A column ns.js shed so a Whole column's row fits its container (fitColumns): the header and
    every cell of it carry the mark. One class heavier than the Breakpoint rungs that draw a cell,
-   so it wins whatever the order of the file. */
-.ns-table .mud-table-root .mud-table-cell[data-ns-shed] {
+   so it wins whatever the order of the file; never while a row is open, which frees every column
+   (the open row's cells carry no hide hook, so shedding the rest would shift its inputs). */
+.ns-table:not(.ns-table-editing) .mud-table-root .mud-table-cell[data-ns-shed] {
     display: none;
 }
 

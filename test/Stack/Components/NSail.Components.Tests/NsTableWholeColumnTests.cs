@@ -117,13 +117,16 @@ public sealed class NsTableWholeColumnTests : BunitContext, IAsyncLifetime
         Assert.Contains("b.rung - a.rung", body, StringComparison.Ordinal);
         Assert.Contains("rung >= 0", body, StringComparison.Ordinal);
         Assert.Contains("scroller.scrollWidth > scroller.clientWidth", body, StringComparison.Ordinal);
+        Assert.Contains("ns-table-editing", body, StringComparison.Ordinal);
+        Assert.Contains("table.tHead.getClientRects().length", body, StringComparison.Ordinal);
+        Assert.Contains("!whole[index]", body, StringComparison.Ordinal);
         Assert.Contains("[\"sm\", \"md\", \"lg\", \"xl\"]", script, StringComparison.Ordinal);
     }
 
     [Fact]
     public void AShedColumnIsHiddenAboveTheBreakpointRungs()
     {
-        var block = Rule(HouseStylesheet.Read(), ".ns-table .mud-table-root .mud-table-cell[data-ns-shed] {");
+        var block = Rule(HouseStylesheet.Read(), ".ns-table:not(.ns-table-editing) .mud-table-root .mud-table-cell[data-ns-shed] {");
 
         Assert.Contains("display: none;", block, StringComparison.Ordinal);
     }
