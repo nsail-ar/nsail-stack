@@ -193,7 +193,11 @@ the files it leaves.
   which a restart keeps. A state file that is zero-length or torn is
   moved aside as `<name>.bad-<time>` with a log line and the state starts empty; every write goes to a
   temp file moved over the original. At the first board read the log names each In-Progress story no job holds.
-- **main's red** files, or comments on, the one open red-main story. The merge of its fix on the
+- **main's red** files, or comments on, the one open red-main story of its own: titled
+  `HarnessTexts.MainRedTitle` then `: `, filed by the harness's login or one of `MarkerAuthors`, and
+  not routed by its area labels to another repository. A story merely named like one (a hand's, or
+  another repository's) is never commented, moved or closed by the gate; with only such a story open,
+  a red files the gate's own in Ready. The merge of its fix on the
   judged head is the only evidence of the fix: a red at a head that does not hold the story's newest
   merge (a gate that started before it) leaves a landed story in its column, and its comment says
   so (`HarnessTexts.MainRedWithoutFix`); while no gate verdict sits on a head that holds it Develop

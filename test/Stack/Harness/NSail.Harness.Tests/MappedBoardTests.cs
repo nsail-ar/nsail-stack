@@ -105,6 +105,11 @@ public class MappedBoardTests
             throw new NotSupportedException();
         }
 
+        public Task<IReadOnlyList<OpenStory>> OpenTitled(string prefix, CancellationToken ct = default)
+        {
+            return Task.FromResult<IReadOnlyList<OpenStory>>([new OpenStory(1, "a story", "harness", Worn.ToHashSet())]);
+        }
+
         public Task<int> Children(int story, CancellationToken ct = default)
         {
             throw new NotSupportedException();
@@ -130,6 +135,18 @@ public class MappedBoardTests
         Assert.True(story.Has(NSail.Harness.Labels.P1));
         Assert.True(story.Has("area:sales"));
         Assert.True(story.Has("bug"));
+    }
+
+    [Fact]
+    public async Task AStoryFoundByTitleWearsTheHarnessesLabels()
+    {
+        var board = new MappedBoard(new TeamBoard(), Columns, Tags);
+
+        var story = Assert.Single(await board.OpenTitled("a "));
+
+        Assert.Equal("harness", story.Author);
+        Assert.Contains("area:sales", story.Labels);
+        Assert.Contains(NSail.Harness.Labels.P1, story.Labels);
     }
 
     [Fact]

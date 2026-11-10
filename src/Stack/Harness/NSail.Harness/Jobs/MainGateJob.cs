@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Collections.Concurrent;
+using NSail.Harness.Board;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 using NSail.Harness.Repositories;
@@ -11,8 +12,8 @@ namespace NSail.Harness.Jobs;
 // main's own gate: the project's gate command on main's head, diffed from the last head it found green
 // (the whole build the first time). Whatever lands on main — a merge, a dependency a release moved, a
 // hand's push — is judged before the next round builds on it. Red files, or adds to, the one open
-// red-main story, born with the red labels and Ready, which the planner puts first; a landed one goes
-// back to Ready only when the red head holds its merge.
+// red-main story of its own (OwnReds), born with the red labels and Ready, which the planner puts first;
+// a landed one goes back to Ready only when the red head holds its merge.
 // Its verdict is a commit status on the head it judged.
 public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
 {
@@ -84,7 +85,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
     {
         var log = ctx.Logs.CreateLogger("gate-main");
         var broke = new List<int>();
-        foreach (var story in (await ctx.Board.Stories(ct)).Where(i => i.Title.StartsWith(ctx.Texts.MainRedTitle, StringComparison.Ordinal)))
+        foreach (var story in await OwnReds(ct))
         {
             try
             {
@@ -92,7 +93,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
                 if (Landing.Fixed(await ctx.Repos.PrsOf(story.Number, "open", ct), merge, await Holds(merge, head, dir), head) is not { } evidence) continue;
                 var said = (await ctx.Board.Comments(story.Number, ct)).Any(c => c.At >= merge!.At && c.Body.Contains(Markers.RedFixed, StringComparison.Ordinal));
                 if (!said) await ctx.Board.Comment(story.Number, $"{HarnessTexts.Fill(ctx.Texts.MainRedFixed, ("evidence", evidence))} {ctx.Texts.Signature}\n{Markers.RedFixed}");
-                if (story.Stage != Stages.Closed) await ctx.Board.SetStage(story.Number, Stages.Closed, ct);
+                if (await ctx.Board.StageOf(story.Number, ct) != Stages.Closed) await ctx.Board.SetStage(story.Number, Stages.Closed, ct);
                 await ctx.Board.Close(story.Number, ct);
                 log.LogInformation("#{Story}: red main fixed — {Evidence}; closed", story.Number, evidence);
             }
@@ -103,6 +104,18 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
             }
         }
         return broke;
+    }
+
+    // The open red-main stories this gate filed, oldest first: titled MainRedTitle then `: `, filed by
+    // the harness's login or the fleet's (the marker rule's authors), and not routed by their area labels
+    // to another repository. A story merely named like one is a hand's or another repository's: the gate
+    // neither comments on it, moves it nor closes it.
+    async Task<List<OpenStory>> OwnReds(CancellationToken ct)
+    {
+        var fleet = new HashSet<string>(ctx.Options.MarkerAuthors, StringComparer.OrdinalIgnoreCase) { await ctx.Repo.Login(ct) };
+        return (await ctx.Board.OpenTitled($"{ctx.Texts.MainRedTitle}: ", ct))
+            .Where(s => fleet.Contains(s.Author) && ctx.Repos.RoutedBy(s.Labels) == ctx.Repos.Default)
+            .ToList();
     }
 
     // Whether the gated head holds the merge: the one evidence of a fix, on the green side and the red.
@@ -126,7 +139,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
         var range = since is null ? $"`{head}`" : $"`{since[..8]}..{head[..8]}`";
         var report = HarnessTexts.Fill(ctx.Texts.MainRed, ("why", why), ("sha", head), ("range", range), ("failed", failed), ("log", logPath), ("machine", ctx.Options.Machine));
         var body = $"{report}\n\n{ctx.Texts.Signature}";
-        if (await ctx.Board.FindOpen(title, [], exact: false) is { } n)
+        if ((await OwnReds(ct)).FirstOrDefault() is { Number: var n })
         {
             var stage = await ctx.Board.StageOf(n);
             if (!Stages.Landed.Contains(stage))

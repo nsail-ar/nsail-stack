@@ -368,6 +368,18 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
             .FirstOrDefault();
     }
 
+    public async Task<IReadOnlyList<OpenStory>> OpenTitled(string prefix, CancellationToken ct = default)
+    {
+        var found = await gh.GetAll($"repos/{repo}/issues?state=open&sort=created&direction=asc&per_page=100", ct: ct);
+        return found
+            .Where(i => !i.TryGetProperty("pull_request", out _))
+            .Where(i => (i.GetProperty("title").GetString() ?? "").StartsWith(prefix, StringComparison.Ordinal))
+            .Select(i => new OpenStory(i.GetProperty("number").GetInt32(), i.GetProperty("title").GetString() ?? "",
+                i.TryGetProperty("user", out var u) && u.ValueKind == JsonValueKind.Object && u.TryGetProperty("login", out var l) ? l.GetString() ?? "" : "",
+                i.TryGetProperty("labels", out var ls) && ls.ValueKind == JsonValueKind.Array ? ls.EnumerateArray().Select(x => x.GetProperty("name").GetString()!).ToHashSet() : new HashSet<string>()))
+            .ToList();
+    }
+
     public async Task<int> Children(int story, CancellationToken ct = default)
     {
         var data = await gh.GraphQl("query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){issue(number:$n){subIssuesSummary{total}}}}", new { o = Owner, r = RepoName, n = story }, ct);
