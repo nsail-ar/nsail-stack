@@ -14,9 +14,10 @@ namespace NSail.Components.Tests;
 
 /// <summary>The innermost open thing wins Escape (menus.md): inside the wrapper a routed surface
 /// and the companion region take Escape from, an open dropdown, help, hint or expander answers
-/// the key and stops it, and only the next Escape closes the surface. bUnit bubbles a keydown
-/// through Blazor's own handlers and honours <c>:stopPropagation</c>, which is the mechanism
-/// pinned here.</summary>
+/// the key and stops it, and only the next Escape closes the surface. The browser reads each
+/// <c>:stopPropagation</c> flag after that element's handler returned; bUnit reads them all
+/// before any handler runs, so the order is the browser suites' and the flag at that instant is
+/// what is pinned here.</summary>
 public sealed class EscapeInnermostTests : BunitContext, IAsyncLifetime
 {
     static readonly KeyboardEventArgs Escape = new() { Key = "Escape" };
@@ -103,6 +104,30 @@ public sealed class EscapeInnermostTests : BunitContext, IAsyncLifetime
         await cut.Find(from).KeyDownAsync(Escape);
 
         Assert.DoesNotContain("ns-expander-open", cut.Find(".ns-expander").ClassName, StringComparison.Ordinal);
+        Assert.Equal(0, _closes);
+    }
+
+    /// <summary>The browser reads the stop after the handler returned and before what it deferred
+    /// ran, so the wrapper must still stop the key then; a close in the same dispatch drops it
+    /// and the surface behind closes too.</summary>
+    [Theory]
+    [InlineData("help", ".ns-help button", ".ns-help")]
+    [InlineData("hint", ".ns-help button", ".ns-help")]
+    [InlineData("expander", ".ns-expander-toggle", ".ns-expander")]
+    [InlineData("dropdown", ".field", ".ns-dropdown")]
+    public async Task TheStopStillHolds_WhenReadAfterTheHandlerRan(string inner, string from, string wrapper)
+    {
+        var cut = Render(inner, dropdownOpen: true);
+        if (inner != "dropdown")
+        {
+            await cut.Find(from).ClickAsync(new MouseEventArgs());
+        }
+
+        var dispatch = cut.Find(from).KeyDownAsync(Escape);
+        var stops = cut.Find(wrapper).GetAttribute("blazor:onkeydown:stoppropagation");
+        await dispatch;
+
+        Assert.Equal("", stops);
         Assert.Equal(0, _closes);
     }
 

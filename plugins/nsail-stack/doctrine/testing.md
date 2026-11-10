@@ -228,9 +228,11 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
 
 ### bUnit
 
-- bUnit decides a key's propagation when it dispatches the event, so it cannot pin Blazor's
-  delegator order (the next-turn close of `NsHelp`, `NsHint`, `NsExpander`, `NsDropdown`): that
-  order is the browser suites' to prove. Await `KeyDownAsync` for such a handler, then read dry.
+- bUnit reads every `:stopPropagation` flag before any handler runs, where the browser reads
+  each one after its own handler returned: the delegator order (the next-turn close of `NsHelp`,
+  `NsHint`, `NsExpander`, `NsDropdown`) is the browser suites' to prove, the flag at that instant
+  is bUnit's — dispatch without awaiting, read the `blazor:onkeydown:stoppropagation` attribute,
+  then await. Otherwise await `KeyDownAsync` and read dry.
 - bUnit drives REAL DOM events; `form_input`-style value-writing without events is the
   documented automation trap and proves nothing about bindings.
 - **`AddAuthorization()` cannot test a state CHANGE.** Its doubles answer from a context the
