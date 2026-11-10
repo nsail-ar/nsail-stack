@@ -132,8 +132,15 @@ cells follow through the column's key (`ns-col-whole`); the heading itself still
 stacked card's label), so a long heading buys no width. A computed column has no key to follow:
 its `NsTd` says `Whole` itself.
 
+A table holding a `Whole` column **reserves it before it hides**: the `Breakpoint` rungs measure
+the container and a `Whole` column cannot shrink, so when the row still does not fit, `ns.js`
+(`fitColumns`) hides more columns — the widest `Breakpoint` first, rightmost among equals — until
+it does. The `Whole` column, a column with no `Breakpoint` and the action column never hide this
+way, and a table with no `Whole` column, or one drawn stacked, is laid out by the rungs alone
+(`ns-mud.css`, `data-ns-shed`).
+
 **`Breakpoint` on `NsTh`** (`NsSize`, default `None`) reads *"the column appears from this
-container width up"*. A six-column grid gives up its least important columns one at a time
+container width up"*. A `Whole` column in the table can raise that width (see above). A six-column grid gives up its least important columns one at a time
 (Parties keeps `DisplayName` always, brings `TaxId` back at `sm`, `Kind` at `md`,
 `Name`/`LastName` at `lg`). Declared once, on the header: **`NsTh` and `NsTd` never reference
 each other — they meet through the localization key both derive from their `For` expression.**

@@ -97,6 +97,52 @@ public sealed class NsTableWholeColumnTests : BunitContext, IAsyncLifetime
         Assert.Contains("white-space: normal;", Rule(css[at..], Selector), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ATableWithNoWholeColumnHasNothingForTheGridToReserve()
+    {
+        var cut = Render<StackedBreakpointHost>();
+
+        Assert.Empty(cut.FindAll(".ns-col-whole"));
+    }
+
+    [Fact]
+    public void TheGridShedsTheWidestBreakpointFirstAndNeverTheOthers()
+    {
+        var script = ReadScript();
+        var start = script.IndexOf("function fitColumns(root)", StringComparison.Ordinal);
+        Assert.True(start >= 0, "fitColumns was not found in ns.js.");
+        var body = script[start..script.IndexOf("function fitTables()", start, StringComparison.Ordinal)];
+
+        Assert.Contains("td.ns-col-whole", body, StringComparison.Ordinal);
+        Assert.Contains("b.rung - a.rung", body, StringComparison.Ordinal);
+        Assert.Contains("rung >= 0", body, StringComparison.Ordinal);
+        Assert.Contains("scroller.scrollWidth > scroller.clientWidth", body, StringComparison.Ordinal);
+        Assert.Contains("[\"sm\", \"md\", \"lg\", \"xl\"]", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AShedColumnIsHiddenAboveTheBreakpointRungs()
+    {
+        var block = Rule(HouseStylesheet.Read(), ".ns-table .mud-table-root .mud-table-cell[data-ns-shed] {");
+
+        Assert.Contains("display: none;", block, StringComparison.Ordinal);
+    }
+
+    static string ReadScript()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.NotNull(directory);
+
+        return File.ReadAllText(Path.Combine(directory.FullName, "src/Stack/BaseServices/NSail.BaseServices.WebApp/wwwroot/ns.js"))
+            .ReplaceLineEndings("\n");
+    }
+
     static string Rule(string css, string selector)
     {
         var start = css.IndexOf(selector, StringComparison.Ordinal);

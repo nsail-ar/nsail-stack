@@ -1414,5 +1414,87 @@
         setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
 
+    // A table holding a Whole column cannot shrink it, so the row can outgrow its container
+    // while the Breakpoint rungs (which measure the container, not the row) still show every
+    // column. This sheds columns until the row fits: the widest Breakpoint first, rightmost
+    // among equals, marking the header and every cell of the column data-ns-shed (ns-mud.css).
+    // A column with no Breakpoint, the action column and the Whole column are never candidates,
+    // and a table with no Whole cell, or one drawn stacked as cards, is left exactly as drawn.
+    var shedRungs = ["sm", "md", "lg", "xl"];
+    var shedWatched = new WeakSet();
+    var shedQueued = false;
+
+    function shedRung(cell) {
+        for (var i = shedRungs.length - 1; i >= 0; i--) {
+            if (cell.classList.contains("d-c-" + shedRungs[i] + "-table-cell"))
+                return i;
+        }
+        return -1;
+    }
+
+    function shedMark(table, columns, index, on) {
+        table.querySelectorAll("tr").forEach(function (row) {
+            var cell = row.children.length === columns ? row.children[index] : null;
+            if (!cell)
+                return;
+            if (on)
+                cell.setAttribute("data-ns-shed", "");
+            else
+                cell.removeAttribute("data-ns-shed");
+        });
+    }
+
+    function fitColumns(root) {
+        var scroller = root.querySelector(".mud-table-container");
+        var table = root.querySelector("table");
+        var head = table && table.querySelector("thead tr");
+        if (!scroller || !head)
+            return;
+        var columns = head.children.length;
+        Array.prototype.forEach.call(head.children, function (cell, index) {
+            if (cell.hasAttribute("data-ns-shed"))
+                shedMark(table, columns, index, false);
+        });
+        if (!table.querySelector("td.ns-col-whole") || getComputedStyle(head).display !== "table-row")
+            return;
+        var candidates = [];
+        Array.prototype.forEach.call(head.children, function (cell, index) {
+            var rung = shedRung(cell);
+            if (rung >= 0 && getComputedStyle(cell).display !== "none")
+                candidates.push({ index: index, rung: rung });
+        });
+        candidates.sort(function (a, b) {
+            return b.rung - a.rung || b.index - a.index;
+        });
+        for (var i = 0; i < candidates.length && scroller.scrollWidth > scroller.clientWidth; i++)
+            shedMark(table, columns, candidates[i].index, true);
+    }
+
+    function fitTables() {
+        shedQueued = false;
+        document.querySelectorAll(".ns-table").forEach(function (root) {
+            if (!shedWatched.has(root)) {
+                var scroller = root.querySelector(".mud-table-container");
+                if (scroller && typeof ResizeObserver === "function") {
+                    shedWatched.add(root);
+                    new ResizeObserver(function () {
+                        fitColumns(root);
+                    }).observe(scroller);
+                }
+            }
+            fitColumns(root);
+        });
+    }
+
+    function queueFit() {
+        if (shedQueued)
+            return;
+        shedQueued = true;
+        requestAnimationFrame(fitTables);
+    }
+
+    new MutationObserver(queueFit).observe(document.documentElement, { childList: true, subtree: true });
+    window.addEventListener("resize", queueFit);
+
     window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download };
 })();
