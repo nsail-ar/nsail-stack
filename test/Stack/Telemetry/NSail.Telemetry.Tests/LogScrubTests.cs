@@ -65,6 +65,18 @@ public sealed class LogScrubTests
         Assert.DoesNotContain(Clinical, record.Flattened, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Theory]
+    [InlineData("/calendar/feeds/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
+    [InlineData("/account/sign-in/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM")]
+    [InlineData("/appointments/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZjAxMjM/calendar.ics")]
+    public void A_token_in_a_logged_path_does_not_travel(string path)
+    {
+        var record = Scrubbed(logger => logger.LogInformation("Request starting {Path}", path));
+
+        Assert.Equal("Request starting {Path}", record.Body);
+        Assert.DoesNotContain("Zm9vYmFy", record.Flattened, StringComparison.Ordinal);
+    }
+
     // An id and a timing are what the story leaves a log free to carry, and their types are
     // what say so — nothing in the tree can hand a Guid or a TimeSpan a name. A code cannot
     // be told from prose that way, so it rides the span instead, which the traceId joins.
