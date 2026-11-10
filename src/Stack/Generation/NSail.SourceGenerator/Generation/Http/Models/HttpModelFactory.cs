@@ -361,7 +361,9 @@ public static class HttpModelFactory
                 Type = ToOptionalType(type),
                 BindingSource = source,
                 IsOptional = true,
-                ValueAccess = $"{name}.Value"
+                ValueAccess = $"{name}.Value",
+                IsCollection = elementType is not null,
+                ElementType = elementType
             };
         }
 
@@ -510,7 +512,7 @@ public static class HttpModelFactory
 
             var token = TokenName(segment.Substring(1, segment.Length - 2));
 
-            if (binding.TryGetValue(token.ToLower(), out BindingModel? bindingModel))
+            if (binding.TryGetValue(token.ToLowerInvariant(), out BindingModel? bindingModel))
             {
                 route.Segments.Add(new SegmentModel
                 {

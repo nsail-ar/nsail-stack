@@ -4,6 +4,7 @@
 using Microsoft.AspNetCore.Routing;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using NSail.Messaging;
 using NSail.Messaging.Annotations;
 using NSail.SourceGeneration.Annotations;
 using NSail.SourceGeneration.Testing;
@@ -130,5 +131,46 @@ public class HttpClientsTests
 
         Assert.Contains("api/v1/samples/external/{HttpRequestMessageBuilder.Segment(message.Id)}", generated);
         Assert.DoesNotContain("{message.Id}", generated);
+    }
+
+    [Theory]
+    [InlineData("public System.Collections.Immutable.ImmutableArray<string> Tags { get; set; }")]
+    [InlineData("public required System.Collections.Immutable.ImmutableArray<string> Tags { get; set; }")]
+    public void A_struct_collection_in_the_query_is_sent_as_its_elements(string member)
+    {
+        var builder = new CompilationUnitBuilder()
+            .AddSource("StructQuery.cs", $$"""
+                using Microsoft.Extensions.DependencyInjection;
+                using NSail.Messaging;
+                using NSail.Messaging.Annotations;
+                using NSail.SourceGeneration.Annotations;
+
+                namespace Acme.Clinic.Items;
+
+                [Http(Method.Get, "api/items")]
+                public class FindItems : IMessage
+                {
+                    [AsQuery]
+                    {{member}}
+                }
+
+                public static partial class Clients
+                {
+                    [Generated(Http.Clients)]
+                    public static partial void AddClinicHttp(this IServiceCollection services);
+                }
+                """)
+            .AddFrameworkReferences()
+            .AddContainingAssembly<GeneratedAttribute>()
+            .AddContainingAssembly<IMessage>()
+            .AddContainingAssembly<HttpAttribute>();
+
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new HttpClientsSourceGenerator());
+
+        driver = driver.RunGeneratorsAndUpdateCompilation(builder.Build("StructQueryTestAssembly"), out _, out _);
+
+        var generated = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
+
+        Assert.Contains("(System.Collections.Generic.IEnumerable<string>?)message.Tags", generated);
     }
 }

@@ -3,6 +3,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
@@ -163,11 +164,70 @@ static class SdkReader
         return null;
     }
 
-    // Constructs .NET reads and JavaScript does not: inline options, \A \z \Z \G anchors, atomic
-    // groups, possessive quantifiers, character-class subtraction (a `-[` inside an open class).
+    // Constructs .NET reads and JavaScript does not: inline options, \A \z \Z \G anchors (an
+    // unescaped backslash only: `\\A` is a literal backslash and an A), atomic groups,
+    // character-class subtraction (a `-[` inside an open class). Possessive quantifiers are
+    // matched apart, on the pattern with its classes emptied, because `[*+]+` is a class.
     static readonly Regex DotNetOnly = new(
-        @"\(\?[imnsx-]+[:)]|\\[AzZG]|\(\?>|(?<!\\)[*+?}]\+|\[[^\]]*-\[",
+        @"\(\?[imnsx-]+[:)]|(?<!\\)(?:\\\\)*\\[AzZG]|\(\?>|\[[^\]]*-\[",
         RegexOptions.CultureInvariant);
+
+    static readonly Regex Possessive = new(
+        @"(?<!\\)(?:\\\\)*[*+?}]\+",
+        RegexOptions.CultureInvariant);
+
+    static bool IsDotNetOnly(string pattern)
+    {
+        return DotNetOnly.IsMatch(pattern) || Possessive.IsMatch(WithoutClasses(pattern));
+    }
+
+    static string WithoutClasses(string pattern)
+    {
+        var result = new StringBuilder();
+
+        for (var i = 0; i < pattern.Length; i++)
+        {
+            var c = pattern[i];
+
+            if (c == '\\' && i + 1 < pattern.Length)
+            {
+                result.Append(c).Append(pattern[++i]);
+
+                continue;
+            }
+
+            if (c != '[')
+            {
+                result.Append(c);
+
+                continue;
+            }
+
+            // A `]` right after the opening (or after its `^`) is a member, not the end.
+            var j = i + 1;
+
+            if (j < pattern.Length && pattern[j] == '^')
+            {
+                j++;
+            }
+
+            if (j < pattern.Length && pattern[j] == ']')
+            {
+                j++;
+            }
+
+            while (j < pattern.Length && pattern[j] != ']')
+            {
+                j += pattern[j] == '\\' ? 2 : 1;
+            }
+
+            result.Append("[]");
+
+            i = j;
+        }
+
+        return result.ToString();
+    }
 
     static string RuleName(INamedTypeSymbol attribute)
     {
@@ -176,7 +236,7 @@ static class SdkReader
 
     static FieldShape WithPattern(FieldShape field, INamedTypeSymbol message, IPropertySymbol property, string pattern, string rule, List<string> serverRules)
     {
-        if (!DotNetOnly.IsMatch(pattern))
+        if (!IsDotNetOnly(pattern))
         {
             return field with { Pattern = pattern };
         }
