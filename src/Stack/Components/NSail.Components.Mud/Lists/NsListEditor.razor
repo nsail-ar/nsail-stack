@@ -21,11 +21,11 @@
             }
             @if (Editable && NewItem is not null)
             {
-                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-cells-add" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy" OnClick="Add" />
+                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-cells-add" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsBusy || IsRunning" OnClick="Add" />
             }
             else if (ShowOnAdd)
             {
-                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" OnClick="RaiseOnAdd" />
+                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Add" Label="@Strings.Translate("Actions.Add")" Disabled="IsRunning" OnClick="RaiseOnAdd" />
             }
         </NsStack>
     </NsStack>
@@ -38,7 +38,7 @@
    because the hand's way in is the one the page drew (hosts.md, the one seat Agregar has). *@
 @if (Title is null && Editable && NewItem is not null)
 {
-    <button type="button" class="ns-cells-add ns-cells-add-undrawn" tabindex="-1" aria-hidden="true" disabled="@IsBusy" @onclick="Add"></button>
+    <button type="button" class="ns-cells-add ns-cells-add-undrawn" tabindex="-1" aria-hidden="true" disabled="@(IsBusy || IsRunning)" @onclick="Add"></button>
 }
 
 @if (Items.Count == 0)
@@ -68,8 +68,8 @@ else
                                 @ItemEditor?.Invoke(item)
                             </div>
                             <NsStack Horizontal Gap="NsSize.Sm" Align="NsAlign.Center" Class="ns-list-editor-acts">
-                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-commit" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" OnClick="@(() => Commit(item))" />
-                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" OnClick="@(() => Cancel(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-commit" Icon="@NsIcons.Check" Label="@Strings.Translate("Actions.Confirm")" Disabled="IsRunning" OnClick="@(() => Commit(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Icon="@NsIcons.Close" Label="@Strings.Translate("Actions.Cancel")" Disabled="IsRunning" OnClick="@(() => Cancel(item))" />
                             </NsStack>
                         </CascadingValue>
                     </CascadingValue>
@@ -104,7 +104,7 @@ else
                             <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-edit" Icon="@NsIcons.Edit" Label="@Strings.Translate("Actions.Edit")" Chord="@NsKeys.Edit" Disabled="IsBusy" OnClick="@(() => Edit(item))" />
                             @if (OnRemove.HasDelegate)
                             {
-                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-delete" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy" OnClick="@(() => Remove(item))" />
+                                <NsButton As="NsAs.Inline" Breakpoint="NsBreakpoint.Never" Class="ns-row-delete" Icon="@NsIcons.Delete" Label="@Strings.Translate("Actions.Delete")" Disabled="IsBusy || IsRunning" OnClick="@(() => Remove(item))" />
                             }
                         </NsStack>
                     }

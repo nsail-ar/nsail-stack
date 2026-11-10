@@ -65,6 +65,24 @@ public sealed class NsFieldHardeningTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public async Task ARefusalDoesNotFollowTheFieldToAnotherDocument()
+    {
+        var cut = Render<DurationRebindHost>();
+        var field = cut.FindComponent<NsDurationField<TimeSpan?>>().Instance;
+
+        await cut.InvokeAsync(() => cut.Find("input").Input("999999999"));
+
+        Assert.NotEmpty(cut.FindAll(".mud-input-error"));
+        Assert.False(cut.Instance.Context.Validate());
+
+        await cut.InvokeAsync(cut.Instance.Rebind);
+
+        Assert.Same(field, cut.FindComponent<NsDurationField<TimeSpan?>>().Instance);
+        Assert.Empty(cut.FindAll(".mud-input-error"));
+        Assert.True(cut.Instance.Context.Validate());
+    }
+
+    [Fact]
     public async Task AValidDurationStillCommits()
     {
         TimeSpan? held = null;

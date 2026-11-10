@@ -23,8 +23,21 @@ public readonly record struct Glyph
     /// refuses rather than cleans reads this, because it only ever sees the Glyph.</summary>
     public bool Altered { get; }
 
+    /// <summary>How much markup a glyph is. An icon is a path, not a picture: past this the value
+    /// is refused without being parsed, so a body the host reads off the wire never reaches the
+    /// XML parser at the size the request allowed.</summary>
+    public const int MaxLength = 8000;
+
     public Glyph(string markup)
     {
+        if (markup is { Length: > MaxLength })
+        {
+            Markup = string.Empty;
+            Altered = true;
+
+            return;
+        }
+
         Markup = SvgSanitizer.Sanitize(markup, out var clean);
         Altered = !clean;
     }

@@ -43,8 +43,9 @@ reached by Tab and does not answer Enter.
 The Stack proves in bUnit what the DOM expresses: the keys the vendor binds in Blazor
 (`KeyboardContractLookupTests` for a browsed lookup, `NsAutocompleteReaderEnterTests` for the
 `Lazy` one, `NsLookupCreateKeyboardTests` for the create entry), and the structure a Tab stop needs — a native element, no `tabindex="-1"`, not
-disabled (`KeyboardContractSelectTests`, the sortable heading in `NsTableOrderTests`, the toggle
-in `NsCheckBoxDirtyTrackingTests`). The controls that lack that structure are the Known reds
+disabled (`KeyboardContractSelectTests`, the sortable heading in `NsTableOrderTests`, a row's actions in
+`NsTableActionsChromeTests`, the pager's controls in `NsTablePagerShrinkTests`, the date box in
+`NsDateFieldTests`, a menu's trigger in `NsMenuTests`, the toggle in `NsCheckBoxDirtyTrackingTests`). The controls that lack that structure are the Known reds
 below, each pinned as it is. A key the vendor reads through its JS key interceptor never reaches
 bUnit; those keys, the visible ring and the whole-page order are the browser walk's, in each
 product.
@@ -60,6 +61,6 @@ product.
 ## Owed
 
 Not red, not yet proved: Arrow Down / Enter / Space / Esc on `NsSelect` and `NsMultiSelect`
-(the vendor's JS interceptor), and the rows for the date and time fields, the other `NsTable`
-rows (row action, pager), menus, dialogs and wizards, tabs. Each is the browser walk's or a bUnit
+(the vendor's JS interceptor), the date-and-time and time boxes' structure, opening and
+dismissing a menu by key, dialogs and wizards, tabs. Each is the browser walk's or a bUnit
 case still to write; none is claimed by the tests above.

@@ -107,6 +107,19 @@ public sealed class NsDateFieldTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void TheBoxIsANativeInputInTheTabOrder()
+    {
+        Compose("es");
+
+        var input = Render<NsDateField<DateOnly?>>().Find("input");
+
+        Assert.Equal("INPUT", input.TagName);
+        Assert.NotEqual("-1", input.GetAttribute("tabindex"));
+        Assert.Null(input.GetAttribute("disabled"));
+        Assert.Null(input.GetAttribute("readonly"));
+    }
+
+    [Fact]
     public void AnOffsetValue_ShowsTheDayOnTheLocalCalendar()
     {
         Compose("es");

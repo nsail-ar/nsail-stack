@@ -81,22 +81,28 @@
         };
     }
 
-    AlignItems GetAlign() => Align switch
+    AlignItems GetAlign()
     {
-        NsAlign.Start => AlignItems.Start,
-        NsAlign.Center => AlignItems.Center,
-        NsAlign.End => AlignItems.End,
-        NsAlign.Baseline => AlignItems.Baseline,
-        _ => AlignItems.Stretch
-    };
+        return Align switch
+        {
+            NsAlign.Start => AlignItems.Start,
+            NsAlign.Center => AlignItems.Center,
+            NsAlign.End => AlignItems.End,
+            NsAlign.Baseline => AlignItems.Baseline,
+            _ => AlignItems.Stretch
+        };
+    }
 
-    Justify GetJustify() => Justify switch
+    Justify GetJustify()
     {
-        NsAlign.Center => MudBlazor.Justify.Center,
-        NsAlign.End => MudBlazor.Justify.FlexEnd,
-        NsAlign.SpaceBetween => MudBlazor.Justify.SpaceBetween,
-        NsAlign.SpaceAround => MudBlazor.Justify.SpaceAround,
-        NsAlign.SpaceEvenly => MudBlazor.Justify.SpaceEvenly,
-        _ => MudBlazor.Justify.FlexStart
-    };
+        return Justify switch
+        {
+            NsAlign.Center => MudBlazor.Justify.Center,
+            NsAlign.End => MudBlazor.Justify.FlexEnd,
+            NsAlign.SpaceBetween => MudBlazor.Justify.SpaceBetween,
+            NsAlign.SpaceAround => MudBlazor.Justify.SpaceAround,
+            NsAlign.SpaceEvenly => MudBlazor.Justify.SpaceEvenly,
+            _ => MudBlazor.Justify.FlexStart
+        };
+    }
 }

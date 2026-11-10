@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using NSail.Localization;
 
 namespace NSail.Components;
@@ -67,11 +68,18 @@ public partial class NsDurationField<TValue>
 
     TValue? _refusedOver;
 
+    EditContext? _seenContext;
+
     // A value the page writes behind the field replaces what the refusal was about; only a
     // keystroke can raise it, so this is the one seam that can lift it otherwise.
     protected override void OnParametersSet()
     {
-        var lifted = _tooLong && !EqualityComparer<TValue?>.Default.Equals(Value, _refusedOver);
+        // A form the page rebinds the field to has refused nothing yet, whatever the last one did.
+        var rebound = !ReferenceEquals(_seenContext, EditContext);
+
+        _seenContext = EditContext;
+
+        var lifted = _tooLong && (rebound || !EqualityComparer<TValue?>.Default.Equals(Value, _refusedOver));
 
         if (lifted)
         {

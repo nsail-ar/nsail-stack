@@ -1,0 +1,103 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components.Tests.Fixtures
+
+@using MudBlazor
+@using NSail.Components
+@using NSail.Paging
+@using NSail.Testing.Models
+
+@* A scrolling grid with a row editor whose commit and remove handlers can be held open, so what
+   the controls do while the host's Runner is busy is the fixture's whole question. *@
+<MudPopoverProvider />
+
+@{
+    RenderFragment<TestModel> editor = row =>
+        @<text>
+            <NsTd For="() => row.Name">
+                <NsTextField @bind-Value="row.Name" Label="" />
+            </NsTd>
+        </text>;
+}
+
+<NsTable TRow="TestModel" Rows="Page" Title="Lineas" Mode="NsTableMode.Scroll"
+         RowEditor="editor" NewRow="NewRow" OnQuery="Query" OnRowCommit="Commit" OnRowRemove="Remove">
+    <HeaderContent>
+        <NsTh For="() => context.Name" />
+    </HeaderContent>
+    <RowTemplate Context="row">
+        <NsTd For="() => row.Name">@row.Name</NsTd>
+    </RowTemplate>
+</NsTable>
+
+@code {
+
+    readonly List<TestModel> _rows = [new TestModel { Name = "Ana" }];
+
+    /// <summary>Holds the commit and remove handlers open until released.</summary>
+    public TaskCompletionSource? Gate { get; set; }
+
+    /// <summary>Which queries throw, counting from one.</summary>
+    [Parameter]
+    public ISet<int> Failing { get; set; } = new HashSet<int>();
+
+    public int Queries { get; private set; }
+
+    public int Commits { get; private set; }
+
+    public int Removes { get; private set; }
+
+    DataPage<TestModel> Page { get; set; } = DataPage<TestModel>.Empty();
+
+    TestModel NewRow()
+    {
+        var row = new TestModel { Name = "Nuevo" };
+
+        _rows.Add(row);
+
+        return row;
+    }
+
+    async Task Query(QueryEventArgs args)
+    {
+        Queries++;
+
+        if (Failing.Contains(Queries))
+        {
+            throw new InvalidOperationException("The read failed.");
+        }
+
+        var skip = args.PageIndex * args.PageSize;
+
+        Page = new DataPage<TestModel>
+        {
+            Items = _rows.Skip(skip).Take(args.PageSize).ToList(),
+            PageIndex = args.PageIndex,
+            PageSize = args.PageSize,
+            TotalCount = 60
+        };
+
+        await Task.Yield();
+    }
+
+    async Task Commit(RowEditEventArgs<TestModel> args)
+    {
+        Commits++;
+
+        if (Gate is not null)
+        {
+            await Gate.Task;
+        }
+    }
+
+    async Task Remove(RowEditEventArgs<TestModel> args)
+    {
+        Removes++;
+
+        if (Gate is not null)
+        {
+            await Gate.Task;
+        }
+    }
+}

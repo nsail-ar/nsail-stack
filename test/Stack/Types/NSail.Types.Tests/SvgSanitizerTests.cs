@@ -121,4 +121,34 @@ public class SvgSanitizerTests
         Assert.True(new Glyph("<svg onload=x>").Altered);
         Assert.False(new Glyph("<path d=\"M0 0\"/>").Altered);
     }
+
+    [Fact]
+    public void AGlyphPastTheBoundIsRefusedBeforeAnyParsing()
+    {
+        var markup = "<path d=\"" + new string('M', Glyph.MaxLength) + "\"/>";
+        var glyph = new Glyph(markup);
+
+        Assert.True(glyph.Altered);
+        Assert.Equal(string.Empty, glyph.Markup);
+    }
+
+    [Fact]
+    public void AGlyphAtTheBoundIsStillRead()
+    {
+        var fill = new string('M', Glyph.MaxLength - "<path d=\"\"/>".Length);
+        var glyph = new Glyph("<path d=\"" + fill + "\"/>");
+
+        Assert.False(glyph.Altered);
+        Assert.NotEqual(string.Empty, glyph.Markup);
+    }
+
+    [Fact]
+    public void AnOversizedGlyphOnTheWireIsRefusedWithoutBeingParsed()
+    {
+        var json = JsonSerializer.Serialize("<path d=\"" + new string('M', Glyph.MaxLength * 100) + "\"/>");
+        var glyph = JsonSerializer.Deserialize<Glyph>(json);
+
+        Assert.True(glyph.Altered);
+        Assert.Equal(string.Empty, glyph.Markup);
+    }
 }

@@ -78,7 +78,10 @@
 
     // Responsive is deliberately not used: it closes itself below the breakpoint,
     // which would desync the URL-driven surface. The variant is picked here instead.
-    DrawerVariant GetVariant() => IsDocked ? DrawerVariant.Persistent : DrawerVariant.Temporary;
+    DrawerVariant GetVariant()
+    {
+        return IsDocked ? DrawerVariant.Persistent : DrawerVariant.Temporary;
+    }
 
     // Always clips below the app bar when the layout has one; with no Header slot
     // there is no bar to sit under, and MudBlazor's own clipped-always
@@ -88,27 +91,33 @@
         return (LayoutState?.HasHeader ?? true) ? DrawerClipMode.Always : DrawerClipMode.Never;
     }
 
-    string GetWidth() => (Surface?.Size ?? Size) switch
+    string GetWidth()
     {
-        NsSize.Xs => "320px",
-        NsSize.Sm => "400px",
-        NsSize.Md => "480px",
-        NsSize.Lg => "720px",
-        // Xl means as wide as the surface may be — never full-bleed. 100% resolves against
-        // the drawer's own positioning box (the viewport, being fixed), and .ns-drawer's
-        // max-width in ns-mud.css is what turns "as wide as it may be" into a real number:
-        // the viewport less the nav gutter on desktop, the whole viewport below the nav's
-        // docking breakpoint. The cap lives there rather than here because it is the rule
-        // for every size, not for this one — an Xxl aside on a 1280px laptop would cover the
-        // menu just as thoroughly.
-        NsSize.Xl => "100%",
-        NsSize.Xxl => "1140px",
-        _ => "480px"
-    };
+        return (Surface?.Size ?? Size) switch
+        {
+            NsSize.Xs => "320px",
+            NsSize.Sm => "400px",
+            NsSize.Md => "480px",
+            NsSize.Lg => "720px",
+            // Xl means as wide as the surface may be — never full-bleed. 100% resolves against
+            // the drawer's own positioning box (the viewport, being fixed), and .ns-drawer's
+            // max-width in ns-mud.css is what turns "as wide as it may be" into a real number:
+            // the viewport less the nav gutter on desktop, the whole viewport below the nav's
+            // docking breakpoint. The cap lives there rather than here because it is the rule
+            // for every size, not for this one — an Xxl aside on a 1280px laptop would cover the
+            // menu just as thoroughly.
+            NsSize.Xl => "100%",
+            NsSize.Xxl => "1140px",
+            _ => "480px"
+        };
+    }
 
-    string GetClasses() => new NsClassBuilder("ns-drawer")
-        .Add(Class)
-        .ToString();
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-drawer")
+            .Add(Class)
+            .ToString();
+    }
 
     // Docked and temporary are two different places in the stack, and MudBlazor already ranks
     // them: a docked drawer is chrome BESIDE the page and sits under the app bar
