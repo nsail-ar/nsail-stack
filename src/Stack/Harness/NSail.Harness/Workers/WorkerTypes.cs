@@ -77,19 +77,22 @@ public static class WorkerTypes
                 ["Done"] = [MoveTo(Stages.Merged), Remove(Labels.Stalled)],
             }, Minutes: 45),
         // Opened, Pushed: the gate decides what follows. Ruling: the builder's question goes back to
-        // the analyst. HandedOff: the next voyage takes it. Landed: it rode main meanwhile.
+        // the analyst. Reanalyze: a release red's question, which goes to the analyst with no hold.
+        // HandedOff: the next voyage takes it. Landed: it rode main meanwhile.
         ["Develop"] = new("Develop", WorkKind.Dev, true, true,
             new FilterOptions { Status = Stages.Ready, SubIssues = "0", Pr = "none", Unblocked = true, Labels = Holds },
-            [.. WorkerType.BaseEvents, "Opened", "Pushed", "Ruling", "HandedOff", "Landed"],
+            [.. WorkerType.BaseEvents, "Opened", "Pushed", "Ruling", "Reanalyze", "HandedOff", "Landed"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {
                 ["Ruling"] = [Add(Labels.Ruling), MoveTo(Stages.Analyze)],
+                ["Reanalyze"] = [MoveTo(Stages.Analyze)],
                 ["HandedOff"] = [MoveTo(Stages.Ready)],
                 ["Landed"] = [MoveTo(Stages.Merged)],
             }, Minutes: 240),
         // Clean: merged, nothing of the story left open. StillOpen: merged, another PR of it open.
         // Findings: Ready again, where the planner sends it to a round. Ruling: the PR found the story
         // itself wrong, and it waits for a hand's word: the PR stays, so a review would read it again.
+        // A release red waits for no hand: its crack goes back to the builder as Findings.
         ["Review"] = new("Review", WorkKind.Review, true, true,
             new FilterOptions { Status = PrStages, Pr = "open", Checks = "unread", Labels = Holds },
             [.. WorkerType.BaseEvents, "Clean", "StillOpen", "Findings", "Ruling"],

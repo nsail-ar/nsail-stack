@@ -169,7 +169,11 @@ the files it leaves.
   start of a story the andon would take — it is the operator's switch. The status page shows the
   product, since when and what it waits for (`/status` carries it as `Last.Plan.Andon`). It lifts when
   the red story ships (its walk moves it to Released, or its product published a release after the fix merged) or a hand closes it; a story a hand holds
-  (`ruling`, `hand`, `blocked`, `stalled`) keeps it lit and says so.
+  (`ruling`, `hand`, `blocked`, `stalled`) keeps it lit and says so. A red story (a suite's or a red
+  main's, `HarnessTexts.IsRed`) never asks a hand: a builder's question sends it to Analyze with no
+  `ruling` (event `Reanalyze`; with a PR open, the next round decides it), a reviewer's crack goes
+  back to its builder as `Findings`, and an analysis that ends `ruling` is refused and counted as a
+  death (`RedQuestion`, `RedRulingRefused`).
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the

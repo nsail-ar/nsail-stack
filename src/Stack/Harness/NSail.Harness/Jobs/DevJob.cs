@@ -424,6 +424,14 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         {
             if (await NothingToBuild(question) is { } landed) return landed;
             await board.Comment(n, JobContext.Signed(question, Seat));
+            if (ctx.Texts.IsRed(title))
+            {
+                // The analyst only takes a story with no open PR: with one, the next round decides it.
+                await board.Comment(n, $"{ctx.Texts.RedQuestion} {ctx.Texts.Signature}");
+                return (await repo.PrsOf(n, "open", ct)).Count == 0
+                    ? new Ending("a release red's question — to the analyst", "Reanalyze")
+                    : new Ending("a release red's question — the next round decides it", "HandedOff");
+            }
             return new Ending("ruling", "Ruling");
         }
 

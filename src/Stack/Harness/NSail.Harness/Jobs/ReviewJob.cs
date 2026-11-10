@@ -149,6 +149,11 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
         if (kind == "ruling")
         {
             await board.RemoveLabel(story, Labels.Review);
+            if (ctx.Texts.IsRed((await board.Story(story, ct)).Title))
+            {
+                await board.Comment(story, $"{ctx.Texts.RedQuestion} {ctx.Texts.Signature}\n\n{body}");
+                return new Ending("a release red's crack — back to its builder", "Findings");
+            }
             await board.Comment(story, $"{HarnessTexts.Fill(ctx.Texts.ReviewStoryCrack, ("pr", prNumber), ("branch", head))}\n\n{body}");
             return new Ending("ruling — back to Analyze", "Ruling");
         }
