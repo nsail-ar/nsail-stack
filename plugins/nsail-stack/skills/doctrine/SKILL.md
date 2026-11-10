@@ -1,6 +1,6 @@
 ---
 name: doctrine
-description: The NSail Stack's written architecture — which page to read before touching a message, handler, entity, migration, tenancy, permission, screen, Ns* component, test, React client, localization key or project layout in an NSail codebase. Use before editing any code that builds on the Stack (kits, apps or the Stack itself), whenever a CLAUDE.md routes "the Stack's doctrine", or when asked how the Stack wants something done.
+description: The Stack's architecture — which page to read before touching a message, handler, entity, migration, tenancy, permission, screen, Ns* component, test, React client, localization key or project layout. Use before editing code that builds on the Stack, when a CLAUDE.md routes the Stack's doctrine, or when asked how the Stack wants something done.
 ---
 
 # The Stack's doctrine
