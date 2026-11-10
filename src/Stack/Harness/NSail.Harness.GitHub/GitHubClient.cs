@@ -71,7 +71,7 @@ public sealed partial class GitHubClient(HttpClient http)
     // A read's last answer, by its address, while its ETag stands: sent back as If-None-Match, an
     // unchanged answer comes back 304, which GitHub does not count against the token's rate limit.
     // Every pass reads the same board, so this is what keeps an idle harness inside its quota.
-    const int KeptReads = 2048;
+    const int KeptReads = 512;
     readonly ConcurrentDictionary<string, Kept> _kept = new();
 
     sealed record Kept(string ETag, JsonElement Body, string? Next);
