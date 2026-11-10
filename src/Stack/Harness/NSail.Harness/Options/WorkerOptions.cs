@@ -47,8 +47,13 @@ public sealed class WorkerOptions
     public Dictionary<string, CommandOptions> Mcp { get; set; } = [];
     public List<string> Tools { get; set; } = [];
 
-    // A Test's story waiting on a person is walked again when someone wrote on it since its last
-    // walk, or after these minutes (an answer on the tenant leaves no comment); none, six hours.
+    // A command run once when the harness starts, before its first pass: what the worker's jobs need
+    // on the machine and no checkout carries (a Test's browser). It runs in WorkRoot as the harness's
+    // own account. One that fails holds the worker as a When that does not hold, until the next start.
+    public CommandOptions? Setup { get; set; }
+
+    // A Test's story that could not be walked is tried again when someone wrote on it since its last
+    // walk, or after these minutes; none, six hours. One that asked a person waits for the comment.
     public int? Recheck { get; set; }
 
     // Watch: the log source it reads (a provider's Name), every how many minutes (none, an hour),
@@ -70,6 +75,12 @@ public sealed class WorkerOptions
 
     // The most jobs of this worker at once on this machine, under the machine's own Capacity.
     public int? Max { get; set; }
+
+    // The most jobs with an agent this machine runs over one story in a day, counted by the kind of
+    // work (two workers of one Type share the count) since a hand last lifted a hold; none, no cap.
+    // The next one is not started: the story takes `ruling` and one comment, and waits for a hand.
+    // A red's story and a job sent by hand are never capped.
+    public int? DailyCap { get; set; }
 
     // Added to the lane's variables for this worker's jobs.
     public Dictionary<string, string> Variables { get; set; } = [];

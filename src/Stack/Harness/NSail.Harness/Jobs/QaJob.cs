@@ -138,17 +138,34 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         return new JobOutcome($"walked: {evt}", quota, Event: evt, Failed: evt == "NoVerdict", Report: report);
     }
 
-    // A story waiting on its ask that this machine walked within the worker's Recheck, with no
-    // comment since: the walk would only read the same silence again.
+    // What marks the comment a walk leaves on a story it could not finish: an ask of a person, or a
+    // doubt (it could not be walked at all).
+    internal const string AskMarker = "<!-- qa-asked:";
+    internal const string DoubtMarker = "<!-- qa-asked: doubt -->";
+
     async Task<bool> Quiet(int n, JobStep step, DateTimeOffset now, CancellationToken ct)
     {
         if (!(await ctx.Board.Labels(n, ct)).Contains(Labels.QaAsked)) return false;
-        var last = history.Jobs()
-            .Where(j => j.Story == n && j.Ended is not null && j.Outcome?.StartsWith("walked", StringComparison.Ordinal) == true)
-            .MaxBy(j => j.Ended);
-        if (last?.Ended is not { } ended || now - ended >= TimeSpan.FromMinutes(step.Worker.Recheck ?? 360)) return false;
+        var walked = history.Jobs()
+            .Where(j => j.Story == n && j.Ended is not null && j.Seated && j.Outcome?.StartsWith("walked", StringComparison.Ordinal) == true)
+            .Max(j => j.Ended);
+        return Quiet(await ctx.Board.Comments(n, ct), walked, now, TimeSpan.FromMinutes(step.Worker.Recheck ?? 360));
+    }
+
+    // A story waiting on its ask with nothing new to read: the walk would only read the same silence
+    // again. An ask of a person waits for words — quiet until somebody writes after it and after this
+    // machine's last walk. A doubt is tried again once its last walk is older than `recheck`, or
+    // sooner when somebody writes; so is a story that wears the label with no marked comment.
+    internal static bool Quiet(IReadOnlyList<Board.StoryComment> comments, DateTimeOffset? walked, DateTimeOffset now, TimeSpan recheck)
+    {
+        var ask = comments.Where(c => c.Body.Contains(AskMarker, StringComparison.Ordinal)).MaxBy(c => c.At);
+        if (ask is null || ask.Body.Contains(DoubtMarker, StringComparison.Ordinal))
+        {
+            if (walked is null || now - walked >= recheck) return false;
+        }
         // The ask itself is posted after its walk ends: it is not news.
-        return !(await ctx.Board.Comments(n, ct)).Any(c => c.At > ended && !c.Body.Contains("<!-- qa-asked:", StringComparison.Ordinal));
+        var seen = walked is null || ask?.At > walked ? ask!.At : walked.Value;
+        return !comments.Any(c => c.At > seen && !c.Body.Contains(AskMarker, StringComparison.Ordinal));
     }
 
     static readonly Dictionary<string, string> Media =new(StringComparer.OrdinalIgnoreCase)
@@ -310,7 +327,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     internal static string Asked(IReadOnlyList<Board.StoryComment> comments, ISet<string> trusted)
     {
         var ordered = comments.OrderBy(c => c.At).ToList();
-        var at = ordered.FindLastIndex(c => c.Body.Contains("<!-- qa-asked:", StringComparison.Ordinal));
+        var at = ordered.FindLastIndex(c => c.Body.Contains(AskMarker, StringComparison.Ordinal));
         return at < 0 ? "" : StoryDossier.Thread(ordered.Skip(at), trusted);
     }
 

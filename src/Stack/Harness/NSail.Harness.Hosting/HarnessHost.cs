@@ -30,8 +30,8 @@ public static class HarnessHost
 
         builder.Services.AddWindowsService(o => o.ServiceName = "Harness");
         builder.Services.AddSystemd();
-        var workRoot = builder.Configuration.GetSection(HarnessOptions.Section).Get<HarnessOptions>()?.WorkRoot ?? new HarnessOptions().WorkRoot;
-        builder.Logging.AddProvider(new FileLog(Path.Combine(workRoot, "logs")));
+        var early = builder.Configuration.GetSection(HarnessOptions.Section).Get<HarnessOptions>() ?? new HarnessOptions();
+        builder.Logging.AddProvider(new FileLog(Path.Combine(early.WorkRoot, "logs"), TimeSpan.FromDays(early.LogDays)));
         builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         builder.Services.AddHarness(builder.Configuration);
         // Logs, traces and metrics to the configured collector once a credential exists

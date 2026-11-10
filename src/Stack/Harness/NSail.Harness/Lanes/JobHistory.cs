@@ -5,9 +5,16 @@ namespace NSail.Harness.Lanes;
 
 // The jobs this machine ran, in one small file of its own: what a status page and a dossier read
 // back. It is a log, never state: what the harness decides from lives on the board and the
-// repository (labels, stages, comment markers, commit statuses), where every harness sees it.
+// repository (labels, stages, comment markers, commit statuses), where every harness sees it. What
+// is read back from it to decide is only this machine's own: the agents it spent on a story in a
+// day (a worker's DailyCap) and when it last walked one.
 public sealed class JobHistory
 {
+    // How long a job is remembered: long enough to read a week back and to count a day's jobs of a
+    // story; the logs keep the rest. It also bounds what is owed to Ops (OpsLedger): a job trimmed
+    // before Ops accepts it is lost to the fleet's record.
+    public static readonly TimeSpan Keep = TimeSpan.FromDays(7);
+
     readonly string _path;
     readonly Lock _gate = new();
     readonly List<JobRecord> _jobs;
@@ -25,11 +32,19 @@ public sealed class JobHistory
         {
             _jobs.RemoveAll(j => j.Id == job.Id);
             _jobs.Add(job);
-            // The newest few hundred are enough to read what happened; the logs keep the rest. This
-            // also bounds what is owed to Ops (OpsLedger): a job trimmed before Ops accepts it is lost
-            // to the fleet's record, so a smaller number shortens how long Ops may be down.
-            if (_jobs.Count > 500) _jobs.RemoveRange(0, _jobs.Count - 500);
+            var oldest = job.Started - Keep;
+            _jobs.RemoveAll(j => j.Started < oldest);
             StateFile.Write(_path, _jobs);
+        }
+    }
+
+    // How many jobs of a holder (JobContext.HolderOf: a kind of work over a story) ran an agent
+    // since then.
+    public int Seated(string holder, DateTimeOffset since)
+    {
+        lock (_gate)
+        {
+            return _jobs.Count(j => j.Seated && j.Started > since && j.Id.EndsWith($"-{holder}", StringComparison.Ordinal));
         }
     }
 

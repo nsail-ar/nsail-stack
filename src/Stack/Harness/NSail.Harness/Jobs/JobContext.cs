@@ -37,6 +37,8 @@ public sealed class JobContext(
     public ILoggerFactory Logs { get; } = logs;
     public BuildLeases Leases { get; } = leases;
 
+    readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _seated = new();
+
     // The log sources a Watch worker reads, by Name: the host's providers (AddOpenObserve, ...).
     public IReadOnlyList<Watching.ILogSource> LogSources { get; init; } = [];
 
@@ -63,6 +65,7 @@ public sealed class JobContext(
     // and the work the seat left is still to be delivered.
     public async Task<AgentResult> RunSeat(AgentRun run, CancellationToken ct)
     {
+        _seated[run.LogPath] = 0;
         try
         {
             return await Agent.Run(run, ct);
@@ -80,6 +83,12 @@ public sealed class JobContext(
                 }
             }
         }
+    }
+
+    // Whether the job that writes this log ran an agent; asked once, when the job ends.
+    public bool TookSeat(string logPath)
+    {
+        return _seated.TryRemove(logPath, out _);
     }
 
     // A repository's own slots: a story it holds is built and pushed there.

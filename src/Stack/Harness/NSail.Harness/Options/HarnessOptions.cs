@@ -70,6 +70,9 @@ public sealed class HarnessOptions
     // Slots, logs and state live here; a fast disk, excluded from antivirus scanning.
     public string WorkRoot { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "harness");
 
+    // Days a log under WorkRoot is kept, a job's or the harness's own.
+    public int LogDays { get; set; } = 14;
+
     // The interpreters a command's file runs under, by its extension (.sh, .ps1).
     public string Bash { get; set; } = OperatingSystem.IsWindows() ? @"C:\Program Files\Git\bin\bash.exe" : "bash";
     public string PowerShell { get; set; } = "pwsh";

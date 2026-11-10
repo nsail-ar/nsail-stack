@@ -81,6 +81,7 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
             "-p", "--output-format", "stream-json", "--verbose",
             "--model", options.ModelOf(run.Model),
             "--max-turns", run.MaxTurns.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            "--tools", Loaded(run.Access, run.Tools),
             "--allowedTools", string.Join(',', [Allowed(run.Access), .. run.Tools ?? []]),
             "--disallowedTools", Disallowed(run.Access),
             .. run.Mcp is null ? Array.Empty<string>() : ["--mcp-config", run.Mcp, "--strict-mcp-config"],
@@ -117,6 +118,17 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
             AgentAccess.Walker => "Read,Glob,Grep,Write,Skill",
             _ => "Read,Glob,Grep,Write,Skill,Bash(git log:*),Bash(git show:*),Bash(git grep:*),Bash(git diff:*),Bash(git merge-base:*)",
         };
+    }
+
+    // The built-in tools a seat's run loads at all: the ones its access and its worker's tools name.
+    // Every other one would only be context the seat pays for on each turn and never calls; an MCP
+    // server's tools are not built in, and come with the server.
+    internal static string Loaded(AgentAccess access, IReadOnlyList<string>? tools)
+    {
+        var names = Allowed(access).Split(',').Concat(tools ?? [])
+            .Select(t => t.Split('(')[0].Trim())
+            .Where(t => t.Length > 0 && !t.StartsWith("mcp__", StringComparison.Ordinal));
+        return string.Join(',', names.Distinct(StringComparer.Ordinal));
     }
 
     static string Disallowed(AgentAccess access)

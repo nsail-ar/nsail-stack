@@ -3,6 +3,7 @@
 
 using System.Globalization;
 using System.Text.RegularExpressions;
+using NSail.Harness.Repositories;
 
 namespace NSail.Harness.Board;
 
@@ -45,13 +46,15 @@ public static partial class WrittenBlockers
     }
 
     // Links every blocker the text names that the board does not link yet, and holds the story
-    // (`blocked`) while any named blocker has not landed. Answers the blockers still open.
-    public static async Task<IReadOnlyList<int>> Link(IBoard board, int story, string text, string key, CancellationToken ct = default)
+    // (`blocked`) while any named blocker has not landed — for one merged in a pinned repository,
+    // while the pin does not hold it (`repos`). Answers the blockers still open.
+    public static async Task<IReadOnlyList<int>> Link(IBoard board, int story, string text, string key, CancellationToken ct = default, RepositorySet? repos = null)
     {
         var named = Named(text, key).Where(n => n != story).ToList();
         if (named.Count == 0) return [];
         var linked = (await board.BlockedBy(story, ct)).ToHashSet();
         var open = new List<int>();
+        var merged = new List<int>();
         foreach (var n in named)
         {
             try
@@ -61,10 +64,18 @@ public static partial class WrittenBlockers
                 if (!blocker.Open) continue;
                 var stage = await board.StageOf(n, ct);
                 if (!Stages.Landed.Contains(stage)) open.Add(n);
+                else if (stage == Stages.Merged) merged.Add(n);
             }
             // A number that names no story (a PR, a typo) blocks nothing.
             catch (ProviderException)
             {
+            }
+        }
+        if (repos is not null)
+        {
+            foreach (var n in merged)
+            {
+                if (await repos.AwaitsPin(n, ct)) open.Add(n);
             }
         }
         if (open.Count > 0) await board.AddLabels(story, Labels.Blocked);

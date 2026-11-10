@@ -35,6 +35,8 @@ public sealed class HarnessTexts
 
     public string JobBroke { get; set; } = "The harness's {kind} job broke ({error}) on {machine}: it is tried once more. A second break in a row goes to `stalled`.";
     public string JobBrokeTwice { get; set; } = "The harness's {kind} job broke twice in a row ({error}) — `stalled` instead of a third try: a broken job breaks the same way every time. The log is in the harness ({machine}).";
+    public string DailyCap { get; set; } = "The harness ran {count} {kind} jobs on this story in a day on {machine}, its worker's cap: `ruling` instead of another. Something keeps sending it back — the jobs' logs are in the harness. Lifting `ruling` starts the count again.";
+
     public string AnalysisDied { get; set; } = "The analysis ended without a verdict on {machine}: it is sent again. A second in a row goes to `stalled` and `ruling`.";
 
     public string AnalysisDiedTwice { get; set; } = "The analysis died twice in a row without a verdict — `stalled` and `ruling`: it is not taken again until a hand looks. The log is in the harness ({machine}).";

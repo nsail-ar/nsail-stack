@@ -142,7 +142,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                     }
                 }
                 await Post();
-                await WrittenBlockers.Link(board, n, $"{Read("body.md")}\n{comment}", ctx.Names.Key, ct);
+                await WrittenBlockers.Link(board, n, $"{Read("body.md")}\n{comment}", ctx.Names.Key, ct, ctx.Repos);
                 if (await Screen(n, Read("protected.txt"), ct) is { Count: > 0 } screened)
                 {
                     await board.AddLabels(n, Labels.Ruling, Labels.Screened);
@@ -156,7 +156,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 break;
             case "VERDICT: ruling" when comment.Trim().Length > 0:
                 await Post();
-                await WrittenBlockers.Link(board, n, comment, ctx.Names.Key, ct);
+                await WrittenBlockers.Link(board, n, comment, ctx.Names.Key, ct, ctx.Repos);
                 return new Ending("ruling", "Ruling");
             case "VERDICT: done" when comment.Trim().Length > 0:
                 await Post();

@@ -52,7 +52,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         // if the board linked it: the link is made, and the story held while the blocker is open.
         if (Item.Pr is null)
         {
-            var waiting = await WrittenBlockers.Link(board, n, $"{body}\n{await RefineryComment(n, ct)}", ctx.Names.Key, ct);
+            var waiting = await WrittenBlockers.Link(board, n, $"{body}\n{await RefineryComment(n, ct)}", ctx.Names.Key, ct, ctx.Repos);
             if (waiting.Count > 0)
             {
                 await board.RemoveLabel(n, Labels.Claimed);
@@ -434,7 +434,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             if (await NothingToBuild(wall) is { } landed) return landed;
             await board.Comment(n, JobContext.Signed(wall, Seat));
             if (await RedQuestion() is { } red) return red;
-            await WrittenBlockers.Link(board, n, wall, ctx.Names.Key, ct);
+            await WrittenBlockers.Link(board, n, wall, ctx.Names.Key, ct, ctx.Repos);
             return new Ending("a wall — blocked until it is lifted", "Walled");
         }
 
@@ -449,8 +449,21 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         if (Out("handoff.md") is { Length: > 0 } handoff)
         {
             if (await NothingToBuild(handoff) is { } landed) return landed;
-            await board.Comment(n, JobContext.Signed(handoff, Seat));
-            return new Ending(pushed ? "handed off, work pushed" : "handed off", "HandedOff");
+            if (pushed)
+            {
+                await board.Comment(n, JobContext.Signed(handoff, Seat));
+                return new Ending("handed off, work pushed", "HandedOff");
+            }
+            // A hand-off that pushed nothing moved nothing: one that names what it waits for is a wall,
+            // and any other counts as a voyage, so a second one in a row goes to the analyst instead
+            // of a third builder reading the same note.
+            if (!ctx.Texts.IsRed(title) && (await WrittenBlockers.Link(board, n, handoff, ctx.Names.Key, ct, ctx.Repos)).Count > 0)
+            {
+                await board.Comment(n, JobContext.Signed(handoff, Seat));
+                return new Ending("handed off with nothing pushed, waiting on a blocker — blocked until it lands", "Walled");
+            }
+            await board.Comment(n, $"{JobContext.Signed(handoff, Seat)}\n{Markers.Voyage}");
+            return new Ending("handed off, nothing pushed", "HandedOff");
         }
 
         if (Out("pr.md") is { Length: > 0 } words && (pushed || remote.ExitCode == 0))

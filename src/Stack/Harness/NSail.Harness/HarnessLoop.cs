@@ -79,6 +79,10 @@ public sealed class HarnessLoop(
     bool _restartPause;
     readonly IReadOnlyList<Worker> _workers = Worker.Compile(options.Value);
 
+    // Workers whose Setup failed at this start.
+    readonly ConcurrentDictionary<string, byte> _unready = new();
+    static readonly TimeSpan SetupTimeout = TimeSpan.FromMinutes(15);
+
     public Pass? Last
     {
         get { lock (_gate) return _last; }
@@ -228,6 +232,7 @@ public sealed class HarnessLoop(
             o.Machine, o.Mode, o.Agents, o.Builds, o.Browsers, o.Gate ? "on" : "off", o.WorkRoot);
         log.LogInformation("workers: {Workers}", string.Join(", ", _workers.Select(w => w.Name)));
         stats.Begun(Version(), DateTimeOffset.UtcNow);
+        await SetUp(stop);
 
         while (!stop.IsCancellationRequested)
         {
@@ -674,8 +679,42 @@ public sealed class HarnessLoop(
     }
 
     // Whether a worker may start this pass: every condition of its When, and of each named one it uses.
+    // Each worker's Setup, a command once however many workers name it. A failure is the worker's
+    // alone: until the next start it is planned as a worker whose When does not hold.
+    internal async Task<IReadOnlyCollection<string>> SetUp(CancellationToken ct = default)
+    {
+        var o = options.Value;
+        foreach (var same in _workers.Where(w => w.Options.Setup is not null).GroupBy(w => w.Options.Setup!.ToString()))
+        {
+            var command = same.First().Options.Setup!;
+            string? failure;
+            try
+            {
+                Directory.CreateDirectory(o.WorkRoot);
+                var (file, args) = Commands.Line(command, [], o.Bash, o.PowerShell);
+                var r = await Shell.Run(file, args, o.WorkRoot, timeout: SetupTimeout, ct: ct);
+                var said = r.Output.Trim();
+                failure = r.TimedOut ? "timed out" : r.ExitCode != 0 ? $"exit {r.ExitCode}: {said[^Math.Min(said.Length, 2000)..]}" : null;
+            }
+            catch (Exception e) when (e is System.ComponentModel.Win32Exception or IOException)
+            {
+                failure = e.Message;
+            }
+            var names = string.Join(", ", same.Select(w => w.Name));
+            if (failure is null)
+            {
+                log.LogInformation("setup of {Workers} done: {Command}", names, command);
+                continue;
+            }
+            foreach (var w in same) _unready[w.Name] = 0;
+            log.LogError("setup of {Workers} failed, they take no job until the next start — {Command}: {Failure}", names, command, failure);
+        }
+        return [.. _unready.Keys];
+    }
+
     bool WhenHolds(Worker w, HarnessOptions o, IReadOnlyCollection<string> down)
     {
+        if (_unready.ContainsKey(w.Name)) return false;
         var now = DateTimeOffset.UtcNow;
         var readings = new Readings(now, over => load.Cpu(now, over), over => load.Memory(now, over), jobs.Agent.Usage);
         return w.Options.When.Use.Select(u => o.Conditions[u]).Append(w.Options.When).All(c => Conditions.Hold(c, readings, down));
@@ -743,6 +782,13 @@ public sealed class HarnessLoop(
                     if (labels.Overlaps(Labels.Locks))
                     {
                         log.LogInformation("#{Story}: a lock label appeared since the read — skipped", n);
+                        await locks.Release(n, holder, ct);
+                        workspace.Give(slot);
+                        return null;
+                    }
+                    if (await Capped(item, n, ct))
+                    {
+                        log.LogWarning("#{Story}: {Item} is past its worker's daily cap — ruling", n, item);
                         await locks.Release(n, holder, ct);
                         workspace.Give(slot);
                         return null;
@@ -909,10 +955,30 @@ public sealed class HarnessLoop(
             if (running.Item is { Kind: WorkKind.Review, Pr: { } pr } && ended?.Event == "Clean") stats.Merged(pr, story, DateTimeOffset.UtcNow);
             return Task.CompletedTask;
         }, "stats");
-        history.Record(new JobRecord(running.Id, running.Item.ToString(), story, running.Started, DateTimeOffset.UtcNow, outcome, running.LogPath, ending));
+        history.Record(new JobRecord(running.Id, running.Item.ToString(), story, running.Started, DateTimeOffset.UtcNow, outcome, running.LogPath, ending, jobs.TookSeat(running.LogPath)));
         log.LogInformation("✓ {Item} [{Id}]: {Outcome}", running.Item, running.Id, outcome);
         StopIfDrained();
         Wake();
+    }
+
+    // A story this machine already spent its worker's DailyCap of agents on, in a day and since a hand
+    // last lifted a hold: it takes `ruling` and says why, once — the label holds it until a hand
+    // lifts it, and the lift starts the count again. A red's story waits for no hand, and a job sent
+    // by hand is the hand's own call.
+    internal async Task<bool> Capped(WorkItem item, int n, CancellationToken ct = default)
+    {
+        var o = options.Value;
+        if (item.Tier == "manual" || item.Worker is not { } name || !o.Workers.TryGetValue(name, out var worker) || worker.DailyCap is not { } cap) return false;
+        var holder = JobContext.HolderOf(item);
+        var day = DateTimeOffset.UtcNow - TimeSpan.FromDays(1);
+        if (history.Seated(holder, day) < cap) return false;
+        var lifted = await board.LastLift(n, Labels.Lifts, ct);
+        var count = history.Seated(holder, lifted > day ? lifted.Value : day);
+        if (count < cap || o.Texts.IsRed((await board.Story(n, ct)).Title)) return false;
+        await board.AddLabels(n, Labels.Ruling);
+        var said = HarnessTexts.Fill(o.Texts.DailyCap, ("count", count), ("kind", item.Kind.ToString().ToLowerInvariant()), ("machine", o.Machine));
+        await board.Comment(n, $"{said} {o.Texts.Signature}");
+        return true;
     }
 
     // The story goes back where the next pass can take it again: its job's lock label off.

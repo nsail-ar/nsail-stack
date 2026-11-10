@@ -47,8 +47,9 @@ the files it leaves.
     says its `Pin` when the default one builds against a version of it (a file, a pattern, the ref):
     a release holds that repository's merges when the version its tag pins does, and a story merged
     there has landed on the default branch at the oldest commit whose pin names a version holding
-    that merge (`RepositorySet.LandingOf`): until then a red fix is not cut, QA does not walk it
-    and main's gate has not judged it.
+    that merge (`RepositorySet.LandingOf`): until then a red fix is not cut, QA does not walk it,
+    main's gate has not judged it, and a story it blocks stays held (`SnapshotReader.ReadAwaitingPin`):
+    a builder sent before the pin moves compiles against the version without the change.
     A story's merged PRs are read off the repository's own list of merged PRs, whole once and then
     only what changed since (never the search index, whose budget every job on the token shares).
     A PR no gate judges (another repository's, or any with no Verify worker) whose red CI failed only
@@ -76,7 +77,7 @@ the files it leaves.
     where it says: `Filter` (status, labels `x`/`!x`/`a|b`, PR and its checks, sub-issues,
     blockers, title), `When` (schedule, CPU, memory, quota, reachable endpoints, named
     `Conditions`), `Max`, `Seat` (from `Seats`), a prompt layered after the seat's, `Command`,
-    `Minutes`, `Variables` (a Release also its `Product`, `Workflow` and `Paths`, and a
+    `Minutes`, `DailyCap`, `Setup`, `Variables` (a Release also its `Product`, `Workflow` and `Paths`, and a
     `When.Schedule` with no End: its day's cut fires there), and `On` — per event, a list of actions (`MoveTo`, `AddLabel`,
     `RemoveLabel`, `Comment` — `{report}` quotes what the job wrote —, `Close`) that replaces the type's; a
     comment signs as the worker's `Seat`. A Release also walks each release of its product once
@@ -88,7 +89,10 @@ the files it leaves.
     a tenant's `Live.Header`) — a story its tenant does not run yet is not walked, and is asked again
     after `QaJob.NotLiveRecheck` rather than at the next cut, because a deploy lands after its cut — and attaches
     the walk's shots to the board (on GitHub, the attachments a pasted file becomes). A story waiting on
-    its ask is asked once, and walked again only when someone wrote on it or after `Recheck` minutes.
+    its ask is asked once. An ask of a person waits for words: it is walked again only when somebody
+    comments after it, so whoever answers by acting on the tenant says so on the story. A walk that
+    could not be made (a doubt) is tried again after `Recheck` minutes, or sooner on a comment
+    (`QaJob.Quiet`); only a walk that ran its seat counts as the last one.
     A story wearing `no-walk` (the analyst's word that nothing of it shows on a screen; a hand takes
     it off to have it walked) closes as `n/a` with no walker and no browser: its gate and tests are its proof.
     The walker writes `VERDICT: ok|n/a|bug|asked|waiting|not-live|doubt` and its report: the verdict is
@@ -139,7 +143,19 @@ the files it leaves.
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
     its analysis and before its first voyage (`Board/WrittenBlockers.cs`); a `Waits` line that answers
     `nothing`, `none`, `nada`, `ninguna` or `ninguno` names no blocker, whatever else it mentions. A
+    blocker merged in a pinned repository holds until the pin holds its merge. A
     machine's Local changes or disables (`Enabled: false`) one by name.
+    A worker's `DailyCap` is how many jobs that ran an agent one story takes from this machine in a
+    day, counted by kind of work since a hand last lifted `ruling` or `stalled` (`HarnessLoop.Capped`):
+    the next is not started, and the story takes `ruling` and one comment (Texts `DailyCap`). A story
+    sent back that many times is not converging, and each lap costs an agent; a job that ended before
+    its seat (a quiet ask, a tenant not live) counts for nothing. A red's story and a job sent by hand
+    are never capped.
+    A worker's `Setup` is a command run once at start, before the first pass, in the work root: what
+    its jobs need on the machine and no checkout carries (a Test's browser, which the machine's own
+    cache cleaning may collect). Workers naming the same command share one run. One that fails or
+    outlasts `HarnessLoop.SetupTimeout` logs an error and its workers are planned as workers whose
+    `When` does not hold, until the next start; every other worker goes on.
     A reading not taken yet (no CPU samples, no quota read since its reset) stops no worker.
   - `Seats` (signature, model, `Prompt` or `PromptFile`) and `Conditions` (named Whens: a crew's
     `db-up` the test database answering, `quota-5h`/`quota-week` the agent's quota walls).
@@ -158,10 +174,13 @@ the files it leaves.
     The harness user's sudoers rule for it carries the `SETENV` tag, `Defaults!<each command> !secure_path` (the seat keeps the
     machine's PATH), and allows `setsid` and `pkill` (a timeout kills the seat's session through sudo),
     and `Claude:Command` is best given as an absolute path. `RunAs` covers the agent's runs and plugin installs, not a
-    worker's own `Command`: that runs as the harness user. Windows ignores `RunAs`.)
+    worker's own `Command` or `Setup`: those run as the harness user, so what a `Setup` installs for a seat
+    goes where both accounts read it. Windows ignores `RunAs`. A seat's run loads only the built-in tools its access and
+    its worker's `Tools` name (`ClaudeAgent.Loaded`): every other one is context paid on each turn and never called.
+    An MCP server's tools come with the server.)
 - **Capacity is per resource, per machine**: agents, builds, browsers (`Agents`, `Builds`,
   `Browsers`). The plan is walked in order and every item whose resources are free is taken; a
-  worker's `Max` caps its own jobs. Past the agent's quota wall (a refused run) only the agents stop.
+  worker's `Max` caps its own jobs at once, its `DailyCap` one story's in a day. Past the agent's quota wall (a refused run) only the agents stop.
   A build turn whose holder died returns to the line once older than the longest step the machine's
   enabled workers run (a main gate counts twice its minutes) plus ten.
 - **The release andon** (`Planning/ReleaseAndon.cs`). A product's failed cut leaves its one open red
@@ -183,7 +202,7 @@ the files it leaves.
   main's, `HarnessTexts.IsRed`) never asks a hand: a builder's question sends it to Analyze with no
   `ruling` (event `Reanalyze`; with a PR open, the next round decides it), a reviewer's crack goes
   back to its builder as `Findings`, and an analysis that ends `ruling` is refused and counted as a
-  death (`RedQuestion`, `RedRulingRefused`). A builder's `wall.md` (something outside the story must change first) ends the round as `Walled`, an event configurable under `On` like the others: the story goes to Backlog wearing `blocked`, and a blocker the wall names (`blocked by #N`) is linked so the rule that lifts `blocked` on its blockers lifts it; a wall that names none waits for a hand. A red story's wall goes the way of its question, with no hold.
+  death (`RedQuestion`, `RedRulingRefused`). A builder's `wall.md` (something outside the story must change first) ends the round as `Walled`, an event configurable under `On` like the others: the story goes to Backlog wearing `blocked`, and a blocker the wall names (`blocked by #N`) is linked so the rule that lifts `blocked` on its blockers lifts it; a wall that names none waits for a hand. A red story's wall goes the way of its question, with no hold. A `handoff.md` with work pushed ends as `HandedOff` and the next voyage takes it. One with nothing pushed moved nothing: if it names a blocker it ends as `Walled`, and otherwise it counts as a voyage, so a second in a row goes to the analyst instead of a third builder reading the same note.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the
@@ -201,7 +220,9 @@ the files it leaves.
   a second gate on any harness for twice the longest `Minutes` among that harness's own Main
   workers plus an hour (a fleet whose harnesses set different `Minutes` holds as long as the
   shortest of them); past that (a harness
-  that died leaves it pending) another harness judges the head again. What stays on the machine is its job history,
+  that died leaves it pending) another harness judges the head again. What stays on the machine is its job history
+  (`jobs.json`, each job for `JobHistory.Keep`: what a day's cap and a week's reading need), the logs under the work
+  root (a job's and the harness's own, swept on the first line of each day once older than `LogDays`),
   its count of them, the work the protected-paths screen refused (`ProtectedPaths`), and what a hand or
   the provider set (`state.json`: the pause, take-new when a hand moved it, an unexpired quota wall),
   which a restart keeps. A state file that is zero-length or torn is
