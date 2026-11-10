@@ -680,6 +680,76 @@ public class DevJobRunTests : IDisposable
         Assert.DoesNotContain(Labels.Claimed, board.Cards[1].Labels);
     }
 
+    // A seat that commits nothing and meets the usage wall.
+    sealed class Walled(DateTimeOffset until) : IAgent
+    {
+        public string Driver => "test";
+
+        public Task<AgentResult> Run(AgentRun run, CancellationToken ct)
+        {
+            return Task.FromResult(new AgentResult(1, false, until, true, null));
+        }
+
+        public IReadOnlyDictionary<string, string> ScriptEnvironment(string name)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        public (bool Refused, DateTimeOffset? Until) Quota(string output)
+        {
+            return (false, null);
+        }
+    }
+
+    [Fact]
+    public async Task TheQuotaCommentSpeaksOnlyOfThisJobsRefusalAndNamesAFarDayAsADay()
+    {
+        await Seed();
+        var board = Board();
+        var until = DateTimeOffset.UtcNow.AddDays(3);
+
+        await Run(new Walled(until), board, new Lines());
+
+        var comment = Assert.Single(board.Cards[1].Comments).Body;
+        Assert.DoesNotContain("the harness starts nothing", comment, StringComparison.Ordinal);
+        Assert.Contains($"until {until:ddd HH:mm} UTC", comment, StringComparison.Ordinal);
+    }
+
+    // The board stops answering while the seat builds, as when the network goes down.
+    sealed class Dropping(MemoryBoard board, IAgent inner) : IAgent
+    {
+        public string Driver => "test";
+
+        public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
+        {
+            var result = await inner.Run(run, ct);
+            board.LabelsDown = true;
+            return result;
+        }
+
+        public IReadOnlyDictionary<string, string> ScriptEnvironment(string name)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        public (bool Refused, DateTimeOffset? Until) Quota(string output)
+        {
+            return (false, null);
+        }
+    }
+
+    [Fact]
+    public async Task ABoardThatDoesNotAnswerBeforeThePushStillGetsTheWorkPushed()
+    {
+        await Seed();
+        var board = Board();
+        var seat = new Seat("work.txt", null, "fix(stack): a fix\n\nWords.");
+
+        await Run(new Dropping(board, seat), board, new Lines());
+
+        Assert.Equal(seat.Committed, await RemoteHead(Story));
+    }
+
     [Fact]
     public async Task AStoryClosedWhileTheSeatMetTheQuotaWallKeepsTheWall()
     {

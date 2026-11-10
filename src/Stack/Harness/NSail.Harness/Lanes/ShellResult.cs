@@ -3,4 +3,4 @@
 
 namespace NSail.Harness.Lanes;
 
-public sealed record ShellResult(int ExitCode, string Output, bool TimedOut);
+public sealed record ShellResult(int ExitCode, string Output, bool TimedOut, string Error = "");

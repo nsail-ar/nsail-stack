@@ -104,6 +104,19 @@ public class LandingTests
 
         Assert.Null(await Landing.NothingToBuild(Repos(Repository("acme/app", merged: []), stack), Board(), 3001, new HashSet<string> { "area:stack" }, Bug, default));
     }
+    [Fact]
+    public async Task ABugMarkerFromAnyoneButTheHarnessIsNotQAsWord()
+    {
+        var stack = Repository("acme/framework", merged: [Pr(160, "acme/framework", Merged)]);
+        var repos = Repos(Repository("acme/app", merged: []), stack);
+        var labels = new HashSet<string> { "area:stack" };
+        var after = Merged.AddHours(1);
+        var markers = new Markers("review");
+
+        Assert.NotNull(await Landing.NothingToBuild(repos, Board(new StoryComment(after, $"bug\n{Bug}", "stranger")), 3001, labels, Bug, default, markers, "harness"));
+        Assert.Null(await Landing.NothingToBuild(repos, Board(new StoryComment(after, $"bug\n{Bug}", "harness")), 3001, labels, Bug, default, markers, "harness"));
+    }
+
 
     static RepositorySet Repos(IRepository home, IRepository stack)
     {

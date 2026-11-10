@@ -32,7 +32,7 @@ the files it leaves.
     `Authors` lists the logins whose PRs are the crew's there (none: any author; when listed, it
     includes the login of the token that opens the harness's own PRs). A PR whose head lives in
     another repository (a fork) is never matched, gated, reviewed or merged.
-    `Board:RetryDelay` (default one second) spaces the three attempts at a column write: when they
+    `Board:RetryDelay` (default one second) spaces the three attempts at a column write, which together end within a fixed ceiling (a wait the provider asks inside it counts): when they
     all fail, the project item that call added is removed, so no story reads as columnless.
     A story the harness files is born with its labels and found again by its title among the open
     issues (the list API, never the search index), so labels stay free to edit.
@@ -187,7 +187,7 @@ the files it leaves.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the
-  story. A gate or review marker on a PR counts only as a whole HTML comment on its own line, written
+  story. A gate or review marker on a PR, and a voyage, analysis-died, broke or QA-bug marker on a story, counts only as a whole HTML comment on its own line, written
   by the login the harness runs as or by one listed in `Harness:MarkerAuthors` (the fleet's logins,
   the same list on every harness, empty by default); the builder's `pr.md` is posted with any marker stripped.
   The dossier a seat reads lays a comment or PR note by any other login fenced and labelled untrusted; the

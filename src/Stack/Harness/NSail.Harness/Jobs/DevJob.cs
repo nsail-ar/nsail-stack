@@ -190,7 +190,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     // The dossier never rides a commit: the clone's own exclude list hides it, in whatever repository.
     static async Task Exclude(string dir, string path)
     {
-        var common = (await Shell.Git(dir, "rev-parse", "--git-common-dir")).Trim();
+        var common = (await Shell.GitOut(dir, "rev-parse", "--git-common-dir")).Trim();
         var exclude = Path.Combine(Path.IsPathRooted(common) ? common : Path.Combine(dir, common), "info", "exclude");
         Directory.CreateDirectory(Path.GetDirectoryName(exclude)!);
         var line = $"/{path}/";
@@ -213,7 +213,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     // and the builder's ending.
     static async Task<(string Ref, string Dir)> KeptOf(string work, string branch)
     {
-        var common = (await Shell.Git(work, "rev-parse", "--git-common-dir")).Trim();
+        var common = (await Shell.GitOut(work, "rev-parse", "--git-common-dir")).Trim();
         var root = Path.IsPathRooted(common) ? common : Path.Combine(work, common);
         return ($"refs/harness-kept/{branch}", Path.Combine(root, "harness-kept", branch));
     }
@@ -276,7 +276,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         {
             log.LogWarning("#{Story}: unpushed work rescued to {Ref}", n, rescued);
         }
-        else if (int.Parse((await Shell.Git(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture) > 0)
+        else if (int.Parse((await Shell.GitOut(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture) > 0)
         {
             log.LogWarning("#{Story}: commits touching a protected path were not pushed; they stay on the local branch until the story's next checkout resets it ({Label} lifts the screen)", n, Labels.AllowProtected);
         }
@@ -301,7 +301,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     // A rescue is a push like any other: commits touching a protected path stay local.
     internal static async Task<string?> RescueRef(IRepository repo, string dir, string since, string name, IReadOnlyList<string> screen)
     {
-        var ahead = int.Parse((await Shell.Git(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
+        var ahead = int.Parse((await Shell.GitOut(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
         if (ahead == 0) return null;
         if (screen.Count > 0 && SeatOutput.Protected(await SeatOutput.Changed(dir, since), screen).Count > 0) return null;
         for (var i = 0; ; i++)
@@ -333,13 +333,12 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
 
         var remote = await Shell.Run("git", ["rev-parse", "-q", "--verify", $"refs/remotes/origin/{branch}"], dir);
         var since = startedAt ?? ctx.WorkspaceOf(repo).Tip;
-        var ahead = int.Parse((await Shell.Git(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
+        var ahead = int.Parse((await Shell.GitOut(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
         var pushed = false;
         if (ahead > 0)
         {
-            var touched = ctx.Options.AllowProtectedPaths || (await board.Labels(n, ct)).Contains(Labels.AllowProtected)
-                ? []
-                : SeatOutput.Protected(await SeatOutput.Changed(dir, since), ctx.Options.ProtectedPaths);
+            var screen = await ScreenOf(ctx.Options, board, n);
+            var touched = screen.Count == 0 ? [] : SeatOutput.Protected(await SeatOutput.Changed(dir, since), screen);
             if (touched.Count > 0)
             {
                 try
@@ -401,7 +400,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         if (result.QuotaRefused)
         {
             // The usage wall is no story's fault: it does not count as a dead voyage.
-            await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.QuotaWall, ("until", $"{result.QuotaUntil:HH:mm}"))} {ctx.Texts.Signature}");
+            await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.QuotaWall, ("until", HarnessLoop.WallClock((result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1)).ToUniversalTime(), DateTimeOffset.UtcNow)))} {ctx.Texts.Signature}");
             if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
             return "quota";
         }
@@ -412,7 +411,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         async Task<Ending?> NothingToBuild(string words)
         {
             if (pushed) return null;
-            var evidence = await Landing.NothingToBuild(ctx.Repos, board, n, await board.Labels(n, ct), WorkerTypes.QaBugMarker, ct);
+            var evidence = await Landing.NothingToBuild(ctx.Repos, board, n, await board.Labels(n, ct), WorkerTypes.QaBugMarker, ct, ctx.Markers, await ctx.Repo.Login(ct));
             if (evidence is null) return null;
             await board.Comment(n, JobContext.Signed(words, Seat));
             await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.LandedNothingToBuild, ("evidence", evidence))} {ctx.Texts.Signature}");
@@ -500,8 +499,9 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     async Task<int> DeadVoyages(int n, CancellationToken ct)
     {
         var since = await ctx.Board.LastLift(n, Labels.Lifts, ct);
+        var login = await ctx.Repo.Login(ct);
         var said = (await ctx.Board.Comments(n, ct))
-            .Where(c => c.Body.Contains(Markers.Voyage, StringComparison.Ordinal) && (since is null || c.At > since))
+            .Where(c => ctx.Markers.Says(c, Markers.Voyage, login) && (since is null || c.At > since))
             .Select(c => c.At).OrderBy(t => t).ToList();
         var pushes = await ctx.Repo.PushTimes(n, ct);
         return Count(said, pushes, since);

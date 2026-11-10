@@ -133,6 +133,35 @@ public class GitHubSetStageTests
         Assert.Equal("added", handler.Sent.Single(s => s.Operation == "deleteProjectV2Item").Variables.GetProperty("i").GetString());
     }
 
+    // Every request answered 429 asking a wait the client would sit out.
+    sealed class Limited : HttpMessageHandler
+    {
+        public int Sent { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Sent++;
+            var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests) { Content = new StringContent("{}", Encoding.UTF8, "application/json") };
+            response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(30));
+            return Task.FromResult(response);
+        }
+    }
+
+    [Fact]
+    public async Task AColumnWriteThatKeepsWaitingOutTheLimitEndsAtItsOwnCeiling()
+    {
+        var handler = new Limited();
+        var board = new GitHubBoard(new GitHubClient(new HttpClient(handler) { BaseAddress = new Uri("https://api.github.com/") }), "o/r",
+            new GitHubBoardOptions { Repository = "o/r", Project = 1, RetryDelay = TimeSpan.Zero }) { ColumnWriteBudget = TimeSpan.FromMilliseconds(300) };
+        IReadOnlyDictionary<string, string> options = new Dictionary<string, string>();
+
+        var started = DateTime.UtcNow;
+        await Assert.ThrowsAsync<GitHubException>(() => board.WriteColumn(("P", "F", options), "item", "o", CancellationToken.None));
+
+        Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(10));
+        Assert.Equal(1, handler.Sent);
+    }
+
     [Fact]
     public async Task TrySetStageAnswersFalseOnAnyOtherError()
     {

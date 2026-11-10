@@ -12,7 +12,7 @@ namespace NSail.Harness.Api;
 
 // The harness's API: what it shows of itself and the switches a hand flips.
 [Injectable]
-public sealed class HarnessHandler(HarnessLoop loop, HarnessOptions options, JobHistory history, JobStats stats, BuildLeases leases, LoadSamples load, Agents.IAgent agent) :
+public sealed class HarnessHandler(HarnessLoop loop, HarnessOptions options, JobHistory history, JobStats stats, BuildLeases leases, LoadSamples load, Agents.IAgent agent, Repositories.RepositorySet repos) :
     IHandler<GetStatus, HarnessStatus>,
     IHandler<ListJobs, JobsView>,
     IHandler<GetStats, HarnessStatsView>,
@@ -121,6 +121,10 @@ public sealed class HarnessHandler(HarnessLoop loop, HarnessOptions options, Job
             _ => null,
         };
         if (item is null) throw (BusinessException)BusinessProblem.RuleViolation("harness.run.shape", "A Release takes a product; a Review and a Gate a story and a PR; a Dev and an Analyze a story.");
+        if (item.Kind is WorkKind.Review or WorkKind.Gate && !SnapshotReader.OwnsHead((await repos.Default.Pr(item.Pr!.Value, cancellationToken)).HeadRepo, repos.Default.Name))
+        {
+            throw (BusinessException)BusinessProblem.RuleViolation("harness.run.fork", "A PR whose head lives in another repository is never gated or reviewed.");
+        }
         return await loop.Force(item) ?? throw (BusinessException)BusinessProblem.InvalidState("no free slot, or the story is locked");
     }
 

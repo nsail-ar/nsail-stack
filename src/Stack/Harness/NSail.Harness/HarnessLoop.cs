@@ -874,7 +874,7 @@ public sealed class HarnessLoop(
                     await Quietly(async () =>
                     {
                         var since = await board.LastLift(n, Labels.Lifts);
-                        twice = Markers.InARow(await board.Comments(n), Markers.Broke, since) >= 1;
+                        twice = jobs.Markers.InARow(await board.Comments(n), Markers.Broke, await jobs.Repo.Login(), since) >= 1;
                         var said = HarnessTexts.Fill(twice ? o.Texts.JobBrokeTwice : o.Texts.JobBroke, ("kind", kind), ("error", e.Message), ("machine", o.Machine));
                         if (twice) await board.AddLabels(n, Labels.Stalled);
                         await board.Comment(n, $"{said} {o.Texts.Signature}\n{Markers.Broke}");

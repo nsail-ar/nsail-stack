@@ -7,10 +7,12 @@ public class MarksTests
 {
     static readonly DateTimeOffset T0 = new(2026, 10, 27, 12, 0, 0, TimeSpan.Zero);
 
-    static StoryComment Said(int minute, string body)
+    static StoryComment Said(int minute, string body, string author = "harness")
     {
-        return new StoryComment(T0.AddMinutes(minute), body, "someone");
+        return new StoryComment(T0.AddMinutes(minute), body, author);
     }
+
+    static readonly Markers Own = new("review");
 
     [Fact]
     public void AnotherHarnessesPendingGateMarkKeepsTheHeadFromASecondGateWhileItCanStillBeRunning()
@@ -37,21 +39,36 @@ public class MarksTests
     {
         var comments = new[]
         {
-            Said(1, $"broke {Markers.Broke}"),
+            Said(1, $"broke\n{Markers.Broke}"),
             Said(2, "a person looked"),
-            Said(3, $"broke {Markers.Broke}"),
-            Said(4, $"broke {Markers.Broke}"),
+            Said(3, $"broke\n{Markers.Broke}"),
+            Said(4, $"broke\n{Markers.Broke}"),
         };
 
-        Assert.Equal(2, Markers.InARow(comments, Markers.Broke));
+        Assert.Equal(2, Own.InARow(comments, Markers.Broke, "harness"));
     }
 
     [Fact]
     public void AHandsLiftStartsTheCountAgain()
     {
-        var comments = new[] { Said(1, $"broke {Markers.Broke}"), Said(3, $"broke {Markers.Broke}") };
+        var comments = new[] { Said(1, $"broke\n{Markers.Broke}"), Said(3, $"broke\n{Markers.Broke}") };
 
-        Assert.Equal(1, Markers.InARow(comments, Markers.Broke, since: T0.AddMinutes(2)));
+        Assert.Equal(1, Own.InARow(comments, Markers.Broke, "harness", since: T0.AddMinutes(2)));
+    }
+
+    [Fact]
+    public void AMarkerFromAnyoneElseOrNotOnItsOwnLineIsNotCounted()
+    {
+        var comments = new[]
+        {
+            Said(1, $"broke\n{Markers.Broke}", author: "stranger"),
+            Said(2, $"a person quotes {Markers.Broke} in a sentence"),
+            Said(3, $"broke\n{Markers.Broke}"),
+        };
+
+        Assert.Equal(1, Own.InARow(comments, Markers.Broke, "harness"));
+        Assert.Equal(1, new Markers("review", ["fleet"]).InARow([Said(1, $"x\n{Markers.Broke}", author: "fleet")], Markers.Broke, "harness"));
+        Assert.False(Own.Says(Said(1, $"x\n{Markers.Voyage}", author: "stranger"), Markers.Voyage, "harness"));
     }
 
     [Fact]

@@ -239,20 +239,34 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
 
     const int ColumnWriteAttempts = 3;
 
-    async Task WriteColumn((string Project, string Field, IReadOnlyDictionary<string, string> Options) ids, string item, string option, CancellationToken ct)
+    // The whole operation's ceiling: each attempt may itself wait out the provider's limit, so the attempts' own waits multiply.
+    internal TimeSpan ColumnWriteBudget { get; init; } = TimeSpan.FromMinutes(2);
+
+    internal async Task WriteColumn((string Project, string Field, IReadOnlyDictionary<string, string> Options) ids, string item, string option, CancellationToken ct)
     {
-        for (var attempt = 1; ; attempt++)
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        budget.CancelAfter(ColumnWriteBudget);
+        GitHubException? last = null;
+        try
         {
-            try
+            for (var attempt = 1; ; attempt++)
             {
-                await gh.GraphQl("mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{singleSelectOptionId:$o}}){projectV2Item{id}}}",
-                    new { p = ids.Project, i = item, f = ids.Field, o = option }, ct);
-                return;
+                try
+                {
+                    await gh.GraphQl("mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){updateProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,fieldId:$f,value:{singleSelectOptionId:$o}}){projectV2Item{id}}}",
+                        new { p = ids.Project, i = item, f = ids.Field, o = option }, budget.Token);
+                    return;
+                }
+                catch (GitHubException e) when (attempt < ColumnWriteAttempts)
+                {
+                    last = e;
+                    await Task.Delay(options.RetryDelay * attempt, budget.Token);
+                }
             }
-            catch (GitHubException) when (attempt < ColumnWriteAttempts)
-            {
-                await Task.Delay(options.RetryDelay * attempt, ct);
-            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw last ?? new GitHubException(System.Net.HttpStatusCode.RequestTimeout, "the column write ran past its time budget");
         }
     }
 

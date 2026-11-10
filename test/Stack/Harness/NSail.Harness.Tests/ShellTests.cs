@@ -31,6 +31,21 @@ public class ShellTests
     }
 
     [Fact]
+    public async Task AParsedReadGetsStdoutAloneAndTheWarningStaysInError()
+    {
+        var (file, args) = OperatingSystem.IsWindows()
+            ? ("cmd", new[] { "/c", "echo warning: x 1>&2 & echo 7" })
+            : ("sh", ["-c", "echo 'warning: x' >&2; echo 7"]);
+        var log = new StringWriter();
+
+        var result = await Shell.Run(file, args, Path.GetTempPath(), log: log, stdoutOnly: true);
+
+        Assert.Equal(7, int.Parse(result.Output.Trim(), System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Contains("warning: x", result.Error, StringComparison.Ordinal);
+        Assert.Contains("warning: x", log.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task OnlyABoundedTailOfALongOutputComesBack()
     {
         if (OperatingSystem.IsWindows()) return;

@@ -7,7 +7,7 @@ using NSail.Harness.Repositories;
 namespace NSail.Harness;
 
 // The harness's own protocol on a PR's thread, in HTML comments people do not see: the gate's verdict
-// at a head (`harness:gate:<green|red|void>:<sha>`, or `harness:gate:waits:<sha>:<main>`) and the reviewer's (`<review marker>:<clean|findings>:<sha>`).
+// at a head (`harness:gate:<green|red>:<sha>`, or `harness:gate:waits:<sha>:<main>`) and the reviewer's (`<review marker>:<clean|findings>:<sha>`).
 // A marker counts only as a whole HTML comment on its own line, written by the harness's own login or
 // by one of the fleet's (`authors`).
 public sealed class Markers(string review, IReadOnlyCollection<string>? authors = null)
@@ -50,14 +50,22 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
     // A red main's story closed as fixed: a close that broke after its comment does not say it twice.
     public const string RedFixed = "<!-- harness:red-fixed -->";
 
+    // A story comment carries the marker when this harness (`login`) or one of the fleet wrote it and the
+    // marker is a whole HTML comment on its own line: anyone else's is a forgery.
+    public bool Says(Board.StoryComment comment, string marker, string login)
+    {
+        var mine = string.Equals(comment.Author, login, StringComparison.OrdinalIgnoreCase) || _authors.Contains(comment.Author, StringComparer.OrdinalIgnoreCase);
+        return mine && Regex.IsMatch(comment.Body, $@"^{Regex.Escape(marker)}[ \t]*\r?$", RegexOptions.Multiline);
+    }
+
     // How many comments carrying the marker close the thread in a row since a hand lifted a hold:
     // any other word between them (a seat's, a person's) breaks the run.
-    public static int InARow(IEnumerable<Board.StoryComment> comments, string marker, DateTimeOffset? since = null)
+    public int InARow(IEnumerable<Board.StoryComment> comments, string marker, string login, DateTimeOffset? since = null)
     {
         var run = 0;
         foreach (var c in comments.Where(c => since is null || c.At > since).OrderBy(c => c.At))
         {
-            run = c.Body.Contains(marker, StringComparison.Ordinal) ? run + 1 : 0;
+            run = Says(c, marker, login) ? run + 1 : 0;
         }
         return run;
     }
@@ -95,14 +103,13 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
         return text;
     }
 
-    // The gate's verdict at a head; `void` withdraws an earlier one, and the head is gated again. A
-    // head waiting on main reads pending while main is still the head it waited on (none known: still).
+    // The gate's verdict at a head, the last one written. A head waiting on main reads pending while main is still the head it waited on (none known: still).
     public static CiState? GateAt(IEnumerable<string> bodies, string sha, string? main = null)
     {
         CiState? word = null;
         foreach (var body in bodies)
         {
-            foreach (Match m in Regex.Matches(body, @"^<!-- harness:gate:(green|red|void|waits):([0-9a-f]+)(?::([0-9a-f]+))? -->[ \t]*\r?$", RegexOptions.Multiline))
+            foreach (Match m in Regex.Matches(body, @"^<!-- harness:gate:(green|red|waits):([0-9a-f]+)(?::([0-9a-f]+))? -->[ \t]*\r?$", RegexOptions.Multiline))
             {
                 if (m.Groups[2].Value != sha) continue;
                 word = m.Groups[1].Value switch

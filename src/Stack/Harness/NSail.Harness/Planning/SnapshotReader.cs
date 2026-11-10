@@ -150,11 +150,16 @@ public sealed class SnapshotReader(IBoard board, RepositorySet repos, IStoryLock
         return failure;
     }
 
+    internal static bool OwnsHead(string headRepo, string repoName)
+    {
+        return string.Equals(headRepo, repoName, StringComparison.OrdinalIgnoreCase);
+    }
+
     // A PR is the crew's only when its head lives in this repository (a fork's branch name is the
     // fork's to choose) and, where the repository lists its authors, one of them opened it.
     internal static bool IsCrews(OpenPr pr, string repoName, IReadOnlyCollection<string> authors)
     {
-        if (!string.Equals(pr.HeadRepo, repoName, StringComparison.OrdinalIgnoreCase)) return false;
+        if (!OwnsHead(pr.HeadRepo, repoName)) return false;
         return authors.Count == 0 || authors.Contains(pr.Author, StringComparer.OrdinalIgnoreCase);
     }
 

@@ -20,7 +20,7 @@ public static class SeatOutput
     // Every path the commits since `since` touch, a rename's source too; -z because git quotes odd names otherwise.
     public static async Task<IReadOnlyList<string>> Changed(string dir, string since)
     {
-        return (await Shell.Git(dir, "diff", "--name-only", "-z", "--no-renames", $"{since}..HEAD")).Split('\0');
+        return (await Shell.GitOut(dir, "diff", "--name-only", "-z", "--no-renames", $"{since}..HEAD")).Split('\0');
     }
 
     // The changed files that match a protected glob.

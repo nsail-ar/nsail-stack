@@ -37,4 +37,15 @@ public class GateWaitsTests
         Assert.False(GateJob.IsOwnRed(new InvalidOperationException("git fetch: timed out")));
         Assert.False(GateJob.IsOwnRed(new IOException("disk full")));
     }
+
+    [Fact]
+    public void AnUnreadableFileIsNamedRelativeToTheCheckout()
+    {
+        var slot = Path.Combine(Path.GetTempPath(), "gate", "slot-3");
+        var message = new FileNotFoundException($"Could not find file '{Path.Combine(slot, "NSail.sln")}'.").Message;
+
+        var said = GateJob.InCheckout(message, slot);
+
+        Assert.Equal("Could not find file 'NSail.sln'.", said);
+    }
 }
