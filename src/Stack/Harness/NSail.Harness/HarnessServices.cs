@@ -57,6 +57,7 @@ public static class HarnessServices
         services.AddTransient<SnapshotReader>();
         services.AddSingleton(sp => new JobHistory(sp.GetRequiredService<HarnessOptions>().WorkRoot, Log<JobHistory>(sp)));
         services.AddSingleton(sp => new JobStats(sp.GetRequiredService<HarnessOptions>().WorkRoot, log: Log<JobStats>(sp)));
+        services.AddSingleton(sp => new OpsLedger(sp.GetRequiredService<HarnessOptions>().WorkRoot, sp.GetRequiredService<JobHistory>(), Log<OpsLedger>(sp)));
         services.AddSingleton(sp => new HarnessState(sp.GetRequiredService<HarnessOptions>().WorkRoot, Log<HarnessState>(sp)));
         services.AddSingleton(sp => new BuildLeases(sp.GetRequiredService<HarnessOptions>().Builds));
         services.AddSingleton(sp =>

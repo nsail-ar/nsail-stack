@@ -11,6 +11,9 @@ public sealed class OpsOptions
     public string? TokenFile { get; set; }
     public int Minutes { get; set; } = 5;
 
+    // The most a report's body weighs, in bytes: under Ops' own ceiling, which refuses rather than cuts.
+    public int MaxBytes { get; set; } = 60 * 1024;
+
     public string? ResolveToken()
     {
         return !string.IsNullOrWhiteSpace(Token) ? Token.Trim()
