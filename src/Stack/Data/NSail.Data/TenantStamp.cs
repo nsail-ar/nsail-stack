@@ -50,7 +50,7 @@ sealed class TenantStamp : SaveChangesInterceptor
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
-            if (entry.State is not (EntityState.Added or EntityState.Modified)
+            if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted)
                 || entry.Metadata.FindProperty(TenantColumn.Name) is null)
             {
                 continue;
@@ -77,6 +77,21 @@ sealed class TenantStamp : SaveChangesInterceptor
                 {
                     throw new InvalidOperationException(
                         $"Updating a {entry.Metadata.DisplayName()} would carry a tenant other than the resolved one. A row's tenant is fixed when it is added and the stamp owns it; load the row under its tenant and change its fields instead of handing a detached entity to Update.");
+                }
+
+                continue;
+            }
+
+            // A DELETE carries no tenant filter either, so a stub with a known id (its shadow
+            // column at the install's key) or an entry set to Deleted by hand would remove another
+            // tenant's row. Judged by value, as an update is: a row loaded under the resolved
+            // tenant carries it.
+            if (entry.State == EntityState.Deleted)
+            {
+                if (tenant is { } own && !Equals(entry.Property(TenantColumn.Name).CurrentValue, own))
+                {
+                    throw new InvalidOperationException(
+                        $"Deleting a {entry.Metadata.DisplayName()} would carry a tenant other than the resolved one. Load the row under its tenant and remove it instead of removing an entity that was never loaded.");
                 }
 
                 continue;

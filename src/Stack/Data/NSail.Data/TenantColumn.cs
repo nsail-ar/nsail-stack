@@ -84,6 +84,11 @@ static class TenantColumn
             owned.Add(entity, tenant);
         }
 
+        foreach (var entity in model.GetEntityTypes().Where(entity => entity.IsOwned()))
+        {
+            RefuseAnOwnedConstraint(entity, owned);
+        }
+
         // After every column exists: a foreign key names the principal's column as well as its
         // own, and the principal may come later in the model.
         foreach (var (entity, tenant) in owned)
@@ -93,8 +98,8 @@ static class TenantColumn
 
         // Every type but the owned ones, not only the roots: a derived type shares its root's row
         // and may declare an index or a foreign key of its own, which names the same tenant. An
-        // owned type cannot name its owner's column in a key or an index of its own, so what it
-        // declares stays plain.
+        // owned type cannot name its owner's column in a key or an index of its own, which is why
+        // one that would need it is refused above.
         var sharing = model.GetEntityTypes().Where(entity => !entity.IsOwned()).ToArray();
 
         foreach (var entity in sharing)
@@ -163,16 +168,59 @@ static class TenantColumn
         }
     }
 
+    // A global key still referenced once ScopeForeignKeys ran is one a dependent the pass cannot
+    // scope names — an install-scoped entity through HasPrincipalKey, an owned type under the
+    // install's row — and it would stay unique across tenants, so the model is refused.
     static void DropGlobalKeys(IMutableEntityType entity, IMutableProperty tenant)
     {
         foreach (var key in entity.GetDeclaredKeys().ToArray())
         {
-            if (key != entity.FindPrimaryKey()
-                && key.Properties[0] != tenant
-                && !key.GetReferencingForeignKeys().Any())
+            if (key == entity.FindPrimaryKey() || key.Properties[0] == tenant)
             {
-                entity.RemoveKey(key);
+                continue;
             }
+
+            if (key.GetReferencingForeignKeys().FirstOrDefault() is { } reference)
+            {
+                throw new InvalidOperationException(
+                    $"{reference.DeclaringEntityType.DisplayName()} names {entity.DisplayName()} by an alternate key the tenant pass cannot scope, so the key would stay unique across tenants and a collision would reveal a value another tenant holds. Name {entity.DisplayName()} by its primary key, or make the referencing type a tenant-scoped entity of its own.");
+            }
+
+            entity.RemoveKey(key);
+        }
+    }
+
+    // An owned type shares its owner's row and cannot name the owner's tenant column in a
+    // constraint of its own: a foreign key it declares onto a tenant-scoped entity would accept
+    // another tenant's row, and a unique it declares would collide across tenants. Under an
+    // install-scoped owner nothing is the tenant's and both stay plain.
+    static void RefuseAnOwnedConstraint(
+        IMutableEntityType entity,
+        Dictionary<IMutableEntityType, IMutableProperty> owned)
+    {
+        if (TenantOf(entity, owned) is null)
+        {
+            return;
+        }
+
+        var shared = Above(entity)!;
+
+        foreach (var foreignKey in entity.GetDeclaredForeignKeys())
+        {
+            if (!foreignKey.IsOwnership && TenantOf(foreignKey.PrincipalEntityType, owned) is not null)
+            {
+                throw new InvalidOperationException(
+                    $"{entity.DisplayName()} is owned by {shared.DisplayName()} and declares a foreign key onto {foreignKey.PrincipalEntityType.DisplayName()}, which the tenant pass cannot scope: it would accept another tenant's row. Make {entity.DisplayName()} an entity of its own.");
+            }
+        }
+
+        var unique = entity.GetDeclaredIndexes().Any(index => index.IsUnique)
+            || entity.GetDeclaredKeys().Any(key => key != entity.FindPrimaryKey());
+
+        if (unique)
+        {
+            throw new InvalidOperationException(
+                $"{entity.DisplayName()} is owned by {shared.DisplayName()} and declares a unique index or key of its own, which the tenant pass cannot scope: it would be unique across tenants and a collision would reveal a value another tenant holds. Make {entity.DisplayName()} an entity of its own.");
         }
     }
 
