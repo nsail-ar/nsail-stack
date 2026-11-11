@@ -54,7 +54,10 @@ dotnet test NSail.sln
 The data tests need PostgreSQL on `localhost`, user `postgres`, password in `PGPASSWORD`.
 `src/Stack/Sample` is the example app ([sample.md](src/Stack/Sample/docs/sample.md)).
 
-Every merge to `main` publishes every Stack project to nuget.org and tags the commit `v<version>`
-([.github/workflows/ci.yml](.github/workflows/ci.yml)); a product takes a change by bumping its
-pin. Pull requests build, test and pack, and publish nothing; one that changes only `.md` files
-reports the check without building, and a push of only `.md` files to `main` does not release.
+Every merge to `main` publishes every Stack project to the organization's GitHub Packages feed
+and tags the commit `v<version>` ([.github/workflows/ci.yml](.github/workflows/ci.yml)); a
+product takes a change by bumping its pin, and restores from that feed. nuget.org and npm are the
+public shelf: the same workflow puts a version there once a product has released on it, so no
+build of ours waits for them. Pull requests build, test and pack, and publish nothing; one that
+changes only `.md` files reports the check without building, and a push of only `.md` files to
+`main` does not release.

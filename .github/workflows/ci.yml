@@ -1,17 +1,22 @@
 name: CI
 
 # Build, test and pack on every pull request and every push to main. A run on main (a push,
-# or a manual dispatch to retry one) is a
-# release: the packages go to nuget.org as <VERSION_PREFIX>.<run> and the commit is tagged
-# v<that version>, which is what a consumer pins. A pull request packs a -pr prerelease it
-# never publishes. To start a new minor or major line, change VERSION_PREFIX.
+# or a manual dispatch to retry one) is a release: the packages go to this organization's
+# GitHub Packages feed as <VERSION_PREFIX>.<run> and the commit is tagged v<that version>,
+# which is what a consumer pins. A pull request packs a -pr prerelease it never publishes.
+# To start a new minor or major line, change VERSION_PREFIX.
+#
+# The house restores from that feed and nowhere else: it serves a push as it lands, where
+# nuget.org serves one package by package over minutes to an hour, and a release that waits
+# for it holds every story behind the pin. nuget.org and npm are the public shelf, and take a
+# version only once a product has released on it: the `publish` job below.
 #
 # nuget.org is reached by Trusted Publishing: the NuGet/login step trades this run's OIDC
 # token for a short-lived key, against a policy on the NSail nuget.org account that names
 # this repository and this workflow file. npm is reached the same way, for @nsail/stack and
-# @nsail/ui at the same version. No API key or token is stored anywhere.
+# @nsail/ui at the same version. No API key for either is stored anywhere.
 #
-# GitHub-hosted runners, never the monorepo's self-hosted iron: this repository goes public,
+# GitHub-hosted runners, never the monorepo's self-hosted iron: this repository is public,
 # and a fork's pull request on a self-hosted runner runs a stranger's code on our machine.
 
 on:
@@ -23,28 +28,38 @@ on:
       - '**.md'
       - '.github/workflows/review.yml'
       - '.github/review-reads.sh'
+  schedule:
+    - cron: '40 */6 * * *'
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "A released version (x.y.z) to put on nuget.org and npm - empty builds and releases main"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
 
 # A PR's run gives way to its next push; a release on main never does — cancelled after its
-# publish it would leave a version on nuget.org with no tag and no bump.
+# publish it would leave a version on the feed with no tag and no bump. The public shelf
+# queues apart: in the releases' group, a scheduled run would take the place of a release
+# waiting its turn.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ (github.event_name == 'schedule' || inputs.publish) && 'publish' || format('ci-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
+    if: github.event_name != 'schedule' && !inputs.publish
     runs-on: ubuntu-latest
-    # The build and the publish take most of half an hour, compiling the monorepo before its
-    # bump some twenty minutes, and the wait for nuget.org up to
-    # 45 minutes more (0.1.300 died at 30 inside the wait, 2026-10-22).
-    timeout-minutes: 110
+    # The build and the publish take most of half an hour, and compiling the monorepo before
+    # its bump some twenty minutes more.
+    timeout-minutes: 75
 
     permissions:
       contents: write
-      id-token: write
+      packages: write
 
     # The data harnesses create throwaway databases on a real Postgres. TestDatabase connects
     # as postgres@localhost and takes the password from PGPASSWORD (ConnectionStrings.Complete).
@@ -165,6 +180,8 @@ jobs:
           mkdir -p artifacts/npm
           npm pack --workspace=@nsail/stack --workspace=@nsail/ui --pack-destination artifacts/npm
 
+      # What the `publish` job puts on the public shelf: a release has this artifact's
+      # retention to be taken by a product's release.
       - uses: actions/upload-artifact@v5
         if: steps.scope.outputs.docs != 'true'
         with:
@@ -172,44 +189,16 @@ jobs:
           path: artifacts/*
           retention-days: 14
 
-      - name: NuGet login
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        id: nuget
-        uses: NuGet/login@v1
-        with:
-          user: NSail
-
+      # The feed holds each package under this repository (the RepositoryUrl its nuspec
+      # carries), and answers no restore without a token: a consumer's nuget.config names the
+      # variable its token comes in.
       - name: Publish
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: >-
           dotnet nuget push "artifacts/*.nupkg"
-          --source https://api.nuget.org/v3/index.json
-          --api-key ${{ steps.nuget.outputs.NUGET_API_KEY }}
+          --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+          --api-key ${{ secrets.GITHUB_TOKEN }}
           --skip-duplicate
-
-      # nuget.org serves a push package by package, minutes apart: a restore in that window
-      # takes one package at the new version and fails on another it depends on (0.1.299,
-      # 2026-10-22: NSail.Mapping >= 0.1.299 not found, red on the monorepo's main). So the
-      # tag, and the monorepo's bump below, wait until every package of this release is in
-      # the flat container restore reads.
-      - name: Wait for nuget.org
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        timeout-minutes: 45
-        run: |
-          pending=()
-          for f in artifacts/*.nupkg; do
-            pending+=("$(basename "$f" ".$VERSION.nupkg" | tr '[:upper:]' '[:lower:]')")
-          done
-          while [ ${#pending[@]} -gt 0 ]; do
-            left=()
-            for id in "${pending[@]}"; do
-              curl -fsS "https://api.nuget.org/v3-flatcontainer/$id/index.json" 2>/dev/null \
-                | jq -e --arg v "$VERSION" '.versions | index($v)' >/dev/null || left+=("$id")
-            done
-            pending=("${left[@]}")
-            [ ${#pending[@]} -eq 0 ] || { echo "$(date -u +%H:%M:%S) not served yet: ${pending[*]}"; sleep 30; }
-          done
-          echo "every package of $VERSION is served"
 
       - name: Tag
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -219,14 +208,17 @@ jobs:
 
       # The monorepo pins the version every restore takes (its Directory.Build.props), and
       # this is the one hand that moves it: a complete release reaches every kit and app with
-      # nobody bumping anything. The monorepo is compiled at the new version first, so a bump
-      # never turns its main red: one that does not compile is not pushed, and the story that
-      # released it is told, whose monorepo PR moves the pin together with the adaptation.
-      # Only forward: a slower run, or a PR that moved the pin already, is left alone.
+      # nobody bumping anything. The monorepo is restored and compiled at the new version
+      # first, so a bump never turns its main red. A restore that fails is the feed's or its
+      # token's, and reds this run. A compile that fails is the code's: the bump is not pushed,
+      # and the story that released it is told, whose monorepo PR moves the pin together with
+      # the adaptation. Only forward: a slower run, or a PR that moved the pin already, is left
+      # alone.
       - name: Bump the monorepo
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.NSAIL_CREW_PAT }}
+          GITHUB_PKG_PAT: ${{ secrets.NSAIL_CREW_PKG_PAT }}
         run: |
           STORY=$(git log -1 --format=%s | sed -n 's/^nsail#\([0-9]*\):.*/\1/p')
           cd "$RUNNER_TEMP"
@@ -243,13 +235,18 @@ jobs:
           }
           behind || { echo "the monorepo is at $current already - nothing to move"; exit 0; }
           move
-          if ! dotnet build NSail.sln --configuration Release -p:NuGetAudit=false > ../mono-build.log 2>&1; then
+          if ! dotnet restore NSail.sln --no-http-cache -p:NuGetAudit=false > ../mono-restore.log 2>&1; then
+            tail -30 ../mono-restore.log
+            echo "::error::the monorepo does not restore at v$VERSION - the feed or its token, not the code"
+            exit 1
+          fi
+          if ! dotnet build NSail.sln --configuration Release --no-restore > ../mono-build.log 2>&1; then
             FAILED=$(grep -E ': error [A-Z]+[0-9]+:' ../mono-build.log | sed 's:^.*/mono/::; s: \[.*$::' | sort -u | head -20 || true)
             [ -n "$FAILED" ] || FAILED=$(tail -20 ../mono-build.log)
             echo "::warning::the monorepo does not compile at v$VERSION - the bump is not pushed"
             echo "$FAILED"
             if [ -n "$STORY" ]; then
-              printf 'Stack `v%s` is on nuget.org, but the monorepo does not compile at it, so the bump was not pushed. The monorepo PR of this story (or of the earlier release that broke it) moves `NSailStackVersion` to this version together with the adaptation:\n\n```\n%s\n```\n' "$VERSION" "$FAILED" > ../bump-red.md
+              printf 'Stack `v%s` is released, but the monorepo does not compile at it, so the bump was not pushed. The monorepo PR of this story (or of the earlier release that broke it) moves `NSailStackVersion` to this version together with the adaptation:\n\n```\n%s\n```\n' "$VERSION" "$FAILED" > ../bump-red.md
               gh issue comment "$STORY" -R nsail-ar/nsail --body-file ../bump-red.md
             fi
             exit 0
@@ -258,19 +255,108 @@ jobs:
             git fetch --quiet origin main && git reset --quiet --hard origin/main
             behind || { echo "the monorepo is at $current already - nothing to move"; exit 0; }
             move
-            git commit --quiet -m "stack: v$VERSION is on nuget.org" -- Directory.Build.props
+            git commit --quiet -m "stack: v$VERSION" -- Directory.Build.props
             git push --quiet origin HEAD:main && { echo "the monorepo moved $current -> $VERSION"; exit 0; }
             sleep $((attempt * 5))
           done
           echo "::error::could not push the bump to v$VERSION after 5 attempts"; exit 1
 
+  # The public shelf. A version goes to nuget.org and npm once a product has released on it:
+  # on the schedule, the version the monorepo's newest release pins; dispatched, the one asked
+  # for. The files are the ones that version's build packed (its `packages` artifact), so what
+  # the world installs is what the release ran. The version's release page here is the mark
+  # that it is public, and a run that finds it does nothing. No product restores from the
+  # shelf, so a failure here reds this run and holds nobody.
+  publish:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+
+    env:
+      DOTNET_NOLOGO: true
+      GH_REPO: ${{ github.repository }}
+
+    steps:
+      - name: Version
+        env:
+          GH_TOKEN: ${{ secrets.NSAIL_CREW_PAT }}
+          ASKED: ${{ inputs.publish }}
+        run: |
+          VERSION="$ASKED"
+          if [ -z "$VERSION" ]; then
+            TAG=$(gh api "repos/nsail-ar/nsail/releases?per_page=1" -q '.[0].tag_name // empty')
+            [ -n "$TAG" ] || { echo "::error::the monorepo has no release"; exit 1; }
+            VERSION=$(gh api "repos/nsail-ar/nsail/contents/Directory.Build.props?ref=$TAG" -H "Accept: application/vnd.github.raw" \
+              | sed -n 's:.*<NSailStackVersion>\(.*\)</NSailStackVersion>.*:\1:p')
+            echo "$TAG runs on the Stack at $VERSION"
+          fi
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::'$VERSION' is not a released version"; exit 1; }
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Public already
+        id: public
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "v$VERSION is public already"
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: The build's packages
+        if: steps.public.outputs.done != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(gh api "repos/$GH_REPO/git/ref/tags/v$VERSION" -q .object.sha)
+          RUN=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&branch=main" \
+            -q ".workflow_runs[] | select(.run_number == ${VERSION##*.}) | .id")
+          [ -n "$RUN" ] || { echo "::error::no run of this workflow built v$VERSION"; exit 1; }
+          gh run download "$RUN" --name packages --dir artifacts
+
+      - name: NuGet login
+        if: steps.public.outputs.done != 'true'
+        id: nuget
+        uses: NuGet/login@v1
+        with:
+          user: NSail
+
+      - name: Publish NuGet
+        if: steps.public.outputs.done != 'true'
+        run: >-
+          dotnet nuget push "artifacts/*.nupkg"
+          --source https://api.nuget.org/v3/index.json
+          --api-key ${{ steps.nuget.outputs.NUGET_API_KEY }}
+          --skip-duplicate
+
+      - uses: actions/setup-node@v5
+        if: steps.public.outputs.done != 'true'
+        with:
+          node-version: 24
+
       # npm's Trusted Publishing: the CLI trades this run's OIDC token with npmjs.com, against
       # a trusted publisher each package names (this repository, this workflow file), and signs
-      # the provenance. It needs npm 11.5.1 or later. The tarballs are the ones packed above.
-      # After the tag, so npm refusing never leaves a NuGet release without its tag.
+      # the provenance. It needs npm 11.5.1 or later. npm refuses a version it already holds,
+      # so a run that takes up a half-made publish skips what is there.
       - name: Publish npm
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: steps.public.outputs.done != 'true'
         run: |
           npm install --global npm@^11.5.1
-          npm publish "artifacts/npm/nsail-stack-$VERSION.tgz" --access public --provenance
-          npm publish "artifacts/npm/nsail-ui-$VERSION.tgz" --access public --provenance
+          for name in stack ui; do
+            if [ -n "$(npm view "@nsail/$name@$VERSION" version 2> /dev/null)" ]; then
+              echo "@nsail/$name@$VERSION is on npm already"
+            else
+              npm publish "artifacts/npm/nsail-$name-$VERSION.tgz" --access public --provenance
+            fi
+          done
+
+      - name: Release page
+        if: steps.public.outputs.done != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "v$VERSION" --title "v$VERSION" --generate-notes --verify-tag
