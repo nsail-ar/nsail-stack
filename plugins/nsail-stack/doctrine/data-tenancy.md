@@ -34,7 +34,10 @@ Stack sets and no product writes:
   detached entity handed to `Update` (default tenant) or a hand-set value throws
   `InvalidOperationException` naming the entity. The rule holds in every mode, judged by value:
   where every row carries the same key (`None`, `MultiDb`) nothing differs. Load the row under
-  its tenant and change its fields. Where no stamp runs — a context `AddDataAccess` did not
+  its tenant and change its fields. A **Deleted** entry is judged the same way: a `DELETE`
+  carries no tenant filter either, so removing an entity that was never loaded — a stub with a
+  known id, an entry set to `Deleted` by hand — is refused naming the entity, and a stub delete
+  does not work in tenant-scoped code: load the row first. Where no stamp runs — a context `AddDataAccess` did not
   build, a design-time factory's or a retrofit's — the column's value generator writes the
   install's `Guid.Empty`: EF refuses to insert a row whose shadow key it does not know, and the
   column sits in a key wherever another table names the row (below). The generator never writes
@@ -61,9 +64,14 @@ Stack sets and no product writes:
   **loaded** when the principal is deleted; one it has not loaded makes the `DELETE` fail with
   23503, so a handler that deletes a principal loads its optional dependents first. A derived type's
   indexes and foreign keys follow its root; an **owned** type cannot name its owner's column in a
-  key or index of its own, so what it declares stays plain — give such a reference an entity of
-  its own. **Install-scoped entities keep their plain keys**, and a foreign key from a tenant row onto one stays plain: it is the same
-  row for every tenant.
+  key or index of its own, so **what the pass cannot scope is refused at model build**, naming
+  the type: a foreign key an owned type under a tenant-scoped owner declares onto a tenant-scoped
+  entity, a unique index or key of its own, and an alternate key a dependent the pass skips still
+  names — an install-scoped entity through `HasPrincipalKey`, an owned type under the install's
+  row — which would stay unique across tenants. Give such a reference an entity of its own; an
+  owned type of plain columns, or one naming an install-scoped entity, builds. **Install-scoped
+  entities keep their plain keys**, and a foreign key from a tenant row onto one stays plain: it
+  is the same row for every tenant.
 
 **The primary key does not move.** It stays `Id` alone in every mode; the tenant is a column
 BESIDE it. A row is globally unique by its id and the wall is the filter, not the key — two

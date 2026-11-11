@@ -189,11 +189,58 @@ public sealed class TenantConstraintTests : IAsyncLifetime
     }
 
     [Fact]
-    public void An_owned_type_with_a_reference_of_its_own_builds_the_model()
+    public void An_owned_type_of_plain_columns_builds_the_model()
     {
         using var db = new ConstraintDbContext(_options, Lumina);
 
         Assert.NotNull(db.Model.FindEntityType(typeof(COwned)));
+    }
+
+    // An owned type shares its owner's row and cannot name the owner's tenant column in a
+    // constraint of its own, so what would need it is refused where the model is built.
+    [Fact]
+    public void An_owned_foreign_key_onto_a_tenant_scoped_entity_is_refused_at_model_build()
+    {
+        var refusal = Refused<OwnedReferenceSetup>();
+
+        Assert.Contains(nameof(CHeldReference), refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("an entity of its own", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_owned_unique_index_is_refused_at_model_build()
+    {
+        var refusal = Refused<OwnedUniqueSetup>();
+
+        Assert.Contains(nameof(CHeldReference), refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("an entity of its own", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_owned_reference_onto_an_install_scoped_entity_builds_the_model()
+    {
+        using var db = new RefusedDbContext<OwnedInstallReferenceSetup>();
+
+        Assert.NotNull(db.Model.FindEntityType(typeof(CHeldReference)));
+    }
+
+    // The optional key the install-to-tenant law lets through: the global alternate key stays,
+    // and stays unique across tenants.
+    [Fact]
+    public void An_install_scoped_dependent_naming_an_alternate_key_is_refused_at_model_build()
+    {
+        var refusal = Refused<InstallByCodeSetup>();
+
+        Assert.Contains(nameof(CKindByCode), refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(nameof(CParent), refusal.Message, StringComparison.Ordinal);
+    }
+
+    static InvalidOperationException Refused<TSetup>()
+        where TSetup : IDbContextSetup, new()
+    {
+        using var db = new RefusedDbContext<TSetup>();
+
+        return Assert.Throws<InvalidOperationException>(() => db.Model);
     }
 
     [Fact]
@@ -450,10 +497,7 @@ sealed class ConstraintSetup : IDbContextSetup
         modelBuilder.Entity<COwner>(row =>
         {
             row.ToTable("Owners");
-            row.OwnsOne(r => r.Held, held =>
-            {
-                held.HasOne<CParent>().WithMany().HasForeignKey(h => h.ParentId).OnDelete(DeleteBehavior.Restrict);
-            });
+            row.OwnsOne(r => r.Held);
         });
 
         modelBuilder.Entity<CLoose>(row =>
@@ -568,5 +612,120 @@ public sealed class COwner
 
 public sealed class COwned
 {
-    public Guid? ParentId { get; set; }
+    public string? Note { get; set; }
+}
+
+// One context type per shape, so EF's model cache never hands one shape's model to another.
+public sealed class RefusedDbContext<TSetup> : DbContext, ITenanted, IHasOrgScope
+    where TSetup : IDbContextSetup, new()
+{
+    public RefusedDbContext()
+        : base(new DbContextOptionsBuilder().UseNpgsql("Host=localhost;Database=none;Username=postgres").Options)
+    {
+    }
+
+    public Guid? TenantId
+    {
+        get { return Guid.Empty; }
+    }
+
+    public OrgScope OrgScope
+    {
+        get { return OrgScope.Everywhere; }
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.ApplyTenancy();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplySetups(this, [new TSetup()]);
+    }
+}
+
+public sealed class OwnedReferenceSetup : IDbContextSetup
+{
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CParent>(parent => parent.ToTable("Parents"));
+
+        modelBuilder.Entity<CHolder>(row =>
+        {
+            row.ToTable("Holders");
+            row.OwnsOne(r => r.Held, held =>
+            {
+                held.HasOne<CParent>().WithMany().HasForeignKey(h => h.TargetId).OnDelete(DeleteBehavior.Restrict);
+            });
+        });
+    }
+}
+
+public sealed class OwnedUniqueSetup : IDbContextSetup
+{
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CHolder>(row =>
+        {
+            row.ToTable("Holders");
+            row.OwnsOne(r => r.Held, held => held.HasIndex(h => h.Code).IsUnique());
+        });
+    }
+}
+
+public sealed class OwnedInstallReferenceSetup : IDbContextSetup
+{
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CKind>(kind => kind.ToTable("Kinds"));
+
+        modelBuilder.Entity<CHolder>(row =>
+        {
+            row.ToTable("Holders");
+            row.OwnsOne(r => r.Held, held =>
+            {
+                held.HasOne<CKind>().WithMany().HasForeignKey(h => h.TargetId).OnDelete(DeleteBehavior.Restrict);
+            });
+        });
+    }
+}
+
+public sealed class InstallByCodeSetup : IDbContextSetup
+{
+    public void Configure(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CParent>(parent =>
+        {
+            parent.ToTable("Parents");
+            parent.HasAlternateKey(row => row.Code);
+        });
+
+        modelBuilder.Entity<CKindByCode>(row =>
+        {
+            row.ToTable("KindsByCode");
+            row.HasOne<CParent>().WithMany().HasForeignKey(r => r.ParentCode).HasPrincipalKey(p => p.Code).IsRequired(false);
+        });
+    }
+}
+
+public sealed class CHolder
+{
+    public Guid Id { get; set; }
+
+    public CHeldReference? Held { get; set; }
+}
+
+public sealed class CHeldReference
+{
+    public Guid? TargetId { get; set; }
+
+    public string? Code { get; set; }
+}
+
+public sealed class CKindByCode : IInstallScoped
+{
+    public Guid Id { get; set; }
+
+    public string? ParentCode { get; set; }
 }

@@ -294,6 +294,77 @@ public sealed class SingleDbTenancyTests : IAsyncLifetime
         Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("mine"));
     }
 
+    // A DELETE carries no tenant filter, so an entity that was never loaded — a stub with another
+    // tenant's id, or an entry set to Deleted by hand — would remove the row by id alone.
+    [Fact]
+    public async Task RemovingAnEntityNeverLoadedIsRefusedAndTheRowStays()
+    {
+        await Write("lumina", "kept");
+
+        var id = await IdOf("lumina");
+
+        await using var scope = _host.Services.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For("vision"));
+
+        var db = scope.ServiceProvider.GetRequiredService<DbContext>();
+
+        db.Remove(new Note { Id = id });
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
+
+        Assert.Contains(nameof(Note), refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("kept"));
+    }
+
+    [Fact]
+    public async Task AnEntrySetToDeletedByHandIsRefusedAndTheRowStays()
+    {
+        await Write("lumina", "kept");
+
+        var id = await IdOf("lumina");
+
+        await using var scope = _host.Services.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For("vision"));
+
+        var db = scope.ServiceProvider.GetRequiredService<DbContext>();
+
+        db.Entry(new Note { Id = id }).State = EntityState.Deleted;
+
+        var refusal = await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
+
+        Assert.Contains(nameof(Note), refusal.Message, StringComparison.Ordinal);
+        Assert.Equal(Tenant.For("lumina").RowKey, await StoredTenantOf("kept"));
+    }
+
+    [Fact]
+    public async Task ATenantsOwnLoadedEntityStillDeletes()
+    {
+        await Write("lumina", "gone");
+
+        await using var scope = _host.Services.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For("lumina"));
+
+        var db = scope.ServiceProvider.GetRequiredService<DbContext>();
+
+        db.Remove(await db.Set<Note>().SingleAsync());
+
+        await db.SaveChangesAsync();
+
+        Assert.Equal(0, await Rows());
+    }
+
+    async Task<Guid> IdOf(string tenant)
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+
+        scope.ServiceProvider.GetRequiredService<ResolvedTenancyProvider>().Enter(Tenant.For(tenant));
+
+        return (await scope.ServiceProvider.GetRequiredService<DbContext>().Set<Note>().SingleAsync()).Id;
+    }
+
     async Task Write(string tenant, string text)
     {
         using var response = await _host.Client.SendAsync(
