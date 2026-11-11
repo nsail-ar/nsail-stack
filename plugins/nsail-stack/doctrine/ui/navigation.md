@@ -45,7 +45,8 @@ just places `<NsNavMenu />`.
   the page's `Surface`; a mark drawn for one ground only is the product's to make readable on the
   other.
 - **The drawer's header is one aligned block.** The logo, the search outline and the first
-  entry's icon start on one left line; the search outline, the brand row's chip and the entries'
+  entry's icon start on one left line; the search row's last control (the outline, or the app's
+  `Tools` door when it draws one), the brand row's chip at its painted edge and the entries'
   highlight end on one right line, with the highlight inset from the drawer's edge rather than
   full-bleed. The gap from the brand row to the search box equals the gap from the box to the
   first entry, and the brand row keeps the height that centers it on the page's title row. Nested
@@ -55,7 +56,9 @@ just places `<NsNavMenu />`.
   only its content is indented, by the vendor's padding per depth. The three distances are
   `--ns-nav-gutter`, `--ns-nav-inset` and `--ns-nav-gap` in `ns-mud.css`; the phone title row
   does not move. A chip in the brand row ends a long label in `…` (`ns-chip-ellipsis`, which
-  every `NsChip` wears) and is capped at half the row.
+  every `NsChip` wears) and is capped at half the brand row itself, whatever box the `Brand`
+  fragment wraps around it: a label that fits shows whole. Pushing the chip to the row's end is
+  the fragment's.
 - **The mechanism for the group order is weight bands**, so contributors compose without
   coordinating: domain groups 10–50, system groups 80+.
 - **A page missing from the route table throws at startup** rather than 404-ing on click
