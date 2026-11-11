@@ -167,12 +167,15 @@ public class PassFailureTests
         Assert.Equal(502, counted.Status);
     }
 
-    [Fact]
-    public void ATimeoutLogsAndCountsAsBeforeWithNoStatus()
+    public static TheoryData<Exception> Timeouts => [new TaskCanceledException("timed out"), new ProviderTimeoutException("timed out GET /repos/acme/app/statuses/abc: canceled", new TaskCanceledException())];
+
+    [Theory]
+    [MemberData(nameof(Timeouts))]
+    public void ATimeoutLogsAndCountsAsBeforeWithNoStatus(Exception timeout)
     {
         using var passes = new Passes();
 
-        var (pass, record) = Failed(new TaskCanceledException("timed out"), PassCall.Statuses, passes.Metrics);
+        var (pass, record) = Failed(timeout, PassCall.Statuses, passes.Metrics);
 
         Assert.Equal("pass failed — nothing started", record.Body);
         Assert.Equal(LogLevel.Error, record.Level);

@@ -18,6 +18,8 @@ public class GitHubSetStageTests
     const string Added = """{"data":{"addProjectV2ItemById":{"item":{"id":"added"}}}}""";
     const string AlreadyThere = """{"errors":[{"type":"UNPROCESSABLE","message":"Content already exists in this project"}]}""";
     const string Forbidden = """{"errors":[{"type":"FORBIDDEN","message":"Resource not accessible by integration"}]}""";
+    // An answer that never comes, as a call GitHub does not answer within the client's timeout.
+    const string Silent = "";
     const string Written = """{"data":{"updateProjectV2ItemFieldValue":{"projectV2Item":{"id":"x"}}}}""";
 
     // GraphQL answered by the operation each request names, in order per operation.
@@ -37,13 +39,14 @@ public class GitHubSetStageTests
             if (next < 0) throw new InvalidOperationException($"unscripted {operation}");
             var answer = _left[next].Answer;
             _left.RemoveAt(next);
+            if (answer == Silent) await Task.Delay(Timeout.Infinite, ct);
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(answer, Encoding.UTF8, "application/json") };
         }
     }
 
     static GitHubBoard Board(Scripted handler)
     {
-        var http = new HttpClient(handler) { BaseAddress = new Uri("https://api.github.com/") };
+        var http = new HttpClient(handler) { BaseAddress = new Uri("https://api.github.com/"), Timeout = TimeSpan.FromSeconds(1) };
         return new GitHubBoard(new GitHubClient(http), "o/r", new GitHubBoardOptions { Repository = "o/r", Project = 1, RetryDelay = TimeSpan.Zero });
     }
 
@@ -131,6 +134,27 @@ public class GitHubSetStageTests
         await Assert.ThrowsAsync<GitHubException>(() => Board(handler).SetStage(42, "Ready"));
 
         Assert.Equal("added", handler.Sent.Single(s => s.Operation == "deleteProjectV2Item").Variables.GetProperty("i").GetString());
+    }
+
+    [Fact]
+    public async Task AColumnWriteNothingAnswersEndsAsTheProvidersFailureAndTakesBackTheItemItAdded()
+    {
+        var handler = new Scripted(("projectV2(number", Project), ("projectItems", NoItem), ("addProjectV2ItemById", Added),
+            ("updateProjectV2ItemFieldValue", Silent), ("deleteProjectV2Item", """{"data":{"deleteProjectV2Item":{"deletedItemId":"added"}}}"""));
+
+        var e = await Assert.ThrowsAsync<ProviderTimeoutException>(() => Board(handler).SetStage(42, "Ready"));
+
+        Assert.NotNull(HarnessLoop.ProviderWait(e));
+        Assert.Single(handler.Sent, s => s.Operation == "updateProjectV2ItemFieldValue");
+        Assert.Equal("added", handler.Sent.Single(s => s.Operation == "deleteProjectV2Item").Variables.GetProperty("i").GetString());
+    }
+
+    [Fact]
+    public async Task TrySetStageAnswersFalseOnAColumnWriteNothingAnswers()
+    {
+        var handler = new Scripted(("projectV2(number", Project), ("projectItems", OnBoard), ("updateProjectV2ItemFieldValue", Silent));
+
+        Assert.False(await Board(handler).TrySetStage(42, "Ready", NullLogger.Instance));
     }
 
     // Every request answered 429 asking a wait the client would sit out.

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -185,5 +186,43 @@ public class GitHubRateLimitTests
         var (client, _) = Client(script);
 
         Assert.Empty(await Repo(client).PushTimes(1));
+    }
+
+    // A call nothing answers, as HttpClient's own timeout ends it.
+    sealed class Silent : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            await Task.Delay(Timeout.Infinite, ct);
+            throw new UnreachableException();
+        }
+    }
+
+    static GitHubClient Unanswered()
+    {
+        return new GitHubClient(new HttpClient(new Silent()) { BaseAddress = new Uri("https://api.github.com/"), Timeout = TimeSpan.FromMilliseconds(50) });
+    }
+
+    [Fact]
+    public async Task ACallTheClientTimesOutThrowsTheProvidersFailureWithItsCall()
+    {
+        var e = await Assert.ThrowsAsync<ProviderTimeoutException>(() => Unanswered().Send(HttpMethod.Post, "repos/acme/app/statuses/abc", new { state = "success" }));
+
+        Assert.StartsWith("timed out POST /repos/acme/app/statuses/abc: ", e.Message, StringComparison.Ordinal);
+        Assert.Null(e.Status);
+        Assert.IsType<TaskCanceledException>(e.InnerException);
+        await Assert.ThrowsAsync<ProviderTimeoutException>(() => Unanswered().Get("repos/acme/app/pulls"));
+        await Assert.ThrowsAsync<ProviderTimeoutException>(() => Unanswered().Upload("https://uploads.github.com/repos/acme/app/assets", new MemoryStream([1]), "image/png"));
+    }
+
+    [Fact]
+    public async Task ACallItsCallerCancelsIsStillACancellation()
+    {
+        var client = new GitHubClient(new HttpClient(new Silent()) { BaseAddress = new Uri("https://api.github.com/") });
+        using var stop = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+
+        var e = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.Send(HttpMethod.Post, "repos/acme/app/statuses/abc", ct: stop.Token));
+
+        Assert.IsNotAssignableFrom<ProviderException>(e);
     }
 }

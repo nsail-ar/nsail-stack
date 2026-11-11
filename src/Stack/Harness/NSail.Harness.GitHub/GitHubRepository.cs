@@ -267,7 +267,7 @@ public sealed class GitHubRepository(GitHubClient gh, RepositoryOptions options,
         {
             await gh.Send(HttpMethod.Delete, $"repos/{repo}/git/refs/heads/{head}", ct: ct);
         }
-        catch (Exception e) when (e is GitHubException or HttpRequestException or TaskCanceledException)
+        catch (Exception e) when (e is ProviderException or HttpRequestException or TaskCanceledException)
         {
         }
     }
