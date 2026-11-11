@@ -66,15 +66,16 @@ public static class WorkerTypes
     public static readonly IReadOnlyDictionary<string, WorkerType> All = new Dictionary<string, WorkerType>(StringComparer.OrdinalIgnoreCase)
     {
         // Ready: shaped for a cold builder. Ruling: a question waits for a hand. Either way a stalled
-        // story's analysis ends its stall.
+        // story's analysis ends its stall. Split: filed again as parts under it, which are what is built.
         ["Analyze"] = new("Analyze", WorkKind.Analyze, true, true,
             new FilterOptions { Status = Stages.Analyze, SubIssues = "0", Pr = "none", Labels = Holds },
-            [.. WorkerType.BaseEvents, "Ready", "Ruling", "Done"],
+            [.. WorkerType.BaseEvents, "Ready", "Ruling", "Done", "Split"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {
                 ["Ready"] = [MoveTo(Stages.Ready), Remove(Labels.Stalled)],
                 ["Ruling"] = [Add(Labels.Ruling), Remove(Labels.Stalled)],
                 ["Done"] = [MoveTo(Stages.Merged), Remove(Labels.Stalled)],
+                ["Split"] = [MoveTo(Stages.Backlog)],
             }, Minutes: 45),
         // Opened, Pushed: the gate decides what follows. Ruling: the builder's question goes back to
         // the analyst. Reanalyze: a release red's question, which goes to the analyst with no hold.

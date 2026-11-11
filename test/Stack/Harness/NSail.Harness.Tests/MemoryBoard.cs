@@ -20,6 +20,7 @@ sealed class MemoryBoard : IBoard
         public bool Muted;
         public List<StoryComment> Comments = [];
         public List<int> Blockers = [];
+        public List<int> Children = [];
     }
 
     public Dictionary<int, Card> Cards { get; } = [];
@@ -139,8 +140,16 @@ sealed class MemoryBoard : IBoard
         return Task.CompletedTask;
     }
 
+    // How many more stories the board files before it refuses one, as when the network drops midway.
+    public int? CreatesLeft { get; set; }
+
     public Task<int> CreateStory(string title, string body, IReadOnlyCollection<string> labels, CancellationToken ct = default)
     {
+        if (CreatesLeft is { } left)
+        {
+            if (left == 0) throw new ProviderException("the board refused the story", 502);
+            CreatesLeft = left - 1;
+        }
         var n = _next++;
         Add(n, title, body, stage: "", labels: [.. labels]).Author = "harness";
         return Task.FromResult(n);
@@ -164,7 +173,13 @@ sealed class MemoryBoard : IBoard
 
     public Task<int> Children(int story, CancellationToken ct = default)
     {
-        return Task.FromResult(0);
+        return Task.FromResult(Cards[story].Children.Count);
+    }
+
+    public Task AddChild(int story, int child, CancellationToken ct = default)
+    {
+        Cards[story].Children.Add(child);
+        return Task.CompletedTask;
     }
 
     public Task<IReadOnlyList<FiledStory>> Labelled(string label, CancellationToken ct = default)

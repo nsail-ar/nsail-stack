@@ -71,6 +71,12 @@ public interface IBoard
     // How many stories hang under this one: an epic is built through its children.
     Task<int> Children(int story, CancellationToken ct = default);
 
+    // Hangs the child under the story, where the board keeps such a tree.
+    Task AddChild(int story, int child, CancellationToken ct = default)
+    {
+        return Task.CompletedTask;
+    }
+
     // The versions a release ships (on GitHub, a milestone named as its tag). A board that keeps
     // none answers that no version is closed and ignores the rest.
     // Closed: the version was shipped, its stories walked.

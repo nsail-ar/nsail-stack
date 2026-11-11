@@ -9,8 +9,8 @@ using NSail.Harness.Repositories;
 
 namespace NSail.Harness.Tests;
 
-// A whole analysis against a file:// remote: the seat reads its prompt and leaves a Ready verdict,
-// with or without a protected.txt, and what reaches the board is read back.
+// A whole analysis against a file:// remote: the seat reads its prompt and leaves its verdict (Ready,
+// with or without a protected.txt; a ruling; a split into parts), and what reaches the board is read back.
 public class AnalyzeJobRunTests : IDisposable
 {
     readonly string _root = Path.Combine(Path.GetTempPath(), "harness-analyze-" + Guid.NewGuid().ToString("N"));
@@ -29,6 +29,9 @@ public class AnalyzeJobRunTests : IDisposable
     {
         public string Prompt { get; private set; } = "";
 
+        // The parts of a split, in order: each one's files by name.
+        public List<Dictionary<string, string>> Parts { get; } = [];
+
         public string Driver => "test";
 
         public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
@@ -40,6 +43,11 @@ public class AnalyzeJobRunTests : IDisposable
             await File.WriteAllTextAsync(Path.Combine(dir, "comment.md"), "Claim, Done, Readers.", ct);
             if (protectedPaths is not null) await File.WriteAllTextAsync(Path.Combine(dir, "protected.txt"), protectedPaths, ct);
             if (labels is not null) await File.WriteAllTextAsync(Path.Combine(dir, "labels.txt"), labels, ct);
+            for (var i = 0; i < Parts.Count; i++)
+            {
+                var part = Directory.CreateDirectory(Path.Combine(dir, "parts", (i + 1).ToString(System.Globalization.CultureInfo.InvariantCulture))).FullName;
+                foreach (var (name, text) in Parts[i]) await File.WriteAllTextAsync(Path.Combine(part, name), text, ct);
+            }
             return new AgentResult(0, false, null, false, null);
         }
 
@@ -61,7 +69,12 @@ public class AnalyzeJobRunTests : IDisposable
         return board;
     }
 
-    async Task<(MemoryBoard Board, JobOutcome Outcome)> Run(Analyst seat, string title, params string[] labels)
+    Task<(MemoryBoard Board, JobOutcome Outcome)> Run(Analyst seat, string title, params string[] labels)
+    {
+        return Run(seat, title, null, labels);
+    }
+
+    async Task<(MemoryBoard Board, JobOutcome Outcome)> Run(Analyst seat, string title, Action<MemoryBoard>? arrange, params string[] labels)
     {
         if (!Directory.Exists(Remote))
         {
@@ -80,6 +93,7 @@ public class AnalyzeJobRunTests : IDisposable
         var board = new MemoryBoard();
         board.Add(1, title: title, stage: Stages.Analyze, labels: labels);
         board.Add(2, stage: Stages.Closed, labels: [Labels.NoWalk, Labels.P1, "area:shop", "other"]);
+        arrange?.Invoke(board);
         var options = new HarnessOptions
         {
             WorkRoot = Path.Combine(_root, "work"),
@@ -175,5 +189,117 @@ public class AnalyzeJobRunTests : IDisposable
         var (board, outcome) = await Run(new Analyst(null, "ruling"), "a story");
 
         Assert.Equal("Ruling", outcome.Event);
+    }
+
+    // A change in the library and its use in the product: the second waits on the first.
+    static Analyst Splitter()
+    {
+        var seat = new Analyst(null, "split");
+        seat.Parts.Add(new() { ["title.txt"] = "The library part\n", ["body.md"] = "Add the seam.", ["comment.md"] = "Claim, Done, Readers.", ["labels.txt"] = "no-walk\np1\nother\n" });
+        seat.Parts.Add(new() { ["title.txt"] = "The product part", ["body.md"] = "Use the seam. Blocked by __PART_1__." });
+        return seat;
+    }
+
+    [Fact]
+    public async Task ASplitFilesItsPartsUnderTheStoryEachWhereItsNextJobReadsIt()
+    {
+        var (board, outcome) = await Run(Splitter(), "a story", "area:shop");
+
+        Assert.Equal("Split", outcome.Event);
+        Assert.Equal([100, 101], board.Cards[1].Children);
+        var first = board.Cards[100];
+        Assert.Equal("The library part", first.Title);
+        Assert.Equal(Stages.Ready, first.Stage);
+        Assert.Equal("Claim, Done, Readers.", Assert.Single(first.Comments).Body);
+        Assert.Equal(new HashSet<string> { "area:shop", Labels.NoWalk }, first.Labels);
+        var second = board.Cards[101];
+        Assert.Equal("Use the seam. Blocked by #100.", second.Body);
+        Assert.Equal(Stages.Backlog, second.Stage);
+        Assert.Equal([100], second.Blockers);
+        Assert.Contains(Labels.Blocked, second.Labels);
+        Assert.Contains("area:shop", second.Labels);
+        Assert.Equal("Claim, Done, Readers.", board.Cards[1].Comments[0].Body);
+        Assert.Contains("#100, #101", board.Cards[1].Comments[1].Body);
+    }
+
+    [Fact]
+    public async Task APartWithNoRefineryCommentAndNothingToWaitOnIsAnalyzedAsAnyFiledStory()
+    {
+        var seat = Splitter();
+        seat.Parts[1]["body.md"] = "Use the seam.";
+
+        var (board, _) = await Run(seat, "a story");
+
+        Assert.Equal(Stages.Analyze, board.Cards[101].Stage);
+        Assert.DoesNotContain(Labels.Blocked, board.Cards[101].Labels);
+    }
+
+    [Fact]
+    public async Task AShapedPartThatMustTouchAProtectedPathWaitsForAllowProtected()
+    {
+        var seat = Splitter();
+        seat.Parts[0]["protected.txt"] = ".github/workflows/ci.yml\n";
+
+        var (board, _) = await Run(seat, "a story");
+
+        Assert.Superset(new HashSet<string> { Labels.Ruling, Labels.Screened }, board.Cards[100].Labels);
+        Assert.Equal(Stages.Ready, board.Cards[100].Stage);
+    }
+
+    [Theory]
+    [InlineData("Use the seam of __PART_2__.")]
+    [InlineData("Use the seam of __PART_3__.")]
+    public async Task APartThatNamesItselfOrALaterOneIsNoSplit(string body)
+    {
+        var seat = Splitter();
+        seat.Parts[1]["body.md"] = body;
+
+        var (board, outcome) = await Run(seat, "a story");
+
+        Assert.True(outcome.Failed);
+        Assert.Empty(board.Cards[1].Children);
+        Assert.DoesNotContain(100, board.Cards.Keys);
+    }
+
+    [Fact]
+    public async Task OnePartIsNoSplit()
+    {
+        var seat = Splitter();
+        seat.Parts.RemoveAt(1);
+
+        var (board, outcome) = await Run(seat, "a story");
+
+        Assert.True(outcome.Failed);
+        Assert.DoesNotContain(100, board.Cards.Keys);
+    }
+
+    [Fact]
+    public async Task AReleaseRedIsNeverSplit()
+    {
+        var (board, outcome) = await Run(Splitter(), "Regression red on main (Acme)");
+
+        Assert.NotEqual("Split", outcome.Event);
+        Assert.DoesNotContain(100, board.Cards.Keys);
+    }
+
+    [Fact]
+    public async Task AStalledStoryIsNeverSplit()
+    {
+        var (board, outcome) = await Run(Splitter(), "a story", Labels.Stalled);
+
+        Assert.NotEqual("Split", outcome.Event);
+        Assert.DoesNotContain(100, board.Cards.Keys);
+    }
+
+    [Fact]
+    public async Task ASplitCutShortWaitsForAHandInsteadOfBeingFiledAgain()
+    {
+        var (board, outcome) = await Run(Splitter(), "a story", b => b.CreatesLeft = 1);
+
+        Assert.True(outcome.Failed);
+        Assert.Null(outcome.Event);
+        Assert.Superset(new HashSet<string> { Labels.Stalled, Labels.Ruling }, board.Cards[1].Labels);
+        Assert.Contains("#100", Assert.Single(board.Cards[1].Comments).Body);
+        Assert.Equal([100], board.Cards[1].Children);
     }
 }
