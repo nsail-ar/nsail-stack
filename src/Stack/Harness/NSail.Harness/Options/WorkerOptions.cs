@@ -130,6 +130,9 @@ public sealed class FilterOptions
     // An epic under way: some of it done, or a child In-Progress or past it.
     public bool? EpicStarted { get; set; }
 
+    // An epic with every child closed.
+    public bool? EpicDone { get; set; }
+
     // The board names the version it shipped in (on GitHub, a milestone).
     public bool? InVersion { get; set; }
 

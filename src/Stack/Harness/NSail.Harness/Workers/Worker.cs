@@ -85,6 +85,7 @@ public sealed class Worker
             Blockers = own.Blockers ?? type.Blockers,
             Unblocked = own.Unblocked ?? type.Unblocked,
             EpicStarted = own.EpicStarted ?? type.EpicStarted,
+            EpicDone = own.EpicDone ?? type.EpicDone,
             PrMerged = own.PrMerged ?? type.PrMerged,
             InVersion = own.InVersion ?? type.InVersion,
             Title = own.Title ?? type.Title,
@@ -163,6 +164,7 @@ public sealed class Worker
         if (f.Blockers is { } blockers && (blockers == "0") != (i.Blockers == 0)) return false;
         if (f.Unblocked is { } unblocked && unblocked != board.Unblocked(i)) return false;
         if (f.EpicStarted is { } started && started != board.EpicStarted(i)) return false;
+        if (f.EpicDone is { } done && done != (i.SubIssues > 0 && i.OwnPercent >= 100)) return false;
         if (f.InVersion is { } inVersion && inVersion != i.InVersion) return false;
         if (f.PrMerged is { } merged && merged != board.Merged(i.Number)) return false;
         if (_title is not null && !_title.IsMatch(i.Title)) return false;

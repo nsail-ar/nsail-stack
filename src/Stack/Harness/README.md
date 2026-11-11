@@ -71,11 +71,23 @@ the files it leaves.
     reconciles them.
   - A seat's `close-pr.md` closes only a PR of its own story, and an analyst's `labels.txt` sets only the
     board's `area:` and driver labels and `no-walk`.
+  - An analyst ends a story that is several which must land apart (a change in one repository and its use in
+    another) with `VERDICT: split`: its `comment.md` says why, and `parts/<n>/` (numbered from 1, between
+    `StoryParts.Fewest` and `StoryParts.Most`) each hold a `title.txt`, a `body.md` and, where the part has them, `labels.txt`,
+    `comment.md` (its refinery comment) and `protected.txt`. A part names an earlier one as `__PART_<n>__`, which
+    becomes that story's reference: the seat never knows a number the board has not given. The harness files the
+    parts in order as sub-issues of the story, with its area and priority: a part that waits on another story goes to Backlog
+    wearing `blocked` and is analyzed once its blocker has landed, one with its refinery comment goes to Ready (under the
+    protected-paths hold, if it lists one), any other to Analyze. The story itself takes the `Split` event (Backlog by
+    default) and is never analyzed or built again: it is an epic. A release red and a `stalled` story are never split,
+    and a split the harness cannot file whole (a part missing its title or body, one naming itself or a later part)
+    counts as an analysis with no verdict. One the board cut short after its first part waits `stalled` and
+    `ruling` for a hand, since a second analysis would file the first parts twice.
   - `Workers` (by name, ordered by `Priority`): everything the harness takes.
     Each has a `Type` (Analyze, Develop, Review, Verify, Test, Release, Watch, UpdateBoard) whose defaults
     (`Workers/WorkerTypes.cs`: filter, events, what each event does on the board, minutes) it changes only
     where it says: `Filter` (status, labels `x`/`!x`/`a|b`, PR and its checks, sub-issues,
-    blockers, title), `When` (schedule, CPU, memory, quota, reachable endpoints, named
+    blockers, title, an epic started or with every child closed), `When` (schedule, CPU, memory, quota, reachable endpoints, named
     `Conditions`), `Max`, `Seat` (from `Seats`), a prompt layered after the seat's, `Command`,
     `Minutes`, `DailyCap`, `Setup`, `Variables` (a Release also its `Product`, `Workflow` and `Paths`, and a
     `When.Schedule` with no End: its day's cut fires there), and `On` — per event, a list of actions (`MoveTo`, `AddLabel`,

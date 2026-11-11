@@ -400,6 +400,13 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         return data.GetProperty("repository").GetProperty("issue").GetProperty("subIssuesSummary").GetProperty("total").GetInt32();
     }
 
+    // GitHub hangs a sub-issue by its issue id, not its number.
+    public async Task AddChild(int story, int child, CancellationToken ct = default)
+    {
+        var id = (await gh.Get($"repos/{repo}/issues/{child}", ct)).GetProperty("id").GetInt64();
+        await gh.Send(HttpMethod.Post, $"repos/{repo}/issues/{story}/sub_issues", new { sub_issue_id = id }, ct);
+    }
+
     public async Task<bool> VersionClosed(string version, CancellationToken ct = default)
     {
         return await Milestone(version, ct) is { Closed: true };

@@ -153,6 +153,11 @@ public sealed class MappedBoard(IBoard board, IReadOnlyDictionary<string, string
         return board.Children(story, ct);
     }
 
+    public Task AddChild(int story, int child, CancellationToken ct = default)
+    {
+        return board.AddChild(story, child, ct);
+    }
+
     public Task<bool> VersionClosed(string version, CancellationToken ct = default)
     {
         return board.VersionClosed(version, ct);
