@@ -53,6 +53,16 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   button unchecked and the page standing: the value shown once must not go with an exception,
   and the box selects it on focus for a copy by hand. The button takes the end slot a `Suffix`
   would print in, so a box with both and a value draws the button.
+- **`NsTextField` reads a code from the camera behind `Camera`** — one boolean, for a box a
+  reader ends with Enter (a scan box). Where the browser has its own `BarcodeDetector` (Android
+  Chrome) an end button, named `Components.NsTextField.Camera`, opens the rear camera over the
+  screen (`nsapp.scanStart`, `ns.js`); the first EAN-13, EAN-8, UPC-A, UPC-E, Code 128 or QR it
+  reads closes it and is entered as a reader's burst is: written to the box, then committed as by
+  Enter (`OnCommit` and `OnEnterCommit`), and the cursor comes back to the box. A browser without
+  the detector draws no button and gets no decoder of the house's instead — the box is what it
+  was. A refused camera (an http origin is refused too) or none to open is said under the box in
+  its helper line, never a toast, and the box stays typeable; the next keystroke clears it. The
+  button takes the end slot a `Suffix` would print in; `Copy` with a value keeps it.
 - **`NsHelp` takes one parameter, `Key`** — a **global** localization key, because the
   component cannot see the page whose prefix would scope it.
 
@@ -551,7 +561,8 @@ words land under it and the label then travels off them.
 - **A box that ends on a key can draw it: `NsTextField.KeyHint`.** The key cap sits at the
   trailing edge while the box is empty — the mark `NsSearchField` draws for its chord, same
   classes — aria-hidden and never in the placeholder, which is the input's name fallback. It
-  is a reminder, not a claim: Enter is answered by `OnCommit` whether or not it is drawn.
+  is a reminder, not a claim: Enter is answered by `OnCommit` whether or not it is drawn. Beside
+  the camera's button the cap moves inside the input's edge (`ns-search-scans`), never over it.
 - **A permanent suffix is the one shape the derivation cannot reach, and it floats the label
   regardless of value, text or focus.** A `Suffix` or unit prints exactly where a long label
   would otherwise rest at empty, unfocused rest, and no value is coming to lift it. Two shapes
@@ -646,7 +657,7 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   balance, a count — belongs on the option alone: a field that kept it would go on saying a
   number from whenever it was picked (`ProductVariantLookup`).
 - **The end adornment is a button and carries a name** (`AdornmentAriaLabel`): the chevron that
-  opens a browsed lookup's list. It is icon-only at every width and the vendor draws it, so it is
+  opens a browsed lookup's list, the text field's copy and camera. It is icon-only at every width and the vendor draws it, so it is
   one of the two faces the whisper reaches by selector and names off `aria-label`
   ([actions.md](actions.md)).
 - **A `Lazy` lookup draws no adornment.** Its list is what a term answers, so a button offering

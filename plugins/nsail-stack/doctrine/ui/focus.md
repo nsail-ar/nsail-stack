@@ -112,7 +112,8 @@ to the screen's name — the exact place the link was pressed to get away from.
   own and not the router's concern. The re-arm fires on every pointer: a thumb that just scanned
   is already in that box with the keyboard open, so the cursor coming back costs it nothing,
   and a reader firing its next burst at a box nobody focused is this kind of screen's one
-  unseeable failure.
+  unseeable failure. A code read by the box's camera (`NsTextField.Camera`) is the same entry
+  through the same commit, and the cursor lands back in the box as after a burst.
 - **A dialog or a drawer keeps the form's own rule**: the first field of what just opened, and
   the vendor's focus trap hands the cursor back to whatever opened it the moment it closes — no
   line written for either end. **A dialog with nothing to type into — a yes/no question — opens
