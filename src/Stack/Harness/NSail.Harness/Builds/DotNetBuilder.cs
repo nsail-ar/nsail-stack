@@ -130,9 +130,9 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         return string.Join('/', parts);
     }
 
-    public async Task<ShellResult> Gate(string dir, string? baseSha, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default)
+    public async Task<ShellResult> Gate(string dir, string? baseSha, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, string? runAs = null)
     {
-        var run = new Run(dir, env, DateTimeOffset.UtcNow + timeout, log, ct);
+        var run = new Run(dir, env, DateTimeOffset.UtcNow + timeout, log, ct, runAs);
         var affected = await Affected(dir, baseSha, ct);
         if (affected is { Count: 0 }) return run.Say("Nothing a project builds changed: green by construction.");
 
@@ -152,9 +152,9 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         return await run.Dotnet(["test", testFilter, "--configuration", options.Configuration, "--no-build", "--verbosity", "minimal", .. filter]);
     }
 
-    public async Task<ShellResult> Suite(string dir, string project, string? filter, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default)
+    public async Task<ShellResult> Suite(string dir, string project, string? filter, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, string? runAs = null)
     {
-        var run = new Run(dir, env, DateTimeOffset.UtcNow + timeout, log, ct);
+        var run = new Run(dir, env, DateTimeOffset.UtcNow + timeout, log, ct, runAs);
         if (!File.Exists(Path.Combine(dir, project))) return run.Fail($"No suite at {project}.");
         // A build over another sha's outputs once served a mix of assemblies: the suite starts clean.
         var folder = Path.Combine(dir, Path.GetDirectoryName(project) ?? "");
@@ -201,7 +201,7 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
 
     // The steps of one gate or suite, written to one log and answered as one result: each step's
     // output joins the whole, the first that fails ends it, and the time left is the run's.
-    sealed class Run(string dir, IDictionary<string, string> env, DateTimeOffset until, TextWriter log, CancellationToken ct)
+    sealed class Run(string dir, IDictionary<string, string> env, DateTimeOffset until, TextWriter log, CancellationToken ct, string? runAs)
     {
         readonly StringBuilder _output = new();
 
@@ -210,7 +210,7 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
             var left = until - DateTimeOffset.UtcNow;
             if (left <= TimeSpan.Zero) return new ShellResult(124, _output.ToString(), TimedOut: true);
             await log.WriteLineAsync($"> dotnet {string.Join(' ', args)}");
-            var r = await Shell.Run(DotnetCli, args, dir, with ?? env, left, log, ct: ct, lowPriority: true, keep: Jobs.GateJob.IsFailureLine);
+            var r = await Shell.Run(DotnetCli, args, dir, with ?? env, left, log, ct: ct, lowPriority: true, runAs: runAs, keep: Jobs.GateJob.IsFailureLine);
             _output.Append(r.Output);
             return r with { Output = _output.ToString() };
         }

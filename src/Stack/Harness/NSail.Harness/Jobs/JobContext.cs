@@ -160,10 +160,11 @@ public sealed class JobContext(
         return env;
     }
 
-    // A configured command in a checkout, with the step's arguments after its own.
-    public Task<ShellResult> Run(CommandOptions command, IEnumerable<string> args, string dir, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, Func<string, bool>? keep = null)
+    // A configured command in a checkout, with the step's arguments after its own; one that runs a
+    // PR's or a branch's code starts as HarnessOptions.RunCodeAs.
+    public Task<ShellResult> Run(CommandOptions command, IEnumerable<string> args, string dir, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, Func<string, bool>? keep = null, bool runsCode = false)
     {
-        return Commands.Run(command, args, Options, dir, CommandEnv(dir, env), timeout, log, ct, lowPriority: true, keep: keep);
+        return Commands.Run(command, args, Options, dir, CommandEnv(dir, env), timeout, log, ct, lowPriority: true, keep: keep, runAs: runsCode ? Options.RunCodeAs : null);
     }
 
     // A command's environment: its checkout as HARNESS_WORKSPACE, and whatever names the providers'

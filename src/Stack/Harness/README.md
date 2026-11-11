@@ -162,7 +162,11 @@ the files it leaves.
   - `Variables` for every lane, and a worker's own: literal, or `${vars:NAME}`, `${env:NAME}`, `${file:PATH}`.
   - What a process the harness starts sees: the machine's own names (PATH, home, temp, locale; `Shell.Inherited`) plus
     the lane's `Variables` (a proxy or CA name — `HTTPS_PROXY`, `SSL_CERT_FILE` — is declared there too) — never the harness's credentials. A Gate (PR or main) or Release step, which runs a PR's or a branch's
-    code, gets `GH_TOKEN` only where its `Variables` list it; any other lane step keeps it. A seat gets none. The
+    code, gets `GH_TOKEN` only where its `Variables` list it; any other lane step keeps it. With `RunCodeAs` set (a Linux
+    account), that step — its `Command` or the builder's own `dotnet` — starts as the account through `sudo -n -H -u`,
+    so the code reads neither the harness user's files nor the harness process's environment; it needs what `RunAs` below
+    needs (the same sudoers shape, `setsid`, `pkill`, and write access to the slots and `gate/` under the work root).
+    Unset, the step runs as the harness user. Windows ignores it. A seat gets none. The
     harness's own git authenticates through `Shell.GitEnvironment`, not the process environment. It reads no global git
     configuration and no global attributes file (a seat sharing the harness user writes both) and removes the shared
     repository's `info/attributes` before it checks a slot out: a `safe.directory` the host needs goes in the system
@@ -177,7 +181,7 @@ the files it leaves.
     The harness user's sudoers rule for it carries the `SETENV` tag, `Defaults!<each command> !secure_path` (the seat keeps the
     machine's PATH), and allows `setsid` and `pkill` (a timeout kills the seat's session through sudo),
     and `Claude:Command` is best given as an absolute path. `RunAs` covers the agent's runs and plugin installs, not a
-    worker's own `Command` or `Setup`: those run as the harness user, so what a `Setup` installs for a seat
+    worker's own `Command` or `Setup` (a step that runs a PR's code has `RunCodeAs`, above): those run as the harness user, so what a `Setup` installs for a seat
     goes where both accounts read it. Windows ignores `RunAs`. A seat's run loads only the built-in tools its access and
     its worker's `Tools` name (`ClaudeAgent.Loaded`): every other one is context paid on each turn and never called.
     An MCP server's tools come with the server.)

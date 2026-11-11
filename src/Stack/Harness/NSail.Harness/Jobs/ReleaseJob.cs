@@ -174,10 +174,10 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
             if (step.Command is { } command)
             {
                 string[] args = filter is null ? [product] : [product, filter];
-                return await ctx.Run(command, args, dir, env, TimeSpan.FromMinutes(step.Minutes), w, ct, keep: GateJob.IsFailureLine);
+                return await ctx.Run(command, args, dir, env, TimeSpan.FromMinutes(step.Minutes), w, ct, keep: GateJob.IsFailureLine, runsCode: true);
             }
             var suite = step.Worker.Suite!.Replace("{Product}", product, StringComparison.Ordinal);
-            return await ctx.Builder!.Suite(dir, suite, filter, env, TimeSpan.FromMinutes(step.Minutes), w, ct);
+            return await ctx.Builder!.Suite(dir, suite, filter, env, TimeSpan.FromMinutes(step.Minutes), w, ct, ctx.Options.RunCodeAs);
         }
         finally
         {

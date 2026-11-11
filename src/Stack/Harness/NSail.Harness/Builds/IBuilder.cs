@@ -13,9 +13,9 @@ public interface IBuilder
     // can be proven (no base, build configuration changed), empty when nothing builds.
     Task<IReadOnlyList<string>?> Affected(string dir, string? baseSha, CancellationToken ct = default);
 
-    // Restore, build what the change affects, test the affected test projects.
-    Task<ShellResult> Gate(string dir, string? baseSha, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default);
+    // Restore, build what the change affects, test the affected test projects; as runAs when it is set.
+    Task<ShellResult> Gate(string dir, string? baseSha, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, string? runAs = null);
 
     // One test project (a browser suite) built and run, its tests narrowed by the filter.
-    Task<ShellResult> Suite(string dir, string project, string? filter, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default);
+    Task<ShellResult> Suite(string dir, string project, string? filter, IDictionary<string, string> env, TimeSpan timeout, TextWriter log, CancellationToken ct = default, string? runAs = null);
 }
