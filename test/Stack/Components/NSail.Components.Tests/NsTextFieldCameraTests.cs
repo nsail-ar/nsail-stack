@@ -25,6 +25,9 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
     readonly List<string?> _committed = [];
     readonly List<string?> _entered = [];
     readonly List<string?> _written = [];
+    readonly List<bool> _stoppedWhileShown = [];
+    readonly List<bool> _focusedWhileShown = [];
+    Func<bool>? _shown;
 
     public NsTextFieldCameraTests()
     {
@@ -32,6 +35,36 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
         Services.AddScoped<MudBlazor.IKeyInterceptorService, NoopKeyInterceptorService>();
         Services.AddStringsFromAssembly(typeof(NsTextField).Assembly);
         JSInterop.Mode = JSRuntimeMode.Loose;
+        JSInterop.SetupVoid("nsapp.scanStop", _ => Seen(_stoppedWhileShown)).SetVoidResult();
+        JSInterop.SetupVoid(Focus, _ => Seen(_focusedWhileShown)).SetVoidResult();
+    }
+
+    // Records whether the camera was still drawn when the call left for the browser.
+    bool Seen(List<bool> calls)
+    {
+        if (_shown is not null)
+        {
+            calls.Add(_shown());
+        }
+
+        return true;
+    }
+
+    void Watch<TComponent>(IRenderedComponent<TComponent> cut) where TComponent : IComponent
+    {
+        _shown = () => cut.FindAll(".ns-camera").Count > 0;
+    }
+
+    // The stop reached the camera while its video was still in the page, by the id it started
+    // with, and the cursor was placed only after the camera had gone.
+    void StoppedThenFocused()
+    {
+        var started = Assert.Single(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStart");
+        var stopped = Assert.Single(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStop");
+        Assert.Equal(started.Arguments[0], stopped.Arguments[0]);
+        Assert.Equal([true], _stoppedWhileShown);
+        Assert.NotEmpty(_focusedWhileShown);
+        Assert.DoesNotContain(true, _focusedWhileShown);
     }
 
     Task IAsyncLifetime.InitializeAsync()
@@ -49,7 +82,7 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
         Services.GetRequiredService<LanguageProvider>().Current = language;
         JSInterop.Setup<bool>("nsapp.canScan").SetResult(scans);
 
-        return Render<NsTextField>(ps => ps
+        var cut = Render<NsTextField>(ps => ps
             .Add(p => p.Label, "Código")
             .Add(p => p.Camera, camera)
             .Add(p => p.Suffix, suffix)
@@ -57,6 +90,9 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
             .Add(p => p.ValueChanged, EventCallback.Factory.Create<string?>(this, value => _written.Add(value)))
             .Add(p => p.OnCommit, EventCallback.Factory.Create<string?>(this, value => _committed.Add(value)))
             .Add(p => p.OnEnterCommit, EventCallback.Factory.Create<string?>(this, value => _entered.Add(value))));
+        Watch(cut);
+
+        return cut;
     }
 
     void CameraAnswers(string? failure)
@@ -68,7 +104,7 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
     {
         var call = Assert.Single(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStart");
 
-        return Assert.IsType<DotNetObjectReference<NsTextField.CameraReader>>(call.Arguments[1]).Value;
+        return Assert.IsType<DotNetObjectReference<NsTextField.CameraReader>>(call.Arguments[2]).Value;
     }
 
     [Theory]
@@ -89,7 +125,6 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
 
         cut.Find(ButtonSelector).Click();
         Assert.Single(cut.FindAll(".ns-camera video"));
-        var before = Focused();
 
         await cut.InvokeAsync(() => Reader().Read(Code));
 
@@ -97,8 +132,7 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
         Assert.Equal([Code], _entered);
         Assert.Equal([Code], _written);
         Assert.Empty(cut.FindAll(".ns-camera"));
-        Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStop");
-        Assert.True(Focused() > before);
+        StoppedThenFocused();
     }
 
     [Fact]
@@ -108,12 +142,10 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
         var cut = Render(scans: true);
 
         cut.Find(ButtonSelector).Click();
-        var before = Focused();
         cut.Find(".ns-camera button").Click();
 
         Assert.Empty(cut.FindAll(".ns-camera"));
-        Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStop");
-        Assert.True(Focused() > before);
+        StoppedThenFocused();
 
         await cut.InvokeAsync(() => Reader().Read(Code));
 
@@ -191,9 +223,20 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
         Assert.Single(cut.FindAll(ButtonSelector));
     }
 
-    int Focused()
+    [Fact]
+    public async Task AFieldThatGoesWhileTheCameraReadsStopsItByItsOwnId()
     {
-        return JSInterop.Invocations.Count(invocation => invocation.Identifier == Focus);
+        CameraAnswers(null);
+        var cut = Render(scans: true);
+        cut.Find(ButtonSelector).Click();
+        _shown = null;
+
+        await cut.InvokeAsync(() => DisposeComponentsAsync());
+
+        var started = Assert.Single(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStart");
+        var stopped = Assert.Single(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStop");
+        Assert.IsType<string>(started.Arguments[0]);
+        Assert.Equal(started.Arguments[0], stopped.Arguments[0]);
     }
 
     [Fact]
@@ -207,6 +250,7 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
             .Add(p => p.Value, holds)
             .Add(p => p.IsFixed, true)
             .AddChildContent<NsTextField>(field => field.Add(p => p.Label, "Código").Add(p => p.Camera, true)));
+        Watch(cut);
 
         cut.Find(ButtonSelector).Click();
 
@@ -215,13 +259,11 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
         Assert.Single(cut.FindComponents<MudBlazor.MudFocusTrap>());
         Assert.True(holds.Any);
 
-        var before = Focused();
         await cut.InvokeAsync(() => camera.KeyDown(new KeyboardEventArgs { Key = "Escape" }));
 
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".ns-camera")));
-        Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStop");
+        StoppedThenFocused();
         Assert.False(holds.Any);
-        Assert.True(Focused() > before);
     }
 
     [Theory]
@@ -231,12 +273,12 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
     {
         CameraAnswers(failure);
         var cut = Render(scans: true);
-        var before = Focused();
 
         cut.Find(ButtonSelector).Click();
 
         Assert.Equal("No se pudo abrir la cámara. Escribí el código.", cut.Find(".ns-field-helper").TextContent.Trim());
-        Assert.True(Focused() > before);
+        Assert.NotEmpty(_focusedWhileShown);
+        Assert.DoesNotContain(true, _focusedWhileShown);
     }
 
     [Fact]

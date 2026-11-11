@@ -66,6 +66,10 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   the box stays typeable; the next keystroke clears it. The camera is a modal: the cursor lands
   on its close button, stays inside, and Escape closes it before any surface behind
   (`EscapeHolds`); every way out — a read, a close, a failure — hands the cursor back to the box.
+  Two hands place it then, the vendor's trap handing it back to the button that opened the camera
+  and the field's own, so the field's waits for the render that removed the camera and is the
+  last; and the camera is stopped before that render, because a stop has to reach it while its
+  video is still in the page.
   The button takes the end slot a `Suffix` would print in; `Copy` with a value keeps it.
 - **`NsHelp` takes one parameter, `Key`** — a **global** localization key, because the
   component cannot see the page whose prefix would scope it.
@@ -663,7 +667,9 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
 - **The end adornment is a button and carries a name** (`AdornmentAriaLabel`): the chevron that
   opens a browsed lookup's list, and the text field's copy and camera. The chevron and the camera
   are icon-only at every width and the vendor draws them, so they are two of the three faces the
-  whisper reaches by selector and names off `aria-label` ([actions.md](actions.md)).
+  whisper reaches by selector and names off `aria-label` ([actions.md](actions.md)). The copy
+  button is icon-only and the vendor's too, and the whisper does not reach it yet: a known gap,
+  not a rule.
 - **A `Lazy` lookup draws no adornment.** Its list is what a term answers, so a button offering
   to open it has no gesture: pressed, it focused the box and opened nothing. What the field is
   for is said by the word in it — the `Buscar {concept}` placeholder — which reads at every

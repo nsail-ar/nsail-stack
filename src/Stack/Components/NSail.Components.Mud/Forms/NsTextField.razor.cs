@@ -28,6 +28,8 @@ public partial class NsTextField
     bool? _scans;
     bool _scanning;
     bool _started;
+    bool _refocus;
+    readonly string _scanId = Guid.NewGuid().ToString("N");
     string? _cameraFailure;
     bool _disposed;
 
@@ -191,6 +193,14 @@ public partial class NsTextField
             }
         }
 
+        // After the render that took the camera away, so the vendor's focus trap has already
+        // handed the cursor back to its opener and this hand is the last.
+        if (_refocus && !_scanning)
+        {
+            _refocus = false;
+            await FocusBox();
+        }
+
         if (_scanning && !_started)
         {
             _started = true;
@@ -224,7 +234,7 @@ public partial class NsTextField
         string? failure;
         try
         {
-            failure = await JS.InvokeAsync<string?>("nsapp.scanStart", _video, _reader);
+            failure = await JS.InvokeAsync<string?>("nsapp.scanStart", _scanId, _video, _reader);
         }
         catch (Exception thrown) when (thrown is JSException or InvalidOperationException or ObjectDisposedException or TaskCanceledException)
         {
@@ -238,16 +248,14 @@ public partial class NsTextField
 
         _scanning = false;
         _cameraFailure = Strings.Translate(failure is "NotAllowedError" or "SecurityError" ? CameraDeniedKey : CameraMissingKey);
+        _refocus = true;
         StateHasChanged();
-        await FocusBox();
     }
 
     async Task CameraKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Escape")
         {
-            // Closes on the next turn (ui/menus.md, "The innermost open thing wins Escape").
-            await Task.Yield();
             await CloseCamera();
         }
     }
@@ -260,16 +268,16 @@ public partial class NsTextField
         }
 
         _scanning = false;
-        StateHasChanged();
         await StopCamera();
-        await FocusBox();
+        _refocus = true;
+        StateHasChanged();
     }
 
     async Task StopCamera()
     {
         try
         {
-            await JS.InvokeVoidAsync("nsapp.scanStop", _video);
+            await JS.InvokeVoidAsync("nsapp.scanStop", _scanId);
         }
         catch (Exception failure) when (failure is JSException or InvalidOperationException or ObjectDisposedException or TaskCanceledException)
         {
@@ -290,10 +298,10 @@ public partial class NsTextField
         }
 
         _scanning = false;
-        StateHasChanged();
         await StopCamera();
         await EnterWhole(code);
-        await FocusBox();
+        _refocus = true;
+        StateHasChanged();
     }
 
     // The button that opened the camera sat under it, so every way out hands the cursor to the

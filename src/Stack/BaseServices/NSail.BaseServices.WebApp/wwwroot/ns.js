@@ -1507,7 +1507,9 @@
     // rear camera, with no decoder of the house's behind it, so a browser without one is
     // offered no button at all.
     var scanFormats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "qr_code"];
-    var scans = new WeakMap();
+    // Keyed by the field's own id, never by its video: a stop must reach the camera after the
+    // render that removed the video, and a removed element no longer resolves from .NET.
+    var scans = new Map();
 
     // Both the detector and the camera exist only in a secure context, so an http origin that is
     // not localhost answers false here and draws no button, as a browser without the detector
@@ -1530,14 +1532,15 @@
     // Answers null once the camera is drawing into the video, or after a scanStop while it was
     // still opening; otherwise the failure's DOMException name (NotAllowedError for a refusal).
     // The first code read stops the camera before it is handed to the reader's Read, once.
-    async function scanStart(video, reader) {
-        var scan = { stopped: false, stream: null };
-        scans.set(video, scan);
+    async function scanStart(id, video, reader) {
+        scanStop(id);
+        var scan = { stopped: false, stream: null, video: video };
+        scans.set(id, scan);
 
         try {
             var formats = await readableFormats();
             if (formats.length === 0) {
-                scans.delete(video);
+                scans.delete(id);
                 return "NotSupportedError";
             }
             var detector = new window.BarcodeDetector({ formats: formats });
@@ -1552,7 +1555,7 @@
             await video.play();
         } catch (failure) {
             var closed = scan.stopped;
-            scanStop(video);
+            scanStop(id);
             return closed ? null : (failure && failure.name) || "Error";
         }
 
@@ -1564,7 +1567,7 @@
                     var codes = await detector.detect(video);
                     var hit = codes.find(function (code) { return code.rawValue; });
                     if (hit && !scan.stopped) {
-                        scanStop(video);
+                        scanStop(id);
                         reader.invokeMethodAsync("Read", hit.rawValue);
                         return;
                     }
@@ -1585,14 +1588,14 @@
             scan.stream.getTracks().forEach(function (track) { track.stop(); });
     }
 
-    function scanStop(video) {
-        var scan = video && scans.get(video);
+    function scanStop(id) {
+        var scan = scans.get(id);
         if (!scan)
             return;
         scan.stopped = true;
         stopTracks(scan);
-        video.srcObject = null;
-        scans.delete(video);
+        scan.video.srcObject = null;
+        scans.delete(id);
     }
 
     window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download, canScan, scanStart, scanStop };
