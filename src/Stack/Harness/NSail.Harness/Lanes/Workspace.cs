@@ -148,6 +148,10 @@ public sealed class Workspace
 
         var hooks = Path.Combine(Bare, "hooks");
         if (Directory.Exists(hooks)) Directory.Delete(hooks, recursive: true);
+        // Attributes outrank the tree's own .gitattributes: a filter or an eol named there would
+        // change what a checkout writes. info/exclude stays, it only hides files from git.
+        var attributes = Path.Combine(Bare, "info", "attributes");
+        if (File.Exists(attributes)) File.Delete(attributes);
         var worktrees = Path.Combine(Bare, "worktrees");
         var dirs = Directory.Exists(worktrees) ? Directory.GetDirectories(worktrees).Prepend(Bare) : [Bare];
         foreach (var d in dirs) File.Delete(Path.Combine(d, "config.worktree"));

@@ -38,9 +38,12 @@ public static class Shell
             || n.StartsWith("LC_", StringComparison.Ordinal));
     }
 
+    static readonly string NullDevice = OperatingSystem.IsWindows() ? "NUL" : "/dev/null";
+
     // A seat shares the repository's common git directory, so what it plants there (a hook, a
     // fsmonitor command) must never run in the harness's git: command-line config outranks the repository's.
-    static readonly string[] Hardened = ["-c", $"core.hooksPath={(OperatingSystem.IsWindows() ? "NUL" : "/dev/null")}", "-c", "core.fsmonitor=false", "-c", "protocol.ext.allow=never"];
+    // A seat without its own account shares this user's home too, so the global attributes file is none.
+    static readonly string[] Hardened = ["-c", $"core.hooksPath={NullDevice}", "-c", "core.fsmonitor=false", "-c", "protocol.ext.allow=never", "-c", $"core.attributesFile={NullDevice}"];
 
     // The names that say whose account a process runs in: under `runAs` the target's own sudo sets them.
     static readonly string[] Identity = ["HOME", "USER", "USERNAME", "LOGNAME", "SHELL", "XDG_RUNTIME_DIR", "XDG_CONFIG_HOME", "XDG_CACHE_HOME", "XDG_DATA_HOME"];
@@ -71,6 +74,10 @@ public static class Shell
         }
         if (file == "git")
         {
+            // The user's global configuration (HOME's and XDG_CONFIG_HOME's) is the one a seat
+            // sharing this user writes, and a filter driver declared there runs in every checkout:
+            // the harness's git reads the repository's, which it writes itself, and the system's.
+            psi.Environment["GIT_CONFIG_GLOBAL"] = NullDevice;
             foreach (var (k, v) in GitEnvironment) psi.Environment[k] = v;
         }
         if (env is not null)

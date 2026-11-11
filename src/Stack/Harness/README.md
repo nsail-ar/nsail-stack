@@ -163,7 +163,10 @@ the files it leaves.
   - What a process the harness starts sees: the machine's own names (PATH, home, temp, locale; `Shell.Inherited`) plus
     the lane's `Variables` (a proxy or CA name — `HTTPS_PROXY`, `SSL_CERT_FILE` — is declared there too) — never the harness's credentials. A Gate (PR or main) or Release step, which runs a PR's or a branch's
     code, gets `GH_TOKEN` only where its `Variables` list it; any other lane step keeps it. A seat gets none. The
-    harness's own git authenticates through `Shell.GitEnvironment`, not the process environment.
+    harness's own git authenticates through `Shell.GitEnvironment`, not the process environment. It reads no global git
+    configuration and no global attributes file (a seat sharing the harness user writes both) and removes the shared
+    repository's `info/attributes` before it checks a slot out: a `safe.directory` the host needs goes in the system
+    configuration (`git config --system`).
   - How a story is named (`{key}#{n}`, `{prefix}/{key}-{n}`) and the words the harness posts (`HarnessTexts`).
   - A provider's own settings sit in its section (`GitHub`, `Claude`: the seats' plugins live there, and
     `SettingsFile`, the Claude Code settings every seat runs with, whatever the repository; `RunAs`, a Linux
