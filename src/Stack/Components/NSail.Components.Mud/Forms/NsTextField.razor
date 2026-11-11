@@ -21,11 +21,27 @@ else
 {
     @Field
 }
-<NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+<NsFieldHelper Text="@GetHelperText()" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
+@if (_scanning)
+{
+    @* The camera fills the screen above everything while it reads, and closes itself on the
+       first code; the box underneath keeps what was typed. *@
+    <div class="ns-camera" role="dialog" aria-label="@Strings.Translate(CameraKey)">
+        <video @ref="_video" class="ns-camera-view" muted playsinline autoplay></video>
+        <div class="ns-camera-close">
+            <NsButton As="NsAs.Inline"
+                      Breakpoint="NsBreakpoint.Never"
+                      Icon="@NsIcons.Close"
+                      Label="@Strings.Translate(CameraCloseKey)"
+                      OnClick="CloseCamera" />
+        </div>
+    </div>
+}
 
 @code {
 
     RenderFragment Field => @<MudTextField T="string"
+                                           @ref="_box"
                                            Value="@GetDisplay()"
                                            ValueChanged="OnTextChanged"
                                            Mask="@GetMask()"
@@ -40,11 +56,11 @@ else
                                            OnBlur="Leaving"
                                            OnKeyDown="Pressing"
                                            ShrinkLabel="ShrinkLabel"
-                                           Adornment="@(CanCopy || Suffix is { Length: > 0 } ? Adornment.End : Adornment.None)"
-                                           AdornmentText="@(CanCopy ? null : Suffix)"
-                                           AdornmentIcon="@GetCopyIcon()"
-                                           AdornmentAriaLabel="@GetCopyLabel()"
-                                           OnAdornmentClick="@CopyClick"
+                                           Adornment="@(CanCopy || CanScan || Suffix is { Length: > 0 } ? Adornment.End : Adornment.None)"
+                                           AdornmentText="@(CanCopy || CanScan ? null : Suffix)"
+                                           AdornmentIcon="@GetEndIcon()"
+                                           AdornmentAriaLabel="@GetEndLabel()"
+                                           OnAdornmentClick="@EndClick"
                                            Variant="Variant.Outlined"
                                            Margin="Margin.Dense"
                                            Error="@HasError()"

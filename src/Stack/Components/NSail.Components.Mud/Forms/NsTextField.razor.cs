@@ -13,10 +13,23 @@ public partial class NsTextField
 {
     const string CopyKey = "Components.NsTextField.Copy";
     const string CopiedKey = "Components.NsTextField.Copied";
+    const string CameraKey = "Components.NsTextField.Camera";
+    const string CameraCloseKey = "Components.NsTextField.CameraClose";
+    const string CameraDeniedKey = "Components.NsTextField.CameraDenied";
+    const string CameraMissingKey = "Components.NsTextField.CameraMissing";
 
     IMask? _mask;
     string? _built;
     string? _copied;
+
+    MudTextField<string>? _box;
+    ElementReference _video;
+    DotNetObjectReference<CameraReader>? _reader;
+    bool? _scans;
+    bool _scanning;
+    bool _started;
+    string? _cameraFailure;
+    bool _disposed;
 
     [Inject]
     IJSRuntime JS { get; init; } = default!;
@@ -67,7 +80,175 @@ public partial class NsTextField
     [Parameter]
     public string? KeyHint { get; set; }
 
+    /// <summary>Draws a button at the box's end that reads a barcode or a QR with the device's
+    /// camera and enters it the way a reader's burst does — written to the box and committed as
+    /// by Enter, through <c>OnCommit</c>. Only where the browser has its own
+    /// <c>BarcodeDetector</c> (Android Chrome): elsewhere no button is drawn and the box is what
+    /// it was. A refused or missing camera is said under the box, which stays typeable. It takes
+    /// the slot a <see cref="Suffix"/> would print in; a <see cref="Copy"/> with a value keeps
+    /// it.</summary>
+    [Parameter]
+    public bool Camera { get; set; }
+
     bool CanCopy => Copy && !string.IsNullOrEmpty(Value);
+
+    bool CanScan => Camera && _scans == true && !CanCopy && !IsDisabled && !IsReadOnly;
+
+    EventCallback<MouseEventArgs> EndClick
+    {
+        get
+        {
+            if (CanCopy)
+            {
+                return CopyClick;
+            }
+
+            return CanScan ? EventCallback.Factory.Create<MouseEventArgs>(this, OpenCamera) : default;
+        }
+    }
+
+    string? GetEndIcon()
+    {
+        return CanScan ? NsIcons.BarcodeScanner.Markup : GetCopyIcon();
+    }
+
+    string? GetEndLabel()
+    {
+        return CanScan ? Strings.Translate(CameraKey) : GetCopyLabel();
+    }
+
+    string? GetHelperText()
+    {
+        return _cameraFailure ?? Helper;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+
+        if (Camera && _scans is null)
+        {
+            _scans = await CanScanHere();
+            if (_scans == true)
+            {
+                StateHasChanged();
+            }
+        }
+
+        if (_scanning && !_started)
+        {
+            _started = true;
+            await StartCamera();
+        }
+    }
+
+    async Task<bool> CanScanHere()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("nsapp.canScan");
+        }
+        catch (Exception failure) when (failure is JSException or InvalidOperationException or ObjectDisposedException or TaskCanceledException)
+        {
+            return false;
+        }
+    }
+
+    void OpenCamera()
+    {
+        _cameraFailure = null;
+        _scanning = true;
+        _started = false;
+    }
+
+    async Task StartCamera()
+    {
+        _reader ??= DotNetObjectReference.Create(new CameraReader(Read));
+
+        string? failure;
+        try
+        {
+            failure = await JS.InvokeAsync<string?>("nsapp.scanStart", _video, _reader);
+        }
+        catch (Exception thrown) when (thrown is JSException or InvalidOperationException or ObjectDisposedException or TaskCanceledException)
+        {
+            failure = "Error";
+        }
+
+        // AbortError is the close pressed while the browser was still asking: nothing to say.
+        if (failure is null || !_scanning)
+        {
+            return;
+        }
+
+        _scanning = false;
+        _cameraFailure = failure is "AbortError" ? null : Strings.Translate(failure is "NotAllowedError" or "SecurityError" ? CameraDeniedKey : CameraMissingKey);
+        StateHasChanged();
+    }
+
+    async Task CloseCamera()
+    {
+        _scanning = false;
+        await StopCamera();
+    }
+
+    async Task StopCamera()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("nsapp.scanStop", _video);
+        }
+        catch (Exception failure) when (failure is JSException or InvalidOperationException or ObjectDisposedException or TaskCanceledException)
+        {
+            // The circuit or the page is already gone, and the camera with it.
+        }
+    }
+
+    Task Read(string code)
+    {
+        return InvokeAsync(() => Enter(code));
+    }
+
+    async Task Enter(string code)
+    {
+        if (!_scanning)
+        {
+            return;
+        }
+
+        _scanning = false;
+        StateHasChanged();
+        await StopCamera();
+        await EnterWhole(code);
+
+        // A screen that re-keys its box per entry gives the next one the cursor itself; one that
+        // keeps the box gets it back here, as after a reader's burst (ui/focus.md).
+        try
+        {
+            if (_box is not null && !_disposed)
+            {
+                await _box.FocusAsync();
+            }
+        }
+        catch (Exception failure) when (failure is JSException or InvalidOperationException or ObjectDisposedException or TaskCanceledException)
+        {
+            // The box went with its entry: the screen's next one takes the cursor on its own.
+        }
+    }
+
+    protected override void DisposeCore()
+    {
+        _disposed = true;
+        base.DisposeCore();
+
+        if (_scanning)
+        {
+            _scanning = false;
+            _ = StopCamera();
+        }
+
+        _reader?.Dispose();
+    }
 
     bool IsCopied => CanCopy && _copied == Value;
 
@@ -115,6 +296,7 @@ public partial class NsTextField
         return new NsClassBuilder("ns-search-box")
             .Add(GrowClass)
             .Add("ns-search-keyed", IsKeyed)
+            .Add("ns-search-scans", CanScan)
             .ToString();
     }
 
@@ -147,6 +329,8 @@ public partial class NsTextField
 
     Task OnTextChanged(string? text)
     {
+        _cameraFailure = null;
+
         return SetValue(Mask is { Length: > 0 } pattern ? Strip(text, pattern) : text);
     }
 
@@ -204,5 +388,16 @@ public partial class NsTextField
         }
 
         return text.ToString();
+    }
+
+    /// <summary>What the camera's script calls back with the code it read; a class of its own so
+    /// the field's public surface carries no invokable.</summary>
+    internal sealed class CameraReader(Func<string, Task> read)
+    {
+        [JSInvokable]
+        public Task Read(string code)
+        {
+            return read(code);
+        }
     }
 }

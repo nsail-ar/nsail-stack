@@ -1503,5 +1503,84 @@
     new MutationObserver(queueFit).observe(document.documentElement, { childList: true, subtree: true });
     window.addEventListener("resize", queueFit);
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download };
+    // A text field's camera (NsTextField.Camera): the browser's own BarcodeDetector over the
+    // rear camera, with no decoder of the house's behind it, so a browser without one is
+    // offered no button at all.
+    var scanFormats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "qr_code"];
+    var scans = new WeakMap();
+
+    function canScan() {
+        return "BarcodeDetector" in window && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    }
+
+    // Answers null once the camera is drawing into the video, or the failure's DOMException
+    // name (NotAllowedError for a refusal, which an http origin also gets). The first code
+    // read stops the camera before it is handed to the reader's Read, once.
+    async function scanStart(video, reader) {
+        var scan = { stopped: false, stream: null };
+        scans.set(video, scan);
+
+        try {
+            var supported = await window.BarcodeDetector.getSupportedFormats();
+            var formats = scanFormats.filter(function (format) { return supported.indexOf(format) >= 0; });
+            if (formats.length === 0) {
+                scans.delete(video);
+                return "NotSupportedError";
+            }
+            var detector = new window.BarcodeDetector({ formats: formats });
+            scan.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+
+            // Closed, or the field gone, while the browser was still asking for permission.
+            if (scan.stopped) {
+                stopTracks(scan);
+                return "AbortError";
+            }
+
+            video.srcObject = scan.stream;
+            await video.play();
+        } catch (failure) {
+            scanStop(video);
+            return (failure && failure.name) || "Error";
+        }
+
+        async function tick() {
+            if (scan.stopped)
+                return;
+            try {
+                if (video.readyState >= 2) {
+                    var codes = await detector.detect(video);
+                    var hit = codes.find(function (code) { return code.rawValue; });
+                    if (hit && !scan.stopped) {
+                        scanStop(video);
+                        reader.invokeMethodAsync("Read", hit.rawValue);
+                        return;
+                    }
+                }
+            } catch (_) {
+                // A frame the detector cannot read is not the end of the scan.
+            }
+            if (!scan.stopped)
+                setTimeout(tick, 120);
+        }
+
+        tick();
+        return null;
+    }
+
+    function stopTracks(scan) {
+        if (scan.stream)
+            scan.stream.getTracks().forEach(function (track) { track.stop(); });
+    }
+
+    function scanStop(video) {
+        var scan = video && scans.get(video);
+        if (!scan)
+            return;
+        scan.stopped = true;
+        stopTracks(scan);
+        video.srcObject = null;
+        scans.delete(video);
+    }
+
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download, canScan, scanStart, scanStop };
 })();
