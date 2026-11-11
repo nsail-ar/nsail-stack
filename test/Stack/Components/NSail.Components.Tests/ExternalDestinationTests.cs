@@ -44,7 +44,9 @@ public sealed class ExternalDestinationTests : BunitContext
     }
 
     /// <summary>Nothing rooted is somebody else's, whatever Uri says about it. The second case
-    /// is the one Uri calls absolute on this OS, and it is the whole point of the row.</summary>
+    /// is the one Uri calls absolute on this OS, and it is the whole point of the row; the
+    /// browser reads it as another host, so <see cref="SurfaceContext.IsInert"/> refuses it
+    /// before this is asked (<see cref="AProtocolRelativeDestinationIsInert"/>).</summary>
     [Theory]
     [InlineData("/directory/parties/new")]
     [InlineData("//host/share")]
@@ -52,6 +54,14 @@ public sealed class ExternalDestinationTests : BunitContext
     public void ARootedDestinationIsNeverExternal(string href)
     {
         Assert.False(SurfaceContext.IsExternal(href));
+    }
+
+    [Theory]
+    [InlineData("//host/share")]
+    [InlineData(@"/\host/share")]
+    public void AProtocolRelativeDestinationIsInert(string href)
+    {
+        Assert.True(SurfaceContext.IsInert(href));
     }
 
     /// <summary>A scheme-less relative route is ours too — that is the ordinary case, and it
@@ -83,7 +93,7 @@ public sealed class ExternalDestinationTests : BunitContext
         Navigation.NavigateTo("/probe");
 
         var link = Render<NsLink>(p => p
-            .Add(x => x.Href, "//probe/new")
+            .Add(x => x.Href, "/probe/new")
             .Add(x => x.Target, Surfaces.Aside)
             .Add(x => x.Label, "Open"));
 

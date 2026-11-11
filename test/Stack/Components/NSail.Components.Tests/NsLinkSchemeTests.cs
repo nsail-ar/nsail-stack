@@ -36,6 +36,12 @@ public sealed class NsLinkSchemeTests : BunitContext
     [InlineData("vbscript:msgbox(1)")]
     [InlineData("ftp://acme.com/x")]
     [InlineData("file:///etc/passwd")]
+    [InlineData("//evil.example/x")]
+    [InlineData(@"/\evil.example/x")]
+    [InlineData(@"\\evil.example/x")]
+    [InlineData("java\tscript:alert(1)")]
+    [InlineData("java\nscript:alert(1)")]
+    [InlineData("java\r\nscript:alert(1)")]
     public void NsLinkDrawsAForbiddenSchemeWithNoHref(string href)
     {
         var cut = Render<NsLink>(p => p.Add(x => x.Href, href).Add(x => x.Label, "Sitio"));
@@ -50,6 +56,12 @@ public sealed class NsLinkSchemeTests : BunitContext
     [InlineData("vbscript:msgbox(1)")]
     [InlineData("ftp://acme.com/x")]
     [InlineData("file:///etc/passwd")]
+    [InlineData("//evil.example/x")]
+    [InlineData(@"/\evil.example/x")]
+    [InlineData(@"\\evil.example/x")]
+    [InlineData("java\tscript:alert(1)")]
+    [InlineData("java\nscript:alert(1)")]
+    [InlineData("java\r\nscript:alert(1)")]
     public void NsChipDrawsAForbiddenSchemeWithNoHref(string href)
     {
         var cut = Render<NsChip>(p => p.Add(x => x.Text, "Sitio").Add(x => x.Href, href));

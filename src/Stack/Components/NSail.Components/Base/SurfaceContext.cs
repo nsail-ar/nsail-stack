@@ -733,12 +733,28 @@ public sealed class SurfaceContext
         return href[0] != '/' && Uri.TryCreate(href, UriKind.Absolute, out _);
     }
 
-    /// <summary>Whether a destination carries a scheme no door may open: an external address
-    /// whose scheme is not http(s), mailto, tel or otpauth — "javascript:" and "data:" run or
-    /// draw what the address says on a click. Only the scheme is asked; the path is the caller's. A link
-    /// drawn over one is inert text, not an anchor.</summary>
+    /// <summary>Whether a destination is one no door may open: an external address whose scheme
+    /// is not http(s), mailto, tel or otpauth — "javascript:" and "data:" run or draw what the
+    /// address says on a click — or one whose host or scheme the browser reads differently
+    /// from how it is written. Only the scheme is asked; the path is the caller's. A link drawn
+    /// over one is inert text, not an anchor, and it is never repaired.</summary>
     public static bool IsInert(string? href)
     {
+        if (string.IsNullOrEmpty(href))
+        {
+            return false;
+        }
+
+        // The browser strips a tab or a line break before it reads the scheme, so
+        // "java\tscript:" is javascript: to whoever clicks it, and reads a backslash as a slash,
+        // so "/\host" is the protocol-relative "//host" — another host, which IsExternal's
+        // rooted rule would otherwise call a route of ours (WebAddress.IsNavigable's same three).
+        if (href.Any(character => char.IsControl(character) || character == '\\')
+            || href.StartsWith("//", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
         if (!IsExternal(href) || !Uri.TryCreate(href, UriKind.Absolute, out var address))
         {
             return false;
