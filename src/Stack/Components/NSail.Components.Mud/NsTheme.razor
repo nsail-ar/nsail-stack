@@ -25,6 +25,7 @@
 
     MudThemeProvider? _provider;
     Brand? _painted;
+    Brand _checked = Fallback;
     MudTheme _theme = BrandMudTheme.From(Fallback);
     string _deviceDark = string.Empty;
     bool _dark;
@@ -61,11 +62,12 @@
         if (!ReferenceEquals(brand, _painted))
         {
             _painted = brand;
-            _theme = BrandMudTheme.From(brand);
-            _deviceDark = DeviceDark(brand, _theme);
+            _checked = brand.Checked();
+            _theme = BrandMudTheme.From(_checked);
+            _deviceDark = DeviceDark(_checked, _theme);
         }
 
-        (_dark, _variables) = Resolve(brand);
+        (_dark, _variables) = Resolve(_checked);
     }
 
     // The OS query is a client fact (window.matchMedia), so it is asked exactly once, after the
@@ -96,7 +98,7 @@
     {
         _systemDark = isDark;
 
-        var (dark, variables) = Resolve(_painted ?? Fallback);
+        var (dark, variables) = Resolve(_checked);
 
         if (dark == _dark && variables == _variables)
         {

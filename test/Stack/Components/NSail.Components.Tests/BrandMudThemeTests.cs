@@ -130,4 +130,21 @@ public sealed class BrandMudThemeTests
             Assert.Contains("var(--ns-elevation-ring", theme.Shadows.Elevation[level]);
         }
     }
+    // nsail#3655: the accent's two states reached the vendor's generator as raw strings; a
+    // value that is not a colour is the scheme's default there too.
+    [Fact]
+    public void AnAccentStateThatIsNotAColourIsTheSchemesDefault()
+    {
+        var brand = new Brand();
+
+        brand.Light.AccentHover = "red;} body{background:url(//x)}";
+        brand.Dark.AccentPressed = "red;} body{background:url(//x)}";
+        brand.Dark.RowHover = "#ffffff14";
+
+        var theme = BrandMudTheme.From(brand);
+
+        Assert.Equal(new MudColor(BrandTheme.DefaultLight().AccentHover).Value, new MudColor(theme.PaletteLight.PrimaryLighten).Value);
+        Assert.Equal(new MudColor(BrandTheme.DefaultDark().AccentPressed).Value, new MudColor(theme.PaletteDark.PrimaryDarken).Value);
+        Assert.Equal(new MudColor("#ffffff14").Value, theme.PaletteDark.TableHover.Value);
+    }
 }

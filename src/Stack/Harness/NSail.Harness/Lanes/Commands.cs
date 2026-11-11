@@ -20,9 +20,9 @@ public static class Commands
 
     public static Task<ShellResult> Run(
         CommandOptions command, IEnumerable<string> extra, HarnessOptions options, string workDir, IDictionary<string, string> env,
-        TimeSpan timeout, TextWriter log, CancellationToken ct = default, bool lowPriority = false, Func<string, bool>? keep = null)
+        TimeSpan timeout, TextWriter log, CancellationToken ct = default, bool lowPriority = false, Func<string, bool>? keep = null, string? runAs = null)
     {
         var (file, args) = Line(command, extra, options.Bash, options.PowerShell);
-        return Shell.Run(file, args, workDir, env, timeout, log, ct: ct, lowPriority: lowPriority, keep: keep);
+        return Shell.Run(file, args, workDir, env, timeout, log, ct: ct, lowPriority: lowPriority, runAs: runAs, keep: keep);
     }
 }

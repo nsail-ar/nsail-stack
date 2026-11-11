@@ -98,8 +98,8 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             env["TEST_OUTPUT"] = Path.Combine(env["GATE_WORK"], "test-output.txt");
             Directory.CreateDirectory(env["GATE_WORK"]);
             result = Step.Command is { } command
-                ? await ctx.Run(command, [main], dir, env, Timeout(Step), w, ct, keep: IsFailureLine)
-                : await ctx.Builder!.Gate(dir, main, env, Timeout(Step), w, ct);
+                ? await ctx.Run(command, [main], dir, env, Timeout(Step), w, ct, keep: IsFailureLine, runsCode: true)
+                : await ctx.Builder!.Gate(dir, main, env, Timeout(Step), w, ct, ctx.Options.RunCodeAs);
         }
         finally
         {

@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using NSail.Tones;
 
 namespace NSail.Components;
@@ -11,7 +12,7 @@ namespace NSail.Components;
 /// scheme's own luminance worn in the chrome's hue, so a stored brand carries only what a tenant
 /// actually picked (its accent, its chrome and its logos) and overlays it on top of
 /// <see cref="DefaultDark"/>/<see cref="DefaultLight"/>. Hex strings, serializable.</summary>
-public sealed class BrandTheme
+public sealed partial class BrandTheme
 {
     public string? Logo { get; set; }
 
@@ -225,6 +226,44 @@ public sealed class BrandTheme
         string TextDisabled,
         string Lines,
         string LinesInputs);
+
+    /// <summary>This scheme as it may reach a stylesheet: every colour that is not a hex is
+    /// <paramref name="defaults"/>' own, never repaired.</summary>
+    // The values are written into a page-wide <style> and the vendor's generator, so a stored
+    // "red;} body{…}" would be a rule of its own there; the derived ones above read only these.
+    internal BrandTheme Checked(BrandTheme defaults)
+    {
+        return new BrandTheme
+        {
+            Logo = Logo,
+            IsDark = IsDark,
+            Accent = Hex(Accent, defaults.Accent),
+            AccentHover = Hex(AccentHover, defaults.AccentHover),
+            AccentPressed = Hex(AccentPressed, defaults.AccentPressed),
+            AccentFocus = Hex(AccentFocus, defaults.AccentFocus),
+            TextOnAccent = Hex(TextOnAccent, defaults.TextOnAccent),
+            Chrome = Hex(Chrome, defaults.Chrome),
+            TextOnChrome = Hex(TextOnChrome, defaults.TextOnChrome),
+            TextOnChromeSecondary = Hex(TextOnChromeSecondary, defaults.TextOnChromeSecondary),
+            RowHover = Hex(RowHover, defaults.RowHover),
+            Error = Hex(Error, defaults.Error),
+            Warning = Hex(Warning, defaults.Warning),
+            Success = Hex(Success, defaults.Success),
+            Info = Hex(Info, defaults.Info),
+            TextOnError = Hex(TextOnError, defaults.TextOnError),
+            TextOnWarning = Hex(TextOnWarning, defaults.TextOnWarning),
+            TextOnSuccess = Hex(TextOnSuccess, defaults.TextOnSuccess),
+            TextOnInfo = Hex(TextOnInfo, defaults.TextOnInfo),
+        };
+    }
+
+    static string Hex(string? value, string fallback)
+    {
+        return value is not null && HexColor().IsMatch(value) ? value : fallback;
+    }
+
+    [GeneratedRegex("^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")]
+    private static partial Regex HexColor();
 
     public static BrandTheme DefaultDark()
     {

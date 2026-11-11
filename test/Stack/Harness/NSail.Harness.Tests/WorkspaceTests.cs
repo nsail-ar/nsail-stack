@@ -67,6 +67,41 @@ public class WorkspaceTests : IDisposable
         Assert.False(File.Exists(monitor));
     }
 
+    // A seat with no account of its own writes this user's global configuration and the shared
+    // repository's attributes: the driver it declares in one and names in the other never runs,
+    // and the eol it names never reaches the checkout.
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task APlantedFilterNeverRunsInTheHarnessGit()
+    {
+        var ws = await Warm();
+        var seed = Path.Combine(_root, "seed");
+        File.WriteAllText(Path.Combine(seed, "a.txt"), "one\ntwo\n");
+        await Shell.Git(seed, "add", "a.txt");
+        await Shell.Git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "A");
+        await Shell.Git(seed, "push", "-q", "origin", "main");
+
+        var marker = Path.Combine(_root, "filter-ran");
+        var filter = Path.Combine(_root, "filter.sh");
+        File.WriteAllText(filter, $"#!/bin/sh\necho ran > '{marker}'\ncat\n");
+        File.SetUnixFileMode(filter, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var xdg = Path.Combine(_root, "xdg");
+        Directory.CreateDirectory(Path.Combine(xdg, "git"));
+        var planted = $"[filter \"plant\"]\n\tsmudge = {filter}\n\tclean = {filter}\n";
+        File.WriteAllText(Path.Combine(xdg, "git", "config"), planted);
+        File.WriteAllText(Path.Combine(xdg, "git", "attributes"), "* filter=plant\n");
+        File.WriteAllText(Path.Combine(Bare, "info", "attributes"), "* filter=plant\n* text eol=crlf\n");
+
+        using (new Held([("XDG_CONFIG_HOME", xdg)]))
+        {
+            await ws.Prepare(1);
+            await Shell.Git(ws.SlotPath(1), "status", "-s");
+        }
+
+        Assert.False(File.Exists(marker));
+        Assert.Equal("one\ntwo\n", File.ReadAllText(Path.Combine(ws.SlotPath(1), "a.txt")));
+        Assert.True(File.Exists(Path.Combine(Bare, "info", "exclude")));
+    }
+
     [Fact]
     public async Task ASeatsConfigIsGoneOnceTheHarnessRestoresIt()
     {

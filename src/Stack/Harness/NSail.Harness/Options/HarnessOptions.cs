@@ -81,6 +81,11 @@ public sealed class HarnessOptions
     public string CommitName { get; set; } = "Harness";
     public string CommitEmail { get; set; } = "harness@localhost";
 
+    // A Linux account a step that runs a PR's or a branch's code (a Gate, main Gate or Release step)
+    // starts as, through `sudo -n -H -u`, so that code reads none of the harness user's files or
+    // environment; unset, it runs as the harness user. The Harness README says what the account needs.
+    public string? RunCodeAs { get; set; }
+
     // Where a lane reaches this harness (its build-turn door); its own listen address by default.
     public string PublicUrl { get; set; } = "http://127.0.0.1:6190";
 

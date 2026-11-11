@@ -13,7 +13,10 @@ The rule a page lives by — **change the `Brand`, never the vendor theme** — 
 Branding is a vendor-agnostic, **serializable** object in `NSail.Components` (`Branding/`):
 `Brand` — `Name`, `Typeface`, `DefaultDark`, two `BrandTheme`s (`Light`/`Dark`); `BrandTheme` —
 per-scheme `Logo`, the accent and its states, the surface ladder, text, `Lines`, `LinesInputs`
-and status colors, **hex strings only**. `IBrandProvider` (async) supplies the active brand, the
+and status colors, **hex strings only** (3, 4, 6 or 8 digits). **A colour that is not a hex never
+reaches a stylesheet**: `NsTheme` and the vendor theme read the brand through `Brand.Checked()`,
+which paints that slot as its scheme's default — not repaired, not thrown, since a page that fails
+over one malformed slot costs more than the slot. `IBrandProvider` (async) supplies the active brand, the
 async contract existing so a provider can resolve branding per organization. **Components never read
 Mud palette types from app code.** Default look: warm grays in the house chrome's hue —
 near-black in dark — with orange `#F68E1E`, in the device's scheme until the reader picks one

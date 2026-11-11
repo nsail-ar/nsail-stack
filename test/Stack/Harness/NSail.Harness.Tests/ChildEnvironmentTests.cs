@@ -3,7 +3,10 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSail.Harness.Builds;
 using NSail.Harness.GitHub;
+using NSail.Harness.Jobs;
 using NSail.Harness.Lanes;
 
 namespace NSail.Harness.Tests;
@@ -56,6 +59,68 @@ public class ChildEnvironmentTests
         finally
         {
             Directory.Delete(bin, recursive: true);
+        }
+    }
+
+    // A Gate, main Gate or Release step runs code the harness did not write: under RunCodeAs it
+    // starts as that account, a configured command and the builder's own dotnet alike.
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task AStepThatRunsCodeStartsAsTheCodeAccountWithoutThisUsersHome()
+    {
+        using var sudo = new FakeSudo();
+        var ctx = Context("builder");
+
+        var command = await ctx.Run(new CommandOptions { Run = "gate.cmd" }, ["main"], Path.GetTempPath(), new Dictionary<string, string>(), TimeSpan.FromMinutes(1), TextWriter.Null, runsCode: true);
+        var built = await new DotNetBuilder(new BuildOptions { Solution = "S.sln" }, 1).Gate(Path.GetTempPath(), null, new Dictionary<string, string>(), TimeSpan.FromMinutes(1), TextWriter.Null, runAs: ctx.Options.RunCodeAs);
+
+        foreach (var result in new[] { command, built })
+        {
+            Assert.Contains("argv=-n -H -u builder --preserve-env=", result.Output);
+            Assert.Contains("home=unset", result.Output);
+        }
+        Assert.Contains("-- setsid -w nice -n 10 gate.cmd main", command.Output);
+        Assert.Contains("-- setsid -w nice -n 10 dotnet restore S.sln", built.Output);
+    }
+
+    // K4: with no account, or for a step that runs none of a PR's code, nothing goes through sudo.
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task WithNoCodeAccountOrNoCodeAStepStartsAsTheHarnessUser()
+    {
+        using var sudo = new FakeSudo();
+
+        var unset = await Context(null).Run(new CommandOptions { Run = "echo", Args = ["direct"] }, [], Path.GetTempPath(), new Dictionary<string, string>(), TimeSpan.FromMinutes(1), TextWriter.Null, runsCode: true);
+        var noCode = await Context("builder").Run(new CommandOptions { Run = "echo", Args = ["direct"] }, [], Path.GetTempPath(), new Dictionary<string, string>(), TimeSpan.FromMinutes(1), TextWriter.Null);
+
+        Assert.Equal("direct", unset.Output.Trim());
+        Assert.Equal("direct", noCode.Output.Trim());
+    }
+
+    static JobContext Context(string? runCodeAs)
+    {
+        var options = new HarnessOptions { RunCodeAs = runCodeAs, Repositories = [new RepositoryOptions { Name = "acme/app" }] };
+        return new JobContext(null!, null!, new Dictionary<string, Workspace>(), null!, options, [], NullLoggerFactory.Instance, new BuildLeases(1));
+    }
+
+    // A sudo first on the PATH that prints the line it was given and the HOME it was started with,
+    // and fails, so a builder stops at its first step.
+    sealed class FakeSudo : IDisposable
+    {
+        readonly string _bin = Directory.CreateTempSubdirectory().FullName;
+        readonly Held _path;
+
+        [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+        public FakeSudo()
+        {
+            var sudo = Path.Combine(_bin, "sudo");
+            File.WriteAllText(sudo, "#!/bin/sh\necho \"argv=$*\"\necho \"home=${HOME-unset}\"\nexit 1\n");
+            File.SetUnixFileMode(sudo, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            _path = new Held([("PATH", $"{_bin}:{Environment.GetEnvironmentVariable("PATH")}")]);
+        }
+
+        public void Dispose()
+        {
+            _path.Dispose();
+            Directory.Delete(_bin, recursive: true);
         }
     }
 
