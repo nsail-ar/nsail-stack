@@ -166,7 +166,7 @@ the files it leaves.
     account), that step — its `Command` or the builder's own `dotnet` — starts as the account through `sudo -n -H -u`,
     so the code reads neither the harness user's files nor the harness process's environment; it needs what `RunAs` below
     needs (the same sudoers shape, `setsid`, `pkill`, and write access to the slots and `gate/` under the work root).
-    Unset, the step runs as the harness user. Windows ignores it. A seat gets none. The
+    Unset, the step runs as the harness user. Windows ignores it. A seat gets no token. The
     harness's own git authenticates through `Shell.GitEnvironment`, not the process environment. It reads no global git
     configuration and no global attributes file (a seat sharing the harness user writes both) and removes the shared
     repository's `info/attributes` before it checks a slot out: a `safe.directory` the host needs goes in the system
