@@ -242,8 +242,8 @@ public sealed class JobMetricsTests
         {
             services.AddSingleton(gate);
             services.AddSingleton(twins);
-            services.AddBackgroundJob<KitOne.CleanupJob>();
-            services.AddBackgroundJob<KitTwo.CleanupJob>();
+            services.AddBackgroundJob<KitOne.TallyJob>();
+            services.AddBackgroundJob<KitTwo.TallyJob>();
         });
 
         var runner = Harness.Runner(provider);
@@ -257,8 +257,8 @@ public sealed class JobMetricsTests
 
             meters.Poll();
 
-            Assert.Equal(2, meters.Readings(BackgroundJobMetrics.Roster, nameof(KitOne.CleanupJob)).Count);
-            Assert.Equal(2, meters.Readings(BackgroundJobMetrics.Overdue, nameof(KitOne.CleanupJob)).Count);
+            Assert.Equal(2, meters.Readings(BackgroundJobMetrics.Roster, nameof(KitOne.TallyJob)).Count);
+            Assert.Equal(2, meters.Readings(BackgroundJobMetrics.Overdue, nameof(KitOne.TallyJob)).Count);
         }
         finally
         {
