@@ -222,7 +222,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
         {
             await WriteColumn(ids, item!, option, ct);
         }
-        catch (GitHubException) when (addedHere)
+        catch (ProviderException) when (addedHere)
         {
             // An item with no column reads as lost: take back the one this call added.
             try
@@ -230,7 +230,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
                 await gh.GraphQl("mutation($p:ID!,$i:ID!){deleteProjectV2Item(input:{projectId:$p,itemId:$i}){deletedItemId}}",
                     new { p = ids.Project, i = item }, ct);
             }
-            catch (GitHubException)
+            catch (ProviderException)
             {
             }
             throw;
@@ -264,7 +264,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
                 }
             }
         }
-        catch (Exception e) when (e is ProviderTimeoutException || e is OperationCanceledException && !ct.IsCancellationRequested)
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             throw last ?? new GitHubException(System.Net.HttpStatusCode.RequestTimeout, "the column write ran past its time budget");
         }
@@ -288,7 +288,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
             await SetStage(story, stage, ct);
             return true;
         }
-        catch (GitHubException e)
+        catch (ProviderException e)
         {
             log.LogWarning("#{Issue}: stage write ({Stage}) failed: {Error}", story, stage, e.Message);
             return false;
