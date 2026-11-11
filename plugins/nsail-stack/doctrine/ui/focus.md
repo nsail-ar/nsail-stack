@@ -113,7 +113,8 @@ to the screen's name — the exact place the link was pressed to get away from.
   is already in that box with the keyboard open, so the cursor coming back costs it nothing,
   and a reader firing its next burst at a box nobody focused is this kind of screen's one
   unseeable failure. A code read by the box's camera (`NsTextField.Camera`) is the same entry
-  through the same commit, and the cursor lands back in the box as after a burst.
+  through the same commit, and the cursor lands back in the box as after a burst — and after
+  the camera is closed or could not open, since the button that opened it sat under it.
 - **A dialog or a drawer keeps the form's own rule**: the first field of what just opened, and
   the vendor's focus trap hands the cursor back to whatever opened it the moment it closes — no
   line written for either end. **A dialog with nothing to type into — a yes/no question — opens

@@ -3,6 +3,7 @@
 
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
@@ -19,6 +20,7 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
 {
     const string ButtonSelector = ".mud-input-adornment button";
     const string Code = "7790070410130";
+    const string Focus = "Blazor._internal.domWrapper.focus";
 
     readonly List<string?> _committed = [];
     readonly List<string?> _entered = [];
@@ -87,6 +89,7 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
 
         cut.Find(ButtonSelector).Click();
         Assert.Single(cut.FindAll(".ns-camera video"));
+        var before = Focused();
 
         await cut.InvokeAsync(() => Reader().Read(Code));
 
@@ -95,6 +98,7 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
         Assert.Equal([Code], _written);
         Assert.Empty(cut.FindAll(".ns-camera"));
         Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStop");
+        Assert.True(Focused() > before);
     }
 
     [Fact]
@@ -104,10 +108,12 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
         var cut = Render(scans: true);
 
         cut.Find(ButtonSelector).Click();
+        var before = Focused();
         cut.Find(".ns-camera button").Click();
 
         Assert.Empty(cut.FindAll(".ns-camera"));
         Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStop");
+        Assert.True(Focused() > before);
 
         await cut.InvokeAsync(() => Reader().Read(Code));
 
@@ -183,5 +189,102 @@ public sealed class NsTextFieldCameraTests : BunitContext, IAsyncLifetime
         Assert.Contains("ns-search-scans", cut.Find(".ns-search-box").ClassList);
         Assert.Single(cut.FindAll(".ns-search-key"));
         Assert.Single(cut.FindAll(ButtonSelector));
+    }
+
+    int Focused()
+    {
+        return JSInterop.Invocations.Count(invocation => invocation.Identifier == Focus);
+    }
+
+    [Fact]
+    public async Task TheCameraOpensAsAModalThatHoldsTheCursorAndEscape()
+    {
+        CameraAnswers(null);
+        var holds = new EscapeHolds(() => Task.CompletedTask);
+        Services.GetRequiredService<LanguageProvider>().Current = "es";
+        JSInterop.Setup<bool>("nsapp.canScan").SetResult(true);
+        var cut = Render<CascadingValue<EscapeHolds>>(ps => ps
+            .Add(p => p.Value, holds)
+            .Add(p => p.IsFixed, true)
+            .AddChildContent<NsTextField>(field => field.Add(p => p.Label, "Código").Add(p => p.Camera, true)));
+
+        cut.Find(ButtonSelector).Click();
+
+        var camera = cut.Find(".ns-camera");
+        Assert.Equal("true", camera.GetAttribute("aria-modal"));
+        Assert.Single(cut.FindComponents<MudBlazor.MudFocusTrap>());
+        Assert.True(holds.Any);
+
+        var before = Focused();
+        await cut.InvokeAsync(() => camera.KeyDown(new KeyboardEventArgs { Key = "Escape" }));
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".ns-camera")));
+        Assert.Contains(JSInterop.Invocations, invocation => invocation.Identifier == "nsapp.scanStop");
+        Assert.False(holds.Any);
+        Assert.True(Focused() > before);
+    }
+
+    [Theory]
+    [InlineData("AbortError")]
+    [InlineData("NotReadableError")]
+    public void ACameraTheBrowserCouldNotStartIsSaidTooAndTheCursorIsBackInTheBox(string failure)
+    {
+        CameraAnswers(failure);
+        var cut = Render(scans: true);
+        var before = Focused();
+
+        cut.Find(ButtonSelector).Click();
+
+        Assert.Equal("No se pudo abrir la cámara. Escribí el código.", cut.Find(".ns-field-helper").TextContent.Trim());
+        Assert.True(Focused() > before);
+    }
+
+    [Fact]
+    public void ACameraFailureTakesTheLineOfARefusalAlreadyStanding()
+    {
+        CameraAnswers("NotAllowedError");
+        Services.GetRequiredService<LanguageProvider>().Current = "es";
+        JSInterop.Setup<bool>("nsapp.canScan").SetResult(true);
+        var model = new Scan();
+        var context = new EditContext(model);
+        var refusals = new ValidationMessageStore(context);
+        refusals.Add(() => model.Code, "Falta el código.");
+        var cut = Render<CascadingValue<EditContext>>(ps => ps
+            .Add(p => p.Value, context)
+            .AddChildContent<NsTextField>(field => field
+                .Add(p => p.Label, "Código")
+                .Add(p => p.For, () => model.Code)
+                .Add(p => p.Camera, true)));
+        Assert.Contains("Falta el código.", cut.Find(".mud-input-helper-text").TextContent, StringComparison.Ordinal);
+
+        cut.Find(ButtonSelector).Click();
+
+        Assert.Contains("La cámara no tiene permiso.", cut.Find(".mud-input-helper-text").TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>Known red (keyboard.md, Known reds): the camera is the vendor's adornment button,
+    /// which the vendor keeps out of the tab order; the keyboard's own way to a code is the box
+    /// itself. This pins what the vendor does today: the day an upgrade changes it, this fails
+    /// and the row goes.</summary>
+    [Fact]
+    public void TheCameraIsAButtonTheVendorKeepsOutOfTheTabOrder()
+    {
+        var button = Render(scans: true).Find(ButtonSelector);
+
+        Assert.Equal("button", button.LocalName);
+        Assert.Equal("-1", button.GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void TheCameraButtonIsOneTheWhisperReaches()
+    {
+        var cut = Render(scans: true);
+
+        Assert.NotNull(cut.Find(".ns-camera-field .mud-input-adornment-icon-button[aria-label]"));
+    }
+
+    sealed class Scan
+    {
+        public string? Code { get; set; }
     }
 }

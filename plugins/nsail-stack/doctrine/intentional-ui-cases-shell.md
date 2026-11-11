@@ -171,9 +171,9 @@ state and none of them survives being drawn inside the control it names:
 
 **The text is declared, the opening is derived.** `data-ns-whisper` carries the bubble's whole
 text — the name, and the key where there is one (`NsButton`, `NsLink`, `NsSubmit`, `NsClose`,
-`NsChip`, `NsTooltip`); the two faces the VENDOR draws and nothing of ours can put an attribute on
-— a menu's icon face, a lookup's end adornment — are read off `aria-label` by their own two
-selectors. Whether the bubble opens is then one question asked of the RENDERED control: `ns.js`
+`NsChip`, `NsTooltip`); the three faces the VENDOR draws and nothing of ours can put an attribute
+on — a menu's icon face, a lookup's end adornment, a text field's camera — are read off
+`aria-label` by their own three selectors. Whether the bubble opens is then one question asked of the RENDERED control: `ns.js`
 compares the text against the control's `innerText`, case-folded, and stays shut where the word is
 already on screen. **That is what makes the double cartel unrepresentable**, and it costs no gate:
 a label a container query hid, one the footer's emphasis ladder hid and one that was never written

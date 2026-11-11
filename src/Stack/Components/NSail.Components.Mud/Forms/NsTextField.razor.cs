@@ -34,6 +34,9 @@ public partial class NsTextField
     [Inject]
     IJSRuntime JS { get; init; } = default!;
 
+    [CascadingParameter]
+    EscapeHolds? Holds { get; set; }
+
     // Text selects on focus; a masked field (a CUIT, a DNI) stays out, its caret
     // bookkeeping belongs to the vendor's mask engine.
     protected override bool SelectOnFocus => Mask is not { Length: > 0 };
@@ -94,6 +97,45 @@ public partial class NsTextField
 
     bool CanScan => Camera && _scans == true && !CanCopy && !IsDisabled && !IsReadOnly;
 
+    bool IsCopied => CanCopy && _copied == Value;
+
+    EventCallback<MouseEventArgs> CopyClick => CanCopy ? EventCallback.Factory.Create<MouseEventArgs>(this, CopyValue) : default;
+
+    string? GetCopyIcon()
+    {
+        if (!CanCopy)
+        {
+            return null;
+        }
+
+        return IsCopied ? NsIcons.Check.Markup : NsIcons.ContentCopy.Markup;
+    }
+
+    string? GetCopyLabel()
+    {
+        return CanCopy ? Strings.Translate(IsCopied ? CopiedKey : CopyKey) : null;
+    }
+
+    async Task CopyValue()
+    {
+        if (!CanCopy)
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Value);
+            _copied = Value;
+        }
+        catch (Exception failure) when (failure is JSException or InvalidOperationException or ObjectDisposedException)
+        {
+            // A browser that refuses the clipboard (an http origin that is not localhost, a
+            // Permissions-Policy) must not take the page and the value shown once with it: the
+            // button stays unchecked and the box, which selects its value on focus, still copies.
+        }
+    }
+
     EventCallback<MouseEventArgs> EndClick
     {
         get
@@ -122,9 +164,23 @@ public partial class NsTextField
         return _cameraFailure ?? Helper;
     }
 
+    // A refusal already standing takes the helper line whole (NsFieldHelper), so the camera's
+    // answer to the press takes the refusal's place until the next keystroke.
+    protected override string? GetErrorText()
+    {
+        var refusal = base.GetErrorText();
+
+        return refusal is { Length: > 0 } && _cameraFailure is not null ? _cameraFailure : refusal;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
+
+        if (Camera && Holds is not null && !_disposed)
+        {
+            await Holds.Set(this, _scanning);
+        }
 
         if (Camera && _scans is null)
         {
@@ -175,21 +231,38 @@ public partial class NsTextField
             failure = "Error";
         }
 
-        // AbortError is the close pressed while the browser was still asking: nothing to say.
         if (failure is null || !_scanning)
         {
             return;
         }
 
         _scanning = false;
-        _cameraFailure = failure is "AbortError" ? null : Strings.Translate(failure is "NotAllowedError" or "SecurityError" ? CameraDeniedKey : CameraMissingKey);
+        _cameraFailure = Strings.Translate(failure is "NotAllowedError" or "SecurityError" ? CameraDeniedKey : CameraMissingKey);
         StateHasChanged();
+        await FocusBox();
+    }
+
+    async Task CameraKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            // Closes on the next turn (ui/menus.md, "The innermost open thing wins Escape").
+            await Task.Yield();
+            await CloseCamera();
+        }
     }
 
     async Task CloseCamera()
     {
+        if (!_scanning)
+        {
+            return;
+        }
+
         _scanning = false;
+        StateHasChanged();
         await StopCamera();
+        await FocusBox();
     }
 
     async Task StopCamera()
@@ -220,9 +293,15 @@ public partial class NsTextField
         StateHasChanged();
         await StopCamera();
         await EnterWhole(code);
+        await FocusBox();
+    }
 
-        // A screen that re-keys its box per entry gives the next one the cursor itself; one that
-        // keeps the box gets it back here, as after a reader's burst (ui/focus.md).
+    // The button that opened the camera sat under it, so every way out hands the cursor to the
+    // box: after a read as after a reader's burst (ui/focus.md), and after a close or a failure
+    // so the next code can be typed or scanned. A screen that re-keys its box per entry gives
+    // the next one the cursor itself.
+    async Task FocusBox()
+    {
         try
         {
             if (_box is not null && !_disposed)
@@ -247,46 +326,8 @@ public partial class NsTextField
             _ = StopCamera();
         }
 
+        _ = Holds?.Set(this, false);
         _reader?.Dispose();
-    }
-
-    bool IsCopied => CanCopy && _copied == Value;
-
-    EventCallback<MouseEventArgs> CopyClick => CanCopy ? EventCallback.Factory.Create<MouseEventArgs>(this, CopyValue) : default;
-
-    string? GetCopyIcon()
-    {
-        if (!CanCopy)
-        {
-            return null;
-        }
-
-        return IsCopied ? NsIcons.Check.Markup : NsIcons.ContentCopy.Markup;
-    }
-
-    string? GetCopyLabel()
-    {
-        return CanCopy ? Strings.Translate(IsCopied ? CopiedKey : CopyKey) : null;
-    }
-
-    async Task CopyValue()
-    {
-        if (!CanCopy)
-        {
-            return;
-        }
-
-        try
-        {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Value);
-            _copied = Value;
-        }
-        catch (Exception failure) when (failure is JSException or InvalidOperationException or ObjectDisposedException)
-        {
-            // A browser that refuses the clipboard (an http origin that is not localhost, a
-            // Permissions-Policy) must not take the page and the value shown once with it: the
-            // button stays unchecked and the box, which selects its value on focus, still copies.
-        }
     }
 
     bool IsKeyed => KeyHint is { Length: > 0 } && string.IsNullOrEmpty(GetDisplay());

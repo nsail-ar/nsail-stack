@@ -121,8 +121,8 @@ opens a list of withheld rows is a button that does nothing.
   answers for nothing.
 - **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
   surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
-  make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint` and
-  `NsExpander` stop the key's propagation on their own wrapper **only while open**
+  make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint`,
+  `NsExpander` and `NsTextField`'s camera stop the key's propagation on their own wrapper **only while open**
   (`@onkeydown:stopPropagation` bound to their state); closed, they let it through. **They close
   on the next turn (`await Task.Yield()`), never in the Escape's own dispatch**: Blazor reads the
   bound stop after the handler returns, so a same-dispatch close reads `false` and the same Escape
@@ -130,7 +130,7 @@ opens a list of withheld rows is a button that does nothing.
   every key bubbling to a Blazor ancestor, not only Escape, which is harmless because the house's
   other keys (the dropdown's Enter and arrows) are ns.js's native listeners. Inside a hosted
   dialog the dialog's Escape is the vendor's native listener, which no Blazor stop reaches, so the
-  four report their open state up and `NsOpenDialog` withdraws `CloseOnEscapeKey` while any is
+  five report their open state up and `NsOpenDialog` withdraws `CloseOnEscapeKey` while any is
   open ([actions.md](actions.md)). **A menu the pointer opened is the one exception**: the vendor
   publishes no open state to bind the stop to and a flag of the house's own would drift from it,
   so its Escape closes the list and still reaches the surface behind.

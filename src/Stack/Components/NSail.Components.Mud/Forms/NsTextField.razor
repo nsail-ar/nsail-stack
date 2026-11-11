@@ -24,17 +24,20 @@ else
 <NsFieldHelper Text="@GetHelperText()" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
 @if (_scanning)
 {
-    @* The camera fills the screen above everything while it reads, and closes itself on the
-       first code; the box underneath keeps what was typed. *@
-    <div class="ns-camera" role="dialog" aria-label="@Strings.Translate(CameraKey)">
-        <video @ref="_video" class="ns-camera-view" muted playsinline autoplay></video>
-        <div class="ns-camera-close">
-            <NsButton As="NsAs.Inline"
-                      Breakpoint="NsBreakpoint.Never"
-                      Icon="@NsIcons.Close"
-                      Label="@Strings.Translate(CameraCloseKey)"
-                      OnClick="CloseCamera" />
-        </div>
+    @* Escape is caught here and stopped: the innermost open thing wins it (ui/menus.md), and a
+       hosted dialog's own listener is withdrawn through EscapeHolds while the camera is open. *@
+    <div class="ns-camera" role="dialog" aria-modal="true" aria-label="@Strings.Translate(CameraKey)"
+         @onkeydown="CameraKeyDown" @onkeydown:stopPropagation="true">
+        <MudFocusTrap DefaultFocus="DefaultFocus.FirstChild">
+            <video @ref="_video" class="ns-camera-view" muted playsinline autoplay></video>
+            <div class="ns-camera-close">
+                <NsButton As="NsAs.Inline"
+                          Breakpoint="NsBreakpoint.Never"
+                          Icon="@NsIcons.Close"
+                          Label="@Strings.Translate(CameraCloseKey)"
+                          OnClick="CloseCamera" />
+            </div>
+        </MudFocusTrap>
     </div>
 }
 
@@ -56,6 +59,7 @@ else
                                            OnBlur="Leaving"
                                            OnKeyDown="Pressing"
                                            ShrinkLabel="ShrinkLabel"
+                                           Class="@(CanScan ? "ns-camera-field" : null)"
                                            Adornment="@(CanCopy || CanScan || Suffix is { Length: > 0 } ? Adornment.End : Adornment.None)"
                                            AdornmentText="@(CanCopy || CanScan ? null : Suffix)"
                                            AdornmentIcon="@GetEndIcon()"

@@ -4871,16 +4871,19 @@ div.mud-input-slot.mud-input-root::placeholder {
     right: 48px;
 }
 
-/* The camera of a text field, over everything while it reads a code. */
+/* The camera of a text field stands on the vendor overlays' one tier (SurfaceContext.VendorZIndex),
+   the toast's too, and never above it. */
 .ns-camera {
     position: fixed;
     inset: 0;
-    z-index: calc(var(--mud-zindex-tooltip) + 1);
+    z-index: var(--mud-zindex-dialog);
     background: var(--mud-palette-black);
     color: var(--mud-palette-white);
 }
 
 .ns-camera-view {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;

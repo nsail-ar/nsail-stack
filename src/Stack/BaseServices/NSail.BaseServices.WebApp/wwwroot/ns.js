@@ -849,10 +849,10 @@
     const WHISPER_GAP = 4;
 
     // Which controls may whisper: the ones that declared the text to say (NsButton, NsLink,
-    // NsSubmit, NsClose, NsChip, NsTooltip), plus the two faces the VENDOR draws, where nothing
+    // NsSubmit, NsClose, NsChip, NsTooltip), plus the three faces the VENDOR draws, where nothing
     // of ours can put an attribute and the accessible name is the whole of what there is to say
-    // anyway -- a menu's icon face and a lookup's end adornment.
-    const WHISPER_SELECTOR = '[data-ns-whisper]:not([data-ns-whisper=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])';
+    // anyway -- a menu's icon face, a lookup's end adornment and a text field's camera.
+    const WHISPER_SELECTOR = '[data-ns-whisper]:not([data-ns-whisper=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""]), .ns-camera-field .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])';
 
     // THE TAP: a finger has no hover, so on touch a chip that declares data-ns-whisper-tap
     // (NsChip, and only it) opens its whisper on the tap itself, with no dwell, and the bubble's
@@ -1509,20 +1509,33 @@
     var scanFormats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "qr_code"];
     var scans = new WeakMap();
 
-    function canScan() {
-        return "BarcodeDetector" in window && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    // Both the detector and the camera exist only in a secure context, so an http origin that is
+    // not localhost answers false here and draws no button, as a browser without the detector
+    // does; so does a device whose detector reads none of the formats.
+    async function readableFormats() {
+        if (!("BarcodeDetector" in window) || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia))
+            return [];
+        try {
+            var supported = await window.BarcodeDetector.getSupportedFormats();
+            return scanFormats.filter(function (format) { return supported.indexOf(format) >= 0; });
+        } catch (_) {
+            return [];
+        }
     }
 
-    // Answers null once the camera is drawing into the video, or the failure's DOMException
-    // name (NotAllowedError for a refusal, which an http origin also gets). The first code
-    // read stops the camera before it is handed to the reader's Read, once.
+    async function canScan() {
+        return (await readableFormats()).length > 0;
+    }
+
+    // Answers null once the camera is drawing into the video, or after a scanStop while it was
+    // still opening; otherwise the failure's DOMException name (NotAllowedError for a refusal).
+    // The first code read stops the camera before it is handed to the reader's Read, once.
     async function scanStart(video, reader) {
         var scan = { stopped: false, stream: null };
         scans.set(video, scan);
 
         try {
-            var supported = await window.BarcodeDetector.getSupportedFormats();
-            var formats = scanFormats.filter(function (format) { return supported.indexOf(format) >= 0; });
+            var formats = await readableFormats();
             if (formats.length === 0) {
                 scans.delete(video);
                 return "NotSupportedError";
@@ -1530,17 +1543,17 @@
             var detector = new window.BarcodeDetector({ formats: formats });
             scan.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
 
-            // Closed, or the field gone, while the browser was still asking for permission.
             if (scan.stopped) {
                 stopTracks(scan);
-                return "AbortError";
+                return null;
             }
 
             video.srcObject = scan.stream;
             await video.play();
         } catch (failure) {
+            var closed = scan.stopped;
             scanStop(video);
-            return (failure && failure.name) || "Error";
+            return closed ? null : (failure && failure.name) || "Error";
         }
 
         async function tick() {
