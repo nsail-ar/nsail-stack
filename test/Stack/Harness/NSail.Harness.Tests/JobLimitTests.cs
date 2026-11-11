@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using System.Net;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSail.Harness.GitHub;
@@ -26,6 +27,7 @@ public sealed class JobLimitTests : IDisposable
     readonly Locks _locks = new();
     readonly JobHistory _history;
     readonly HarnessMetrics _metrics = new();
+    readonly DevJobRunTests.Lines _logs = new();
     readonly HarnessLoop _loop;
 
     public JobLimitTests()
@@ -37,7 +39,7 @@ public sealed class JobLimitTests : IDisposable
         var jobs = new JobContext(_board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace> { [repo.Name] = workspace }, new NoAgent(), options, [], NullLoggerFactory.Instance, new BuildLeases(1));
         _loop = new HarnessLoop(null!, _board, _locks, workspace,
             _history, new JobStats(null), jobs, new BuildLeases(1), null!, Options.Create(options), null!, _metrics,
-            new WatchState(null), new HarnessState(Path.Combine(_root, "state")), NullLogger<HarnessLoop>.Instance);
+            new WatchState(null), new HarnessState(Path.Combine(_root, "state")), new Logger<HarnessLoop>(_logs));
         _board.Add(Story, stage: Stages.InProgress, labels: [Labels.Claimed]);
     }
 
@@ -62,12 +64,21 @@ public sealed class JobLimitTests : IDisposable
         return new GitHubException(status, $"{(int)status} GET /repos/acme/app/pulls?state=closed: oops");
     }
 
-    async Task<JobRecord> End(Exception e, WorkItem? item = null)
+    Task<JobRecord> End(Exception e, WorkItem? item = null)
     {
-        item ??= Dev();
+        return Sail(new Throws(item ?? Dev(), e));
+    }
+
+    async Task<JobRecord> Sail(IJob job)
+    {
         var id = $"job-{Guid.NewGuid():N}";
-        await _loop.Sail(new Throws(item, e), new RunningJob(id, item, 1, DateTimeOffset.UtcNow, Path.Combine(_root, $"{id}.log")));
+        await _loop.Sail(job, new RunningJob(id, job.Item, 1, DateTimeOffset.UtcNow, Path.Combine(_root, $"{id}.log")));
         return _history.Jobs().Last(j => j.Id == id && j.Ended is not null);
+    }
+
+    static ProviderTimeoutException TimedOut()
+    {
+        return new ProviderTimeoutException("timed out POST /repos/acme/app/statuses/abc: The request was canceled due to the configured HttpClient.Timeout of 60 seconds elapsing.", new TaskCanceledException());
     }
 
     int Broke()
@@ -180,6 +191,44 @@ public sealed class JobLimitTests : IDisposable
     }
 
     [Fact]
+    public async Task ATimedOutCallEndsAsAProviderFailure()
+    {
+        using var jobs = new Jobs();
+
+        var first = await End(TimedOut());
+        await End(TimedOut());
+
+        Assert.Equal(HarnessLoop.ProviderResult, first.Result);
+        Assert.Equal("provider failed — timed out POST /repos/acme/app/statuses/abc", first.Outcome);
+        Assert.Empty(_board.Cards[Story].Comments);
+        Assert.DoesNotContain(Labels.Stalled, _board.Cards[Story].Labels);
+        Assert.True(_loop.BackedOff(Dev()));
+        Assert.Null(_loop.LimitedUntil);
+        Assert.Equal(new[] { "provider", "provider" }, jobs.Outcomes);
+        Assert.DoesNotContain(_logs.Written, l => l.Level == LogLevel.Error);
+    }
+
+    [Fact]
+    public async Task AJobTheStopCancelsIsStoppedNotBroken()
+    {
+        using var jobs = new Jobs();
+        var job = new Waits(Dev());
+
+        var sailing = Sail(job);
+        await job.Started.Task;
+        await _loop.StopAsync(CancellationToken.None);
+        var stopped = await sailing;
+
+        Assert.Equal(HarnessLoop.StoppedResult, stopped.Result);
+        Assert.Equal(0, Broke());
+        Assert.DoesNotContain(_logs.Written, l => l.Level == LogLevel.Error);
+        Assert.DoesNotContain(Labels.Claimed, _board.Cards[Story].Labels);
+        Assert.Equal(Stages.Ready, _board.Cards[Story].Stage);
+        Assert.Equal(new[] { Story }, _locks.Released);
+        Assert.Equal(new[] { HarnessLoop.StoppedResult }, jobs.Outcomes);
+    }
+
+    [Fact]
     public async Task AnyOtherEndingStillBreaksAndTheSecondInARowStalls()
     {
         await End(new GitHubException(HttpStatusCode.Forbidden, "403 PATCH /repos/acme/app/issues/5: Resource not accessible by integration"));
@@ -206,6 +255,21 @@ public sealed class JobLimitTests : IDisposable
         public Task<JobOutcome> Run(int slot, string logPath, CancellationToken ct)
         {
             throw e;
+        }
+    }
+
+    // A job that runs until its token is cancelled.
+    sealed class Waits(WorkItem item) : IJob
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public WorkItem Item => item;
+
+        public async Task<JobOutcome> Run(int slot, string logPath, CancellationToken ct)
+        {
+            Started.SetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            return new JobOutcome("never");
         }
     }
 

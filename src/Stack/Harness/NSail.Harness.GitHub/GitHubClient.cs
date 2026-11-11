@@ -133,7 +133,7 @@ public sealed partial class GitHubClient(HttpClient http)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, address) { Content = new StreamContent(content) };
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
-        using var response = await http.SendAsync(request, ct);
+        using var response = await SendOnce(request, ct);
         return await Read(response, ct);
     }
 
@@ -146,7 +146,7 @@ public sealed partial class GitHubClient(HttpClient http)
         for (var attempt = 1; ; attempt++)
         {
             using var request = build();
-            var response = await http.SendAsync(request, ct);
+            var response = await SendOnce(request, ct);
             TimeSpan? wait = null;
             if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
             {
@@ -160,6 +160,20 @@ public sealed partial class GitHubClient(HttpClient http)
             if (wait is not { } span || span > MaxWait) return response;
             response.Dispose();
             await Delay(span, ct);
+        }
+    }
+
+    // The client's timeout cancels the call as the caller's stop does; only the caller's is a stop.
+    async Task<HttpResponseMessage> SendOnce(HttpRequestMessage request, CancellationToken ct)
+    {
+        try
+        {
+            return await http.SendAsync(request, ct);
+        }
+        catch (TaskCanceledException e) when (!ct.IsCancellationRequested)
+        {
+            var address = request.RequestUri is { IsAbsoluteUri: false } relative && http.BaseAddress is { } root ? new Uri(root, relative) : request.RequestUri;
+            throw new ProviderTimeoutException($"timed out {request.Method} {address?.PathAndQuery}: {e.Message}", e);
         }
     }
 

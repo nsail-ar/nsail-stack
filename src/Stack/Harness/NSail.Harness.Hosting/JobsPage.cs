@@ -14,7 +14,7 @@ namespace NSail.Harness.Hosting;
 static class JobsPage
 {
     const int PageSize = 25;
-    static readonly string[] Results = ["ok", "failed", "broke", HarnessLoop.ProviderResult, "quiet", "running"];
+    static readonly string[] Results = ["ok", "failed", "broke", HarnessLoop.ProviderResult, HarnessLoop.StoppedResult, "quiet", "running"];
     static readonly int[] Tails = [200, 1000, 0];
 
     // A row as the table shows it: a job running or ended.
@@ -88,6 +88,7 @@ static class JobsPage
             "failed" => ("warn", "failed"),
             "broke" => ("bad", "broke"),
             HarnessLoop.ProviderResult => ("warn", Label(result)),
+            HarnessLoop.StoppedResult => ("", HarnessLoop.StoppedResult),
             "quiet" => ("", Label(result)),
             "running" => ("acc", "running"),
             "stale" => ("bad", "stale"),

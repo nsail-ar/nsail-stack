@@ -145,13 +145,18 @@ the files it leaves.
     hold; outside one, a wake runs the next pass at once. Every GitHub REST read is sent with the ETag of its last answer: one that has not
     moved comes back 304, which GitHub does not count against the token's rate limit, so a pass over an
     unchanged board bills no REST call (`PassBudgetTests`). A full page kept with no next link is read again
-    without its ETag, as items appended behind it leave its answer unchanged. A job that ends on the provider's limit (a `ProviderException` with its
-    `RetryAfter`) or on a 5xx is not a break: nothing is said on its story and nothing counts toward
-    `stalled`; its lock label and lock come off and a Dev with no PR goes back to Ready, as a break's do.
-    A limit holds the item for the same wait as the passes; a 5xx backs the
-    item off as a break. Its run's result is `provider` (`/jobs`, the pill, `harness.jobs{outcome=provider}`),
-    its outcome `rate limited — <call>, retry in <wait>` or `provider failed — <status> <call>`. A bare 403
-    or a 404 is an answer, and breaks. A story whose body or refinery comment names a blocker
+    without its ETag, as items appended behind it leave its answer unchanged. A call nothing answers
+    within the client's timeout throws `ProviderTimeoutException`, a `ProviderException` with no status,
+    never a cancellation: only the caller's own token is a stop. A job that ends on the provider's limit
+    (a `ProviderException` with its `RetryAfter`), on a 5xx or on a timed-out call is not a break: nothing
+    is said on its story and nothing counts toward `stalled`; its lock label and lock come off and a Dev
+    with no PR goes back to Ready, as a break's do. A limit holds the item for the same wait as the
+    passes; a 5xx or a timeout backs the item off as a break. Its run's result is `provider` (`/jobs`,
+    the pill, `harness.jobs{outcome=provider}`), its outcome `rate limited — <call>, retry in <wait>`,
+    `provider failed — <status> <call>` or `provider failed — timed out <call>`. A bare 403 or a 404 is
+    an answer, and breaks. A job the host's stop cancels is not a break either: its result is `stopped`
+    (`harness.jobs{outcome=stopped}`), nothing is said on its story, and the story goes back as a
+    break's does. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
     its analysis and before its first voyage (`Board/WrittenBlockers.cs`); a `Waits` line that answers
     `nothing`, `none`, `nada`, `ninguna` or `ninguno` names no blocker, whatever else it mentions. A

@@ -49,6 +49,9 @@ public sealed class HarnessLoop(
     // A job's result when it ended on the provider's limit or its server's failure, not on its own.
     public const string ProviderResult = "provider";
 
+    // A job's result when the host's stop cancelled it: neither its break nor the provider's.
+    public const string StoppedResult = "stopped";
+
     readonly SemaphoreSlim _wake = new(0);
     readonly Lock _gate = new();
     readonly string _instance = Guid.NewGuid().ToString("N")[..8];
@@ -614,14 +617,15 @@ public sealed class HarnessLoop(
     }
 
     // How long an item whose job ended on the provider waits, or null when the ending is a break: a
-    // limit announced with its wait (GitHubClient.LimitWait), held as a limited pass is, or a 5xx, the
-    // provider's own failure, as long as a break. A bare 403 or a 404 is an answer.
+    // limit announced with its wait (GitHubClient.LimitWait), held as a limited pass is, or a 5xx or a
+    // call nothing answered in time, the provider's own failure, as long as a break. A bare 403 or a
+    // 404 is an answer.
     internal static TimeSpan? ProviderWait(Exception e)
     {
         return e switch
         {
             ProviderException { RetryAfter: { } after } => LimitHold(after),
-            ProviderException { Status: >= 500 } => Backoff,
+            ProviderException { Status: >= 500 } or ProviderTimeoutException => Backoff,
             _ => null,
         };
     }
@@ -636,7 +640,7 @@ public sealed class HarnessLoop(
     }
 
     // A failed read starts nothing: a half board reads as an empty queue. A request that timed out
-    // lands here too (it is a cancellation, but not the host's). What the provider answered rides
+    // lands here too, a provider failure with no status. What the provider answered rides
     // the record as numbers and an enum, the only kinds the log scrubber lets through; its body
     // stays in the exception's message, which reaches the console and never the log store.
     internal const string FailedAnswered = "pass failed — nothing started: {ProviderCall} answered {ProviderStatus}, {RateLimitRemaining} calls left";
@@ -848,6 +852,7 @@ public sealed class HarnessLoop(
         string outcome;
         JobOutcome? ended = null;
         var provider = false;
+        var stopped = false;
         try
         {
             var result = await job.Run(running.Slot, running.LogPath, _jobsStop.Token);
@@ -901,6 +906,18 @@ public sealed class HarnessLoop(
                 await BackToReady(running.Item, n);
             }
         }
+        // The host's stop is asked, not a fault: nothing is said on the story; it goes back as a break puts it.
+        catch (OperationCanceledException) when (_jobsStop.IsCancellationRequested)
+        {
+            stopped = true;
+            outcome = "stopped with the host";
+            log.LogInformation("{Item} stopped with the host", running.Item);
+            if (story is { } n)
+            {
+                await LockLabelOff(running.Item, n);
+                await BackToReady(running.Item, n);
+            }
+        }
         catch (Exception e)
         {
             outcome = $"failed: {e.Message}";
@@ -944,13 +961,13 @@ public sealed class HarnessLoop(
             _running.TryRemove(running.Id, out _);
             _sailing.TryRemove(running.Id, out _);
         }
-        var ending = provider ? ProviderResult : ended is null ? "broke" : ended.Quiet ? "quiet" : ended.Failed ? "failed" : "ok";
-        metrics.JobEnded(running.Item.Kind.ToString().ToLowerInvariant(), ending is "broke" or ProviderResult ? ending : "ok");
+        var ending = provider ? ProviderResult : stopped ? StoppedResult : ended is null ? "broke" : ended.Quiet ? "quiet" : ended.Failed ? "failed" : "ok";
+        metrics.JobEnded(running.Item.Kind.ToString().ToLowerInvariant(), ending is "broke" or ProviderResult or StoppedResult ? ending : "ok");
         TimeSpan? waited = _waited.TryRemove(running.Id, out var wait) ? wait : null;
         await Quietly(() =>
         {
-            // A provider's outage is not the crew's work, as the quota wall is not.
-            if (!provider) stats.Ended(running.Item.Kind, story, running.Started, DateTimeOffset.UtcNow, waited, ended);
+            // A provider's outage or the host's stop is not the crew's work, as the quota wall is not.
+            if (!provider && !stopped) stats.Ended(running.Item.Kind, story, running.Started, DateTimeOffset.UtcNow, waited, ended);
             // A review that read its PR clean lands it (ReviewJob.Land): the story's PR merged.
             if (running.Item is { Kind: WorkKind.Review, Pr: { } pr } && ended?.Event == "Clean") stats.Merged(pr, story, DateTimeOffset.UtcNow);
             return Task.CompletedTask;

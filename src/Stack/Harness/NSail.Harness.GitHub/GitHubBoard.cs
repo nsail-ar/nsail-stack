@@ -264,7 +264,7 @@ public sealed class GitHubBoard(GitHubClient gh, string repo, GitHubBoardOptions
                 }
             }
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        catch (Exception e) when (e is ProviderTimeoutException || e is OperationCanceledException && !ct.IsCancellationRequested)
         {
             throw last ?? new GitHubException(System.Net.HttpStatusCode.RequestTimeout, "the column write ran past its time budget");
         }
