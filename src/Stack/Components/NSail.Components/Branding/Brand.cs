@@ -23,4 +23,18 @@ public sealed class Brand
     public BrandTheme Light { get; set; } = BrandTheme.DefaultLight();
 
     public BrandTheme Dark { get; set; } = BrandTheme.DefaultDark();
+
+    /// <summary>This brand as it may reach a stylesheet (<see cref="BrandTheme.Checked"/>), each
+    /// scheme falling back to its own default.</summary>
+    internal Brand Checked()
+    {
+        return new Brand
+        {
+            Name = Name,
+            Typeface = Typeface,
+            DefaultDark = DefaultDark,
+            Light = (Light ?? BrandTheme.DefaultLight()).Checked(BrandTheme.DefaultLight()),
+            Dark = (Dark ?? BrandTheme.DefaultDark()).Checked(BrandTheme.DefaultDark()),
+        };
+    }
 }

@@ -10,6 +10,8 @@ internal static class BrandMudTheme
 {
     public static MudTheme From(Brand brand)
     {
+        brand = brand.Checked();
+
         return new MudTheme
         {
             PaletteLight = Map(brand.Light, new PaletteLight()),
