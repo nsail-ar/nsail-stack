@@ -849,10 +849,10 @@
     const WHISPER_GAP = 4;
 
     // Which controls may whisper: the ones that declared the text to say (NsButton, NsLink,
-    // NsSubmit, NsClose, NsChip, NsTooltip), plus the two faces the VENDOR draws, where nothing
+    // NsSubmit, NsClose, NsChip, NsTooltip), plus the three faces the VENDOR draws, where nothing
     // of ours can put an attribute and the accessible name is the whole of what there is to say
-    // anyway -- a menu's icon face and a lookup's end adornment.
-    const WHISPER_SELECTOR = '[data-ns-whisper]:not([data-ns-whisper=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])';
+    // anyway -- a menu's icon face, a lookup's end adornment and a text field's camera.
+    const WHISPER_SELECTOR = '[data-ns-whisper]:not([data-ns-whisper=""]), .ns-menu > .mud-icon-button[aria-label]:not([aria-label=""]), .mud-autocomplete .mud-input-adornment-icon-button[aria-label]:not([aria-label=""]), .ns-camera-field .mud-input-adornment-icon-button[aria-label]:not([aria-label=""])';
 
     // THE TAP: a finger has no hover, so on touch a chip that declares data-ns-whisper-tap
     // (NsChip, and only it) opens its whisper on the tap itself, with no dwell, and the bubble's
@@ -1503,5 +1503,100 @@
     new MutationObserver(queueFit).observe(document.documentElement, { childList: true, subtree: true });
     window.addEventListener("resize", queueFit);
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download };
+    // A text field's camera (NsTextField.Camera): the browser's own BarcodeDetector over the
+    // rear camera, with no decoder of the house's behind it, so a browser without one is
+    // offered no button at all.
+    var scanFormats = ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "qr_code"];
+    // Keyed by the field's own id, never by its video: a stop must reach the camera after the
+    // render that removed the video, and a removed element no longer resolves from .NET.
+    var scans = new Map();
+
+    // Both the detector and the camera exist only in a secure context, so an http origin that is
+    // not localhost answers false here and draws no button, as a browser without the detector
+    // does; so does a device whose detector reads none of the formats.
+    async function readableFormats() {
+        if (!("BarcodeDetector" in window) || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia))
+            return [];
+        try {
+            var supported = await window.BarcodeDetector.getSupportedFormats();
+            return scanFormats.filter(function (format) { return supported.indexOf(format) >= 0; });
+        } catch (_) {
+            return [];
+        }
+    }
+
+    async function canScan() {
+        return (await readableFormats()).length > 0;
+    }
+
+    // Answers null once the camera is drawing into the video, or after a scanStop while it was
+    // still opening; otherwise the failure's DOMException name (NotAllowedError for a refusal).
+    // The first code read stops the camera before it is handed to the reader's Read, once.
+    async function scanStart(id, video, reader) {
+        scanStop(id);
+        var scan = { stopped: false, stream: null, video: video };
+        scans.set(id, scan);
+
+        try {
+            var formats = await readableFormats();
+            if (formats.length === 0) {
+                scans.delete(id);
+                return "NotSupportedError";
+            }
+            var detector = new window.BarcodeDetector({ formats: formats });
+            scan.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+
+            if (scan.stopped) {
+                stopTracks(scan);
+                return null;
+            }
+
+            video.srcObject = scan.stream;
+            await video.play();
+        } catch (failure) {
+            var closed = scan.stopped;
+            scanStop(id);
+            return closed ? null : (failure && failure.name) || "Error";
+        }
+
+        async function tick() {
+            if (scan.stopped)
+                return;
+            try {
+                if (video.readyState >= 2) {
+                    var codes = await detector.detect(video);
+                    var hit = codes.find(function (code) { return code.rawValue; });
+                    if (hit && !scan.stopped) {
+                        scanStop(id);
+                        reader.invokeMethodAsync("Read", hit.rawValue);
+                        return;
+                    }
+                }
+            } catch (_) {
+                // A frame the detector cannot read is not the end of the scan.
+            }
+            if (!scan.stopped)
+                setTimeout(tick, 120);
+        }
+
+        tick();
+        return null;
+    }
+
+    function stopTracks(scan) {
+        if (scan.stream)
+            scan.stream.getTracks().forEach(function (track) { track.stop(); });
+    }
+
+    function scanStop(id) {
+        var scan = scans.get(id);
+        if (!scan)
+            return;
+        scan.stopped = true;
+        stopTracks(scan);
+        scan.video.srcObject = null;
+        scans.delete(id);
+    }
+
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download, canScan, scanStart, scanStop };
 })();

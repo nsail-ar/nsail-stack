@@ -53,6 +53,24 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   button unchecked and the page standing: the value shown once must not go with an exception,
   and the box selects it on focus for a copy by hand. The button takes the end slot a `Suffix`
   would print in, so a box with both and a value draws the button.
+- **`NsTextField` reads a code from the camera behind `Camera`** — one boolean, for a box a
+  reader ends with Enter (a scan box). Where the browser has its own `BarcodeDetector` (Android
+  Chrome) an end button, named `Components.NsTextField.Camera`, opens the rear camera over the
+  screen (`nsapp.scanStart`, `ns.js`); the first EAN-13, EAN-8, UPC-A, UPC-E, Code 128 or QR it
+  reads closes it and is entered as a reader's burst is: written to the box, then committed as by
+  Enter (`OnCommit` and `OnEnterCommit`). A browser without the detector, or whose detector reads
+  none of those formats, draws no button and gets no decoder of the house's instead — the box is
+  what it was; an http origin that is not localhost is one of them, the detector and the camera
+  being a secure context's alone. A refused camera, or one the browser could not open, is said
+  under the box in its helper line — in the refusal's place when one stands — never a toast, and
+  the box stays typeable; the next keystroke clears it. The camera is a modal: the cursor lands
+  on its close button, stays inside, and Escape closes it before any surface behind
+  (`EscapeHolds`); every way out — a read, a close, a failure — hands the cursor back to the box.
+  Two hands place it then, the vendor's trap handing it back to the button that opened the camera
+  and the field's own, so the field's waits for the render that removed the camera and is the
+  last; and the camera is stopped before that render, because a stop has to reach it while its
+  video is still in the page.
+  The button takes the end slot a `Suffix` would print in; `Copy` with a value keeps it.
 - **`NsHelp` takes one parameter, `Key`** — a **global** localization key, because the
   component cannot see the page whose prefix would scope it.
 
@@ -551,7 +569,8 @@ words land under it and the label then travels off them.
 - **A box that ends on a key can draw it: `NsTextField.KeyHint`.** The key cap sits at the
   trailing edge while the box is empty — the mark `NsSearchField` draws for its chord, same
   classes — aria-hidden and never in the placeholder, which is the input's name fallback. It
-  is a reminder, not a claim: Enter is answered by `OnCommit` whether or not it is drawn.
+  is a reminder, not a claim: Enter is answered by `OnCommit` whether or not it is drawn. Beside
+  the camera's button the cap moves inside the input's edge (`ns-search-scans`), never over it.
 - **A permanent suffix is the one shape the derivation cannot reach, and it floats the label
   regardless of value, text or focus.** A `Suffix` or unit prints exactly where a long label
   would otherwise rest at empty, unfocused rest, and no value is coming to lift it. Two shapes
@@ -646,9 +665,11 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   balance, a count — belongs on the option alone: a field that kept it would go on saying a
   number from whenever it was picked (`ProductVariantLookup`).
 - **The end adornment is a button and carries a name** (`AdornmentAriaLabel`): the chevron that
-  opens a browsed lookup's list. It is icon-only at every width and the vendor draws it, so it is
-  one of the two faces the whisper reaches by selector and names off `aria-label`
-  ([actions.md](actions.md)).
+  opens a browsed lookup's list, and the text field's copy and camera. The chevron and the camera
+  are icon-only at every width and the vendor draws them, so they are two of the three faces the
+  whisper reaches by selector and names off `aria-label` ([actions.md](actions.md)). The copy
+  button is icon-only and the vendor's too, and the whisper does not reach it yet: a known gap,
+  not a rule.
 - **A `Lazy` lookup draws no adornment.** Its list is what a term answers, so a button offering
   to open it has no gesture: pressed, it focused the box and opened nothing. What the field is
   for is said by the word in it — the `Buscar {concept}` placeholder — which reads at every
