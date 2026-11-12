@@ -42,6 +42,14 @@ public sealed class Workspace
     // network git goes where it was configured to, whatever a seat wrote in the common git directory.
     public string Url => _repoUrl;
 
+    // The default branch's head as the remote holds it, fetched into this checkout by address: no
+    // remote-tracking ref a seat can move is read.
+    public async Task<string> RemoteTip(string dir)
+    {
+        await Shell.Git(dir, [.. Guard, "fetch", "-q", "--no-tags", _repoUrl, $"refs/heads/{_branch}"]);
+        return (await Shell.GitOut(dir, "rev-parse", "FETCH_HEAD^{commit}")).Trim();
+    }
+
     // Prefix of a git that reaches the remote: the helper list is the harness's own alone.
     public string[] Guard => ["-c", "credential.helper=", .. Helper()];
 

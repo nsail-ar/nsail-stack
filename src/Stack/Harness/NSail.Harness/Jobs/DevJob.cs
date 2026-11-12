@@ -271,7 +271,8 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     async Task<string?> Rescue(int n, IRepository repo, string dir, string since, ILogger log, IReadOnlyList<string> screen)
     {
         var name = $"rescue/{ctx.Names.Key}-{n}";
-        var rescued = await RescueRef(repo, dir, since, name, screen);
+        var main = screen.Count > 0 ? await ctx.WorkspaceOf(repo).RemoteTip(dir) : "";
+        var rescued = await RescueRef(repo, dir, since, name, screen, main);
         if (rescued is not null)
         {
             log.LogWarning("#{Story}: unpushed work rescued to {Ref}", n, rescued);
@@ -298,12 +299,13 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         }
     }
 
-    // A rescue is a push like any other: commits touching a protected path stay local.
-    internal static async Task<string?> RescueRef(IRepository repo, string dir, string since, string name, IReadOnlyList<string> screen)
+    // A rescue is a push like any other: commits touching a protected path stay local. `main` is the
+    // default branch's head as the remote holds it, read only when the screen is up.
+    internal static async Task<string?> RescueRef(IRepository repo, string dir, string since, string name, IReadOnlyList<string> screen, string main)
     {
         var ahead = int.Parse((await Shell.GitOut(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
         if (ahead == 0) return null;
-        if (screen.Count > 0 && SeatOutput.Protected(await SeatOutput.Changed(dir, since), screen).Count > 0) return null;
+        if (screen.Count > 0 && SeatOutput.Protected(await SeatOutput.Changed(dir, since, main), screen).Count > 0) return null;
         for (var i = 0; ; i++)
         {
             var candidate = i == 0 ? name : $"{name}-{i + 1}";
@@ -338,7 +340,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         if (ahead > 0)
         {
             var screen = await ScreenOf(ctx.Options, board, n);
-            var touched = screen.Count == 0 ? [] : SeatOutput.Protected(await SeatOutput.Changed(dir, since), screen);
+            var touched = screen.Count == 0 ? [] : SeatOutput.Protected(await SeatOutput.Changed(dir, since, await ctx.WorkspaceOf(repo).RemoteTip(dir)), screen);
             if (touched.Count > 0)
             {
                 try

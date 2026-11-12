@@ -17,10 +17,18 @@ public static class SeatOutput
             && !Labels.SeatForbidden.Contains(l, StringComparer.OrdinalIgnoreCase)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    // Every path the commits since `since` touch, a rename's source too; -z because git quotes odd names otherwise.
-    public static async Task<IReadOnlyList<string>> Changed(string dir, string since)
+    // Every path the commits since `since` touch that the branch also changes against `main` (from their merge
+    // base, as a PR's files): a file merged in from main as main holds it is not the branch's. A rename's source
+    // counts too; -z because git quotes odd names otherwise.
+    public static async Task<IReadOnlyList<string>> Changed(string dir, string since, string main)
     {
-        return (await Shell.GitOut(dir, "diff", "--name-only", "-z", "--no-renames", $"{since}..HEAD")).Split('\0');
+        var branch = (await Names(dir, $"{main}...HEAD")).ToHashSet(StringComparer.Ordinal);
+        return (await Names(dir, $"{since}..HEAD")).Where(branch.Contains).ToList();
+    }
+
+    static async Task<string[]> Names(string dir, string range)
+    {
+        return (await Shell.GitOut(dir, "diff", "--name-only", "-z", "--no-renames", range)).Split('\0');
     }
 
     // The changed files that match a protected glob.
