@@ -27,6 +27,12 @@ public class SeatOutputTests
     }
 
     [Fact]
+    public async Task AScreenWithNoMainThrowsRatherThanSeeingNothing()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => SeatOutput.Changed(Path.GetTempPath(), "HEAD", ""));
+    }
+
+    [Fact]
     public async Task TheScreenSeesQuotedNamesAndTheSourceOfARename()
     {
         var dir = Path.Combine(Path.GetTempPath(), $"seat-{Guid.NewGuid():N}");

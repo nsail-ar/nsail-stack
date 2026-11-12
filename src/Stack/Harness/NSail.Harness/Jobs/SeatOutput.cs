@@ -22,6 +22,8 @@ public static class SeatOutput
     // counts too; -z because git quotes odd names otherwise.
     public static async Task<IReadOnlyList<string>> Changed(string dir, string since, string main)
     {
+        // Git reads "...HEAD" as HEAD...HEAD: an empty main would lift the screen in silence.
+        ArgumentException.ThrowIfNullOrWhiteSpace(main);
         var branch = (await Names(dir, $"{main}...HEAD")).ToHashSet(StringComparer.Ordinal);
         return (await Names(dir, $"{since}..HEAD")).Where(branch.Contains).ToList();
     }
