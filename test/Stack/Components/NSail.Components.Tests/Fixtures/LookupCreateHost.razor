@@ -16,7 +16,8 @@
                 CreateTarget="CreateTarget"
                 Value="Value"
                 ValueChanged="ValueChanged"
-                OnQuickAdd="OnQuickAdd" />
+                OnQuickAdd="OnQuickAdd"
+                Offer="Offer" />
 
 @code {
 
@@ -37,4 +38,7 @@
 
     [Parameter]
     public EventCallback<QuickAddEventArgs<SelectRef>> OnQuickAdd { get; set; }
+
+    [Parameter]
+    public RenderFragment? Offer { get; set; }
 }

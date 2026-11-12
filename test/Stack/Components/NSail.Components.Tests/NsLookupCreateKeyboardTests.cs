@@ -67,7 +67,7 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
         get { return (BunitNavigationManager)Services.GetRequiredService<NavigationManager>(); }
     }
 
-    async Task<IRenderedComponent<LookupCreateHost>> Open(string? route = CreateRoute, Surface? target = null, bool quickAdd = false)
+    async Task<IRenderedComponent<LookupCreateHost>> Open(string? route = CreateRoute, Surface? target = null, bool quickAdd = false, RenderFragment? offer = null)
     {
         Navigation.NavigateTo("/directory/parties/new");
 
@@ -76,7 +76,8 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
             .Add(x => x.CreateRoute, route)
             .Add(x => x.CreateTarget, target ?? Surfaces.Aside)
             .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _changes.Add(value)))
-            .Add(x => x.OnQuickAdd, quickAdd ? EventCallback.Factory.Create<QuickAddEventArgs<SelectRef>>(this, args => _added.Add(args.Text)) : default));
+            .Add(x => x.OnQuickAdd, quickAdd ? EventCallback.Factory.Create<QuickAddEventArgs<SelectRef>>(this, args => _added.Add(args.Text)) : default)
+            .Add(x => x.Offer, offer));
 
         await cut.Find("input").FocusAsync(new FocusEventArgs());
         cut.Render();
@@ -255,6 +256,45 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
 
         Assert.Equal(["Nueva"], _added);
         Assert.Equal(before, Navigation.History.Count);
+        Assert.Empty(_changes);
+    }
+
+    // All three drawn at once: the walk is create, quick add, offer, and back up the same way.
+    [Fact]
+    public async Task TheThreeEntriesAreWalkedInTheOrderTheyAreDrawn()
+    {
+        RenderFragment offer = builder =>
+        {
+            builder.OpenElement(0, "button");
+            builder.AddContent(1, "Teach this code");
+            builder.CloseElement();
+        };
+
+        var cut = await Open(quickAdd: true, offer: offer);
+
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Nueva" });
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll(".ns-lookup-create").Count), TimeSpan.FromSeconds(5));
+
+        await Press(cut, "ArrowDown");
+
+        Assert.Contains("Crear", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+
+        await Press(cut, "ArrowDown");
+
+        Assert.Contains("Agregar «Nueva»", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+
+        await Press(cut, "ArrowDown");
+
+        Assert.Contains("Teach this code", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+
+        await Press(cut, "ArrowDown");
+
+        Assert.Contains("Teach this code", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+
+        await Press(cut, "ArrowUp");
+
+        Assert.Contains("Agregar «Nueva»", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+        Assert.Single(cut.FindAll(".ns-lookup-create-active"));
         Assert.Empty(_changes);
     }
 }

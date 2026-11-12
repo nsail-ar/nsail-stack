@@ -889,11 +889,15 @@ matching nothing is taught by naming an article AND one of its units, which is t
   without them — what it is about is the text, not the emptiness — and wears the same geometry the
   create entry restates: a caller brings content, never padding. Whether there is anything to offer
   is the facade's own answer, because only the facade knows what its search came back with: a
-  fragment that renders nothing leaves the list as it was.
+  fragment that renders nothing leaves the list as it was — no row is drawn, and the arrows walk
+  past where it would stand (`NsAutocomplete.Draws` reads what the fragment writes).
 - **It is a row to the keyboard too** (*A lookup is complete only when it is keyboard-complete*,
   above): Enter on the reached offer presses the first enabled control inside it — a button, a
-  link, a menu's activator — as a click on it does. So the control the offer is FOR comes first
-  in the fragment; an offer whose fragment holds no control is reached and does nothing.
+  link, a menu's own face — as a click on it does. A menu with a face of its own is pressed on
+  that face (`.ns-menu-activator`), not on the vendor's wrapper around it, which wires no click
+  for a custom face ([menus.md](menus.md)). So the control the offer is FOR comes first in the
+  fragment; an offer whose fragment draws something but holds no control is reached and does
+  nothing.
 - **The text it quotes has to still be in the box.** The Stack withholds the entry while the box is
   empty and while the search for what is in it has not answered — `QuickAdd`'s own two conditions,
   and this is the entry that WRITES: a `Lazy` field emptied never reaches the facade's `OnSearch`

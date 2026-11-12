@@ -1,0 +1,18 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@using NSail.Components
+
+@* An offer whose control is a menu with a face of its own — the counter's teach-a-code shape. No
+   provider of its own: it is seated inside a lookup's list, under the host's. *@
+<NsMenu Content="@Face" Label="Teach" Beside="true">
+    <NsMenuItem Action="@Pick" Label="Unidad" />
+    <NsMenuItem Action="@Pick" Label="Caja" />
+</NsMenu>
+
+@code {
+
+    RenderFragment Face => @<span class="probe-face">Teach this code</span>;
+
+    ActionItem Pick => new() { Name = "TeachCode", OnClick = () => Task.CompletedTask };
+}

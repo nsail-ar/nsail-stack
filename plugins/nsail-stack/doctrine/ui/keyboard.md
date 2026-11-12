@@ -42,7 +42,9 @@ reached by Tab and does not answer Enter.
 
 The Stack proves in bUnit what the DOM expresses: the keys the vendor binds in Blazor
 (`KeyboardContractLookupTests` for a browsed lookup, `NsAutocompleteReaderEnterTests` for the
-`Lazy` one, `NsLookupCreateKeyboardTests` for the create entry, `NsAutocompleteQuickAddTests` and `NsAutocompleteOfferTests` for the other two), and the structure a Tab stop needs — a native element, no `tabindex="-1"`, not
+`Lazy` one, `NsLookupCreateKeyboardTests` for the create entry, `NsAutocompleteQuickAddTests`
+and `NsAutocompleteOfferTests` for the other two), and the structure a Tab stop needs — a native
+element, no `tabindex="-1"`, not
 disabled (`KeyboardContractSelectTests`, the sortable heading in `NsTableOrderTests`, a row's actions in
 `NsTableActionsChromeTests`, the pager's controls in `NsTablePagerShrinkTests`, the date box in
 `NsDateFieldTests`, a menu's trigger in `NsMenuTests`, the toggle in `NsCheckBoxDirtyTrackingTests`). The controls that lack that structure are the Known reds

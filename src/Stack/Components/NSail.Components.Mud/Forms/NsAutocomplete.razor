@@ -9,6 +9,8 @@
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Rendering
+@using Microsoft.AspNetCore.Components.RenderTree
 @inherits NsAsyncFieldBase<TValue>
 
 @inject NavigationManager Navigation
@@ -444,12 +446,13 @@
     // writes, so the term it no longer quotes is the one it would write. A Lazy field emptied
     // never reaches the caller's OnSearch at all (the empty box sends nothing), so the caller
     // cannot retire it on its own: what it computed for the last term it searched stands until
-    // this asks.
+    // this asks. A fragment that draws nothing is the facade saying it has nothing to offer, so it
+    // is no entry: no row for the mouse, none for the arrows to land on.
     RenderFragment? OfferContent
     {
         get
         {
-            if (Offer is null || string.IsNullOrWhiteSpace(_text) || _answered != _text)
+            if (Offer is null || string.IsNullOrWhiteSpace(_text) || _answered != _text || !Draws(Offer))
             {
                 return null;
             }
@@ -457,6 +460,40 @@
             return Offer;
         }
     }
+
+    // Runs the fragment into a builder of its own and reads what it wrote: a component it seats is
+    // only a frame there, never instantiated. Whitespace is not a drawing. The frames are the
+    // framework's own render tree (BL0006), the one place a fragment says what it draws.
+#pragma warning disable BL0006
+    static bool Draws(RenderFragment fragment)
+    {
+        using var probe = new RenderTreeBuilder();
+
+        fragment(probe);
+
+        var frames = probe.GetFrames();
+
+        for (var i = 0; i < frames.Count; i++)
+        {
+            var frame = frames.Array[i];
+
+            var blank = frame.FrameType switch
+            {
+                RenderTreeFrameType.Region => true,
+                RenderTreeFrameType.Text => string.IsNullOrWhiteSpace(frame.TextContent),
+                RenderTreeFrameType.Markup => string.IsNullOrWhiteSpace(frame.MarkupContent),
+                _ => false,
+            };
+
+            if (!blank)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+#pragma warning restore BL0006
 
     // The escape hatch, and the one entry that carries data: it quotes what was typed, so the row
     // it will make is legible before it exists. Nothing renders while the text matches an option

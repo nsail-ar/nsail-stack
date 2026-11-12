@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -163,12 +164,12 @@ public sealed class NsAutocompleteOfferTests : BunitContext, IAsyncLifetime
 
     readonly List<Guid> _changes = [];
 
-    async Task<IRenderedComponent<SearchLookupHost>> Walkable(string text, Func<SelectRef, bool>? disabled = null)
+    async Task<IRenderedComponent<SearchLookupHost>> Walkable(string text, Func<SelectRef, bool>? disabled = null, RenderFragment? offer = null)
     {
         var cut = Render<SearchLookupHost>(p => p
             .Add(x => x.Rows, Shelf)
             .Add(x => x.Lazy, true)
-            .Add(x => x.Offer, Offer)
+            .Add(x => x.Offer, offer ?? Offer)
             .Add(x => x.ItemDisabledFunc, disabled)
             .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _changes.Add(value))));
 
@@ -260,5 +261,92 @@ public sealed class NsAutocompleteOfferTests : BunitContext, IAsyncLifetime
 
         Assert.True(OnOffer(cut));
         Assert.Empty(_changes);
+    }
+
+    [Fact]
+    public async Task Escape_on_the_offer_closes_the_list_with_nothing_pressed()
+    {
+        var cut = await Walkable("Zeta");
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "Escape");
+        await cut.Find("input").KeyUpAsync(new KeyboardEventArgs { Key = "Escape" });
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+
+        Assert.Equal(0, Pressed);
+        Assert.Empty(_changes);
+    }
+
+    // A menu with a face of its own sits inside the vendor's wrapper, which carries role="button"
+    // and comes first in the document but wires no click for that face (NsMenu.GetActivator):
+    // the control pressOffer picks out of the lit offer is the face, and pressing it opens the menu.
+    [Fact]
+    public async Task Enter_on_an_offer_that_is_a_menu_presses_the_menus_own_face()
+    {
+        RenderFragment menu = builder =>
+        {
+            builder.OpenComponent<OfferMenuFace>(0);
+            builder.CloseComponent();
+        };
+
+        var cut = await Walkable("Zeta", offer: menu);
+
+        await Press(cut, "ArrowDown");
+
+        Assert.True(OnOffer(cut));
+
+        var control = cut.Find(".ns-lookup-offer.ns-lookup-create-active").QuerySelector(OfferControlSelector());
+
+        Assert.NotNull(control);
+        Assert.Contains("ns-menu-activator", control.ClassList);
+
+        await cut.InvokeAsync(() => control.ClickAsync(new MouseEventArgs()));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".mud-menu-item").Count), TimeSpan.FromSeconds(5));
+        Assert.Empty(_changes);
+    }
+
+    // A fragment that draws nothing is the facade saying it has nothing to offer: no row is drawn,
+    // and the arrows walk as if no offer were there — here the quick add stays the only entry.
+    [Fact]
+    public async Task An_offer_that_draws_nothing_is_no_row_to_the_mouse_or_the_arrows()
+    {
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Shelf)
+            .Add(x => x.Lazy, true)
+            .Add(x => x.Offer, _ => { })
+            .Add(x => x.OnQuickAdd, EventCallback.Factory.Create<QuickAddEventArgs<SelectRef>>(this, _ => { })));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Zeta" });
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-lookup-create")), TimeSpan.FromSeconds(5));
+
+        Assert.Empty(cut.FindAll(".ns-lookup-offer"));
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowDown");
+
+        Assert.Empty(cut.FindAll(".ns-lookup-offer"));
+        Assert.Single(cut.FindAll(".ns-lookup-create-active"));
+    }
+
+    // The selector the page presses the offer's control by, read from ns.js: the press itself
+    // runs in a browser, so this layer proves which element it picks.
+    static string OfferControlSelector()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.NotNull(directory);
+
+        var script = File.ReadAllText(Path.Combine(directory.FullName, "src/Stack/BaseServices/NSail.BaseServices.WebApp/wwwroot/ns.js"));
+
+        return Regex.Match(script, "const OFFER_CONTROL_SELECTOR = \"(.*)\";").Groups[1].Value;
     }
 }

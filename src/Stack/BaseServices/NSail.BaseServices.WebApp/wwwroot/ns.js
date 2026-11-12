@@ -734,11 +734,16 @@
         el.click();
     }
 
+    // The controls an offer's Enter may press, first in document order. A menu with a face of its
+    // own is pressed on that face: the vendor's wrapper around it (.mud-menu-activator) carries
+    // role="button" and comes first, but wires no click for a custom face (NsMenu.GetActivator).
+    const OFFER_CONTROL_SELECTOR = ".ns-menu-activator, button:not([disabled]), a[href]:not([aria-disabled='true']), [role='button']:not(.mud-menu-activator):not([aria-disabled='true'])";
+
     // Enter on a lookup's reached offer (NsAutocomplete) presses the caller's own control in it,
     // as a click on the entry does. One entry is lit at a time: only the focused box walks.
     function pressOffer() {
         const control = document.querySelector(".ns-lookup-offer.ns-lookup-create-active")
-            ?.querySelector("button:not([disabled]), a[href], [role='button'], input");
+            ?.querySelector(OFFER_CONTROL_SELECTOR);
 
         if (control)
             activate(control);
