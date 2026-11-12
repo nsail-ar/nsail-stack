@@ -25,7 +25,7 @@ number, in the product that walks; nothing is silenced.
 
 | Control | Keys |
 |---|---|
-| `NsAutocomplete` and every lookup | the box is a tab stop; a browsed lookup opens its list with the first row highlighted, a `Lazy` one shows the create entry alone until something is typed; Arrow Down / Arrow Up move the highlight; Enter picks the highlighted row and closes the list, except on a `Lazy` term with several answers, where the first Enter leaves the list open to walk and the next one picks (one answer is taken by the first Enter); on a lookup's create entry (the last row Arrow Down reaches) Enter opens the create route and picks nothing; Esc closes it and picks nothing; the cursor staying in the box is the browser walk's ([fields.md](fields.md), *keyboard-complete*) |
+| `NsAutocomplete` and every lookup | the box is a tab stop; a browsed lookup opens its list with the first row highlighted, a `Lazy` one shows the create entry alone until something is typed; Arrow Down / Arrow Up move the highlight; Enter picks the highlighted row and closes the list, except on a `Lazy` term with several answers, where the first Enter leaves the list open to walk and the next one picks (one answer is taken by the first Enter); on a lookup's create entry, quick add or offer (the last rows Arrow Down reaches, in the order drawn) Enter does what its click does — opens the create route, adds the typed text, presses the offer's control — and picks nothing; Esc closes it and picks nothing; the cursor staying in the box is the browser walk's ([fields.md](fields.md), *keyboard-complete*) |
 | `NsSelect`, `NsMultiSelect` | the readonly box is a tab stop with `role="combobox"`; Arrow Down, Enter and Space open the list, Esc closes it |
 | `NsDateField`, `NsDateTimeField`, `NsTimeField` | typed in the box; the picker opens from the keyboard and Esc returns the cursor to the box |
 | `NsTable` | a sortable heading, a row action and a pager control are buttons or links, never a bare element with a click handler; a clickable row has a key for what the click does |
@@ -42,7 +42,9 @@ reached by Tab and does not answer Enter.
 
 The Stack proves in bUnit what the DOM expresses: the keys the vendor binds in Blazor
 (`KeyboardContractLookupTests` for a browsed lookup, `NsAutocompleteReaderEnterTests` for the
-`Lazy` one, `NsLookupCreateKeyboardTests` for the create entry), and the structure a Tab stop needs — a native element, no `tabindex="-1"`, not
+`Lazy` one, `NsLookupCreateKeyboardTests` for the create entry, `NsAutocompleteQuickAddTests`
+and `NsAutocompleteOfferTests` for the other two), and the structure a Tab stop needs — a native
+element, no `tabindex="-1"`, not
 disabled (`KeyboardContractSelectTests`, the sortable heading in `NsTableOrderTests`, a row's actions in
 `NsTableActionsChromeTests`, the pager's controls in `NsTablePagerShrinkTests`, the date box in
 `NsDateFieldTests`, a menu's trigger in `NsMenuTests`, the toggle in `NsCheckBoxDirtyTrackingTests`). The controls that lack that structure are the Known reds

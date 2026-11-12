@@ -1901,10 +1901,10 @@
     line-height: var(--mud-typography-body1-lineheight);
 }
 
-/* The keyboard has reached the create entry (NsAutocomplete.Walk): it wears the highlight a
-   reached row wears — the primary wash under the accent ink — and a row the vendor still
-   marks gives it up, so one place is lit. The vendor
-   states its highlight with !important, which is what the release has to answer in kind. */
+/* The keyboard has reached an entry — create, quick add or offer (NsAutocomplete.Walk): it
+   wears the highlight a reached row wears — the primary wash under the accent ink — and a row
+   the vendor still marks gives it up, so one place is lit. The vendor states its highlight with
+   !important, which is what the release has to answer in kind. */
 .ns-lookup-on-entry .mud-list-item.mud-selected-item {
     background-color: transparent !important;
     color: inherit !important;
