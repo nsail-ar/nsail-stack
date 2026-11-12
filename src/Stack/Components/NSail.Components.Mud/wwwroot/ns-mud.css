@@ -1393,6 +1393,10 @@
 
 /* A chip that ends in an ellipsis instead of overflowing: the vendor's chip is a flex box
    with no way to shrink below its content, and its label is the one child that may be cut.
+   The clip is NsChip's own span around the text, not .mud-chip-content: that box is the
+   vendor's inline-flex that centers the label in the pill, and a block there sets the text on
+   its top edge. As a flex item the span is already a block, so it has a width to clip
+   against.
    In the brand row it is capped at half the row so the logo keeps the other half: half of
    .ns-nav-brand itself (cqi), since a percentage resolves against whatever box the product's
    Brand wraps around the chip — that box still bounds it (100%), so the chip never leaves it.
@@ -1408,11 +1412,27 @@
 }
 
 .ns-chip-ellipsis .mud-chip-content {
-    display: block;
+    min-width: 0;
+}
+
+.ns-chip-ellipsis .ns-chip-label {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* The boxes a product's Brand wraps around the chip are flex items that will not shrink below
+   their content, so a long label would widen them past the row and wrap the name beside them.
+   Every box between the row and the chip may shrink to nothing, and what sits beside one (the
+   logo, the name) does not shrink: the chip gives way first and the name keeps its line. */
+.ns-nav-brand :has(.ns-chip-ellipsis) {
+    min-width: 0;
+}
+
+.ns-nav-brand:has(.ns-chip-ellipsis) > :not(:has(.ns-chip-ellipsis), .ns-chip-ellipsis),
+.ns-nav-brand :has(.ns-chip-ellipsis) > :not(:has(.ns-chip-ellipsis), .ns-chip-ellipsis) {
+    flex-shrink: 0;
 }
 
 /* The rail: the brand's OWN chrome, in both scales. With no app bar

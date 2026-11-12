@@ -50,20 +50,63 @@ public sealed class NsNavBrandChipTests : BunitContext
         }
     }
 
-    /// <summary>The ellipsis clips <c>.mud-chip-content</c>, so the glyph must render outside it:
+    /// <summary>The ellipsis clips the label's own span, so the glyph must render outside it:
     /// inside, a short label would lose its letters to the icon's width.</summary>
     [Fact]
-    public void TheChipsGlyphSitsOutsideTheContentTheEllipsisClips()
+    public void TheChipsGlyphSitsOutsideTheLabelTheEllipsisClips()
     {
         var cut = Render<NsChip>(p => p
             .Add(x => x.Text, "Prueba")
             .Add(x => x.Icon, NsIcons.Check));
 
-        var content = cut.Find(".mud-chip-content");
+        var label = cut.Find(".mud-chip-content > .ns-chip-label");
 
-        Assert.Empty(content.QuerySelectorAll("svg"));
+        Assert.Empty(label.QuerySelectorAll("svg"));
         Assert.NotEmpty(cut.Find(".mud-chip").QuerySelectorAll("svg"));
-        Assert.Equal("Prueba", content.TextContent.Trim());
+        Assert.Equal("Prueba", label.TextContent);
+    }
+
+    [Fact]
+    public void AClosableChipsCloseButtonSitsOutsideTheLabel()
+    {
+        var cut = Render<NsChip>(p => p
+            .Add(x => x.Text, "Prueba")
+            .Add(x => x.OnClose, () => { }));
+
+        Assert.Equal("Prueba", cut.Find(".ns-chip-label").TextContent);
+        Assert.Empty(cut.Find(".ns-chip-label").QuerySelectorAll("button"));
+        Assert.NotEmpty(cut.Find(".mud-chip").QuerySelectorAll("button"));
+    }
+
+    /// <summary>K2: <c>.mud-chip-content</c> is the vendor's inline-flex that centers the label
+    /// in the pill, so no rule of ours gives it another display; the clip is the label's.</summary>
+    [Fact]
+    public void TheContentKeepsTheVendorsCenteringAndTheLabelClips()
+    {
+        var css = Uncommented(ReadStylesheet());
+
+        foreach (Match rule in Regex.Matches(css, @"(?<selectors>[^{}]*\.mud-chip-content[^{}]*)\{(?<body>[^}]*)\}"))
+        {
+            Assert.DoesNotMatch(@"display|align-items|overflow|text-overflow", rule.Groups["body"].Value);
+        }
+
+        Assert.Matches(
+            @"\.ns-chip-ellipsis \.ns-chip-label\s*\{[^}]*min-width:\s*0;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap;",
+            css);
+    }
+
+    /// <summary>K3: whatever boxes a product's Brand wraps around the chip, each may shrink to
+    /// nothing and what sits beside one does not, so the chip gives way before the name wraps.</summary>
+    [Fact]
+    public void TheBoxesAroundABrandChipGiveWayBeforeTheName()
+    {
+        var css = Uncommented(ReadStylesheet());
+
+        Assert.Matches(@"\.ns-nav-brand :has\(\.ns-chip-ellipsis\)\s*\{[^}]*min-width:\s*0;", css);
+        Assert.Matches(
+            @"\.ns-nav-brand:has\(\.ns-chip-ellipsis\) > :not\(:has\(\.ns-chip-ellipsis\), \.ns-chip-ellipsis\),\s*"
+            + @"\.ns-nav-brand :has\(\.ns-chip-ellipsis\) > :not\(:has\(\.ns-chip-ellipsis\), \.ns-chip-ellipsis\)\s*\{[^}]*flex-shrink:\s*0;",
+            css);
     }
 
     static string Uncommented(string css)
