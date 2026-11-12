@@ -14,12 +14,12 @@
 @if (OnClose is null)
 {
     <MudChip T="string" Class="ns-chip-ellipsis" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
-             Size="@GetSize()" Href="@SafeHref" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()">@Text</MudChip>
+             Size="@GetSize()" Href="@SafeHref" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()"><span class="ns-chip-label">@Text</span></MudChip>
 }
 else
 {
     <MudChip T="string" Class="ns-chip-ellipsis" Disabled="Disabled" Icon="@(Icon?.Markup)" Color="@GetColor()" Variant="@GetVariant()"
-             Size="@GetSize()" Href="@SafeHref" OnClose="Close" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()">@Text</MudChip>
+             Size="@GetSize()" Href="@SafeHref" OnClose="Close" data-ns-whisper="@Tooltip" data-ns-whisper-tap="true" role="@GetRole()" aria-label="@GetName()"><span class="ns-chip-label">@Text</span></MudChip>
 }
 
 @code {

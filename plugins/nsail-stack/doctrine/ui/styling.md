@@ -397,7 +397,9 @@ takes: an icon that reports no state is the ink of whatever it names.
 from across the screen. No white override: no one ink serves every fill.
 
 Every `NsChip` ends a label that does not fit in `…` (`ns-chip-ellipsis`: `min-width:0` on the chip,
-clipped content); the side menu's cap on it is in [navigation.md](navigation.md).
+the clip on `ns-chip-label`, the span around the text). The vendor's `.mud-chip-content` keeps its
+own `inline-flex`, which is what centers the label in the pill; a block there sets the text on the
+pill's top edge. The side menu's cap on it is in [navigation.md](navigation.md).
 
 **Colour goes on the datum, never on the container.** A card is never tinted as a whole — a
 permanently coloured tile is an alarm nobody sees by Thursday — so what carries the tone is the
