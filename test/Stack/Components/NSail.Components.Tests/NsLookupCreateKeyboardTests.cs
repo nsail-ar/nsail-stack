@@ -26,6 +26,7 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
         {
             [Concept] = "Personas",
             ["Common.CreateNew"] = "Crear {0}…",
+            ["Common.QuickAdd"] = "Agregar «{0}»",
         }));
         Services.AddSingleton<StringCatalog>();
         Services.AddSingleton<LanguageProvider>();
@@ -59,12 +60,14 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
 
     readonly List<Guid> _changes = [];
 
+    readonly List<string> _added = [];
+
     BunitNavigationManager Navigation
     {
         get { return (BunitNavigationManager)Services.GetRequiredService<NavigationManager>(); }
     }
 
-    async Task<IRenderedComponent<LookupCreateHost>> Open(string? route = CreateRoute, Surface? target = null)
+    async Task<IRenderedComponent<LookupCreateHost>> Open(string? route = CreateRoute, Surface? target = null, bool quickAdd = false)
     {
         Navigation.NavigateTo("/directory/parties/new");
 
@@ -72,7 +75,8 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
             .Add(x => x.Items, Two)
             .Add(x => x.CreateRoute, route)
             .Add(x => x.CreateTarget, target ?? Surfaces.Aside)
-            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _changes.Add(value))));
+            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _changes.Add(value)))
+            .Add(x => x.OnQuickAdd, quickAdd ? EventCallback.Factory.Create<QuickAddEventArgs<SelectRef>>(this, args => _added.Add(args.Text)) : default));
 
         await cut.Find("input").FocusAsync(new FocusEventArgs());
         cut.Render();
@@ -222,5 +226,35 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
         await Press(cut, "Enter");
 
         Assert.Equal(before, Navigation.History.Count);
+    }
+
+    // The entries are walked in the order they are drawn: the create entry, then the quick add.
+    [Fact]
+    public async Task TheQuickAddIsReachedAfterTheCreateEntryAndEnterAddsTheText()
+    {
+        var cut = await Open(quickAdd: true);
+        var before = Navigation.History.Count;
+
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Nueva" });
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".ns-lookup-create").Count), TimeSpan.FromSeconds(5));
+
+        await Press(cut, "ArrowDown");
+
+        Assert.Contains("Crear", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+
+        await Press(cut, "ArrowDown");
+
+        Assert.Contains("Agregar «Nueva»", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+
+        await Press(cut, "ArrowUp");
+
+        Assert.Contains("Crear", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "Enter");
+
+        Assert.Equal(["Nueva"], _added);
+        Assert.Equal(before, Navigation.History.Count);
+        Assert.Empty(_changes);
     }
 }

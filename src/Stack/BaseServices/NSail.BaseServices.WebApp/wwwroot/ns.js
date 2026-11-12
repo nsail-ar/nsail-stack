@@ -734,6 +734,16 @@
         el.click();
     }
 
+    // Enter on a lookup's reached offer (NsAutocomplete) presses the caller's own control in it,
+    // as a click on the entry does. One entry is lit at a time: only the focused box walks.
+    function pressOffer() {
+        const control = document.querySelector(".ns-lookup-offer.ns-lookup-create-active")
+            ?.querySelector("button:not([disabled]), a[href], [role='button'], input");
+
+        if (control)
+            activate(control);
+    }
+
     function onChordKeyDown(e) {
         if (e.defaultPrevented || e.isComposing)
             return;
@@ -1503,5 +1513,5 @@
     new MutationObserver(queueFit).observe(document.documentElement, { childList: true, subtree: true });
     window.addEventListener("resize", queueFit);
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download, pressOffer };
 })();

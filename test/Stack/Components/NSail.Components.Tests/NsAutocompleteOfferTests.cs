@@ -151,4 +151,114 @@ public sealed class NsAutocompleteOfferTests : BunitContext, IAsyncLifetime
 
         return cut;
     }
+
+    // The keyboard's own way to the offer: a row of the list past the matches, whose Enter presses
+    // the caller's own control (ns.js, pressOffer), as a click on it does (nsail#3684).
+
+    static readonly SelectRef[] Shelf =
+    [
+        new(Guid.Parse("11111111-1111-1111-1111-111111111111"), "Gómez"),
+        new(Guid.Parse("22222222-2222-2222-2222-222222222222"), "Gómora"),
+    ];
+
+    readonly List<Guid> _changes = [];
+
+    async Task<IRenderedComponent<SearchLookupHost>> Walkable(string text, Func<SelectRef, bool>? disabled = null)
+    {
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Shelf)
+            .Add(x => x.Lazy, true)
+            .Add(x => x.Offer, Offer)
+            .Add(x => x.ItemDisabledFunc, disabled)
+            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _changes.Add(value))));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = text });
+
+        cut.WaitForAssertion(() => Assert.Contains(Offered, Entries(cut)), TimeSpan.FromSeconds(5));
+
+        return cut;
+    }
+
+    static Task Press(IRenderedComponent<SearchLookupHost> cut, string key)
+    {
+        return cut.Find("input").KeyDownAsync(new KeyboardEventArgs { Key = key });
+    }
+
+    static bool OnOffer(IRenderedComponent<SearchLookupHost> cut)
+    {
+        return cut.FindAll(".ns-lookup-offer.ns-lookup-create-active").Count == 1;
+    }
+
+    int Pressed
+    {
+        get { return JSInterop.Invocations.Count(call => call.Identifier == "nsapp.pressOffer"); }
+    }
+
+    [Fact]
+    public async Task The_offer_is_the_only_row_of_an_empty_answer_and_Enter_presses_it()
+    {
+        var cut = await Walkable("Zeta");
+
+        await Press(cut, "ArrowDown");
+
+        Assert.True(OnOffer(cut));
+        Assert.Equal(0, Pressed);
+
+        await Press(cut, "Enter");
+
+        Assert.Equal(1, Pressed);
+        Assert.Empty(_changes);
+    }
+
+    [Fact]
+    public async Task ArrowUp_from_the_offer_of_an_empty_answer_stays_on_it()
+    {
+        var cut = await Walkable("Zeta");
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowUp");
+
+        Assert.True(OnOffer(cut));
+    }
+
+    // K4: a row the caller disabled is skipped on the way down, and the offer below it is reached.
+    [Fact]
+    public async Task A_disabled_row_above_the_offer_is_skipped_and_the_offer_is_still_reached()
+    {
+        var cut = await Walkable("Góm", row => row.DisplayName == "Gómora");
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".mud-list-item").Count), TimeSpan.FromSeconds(5));
+
+        await Press(cut, "ArrowDown");
+
+        Assert.False(OnOffer(cut));
+
+        await Press(cut, "ArrowDown");
+
+        Assert.True(OnOffer(cut));
+
+        await Press(cut, "ArrowUp");
+
+        Assert.False(OnOffer(cut));
+        Assert.Equal("true", cut.FindAll(".mud-list-item")[0].GetAttribute("aria-selected"));
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "Enter");
+
+        Assert.Equal(1, Pressed);
+        Assert.Empty(_changes);
+    }
+
+    [Fact]
+    public async Task Reaching_the_offer_raises_no_ValueChanged()
+    {
+        var cut = await Walkable("Zeta");
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowDown");
+
+        Assert.True(OnOffer(cut));
+        Assert.Empty(_changes);
+    }
 }

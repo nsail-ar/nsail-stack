@@ -783,16 +783,22 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
 - **A lookup is complete only when it is keyboard-complete.** On a `Lazy` lookup whose term
   has several answers: type, Enter, Arrow Down/Up, Enter picks, Esc closes. One answer is taken by
   the first Enter; a browsed lookup or a settled list leaves Enter to the vendor, which picks the
-  highlighted row. The quick add and the caller's offer sit outside the vendor's list and are
-  reached by the mouse only. The create entry is the list's synthetic last row: Arrow Down from
-  the last option the vendor can reach (the only row of an empty answer) lands on it, Enter
-  opens the create route exactly as its click does, Arrow Up returns to the last option, and
-  Esc closes the list without choosing. Reaching it is not a pick — the bound value never
-  moves — and a lookup with no create route grows no such row. The vendor clamps at its last
-  option, so the field reads its highlight after each key (`NsAutocomplete.Walk`); the
-  vendor's highlight leaves the last option while the entry is reached, so one place is lit, and
-  a one-row list needs a second Arrow Down to reach it. The entry stays a link, not an `option`
-  of the box: a combobox names its active row by `aria-activedescendant`, which the vendor owns.
+  highlighted row. The create entry, the quick add and the caller's offer are the list's
+  synthetic last rows, walked in the order they are drawn: Arrow Down from the last option the
+  vendor can reach (the only row of an empty answer) lands on the first of them and moves on
+  through the rest, Arrow Up walks back and, from the first, returns to the last option — on an
+  empty answer it stays where it is — and Esc closes the list without choosing. Enter does what
+  the reached entry's click does: the create entry opens the create route, the quick add adds the
+  typed text, and the offer presses the caller's own control in it (`nsapp.pressOffer`, ns.js —
+  the offer is the caller's fragment, so only the page can press it). Reaching an entry is not a
+  pick — the bound value never moves — its Enter is the field's and never the form's, and a
+  lookup that offers none of the three grows no such row. The vendor clamps at its last option,
+  so the field reads its highlight after each key (`NsAutocomplete.Walk`); the vendor's highlight
+  leaves the last option while an entry is reached, so one place is lit, and a one-row list needs
+  a second Arrow Down to reach it. A row the caller disables (`ItemDisabledFunc`) is skipped on the
+  way, the vendor having left it out of what its arrows reach. The entries stay a link and
+  buttons, not `option`s of the box: a combobox names its active row by `aria-activedescendant`,
+  which the vendor owns.
   A browser `CreateTarget` opens its tab as the click does and leaves the form standing.
 - **That held text is also what the field hands the vendor BACK as its `Text`, and it is what
   carries a half-typed term across a redraw.** The vendor refreshes its own box from the value it
@@ -884,6 +890,10 @@ matching nothing is taught by naming an article AND one of its units, which is t
   create entry restates: a caller brings content, never padding. Whether there is anything to offer
   is the facade's own answer, because only the facade knows what its search came back with: a
   fragment that renders nothing leaves the list as it was.
+- **It is a row to the keyboard too** (*A lookup is complete only when it is keyboard-complete*,
+  above): Enter on the reached offer presses the first enabled control inside it — a button, a
+  link, a menu's activator — as a click on it does. So the control the offer is FOR comes first
+  in the fragment; an offer whose fragment holds no control is reached and does nothing.
 - **The text it quotes has to still be in the box.** The Stack withholds the entry while the box is
   empty and while the search for what is in it has not answered — `QuickAdd`'s own two conditions,
   and this is the entry that WRITES: a `Lazy` field emptied never reaches the facade's `OnSearch`
