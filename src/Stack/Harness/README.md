@@ -56,7 +56,10 @@ the files it leaves.
     tests or build errors that main's newest completed CI run failed too waits for main the same way,
     read again each pass; nothing re-runs it.
   - `ProtectedPaths` (default `.github/workflows/**`): a builder whose commits touch one is not pushed,
-    since CI would run the changed workflow with the repository's secrets before review; `AllowProtectedPaths`
+    since CI would run the changed workflow with the repository's secrets before review. A file counts when the voyage's
+    commits touch it and it differs from the default branch since their merge base, as a PR's files do: one merged in
+    from main as main holds it runs nothing main does not. Both ends are out of the seat's reach: the voyage's start is
+    the commit resolved at checkout, main is read from the remote, never from a ref the seat can move. `AllowProtectedPaths`
     lifts it for the harness, the `allow-protected` label for one story. A refused story waits where it stands wearing `ruling` and
     `screened` and is not built again; its commits and its ending stay on the machine that built it (a ref and a folder under
     `harness-kept` in its git directory), never on the remote. The refusal is no dead voyage. Adding `allow-protected` releases

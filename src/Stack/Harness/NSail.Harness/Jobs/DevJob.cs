@@ -87,7 +87,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         var home = repo == ctx.Repo;
         var work = home ? dir : await ctx.WorkspaceOf(repo).Prepare(slot);
         var branch = Item.Pr is { } round ? (await repo.Pr(round, ct)).HeadRef : ctx.Names.Branch(ctx.Repos.OptionsOf(repo).BranchPrefix, n);
-        var startedAt = await Checkout(work, branch, ctx.WorkspaceOf(repo).Tip);
+        var (startedAt, from) = await Checkout(work, branch, ctx.WorkspaceOf(repo).Tip);
         await Exclude(work, Voyage);
         var voyage = Path.Combine(work, Voyage);
         if (Directory.Exists(voyage)) Directory.Delete(voyage, recursive: true);
@@ -98,7 +98,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         if ((await ScreenOf(ctx.Options, board, n)).Count == 0 && await Unkeep(work, branch, startedAt, await MergedOf(repo, n, ct)))
         {
             await File.AppendAllTextAsync(logPath, $"== {ctx.Names.Ref(n)} {title} — the screen lifted: the kept work is delivered, no seat runs{Environment.NewLine}", ct);
-            var delivered = await Deliver(n, title, repo, work, branch, startedAt, claimedAt, new AgentResult(0, false, null, false, null), log, ct);
+            var delivered = await Deliver(n, title, repo, work, branch, startedAt, from, claimedAt, new AgentResult(0, false, null, false, null), log, ct);
             return delivered.Outcome(null);
         }
 
@@ -138,7 +138,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             // A cancelled or crashed run never reaches Deliver: the slot's next Prepare resets it.
             try
             {
-                await Rescue(n, repo, work, startedAt ?? ctx.WorkspaceOf(repo).Tip, log, await ScreenOf(ctx.Options, ctx.Board, n));
+                await Rescue(n, repo, work, from, log, await ScreenOf(ctx.Options, ctx.Board, n));
             }
             catch (Exception e)
             {
@@ -157,7 +157,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             return new JobOutcome("closed while the lane sailed — nothing delivered", Idle: true, QuotaUntil: quotaUntil);
         }
 
-        var ending = await Deliver(n, title, repo, work, branch, startedAt, claimedAt, result, log, ct);
+        var ending = await Deliver(n, title, repo, work, branch, startedAt, from, claimedAt, result, log, ct);
         return ending.Outcome(quotaUntil);
     }
 
@@ -199,13 +199,14 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
 
     // The branch as the remote holds it, or a new one off the default branch. A slot an earlier job left on it does
     // not hold it: the story's lock already says only one job builds it at a time. Returns the remote head the
-    // voyage starts from, null for a new branch: what its push expects to replace.
-    static async Task<string?> Checkout(string dir, string branch, string tip)
+    // voyage starts from, null for a new branch: what its push expects to replace. `From` is the commit it starts
+    // from, resolved before the seat runs: the seat can move the ref it was read from, never this.
+    static async Task<(string? StartedAt, string From)> Checkout(string dir, string branch, string tip)
     {
         var remote = await Shell.Run("git", ["rev-parse", "-q", "--verify", $"refs/remotes/origin/{branch}"], dir);
-        var from = remote.ExitCode == 0 ? remote.Output.Trim() : tip;
+        var from = (await Shell.GitOut(dir, "rev-parse", $"{(remote.ExitCode == 0 ? remote.Output.Trim() : tip)}^{{commit}}")).Trim();
         await Shell.Git(dir, "checkout", "-q", "--ignore-other-worktrees", "-B", branch, from);
-        return remote.ExitCode == 0 ? from : null;
+        return (remote.ExitCode == 0 ? from : null, from);
     }
 
     // Where a refused voyage's work waits: a ref and a folder in the machine's own git directory, never
@@ -271,12 +272,14 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     async Task<string?> Rescue(int n, IRepository repo, string dir, string since, ILogger log, IReadOnlyList<string> screen)
     {
         var name = $"rescue/{ctx.Names.Key}-{n}";
-        var rescued = await RescueRef(repo, dir, since, name, screen);
+        if (int.Parse((await Shell.GitOut(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture) == 0) return null;
+        var main = screen.Count > 0 ? await ctx.WorkspaceOf(repo).RemoteTip(dir) : "";
+        var rescued = await RescueRef(repo, dir, since, name, screen, main);
         if (rescued is not null)
         {
             log.LogWarning("#{Story}: unpushed work rescued to {Ref}", n, rescued);
         }
-        else if (int.Parse((await Shell.GitOut(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture) > 0)
+        else
         {
             log.LogWarning("#{Story}: commits touching a protected path were not pushed; they stay on the local branch until the story's next checkout resets it ({Label} lifts the screen)", n, Labels.AllowProtected);
         }
@@ -298,12 +301,13 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         }
     }
 
-    // A rescue is a push like any other: commits touching a protected path stay local.
-    internal static async Task<string?> RescueRef(IRepository repo, string dir, string since, string name, IReadOnlyList<string> screen)
+    // A rescue is a push like any other: commits touching a protected path stay local. `main` is the
+    // default branch's head as the remote holds it, read only when the screen is up.
+    internal static async Task<string?> RescueRef(IRepository repo, string dir, string since, string name, IReadOnlyList<string> screen, string main)
     {
         var ahead = int.Parse((await Shell.GitOut(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
         if (ahead == 0) return null;
-        if (screen.Count > 0 && SeatOutput.Protected(await SeatOutput.Changed(dir, since), screen).Count > 0) return null;
+        if (screen.Count > 0 && SeatOutput.Protected(await SeatOutput.Changed(dir, since, main), screen).Count > 0) return null;
         for (var i = 0; ; i++)
         {
             var candidate = i == 0 ? name : $"{name}-{i + 1}";
@@ -322,7 +326,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
     // What the builder committed goes up first, unless it touches a protected path: work is never lost to the axe.
     // Then its ending, exactly one: a PR's words, a ruling, a hand-off, a wall; none is a dead voyage. Commits the
     // screen refuses are kept on this machine and the story held for a hand's word.
-    async Task<Ending> Deliver(int n, string title, IRepository repo, string dir, string branch, string? startedAt, DateTimeOffset claimedAt, AgentResult result, ILogger log, CancellationToken ct)
+    async Task<Ending> Deliver(int n, string title, IRepository repo, string dir, string branch, string? startedAt, string since, DateTimeOffset claimedAt, AgentResult result, ILogger log, CancellationToken ct)
     {
         var board = ctx.Board;
         string Out(string file)
@@ -332,13 +336,12 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         }
 
         var remote = await Shell.Run("git", ["rev-parse", "-q", "--verify", $"refs/remotes/origin/{branch}"], dir);
-        var since = startedAt ?? ctx.WorkspaceOf(repo).Tip;
         var ahead = int.Parse((await Shell.GitOut(dir, "rev-list", "--count", $"{since}..HEAD")).Trim(), CultureInfo.InvariantCulture);
         var pushed = false;
         if (ahead > 0)
         {
             var screen = await ScreenOf(ctx.Options, board, n);
-            var touched = screen.Count == 0 ? [] : SeatOutput.Protected(await SeatOutput.Changed(dir, since), screen);
+            var touched = screen.Count == 0 ? [] : SeatOutput.Protected(await SeatOutput.Changed(dir, since, await ctx.WorkspaceOf(repo).RemoteTip(dir)), screen);
             if (touched.Count > 0)
             {
                 try

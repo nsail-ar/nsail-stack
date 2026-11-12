@@ -601,6 +601,154 @@ public class DevJobRunTests : IDisposable
         Assert.Empty(Repo.Said);
     }
 
+    // A seat that does what it is given in its checkout and ends with a PR's words, or dies after it.
+    sealed class Acting(Func<string, Task> act, Exception? dies = null) : IAgent
+    {
+        public string Driver => "test";
+
+        public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
+        {
+            await act(run.WorkDir);
+            if (dies is not null) throw dies;
+            await File.WriteAllTextAsync(Path.Combine(run.WorkDir, ".voyage", "out", "pr.md"), "fix(stack): words\n\nThe words.", ct);
+            return new AgentResult(0, false, null, false, null);
+        }
+
+        public IReadOnlyDictionary<string, string> ScriptEnvironment(string name)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        public (bool Refused, DateTimeOffset? Until) Quota(string output)
+        {
+            return (false, null);
+        }
+    }
+
+    // The story's branch at main's head, then a commit on main that edits these paths.
+    async Task MainMovesPastTheBranch(params string[] paths)
+    {
+        await Shell.Git(Remote, "update-ref", $"refs/heads/{Story}", "refs/heads/main");
+        var seed = Path.Combine(_root, "seed");
+        foreach (var path in paths)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(seed, path))!);
+            await File.WriteAllTextAsync(Path.Combine(seed, path), "on: pull_request\n");
+        }
+        await Shell.Git(seed, "add", "-A");
+        await Shell.Git(seed, "-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "-q", "-m", "main's workflows");
+        await Shell.Git(seed, "push", "-q", "origin", "main");
+    }
+
+    static async Task Commit(string dir, string path)
+    {
+        var file = Path.Combine(dir, path);
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        await File.WriteAllTextAsync(file, "on: push\n");
+        await Shell.Git(dir, "add", "-A", "--", path);
+        await Shell.Git(dir, "commit", "-q", "-m", "work");
+    }
+
+    [Fact]
+    public async Task AWorkflowOnlyMergedInFromMainDoesNotHoldThePush()
+    {
+        await Seed();
+        await MainMovesPastTheBranch(Workflow);
+        var board = Board();
+        var head = "";
+
+        var outcome = await Run(new Acting(async dir =>
+        {
+            await Shell.Git(dir, "merge", "-q", "--no-edit", "origin/main");
+            await Commit(dir, "src/Foo.cs");
+            head = await Shell.Git(dir, "rev-parse", "HEAD");
+        }), board, new Lines());
+
+        Assert.False(outcome.Failed);
+        Assert.Equal(head, await RemoteHead(Story));
+        Assert.DoesNotContain(Labels.Screened, board.Cards[1].Labels);
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+    }
+
+    [Fact]
+    public async Task AHoldNamesOnlyTheWorkflowTheBuilderEdited()
+    {
+        const string own = ".github/workflows/own.yml";
+        await Seed();
+        await MainMovesPastTheBranch(Workflow);
+        var board = Board();
+
+        var outcome = await Run(new Acting(async dir =>
+        {
+            await Shell.Git(dir, "merge", "-q", "--no-edit", "origin/main");
+            await Commit(dir, own);
+        }), board, new Lines());
+
+        Assert.True(outcome.Failed);
+        Assert.Superset(new HashSet<string> { Labels.Ruling, Labels.Screened }, board.Cards[1].Labels);
+        var said = Assert.Single(board.Cards[1].Comments);
+        Assert.Contains($"`{own}`", said.Body);
+        Assert.DoesNotContain(Workflow, said.Body);
+    }
+
+    [Fact]
+    public async Task AWorkflowEditIsHeldThoughTheSeatMovedItsOwnMainRef()
+    {
+        await Seed();
+        await Shell.Git(Remote, "update-ref", $"refs/heads/{Story}", "refs/heads/main");
+        var head = await RemoteHead(Story);
+        var board = Board();
+
+        var outcome = await Run(new Acting(async dir =>
+        {
+            await Commit(dir, Workflow);
+            await Shell.Git(dir, "update-ref", "refs/remotes/origin/main", "HEAD");
+        }), board, new Lines());
+
+        Assert.True(outcome.Failed);
+        Assert.Equal(head, await RemoteHead(Story));
+        Assert.Superset(new HashSet<string> { Labels.Ruling, Labels.Screened }, board.Cards[1].Labels);
+        Assert.Contains($"`{Workflow}`", Assert.Single(board.Cards[1].Comments).Body);
+    }
+
+    // A new branch: the voyage starts from main, and the seat moves its main past its own workflow edit.
+    static Func<string, Task> EditAWorkflowAndHideItBehindMain()
+    {
+        return async dir =>
+        {
+            await Commit(dir, Workflow);
+            var edit = (await Shell.GitOut(dir, "rev-parse", "HEAD")).Trim();
+            await Commit(dir, "src/Foo.cs");
+            await Shell.Git(dir, "update-ref", "refs/remotes/origin/main", edit);
+        };
+    }
+
+    [Fact]
+    public async Task AWorkflowEditOnANewBranchIsHeldThoughTheSeatMovedItsMainPastIt()
+    {
+        await Seed();
+        var board = Board();
+
+        var outcome = await Run(new Acting(EditAWorkflowAndHideItBehindMain()), board, new Lines());
+
+        Assert.True(outcome.Failed);
+        Assert.Null(await RemoteHead(Story));
+        Assert.Superset(new HashSet<string> { Labels.Ruling, Labels.Screened }, board.Cards[1].Labels);
+        Assert.Contains($"`{Workflow}`", Assert.Single(board.Cards[1].Comments).Body);
+    }
+
+    [Fact]
+    public async Task ACrashedSeatsWorkflowEditOnANewBranchStaysLocalThoughItMovedItsMainPastIt()
+    {
+        await Seed();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            Run(new Acting(EditAWorkflowAndHideItBehindMain(), new InvalidOperationException("crashed")), Board(), new Lines()));
+
+        Assert.Null(await RemoteHead(Rescue));
+        Assert.Null(await RemoteHead(Story));
+    }
+
     [Fact]
     public async Task ARefusalFollowedByADeadVoyageIsNotStalled()
     {
