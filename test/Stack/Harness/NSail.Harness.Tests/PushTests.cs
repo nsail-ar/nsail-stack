@@ -169,6 +169,26 @@ public class PushTests : IDisposable
     }
 
     [Fact]
+    public async Task RescueOfABranchThatOnlyMergedMainsWorkflowGoesUpUnderTheScreen()
+    {
+        var (dir, _, start) = await Sailing();
+        var other = await Clone("main");
+        await Shell.Git(other, "checkout", "-q", "main");
+        Directory.CreateDirectory(Path.Combine(other, ".github", "workflows"));
+        await File.WriteAllTextAsync(Path.Combine(other, ".github", "workflows", "ci.yml"), "on: push");
+        await Shell.Git(other, "add", "-A");
+        var main = await Commit(other, "W");
+        await Shell.Git(other, "push", "-q", "origin", "main");
+        await Shell.Git(dir, "fetch", "-q", "origin");
+        await Shell.Git(dir, "merge", "-q", "--no-edit", "origin/main");
+        await File.WriteAllTextAsync(Path.Combine(dir, "Foo.cs"), "class Foo;");
+        await Shell.Git(dir, "add", "-A");
+        await Commit(dir, "B");
+
+        Assert.Equal("rescue/oz-1", await DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", [".github/workflows/**"], main));
+    }
+
+    [Fact]
     public async Task RescueRefusedForAnyReasonButAnExistingRefTriesOnce()
     {
         var (dir, _, start) = await Sailing();
