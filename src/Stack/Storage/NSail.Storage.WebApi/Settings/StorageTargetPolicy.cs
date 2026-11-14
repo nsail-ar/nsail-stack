@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-using System.Net;
-using System.Net.Sockets;
 using NSail.Injection.Annotations;
 using NSail.Messaging;
 using NSail.Problems;
+using NSail.Security;
 using NSail.Storage.Providers;
 
 namespace NSail.Storage.Settings;
@@ -93,68 +92,10 @@ public sealed class StorageTargetPolicy
             return;
         }
 
-        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
-            || host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase)
-            || host.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
-            || host.EndsWith(".internal", StringComparison.OrdinalIgnoreCase)
-            || !host.Contains('.') && !IPAddress.TryParse(host, out _))
+        if (await PrivateHost.Is(host, cancellationToken))
         {
             throw Refusal("StorageEndpointNotAllowed", nameof(StorageTarget.Endpoint), "The endpoint's scheme or host is not allowed by this install.");
         }
-
-        IPAddress[] addresses;
-
-        if (IPAddress.TryParse(host, out var literal))
-        {
-            addresses = [literal];
-        }
-        else
-        {
-            try
-            {
-                addresses = await Dns.GetHostAddressesAsync(host, cancellationToken);
-            }
-            catch (SocketException)
-            {
-                // Unresolvable now; the probe fails on its own and says nothing about the network.
-                return;
-            }
-        }
-
-        if (addresses.Any(Private))
-        {
-            throw Refusal("StorageEndpointNotAllowed", nameof(StorageTarget.Endpoint), "The endpoint's scheme or host is not allowed by this install.");
-        }
-    }
-
-    static bool Private(IPAddress address)
-    {
-        if (address.IsIPv4MappedToIPv6)
-        {
-            address = address.MapToIPv4();
-        }
-
-        if (IPAddress.IsLoopback(address) || address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))
-        {
-            return true;
-        }
-
-        var bytes = address.GetAddressBytes();
-
-        if (address.AddressFamily == AddressFamily.InterNetworkV6)
-        {
-            return address.IsIPv6LinkLocal || address.IsIPv6SiteLocal || address.IsIPv6Multicast
-                || (bytes[0] & 0xFE) == 0xFC;
-        }
-
-        return bytes[0] == 10
-            || bytes[0] == 127
-            || bytes[0] == 0
-            || bytes[0] >= 224
-            || bytes[0] == 169 && bytes[1] == 254
-            || bytes[0] == 172 && bytes[1] is >= 16 and <= 31
-            || bytes[0] == 192 && bytes[1] == 168
-            || bytes[0] == 100 && bytes[1] is >= 64 and <= 127;
     }
 
     static BusinessException Refusal(string rule, string field, string message)
