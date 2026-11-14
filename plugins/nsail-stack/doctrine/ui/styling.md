@@ -335,7 +335,9 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   from the sanitizer, because C# cannot run before boot.
 - **A color string a model carries passes `NsColorText` (`NSail.Components`) before it is
   written into a `style`**: hex, `rgb()`/`rgba()` of numbers or a bare keyword, nothing else; a
-  product that paints a stored color uses it rather than write its own gate. A Brand's colours
+  product that paints a stored color uses it rather than write its own gate. A message
+  property that carries a color wears `[Color]` ([messaging.md](../messaging.md)), the same
+  rule at the write side, so a caller that skips `NsColorField` cannot store one either. A Brand's colours
   are stricter, hex only, through `Brand.Checked()` ([branding.md](branding.md)).
 - `NsTooltip` takes `Text` and wraps what it explains, declaring the whisper on a box of its own
   (cases: shell, *The bubble a control whispers*) — **detail on demand, never the only place a
