@@ -59,34 +59,62 @@ public class PrivateHostTests
         Assert.True(await PrivateHost.Is(host));
     }
 
-    // localtest.me's public record answers 127.0.0.1; where the lane has no DNS it does not
-    // resolve and is not refused, so the case only asserts when it does.
-    [Fact]
-    public async Task RefusesANameThatResolvesToLoopback()
+    [Theory]
+    [InlineData("")]
+    [InlineData("[]")]
+    [InlineData(".")]
+    public async Task RefusesAnEmptyHost(string host)
     {
-        IPAddress[] addresses;
+        Assert.True(await PrivateHost.Is(host));
+    }
 
-        try
-        {
-            addresses = await Dns.GetHostAddressesAsync("localtest.me");
-        }
-        catch (SocketException)
-        {
-            return;
-        }
+    [Theory]
+    [InlineData("127.0.0.1")]
+    [InlineData("10.0.0.5")]
+    [InlineData("169.254.169.254")]
+    [InlineData("::1")]
+    [InlineData("::ffff:192.168.1.1")]
+    public async Task RefusesANameThatResolvesToAPrivateAddress(string address)
+    {
+        Assert.True(await PrivateHost.Is("smtp.example.com", Resolving(address), CancellationToken.None));
+    }
 
-        Assert.Equal(addresses.Any(IPAddress.IsLoopback), await PrivateHost.Is("localtest.me"));
+    [Fact]
+    public async Task RefusesANameWhenAnyOfItsAddressesIsPrivate()
+    {
+        Assert.True(await PrivateHost.Is("smtp.example.com", Resolving("8.8.8.8", "10.0.0.5"), CancellationToken.None));
     }
 
     [Fact]
     public async Task AcceptsANameThatResolvesOutside()
     {
-        Assert.False(await PrivateHost.Is("smtp.gmail.com"));
+        Assert.False(await PrivateHost.Is("smtp.gmail.com", Resolving("142.250.0.108", "2a00:1450:400c:c0b::6c"),
+            CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ResolvesTheHostWithoutItsTrailingDot()
+    {
+        string? asked = null;
+
+        await PrivateHost.Is("smtp.gmail.com.", (host, _) =>
+        {
+            asked = host;
+            return Task.FromResult(new[] { IPAddress.Parse("142.250.0.108") });
+        }, CancellationToken.None);
+
+        Assert.Equal("smtp.gmail.com", asked);
     }
 
     [Fact]
     public async Task DoesNotRefuseANameThatDoesNotResolve()
     {
-        Assert.False(await PrivateHost.Is("nowhere.invalid"));
+        Assert.False(await PrivateHost.Is("nowhere.invalid",
+            (_, _) => throw new SocketException((int)SocketError.HostNotFound), CancellationToken.None));
+    }
+
+    private static Func<string, CancellationToken, Task<IPAddress[]>> Resolving(params string[] addresses)
+    {
+        return (_, _) => Task.FromResult(addresses.Select(IPAddress.Parse).ToArray());
     }
 }

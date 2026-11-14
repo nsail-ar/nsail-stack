@@ -11,18 +11,19 @@ namespace NSail.Security;
 /// resolver answers. Whether a caller lets such a host through is the caller's own option.</summary>
 public static class PrivateHost
 {
-    /// <summary>True when the host is <c>localhost</c>, <c>*.localhost</c>, <c>*.local</c>,
+    /// <summary>True when the host is empty, <c>localhost</c>, <c>*.localhost</c>, <c>*.local</c>,
     /// <c>*.internal</c> or a single-label name, a literal private address (brackets allowed),
     /// or a name any of whose addresses is private. A name that does not resolve now is not
     /// refused for it.</summary>
-    public static async Task<bool> Is(string host, CancellationToken cancellationToken = default)
+    public static Task<bool> Is(string host, CancellationToken cancellationToken = default)
+    {
+        return Is(host, Dns.GetHostAddressesAsync, cancellationToken);
+    }
+
+    internal static async Task<bool> Is(string host, Func<string, CancellationToken, Task<IPAddress[]>> resolve,
+        CancellationToken cancellationToken)
     {
         host = host.Trim().Trim('[', ']').TrimEnd('.');
-
-        if (host.Length == 0)
-        {
-            return false;
-        }
 
         if (IPAddress.TryParse(host, out var literal))
         {
@@ -42,7 +43,7 @@ public static class PrivateHost
 
         try
         {
-            addresses = await Dns.GetHostAddressesAsync(host, cancellationToken);
+            addresses = await resolve(host, cancellationToken);
         }
         catch (SocketException)
         {

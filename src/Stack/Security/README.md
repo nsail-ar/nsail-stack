@@ -105,10 +105,10 @@ hash under the current count, and one outside the floor and ceiling is refused),
 earlier format still unseals), `Jwt` (base64url and token splitting, not a JWT library),
 `SafeReturnTo` (guards a return address before a redirect), `PrivateHost.Is(host)` (whether a
 host a setting names points at loopback, private, link-local, CGNAT, unspecified or multicast
-space, literally or by what it resolves to, or is `localhost`, `*.local`, `*.internal` or a
-single label; a name that does not resolve is not refused; it reads no options, so each caller
-keeps its own switch, as Storage's `AllowPrivateAddresses`), `SignInRoutes` (the sign-in address's
-query names).
+space, literally or by what it resolves to, or is empty, `localhost`, `*.localhost`, `*.local`,
+`*.internal` or a single label; a name that does not resolve is not refused; it reads no options,
+so each caller keeps its own switch, as Storage's `AllowPrivateAddresses`), `SignInRoutes` (the
+sign-in address's query names).
 
 ## How it fits
 
