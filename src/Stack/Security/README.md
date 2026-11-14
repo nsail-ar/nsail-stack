@@ -10,7 +10,7 @@ in a message's fields, never the rows a handler returns.
 | Package | What it is | Referenced by |
 |---|---|---|
 | `NSail.Security.Annotations` | `[PolicyField]` with `RestrictAs`, `[Requires]`, `[RequiresFeature]` | Sdk (through `NSail.Security`) |
-| `NSail.Security` | `Session`, `Policy` and `PolicyBuilder`, `SecurityManager`, the gate (`AddSecurityEnforcement`), entitlements (`Entitlements`, `Features`), `PasswordHash`, `KeyProtector` | Sdk, Web, client, test |
+| `NSail.Security` | `Session`, `Policy` and `PolicyBuilder`, `SecurityManager`, the gate (`AddSecurityEnforcement`), entitlements (`Entitlements`, `Features`), `PasswordHash`, `KeyProtector`, `PrivateHost` | Sdk, Web, client, test |
 
 ## Use it
 
@@ -103,7 +103,11 @@ nobody wrote about a tenant reads as on, with no ceiling.
 hash under the current count, and one outside the floor and ceiling is refused),
 `KeyProtector(key or IEncryptionKeySource).Protect` / `Unprotect` (AES-GCM, a versioned payload with a per-payload salt; the
 earlier format still unseals), `Jwt` (base64url and token splitting, not a JWT library),
-`SafeReturnTo` (guards a return address before a redirect), `SignInRoutes` (the sign-in address's
+`SafeReturnTo` (guards a return address before a redirect), `PrivateHost.Is(host)` (whether a
+host a setting names points at loopback, private, link-local, CGNAT, unspecified or multicast
+space, literally or by what it resolves to, or is `localhost`, `*.local`, `*.internal` or a
+single label; a name that does not resolve is not refused; it reads no options, so each caller
+keeps its own switch, as Storage's `AllowPrivateAddresses`), `SignInRoutes` (the sign-in address's
 query names).
 
 ## How it fits
