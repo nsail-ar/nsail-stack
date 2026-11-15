@@ -18,7 +18,9 @@ namespace NSail.Security;
 /// permissions.md, The three refusals). What a
 /// published event's subscribers send in reaction is exempt: it is the system carrying out a
 /// decision already authorized, never a caller asking (AmbientPublish). A queued command's
-/// delivery is exempt for the same reason, one hop later (AmbientQueue).</summary>
+/// delivery is exempt for the same reason, one hop later (AmbientQueue), and so is what a
+/// handler the gate passed derives and marks as delegated, under the caller's own session
+/// (DelegatedSend).</summary>
 public sealed class SecurityInterceptor<TMessage> : IInterceptor<TMessage>
     where TMessage : IMessage
 {
@@ -39,8 +41,9 @@ public sealed class SecurityInterceptor<TMessage> : IInterceptor<TMessage>
         // already, and asking again would make every policy name the events its messages
         // publish and the sends behind them (AmbientPublish). A delivery off the durable queue
         // is the same exemption across a wait: the send was answered "accepted" when it was
-        // gated, and a grant revoked since would refuse here with nobody left to tell.
-        if (AmbientPublish.Active || AmbientQueue.Active)
+        // gated, and a grant revoked since would refuse here with nobody left to tell. A
+        // delegated send is the handler's own derived write: its door was answered for the caller.
+        if (AmbientPublish.Active || AmbientQueue.Active || DelegatedSend.Active)
         {
             await next(message, cancellationToken).ConfigureAwait(false);
 
@@ -83,8 +86,8 @@ public sealed class SecurityInterceptor<TMessage, TResult> : IInterceptor<TMessa
     {
         // Same exemptions as the void arity: a subscriber reads before it writes, so a query it
         // sends in reaction is as much the system's as the command beside it — and so is one a
-        // queued command's handler sends while delivering.
-        if (AmbientPublish.Active || AmbientQueue.Active)
+        // queued command's handler sends while delivering, or a delegated send reads.
+        if (AmbientPublish.Active || AmbientQueue.Active || DelegatedSend.Active)
         {
             return await next(message, cancellationToken).ConfigureAwait(false);
         }

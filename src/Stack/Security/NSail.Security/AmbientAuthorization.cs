@@ -9,8 +9,10 @@ namespace NSail.Security;
 /// the caller's own branch unless the grant was authored across every one
 /// (<see cref="AuthorizationResult.EveryOrganization"/>).
 ///
-/// <para>With no gate behind it — a host that composes none, a reaction the gate exempts, a
-/// session the gate waves through — the answers are the floor's: the values count as read,
+/// <para>A reaction or a delegated send (<see cref="DelegatedSend"/>) the gate exempts asks
+/// nothing, so it reads the verdict of the gated send it runs behind. With no gate behind it
+/// — a host that composes none, a queue delivery, a session the gate waves through — the
+/// answers are the floor's: the values count as read,
 /// because none of those is a caller passing a value nobody checked (the only thing that turns
 /// it off is an allowance that ignores fields on purpose, which is
 /// <see cref="DependencyPolicyHandler"/> and nothing else), and the branch still narrows,
@@ -32,6 +34,11 @@ public static class AmbientAuthorization
     public static bool EveryOrganization
     {
         get { return Granted.Value?.EveryOrganization ?? false; }
+    }
+
+    internal static bool Answered
+    {
+        get { return Granted.Value is not null; }
     }
 
     internal static Task Vetting(AmbientGrant grant, Func<Task> send)
