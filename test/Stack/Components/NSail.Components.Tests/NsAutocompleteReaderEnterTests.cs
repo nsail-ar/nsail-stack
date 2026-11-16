@@ -424,4 +424,76 @@ public sealed class NsAutocompleteReaderEnterTests : BunitContext, IAsyncLifetim
         Assert.Equal(Guid.Empty, _picked);
         Assert.Null(cut.Find("input").GetAttribute("data-ns-commits"));
     }
+
+    IRenderedComponent<SearchLookupHost> MountBrowsed()
+    {
+        return Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Shelf)
+            .Add(x => x.Gate, Gate)
+            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _picked = value)));
+    }
+
+    /// <summary>No per-picker opt-in: a browsed lookup that searches by the term gets the same
+    /// Enter (nsail#3733).</summary>
+    [Fact]
+    public async Task ABrowsedSearchingLookupTakesTheBurstsAnswerToo()
+    {
+        var cut = MountBrowsed();
+
+        // The focus of a browsed lookup asks for the whole set first.
+        Release(string.Empty);
+
+        var entered = await Burst(cut, "7798123456789");
+
+        Assert.Equal(Guid.Empty, _picked);
+
+        _gates["7798123456789"].TrySetResult();
+
+        await entered;
+
+        cut.WaitForAssertion(() => Assert.Equal(Scanned, _picked), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task ASecondEnterWhileTheWaitRunsDoesNotTakeTwice()
+    {
+        var picks = 0;
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Shelf)
+            .Add(x => x.Lazy, true)
+            .Add(x => x.Gate, Gate)
+            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value =>
+            {
+                picks++;
+                _picked = value;
+            })));
+
+        var first = await Burst(cut, "7798123456789");
+        var second = cut.Find("input").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        _gates["7798123456789"].TrySetResult();
+
+        await first;
+        await second;
+
+        cut.WaitForAssertion(() => Assert.Equal(Scanned, _picked), TimeSpan.FromSeconds(5));
+
+        Assert.Equal(1, picks);
+    }
+
+    [Fact]
+    public async Task AKeyTypedAfterEnterCancelsTheWait()
+    {
+        var cut = Mount();
+
+        var entered = await Burst(cut, "7798123456789");
+
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "77981234567890" });
+
+        _gates["7798123456789"].TrySetResult();
+
+        await entered;
+
+        Assert.Equal(Guid.Empty, _picked);
+    }
 }

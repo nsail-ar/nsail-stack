@@ -210,6 +210,13 @@
     // where every item it resolves writes the reading the refresh used to write.
     string? _typed;
 
+    // Moves with every change of the box's text: an Enter waiting on a search is outlived by the
+    // key typed after it, which is the operator carrying on.
+    int _typedSince;
+
+    // An Enter is already waiting on the search for the text; a second one is the same gesture.
+    bool _enterWaits;
+
     IEnumerable<TItem> _results = [];
 
     // The term _results answer for. The box's own text moves the moment a search starts, and
@@ -713,7 +720,7 @@
     // (ui/fields.md), and nothing was typed into it to resolve.
     bool Resolves([NotNullWhen(true)] string? typed)
     {
-        if (!Lazy || IsReadOnly || IsDisabled || string.IsNullOrWhiteSpace(typed))
+        if (!(Lazy || OnSearch.HasDelegate) || IsReadOnly || IsDisabled || string.IsNullOrWhiteSpace(typed))
         {
             return false;
         }
@@ -728,6 +735,11 @@
 
     void OnBoxText(string text)
     {
+        if (text != _typed)
+        {
+            _typedSince++;
+        }
+
         _typed = text;
     }
 
@@ -819,11 +831,36 @@
             return;
         }
 
+        if (_enterWaits)
+        {
+            return;
+        }
+
         // Raised before the await: the key UP of this Enter does not wait for the answer, and a
         // flag written after it would miss that key and wait armed for the next one.
         SkipEnterKeyUp?.SetValue(_autocomplete, true);
 
-        var rows = await Answered(typed);
+        var since = _typedSince;
+
+        _enterWaits = true;
+
+        List<TItem> rows;
+
+        try
+        {
+            rows = await Answered(typed);
+        }
+        finally
+        {
+            _enterWaits = false;
+        }
+
+        if (since != _typedSince)
+        {
+            SkipEnterKeyUp?.SetValue(_autocomplete, false);
+
+            return;
+        }
 
         // One answer is the only one this key can take. Several are a choice, which is the list
         // the vendor's own search is about to open; none is the text the offer quotes.
