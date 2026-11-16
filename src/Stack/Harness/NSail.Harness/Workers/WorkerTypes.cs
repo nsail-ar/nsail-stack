@@ -67,15 +67,17 @@ public static class WorkerTypes
     {
         // Ready: shaped for a cold builder. Ruling: a question waits for a hand. Either way a stalled
         // story's analysis ends its stall. Split: filed again as parts under it, which are what is built.
+        // Elsewhere: its parts in other repositories are filed first, and it waits for them blocked.
         ["Analyze"] = new("Analyze", WorkKind.Analyze, true, true,
             new FilterOptions { Status = Stages.Analyze, SubIssues = "0", Pr = "none", Labels = Holds },
-            [.. WorkerType.BaseEvents, "Ready", "Ruling", "Done", "Split"],
+            [.. WorkerType.BaseEvents, "Ready", "Ruling", "Done", "Split", "Elsewhere"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {
                 ["Ready"] = [MoveTo(Stages.Ready), Remove(Labels.Stalled)],
                 ["Ruling"] = [Add(Labels.Ruling), Remove(Labels.Stalled)],
                 ["Done"] = [MoveTo(Stages.Merged), Remove(Labels.Stalled)],
                 ["Split"] = [MoveTo(Stages.Backlog)],
+                ["Elsewhere"] = [MoveTo(Stages.Backlog)],
             }, Minutes: 45),
         // Started: a builder took it. Opened, Pushed: the gate decides what follows. Ruling: the builder's
         // question goes back to the analyst. Reanalyze: a release red's question, which goes to the analyst

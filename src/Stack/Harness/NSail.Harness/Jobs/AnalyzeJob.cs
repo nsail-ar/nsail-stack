@@ -17,7 +17,9 @@ namespace NSail.Harness.Jobs;
 // hand adds `allow-protected`; the story is already built (its PR merged and main meets every
 // criterion) -> Merged, so no empty voyage is sent; the story is several that must land apart (a
 // change in one repository and its use in another) -> its parts are filed under it and it is built
-// through them (never a release red or a stalled story: those are one fix). A death with no verdict is
+// through them (never a release red or a stalled story: those are one fix); the story needs work in
+// another repository first -> those parts are filed beside it and it waits `blocked` on them (Elsewhere,
+// once per story; the same exceptions). A death with no verdict is
 // sent again on the next pass; the second in a row (or the first of a story that was already stalled)
 // stamps `stalled` and `ruling`, and it is not taken again.
 public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history) : IJob
@@ -27,6 +29,10 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
     JobStep Step => ctx.StepOf(Item);
 
     AgentOptions Seat => Step.Agent!;
+
+    // The repositories a story's label routes to (RepositoryOptions.Label): where its parts in another
+    // repository are built (the Elsewhere verdict).
+    IReadOnlyList<RepositoryOptions> Elsewhere => ctx.Options.Repositories.Where(r => r.Label is not null).ToList();
 
     public WorkItem Item { get; } = item;
 
@@ -61,6 +67,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
             var dossier = new StoryDossier(ctx, history);
             await File.WriteAllTextAsync(Path.Combine(outDir, "thread.md"), StoryDossier.Thread(await board.Comments(n, ct), await dossier.Trusted(ct)), ct);
             await File.WriteAllTextAsync(Path.Combine(outDir, "labels-known.txt"), string.Join(' ', await KnownLabels(ct)), ct);
+            if (Elsewhere.Count > 0) await File.WriteAllLinesAsync(Path.Combine(outDir, "repositories.txt"), Elsewhere.Select(r => $"{r.Label} {r.Name}"), ct);
             if (stalled) await File.WriteAllTextAsync(Path.Combine(outDir, "stalled.txt"), "stalled", ct);
             await dossier.WritePrs(n, outDir, ct);
             if (stalled) await dossier.WriteRuns(n, outDir, ct);
@@ -150,6 +157,13 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 return new Ending("Ready", "Ready");
             case "VERDICT: split" when !stalled && !ctx.Texts.IsRed(title) && comment.Trim().Length > 0 && StoryParts.Read(outDir) is { } parts:
                 return await Split(n, parts, Post, ct);
+            case "VERDICT: elsewhere" when await SentElsewhere(n, ct):
+                // Counted as a death below: a second batch of parts would file the first one twice.
+                await board.Comment(n, $"{ctx.Texts.ElsewhereTwice} {ctx.Texts.Signature}");
+                break;
+            case "VERDICT: elsewhere" when !stalled && !ctx.Texts.IsRed(title) && Read("body.md").Trim().Length > 0 && comment.Trim().Length > 0
+                && StoryParts.Read(outDir, fewest: 1) is { } away && away.All(p => RepositoryOf(p) is not null):
+                return await SendElsewhere(n, Read("body.md"), Read("labels.txt"), away, Post, ct);
             case "VERDICT: ruling" when ctx.Texts.IsRed(title):
                 // Counted as a death below: a seat that asks twice is stalled, loudly, not obeyed.
                 await board.Comment(n, $"{ctx.Texts.RedRulingRefused} {ctx.Texts.Signature}");
@@ -180,20 +194,67 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
         return new Ending("no verdict — sent again on the next pass", Failed: true);
     }
 
-    // Each part is filed under the story in order, so a later one can name an earlier one. A part that
-    // waits on another story goes to Backlog blocked, and is analyzed once what it waits on has landed;
-    // one with its refinery comment goes to Ready; any other to Analyze. The parts inherit the story's
-    // area and priority. The story's own move is the Split event's (WorkerTypes).
+    // Each part is filed under the story, inheriting its area and priority. The story's own move is the
+    // Split event's (WorkerTypes).
     async Task<Ending> Split(int n, IReadOnlyList<StoryPart> parts, Func<Task> post, CancellationToken ct)
+    {
+        var inherited = (await ctx.Board.Labels(n, ct)).Where(l => l == Labels.P1 || l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal)).ToList();
+        var (filed, broke) = await FileParts(n, parts, inherited, child: true, ct);
+        if (broke is not null) return broke;
+        await post();
+        await ctx.Board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.SplitInto, ("parts", Refs(filed)))} {ctx.Texts.Signature}");
+        return new Ending($"split into {Refs(filed)}", "Split");
+    }
+
+    // The story is built here, after what it needs in other repositories: each part, wearing the label
+    // that routes it to its repository, is filed beside the story (never under it, or the story would be
+    // an epic and never built), the story's own half is its new body, and it waits `blocked` on the
+    // parts until they land, to be analyzed again against the tree that holds them. A part inherits
+    // only the priority: the product's areas are the story's. The story's move is the Elsewhere event's.
+    async Task<Ending> SendElsewhere(int n, string body, string labels, IReadOnlyList<StoryPart> parts, Func<Task> post, CancellationToken ct)
+    {
+        var board = ctx.Board;
+        var inherited = (await board.Labels(n, ct)).Where(l => l == Labels.P1).ToList();
+        var (filed, broke) = await FileParts(n, parts, inherited, child: false, ct);
+        if (broke is not null) return broke;
+        var own = StoryParts.Resolve(body, filed);
+        await board.UpdateBody(n, own, ct);
+        foreach (var label in SeatOutput.AllowedLabels(labels.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), await KnownLabels(ct))
+            .Where(l => !Elsewhere.Any(r => r.Label == l)))
+        {
+            await board.AddLabels(n, label);
+        }
+        // Its own half is the default repository's: no label routes it away.
+        foreach (var away in Elsewhere) await board.RemoveLabel(n, away.Label!);
+        await post();
+        await WrittenBlockers.Link(board, n, $"{own}\nBlocked by {Refs(filed)}", ctx.Names.Key, ct, ctx.Repos);
+        await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.ElsewhereInto, ("parts", Refs(filed)))} {ctx.Texts.Signature}\n{Markers.Elsewhere}");
+        return new Ending($"built first elsewhere: {Refs(filed)}", "Elsewhere");
+    }
+
+    // The repository a part names by its label: exactly one of the routed ones.
+    RepositoryOptions? RepositoryOf(StoryPart part)
+    {
+        var named = Elsewhere.Where(r => part.Labels.Contains(r.Label!, StringComparer.OrdinalIgnoreCase)).ToList();
+        return named.Count == 1 ? named[0] : null;
+    }
+
+    async Task<bool> SentElsewhere(int n, CancellationToken ct)
+    {
+        var login = await ctx.Repo.Login(ct);
+        var since = await ctx.Board.LastLift(n, Labels.Lifts, ct);
+        return (await ctx.Board.Comments(n, ct)).Any(c => ctx.Markers.Says(c, Markers.Elsewhere, login) && (since is null || c.At > since));
+    }
+
+    // Each part filed in order, so a later one can name an earlier one: a part that waits on another
+    // story goes to Backlog blocked, and is analyzed once what it waits on has landed; one with its
+    // refinery comment goes to Ready; any other to Analyze. A filing cut short is not sent again — the
+    // next analysis would file the first parts twice — and holds the story for a hand.
+    async Task<(IReadOnlyList<int> Filed, Ending? Broke)> FileParts(int n, IReadOnlyList<StoryPart> parts, IReadOnlyList<string> inherited, bool child, CancellationToken ct)
     {
         var board = ctx.Board;
         var known = (await KnownLabels(ct)).ToList();
-        var inherited = (await board.Labels(n, ct)).Where(l => l == Labels.P1 || l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal)).ToList();
         var filed = new List<int>();
-        string Filed()
-        {
-            return string.Join(", ", filed.Select(f => $"#{f}"));
-        }
         try
         {
             foreach (var part in parts)
@@ -201,25 +262,27 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 var body = StoryParts.Resolve(part.Body, filed);
                 var refinery = StoryParts.Resolve(part.Comment, filed);
                 var shaped = refinery.Trim().Length > 0;
-                var child = await board.CreateStory(part.Title, body, [.. inherited.Union(SeatOutput.AllowedLabels(part.Labels, known))], ct);
-                filed.Add(child);
-                await board.AddChild(n, child, ct);
-                if (shaped) await board.Comment(child, refinery);
-                var waits = await WrittenBlockers.Link(board, child, $"{body}\n{refinery}", ctx.Names.Key, ct, ctx.Repos);
-                if (waits.Count == 0 && shaped) await Hold(child, part.Protected, ct);
-                await board.SetStage(child, waits.Count > 0 ? Stages.Backlog : shaped ? Stages.Ready : Stages.Analyze, ct);
+                var story = await board.CreateStory(part.Title, body, [.. inherited.Union(SeatOutput.AllowedLabels(part.Labels, known))], ct);
+                filed.Add(story);
+                if (child) await board.AddChild(n, story, ct);
+                if (shaped) await board.Comment(story, refinery);
+                var waits = await WrittenBlockers.Link(board, story, $"{body}\n{refinery}", ctx.Names.Key, ct, ctx.Repos);
+                if (waits.Count == 0 && shaped) await Hold(story, part.Protected, ct);
+                await board.SetStage(story, waits.Count > 0 ? Stages.Backlog : shaped ? Stages.Ready : Stages.Analyze, ct);
             }
         }
-        // A split cut short is not sent again: the next analysis would file the first parts twice.
         catch (Exception e) when (filed.Count > 0 && e is ProviderException or HttpRequestException)
         {
             await board.AddLabels(n, Labels.Stalled, Labels.Ruling);
-            await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.SplitHalfMade, ("parts", Filed()), ("error", e.Message))} {ctx.Texts.Signature}");
-            return new Ending($"split broke after {filed.Count} of {parts.Count} parts — stalled and ruling", Failed: true);
+            await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.SplitHalfMade, ("parts", Refs(filed)), ("error", e.Message))} {ctx.Texts.Signature}");
+            return (filed, new Ending($"filing broke after {filed.Count} of {parts.Count} parts — stalled and ruling", Failed: true));
         }
-        await post();
-        await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.SplitInto, ("parts", Filed()))} {ctx.Texts.Signature}");
-        return new Ending($"split into {Filed()}", "Split");
+        return (filed, null);
+    }
+
+    static string Refs(IEnumerable<int> stories)
+    {
+        return string.Join(", ", stories.Select(f => $"#{f}"));
     }
 
     // A story shaped to touch a path the screen holds waits for `allow-protected` instead of a voyage
@@ -240,6 +303,6 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
 
     async Task<IEnumerable<string>> KnownLabels(CancellationToken ct)
     {
-        return (await ctx.Board.KnownLabels(ct)).Where(l => l == Labels.NoWalk || l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal) || l.StartsWith(ctx.Agent.Driver + ":", StringComparison.Ordinal));
+        return (await ctx.Board.KnownLabels(ct)).Where(l => l == Labels.NoWalk || Elsewhere.Any(r => r.Label == l) ||l.StartsWith(Labels.AreaPrefix, StringComparison.Ordinal) || l.StartsWith(ctx.Agent.Driver + ":", StringComparison.Ordinal));
     }
 }

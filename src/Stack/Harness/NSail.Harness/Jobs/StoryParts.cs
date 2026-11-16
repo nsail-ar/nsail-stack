@@ -24,12 +24,12 @@ public static partial class StoryParts
     private static partial Regex Token();
 
     // The parts in order, or null when what the seat left is not a split the harness can file whole.
-    public static IReadOnlyList<StoryPart>? Read(string outDir)
+    public static IReadOnlyList<StoryPart>? Read(string outDir, int fewest = Fewest)
     {
         var root = Path.Combine(outDir, "parts");
         if (!Directory.Exists(root)) return null;
         var count = Directory.GetDirectories(root).Length;
-        if (count is < Fewest or > Most) return null;
+        if (count < fewest || count > Most) return null;
         var parts = new List<StoryPart>();
         for (var i = 1; i <= count; i++)
         {

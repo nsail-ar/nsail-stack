@@ -32,12 +32,16 @@ public class AnalyzeJobRunTests : IDisposable
         // The parts of a split, in order: each one's files by name.
         public List<Dictionary<string, string>> Parts { get; } = [];
 
+        // What the seat reads of its out folder before it writes.
+        public Action<string>? Reading { get; set; }
+
         public string Driver => "test";
 
         public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
         {
             Prompt = run.Prompt;
             var dir = Path.Combine(run.WorkDir, ".analysis");
+            Reading?.Invoke(dir);
             await File.WriteAllTextAsync(Path.Combine(dir, "verdict.txt"), $"VERDICT: {verdict}\n", ct);
             await File.WriteAllTextAsync(Path.Combine(dir, "body.md"), "The shaped body.", ct);
             await File.WriteAllTextAsync(Path.Combine(dir, "comment.md"), "Claim, Done, Readers.", ct);
@@ -97,7 +101,7 @@ public class AnalyzeJobRunTests : IDisposable
         var options = new HarnessOptions
         {
             WorkRoot = Path.Combine(_root, "work"),
-            Repositories = [new RepositoryOptions { Name = "acme/app" }],
+            Repositories = [new RepositoryOptions { Name = "acme/app" }, new RepositoryOptions { Name = "acme/framework", Label = "area:framework" }],
             ProtectedPaths = [".github/workflows/**", "scripts/ci/*.sh"],
             Seats = { ["timo"] = new AgentOptions { Signature = "— Timo", Model = "m", Prompt = "analyze __ISSUE__; the screen holds __PROTECTED__" } },
             Workers = { ["analyze"] = new WorkerOptions { Type = "Analyze", Seat = "timo" } },
@@ -301,5 +305,76 @@ public class AnalyzeJobRunTests : IDisposable
         Assert.Superset(new HashSet<string> { Labels.Stalled, Labels.Ruling }, board.Cards[1].Labels);
         Assert.Contains("#100", Assert.Single(board.Cards[1].Comments).Body);
         Assert.Equal([100], board.Cards[1].Children);
+    }
+    // The framework's half of a story built in the product: one part, in the repository its label routes to.
+    static Analyst Sender(string labels = "area:framework\nno-walk\n")
+    {
+        var seat = new Analyst(null, "elsewhere", "test:big\narea:framework\n");
+        seat.Parts.Add(new() { ["title.txt"] = "The framework's seam", ["body.md"] = "Add the seam.", ["comment.md"] = "Claim, Done, Readers.", ["labels.txt"] = labels });
+        return seat;
+    }
+
+    static void Known(MemoryBoard board)
+    {
+        board.Add(3, stage: Stages.Closed, labels: ["area:framework", "test:big"]);
+    }
+
+    [Fact]
+    public async Task ElsewhereFilesThePartsBesideTheStoryAndHoldsItBlockedOnThem()
+    {
+        var (board, outcome) = await Run(Sender(), "a story", Known, "area:shop", "area:framework", Labels.P1);
+
+        Assert.Equal("Elsewhere", outcome.Event);
+        Assert.Empty(board.Cards[1].Children);
+        var part = board.Cards[100];
+        Assert.Equal("The framework's seam", part.Title);
+        Assert.Equal(Stages.Ready, part.Stage);
+        Assert.Equal(new HashSet<string> { Labels.P1, "area:framework", Labels.NoWalk }, part.Labels);
+        var story = board.Cards[1];
+        Assert.Equal("The shaped body.", story.Body);
+        Assert.Equal([100], story.Blockers);
+        Assert.Contains(Labels.Blocked, story.Labels);
+        Assert.Contains("test:big", story.Labels);
+        Assert.DoesNotContain("area:framework", story.Labels);
+        Assert.Equal("Claim, Done, Readers.", story.Comments[0].Body);
+        Assert.Contains("#100", story.Comments[^1].Body);
+        Assert.Contains(Markers.Elsewhere, story.Comments[^1].Body);
+    }
+
+    [Theory]
+    [InlineData("no-walk\n")]
+    [InlineData("area:shop\n")]
+    public async Task APartNoRepositoryRoutesIsNoVerdict(string labels)
+    {
+        var (board, outcome) = await Run(Sender(labels), "a story", Known);
+
+        Assert.True(outcome.Failed);
+        Assert.DoesNotContain(100, board.Cards.Keys);
+    }
+
+    [Fact]
+    public async Task AStoryThatAlreadySentItsPartsElsewhereSendsNoMoreAndTheAskCountsAsADeath()
+    {
+        var (board, outcome) = await Run(Sender(), "a story", b =>
+        {
+            Known(b);
+            b.Cards[1].Comments.Add(new StoryComment(DateTimeOffset.UtcNow.AddDays(-1), $"Built first elsewhere: #90.\n{Markers.Elsewhere}", "harness"));
+        });
+
+        Assert.True(outcome.Failed);
+        Assert.DoesNotContain(100, board.Cards.Keys);
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("already sent its parts"));
+    }
+
+    [Fact]
+    public async Task TheAnalystReadsWhichLabelRoutesToWhichRepository()
+    {
+        var seat = Sender();
+        string? listed = null;
+        seat.Reading = dir => listed = File.ReadAllText(Path.Combine(dir, "repositories.txt"));
+
+        await Run(seat, "a story", Known);
+
+        Assert.Equal("area:framework acme/framework", listed?.Trim());
     }
 }
