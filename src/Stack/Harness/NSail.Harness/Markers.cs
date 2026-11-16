@@ -19,6 +19,9 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
     public const string GateContext = "harness/gate";
     public const string QaContext = "harness/qa";
 
+    // A clean read by a reviewer that does not merge (a Review worker with Merge off), on the PR head.
+    public const string ReviewContext = "harness/review";
+
     public static string SuiteContext(string product)
     {
         return $"harness/suite/{product}";
@@ -124,7 +127,8 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
         return word;
     }
 
-    // The reviewer's last word at a head (clean, findings), null when nobody read it.
+    // The reviewer's last word at a head (clean, approved: clean from a reviewer that does not merge,
+    // findings), null when nobody read it.
     public string? ReviewAt(IEnumerable<string> bodies, string sha)
     {
         string? word = null;
@@ -146,6 +150,6 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
 
     MatchCollection ReviewMatches(string body)
     {
-        return Regex.Matches(body, $@"^<!-- {Regex.Escape(review)}:(clean|findings):([0-9a-f]+) -->[ \t]*\r?$", RegexOptions.Multiline);
+        return Regex.Matches(body, $@"^<!-- {Regex.Escape(review)}:(clean|approved|findings):([0-9a-f]+) -->[ \t]*\r?$", RegexOptions.Multiline);
     }
 }

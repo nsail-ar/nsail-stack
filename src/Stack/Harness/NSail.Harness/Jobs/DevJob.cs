@@ -41,7 +41,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         if (stage != Stages.Ready && await Landed(n, null, ct))
         {
             await board.RemoveLabel(n, Labels.Claimed);
-            await board.TrySetStage(n, Stages.Merged, log, ct);
+            await ctx.Fire(Item, "Landed", n, log, ct);
             return new JobOutcome("already landed", Idle: true);
         }
 
@@ -66,13 +66,13 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             await board.AddLabels(n, Labels.Stalled);
             await board.RemoveLabel(n, Labels.Claimed);
             await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.TwoDeadVoyages, ("machine", ctx.Options.Machine))));
-            await board.TrySetStage(n, Stages.Analyze, log, ct);
+            await ctx.Fire(Item, "Stalled", n, log, ct);
             return new JobOutcome("two dead voyages — stalled", Idle: true);
         }
 
         // The stage first, the lock after: a board that guards moves refuses one under a lock.
         await board.RemoveLabel(n, Labels.Review);
-        await board.TrySetStage(n, Stages.InProgress, log, ct);
+        await ctx.Fire(Item, "Started", n, log, ct);
         if (!labels.Contains(Labels.Claimed)) await board.AddLabels(n, Labels.Claimed);
         var claimedAt = DateTimeOffset.UtcNow;
         var axe = claimedAt.AddMinutes(Step.Minutes - 5);
@@ -356,7 +356,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
                 await board.AddLabels(n, Labels.Ruling, Labels.Screened);
                 await board.RemoveLabel(n, Labels.Claimed);
                 await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.ProtectedPaths, ("paths", string.Join(", ", touched.Select(f => $"`{f}`"))), ("label", Labels.AllowProtected))} {ctx.Texts.Signature}");
-                if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
+                if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await ctx.Fire(Item, "Unfinished", n, log, ct);
                 return new Ending("push refused — protected paths touched, held for a hand", Failed: true);
             }
             try
@@ -380,7 +380,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
                 await board.Comment(n, Said(rescue is null
                     ? HarnessTexts.Fill(ctx.Texts.PushRefusedKept, ("branch", branch))
                     : HarnessTexts.Fill(ctx.Texts.PushRefused, ("branch", branch), ("rescue", rescue))));
-                if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
+                if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await ctx.Fire(Item, "Unfinished", n, log, ct);
                 return new Ending(rescue is null ? "push refused — work kept local" : $"push refused — work on {rescue}", Failed: true);
             }
         }
@@ -404,7 +404,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         {
             // The usage wall is no story's fault: it does not count as a dead voyage.
             await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.QuotaWall, ("until", HarnessLoop.WallClock((result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1)).ToUniversalTime(), DateTimeOffset.UtcNow)))} {ctx.Texts.Signature}");
-            if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
+            if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await ctx.Fire(Item, "Unfinished", n, log, ct);
             return "quota";
         }
 
@@ -497,7 +497,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
 
         var why = result.TimedOut ? "timeout" : $"exit {result.ExitCode}";
         await board.Comment(n, Said(HarnessTexts.Fill(ctx.Texts.DeadVoyage, ("why", why), ("pushed", pushed ? ctx.Texts.WorkPushed : ""))));
-        if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await board.TrySetStage(n, Stages.Ready, log, ct);
+        if ((await ctx.Repos.PrsOf(n, "open", ct)).Count == 0) await ctx.Fire(Item, "Unfinished", n, log, ct);
         return new Ending($"dead voyage ({why})", Failed: true);
     }
 

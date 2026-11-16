@@ -131,4 +131,13 @@ public sealed class StateFileTests : IDisposable
         Assert.Empty(Directory.GetFiles(_root, "*.tmp"));
         Assert.NotNull(new WatchState(_root).ReadUntil("w"));
     }
+    [Fact]
+    public void A_restart_keeps_what_a_worker_settled_and_a_later_pause_does_not_drop_it()
+    {
+        var at = DateTimeOffset.Parse("2026-11-16T10:00:00Z");
+        new HarnessState(_root).Settle(new Dictionary<string, DateTimeOffset> { ["analyze#7"] = at });
+        new HarnessState(_root).Set("by hand", null, null, null);
+
+        Assert.Equal(at, new HarnessState(_root).Settled["analyze#7"]);
+    }
 }

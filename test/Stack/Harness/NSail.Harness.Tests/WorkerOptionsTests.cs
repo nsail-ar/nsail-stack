@@ -220,4 +220,39 @@ public class EventDefaultsTests
         Assert.Equal(["Clean: MoveTo Done"], JobEvents.Actions(review.On, new JobOutcome("landed", Event: "Clean")).Select(a => $"{a.Event}: {a.Action}"));
         Assert.Equal(["Findings: MoveTo Ready"], JobEvents.Actions(review.On, new JobOutcome("findings", Event: "Findings")).Select(a => $"{a.Event}: {a.Action}"));
     }
+    [Fact]
+    public void AnEmptyListInTheJsonLeavesTheEventWithNoAction()
+    {
+        var json = """{ "Harness": { "Workers": { "a": { "Type": "Analyze", "Seat": "builder", "On": { "Ready": [] } } } } }""";
+        var config = new ConfigurationBuilder().AddJsonStream(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json))).Build();
+        var o = config.GetSection(HarnessOptions.Section).Get<HarnessOptions>()!;
+        o.Seats.TryAdd("builder", new AgentOptions { Signature = "Builder", PromptFile = "p.md" });
+
+        var analyze = Worker.Compile(o).Single();
+
+        Assert.Empty(analyze.On["Ready"]);
+    }
+
+    [Fact]
+    public void AnEndingSettlesOnlyWhereTheTypeMovesAndTheWorkerDoesNot()
+    {
+        var type = WorkerTypes.All["Analyze"];
+        var manual = new Dictionary<string, IReadOnlyList<ActionOptions>>(type.Defaults) { ["Ready"] = [new ActionOptions { RemoveLabel = "stalled" }] };
+
+        Assert.True(JobEvents.Settles(type, manual, new JobOutcome("Ready", Event: "Ready")));
+        Assert.False(JobEvents.Settles(type, type.Defaults, new JobOutcome("Ready", Event: "Ready")));
+        // The type moves nothing on a ruling: the hold keeps the story from the worker.
+        Assert.False(JobEvents.Settles(type, manual, new JobOutcome("ruling", Event: "Ruling")));
+        Assert.False(JobEvents.Settles(type, manual, new JobOutcome("quota", QuotaUntil: DateTimeOffset.UtcNow, Event: "Ready")));
+    }
+
+    [Fact]
+    public void ASettledStoryWaitsForATouchPastTheBoardsSkew()
+    {
+        var at = DateTimeOffset.Parse("2026-11-16T10:00:00Z");
+
+        Assert.False(HarnessLoop.Touched(at.AddSeconds(30), at));
+        Assert.True(HarnessLoop.Touched(at + HarnessLoop.SettleSkew + TimeSpan.FromSeconds(1), at));
+        Assert.True(HarnessLoop.Touched(null, at));
+    }
 }

@@ -95,7 +95,17 @@ the files it leaves.
     `Minutes`, `DailyCap`, `Setup`, `Variables` (a Release also its `Product`, `Workflow` and `Paths`, and a
     `When.Schedule` with no End: its day's cut fires there), and `On` — per event, a list of actions (`MoveTo`, `AddLabel`,
     `RemoveLabel`, `Comment` — `{report}` quotes what the job wrote —, `Close`) that replaces the type's; a
-    comment signs as the worker's `Seat`. A Release also walks each release of its product once
+    comment signs as the worker's `Seat`. A story worker's job moves the board only through its
+    events, at its end or while it runs (a Develop's `Started`, `Unfinished`, `Stalled`, `Landed`; a
+    Review's `MergeRefused`, `Stalled`): an event whose actions name no `MoveTo` leaves the story where
+    it stands, so a hand moves it (`"On": { "Ready": [] }`). An ending that moved nothing where its type
+    would have leaves the story settled for that worker: not taken again until somebody touches it
+    after (a comment, a label, a move — a minute past the ending, the board's clock against the
+    machine's), kept across restarts in `state.json`; a board that does not say when a story was
+    touched never holds one settled. A Review with `Merge: false` merges nothing: a clean read marks
+    the head `harness/review` success (a check a branch rule can require), its word on the PR is
+    `approved` — the `Checks` state no reviewer and no round takes — and it ends `Approved`; the story's
+    move once a hand merges is a keeper's (`Pr: none`, `PrMerged: true`). A Release also walks each release of its product once
     published: every story its commits name ships in its version (a milestone), every Merged story
     whose PRs the tag holds moves to Released, and the closed version says it was walked. A tag never
     published is no release, so a cut that died never reads as the last one. A Test walks one story with its seat in a fresh browser

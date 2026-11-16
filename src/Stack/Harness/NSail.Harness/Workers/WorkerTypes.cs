@@ -77,34 +77,45 @@ public static class WorkerTypes
                 ["Done"] = [MoveTo(Stages.Merged), Remove(Labels.Stalled)],
                 ["Split"] = [MoveTo(Stages.Backlog)],
             }, Minutes: 45),
-        // Opened, Pushed: the gate decides what follows. Ruling: the builder's question goes back to
-        // the analyst. Reanalyze: a release red's question, which goes to the analyst with no hold.
-        // HandedOff: the next voyage takes it. Walled: something outside the story must change first, so
-        // it waits blocked in Backlog, where the rule that lifts `blocked` lifts it. Landed: it rode main meanwhile.
+        // Started: a builder took it. Opened, Pushed: the gate decides what follows. Ruling: the builder's
+        // question goes back to the analyst. Reanalyze: a release red's question, which goes to the analyst
+        // with no hold. HandedOff: the next voyage takes it. Walled: something outside the story must change
+        // first, so it waits blocked in Backlog, where the rule that lifts `blocked` lifts it. Landed: it
+        // rode main meanwhile. Unfinished: the voyage ended with no PR open (it died, its push was refused,
+        // the quota wall), so a builder takes it again. Stalled: two dead voyages, for the analyst.
         ["Develop"] = new("Develop", WorkKind.Dev, true, true,
             new FilterOptions { Status = Stages.Ready, SubIssues = "0", Pr = "none", Unblocked = true, Labels = Holds },
-            [.. WorkerType.BaseEvents, "Opened", "Pushed", "Ruling", "Reanalyze", "HandedOff", "Walled", "Landed"],
+            [.. WorkerType.BaseEvents, "Started", "Opened", "Pushed", "Ruling", "Reanalyze", "HandedOff", "Walled", "Landed", "Unfinished", "Stalled"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {
+                ["Started"] = [MoveTo(Stages.InProgress)],
                 ["Ruling"] = [Add(Labels.Ruling), MoveTo(Stages.Analyze)],
                 ["Reanalyze"] = [MoveTo(Stages.Analyze)],
                 ["HandedOff"] = [MoveTo(Stages.Ready)],
                 ["Walled"] = [Add(Labels.Blocked), MoveTo(Stages.Backlog)],
                 ["Landed"] = [MoveTo(Stages.Merged)],
+                ["Unfinished"] = [MoveTo(Stages.Ready)],
+                ["Stalled"] = [MoveTo(Stages.Analyze)],
             }, Minutes: 240),
         // Clean: merged, nothing of the story left open. StillOpen: merged, another PR of it open.
         // Findings: Ready again, where the planner sends it to a round. Ruling: the PR found the story
         // itself wrong, and it waits for a hand's word: the PR stays, so a review would read it again.
-        // A release red waits for no hand: its crack goes back to the builder as Findings.
+        // A release red waits for no hand: its crack goes back to the builder as Findings. MergeRefused:
+        // a clean read the code host would not merge. Stalled: no verdict, or findings on the fourth read.
+        // Approved: clean, from a worker that does not merge (Merge false): the head carries the
+        // reviewer's status (Markers.ReviewContext) and the PR waits for a hand's merge.
         ["Review"] = new("Review", WorkKind.Review, true, true,
             new FilterOptions { Status = PrStages, Pr = "open", Checks = "unread", Labels = Holds },
-            [.. WorkerType.BaseEvents, "Clean", "StillOpen", "Findings", "Ruling"],
+            [.. WorkerType.BaseEvents, "Clean", "StillOpen", "Findings", "Ruling", "MergeRefused", "Stalled", "Approved"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {
                 ["Clean"] = [MoveTo(Stages.Merged), Remove($"{Labels.Claimed},{Labels.Stalled}")],
                 ["StillOpen"] = [Remove(Labels.Claimed), MoveTo(Stages.Ready)],
                 ["Findings"] = [MoveTo(Stages.Ready)],
                 ["Ruling"] = [Add(Labels.Ruling), MoveTo(Stages.Analyze)],
+                ["MergeRefused"] = [MoveTo(Stages.Ready)],
+                ["Stalled"] = [MoveTo(Stages.Analyze)],
+                ["Approved"] = [Remove(Labels.Stalled)],
             }, Minutes: 60),
         // Verify a PR (Target pr) runs over stories; Verify main (Target main) on its own: see Kind.
         ["Verify"] = new("Verify", WorkKind.Gate, true, false,

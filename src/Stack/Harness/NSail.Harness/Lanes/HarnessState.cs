@@ -4,7 +4,8 @@
 namespace NSail.Harness.Lanes;
 
 // What a hand or the provider set on this machine and a restart must not forget (state.json): the
-// pause, the take-new switch and the quota wall. A wall already past is dropped on read.
+// pause, the take-new switch, the quota wall and the stories a worker's ending left settled
+// (HarnessLoop.Settled). A wall already past is dropped on read.
 public sealed class HarnessState
 {
     readonly string? _path;
@@ -35,20 +36,38 @@ public sealed class HarnessState
 
     public bool? TakeNew => _data.TakeNew;
 
+    // By `worker#story`: when the worker's ending left the story where the worker takes it.
+    public IReadOnlyDictionary<string, DateTimeOffset> Settled => _data.Settled;
+
     public void Set(string? paused, DateTimeOffset? pausedSince, DateTimeOffset? quotaUntil, bool? takeNew)
     {
         lock (_gate)
         {
-            _data = new StateData { Paused = paused, PausedSince = pausedSince, QuotaUntil = quotaUntil, TakeNew = takeNew };
-            if (_path is null) return;
-            try
-            {
-                StateFile.Write(_path, _data);
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-                _log?.LogWarning(e, "state file {Path} could not be written — this run keeps it in memory", _path);
-            }
+            _data = new StateData { Paused = paused, PausedSince = pausedSince, QuotaUntil = quotaUntil, TakeNew = takeNew, Settled = _data.Settled };
+            Write();
+        }
+    }
+
+    public void Settle(IReadOnlyDictionary<string, DateTimeOffset> settled)
+    {
+        lock (_gate)
+        {
+            _data.Settled = new Dictionary<string, DateTimeOffset>(settled);
+            Write();
+        }
+    }
+
+    // Under _gate.
+    void Write()
+    {
+        if (_path is null) return;
+        try
+        {
+            StateFile.Write(_path, _data);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _log?.LogWarning(e, "state file {Path} could not be written — this run keeps it in memory", _path);
         }
     }
 
@@ -58,5 +77,6 @@ public sealed class HarnessState
         public DateTimeOffset? PausedSince { get; set; }
         public DateTimeOffset? QuotaUntil { get; set; }
         public bool? TakeNew { get; set; }
+        public Dictionary<string, DateTimeOffset> Settled { get; set; } = [];
     }
 }

@@ -139,7 +139,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
         }
 
         // The marker counts rounds; the body is what people read.
-        var body = ctx.Markers.Strip(string.Join('\n', text.Split('\n').Skip(1))).TrimEnd() + "\n\n" + ctx.Markers.Review(kind, sha);
+        var body = ctx.Markers.Strip(string.Join('\n', text.Split('\n').Skip(1))).TrimEnd() + "\n\n" + ctx.Markers.Review(kind == "clean" && !Step.Worker.Merge ? "approved" : kind, sha);
         await ctx.Repo.Comment(prNumber, body);
 
         // What a narrow read saw out of its scope stays in that comment, on the record: it is not
@@ -177,6 +177,11 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
         var now = await ctx.Repo.Pr(prNumber, ct);
         await board.RemoveLabel(story, Labels.Review);
         if (now.HeadSha != sha) return "clean, but the head moved during the read";
+        if (!Step.Worker.Merge)
+        {
+            await ctx.Repo.SetStatus(sha, Markers.ReviewContext, "success", HarnessTexts.Fill(ctx.Texts.Approved, ("pr", prNumber)), ct);
+            return new Ending("clean — approved, a hand merges", "Approved");
+        }
         return await Land(prNumber, sha, story, HarnessTexts.Fill(ctx.Texts.Merged, ("pr", prNumber), ("title", now.Title)), log, ct);
     }
 
@@ -194,7 +199,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
         {
             log.LogWarning("PR #{Pr} did not merge: {Error}", pr, e.Message);
             await board.Comment(story, JobContext.Signed(HarnessTexts.Fill(ctx.Texts.MergeRefused, ("pr", pr)), Seat));
-            await board.TrySetStage(story, Stages.Ready, log, ct);
+            await ctx.Fire(Item, "MergeRefused", story, log, ct);
             return new Ending("clean, merge refused — back to Ready", Failed: true);
         }
 
@@ -214,7 +219,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
     {
         await ctx.Board.AddLabels(story, Labels.Stalled);
         await ctx.Board.RemoveLabel(story, Labels.Review);
-        await ctx.Board.TrySetStage(story, Stages.Analyze, log, ct);
+        await ctx.Fire(Item, "Stalled", story, log, ct);
         await ctx.Board.Comment(story, JobContext.Signed(why, Seat));
     }
 
