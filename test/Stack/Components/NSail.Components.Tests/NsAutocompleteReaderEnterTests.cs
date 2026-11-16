@@ -424,4 +424,167 @@ public sealed class NsAutocompleteReaderEnterTests : BunitContext, IAsyncLifetim
         Assert.Equal(Guid.Empty, _picked);
         Assert.Null(cut.Find("input").GetAttribute("data-ns-commits"));
     }
+
+    IRenderedComponent<SearchLookupHost> MountBrowsed()
+    {
+        return Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Shelf)
+            .Add(x => x.Gate, Gate)
+            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _picked = value)));
+    }
+
+    /// <summary>No per-picker opt-in: a browsed lookup that searches by the term gets the same
+    /// Enter (nsail#3733).</summary>
+    [Fact]
+    public async Task ABrowsedSearchingLookupTakesTheBurstsAnswerToo()
+    {
+        var cut = MountBrowsed();
+
+        // The focus of a browsed lookup asks for the whole set first.
+        Release(string.Empty);
+
+        var entered = await Burst(cut, "7798123456789");
+
+        Assert.Equal(Guid.Empty, _picked);
+
+        _gates["7798123456789"].TrySetResult();
+
+        await entered;
+
+        cut.WaitForAssertion(() => Assert.Equal(Scanned, _picked), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task ASecondEnterWhileTheWaitRunsDoesNotTakeTwice()
+    {
+        var picks = 0;
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Shelf)
+            .Add(x => x.Lazy, true)
+            .Add(x => x.Gate, Gate)
+            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value =>
+            {
+                picks++;
+                _picked = value;
+            })));
+
+        var first = await Burst(cut, "7798123456789");
+        var second = cut.Find("input").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        _gates["7798123456789"].TrySetResult();
+
+        await first;
+        await second;
+
+        cut.WaitForAssertion(() => Assert.Equal(Scanned, _picked), TimeSpan.FromSeconds(5));
+
+        Assert.Equal(1, picks);
+    }
+
+    /// <summary>The browser sends the second Enter's key up too, and the vendor picks on it: with
+    /// the set already on screen it would take the highlighted row of the previous search.</summary>
+    [Fact]
+    public async Task ASecondEnterKeyUpDoesNotTakeTheRowOnScreen()
+    {
+        var cut = MountBrowsed();
+
+        Release(string.Empty);
+
+        var input = cut.Find("input");
+        var first = await Burst(cut, "7798123456789");
+
+        await input.KeyUpAsync(new KeyboardEventArgs { Key = "Enter" });
+        await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+        await input.KeyUpAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(Guid.Empty, _picked);
+
+        _gates["7798123456789"].TrySetResult();
+
+        await first;
+
+        cut.WaitForAssertion(() => Assert.Equal(Scanned, _picked), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>A second reading while the first still waits is its own wait, not a repeat.</summary>
+    [Fact]
+    public async Task AnEnterOnAnotherCodeWhileTheWaitRunsWaitsOnItsOwn()
+    {
+        var cut = Mount();
+
+        var first = await Burst(cut, "Vulk");
+        var second = await Burst(cut, "7798123456789");
+
+        _gates["7798123456789"].TrySetResult();
+
+        await second;
+
+        cut.WaitForAssertion(() => Assert.Equal(Scanned, _picked), TimeSpan.FromSeconds(5));
+
+        Release("Vulk");
+
+        await first;
+
+        Assert.Equal(Scanned, _picked);
+    }
+
+    /// <summary>What the key typed after the Enter stops: the abandoned wait asks nothing for the
+    /// text that is no longer in the box.</summary>
+    [Fact]
+    public async Task AKeyTypedAfterEnterCancelsTheWait()
+    {
+        var cut = Mount();
+
+        var entered = await Burst(cut, "7798123456789");
+
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "77981234567890" });
+
+        _gates["7798123456789"].TrySetResult();
+
+        await entered;
+
+        Assert.Equal(Guid.Empty, _picked);
+    }
+
+    /// <summary>The wait abandoned by a typed key asks nothing for the text that left the box:
+    /// the search out when the key landed answers an older text, and the wait ends on that
+    /// instead of asking it again. The interval is wound by hand, so the one search out is the
+    /// one this case armed and not a race with the real clock (preflight.md, 8).</summary>
+    [Fact]
+    public async Task AnAbandonedWaitDoesNotAskTheTextThatLeftTheBox()
+    {
+        var clock = new HandWoundClock();
+
+        Services.AddSingleton<TimeProvider>(clock);
+
+        var cut = Mount();
+
+        var input = cut.Find("input");
+
+        await input.FocusAsync(new FocusEventArgs());
+
+        await input.InputAsync(new ChangeEventArgs { Value = "Vulk" });
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal(["Vulk"], cut.Instance.Asked), TimeSpan.FromSeconds(5));
+
+        var entered = input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        await input.InputAsync(new ChangeEventArgs { Value = "Vulkan" });
+
+        // The vendor's search for the new text supersedes the one the key waits on, so what
+        // answers when both are released is not this key's text.
+        clock.Advance(TimeSpan.FromSeconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal(["Vulk", "Vulkan"], cut.Instance.Asked), TimeSpan.FromSeconds(5));
+
+        Release("Vulk");
+        Release("Vulkan");
+
+        await entered;
+
+        Assert.Equal(Guid.Empty, _picked);
+        Assert.Equal(["Vulk", "Vulkan"], cut.Instance.Asked);
+    }
 }

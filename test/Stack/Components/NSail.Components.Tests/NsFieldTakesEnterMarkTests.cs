@@ -146,11 +146,31 @@ public sealed class NsFieldTakesEnterMarkTests : BunitContext, IAsyncLifetime
         Assert.Null(cut.Find("input").GetAttribute("data-ns-commits"));
     }
 
-    /// <summary>A BROWSED lookup never takes it: its whole set is on screen from the focus, so the
-    /// vendor answers that Enter off the list already open — and an open list's Enter is taken
-    /// from the form by the combobox read instead (NsComboboxExpandedMarkTests).</summary>
+    /// <summary>A BROWSED lookup that searches by the term takes it too, by the same rule as a
+    /// lazy one: a term is in the box and no list answers it yet, so the key is the field's to
+    /// resolve and not the form's.</summary>
     [Fact]
-    public void ABrowsedLookup_LeavesTheEnterToTheForm()
+    public async Task ABrowsedSearchingLookupWithATermToResolve_TakesTheEnter()
+    {
+        var cut = Render<SearchLookupHost>(ps => ps
+            .Add(p => p.Lazy, false)
+            .Add(p => p.Gate, term => string.IsNullOrWhiteSpace(term)
+                ? Task.CompletedTask
+                : new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously).Task));
+
+        var input = cut.Find("input");
+
+        await input.FocusAsync(new FocusEventArgs());
+
+        await input.InputAsync(new ChangeEventArgs { Value = "7798123456789" });
+
+        Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-commits"));
+    }
+
+    /// <summary>A browsed lookup with an empty box has no term to resolve, so it leaves the key to
+    /// the form.</summary>
+    [Fact]
+    public void AnEmptyBrowsedLookup_LeavesTheEnterToTheForm()
     {
         var cut = Render<SearchLookupHost>(ps => ps.Add(p => p.Lazy, false));
 

@@ -782,7 +782,7 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   does.** A reader is a keyboard: it types the whole code and ends it with Enter inside a fraction
   of the vendor's own debounce, so at that instant no search has been asked, the list is closed
   and the vendor — which picks the option it is HIGHLIGHTING — has nothing to pick. The code
-  resolved to nothing and the hand was holding a reader that did not work. So a `Lazy` lookup
+  resolved to nothing and the hand was holding a reader that did not work. So a lookup that searches by the term (`Lazy`, or a browsed one with `OnSearch`)
   reads that keystroke itself and answers it the way the scan box over a grid answers one
   (`ProductScanField`): **one** answer is taken, with no arrow-down; **several** are left in the
   list to choose from — **open, with the first row highlighted and the focus still in the box**,
@@ -799,12 +799,14 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   interval with it. Several answers keep their list open; that list IS the choice. The text it
   resolves is held off the vendor's own text event and never read
   back off the term a search is about — the whole point of the keystroke is that no search has
-  started for it (`NsTextFieldBase.HoldTyped`'s reason). Derived from the posture and never a
-  parameter: a browsed lookup has its whole set on screen from the focus, so the vendor answers
-  off the list already open.
-- **A lookup is complete only when it is keyboard-complete.** On a `Lazy` lookup whose term
+  started for it (`NsTextFieldBase.HoldTyped`'s reason). **One Enter, one wait:** the same
+  gesture asking again while the wait runs takes nothing, and its key-up is withheld too; an Enter
+  on another text waits on its own; a key typed after the Enter abandons the wait at once — it
+  takes nothing and asks nothing for the old text. A lookup with a local list has no search and
+  leaves Enter to the vendor, which answers off the list already open.
+- **A lookup is complete only when it is keyboard-complete.** On a searching lookup whose term
   has several answers: type, Enter, Arrow Down/Up, Enter picks, Esc closes. One answer is taken by
-  the first Enter; a browsed lookup or a settled list leaves Enter to the vendor, which picks the
+  the first Enter; a local list or a settled list leaves Enter to the vendor, which picks the
   highlighted row. The create entry, the quick add and the caller's offer are the list's
   synthetic last rows, walked in the order they are drawn: Arrow Down from the last option the
   vendor can reach (the only row of an empty answer) lands on the first of them and moves on
