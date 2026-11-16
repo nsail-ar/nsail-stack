@@ -140,6 +140,42 @@ public class PassFailureTests
         Assert.Null(pass.Plan);
         Assert.Empty(pass.Started);
         Assert.Contains("Something went wrong", pass.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain(record.Attributes, a => AnswerKeys.Contains(a.Key));
+    }
+
+    static readonly string[] AnswerKeys = [nameof(GraphQlFailure), nameof(GraphQlErrorType), nameof(GraphQlMessage)];
+
+    public static TheoryData<string, GraphQlFailure, GraphQlErrorType?, GraphQlMessage?, string> TwoHundreds => new()
+    {
+        { "<html>Unicorn! This page is taking too long to load.</html>", GraphQlFailure.NotAnAnswer, null, null, "Unicorn" },
+        { """{"data":null,"errors":[{"message":"Something went wrong while executing your query. This may be the result of a timeout, or it could be a GitHub bug."}]}""", GraphQlFailure.Errors, GraphQlErrorType.None, GraphQlMessage.Timeout, "Something went wrong" },
+        { """{"errors":[{"type":"NOT_FOUND","message":"Could not resolve to a Repository with the name 'acme/x'."}]}""", GraphQlFailure.Errors, GraphQlErrorType.NOT_FOUND, GraphQlMessage.Unrecognized, "Could not resolve" },
+        { """{"errors":[{"type":"SOMETHING_NEW","message":"A sentence nobody has read yet."},{"type":"NOT_FOUND","message":"second"}]}""", GraphQlFailure.Errors, GraphQlErrorType.Unknown, GraphQlMessage.Unrecognized, "nobody has read" },
+    };
+
+    // The record names which 200 failed the read, in closed values only, under the template and the
+    // exception type the watch groups it by.
+    [Theory]
+    [MemberData(nameof(TwoHundreds))]
+    public async Task A200ThatFailsAReadNamesItsFailureAndNeverGitHubsText(string body, GraphQlFailure failure, GraphQlErrorType? type, GraphQlMessage? message, string githubs)
+    {
+        var e = await StatusesFailing(HttpStatusCode.OK, body, "4900");
+
+        var (pass, record) = Failed(e, PassCall.Statuses);
+
+        Assert.Equal(Template, record.Body);
+        Assert.Equal(typeof(GitHubException).FullName, record.Tag("exception.type"));
+        Assert.Equal(PassCall.Statuses, record.Tag("ProviderCall"));
+        Assert.Equal(200, record.Tag("ProviderStatus"));
+        Assert.Equal(failure, record.Tag(nameof(GraphQlFailure)));
+        Assert.Equal(type, record.Tag(nameof(GraphQlErrorType)));
+        Assert.Equal(message, record.Tag(nameof(GraphQlMessage)));
+        Assert.Equal(type is null ? 1 : 3, record.Attributes.Count(a => AnswerKeys.Contains(a.Key)));
+        Assert.DoesNotContain(githubs, record.Flattened, StringComparison.Ordinal);
+        Assert.All(record.Attributes.Where(a => a.Key is not "{OriginalFormat}" and not "exception.type" and not "exception.stacktrace"),
+            a => Assert.IsNotType<string>(a.Value));
+        Assert.Empty(pass.Started);
+        Assert.Contains(githubs, pass.Error, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -152,6 +188,7 @@ public class PassFailureTests
         Assert.Equal(403, record.Tag("ProviderStatus"));
         Assert.Equal(0L, record.Tag("RateLimitRemaining"));
         Assert.Equal(PassCall.Stories, record.Tag("ProviderCall"));
+        Assert.DoesNotContain(record.Attributes, a => AnswerKeys.Contains(a.Key));
     }
 
     [Fact]
@@ -197,7 +234,7 @@ public class PassFailureTests
 
         Assert.Equal("pass failed — nothing started", record.Body);
         Assert.Equal(LogLevel.Error, record.Level);
-        Assert.DoesNotContain(record.Attributes, a => a.Key is "ProviderStatus" or "ProviderCall" or "RateLimitRemaining");
+        Assert.DoesNotContain(record.Attributes, a => a.Key is "ProviderStatus" or "ProviderCall" or "RateLimitRemaining" || AnswerKeys.Contains(a.Key));
         Assert.Empty(pass.Started);
         var counted = Assert.Single(passes.Seen);
         Assert.Equal("failed", counted.Outcome);

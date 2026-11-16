@@ -120,11 +120,11 @@ public sealed partial class GitHubClient(HttpClient http)
         var text = await response.Content.ReadAsStringAsync(ct);
         if (GraphQlAnswer(text) is not { } body)
         {
-            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} POST /graphql: not a GraphQL answer: {Truncate(text)}", RateLimitRemaining(response));
+            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} POST /graphql: not a GraphQL answer: {Truncate(text)}", RateLimitRemaining(response)) { Answered = GraphQlFailures.NotAnAnswer };
         }
         if (body.TryGetProperty("errors", out var errors) && errors.GetArrayLength() > 0)
         {
-            throw new GitHubException(HttpStatusCode.OK, $"GraphQL: {errors[0].GetProperty("message").GetString()}");
+            throw new GitHubException(HttpStatusCode.OK, $"GraphQL: {errors[0].GetProperty("message").GetString()}") { Answered = GraphQlFailures.Errors(errors[0]) };
         }
         return body.GetProperty("data");
     }

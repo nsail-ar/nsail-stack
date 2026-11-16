@@ -161,7 +161,11 @@ the files it leaves.
     is written as planned. A failed pass logs the call it was making, the provider's status and the
     rate limit it had left (numbers and an enum, so they reach the log store; the provider's body stays in the
     console line), counts `harness.passes{outcome=failed}` with that `status`, and the story filed for
-    it names all three. A GitHub call refused for its rate limit (a 403 or 429 naming `Retry-After`, or
+    it names all three. A GraphQL read answered 2xx that failed adds, outside the message template so the
+    watch's grouping does not move, `GraphQlFailure` (`NotAnAnswer` or `Errors`) and, for `Errors`, the first
+    error's `GraphQlErrorType` (GitHub's `type`; `None` when it sent none, `Unknown` for one the harness does
+    not list) and `GraphQlMessage` (`Timeout` for a message GitHub sends when it cut the query on time,
+    else `Unrecognized`): enums, as none of GitHub's text reaches the store. A GitHub call refused for its rate limit (a 403 or 429 naming `Retry-After`, or
     `x-ratelimit-reset` with no calls left) waits that out once, when it is at most a minute away, and is
     sent again; the limit is shared by every job and lane on the token, so a second refusal, one that names
     no wait or a farther one, throws. A read that gets a 5xx is sent again up to twice, and so is a GraphQL

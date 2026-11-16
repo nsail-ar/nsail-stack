@@ -680,15 +680,24 @@ public sealed class HarnessLoop(
 
     // A failed read starts nothing: a half board reads as an empty queue. A request that timed out
     // lands here too, a provider failure with no status. What the provider answered rides
-    // the record as numbers and an enum, the only kinds the log scrubber lets through; its body
-    // stays in the exception's message, which reaches the console and never the log store.
+    // the record as numbers and enums, the only kinds the log scrubber lets through: the call, the
+    // status, the calls left, and what a 2xx that failed named (ProviderException.Answered) beside
+    // the template, which stays as it is so the watch's grouping of the record does not move. The
+    // body stays in the exception's message, which reaches the console and never the log store.
     internal const string FailedAnswered = "pass failed — nothing started: {ProviderCall} answered {ProviderStatus}, {RateLimitRemaining} calls left";
 
     internal static Pass Failed(ILogger log, HarnessMetrics metrics, Exception e, PassCall call, DateTimeOffset started)
     {
         if (e is ProviderException { Status: { } status } provider)
         {
-            log.LogError(e, FailedAnswered, call, status, provider.RateLimitRemaining);
+            KeyValuePair<string, object?>[] values =
+            [
+                new("ProviderCall", call),
+                new("ProviderStatus", status),
+                new("RateLimitRemaining", provider.RateLimitRemaining),
+                .. provider.Answered.Select(a => new KeyValuePair<string, object?>(a.Key, a.Value)),
+            ];
+            log.Log(LogLevel.Error, default, new FailedRecord(FailedAnswered, values), e, (record, _) => record.ToString());
             metrics.Passed(failed: true, status);
         }
         else
