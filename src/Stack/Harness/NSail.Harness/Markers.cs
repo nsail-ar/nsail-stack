@@ -48,6 +48,9 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
 
     // An analysis that ended without a verdict, and a job that broke: counted the same way.
     public const string AnalysisDied = "<!-- harness:analysis-died -->";
+
+    // On the comment that names the parts a story sent to other repositories: one story sends them once.
+    public const string Elsewhere = "<!-- harness:elsewhere -->";
     public const string Broke = "<!-- harness:broke -->";
 
     // A red main's story closed as fixed: a close that broke after its comment does not say it twice.

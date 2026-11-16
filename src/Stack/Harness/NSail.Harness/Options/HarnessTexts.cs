@@ -44,6 +44,8 @@ public sealed class HarnessTexts
 
     public string SplitInto { get; set; } = "Split into {parts}: the story is built through them from here on.";
     public string SplitHalfMade { get; set; } = "The split broke after filing {parts} ({error}) — `stalled` and `ruling`: a hand files what is missing, or closes what was filed and lifts both.";
+    public string ElsewhereInto { get; set; } = "Built first in its other repositories: {parts}. The story waits `blocked` for them and is analyzed again against the tree that holds them.";
+    public string ElsewhereTwice { get; set; } = "This story already sent its parts to other repositories: an analysis of it ends `ready`, `ruling` or `done` against the tree that holds them. Sent again.";
 
     public string NoWalk { get; set; } = "Not walked: the analysis marked it `no-walk` (nothing of it shows on a screen), so the gate and its tests are its proof. Closed with its release.";
 

@@ -86,6 +86,18 @@ the files it leaves.
     and a split the harness cannot file whole (a part missing its title or body, one naming itself or a later part)
     counts as an analysis with no verdict. One the board cut short after its first part waits `stalled` and
     `ruling` for a hand, since a second analysis would file the first parts twice.
+  - An analyst whose story needs work in another repository first ends it with `VERDICT: elsewhere`. Its
+    `repositories.txt` names each repository a label routes to (`Repositories[].Label`, a line `label name`);
+    only the analyst, reading the code, knows a part belongs there. `body.md` is the story's own half, its
+    `labels.txt` the story's, `comment.md` says why, and `parts/<n>/` (from 1, as a split's) are the other
+    repositories' halves, each wearing exactly one of those labels in its `labels.txt` — any other is no
+    verdict. The parts are filed beside the story, not under it, with its priority and not its areas, each
+    where a split's part goes; the story drops every routing label (its half is the default repository's),
+    waits `blocked` on the parts and takes the `Elsewhere` event (Backlog by default), so the keeper that
+    lifts `blocked` (`unblock-backlog` in NSail's configuration) sends it back to Analyze once they land —
+    a pinned repository's once the pin holds them — and it is analyzed against that tree. A story sends its
+    parts once: a second `elsewhere` since a hand last lifted a hold counts as a death. Never on a release
+    red or a `stalled` story.
   - `Workers` (by name, ordered by `Priority`): everything the harness takes.
     Each has a `Type` (Analyze, Develop, Review, Verify, Test, Release, Watch, UpdateBoard) whose defaults
     (`Workers/WorkerTypes.cs`: filter, events, what each event does on the board, minutes) it changes only
