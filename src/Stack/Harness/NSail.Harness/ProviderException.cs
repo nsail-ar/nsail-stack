@@ -14,4 +14,8 @@ public class ProviderException(string message, int? status = null, long? rateLim
     public int? Status { get; } = status;
 
     public long? RateLimitRemaining { get; } = rateLimitRemaining;
+
+    // What a 2xx answer that failed the call named, by key: closed values, so they reach the log store
+    // beside the status where the provider's body cannot.
+    public IReadOnlyList<KeyValuePair<string, Enum>> Answered { get; init; } = [];
 }
