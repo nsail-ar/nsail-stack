@@ -60,6 +60,21 @@ public sealed class JobContext(
         return new JobStep(w, agent, command, w.Minutes ?? WorkerTypes.All[w.Type].Minutes, w.Variables);
     }
 
+    // One of a job's events fired while it runs, not at its end (a builder's start, a voyage that ends
+    // with no PR): the worker's actions for it, or its type's. The board moves only where an action says
+    // so; a move the board refuses is logged, not thrown.
+    public async Task Fire(WorkItem item, string evt, int story, ILogger log, CancellationToken ct)
+    {
+        var step = StepOf(item);
+        if (!Worker.ActionsOf(WorkerTypes.All[step.Worker.Type], step.Worker).TryGetValue(evt, out var actions)) return;
+        var signature = step.Agent is { Signature.Length: > 0 } seat ? seat.Signature : Texts.Signature;
+        foreach (var a in actions)
+        {
+            if (a.MoveTo is { } stage) await Board.TrySetStage(story, stage, log, ct);
+            else await JobEvents.Apply(Board, story, a, signature, null, ct);
+        }
+    }
+
     // A seat's run, and the end of its reach: every clone it shared is rewritten as the harness wrote it
     // before any other git runs there. A restore that fails costs nothing here: the next Prepare redoes it,
     // and the work the seat left is still to be delivered.

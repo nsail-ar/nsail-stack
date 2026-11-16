@@ -40,11 +40,16 @@ public sealed class Worker
         Type = type;
         Options = options;
         Filter = filter;
-        // The type's actions per event, an event the worker names replaced whole.
+        On = ActionsOf(type, options);
+        _title = filter.Title is { } t && ValidRegex(t) ? new Regex(t, RegexOptions.CultureInvariant) : null;
+    }
+
+    // The type's actions per event, an event the worker names replaced whole.
+    public static IReadOnlyDictionary<string, IReadOnlyList<ActionOptions>> ActionsOf(WorkerType type, WorkerOptions options)
+    {
         var on = new Dictionary<string, IReadOnlyList<ActionOptions>>(type.Defaults, StringComparer.OrdinalIgnoreCase);
         foreach (var (evt, actions) in options.On) on[evt] = actions;
-        On = on;
-        _title = filter.Title is { } t && ValidRegex(t) ? new Regex(t, RegexOptions.CultureInvariant) : null;
+        return on;
     }
 
     // Every enabled worker, by Priority then name; the problems found stop the start.
@@ -93,7 +98,7 @@ public sealed class Worker
     }
 
     static readonly string[] PrValues = ["none", "open", "any"];
-    static readonly string[] CheckValues = ["ungated", "pending", "red", "conflict", "unread", "read", "elsewhere"];
+    static readonly string[] CheckValues = ["ungated", "pending", "red", "conflict", "unread", "read", "approved", "elsewhere"];
     static readonly string[] CountValues = ["0", ">0"];
 
     static IEnumerable<string> Problems(string where, WorkerType type, WorkerOptions w, FilterOptions f, HarnessOptions o)

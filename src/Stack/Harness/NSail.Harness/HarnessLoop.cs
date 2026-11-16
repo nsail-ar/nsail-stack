@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Collections.Concurrent;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using NSail.Harness.Board;
 using NSail.Harness.Jobs;
@@ -70,6 +71,14 @@ public sealed class HarnessLoop(
     // could not be done) is not walked again before the next cut. A tenant not running its code yet
     // is asked again after QaJob.NotLiveRecheck instead.
     readonly ConcurrentDictionary<int, DateTimeOffset> _walked = new();
+
+    // By `worker#story`: a worker's ending that moved nothing where its type would have (a worker a
+    // hand moves the board for) left the story where that worker takes it; it is not taken again until
+    // somebody touches the story after (a comment, a label, a move). Kept across restarts (HarnessState).
+    readonly ConcurrentDictionary<string, DateTimeOffset> _settled = new(state.Settled);
+
+    // The board's clock against this machine's: a touch this close after the ending is the ending's own actions.
+    internal static readonly TimeSpan SettleSkew = TimeSpan.FromMinutes(1);
     readonly CancellationTokenSource _jobsStop = new();
     Pass? _last;
     string? _paused = state.Paused;
@@ -398,6 +407,35 @@ public sealed class HarnessLoop(
         return _running.Values.SelectMany(r => Capacity.Needs(r.Item.Kind)).GroupBy(r => r).ToDictionary(g => g.Key, g => g.Count());
     }
 
+    internal bool Settled(WorkItem item, IReadOnlyList<Board.Issue> issues)
+    {
+        if (item is not { Worker: { } w, Story: { } n } || !_settled.TryGetValue(SettledKey(w, n), out var at)) return false;
+        if (!Touched(issues.FirstOrDefault(i => i.Number == n)?.TouchedAt, at)) return true;
+        if (_settled.TryRemove(SettledKey(w, n), out _)) state.Settle(_settled);
+        return false;
+    }
+
+    // A board that does not say when a story was touched never holds it settled.
+    internal static bool Touched(DateTimeOffset? touched, DateTimeOffset settled)
+    {
+        return touched is not { } t || t > settled + SettleSkew;
+    }
+
+    // A story the board no longer reads (closed, gone) is nobody's to wait on.
+    void Unsettle(IReadOnlyList<Board.Issue> issues)
+    {
+        var read = issues.Select(i => i.Number).ToHashSet();
+        var gone = _settled.Keys.Where(k => !read.Contains(int.Parse(k[(k.LastIndexOf('#') + 1)..], CultureInfo.InvariantCulture))).ToList();
+        if (gone.Count == 0) return;
+        foreach (var k in gone) _settled.TryRemove(k, out _);
+        state.Settle(_settled);
+    }
+
+    static string SettledKey(string worker, int story)
+    {
+        return $"{worker}#{story.ToString(CultureInfo.InvariantCulture)}";
+    }
+
     bool WalkedSinceCut(WorkItem item, DateTimeOffset? lastCut)
     {
         return item is { Kind: WorkKind.Qa, Story: { } n } && _walked.TryGetValue(n, out var at) && (lastCut is null || at > lastCut);
@@ -549,8 +587,9 @@ public sealed class HarnessLoop(
             if (down.Count > 0) log.LogWarning("{Down} not answering: the workers that need it wait", string.Join(", ", down));
             var plan = WorkerPlanner.Make(snapshot, _workers, PlannerOptionsOf(o, limits.Agents), w => WhenHolds(w, o, down));
             _stalled = snapshot.Issues.Count(i => i.Has(Labels.Stalled));
+            Unsettle(snapshot.Issues);
             Planned(plan.Items, started);
-            var runnable = plan.Items.Where(i => !BackedOff(i) && !WalkedSinceCut(i, snapshot.LastCutAt) && (TakeNew || !StartsStory(i)));
+            var runnable = plan.Items.Where(i => !BackedOff(i) && !WalkedSinceCut(i, snapshot.LastCutAt) && !Settled(i, snapshot.Issues) && (TakeNew || !StartsStory(i)));
             NoteAndon(plan.Andon);
             NoteStill(plan, started);
             // Past the agent's quota wall only the agents stop: gates, builds and releases go on.
@@ -885,6 +924,11 @@ public sealed class HarnessLoop(
                 foreach (var (evt, action) in JobEvents.Actions(on, result))
                 {
                     await Quietly(() => JobEvents.Apply(board, s, action, signature, result.Report, CancellationToken.None), $"#{s} on {evt}: {action}");
+                }
+                if (worker is not null && JobEvents.Settles(worker.Type, on, result))
+                {
+                    _settled[SettledKey(worker.Name, s)] = DateTimeOffset.UtcNow;
+                    state.Settle(_settled);
                 }
             }
         }

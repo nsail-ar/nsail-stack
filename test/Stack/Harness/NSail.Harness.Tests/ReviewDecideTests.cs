@@ -26,6 +26,8 @@ public class ReviewDecideTests : IDisposable
 
         public List<int> Merges { get; } = [];
 
+        public List<(string Sha, string Context, string State)> Statuses { get; } = [];
+
         public string? HeadSha { get; set; }
 
         public override Task<string> Login(CancellationToken ct = default)
@@ -48,9 +50,15 @@ public class ReviewDecideTests : IDisposable
             Merges.Add(pr);
             return Task.CompletedTask;
         }
+
+        public override Task SetStatus(string sha, string context, string state, string description, CancellationToken ct = default)
+        {
+            Statuses.Add((sha, context, state));
+            return Task.CompletedTask;
+        }
     }
 
-    (ReviewJob Job, Repo Repo, MemoryBoard Board) Arrange(string title = "a story")
+    (ReviewJob Job, Repo Repo, MemoryBoard Board) Arrange(string title = "a story", WorkerOptions? worker = null)
     {
         Directory.CreateDirectory(_root);
         var options = new HarnessOptions
@@ -58,7 +66,7 @@ public class ReviewDecideTests : IDisposable
             WorkRoot = Path.Combine(_root, "work"),
             Repositories = [new RepositoryOptions { Name = "acme/app" }],
             Seats = { ["vigia"] = new AgentOptions { Signature = "— Vigía", Model = "m", Prompt = "review" } },
-            Workers = { ["review"] = new WorkerOptions { Type = "Review", Seat = "vigia" } },
+            Workers = { ["review"] = worker ?? new WorkerOptions { Type = "Review", Seat = "vigia" } },
         };
         var repo = new Repo(Path.Combine(_root, "remote.git"));
         var board = new MemoryBoard();
@@ -191,5 +199,31 @@ public class ReviewDecideTests : IDisposable
         Assert.True(ending.Failed);
         Assert.Empty(repo.Merges);
         Assert.Contains(Labels.Stalled, board.Cards[1].Labels);
+    }
+    [Fact]
+    public async Task CleanFromAWorkerThatDoesNotMergeMarksTheHeadAndLeavesTheMergeToAHand()
+    {
+        var (job, repo, board) = Arrange(worker: new WorkerOptions { Type = "Review", Seat = "vigia", Merge = false });
+
+        var ending = await Decide(job, "VERDICT: clean\nAll good.");
+
+        Assert.Equal("Approved", ending.Event);
+        Assert.Empty(repo.Merges);
+        Assert.Equal([(Sha, Markers.ReviewContext, "success")], repo.Statuses);
+        Assert.Contains($"harness:review:approved:{Sha}", repo.Said[0].Body);
+        Assert.Equal(Stages.InProgress, board.Cards[1].Stage);
+    }
+
+    [Fact]
+    public async Task AStallMovesTheStoryOnlyWhereTheWorkersStalledEventSays()
+    {
+        var worker = new WorkerOptions { Type = "Review", Seat = "vigia" };
+        worker.On["Stalled"] = [];
+        var (job, _, board) = Arrange(worker: worker);
+
+        await Decide(job, null);
+
+        Assert.Contains(Labels.Stalled, board.Cards[1].Labels);
+        Assert.Equal(Stages.InProgress, board.Cards[1].Stage);
     }
 }

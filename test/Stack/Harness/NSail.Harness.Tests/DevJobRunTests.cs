@@ -143,7 +143,7 @@ public class DevJobRunTests : IDisposable
             throw new NotSupportedException();
         }
 
-        public Task SetStatus(string sha, string context, string state, string description, CancellationToken ct = default)
+        public virtual Task SetStatus(string sha, string context, string state, string description, CancellationToken ct = default)
         {
             throw new NotSupportedException();
         }
@@ -294,7 +294,7 @@ public class DevJobRunTests : IDisposable
 
     FileRepository Repo => _repo ??= new FileRepository(Remote);
 
-    async Task<JobOutcome> Run(IAgent seat, MemoryBoard board, Lines logs)
+    async Task<JobOutcome> Run(IAgent seat, MemoryBoard board, Lines logs, WorkerOptions? worker = null)
     {
         var options = new HarnessOptions
         {
@@ -302,7 +302,7 @@ public class DevJobRunTests : IDisposable
             Repositories = [new RepositoryOptions { Name = "acme/app" }],
             ProtectedPaths = [".github/workflows/**"],
             Seats = { ["gru"] = new AgentOptions { Signature = "— Gru", Model = "m", Prompt = "build __ISSUE__" } },
-            Workers = { ["develop"] = new WorkerOptions { Type = "Develop", Seat = "gru" } },
+            Workers = { ["develop"] = worker ?? new WorkerOptions { Type = "Develop", Seat = "gru" } },
         };
         var repo = Repo;
         var workspace = new Workspace(Path.Combine(_root, "ws"), Remote, null, 1, "Gru", "gru@example.com");
@@ -580,6 +580,20 @@ public class DevJobRunTests : IDisposable
         Assert.Contains($"`{Labels.AllowProtected}`", said.Body);
         Assert.DoesNotContain(Markers.Voyage, said.Body);
         Assert.Empty(Repo.Opened);
+    }
+
+    [Fact]
+    public async Task AVoyageThatEndsWithNoPrMovesTheStoryOnlyWhereTheWorkersEventsSay()
+    {
+        await Seed();
+        var board = Board();
+        var worker = new WorkerOptions { Type = "Develop", Seat = "gru" };
+        worker.On["Unfinished"] = [];
+
+        var outcome = await Run(new Seat(Workflow, null, "fix(stack): a workflow\n\nThe words."), board, new Lines(), worker);
+
+        Assert.True(outcome.Failed);
+        Assert.Equal(Stages.InProgress, board.Cards[1].Stage);
     }
 
     [Fact]

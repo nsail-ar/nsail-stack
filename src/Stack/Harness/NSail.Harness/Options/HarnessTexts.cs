@@ -31,6 +31,7 @@ public sealed class HarnessTexts
     public string ReviewFourthRead { get; set; } = "Fourth read with findings on PR #{pr} — `stalled` instead of another round: the analyst reads why it does not converge.";
     public string MergeRefused { get; set; } = "The review came back clean but PR #{pr} did not merge (the head moved after the review read it, a conflict with main, or the API down). Back to Ready: the next round brings main in and asks for a review again.";
     public string Merged { get; set; } = "Merged: PR #{pr} — {title}";
+    public string Approved { get; set; } = "Clean read: PR #{pr} waits for a hand's merge";
     public string StillOpen { get; set; } = "Still open for this story: {prs}. Back to **Ready** instead of Merged: the story rides main only when none is left.";
 
     public string JobBroke { get; set; } = "The harness's {kind} job broke ({error}) on {machine}: it is tried once more. A second break in a row goes to `stalled`.";

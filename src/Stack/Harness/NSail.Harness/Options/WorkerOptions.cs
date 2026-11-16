@@ -52,6 +52,10 @@ public sealed class WorkerOptions
     // own account. One that fails holds the worker as a When that does not hold, until the next start.
     public CommandOptions? Setup { get; set; }
 
+    // Review: whether a clean read merges the PR. Off, it marks the head with the reviewer's status
+    // (Markers.ReviewContext, a check a branch rule can require) and ends Approved: a hand merges.
+    public bool Merge { get; set; } = true;
+
     // A Test's story that could not be walked is tried again when someone wrote on it since its last
     // walk, or after these minutes; none, six hours. One that asked a person waits for the comment.
     public int? Recheck { get; set; }
@@ -114,6 +118,7 @@ public sealed class FilterOptions
 
     // The open PR's state at its head, any of: ungated (no verdict of the harness's own Verify),
     // pending, red, conflict, unread (green, no reviewer's word), read (green, a reviewer's word),
+    // approved (green, a clean word from a reviewer that does not merge: a hand merges it),
     // elsewhere (green in another repository, whose own review reads it; unread past
     // PlannerOptions.UnreadElsewhere, a plan's note).
     public string? Checks { get; set; }
