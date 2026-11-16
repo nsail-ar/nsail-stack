@@ -870,7 +870,7 @@
 
         if (since != _typedSince)
         {
-            // A newer wait owns the flag now.
+            // Only the newest wait lowers the flag; an older one leaves it to the newer.
             if (id == _enterWaitId)
             {
                 SkipEnterKeyUp?.SetValue(_autocomplete, false);

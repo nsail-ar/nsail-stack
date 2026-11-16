@@ -545,4 +545,46 @@ public sealed class NsAutocompleteReaderEnterTests : BunitContext, IAsyncLifetim
 
         Assert.Equal(Guid.Empty, _picked);
     }
+
+    /// <summary>The wait abandoned by a typed key asks nothing for the text that left the box:
+    /// the search out when the key landed answers an older text, and the wait ends on that
+    /// instead of asking it again. The interval is wound by hand, so the one search out is the
+    /// one this case armed and not a race with the real clock (preflight.md, 8).</summary>
+    [Fact]
+    public async Task AnAbandonedWaitDoesNotAskTheTextThatLeftTheBox()
+    {
+        var clock = new HandWoundClock();
+
+        Services.AddSingleton<TimeProvider>(clock);
+
+        var cut = Mount();
+
+        var input = cut.Find("input");
+
+        await input.FocusAsync(new FocusEventArgs());
+
+        await input.InputAsync(new ChangeEventArgs { Value = "Vulk" });
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal(["Vulk"], cut.Instance.Asked), TimeSpan.FromSeconds(5));
+
+        var entered = input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        await input.InputAsync(new ChangeEventArgs { Value = "Vulkan" });
+
+        // The vendor's search for the new text supersedes the one the key waits on, so what
+        // answers when both are released is not this key's text.
+        clock.Advance(TimeSpan.FromSeconds(1));
+
+        cut.WaitForAssertion(() => Assert.Equal(["Vulk", "Vulkan"], cut.Instance.Asked), TimeSpan.FromSeconds(5));
+
+        Release("Vulk");
+        Release("Vulkan");
+
+        await entered;
+
+        Assert.Equal(Guid.Empty, _picked);
+        Assert.Equal(["Vulk", "Vulkan"], cut.Instance.Asked);
+    }
 }
