@@ -686,6 +686,20 @@ public sealed class HarnessLoop(
     // body stays in the exception's message, which reaches the console and never the log store.
     internal const string FailedAnswered = "pass failed — nothing started: {ProviderCall} answered {ProviderStatus}, {RateLimitRemaining} calls left";
 
+    // The record's state lists the template's values, then the answer's fields it does not name, then
+    // the template last, where the providers read the body from: the fields ride beside the template
+    // without moving it. The console's line writes the named values in, a null as `(null)`.
+    static string FailedLine(KeyValuePair<string, object?>[] record)
+    {
+        var line = FailedAnswered;
+        foreach (var (key, value) in record)
+        {
+            var text = Convert.ToString(value, CultureInfo.InvariantCulture);
+            line = line.Replace($"{{{key}}}", string.IsNullOrEmpty(text) ? "(null)" : text, StringComparison.Ordinal);
+        }
+        return line;
+    }
+
     internal static Pass Failed(ILogger log, HarnessMetrics metrics, Exception e, PassCall call, DateTimeOffset started)
     {
         if (e is ProviderException { Status: { } status } provider)
@@ -696,8 +710,9 @@ public sealed class HarnessLoop(
                 new("ProviderStatus", status),
                 new("RateLimitRemaining", provider.RateLimitRemaining),
                 .. provider.Answered.Select(a => new KeyValuePair<string, object?>(a.Key, a.Value)),
+                new("{OriginalFormat}", FailedAnswered),
             ];
-            log.Log(LogLevel.Error, default, new FailedRecord(FailedAnswered, values), e, (record, _) => record.ToString());
+            log.Log(LogLevel.Error, default, values, e, (record, _) => FailedLine(record));
             metrics.Passed(failed: true, status);
         }
         else

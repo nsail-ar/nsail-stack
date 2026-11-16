@@ -14,7 +14,8 @@ namespace NSail.Harness.Tests;
 
 // A pass whose read fails starts nothing, and its record carries what the provider answered in the
 // only kinds the log scrubber lets reach the store: the status and the rate limit left as numbers,
-// the call as an enum. The provider's body stays in the exception's message, which never travels.
+// the call as an enum, and what a failed 2xx GraphQL answer named as enums beside the template. The
+// provider's body stays in the exception's message, which never travels.
 [Collection(nameof(PassFailureTests))]
 public class PassFailureTests
 {
@@ -176,6 +177,40 @@ public class PassFailureTests
             a => Assert.IsNotType<string>(a.Value));
         Assert.Empty(pass.Started);
         Assert.Contains(githubs, pass.Error, StringComparison.Ordinal);
+    }
+
+    // The console and the file log read the formatted line: a value the answer did not carry is written
+    // as the template formatter writes it, never left as a gap.
+    [Fact]
+    public async Task AnErrorsAnswerWritesItsMissingCallsLeftAsNullOnTheConsole()
+    {
+        var e = await StatusesFailing(HttpStatusCode.OK, """{"errors":[{"type":"NOT_FOUND","message":"gone"}]}""", "4900");
+        var console = new Lines();
+
+        using var metrics = new HarnessMetrics();
+        HarnessLoop.Failed(console, metrics, e, PassCall.Statuses, DateTimeOffset.UtcNow);
+
+        Assert.Equal("pass failed — nothing started: Statuses answered 200, (null) calls left", Assert.Single(console.Written));
+    }
+
+    sealed class Lines : ILogger
+    {
+        public List<string> Written { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            Written.Add(formatter(state, exception));
+        }
     }
 
     [Fact]

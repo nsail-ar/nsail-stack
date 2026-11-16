@@ -165,9 +165,9 @@ the files it leaves.
     watch's grouping does not move, `GraphQlFailure` (`NotAnAnswer` or `Errors`) and, for `Errors`, the first
     error's `GraphQlErrorType` (GitHub's `type`; `None` when it sent none, `Unknown` for one the harness does
     not list) and `GraphQlMessage` (`Timeout` for a message GitHub sends when it cut the query on time,
-    else `Unrecognized`): enums, as none of GitHub's text reaches the store. A GitHub call refused for its rate limit (a 403 or 429 naming `Retry-After`, or
-    `x-ratelimit-reset` with no calls left) waits that out once, when it is at most a minute away, and is
-    sent again; the limit is shared by every job and lane on the token, so a second refusal, one that names
+    else `Unrecognized`): enums, as none of GitHub's text reaches the store. A GitHub call refused for
+    its rate limit (a 403 or 429 naming `Retry-After`, or `x-ratelimit-reset` with no calls left) waits
+    that out once, when it is at most a minute away, and is sent again; the limit is shared by every job and lane on the token, so a second refusal, one that names
     no wait or a farther one, throws. A read that gets a 5xx is sent again up to twice, and so is a GraphQL
     query answered 2xx with a body that is not a GraphQL answer (empty, not a JSON object, or `errors` that
     are not a list of objects with a `message`); one still malformed throws with its status, and a mutation

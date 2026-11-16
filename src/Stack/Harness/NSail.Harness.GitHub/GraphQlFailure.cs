@@ -13,7 +13,9 @@ public enum GraphQlFailure
     Errors,
 }
 
-// The first error's `type`, spelled as GitHub sends it: None when it sent none, Unknown for one not listed.
+// The first error's `type`: None when it sent none, Unknown for one not listed. The members past those
+// two are GitHub's own spelling, the one name style of its kind in the Stack: a member is read only by
+// its exact name, and the store shows the type as GitHub wrote it.
 public enum GraphQlErrorType
 {
     None,
