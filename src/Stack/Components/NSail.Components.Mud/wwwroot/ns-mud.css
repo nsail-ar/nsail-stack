@@ -1350,7 +1350,8 @@
    app bar it was first sized against: NsContainer's pa-4 (16px) plus half the title's h6 line
    height (32px/2) puts that title's centre 32px down, exactly half of this variable — the
    vendor's own number rather than a value restated by hand. A taller or shorter logo would
-   open a gap between the two. */
+   open a gap between the two. It is a floor: a name wrapped beside a chip grows the row past
+   it, and the brand's centre then sits below the title's. */
 .ns-nav-brand {
     min-height: var(--mud-appbar-height);
     /* The row is the reference its chip's cap measures, below. Safe for NsPanel's reason: a

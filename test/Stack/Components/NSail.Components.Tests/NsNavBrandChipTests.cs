@@ -111,7 +111,14 @@ public sealed class NsNavBrandChipTests : BunitContext
             + @"\.ns-nav-brand :has\(\.ns-chip-ellipsis\) > :not\(:has\(\.ns-chip-ellipsis\), \.ns-chip-ellipsis, img, svg\)\s*"
             + @"\{[^}]*min-width:\s*0;[^}]*overflow-wrap:\s*anywhere;",
             css);
-        Assert.DoesNotMatch(@"\.ns-nav-brand[^{}]*:not\(:has\(\.ns-chip-ellipsis\)[^{}]*\{[^}]*flex-shrink:\s*0;", css);
+        var held = Regex.Matches(css, @"(?<selectors>[^{}]*\.ns-nav-brand[^{}]*)\{(?<body>[^}]*)\}")
+            .Where(rule => Regex.IsMatch(rule.Groups["body"].Value, @"flex-shrink:\s*0"))
+            .Select(rule => rule.Groups["selectors"].Value.Trim());
+        Assert.All(held, selectors => Assert.Contains(selectors, new[]
+        {
+            ".ns-nav-brand .ns-chip-ellipsis.mud-chip",
+            ".ns-nav-brand:has(.ns-chip-ellipsis) :is(img, svg):not(.ns-chip-ellipsis *)",
+        }));
     }
 
     /// <summary>AC2: a logo or product mark, beside the chip or inside the name's box, keeps its
