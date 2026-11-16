@@ -216,6 +216,8 @@
 
     // An Enter is already waiting on the search for the text; a second one is the same gesture.
     bool _enterWaits;
+    int _enterWaitSince;
+    int _enterWaitId;
 
     IEnumerable<TItem> _results = [];
 
@@ -607,8 +609,8 @@
     /// around them, which is what the combobox read next to this one already says a closed,
     /// empty or settled box does. Eaten in those states it would die: a filter bar whose Enter
     /// sends the question from every other box would answer nothing from this one. A browsed
-    /// lookup never takes it — its whole set is on screen from the focus, so the vendor answers
-    /// that Enter off the list already open. The one exception is an entry the arrow keys have
+    /// lookup that does not search by the term never takes it — its whole set is on screen from the
+    /// focus, so the vendor answers that Enter off the list already open. The one exception is an entry the arrow keys have
     /// reached — the create entry, the quick add or the offer: that Enter is the entry's and nobody
     /// else's.</summary>
     protected override bool TakesEnter
@@ -764,7 +766,7 @@
     }
 
     // THE READER'S OWN KEYSTROKE. A reader is a keyboard: it types the whole code and ends it
-    // with Enter, in one burst — and a Lazy box's list is a round trip behind the vendor's own
+    // with Enter, in one burst — and a searching box's list is a round trip behind the vendor's own
     // debounce, so the key lands before any search was even asked. The vendor picks the option
     // it is HIGHLIGHTING, which is nothing at all at that instant, so the code resolves to
     // nothing and the counter is holding a reader that does not work. The field answers the key
@@ -831,8 +833,13 @@
             return;
         }
 
-        if (_enterWaits)
+        // The same gesture asking again (the same text, so the same wait) is not a second take, and
+        // its key UP must not reach the vendor with the flag down: it would pick whatever row is
+        // on screen. An Enter on another text is a new reading and waits on its own.
+        if (_enterWaits && _enterWaitSince == _typedSince)
         {
+            SkipEnterKeyUp?.SetValue(_autocomplete, true);
+
             return;
         }
 
@@ -842,22 +849,32 @@
 
         var since = _typedSince;
 
+        var id = ++_enterWaitId;
+
         _enterWaits = true;
+        _enterWaitSince = since;
 
         List<TItem> rows;
 
         try
         {
-            rows = await Answered(typed);
+            rows = await Answered(typed, since);
         }
         finally
         {
-            _enterWaits = false;
+            if (id == _enterWaitId)
+            {
+                _enterWaits = false;
+            }
         }
 
         if (since != _typedSince)
         {
-            SkipEnterKeyUp?.SetValue(_autocomplete, false);
+            // A newer wait owns the flag now.
+            if (id == _enterWaitId)
+            {
+                SkipEnterKeyUp?.SetValue(_autocomplete, false);
+            }
 
             return;
         }
@@ -907,7 +924,10 @@
     // would take THAT article, silently, over the code in the box. So the answer is waited for a
     // second time instead — the search that cancelled ours asked our own text, and it is the one
     // bringing the list. Unanswered with nothing left out, the key resolves nothing at all.
-    async Task<List<TItem>> Answered(string typed)
+    //
+    // A key typed meanwhile (since no longer the typed count) abandons the wait at once: asking the
+    // old text again would put its answer, and its term, over what the box now holds.
+    async Task<List<TItem>> Answered(string typed, int since)
     {
         await Settling(typed);
 
@@ -916,9 +936,19 @@
             return [.. _results];
         }
 
+        if (since != _typedSince)
+        {
+            return [];
+        }
+
         await Ask(typed);
 
         await Settling(typed);
+
+        if (since != _typedSince)
+        {
+            return [];
+        }
 
         if (_answered == typed)
         {
