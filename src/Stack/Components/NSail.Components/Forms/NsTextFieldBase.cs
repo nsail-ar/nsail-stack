@@ -124,6 +124,15 @@ public abstract class NsTextFieldBase<TValue> : NsFieldBase<TValue>
         await base.SetValue(value);
     }
 
+    /// <summary>A value that arrived whole from somewhere other than the keys — a code read by a
+    /// camera — entered the way a reader's burst ends: written to the box, then committed as by
+    /// Enter, so a screen that resolves scans off `OnCommit` takes it with no line of its own.</summary>
+    protected async Task EnterWhole(TValue? value)
+    {
+        await SetValue(value);
+        await Commit(byEnter: true);
+    }
+
     protected Task Leaving(FocusEventArgs args)
     {
         return Commit(byEnter: false);

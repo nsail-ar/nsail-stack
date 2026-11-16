@@ -82,6 +82,10 @@
 
   "Components.NsTextField.Copy": "Copy",
   "Components.NsTextField.Copied": "Copied",
+  "Components.NsTextField.Camera": "Scan with the camera",
+  "Components.NsTextField.CameraClose": "Close the camera",
+  "Components.NsTextField.CameraDenied": "The camera has no permission. Allow it in the browser, or type the code.",
+  "Components.NsTextField.CameraMissing": "The camera could not be opened. Type the code instead.",
   "Components.NsPasswordField.Show": "Show password",
   "Components.NsPasswordField.Hide": "Hide password",
   "Components.NsPasswordField.Stored": "••••••••",

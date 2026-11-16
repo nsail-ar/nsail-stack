@@ -277,8 +277,8 @@ breakpoint anyway. There is no second knob.
   (cases, The bubble a control whispers). There is no second tooltip path: a vendor tooltip is
   not written in the Stack's components at all. **Whether it opens is derived, never declared**:
   the bubble stays shut where the control's own rendered text already says what it would say, so
-  a collapsed button, a square at `Never`, a menu's icon face, a lookup's end adornment and a
-  footer act the emphasis ladder un-worded all whisper by the one rule, and a button with its
+  a collapsed button, a square at `Never`, a menu's icon face, a lookup's end adornment, a text
+  field's camera and a footer act the emphasis ladder un-worded all whisper by the one rule, and a button with its
   word on screen whispers only the part the word does not carry (its chord). **It closes on
   leave, press, key and scroll**, which is what keeps a name off whatever a press just revealed.
   **A refused control whispers too** — the grey pencil of a row that may not be edited, the X
