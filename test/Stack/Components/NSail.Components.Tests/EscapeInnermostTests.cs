@@ -123,8 +123,15 @@ public sealed class EscapeInnermostTests : BunitContext, IAsyncLifetime
             await cut.Find(from).ClickAsync(new MouseEventArgs());
         }
 
-        var dispatch = cut.Find(from).KeyDownAsync(Escape);
-        var stops = cut.Find(wrapper).GetAttribute("blazor:onkeydown:stoppropagation");
+        // Dispatched and read on the renderer's dispatcher: the deferred close is queued behind
+        // the read there, where on the test's thread it may already have run.
+        Task dispatch = Task.CompletedTask;
+        string? stops = null;
+        await cut.InvokeAsync(() =>
+        {
+            dispatch = cut.Find(from).KeyDownAsync(Escape);
+            stops = cut.Find(wrapper).GetAttribute("blazor:onkeydown:stoppropagation");
+        });
         await dispatch;
 
         Assert.Equal("", stops);

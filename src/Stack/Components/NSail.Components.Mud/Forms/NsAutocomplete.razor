@@ -9,6 +9,8 @@
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Rendering
+@using Microsoft.AspNetCore.Components.RenderTree
 @inherits NsAsyncFieldBase<TValue>
 
 @inject NavigationManager Navigation
@@ -91,8 +93,8 @@
     static readonly FieldInfo? SkipEnterKeyUp =
         typeof(MudAutocomplete<TItem>).GetField("_skipNextEnterKeyUp", BindingFlags.Instance | BindingFlags.NonPublic);
 
-    // The row the vendor highlights and the rows its arrows can reach, which the create entry
-    // below the last of them has to read to know when ArrowDown has run out of rows. Both are
+    // The row the vendor highlights and the rows its arrows can reach, which the entries
+    // below the last of them have to read to know when ArrowDown has run out of rows. Both are
     // private; MudVendorContractTests pins the names.
     static readonly FieldInfo? HighlightedRow =
         typeof(MudAutocomplete<TItem>).GetField("_selectedListItemIndex", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -260,11 +262,19 @@
     // walk repeats.
     bool _refocusIsStale;
 
-    // The create entry is the list's last row to the keyboard: ArrowDown from the last row the
-    // vendor can reach lands here, and Enter opens the route as a click does. The vendor knows
-    // nothing of it, so the entry is this field's own state, drawn through the class the list
-    // carries (ListClass) and dropped whenever the list is not the one it was reached in.
-    bool _onEntry;
+    // The list's entries — create, quick add, offer — are its last rows to the keyboard, in the
+    // order they are drawn: ArrowDown from the last row the vendor can reach lands on the first,
+    // and Enter does what a click on the reached one does. The vendor knows nothing of them, so
+    // the reached entry is this field's own state, drawn through the class the list carries
+    // (ListClass) and dropped whenever the list is not the one it was reached in.
+    enum Entry
+    {
+        Create,
+        QuickAdd,
+        Offer,
+    }
+
+    Entry? _reached;
 
     // The row the vendor highlighted when the last key finished, and null until one did: a list
     // that has only just opened says nothing about whether ArrowDown is walking it or opened it.
@@ -283,11 +293,39 @@
 
     bool IsBusy => Runner.IsRunning || Resolver.IsRunning;
 
-    string ListClass => _onEntry ? "ns-lookup-list ns-lookup-on-entry" : "ns-lookup-list";
+    string ListClass => _reached is null ? "ns-lookup-list" : "ns-lookup-list ns-lookup-on-entry";
 
     // The create entry exists for the keyboard exactly where it exists for the mouse
     // (CreateContent): a route and a concept to name it by.
     bool HasCreateEntry => !string.IsNullOrEmpty(CreateRoute) && TryGetConcept(out _);
+
+    // The entries the keyboard can reach are the ones drawn, in the order CreateContent draws them.
+    List<Entry> Entries()
+    {
+        var entries = new List<Entry>();
+
+        if (HasCreateEntry)
+        {
+            entries.Add(Entry.Create);
+        }
+
+        if (QuickAddContent is not null)
+        {
+            entries.Add(Entry.QuickAdd);
+        }
+
+        if (OfferContent is not null)
+        {
+            entries.Add(Entry.Offer);
+        }
+
+        return entries;
+    }
+
+    string EntryClass(Entry entry, string @class = "ns-lookup-create")
+    {
+        return _reached == entry ? $"{@class} ns-lookup-create-active" : @class;
+    }
 
     // A field bound to a page-local value has no message property to derive a label from —
     // the item type's own key (MetadataProvider.KeyFor, area-qualified) names the concept and
@@ -378,7 +416,7 @@
                 @<CascadingValue Value="Surface" IsFixed="true">
                     @if (label is not null)
                     {
-                        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="@(_onEntry ? "ns-lookup-create ns-lookup-create-active" : "ns-lookup-create")">
+                        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="@EntryClass(Entry.Create)">
                             <NsIcon Icon="@NsIcons.Add" />
                             @* The one open the app makes that is not a place: the window it opens
                                exists to hand a value back to the form standing underneath, which
@@ -394,7 +432,7 @@
                        here and not by the caller: what the kit brings is what the entry says. *@
                     @if (offer is not null)
                     {
-                        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ns-lookup-create">
+                        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="@EntryClass(Entry.Offer, "ns-lookup-create ns-lookup-offer")">
                             @offer
                         </NsStack>
                     }
@@ -408,12 +446,13 @@
     // writes, so the term it no longer quotes is the one it would write. A Lazy field emptied
     // never reaches the caller's OnSearch at all (the empty box sends nothing), so the caller
     // cannot retire it on its own: what it computed for the last term it searched stands until
-    // this asks.
+    // this asks. A fragment that draws nothing is the facade saying it has nothing to offer, so it
+    // is no entry: no row for the mouse, none for the arrows to land on.
     RenderFragment? OfferContent
     {
         get
         {
-            if (Offer is null || string.IsNullOrWhiteSpace(_text) || _answered != _text)
+            if (Offer is null || string.IsNullOrWhiteSpace(_text) || _answered != _text || !Draws(Offer))
             {
                 return null;
             }
@@ -421,6 +460,40 @@
             return Offer;
         }
     }
+
+    // Runs the fragment into a builder of its own and reads what it wrote: a component it seats is
+    // only a frame there, never instantiated. Whitespace is not a drawing. The frames are the
+    // framework's own render tree (BL0006), the one place a fragment says what it draws.
+#pragma warning disable BL0006
+    static bool Draws(RenderFragment fragment)
+    {
+        using var probe = new RenderTreeBuilder();
+
+        fragment(probe);
+
+        var frames = probe.GetFrames();
+
+        for (var i = 0; i < frames.Count; i++)
+        {
+            var frame = frames.Array[i];
+
+            var blank = frame.FrameType switch
+            {
+                RenderTreeFrameType.Region => true,
+                RenderTreeFrameType.Text => string.IsNullOrWhiteSpace(frame.TextContent),
+                RenderTreeFrameType.Markup => string.IsNullOrWhiteSpace(frame.MarkupContent),
+                _ => false,
+            };
+
+            if (!blank)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+#pragma warning restore BL0006
 
     // The escape hatch, and the one entry that carries data: it quotes what was typed, so the row
     // it will make is legible before it exists. Nothing renders while the text matches an option
@@ -440,7 +513,7 @@
             var label = string.Format(Strings.Translate("Common.QuickAdd"), _text.Trim());
 
             return
-                @<NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ns-lookup-create">
+                @<NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="@EntryClass(Entry.QuickAdd)">
                     <NsIcon Icon="@NsIcons.Add" />
                     <NsButton As="NsAs.Inline" Label="@label" OnClick="QuickAdd" />
                 </NsStack>;
@@ -528,59 +601,85 @@
     /// empty or settled box does. Eaten in those states it would die: a filter bar whose Enter
     /// sends the question from every other box would answer nothing from this one. A browsed
     /// lookup never takes it — its whole set is on screen from the focus, so the vendor answers
-    /// that Enter off the list already open. The one exception is the create entry once the arrow
-    /// keys have reached it: that Enter opens the create route and is nobody else's.</summary>
+    /// that Enter off the list already open. The one exception is an entry the arrow keys have
+    /// reached — the create entry, the quick add or the offer: that Enter is the entry's and nobody
+    /// else's.</summary>
     protected override bool TakesEnter
     {
-        get { return _onEntry || Resolves(_typed); }
+        get { return _reached is not null || Resolves(_typed); }
     }
 
-    // ArrowDown past the last row the vendor can reach lands on the create entry, ArrowUp from it
-    // returns to that row. The vendor clamps at its ends, so the key that ran out of rows is the
-    // one that left its highlight where it already was — read against the row the last key left
-    // it on. An empty list has no row to run out of: the entry is the only thing there to reach, and the
-    // vendor's end it clamps at.
-    // Reaching the entry clears the vendor's highlight; a return writes the last row back.
+    // ArrowDown past the last row the vendor can reach lands on the first entry and walks on
+    // through the rest; ArrowUp walks back and, from the first, returns to that row. The vendor
+    // clamps at its ends, so the key that ran out of rows is the one that left its highlight where
+    // it already was — read against the row the last key left it on. An empty list has no row to
+    // run out of: the entries are the only things there to reach, and the first is where ArrowUp
+    // stops. Reaching an entry clears the vendor's highlight; a return writes the last row back.
     void Walk(bool down)
     {
-        if (!HasCreateEntry || _autocomplete is not { Open: true })
+        var entries = Entries();
+
+        if (entries.Count == 0 || _autocomplete is not { Open: true })
         {
             return;
         }
 
         var reachable = (ReachableRows?.GetValue(_autocomplete) as IEnumerable<int> ?? []).ToList();
         var at = HighlightedRow?.GetValue(_autocomplete) as int?;
+        var on = _reached is { } reached ? entries.IndexOf(reached) : -1;
 
-        if (_onEntry && down)
+        if (on >= 0 && (down || on > 0 || reachable.Count == 0))
         {
+            // The vendor moved its own highlight on this key; one place is lit, and it is the entry.
+            _reached = entries[down ? Math.Min(on + 1, entries.Count - 1) : Math.Max(on - 1, 0)];
             HighlightedRow?.SetValue(_autocomplete, -1);
             _walkedTo = -1;
+
+            StateHasChanged();
 
             return;
         }
 
-        if (down && !_onEntry)
+        if (on >= 0)
         {
-            if (reachable.Count == 0 || (at == reachable[^1] && _walkedTo == at))
-            {
-                _onEntry = true;
-
-                // One place is lit: the vendor's highlight leaves the last option for the entry.
-                HighlightedRow?.SetValue(_autocomplete, -1);
-
-                StateHasChanged();
-            }
-        }
-        else if (!down && _onEntry && reachable.Count > 0)
-        {
-            _onEntry = false;
+            _reached = null;
 
             HighlightedRow?.SetValue(_autocomplete, reachable[^1]);
 
             StateHasChanged();
         }
+        else if (down && (reachable.Count == 0 || (at == reachable[^1] && _walkedTo == at)))
+        {
+            _reached = entries[0];
+
+            HighlightedRow?.SetValue(_autocomplete, -1);
+
+            StateHasChanged();
+        }
+        else
+        {
+            _reached = null;
+        }
 
         _walkedTo = HighlightedRow?.GetValue(_autocomplete) as int?;
+    }
+
+    // Enter on a reached entry does what its click does. The offer is the caller's own control,
+    // which only the page can press (ns.js, pressOffer).
+    async Task TakeEntryAsync(Entry entry)
+    {
+        switch (entry)
+        {
+            case Entry.Create:
+                await OpenCreateAsync();
+                break;
+            case Entry.QuickAdd:
+                await QuickAdd();
+                break;
+            case Entry.Offer:
+                await Js.InvokeVoidAsync("nsapp.pressOffer");
+                break;
+        }
     }
 
     // The entry opens as the mouse's click does: the surface this field stands on resolves the
@@ -700,13 +799,13 @@
             return;
         }
 
-        if (_onEntry)
+        if (_reached is { } reached)
         {
             // The vendor picks on this Enter's key UP: the key is the entry's, so it is handed
             // back.
             SkipEnterKeyUp?.SetValue(_autocomplete, true);
 
-            await OpenCreateAsync();
+            await TakeEntryAsync(reached);
 
             return;
         }
@@ -810,7 +909,7 @@
     // close and no list to flicker.
     async Task OnOpenChanged(bool open)
     {
-        _onEntry = false;
+        _reached = null;
         _walkedTo = null;
 
         if (!open || !_reopenIsStale || _autocomplete is null)
@@ -988,7 +1087,7 @@
         // that ask for no search at all.
         _reopenIsStale = false;
         _refocusIsStale = false;
-        _onEntry = false;
+        _reached = null;
         _walkedTo = null;
         _searchesOut++;
 

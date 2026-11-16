@@ -333,4 +333,11 @@ public class OrphanTests
         Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress").Pr(1, 10, CiState.Pending)).Chores, c => c.Story == 1);
         Assert.DoesNotContain(Plan(new Fixture().Story(1, "In-Progress", subs: 2)).Chores, c => c.Story == 1);
     }
+
+    [Fact]
+    public void AnApprovedPrWaitsForAHandsMergeAndNoRoundOrReviewTakesIt()
+    {
+        Assert.Empty(Plan(new Fixture().Story(2, "In-Progress").Pr(2, 20, word: "approved")).Items);
+        Assert.NotEmpty(Plan(new Fixture().Story(2, "In-Progress").Pr(2, 20, word: "findings")).Items);
+    }
 }

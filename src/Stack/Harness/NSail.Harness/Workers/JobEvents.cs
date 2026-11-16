@@ -29,6 +29,18 @@ public static class JobEvents
             .ToList();
     }
 
+    // Whether an ending leaves the story where its worker takes it: an event its type moves the story
+    // on, which this worker's actions for it do not move (a worker a hand moves the board for).
+    public static bool Settles(WorkerType type, IReadOnlyDictionary<string, IReadOnlyList<ActionOptions>> on, JobOutcome outcome)
+    {
+        return Fired(outcome).Any(e => Moves(type.Defaults, e) && !Moves(on, e));
+    }
+
+    static bool Moves(IReadOnlyDictionary<string, IReadOnlyList<ActionOptions>> on, string evt)
+    {
+        return on.TryGetValue(evt, out var actions) && actions.Any(a => a.MoveTo is not null);
+    }
+
     public static async Task Apply(IBoard board, int story, ActionOptions a, string signature, string? report, CancellationToken ct)
     {
         if (a.MoveTo is { } stage) await board.SetStage(story, stage, ct);

@@ -22,7 +22,8 @@
                 ValueChanged="ValueChanged"
                 OnQuickAdd="OnQuickAdd"
                 Clearable="Clearable"
-                Offer="Offer" ReadOnly="ReadOnly" />
+                Offer="Offer" ReadOnly="ReadOnly"
+                ItemDisabledFunc="ItemDisabledFunc" />
 
 @code {
 
@@ -74,6 +75,11 @@
     /// entry in whatever the facade says.</summary>
     [Parameter]
     public RenderFragment? Offer { get; set; }
+
+    /// <summary>A row the arrows and Enter skip, as a caller whose row answers with a menu of its
+    /// own declares it.</summary>
+    [Parameter]
+    public Func<SelectRef, bool>? ItemDisabledFunc { get; set; }
 
     /// <summary>Every term the field asked the server for, in order — what says whether a
     /// search that showed the wrong rows ever reached the query at all.</summary>

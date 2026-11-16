@@ -255,8 +255,10 @@ operation's subtree answers not-found.
   allowed (`[Requires]`, permissions.md) met a gate that answers the key and the audience and
   ignores values on purpose, so its organization field carries no permission — the caller's own
   subtree answers. The gate leaves the verdict on the flow (`AmbientAuthorization.FieldsVetted`)
-  and the interceptor reads it; where no gate ran at all — a fixture, a reaction it exempts, the
-  system's own send — the field is taken, because no value there is unchecked.
+  and the interceptor reads it. A reaction or a delegated send the gate exempts asks nothing and
+  reads the verdict of the gated send it runs behind; where no gate ran at all — a fixture, a
+  queue delivery, the system's own send — the field is taken, because no value there is
+  unchecked.
 - **The subtree is walked once per operation, never inside a query.** The chart only names a
   row's parent, so a WHERE cannot climb it: `RelationProvider.GetDescendants` is `GetAncestors`
   read downward, one level per query, no recursive CTE (shallow trees), and
@@ -588,8 +590,9 @@ the contract and the Stack only reads:
     refusing every request is a suspension, and that is the state row's word, never a number's.
   - **A flag off closes a road; it never hides what already went down it.** What the tenant's own
     rows record of a feature stays readable where it was read before. And a flag answers a
-    PRESSED send: what the system sends on its own passes no gate (`AmbientPublish`), so whatever
-    carries those sends is what has to find the road shut.
+    PRESSED send: what the system sends on its own passes no gate (`AmbientPublish`), nor does a
+    delegated send (`DelegatedSend`), so whatever carries those sends is what has to find the
+    road shut.
 
 - **A suspended tenant's requests answer the suspended page** (`TenantStateMiddleware`,
   immediately behind `TenancyMiddleware`): 503 and the page to a browser, 503 and the `Suspended`

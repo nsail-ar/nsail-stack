@@ -112,13 +112,44 @@ public sealed partial class GitHubClient(HttpClient http)
     public async Task<JsonElement> GraphQl(string query, object? variables = null, CancellationToken ct = default)
     {
         var payload = JsonSerializer.Serialize(new { query, variables });
-        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Post, "graphql") { Content = new StringContent(payload, Encoding.UTF8, "application/json") }, !query.TrimStart().StartsWith("mutation", StringComparison.Ordinal), ct);
-        var body = await Read(response, ct);
+        using var response = await Dispatch(() => new HttpRequestMessage(HttpMethod.Post, "graphql") { Content = new StringContent(payload, Encoding.UTF8, "application/json") }, !query.TrimStart().StartsWith("mutation", StringComparison.Ordinal), ct, malformed: text => GraphQlAnswer(text) is null);
+        if (!response.IsSuccessStatusCode)
+        {
+            await Read(response, ct);
+        }
+        var text = await response.Content.ReadAsStringAsync(ct);
+        if (GraphQlAnswer(text) is not { } body)
+        {
+            throw new GitHubException(response.StatusCode, $"{(int)response.StatusCode} POST /graphql: not a GraphQL answer: {Truncate(text)}", RateLimitRemaining(response));
+        }
         if (body.TryGetProperty("errors", out var errors) && errors.GetArrayLength() > 0)
         {
             throw new GitHubException(HttpStatusCode.OK, $"GraphQL: {errors[0].GetProperty("message").GetString()}");
         }
         return body.GetProperty("data");
+    }
+
+    // A JSON object whose `errors`, when it carries them, is a list of objects with a message; null for any other body.
+    static JsonElement? GraphQlAnswer(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        JsonElement body;
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            body = doc.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        if (body.ValueKind != JsonValueKind.Object) return null;
+        if (body.TryGetProperty("errors", out var errors)
+            && (errors.ValueKind != JsonValueKind.Array || errors.EnumerateArray().Any(e => e.ValueKind != JsonValueKind.Object || !e.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.String)))
+        {
+            return null;
+        }
+        return body;
     }
 
     public async Task<JsonElement> Send(HttpMethod method, string path, object? body = null, CancellationToken ct = default)
@@ -139,8 +170,9 @@ public sealed partial class GitHubClient(HttpClient http)
 
     // A rate-limited answer (403/429 with a wait) is waited out once and sent again: the limit is shared
     // with every job and lane on the token, so a second refusal is thrown. A 5xx is sent again, a few
-    // times, only when the call reads (a GET, a GraphQL query). What still fails is returned for Read to throw.
-    async Task<HttpResponseMessage> Dispatch(Func<HttpRequestMessage> build, bool reads, CancellationToken ct)
+    // times, only when the call reads (a GET, a GraphQL query), and so is a 2xx whose body `malformed` refuses.
+    // What still fails is returned for its caller to throw.
+    async Task<HttpResponseMessage> Dispatch(Func<HttpRequestMessage> build, bool reads, CancellationToken ct, Func<string, bool>? malformed = null)
     {
         var waitedLimit = false;
         for (var attempt = 1; ; attempt++)
@@ -153,7 +185,8 @@ public sealed partial class GitHubClient(HttpClient http)
                 wait = waitedLimit ? null : LimitWait(response);
                 waitedLimit = wait is not null;
             }
-            else if ((int)response.StatusCode >= 500 && reads && attempt < Attempts)
+            else if (reads && attempt < Attempts && ((int)response.StatusCode >= 500
+                || (response.IsSuccessStatusCode && malformed is not null && malformed(await response.Content.ReadAsStringAsync(ct)))))
             {
                 wait = TimeSpan.FromSeconds(attempt);
             }

@@ -192,7 +192,8 @@ URL opens a screen to somebody who holds no session and never will. The shape is
   composes the other kit out. Where the answer is the system's own business and never reaches
   the caller, ask on a scope of its own with `Session.System()`, the seam `BackgroundJobRunner`
   rides (`FreeHours.BehindABookingLink` subtracts a professional's external busy time that
-  way). Both shortcuts are wrong: granting the inner message to the audience-less policy
+  way). A write the caller must stay the actor of is marked delegated instead (Evaluation,
+  point 3). Both shortcuts are wrong: granting the inner message to the audience-less policy
   publishes it to the whole internet, and `[Requires]` does the same with a flat implication
   nothing can narrow. The fixture that catches this composes the OTHER kit
   (`SchedulingWithACalendar`); a fixture without it shipped green and answered 401 in the app.
@@ -454,13 +455,28 @@ Optical fixture with no overriding wildcard, so the preset itself answers).
    - Not exempt: **a caller's own `Send`** (still 403) and anything crossing a **process
      boundary**, since an `HttpSender`'s message arrives at the other side as an ordinary
      send and is gated there.
-   - The second exemption, and the only other one: **a `[Queue]` command's delivery**
+   - The second exemption: **a `[Queue]` command's delivery**
      (`AmbientQueue`, read beside `AmbientPublish` by the same two lines). It is the same
      reasoning across a wait rather than a frame — the grants were answered at the send and
      the caller was told "accepted" — and the alternative is a grant revoked in between
      refusing, hours later, a command there is nobody left to tell about. The actor is not
      elevated there either: the envelope carries his own ids, never a credential, and the
      drain re-enters them ([messaging.md](messaging.md), The durable queue).
+   - The third, and the only other one: **a delegated send** — a write a handler derives
+     whose message the caller holds no grant for, made as her (a voucher she issues while
+     collecting her own session). The handler marks it, `DelegatedSend.Run(() => _mediator.Send(…))`,
+     and the gate does not ask again for it or for anything behind it; the session is
+     untouched, so it still records who acted, where `Session.System()` would erase her.
+     **It opens only inside the handler of a send the gate passed**: `Run` reads the gate's
+     verdict off the flow (`AmbientAuthorization`), so a page, a background job or a test body
+     with no gated send in its flow opens nothing and the send is gated as the caller's. It
+     never crosses a process boundary — an `HttpSender`'s message is an ordinary send on the
+     other side. The boundary is code review of the handler that marks it, as a reaction's is
+     of its registration: the door the caller passed is what authorizes every write it marks.
+     Behind it the org filter reads what it reads behind a reaction — the door's verdict, so
+     reading wider than the caller's branch is still something a grant has to say — and a
+     feature mark is not asked either, so the handler that delegates is what has to find a
+     road shut. An unmarked send from the same handler stays the caller's own (still 403).
    - **The boundary this rests on is DI registration**, as a background job's is: a domain
      event carries no `[Http]`, so nothing off the wire can publish. What may publish is what
      the app composed, and a new `IHandler<TEvent>` is reviewed as code — no stored policy
@@ -474,6 +490,10 @@ Optical fixture with no overriding wildcard, so the preset itself answers).
    ungranted message sent by the caller is still refused; `AmbientPublishTests`
    (`NSail.Messaging.Runtime.Tests`) pins the flow that carries the flag.
    `QueueIdentityTests` (`NSail.Messaging.Queue.Tests`) is the queue's twin of the first.
+   `DelegatedSendGateTests` (`NSail.Security.Tests`) is the delegation's: the delegated send
+   and the send behind it run as the caller, never a system session; the same message sent
+   by the caller or unmarked by the handler is refused; one opened where no gated send runs
+   opens nothing; and the org filter's verdict behind it equals a reaction's.
 
 Graph questions go through a **provider** (`RelationProvider` — Provider family, lives in NSail.Security, covers both edges: `IsRelated(partyA, partyB, role)` over Relationships, `IsMember(party, org, role)` over Memberships, plus `GetAncestors`/`GetDescendants` over the chart — in-query always; post-query filtering is banned: paging, counts, existence leaks). Two implementations:
 - **Optimistic default** (TryAdd, returns true) — serves the WASM client AND apps without Iam (the Null pattern); a host with the gate on (`AddSecurityEnforcement`) refuses to start over it unless Iam replaced it or the host says `AcceptPermissiveProviders()`. Client flow for `relatedAs`: the one part the client decides without the graph is that the id is not the caller's own (`SecurityManager.Permits`, below); past that the handler passes optimistically → UI attempts → server 403 → Forbidden toast. Few cases, acceptable UX.
@@ -672,8 +692,8 @@ ships — the bag's own reading rules are data-tenancy.md's. But a feature the
 bag positively closes is the one answer `PreAuthorize` is **not** optimistic about: the page, the
 menu entry and the row action are not offered at all, because a plan that excludes something must
 not go on offering it only to refuse the press. And the mark gates a **pressed** send: what the
-system sends on its own passes no gate at all (`AmbientPublish`), so whatever carries those sends
-is what has to find the road shut.
+system sends on its own passes no gate at all (`AmbientPublish`), nor does a delegated send
+(`DelegatedSend`), so whatever carries those sends is what has to find the road shut.
 
 **Both gates answer it, and with the same verdict.** The door ahead of model binding
 (`EndpointGateMiddleware`) asks `SecurityManager.PreRefusal`, which reads the bag the way

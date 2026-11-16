@@ -57,8 +57,10 @@ just places `<NsNavMenu />`.
   `--ns-nav-gutter`, `--ns-nav-inset` and `--ns-nav-gap` in `ns-mud.css`; the phone title row
   does not move. A chip in the brand row ends a long label in `…` (`ns-chip-ellipsis`, which
   every `NsChip` wears) and is capped at half the brand row itself, whatever box the `Brand`
-  fragment wraps around it: a label that fits shows whole. Pushing the chip to the row's end is
-  the fragment's.
+  fragment wraps around it: a label that fits shows whole. The boxes between the row and the
+  chip shrink and what sits beside them does not, so a long label gives way before the install's
+  name wraps and the chip never leaves the drawer. Pushing the chip to the row's end is the
+  fragment's job.
 - **The mechanism for the group order is weight bands**, so contributors compose without
   coordinating: domain groups 10–50, system groups 80+.
 - **A page missing from the route table throws at startup** rather than 404-ing on click

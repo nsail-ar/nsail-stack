@@ -112,7 +112,8 @@ public class ProductRule : IValidator<UpdateProduct>   // a Problem refuses, nul
 | `[Unbounded(reason)]` | property | Records why a number or code declares no bound; read by a test, no runtime effect |
 
 Validation attributes in `NSail.Messaging.Runtime.Validation`: `[NotFuture]`, `[NotNegative]`,
-`[NotPositive]`, `[PositiveAmount]`, `[NotAbove(nameof(Other))]`, `[SearchTerm]` (a `MaxLength`
+`[NotPositive]`, `[PositiveAmount]`, `[NotAbove(nameof(Other))]`, `[Color]` (the rule
+`NsColorText` paints by; blank passes), `[SearchTerm]` (a `MaxLength`
 of `SearchTermAttribute.MaximumLength`), and `[Validated]` to walk into a nested model or each
 element of a collection. An attribute implementing `ICodedValidation` names its own problem code
 and the catalog sentence that goes with it.

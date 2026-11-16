@@ -678,7 +678,9 @@ business rules.
     bound over `BusinessDate.Today`); `[NotNegative]` (floor at zero; zero passes);
     `[PositiveAmount]` (refuses zero, a negative, and a fraction under a cent);
     `[NotAbove(nameof(Other))]` (a "desde" held under its "hasta"; equal passes, and so does
-    a pair with only one end). A rule about a country's tax id belongs to the kit owning the
+    a pair with only one end); `[Color]` (a hex, `rgb()`/`rgba()` or a bare keyword, as
+    `InvalidFormat` — the rule `NsColorText` paints by, so no stored color is one a style
+    drops). A rule about a country's tax id belongs to the kit owning the
     field (`[Cuit]`, Directory).
   - **The numbers its sentence names travel with it**: `Arguments` ({`from`}, {`to`}) fills
     the catalog's tokens from the same bound the attribute refuses by, so moving a bound

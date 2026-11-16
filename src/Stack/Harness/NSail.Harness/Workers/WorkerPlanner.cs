@@ -217,6 +217,8 @@ public static class WorkerPlanner
                 case CiState.Conflict: return "conflict";
             }
         }
+        // A clean read that waits for a hand's merge is no round's and no reviewer's.
+        if (pr.Word == "approved") return "approved";
         if (pr.Word is not null) return "read";
         // A green head in another repository is read by that repository's own review, which its CI
         // starts; one unread past UnreadElsewhere is a plan's note.

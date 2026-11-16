@@ -155,6 +155,24 @@ public class PassFailureTests
     }
 
     [Fact]
+    public async Task AClosedSweepAnsweredMalformedFailsAsGitHubsStatus()
+    {
+        var http = new HttpClient(new Answer(HttpStatusCode.OK, "", null));
+        GitHubClient.Configure(http, "t");
+        var board = new GitHubBoard(new GitHubClient(http) { Delay = (_, _) => Task.CompletedTask }, "acme/app", new GitHubBoardOptions { Repository = "acme/app", Project = 1 });
+        var e = await Assert.ThrowsAsync<GitHubException>(() => board.ClosedSince(DateTimeOffset.UtcNow.AddDays(-1)));
+        using var passes = new Passes();
+
+        var (_, record) = Failed(e, PassCall.Closed, passes.Metrics);
+
+        Assert.Equal(Template, record.Body);
+        Assert.Equal(LogLevel.Error, record.Level);
+        Assert.Equal(200, record.Tag("ProviderStatus"));
+        Assert.Equal(PassCall.Closed, record.Tag("ProviderCall"));
+        Assert.Equal(200, Assert.Single(passes.Seen).Status);
+    }
+
+    [Fact]
     public async Task AFailedPassCountsItsStatus()
     {
         var e = await StatusesFailing(HttpStatusCode.BadGateway, "bad gateway");

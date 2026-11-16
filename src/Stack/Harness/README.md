@@ -56,7 +56,10 @@ the files it leaves.
     tests or build errors that main's newest completed CI run failed too waits for main the same way,
     read again each pass; nothing re-runs it.
   - `ProtectedPaths` (default `.github/workflows/**`): a builder whose commits touch one is not pushed,
-    since CI would run the changed workflow with the repository's secrets before review; `AllowProtectedPaths`
+    since CI would run the changed workflow with the repository's secrets before review. A file counts when the voyage's
+    commits touch it and it differs from the default branch since their merge base, as a PR's files do: one merged in
+    from main as main holds it runs nothing main does not. Both ends are out of the seat's reach: the voyage's start is
+    the commit resolved at checkout, main is read from the remote, never from a ref the seat can move. `AllowProtectedPaths`
     lifts it for the harness, the `allow-protected` label for one story. A refused story waits where it stands wearing `ruling` and
     `screened` and is not built again; its commits and its ending stay on the machine that built it (a ref and a folder under
     `harness-kept` in its git directory), never on the remote. The refusal is no dead voyage. Adding `allow-protected` releases
@@ -92,7 +95,17 @@ the files it leaves.
     `Minutes`, `DailyCap`, `Setup`, `Variables` (a Release also its `Product`, `Workflow` and `Paths`, and a
     `When.Schedule` with no End: its day's cut fires there), and `On` — per event, a list of actions (`MoveTo`, `AddLabel`,
     `RemoveLabel`, `Comment` — `{report}` quotes what the job wrote —, `Close`) that replaces the type's; a
-    comment signs as the worker's `Seat`. A Release also walks each release of its product once
+    comment signs as the worker's `Seat`. A story worker's job moves the board only through its
+    events, at its end or while it runs (a Develop's `Started`, `Unfinished`, `Stalled`, `Landed`; a
+    Review's `MergeRefused`, `Stalled`): an event whose actions name no `MoveTo` leaves the story where
+    it stands, so a hand moves it (`"On": { "Ready": [] }`). An ending that moved nothing where its type
+    would have leaves the story settled for that worker: not taken again until somebody touches it
+    after (a comment, a label, a move — a minute past the ending, the board's clock against the
+    machine's), kept across restarts in `state.json`; a board that does not say when a story was
+    touched never holds one settled. A Review with `Merge: false` merges nothing: a clean read marks
+    the head `harness/review` success (a check a branch rule can require), its word on the PR is
+    `approved` — the `Checks` state no reviewer and no round takes — and it ends `Approved`; the story's
+    move once a hand merges is a keeper's (`Pr: none`, `PrMerged: true`). A Release also walks each release of its product once
     published: every story its commits name ships in its version (a milestone), every Merged story
     whose PRs the tag holds moves to Released, and the closed version says it was walked. A tag never
     published is no release, so a cut that died never reads as the last one. A Test walks one story with its seat in a fresh browser
@@ -139,8 +152,10 @@ the files it leaves.
     it names all three. A GitHub call refused for its rate limit (a 403 or 429 naming `Retry-After`, or
     `x-ratelimit-reset` with no calls left) waits that out once, when it is at most a minute away, and is
     sent again; the limit is shared by every job and lane on the token, so a second refusal, one that names
-    no wait or a farther one, throws. A read that gets a 5xx is sent again up to twice; any other refusal
-    throws at once. A limit, on a pass or at a job's end, holds every pass after it for the wait it asked,
+    no wait or a farther one, throws. A read that gets a 5xx is sent again up to twice, and so is a GraphQL
+    query answered 2xx with a body that is not a GraphQL answer (empty, not a JSON object, or `errors` that
+    are not a list of objects with a `message`); one still malformed throws with its status, and a mutation
+    is never sent again. Any other refusal throws at once. A limit, on a pass or at a job's end, holds every pass after it for the wait it asked,
     at least `MinLimitBackoff` and up to `MaxLimitBackoff`, and a wake (a job's end, the API) does not end the
     hold; outside one, a wake runs the next pass at once. Every GitHub REST read is sent with the ETag of its last answer: one that has not
     moved comes back 304, which GitHub does not count against the token's rate limit, so a pass over an

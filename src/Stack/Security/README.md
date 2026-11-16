@@ -10,7 +10,7 @@ in a message's fields, never the rows a handler returns.
 | Package | What it is | Referenced by |
 |---|---|---|
 | `NSail.Security.Annotations` | `[PolicyField]` with `RestrictAs`, `[Requires]`, `[RequiresFeature]` | Sdk (through `NSail.Security`) |
-| `NSail.Security` | `Session`, `Policy` and `PolicyBuilder`, `SecurityManager`, the gate (`AddSecurityEnforcement`), entitlements (`Entitlements`, `Features`), `PasswordHash`, `KeyProtector` | Sdk, Web, client, test |
+| `NSail.Security` | `Session`, `Policy` and `PolicyBuilder`, `SecurityManager`, the gate (`AddSecurityEnforcement`) and the delegated send past it (`DelegatedSend`), entitlements (`Entitlements`, `Features`), `PasswordHash`, `KeyProtector`, `PrivateHost` | Sdk, Web, client, test |
 
 ## Use it
 
@@ -67,7 +67,7 @@ var policy = PolicyBuilder.Named("Clinic.Prescriptions.Own")
 | Call | Does |
 |---|---|
 | `AddSecurity()` | TryAdds `SessionProvider`, `RelationProvider`, `FeatureProvider`, `CredentialProvider`, `RequestOrganizationProvider`, `SecurityManager` (and the process-wide `BuiltInHandlers` it shares; a derived manager passes it to the base constructor, or keeps hydrating per scope) with permissive defaults (anonymous session, every relation true, every feature on). A host with sign-in and a policy store replaces them |
-| `AddSecurityEnforcement()` | `AddSecurity()` plus the `SecurityInterceptor` on every send: deny by default. The host refuses to start while `RelationProvider` or `CredentialProvider` is still the permissive default (every relation constraint would pass, stale tickets be honoured): Iam registers the DB-backed ones |
+| `AddSecurityEnforcement()` | `AddSecurity()` plus the `SecurityInterceptor` on every send: deny by default. What a reaction, a queue delivery or a delegated send (`DelegatedSend.Run`, inside the handler of a send the gate passed) sends is not asked again, under the caller's own session (permissions.md, Evaluation). The host refuses to start while `RelationProvider` or `CredentialProvider` is still the permissive default (every relation constraint would pass, stale tickets be honoured): Iam registers the DB-backed ones |
 | `AddTenantKeys()` (`NSail.BaseServices.WebApi`, on the builder) | Registers the `KeyProtector` that seals with the current tenant's key from `Security:KeysDirectory`. A tenant with no file makes a seal or an open throw `MissingEncryptionKeyException`; Development without a directory seals under a fixed key, any other environment refuses to compose. The file is the cell's copy of a key kept elsewhere, and is read at every call, so a key written while the host runs is honoured |
 | `AcceptPermissiveProviders()` | Says an enforcing host has no Iam (a fixture, a sample) and runs over the permissive providers on purpose |
 | `AddBuiltInPolicy(policy)` | A code-owned policy no stored row can delete or widen |
@@ -103,8 +103,12 @@ nobody wrote about a tenant reads as on, with no ceiling.
 hash under the current count, and one outside the floor and ceiling is refused),
 `KeyProtector(key or IEncryptionKeySource).Protect` / `Unprotect` (AES-GCM, a versioned payload with a per-payload salt; the
 earlier format still unseals), `Jwt` (base64url and token splitting, not a JWT library),
-`SafeReturnTo` (guards a return address before a redirect), `SignInRoutes` (the sign-in address's
-query names).
+`SafeReturnTo` (guards a return address before a redirect), `PrivateHost.Is(host)` (whether a
+host a setting names points at loopback, private, link-local, CGNAT, unspecified or multicast
+space, literally or by what it resolves to, or is empty, `localhost`, `*.localhost`, `*.local`,
+`*.internal` or a single label; a name that does not resolve is not refused; it reads no options,
+so each caller keeps its own switch, as Storage's `AllowPrivateAddresses`), `SignInRoutes` (the
+sign-in address's query names).
 
 ## How it fits
 

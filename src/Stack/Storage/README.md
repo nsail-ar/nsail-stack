@@ -98,7 +98,7 @@ issue. Install targets (`StorageOptions`) are trusted and not checked by it.
 | `FileRoots` | Directories a `file` container must be or sit under. Empty: settings cannot name a `file` container. |
 | `AllowedSchemes` | Endpoint schemes; default `https` only. |
 | `AllowedHosts` | When set, the endpoint's host is one of these or a subdomain. |
-| `AllowPrivateAddresses` | Default false: loopback, link-local, private and `.local`/`.internal` hosts are refused (literal addresses and what the name resolves to). |
+| `AllowPrivateAddresses` | Default false: a host `PrivateHost.Is` (`NSail.Security`) answers for is refused — loopback, private, link-local, CGNAT and `.local`/`.internal` names, literal or resolved. |
 
 Saving a changed `Provider`, `Endpoint` or `Container` with no new secret clears the stored one.
 `TestStorageTarget` answers a failed probe with a fixed message and logs the detail.

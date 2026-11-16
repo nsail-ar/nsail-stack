@@ -15,7 +15,9 @@
                 CreateRoute="@CreateRoute"
                 CreateTarget="CreateTarget"
                 Value="Value"
-                ValueChanged="ValueChanged" />
+                ValueChanged="ValueChanged"
+                OnQuickAdd="OnQuickAdd"
+                Offer="Offer" />
 
 @code {
 
@@ -33,4 +35,10 @@
 
     [Parameter]
     public EventCallback<Guid> ValueChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<QuickAddEventArgs<SelectRef>> OnQuickAdd { get; set; }
+
+    [Parameter]
+    public RenderFragment? Offer { get; set; }
 }

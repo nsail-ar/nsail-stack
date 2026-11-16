@@ -145,6 +145,50 @@ public class GitHubRateLimitTests
         var mutation = new Script(_ => Bad(), _ => Ok("""{"data":{}}"""));
         await Assert.ThrowsAsync<GitHubException>(() => Client(mutation).Client.GraphQl("mutation{a}"));
         Assert.Single(mutation.Sent);
+
+        var malformed = new Script(_ => Ok(""), _ => Ok("""{"data":{}}"""));
+        await Assert.ThrowsAsync<GitHubException>(() => Client(malformed).Client.GraphQl("mutation{a}"));
+        Assert.Single(malformed.Sent);
+    }
+
+    [Fact]
+    public async Task AMalformedGraphQlAnswerIsSentAgainAsAFiveHundredIs()
+    {
+        var script = new Script(_ => Ok(""), _ => Ok("""{"data":{"a":1}}"""));
+
+        var data = await Client(script).Client.GraphQl("query{a}");
+
+        Assert.Equal(1, data.GetProperty("a").GetInt32());
+        Assert.Equal(2, script.Sent.Count);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("<html>unicorn</html>")]
+    [InlineData("[]")]
+    [InlineData("null")]
+    [InlineData("""{"errors":"boom"}""")]
+    [InlineData("""{"errors":[1]}""")]
+    [InlineData("""{"errors":[{"type":"X"}]}""")]
+    public async Task AGraphQlAnswerMalformedOnEveryAttemptThrowsWithItsStatus(string body)
+    {
+        var script = new Script(_ => new HttpResponseMessage(HttpStatusCode.Accepted) { Content = new StringContent(body) });
+
+        var e = await Assert.ThrowsAsync<GitHubException>(() => Client(script).Client.GraphQl("query{a}"));
+
+        Assert.Equal((int)HttpStatusCode.Accepted, e.Status);
+        Assert.Equal(3, script.Sent.Count);
+    }
+
+    [Fact]
+    public async Task AGraphQlErrorsAnswerIsThrownWithoutASecondSend()
+    {
+        var script = new Script(_ => Ok("""{"errors":[{"message":"nope"}]}"""), _ => Ok("""{"data":{}}"""));
+
+        var e = await Assert.ThrowsAsync<GitHubException>(() => Client(script).Client.GraphQl("query{a}"));
+
+        Assert.Equal("GraphQL: nope", e.Message);
+        Assert.Single(script.Sent);
     }
 
     static GitHubRepository Repo(GitHubClient gh)
