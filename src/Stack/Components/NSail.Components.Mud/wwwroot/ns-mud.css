@@ -1397,16 +1397,17 @@
    vendor's inline-flex that centers the label in the pill, and a block there sets the text on
    its top edge. As a flex item the span is already a block, so it has a width to clip
    against.
-   In the brand row it is capped at half the row so the logo keeps the other half: half of
-   .ns-nav-brand itself (cqi), since a percentage resolves against whatever box the product's
-   Brand wraps around the chip — that box still bounds it (100%), so the chip never leaves it.
-   Its end margin goes so its painted edge, not the vendor's 4px margin, sits on the right
-   line. */
+   In the brand row it keeps its natural width up to half the row, so the name keeps the other
+   half: half of .ns-nav-brand itself (cqi), since a percentage resolves against whatever box
+   the product's Brand wraps around the chip — that box still bounds it (100%), so the chip
+   never leaves it. Its end margin goes so its painted edge, not the vendor's 4px margin, sits
+   on the right line. */
 .ns-chip-ellipsis.mud-chip {
     min-width: 0;
 }
 
 .ns-nav-brand .ns-chip-ellipsis.mud-chip {
+    flex-shrink: 0;
     max-width: min(100%, 50cqi);
     margin-inline-end: 0;
 }
@@ -1423,15 +1424,21 @@
 }
 
 /* The boxes a product's Brand wraps around the chip are flex items that will not shrink below
-   their content, so a long label would widen them past the row and wrap the name beside them.
-   Every box between the row and the chip may shrink to nothing, and what sits beside one (the
-   logo, the name) does not shrink: the chip gives way first and the name keeps its line. */
+   their content, so a long name would widen them past the row. Every box between the row and
+   the chip may shrink to nothing, and so may the box beside one that holds the name, which
+   breaks its text wherever the room ends: the chip keeps its width and the name wraps. An
+   image — a logo, a product mark — beside the chip or inside the name's box keeps its size. */
 .ns-nav-brand :has(.ns-chip-ellipsis) {
     min-width: 0;
 }
 
-.ns-nav-brand:has(.ns-chip-ellipsis) > :not(:has(.ns-chip-ellipsis), .ns-chip-ellipsis),
-.ns-nav-brand :has(.ns-chip-ellipsis) > :not(:has(.ns-chip-ellipsis), .ns-chip-ellipsis) {
+.ns-nav-brand:has(.ns-chip-ellipsis) > :not(:has(.ns-chip-ellipsis), .ns-chip-ellipsis, img, svg),
+.ns-nav-brand :has(.ns-chip-ellipsis) > :not(:has(.ns-chip-ellipsis), .ns-chip-ellipsis, img, svg) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.ns-nav-brand:has(.ns-chip-ellipsis) :is(img, svg):not(.ns-chip-ellipsis *) {
     flex-shrink: 0;
 }
 

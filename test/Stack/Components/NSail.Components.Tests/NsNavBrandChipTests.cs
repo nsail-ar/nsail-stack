@@ -10,9 +10,10 @@ using NSail.Icons;
 
 namespace NSail.Components.Tests;
 
-/// <summary>nsail#3515: a chip in the drawer's brand row is capped at half the brand row itself,
-/// not at half of whatever box a product's Brand wraps around it, and its painted edge — not the
-/// vendor's margin — sits on the header's right line.</summary>
+/// <summary>A chip in the drawer's brand row keeps its natural width up to half the brand row
+/// itself, not half of whatever box a product's Brand wraps around it, its painted edge — not the
+/// vendor's margin — sits on the header's right line, and the name beside it takes the rest and
+/// wraps.</summary>
 public sealed class NsNavBrandChipTests : BunitContext
 {
     public NsNavBrandChipTests()
@@ -95,17 +96,33 @@ public sealed class NsNavBrandChipTests : BunitContext
             css);
     }
 
-    /// <summary>K3: whatever boxes a product's Brand wraps around the chip, each may shrink to
-    /// nothing and what sits beside one does not, so the chip gives way before the name wraps.</summary>
+    /// <summary>AC1: every box between the row and the chip, and the one beside it that holds the
+    /// name, may shrink to nothing and break its text, while the chip keeps its width: the name
+    /// wraps instead of pushing the row past the drawer.</summary>
     [Fact]
-    public void TheBoxesAroundABrandChipGiveWayBeforeTheName()
+    public void TheNameWrapsBesideABrandChipThatKeepsItsWidth()
     {
         var css = Uncommented(ReadStylesheet());
 
         Assert.Matches(@"\.ns-nav-brand :has\(\.ns-chip-ellipsis\)\s*\{[^}]*min-width:\s*0;", css);
+        Assert.Matches(@"\.ns-nav-brand \.ns-chip-ellipsis\.mud-chip\s*\{[^}]*flex-shrink:\s*0;", css);
         Assert.Matches(
-            @"\.ns-nav-brand:has\(\.ns-chip-ellipsis\) > :not\(:has\(\.ns-chip-ellipsis\), \.ns-chip-ellipsis\),\s*"
-            + @"\.ns-nav-brand :has\(\.ns-chip-ellipsis\) > :not\(:has\(\.ns-chip-ellipsis\), \.ns-chip-ellipsis\)\s*\{[^}]*flex-shrink:\s*0;",
+            @"\.ns-nav-brand:has\(\.ns-chip-ellipsis\) > :not\(:has\(\.ns-chip-ellipsis\), \.ns-chip-ellipsis, img, svg\),\s*"
+            + @"\.ns-nav-brand :has\(\.ns-chip-ellipsis\) > :not\(:has\(\.ns-chip-ellipsis\), \.ns-chip-ellipsis, img, svg\)\s*"
+            + @"\{[^}]*min-width:\s*0;[^}]*overflow-wrap:\s*anywhere;",
+            css);
+        Assert.DoesNotMatch(@"\.ns-nav-brand[^{}]*:not\(:has\(\.ns-chip-ellipsis\)[^{}]*\{[^}]*flex-shrink:\s*0;", css);
+    }
+
+    /// <summary>AC2: a logo or product mark, beside the chip or inside the name's box, keeps its
+    /// size while the name wraps; the chip's own glyph is the vendor's.</summary>
+    [Fact]
+    public void TheImagesBesideTheNameKeepTheirSize()
+    {
+        var css = Uncommented(ReadStylesheet());
+
+        Assert.Matches(
+            @"\.ns-nav-brand:has\(\.ns-chip-ellipsis\) :is\(img, svg\):not\(\.ns-chip-ellipsis \*\)\s*\{[^}]*flex-shrink:\s*0;",
             css);
     }
 
