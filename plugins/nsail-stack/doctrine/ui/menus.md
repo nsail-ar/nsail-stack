@@ -126,11 +126,12 @@ opens a list of withheld rows is a button that does nothing.
   (`@onkeydown:stopPropagation` bound to their state); closed, they let it through. **They close
   on the next turn (`await Task.Yield()`), never in the Escape's own dispatch**: Blazor reads the
   bound stop after the handler returns, so a same-dispatch close reads `false` and the same Escape
-  reaches the surface behind. A new surface of this kind owes the same yield. `NsTextField`'s
-  camera is the same holder with nothing to bind: its wrapper exists only while the camera is
-  open, so the stop is written literally. That stop cuts
-  every key bubbling to a Blazor ancestor, not only Escape, which is harmless because the house's
-  other keys (the dropdown's Enter and arrows) are ns.js's native listeners. Inside a hosted
+  reaches the surface behind. A new surface whose stop is bound to its state owes the same
+  yield; one whose stop is literal does not. `NsTextField`'s camera is that case: its wrapper
+  exists only while the camera is open, so the stop is written literally and the close runs in
+  the Escape's own dispatch. That stop cuts every key bubbling to a Blazor ancestor, not only
+  Escape, which is harmless because the house's other keys (the dropdown's Enter and arrows) are
+  ns.js's native listeners. Inside a hosted
   dialog the dialog's Escape is the vendor's native listener, which no Blazor stop reaches, so the
   five report their open state up and `NsOpenDialog` withdraws `CloseOnEscapeKey` while any is
   open ([actions.md](actions.md)). **A menu the pointer opened is the one exception**: the vendor

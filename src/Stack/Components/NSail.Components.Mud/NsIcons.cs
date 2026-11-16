@@ -55,10 +55,9 @@ public static class NsIcons
     public static readonly Glyph ContentCopy =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="M360-240q-29.7 0-50.85-21.15Q288-282.3 288-312v-480q0-29.7 21.15-50.85Q330.3-864 360-864h384q29.7 0 50.85 21.15Q816-821.7 816-792v480q0 29.7-21.15 50.85Q773.7-240 744-240H360Zm0-72h384v-480H360v480ZM216-96q-29.7 0-50.85-21.15Q144-138.3 144-168v-552h72v552h456v72H216Zm144-216v-480 480Z"/></g>""");
 
-    /// <summary>A barcode between a viewfinder's corners, drawn on Material Symbols' 20px grid and
-    /// stroke (<c>barcode_scanner</c>'s shape): the press that reads a code with the camera.</summary>
+    /// <summary>Material Symbols <c>barcode_scanner</c>.</summary>
     public static readonly Glyph BarcodeScanner =
-        new("""<g transform="translate(0,24) scale(0.025)"><path d="M96-696v-168h168v72h-96v96H96Zm600-168h168v168h-72v-96h-96v-72ZM96-96v-168h72v96h96v72H96Zm600 0v-72h96v-96h72v168H696ZM228-288v-384h72v384h-72Zm108 0v-384h36v384h-36Zm72 0v-384h72v384h-72Zm108 0v-384h36v384h-36Zm72 0v-384h72v384h-72Zm108 0v-384h36v384h-36Z"/></g>""");
+        new("""<g transform="translate(0,24) scale(0.025)"><path d="M48-144v-192h72v120h120v72H48Zm672 0v-72h120v-120h72v192H720ZM168-264v-432h72v432h-72Zm120 0v-432h48v432h-48Zm120 0v-432h72v432h-72Zm120 0v-432h96v432h-96Zm132 0v-432h48v432h-48Zm84 0v-432h48v432h-48ZM48-624v-192h192v72H120v120H48Zm792 0v-120H720v-72h192v192h-72Z"/></g>""");
 
     /// <summary>Material Symbols <c>settings</c>.</summary>
     public static readonly Glyph Settings =

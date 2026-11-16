@@ -68,8 +68,9 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   (`EscapeHolds`); every way out — a read, a close, a failure — hands the cursor back to the box.
   Two hands place it then, the vendor's trap handing it back to the button that opened the camera
   and the field's own, so the field's waits for the render that removed the camera and is the
-  last; and the camera is stopped before that render, because a stop has to reach it while its
-  video is still in the page.
+  last. The camera is stopped by the field's id, never by its video, because a stop must still
+  reach it after the render that removed the video — a field disposed mid-read is stopped the
+  same way.
   The button takes the end slot a `Suffix` would print in; `Copy` with a value keeps it.
 - **`NsHelp` takes one parameter, `Key`** — a **global** localization key, because the
   component cannot see the page whose prefix would scope it.

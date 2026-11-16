@@ -279,7 +279,7 @@ public partial class NsTextField
         {
             await JS.InvokeVoidAsync("nsapp.scanStop", _scanId);
         }
-        catch (Exception failure) when (failure is JSException or InvalidOperationException or ObjectDisposedException or TaskCanceledException)
+        catch (Exception failure) when (failure is JSException or JSDisconnectedException or InvalidOperationException or ObjectDisposedException or TaskCanceledException)
         {
             // The circuit or the page is already gone, and the camera with it.
         }
