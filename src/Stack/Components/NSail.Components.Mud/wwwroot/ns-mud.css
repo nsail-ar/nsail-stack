@@ -1443,6 +1443,17 @@
     flex-shrink: 0;
 }
 
+/* The box that holds the chip beside the name is the chip's side of the row, and the chip's
+   cap cannot reach it: sized to its content, the box has no width for the chip's 100% to
+   resolve against, so it takes the whole label as its basis and shrinks in step with the name.
+   It is held and wears the same half of the row instead. A box that holds the chip and nothing
+   beside it — the Brand's own wrapper around name and chip — is not the chip's side. */
+.ns-nav-brand * ~ :has(.ns-chip-ellipsis),
+.ns-nav-brand :has(.ns-chip-ellipsis):has(~ *) {
+    flex-shrink: 0;
+    max-width: 50cqi;
+}
+
 /* The rail: the brand's OWN chrome, in both scales. With no app bar
    above it the rail is the only chrome on screen — the piece the eye reads the install's
    colour off, and its Header (the brand block) and Footer (the session chip) are the two

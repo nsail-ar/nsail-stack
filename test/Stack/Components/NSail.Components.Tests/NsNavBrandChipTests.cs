@@ -118,7 +118,22 @@ public sealed class NsNavBrandChipTests : BunitContext
         {
             ".ns-nav-brand .ns-chip-ellipsis.mud-chip",
             ".ns-nav-brand:has(.ns-chip-ellipsis) :is(img, svg):not(.ns-chip-ellipsis *)",
+            ".ns-nav-brand * ~ :has(.ns-chip-ellipsis),\n.ns-nav-brand :has(.ns-chip-ellipsis):has(~ *)",
         }));
+    }
+
+    /// <summary>AC1: a box the Brand wraps around the chip beside the name is sized to its
+    /// content, where the chip's 100% resolves to nothing, so that box is held at half the row
+    /// itself; the Brand's wrapper around both name and chip has no sibling and is not.</summary>
+    [Fact]
+    public void TheBoxBesideTheNameThatHoldsTheChipIsCappedAtHalfTheRow()
+    {
+        var css = Uncommented(ReadStylesheet());
+
+        Assert.Matches(
+            @"\.ns-nav-brand \* ~ :has\(\.ns-chip-ellipsis\),\s*\.ns-nav-brand :has\(\.ns-chip-ellipsis\):has\(~ \*\)\s*"
+            + @"\{[^}]*flex-shrink:\s*0;[^}]*max-width:\s*50cqi;",
+            css);
     }
 
     /// <summary>AC2: a logo or product mark, beside the chip or inside the name's box, keeps its
