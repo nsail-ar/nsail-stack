@@ -1426,8 +1426,9 @@
 
 /* The boxes a product's Brand wraps around the chip are flex items that will not shrink below
    their content, so a long name would widen them past the row. Every box between the row and
-   the chip may shrink to nothing, and so may the box beside one that holds the name, which
-   breaks its text wherever the room ends: the chip keeps its width and the name wraps. An
+   the chip may shrink to nothing, save the chip's own side of the row, which is held at half
+   of it (below); and so may the box beside one that holds the name, which breaks its text
+   wherever the room ends: the chip keeps its width and the name wraps. An
    image — a logo, a product mark — beside the chip or inside the name's box keeps its size. */
 .ns-nav-brand :has(.ns-chip-ellipsis) {
     min-width: 0;
@@ -1441,6 +1442,17 @@
 
 .ns-nav-brand:has(.ns-chip-ellipsis) :is(img, svg):not(.ns-chip-ellipsis *) {
     flex-shrink: 0;
+}
+
+/* The box that holds the chip beside the name is the chip's side of the row, and the chip's
+   cap cannot reach it: sized to its content, the box has no width for the chip's 100% to
+   resolve against, so it takes the whole label as its basis and shrinks in step with the name.
+   It is held and wears the same half of the row instead. A box that holds the chip and nothing
+   beside it — the Brand's own wrapper around name and chip — is not the chip's side. */
+.ns-nav-brand * ~ :has(.ns-chip-ellipsis),
+.ns-nav-brand :has(.ns-chip-ellipsis):has(~ *) {
+    flex-shrink: 0;
+    max-width: 50cqi;
 }
 
 /* The rail: the brand's OWN chrome, in both scales. With no app bar

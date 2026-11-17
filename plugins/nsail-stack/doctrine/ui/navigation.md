@@ -58,7 +58,9 @@ just places `<NsNavMenu />`.
   `--ns-nav-gutter`, `--ns-nav-inset` and `--ns-nav-gap` in `ns-mud.css`; the phone title row
   does not move. A chip in the brand row ends a long label in `…` (`ns-chip-ellipsis`, which
   every `NsChip` wears) and is capped at half the brand row itself, whatever box the `Brand`
-  fragment wraps around it: a label that fits shows whole. The chip keeps its natural width up
+  fragment wraps around it alone. The chip's side of the row is what sits beside the name, so a
+  `Brand` keeps the name and the chip in separate boxes: one box around both, beside a logo,
+  would be taken for the chip's side and held at half the row. A label that fits shows whole. The chip keeps its natural width up
   to that cap; the box beside it that holds the install's name takes the rest of the row and
   wraps, a word longer than the room included, while a logo or product mark keeps its size. So a
   long name wraps rather than squeezing the chip, the row never overflows the drawer, and a
