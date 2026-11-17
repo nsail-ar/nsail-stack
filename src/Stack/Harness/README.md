@@ -187,7 +187,16 @@ the files it leaves.
     `provider failed — <status> <call>` or `provider failed — timed out <call>`. A bare 403 or a 404 is
     an answer, and breaks. A job the host's stop cancels is not a break either: its result is `stopped`
     (`harness.jobs{outcome=stopped}`), nothing is said on its story, and the story goes back as a
-    break's does. A story whose body or refinery comment names a blocker
+    break's does. Nor is a job whose workspace this machine cannot prepare (`Workspace.Prepare`: the
+    shared clone's clone, config, fetch, branch sweep or `worktree add`, the slot's checkout, reset or
+    clean), as the fault is the machine's and breaks every story its worker takes: nothing is said on
+    any story or PR, the story goes back as a break's does, and that worker starts no job on this
+    machine for the break's back-off, whatever the story; other workers, and the worker on other
+    machines, go on. The machine's log says it once at error level, naming the worker, the machine and
+    the step. Its result is `machine` (`harness.jobs{outcome=machine}`), its outcome `machine fault —
+    <step>`, and it adds nothing to the crew's job stats. A fetch a job runs inside its own work (the
+    tag fetches of a QA walk, a ship or a release) still breaks. Repairing the clone is a hand's work
+    on the machine. A story whose body or refinery comment names a blocker
     in words (`blocked by #N`, `waits on #N`, a `Waits:` line) gets the board's link and `blocked` at
     its analysis and before its first voyage (`Board/WrittenBlockers.cs`); a `Waits` line that answers
     `nothing`, `none`, `nada`, `ninguna` or `ninguno` names no blocker, whatever else it mentions. A

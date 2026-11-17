@@ -102,6 +102,29 @@ public class WorkspaceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(Bare, "info", "exclude")));
     }
 
+    // The shared clone's preparation is the machine's: a step that fails says which, as a WorkspaceFault.
+    [Fact]
+    public async Task AFetchThatFailsIsTheMachinesFaultNamingTheStep()
+    {
+        var ws = await Warm();
+        Directory.Delete(Remote, recursive: true);
+
+        var fault = await Assert.ThrowsAsync<WorkspaceFault>(() => ws.Prepare(1));
+
+        Assert.Equal("fetch", fault.Step);
+        Assert.IsType<InvalidOperationException>(fault.InnerException);
+    }
+
+    [Fact]
+    public async Task ACloneThatFailsIsTheMachinesFault()
+    {
+        var ws = new Workspace(Path.Combine(_root, "ws"), Path.Combine(_root, "nowhere.git"), null, 1, "Gru", "gru@example.com");
+
+        var fault = await Assert.ThrowsAsync<WorkspaceFault>(() => ws.Prepare(1));
+
+        Assert.Equal("clone", fault.Step);
+    }
+
     [Fact]
     public async Task ASeatsConfigIsGoneOnceTheHarnessRestoresIt()
     {
