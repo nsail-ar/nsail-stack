@@ -165,9 +165,10 @@ public sealed class Workspace
         foreach (var d in dirs) File.Delete(Path.Combine(d, "config.worktree"));
     }
 
-    async Task<string> PrepareAt(string path)
+    // The shared mirror, cloned once and fetched before every job; a failure of it is every job's, so it
+    // is named as the shared step's. Caller holds _git.
+    async Task Mirror()
     {
-        await _git.WaitAsync();
         try
         {
             if (!Directory.Exists(Bare))
@@ -186,6 +187,33 @@ public sealed class Workspace
             }
             await WriteConfig();
             await Shell.Git(Bare, [.. Guard, "fetch", "--prune", "-q", _repoUrl, "+refs/heads/*:refs/remotes/origin/*"]);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            throw new SharedStepException("the mirror fetch", e.Message, Probe, e);
+        }
+    }
+
+    // The mirror's step again, alone: the pass that finds it passing lifts the pause it caused.
+    async Task Probe()
+    {
+        await _git.WaitAsync();
+        try
+        {
+            await Mirror();
+        }
+        finally
+        {
+            _git.Release();
+        }
+    }
+
+    async Task<string> PrepareAt(string path)
+    {
+        await _git.WaitAsync();
+        try
+        {
+            await Mirror();
             // A local story branch left by an earlier job would shadow the remote one a
             // later round must continue; every branch not checked out in a slot goes, unless it holds commits no remote has.
             var heads = await Shell.Git(Bare, "for-each-ref", "--format=%(refname:short)", "refs/heads");

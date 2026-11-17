@@ -248,6 +248,59 @@ public sealed class JobLimitTests : IDisposable
         Assert.Contains(Labels.Stalled, _board.Cards[7].Labels);
     }
 
+    static SharedStepException Shared(Func<Task> probe)
+    {
+        return new SharedStepException("the mirror fetch", "unable to append reflog: Permission denied", probe, new InvalidOperationException("unable to append reflog: Permission denied"));
+    }
+
+    [Fact]
+    public async Task AFailedSharedStepPausesTheHarnessAndLabelsNothing()
+    {
+        await End(Shared(() => Task.CompletedTask));
+        await End(Shared(() => Task.CompletedTask));
+
+        Assert.Contains("the mirror fetch failed", _loop.Paused, StringComparison.Ordinal);
+        Assert.Empty(_board.Cards[Story].Comments);
+        Assert.DoesNotContain(Labels.Stalled, _board.Cards[Story].Labels);
+        Assert.DoesNotContain(Labels.Claimed, _board.Cards[Story].Labels);
+        Assert.Equal(Stages.Ready, _board.Cards[Story].Stage);
+    }
+
+    [Fact]
+    public async Task AStorysOwnDoubleBreakStillStallsBesideASharedFailure()
+    {
+        await End(Shared(() => Task.CompletedTask));
+        await End(new InvalidOperationException("boom"));
+        await End(new InvalidOperationException("boom"));
+
+        Assert.Contains(Labels.Stalled, _board.Cards[Story].Labels);
+        Assert.Equal(2, Broke());
+    }
+
+    [Fact]
+    public async Task TheSharedPauseLiftsByItselfOnTheFirstPassTheStepSucceeds()
+    {
+        var fails = true;
+        await End(Shared(() => fails ? throw new InvalidOperationException("still") : Task.CompletedTask));
+
+        await _loop.LiftSharedPause();
+        Assert.NotNull(_loop.Paused);
+
+        fails = false;
+        await _loop.LiftSharedPause();
+        Assert.Null(_loop.Paused);
+    }
+
+    [Fact]
+    public async Task AHandsPauseIsNotLiftedByTheSharedStepPassing()
+    {
+        _loop.Pause("a hand");
+        await End(Shared(() => Task.CompletedTask));
+        await _loop.LiftSharedPause();
+
+        Assert.Equal("a hand", _loop.Paused);
+    }
+
     sealed class Throws(WorkItem item, Exception e) : IJob
     {
         public WorkItem Item => item;

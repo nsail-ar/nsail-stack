@@ -167,4 +167,17 @@ public class WorkspaceTests : IDisposable
         Assert.Contains("ahead", heads);
         Assert.DoesNotContain("pushed", heads);
     }
+
+    [Fact]
+    public async Task AFailedMirrorFetchIsTheSharedStepsAndItsProbeRunsItAgain()
+    {
+        var ws = await Warm();
+        Directory.Delete(Remote, recursive: true);
+
+        var e = await Assert.ThrowsAsync<SharedStepException>(() => ws.Prepare(1));
+        await Assert.ThrowsAsync<SharedStepException>(e.Probe);
+
+        await Shell.Git(_root, "init", "-q", "--bare", "-b", "main", Remote);
+        await e.Probe();
+    }
 }

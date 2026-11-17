@@ -89,6 +89,8 @@ public sealed class HarnessLoop(
     DateTimeOffset? _pausedSince = state.PausedSince;
     bool _orphansSaid;
     bool _restartPause;
+    // The pause a failed shared step set: no hand's, so a pass that finds the step passing lifts it. Not kept across a restart.
+    bool _sharedPause;
     readonly IReadOnlyList<Worker> _workers = Worker.Compile(options.Value);
 
     // Workers whose Setup failed at this start.
@@ -169,9 +171,58 @@ public sealed class HarnessLoop(
             _paused = why;
             _pausedSince ??= DateTimeOffset.UtcNow;
             _restartPause = false;
+            _sharedPause = false;
             Persist();
         }
         log.LogWarning("paused: {Why}", why);
+    }
+
+    // A step every job shares failed: the harness stops starting work and names the step, and the
+    // stories stay as they were. A hand's pause already holding stays the hand's.
+    void PauseShared(SharedStepException e)
+    {
+        lock (_gate)
+        {
+            if (_paused is null || _sharedPause)
+            {
+                _paused = $"{e.Step} failed: {e.InnerException?.Message ?? e.Message}";
+                _pausedSince ??= DateTimeOffset.UtcNow;
+                _sharedPause = true;
+                _restartPause = false;
+                _sharedProbe = e.Probe;
+                Persist();
+            }
+        }
+        log.LogWarning(e, "paused: {Why}", e.Message);
+    }
+
+    Func<Task>? _sharedProbe;
+
+    // Run again at the head of every pass while a shared step holds the pause; the first success lifts it.
+    internal async Task LiftSharedPause()
+    {
+        Func<Task>? probe;
+        lock (_gate) probe = _sharedPause ? _sharedProbe : null;
+        if (probe is null) return;
+        try
+        {
+            await probe();
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log.LogWarning("still paused: {Why}", e.Message);
+            return;
+        }
+        lock (_gate)
+        {
+            if (!_sharedPause) return;
+            _paused = null;
+            _pausedSince = null;
+            _sharedPause = false;
+            _sharedProbe = null;
+            Persist();
+        }
+        log.LogInformation("resumed: the shared step passes again");
     }
 
     // A deploy's restart: nothing new starts, and the host stops by itself the moment the last job
@@ -206,7 +257,7 @@ public sealed class HarnessLoop(
     // Take-new is kept only when a hand moved it off the configuration's.
     void Persist()
     {
-        state.Set(_restartPause ? null : _paused, _restartPause ? null : _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
+        state.Set(_restartPause || _sharedPause ? null : _paused, _restartPause || _sharedPause ? null : _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
     }
 
     public void Resume()
@@ -218,6 +269,8 @@ public sealed class HarnessLoop(
             _pausedSince = null;
             _quotaUntil = null;
             _restartPause = false;
+            _sharedPause = false;
+            _sharedProbe = null;
             Persist();
         }
         Wake();
@@ -564,6 +617,7 @@ public sealed class HarnessLoop(
         var call = PassCall.Planning;
         try
         {
+            await LiftSharedPause();
             if (leases.Sweep(TurnAge(_workers)) is var dead and > 0) log.LogWarning("{Dead} build turn(s) older than the longest step went back to the line", dead);
             call = PassCall.Statuses;
             var marks = await jobs.Repo.Statuses(ct: stop);
@@ -968,6 +1022,17 @@ public sealed class HarnessLoop(
                 lock (_gate) _limitedUntil = LaterWall(_limitedUntil, until);
             }
             log.LogWarning(e, "{Item} ended on the provider: {Outcome}", running.Item, outcome);
+            if (story is { } n)
+            {
+                await LockLabelOff(running.Item, n);
+                await BackToReady(running.Item, n);
+            }
+        }
+        // The harness's own machinery failed for every job alike: it pauses itself and says so on its status; the story is put back as it was, with nothing said and nothing counted.
+        catch (SharedStepException e) when (!_jobsStop.IsCancellationRequested)
+        {
+            outcome = $"paused — {e.Message}";
+            PauseShared(e);
             if (story is { } n)
             {
                 await LockLabelOff(running.Item, n);

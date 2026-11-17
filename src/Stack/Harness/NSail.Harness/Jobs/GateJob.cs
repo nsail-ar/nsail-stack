@@ -42,7 +42,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             await Verdict(prNumber, sha, green: false, HarnessTexts.Fill(ctx.Texts.GateRed, ("why", ctx.Texts.GateUnreadable)), unreadable, log);
             return new JobOutcome($"red — {unreadable}", Failed: true);
         }
-        catch (Exception e) when (!ct.IsCancellationRequested)
+        catch (Exception e) when (!ct.IsCancellationRequested && e is not SharedStepException)
         {
             // Infrastructure is not the PR's red: the comment carries no gate marker and no status is set,
             // so the head stays ungated and the next pass gates it again.
