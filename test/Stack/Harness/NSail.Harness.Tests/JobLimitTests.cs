@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using System.Net;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -38,7 +39,7 @@ public sealed class JobLimitTests : IDisposable
         var repo = new DevJobRunTests.FileRepository("unused");
         var jobs = new JobContext(_board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace> { [repo.Name] = workspace }, new NoAgent(), options, [], NullLoggerFactory.Instance, new BuildLeases(1));
         _loop = new HarnessLoop(null!, _board, _locks, workspace,
-            _history, new JobStats(null), jobs, new BuildLeases(1), null!, Options.Create(options), null!, _metrics,
+            _history, new JobStats(null), jobs, new BuildLeases(1), null!, Options.Create(options), new Lifetime(), _metrics,
             new WatchState(null), new HarnessState(Path.Combine(_root, "state")), new Logger<HarnessLoop>(_logs));
         _board.Add(Story, stage: Stages.InProgress, labels: [Labels.Claimed]);
     }
@@ -310,6 +311,14 @@ public sealed class JobLimitTests : IDisposable
         await _loop.LiftSharedPause();
 
         Assert.NotNull(_loop.Paused);
+    }
+
+    sealed class Lifetime : IHostApplicationLifetime
+    {
+        public CancellationToken ApplicationStarted => default;
+        public CancellationToken ApplicationStopping => default;
+        public CancellationToken ApplicationStopped => default;
+        public void StopApplication() { }
     }
 
     sealed class Throws(WorkItem item, Exception e) : IJob
