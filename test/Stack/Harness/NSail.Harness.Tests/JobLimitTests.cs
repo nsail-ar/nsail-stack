@@ -301,6 +301,17 @@ public sealed class JobLimitTests : IDisposable
         Assert.Equal("a hand", _loop.Paused);
     }
 
+    [Fact]
+    public async Task ASharedPauseIsNotLiftedWhileARestartDrains()
+    {
+        await End(Shared(() => Task.CompletedTask));
+        _loop.Restart("a deploy");
+        Environment.ExitCode = 0;
+        await _loop.LiftSharedPause();
+
+        Assert.NotNull(_loop.Paused);
+    }
+
     sealed class Throws(WorkItem item, Exception e) : IJob
     {
         public WorkItem Item => item;

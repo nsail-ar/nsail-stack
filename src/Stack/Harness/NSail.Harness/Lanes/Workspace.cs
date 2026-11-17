@@ -169,6 +169,7 @@ public sealed class Workspace
     // is named as the shared step's. Caller holds _git.
     async Task Mirror()
     {
+        var step = "the mirror clone";
         try
         {
             if (!Directory.Exists(Bare))
@@ -185,12 +186,13 @@ public sealed class Workspace
                     throw;
                 }
             }
+            step = "the mirror fetch";
             await WriteConfig();
             await Shell.Git(Bare, [.. Guard, "fetch", "--prune", "-q", _repoUrl, "+refs/heads/*:refs/remotes/origin/*"]);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            throw new SharedStepException("the mirror fetch", e.Message, Probe, e);
+            throw new SharedStepException(step, e.Message, Probe, e);
         }
     }
 

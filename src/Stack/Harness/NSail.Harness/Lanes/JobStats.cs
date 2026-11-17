@@ -82,7 +82,7 @@ public sealed class JobStats
 
     // A job ended: with no outcome it broke. One that found nothing to do, or met the quota wall, is
     // not the crew's work and is not counted; nor is one that ended on the provider, which the caller
-    // never hands here.
+    // never hands here (nor one that ended on a failed shared step).
     public void Ended(WorkKind kind, int? story, DateTimeOffset started, DateTimeOffset ended, TimeSpan? waited, JobOutcome? outcome)
     {
         if (outcome is { Quiet: true }) return;
