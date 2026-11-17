@@ -27,7 +27,7 @@ public sealed class NsNavBrandChipTests : BunitContext
     [Fact]
     public void TheBrandRowIsTheBoxItsChipsCapMeasures()
     {
-        var css = ReadStylesheet();
+        var css = HouseStylesheet.Read();
 
         Assert.Matches(@"(?:^|\})\s*\.ns-nav-brand\s*\{[^}]*container-type:\s*inline-size;", Uncommented(css));
         Assert.Matches(
@@ -40,7 +40,7 @@ public sealed class NsNavBrandChipTests : BunitContext
     [Fact]
     public void OnlyTheBrandRowMovesAChipsWidthOrMargin()
     {
-        var rules = Regex.Matches(Uncommented(ReadStylesheet()), @"(?<selectors>[^{}]*\.ns-chip-ellipsis\.mud-chip[^{}]*)\{(?<body>[^}]*)\}");
+        var rules = Regex.Matches(Uncommented(HouseStylesheet.Read()), @"(?<selectors>[^{}]*\.ns-chip-ellipsis\.mud-chip[^{}]*)\{(?<body>[^}]*)\}");
 
         foreach (Match rule in rules)
         {
@@ -84,7 +84,7 @@ public sealed class NsNavBrandChipTests : BunitContext
     [Fact]
     public void TheContentKeepsTheVendorsCenteringAndTheLabelClips()
     {
-        var css = Uncommented(ReadStylesheet());
+        var css = Uncommented(HouseStylesheet.Read());
 
         foreach (Match rule in Regex.Matches(css, @"(?<selectors>[^{}]*\.mud-chip-content[^{}]*)\{(?<body>[^}]*)\}"))
         {
@@ -96,13 +96,14 @@ public sealed class NsNavBrandChipTests : BunitContext
             css);
     }
 
-    /// <summary>AC1: every box between the row and the chip, and the one beside it that holds the
-    /// name, may shrink to nothing and break its text, while the chip keeps its width: the name
-    /// wraps instead of pushing the row past the drawer.</summary>
+    /// <summary>AC1: every box between the row and the chip but the chip's own side of the row,
+    /// and the one beside it that holds the name, may shrink to nothing and break its text, while
+    /// the chip and its side are held: the name wraps instead of pushing the row past the
+    /// drawer.</summary>
     [Fact]
     public void TheNameWrapsBesideABrandChipThatKeepsItsWidth()
     {
-        var css = Uncommented(ReadStylesheet());
+        var css = Uncommented(HouseStylesheet.Read());
 
         Assert.Matches(@"\.ns-nav-brand :has\(\.ns-chip-ellipsis\)\s*\{[^}]*min-width:\s*0;", css);
         Assert.Matches(@"\.ns-nav-brand \.ns-chip-ellipsis\.mud-chip\s*\{[^}]*flex-shrink:\s*0;", css);
@@ -118,7 +119,22 @@ public sealed class NsNavBrandChipTests : BunitContext
         {
             ".ns-nav-brand .ns-chip-ellipsis.mud-chip",
             ".ns-nav-brand:has(.ns-chip-ellipsis) :is(img, svg):not(.ns-chip-ellipsis *)",
+            ".ns-nav-brand * ~ :has(.ns-chip-ellipsis),\n.ns-nav-brand :has(.ns-chip-ellipsis):has(~ *)",
         }));
+    }
+
+    /// <summary>AC1: a box the Brand wraps around the chip beside the name is sized to its
+    /// content, where the chip's 100% resolves to nothing, so that box is held at half the row
+    /// itself; the Brand's wrapper around both name and chip has no sibling and is not.</summary>
+    [Fact]
+    public void TheBoxBesideTheNameThatHoldsTheChipIsCappedAtHalfTheRow()
+    {
+        var css = Uncommented(HouseStylesheet.Read());
+
+        Assert.Matches(
+            @"\.ns-nav-brand \* ~ :has\(\.ns-chip-ellipsis\),\s*\.ns-nav-brand :has\(\.ns-chip-ellipsis\):has\(~ \*\)\s*"
+            + @"\{[^}]*flex-shrink:\s*0;[^}]*max-width:\s*50cqi;",
+            css);
     }
 
     /// <summary>AC2: a logo or product mark, beside the chip or inside the name's box, keeps its
@@ -126,7 +142,7 @@ public sealed class NsNavBrandChipTests : BunitContext
     [Fact]
     public void TheImagesBesideTheNameKeepTheirSize()
     {
-        var css = Uncommented(ReadStylesheet());
+        var css = Uncommented(HouseStylesheet.Read());
 
         Assert.Matches(
             @"\.ns-nav-brand:has\(\.ns-chip-ellipsis\) :is\(img, svg\):not\(\.ns-chip-ellipsis \*\)\s*\{[^}]*flex-shrink:\s*0;",
@@ -136,22 +152,5 @@ public sealed class NsNavBrandChipTests : BunitContext
     static string Uncommented(string css)
     {
         return Regex.Replace(css, @"/\*.*?\*/", "", RegexOptions.Singleline);
-    }
-
-    static string ReadStylesheet()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
-            {
-                return File.ReadAllText(Path.Combine(directory.FullName, "src/Stack/Components/NSail.Components.Mud/wwwroot/ns-mud.css"));
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException($"NSail.sln was not found above {AppContext.BaseDirectory}.");
     }
 }

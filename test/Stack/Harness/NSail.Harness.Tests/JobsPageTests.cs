@@ -82,6 +82,23 @@ public class JobsPageTests : IDisposable
     }
 
     [Fact]
+    public void AMachineFaultHasAResultAndPillOfItsOwn()
+    {
+        var history = History(
+            Job(1, "qa #5", 5, "machine fault — fetch", HarnessLoop.MachineResult),
+            Job(2, "dev #6", 6, "failed: boom", "broke"));
+
+        var machine = JobsPage.List(_options, history, null, HarnessLoop.MachineResult, null, null);
+        var broke = JobsPage.List(_options, history, null, "broke", null, null);
+
+        Assert.Contains("1 job<", machine);
+        Assert.Contains("<span class=\"b bad\">machine fault</span>", machine);
+        Assert.Contains("machine fault — fetch", machine);
+        Assert.Contains("<option value=\"machine\" selected>machine fault</option>", machine);
+        Assert.DoesNotContain("/jobs/job-1\"", broke);
+    }
+
+    [Fact]
     public void ASharedEndingHasAResultAndPillOfItsOwn()
     {
         var history = History(

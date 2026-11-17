@@ -56,6 +56,9 @@ public sealed class HarnessLoop(
     // A job's result when the host's stop cancelled it: neither its break nor the provider's.
     public const string StoppedResult = "stopped";
 
+    // A job's result when this machine's workspace could not be prepared: the machine's fault, not the story's.
+    public const string MachineResult = "machine";
+
     readonly SemaphoreSlim _wake = new(0);
     readonly Lock _gate = new();
     readonly string _instance = Guid.NewGuid().ToString("N")[..8];
@@ -546,11 +549,21 @@ public sealed class HarnessLoop(
 
     internal bool BackedOff(WorkItem item)
     {
-        var key = BackoffKey(item);
+        return Holds(BackoffKey(item)) || WorkerKey(item) is { } worker && Holds(worker);
+    }
+
+    bool Holds(string key)
+    {
         if (!_backoff.TryGetValue(key, out var until)) return false;
         if (until > DateTimeOffset.UtcNow) return true;
         _backoff.TryRemove(key, out _);
         return false;
+    }
+
+    // A machine fault backs off the worker that met it on this machine, whatever story it takes next.
+    static string? WorkerKey(WorkItem item)
+    {
+        return item.Worker is { } name ? $"worker:{name}" : null;
     }
 
     // A story's work backs off as one; work with no story (a release, main's gate, a QA drain) by
@@ -972,6 +985,7 @@ public sealed class HarnessLoop(
         var provider = false;
         var stopped = false;
         var shared = false;
+        var machine = false;
         try
         {
             var result = await job.Run(running.Slot, running.LogPath, _jobsStop.Token);
@@ -1063,6 +1077,24 @@ public sealed class HarnessLoop(
                 await BackToReady(running.Item, n);
             }
         }
+        // The machine's own workspace, not the story: every job of the worker would break the same way, so the
+        // worker backs off on this machine, the fault is said once in its log, and the story goes back as a break puts it.
+        catch (WorkspaceFault e)
+        {
+            machine = true;
+            outcome = $"machine fault — {e.Step}";
+            var key = WorkerKey(running.Item) ?? BackoffKey(running.Item);
+            if (!Holds(key))
+            {
+                log.LogError(e, "machine fault on {Machine}: worker {Worker} cannot prepare its workspace ({Step}) — no job of it starts here for {Minutes} minutes", options.Value.Machine, running.Item.Worker ?? running.Item.Kind.ToString().ToLowerInvariant(), e.Step, Backoff.TotalMinutes);
+            }
+            _backoff[key] = DateTimeOffset.UtcNow + Backoff;
+            if (story is { } n)
+            {
+                await LockLabelOff(running.Item, n);
+                await BackToReady(running.Item, n);
+            }
+        }
         catch (Exception e)
         {
             outcome = $"failed: {e.Message}";
@@ -1106,13 +1138,13 @@ public sealed class HarnessLoop(
             _running.TryRemove(running.Id, out _);
             _sailing.TryRemove(running.Id, out _);
         }
-        var ending = provider ? ProviderResult : stopped ? StoppedResult : shared ? SharedResult : ended is null ? "broke" : ended.Quiet ? "quiet" : ended.Failed ? "failed" : "ok";
-        metrics.JobEnded(running.Item.Kind.ToString().ToLowerInvariant(), ending is "broke" or ProviderResult or StoppedResult or SharedResult ? ending : "ok");
+        var ending = provider ? ProviderResult : stopped ? StoppedResult : shared ? SharedResult : machine ? MachineResult : ended is null ? "broke" : ended.Quiet ? "quiet" : ended.Failed ? "failed" : "ok";
+        metrics.JobEnded(running.Item.Kind.ToString().ToLowerInvariant(), ending is "broke" or ProviderResult or StoppedResult or SharedResult or MachineResult ? ending : "ok");
         TimeSpan? waited = _waited.TryRemove(running.Id, out var wait) ? wait : null;
         await Quietly(() =>
         {
-            // A provider's outage or the host's stop is not the crew's work, as the quota wall is not.
-            if (!provider && !stopped && !shared) stats.Ended(running.Item.Kind, story, running.Started, DateTimeOffset.UtcNow, waited, ended);
+            // A provider's outage, the host's stop, the harness's pause or the machine's fault is not the crew's work, as the quota wall is not.
+            if (!provider && !stopped && !shared && !machine) stats.Ended(running.Item.Kind, story, running.Started, DateTimeOffset.UtcNow, waited, ended);
             // A review that read its PR clean lands it (ReviewJob.Land): the story's PR merged.
             if (running.Item is { Kind: WorkKind.Review, Pr: { } pr } && ended?.Event == "Clean") stats.Merged(pr, story, DateTimeOffset.UtcNow);
             return Task.CompletedTask;

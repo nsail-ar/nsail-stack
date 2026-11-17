@@ -18,7 +18,8 @@ namespace NSail.Harness.Tests;
 
 // A job that ends on the provider's limit or its server's failure is not the story's break: nothing
 // is said on the story, nothing counts toward stalled, the story goes back as a break puts it, and
-// the item waits what the provider asked. Any other ending still breaks.
+// the item waits what the provider asked. A workspace the machine cannot prepare backs off the worker,
+// not the story. Any other ending still breaks.
 [Collection(nameof(JobLimitTests))]
 public sealed class JobLimitTests : IDisposable
 {
@@ -247,6 +248,84 @@ public sealed class JobLimitTests : IDisposable
         await End(new InvalidOperationException("boom"), new WorkItem(WorkKind.Dev, 7, null, "rest", "rest", Worker: "dev"));
 
         Assert.Contains(Labels.Stalled, _board.Cards[7].Labels);
+    }
+
+    static WorkspaceFault Fetch()
+    {
+        return new WorkspaceFault("fetch", new InvalidOperationException("git fetch --prune exited 1: error: cannot update the ref 'refs/remotes/origin/story/nsail-3700': unable to append to './logs/refs/remotes/origin/story/nsail-3700': Permission denied"));
+    }
+
+    [Fact]
+    public async Task AWorkspaceFaultSaysNothingAndNeverStalls()
+    {
+        await End(Fetch());
+        await End(Fetch());
+        await End(Fetch());
+
+        Assert.Empty(_board.Cards[Story].Comments);
+        Assert.Equal(0, Broke());
+        Assert.DoesNotContain(Labels.Stalled, _board.Cards[Story].Labels);
+    }
+
+    [Fact]
+    public async Task AWorkspaceFaultPutsTheStoryBackAsABreakDoes()
+    {
+        await End(Fetch());
+
+        Assert.DoesNotContain(Labels.Claimed, _board.Cards[Story].Labels);
+        Assert.Equal(Stages.Ready, _board.Cards[Story].Stage);
+        Assert.Equal(new[] { Story }, _locks.Released);
+    }
+
+    [Fact]
+    public async Task AWorkspaceFaultBacksOffTheWorkerNotTheStory()
+    {
+        await End(Fetch());
+
+        Assert.True(_loop.BackedOff(Dev()));
+        Assert.True(_loop.BackedOff(new WorkItem(WorkKind.Dev, 8, null, "rest", "rest", Worker: "dev")));
+        Assert.False(_loop.BackedOff(new WorkItem(WorkKind.Dev, 8, null, "rest", "rest", Worker: "fixer")));
+        Assert.False(_loop.BackedOff(new WorkItem(WorkKind.Qa, Story, null, "rest", "rest", Worker: "qa")));
+    }
+
+    [Fact]
+    public async Task AWorkspaceFaultIsLoggedOnce()
+    {
+        await End(Fetch());
+        await End(Fetch(), new WorkItem(WorkKind.Dev, 8, null, "rest", "rest", Worker: "dev"));
+
+        var error = Assert.Single(_logs.Written, l => l.Level == LogLevel.Error);
+        Assert.Contains("dev", error.Text);
+        Assert.Contains("box", error.Text);
+        Assert.Contains("fetch", error.Text);
+        Assert.Empty(_board.Cards[Story].Comments);
+    }
+
+    [Fact]
+    public async Task TheHistoryAndTheMetricTellAMachineEndingFromABreak()
+    {
+        using var jobs = new Jobs();
+
+        var machine = await End(Fetch());
+        var broke = await End(new InvalidOperationException("boom"));
+
+        Assert.Equal(HarnessLoop.MachineResult, machine.Result);
+        Assert.Equal("machine fault — fetch", machine.Outcome);
+        Assert.Equal("broke", broke.Result);
+        Assert.Equal(new[] { "machine", "broke" }, jobs.Outcomes);
+    }
+
+    [Fact]
+    public async Task AWorkspaceFaultWithNoStoryBacksOffItsWorker()
+    {
+        var release = new WorkItem(WorkKind.Release, null, null, "rest", "rest", Worker: "release", ProductName: "optical");
+
+        var ended = await End(Fetch(), release);
+
+        Assert.Equal(HarnessLoop.MachineResult, ended.Result);
+        Assert.True(_loop.BackedOff(new WorkItem(WorkKind.Release, null, null, "rest", "rest", Worker: "release", ProductName: "therapy")));
+        Assert.Empty(_board.Cards[Story].Comments);
+        Assert.Empty(_locks.Released);
     }
 
     static SharedStepException Shared(Func<Task> probe)
