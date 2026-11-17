@@ -102,27 +102,27 @@ public class WorkspaceTests : IDisposable
         Assert.True(File.Exists(Path.Combine(Bare, "info", "exclude")));
     }
 
-    // The shared clone's preparation is the machine's: a step that fails says which, as a WorkspaceFault.
+    // The mirror's steps are every job's: one that fails says which, as a SharedStepException.
     [Fact]
-    public async Task AFetchThatFailsIsTheMachinesFaultNamingTheStep()
+    public async Task AFetchThatFailsIsTheSharedStepNamingIt()
     {
         var ws = await Warm();
         Directory.Delete(Remote, recursive: true);
 
-        var fault = await Assert.ThrowsAsync<WorkspaceFault>(() => ws.Prepare(1));
+        var fault = await Assert.ThrowsAsync<SharedStepException>(() => ws.Prepare(1));
 
-        Assert.Equal("fetch", fault.Step);
+        Assert.StartsWith("the mirror fetch failed", fault.Message, StringComparison.Ordinal);
         Assert.IsType<InvalidOperationException>(fault.InnerException);
     }
 
     [Fact]
-    public async Task ACloneThatFailsIsTheMachinesFault()
+    public async Task ACloneThatFailsIsTheSharedStep()
     {
         var ws = new Workspace(Path.Combine(_root, "ws"), Path.Combine(_root, "nowhere.git"), null, 1, "Gru", "gru@example.com");
 
-        var fault = await Assert.ThrowsAsync<WorkspaceFault>(() => ws.Prepare(1));
+        var fault = await Assert.ThrowsAsync<SharedStepException>(() => ws.Prepare(1));
 
-        Assert.Equal("clone", fault.Step);
+        Assert.StartsWith("the mirror clone failed", fault.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -189,5 +189,18 @@ public class WorkspaceTests : IDisposable
         var heads = await Shell.Git(Bare, "for-each-ref", "--format=%(refname:short)", "refs/heads");
         Assert.Contains("ahead", heads);
         Assert.DoesNotContain("pushed", heads);
+    }
+
+    [Fact]
+    public async Task AFailedMirrorFetchIsTheSharedStepsAndItsProbeRunsItAgain()
+    {
+        var ws = await Warm();
+        Directory.Delete(Remote, recursive: true);
+
+        var e = await Assert.ThrowsAsync<SharedStepException>(() => ws.Prepare(1));
+        await Assert.ThrowsAsync<InvalidOperationException>(e.Probe);
+
+        await Shell.Git(_root, "init", "-q", "--bare", "-b", "main", Remote);
+        await e.Probe();
     }
 }

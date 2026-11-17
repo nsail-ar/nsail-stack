@@ -43,7 +43,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
             return new JobOutcome($"red — {unreadable}", Failed: true);
         }
         // A workspace the machine cannot prepare is said in the machine's log alone (HarnessLoop.Sail).
-        catch (Exception e) when (!ct.IsCancellationRequested && e is not WorkspaceFault)
+        catch (Exception e) when (!ct.IsCancellationRequested && e is not (WorkspaceFault or SharedStepException))
         {
             // Infrastructure is not the PR's red: the comment carries no gate marker and no status is set,
             // so the head stays ungated and the next pass gates it again.

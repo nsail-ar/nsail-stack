@@ -188,8 +188,8 @@ the files it leaves.
     an answer, and breaks. A job the host's stop cancels is not a break either: its result is `stopped`
     (`harness.jobs{outcome=stopped}`), nothing is said on its story, and the story goes back as a
     break's does. Nor is a job whose workspace this machine cannot prepare (`Workspace.Prepare`: the
-    shared clone's clone, config, fetch, branch sweep or `worktree add`, the slot's checkout, reset or
-    clean), as the fault is the machine's and breaks every story its worker takes: nothing is said on
+    shared clone's branch sweep or `worktree add`, the slot's checkout, reset or clean; the mirror's
+    clone, config and fetch pause the harness instead, below), as the fault is the machine's and breaks every story its worker takes: nothing is said on
     any story or PR, the story goes back as a break's does, and that worker starts no job on this
     machine for the break's back-off, whatever the story; other workers, and the worker on other
     machines, go on. The machine's log says it once at error level, naming the worker, the machine and
@@ -308,7 +308,7 @@ the files it leaves.
   role's tally in its hour (kept two days) and its day (ninety, on the machine's clock), its time and
   its wait in a histogram, so the status page and `GET /api/harness/stats?range=24h|7d|30d` read
   small sums and never walk the jobs. A job that found nothing to do, met the quota wall or ended on the
-  provider (its limit or a 5xx) is not counted; a PR the reviewer lands closes its story's lead time (first job to merged).
+  provider (its limit or a 5xx), or on a failed shared step, is not counted; a PR the reviewer lands closes its story's lead time (first job to merged).
 - **Locks** are the board's labels plus a story lock (a git ref per story on GitHub), created
   atomically, so any number of harnesses can share one board.
 - **A job's processes die with the harness** (`Lanes/ProcessGroup.cs`): a restart never leaves a
@@ -320,6 +320,18 @@ the files it leaves.
   `Shell.TailChars` characters, preceded by the cut-off lines a caller's `keep` accepts (the gate's
   failure lines, the agent's quota signals). Its stdin is written inside the same timeout window, so a child
   that never reads it is killed with its tree.
+- **What pauses the harness and what stalls a story**: a step every job shares (the mirror's clone, config and
+  fetch, `Workspace.PrepareAt`) fails the same for every job, so its failure is the harness's: the job ends
+  as a `SharedStepException`, the harness pauses itself with `<step> failed: <error>` as the status's
+  reason, and nothing is said on any story and the stats do not count the job. Its run's result is `shared` (`/jobs`, the pill, `harness.jobs{outcome=shared}`);
+  its lock label and lock come off and a Dev with no PR goes back to Ready. A job that meets it while the host
+  stops ends as `stopped`, and pauses nothing. The pause is no hand's: every pass starts by running the step again and the first
+  that succeeds lifts it, with nothing to clean; a hand's pause (`POST pause`) is never lifted that way,
+  a restart forgets the pause, and one draining for a restart is not lifted. A job's own failure (any other exception) still says `harness:broke`
+  on its story and the second in a row stalls it.
+- **By hand under the work root** (`Harness:WorkRoot`): anything that touches the mirror or a slot runs as the harness's user,
+  never as root: a push from a slot writes the mirror's remote-tracking
+  refs and reflogs, and root-owned files there make every fetch fail.
 - **Modes**: `Debug` reads and plans and starts nothing; `Live` acts. A forced job (`POST runs`) refuses in Debug, while paused and, for one that needs an agent, inside the quota wall.
 
 ## A host

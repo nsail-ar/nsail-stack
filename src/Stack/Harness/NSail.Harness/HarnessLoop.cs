@@ -50,6 +50,9 @@ public sealed class HarnessLoop(
     // A job's result when it ended on the provider's limit or its server's failure, not on its own.
     public const string ProviderResult = "provider";
 
+    // A job's result when a step every job shares failed: the harness's fault, neither the story's nor the crew's.
+    public const string SharedResult = "shared";
+
     // A job's result when the host's stop cancelled it: neither its break nor the provider's.
     public const string StoppedResult = "stopped";
 
@@ -92,6 +95,9 @@ public sealed class HarnessLoop(
     DateTimeOffset? _pausedSince = state.PausedSince;
     bool _orphansSaid;
     bool _restartPause;
+    // The pause a failed shared step set: no hand's, so a pass that finds the step passing lifts it. Not kept across a restart.
+    bool _sharedPause;
+    Func<Task>? _sharedProbe;
     readonly IReadOnlyList<Worker> _workers = Worker.Compile(options.Value);
 
     // Workers whose Setup failed at this start.
@@ -172,9 +178,55 @@ public sealed class HarnessLoop(
             _paused = why;
             _pausedSince ??= DateTimeOffset.UtcNow;
             _restartPause = false;
+            _sharedPause = false;
             Persist();
         }
         log.LogWarning("paused: {Why}", why);
+    }
+
+    // A step every job shares failed: the harness stops starting work and names the step, and the
+    // stories stay as they were. A hand's pause already holding stays the hand's.
+    void PauseShared(SharedStepException e)
+    {
+        lock (_gate)
+        {
+            if (_paused is null || _sharedPause)
+            {
+                _paused = e.Message;
+                _pausedSince ??= DateTimeOffset.UtcNow;
+                _sharedPause = true;
+                _sharedProbe = e.Probe;
+                Persist();
+            }
+        }
+        log.LogWarning(e, "paused: {Why}", e.Message);
+    }
+
+    // Run again at the head of every pass while a shared step holds the pause; the first success lifts it, unless a restart is draining.
+    internal async Task LiftSharedPause()
+    {
+        Func<Task>? probe;
+        lock (_gate) probe = _sharedPause && !_restarting ? _sharedProbe : null;
+        if (probe is null) return;
+        try
+        {
+            await probe();
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            log.LogWarning("still paused: {Why}", e.Message);
+            return;
+        }
+        lock (_gate)
+        {
+            if (!_sharedPause || _restarting) return;
+            _paused = null;
+            _pausedSince = null;
+            _sharedPause = false;
+            _sharedProbe = null;
+            Persist();
+        }
+        log.LogInformation("resumed: the shared step passes again");
     }
 
     // A deploy's restart: nothing new starts, and the host stops by itself the moment the last job
@@ -209,7 +261,7 @@ public sealed class HarnessLoop(
     // Take-new is kept only when a hand moved it off the configuration's.
     void Persist()
     {
-        state.Set(_restartPause ? null : _paused, _restartPause ? null : _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
+        state.Set(_restartPause || _sharedPause ? null : _paused, _restartPause || _sharedPause ? null : _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
     }
 
     public void Resume()
@@ -221,6 +273,8 @@ public sealed class HarnessLoop(
             _pausedSince = null;
             _quotaUntil = null;
             _restartPause = false;
+            _sharedPause = false;
+            _sharedProbe = null;
             Persist();
         }
         Wake();
@@ -577,6 +631,7 @@ public sealed class HarnessLoop(
         var call = PassCall.Planning;
         try
         {
+            await LiftSharedPause();
             if (leases.Sweep(TurnAge(_workers)) is var dead and > 0) log.LogWarning("{Dead} build turn(s) older than the longest step went back to the line", dead);
             call = PassCall.Statuses;
             var marks = await jobs.Repo.Statuses(ct: stop);
@@ -929,6 +984,7 @@ public sealed class HarnessLoop(
         JobOutcome? ended = null;
         var provider = false;
         var stopped = false;
+        var shared = false;
         var machine = false;
         try
         {
@@ -982,6 +1038,27 @@ public sealed class HarnessLoop(
                 lock (_gate) _limitedUntil = LaterWall(_limitedUntil, until);
             }
             log.LogWarning(e, "{Item} ended on the provider: {Outcome}", running.Item, outcome);
+            if (story is { } n)
+            {
+                await LockLabelOff(running.Item, n);
+                await BackToReady(running.Item, n);
+            }
+        }
+        // The harness's own machinery failed for every job alike: it pauses itself and says so on its status; the story is put back as it was, with nothing said and nothing counted.
+        catch (SharedStepException e)
+        {
+            // A host that is stopping does not pause: the job ends as the stop it is.
+            if (_jobsStop.IsCancellationRequested)
+            {
+                stopped = true;
+                outcome = "stopped with the host";
+            }
+            else
+            {
+                shared = true;
+                outcome = $"paused — {e.Message}";
+                PauseShared(e);
+            }
             if (story is { } n)
             {
                 await LockLabelOff(running.Item, n);
@@ -1061,13 +1138,13 @@ public sealed class HarnessLoop(
             _running.TryRemove(running.Id, out _);
             _sailing.TryRemove(running.Id, out _);
         }
-        var ending = provider ? ProviderResult : stopped ? StoppedResult : machine ? MachineResult : ended is null ? "broke" : ended.Quiet ? "quiet" : ended.Failed ? "failed" : "ok";
-        metrics.JobEnded(running.Item.Kind.ToString().ToLowerInvariant(), ending is "broke" or ProviderResult or StoppedResult or MachineResult ? ending : "ok");
+        var ending = provider ? ProviderResult : stopped ? StoppedResult : shared ? SharedResult : machine ? MachineResult : ended is null ? "broke" : ended.Quiet ? "quiet" : ended.Failed ? "failed" : "ok";
+        metrics.JobEnded(running.Item.Kind.ToString().ToLowerInvariant(), ending is "broke" or ProviderResult or StoppedResult or SharedResult or MachineResult ? ending : "ok");
         TimeSpan? waited = _waited.TryRemove(running.Id, out var wait) ? wait : null;
         await Quietly(() =>
         {
-            // A provider's outage, the host's stop or the machine's fault is not the crew's work, as the quota wall is not.
-            if (!provider && !stopped && !machine) stats.Ended(running.Item.Kind, story, running.Started, DateTimeOffset.UtcNow, waited, ended);
+            // A provider's outage, the host's stop, the harness's pause or the machine's fault is not the crew's work, as the quota wall is not.
+            if (!provider && !stopped && !shared && !machine) stats.Ended(running.Item.Kind, story, running.Started, DateTimeOffset.UtcNow, waited, ended);
             // A review that read its PR clean lands it (ReviewJob.Land): the story's PR merged.
             if (running.Item is { Kind: WorkKind.Review, Pr: { } pr } && ended?.Event == "Clean") stats.Merged(pr, story, DateTimeOffset.UtcNow);
             return Task.CompletedTask;

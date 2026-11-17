@@ -3,6 +3,7 @@
 
 using System.Diagnostics.Metrics;
 using System.Net;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -39,7 +40,7 @@ public sealed class JobLimitTests : IDisposable
         var repo = new DevJobRunTests.FileRepository("unused");
         var jobs = new JobContext(_board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace> { [repo.Name] = workspace }, new NoAgent(), options, [], NullLoggerFactory.Instance, new BuildLeases(1));
         _loop = new HarnessLoop(null!, _board, _locks, workspace,
-            _history, new JobStats(null), jobs, new BuildLeases(1), null!, Options.Create(options), null!, _metrics,
+            _history, new JobStats(null), jobs, new BuildLeases(1), null!, Options.Create(options), new Lifetime(), _metrics,
             new WatchState(null), new HarnessState(Path.Combine(_root, "state")), new Logger<HarnessLoop>(_logs));
         _board.Add(Story, stage: Stages.InProgress, labels: [Labels.Claimed]);
     }
@@ -325,6 +326,80 @@ public sealed class JobLimitTests : IDisposable
         Assert.True(_loop.BackedOff(new WorkItem(WorkKind.Release, null, null, "rest", "rest", Worker: "release", ProductName: "therapy")));
         Assert.Empty(_board.Cards[Story].Comments);
         Assert.Empty(_locks.Released);
+    }
+
+    static SharedStepException Shared(Func<Task> probe)
+    {
+        return new SharedStepException("the mirror fetch", "unable to append reflog: Permission denied", probe, new InvalidOperationException("unable to append reflog: Permission denied"));
+    }
+
+    [Fact]
+    public async Task AFailedSharedStepPausesTheHarnessAndLabelsNothing()
+    {
+        var first = await End(Shared(() => Task.CompletedTask));
+        await End(Shared(() => Task.CompletedTask));
+
+        Assert.Equal(HarnessLoop.SharedResult, first.Result);
+        Assert.Equal(0, Broke());
+        Assert.Contains("the mirror fetch failed", _loop.Paused, StringComparison.Ordinal);
+        Assert.Empty(_board.Cards[Story].Comments);
+        Assert.DoesNotContain(Labels.Stalled, _board.Cards[Story].Labels);
+        Assert.DoesNotContain(Labels.Claimed, _board.Cards[Story].Labels);
+        Assert.Equal(Stages.Ready, _board.Cards[Story].Stage);
+    }
+
+    [Fact]
+    public async Task AStorysOwnDoubleBreakStillStallsBesideASharedFailure()
+    {
+        await End(Shared(() => Task.CompletedTask));
+        await End(new InvalidOperationException("boom"));
+        await End(new InvalidOperationException("boom"));
+
+        Assert.Contains(Labels.Stalled, _board.Cards[Story].Labels);
+        Assert.Equal(2, Broke());
+    }
+
+    [Fact]
+    public async Task TheSharedPauseLiftsByItselfOnTheFirstPassTheStepSucceeds()
+    {
+        var fails = true;
+        await End(Shared(() => fails ? throw new InvalidOperationException("still") : Task.CompletedTask));
+
+        await _loop.LiftSharedPause();
+        Assert.NotNull(_loop.Paused);
+
+        fails = false;
+        await _loop.LiftSharedPause();
+        Assert.Null(_loop.Paused);
+    }
+
+    [Fact]
+    public async Task AHandsPauseIsNotLiftedByTheSharedStepPassing()
+    {
+        _loop.Pause("a hand");
+        await End(Shared(() => Task.CompletedTask));
+        await _loop.LiftSharedPause();
+
+        Assert.Equal("a hand", _loop.Paused);
+    }
+
+    [Fact]
+    public async Task ASharedPauseIsNotLiftedWhileARestartDrains()
+    {
+        await End(Shared(() => Task.CompletedTask));
+        _loop.Restart("a deploy");
+        Environment.ExitCode = 0;
+        await _loop.LiftSharedPause();
+
+        Assert.NotNull(_loop.Paused);
+    }
+
+    sealed class Lifetime : IHostApplicationLifetime
+    {
+        public CancellationToken ApplicationStarted => default;
+        public CancellationToken ApplicationStopping => default;
+        public CancellationToken ApplicationStopped => default;
+        public void StopApplication() { }
     }
 
     sealed class Throws(WorkItem item, Exception e) : IJob

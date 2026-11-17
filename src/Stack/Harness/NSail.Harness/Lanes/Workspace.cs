@@ -174,24 +174,7 @@ public sealed class Workspace
             await _git.WaitAsync();
             try
             {
-                if (!Directory.Exists(Bare))
-                {
-                    // The clone carries its own helpers: the repository's config does not exist yet, and a
-                    // machine-wide helper (Git Credential Manager under WSL) would wait on a window.
-                    try
-                    {
-                        await Shell.Git(_root, ["-c", "credential.helper=", .. Helper(), "clone", "--bare", _repoUrl, Bare]);
-                    }
-                    catch
-                    {
-                        if (Directory.Exists(Bare)) Directory.Delete(Bare, recursive: true);
-                        throw;
-                    }
-                }
-                step = "config";
-                await WriteConfig();
-                step = "fetch";
-                await Shell.Git(Bare, [.. Guard, "fetch", "--prune", "-q", _repoUrl, "+refs/heads/*:refs/remotes/origin/*"]);
+                await Mirror(s => step = s);
                 // A local story branch left by an earlier job would shadow the remote one a
                 // later round must continue; every branch not checked out in a slot goes, unless it holds commits no remote has.
                 step = "branch sweep";
@@ -230,7 +213,47 @@ public sealed class Workspace
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
+            // The mirror is every job's: its failure pauses the harness (HarnessLoop.Sail), the rest is this machine's.
+            if (step is "clone" or "config" or "fetch") throw new SharedStepException($"the mirror {step}", e.Message, Probe, e);
             throw new WorkspaceFault(step, e);
+        }
+    }
+
+    // The shared mirror, cloned once and fetched before every job. Caller holds _git.
+    async Task Mirror(Action<string> at)
+    {
+        at("clone");
+        if (!Directory.Exists(Bare))
+        {
+            // The clone carries its own helpers: the repository's config does not exist yet, and a
+            // machine-wide helper (Git Credential Manager under WSL) would wait on a window.
+            try
+            {
+                await Shell.Git(_root, ["-c", "credential.helper=", .. Helper(), "clone", "--bare", _repoUrl, Bare]);
+            }
+            catch
+            {
+                if (Directory.Exists(Bare)) Directory.Delete(Bare, recursive: true);
+                throw;
+            }
+        }
+        at("config");
+        await WriteConfig();
+        at("fetch");
+        await Shell.Git(Bare, [.. Guard, "fetch", "--prune", "-q", _repoUrl, "+refs/heads/*:refs/remotes/origin/*"]);
+    }
+
+    // The mirror's step again, alone: the pass that finds it passing lifts the pause it caused.
+    async Task Probe()
+    {
+        await _git.WaitAsync();
+        try
+        {
+            await Mirror(_ => { });
+        }
+        finally
+        {
+            _git.Release();
         }
     }
 }
