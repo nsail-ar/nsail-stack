@@ -1426,8 +1426,9 @@
 
 /* The boxes a product's Brand wraps around the chip are flex items that will not shrink below
    their content, so a long name would widen them past the row. Every box between the row and
-   the chip may shrink to nothing, and so may the box beside one that holds the name, which
-   breaks its text wherever the room ends: the chip keeps its width and the name wraps. An
+   the chip may shrink to nothing, save the chip's own side of the row, which is held at half
+   of it (below); and so may the box beside one that holds the name, which breaks its text
+   wherever the room ends: the chip keeps its width and the name wraps. An
    image — a logo, a product mark — beside the chip or inside the name's box keeps its size. */
 .ns-nav-brand :has(.ns-chip-ellipsis) {
     min-width: 0;
