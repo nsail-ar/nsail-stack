@@ -98,11 +98,16 @@ jobs:
           fi
 
       - name: Version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          RUN_NUMBER: ${{ github.run_number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || 'manual' }}
         run: |
-          if [ "${{ github.event_name }}" != "pull_request" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            echo "VERSION=$VERSION_PREFIX.${{ github.run_number }}" >> "$GITHUB_ENV"
+          if [ "$EVENT_NAME" != "pull_request" ] && [ "$REF" = "refs/heads/main" ]; then
+            echo "VERSION=$VERSION_PREFIX.$RUN_NUMBER" >> "$GITHUB_ENV"
           else
-            echo "VERSION=$VERSION_PREFIX.${{ github.run_number }}-pr.${{ github.event.pull_request.number || 'manual' }}" >> "$GITHUB_ENV"
+            echo "VERSION=$VERSION_PREFIX.$RUN_NUMBER-pr.$PR_NUMBER" >> "$GITHUB_ENV"
           fi
 
       - uses: actions/setup-dotnet@v6
