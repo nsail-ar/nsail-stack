@@ -82,6 +82,23 @@ public class JobsPageTests : IDisposable
     }
 
     [Fact]
+    public void ASharedEndingHasAResultAndPillOfItsOwn()
+    {
+        var history = History(
+            Job(1, "dev #5", 5, "paused — the mirror fetch failed: denied", HarnessLoop.SharedResult),
+            Job(2, "dev #6", 6, "failed: boom", "broke"));
+
+        var shared = JobsPage.List(_options, history, null, HarnessLoop.SharedResult, null, null);
+
+        Assert.Contains("1 job<", shared);
+        Assert.Contains("/jobs/job-1\"", shared);
+        Assert.DoesNotContain("/jobs/job-2\"", shared);
+        Assert.Contains("<span class=\"b warn\">harness paused</span>", shared);
+        Assert.Contains("<option value=\"shared\" selected>", shared);
+        Assert.Contains("harness paused", JobsPage.One(_options, history, "job-1", null));
+    }
+
+    [Fact]
     public void AWatchJobReadsWatchAndTheRoleFilterFindsIt()
     {
         var history = History(

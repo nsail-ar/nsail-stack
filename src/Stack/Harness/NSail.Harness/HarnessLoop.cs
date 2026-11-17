@@ -1031,11 +1031,20 @@ public sealed class HarnessLoop(
             }
         }
         // The harness's own machinery failed for every job alike: it pauses itself and says so on its status; the story is put back as it was, with nothing said and nothing counted.
-        catch (SharedStepException e) when (!_jobsStop.IsCancellationRequested)
+        catch (SharedStepException e)
         {
-            shared = true;
-            outcome = $"paused — {e.Message}";
-            PauseShared(e);
+            // A host that is stopping does not pause: the job ends as the stop it is.
+            if (_jobsStop.IsCancellationRequested)
+            {
+                stopped = true;
+                outcome = "stopped with the host";
+            }
+            else
+            {
+                shared = true;
+                outcome = $"paused — {e.Message}";
+                PauseShared(e);
+            }
             if (story is { } n)
             {
                 await LockLabelOff(running.Item, n);

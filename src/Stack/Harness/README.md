@@ -314,8 +314,9 @@ the files it leaves.
 - **What pauses the harness and what stalls a story**: a step every job shares (the mirror's clone and
   fetch, `Workspace.Mirror`) fails the same for every job, so its failure is the harness's: the job ends
   as a `SharedStepException`, the harness pauses itself with `<step> failed: <error>` as the status's
-  reason, and nothing is said on any story and the stats do not count the job (its ending is `shared`) (its lock label and lock come off, a Dev with no PR
-  goes back to Ready). The pause is no hand's: every pass starts by running the step again and the first
+  reason, and nothing is said on any story and the stats do not count the job. Its run's result is `shared` (`/jobs`, the pill, `harness.jobs{outcome=shared}`);
+  its lock label and lock come off and a Dev with no PR goes back to Ready. A job that meets it while the host
+  stops ends as `stopped`, and pauses nothing. The pause is no hand's: every pass starts by running the step again and the first
   that succeeds lifts it, with nothing to clean; a hand's pause (`POST pause`) is never lifted that way,
   a restart forgets the pause, and one draining for a restart is not lifted. A job's own failure (any other exception) still says `harness:broke`
   on its story and the second in a row stalls it.

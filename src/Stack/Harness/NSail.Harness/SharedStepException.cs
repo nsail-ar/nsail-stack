@@ -8,8 +8,6 @@ namespace NSail.Harness;
 public sealed class SharedStepException(string step, string detail, Func<Task> probe, Exception inner)
     : Exception($"{step} failed: {detail}", inner)
 {
-    public string Step => step;
-
     public Task Probe()
     {
         return probe();

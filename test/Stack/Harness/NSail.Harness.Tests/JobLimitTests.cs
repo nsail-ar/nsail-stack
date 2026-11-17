@@ -257,9 +257,11 @@ public sealed class JobLimitTests : IDisposable
     [Fact]
     public async Task AFailedSharedStepPausesTheHarnessAndLabelsNothing()
     {
-        await End(Shared(() => Task.CompletedTask));
+        var first = await End(Shared(() => Task.CompletedTask));
         await End(Shared(() => Task.CompletedTask));
 
+        Assert.Equal(HarnessLoop.SharedResult, first.Result);
+        Assert.Equal(0, Broke());
         Assert.Contains("the mirror fetch failed", _loop.Paused, StringComparison.Ordinal);
         Assert.Empty(_board.Cards[Story].Comments);
         Assert.DoesNotContain(Labels.Stalled, _board.Cards[Story].Labels);
