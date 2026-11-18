@@ -19,9 +19,9 @@ dashboard card are the two shapes that earn it first.
 ## The contract
 
 Three states and no fourth: **not read yet** (nothing), **read** (`ChildContent`), **could
-not be read** (the reason and a Retry, in the content's own place). Content inside the
-region exists only when a read produced it — which is what keeps "no records" an answer
-about the data instead of an answer about the network.
+not be read** (the reason, and a Retry where a second try can pass, in the content's own
+place). Content inside the region exists only when a read produced it — which is what keeps
+"no records" an answer about the data instead of an answer about the network.
 
 ## Recipe
 

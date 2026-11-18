@@ -8,6 +8,7 @@ using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
 using NSail.Metadata;
+using NSail.Problems;
 
 namespace NSail.Components.Tests;
 
@@ -64,6 +65,33 @@ public sealed class NsTableFailedReadTests : BunitContext, IAsyncLifetime
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-table-retry")));
         Assert.DoesNotContain("Common.NoRecords", cut.Markup);
         Assert.Empty(cut.FindAll(".ns-table-loading-overlay"));
+    }
+
+    [Fact]
+    public void AFirstReadRefusedForPermissionIsNotNoRecordsAndOffersNoRetry()
+    {
+        var cut = Render<ScrollTableHost>(p => p
+            .Add(x => x.Failing, new HashSet<int> { 1 })
+            .Add(x => x.Refusal, SecurityProblem.Forbidden("ListRows")));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-table-failed")));
+        Assert.Empty(cut.FindAll(".ns-table-retry"));
+        Assert.DoesNotContain("Common.NoRecords", cut.Markup);
+    }
+
+    [Theory]
+    [MemberData(nameof(NsLoadTests.RefusedForGood), MemberType = typeof(NsLoadTests))]
+    public void APagedReadRefusedForGoodIsNotNoRecordsAndOffersNoRetry(string refusal)
+    {
+        var cut = Render<ScrollTableHost>(p => p
+            .Add(x => x.Mode, NsTableMode.Page)
+            .Add(x => x.Yields, true)
+            .Add(x => x.Failing, new HashSet<int> { 1 })
+            .Add(x => x.Refusal, NsLoadTests.Refusal(refusal)));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".ns-table-failed")));
+        Assert.Empty(cut.FindAll(".ns-table-retry"));
+        Assert.DoesNotContain("Common.NoRecords", cut.Markup);
     }
 
     [Fact]

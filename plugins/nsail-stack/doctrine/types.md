@@ -26,7 +26,7 @@ NSail uses a structured error model for expected failures.
 
 | Type | Role |
 |---|---|
-| `Problem` | Error payload (code, title, issues, status) |
+| `Problem` | Error payload (code, title, issues, status); `IsRetryable()` says whether a second try can pass — no response, a 5xx, 408 or 429, never `TenancyProblem.Suspended` — and `isRetryable` in `@nsail/stack` answers alike |
 | `Issue` | Individual validation or business issue |
 | `BusinessException` | Thrown by handlers; converted to `Problem` in HTTP layer |
 | `BusinessProblem` | Factory helpers for common business errors |

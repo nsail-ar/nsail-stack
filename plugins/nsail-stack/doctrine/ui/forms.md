@@ -21,7 +21,8 @@ the first two put fields on screen:
 - **empty by design** — the handler answered with a *new* model because the document does not
   exist yet (a setting nobody has saved). The blank IS the data, so the form is editable.
 - **failed** — the read threw, reported a `Problem`, or answered nothing at all. The form draws
-  the refusal and a Reintentar where its fields would have been.
+  the refusal where its fields would have been, with a Reintentar only where a second try can
+  pass — never beside a permission refusal, a missing record or a rule ([hosts.md](hosts.md#nsload)).
 
 The guarantee is structural, not a check a screen remembers to write: a form with no model renders
 no `<form>`, so a save over data nobody could read is never on screen to press. A page keeps

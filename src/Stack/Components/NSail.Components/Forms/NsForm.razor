@@ -17,7 +17,8 @@
 @inject IJSRuntime JS
 
 @* A read that failed leaves nothing to edit, so nothing editable is in the document: the
-   refusal and the one act that answers it stand where the fields would have been. The submit
+   refusal stands where the fields would have been, with a retry only where a second try can
+   pass (hosts.md#nsload). The submit
    is not disabled — it does not exist — which is what makes "a form only submits a model it
    loaded" structural instead of a check each screen remembers to write. *@
 @if (_loadProblem is not null)
@@ -29,9 +30,12 @@
                 <span>@text</span>
             }
         </div>
-        <button type="button" class="ns-form-problem-act" disabled="@IsRunning" @onclick="Refetch">
-            @Strings.Translate("Common.Retry")
-        </button>
+        @if (_loadProblem.IsRetryable())
+        {
+            <button type="button" class="ns-form-problem-act" disabled="@IsRunning" @onclick="Refetch">
+                @Strings.Translate("Common.Retry")
+            </button>
+        }
     </div>
 }
 else if (HasDocument)
@@ -170,9 +174,10 @@ else if (HasDocument)
 
     /// <summary>The read that produces the model this form edits — the twin of
     /// <see cref="OnSubmit"/>. The form owns what happens when it fails: it renders the refusal
-    /// and a retry instead of its fields, so the save that would write blanks over stored data
-    /// is never on screen to press. A document that legitimately does not exist yet is not a
-    /// failure — the handler answers with a new model, and there the blank IS the data.
+    /// instead of its fields, with a retry only where a second try can pass, so the save that
+    /// would write blanks over stored data is never on screen to press. A document that
+    /// legitimately does not exist yet is not a failure — the handler answers with a new model,
+    /// and there the blank IS the data.
     ///
     /// It runs once, when the form is created: a screen whose read depends on a route parameter
     /// keys the form on it (@key) so a new document is a new form.</summary>

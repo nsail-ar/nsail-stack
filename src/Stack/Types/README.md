@@ -22,7 +22,7 @@ Namespaces are named for a capability, not for the project.
 
 | Namespace | Contents |
 |---|---|
-| `NSail.Problems` | `Problem` (code, title, issues, status), `Issue`, `BusinessException`, and factories per family: `BusinessProblem`, `InputProblem` (`For<T>()` builds through `InputProblemBuilder`), `SecurityProblem`, `SystemProblem`, `ExternalProblem`, `MessagingProblem`, `NetworkProblem`, `TenancyProblem` |
+| `NSail.Problems` | `Problem` (code, title, issues, status; `IsRetryable()`: a second try can pass), `Issue`, `BusinessException`, and factories per family: `BusinessProblem`, `InputProblem` (`For<T>()` builds through `InputProblemBuilder`), `SecurityProblem`, `SystemProblem`, `ExternalProblem`, `MessagingProblem`, `NetworkProblem`, `TenancyProblem` |
 | `NSail.Paging` | `DataPage<T>`, `PagedMessage` (`PageIndex`, `PageSize`, `MaxPageSize` = 1000, `MaxPageIndex`), `Selection` (ids or "all rows the filter answers") |
 | `NSail.Serialization` | `JsonOptions.Wire` (web defaults, enums as names, `long`/`ulong`/`decimal` as strings), `WireSchema.For(type)` (JSON Schema of a wire payload) |
 | `NSail.Text` | `Markdown` (`ToHtml`, `Headings`, `Slug`, `ToText`) with `MarkdownOptions.Prose` / `Document`, `NamedTokens` (`In`, `Fill` for `{name}`), `WebAddress.IsNavigable` |

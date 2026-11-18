@@ -455,10 +455,10 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
   at every width. Exemplar: `PartyIdentityEditor` (cases).
 - **A form only submits a model it loaded.** The read is the form's half (`OnLoad`), twin of its
   submit: a screen never builds an empty model "for now" and hands it over — a blank standing in
-  for unreadable data is one click from overwriting it. A failed read renders the refusal and a
-  retry instead of the fields — no fields, no save. **A document that does not exist yet is not
-  a failure**: the blank IS the data, and the form is editable ([ui/forms.md](ui/forms.md),
-  cases).
+  for unreadable data is one click from overwriting it. A failed read renders the refusal (and a
+  retry where a second try can pass) instead of the fields — no fields, no save. **A document
+  that does not exist yet is not a failure**: the blank IS the data, and the form is editable
+  ([ui/forms.md](ui/forms.md), cases).
 - **Unsaved changes are the form's business, not the page's** — `NsForm` reports its edits and
   the surface guards the exit. **Filter/search forms declare `<NsForm ... Untracked>`**
   ([ui/forms.md](ui/forms.md), cases).
@@ -663,7 +663,9 @@ the fields sharing the line keep their tops, nothing above the row moves (cases)
 **A read that failed is not a read that came back empty, and never renders as one.** "No
 records", "Empty", a zero — each is an answer ABOUT the data, so only a read that reached the
 data may give it. Content from a read declares an `NsLoad` around itself: the failure draws in
-the content's own place, with a Retry that re-runs that read alone, in the sender's own words.
+the content's own place, in the sender's own words, with a Retry that re-runs that read alone
+wherever a second try can pass — never beside a refusal no retry changes, such as a permission
+([ui/hosts.md](ui/hosts.md#nsload)).
 **A load failure is never a toast** (it fades and carries no retry) and never the app-wide
 splash: `NsPage` runs `OnCreatedAsync` through the `Runner`, so an unconverted screen still costs
 a reported `Problem` rather than the whole app ([ui/hosts.md](ui/hosts.md),

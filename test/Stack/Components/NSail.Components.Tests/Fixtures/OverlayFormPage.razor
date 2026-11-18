@@ -57,7 +57,7 @@
 
         if (Fails)
         {
-            args.Problem = BusinessProblem.RuleViolation("Read", "La lectura no llegó.");
+            args.Problem = TransientRead.Unreachable();
 
             return;
         }

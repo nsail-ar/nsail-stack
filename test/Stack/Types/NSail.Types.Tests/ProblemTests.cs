@@ -125,6 +125,49 @@ public sealed class ProblemTests
         Assert.Equal(status, exception.Status);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(408)]
+    [InlineData(429)]
+    [InlineData(500)]
+    [InlineData(503)]
+    [InlineData(504)]
+    public void IsRetryable_WhereASecondTryCanPass_IsTrue(int? status)
+    {
+        Assert.True(new Problem("Code", "Title", [], status).IsRetryable());
+    }
+
+    [Theory]
+    [InlineData(400)]
+    [InlineData(401)]
+    [InlineData(403)]
+    [InlineData(404)]
+    [InlineData(409)]
+    [InlineData(422)]
+    public void IsRetryable_OnAnyOther4xx_IsFalse(int status)
+    {
+        Assert.False(new Problem("Code", "Title", [], status).IsRetryable());
+    }
+
+    [Fact]
+    public void IsRetryable_ForTheFactoriesASecondTryCanPass_IsTrue()
+    {
+        Assert.True(SystemProblem.Unhandled().IsRetryable());
+        Assert.True(SystemProblem.InternalError().IsRetryable());
+        Assert.True(MessagingProblem.Timeout("Read").IsRetryable());
+        Assert.True(SecurityProblem.TooManyRequests("Read").IsRetryable());
+        Assert.True(NetworkProblem.RequestFailed(null, NetworkFailureReason.EmptyContent).IsRetryable());
+    }
+
+    [Fact]
+    public void IsRetryable_ForASuspendedTenant_IsFalseThoughItIs503()
+    {
+        var problem = TenancyProblem.Suspended();
+
+        Assert.Equal(503, problem.Status);
+        Assert.False(problem.IsRetryable());
+    }
+
     [Fact]
     public void Unhandled_ReturnsUnknownProblem()
     {

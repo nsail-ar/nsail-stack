@@ -31,6 +31,11 @@
     [Parameter]
     public bool Throws { get; set; }
 
+    /// <summary>What the read refuses with; unset, a server that could not answer — the
+    /// transient failure a second try can pass.</summary>
+    [Parameter]
+    public Problem? Refusal { get; set; }
+
     /// <summary>A read that answers nothing at all and refuses nothing either.</summary>
     [Parameter]
     public bool AnswersNothing { get; set; }
@@ -46,7 +51,7 @@
 
         if (Reads <= FailUntil)
         {
-            var problem = BusinessProblem.RuleViolation("Read", "La lectura no llegó.");
+            var problem = Refusal ?? TransientRead.Unreachable();
 
             if (Throws)
             {

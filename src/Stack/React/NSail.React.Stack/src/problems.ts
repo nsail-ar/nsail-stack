@@ -51,6 +51,19 @@ export function requestFailed(status: number | null, reason: "EmptyResponse" | "
   return { code: "RequestFailed", title: "Unable to contact the server", issues, status };
 }
 
+/** Whether a second attempt can be answered otherwise, as Problem.IsRetryable says it: no
+ * response, a 5xx, 408 or 429. Every other 4xx is a refusal for good, and so is the tenant's
+ * Suspended, a 503 no retry changes. */
+export function isRetryable(problem: Problem): boolean {
+  const status = problem.status ?? null;
+
+  if (status === null || status === 408 || status === 429) {
+    return true;
+  }
+
+  return status >= 500 && problem.code !== "Suspended";
+}
+
 /** Issues about one field, matched by the C# member name a server Issue names in its source. */
 export function issuesFor(problem: Problem | null | undefined, member: string): Issue[] {
   if (!problem) {

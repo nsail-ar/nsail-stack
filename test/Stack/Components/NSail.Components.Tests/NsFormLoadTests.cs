@@ -8,6 +8,7 @@ using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
 using NSail.Metadata;
+using NSail.Problems;
 
 namespace NSail.Components.Tests;
 
@@ -77,6 +78,33 @@ public sealed class NsFormLoadTests : BunitContext, IAsyncLifetime
         Assert.Equal(2, cut.Instance.Reads);
         Assert.Empty(cut.FindAll(".ns-form-problem"));
         Assert.Equal("guardado", cut.FindComponents<MudTextField<string>>()[0].Instance.Value);
+    }
+
+    /// <summary>A refusal no second try can turn around draws where the fields would have
+    /// been, and offers no act that only repeats it.</summary>
+    [Fact]
+    public void AReadRefusedForPermissionDrawsTheRefusalAndNoRetry()
+    {
+        var cut = Render<LoadFormHost>(p => p
+            .Add(x => x.FailUntil, 1)
+            .Add(x => x.Throws, true)
+            .Add(x => x.Refusal, SecurityProblem.Forbidden("GetSettings")));
+
+        Assert.Empty(cut.FindAll("input"));
+        Assert.Contains("GetSettings", cut.Find(".ns-form-problem").TextContent, StringComparison.Ordinal);
+        Assert.Empty(cut.FindAll(".ns-form-problem-act"));
+    }
+
+    [Theory]
+    [MemberData(nameof(NsLoadTests.RefusedForGood), MemberType = typeof(NsLoadTests))]
+    public void AReadRefusedForGoodDrawsTheRefusalAndNoRetry(string refusal)
+    {
+        var cut = Render<LoadFormHost>(p => p
+            .Add(x => x.FailUntil, 1)
+            .Add(x => x.Refusal, NsLoadTests.Refusal(refusal)));
+
+        Assert.NotEmpty(cut.FindAll(".ns-form-problem"));
+        Assert.Empty(cut.FindAll(".ns-form-problem-act"));
     }
 
     /// <summary>The third state, and the one a nullable model cannot tell from a failure: a
