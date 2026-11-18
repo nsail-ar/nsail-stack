@@ -51,11 +51,7 @@
 
         if (Reads <= FailUntil)
         {
-            var problem = Refusal ?? new Problem(
-                code: "Unreachable",
-                title: "La lectura no llegó.",
-                issues: [new Issue(code: "Unreachable", message: "La lectura no llegó.")],
-                status: 503);
+            var problem = Refusal ?? TransientRead.Unreachable();
 
             if (Throws)
             {

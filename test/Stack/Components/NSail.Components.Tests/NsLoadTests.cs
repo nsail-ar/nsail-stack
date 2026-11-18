@@ -61,11 +61,7 @@ public sealed class NsLoadTests : BunitContext, IAsyncLifetime
 
     static Problem Unreachable()
     {
-        return new(
-            code: "Unreachable",
-            title: "The till could not be read",
-            issues: [new Issue(code: "Unreachable", message: "The till could not be read right now.")],
-            status: 503);
+        return TransientRead.Unreachable("The till could not be read right now.", "The till could not be read");
     }
 
     IRenderedComponent<LoadProbeHost> Host(Problem? refusal = null, TaskCompletionSource? gate = null, bool bare = false)
