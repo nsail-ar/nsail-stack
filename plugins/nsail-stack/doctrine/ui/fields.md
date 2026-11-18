@@ -160,9 +160,13 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   writes nothing and blocks the submit through `GetOwnProblem`; when both halves are refused,
   the date's sentence is the one said. **A box emptied and left keeps the hour held** and takes
   it back: the value always holds an hour, and the vendor hands the empty box over as null, which
-  would land as midnight — an hour nobody entered, saved under no refusal. Two vendor traps shape the wiring. `MudTimePicker`'s
-  `Time` setter re-applies on every render, so the hour carries its own optimistic bet — the
-  date half's, null while a refusal stands so the refused text is what the box keeps. And while
+  would land as midnight — an hour nobody entered, saved under no refusal. **An hour picked on
+  the clock is the value**, as a day picked off the calendar is. Three vendor traps shape the
+  wiring. `MudTimePicker`'s `Time` setter re-applies on every render, so the hour carries its own
+  optimistic bet — the date half's, null while a refusal stands so the refused text is what the
+  box keeps. The clock writes its box before it raises `TimeChanged`, so a readable text in the
+  box places that bet as it arrives: the redraw it causes would otherwise hand the setter the
+  held hour, which overwrites the pick and is then reported as an echo. And while
   its box holds unreadable text that setter raises `TimeChanged(null)` on every render, so the
   callback is bound with **no receiver** and the field renders only when it has something new to
   show; an ordinary callback renders after each raise, which is the next raise. `NsTimeField` is

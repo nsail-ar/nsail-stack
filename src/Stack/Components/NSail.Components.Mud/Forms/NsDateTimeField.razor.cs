@@ -248,9 +248,17 @@ public partial class NsDateTimeField<TValue>
     }
 
     // Observed one way out only, as OnTextChanged is: a second unreadable text after a first
-    // raises no TimeChanged, and the refusal must still follow it.
-    void OnTimeTextChanged()
+    // raises no TimeChanged, and the refusal must still follow it. A readable text is the
+    // optimistic hour meanwhile, for OnTextChanged's reason: the clock writes its box BEFORE it
+    // raises TimeChanged, and the redraw below would hand the vendor the held hour, which it
+    // takes over the pick and then reports as an echo (measured, PickingAnHourOnTheClock_*).
+    void OnTimeTextChanged(string? text)
     {
+        if (TimeText.TryParse(text, out var read))
+        {
+            TakePendingTime(read);
+        }
+
         NotifyOwnProblemChanged();
 
         StateHasChanged();

@@ -212,7 +212,8 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
     }
 
     // Scoped to the DATE picker rather than taken off the whole tree: the composite renders a
-    // second picker below it, and only the date half has a refusal to say anything about.
+    // second picker below it, and the field says its one sentence under the date box, the
+    // hour's refusal included.
     static string? Refusal(IRenderedComponent<DateTimeValueHost> cut)
     {
         return cut.FindComponent<MudDatePicker>().FindAll(".mud-input-helper-text").FirstOrDefault()?.TextContent;
@@ -554,5 +555,71 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
 
         Assert.True(cut.FindComponent<MudDatePicker>().Find("input").HasAttribute("disabled"));
         Assert.True(cut.FindComponent<MudTimePicker>().Find("input").HasAttribute("disabled"));
+    }
+
+    // The clock the way the browser drives it: its script reports the stick under the pointer,
+    // then the click — the hour first, the minutes after, and the minutes close the clock.
+    static async Task PickOnTheClock(IRenderedComponent<BoundDateTimeValueHost> cut, int hour, int minute)
+    {
+        var picker = cut.FindComponent<MudTimePicker>();
+
+        await cut.InvokeAsync(() => picker.Find(".mud-input-adornment button").Click());
+        await cut.InvokeAsync(() => picker.Instance.SelectTimeFromStick(hour, false));
+        await cut.InvokeAsync(() => picker.Instance.OnStickClick(hour));
+        await cut.InvokeAsync(() => picker.Instance.SelectTimeFromStick(minute, false));
+        await cut.InvokeAsync(() => picker.Instance.OnStickClick(minute));
+    }
+
+    static Task LeaveBoundHour(IRenderedComponent<BoundDateTimeValueHost> cut, string text)
+    {
+        return cut.InvokeAsync(() => cut.FindComponent<MudTimePicker>().Find("input").Change(text));
+    }
+
+    static void AssertTheClockLanded(IRenderedComponent<BoundDateTimeValueHost> cut)
+    {
+        cut.WaitForAssertion(() => Assert.Equal(new DateTime(2026, 11, 19, 15, 15, 0), cut.Instance.Value), TimeSpan.FromSeconds(2));
+        Assert.Equal("15:15", cut.FindComponent<MudTimePicker>().Find("input").GetAttribute("value"));
+    }
+
+    /// <summary>nsail#3817, K1: an hour picked on the clock is the value, as a day picked off the
+    /// calendar is (NsDatePickTests). Driven through the clock rather than TimeChanged, because
+    /// the box the clock writes is what sent the pick back to the hour held.</summary>
+    [Fact]
+    public async Task PickingAnHourOnTheClock_OnAFreshField_LandsOnTheDateChosen()
+    {
+        ComposeCulture("es");
+
+        var cut = Render<BoundDateTimeValueHost>(ps => ps.Add(p => p.Value, new DateTime(2026, 11, 19, 17, 0, 0)));
+
+        await PickOnTheClock(cut, 15, 15);
+
+        AssertTheClockLanded(cut);
+    }
+
+    [Fact]
+    public async Task PickingAnHourOnTheClock_AfterATypedHour_LandsOnTheDateChosen()
+    {
+        ComposeCulture("es");
+
+        var cut = Render<BoundDateTimeValueHost>(ps => ps.Add(p => p.Value, new DateTime(2026, 11, 19, 17, 0, 0)));
+
+        await LeaveBoundHour(cut, "1430");
+        await PickOnTheClock(cut, 15, 15);
+
+        AssertTheClockLanded(cut);
+    }
+
+    [Fact]
+    public async Task PickingAnHourOnTheClock_AfterARefusalLifted_LandsOnTheDateChosen()
+    {
+        ComposeCulture("es");
+
+        var cut = Render<BoundDateTimeValueHost>(ps => ps.Add(p => p.Value, new DateTime(2026, 11, 19, 17, 0, 0)));
+
+        await LeaveBoundHour(cut, "25:99");
+        await LeaveBoundHour(cut, "930");
+        await PickOnTheClock(cut, 15, 15);
+
+        AssertTheClockLanded(cut);
     }
 }
