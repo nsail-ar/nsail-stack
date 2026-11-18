@@ -152,6 +152,21 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   renders the helper container under that box, with an empty line in it (measured,
   `NsDateRefusalSubmitTests`), and the words belong to the date box above — one field, one
   message, however many boxes it wears.
+- **`NsDateTimeField`'s hour box takes typing on the date box's contract**, through its own
+  seam, `TimeTextConverter`: no mask, the text read when the box is left, onto the date already
+  held. The clock is 24 hours in every language, so the separator need not be typed — the
+  minutes are the last two digits (`1430` is 14:30, `930` is 09:30). Text that is not an hour
+  (`25:99`, `tarde`) raises **its own refusal** (`Problems.UnreadableTime`), is left standing,
+  writes nothing and blocks the submit through `GetOwnProblem`; when both halves are refused,
+  the date's sentence is the one said. **A box emptied and left keeps the hour held** and takes
+  it back: the value always holds an hour, and the vendor hands the empty box over as null, which
+  would land as midnight — an hour nobody entered, saved under no refusal. Two vendor traps shape the wiring. `MudTimePicker`'s
+  `Time` setter re-applies on every render, so the hour carries its own optimistic bet — the
+  date half's, null while a refusal stands so the refused text is what the box keeps. And while
+  its box holds unreadable text that setter raises `TimeChanged(null)` on every render, so the
+  callback is bound with **no receiver** and the field renders only when it has something new to
+  show; an ordinary callback renders after each raise, which is the next raise. `NsTimeField` is
+  the clock alone.
 - **`NsDateField` takes no bound and derives one.** A field whose bound member declares
   `[NotFuture]` (`NSail.Messaging.Runtime.Validation`) hands the vendor a ceiling of the house's
   own `BusinessDate.Today`, so the calendar never offers the day the submit will refuse — the

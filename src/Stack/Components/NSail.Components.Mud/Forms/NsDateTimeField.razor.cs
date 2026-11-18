@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using Microsoft.AspNetCore.Components;
 using NSail.Localization;
 
 namespace NSail.Components;
@@ -11,14 +12,28 @@ public partial class NsDateTimeField<TValue>
     DateTime? _pending;
     DateTime? _displaced;
 
+    bool _hasPendingTime;
+    TimeSpan? _pendingTime;
+    TimeSpan? _displacedTime;
+    bool _restoringTime;
+
     // One instance for the field's whole life, for the reason NsDateField's own copy carries:
     // the vendor compares Converter by reference, and a fresh one per render throws away the
     // text it is holding that nobody could read as a date.
     readonly DateTextConverter _text;
 
+    readonly TimeTextConverter _time = new();
+
+    // Bound with no receiver, so raising it re-renders nothing on its own: the vendor's Time
+    // setter raises TimeChanged(null) on EVERY render while its box holds text it could not
+    // read, and the render an ordinary callback adds after each one is the next render — a loop
+    // that never yields. OnTimeChanged renders when it has something new to show.
+    readonly EventCallback<TimeSpan?> _timeChanged;
+
     public NsDateTimeField()
     {
         _text = new DateTextConverter(() => RegionCulture.For(Language));
+        _timeChanged = new EventCallback<TimeSpan?>(null, (Func<TimeSpan?, Task>)OnTimeChanged);
     }
 
     static readonly Dictionary<string, object> Unmarked = [];
@@ -44,7 +59,13 @@ public partial class NsDateTimeField<TValue>
     // date survives until OnParametersSet confirms the round trip landed.
     DateTime? MudDate => _hasPending ? _pending : ConvertToDateTime(Value)?.Date;
 
-    TimeSpan? MudTime => ConvertToDateTime(Value)?.TimeOfDay;
+    // The hour half's own bet, for the date half's reason and one more: the vendor's Time setter
+    // re-applies on every render of this field, so handing it the held hour while a typed one
+    // is in flight rewrites the box — and while a refusal stands, the bet is null, which keeps
+    // the refused text in the box instead of the hour it displaced.
+    TimeSpan? MudTime => _restoringTime ? null
+        : _hasPendingTime ? _pendingTime
+        : ConvertToDateTime(Value)?.TimeOfDay;
 
     // The date half reaching the same treatment NsDateField already carries — the same
     // placeholder and the same text seam. NOT composed as an actual <NsDateField> here: that
@@ -73,9 +94,11 @@ public partial class NsDateTimeField<TValue>
         return Refusal();
     }
 
+    // One field, one sentence: the date's refusal answers first, the hour's when the date reads.
     string? Refusal()
     {
-        return DateText.Refusal(_text.Refused, RegionCulture.For(Language), Strings);
+        return DateText.Refusal(_text.Refused, RegionCulture.For(Language), Strings)
+            ?? TimeText.Refusal(_time.Refused, Strings);
     }
 
     // The optimistic date is a bet on the round trip, and it is dropped the moment the bet is
@@ -94,6 +117,23 @@ public partial class NsDateTimeField<TValue>
         {
             _hasPending = false;
         }
+
+        if (_hasPendingTime && ConvertToDateTime(Value)?.TimeOfDay != _displacedTime)
+        {
+            _hasPendingTime = false;
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+
+        if (_restoringTime)
+        {
+            _restoringTime = false;
+
+            StateHasChanged();
+        }
     }
 
     // What the box is showing right now, kept once per bet: a second pick while one is still
@@ -108,6 +148,17 @@ public partial class NsDateTimeField<TValue>
 
         _pending = date;
         _hasPending = true;
+    }
+
+    void TakePendingTime(TimeSpan? time)
+    {
+        if (!_hasPendingTime)
+        {
+            _displacedTime = ConvertToDateTime(Value)?.TimeOfDay;
+        }
+
+        _pendingTime = time;
+        _hasPendingTime = true;
     }
 
     // The picked DATE with the time already held. The picker hands its date back at
@@ -156,10 +207,53 @@ public partial class NsDateTimeField<TValue>
         StateHasChanged();
     }
 
-    // The date already held with the picked TIME — this half was always right.
-    Task OnTimeChanged(TimeSpan? value)
+    // The date already held with the picked or typed TIME. Refused text writes nothing, for
+    // the reason OnDateChanged carries: the vendor hands it over as null, which would otherwise
+    // land as midnight.
+    async Task OnTimeChanged(TimeSpan? value)
     {
-        return SetPicked(Combine(ConvertToDateTime(Value), value ?? TimeSpan.Zero));
+        if (_time.Refused is not null)
+        {
+            if (_hasPendingTime && _pendingTime is null)
+            {
+                return;
+            }
+
+            TakePendingTime(null);
+        }
+        else if (value is null)
+        {
+            // An emptied box: the value always holds an hour, so the one held stands and the
+            // box takes it back — midnight here would be an hour nobody entered. The vendor
+            // repaints its box only when Time changes (measured), and the held hour is the one it was last
+            // handed, so it is handed null for one render and the held hour on the next.
+            _hasPendingTime = false;
+            _restoringTime = true;
+        }
+        else
+        {
+            var combined = Combine(ConvertToDateTime(Value), value.Value);
+
+            if (!Echoes(combined))
+            {
+                TakePendingTime(value);
+
+                await SetPicked(combined);
+            }
+        }
+
+        NotifyOwnProblemChanged();
+
+        StateHasChanged();
+    }
+
+    // Observed one way out only, as OnTextChanged is: a second unreadable text after a first
+    // raises no TimeChanged, and the refusal must still follow it.
+    void OnTimeTextChanged()
+    {
+        NotifyOwnProblemChanged();
+
+        StateHasChanged();
     }
 
     static DateTime? ConvertToDateTime(TValue? value)

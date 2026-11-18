@@ -183,7 +183,8 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
         Services.AddSingleton(new StringCatalog(
         [
             new TwoLanguageStrings("Common.DateLetters", "dmy", "dma"),
-            new TwoLanguageStrings("Problems.UnreadableDate", "This is not a date — write it as {shape}", "Esto no es una fecha — escribila como {shape}")
+            new TwoLanguageStrings("Problems.UnreadableDate", "This is not a date — write it as {shape}", "Esto no es una fecha — escribila como {shape}"),
+            new TwoLanguageStrings("Problems.UnreadableTime", "This is not a time — write it as hh:mm", "Esto no es una hora — escribila como hh:mm")
         ]));
         Services.AddSingleton(new LanguageProvider { Current = language });
 
@@ -390,5 +391,168 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
         await LeaveDate(cut, "");
 
         Assert.Null(Refusal(cut));
+    }
+
+    // The hour half's twin of LeaveDate.
+    static Task LeaveHour(IRenderedComponent<DateTimeValueHost> cut, string text)
+    {
+        return cut.InvokeAsync(() => cut.FindComponent<MudTimePicker>().Find("input").Change(text));
+    }
+
+    /// <summary>nsail#3817: the hour box takes typing, and a typed hour lands on the date already
+    /// held — the picked hour's own rule (PickingAnHour_KeepsTheDateAlreadyChosen).</summary>
+    [Fact]
+    public async Task AnHourLeftInTheHourHalf_LandsOnTheDateAlreadyHeld()
+    {
+        ComposeCulture("es");
+
+        DateTime? captured = null;
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 24, 9, 0, 0))
+            .Add(p => p.ValueChanged, v => captured = v));
+
+        await LeaveHour(cut, "14:30");
+
+        Assert.Equal(new DateTime(2026, 8, 24, 14, 30, 0), captured);
+    }
+
+    /// <summary>The separator need not be typed: the minutes are always the last two digits.</summary>
+    [Theory]
+    [InlineData("1430", 14, 30)]
+    [InlineData("930", 9, 30)]
+    [InlineData("9:30", 9, 30)]
+    public async Task AnHourLeftWithoutItsSeparator_IsReadTheSameWay(string text, int hour, int minute)
+    {
+        ComposeCulture("es");
+
+        DateTime? captured = null;
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 24, 9, 0, 0))
+            .Add(p => p.ValueChanged, v => captured = v));
+
+        await LeaveHour(cut, text);
+
+        Assert.Equal(new DateTime(2026, 8, 24, hour, minute, 0), captured);
+    }
+
+    /// <summary>Text that is not an hour is refused the way the date half refuses its own: in
+    /// the install's language, under the date box (one field, one sentence), the text left
+    /// standing and nothing written — the vendor hands it over as null, which would otherwise
+    /// land as midnight.</summary>
+    [Theory]
+    [InlineData("es", "25:99", "Esto no es una hora")]
+    [InlineData("es", "tarde", "Esto no es una hora")]
+    [InlineData("en", "25:99", "This is not a time")]
+    [InlineData("en", "tarde", "This is not a time")]
+    public async Task TextThatIsNotAnHour_IsRefusedAndTheValueKeepsItsHour(string language, string text, string sentence)
+    {
+        ComposeCulture(language);
+
+        var writes = 0;
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 24, 9, 0, 0))
+            .Add(p => p.ValueChanged, _ => writes++));
+
+        await LeaveHour(cut, text);
+
+        Assert.StartsWith(sentence, Refusal(cut));
+        Assert.Equal(text, cut.FindComponent<MudTimePicker>().Find("input").GetAttribute("value"));
+        Assert.Equal(0, writes);
+        Assert.Empty(cut.FindComponent<MudTimePicker>().FindAll(".mud-input-helper-text"));
+    }
+
+    /// <summary>A second unreadable hour keeps the refusal, and a readable one lifts it and lands.</summary>
+    [Fact]
+    public async Task AnHourRefusalLifts_AndTheNextHourLands()
+    {
+        ComposeCulture("es");
+
+        DateTime? captured = null;
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 24, 9, 0, 0))
+            .Add(p => p.ValueChanged, v => captured = v));
+
+        await LeaveHour(cut, "tarde");
+        await LeaveHour(cut, "25:99");
+
+        Assert.StartsWith("Esto no es una hora", Refusal(cut));
+
+        await LeaveHour(cut, "1430");
+
+        Assert.Equal(new DateTime(2026, 8, 24, 14, 30, 0), captured);
+        Assert.Null(Refusal(cut));
+    }
+
+    /// <summary>An hour box emptied and left writes nothing and takes back the hour held: the
+    /// vendor hands the empty box over as null, which would otherwise land as midnight — an
+    /// hour nobody entered, saved by the next Guardar under no refusal at all.</summary>
+    [Fact]
+    public async Task AnHourBoxEmptiedAndLeft_KeepsTheHourHeld()
+    {
+        ComposeCulture("es");
+
+        var writes = 0;
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 24, 9, 0, 0))
+            .Add(p => p.ValueChanged, _ => writes++));
+
+        await LeaveHour(cut, "");
+
+        Assert.Equal(0, writes);
+        Assert.Null(Refusal(cut));
+        Assert.Equal("09:00", cut.FindComponent<MudTimePicker>().Find("input").GetAttribute("value"));
+    }
+
+    /// <summary>The hour half's twin of TheDateHalfTakesNoKeystrokeUntilItIsLeft.</summary>
+    [Fact]
+    public void TheHourHalfTakesNoKeystrokeUntilItIsLeft()
+    {
+        ComposeCulture("es");
+
+        var input = Render<DateTimeValueHost>().FindComponent<MudTimePicker>().Find("input");
+
+        Assert.False(input.HasAttribute("readonly"));
+        Assert.False(input.HasAttribute("blazor:oninput"));
+        Assert.True(input.HasAttribute("blazor:onchange"));
+    }
+
+    /// <summary>A held hour reads on the 24-hour clock in either language.</summary>
+    [Fact]
+    public void AnHourEchoedFromTheModel_DisplaysOnTheTwentyFourHourClock()
+    {
+        ComposeCulture("en");
+
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 24, 14, 30, 0)));
+
+        Assert.Equal("14:30", cut.FindComponent<MudTimePicker>().Find("input").GetAttribute("value"));
+    }
+
+    /// <summary>Typing does not reach a field that takes nothing: ReadOnly and Disabled close
+    /// both boxes.</summary>
+    [Fact]
+    public void AReadOnlyField_TakesNothingTypedIntoEitherBox()
+    {
+        ComposeCulture("es");
+
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 24, 9, 0, 0))
+            .Add(p => p.ReadOnly, true));
+
+        Assert.True(cut.FindComponent<MudDatePicker>().Find("input").HasAttribute("readonly"));
+        Assert.True(cut.FindComponent<MudTimePicker>().Find("input").HasAttribute("readonly"));
+    }
+
+    [Fact]
+    public void ADisabledField_TakesNothingTypedIntoEitherBox()
+    {
+        ComposeCulture("es");
+
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 24, 9, 0, 0))
+            .Add(p => p.Disabled, true));
+
+        Assert.True(cut.FindComponent<MudDatePicker>().Find("input").HasAttribute("disabled"));
+        Assert.True(cut.FindComponent<MudTimePicker>().Find("input").HasAttribute("disabled"));
     }
 }

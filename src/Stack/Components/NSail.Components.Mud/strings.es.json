@@ -124,6 +124,7 @@
   "Problems.Required": "Obligatorio",
   "Problems.InvalidFormat": "Formato inválido",
   "Problems.UnreadableDate": "Esto no es una fecha — escribila como {shape}",
+  "Problems.UnreadableTime": "Esto no es una hora — escribila como hh:mm",
   "Problems.UnreadableAddress": "Esto no es una dirección web — escribila completa, como https://ejemplo.com",
   "Problems.UnreadableAddressDomain": "Esto no es una dirección web — revisá el dominio",
   "Problems.UnreadableAddressScheme": "Esto no es una dirección web — empezala con https://, http:// o mailto:",

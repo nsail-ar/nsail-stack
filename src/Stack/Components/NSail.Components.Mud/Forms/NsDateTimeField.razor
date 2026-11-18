@@ -41,11 +41,16 @@
        tree: a red date box beside a grey time box reads as the hour being fine when what was
        refused is the instant they spell together. The sentence stays the date box's — one field
        says one message however many boxes it wears — which is why the mark arrives as the
-       vendor's own error class instead of its Error parameter (TimeMark). *@
-    <MudTimePicker Time="MudTime"
-                   TimeChanged="OnTimeChanged"
+       vendor's own error class instead of its Error parameter (TimeMark). The hour takes
+       typing on the date half's contract, through its own converter placed before Time for
+       the same reason. *@
+    <MudTimePicker Converter="_time"
+                   Time="MudTime"
+                   TimeChanged="_timeChanged"
+                   TextChanged="OnTimeTextChanged"
                    Disabled="IsDisabled"
                    ReadOnly="IsReadOnly"
+                   Editable="true"
                    Culture="@RegionCulture.For(Language)"
                    Variant="Variant.Outlined"
                    Margin="Margin.Dense"
