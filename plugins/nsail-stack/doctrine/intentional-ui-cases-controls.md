@@ -96,19 +96,19 @@ exact flash the rule above forbids moved one level down into the grid itself —
 defect the overlay exists to take out. `NsTable` carries it (`ns-mud.css`'s
 `ns-table-loading-host`/`ns-table-loading-overlay`) and `ui/hosts.md` states the limit. What a
 region still takes off a grid is the state AROUND the read — a read that failed draws the
-sender's reason (and a Retry where a second try can pass) where the grid went, instead of the table's own "no records" standing
-in for an answer about the network.
+sender's reason (and a Retry where a second try can pass) where the grid went, instead of the
+table's own "no records" standing in for an answer about the network.
 
 **An empty state is an answer about data, and so is a prompt.** "Nothing here", "pick an
 agenda", "no records", a zero — each is a claim about something that came back, so a screen
 that makes it before its read answers tells the user there is nothing and then takes it back.
 The states are the region's: not read yet (nothing), read (the data, or the honest empty line),
-could not be read (the sender's reason, and a Retry where a second try can pass). **Resolving WHICH record to read is part of
-the read** — a screen that sends a lookup to pick its own subject is still "not read yet" while
-that lookup is in flight, and may not draw the prompt that belongs to a lookup which came back
-with none. The one state that is not a wait is a read that never happened: a control with
-nothing to ask — an unset id — stands there empty rather than being withheld for good, and says
-which of the two it is.
+could not be read (the sender's reason, and a Retry where a second try can pass). **Resolving
+WHICH record to read is part of the read** — a screen that sends a lookup to pick its own
+subject is still "not read yet" while that lookup is in flight, and may not draw the prompt
+that belongs to a lookup which came back with none. The one state that is not a wait is a read
+that never happened: a control with nothing to ask — an unset id — stands there empty rather
+than being withheld for good, and says which of the two it is.
 
 **A control is not a region, and has two of those states rather than three.** A field that gates
 itself on its own read — `StoreSelect`, `TenderMethodSelect`, `ChannelSelect` — can be absent or

@@ -456,9 +456,9 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
 - **A form only submits a model it loaded.** The read is the form's half (`OnLoad`), twin of its
   submit: a screen never builds an empty model "for now" and hands it over — a blank standing in
   for unreadable data is one click from overwriting it. A failed read renders the refusal (and a
-  retry where a second try can pass) instead of the fields — no fields, no save. **A document that does not exist yet is not
-  a failure**: the blank IS the data, and the form is editable ([ui/forms.md](ui/forms.md),
-  cases).
+  retry where a second try can pass) instead of the fields — no fields, no save. **A document
+  that does not exist yet is not a failure**: the blank IS the data, and the form is editable
+  ([ui/forms.md](ui/forms.md), cases).
 - **Unsaved changes are the form's business, not the page's** — `NsForm` reports its edits and
   the surface guards the exit. **Filter/search forms declare `<NsForm ... Untracked>`**
   ([ui/forms.md](ui/forms.md), cases).

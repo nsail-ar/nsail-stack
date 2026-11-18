@@ -103,9 +103,8 @@ renders no fields and no submit, so there is nothing to press.
 
 Three states, where the bug had two: loaded, **empty by design** (a document not saved yet —
 editable, because the blank IS the data), and **failed** (the refusal, and a Reintentar where a
-second try can pass). A
-nullable model tells the last two apart no better than an eager one: it renders nothing, forever,
-and says nothing — which is why `= default!` screens count too.
+second try can pass). A nullable model tells the last two apart no better than an eager one: it
+renders nothing, forever, and says nothing — which is why `= default!` screens count too.
 
 `NsErrorBoundary` is not the answer: it catches what escapes a *render*, and these reads did not
 escape — the pages ran them raw in `OnCreatedAsync`, and the page that survived the throw kept
