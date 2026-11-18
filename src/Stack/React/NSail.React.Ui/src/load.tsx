@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import type { ReactNode } from "react";
-import { useStrings, type Load } from "@nsail/stack";
+import { isRetryable, useStrings, type Load } from "@nsail/stack";
 import { NsButton } from "./button";
 
 export interface NsLoadProps<T> {
@@ -11,8 +11,8 @@ export interface NsLoadProps<T> {
 }
 
 /** A region that owns its read: a spinner the first time, the last answer (dimmed) while it
- * re-reads, and a failure in place with a retry — never a toast, never an empty state that
- * lies about a read that failed. */
+ * re-reads, and a failure in place with a retry where a second try can pass — never a toast,
+ * never an empty state that lies about a read that failed. */
 export function NsLoad<T>({ load, children }: NsLoadProps<T>) {
   const strings = useStrings();
 
@@ -23,7 +23,7 @@ export function NsLoad<T>({ load, children }: NsLoadProps<T>) {
         {load.problem.issues.map((issue, index) => (
           <div key={index}>{strings.issue(issue)}</div>
         ))}
-        <NsButton text="Common.Retry" onClick={load.reload} />
+        {isRetryable(load.problem) && <NsButton text="Common.Retry" onClick={load.reload} />}
       </div>
     );
   }
