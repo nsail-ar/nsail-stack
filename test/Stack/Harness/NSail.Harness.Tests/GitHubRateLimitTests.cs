@@ -131,6 +131,66 @@ public class GitHubRateLimitTests
         Assert.Single(post.Sent);
     }
 
+    // An answer whose connection drops after its first bytes, as a chunked body cut mid-stream is.
+    sealed class CutStream() : MemoryStream(Encoding.UTF8.GetBytes("""{"a":"""))
+    {
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var read = base.Read(buffer, offset, count);
+            return read > 0 ? read : throw new IOException("The response ended prematurely.");
+        }
+    }
+
+    static HttpResponseMessage Cut()
+    {
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new CutStream()) };
+    }
+
+    [Fact]
+    public async Task AReadWhoseAnswerIsCutMidBodyIsSentAgainAndReturnsTheNextAnswer()
+    {
+        var get = new Script(_ => Cut(), _ => Ok("""{"a":1}"""));
+        Assert.Equal(1, (await Client(get).Client.Get("x")).GetProperty("a").GetInt32());
+        Assert.Equal(2, get.Sent.Count);
+
+        var query = new Script(_ => Cut(), _ => Cut(), _ => Ok("""{"data":{"a":1}}"""));
+        Assert.Equal(1, (await Client(query).Client.GraphQl("query{a}")).GetProperty("a").GetInt32());
+        Assert.Equal(3, query.Sent.Count);
+    }
+
+    [Fact]
+    public async Task AWriteWhoseAnswerIsCutIsSentOnceAndThrowsTheProvidersFailureWithItsCall()
+    {
+        var post = new Script(_ => Cut(), _ => Ok());
+        var e = await Assert.ThrowsAsync<ProviderTransportException>(() => Client(post).Client.Send(HttpMethod.Post, "repos/acme/app/statuses/abc", new { }));
+        Assert.StartsWith("connection lost POST /repos/acme/app/statuses/abc: ", e.Message, StringComparison.Ordinal);
+        Assert.Null(e.Status);
+        Assert.IsType<HttpRequestException>(e.InnerException);
+        Assert.Single(post.Sent);
+
+        var mutation = new Script(_ => Cut(), _ => Ok("""{"data":{}}"""));
+        await Assert.ThrowsAsync<ProviderTransportException>(() => Client(mutation).Client.GraphQl("mutation{a}"));
+        Assert.Single(mutation.Sent);
+
+        var upload = new Script(_ => Cut(), _ => Ok());
+        await Assert.ThrowsAsync<ProviderTransportException>(() => Client(upload).Client.Upload("https://uploads.github.com/repos/acme/app/assets", new MemoryStream([1]), "image/png"));
+        Assert.Single(upload.Sent);
+    }
+
+    [Fact]
+    public async Task AReadCutOnEveryAttemptThrowsTheProvidersFailureWithItsCall()
+    {
+        var get = new Script(_ => Cut());
+        var e = await Assert.ThrowsAsync<ProviderTransportException>(() => Client(get).Client.Get("repos/acme/app/pulls"));
+        Assert.StartsWith("connection lost GET /repos/acme/app/pulls: ", e.Message, StringComparison.Ordinal);
+        Assert.Null(e.Status);
+        Assert.Equal(3, get.Sent.Count);
+
+        var query = new Script(_ => Cut());
+        await Assert.ThrowsAsync<ProviderTransportException>(() => Client(query).Client.GraphQl("query{a}"));
+        Assert.Equal(3, query.Sent.Count);
+    }
+
     [Fact]
     public async Task AFiveHundredGraphQlQueryIsRetriedAndAMutationIsNot()
     {

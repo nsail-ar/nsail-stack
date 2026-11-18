@@ -211,6 +211,21 @@ public sealed class JobLimitTests : IDisposable
     }
 
     [Fact]
+    public async Task ACallWhoseConnectionIsLostEndsAsAProviderFailure()
+    {
+        using var jobs = new Jobs();
+
+        var ended = await End(new ProviderTransportException("connection lost POST /repos/acme/app/statuses/abc: The response ended prematurely.", new HttpRequestException()));
+
+        Assert.Equal(HarnessLoop.ProviderResult, ended.Result);
+        Assert.Equal("provider failed — connection lost POST /repos/acme/app/statuses/abc", ended.Outcome);
+        Assert.Empty(_board.Cards[Story].Comments);
+        Assert.DoesNotContain(Labels.Stalled, _board.Cards[Story].Labels);
+        Assert.True(_loop.BackedOff(Dev()));
+        Assert.Equal(new[] { "provider" }, jobs.Outcomes);
+    }
+
+    [Fact]
     public async Task AJobTheStopCancelsIsStoppedNotBroken()
     {
         using var jobs = new Jobs();

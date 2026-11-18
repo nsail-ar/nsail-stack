@@ -764,15 +764,15 @@ public sealed class HarnessLoop(
     }
 
     // How long an item whose job ended on the provider waits, or null when the ending is a break: a
-    // limit announced with its wait (GitHubClient.LimitWait), held as a limited pass is, or a 5xx or a
-    // call nothing answered in time, the provider's own failure, as long as a break. A bare 403 or a
-    // 404 is an answer.
+    // limit announced with its wait (GitHubClient.LimitWait), held as a limited pass is, or a 5xx, a
+    // call nothing answered in time or one whose connection was lost, the provider's own failure, as
+    // long as a break. A bare 403 or a 404 is an answer.
     internal static TimeSpan? ProviderWait(Exception e)
     {
         return e switch
         {
             ProviderException { RetryAfter: { } after } => LimitHold(after),
-            ProviderException { Status: >= 500 } or ProviderTimeoutException => Backoff,
+            ProviderException { Status: >= 500 } or ProviderTimeoutException or ProviderTransportException => Backoff,
             _ => null,
         };
     }
@@ -786,8 +786,8 @@ public sealed class HarnessLoop(
             : $"provider failed — {call}";
     }
 
-    // A failed read starts nothing: a half board reads as an empty queue. A request that timed out
-    // lands here too, a provider failure with no status. What the provider answered rides
+    // A failed read starts nothing: a half board reads as an empty queue. A request that timed out or
+    // lost its connection lands here too, a provider failure with no status. What the provider answered rides
     // the record as numbers and enums, the only kinds the log scrubber lets through: the call, the
     // status, the calls left, and what a 2xx that failed named (ProviderException.Answered) beside
     // the template, which stays as it is so the watch's grouping of the record does not move. The
