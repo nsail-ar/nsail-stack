@@ -42,8 +42,7 @@ public class ChildEnvironmentTests
     {
         var bin = Directory.CreateTempSubdirectory().FullName;
         var sudo = Path.Combine(bin, "sudo");
-        File.WriteAllText(sudo, "#!/bin/sh\necho \"argv=$*\"\necho \"home=${HOME-unset}\"\n");
-        File.SetUnixFileMode(sudo, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Executable.Write(sudo, "#!/bin/sh\necho \"argv=$*\"\necho \"home=${HOME-unset}\"\n");
         var path = Environment.GetEnvironmentVariable("PATH");
         using var _ = Held(("PATH", $"{bin}:{path}"));
         try
@@ -112,8 +111,7 @@ public class ChildEnvironmentTests
         public FakeSudo()
         {
             var sudo = Path.Combine(_bin, "sudo");
-            File.WriteAllText(sudo, "#!/bin/sh\necho \"argv=$*\"\necho \"home=${HOME-unset}\"\nexit 1\n");
-            File.SetUnixFileMode(sudo, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            Executable.Write(sudo, "#!/bin/sh\necho \"argv=$*\"\necho \"home=${HOME-unset}\"\nexit 1\n");
             _path = new Held([("PATH", $"{_bin}:{Environment.GetEnvironmentVariable("PATH")}")]);
         }
 
