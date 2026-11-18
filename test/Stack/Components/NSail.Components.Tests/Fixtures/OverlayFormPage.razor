@@ -57,7 +57,11 @@
 
         if (Fails)
         {
-            args.Problem = BusinessProblem.RuleViolation("Read", "La lectura no llegó.");
+            args.Problem = new Problem(
+                code: "Unreachable",
+                title: "La lectura no llegó.",
+                issues: [new Issue(code: "Unreachable", message: "La lectura no llegó.")],
+                status: 503);
 
             return;
         }

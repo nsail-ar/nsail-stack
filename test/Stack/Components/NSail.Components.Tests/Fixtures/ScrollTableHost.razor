@@ -4,6 +4,7 @@
 @using MudBlazor
 @using NSail.Components
 @using NSail.Paging
+@using NSail.Problems
 @using NSail.Testing.Models
 
 <MudPopoverProvider />
@@ -31,6 +32,11 @@
     [Parameter]
     public ISet<int> Failing { get; set; } = new HashSet<int>();
 
+    /// <summary>What a failing query is refused with; unset, it throws the way a server that
+    /// could not answer does.</summary>
+    [Parameter]
+    public Problem? Refusal { get; set; }
+
     /// <summary>Whether the handler yields; scroll mode always needs it, paged only to flow Rows.</summary>
     [Parameter]
     public bool? Yields { get; set; }
@@ -45,6 +51,11 @@
 
         if (Failing.Contains(Queries))
         {
+            if (Refusal is not null)
+            {
+                throw new BusinessException(Refusal);
+            }
+
             throw new InvalidOperationException("The read failed.");
         }
 
