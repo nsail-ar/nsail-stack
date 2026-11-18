@@ -822,9 +822,10 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
 - **A lookup is complete only when it is keyboard-complete.** On a searching lookup whose term
   has several answers: type, Enter, Arrow Down/Up, Enter picks, Esc closes. One answer is taken by
   the first Enter, and inside a `.ns-cells` row that same Enter then confirms the row and opens the
-  next (`nsapp.confirmRow`, ns.js — the open list owned the keystroke, so the grid's policy never
-  saw it); a local list or a settled list leaves Enter to the vendor, which picks the
-  highlighted row. The create entry, the quick add and the caller's offer are the list's
+  next (`nsapp.confirmRow`, ns.js — the grid's policy leaves that Enter to the box, which stamps
+  `data-ns-commits`, so the row is confirmed once, after the take and never before the product
+  is resolved); a local list or a settled list leaves Enter to the vendor, which picks the
+  highlighted row and leaves the row open for the next Enter. The create entry, the quick add and the caller's offer are the list's
   synthetic last rows, walked in the order they are drawn: Arrow Down from the last option the
   vendor can reach (the only row of an empty answer) lands on the first of them and moves on
   through the rest, Arrow Up walks back and, from the first, returns to the last option — on an

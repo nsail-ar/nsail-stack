@@ -156,13 +156,27 @@ public sealed class NsAutocompleteReaderEnterTests : BunitContext, IAsyncLifetim
     }
 
     [Fact]
-    public async Task AReaderBurstThatTakesNothingLeavesTheGridsRowAlone()
+    public async Task AReaderBurstThatNamesSeveralArticlesLeavesTheGridsRowAlone()
     {
         var cut = Mount();
 
         var entered = await Burst(cut, "Vulk");
 
         Release("Vulk");
+
+        await entered;
+
+        JSInterop.VerifyNotInvoke("nsapp.confirmRow");
+    }
+
+    [Fact]
+    public async Task AReaderBurstThatNamesNothingLeavesTheGridsRowAlone()
+    {
+        var cut = Mount();
+
+        var entered = await Burst(cut, "8888888888882");
+
+        _gates["8888888888882"].TrySetResult();
 
         await entered;
 

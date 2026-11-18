@@ -318,6 +318,14 @@
 
         if (row) {
             e.preventDefault();
+
+            // A lookup that reads this very Enter as the end of a code (data-ns-commits) confirms
+            // the row itself once its answer is taken (confirmRow): confirming here would close
+            // the row on a product nobody has resolved yet, and the take would then confirm the
+            // row the cursor had moved to.
+            if (target.getAttribute("role") === "combobox" && target.getAttribute("data-ns-commits") === "true")
+                return;
+
             advanceCells(grid, target, row, 1, true);
             return;
         }
@@ -409,9 +417,9 @@
     }
 
     // Enter that a field answered ITSELF: the autocomplete took the one article the code names,
-    // so the keystroke never reaches the policy above (the open list owned it). The cursor is
-    // still in the box, so the row it stands in is confirmed and the next one opened exactly as
-    // Enter does in a cell. Outside a grid it is nothing.
+    // and the policy above left the keystroke to it. The cursor is still in the box, so the row
+    // it stands in is confirmed and the next one opened exactly as Enter does in a cell. Outside
+    // a grid it is nothing.
     function confirmRow() {
         const from = document.activeElement;
 
