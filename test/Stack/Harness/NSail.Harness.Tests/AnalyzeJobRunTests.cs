@@ -377,4 +377,71 @@ public class AnalyzeJobRunTests : IDisposable
 
         Assert.Equal("area:framework acme/framework", listed?.Trim());
     }
+
+    const string ShopRed = "Regression red on main (Shop)";
+
+    // A seat that ends done; `names`, given the slot's clone, is what it writes in fix.txt.
+    static Analyst Done(Func<string, string>? names = null)
+    {
+        var seat = new Analyst(null, "done");
+        if (names is not null) seat.Reading = dir => File.WriteAllText(Path.Combine(dir, "fix.txt"), names(Path.GetDirectoryName(dir)!));
+        return seat;
+    }
+
+    static string Head(string clone, params string[] how)
+    {
+        return Shell.Git(clone, ["rev-parse", .. how, "HEAD"]).GetAwaiter().GetResult().Trim();
+    }
+
+    static NamedFix? FixOn(MemoryBoard board)
+    {
+        return new Markers("review").FixOf(board.Cards[1].Comments, "harness");
+    }
+
+    [Fact]
+    public async Task ARedDoneByAnotherStorysMergeNamesTheCommitAndItIsWrittenWholeOnTheStory()
+    {
+        string? head = null;
+
+        var (board, outcome) = await Run(Done(clone =>
+        {
+            head = Head(clone);
+            return Head(clone, "--short=8") + "\n";
+        }), ShopRed);
+
+        Assert.Equal("Done", outcome.Event);
+        Assert.Equal([head!], FixOn(board)!.Shas);
+    }
+
+    [Fact]
+    public async Task ARedDoneThatNamesNoFixIsRefusedAndCountsAsADeath()
+    {
+        var (board, outcome) = await Run(Done(), ShopRed);
+
+        Assert.True(outcome.Failed);
+        Assert.Null(outcome.Event);
+        Assert.Null(FixOn(board));
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("names the commits of the default branch"));
+    }
+
+    [Theory]
+    [InlineData("0123456789abcdef0123456789abcdef01234567")]
+    [InlineData("main; rm -rf .")]
+    public async Task ADoneThatNamesWhatTheDefaultBranchDoesNotHoldIsRefused(string named)
+    {
+        var (board, outcome) = await Run(Done(_ => named), ShopRed);
+
+        Assert.True(outcome.Failed);
+        Assert.Null(FixOn(board));
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("the default branch holds no such commit"));
+    }
+
+    [Fact]
+    public async Task AStoryThatIsNoRedEndsDoneWithNoFixNamed()
+    {
+        var (board, outcome) = await Run(Done(), "a story");
+
+        Assert.Equal("Done", outcome.Event);
+        Assert.Null(FixOn(board));
+    }
 }

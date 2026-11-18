@@ -13,7 +13,10 @@ namespace NSail.Harness.Jobs;
 // held when each of its merged PRs is: one in the default repository is in the tag's history (or
 // carried onto the release branch by a cherry-pick naming it), one in a pinned repository is in the
 // version the tag pins (RepositoryOptions.Pin), one in a repository with no pin rides any release.
-// A story wearing only another product's area waits for that product's release. The version is
+// A story with no merged PR whose analysis named the commits that already hold its work is held when
+// the tag holds each of them, the same way.
+// A story wearing only another product's area waits for that product's release, and so does another
+// product's red-suite story, which holds that product's andon until its own cut ships. The version is
 // closed last, and closed is what says the release was walked (SnapshotReader.ReadUnshipped).
 public sealed class ShipJob(WorkItem item, JobContext ctx) : IJob
 {
@@ -47,13 +50,15 @@ public sealed class ShipJob(WorkItem item, JobContext ctx) : IJob
 
         var products = ctx.Options.Releases.Select(r => r.Product?.ToLowerInvariant()).OfType<string>().ToHashSet();
         var moved = new List<int>();
-        foreach (var story in (await ctx.Board.Stories(ct)).Where(s => s.Stage == Stages.Merged && !Waits(s.Labels, p, products)))
+        foreach (var story in (await ctx.Board.Stories(ct)).Where(s => s.Stage == Stages.Merged && !Waits(s.Labels, p, products) && !RedOfAnother(s.Title, p)))
         {
             var prs = await ctx.Repos.PrsOf(story.Number, "merged", ct);
-            if (prs.Count == 0) continue;
+            IReadOnlyList<string> named = prs.Count > 0 ? [] : ctx.Markers.FixOf(await ctx.Board.Comments(story.Number, ct), await ctx.Repo.Login(ct))?.Shas ?? [];
+            if (prs.Count == 0 && named.Count == 0) continue;
             var held = true;
             foreach (var pr in prs) held &= await Holds(pr, tag, log, dir, ct);
-            await w.WriteLineAsync($"{ctx.Names.Ref(story.Number)}: {(held ? "held" : "not held")} by {tag} ({string.Join(", ", prs.Select(pr => $"{pr.Repo}#{pr.Number}"))})");
+            foreach (var sha in named) held &= await Holds(sha, tag, log, dir);
+            await w.WriteLineAsync($"{ctx.Names.Ref(story.Number)}: {(held ? "held" : "not held")} by {tag} ({string.Join(", ", prs.Select(pr => $"{pr.Repo}#{pr.Number}").Concat(named.Select(sha => sha[..8])))})");
             if (!held) continue;
             await ctx.Board.SetVersion(story.Number, tag, ct);
             await ctx.Board.SetStage(story.Number, Stages.Released, ct);
@@ -68,16 +73,27 @@ public sealed class ShipJob(WorkItem item, JobContext ctx) : IJob
     async Task<bool> Holds(PrRef pr, string tag, string log, string dir, CancellationToken ct)
     {
         if (pr.MergeSha is not { } sha) return false;
-        if (ctx.Repos.IsDefault(pr.Repo))
-        {
-            var ancestor = await Shell.Run("git", ["merge-base", "--is-ancestor", sha, tag], dir);
-            return ancestor.ExitCode == 0 || log.Contains($"cherry picked from commit {sha}", StringComparison.Ordinal);
-        }
+        if (ctx.Repos.IsDefault(pr.Repo)) return await Holds(sha, tag, log, dir);
         var repo = ctx.Repos.Of(pr.Repo);
         if (ctx.Repos.OptionsOf(repo).Pin is not { } pin) return true;
         var file = await Shell.Run("git", ["show", $"{tag}:{pin.File}"], dir);
         if (file.ExitCode != 0 || Regex.Match(file.Output, pin.Pattern) is not { Success: true } m) return false;
         return await repo.Holds(pin.Ref.Replace("{version}", m.Groups[1].Value, StringComparison.Ordinal), sha, ct);
+    }
+
+    // A commit of the default repository: in the tag's history, or carried by a cherry-pick naming it.
+    static async Task<bool> Holds(string sha, string tag, string log, string dir)
+    {
+        var ancestor = await Shell.Run("git", ["merge-base", "--is-ancestor", sha, tag], dir);
+        return ancestor.ExitCode == 0 || log.Contains($"cherry picked from commit {sha}", StringComparison.Ordinal);
+    }
+
+    // The red-suite story of a product that is not this release's: it ships with its own product's cut.
+    bool RedOfAnother(string title, string product)
+    {
+        return ctx.Options.Releases.Any(r => r.Product is { } other
+            && !string.Equals(other, product, StringComparison.OrdinalIgnoreCase)
+            && title == HarnessTexts.Fill(ctx.Texts.SuiteRedTitle, ("product", other)));
     }
 
     // Whether a story waits for another product's release: it wears an area of a product with a

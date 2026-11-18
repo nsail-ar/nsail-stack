@@ -122,7 +122,7 @@ sealed class MemoryBoard : IBoard
 
     public Task<IReadOnlyList<StoryComment>> Comments(int story, CancellationToken ct = default)
     {
-        return Task.FromResult<IReadOnlyList<StoryComment>>(Cards[story].Comments.ToList());
+        return Task.FromResult<IReadOnlyList<StoryComment>>(Cards.TryGetValue(story, out var card) ? card.Comments.ToList() : []);
     }
 
     public Task UpdateBody(int story, string body, CancellationToken ct = default)

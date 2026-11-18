@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using System.Globalization;
+using System.Text.RegularExpressions;
 using NSail.Harness.Agents;
 using NSail.Harness.Board;
 using NSail.Harness.Lanes;
@@ -14,15 +15,16 @@ namespace NSail.Harness.Jobs;
 // Analyze wearing `ruling` with only that question on the thread (never a release red's: its ruling is
 // refused and counted as a death, since the release waits for no hand); a Ready story whose change must
 // touch a path the screen holds (its protected.txt) -> Ready wearing `ruling` and `screened` until a
-// hand adds `allow-protected`; the story is already built (its PR merged and main meets every
-// criterion) -> Merged, so no empty voyage is sent; the story is several that must land apart (a
+// hand adds `allow-protected`; the story is already built (its PR merged, or another story's merge did
+// its work and its fix.txt names those commits, and main meets every criterion) -> Merged, so no empty
+// voyage is sent; the story is several that must land apart (a
 // change in one repository and its use in another) -> its parts are filed under it and it is built
 // through them (never a release red or a stalled story: those are one fix); the story needs work in
 // another repository first -> those parts are filed beside it and it waits `blocked` on them (Elsewhere,
 // once per story; the same exceptions). A death with no verdict is
 // sent again on the next pass; the second in a row (or the first of a story that was already stalled)
 // stamps `stalled` and `ruling`, and it is not taken again.
-public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history) : IJob
+public sealed partial class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history) : IJob
 {
     const string Out = ".analysis";
 
@@ -96,7 +98,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 LogPath: logPath,
                 Marketplace: dir), ct);
 
-            var ending = await Act(n, title, outDir, stalled, result, log, ct);
+            var ending = await Act(n, title, dir, outDir, stalled, result, log, ct);
             return ending.Outcome(result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : null);
         }
         finally
@@ -112,7 +114,7 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
         return StoryDossier.IsWatch(labels, body) ? $"== analyze {reference}{tail}\n{Untrusted.Fence(title)}" : $"== analyze {reference} {title}{tail}";
     }
 
-    async Task<Ending> Act(int n, string title, string outDir, bool stalled, AgentResult result, ILogger log, CancellationToken ct)
+    async Task<Ending> Act(int n, string title, string dir, string outDir, bool stalled, AgentResult result, ILogger log, CancellationToken ct)
     {
         var board = ctx.Board;
         string Read(string f)
@@ -121,8 +123,8 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
             return File.Exists(path) ? File.ReadAllText(path) : "";
         }
         var verdict = Read("verdict.txt").Split('\n').FirstOrDefault()?.Trim() ?? "";
-        var comment = Read("comment.md");
-        var ruled = Read("ruled.md");
+        var comment = Markers.StripFix(Read("comment.md"));
+        var ruled = Markers.StripFix(Read("ruled.md"));
 
         async Task Post()
         {
@@ -173,6 +175,14 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
                 await WrittenBlockers.Link(board, n, comment, ctx.Names.Key, ct, ctx.Repos);
                 return new Ending("ruling", "Ruling");
             case "VERDICT: done" when comment.Trim().Length > 0:
+                var (fix, refused) = await NamedFix(n, title, dir, Read("fix.txt"), ct);
+                if (refused is not null)
+                {
+                    // Counted as a death below: a done that names nothing the release can carry is no verdict.
+                    await board.Comment(n, $"{refused} {ctx.Texts.Signature}");
+                    break;
+                }
+                if (fix.Count > 0) comment = $"{comment.TrimEnd()}\n\n{Markers.Fix(fix)}";
                 await Post();
                 return new Ending("done", "Done");
         }
@@ -193,6 +203,28 @@ public sealed class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory history
         await board.Comment(n, $"{HarnessTexts.Fill(ctx.Texts.AnalysisDied, ("machine", ctx.Options.Machine))} {ctx.Texts.Signature}\n{Markers.AnalysisDied}");
         return new Ending("no verdict — sent again on the next pass", Failed: true);
     }
+
+    // The commits of the default branch a done verdict names as already holding the story's work
+    // (fix.txt, one sha per line), each checked in the slot's clone and written whole. A release red
+    // with no merge of its own names at least one: the release carries what is named and nothing else.
+    async Task<(IReadOnlyList<string> Shas, string? Refused)> NamedFix(int n, string title, string dir, string named, CancellationToken ct)
+    {
+        var shas = new List<string>();
+        foreach (var name in named.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct())
+        {
+            if (!ShaName().IsMatch(name)) return ([], HarnessTexts.Fill(ctx.Texts.DoneFixNotThere, ("sha", "a line that is no sha")));
+            var whole = await Shell.Run("git", ["rev-parse", "--verify", "--quiet", $"{name}^{{commit}}"], dir);
+            if (whole.ExitCode != 0 || (await Shell.Run("git", ["merge-base", "--is-ancestor", whole.Output.Trim(), $"origin/{ctx.Repo.DefaultBranch}"], dir)).ExitCode != 0)
+            {
+                return ([], HarnessTexts.Fill(ctx.Texts.DoneFixNotThere, ("sha", $"`{name}`")));
+            }
+            shas.Add(whole.Output.Trim());
+        }
+        if (shas.Count == 0 && ctx.Texts.IsRed(title) && (await ctx.Repos.PrsOf(n, "merged", ct)).Count == 0) return ([], ctx.Texts.DoneNamesNoFix);
+        return (shas.Distinct().ToList(), null);
+    }
+
+    [GeneratedRegex("^[0-9a-f]{7,40}$")] private static partial Regex ShaName();
 
     // Each part is filed under the story, inheriting its area and priority. The story's own move is the
     // Split event's (WorkerTypes).

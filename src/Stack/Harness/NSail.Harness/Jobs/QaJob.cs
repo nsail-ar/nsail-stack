@@ -53,7 +53,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var labels = await ctx.Board.Labels(n, ct);
         var product = ProductOf(labels, ctx.Options.Products);
         if (product is null) return new JobOutcome("no product to walk it on (Harness:Products)", Idle: true);
-        var merge = (await ctx.Repos.LandingOf(n, ct))?.Sha;
+        var merge = (await ctx.LandingOf(n, ct))?.Sha;
         var live = new List<(string Key, ProductOptions Product, string? Tag, string Answer)>();
         foreach (var (key, p) in ctx.Options.Products)
         {

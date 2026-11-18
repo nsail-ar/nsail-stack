@@ -34,6 +34,13 @@ public sealed class JobContext(
     public HarnessTexts Texts => Options.Texts;
     public StoryNames Names { get; } = options.Names();
     public Markers Markers { get; } = new(options.ReviewMarker, options.MarkerAuthors);
+
+    // Where a story's work reached the default branch: its own merge, or the fix its analysis named.
+    public Task<Merge?> LandingOf(int story, CancellationToken ct = default)
+    {
+        return StoryLanding.Of(Repos, Board, Markers, story, ct);
+    }
+
     public ILoggerFactory Logs { get; } = logs;
     public BuildLeases Leases { get; } = leases;
 

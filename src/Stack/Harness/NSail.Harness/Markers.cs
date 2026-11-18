@@ -56,6 +56,42 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
     // A red main's story closed as fixed: a close that broke after its comment does not say it twice.
     public const string RedFixed = "<!-- harness:red-fixed -->";
 
+    // On the comment of an analysis that found a story's work already on the default branch: the
+    // commits that hold it, as whole shas.
+    const string FixOpens = "<!-- harness:fix";
+
+    static readonly Regex FixLine = new(@"^<!-- harness:fix ([0-9a-f]{40}(?:\|[0-9a-f]{40})*) -->[ \t]*\r?$", RegexOptions.Multiline);
+
+    static readonly Regex AnyFix = new(@"<!--\s*harness:fix[^>]*-->");
+
+    public static string Fix(IEnumerable<string> shas)
+    {
+        return $"{FixOpens} {string.Join('|', shas)} -->";
+    }
+
+    // The fix the newest such comment names, written by this harness or one of the fleet as a whole
+    // HTML comment on its own line; null with none. Dated by the comment, which is when the story's
+    // work was said to be there.
+    public NamedFix? FixOf(IEnumerable<Board.StoryComment> comments, string login)
+    {
+        foreach (var c in comments.OrderByDescending(c => c.At))
+        {
+            var mine = string.Equals(c.Author, login, StringComparison.OrdinalIgnoreCase) || _authors.Contains(c.Author, StringComparer.OrdinalIgnoreCase);
+            if (mine && FixLine.Match(c.Body) is { Success: true } m)
+            {
+                return new NamedFix(m.Groups[1].Value.Split('|'), c.At);
+            }
+        }
+        return null;
+    }
+
+    // A seat's words with no fix marker of their own in them: the harness writes that marker itself,
+    // after it checked the commits.
+    public static string StripFix(string text)
+    {
+        return AnyFix.Replace(text, "");
+    }
+
     // A story comment carries the marker when this harness (`login`) or one of the fleet wrote it and the
     // marker is a whole HTML comment on its own line: anyone else's is a forgery.
     public bool Says(Board.StoryComment comment, string marker, string login)
@@ -101,6 +137,7 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
     // A text with the protocol's markers taken out until none remains (removing one can join the halves of another), for words that are not the harness's own.
     public string Strip(string text)
     {
+        text = StripFix(text);
         var marker = new Regex($@"<!--\s*(harness:gate|{Regex.Escape(review)}):[^>]*-->");
         for (var shorter = marker.Replace(text, ""); shorter != text; shorter = marker.Replace(text, ""))
         {

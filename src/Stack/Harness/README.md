@@ -74,6 +74,13 @@ the files it leaves.
     reconciles them.
   - A seat's `close-pr.md` closes only a PR of its own story, and an analyst's `labels.txt` sets only the
     board's `area:` and driver labels and `no-walk`.
+  - An analyst ends a story whose work the default branch already holds with `VERDICT: done`. When no PR of
+    the story did that work (another story's merge fixed it), its `fix.txt` names the commits that did, one sha
+    per line: the harness checks the default branch holds each and writes them on the story, and from there they
+    stand for the story's merge wherever one is read — a release red's fix is carried to the release branch and
+    cut, the story ships with the release that holds them. A release red with no merge of its own must name at
+    least one; a `done` that names none there, or a commit the default branch does not hold, counts as an
+    analysis with no verdict.
   - An analyst ends a story that is several which must land apart (a change in one repository and its use in
     another) with `VERDICT: split`: its `comment.md` says why, and `parts/<n>/` (numbered from 1, between
     `StoryParts.Fewest` and `StoryParts.Most`) each hold a `title.txt`, a `body.md` and, where the part has them, `labels.txt`,
@@ -119,7 +126,8 @@ the files it leaves.
     `approved` — the `Checks` state no reviewer and no round takes — and it ends `Approved`; the story's
     move once a hand merges is a keeper's (`Pr: none`, `PrMerged: true`). A Release also walks each release of its product once
     published: every story its commits name ships in its version (a milestone), every Merged story
-    whose PRs the tag holds moves to Released, and the closed version says it was walked. A tag never
+    whose PRs the tag holds (or, with no PR of its own, the commits its analysis named) moves to Released — but for another
+    product's red-suite story, which ships with its own product's cut — and the closed version says it was walked. A tag never
     published is no release, so a cut that died never reads as the last one. A Test walks one story with its seat in a fresh browser
     (its `Mcp` servers; `Tools` adds what the walker may call): the harness lays down the story, its
     PRs and what QA already asked, and which build each of `Products` runs (the newest `Live.Tag`, or
@@ -266,7 +274,8 @@ the files it leaves.
   main's, `HarnessTexts.IsRed`) never asks a hand: a builder's question sends it to Analyze with no
   `ruling` (event `Reanalyze`; with a PR open, the next round decides it), a reviewer's crack goes
   back to its builder as `Findings`, and an analysis that ends `ruling` is refused and counted as a
-  death (`RedQuestion`, `RedRulingRefused`). A builder's `wall.md` (something outside the story must change first) ends the round as `Walled`, an event configurable under `On` like the others: the story goes to Backlog wearing `blocked`, and a blocker the wall names (`blocked by #N`) is linked so the rule that lifts `blocked` on its blockers lifts it; a wall that names none waits for a hand. A red story's wall goes the way of its question, with no hold. A `handoff.md` with work pushed ends as `HandedOff` and the next voyage takes it. One with nothing pushed moved nothing: if it names a blocker it ends as `Walled`, and otherwise it counts as a voyage, so a second in a row goes to the analyst instead of a third builder reading the same note.
+  death (`RedQuestion`, `RedRulingRefused`), as is one that ends `done` naming no fix the release can carry
+  (`DoneNamesNoFix`, `DoneFixNotThere`). A builder's `wall.md` (something outside the story must change first) ends the round as `Walled`, an event configurable under `On` like the others: the story goes to Backlog wearing `blocked`, and a blocker the wall names (`blocked by #N`) is linked so the rule that lifts `blocked` on its blockers lifts it; a wall that names none waits for a hand. A red story's wall goes the way of its question, with no hold. A `handoff.md` with work pushed ends as `HandedOff` and the next voyage takes it. One with nothing pushed moved nothing: if it names a blocker it ends as `Walled`, and otherwise it counts as a voyage, so a second in a row goes to the analyst instead of a third builder reading the same note.
 - **No state of its own.** A verdict lives on what it judged: the gate, a product's suite, the day's
   cut and the QA drain are commit statuses on main (`harness/gate`, `harness/suite/{product}`, `harness/cut/{product}`, ...); a cut at work is held by `harness/cut/{product}/held`, renewed while it runs and let go with its verdict (or when it throws), and it lapses when a dead harness stops renewing it (`Markers.ClaimLapse`);
   a dead voyage, an analysis without a verdict and a broken job are comments with a marker on the
