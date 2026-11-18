@@ -907,6 +907,10 @@
         // disposes that timer, as the vendor's own selection path does, so there is no second open
         // for a mark to be read on.
         await Take(rows[0]);
+
+        // Inside a grid row the key that took the answer is the row's Enter as well: the grid's
+        // policy leaves a box that answers Enter itself to this call.
+        await Js.InvokeVoidAsync("nsapp.confirmRow");
     }
 
     // What the box's text answers, from a search that is already out wherever there is one: the

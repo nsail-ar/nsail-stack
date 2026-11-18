@@ -277,11 +277,10 @@ public class DevJobRunTests : IDisposable
     }
 
     // A pre-receive hook on the remote that refuses every ref matching the shell pattern.
-    async Task Refuse(string pattern)
+    void Refuse(string pattern)
     {
         var hook = Path.Combine(Remote, "hooks", "pre-receive");
-        await File.WriteAllTextAsync(hook, $"#!/bin/sh\nwhile read old new ref; do case \"$ref\" in {pattern}) exit 1;; esac; done\nexit 0\n");
-        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(hook, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Executable.Write(hook, $"#!/bin/sh\nwhile read old new ref; do case \"$ref\" in {pattern}) exit 1;; esac; done\nexit 0\n");
     }
 
     async Task<string?> RemoteHead(string branch)
@@ -506,7 +505,7 @@ public class DevJobRunTests : IDisposable
     public async Task ARefusedPushRescuesNamesTheRefAndReleasesTheStory()
     {
         await Seed();
-        await Refuse("refs/heads/story/*");
+        Refuse("refs/heads/story/*");
         var board = Board();
         var seat = new Seat("work.txt", null);
 
@@ -523,7 +522,7 @@ public class DevJobRunTests : IDisposable
     public async Task ARefusedPushWhoseRescueFailsSaysTheCommitsStayLocal()
     {
         await Seed();
-        await Refuse("*");
+        Refuse("*");
         var board = Board();
 
         var outcome = await Run(new Seat("work.txt", null), board, new Lines());

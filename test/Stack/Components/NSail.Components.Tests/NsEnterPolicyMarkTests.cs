@@ -2,6 +2,8 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Bunit;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
@@ -110,6 +112,30 @@ public sealed class NsEnterPolicyMarkTests : BunitContext, IAsyncLifetime
         await cut.InvokeAsync(() => cut.FindComponent<NsTable<TestModel>>().Instance.Add());
 
         Assert.NotNull(cut.Find(".ns-row-commit"));
+    }
+
+    /// <summary>nsail#3846: a lookup standing in an open grid row is read by the policy as the
+    /// burst's own: the box says it takes the Enter (<c>data-ns-commits</c>) and is a combobox,
+    /// inside a <c>.ns-cells</c> row that carries its commit control. Those are the three marks
+    /// ns.js reads to leave the key to the lookup, which confirms the row itself after the take
+    /// (<c>nsapp.confirmRow</c>); drop one and the row is confirmed before the product resolves.
+    /// The confirm and the move to the next row are walked in a browser.</summary>
+    [Fact]
+    public async Task ALookupInAnOpenRow_CarriesTheThreeMarksTheGridsGuardReads()
+    {
+        var cut = Render<RowEditorHost>(p => p.Add(x => x.Kind, "lookup"));
+
+        await cut.InvokeAsync(() => cut.FindComponent<NsTable<TestModel>>().Instance.Add());
+
+        var input = cut.Find(".ns-cells tbody tr input[role=\"combobox\"]");
+
+        await input.FocusAsync(new FocusEventArgs());
+        await input.InputAsync(new ChangeEventArgs { Value = "7798123456789" });
+
+        input = cut.Find(".ns-cells tbody tr input[role=\"combobox\"]");
+
+        Assert.Equal("true", input.GetAttribute("data-ns-commits"));
+        Assert.NotNull(cut.Find(".ns-cells tbody tr .ns-row-commit"));
     }
 
     /// <summary>A page that adds from chrome of its own takes the control off the bar and the

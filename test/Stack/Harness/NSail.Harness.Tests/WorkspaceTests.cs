@@ -50,12 +50,10 @@ public class WorkspaceTests : IDisposable
         foreach (var name in new[] { "post-checkout", "post-merge", "reference-transaction" })
         {
             var path = Path.Combine(hooks, name);
-            File.WriteAllText(path, Script(hook));
-            File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            Executable.Write(path, Script(hook));
         }
         var fsmonitor = Path.Combine(_root, "fsmonitor.sh");
-        File.WriteAllText(fsmonitor, Script(monitor));
-        File.SetUnixFileMode(fsmonitor, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Executable.Write(fsmonitor, Script(monitor));
         File.AppendAllText(Path.Combine(Bare, "config"), $"[core]\n\tfsmonitor = {fsmonitor}\n\thooksPath = {hooks}\n[alias]\n\tcheckout = !touch {hook}\n");
 
         var slot = ws.SlotPath(1);
@@ -82,8 +80,7 @@ public class WorkspaceTests : IDisposable
 
         var marker = Path.Combine(_root, "filter-ran");
         var filter = Path.Combine(_root, "filter.sh");
-        File.WriteAllText(filter, $"#!/bin/sh\necho ran > '{marker}'\ncat\n");
-        File.SetUnixFileMode(filter, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Executable.Write(filter, $"#!/bin/sh\necho ran > '{marker}'\ncat\n");
         var xdg = Path.Combine(_root, "xdg");
         Directory.CreateDirectory(Path.Combine(xdg, "git"));
         var planted = $"[filter \"plant\"]\n\tsmudge = {filter}\n\tclean = {filter}\n";

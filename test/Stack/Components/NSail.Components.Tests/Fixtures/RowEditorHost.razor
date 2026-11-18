@@ -32,6 +32,14 @@
                         <NsAutocomplete TItem="string" TValue="string" Label="" Items="Options"
                                         Value="row.Name" ValueChanged="value => row.Name = value" />
                         break;
+                    @* A search-first lookup whose search is never answered, the state a reader's
+                       burst presses Enter in. *@
+                    case "lookup":
+                        <NsAutocomplete TItem="SelectRef" TValue="Guid" Label="" Lazy="true"
+                                        OnSearch="Search" ItemValue="@(item => item.Id)"
+                                        ItemText="@(item => item.DisplayName)"
+                                        Value="_picked" ValueChanged="value => _picked = value" />
+                        break;
                     default:
                         <NsTextField @bind-Value="row.Name" Label="" />
                         break;
@@ -67,7 +75,7 @@
 
     readonly List<TestModel> _rows = [new TestModel { Name = "Ana", Age = 3 }];
 
-    /// <summary>Which control the keyed column edits with: "text", "select", "autocomplete".
+    /// <summary>Which control the keyed column edits with: "text", "select", "autocomplete", "lookup".
     /// The three vendor inputs a real inline editor reaches for, each splatting the field's
     /// attributes through a different internal path.</summary>
     [Parameter]
@@ -82,6 +90,13 @@
     /// its own.</summary>
     [Parameter]
     public bool AddControl { get; set; } = true;
+
+    Guid _picked;
+
+    static Task Search(SearchEventArgs<SelectRef> args)
+    {
+        return new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously).Task;
+    }
 
     DataPage<TestModel> Page => DataPage<TestModel>.From(_rows);
 

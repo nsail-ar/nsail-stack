@@ -23,8 +23,7 @@ public class ClaudePluginTests : IDisposable
         Directory.CreateDirectory(_root);
         calls = Path.Combine(_root, "calls.txt");
         var script = Path.Combine(_root, "claude");
-        File.WriteAllText(script, $"#!/bin/sh\necho \"$*\" >> '{calls}'\ncase \"$*\" in *{failing}*) exit 3;; -p*) cat >/dev/null;; esac\nexit 0\n");
-        File.SetUnixFileMode(script, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Executable.Write(script, $"#!/bin/sh\necho \"$*\" >> '{calls}'\ncase \"$*\" in *{failing}*) exit 3;; -p*) cat >/dev/null;; esac\nexit 0\n");
         return new ClaudeAgent(new ClaudeOptions { Command = script, Plugins = ["nsail-stack@market", "nsail-crew@market"] }, Path.Combine(_root, "config"));
     }
 

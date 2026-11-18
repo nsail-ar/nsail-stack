@@ -195,8 +195,7 @@ public class PushTests : IDisposable
         await Commit(dir, "B");
         var tally = Path.Combine(_root, "tally");
         var hook = Path.Combine(Remote, "hooks", "pre-receive");
-        await File.WriteAllTextAsync(hook, $"#!/bin/sh\necho x >> '{tally.Replace('\\', '/')}'\nexit 1\n");
-        if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(hook, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        Executable.Write(hook, $"#!/bin/sh\necho x >> '{tally.Replace('\\', '/')}'\nexit 1\n");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => DevJob.RescueRef(_repo, dir, start, "rescue/oz-1", [], ""));
 
