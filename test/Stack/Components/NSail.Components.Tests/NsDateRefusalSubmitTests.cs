@@ -34,7 +34,8 @@ public sealed class NsDateRefusalSubmitTests : BunitContext, IAsyncLifetime
         Services.AddSingleton(new StringCatalog(
         [
             new TwoLanguageStrings("Common.DateLetters", "dmy", "dma"),
-            new TwoLanguageStrings("Problems.UnreadableDate", "This is not a date — write it as {shape}", "Esto no es una fecha — escribila como {shape}")
+            new TwoLanguageStrings("Problems.UnreadableDate", "This is not a date — write it as {shape}", "Esto no es una fecha — escribila como {shape}"),
+            new TwoLanguageStrings("Problems.UnreadableTime", "This is not a time — write it as hh:mm, like 14:30", "Esto no es una hora — escribila como hh:mm, por ejemplo 14:30")
         ]));
         Services.AddSingleton(new LanguageProvider { Current = "es" });
         Services.AddSingleton<MetadataProvider>();
@@ -71,6 +72,11 @@ public sealed class NsDateRefusalSubmitTests : BunitContext, IAsyncLifetime
     static Task LeaveStartDate(IRenderedComponent<RefusedDateHost> cut, string text)
     {
         return cut.InvokeAsync(() => cut.FindComponent<NsDateTimeField<DateTime>>().FindComponent<MudDatePicker>().Find("input").Change(text));
+    }
+
+    static Task LeaveStartHour(IRenderedComponent<RefusedDateHost> cut, string text)
+    {
+        return cut.InvokeAsync(() => cut.FindComponent<NsDateTimeField<DateTime>>().FindComponent<MudTimePicker>().Find("input").Change(text));
     }
 
     static Task Save(IRenderedComponent<RefusedDateHost> cut)
@@ -289,5 +295,62 @@ public sealed class NsDateRefusalSubmitTests : BunitContext, IAsyncLifetime
         await Save(cut);
 
         Assert.True(submitted);
+    }
+
+    /// <summary>nsail#3817: an hour the box cannot read owes the form what a date does — no
+    /// submit, the start untouched, both boxes marked and the sentence said once, under the
+    /// date box.</summary>
+    [Fact]
+    public async Task ARefusedStartHour_BlocksTheSubmit_MarksBothBoxes_AndSaysItsSentenceOnce()
+    {
+        var model = new RefusedDateModel
+        {
+            Delivery = new DateOnly(2026, 1, 3),
+            Start = new DateTime(2026, 8, 24, 9, 0, 0)
+        };
+        var submitted = false;
+
+        var cut = Render<RefusedDateHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Submitted, () => submitted = true));
+
+        await LeaveStartHour(cut, "25:99");
+        await Save(cut);
+
+        Assert.False(submitted);
+        Assert.Equal(new DateTime(2026, 8, 24, 9, 0, 0), model.Start);
+
+        var start = cut.FindComponent<NsDateTimeField<DateTime>>();
+
+        Assert.True(start.FindComponent<MudDatePicker>().Instance.Error);
+        Assert.Contains("mud-input-error", TimeBox(cut).ClassList);
+        Assert.Equal("25:99", start.FindComponent<MudTimePicker>().Find("input").GetAttribute("value"));
+
+        var refusal = Assert.Single(start.FindAll(".mud-input-helper-text"));
+
+        Assert.StartsWith("Esto no es una hora", refusal.TextContent, StringComparison.Ordinal);
+    }
+
+    /// <summary>A readable hour typed and saved in one act saves that hour on the date held.</summary>
+    [Fact]
+    public async Task AStartHourTypedAndSavedInOneAct_SavesTheTypedHourOnTheDateHeld()
+    {
+        var model = new RefusedDateModel
+        {
+            Delivery = new DateOnly(2026, 1, 3),
+            Start = new DateTime(2026, 8, 24, 9, 0, 0)
+        };
+        var submitted = false;
+
+        var cut = Render<RefusedDateHost>(p => p
+            .Add(x => x.Model, model)
+            .Add(x => x.Submitted, () => submitted = true));
+
+        await LeaveStartHour(cut, "25:99");
+        await LeaveStartHour(cut, "1430");
+        await Save(cut);
+
+        Assert.True(submitted);
+        Assert.Equal(new DateTime(2026, 8, 24, 14, 30, 0), model.Start);
     }
 }
