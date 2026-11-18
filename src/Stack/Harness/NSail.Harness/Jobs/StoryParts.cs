@@ -42,7 +42,7 @@ public static partial class StoryParts
             }
             var title = Text("title.txt").Trim();
             var body = Text("body.md");
-            var comment = Text("comment.md");
+            var comment = Markers.StripFix(Text("comment.md"));
             if (title.Length == 0 || title.Contains('\n') || Token().IsMatch(title) || body.Trim().Length == 0) return null;
             if (Named($"{body}\n{comment}").Any(n => n < 1 || n >= i)) return null;
             parts.Add(new StoryPart(title, body, Text("labels.txt").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), comment, Text("protected.txt")));

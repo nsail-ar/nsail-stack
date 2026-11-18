@@ -169,6 +169,7 @@ public class ReleaseAndonTests
         {
             ["MergeOf"] = _ => Task.FromResult<Merge?>(new Merge("fixsha", mergedAt)),
             ["RunsSince"] = _ => Task.FromResult(0),
+            ["Login"] = _ => Task.FromResult("harness"),
         });
         var reader = new SnapshotReader(new MemoryBoard(), new RepositorySet([(repo, options.Repositories[0])]), null!, options);
         var issues = new Fixture().Story(1, "Merged", title: ShopRed).Build().Issues.ToList();
@@ -185,6 +186,7 @@ public class ReleaseAndonTests
         var app = Stub<IRepository>.Make(new Dictionary<string, Func<object?[], object?>>
         {
             ["get_Name"] = _ => "acme/app",
+            ["Login"] = _ => Task.FromResult("harness"),
             ["MergeOf"] = _ => Task.FromResult<Merge?>(null),
             ["Changes"] = _ => Task.FromResult<IReadOnlyList<Merge>>(pinned ? [new Merge("bump", mergedAt.AddHours(1))] : []),
             ["FileAt"] = _ => Task.FromResult<string?>("<V>1.0.1</V>"),

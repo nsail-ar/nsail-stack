@@ -15,8 +15,8 @@ namespace NSail.Harness.Jobs;
 // it is. A red suite still releases the last sha the suite passed, unless the product's last tag
 // already holds it, and files the red as the product's one red-suite story, born with the red labels
 // and Ready: the crew fixes it on main like any story.
-// When that fix merges, the fix is carried to the newest release branch (cherry-picked, so main's
-// newer work stays out of the cut) and only the tests that failed run again: green cuts the branch,
+// When that fix merges — or the story's analysis names the commits of main that already hold it — the
+// fix is carried to the newest release branch (cherry-picked, so main's newer work stays out of the cut) and only the tests that failed run again: green cuts the branch,
 // red sends the story back to Ready with what still fails. A branch, a list or a pick that is not
 // there falls back to the whole suite on main's head.
 // Its verdicts live on the commits: the day's cut tried and the suite's word, as commit statuses.
@@ -206,9 +206,11 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         await Shell.Git(dir, "checkout", "-q", "--detach", $"origin/{branch}");
         var bas = await Shell.Git(dir, "merge-base", "HEAD", "origin/main");
         var picked = await Shell.Git(dir, "log", "--format=%B", $"{bas}..HEAD");
-        // The story's merges on main past the branch: a squash names its PR at the end of its subject.
+        // The story's fix on main past the branch: its own merges (a squash names its PR at the end of
+        // its subject) and the commits its analysis named as already holding its work.
         var prs = (await ctx.Repo.PrsOf(red, "merged", ct)).Select(pr => pr.Number).ToList();
-        var fixes = FixesIn(await Shell.Git(dir, "log", "--reverse", "--format=%H %s", $"{bas}..origin/main"), prs)
+        var named = ctx.Markers.FixOf(await ctx.Board.Comments(red, ct), await ctx.Repo.Login(ct))?.Shas ?? [];
+        var fixes = FixesIn(await Shell.Git(dir, "log", "--reverse", "--format=%H %s", $"{bas}..origin/main"), prs, named)
             .Where(s => !picked.Contains($"cherry picked from commit {s}", StringComparison.Ordinal)).ToList();
         if (fixes.Count == 0)
         {
@@ -298,13 +300,21 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
         return FailedLine().Matches(text).Select(m => m.Groups[1].Value).Distinct().ToList();
     }
 
-    // From `git log --format="%H %s"`, the commits whose subject ends naming one of these PRs.
-    internal static IReadOnlyList<string> FixesIn(string log, IReadOnlyCollection<int> prs)
+    // From `git log --format="%H %s"`, the commits whose subject ends naming one of these PRs and the
+    // ones named by their sha, in the log's order.
+    internal static IReadOnlyList<string> FixesIn(string log, IReadOnlyCollection<int> prs, IReadOnlyCollection<string>? named = null)
     {
         return log.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(l => l.Trim().Split(' ', 2))
-            .Where(p => p.Length == 2 && SquashOf().Match(p[1]) is { Success: true } m && int.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n) && prs.Contains(n))
+            .Where(p => p.Length == 2 && (named?.Contains(p[0]) == true || Squashes(p[1], prs)))
             .Select(p => p[0]).ToList();
+    }
+
+    static bool Squashes(string subject, IReadOnlyCollection<int> prs)
+    {
+        return SquashOf().Match(subject) is { Success: true } m
+            && int.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n)
+            && prs.Contains(n);
     }
 
     internal static string Filter(IReadOnlyList<string> names)
