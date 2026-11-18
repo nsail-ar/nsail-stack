@@ -357,8 +357,8 @@ are asked in that same breath, for the reason and through the walk the list's ar
   component test) answers `Page`, as a desktop does.
 - **Scrolling keeps `Cargar más` under the rows.** A first page shorter than the viewport never
   produces a scroll event to ask for the second, and a keyboard has no floor gesture at all; the
-  control disappears when the list is exhausted, or when a read failed: the failure strip with
-  Retry takes its place and scrolling asks for nothing until Retry.
+  control disappears when the list is exhausted, or when a read failed: the failure strip takes
+  its place and scrolling asks for nothing until its Retry (or, refused for good, at all).
 - **Reloading in scroll mode always starts the list over**, `first` or not: the accumulated rows
   *are* the position, so a search, a filter or a sort leaves no row of the previous result set on
   screen. A page still in flight is superseded (`RunOptions.Replace` plus a generation counter),
@@ -376,7 +376,7 @@ are asked in that same breath, for the reason and through the walk the list's ar
   throwing: nothing in the vendor's grid catches, and the escape reaches `NsErrorBoundary`,
   which wraps the whole screen. A page whose read *failed* is no answer either: the pager goes
   back to the page shown, answered from the rows in hand with no second query, and the failure
-  strip with Retry (which rereads the shown page) stands over them.
+  strip (whose Retry rereads the shown page) stands over them.
 
 ### Selection
 
@@ -598,9 +598,9 @@ so the four cobro doors and the next one say it without knowing they do.
 
 The region around content that had to be READ — a list, a card's figures, a counter. Three
 states and no fourth: **not read yet** (nothing), **read** (`ChildContent`), **could not be
-read** (the reason and a Retry, in the content's own place). So a table, a card or a counter
-inside one exists only when a read produced it, which is what keeps "no records" an answer
-about the data instead of an answer about the network.
+read** (the reason, and a Retry where a second try can pass, in the content's own place). So
+a table, a card or a counter inside one exists only when a read produced it, which is what
+keeps "no records" an answer about the data instead of an answer about the network.
 
 - **`OnLoad` is the read, and the region runs it** — on a `Runner` belonging to that one read,
   which is what turns a `BusinessException` into a `Problem` and everything else into
@@ -616,6 +616,13 @@ about the data instead of an answer about the network.
   `OnProblem`: a screen told "could not read" about an answer the region threw away acts on a
   failure that is not on screen, which is the same lie the region exists to stop
   (`NsLoadPagedListTests`).
+- **A Retry is offered only where a second try can pass** — `Problem.IsRetryable()`, and
+  `isRetryable` on the React side, by HTTP's own retry semantics: no response, a 5xx, 408 or
+  429. Every other 4xx (`Forbidden`, `Unauthorized`, `FeatureUnavailable`, `NotFound`,
+  `Conflict`, `RuleViolation`, input problems…) and `TenancyProblem.Suspended` — a 503 whose own
+  contract says no retry changes it — draw the reason alone: a button that can only repeat the
+  refusal is not an act. The same rule holds for `NsForm`'s load, `NsTable`'s failure strip and
+  React's `NsLoad`.
 - **The Retry re-runs `OnLoad` alone.** Nothing around the region reloads, and the page is not
   re-created.
 - **`Reload()` is the same act from the screen's side** — a filter moved, a `*Saved` event
@@ -634,7 +641,8 @@ about the data instead of an answer about the network.
   invents no wording, so a reason that reads badly is fixed in its own kit's strings.
 - **NsTable's own page reads follow the same rule.** A page whose `OnQuery` failed or was cancelled
   is not an answer: scroll mode appends nothing and does not advance, paged mode keeps the pager on
-  the page shown, and the grid draws a failure strip with Retry instead of "No records".
+  the page shown, and the grid draws a failure strip instead of "No records", with a Retry where
+  the refusal it reported is retryable.
 - A failed read **replaces** the content rather than sitting above it: a filter that could not
   be applied leaves the previous filter's rows on screen, which is its own lie.
 

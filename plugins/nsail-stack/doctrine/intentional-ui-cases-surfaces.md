@@ -102,7 +102,8 @@ Owned by one component, the overwrite cannot be written by accident — a form w
 renders no fields and no submit, so there is nothing to press.
 
 Three states, where the bug had two: loaded, **empty by design** (a document not saved yet —
-editable, because the blank IS the data), and **failed** (the refusal and a Reintentar). A
+editable, because the blank IS the data), and **failed** (the refusal, and a Reintentar where a
+second try can pass). A
 nullable model tells the last two apart no better than an eager one: it renders nothing, forever,
 and says nothing — which is why `= default!` screens count too.
 

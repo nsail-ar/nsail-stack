@@ -207,7 +207,8 @@ routed type over (`NsSurface` → `SurfaceContext.PageType`) and the row resolve
 nothing swaps under the reader; the announcement replaces it for a page that refines its name
 from what it read. **While the read runs the content area is empty and the row's one icon slot
 holds the spinner** (`Surface.HasWork`) — no skeleton and no fourth `NsLoad` state. A failed read
-draws its refusal and its Retry where the fields would have been, under that same row.
+draws its refusal where the fields would have been, under that same row, with a Retry where a
+second try can pass ([hosts.md](hosts.md#nsload)).
 
 **The hosted form's word reaches that row, because the row stands outside its cascade.** What
 `NsForm` cascades as `ParentDisabled` travels up through the surface (`SurfaceContext.FormRefuses`)
