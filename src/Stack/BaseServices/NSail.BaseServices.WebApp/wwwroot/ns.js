@@ -408,6 +408,23 @@
         rest(grid, at);
     }
 
+    // Enter that a field answered ITSELF: the autocomplete took the one article the code names,
+    // so the keystroke never reaches the policy above (the open list owned it). The cursor is
+    // still in the box, so the row it stands in is confirmed and the next one opened exactly as
+    // Enter does in a cell. Outside a grid it is nothing.
+    function confirmRow() {
+        const from = document.activeElement;
+
+        if (!from || typeof from.closest !== "function")
+            return;
+
+        const grid = from.closest(".ns-cells");
+        const row = grid ? from.closest(CELL_ROW) : null;
+
+        if (row)
+            advanceCells(grid, from, row, 1, true);
+    }
+
     // Where the cursor comes to rest when the move was not made -- the arrows ran out of grid,
     // or the last row was confirmed and there is no way in to press: the row the keystroke
     // confirmed, on its own pencil, which is both what names that row and the way back into it.
@@ -1613,5 +1630,5 @@
         scans.delete(id);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download, pressOffer, canScan, scanStart, scanStop };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download, pressOffer, canScan, scanStart, scanStop, confirmRow };
 })();
