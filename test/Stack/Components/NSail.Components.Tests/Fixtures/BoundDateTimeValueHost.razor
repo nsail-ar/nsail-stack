@@ -1,0 +1,16 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+
+@* DateTimeValueHost's twin that holds the value the way a page does, so what the field writes
+   comes back down as its parameter — the round trip a clock pick has to survive. *@
+<MudPopoverProvider />
+
+<NsDateTimeField TValue="DateTime" @bind-Value="Value" />
+
+@code {
+
+    [Parameter]
+    public DateTime Value { get; set; }
+}
