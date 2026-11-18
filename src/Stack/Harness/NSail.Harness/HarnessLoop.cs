@@ -546,7 +546,7 @@ public sealed class HarnessLoop(
         }
         if (_stillSaid || now - since < AndonStill) return false;
         _stillSaid = true;
-        log.LogError("release andon ({Products}): nothing of it to start and nothing of it running since {Since:HH:mm} UTC, so the line runs behind it — waits for {Waits}",
+        log.LogWarning("release andon ({Products}): nothing of it to start and nothing of it running since {Since:HH:mm} UTC, so the line runs behind it — waits for {Waits}",
             string.Join(", ", plan.Andon.Select(a => a.Product)), since.Value.UtcDateTime, string.Join("; ", plan.Andon.Select(a => a.Waits)));
         return true;
     }

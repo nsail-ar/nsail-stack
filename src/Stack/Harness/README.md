@@ -269,7 +269,7 @@ the files it leaves.
   with none of the release's work planned or running waits on something outside the harness (a hand,
   a publication), and holding the line then buys the release nothing: past `HarnessLoop.AndonStill` the
   line runs behind it — every worker is planned again, the release's work still the most urgent turn the
-  moment there is any — and it says so once: an error in the log, the status page (`AndonStillSince` on
+  moment there is any — and it says so once: a warning in the log (it is a call to a person, and nothing of the harness fails), the status page (`AndonStillSince` on
   `/status`) and a comment on the red story (`HarnessTexts.AndonStill`), which is left unsaid while that
   product's cut runs on the code host. Main's gate, the release's while an andon is lit, is no sign that the
   release moves: every merge of the line moves main. The andon stays lit; nothing unsticks it but what it waits for. It lifts when
