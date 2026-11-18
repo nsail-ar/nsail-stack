@@ -257,7 +257,7 @@ public class PassFailureTests
         Assert.Equal(502, counted.Status);
     }
 
-    public static TheoryData<Exception> Timeouts => [new TaskCanceledException("timed out"), new ProviderTimeoutException("timed out GET /repos/acme/app/statuses/abc: canceled", new TaskCanceledException())];
+    public static TheoryData<Exception> Timeouts => [new TaskCanceledException("timed out"), new ProviderTimeoutException("timed out GET /repos/acme/app/statuses/abc: canceled", new TaskCanceledException()), new ProviderTransportException("connection lost GET /repos/acme/app/statuses/abc: The response ended prematurely.", new HttpRequestException())];
 
     [Theory]
     [MemberData(nameof(Timeouts))]

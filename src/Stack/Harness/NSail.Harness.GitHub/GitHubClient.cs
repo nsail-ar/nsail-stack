@@ -170,15 +170,25 @@ public sealed partial class GitHubClient(HttpClient http)
 
     // A rate-limited answer (403/429 with a wait) is waited out once and sent again: the limit is shared
     // with every job and lane on the token, so a second refusal is thrown. A 5xx is sent again, a few
-    // times, only when the call reads (a GET, a GraphQL query), and so is a 2xx whose body `malformed` refuses.
-    // What still fails is returned for its caller to throw.
+    // times, only when the call reads (a GET, a GraphQL query), and so is a 2xx whose body `malformed`
+    // refuses and a connection lost before the answer arrived whole. What still fails is returned for its
+    // caller to throw.
     async Task<HttpResponseMessage> Dispatch(Func<HttpRequestMessage> build, bool reads, CancellationToken ct, Func<string, bool>? malformed = null)
     {
         var waitedLimit = false;
         for (var attempt = 1; ; attempt++)
         {
             using var request = build();
-            var response = await SendOnce(request, ct);
+            HttpResponseMessage response;
+            try
+            {
+                response = await SendOnce(request, ct);
+            }
+            catch (ProviderTransportException) when (reads && attempt < Attempts)
+            {
+                await Delay(TimeSpan.FromSeconds(attempt), ct);
+                continue;
+            }
             TimeSpan? wait = null;
             if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
             {
@@ -196,7 +206,8 @@ public sealed partial class GitHubClient(HttpClient http)
         }
     }
 
-    // The client's timeout cancels the call as the caller's stop does; only the caller's is a stop.
+    // The client's timeout cancels the call as the caller's stop does; only the caller's is a stop. The
+    // answer's body is read here, buffered by SendAsync, so a connection cut mid-body fails here too.
     async Task<HttpResponseMessage> SendOnce(HttpRequestMessage request, CancellationToken ct)
     {
         try
@@ -205,9 +216,18 @@ public sealed partial class GitHubClient(HttpClient http)
         }
         catch (TaskCanceledException e) when (!ct.IsCancellationRequested)
         {
-            var address = request.RequestUri is { IsAbsoluteUri: false } relative && http.BaseAddress is { } root ? new Uri(root, relative) : request.RequestUri;
-            throw new ProviderTimeoutException($"timed out {request.Method} {address?.PathAndQuery}: {e.Message}", e);
+            throw new ProviderTimeoutException($"timed out {Call(request)}: {e.Message}", e);
         }
+        catch (HttpRequestException e) when (!ct.IsCancellationRequested)
+        {
+            throw new ProviderTransportException($"connection lost {Call(request)}: {e.Message}", e);
+        }
+    }
+
+    string Call(HttpRequestMessage request)
+    {
+        var address = request.RequestUri is { IsAbsoluteUri: false } relative && http.BaseAddress is { } root ? new Uri(root, relative) : request.RequestUri;
+        return $"{request.Method} {address?.PathAndQuery}";
     }
 
     // The wait a limited answer asks for: Retry-After, else the reset instant of an exhausted quota.
