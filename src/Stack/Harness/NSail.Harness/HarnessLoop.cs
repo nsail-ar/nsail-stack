@@ -566,7 +566,7 @@ public sealed class HarnessLoop(
     // Said once on each red story of a stand-still, where a person looks: not while the product's cut
     // runs on the code host (a publication is nobody's to unblock), nor when the story's last word
     // already says it (a harness that restarted says nothing twice).
-    async Task SayStill(Plan plan, BoardSnapshot snapshot, HarnessOptions o, CancellationToken ct)
+    internal async Task SayStill(Plan plan, BoardSnapshot snapshot, HarnessOptions o, CancellationToken ct)
     {
         try
         {
