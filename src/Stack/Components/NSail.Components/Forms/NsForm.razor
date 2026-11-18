@@ -29,9 +29,12 @@
                 <span>@text</span>
             }
         </div>
-        <button type="button" class="ns-form-problem-act" disabled="@IsRunning" @onclick="Refetch">
-            @Strings.Translate("Common.Retry")
-        </button>
+        @if (_loadProblem.IsRetryable())
+        {
+            <button type="button" class="ns-form-problem-act" disabled="@IsRunning" @onclick="Refetch">
+                @Strings.Translate("Common.Retry")
+            </button>
+        }
     </div>
 }
 else if (HasDocument)

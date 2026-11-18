@@ -229,13 +229,17 @@
           </div>
         : null;
 
-    // A read that did not land is neither rows nor an empty list: it says so and offers the
-    // read again (hosts.md, a failed read is not an empty read). The words of the refusal were
-    // already reported through the host; this is the grid's own state beside it.
+    // A read that did not land is neither rows nor an empty list: it says so and, where a second
+    // try can pass, offers the read again (hosts.md, a failed read is not an empty read). The
+    // words of the refusal were already reported through the host; this is the grid's own state
+    // beside it.
     RenderFragment? readFailed = _failed && !IsRunning
         ? @<NsStack Gap="NsSize.Sm" Align="NsAlign.Center" Margin="NsSize.Md" Class="ns-table-failed">
               <NsText Secondary>@Strings.Translate("Common.LoadFailed")</NsText>
-              <NsButton Label="@Strings.Translate("Common.Retry")" Disabled="IsRunning" OnClick="Retry" Class="ns-table-retry" />
+              @if (_readProblem?.IsRetryable() ?? true)
+              {
+                  <NsButton Label="@Strings.Translate("Common.Retry")" Disabled="IsRunning" OnClick="Retry" Class="ns-table-retry" />
+              }
           </NsStack>
         : null;
 
@@ -455,6 +459,10 @@ else
     bool _failed;
     bool _reading;
     bool _readReported;
+
+    // What the failed read was refused with, if anything: a refusal no second try can turn
+    // around draws the strip without its Retry.
+    NSail.Problems.Problem? _readProblem;
     int _readEpoch;
     int? _serveShown;
     int _shownPage;
@@ -1033,6 +1041,7 @@ else
         if (_reading)
         {
             _readReported = true;
+            _readProblem = args.Problem;
         }
 
         if (!args.Handled && _editing is { } row && Placement.Place(args.Problem, row))
@@ -1300,6 +1309,7 @@ else
         var epoch = ++_readEpoch;
         _reading = true;
         _readReported = false;
+        _readProblem = null;
 
         try
         {
@@ -1309,6 +1319,8 @@ else
         {
             _reading = false;
         }
+
+        _readProblem ??= args.Problem;
 
         if (_readReported || args.Problem is not null)
         {

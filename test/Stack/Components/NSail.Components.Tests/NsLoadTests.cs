@@ -107,6 +107,73 @@ public sealed class NsLoadTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void AReadRefusedForPermission_DrawsTheReasonAndNoRetry()
+    {
+        var host = Host(SecurityProblem.Forbidden("GetTill"));
+
+        host.WaitForAssertion(() => Assert.NotEmpty(host.FindAll(".ns-load-problem")));
+
+        Assert.Contains("You do not have permission to execute GetTill", host.Find(".ns-load-problem").TextContent);
+        Assert.Empty(host.FindAll(".ns-load-retry"));
+        Assert.Empty(host.FindAll("#ns-probe-loaded"));
+    }
+
+    public static TheoryData<string> RefusedForGood => new()
+    {
+        nameof(SecurityProblem.Unauthorized),
+        nameof(SecurityProblem.FeatureUnavailable),
+        nameof(BusinessProblem.NotFound),
+        nameof(BusinessProblem.Conflict),
+        nameof(BusinessProblem.AlreadyExists),
+        nameof(BusinessProblem.InUse),
+        nameof(BusinessProblem.RuleViolation),
+        nameof(BusinessProblem.InvalidState),
+        nameof(InputProblem),
+        nameof(TenancyProblem.Suspended),
+    };
+
+    internal static Problem Refusal(string name)
+    {
+        return name switch
+        {
+            nameof(SecurityProblem.Unauthorized) => SecurityProblem.Unauthorized(),
+            nameof(SecurityProblem.FeatureUnavailable) => SecurityProblem.FeatureUnavailable("Billing"),
+            nameof(BusinessProblem.NotFound) => BusinessProblem.NotFound(typeof(object), 1),
+            nameof(BusinessProblem.Conflict) => BusinessProblem.Conflict(typeof(object)),
+            nameof(BusinessProblem.AlreadyExists) => BusinessProblem.AlreadyExists(typeof(object), 1),
+            nameof(BusinessProblem.InUse) => BusinessProblem.InUse(typeof(object)),
+            nameof(BusinessProblem.RuleViolation) => BusinessProblem.RuleViolation("Closed", "The till is closed"),
+            nameof(BusinessProblem.InvalidState) => BusinessProblem.InvalidState("Closed"),
+            nameof(InputProblem) => InputProblem.InvalidModel(new Issue(code: "Required", message: "The field Name is required", source: "Name")),
+            nameof(TenancyProblem.Suspended) => TenancyProblem.Suspended(),
+            _ => throw new ArgumentOutOfRangeException(nameof(name)),
+        };
+    }
+
+    [Theory]
+    [MemberData(nameof(RefusedForGood))]
+    public void AReadRefusedForGood_DrawsTheReasonAndNoRetry(string refusal)
+    {
+        var host = Host(Refusal(refusal));
+
+        host.WaitForAssertion(() => Assert.NotEmpty(host.FindAll(".ns-load-problem")));
+
+        Assert.Empty(host.FindAll(".ns-load-retry"));
+        Assert.Empty(host.FindAll("#ns-probe-loaded"));
+    }
+
+    public static TheoryData<int?> SecondTryCanPass => new() { null, 408, 429, 500, 502, 503, 504 };
+
+    [Theory]
+    [MemberData(nameof(SecondTryCanPass))]
+    public void AReadThatASecondTryCanPass_OffersTheRetry(int? status)
+    {
+        var host = Host(new Problem("RequestFailed", "Unable to contact the server", [], status));
+
+        host.WaitForAssertion(() => Assert.NotEmpty(host.FindAll(".ns-load-retry")));
+    }
+
+    [Fact]
     public void AReadThatFailed_NeitherSplashesTheAppNorFadesIntoAToast()
     {
         var host = Host(Unreachable());

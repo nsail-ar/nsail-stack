@@ -19,10 +19,13 @@
 {
     <NsStack Gap="NsSize.Sm" Align="NsAlign.Center" Margin="NsSize.Md" Class="ns-load-problem">
         <NsText Secondary>@Problems.GetMessage(_problem)</NsText>
-        <NsButton Label="@Strings.Translate("Common.Retry")"
-                  Disabled="@(_read is not null)"
-                  OnClick="Reload"
-                  Class="ns-load-retry" />
+        @if (_problem.IsRetryable())
+        {
+            <NsButton Label="@Strings.Translate("Common.Retry")"
+                      Disabled="@(_read is not null)"
+                      OnClick="Reload"
+                      Class="ns-load-retry" />
+        }
     </NsStack>
 }
 else if (_loaded)
@@ -38,7 +41,7 @@ else if (_loaded)
 
     /// <summary>Reads what this region shows. It runs on a Runner of the read's own, so a
     /// refusal becomes a Problem drawn here instead of an exception the layout catches — and
-    /// the retry re-runs THIS, nothing else on the page. Pass args.CancellationToken to
+    /// the retry, offered where a second try can pass, re-runs THIS, nothing else on the page. Pass args.CancellationToken to
     /// whatever it sends.</summary>
     [Parameter, EditorRequired]
     public EventCallback<ReadEventArgs> OnLoad { get; set; }

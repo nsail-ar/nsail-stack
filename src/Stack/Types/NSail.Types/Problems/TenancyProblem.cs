@@ -5,6 +5,8 @@ namespace NSail.Problems;
 
 public static class TenancyProblem
 {
+    public const string SuspendedCode = "Suspended";
+
     /// <summary>What a tenant the install has suspended is answered, before authentication and
     /// before any endpoint. 503 and not 403: nothing is wrong with the caller or their
     /// credential, and nothing they can do changes the answer — the install is not serving this
@@ -13,7 +15,7 @@ public static class TenancyProblem
     public static Problem Suspended()
     {
         return new(
-            code: "Suspended",
+            code: SuspendedCode,
             title: "This account is suspended",
             issues: new[]
             {
