@@ -67,6 +67,7 @@ public sealed class HarnessTexts
     public string RedQuestion { get; set; } = "A release red waits for no hand: the crew rules its question by doctrine, and the work goes on.";
     public string RedRulingRefused { get; set; } = "An analysis of a release red ends `ready` or `done`, never `ruling`: its questions are the analyst's to rule by doctrine. Sent again.";
 
+    public string AndonStill { get; set; } = "The release andon ({product}) has nothing of the release to start and nothing of it running since {since} UTC: it waits for {waits}. The line runs behind it, and the release's work goes first the moment there is any.";
     public string DoneNamesNoFix { get; set; } = "An analysis of a release red that ends `done` with no PR of the story merged names the commits of the default branch that fix it (`fix.txt`, one sha per line): with none the release has nothing to carry. Sent again.";
     public string DoneFixNotThere { get; set; } = "The analysis named {sha} as holding this story's work, and the default branch holds no such commit. Sent again.";
 

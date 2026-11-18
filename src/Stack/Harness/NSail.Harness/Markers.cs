@@ -53,6 +53,9 @@ public sealed class Markers(string review, IReadOnlyCollection<string>? authors 
     public const string Elsewhere = "<!-- harness:elsewhere -->";
     public const string Broke = "<!-- harness:broke -->";
 
+    // On the comment that says a lit andon stands still with nothing of the release to start.
+    public const string AndonStill = "<!-- harness:andon-still -->";
+
     // A red main's story closed as fixed: a close that broke after its comment does not say it twice.
     public const string RedFixed = "<!-- harness:red-fixed -->";
 
