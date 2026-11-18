@@ -35,7 +35,7 @@ public sealed class NsDateRefusalSubmitTests : BunitContext, IAsyncLifetime
         [
             new TwoLanguageStrings("Common.DateLetters", "dmy", "dma"),
             new TwoLanguageStrings("Problems.UnreadableDate", "This is not a date — write it as {shape}", "Esto no es una fecha — escribila como {shape}"),
-            new TwoLanguageStrings("Problems.UnreadableTime", "This is not a time — write it as hh:mm, like 14:30", "Esto no es una hora — escribila como hh:mm, por ejemplo 14:30")
+            new TwoLanguageStrings("Problems.UnreadableTime", "This is not a time — write it as hh:mm", "Esto no es una hora — escribila como hh:mm")
         ]));
         Services.AddSingleton(new LanguageProvider { Current = "es" });
         Services.AddSingleton<MetadataProvider>();

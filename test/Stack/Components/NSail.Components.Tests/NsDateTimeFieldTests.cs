@@ -184,7 +184,7 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
         [
             new TwoLanguageStrings("Common.DateLetters", "dmy", "dma"),
             new TwoLanguageStrings("Problems.UnreadableDate", "This is not a date — write it as {shape}", "Esto no es una fecha — escribila como {shape}"),
-            new TwoLanguageStrings("Problems.UnreadableTime", "This is not a time — write it as hh:mm, like 14:30", "Esto no es una hora — escribila como hh:mm, por ejemplo 14:30")
+            new TwoLanguageStrings("Problems.UnreadableTime", "This is not a time — write it as hh:mm", "Esto no es una hora — escribila como hh:mm")
         ]));
         Services.AddSingleton(new LanguageProvider { Current = language });
 
@@ -483,6 +483,26 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
         Assert.Null(Refusal(cut));
     }
 
+    /// <summary>An hour box emptied and left writes nothing and takes back the hour held: the
+    /// vendor hands the empty box over as null, which would otherwise land as midnight — an
+    /// hour nobody entered, saved by the next Guardar under no refusal at all.</summary>
+    [Fact]
+    public async Task AnHourBoxEmptiedAndLeft_KeepsTheHourHeld()
+    {
+        ComposeCulture("es");
+
+        var writes = 0;
+        var cut = Render<DateTimeValueHost>(ps => ps
+            .Add(p => p.Value, new DateTime(2026, 8, 24, 9, 0, 0))
+            .Add(p => p.ValueChanged, _ => writes++));
+
+        await LeaveHour(cut, "");
+
+        Assert.Equal(0, writes);
+        Assert.Null(Refusal(cut));
+        Assert.Equal("09:00", cut.FindComponent<MudTimePicker>().Find("input").GetAttribute("value"));
+    }
+
     /// <summary>The hour half's twin of TheDateHalfTakesNoKeystrokeUntilItIsLeft.</summary>
     [Fact]
     public void TheHourHalfTakesNoKeystrokeUntilItIsLeft()
@@ -535,5 +555,4 @@ public sealed class NsDateTimeFieldTests : BunitContext, IAsyncLifetime
         Assert.True(cut.FindComponent<MudDatePicker>().Find("input").HasAttribute("disabled"));
         Assert.True(cut.FindComponent<MudTimePicker>().Find("input").HasAttribute("disabled"));
     }
-
 }

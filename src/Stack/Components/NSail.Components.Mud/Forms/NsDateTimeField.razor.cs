@@ -15,6 +15,7 @@ public partial class NsDateTimeField<TValue>
     bool _hasPendingTime;
     TimeSpan? _pendingTime;
     TimeSpan? _displacedTime;
+    bool _restoringTime;
 
     // One instance for the field's whole life, for the reason NsDateField's own copy carries:
     // the vendor compares Converter by reference, and a fresh one per render throws away the
@@ -62,7 +63,9 @@ public partial class NsDateTimeField<TValue>
     // re-applies on every render of this field, so handing it the held hour while a typed one
     // is in flight rewrites the box — and while a refusal stands, the bet is null, which keeps
     // the refused text in the box instead of the hour it displaced.
-    TimeSpan? MudTime => _hasPendingTime ? _pendingTime : ConvertToDateTime(Value)?.TimeOfDay;
+    TimeSpan? MudTime => _restoringTime ? null
+        : _hasPendingTime ? _pendingTime
+        : ConvertToDateTime(Value)?.TimeOfDay;
 
     // The date half reaching the same treatment NsDateField already carries — the same
     // placeholder and the same text seam. NOT composed as an actual <NsDateField> here: that
@@ -118,6 +121,18 @@ public partial class NsDateTimeField<TValue>
         if (_hasPendingTime && ConvertToDateTime(Value)?.TimeOfDay != _displacedTime)
         {
             _hasPendingTime = false;
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+
+        if (_restoringTime)
+        {
+            _restoringTime = false;
+
+            StateHasChanged();
         }
     }
 
@@ -206,13 +221,22 @@ public partial class NsDateTimeField<TValue>
 
             TakePendingTime(null);
         }
+        else if (value is null)
+        {
+            // An emptied box: the value always holds an hour, so the one held stands and the
+            // box takes it back — midnight here would be an hour nobody entered. The vendor
+            // repaints its box only when Time changes (measured), and the held hour is the one it was last
+            // handed, so it is handed null for one render and the held hour on the next.
+            _hasPendingTime = false;
+            _restoringTime = true;
+        }
         else
         {
-            var combined = Combine(ConvertToDateTime(Value), value ?? TimeSpan.Zero);
+            var combined = Combine(ConvertToDateTime(Value), value.Value);
 
             if (!Echoes(combined))
             {
-                TakePendingTime(value ?? TimeSpan.Zero);
+                TakePendingTime(value);
 
                 await SetPicked(combined);
             }
@@ -225,7 +249,7 @@ public partial class NsDateTimeField<TValue>
 
     // Observed one way out only, as OnTextChanged is: a second unreadable text after a first
     // raises no TimeChanged, and the refusal must still follow it.
-    void OnTimeTextChanged(string? text)
+    void OnTimeTextChanged()
     {
         NotifyOwnProblemChanged();
 

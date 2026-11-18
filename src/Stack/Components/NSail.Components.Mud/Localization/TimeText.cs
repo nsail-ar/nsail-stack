@@ -45,7 +45,7 @@ static class TimeText
 
         if (trimmed.All(char.IsAsciiDigit))
         {
-            // Two digits or fewer is an hour alone, never a run of minutes.
+            // Two digits or fewer would be an hour with no minutes, which the shape refuses.
             if (trimmed.Length is < 3 or > 4)
             {
                 return false;

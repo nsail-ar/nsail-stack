@@ -158,7 +158,9 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   minutes are the last two digits (`1430` is 14:30, `930` is 09:30). Text that is not an hour
   (`25:99`, `tarde`) raises **its own refusal** (`Problems.UnreadableTime`), is left standing,
   writes nothing and blocks the submit through `GetOwnProblem`; when both halves are refused,
-  the date's sentence is the one said. Two vendor traps shape the wiring. `MudTimePicker`'s
+  the date's sentence is the one said. **A box emptied and left keeps the hour held** and takes
+  it back: the value always holds an hour, and the vendor hands the empty box over as null, which
+  would land as midnight — an hour nobody entered, saved under no refusal. Two vendor traps shape the wiring. `MudTimePicker`'s
   `Time` setter re-applies on every render, so the hour carries its own optimistic bet — the
   date half's, null while a refusal stands so the refused text is what the box keeps. And while
   its box holds unreadable text that setter raises `TimeChanged(null)` on every render, so the
