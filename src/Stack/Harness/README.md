@@ -170,21 +170,25 @@ the files it leaves.
     that out once, when it is at most a minute away, and is sent again; the limit is shared by every job and lane on the token, so a second refusal, one that names
     no wait or a farther one, throws. A read that gets a 5xx is sent again up to twice, and so is a GraphQL
     query answered 2xx with a body that is not a GraphQL answer (empty, not a JSON object, or `errors` that
-    are not a list of objects with a `message`); one still malformed throws with its status, and a mutation
-    is never sent again. Any other refusal throws at once. A limit, on a pass or at a job's end, holds every pass after it for the wait it asked,
+    are not a list of objects with a `message`), or a read whose connection is lost before its answer
+    arrives whole; one still malformed throws with its status, and a write or a mutation is never sent again. Any other refusal throws at once. A limit, on a pass or at a job's end, holds every pass after it for the wait it asked,
     at least `MinLimitBackoff` and up to `MaxLimitBackoff`, and a wake (a job's end, the API) does not end the
     hold; outside one, a wake runs the next pass at once. Every GitHub REST read is sent with the ETag of its last answer: one that has not
     moved comes back 304, which GitHub does not count against the token's rate limit, so a pass over an
     unchanged board bills no REST call (`PassBudgetTests`). A full page kept with no next link is read again
     without its ETag, as items appended behind it leave its answer unchanged. A call nothing answers
     within the client's timeout throws `ProviderTimeoutException`, a `ProviderException` with no status,
-    never a cancellation: only the caller's own token is a stop. A job that ends on the provider's limit
-    (a `ProviderException` with its `RetryAfter`), on a 5xx or on a timed-out call is not a break: nothing
+    never a cancellation: only the caller's own token is a stop. A call whose connection is lost on its
+    last attempt (a write's only one, an upload's) throws `ProviderTransportException`, likewise with no
+    status. A pass that fails on either logs the bare `pass failed — nothing started`. A job that ends on
+    the provider's limit (a `ProviderException` with its `RetryAfter`), on a 5xx or on a timed-out or
+    lost call is not a break: nothing
     is said on its story and nothing counts toward `stalled`; its lock label and lock come off and a Dev
     with no PR goes back to Ready, as a break's do. A limit holds the item for the same wait as the
-    passes; a 5xx or a timeout backs the item off as a break. Its run's result is `provider` (`/jobs`,
+    passes; a 5xx, a timeout or a lost connection backs the item off as a break. Its run's result is `provider` (`/jobs`,
     the pill, `harness.jobs{outcome=provider}`), its outcome `rate limited — <call>, retry in <wait>`,
-    `provider failed — <status> <call>` or `provider failed — timed out <call>`. A bare 403 or a 404 is
+    `provider failed — <status> <call>`, `provider failed — timed out <call>` or
+    `provider failed — connection lost <call>`. A bare 403 or a 404 is
     an answer, and breaks. A job the host's stop cancels is not a break either: its result is `stopped`
     (`harness.jobs{outcome=stopped}`), nothing is said on its story, and the story goes back as a
     break's does. Nor is a job whose workspace this machine cannot prepare (`Workspace.Prepare`: the
