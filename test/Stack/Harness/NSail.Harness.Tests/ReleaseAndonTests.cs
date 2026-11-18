@@ -4,6 +4,7 @@
 using NSail.Harness.Board;
 using NSail.Harness.Planning;
 using NSail.Harness.Repositories;
+using NSail.Harness.Workers;
 
 namespace NSail.Harness.Tests;
 
@@ -271,11 +272,67 @@ public class ReleaseAndonTests
         var working = SampleWorkers.Plan(Lit().Build(), Options());
         var unlit = SampleWorkers.Plan(new Fixture().Build(), Options());
 
-        Assert.Equal(now, HarnessLoop.StillSince(null, held, nothingRuns: true, now));
-        Assert.Equal(now.AddHours(-1), HarnessLoop.StillSince(now.AddHours(-1), held, nothingRuns: true, now));
-        Assert.Null(HarnessLoop.StillSince(now.AddHours(-1), held, nothingRuns: false, now));
-        Assert.Null(HarnessLoop.StillSince(now.AddHours(-1), working, nothingRuns: true, now));
-        Assert.Null(HarnessLoop.StillSince(null, unlit, nothingRuns: true, now));
+        Assert.Equal(now, HarnessLoop.StillSince(null, held, nothingOfItRuns: true, now));
+        Assert.Equal(now.AddHours(-1), HarnessLoop.StillSince(now.AddHours(-1), held, nothingOfItRuns: true, now));
+        Assert.Null(HarnessLoop.StillSince(now.AddHours(-1), held, nothingOfItRuns: false, now));
+        Assert.Null(HarnessLoop.StillSince(now.AddHours(-1), working, nothingOfItRuns: true, now));
+        Assert.Null(HarnessLoop.StillSince(null, unlit, nothingOfItRuns: true, now));
+    }
+
+    // A red story nothing can work (a hand holds it), and around it the line's own work.
+    static Fixture Stuck()
+    {
+        return new Fixture().Story(1, "Ready", "ruling", title: ShopRed)
+            .Story(2, "Ready", "p1").Story(3, "Ready").Story(4, "Ready", "bug");
+    }
+
+    [Fact]
+    public void AnAndonThatStoodStillLetsTheLineRunBehindIt()
+    {
+        var held = SampleWorkers.Plan(Stuck().Build(), Options());
+        var open = WorkerPlanner.Make(Stuck().Build(), SampleWorkers.Workers, Options(), open: true);
+
+        Assert.Empty(held.Items);
+        Assert.Single(open.Andon);
+        Assert.Equal([2, 3, 4], open.Items.Select(i => i.Story!.Value).Order());
+        Assert.DoesNotContain(open.Items, i => i.Tier == ReleaseAndon.Tier);
+        Assert.Contains(open.Notes, n => n.Contains("the line runs behind it", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void BehindAnOpenAndonTheReleasesWorkIsStillTheMostUrgent()
+    {
+        var plan = WorkerPlanner.Make(Lit().Build(), SampleWorkers.Workers, Options(), open: true);
+
+        Assert.Equal(ReleaseAndon.Tier, Assert.Single(plan.Items, i => i.Story == 1).Tier);
+        Assert.Contains(plan.Items, i => i.Story == 2 && i.Tier != ReleaseAndon.Tier);
+    }
+
+    [Fact]
+    public void TheWipLimitHoldsTheLineBehindAnOpenAndonAsItDoesWithNone()
+    {
+        var board = Stuck().Story(5, "In-Progress").Pr(5, 50).Story(6, "In-Progress").Pr(6, 60).Build();
+
+        var plan = WorkerPlanner.Make(board, SampleWorkers.Workers, Options(wip: 2), open: true);
+
+        Assert.DoesNotContain(plan.Items, i => i.Story is 2 or 3);
+        Assert.Contains(plan.Items, i => i.Story == 4);
+        Assert.Contains(plan.Notes, n => n.Contains("no new story starts until one closes", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TheLinesOwnWorkAndMainsGateAreNoSignThatTheReleaseMoves()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var open = WorkerPlanner.Make(Stuck().Build(), SampleWorkers.Workers, Options(), open: true);
+        var gate = new WorkItem(WorkKind.Main, null, null, ReleaseAndon.Tier, "main moved");
+        var cut = new WorkItem(WorkKind.Release, null, null, ReleaseAndon.Tier, "the day's cut", "release-shop.yml");
+
+        Assert.NotEmpty(open.Items);
+        Assert.Equal(now.AddHours(-1), HarnessLoop.StillSince(now.AddHours(-1), open, nothingOfItRuns: true, now));
+        Assert.False(HarnessLoop.OfTheRelease(gate));
+        Assert.True(HarnessLoop.OfTheRelease(cut));
+        Assert.False(HarnessLoop.OfTheRelease(open.Items[0]));
     }
 
     [Fact]

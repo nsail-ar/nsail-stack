@@ -15,6 +15,8 @@ namespace NSail.Harness.Workers;
 //   5. the same workers over every other story.
 // At the WIP limit no new story starts but a `bug`, a red main's or suite's (their fix is finishing
 // work) and, while an andon is lit, the release's own.
+// A lit andon plans the release's work and nothing else, until it has stood with none of it to start
+// or running for long enough (`open`): then the line runs behind it, the release's work still first.
 // Inside a worker, stories go by the configured Order (epic progress, then age). A story gets one
 // job per pass: the first worker that takes it. Locks (a job's own labels), a story already worked
 // here and a driver this machine cannot run hold it below any filter.
@@ -22,18 +24,21 @@ public static class WorkerPlanner
 {
     const string Executed = "Executed";
 
-    public static Plan Make(BoardSnapshot board, IReadOnlyList<Worker> workers, PlannerOptions options, Func<Worker, bool>? may = null)
+    public static Plan Make(BoardSnapshot board, IReadOnlyList<Worker> workers, PlannerOptions options, Func<Worker, bool>? may = null, bool open = false)
     {
         may ??= _ => true;
         var chores = new List<Chore>();
         var notes = new List<string>();
         var issues = Planner.ReleaseStaleLocks(board, options, chores, notes);
-        // A failed cut holds the harness: only the release's own work is planned below.
+        // A failed cut holds the harness: only the release's own work is planned below, unless it stood still.
         var andon = ReleaseAndon.Read(issues, board.ShippedFixes, workers, options);
         var release = ReleaseAndon.Stories(issues, andon, options);
+        var held = andon.Count > 0 && !open;
         foreach (var a in andon)
         {
-            notes.Add($"release andon ({a.Product}): nothing but the release starts until its cut ships — waits for {a.Waits}");
+            notes.Add(open
+                ? $"release andon ({a.Product}): it stands still, so the line runs behind it — waits for {a.Waits}"
+                : $"release andon ({a.Product}): nothing but the release starts until its cut ships — waits for {a.Waits}");
         }
         var lookup = new StoryLookup(issues, board.Prs, board.MergedStories, board.AwaitingPin);
         var flight = board.Flight;
@@ -82,7 +87,7 @@ public static class WorkerPlanner
         var wip = prsByStory.Keys.Where(n => issues.FirstOrDefault(i => i.Number == n) is { } i && Planner.HoldOf(i, options) is not (Labels.Ruling or Labels.Blocked or Labels.Hand or Labels.Stalled))
             .Union(flight.DevStories).Distinct().Count();
         var full = options.WipLimit > 0 && wip >= options.WipLimit;
-        var limit = full && andon.Count == 0 ? notes.Count : -1;
+        var limit = full && !held ? notes.Count : -1;
         int? next = null;
         if (limit >= 0) notes.Add($"{wip} stories under way (limit {options.WipLimit}): no new story starts until one closes");
 
@@ -103,13 +108,14 @@ public static class WorkerPlanner
         Sweep(i => i.Has(Labels.Bug), bug: true);
         foreach (var w in workers.Where(w => w.Kind is not null && !w.OverStories && may(w)))
         {
-            items.AddRange(OnItsOwn(w, board, issues, options).Where(item => andon.Count == 0 || ReleaseAndon.Owns(item, andon)).Select(item => andon.Count == 0 ? item : item with { Tier = ReleaseAndon.Tier }));
+            items.AddRange(OnItsOwn(w, board, issues, options).Where(item => !held || ReleaseAndon.Owns(item, andon))
+                .Select(item => andon.Count > 0 && ReleaseAndon.Owns(item, andon) ? item with { Tier = ReleaseAndon.Tier } : item));
         }
         // A red main's or red suite's story is swept with the p1 ones, whatever its labels, and the WIP
         // limit does not hold it; the limit's note names the first story it holds.
         Sweep(i => !i.Has(Labels.Bug) && (i.Has(Labels.P1) || Red(i, options)), bug: false);
         Sweep(i => !i.Has(Labels.Bug) && !i.Has(Labels.P1) && !Red(i, options), bug: false);
-        if (limit >= 0 && next is { } held) notes[limit] += $" — #{held} would be next";
+        if (limit >= 0 && next is { } waiting) notes[limit] += $" — #{waiting} would be next";
         return new Plan(items, chores, notes) { Andon = andon };
 
         void Sweep(Func<Issue, bool> which, bool bug)
@@ -125,7 +131,7 @@ public static class WorkerPlanner
                 {
                     if (taken.Contains(i.Number) || Busy(i, flight, options)) continue;
                     var owned = andon.Count > 0 && release.Contains(i.Number);
-                    if (andon.Count > 0 && !owned) continue;
+                    if (held && !owned) continue;
                     if (w.Kind == WorkKind.Dev && board.UnjudgedFixes.Contains(i.Number)) continue;
                     var (pr, state) = Deciding(i, w, prsByStory.GetValueOrDefault(i.Number), board, options, lookup);
                     if (!w.Takes(i, w.Filter.Pr == "open" ? pr : null, state, lookup)) continue;

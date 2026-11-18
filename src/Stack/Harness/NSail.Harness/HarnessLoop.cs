@@ -516,8 +516,9 @@ public sealed class HarnessLoop(
         _andon = now;
     }
 
-    // A lit andon with none of its work planned and nothing running holds the whole harness on
-    // something outside it (a hand, a publication). Past this long it says so, once.
+    // A lit andon with none of the release's work planned or running waits on something outside the
+    // harness (a hand, a publication). Past this long the line runs behind it (WorkerPlanner's `open`)
+    // and it says so once: in the log, and on each red story whose product has no cut running.
     public static readonly TimeSpan AndonStill = TimeSpan.FromMinutes(15);
     DateTimeOffset? _stillSince;
     bool _stillSaid;
@@ -527,24 +528,62 @@ public sealed class HarnessLoop(
         get { lock (_gate) return _stillSince; }
     }
 
-    void NoteStill(Plan plan, DateTimeOffset now)
+    // Whether the lit andon has stood still long enough for the line to run behind it.
+    bool AndonOpen(DateTimeOffset now)
     {
-        var since = StillSince(AndonStillSince, plan, _running.IsEmpty, now);
+        return AndonStillSince is { } since && now - since >= AndonStill;
+    }
+
+    // True on the pass a stand-still goes past AndonStill, once for each.
+    bool NoteStill(Plan plan, DateTimeOffset now)
+    {
+        var since = StillSince(AndonStillSince, plan, !_running.Values.Any(r => OfTheRelease(r.Item)), now);
         lock (_gate) _stillSince = since;
         if (since is null)
         {
             _stillSaid = false;
-            return;
+            return false;
         }
-        if (_stillSaid || now - since < AndonStill) return;
+        if (_stillSaid || now - since < AndonStill) return false;
         _stillSaid = true;
-        log.LogError("release andon ({Products}): nothing of it to start and nothing running since {Since:HH:mm} UTC, the whole harness stands still — waits for {Waits}",
+        log.LogError("release andon ({Products}): nothing of it to start and nothing of it running since {Since:HH:mm} UTC, so the line runs behind it — waits for {Waits}",
             string.Join(", ", plan.Andon.Select(a => a.Product)), since.Value.UtcDateTime, string.Join("; ", plan.Andon.Select(a => a.Waits)));
+        return true;
     }
 
-    internal static DateTimeOffset? StillSince(DateTimeOffset? since, Plan plan, bool nothingRuns, DateTimeOffset now)
+    // The release's own work, for the stand-still: main's gate is the release's while an andon is lit,
+    // and every merge of the line moves main, so its gate is no sign that the release itself moves.
+    internal static bool OfTheRelease(WorkItem item)
     {
-        return plan.Andon.Count > 0 && plan.Items.Count == 0 && nothingRuns ? since ?? now : null;
+        return item.Tier == ReleaseAndon.Tier && item.Kind != WorkKind.Main;
+    }
+
+    internal static DateTimeOffset? StillSince(DateTimeOffset? since, Plan plan, bool nothingOfItRuns, DateTimeOffset now)
+    {
+        return plan.Andon.Count > 0 && !plan.Items.Any(OfTheRelease) && nothingOfItRuns ? since ?? now : null;
+    }
+
+    // Said once on each red story of a stand-still, where a person looks: not while the product's cut
+    // runs on the code host (a publication is nobody's to unblock), nor when the story's last word
+    // already says it (a harness that restarted says nothing twice).
+    async Task SayStill(Plan plan, BoardSnapshot snapshot, HarnessOptions o, CancellationToken ct)
+    {
+        try
+        {
+            var login = await jobs.Repo.Login(ct);
+            foreach (var a in plan.Andon)
+            {
+                var cut = _workers.FirstOrDefault(w => w.Kind == WorkKind.Release && string.Equals(w.Options.Product, a.Product, StringComparison.OrdinalIgnoreCase))?.Options.Workflow;
+                if (cut is not null && snapshot.Flight.ReleaseWorkflows.Contains(cut)) continue;
+                if (jobs.Markers.InARow(await board.Comments(a.Story, ct), Markers.AndonStill, login) > 0) continue;
+                var said = HarnessTexts.Fill(o.Texts.AndonStill, ("product", a.Product), ("since", $"{AndonStillSince:HH:mm}"), ("waits", a.Waits));
+                await board.Comment(a.Story, $"{said} {o.Texts.Signature}\n{Markers.AndonStill}");
+            }
+        }
+        catch (ProviderException e)
+        {
+            log.LogWarning("the standing andon was not said on its story: {Error}", e.Message);
+        }
     }
 
     internal bool BackedOff(WorkItem item)
@@ -653,13 +692,13 @@ public sealed class HarnessLoop(
             var conditions = _workers.SelectMany(w => w.Options.When.Use.Select(u => o.Conditions[u]).Append(w.Options.When));
             var down = await Down(conditions.SelectMany(c => c.Reachable).Distinct(), stop);
             if (down.Count > 0) log.LogWarning("{Down} not answering: the workers that need it wait", string.Join(", ", down));
-            var plan = WorkerPlanner.Make(snapshot, _workers, PlannerOptionsOf(o, limits.Agents), w => WhenHolds(w, o, down));
+            var plan = WorkerPlanner.Make(snapshot, _workers, PlannerOptionsOf(o, limits.Agents), w => WhenHolds(w, o, down), AndonOpen(started));
             _stalled = snapshot.Issues.Count(i => i.Has(Labels.Stalled));
             Unsettle(snapshot.Issues);
             Planned(plan.Items, started);
             var runnable = plan.Items.Where(i => !BackedOff(i) && !WalkedSinceCut(i, snapshot.LastCutAt) && !Settled(i, snapshot.Issues) && (TakeNew || !StartsStory(i)));
             NoteAndon(plan.Andon);
-            NoteStill(plan, started);
+            var stood = NoteStill(plan, started);
             // Past the agent's quota wall only the agents stop: gates, builds and releases go on.
             if (AgentsOffUntil is not null) limits = limits with { Agents = 0 };
             var take = Paused is null ? Capacity.Pick(runnable, InUse(), limits, WorkerMax(), RunningByWorker()) : [];
@@ -672,6 +711,7 @@ public sealed class HarnessLoop(
                 await SweepClosed(stop);
                 call = PassCall.Chores;
                 await BoardChores.Do(board, ChoresToDo(plan, take), BoardChores.ReadOf(snapshot.Issues), reader.OpenPrOf, o.Texts.Signature, log, stop);
+                if (stood) await SayStill(plan, snapshot, o, stop);
                 call = PassCall.Start;
                 if (Paused is null)
                 {

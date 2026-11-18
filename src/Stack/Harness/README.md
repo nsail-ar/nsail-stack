@@ -266,9 +266,13 @@ the files it leaves.
   because the release is the line's one way back to a shipped day. `take-new` off still holds the
   start of a story the andon would take — it is the operator's switch. The status page shows the
   product, since when and what it waits for (`/status` carries it as `Last.Plan.Andon`). A lit andon
-  with none of its work planned and nothing running holds the whole harness on something outside
-  it: past `HarnessLoop.AndonStill` it logs an error once and the status page says so
-  (`AndonStillSince` on `/status`); nothing unsticks it but what it waits for. It lifts when
+  with none of the release's work planned or running waits on something outside the harness (a hand,
+  a publication), and holding the line then buys the release nothing: past `HarnessLoop.AndonStill` the
+  line runs behind it — every worker is planned again, the release's work still the most urgent turn the
+  moment there is any — and it says so once: an error in the log, the status page (`AndonStillSince` on
+  `/status`) and a comment on the red story (`HarnessTexts.AndonStill`), which is left unsaid while that
+  product's cut runs on the code host. Main's gate, the release's while an andon is lit, is no sign that the
+  release moves: every merge of the line moves main. The andon stays lit; nothing unsticks it but what it waits for. It lifts when
   the red story ships (its walk moves it to Released, or its product published a release after the fix merged) or a hand closes it; a story a hand holds
   (`ruling`, `hand`, `blocked`, `stalled`) keeps it lit and says so. A red story (a suite's or a red
   main's, `HarnessTexts.IsRed`) never asks a hand: a builder's question sends it to Analyze with no
