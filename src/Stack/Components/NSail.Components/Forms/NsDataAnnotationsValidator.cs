@@ -24,6 +24,10 @@ public sealed class NsDataAnnotationsValidator : ComponentBase, IDisposable
     [Inject]
     StringManager Strings { get; set; } = default!;
 
+    // The component's own scope, which an attribute reads through ValidationContext.GetService.
+    [Inject]
+    IServiceProvider Services { get; set; } = default!;
+
     [CascadingParameter]
     EditContext? CurrentEditContext { get; set; }
 
@@ -125,7 +129,7 @@ public sealed class NsDataAnnotationsValidator : ComponentBase, IDisposable
         // FieldIdentifier, which is the one the input registered.
         foreach (var model in ValidatedModels.Reach(CurrentEditContext.Model))
         {
-            var context = new ValidationContext(model);
+            var context = new ValidationContext(model, Services, null);
             var results = new List<ValidationResult>();
 
             Validator.TryValidateObject(model, context, results, validateAllProperties: true);
@@ -166,7 +170,7 @@ public sealed class NsDataAnnotationsValidator : ComponentBase, IDisposable
         _messages.Clear(fieldIdentifier);
 
         var value = property.GetValue(fieldIdentifier.Model);
-        var context = new ValidationContext(fieldIdentifier.Model) { MemberName = fieldIdentifier.FieldName };
+        var context = new ValidationContext(fieldIdentifier.Model, Services, null) { MemberName = fieldIdentifier.FieldName };
         var results = new List<ValidationResult>();
 
         if (!Validator.TryValidateProperty(value, context, results) && results.Count > 0)
@@ -179,6 +183,6 @@ public sealed class NsDataAnnotationsValidator : ComponentBase, IDisposable
 
     string Localize(object model, string memberName, ValidationResult result)
     {
-        return RefusalWords.For(Strings, model, memberName, result);
+        return RefusalWords.For(Strings, model, memberName, result, Services);
     }
 }

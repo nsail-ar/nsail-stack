@@ -116,7 +116,9 @@ Validation attributes in `NSail.Messaging.Runtime.Validation`: `[NotFuture]`, `[
 `NsColorText` paints by; blank passes), `[SearchTerm]` (a `MaxLength`
 of `SearchTermAttribute.MaximumLength`), and `[Validated]` to walk into a nested model or each
 element of a collection. An attribute implementing `ICodedValidation` names its own problem code
-and the catalog sentence that goes with it.
+and the catalog sentence that goes with it. An attribute reads a registered service through
+`validationContext.GetService`: the operation's scope when `SendPipeline` validates, the
+component's on a screen; `MessageValidator.Validate(message, services)` takes one explicitly.
 
 An enum member (or each element of an enum collection) holding a number no member defines is
 refused as `OutOfRange` on the field (`Kinds[1]`), a `[Flags]` one by its mask; no attribute is

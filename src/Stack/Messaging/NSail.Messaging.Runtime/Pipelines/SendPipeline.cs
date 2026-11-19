@@ -112,7 +112,7 @@ public class SendPipeline<TMessage> : IPipeline
 
             next = (message, cancellationToken) =>
             {
-                MessageValidator.Guard(message);
+                MessageValidator.Guard(message, services);
                 return send(message, cancellationToken);
             };
         }
@@ -213,7 +213,7 @@ public class SendPipeline<TMessage, TResult> : IPipeline<TResult>
 
             next = (message, cancellationToken) =>
             {
-                MessageValidator.Guard(message);
+                MessageValidator.Guard(message, services);
                 return send(message, cancellationToken);
             };
         }
