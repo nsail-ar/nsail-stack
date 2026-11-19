@@ -56,8 +56,10 @@ WebAssembly, the server log on an interactive circuit. The person reads only the
 its own form earns `InvalidOperationException: Runner is already running.` there, and nowhere on
 screen. A `BusinessException` is drawn by name and logs nothing at Error, and neither does a run
 cancelled by its own token or one asked after its component ended. A `Runner` built by hand
-takes an `ILogger<Runner>` as its second argument (an async field's `RunLog`, or one the
-component injects); one built without it logs nothing.
+takes an `ILogger<Runner>` as its second argument (the `RunLog` an `NsComponent` or an async
+field is injected with); one built without it logs nothing. A component that catches its own
+act's failure and reports `SystemProblem.Unhandled()` itself — `NsTable`'s export — logs the
+exception through that same `RunLog` before it reports, since the `Runner`'s catch never sees it.
 
 ---
 
