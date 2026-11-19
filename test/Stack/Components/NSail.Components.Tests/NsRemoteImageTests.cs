@@ -53,6 +53,33 @@ public sealed class NsRemoteImageTests : BunitContext
         Assert.Single(JSInterop.Invocations["nsapp.fitMark"]);
     }
 
+    /// <summary>Another Alt on the same URL is a new svg in the DOM, with its file's viewBox
+    /// again: it is fitted once more, and a render with the same Alt is not.</summary>
+    [Fact]
+    public void FitsTheMarkAgainWhenAltChangesOnTheSameUrl()
+    {
+        JSInterop.SetupVoid("nsapp.fitMark", _ => true);
+
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+            SvgResponse("<svg viewBox=\"0 0 10 10\"><path d=\"M0 0h10v5H0z\"/></svg>")));
+
+        var cut = Render<NsRemoteImage>(ps => ps
+            .Add(p => p.Url, "/test/ns-remote-image/refit")
+            .Add(p => p.Alt, "Óptica Centro"));
+
+        cut.WaitForState(() => cut.Markup.Contains("<svg", StringComparison.Ordinal), TimeSpan.FromSeconds(2));
+        cut.WaitForAssertion(() => Assert.Single(JSInterop.Invocations["nsapp.fitMark"]));
+
+        cut.Render(ps => ps.Add(p => p.Alt, "Óptica Norte"));
+
+        Assert.Equal("Óptica Norte", cut.Find("svg").GetAttribute("aria-label"));
+        cut.WaitForAssertion(() => Assert.Equal(2, JSInterop.Invocations["nsapp.fitMark"].Count));
+
+        cut.Render(ps => ps.Add(p => p.Alt, "Óptica Norte"));
+
+        Assert.Equal(2, JSInterop.Invocations["nsapp.fitMark"].Count);
+    }
+
     [Fact]
     public void InlinesNothingExecutableFromAHostileSvg()
     {
