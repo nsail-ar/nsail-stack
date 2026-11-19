@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace NSail.Components;
 
@@ -15,7 +16,10 @@ public abstract class NsComponent : ComponentBase, IRunHost, IDisposable
     [Parameter]
     public EventCallback<ProblemEventArgs> OnProblem { get; set; }
 
-    protected Runner Runner => field ??= new(this);
+    [Inject]
+    internal ILogger<Runner> RunLog { get; init; } = default!;
+
+    protected Runner Runner => field ??= new(this, RunLog);
 
     protected bool IsRunning => Runner.IsRunning;
 

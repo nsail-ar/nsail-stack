@@ -4,6 +4,7 @@
 using Bunit;
 using Bunit.TestDoubles;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
@@ -64,11 +65,16 @@ public sealed class NsLoadTests : BunitContext, IAsyncLifetime
         return TransientRead.Unreachable("The till could not be read right now.", "The till could not be read");
     }
 
-    IRenderedComponent<LoadProbeHost> Host(Problem? refusal = null, TaskCompletionSource? gate = null, bool bare = false)
+    IRenderedComponent<LoadProbeHost> Host(
+        Problem? refusal = null,
+        TaskCompletionSource? gate = null,
+        bool bare = false,
+        Exception? fault = null)
     {
         return Render<LoadProbeHost>(p => p
             .Add(x => x.RouteTable, Services.GetRequiredService<RouteTable>())
             .Add(x => x.Refusal, refusal)
+            .Add(x => x.Fault, fault)
             .Add(x => x.Gate, gate)
             .Add(x => x.Bare, bare));
     }
@@ -167,6 +173,37 @@ public sealed class NsLoadTests : BunitContext, IAsyncLifetime
         var host = Host(new Problem("RequestFailed", "Unable to contact the server", [], status));
 
         host.WaitForAssertion(() => Assert.NotEmpty(host.FindAll(".ns-load-retry")));
+    }
+
+    // The region draws only the generic failure for a bug, so the cause reaches the log the
+    // component's Runner writes to — the browser console on WebAssembly — or nowhere.
+    [Fact]
+    public void AReadThatThrewABug_DrawsTheGenericFailureAndLogsTheExceptionAtError()
+    {
+        var log = new RunnerLog();
+        Services.AddSingleton<ILogger<Runner>>(log);
+        var fault = new InvalidOperationException("Runner is already running.");
+
+        var host = Host(fault: fault);
+
+        host.WaitForAssertion(() => Assert.NotEmpty(host.FindAll(".ns-load-problem")));
+
+        var entry = Assert.Single(log.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Same(fault, entry.Exception);
+    }
+
+    [Fact]
+    public void AReadRefused_LogsNothingAtError()
+    {
+        var log = new RunnerLog();
+        Services.AddSingleton<ILogger<Runner>>(log);
+
+        var host = Host(Unreachable());
+
+        host.WaitForAssertion(() => Assert.NotEmpty(host.FindAll(".ns-load-problem")));
+
+        Assert.Empty(log.Entries);
     }
 
     [Fact]
@@ -313,5 +350,30 @@ public sealed class NsLoadTests : BunitContext, IAsyncLifetime
         gate.SetResult();
 
         host.WaitForAssertion(() => Assert.Empty(host.FindAll("#ns-page-error")));
+    }
+
+    sealed class RunnerLog : ILogger<Runner>
+    {
+        public List<(LogLevel Level, Exception? Exception)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add((logLevel, exception));
+        }
     }
 }

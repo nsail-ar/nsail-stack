@@ -63,7 +63,7 @@ public abstract class NsPage : NsPartial
     // read it arrived during.
     protected sealed override Task OnInitializedAsync()
     {
-        return Using(new Runner(this)).Run(OnCreatedAsync);
+        return Using(new Runner(this, RunLog)).Run(OnCreatedAsync);
     }
 
     /// <summary>Page initialization: the surface is available and the base wiring is done. Runs before the first render.</summary>

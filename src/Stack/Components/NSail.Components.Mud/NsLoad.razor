@@ -109,7 +109,7 @@ else if (_loaded)
         public Read(NsLoad region)
         {
             _region = region;
-            _runner = new(this);
+            _runner = new(this, region.RunLog);
         }
 
         public Problem? Problem { get; private set; }
