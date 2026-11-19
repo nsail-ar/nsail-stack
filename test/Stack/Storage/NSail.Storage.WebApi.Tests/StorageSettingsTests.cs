@@ -2,14 +2,19 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSail.Problems;
 using NSail.Security;
 using NSail.Settings;
 using NSail.Storage;
 using NSail.Storage.FileSystem;
+using NSail.Storage.Git;
 using NSail.Storage.Objects;
 using NSail.Storage.Providers;
+using NSail.Storage.S3;
 using NSail.Storage.Settings;
+using System.Collections.Concurrent;
+using System.Net;
 
 namespace NSail.Storage.Tests;
 
@@ -19,10 +24,12 @@ namespace NSail.Storage.Tests;
 public sealed class StorageSettingsTests
 {
     const string Secret = "the-secret-key-nobody-should-read-back";
+    const string Failed = "The storage target could not be used. The server log has the detail.";
 
     readonly MemorySettings _settings = new();
     readonly KeyProtector _keys = new("StorageSettingsTests");
     readonly IStorageProvider[] _providers = [new FileSystemStorageProvider()];
+    readonly Recorder _log = new();
 
     [Fact]
     public async Task SealsTheSecretKeyAndNeverAnswersItBack()
@@ -222,13 +229,79 @@ public sealed class StorageSettingsTests
 
             var issue = Assert.Single(error.Issues);
 
-            Assert.Equal("The storage target could not be used. The server log has the detail.", issue.Message);
+            Assert.Equal(Failed, issue.Message);
             Assert.DoesNotContain(blocker, issue.Message, StringComparison.Ordinal);
         }
         finally
         {
             Directory.Delete(root, true);
         }
+    }
+
+    // The far end's own words are not the person's answer: an S3 body is whatever the address
+    // happens to serve, and the log is where an administrator reads it.
+    [Fact]
+    public async Task AnswersAStoresRefusalWithTheFixedMessageAndLogsTheStoresText()
+    {
+        const string Body = "<!doctype html><title>405 Not Allowed</title>";
+
+        await _settings.Save(new StorageSettings
+        {
+            Provider = S3StorageProvider.ProviderType,
+            Endpoint = "https://example.com",
+            Container = "bucket",
+            AccessKey = "an-access-key",
+            SecretKey = _keys.Protect(Secret),
+        }, 1);
+
+        var refusing = new S3StorageProvider(new Refusing(HttpStatusCode.MethodNotAllowed, Body));
+
+        var error = await Assert.ThrowsAsync<BusinessException>(
+            () => Test(services => services.AddSingleton<IStorageProvider>(refusing)).Handle(new TestStorageTarget { Name = StorageNames.Default }));
+
+        var issue = Assert.Single(error.Issues);
+
+        Assert.Equal("StorageTestFailed", issue.Source);
+        Assert.Equal(Failed, issue.Message);
+        Assert.DoesNotContain(error.Issues, each => each.Arguments is { Count: > 0 });
+        Assert.Contains(_log.Entries, entry => entry.Contains("405", StringComparison.Ordinal) && entry.Contains(Body, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AnswersGitsRefusalWithTheFixedMessageAndLogsGitsText()
+    {
+        await _settings.Save(new StorageSettings
+        {
+            Provider = GitStorageProvider.ProviderType,
+            Endpoint = "https://nsail-storage-test.invalid",
+            Container = "store.git",
+        }, 1);
+
+        var error = await Assert.ThrowsAsync<BusinessException>(
+            () => Test(services => services.AddGitStorage()).Handle(new TestStorageTarget { Name = StorageNames.Default }));
+
+        var issue = Assert.Single(error.Issues);
+
+        Assert.Equal("StorageTestFailed", issue.Source);
+        Assert.Equal(Failed, issue.Message);
+        Assert.DoesNotContain("nsail-storage-test.invalid", issue.Message, StringComparison.Ordinal);
+        Assert.Contains(_log.Entries, entry => entry.Contains("git answered:", StringComparison.Ordinal)
+            && entry.Contains("nsail-storage-test.invalid", StringComparison.Ordinal));
+    }
+
+    // The probe's own verdicts are worded here, so each answers under its own rule.
+    [Fact]
+    public async Task AnswersAProbeThatCannotBeReadBackWithItsOwnVerdict()
+    {
+        await _settings.Save(new StorageSettings { Provider = Blank.ProviderType, Container = "anywhere" }, 1);
+
+        var error = await Assert.ThrowsAsync<BusinessException>(
+            () => Test(services => services.AddSingleton<IStorageProvider>(new Blank())).Handle(new TestStorageTarget { Name = StorageNames.Default }));
+
+        var issue = Assert.Single(error.Issues);
+
+        Assert.Equal("StorageTestNotReadBack", issue.Source);
+        Assert.Equal("The object was written but could not be read back.", issue.Message);
     }
 
     static StorageGuardOptions Guard()
@@ -301,15 +374,16 @@ public sealed class StorageSettingsTests
     }
 
     // Composed the way a host composes it, since the handler asks DI for the name's manager.
-    StorageTestHandler Test()
+    StorageTestHandler Test(Action<IServiceCollection>? compose = null)
     {
         var services = new ServiceCollection();
 
         services.AddSingleton<SettingsManager>(_settings);
         services.AddSingleton(_keys);
-        services.AddLogging();
+        services.AddLogging(logging => logging.AddProvider(_log));
         services.AddStorageWebApi(null, Guard());
         services.AddFileSystemStorage();
+        compose?.Invoke(services);
 
         return services.BuildServiceProvider().CreateScope().ServiceProvider.GetRequiredService<StorageTestHandler>();
     }
@@ -336,5 +410,103 @@ public sealed class StorageSettingsTests
             AccessKey = "an-access-key",
             SecretKey = Secret,
         };
+    }
+
+    // Every store answers with the same status and body, the way an address that is no S3 does.
+    sealed class Refusing : HttpMessageHandler, IHttpClientFactory
+    {
+        readonly HttpStatusCode _status;
+        readonly string _body;
+
+        public Refusing(HttpStatusCode status, string body)
+        {
+            _status = status;
+            _body = body;
+        }
+
+        public HttpClient CreateClient(string name)
+        {
+            return new HttpClient(this, disposeHandler: false);
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HttpResponseMessage(_status) { Content = new StringContent(_body) });
+        }
+    }
+
+    // A target that takes every write and keeps none of it.
+    sealed class Blank : IStorageProvider
+    {
+        public const string ProviderType = "blank";
+
+        public string Type
+        {
+            get { return ProviderType; }
+        }
+
+        public string DisplayName
+        {
+            get { return "Blank"; }
+        }
+
+        public bool IsRemote
+        {
+            get { return false; }
+        }
+
+        public Task Put(StorageTarget target, string key, Stream content, string? contentType, CancellationToken cancelToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task<ObjectContent?> Get(StorageTarget target, string key, CancellationToken cancelToken = default)
+        {
+            return Task.FromResult<ObjectContent?>(null);
+        }
+
+        public Task<IReadOnlyList<StoredObject>> List(StorageTarget target, string? prefix, CancellationToken cancelToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<StoredObject>>([]);
+        }
+
+        public Task Delete(StorageTarget target, string key, CancellationToken cancelToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Uri? Link(StorageTarget target, string key)
+        {
+            return null;
+        }
+    }
+
+    sealed class Recorder : ILoggerProvider, ILogger
+    {
+        public ConcurrentQueue<string> Entries { get; } = new();
+
+        public ILogger CreateLogger(string categoryName)
+        {
+            return this;
+        }
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            return null;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            Entries.Enqueue(formatter(state, exception));
+        }
+
+        public void Dispose()
+        {
+        }
     }
 }
