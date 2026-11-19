@@ -1455,16 +1455,6 @@
     max-width: 50cqi;
 }
 
-/* The chip's cap alone is not enough inside a wrapper: while the wrapper is sized, the chip's
-   100% is cyclic and the wrapper's basis is the chip's uncapped label, so a long label
-   outweighs the name in the shrink. A box that holds the chip after a sibling that does not is
-   held at half the row too; :has() cannot nest, so "holds only the chip" cannot be written,
-   and the extra class of this form outranks any rule that sizes the wrapper. */
-.ns-nav-brand :not(:has(.ns-chip-ellipsis)) ~ :has(.ns-chip-ellipsis) {
-    flex-shrink: 0;
-    max-width: 50cqi;
-}
-
 /* The rail: the brand's OWN chrome, in both scales. With no app bar
    above it the rail is the only chrome on screen — the piece the eye reads the install's
    colour off, and its Header (the brand block) and Footer (the session chip) are the two
