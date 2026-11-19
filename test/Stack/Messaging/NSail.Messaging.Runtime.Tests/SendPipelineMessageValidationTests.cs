@@ -263,4 +263,212 @@ public sealed class SendPipelineMessageValidationTests
         Assert.Equal(1, handler.Count);
         Assert.Equal(["gate"], trace.Steps);
     }
+
+    // A rule composed at run time, read by an attribute through ValidationContext.GetService
+    // from the scope of the operation that carries the message.
+    private sealed class DigitRule
+    {
+        public int Digits { get; init; } = 7;
+
+        public int Asked { get; set; }
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    private sealed class DigitsByRuleAttribute : ValidationAttribute, ICodedValidation
+    {
+        public string Code => "DigitsByRule";
+
+        protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+        {
+            if (value is not string text || validationContext.GetService(typeof(DigitRule)) is not DigitRule rule)
+            {
+                return ValidationResult.Success;
+            }
+
+            rule.Asked++;
+
+            return text.Length == rule.Digits ? ValidationResult.Success : new ValidationResult("Wrong digits");
+        }
+    }
+
+    private sealed record Holder
+    {
+        [DigitsByRule]
+        public string? Number { get; set; }
+    }
+
+    private sealed record CreateDocument : IMessage
+    {
+        [DigitsByRule]
+        public string? Number { get; set; }
+
+        [Validated]
+        public Holder? Holder { get; set; }
+    }
+
+    private sealed record CountDocuments : IMessage<int>
+    {
+        [DigitsByRule]
+        public string? Number { get; set; }
+    }
+
+    private sealed record CheckDocument : IMessage, IValidatableObject
+    {
+        public string? Number { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (validationContext.GetService(typeof(DigitRule)) is DigitRule rule && Number?.Length != rule.Digits)
+            {
+                yield return new ValidationResult("Wrong digits", [nameof(Number)]);
+            }
+        }
+    }
+
+    private sealed class CreateDocumentHandler : IHandler<CreateDocument>
+    {
+        private readonly DigitRule _rule;
+        private readonly Trace _trace;
+
+        public CreateDocumentHandler(DigitRule rule, Trace trace)
+        {
+            _rule = rule;
+            _trace = trace;
+        }
+
+        public Task Handle(CreateDocument message, CancellationToken ct)
+        {
+            _trace.Steps.Add($"handled after {_rule.Asked} asks");
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CountDocumentsHandler : IHandler<CountDocuments, int>
+    {
+        public Task<int> Handle(CountDocuments message, CancellationToken ct)
+        {
+            return Task.FromResult(1);
+        }
+    }
+
+    private sealed class CheckDocumentHandler : IHandler<CheckDocument>
+    {
+        public Task Handle(CheckDocument message, CancellationToken ct)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private static ServiceProvider BuildDocuments(bool rule)
+    {
+        return Build(s =>
+        {
+            if (rule)
+            {
+                s.AddScoped<DigitRule>();
+            }
+
+            s.AddSingleton<Trace>();
+            s.AddScoped<ISender<CreateDocument>, InProcessSender<CreateDocument>>();
+            s.AddScoped<IHandler<CreateDocument>, CreateDocumentHandler>();
+            s.AddScoped<ISender<CountDocuments, int>, InProcessSender<CountDocuments, int>>();
+            s.AddScoped<IHandler<CountDocuments, int>, CountDocumentsHandler>();
+            s.AddScoped<ISender<CheckDocument>, InProcessSender<CheckDocument>>();
+            s.AddScoped<IHandler<CheckDocument>, CheckDocumentHandler>();
+        });
+    }
+
+    [Fact]
+    public async Task An_attribute_on_the_message_refuses_by_a_service_it_reads()
+    {
+        var sp = BuildDocuments(rule: true);
+
+        var exception = await Assert.ThrowsAsync<BusinessException>(() =>
+            sp.GetRequiredService<Mediator>().Send(new CreateDocument { Number = "123" }));
+
+        Assert.Equal("InvalidModel", exception.Code);
+
+        var issue = Assert.Single(exception.Issues);
+
+        Assert.Equal("DigitsByRule", issue.Code);
+        Assert.Equal("Number", issue.Source);
+        Assert.Empty(sp.GetRequiredService<Trace>().Steps);
+    }
+
+    [Fact]
+    public async Task An_attribute_on_a_result_message_refuses_by_a_service_it_reads()
+    {
+        var sp = BuildDocuments(rule: true);
+
+        var exception = await Assert.ThrowsAsync<BusinessException>(() =>
+            sp.GetRequiredService<Mediator>().Send(new CountDocuments { Number = "123" }));
+
+        var issue = Assert.Single(exception.Issues);
+
+        Assert.Equal("DigitsByRule", issue.Code);
+        Assert.Equal("Number", issue.Source);
+    }
+
+    [Fact]
+    public async Task An_attribute_on_a_validated_model_refuses_by_a_service_it_reads()
+    {
+        var sp = BuildDocuments(rule: true);
+
+        var exception = await Assert.ThrowsAsync<BusinessException>(() =>
+            sp.GetRequiredService<Mediator>().Send(new CreateDocument { Number = "1234567", Holder = new Holder { Number = "123" } }));
+
+        var issue = Assert.Single(exception.Issues);
+
+        Assert.Equal("DigitsByRule", issue.Code);
+        Assert.Equal("Holder.Number", issue.Source);
+    }
+
+    [Fact]
+    public async Task A_validatable_message_refuses_by_a_service_it_reads()
+    {
+        var sp = BuildDocuments(rule: true);
+
+        var exception = await Assert.ThrowsAsync<BusinessException>(() =>
+            sp.GetRequiredService<Mediator>().Send(new CheckDocument { Number = "123" }));
+
+        Assert.Equal("Number", Assert.Single(exception.Issues).Source);
+    }
+
+    // The attribute reads the rule from the operation's own scope: the handler resolved from
+    // that scope sees the asks the validation made on the same instance.
+    [Fact]
+    public async Task The_service_is_the_one_in_the_operations_scope()
+    {
+        var sp = BuildDocuments(rule: true);
+
+        await sp.GetRequiredService<Mediator>().Send(
+            new CreateDocument { Number = "1234567", Holder = new Holder { Number = "7654321" } });
+
+        Assert.Equal(["handled after 2 asks"], sp.GetRequiredService<Trace>().Steps);
+    }
+
+    // With nothing registered for what it asks, the attribute decides — here it passes — and
+    // the validator never throws on its account.
+    [Fact]
+    public async Task With_no_service_registered_the_attribute_decides()
+    {
+        var sp = Build(s =>
+        {
+            s.AddSingleton<Trace>();
+            s.AddScoped<ISender<CheckDocument>, InProcessSender<CheckDocument>>();
+            s.AddScoped<IHandler<CheckDocument>, CheckDocumentHandler>();
+            s.AddScoped<ISender<CountDocuments, int>, InProcessSender<CountDocuments, int>>();
+            s.AddScoped<IHandler<CountDocuments, int>, CountDocumentsHandler>();
+        });
+
+        await sp.GetRequiredService<Mediator>().Send(new CheckDocument { Number = "123" });
+
+        Assert.Equal(1, await sp.GetRequiredService<Mediator>().Send(new CountDocuments { Number = "123" }));
+    }
+
+    [Fact]
+    public void Validated_with_no_provider_the_context_answers_no_service()
+    {
+        Assert.Null(MessageValidator.Validate(new CreateDocument { Number = "123" }));
+    }
 }

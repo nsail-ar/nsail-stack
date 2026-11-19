@@ -9,6 +9,7 @@
 @using NSail.Localization
 
 @inject StringManager Strings
+@inject IServiceProvider Services
 
 @if (Title is not null)
 {
@@ -368,7 +369,7 @@ else
         // table's row editor so one open row owes one rule.
         _rowMessages ??= new ValidationMessageStore(RowContext);
 
-        if (RowAnnotations.Refuses(Form?.Model, item, RowContext, _rowMessages, Strings))
+        if (RowAnnotations.Refuses(Form?.Model, item, RowContext, _rowMessages, Strings, Services))
         {
             return false;
         }

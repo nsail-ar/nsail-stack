@@ -705,6 +705,15 @@ business rules.
   model, never the `IsValid(value)` overload, so a cross-field attribute refuses on the wire
   exactly as on the screen. The refusal is drawn under the member carrying the attribute, so
   a pair declares its order on one end only.
+- **A rule composed at run time is read as a service, off the context.** Every context the walk
+  builds carries the service provider of the operation carrying the message — the scope
+  `IAmbientSender.Run` hands `SendPipeline`, or the pipeline's own — so an attribute or an
+  `IValidatableObject` calls `validationContext.GetService` for a rule a kit registers (a
+  document's format by its country) instead of keeping it in the core or in a static. The
+  pipeline validates on both sides, so on a WebAssembly client a server-only service is absent:
+  the attribute answers what it decides with nothing to ask, and the server's pass is the one
+  that refuses. `MessageValidator.Validate(message)` with no provider hands a context whose
+  `GetService` answers null.
 - **A nested model is walked only where a member opens it.** `MessageValidator` reads the
   message's own members; `[Validated]` (`NSail.Messaging.Runtime.Validation`) walks into the
   member's model, naming the field by its path (`Right.Sphere`) — which `NsForm` resolves to
