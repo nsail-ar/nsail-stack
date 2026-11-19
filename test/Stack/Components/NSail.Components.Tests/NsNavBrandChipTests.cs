@@ -119,6 +119,7 @@ public sealed class NsNavBrandChipTests : BunitContext
         {
             ".ns-nav-brand .ns-chip-ellipsis.mud-chip",
             ".ns-nav-brand:has(.ns-chip-ellipsis) :is(img, svg):not(.ns-chip-ellipsis *)",
+            ".ns-nav-brand:has(.ns-chip-ellipsis) .ns-remote-image:not(.ns-chip-ellipsis *)",
             ".ns-nav-brand * ~ :has(.ns-chip-ellipsis),\n.ns-nav-brand :has(.ns-chip-ellipsis):has(~ *)",
         }));
     }
@@ -146,6 +147,19 @@ public sealed class NsNavBrandChipTests : BunitContext
 
         Assert.Matches(
             @"\.ns-nav-brand:has\(\.ns-chip-ellipsis\) :is\(img, svg\):not\(\.ns-chip-ellipsis \*\)\s*\{[^}]*flex-shrink:\s*0;",
+            css);
+    }
+
+    /// <summary>AC1: a remote image's flex item is the span it wraps its mark in, and the
+    /// span's max-width leaves it no min-content floor, so the brand row holds the span itself
+    /// and a 1.46:1 mark at 18 px keeps its 26 px beside a long name and the chip.</summary>
+    [Fact]
+    public void ARemoteImageBesideTheNameKeepsItsSize()
+    {
+        var css = HouseStylesheet.Read();
+
+        Assert.Matches(
+            @"/\*[^*]*flex item is its span, not the svg[^*]*\*/\s*\.ns-nav-brand:has\(\.ns-chip-ellipsis\) \.ns-remote-image:not\(\.ns-chip-ellipsis \*\)\s*\{[^}]*flex-shrink:\s*0;",
             css);
     }
 

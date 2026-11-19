@@ -101,6 +101,71 @@ public sealed class NsRemoteImageTests : BunitContext
         Assert.DoesNotContain("<img", cut.Markup);
     }
 
+    /// <summary>AC2: the inlined svg carries Alt as its accessible name, is decorative for
+    /// <c>""</c>, and keeps the served markup's own attributes when Alt is unset.</summary>
+    [Theory]
+    [InlineData("Óptica Centro", "img", "Óptica Centro", null)]
+    [InlineData("", null, null, "true")]
+    [InlineData(null, "presentation", "Served", null)]
+    public void NamesTheInlinedSvgByItsAlt(string? alt, string? role, string? label, string? hidden)
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+            SvgResponse("<svg viewBox=\"0 0 10 10\" role=\"presentation\" aria-label=\"Served\"><path d=\"M0 0h10v10H0z\"/></svg>")));
+
+        var cut = Render<NsRemoteImage>(ps => ps
+            .Add(p => p.Url, "/test/ns-remote-image/named")
+            .Add(p => p.Alt, alt));
+
+        cut.WaitForState(() => cut.Markup.Contains("<svg", StringComparison.Ordinal), TimeSpan.FromSeconds(2));
+
+        var svg = cut.Find("svg");
+
+        Assert.Equal(role, svg.GetAttribute("role"));
+        Assert.Equal(label, svg.GetAttribute("aria-label"));
+        Assert.Equal(hidden, svg.GetAttribute("aria-hidden"));
+        Assert.NotNull(svg.QuerySelector("path"));
+    }
+
+    /// <summary>K4: the markup is cached once per URL and shared, the name is per instance, so
+    /// a decorative instance and a named one of the same URL never trade names.</summary>
+    [Fact]
+    public void TwoInstancesOfOneUrlEachCarryTheirOwnName()
+    {
+        JSInterop.Mode = JSRuntimeMode.Loose;
+
+        var calls = 0;
+
+        Services.AddSingleton<IHttpClientFactory>(new FixedHttpClientFactory(() =>
+        {
+            calls++;
+
+            return SvgResponse("<svg viewBox=\"0 0 10 10\"><path d=\"M0 0h10v10H0z\"/></svg>");
+        }));
+
+        var face = Render<NsRemoteImage>(ps => ps
+            .Add(p => p.Url, "/test/ns-remote-image/two-names")
+            .Add(p => p.Alt, ""));
+
+        face.WaitForState(() => face.Markup.Contains("<svg", StringComparison.Ordinal), TimeSpan.FromSeconds(2));
+
+        var brand = Render<NsRemoteImage>(ps => ps
+            .Add(p => p.Url, "/test/ns-remote-image/two-names")
+            .Add(p => p.Alt, "Óptica Centro"));
+
+        brand.WaitForState(() => brand.Markup.Contains("<svg", StringComparison.Ordinal), TimeSpan.FromSeconds(2));
+
+        face.Render();
+
+        Assert.Equal(1, calls);
+        Assert.Equal("true", face.Find("svg").GetAttribute("aria-hidden"));
+        Assert.Null(face.Find("svg").GetAttribute("aria-label"));
+        Assert.Equal("Óptica Centro", brand.Find("svg").GetAttribute("aria-label"));
+        Assert.Equal("img", brand.Find("svg").GetAttribute("role"));
+        Assert.Null(brand.Find("svg").GetAttribute("aria-hidden"));
+    }
+
     [Fact]
     public void RendersAnImgForARasterResponse()
     {
