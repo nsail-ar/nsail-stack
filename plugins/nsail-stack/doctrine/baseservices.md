@@ -271,7 +271,10 @@ stack trace rendered from `ToString()` (which opens with that message). `ErrorMi
 the Problem's Title. Level is read off what the exception is: a bug-class exception wearing a 404 or
 403 (`KeyNotFoundException`, `UnauthorizedAccessException`) and a `BusinessException` answering
 500 or above log at Error with the exception, because a failure the client sees as 500 that
-leaves no stack cannot be diagnosed; a cancellation of the request's own token logs nothing.
+leaves no stack cannot be diagnosed; a cancellation of the request's own token logs nothing. The
+client keeps the same rule: a component's `Runner` logs a run that threw anything but a
+`BusinessException` at Error with the exception, and its own cancellation not at all
+([ui/surfaces.md](ui/surfaces.md)).
 `LogScrubber`, the logs-side sibling of `Scrubber`, cuts at the export
 seam:
 

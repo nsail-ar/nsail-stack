@@ -2,6 +2,8 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSail.Problems;
 
 namespace NSail.Components;
@@ -9,13 +11,15 @@ namespace NSail.Components;
 public sealed class Runner : IDisposable
 {
     readonly IRunHost _host;
+    readonly ILogger _log;
     CancellationTokenSource? _cancellationTokenSource;
     bool _disposed;
 
-    public Runner(IRunHost host)
+    public Runner(IRunHost host, ILogger? log = null)
     {
         ArgumentNullException.ThrowIfNull(host);
         _host = host;
+        _log = log ?? NullLogger.Instance;
     }
 
     public bool IsRunning { get; private set; }
@@ -91,6 +95,10 @@ public sealed class Runner : IDisposable
         }
         catch (Exception ex)
         {
+            // The person reads only "Something went wrong", so this line is the one place the
+            // cause survives: the browser console on WebAssembly, the server log on a circuit.
+            _log.LogError(ex, "Run in {Source} failed unhandled", _host.Source.GetType().FullName);
+
             var problem = SystemProblem.Unhandled();
             var args = new ProblemEventArgs(problem, _host.Source, ex);
 

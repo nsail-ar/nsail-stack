@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 
 namespace NSail.Components;
 
@@ -13,7 +14,10 @@ public abstract class NsAsyncFieldBase<TValue> : NsFieldBase<TValue>, IRunHost
     [Parameter]
     public EventCallback<ProblemEventArgs> OnProblem { get; set; }
 
-    protected Runner Runner => field ??= new(this);
+    [Inject]
+    protected ILogger<Runner> RunLog { get; init; } = default!;
+
+    protected Runner Runner => field ??= new(this, RunLog);
 
     object IRunHost.Source => this;
 

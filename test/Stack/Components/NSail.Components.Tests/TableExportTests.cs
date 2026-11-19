@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Globalization;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
 using NSail.Exporting;
+using NSail.Icons;
 using NSail.Localization;
 using NSail.Metadata;
+using NSail.Problems;
 
 namespace NSail.Components.Tests;
 
@@ -181,6 +185,30 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
         await Pick(cut, "Excel");
 
         Assert.Equal([$"Más de {ExportHeldTableHost.Held - 1} filas"], dialogs.Notices);
+        Assert.Empty(JSInterop.Invocations["nsapp.download"]);
+    }
+
+    /// <summary>A writer that throws is caught by the grid itself, before any Runner could see it:
+    /// the person reads the generic failure, so the grid's own log line is where the cause
+    /// survives — once, and with the exception.</summary>
+    [Fact]
+    public async Task A_writer_that_throws_is_drawn_as_unhandled_and_logged_at_error()
+    {
+        var thrown = new InvalidOperationException("boom");
+        Writers(new RecordingExportWriter(ExportKind.Excel) { Fault = thrown });
+        var log = new RunnerLog();
+        Services.AddSingleton<ILogger<Runner>>(log);
+        var reported = new List<ProblemEventArgs>();
+
+        var cut = Render<ExportHeldTableHost>(parameters => parameters
+            .Add(host => host.OnProblem, args => reported.Add(args)));
+
+        await Pick(cut, "Excel");
+
+        var entry = Assert.Single(log.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Same(thrown, entry.Exception);
+        Assert.Equal(SystemProblem.Unhandled().Code, Assert.Single(reported).Problem.Code);
         Assert.Empty(JSInterop.Invocations["nsapp.download"]);
     }
 
@@ -376,6 +404,29 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
         Assert.Empty(_excel.Rows);
     }
 
+    /// <summary>A read that throws is logged once, by the Runner that ran it and with its own
+    /// exception: the page it never answered stops the export without a second Error line, which
+    /// would carry no cause and is the same line a navigation away mid-export writes.</summary>
+    [Fact]
+    public async Task A_read_that_throws_is_logged_once_with_its_own_exception()
+    {
+        Writers(_excel);
+        var log = new RunnerLog();
+        Services.AddSingleton<ILogger<Runner>>(log);
+        var reported = new List<ProblemEventArgs>();
+
+        await Choose("Excel", parameters => parameters
+            .Add(host => host.ThrowFrom, 1)
+            .Add(host => host.OnProblem, args => reported.Add(args)));
+
+        var entry = Assert.Single(log.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.IsType<InvalidOperationException>(entry.Exception);
+        Assert.All(reported, args => Assert.Equal(SystemProblem.Unhandled().Code, args.Problem.Code));
+        Assert.NotEmpty(reported);
+        Assert.Empty(JSInterop.Invocations["nsapp.download"]);
+    }
+
     /// <summary>The file is named after what the screen calls the list, and the culture the writer
     /// is handed is the reader's region — not the thread's.</summary>
     [Fact]
@@ -553,5 +604,4 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
             .First(item => item.TextContent.Contains(row, StringComparison.Ordinal))
             .ClickAsync(new MouseEventArgs()));
     }
-
 }

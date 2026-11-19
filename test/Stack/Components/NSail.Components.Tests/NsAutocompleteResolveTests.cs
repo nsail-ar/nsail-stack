@@ -4,6 +4,7 @@
 using Bunit;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
 using NSail.Components.Tests.Fixtures;
 using NSail.Localization;
@@ -56,6 +57,28 @@ public sealed class NsAutocompleteResolveTests : BunitContext, IAsyncLifetime
     static string Text(IRenderedComponent<GatedLookupHost> host)
     {
         return host.Find("input.mud-input-root").GetAttribute("value") ?? string.Empty;
+    }
+
+    /// <summary>The resolve runs on the lookup's own second Runner, so a bug in a product's
+    /// OnLoad reaches the log through it like any other run's, and not only as the generic
+    /// failure.</summary>
+    [Fact]
+    public void AResolveThatThrewABug_LogsTheExceptionAtError()
+    {
+        var log = new RunnerLog();
+        Services.AddSingleton<ILogger<Runner>>(log);
+        var fault = new NullReferenceException();
+
+        var host = Render<GatedLookupHost>(p => p
+            .Add(x => x.OnLoad, _ => Task.FromException(fault))
+            .Add(x => x.Value, Row.Id));
+
+        host.WaitForAssertion(() =>
+        {
+            var entry = Assert.Single(log.Entries);
+            Assert.Equal(LogLevel.Error, entry.Level);
+            Assert.Same(fault, entry.Exception);
+        });
     }
 
     /// <summary>The dropdown is open with its search still out — the state the field is in for

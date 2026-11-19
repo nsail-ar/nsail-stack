@@ -16,7 +16,7 @@
    one was given — null is what a grid with no surface around it reads anyway — so the grid's
    announcement is this host's to ask for by handing one in. *@
 <CascadingValue Value="Surface" IsFixed="true">
-<NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="OnQuery" RowEditor="Editor" NewRow="Blank" Title="@Title" Exportable="Exportable">
+<NsTable TRow="ExportRowModel" Rows="_rows" OnQuery="OnQuery" RowEditor="Editor" NewRow="Blank" Title="@Title" Exportable="Exportable" OnProblem="OnProblem">
     <HeaderContent>
         <NsTh For="() => context.Name" />
         <NsTh For="() => context.Count" />
@@ -78,6 +78,13 @@
     [Parameter]
     public int? RefuseFrom { get; set; }
 
+    /// <summary>What the read throws instead of answering, from the page index given on.</summary>
+    [Parameter]
+    public int? ThrowFrom { get; set; }
+
+    [Parameter]
+    public EventCallback<ProblemEventArgs> OnProblem { get; set; }
+
     public List<(int Index, int Size)> Asked { get; } = [];
 
     RenderFragment<ExportRowModel>? Editor => Editable ? Row : null;
@@ -98,6 +105,11 @@
             args.Problem = BusinessProblem.RuleViolation("NoRead", "La lectura no llegó.");
 
             return;
+        }
+
+        if (ThrowFrom is { } thrown && args.PageIndex >= thrown)
+        {
+            throw new InvalidOperationException("The read broke.");
         }
 
         var start = args.PageIndex * args.PageSize;

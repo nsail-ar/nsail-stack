@@ -49,6 +49,20 @@ asked for there gets the same answer a cancelled one gets: no act, no `Problem`,
 is no screen left to put either on. Thrown instead, it escapes the continuation into
 `NsErrorBoundary` and the person reads an error page about a screen that is already gone.
 
+**A run that throws anything but a refusal is logged at Error with its exception**, under the
+category `NSail.Components.Runner` and naming the component it ran for — the browser console on
+WebAssembly, the server log on an interactive circuit. The person reads only the generic
+"Something went wrong", so the log is the one place the cause survives: a submit that reloads
+its own form earns `InvalidOperationException: Runner is already running.` there, and nowhere on
+screen. A `BusinessException` is drawn by name and logs nothing at Error, and neither does a run
+cancelled by its own token or one asked after its component ended. A `Runner` built by hand
+takes an `ILogger<Runner>` as its second argument (the `RunLog` an `NsComponent` or an async
+field is injected with); one built without it logs nothing. A component that catches its own
+act's failure and reports `SystemProblem.Unhandled()` itself — `NsTable`'s export — logs the
+exception through that same `RunLog` before it reports, since the `Runner`'s catch never sees it.
+A failure that holds no cause logs nothing: an export page that answered nothing was either
+logged by the `Runner` that read it or cut short by the component ending.
+
 ---
 
 ## Opening and matching

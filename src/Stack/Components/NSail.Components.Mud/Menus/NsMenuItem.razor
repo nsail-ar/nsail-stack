@@ -146,7 +146,7 @@
         // the root surface here, and nobody's OnProblem answers that one — a refusal reaches
         // no screen. A command whose handler can be refused catches its own
         // BusinessException and answers with an Alert (ui/fields.md).
-        using var runner = new Runner(new Detached(Anchored));
+        using var runner = new Runner(new Detached(Anchored), RunLog);
 
         await runner.Run(Action.OnClick);
     }

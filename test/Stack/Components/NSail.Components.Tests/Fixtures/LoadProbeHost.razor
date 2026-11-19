@@ -18,7 +18,7 @@
             }
             else
             {
-                <LoadProbePage @ref="_page" Refusal="Refusal" Gate="Gate" />
+                <LoadProbePage @ref="_page" Refusal="Refusal" Fault="Fault" Gate="Gate" />
             }
         </NsSurfaceContext>
     </CascadingValue>
@@ -34,6 +34,9 @@
 
     [Parameter]
     public Problem? Refusal { get; set; }
+
+    [Parameter]
+    public Exception? Fault { get; set; }
 
     [Parameter]
     public TaskCompletionSource? Gate { get; set; }
