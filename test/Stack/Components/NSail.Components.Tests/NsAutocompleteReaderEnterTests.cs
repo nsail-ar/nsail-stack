@@ -183,6 +183,48 @@ public sealed class NsAutocompleteReaderEnterTests : BunitContext, IAsyncLifetim
         JSInterop.VerifyNotInvoke("nsapp.confirmRow");
     }
 
+    /// <summary>nsail#3900: the grid leaves every Enter in a searching box to the field, so the
+    /// key that finds nothing to resolve — an empty box, one settled on its value — is still the
+    /// row's Enter, and the field gives it.</summary>
+    [Fact]
+    public async Task AnEnterWithNothingToResolveIsTheRowsEnter()
+    {
+        var cut = Mount();
+
+        var input = cut.Find("input");
+
+        await input.FocusAsync(new FocusEventArgs());
+        await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        JSInterop.VerifyInvoke("nsapp.confirmRow", 1);
+        Assert.Equal(Guid.Empty, _picked);
+    }
+
+    /// <summary>A settled list takes the Enter on its key up, and the row stays open for the next
+    /// one (ui/fields.md): the field does not confirm it.</summary>
+    [Fact]
+    public async Task ASettledListsEnterLeavesTheGridsRowOpen()
+    {
+        var cut = Mount();
+
+        var input = cut.Find("input");
+
+        await input.FocusAsync(new FocusEventArgs());
+
+        _ = input.InputAsync(new ChangeEventArgs { Value = "7798123456789" });
+
+        Release("7798123456789");
+
+        cut.WaitForAssertion(() => Assert.Single(Options(cut)), TimeSpan.FromSeconds(5));
+
+        await input.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+        await input.KeyUpAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        cut.WaitForAssertion(() => Assert.Equal(Scanned, _picked), TimeSpan.FromSeconds(5));
+
+        JSInterop.VerifyNotInvoke("nsapp.confirmRow");
+    }
+
     [Fact]
     public async Task AReaderBurstThatNamesSeveralArticlesTakesNoneAndLeavesTheListOpen()
     {

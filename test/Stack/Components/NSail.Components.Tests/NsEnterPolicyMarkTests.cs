@@ -114,12 +114,41 @@ public sealed class NsEnterPolicyMarkTests : BunitContext, IAsyncLifetime
         Assert.NotNull(cut.Find(".ns-row-commit"));
     }
 
-    /// <summary>nsail#3846: a lookup standing in an open grid row is read by the policy as the
-    /// burst's own: the box says it takes the Enter (<c>data-ns-commits</c>) and is a combobox,
-    /// inside a <c>.ns-cells</c> row that carries its commit control. Those are the three marks
-    /// ns.js reads to leave the key to the lookup, which confirms the row itself after the take
-    /// (<c>nsapp.confirmRow</c>); drop one and the row is confirmed before the product resolves.
-    /// The confirm and the move to the next row are walked in a browser.</summary>
+    /// <summary>nsail#3900: a searching lookup in an open grid row says it answers the row's
+    /// Enter (<c>data-ns-row-enter</c>) from its first render, before anything is typed: ns.js
+    /// leaves the key to it on that mark alone, because the state marks a burst ends on can
+    /// still be unwritten when its Enter lands. The lookup then confirms the row itself
+    /// (<c>nsapp.confirmRow</c>). The confirm and the move are walked in a browser.</summary>
+    [Fact]
+    public async Task ASearchingLookupInAnOpenRow_AnswersTheRowsEnterBeforeAnythingIsTyped()
+    {
+        var cut = Render<RowEditorHost>(p => p.Add(x => x.Kind, "lookup"));
+
+        await cut.InvokeAsync(() => cut.FindComponent<NsTable<TestModel>>().Instance.Add());
+
+        var input = cut.Find(".ns-cells tbody tr input[role=\"combobox\"]");
+
+        Assert.Equal("true", input.GetAttribute("data-ns-row-enter"));
+        Assert.Null(input.GetAttribute("data-ns-commits"));
+        Assert.NotNull(cut.Find(".ns-cells tbody tr .ns-row-commit"));
+    }
+
+    /// <summary>A lookup that only browses its Items resolves nothing, so its Enter stays the
+    /// grid's: the row is confirmed by the policy, not by the field.</summary>
+    [Fact]
+    public async Task ABrowsedLookupInAnOpenRow_LeavesTheRowsEnterToTheGrid()
+    {
+        var cut = Render<RowEditorHost>(p => p.Add(x => x.Kind, "autocomplete"));
+
+        await cut.InvokeAsync(() => cut.FindComponent<NsTable<TestModel>>().Instance.Add());
+
+        var input = cut.Find(".ns-cells tbody tr input[role=\"combobox\"]");
+
+        Assert.Null(input.GetAttribute("data-ns-row-enter"));
+    }
+
+    /// <summary>nsail#3846: the box with a code in it also says it takes the Enter
+    /// (<c>data-ns-commits</c>), which is what keeps that key from the form outside a grid.</summary>
     [Fact]
     public async Task ALookupInAnOpenRow_CarriesTheThreeMarksTheGridsGuardReads()
     {
