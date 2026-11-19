@@ -60,6 +60,8 @@ takes an `ILogger<Runner>` as its second argument (the `RunLog` an `NsComponent`
 field is injected with); one built without it logs nothing. A component that catches its own
 act's failure and reports `SystemProblem.Unhandled()` itself — `NsTable`'s export — logs the
 exception through that same `RunLog` before it reports, since the `Runner`'s catch never sees it.
+A failure that holds no cause logs nothing: an export page that answered nothing was either
+logged by the `Runner` that read it or cut short by the component ending.
 
 ---
 
