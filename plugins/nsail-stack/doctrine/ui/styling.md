@@ -319,6 +319,10 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   union of the rendered children's client rects, strokes, caps and joins included), so no
   painted pixel is cut and no margin is added; an SVG with no `viewBox` gets one. The fit is
   the brand mark's alone — a product's picture keeps its file's own box.
+  **`Alt` names the mark on either branch**: the `<img>`'s `alt`, or `role="img"` and
+  `aria-label` on the inlined `<svg>`, stamped per instance on the markup cached per URL;
+  `Alt=""` makes the svg decorative (`aria-hidden`), and an unset `Alt` leaves the served
+  markup's own attributes.
   `NsSplash` draws its own markup rather than `NsRemoteImage`, fits the same artwork in the same
   task that inlines it (one resize, not two), and sizes the opposite way — width,
   not height: its logo, its name and its progress bar all take the width its own script measures
