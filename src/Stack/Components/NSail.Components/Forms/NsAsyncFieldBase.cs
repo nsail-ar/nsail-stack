@@ -15,7 +15,7 @@ public abstract class NsAsyncFieldBase<TValue> : NsFieldBase<TValue>, IRunHost
     public EventCallback<ProblemEventArgs> OnProblem { get; set; }
 
     [Inject]
-    ILogger<Runner> RunLog { get; init; } = default!;
+    protected ILogger<Runner> RunLog { get; init; } = default!;
 
     protected Runner Runner => field ??= new(this, RunLog);
 

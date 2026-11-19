@@ -24,12 +24,12 @@
     [Parameter]
     public Problem? Refusal { get; set; }
 
-    /// <summary>Holds the read open so a test can look at the region while it is still in
-    /// flight — the tick a table used to spend claiming it had no records.</summary>
     /// <summary>A fault the read throws instead of answering — a bug, not a refusal.</summary>
     [Parameter]
     public Exception? Fault { get; set; }
 
+    /// <summary>Holds the read open so a test can look at the region while it is still in
+    /// flight — the tick a table used to spend claiming it had no records.</summary>
     [Parameter]
     public TaskCompletionSource? Gate { get; set; }
 
@@ -67,15 +67,16 @@
         // parameters for the NEXT read, not for this one.
         var gate = Gate;
         var refusal = Refusal;
+        var fault = Fault;
 
         if (gate is not null)
         {
             await gate.Task;
         }
 
-        if (Fault is not null)
+        if (fault is not null)
         {
-            throw Fault;
+            throw fault;
         }
 
         if (refusal is not null)

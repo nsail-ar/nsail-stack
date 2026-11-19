@@ -298,7 +298,7 @@
     /// saved event) either faulted the render or had its own read eaten, leaving a
     /// box that could never fill again. NsPage splits the same two for the same reason
     /// (surfaces.md).</summary>
-    Runner Resolver => field ??= new(this);
+    Runner Resolver => field ??= new(this, RunLog);
 
     bool IsBusy => Runner.IsRunning || Resolver.IsRunning;
 
