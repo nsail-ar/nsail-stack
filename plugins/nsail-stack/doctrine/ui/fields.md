@@ -826,10 +826,17 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
 - **A lookup is complete only when it is keyboard-complete.** On a searching lookup whose term
   has several answers: type, Enter, Arrow Down/Up, Enter picks, Esc closes. One answer is taken by
   the first Enter, and inside a `.ns-cells` row that same Enter then confirms the row and opens the
-  next (`nsapp.confirmRow`, ns.js — the grid's policy leaves that Enter to the box, which stamps
-  `data-ns-commits`, so the row is confirmed once, after the take and never before the product
-  is resolved); a local list or a settled list leaves Enter to the vendor, which picks the
-  highlighted row and leaves the row open for the next Enter. The create entry, the quick add and the caller's offer are the list's
+  next (`nsapp.confirmRow`, ns.js), so the row is confirmed once, after the take and never before
+  the product is resolved. The grid's policy leaves EVERY Enter in a searching box to the box,
+  on a posture the box stamps from its first render (`data-ns-row-enter`) and never on its state:
+  a reader's burst can land its Enter before the render that writes `data-ns-commits`, and the
+  row would be confirmed, and refused, on a box still empty to the policy. So the box gives the
+  row's Enter itself: after the take, or at once where there is nothing to resolve (an empty box,
+  one settled on its article); several answers and none confirm nothing. A settled list — one on
+  screen answering the text — leaves Enter to the vendor, which picks the highlighted row and
+  leaves the row open for the next Enter; an answer already in hand that no list shows yet is
+  not settled, and its one row is the key's to take. A local list resolves nothing and its
+  Enter stays the grid's. The create entry, the quick add and the caller's offer are the list's
   synthetic last rows, walked in the order they are drawn: Arrow Down from the last option the
   vendor can reach (the only row of an empty answer) lands on the first of them and moves on
   through the rest, Arrow Up walks back and, from the first, returns to the last option — on an
@@ -874,7 +881,9 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   same three states the combobox read hands it back in, by the same criterion every other field's
   mark is derived with — a box with nothing hanging on this key has no second meaning for it to
   collide with. Eaten there it would die where it used to work, and the question a filter bar IS
-  would be sent by the Enter in every box of it but this one.
+  would be sent by the Enter in every box of it but this one. The grid's mark is the posture
+  (`data-ns-row-enter`, above) because there the box answers every state itself, including the
+  ones that hand the key back.
 - **A row the rules cannot settle alone opens its own second level, inside the list.**
   `ItemTemplate` seats an `NsMenu` with a `Content` face on that option, and the same row is
   also handed to `ItemDisabledFunc`: the face IS the row — `.ns-lookup-list` makes the trigger
