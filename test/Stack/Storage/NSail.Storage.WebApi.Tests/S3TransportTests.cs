@@ -199,7 +199,8 @@ public sealed class S3TransportTests
     }
 
     // The status code alone does not say which of the dozen ways a target can be wrong this one
-    // is; the store's own XML does, and it is what the settings screen shows the administrator.
+    // is; the store's own XML does, and the refusal carries it to every caller but the settings
+    // test, which logs it.
     [Fact]
     public async Task AFailingStatusCarriesTheStoresOwnRefusal()
     {

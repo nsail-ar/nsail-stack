@@ -17,13 +17,19 @@ namespace NSail.Storage.Settings;
 // litter the container it just proved.
 //
 // A probe that fails is a REFUSAL and answers like one — nothing is caught into a Succeeded flag.
-// The anchored refusals underneath travel untouched: StorageManager already names
-// Proveedor when the install stores nowhere, which is a field this screen renders, so the "no"
-// lands on it instead of in a toast. The probe's own verdicts name no field and fall to the foot
-// of the form, each under a rule of its own so each is worded in the install's language.
+// Two kinds of refusal travel as they came, because the install words them itself: one anchored
+// on a field (StorageManager names Proveedor when the install stores nowhere, a provider names
+// Endpoint when it has none), which lands on the field this screen renders instead of in a toast,
+// and the probe's own verdicts, which name no field and fall to the foot of the form, each under a
+// rule of its own. Anything else — a provider's refusal that carries the far end's own text, an S3
+// body or git's stderr — answers the fixed StorageTestFailed, and the server log keeps the text.
 [Injectable]
 public class StorageTestHandler : IHandler<TestStorageTarget>
 {
+    const string NotReadBack = "StorageTestNotReadBack";
+    const string ContentDiffers = "StorageTestContentDiffers";
+    const string NotListed = "StorageTestNotListed";
+
     readonly StorageStores _stores;
     readonly IServiceProvider _services;
     readonly StorageCredentialProvider _credentials;
@@ -74,7 +80,7 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
             if (stored is null)
             {
                 throw new BusinessException(BusinessProblem.RuleViolation(
-                    "StorageTestNotReadBack",
+                    NotReadBack,
                     "The object was written but could not be read back."));
             }
 
@@ -84,7 +90,7 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
             if (!readBack.ToArray().AsSpan().SequenceEqual(payload))
             {
                 throw new BusinessException(BusinessProblem.RuleViolation(
-                    "StorageTestContentDiffers",
+                    ContentDiffers,
                     "The object read back does not match what was written."));
             }
 
@@ -93,7 +99,7 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
             if (!listed.Any(entry => entry.Key == key))
             {
                 throw new BusinessException(BusinessProblem.RuleViolation(
-                    "StorageTestNotListed",
+                    NotListed,
                     "The object was written but does not appear when the container is listed."));
             }
 
@@ -102,21 +108,33 @@ public class StorageTestHandler : IHandler<TestStorageTarget>
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // Swept whatever the verdict was, so a target that half-worked is not left holding the
-            // probe — and the refusal goes on up: a BusinessException from underneath already says
-            // what is wrong and where (StorageManager), and anything else is this rule saying it.
+            // probe.
             await Sweep(storage, key, cancellationToken);
 
-            if (exception is BusinessException)
+            if (exception is BusinessException refusal && IsWordedHere(refusal))
             {
                 throw;
             }
 
-            _logger.LogWarning(exception, "The storage target of store {Store} failed its test.", name);
+            // A BusinessException's own message is its title; the far end's text is in its issues.
+            var reason = exception is BusinessException business
+                ? string.Join(" ", business.Issues.Select(issue => issue.Message))
+                : exception.Message;
+
+            _logger.LogWarning(exception, "The storage target of store {Store} failed its test: {Reason}", name, reason);
 
             throw new BusinessException(BusinessProblem.RuleViolation(
                 "StorageTestFailed",
                 "The storage target could not be used. The server log has the detail."));
         }
+    }
+
+    // An unanchored rule carries "RuleViolation" as its code and the rule as its source
+    // (BusinessProblem.RuleViolation); an anchored one carries the rule as its code.
+    static bool IsWordedHere(BusinessException refusal)
+    {
+        return refusal.Issues.Count > 0 && refusal.Issues.All(issue => issue.Code != "RuleViolation"
+            || issue.Source is NotReadBack or ContentDiffers or NotListed);
     }
 
     static async Task Sweep(StorageManager storage, string key, CancellationToken cancellationToken)

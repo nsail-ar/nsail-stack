@@ -198,5 +198,10 @@ prove a configuration that exists in one browser.
 install storing nowhere and a provider nobody composed are refused on `Provider`, which the
 screen renders as Proveedor and marks, and the probe's own verdicts carry a rule each and stand
 at the foot of the form — both drawn by the form the act is pressed inside, never as a toast
-that fades ([forms.md](ui/forms.md), *Placing a refusal*). Success is a `Notify`, which is news
+that fades ([forms.md](ui/forms.md), *Placing a refusal*). Those, and any refusal anchored on a
+field, are worded by the install and travel as they came. Every other failure — a provider's
+`StorageRefused` or `GitRefused` included — answers the fixed `StorageTestFailed`, and the
+server log keeps the refusal with the remote's text: the far end's words are whatever the
+address happens to serve (an HTML page, git's stderr), not an answer to put before a person.
+Outside the test a provider's refusal still carries them. Success is a `Notify`, which is news
 and not a refusal.
