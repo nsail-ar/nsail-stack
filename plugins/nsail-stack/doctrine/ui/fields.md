@@ -642,7 +642,12 @@ height, honest wrap, nothing laid out over anything — and the row it grows pay
   which is that validator's own ladder: the failing attribute is handed to
   `MessageValidator.IssueFor` — the one switch that words the wire's Issue — and the catalog
   answers that code, scoped row first. An absent row shows the KEY, never the attribute's own
-  English, which a screen has no sender to quote. A store that posts `result.ErrorMessage`
+  English, which a screen has no sender to quote. The validator, `RowAnnotations` and
+  `RefusalWords` all build their context with the component's own service provider, so an
+  attribute that reads a service (messaging.md) refuses on the screen and is found failing by
+  the ladder the same way; a store that validates with a provider hands `RefusalWords.For` the
+  same one, or a service-reading attribute that refused is not found and its `ErrorMessage` is
+  drawn. A store that posts `result.ErrorMessage`
   straight draws the attribute's English on an es-AR screen (measured).
 
 ### What a screen reader hears
