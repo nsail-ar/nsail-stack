@@ -101,7 +101,7 @@ issue. Install targets (`StorageOptions`) are trusted and not checked by it.
 | `AllowPrivateAddresses` | Default false: a host `PrivateHost.Is` (`NSail.Security`) answers for is refused — loopback, private, link-local, CGNAT and `.local`/`.internal` names, literal or resolved. |
 
 Saving a changed `Provider`, `Endpoint` or `Container` with no new secret clears the stored one.
-`TestStorageTarget` answers a failed probe with a fixed message and logs the detail.
+`TestStorageTarget` answers a failed probe — a provider's refusal with the remote's text included — with a fixed message and logs the detail; a refusal anchored on a field and the probe's own verdicts keep their own.
 
 | Call | Meaning |
 |---|---|
