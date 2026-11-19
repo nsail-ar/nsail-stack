@@ -26,8 +26,16 @@ public sealed class RecordingExportWriter(ExportKind kind) : IExportWriter
 
     public List<ExportRow> Rows { get; } = [];
 
+    /// <summary>Thrown instead of writing, for the writer that breaks.</summary>
+    public Exception? Fault { get; init; }
+
     public async Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, TimeZoneInfo zone, CancellationToken cancellationToken)
     {
+        if (Fault is not null)
+        {
+            throw Fault;
+        }
+
         Book = book;
         Culture = culture;
 

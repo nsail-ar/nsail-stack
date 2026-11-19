@@ -17,7 +17,7 @@ public abstract class NsComponent : ComponentBase, IRunHost, IDisposable
     public EventCallback<ProblemEventArgs> OnProblem { get; set; }
 
     [Inject]
-    protected internal ILogger<Runner> RunLog { get; init; } = default!;
+    protected ILogger<Runner> RunLog { get; init; } = default!;
 
     protected Runner Runner => field ??= new(this, RunLog);
 

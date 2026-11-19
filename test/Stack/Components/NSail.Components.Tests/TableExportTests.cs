@@ -195,7 +195,7 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
     public async Task A_writer_that_throws_is_drawn_as_unhandled_and_logged_at_error()
     {
         var thrown = new InvalidOperationException("boom");
-        Services.AddSingleton(new ExportWriters([new FailingExportWriter(thrown)]));
+        Writers(new RecordingExportWriter(ExportKind.Excel) { Fault = thrown });
         var log = new RunnerLog();
         Services.AddSingleton<ILogger<Runner>>(log);
         var reported = new List<ProblemEventArgs>();
@@ -404,6 +404,29 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
         Assert.Empty(_excel.Rows);
     }
 
+    /// <summary>A read that throws is logged once, by the Runner that ran it and with its own
+    /// exception: the page it never answered stops the export without a second Error line, which
+    /// would carry no cause and is the same line a navigation away mid-export writes.</summary>
+    [Fact]
+    public async Task A_read_that_throws_is_logged_once_with_its_own_exception()
+    {
+        Writers(_excel);
+        var log = new RunnerLog();
+        Services.AddSingleton<ILogger<Runner>>(log);
+        var reported = new List<ProblemEventArgs>();
+
+        await Choose("Excel", parameters => parameters
+            .Add(host => host.ThrowFrom, 1)
+            .Add(host => host.OnProblem, args => reported.Add(args)));
+
+        var entry = Assert.Single(log.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.IsType<InvalidOperationException>(entry.Exception);
+        Assert.All(reported, args => Assert.Equal(SystemProblem.Unhandled().Code, args.Problem.Code));
+        Assert.NotEmpty(reported);
+        Assert.Empty(JSInterop.Invocations["nsapp.download"]);
+    }
+
     /// <summary>The file is named after what the screen calls the list, and the culture the writer
     /// is handed is the reader's region — not the thread's.</summary>
     [Fact]
@@ -580,21 +603,5 @@ public sealed class TableExportTests : BunitContext, IAsyncLifetime
             .QuerySelectorAll(".ns-menu-item")
             .First(item => item.TextContent.Contains(row, StringComparison.Ordinal))
             .ClickAsync(new MouseEventArgs()));
-    }
-
-    sealed class FailingExportWriter(Exception thrown) : IExportWriter
-    {
-        public ExportKind Kind => ExportKind.Excel;
-
-        public Glyph Icon { get; } = new("""<g data-test-export-icon="failing"></g>""");
-
-        public string Extension => "xlsx";
-
-        public string ContentType => "application/octet-stream";
-
-        public Task WriteAsync(ExportBook book, Stream destination, CultureInfo culture, TimeZoneInfo zone, CancellationToken cancellationToken)
-        {
-            throw thrown;
-        }
     }
 }

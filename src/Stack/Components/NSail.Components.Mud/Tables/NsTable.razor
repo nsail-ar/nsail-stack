@@ -1750,10 +1750,15 @@ else
             // rows ran out halfway would say a file exists that nobody was handed.
             written = counted;
         }
-        catch (ExportInterrupted) when (refused)
+        catch (ExportInterrupted)
         {
-            // The refusal is already on screen, placed by the Runner that raised the read. There
-            // is nothing to add, and half a file is not offered.
+            // A refusal is already on screen, placed by the Runner that raised the read, and half
+            // a file is not offered. A page that answered nothing carries no cause to log: a read
+            // that threw was logged by that Runner, and one cut short by a navigation is no bug.
+            if (!refused)
+            {
+                await Report(new ProblemEventArgs(NSail.Problems.SystemProblem.Unhandled(), this));
+            }
         }
         catch (ExportTooLarge)
         {
