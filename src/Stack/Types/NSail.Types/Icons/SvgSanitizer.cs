@@ -108,6 +108,34 @@ public static class SvgSanitizer
         return clean;
     }
 
+    /// <summary>Sanitized markup whose root <c>svg</c> carries <paramref name="name"/> as its
+    /// accessible name: <c>role="img"</c> and <c>aria-label</c> for a name, <c>aria-hidden</c>
+    /// and no name for <c>""</c> (decorative), the markup as it is for <c>null</c> or for a
+    /// fragment with no single <c>svg</c> root.</summary>
+    public static string Name(string clean, string? name)
+    {
+        if (name is null || !TryLoad(clean, out var doc) || doc!.DocumentElement is not { LocalName: "svg" } root)
+        {
+            return clean;
+        }
+
+        root.RemoveAttribute("role");
+        root.RemoveAttribute("aria-label");
+        root.RemoveAttribute("aria-hidden");
+
+        if (name.Length == 0)
+        {
+            root.SetAttribute("aria-hidden", "true");
+        }
+        else
+        {
+            root.SetAttribute("role", "img");
+            root.SetAttribute("aria-label", name);
+        }
+
+        return Sanitize(root.OuterXml);
+    }
+
     static string Run(string? markup, out bool clean)
     {
         clean = true;

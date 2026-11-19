@@ -59,9 +59,9 @@
     [Parameter]
     public string? Url { get; set; }
 
-    /// <summary>Rendered on the &lt;img&gt; branch only. The inlined SVG branch carries
-    /// whatever accessible name the served markup already baked in -- this component parses
-    /// nothing in that markup beyond the sanitizing, so it cannot stamp one on afterward.</summary>
+    /// <summary>The image's accessible name, on either branch: the &lt;img&gt;'s alt, or the
+    /// inlined &lt;svg&gt;'s role="img" and aria-label. <c>""</c> marks it decorative
+    /// (aria-hidden on the svg); unset, the svg keeps the name its served markup carries.</summary>
     [Parameter]
     public string? Alt { get; set; }
 
@@ -218,8 +218,9 @@
             return;
         }
 
+        // The cached markup is shared by every instance of the URL; the name is this one's.
         _kind = entry.Kind;
-        _markup = entry.Markup;
+        _markup = entry.Markup is { } markup ? SvgSanitizer.Name(markup, Alt) : null;
     }
 
     string GetClasses()

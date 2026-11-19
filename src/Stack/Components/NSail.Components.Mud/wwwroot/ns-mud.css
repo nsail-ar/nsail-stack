@@ -1444,6 +1444,12 @@
     flex-shrink: 0;
 }
 
+/* A remote image's flex item is its span, not the svg inside it, and the max-width: 100% on
+   both (below) leaves the span no min-content floor, so it is held by name. */
+.ns-nav-brand:has(.ns-chip-ellipsis) .ns-remote-image:not(.ns-chip-ellipsis *) {
+    flex-shrink: 0;
+}
+
 /* The box that holds the chip beside the name is the chip's side of the row, and the chip's
    cap cannot reach it: sized to its content, the box has no width for the chip's 100% to
    resolve against, so it takes the whole label as its basis and shrinks in step with the name.
