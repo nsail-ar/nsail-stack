@@ -20,7 +20,14 @@ public static class MessageValidator
     /// <summary>Throws when the message breaks a rule; does nothing when it is valid.</summary>
     public static void Guard(object? message)
     {
-        if (message is not null && Validate(message) is { } problem)
+        Guard(message, null);
+    }
+
+    /// <summary>Throws when the message breaks a rule; does nothing when it is valid. An attribute
+    /// reads <paramref name="services"/> through <see cref="ValidationContext.GetService"/>.</summary>
+    public static void Guard(object? message, IServiceProvider? services)
+    {
+        if (message is not null && Validate(message, services) is { } problem)
         {
             throw new BusinessException(problem);
         }
@@ -29,11 +36,18 @@ public static class MessageValidator
     /// <summary>The problem describing every broken rule, or null when the message is valid.</summary>
     public static Problem? Validate(object message)
     {
+        return Validate(message, null);
+    }
+
+    /// <summary>The problem describing every broken rule, or null when the message is valid. An
+    /// attribute reads <paramref name="services"/> through <see cref="ValidationContext.GetService"/>.</summary>
+    public static Problem? Validate(object message, IServiceProvider? services)
+    {
         ArgumentNullException.ThrowIfNull(message);
 
         var builder = new InputProblemBuilder<object>();
 
-        return Walk(message, string.Empty, builder, null) ? builder.Build() : null;
+        return Walk(message, string.Empty, builder, services, null) ? builder.Build() : null;
     }
 
     /// <summary>The Issue the wire carries for one attribute that refused one field. Public
@@ -57,7 +71,8 @@ public static class MessageValidator
     // One routine for the message and for every model it takes this walk into
     // (ValidatedAttribute): the same annotations, the same codes, the same IValidatableObject
     // pass, with the field named by its path so the form still finds the input to draw under.
-    static bool Walk(object model, string prefix, InputProblemBuilder<object> builder, HashSet<object>? walked)
+    static bool Walk(
+        object model, string prefix, InputProblemBuilder<object> builder, IServiceProvider? services, HashSet<object>? walked)
     {
         var failed = false;
 
@@ -80,7 +95,7 @@ public static class MessageValidator
                 // the second one off the context, and the one-argument overload hands it none
                 // — so the wire would pass what the screen refuses. Built once per member, and
                 // only for a member that declares something, since every message walks here.
-                context ??= new ValidationContext(model) { MemberName = property.Name };
+                context ??= new ValidationContext(model, services, null) { MemberName = property.Name };
 
                 if (attribute.GetValidationResult(value, context) == ValidationResult.Success)
                 {
@@ -163,7 +178,7 @@ public static class MessageValidator
                 {
                     if (element is not null && walked.Add(element))
                     {
-                        failed |= Walk(element, $"{prefix}{property.Name}[{index}].", builder, walked);
+                        failed |= Walk(element, $"{prefix}{property.Name}[{index}].", builder, services, walked);
                     }
 
                     index++;
@@ -177,12 +192,12 @@ public static class MessageValidator
                 continue;
             }
 
-            failed |= Walk(value, $"{prefix}{property.Name}.", builder, walked);
+            failed |= Walk(value, $"{prefix}{property.Name}.", builder, services, walked);
         }
 
         if (model is IValidatableObject validatable)
         {
-            foreach (var result in validatable.Validate(new ValidationContext(model)))
+            foreach (var result in validatable.Validate(new ValidationContext(model, services, null)))
             {
                 // A nested rule that names no member is about the member holding the model,
                 // which is a real field; the message's own is about the form.
