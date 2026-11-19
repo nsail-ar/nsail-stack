@@ -120,6 +120,7 @@ public sealed class NsNavBrandChipTests : BunitContext
             ".ns-nav-brand .ns-chip-ellipsis.mud-chip",
             ".ns-nav-brand:has(.ns-chip-ellipsis) :is(img, svg):not(.ns-chip-ellipsis *)",
             ".ns-nav-brand * ~ :has(.ns-chip-ellipsis),\n.ns-nav-brand :has(.ns-chip-ellipsis):has(~ *)",
+            ".ns-nav-brand :not(:has(.ns-chip-ellipsis)) ~ :has(.ns-chip-ellipsis)",
         }));
     }
 
@@ -133,6 +134,20 @@ public sealed class NsNavBrandChipTests : BunitContext
 
         Assert.Matches(
             @"\.ns-nav-brand \* ~ :has\(\.ns-chip-ellipsis\),\s*\.ns-nav-brand :has\(\.ns-chip-ellipsis\):has\(~ \*\)\s*"
+            + @"\{[^}]*flex-shrink:\s*0;[^}]*max-width:\s*50cqi;",
+            css);
+    }
+
+    /// <summary>A long chip label inside a wrapper: the wrapper's basis is the uncapped label, so
+    /// the box that follows a sibling without the chip is held at half the row too and the chip
+    /// ends in an ellipsis within it.</summary>
+    [Fact]
+    public void ALongChipLabelInsideAWrapperIsHeldAtHalfTheRow()
+    {
+        var css = Uncommented(HouseStylesheet.Read());
+
+        Assert.Matches(
+            @"\.ns-nav-brand :not\(:has\(\.ns-chip-ellipsis\)\) ~ :has\(\.ns-chip-ellipsis\)\s*"
             + @"\{[^}]*flex-shrink:\s*0;[^}]*max-width:\s*50cqi;",
             css);
     }
