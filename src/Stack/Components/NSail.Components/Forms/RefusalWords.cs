@@ -25,13 +25,22 @@ public static class RefusalWords
     /// <summary>The words for one result about one member of one model.</summary>
     public static string For(StringManager strings, object model, string memberName, ValidationResult result)
     {
+        return For(strings, model, memberName, result, null);
+    }
+
+    /// <summary>The words for one result about one member of one model, with
+    /// <paramref name="services"/> the provider the result was validated with, so an attribute
+    /// that reads a service is found failing here exactly as it failed there.</summary>
+    public static string For(
+        StringManager strings, object model, string memberName, ValidationResult result, IServiceProvider? services)
+    {
         ArgumentNullException.ThrowIfNull(strings);
         ArgumentNullException.ThrowIfNull(model);
         ArgumentNullException.ThrowIfNull(result);
 
         var property = memberName.Length == 0 ? null : model.GetType().GetProperty(memberName);
 
-        if (property is null || Failing(model, memberName, property) is not { } attribute)
+        if (property is null || Failing(model, memberName, property, services) is not { } attribute)
         {
             return result.ErrorMessage ?? string.Empty;
         }
@@ -53,11 +62,11 @@ public static class RefusalWords
 
     // The attribute that is genuinely the one failing — not merely present alongside some
     // other failing attribute on the same property.
-    static ValidationAttribute? Failing(object model, string memberName, PropertyInfo property)
+    static ValidationAttribute? Failing(object model, string memberName, PropertyInfo property, IServiceProvider? services)
     {
         // The whole model, not just the value: [Compare] and [NotAbove] read the other property
         // off ObjectInstance, which a context built from the value alone would not carry.
-        var context = new ValidationContext(model) { MemberName = memberName };
+        var context = new ValidationContext(model, services, null) { MemberName = memberName };
         var value = property.GetValue(model);
 
         foreach (var attribute in property.GetCustomAttributes<ValidationAttribute>(inherit: true).OrderBy(Rank))

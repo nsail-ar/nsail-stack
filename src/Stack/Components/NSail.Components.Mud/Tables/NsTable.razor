@@ -1004,7 +1004,7 @@ else
         // editor's row so one open row owes one rule.
         _rowMessages ??= new ValidationMessageStore(RowContext);
 
-        if (RowAnnotations.Refuses(Form?.Model, item, RowContext, _rowMessages, Strings))
+        if (RowAnnotations.Refuses(Form?.Model, item, RowContext, _rowMessages, Strings, Services))
         {
             return false;
         }
