@@ -62,7 +62,8 @@ just places `<NsNavMenu />`.
   `Brand` keeps the name and the chip in separate boxes: one box around both, beside a logo,
   would be taken for the chip's side and held at half the row. A label that fits shows whole. The chip keeps its natural width up
   to that cap; the box beside it that holds the install's name takes the rest of the row and
-  wraps, a word longer than the room included, while a logo or product mark keeps its size. So a
+  wraps, a word longer than the room included, while a logo or product mark keeps its size —
+  an `img`, an `svg` or an `NsRemoteImage`, whose flex item is its own span. So a
   long name wraps rather than squeezing the chip, the row never overflows the drawer, and a
   product needs no override of its own for it. Pushing the chip to the row's end is the
   fragment's job.

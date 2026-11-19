@@ -151,4 +151,18 @@ public class SvgSanitizerTests
         Assert.True(glyph.Altered);
         Assert.Equal(string.Empty, glyph.Markup);
     }
+
+    [Fact]
+    public void NamesOnlyTheRootSvgAndKeepsAFragmentAsItIs()
+    {
+        var clean = SvgSanitizer.Sanitize("<svg viewBox=\"0 0 1 1\" aria-hidden=\"true\"><g role=\"x\"><path d=\"M0 0\"/></g></svg>");
+        var named = SvgSanitizer.Name(clean, "A & \"B\"");
+
+        Assert.StartsWith("<svg viewBox=\"0 0 1 1\" role=\"img\" aria-label=\"A &amp; &quot;B&quot;\">", named);
+        Assert.Contains("<g role=\"x\">", named);
+        Assert.DoesNotContain("aria-hidden", named);
+        Assert.True(SvgSanitizer.IsClean(named));
+        Assert.Equal(clean, SvgSanitizer.Name(clean, null));
+        Assert.Equal("<path d=\"M0 0\"></path><path d=\"M1 1\"></path>", SvgSanitizer.Name("<path d=\"M0 0\"></path><path d=\"M1 1\"></path>", "A"));
+    }
 }
