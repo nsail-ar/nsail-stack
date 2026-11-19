@@ -604,7 +604,7 @@ keeps "no records" an answer about the data instead of an answer about the netwo
 
 - **`OnLoad` is the read, and the region runs it** — on a `Runner` belonging to that one read,
   which is what turns a `BusinessException` into a `Problem` and everything else into
-  `SystemProblem.Unhandled()`, which it logs at Error with the exception
+  `SystemProblem.Unhandled()`, after logging that exception at Error
   ([surfaces.md](surfaces.md)). The failure is reported handled there, so nothing else answers
   it: **a load failure is never a toast** (it fades, and it carries no retry), and never the
   app-wide splash.
