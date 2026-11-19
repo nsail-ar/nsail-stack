@@ -618,6 +618,16 @@
         get { return _reached is not null || Resolves(_typed); }
     }
 
+    /// <summary>A box that searches is one a reader ends with Enter, so inside a grid row the
+    /// row's Enter is this field's in every state (OnBoxKeyDown): the grid's own read of the marks
+    /// above can land before the render that writes them.</summary>
+    protected override bool AnswersRowEnter
+    {
+        get { return Searches; }
+    }
+
+    bool Searches => (Lazy || OnSearch.HasDelegate) && !IsReadOnly && !IsDisabled;
+
     // ArrowDown past the last row the vendor can reach lands on the first entry and walks on
     // through the rest; ArrowUp walks back and, from the first, returns to that row. The vendor
     // clamps at its ends, so the key that ran out of rows is the one that left its highlight where
@@ -722,12 +732,14 @@
     // (ui/fields.md), and nothing was typed into it to resolve.
     bool Resolves([NotNullWhen(true)] string? typed)
     {
-        if (!(Lazy || OnSearch.HasDelegate) || IsReadOnly || IsDisabled || string.IsNullOrWhiteSpace(typed))
+        if (!Searches || string.IsNullOrWhiteSpace(typed))
         {
             return false;
         }
 
-        if (_answered == typed)
+        // An answer already in hand is the list's only once the list is on screen: one row that
+        // came back for the burst before the vendor opened it is the reader's to take.
+        if (_answered == typed && (_autocomplete is { Open: true } || _results.Count() != 1))
         {
             return false;
         }
@@ -827,9 +839,16 @@
         var typed = _typed;
 
         // Nothing to resolve, and the same read the mark on the box is written from, so the
-        // keystroke the form was refused is always the keystroke this answers.
+        // keystroke the form was refused is always the keystroke this answers. Inside a grid row
+        // the key is still the row's Enter, which the grid left to this field — unless a list on
+        // screen is taking it on the key up, which leaves the row open for the next Enter.
         if (!Resolves(typed))
         {
+            if (Searches && (_autocomplete is not { Open: true } || !_results.Any()))
+            {
+                await ConfirmRow();
+            }
+
             return;
         }
 
@@ -908,8 +927,14 @@
         // for a mark to be read on.
         await Take(rows[0]);
 
-        // Inside a grid row the key that took the answer is the row's Enter as well: the grid's
-        // policy leaves a box that answers Enter itself to this call.
+        // Inside a grid row the key that took the answer is the row's Enter as well.
+        await ConfirmRow();
+    }
+
+    // The grid's Enter for the row the cursor stands in, which the grid leaves to this field
+    // (AnswersRowEnter); outside a grid it is nothing.
+    async Task ConfirmRow()
+    {
         await Js.InvokeVoidAsync("nsapp.confirmRow");
     }
 

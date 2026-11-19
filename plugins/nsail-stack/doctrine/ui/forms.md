@@ -277,7 +277,9 @@ What it never does is save a document in the middle of being written:
   the column it was typing in**; on the last row it adds one, which is a counter writing a sale
   line after line without reaching for the mouse. It never submits the document: a grid is a
   FIELD of the document it stands in, and confirming a line is not saving a sale
-  ([hosts.md](hosts.md)).
+  ([hosts.md](hosts.md)). A searching lookup in the row gives that Enter itself, after what the
+  key resolved — the policy leaves it the key on a mark that holds from its first render
+  ([fields.md](fields.md), *keyboard-complete*).
 - **A text area's Enter is the line it writes, and Ctrl+Enter submits from inside one.** Enter
   over an open list picks the highlighted option and Enter on a focused button activates that
   button: both are the browser's own and the policy leaves them alone
