@@ -319,11 +319,12 @@
         if (row) {
             e.preventDefault();
 
-            // A lookup that reads this very Enter as the end of a code (data-ns-commits) confirms
-            // the row itself once its answer is taken (confirmRow): confirming here would close
-            // the row on a product nobody has resolved yet, and the take would then confirm the
-            // row the cursor had moved to.
-            if (target.getAttribute("role") === "combobox" && target.getAttribute("data-ns-commits") === "true")
+            // A box that searches answers the row's Enter itself (data-ns-row-enter, a posture
+            // written from its first render): it confirms the row once its answer is taken, or at
+            // once where the key resolved nothing (confirmRow). Read off its STATE instead, the
+            // key can land before the render that says a code is waiting -- a reader's burst does
+            // -- and the row would be confirmed, and refused, on a product nobody had resolved.
+            if (target.getAttribute("data-ns-row-enter") === "true")
                 return;
 
             advanceCells(grid, target, row, 1, true);
@@ -416,10 +417,10 @@
         rest(grid, at);
     }
 
-    // Enter that a field answered ITSELF: the autocomplete took the one article the code names,
-    // and the policy above left the keystroke to it. The cursor is still in the box, so the row
-    // it stands in is confirmed and the next one opened exactly as Enter does in a cell. Outside
-    // a grid it is nothing.
+    // Enter that a field answered ITSELF (data-ns-row-enter): the autocomplete took the one
+    // article the code names, or found nothing to resolve, and the policy above left the
+    // keystroke to it. The cursor is still in the box, so the row it stands in is confirmed and
+    // the next one opened exactly as Enter does in a cell. Outside a grid it is nothing.
     function confirmRow() {
         const from = document.activeElement;
 
