@@ -6,6 +6,7 @@
 @inherits NsCollectionBase
 @implements IFormRow
 @using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.Logging
 @using MudBlazor.Services
 @using NSail.Exporting
 @using NSail.Paging
@@ -1775,6 +1776,10 @@ else
         }
         catch (Exception ex)
         {
+            // Caught here, before the Runner's own catch could see it: the generic toast is all
+            // the person reads, so this line is the one place the cause survives.
+            RunLog.LogError(ex, "Export in {Source} failed unhandled", GetType().FullName);
+
             await Report(new ProblemEventArgs(NSail.Problems.SystemProblem.Unhandled(), this, ex));
         }
         finally

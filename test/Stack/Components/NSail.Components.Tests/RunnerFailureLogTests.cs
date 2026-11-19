@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 using Microsoft.Extensions.Logging;
+using NSail.Components.Tests.Fixtures;
 using NSail.Problems;
 using Xunit;
 
@@ -16,7 +17,7 @@ public sealed class RunnerFailureLogTests
     public async Task A_run_that_throws_logs_the_exception_at_error_and_still_reports_unhandled()
     {
         var host = new Host();
-        var log = new Capture();
+        var log = new RunnerLog();
         var runner = new Runner(host, log);
         var thrown = new InvalidOperationException("boom");
 
@@ -36,7 +37,7 @@ public sealed class RunnerFailureLogTests
     [Fact]
     public async Task A_run_that_reenters_its_own_runner_logs_the_reentry()
     {
-        var log = new Capture();
+        var log = new RunnerLog();
         var runner = new Runner(new Host(), log);
 
         await runner.Run(() => runner.Run(() => Task.CompletedTask));
@@ -51,7 +52,7 @@ public sealed class RunnerFailureLogTests
     public async Task A_refusal_is_reported_by_name_and_logs_nothing()
     {
         var host = new Host();
-        var log = new Capture();
+        var log = new RunnerLog();
         var runner = new Runner(host, log);
         var refusal = new Problem(code: "Refused", title: "Refused", issues: [], status: null);
 
@@ -65,7 +66,7 @@ public sealed class RunnerFailureLogTests
     public async Task A_run_cancelled_by_its_own_token_logs_nothing()
     {
         var host = new Host();
-        var log = new Capture();
+        var log = new RunnerLog();
         var runner = new Runner(host, log);
 
         await runner.Run(cancellationToken =>
@@ -83,7 +84,7 @@ public sealed class RunnerFailureLogTests
     [Fact]
     public async Task A_run_asked_after_the_component_ended_logs_nothing()
     {
-        var log = new Capture();
+        var log = new RunnerLog();
         var runner = new Runner(new Host(), log);
 
         runner.Dispose();
@@ -116,31 +117,6 @@ public sealed class RunnerFailureLogTests
 
         public void StateChanged()
         {
-        }
-    }
-
-    sealed class Capture : ILogger
-    {
-        public List<(LogLevel Level, Exception? Exception)> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
-        {
-            return null;
-        }
-
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            return true;
-        }
-
-        public void Log<TState>(
-            LogLevel logLevel,
-            EventId eventId,
-            TState state,
-            Exception? exception,
-            Func<TState, Exception?, string> formatter)
-        {
-            Entries.Add((logLevel, exception));
         }
     }
 }
