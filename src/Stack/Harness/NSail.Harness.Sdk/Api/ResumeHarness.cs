@@ -5,7 +5,7 @@ using NSail.Messaging;
 
 namespace NSail.Harness.Api;
 
-// Starts work again, past a pause and past a usage wall.
+// Starts work again, past a pause and past a usage wall. A pending restart stays: nothing new starts and it still stops once drained.
 [Http(Post, "api/harness/resume")]
 public class ResumeHarness : IMessage
 {
