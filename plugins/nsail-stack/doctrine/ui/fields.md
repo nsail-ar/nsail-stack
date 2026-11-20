@@ -705,6 +705,14 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   and a browsed field carries none — it has the chevron instead. It reads at rest because the
   vendor floats the label off a placeholder, which is what makes the word an answer to the
   dropped glyph rather than something the box says only once it has focus.
+- **A list that holds more answers than it shows says so under its rows.** The list draws the
+  first ten rows of what a search answers (the vendor's `MaxItems`, left at its default), and when
+  the answer held more, a line under them — `Common.MoreResults`, «Hay más resultados: seguí
+  escribiendo para acotarlos.» — so a cut answer never reads as a complete one. It is the Stack's
+  wording for every lookup: a box that draws its own list reads the same key. The line is status,
+  not a row: the arrows never reach it and Enter never acts on it, and it sits above the create
+  entry, the quick add and the offer, which stay the list's last rows. How many rows a server
+  answers is each lookup message's own cap.
 
 - **A picker answers to the form's writability the way a field does, and reads it off
   `NsPickerBase`.** A `*Lookup` or a hand-rolled `*Select` is not an `NsFieldBase` — it
@@ -950,7 +958,8 @@ matching nothing is taught by naming an article AND one of its units, which is t
   create entry restates: a caller brings content, never padding. Whether there is anything to offer
   is the facade's own answer, because only the facade knows what its search came back with: a
   fragment that renders nothing leaves the list as it was — no row is drawn, and the arrows walk
-  past where it would stand (`NsAutocomplete.Draws` reads what the fragment writes).
+  past where it would stand (`NsAutocomplete.Draws` reads what the fragment writes). A list
+  holding more answers than it shows draws its line above the offer (*Lookups*), never under it.
 - **It is a row to the keyboard too** (*A lookup is complete only when it is keyboard-complete*,
   above): Enter on the reached offer presses the first enabled control inside it — a button, a
   link, a menu's own face — as a click on it does. A menu with a face of its own is pressed on
