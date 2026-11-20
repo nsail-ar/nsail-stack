@@ -125,10 +125,18 @@ public sealed class JobContext(
         return agent;
     }
 
-    // What a seat or a step that runs code wrote in is removed through their account.
-    public Task Remove(string dir, CancellationToken ct = default)
+    // What a seat or a step that runs code wrote in is removed through their account. A folder that account
+    // cannot remove is the machine's fault, not the story's: every job on the slot would meet it.
+    public async Task Remove(string dir, CancellationToken ct = default)
     {
-        return Shell.Remove(dir, Options.RunCodeAs, ct);
+        try
+        {
+            await Shell.Remove(dir, Options.RunCodeAs, ct);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            throw new WorkspaceFault($"reset {Path.GetFileName(dir)}", e);
+        }
     }
 
     // A repository's own slots: a story it holds is built and pushed there.

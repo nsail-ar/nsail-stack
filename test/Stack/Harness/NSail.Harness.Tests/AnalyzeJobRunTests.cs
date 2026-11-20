@@ -20,6 +20,10 @@ public class AnalyzeJobRunTests : IDisposable
     public void Dispose()
     {
         if (!Directory.Exists(_root)) return;
+        if (!OperatingSystem.IsWindows())
+        {
+            foreach (var d in Directory.EnumerateDirectories(_root, "*", SearchOption.AllDirectories)) File.SetUnixFileMode(d, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
         foreach (var f in Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
         Directory.Delete(_root, true);
     }
@@ -443,5 +447,26 @@ public class AnalyzeJobRunTests : IDisposable
 
         Assert.Equal("Done", outcome.Event);
         Assert.Null(FixOn(board));
+    }
+
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task AReadOnlyFolderTheLastAnalystLeftIsGoneWhenTheNextAnalysisStarts()
+    {
+        var first = new Analyst(null)
+        {
+            Reading = dir =>
+            {
+                var cache = Directory.CreateDirectory(Path.Combine(dir, "cache")).FullName;
+                File.WriteAllText(Path.Combine(cache, "kept"), "a tool's");
+                File.SetUnixFileMode(cache, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+            },
+        };
+        await Analyze(first);
+        var found = true;
+        var next = new Analyst(null) { Reading = dir => found = Directory.Exists(Path.Combine(dir, "cache")) || File.Exists(Path.Combine(dir, "comment.md")) };
+
+        await Analyze(next);
+
+        Assert.False(found);
     }
 }

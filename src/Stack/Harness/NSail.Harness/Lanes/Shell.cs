@@ -112,20 +112,56 @@ public static class Shell
     }
 
     // Removes a folder through the account that wrote in it, when there is one: a folder the account made for
-    // itself alone (a temp folder is 0700) lists for nobody else, the harness user included.
+    // itself alone (a temp folder is 0700) lists for nobody else, the harness user included. An entry its
+    // owner made read-only (a folder without write permission, a read-only file) is made writable and removed.
     public static async Task Remove(string dir, string? runAs, CancellationToken ct = default)
     {
         if (!Directory.Exists(dir)) return;
         if (runAs is null || OperatingSystem.IsWindows())
         {
-            Directory.Delete(dir, recursive: true);
+            try
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+            catch (Exception e) when (e is UnauthorizedAccessException or IOException)
+            {
+                Writable(new DirectoryInfo(dir));
+                Directory.Delete(dir, recursive: true);
+            }
             return;
         }
         var full = Path.GetFullPath(dir);
-        var removed = await Run("rm", ["-rf", full], Path.GetDirectoryName(full)!, ct: ct, runAs: runAs);
+        var cwd = Path.GetDirectoryName(full)!;
+        var removed = await Run("rm", ["-rf", full], cwd, ct: ct, runAs: runAs);
+        if (removed.ExitCode != 0)
+        {
+            await Run("chmod", ["-R", "u+rwX", full], cwd, ct: ct, runAs: runAs);
+            removed = await Run("rm", ["-rf", full], cwd, ct: ct, runAs: runAs);
+        }
         if (removed.ExitCode != 0)
         {
             throw new InvalidOperationException($"{full} could not be removed as {runAs}: {removed.Output.Trim()}");
+        }
+    }
+
+    // A folder is opened to its owner before it is listed; a link is never followed.
+    static void Writable(DirectoryInfo dir)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            dir.UnixFileMode |= UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+        }
+        foreach (var entry in dir.EnumerateFileSystemInfos("*", new EnumerationOptions { AttributesToSkip = 0 }))
+        {
+            if (entry.LinkTarget is not null) continue;
+            if (entry is DirectoryInfo sub)
+            {
+                Writable(sub);
+            }
+            else if (entry.Attributes.HasFlag(FileAttributes.ReadOnly))
+            {
+                entry.Attributes &= ~FileAttributes.ReadOnly;
+            }
         }
     }
 
