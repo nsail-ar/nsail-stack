@@ -117,6 +117,51 @@ public sealed class NsComboboxExpandedMarkTests : BunitContext, IAsyncLifetime
         Reads(cut, "false");
     }
 
+    /// <summary>The same list still draws its quick add, and its arrows are the list's even inside
+    /// a grid row: the box says so by its entries mark while the list draws one, "reached" once
+    /// the arrows stand on it, and nothing while the list is closed — where the grid's arrows move
+    /// between rows again (ns.js, ownsArrows; nsail#4032).</summary>
+    [Fact]
+    public async Task AListOfEntriesAloneMarksTheBoxOpenToTheArrows()
+    {
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Chart)
+            .Add(x => x.Lazy, false)
+            .Add(x => x.OnQuickAdd, EventCallback.Factory.Create<QuickAddEventArgs<SelectRef>>(this, _ => { })));
+
+        Assert.Null(Mark(cut, "data-ns-entries"));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Nada" });
+
+        Reads(cut, "false");
+        cut.WaitForAssertion(() => Assert.Equal("open", Mark(cut, "data-ns-entries")), TimeSpan.FromSeconds(5));
+
+        await cut.Find("input").KeyDownAsync(new KeyboardEventArgs { Key = "ArrowDown" });
+
+        Assert.Equal("reached", Mark(cut, "data-ns-entries"));
+
+        await cut.Find("input").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
+        await cut.Find("input").KeyUpAsync(new KeyboardEventArgs { Key = "Escape" });
+
+        cut.WaitForAssertion(() => Assert.Null(Mark(cut, "data-ns-entries")), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>A list with neither options nor entries is nothing to walk: the arrows stay the
+    /// grid's.</summary>
+    [Fact]
+    public async Task AListWithNothingToReachLeavesNoEntriesMark()
+    {
+        var cut = MountLookup();
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Nada" });
+
+        Reads(cut, "false");
+
+        Assert.Null(Mark(cut, "data-ns-entries"));
+    }
+
     /// <summary>fields.md says the same rule covers the selects, and this is what that sentence
     /// rests on: their closed box is the same combobox and their open one carries the same
     /// expanded mark, on the same element — the readonly input the keystroke lands on. So the

@@ -370,6 +370,171 @@ public sealed class NsAutocompleteOfferTests : BunitContext, IAsyncLifetime
         Assert.Empty(_changes);
     }
 
+    // Each enabled control inside the offer is a row of its own, in document order (nsail#4032).
+    // The controls live in the caller's fragment, so the page counts and lights them
+    // (ns.js, lightOffer); this layer answers for it as a two-control offer would.
+    static readonly RenderFragment LinkThenMenu = builder =>
+    {
+        builder.OpenComponent<OfferLinkThenMenu>(0);
+        builder.CloseComponent();
+    };
+
+    void TwoControls()
+    {
+        JSInterop.Setup<int>("nsapp.lightOffer", 0).SetResult(0);
+        JSInterop.Setup<int>("nsapp.lightOffer", 1).SetResult(1);
+        JSInterop.Setup<int>("nsapp.lightOffer", 2).SetResult(1);
+    }
+
+    IEnumerable<int> Lit
+    {
+        get
+        {
+            return JSInterop.Invocations
+                .Where(call => call.Identifier == "nsapp.lightOffer")
+                .Select(call => (int)call.Arguments[0]!);
+        }
+    }
+
+    async Task<IRenderedComponent<SearchLookupHost>> WalkableTwo(string text, bool quickAdd = false)
+    {
+        TwoControls();
+
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Shelf)
+            .Add(x => x.Lazy, true)
+            .Add(x => x.Offer, LinkThenMenu)
+            .Add(x => x.OnQuickAdd, quickAdd ? EventCallback.Factory.Create<QuickAddEventArgs<SelectRef>>(this, _ => { }) : default)
+            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _changes.Add(value))));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = text });
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-lookup-offer")), TimeSpan.FromSeconds(5));
+
+        return cut;
+    }
+
+    [Fact]
+    public async Task Each_control_of_the_offer_is_a_row_walked_in_document_order()
+    {
+        var cut = await WalkableTwo("Zeta");
+
+        await Press(cut, "ArrowDown");
+
+        Assert.True(OnOffer(cut));
+        Assert.Equal([0], Lit);
+
+        await Press(cut, "ArrowDown");
+
+        Assert.Equal([0, 1], Lit);
+
+        // Past the last control the page clamps, and the menu stays the lit one.
+        await Press(cut, "ArrowDown");
+
+        Assert.Equal([0, 1, 2], Lit);
+
+        await Press(cut, "ArrowUp");
+
+        Assert.Equal([0, 1, 2, 0], Lit);
+        Assert.Single(cut.FindAll(".ns-lookup-create-active"));
+
+        // On an empty answer the first control is where ArrowUp stops.
+        await Press(cut, "ArrowUp");
+
+        Assert.True(OnOffer(cut));
+        Assert.Equal([0, 1, 2, 0], Lit);
+        Assert.Empty(_changes);
+    }
+
+    [Fact]
+    public async Task ArrowUp_from_the_offers_first_control_returns_to_the_entry_above_and_puts_its_light_out()
+    {
+        var cut = await WalkableTwo("Zeta", quickAdd: true);
+
+        await Press(cut, "ArrowDown");
+
+        Assert.Single(cut.FindAll(".ns-lookup-create-active"));
+        Assert.False(OnOffer(cut));
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowUp");
+        await Press(cut, "ArrowUp");
+
+        Assert.False(OnOffer(cut));
+        Assert.Single(cut.FindAll(".ns-lookup-create-active"));
+        Assert.Equal([0, 1, 0, -1], Lit);
+    }
+
+    // Enter presses the lit control, whichever it is, and the form never hears it (K5).
+    [Fact]
+    public async Task Enter_on_the_second_control_presses_it_and_takes_the_Enter_from_the_form()
+    {
+        var cut = await WalkableTwo("Zeta");
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowDown");
+
+        Assert.Equal("reached", cut.Find("input").GetAttribute("data-ns-entries"));
+        Assert.Equal("true", cut.Find("input").GetAttribute("data-ns-commits"));
+
+        await Press(cut, "Enter");
+
+        Assert.Equal(1, Pressed);
+        Assert.Empty(_changes);
+    }
+
+    [Fact]
+    public async Task Reaching_the_offers_second_control_raises_no_ValueChanged()
+    {
+        var cut = await WalkableTwo("Góm");
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".mud-list-item").Count), TimeSpan.FromSeconds(5));
+
+        // The list opens on the first row: one key walks to the second, the next to the offer's
+        // first control and the third to its second.
+        for (var i = 0; i < 3; i++)
+        {
+            await Press(cut, "ArrowDown");
+        }
+
+        Assert.True(OnOffer(cut));
+        Assert.Equal([0, 1], Lit);
+        Assert.Empty(_changes);
+    }
+
+    // K4: the page's rows are the selector's matches, and a disabled control is none of them.
+    [Fact]
+    public async Task A_disabled_control_inside_the_offer_is_no_row()
+    {
+        RenderFragment offer = builder =>
+        {
+            builder.OpenElement(0, "button");
+            builder.AddAttribute(1, "disabled", true);
+            builder.AddContent(2, "Locked");
+            builder.CloseElement();
+            builder.OpenComponent<OfferMenuFace>(3);
+            builder.CloseComponent();
+        };
+
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Shelf)
+            .Add(x => x.Lazy, true)
+            .Add(x => x.Offer, offer));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Zeta" });
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-lookup-offer")), TimeSpan.FromSeconds(5));
+
+        var controls = cut.Find(".ns-lookup-offer").QuerySelectorAll(OfferControlSelector());
+
+        var control = Assert.Single(controls);
+
+        Assert.Contains("ns-menu-activator", control.ClassList);
+    }
+
     // The selector the page presses the offer's control by, read from ns.js: the press itself
     // runs in a browser, so this layer proves which element it picks.
     static string OfferControlSelector()

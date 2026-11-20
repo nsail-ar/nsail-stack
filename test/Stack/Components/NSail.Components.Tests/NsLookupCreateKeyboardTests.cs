@@ -297,4 +297,41 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
         Assert.Single(cut.FindAll(".ns-lookup-create-active"));
         Assert.Empty(_changes);
     }
+
+    // And with an offer of two controls each is a row past the quick add, in document order.
+    [Fact]
+    public async Task AnOffersTwoControlsAreWalkedAfterTheOtherEntries()
+    {
+        JSInterop.Setup<int>("nsapp.lightOffer", 0).SetResult(0);
+        JSInterop.Setup<int>("nsapp.lightOffer", 1).SetResult(1);
+
+        RenderFragment offer = builder =>
+        {
+            builder.OpenComponent<OfferLinkThenMenu>(0);
+            builder.CloseComponent();
+        };
+
+        var cut = await Open(quickAdd: true, offer: offer);
+
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Nueva" });
+        cut.WaitForAssertion(() => Assert.Equal(3, cut.FindAll(".ns-lookup-create").Count), TimeSpan.FromSeconds(5));
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowDown");
+
+        Assert.Contains("Agregar «Nueva»", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+
+        await Press(cut, "ArrowDown");
+        await Press(cut, "ArrowDown");
+
+        Assert.Single(cut.FindAll(".ns-lookup-offer.ns-lookup-create-active"));
+        Assert.Equal([0, 1], JSInterop.Invocations.Where(call => call.Identifier == "nsapp.lightOffer").Select(call => (int)call.Arguments[0]!));
+
+        await Press(cut, "ArrowUp");
+        await Press(cut, "ArrowUp");
+
+        Assert.Contains("Agregar «Nueva»", cut.Find(".ns-lookup-create-active").TextContent, StringComparison.Ordinal);
+        Assert.Single(cut.FindAll(".ns-lookup-create-active"));
+        Assert.Empty(_changes);
+    }
 }

@@ -850,13 +850,21 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   leaves the row open for the next Enter; an answer already in hand that no list shows yet is
   not settled, and its one row is the key's to take. A local list resolves nothing and its
   Enter stays the grid's. The create entry, the quick add and the caller's offer are the list's
-  synthetic last rows, walked in the order they are drawn: Arrow Down from the last option the
+  synthetic last rows, walked in the order they are drawn, and each enabled control inside the
+  offer is a row of its own, in document order: Arrow Down from the last option the
   vendor can reach (the only row of an empty answer) lands on the first of them and moves on
   through the rest, Arrow Up walks back and, from the first, returns to the last option — on an
   empty answer it stays where it is — and Esc closes the list without choosing. Enter does what
   the reached entry's click does: the create entry opens the create route, the quick add adds the
-  typed text, and the offer presses the caller's own control in it (`nsapp.pressOffer`, ns.js —
-  the offer is the caller's fragment, so only the page can press it). Reaching an entry is not a
+  typed text, and the offer presses its lit control (`nsapp.lightOffer` and `nsapp.pressOffer`,
+  ns.js — the offer is the caller's fragment, so only the page can count and press its controls).
+  The walk holds the same in a `.ns-cells` row as on a form: the vendor marks the box expanded
+  only while the list has options, so the box stamps its own `data-ns-entries` — `open` while
+  the list draws an entry, `reached` while the arrows stand on one — and the grid leaves its
+  arrows to an open list and its Enter to a reached row, which neither confirms the row nor
+  moves down the column. With the list closed the arrows and Enter are the grid's again. An
+  offer's menu opens the way a keyboard opening does: the keyboard is in the menu, so the next
+  keys walk its own contents and Esc closes it. Reaching an entry is not a
   pick — the bound value never moves — its Enter is the field's and never the form's, and a
   lookup that offers none of the three grows no such row. The vendor clamps at its last option,
   so the field reads its highlight after each key (`NsAutocomplete.Walk`); the vendor's highlight
@@ -961,12 +969,12 @@ matching nothing is taught by naming an article AND one of its units, which is t
   past where it would stand (`NsAutocomplete.Draws` reads what the fragment writes). A list
   holding more answers than it shows draws its line above the offer (*Lookups*), never under it.
 - **It is a row to the keyboard too** (*A lookup is complete only when it is keyboard-complete*,
-  above): Enter on the reached offer presses the first enabled control inside it — a button, a
-  link, a menu's own face — as a click on it does. A menu with a face of its own is pressed on
-  that face (`.ns-menu-activator`), not on the vendor's wrapper around it, which wires no click
-  for a custom face ([menus.md](menus.md)). So the control the offer is FOR comes first in the
-  fragment; an offer whose fragment draws something but holds no control is reached and does
-  nothing.
+  above): each enabled control inside it — a button, a link, a menu's own face — is its own row,
+  walked in document order, and Enter presses the lit one as a click on it does. A disabled
+  control is no row. A menu with a face of its own is that face (`.ns-menu-activator`), not the
+  vendor's wrapper around it, which wires no click for a custom face ([menus.md](menus.md)), and
+  Enter opens it with the keyboard in it. An offer whose fragment draws something but holds no
+  control is one row, reached and doing nothing on Enter.
 - **The text it quotes has to still be in the box.** The Stack withholds the entry while the box is
   empty and while the search for what is in it has not answered — `QuickAdd`'s own two conditions,
   and this is the entry that WRITES: a `Lazy` field emptied never reaches the facade's `OnSearch`

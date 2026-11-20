@@ -185,16 +185,28 @@
     // way they always were -- and a form that IS the question -- a sign-in, a filter bar, a box
     // standing alone -- keeps the implicit submission, which is what the last read below
     // measures by asking the form how many fields it renders.
-    // A box owns an open list when it is a combobox the vendor marks expanded, or when it stands
-    // inside an NsDropdown that is open (the host's plain field cannot be handed the attribute).
-    // Scoped to the box itself for the combobox, so a button carrying aria-expanded keeps its
-    // own Enter.
+    // A box owns an open list when it is a combobox the vendor marks expanded, when a lookup's
+    // arrows have reached one of its entries (data-ns-entries, NsAutocomplete), or when it
+    // stands inside an NsDropdown that is open (the host's plain field cannot be handed the
+    // attribute). Scoped to the box itself for the combobox, so a button carrying aria-expanded
+    // keeps its own Enter.
     function ownsOpenList(target) {
         if (target.getAttribute("role") === "combobox" && target.getAttribute("aria-expanded") === "true")
             return true;
 
+        if (target.getAttribute("data-ns-entries") === "reached")
+            return true;
+
         return target.getAttribute("data-ns-field") === "true"
             && target.closest("[data-ns-dropdown-open='true']") !== null;
+    }
+
+    // The arrows are an open list's as soon as it draws an entry to reach, options or none: the
+    // vendor writes aria-expanded only while there are options, and a list of entries alone is
+    // still walked. Enter over such a list keeps ownsOpenList's narrower read -- nothing reached,
+    // nothing of the list's to press.
+    function ownsArrows(target) {
+        return ownsOpenList(target) || target.getAttribute("data-ns-entries") === "open";
     }
 
     function onDocumentKeyDown(e) {
@@ -503,11 +515,11 @@
         // The arrows move the cursor between BOXES, so they are the move only where there is a
         // cursor to move: a focused button inside the row keeps the platform's own arrow, and a
         // text area's arrows are its lines. An open list owns them outright -- they walk its
-        // options, which is onDocumentKeyDown's own aria-expanded read.
+        // options and its entries (ownsArrows).
         if (!field || target.tagName === "TEXTAREA")
             return;
 
-        if (ownsOpenList(target))
+        if (ownsArrows(target))
             return;
 
         // The keystroke is taken OUTRIGHT, propagation and all, which the two listeners above
@@ -760,19 +772,63 @@
         el.click();
     }
 
-    // The controls an offer's Enter may press, first in document order. A menu with a face of its
-    // own is pressed on that face: the vendor's wrapper around it (.mud-menu-activator) carries
-    // role="button" and comes first, but wires no click for a custom face (NsMenu.GetActivator).
+    // The controls of an offer, each a row of the lookup's list to the arrows. A menu with a face
+    // of its own is that face: the vendor's wrapper around it (.mud-menu-activator) carries
+    // role="button", but wires no click for a custom face (NsMenu.GetActivator).
     const OFFER_CONTROL_SELECTOR = ".ns-menu-activator, button:not([disabled]), a[href]:not([aria-disabled='true']), [role='button']:not(.mud-menu-activator):not([aria-disabled='true'])";
 
-    // Enter on a lookup's reached offer (NsAutocomplete) presses the caller's own control in it,
-    // as a click on the entry does. One entry is lit at a time: only the focused box walks.
-    function pressOffer() {
-        const control = document.querySelector(".ns-lookup-offer.ns-lookup-create-active")
-            ?.querySelector(OFFER_CONTROL_SELECTOR);
+    // In document order, without a disabled one and without one standing inside another, which
+    // would be the same row twice.
+    function offerControls(offer) {
+        const found = Array.from(offer.querySelectorAll(OFFER_CONTROL_SELECTOR))
+            .filter(el => live(el) && el.closest("[disabled], [aria-disabled='true'], .mud-disabled") === null);
 
-        if (control)
-            activate(control);
+        return found.filter(el => !found.some(other => other !== el && other.contains(el)));
+    }
+
+    // The arrows' walk inside a lookup's offer (NsAutocomplete.Walk): lights the control at the
+    // index, clamped to the last, and answers the index lit -- -1 for an offer that holds no
+    // control, or for a negative index, which puts every light out. Only an open list draws its
+    // offer, and only the focused box's list is open, so the one offer on the page is this one.
+    // A data attribute and not a class: the renderer rewrites a class it wrote, never an
+    // attribute it did not.
+    function lightOffer(index) {
+        const offer = document.querySelector(".ns-lookup-offer");
+
+        if (!offer)
+            return -1;
+
+        const controls = offerControls(offer);
+
+        offer.querySelectorAll("[data-ns-lit]").forEach(el => el.removeAttribute("data-ns-lit"));
+
+        if (index < 0 || controls.length === 0)
+            return -1;
+
+        const at = Math.min(index, controls.length - 1);
+
+        controls[at].setAttribute("data-ns-lit", "true");
+
+        return at;
+    }
+
+    // Enter on a lookup's reached offer presses its lit control, as a click on it does. A menu's
+    // face is opened by the keystroke it was asked with: the vendor hands the cursor to the list
+    // only for a menu a key opened, so a click would leave the keyboard in the lookup's box.
+    function pressOffer() {
+        const control = document.querySelector(".ns-lookup-offer.ns-lookup-create-active [data-ns-lit]");
+
+        if (!control)
+            return;
+
+        const menu = control.matches(".ns-menu-activator") ? control.closest(".mud-menu-activator") : null;
+
+        if (menu) {
+            menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+            return;
+        }
+
+        activate(control);
     }
 
     function onChordKeyDown(e) {
@@ -1639,5 +1695,5 @@
         scans.delete(id);
     }
 
-    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download, pressOffer, canScan, scanStart, scanStop, confirmRow };
+    window.nsapp = { appReady, onAppReady, scrollToFraction, scrollToId, fractionAt, fitMark, focusFirst, arrivalFocus, chords, recall, remember, download, lightOffer, pressOffer, canScan, scanStart, scanStop, confirmRow };
 })();
