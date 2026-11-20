@@ -66,7 +66,7 @@ public sealed class HarnessLoop(
     readonly ConcurrentDictionary<int, string> _starting = new();
     readonly ConcurrentDictionary<string, RunningJob> _running = new();
     readonly ConcurrentDictionary<string, Task> _sailing = new();
-    readonly ConcurrentDictionary<string, DateTimeOffset> _backoff = new();
+    readonly ConcurrentDictionary<string, DateTimeOffset> _backoff = new(QaJob.Remembered(history.Jobs()).Again.Select(a => KeyValuePair.Create(StoryKey(a.Key), a.Value)));
 
     // When each item still to start was first planned, and how long each running job waited for it.
     readonly ConcurrentDictionary<string, DateTimeOffset> _planned = new();
@@ -75,8 +75,9 @@ public sealed class HarnessLoop(
 
     // When this machine last walked each story: a walk that left it where a walk takes it (a walk that
     // could not be done) is not walked again before the next cut. A tenant not running its code yet,
-    // or a walk that could not be made, is tried again after QaJob.RecheckOf instead.
-    readonly ConcurrentDictionary<int, DateTimeOffset> _walked = new();
+    // or a walk that could not be made, is tried again after QaJob.RecheckOf instead. Both start from
+    // what this machine's record says (QaJob.Remembered), so a restart walks nothing twice.
+    readonly ConcurrentDictionary<int, DateTimeOffset> _walked = new(QaJob.Remembered(history.Jobs()).Walked);
 
     // By `worker#story`: a worker's ending that moved nothing where its type would have (a worker a
     // hand moves the board for) left the story where that worker takes it; it is not taken again until
@@ -619,7 +620,12 @@ public sealed class HarnessLoop(
     // its kind and product, or a broken cut would be tried again every pass.
     static string BackoffKey(WorkItem item)
     {
-        return item.Story is { } n ? $"#{n}" : $"{item.Kind}:{item.Product ?? item.Workflow}";
+        return item.Story is { } n ? StoryKey(n) : $"{item.Kind}:{item.Product ?? item.Workflow}";
+    }
+
+    static string StoryKey(int story)
+    {
+        return $"#{story}";
     }
 
     // An item's wait runs from the first pass that planned it; one the board stopped planning starts over.

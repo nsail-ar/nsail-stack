@@ -92,7 +92,7 @@ public sealed class HousekeepingTests : IDisposable
     {
         var options = new HarnessOptions { WorkRoot = Path.Combine(_root, "work"), Seats = { ["qa"] = new AgentOptions { Prompt = "walk" } } };
         foreach (var (name, setup) in workers) options.Workers[name] = new WorkerOptions { Type = "Test", Seat = "qa", Setup = setup };
-        return new HarnessLoop(null!, null!, null!, null!, null!, null!, null!, null!, null!,
+        return new HarnessLoop(null!, null!, null!, null!, new JobHistory(Path.Combine(_root, "history")), null!, null!, null!, null!,
             Options.Create(options), null!, new HarnessMetrics(), new WatchState(null),
             new HarnessState(Path.Combine(_root, "state")), NullLogger<HarnessLoop>.Instance);
     }

@@ -13,7 +13,8 @@ public class QaVerdictTests
     [InlineData("VERDICT: ok", "Ok")]
     [InlineData("VERDICT: n/a", "NotApplicable")]
     [InlineData("VERDICT: bug", "Bug")]
-    [InlineData("VERDICT: ruling", "Ruling")]
+    [InlineData("VERDICT: unwalkable", "Unwalkable")]
+    [InlineData("VERDICT: ruling", "Unwalkable")]
     [InlineData("VERDICT: asked", "NoVerdict")]
     [InlineData("VERDICT: waiting", "NoVerdict")]
     [InlineData("VERDICT: not-live", "NotLive")]
@@ -50,7 +51,28 @@ public class QaVerdictTests
         Assert.Contains(test["Bug"], a => a.MoveTo == Stages.Analyze);
         Assert.Contains(test["Bug"], a => a.Comment!.Contains(WorkerTypes.QaBugMarker) == true);
         Assert.Contains(test["BugAgain"], a => a.AddLabel == Labels.Stalled);
-        Assert.Contains(test["Ruling"], a => a.AddLabel == Labels.Ruling);
+        Assert.Contains(test["Unwalkable"], a => a.AddLabel == Labels.Unwalkable);
+        Assert.False(test.ContainsKey("Ruling"));
         Assert.False(test.ContainsKey("NotLive"));
+    }
+
+    // A doubt says what stopped it on the story, where a hand reads it, and moves nothing; the second
+    // one since a hand last looked holds the story where it stands instead of walking into the same wall.
+    [Fact]
+    public void ADoubtPutsItsReportOnTheStoryAndTheSecondOneHoldsIt()
+    {
+        var test = WorkerTypes.All["Test"].Defaults;
+
+        var doubt = Assert.Single(test["Doubt"]);
+
+        Assert.Contains("{report}", doubt.Comment!, StringComparison.Ordinal);
+        Assert.Contains(WorkerTypes.QaDoubtMarker, doubt.Comment!, StringComparison.Ordinal);
+        Assert.Null(doubt.MoveTo);
+        Assert.Null(doubt.AddLabel);
+
+        Assert.Contains(test["DoubtAgain"], a => a.Comment?.Contains(WorkerTypes.QaDoubtMarker) == true);
+        Assert.Contains(test["DoubtAgain"], a => a.AddLabel == Labels.Stalled);
+        Assert.DoesNotContain(test["DoubtAgain"], a => a.MoveTo is not null);
+        Assert.Contains("DoubtAgain", WorkerTypes.All["Test"].Events);
     }
 }

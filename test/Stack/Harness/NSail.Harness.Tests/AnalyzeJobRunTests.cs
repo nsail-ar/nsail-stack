@@ -6,6 +6,7 @@ using NSail.Harness.Jobs;
 using NSail.Harness.Lanes;
 using NSail.Harness.Planning;
 using NSail.Harness.Repositories;
+using NSail.Harness.Workers;
 
 namespace NSail.Harness.Tests;
 
@@ -197,6 +198,26 @@ public class AnalyzeJobRunTests : IDisposable
         var (board, outcome) = await Run(new Analyst(null, "ruling"), "a story");
 
         Assert.Equal("Ruling", outcome.Event);
+    }
+
+    // What cannot be proven by a walk asks nobody a question: the story takes its own hold, not ruling's.
+    [Fact]
+    public async Task AStoryThatCannotBeWalkedEndsUnwalkableAndIsNotARuling()
+    {
+        var (board, outcome) = await Run(new Analyst(null, "unwalkable"), "a story");
+
+        Assert.Equal("Unwalkable", outcome.Event);
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+        Assert.Contains(WorkerTypes.All["Analyze"].Defaults["Unwalkable"], a => a.AddLabel == Labels.Unwalkable);
+        Assert.DoesNotContain(WorkerTypes.All["Analyze"].Defaults["Unwalkable"], a => a.MoveTo is not null);
+    }
+
+    [Fact]
+    public async Task AReleaseRedsAnalysisIsNeverUnwalkable()
+    {
+        var (_, outcome) = await Run(new Analyst(null, "unwalkable"), "Regression red on main (Acme)");
+
+        Assert.NotEqual("Unwalkable", outcome.Event);
     }
 
     // A change in the library and its use in the product: the second waits on the first.

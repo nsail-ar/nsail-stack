@@ -51,15 +51,17 @@ public class QaWalkTests
     }
 
     [Fact]
-    public void ARulingWalkSendsTheStoryToAnalyzeWearingRulingWithTheReport()
+    public void AStoryThatCannotBeWalkedStaysWhereItIsWearingUnwalkableWithTheReportAndAsksNobody()
     {
         var on = WorkerTypes.Of(WorkKind.Qa)!.Defaults;
 
-        Assert.Contains(on["Ruling"], a => a.AddLabel == Labels.Ruling);
-        Assert.Contains(on["Ruling"], a => a.MoveTo == Stages.Analyze);
-        Assert.Contains("{report}", on["Ruling"].Single(a => a.Comment is not null).Comment);
+        Assert.Contains(on["Unwalkable"], a => a.AddLabel == Labels.Unwalkable);
+        Assert.DoesNotContain(on["Unwalkable"], a => a.AddLabel == Labels.Ruling);
+        Assert.DoesNotContain(on["Unwalkable"], a => a.MoveTo is not null);
+        Assert.Contains("{report}", on["Unwalkable"].Single(a => a.Comment is not null).Comment);
+        Assert.Contains("!unwalkable", WorkerTypes.Of(WorkKind.Qa)!.Filter.Labels);
+        Assert.Contains(Labels.Unwalkable, Labels.Lifts);
         Assert.False(on.ContainsKey("Asked"));
-        Assert.False(on.ContainsKey("Doubt"));
     }
 
     [Fact]
@@ -79,16 +81,52 @@ public class QaWalkTests
     [Fact]
     public void OnlyAVerdictThatMovesTheStoryLeavesItOutOfReleased()
     {
-        foreach (var verdict in new[] { "Ok", "NotApplicable", "Bug", "BugAgain", "Ruling" })
+        foreach (var verdict in new[] { "Ok", "NotApplicable", "Bug", "BugAgain" })
         {
             Assert.True(QaJob.LeavesQa(new JobOutcome($"walked: {verdict}", Event: verdict)));
         }
-        foreach (var verdict in new[] { "NotLive", "Doubt", "NoVerdict" })
+        foreach (var verdict in new[] { "NotLive", "Doubt", "DoubtAgain", "Unwalkable", "NoVerdict" })
         {
             Assert.False(QaJob.LeavesQa(new JobOutcome($"walked: {verdict}", Event: verdict)));
         }
         Assert.False(QaJob.LeavesQa(new JobOutcome("walk stopped at the quota wall", DateTimeOffset.UtcNow)));
         Assert.False(QaJob.LeavesQa(null));
+    }
+
+    // A harness that just started reads its own record: a story it walked waits for the next cut as
+    // before the restart, and one a walk left to be tried again keeps the clock that walk set.
+    [Fact]
+    public void ARestartRemembersWhatItWalkedAndWhatItWasGoingToTryAgain()
+    {
+        var at = new DateTimeOffset(2026, 11, 20, 15, 0, 0, TimeSpan.Zero);
+
+        var (walked, again) = QaJob.Remembered(
+        [
+            Walk(1, at, "walked: Ok"),
+            Walk(2, at, "walked: Doubt"),
+            Walk(3, at, "walked: NotLive"),
+            Walk(4, at, "walked: Doubt"),
+            Walk(4, at.AddHours(1), "walked: DoubtAgain"),
+            Walk(5, at, "walked: Bug"),
+            Walk(5, at.AddHours(2), "walked: Doubt"),
+            new JobRecord("1120150000-dev-6", "dev #6", 6, at, at.AddMinutes(20), "pushed", "log"),
+            new JobRecord("1120150000-qa-7", "qa #7", 7, at, null, null, "log"),
+            Walk(8, at, "walk stopped at the quota wall"),
+        ]);
+
+        Assert.Equal(at.AddMinutes(20), walked[1]);
+        Assert.Equal(at.AddHours(1).AddMinutes(20), walked[4]);
+        Assert.Equal([1, 4], walked.Keys.Order());
+
+        Assert.Equal(at.AddMinutes(20) + QaJob.DoubtRecheck, again[2]);
+        Assert.Equal(at.AddMinutes(20) + QaJob.NotLiveRecheck, again[3]);
+        Assert.Equal(at.AddHours(2).AddMinutes(20) + QaJob.DoubtRecheck, again[5]);
+        Assert.Equal([2, 3, 5], again.Keys.Order());
+    }
+
+    static JobRecord Walk(int story, DateTimeOffset started, string outcome)
+    {
+        return new JobRecord($"{started:MMddHHmmss}-qa-{story}", $"qa #{story}", story, started, started.AddMinutes(20), outcome, "log", "ok", true);
     }
 
     [Fact]
@@ -99,7 +137,7 @@ public class QaWalkTests
             Assert.False(QaJob.WaitsForTheCut(new JobOutcome($"walked: {verdict}", Event: verdict)));
         }
 
-        foreach (var verdict in new[] { "Ok", "Bug", "Ruling", "NoVerdict" })
+        foreach (var verdict in new[] { "Ok", "Bug", "Unwalkable", "NoVerdict", "DoubtAgain" })
         {
             Assert.True(QaJob.WaitsForTheCut(new JobOutcome($"walked: {verdict}", Event: verdict)));
         }

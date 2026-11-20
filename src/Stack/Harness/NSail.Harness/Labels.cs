@@ -18,6 +18,11 @@ public static class Labels
     public const string Blocked = "blocked";
     public const string Hand = "hand";
 
+    // A hand's too, and its own word: the story cannot be walked as it stands, and somebody provides
+    // what the walk needs, proves it by hand or closes it. Kept apart from `ruling`, which is a
+    // question for whoever rules: most of what cannot be walked asks nobody anything.
+    public const string Unwalkable = "unwalkable";
+
     // The analyst's word that nothing of the story shows on a screen: the gate and its tests are its
     // proof, and no walk is spent on it.
     public const string NoWalk = "no-walk";
@@ -43,10 +48,10 @@ public static class Labels
     public const string AreaPrefix = "area:";
 
     // What a seat's labels.txt never sets: the machine's locks and holds, and a hand's priority.
-    public static readonly string[] SeatForbidden = [Claimed, Review, Analyzing, Walking, Ruling, Stalled, Blocked, Hand, P1, AllowProtected, Screened];
+    public static readonly string[] SeatForbidden = [Claimed, Review, Analyzing, Walking, Ruling, Stalled, Blocked, Hand, Unwalkable, P1, AllowProtected, Screened];
 
     public static readonly string[] Locks = [Claimed, Review, Analyzing, Walking];
 
     // What a hand lifts to send a story back to the machine: the counts start again from there.
-    public static readonly string[] Lifts = [Stalled, Ruling];
+    public static readonly string[] Lifts = [Stalled, Ruling, Unwalkable];
 }

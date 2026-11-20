@@ -30,7 +30,7 @@ public static class WorkerTypes
     const string PrStages = $"{Stages.Ready}|{Stages.InProgress}|{Stages.Analyze}|{Stages.Merged}";
 
     // The holds a story waits under for someone's word; locks (a job's own labels) are the engine's.
-    static readonly List<string> Holds = ["!ruling", "!stalled", "!blocked", "!hand"];
+    static readonly List<string> Holds = ["!ruling", "!stalled", "!blocked", "!hand", "!unwalkable"];
 
     static ActionOptions MoveTo(string stage)
     {
@@ -60,21 +60,26 @@ public static class WorkerTypes
     // A bug's comment carries the marker the next walk counts (BugAgain).
     public const string QaBugMarker = "<!-- qa-bug -->";
     const string QaBug = "QA caminó esto y no pasa.\n\n{report}\n\n" + QaBugMarker;
+    public const string QaDoubtMarker = "<!-- qa-doubt -->";
+    const string QaDoubt = "QA no pudo caminarla.\n\n{report}\n\n" + QaDoubtMarker;
 
     static readonly IReadOnlyDictionary<string, IReadOnlyList<ActionOptions>> None = new Dictionary<string, IReadOnlyList<ActionOptions>>();
 
     public static readonly IReadOnlyDictionary<string, WorkerType> All = new Dictionary<string, WorkerType>(StringComparer.OrdinalIgnoreCase)
     {
-        // Ready: shaped for a cold builder. Ruling: a question waits for a hand. Either way a stalled
+        // Ready: shaped for a cold builder. Ruling: a question waits for a hand. Unwalkable: the story
+        // cannot be proven by a walk and nothing in it can be changed so it can — it waits where it is
+        // for a hand to provide what is missing, and asks nobody a question. Either way a stalled
         // story's analysis ends its stall. Split: filed again as parts under it, which are what is built.
         // Elsewhere: its parts in other repositories are filed first, and it waits for them blocked.
         ["Analyze"] = new("Analyze", WorkKind.Analyze, true, true,
             new FilterOptions { Status = Stages.Analyze, SubIssues = "0", Pr = "none", Labels = Holds },
-            [.. WorkerType.BaseEvents, "Ready", "Ruling", "Done", "Split", "Elsewhere"],
+            [.. WorkerType.BaseEvents, "Ready", "Ruling", "Unwalkable", "Done", "Split", "Elsewhere"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {
                 ["Ready"] = [MoveTo(Stages.Ready), Remove(Labels.Stalled)],
                 ["Ruling"] = [Add(Labels.Ruling), Remove(Labels.Stalled)],
+                ["Unwalkable"] = [Add(Labels.Unwalkable), Remove(Labels.Stalled)],
                 ["Done"] = [MoveTo(Stages.Merged), Remove(Labels.Stalled)],
                 ["Split"] = [MoveTo(Stages.Backlog)],
                 ["Elsewhere"] = [MoveTo(Stages.Backlog)],
@@ -126,24 +131,28 @@ public static class WorkerTypes
         // One story walked in a browser on the test tenant, the one its release went live on; its
         // events are the walker's verdicts, and {report} in a comment is what the walker wrote. Ok and
         // NotApplicable close it. Bug sends it back to Analyze with the report; BugAgain is a second
-        // bug since a hand last lifted a hold — a fix that did not hold waits for a hand. Ruling: the
+        // bug since a hand last lifted a hold — a fix that did not hold waits for a hand. Unwalkable: the
         // story cannot be walked as it stands (it needs something nobody provided: an account, an
-        // environment, a person, a payment), so it goes to Analyze wearing `ruling` and the report
-        // says what a hand decides. NotLive: its tenant runs an older build, it stays for the next cut.
+        // environment, a person, a payment), so it stays Released wearing `unwalkable` and the report
+        // says what a hand provides; the label off, it is walked again. NotLive: its tenant runs an older build, it stays for the next cut.
         // Doubt: the walk could not be made for a reason outside the story (the tenant is down, the
-        // tools failed); nothing moves and it is tried again after QaJob.DoubtRecheck. NoVerdict: the
+        // tools failed); its report goes on the story, nothing moves and it is tried once more after
+        // QaJob.DoubtRecheck. DoubtAgain is a second doubt since a hand last lifted a hold: the wall
+        // did not go away by itself, so the story waits for a hand where it stands. NoVerdict: the
         // walker died. The story stands in QA only while it is walked (QaJob.Walk); one a dead harness left
         // there is walked again.
         ["Test"] = new("Test", WorkKind.Qa, true, false,
             new FilterOptions { Status = $"{Stages.Released}|{Stages.Qa}", InVersion = true, Labels = Holds },
-            [.. WorkerType.BaseEvents, "Ok", "NotApplicable", "Bug", "BugAgain", "Ruling", "NotLive", "Doubt", "NoVerdict"],
+            [.. WorkerType.BaseEvents, "Ok", "NotApplicable", "Bug", "BugAgain", "Unwalkable", "NotLive", "Doubt", "DoubtAgain", "NoVerdict"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {
                 ["Ok"] = [Say("{report}"), MoveTo(Stages.Closed), Close()],
                 ["NotApplicable"] = [Say("{report}"), MoveTo(Stages.Closed), Close()],
                 ["Bug"] = [Say(QaBug), MoveTo(Stages.Analyze)],
                 ["BugAgain"] = [Say(QaBug), Add(Labels.Stalled), MoveTo(Stages.Analyze)],
-                ["Ruling"] = [Say("**QA no puede caminarla**\n\n{report}"), Add(Labels.Ruling), MoveTo(Stages.Analyze)],
+                ["Unwalkable"] = [Say("**QA no puede caminarla**\n\n{report}"), Add(Labels.Unwalkable)],
+                ["Doubt"] = [Say(QaDoubt)],
+                ["DoubtAgain"] = [Say(QaDoubt), Add(Labels.Stalled)],
                 ["NoVerdict"] = [Say("QA terminó sin veredicto.\n\n{report}")],
             }, Minutes: 60),
         ["Release"] = new("Release", WorkKind.Release, false, false, new FilterOptions(), WorkerType.BaseEvents, None, Minutes: 150),

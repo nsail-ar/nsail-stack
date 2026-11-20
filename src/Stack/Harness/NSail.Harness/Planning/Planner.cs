@@ -68,7 +68,7 @@ public static class Planner
 
     public static string? HoldOf(Issue i, PlannerOptions options)
     {
-        foreach (var hold in new[] { Labels.Claimed, Labels.Review, Labels.Ruling, Labels.Stalled, Labels.Blocked, Labels.Analyzing, Labels.Walking, Labels.Hand })
+        foreach (var hold in new[] { Labels.Claimed, Labels.Review, Labels.Ruling, Labels.Stalled, Labels.Blocked, Labels.Analyzing, Labels.Walking, Labels.Hand, Labels.Unwalkable })
         {
             if (i.Has(hold)) return hold;
         }

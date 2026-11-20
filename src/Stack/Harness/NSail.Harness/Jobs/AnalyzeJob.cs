@@ -49,7 +49,7 @@ public sealed partial class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory
         var stage = await board.StageOf(n, ct);
         var why = stage != Stages.Analyze ? $"its stage is {stage}, not Analyze"
             : !open ? "it is closed"
-            : labels.Overlaps([Labels.Ruling, Labels.Blocked, Labels.Claimed, Labels.Review, Labels.Walking, Labels.Analyzing, Labels.Hand]) ? "it carries a hold or a lock"
+            : labels.Overlaps([Labels.Ruling, Labels.Blocked, Labels.Claimed, Labels.Review, Labels.Walking, Labels.Analyzing, Labels.Hand, Labels.Unwalkable]) ? "it carries a hold or a lock"
             : await board.Children(n, ct) > 0 ? "it has sub-issues: a spine is built through its children"
             : null;
         if (why is not null) return new JobOutcome($"not analyzed — {why}", Idle: true);
@@ -174,6 +174,9 @@ public sealed partial class AnalyzeJob(WorkItem item, JobContext ctx, JobHistory
                 await Post();
                 await WrittenBlockers.Link(board, n, comment, ctx.Names.Key, ct, ctx.Repos);
                 return new Ending("ruling", "Ruling");
+            case "VERDICT: unwalkable" when comment.Trim().Length > 0 && !ctx.Texts.IsRed(title):
+                await Post();
+                return new Ending("unwalkable", "Unwalkable");
             case "VERDICT: done" when comment.Trim().Length > 0:
                 var (fix, refused) = await NamedFix(n, title, dir, Read("fix.txt"), ct);
                 if (refused is not null)
