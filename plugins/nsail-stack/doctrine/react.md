@@ -130,7 +130,7 @@ packages live in `src/Stack/React/`, split where the vendor starts — the line
 
 | Package | Folder | Holds |
 |---|---|---|
-| `@nsail/stack` | `src/Stack/React/NSail.React.Stack` | Vendor-free: the descriptors, `Mediator.send`, `Problem`, the client half of `MessageValidator`, `Strings`, and the hooks a page reads with (`useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`) |
+| `@nsail/stack` | `src/Stack/React/NSail.React.Stack` | Vendor-free: the descriptors, `Mediator.send`, `Problem`, the client half of `MessageValidator`, `Strings`, and the hooks a page reads with (`useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`, `useSession`) |
 | `@nsail/ui` | `src/Stack/React/NSail.React.Ui` | The `Ns*` components and `ns.css` |
 
 **Two ways in, one source.** Each package's `exports` answers the `@nsail/source` condition with
@@ -157,6 +157,7 @@ is always a `BusinessError` carrying a `Problem`: the server's own when it sent 
 | `NsApp` | ui | `StackProvider` plus the catalog read before the first paint (`useCatalog`) (a regional `language` such as `es-AR` uses its base language's Stack strings) and the one confirmation surface |
 | `Strings` | stack | `StringManager`'s resolution: a miss renders the key; `Problems.{Code}.{Source}` → `Problems.{Code}` → the message; the `entity` argument is a key and `at` an ISO instant shown in the reader's zone |
 | `useLoad` + `NsLoad` | stack + ui | A region owns its read (convert-to-nsload's contract): a spinner the first time, the last answer dimmed while it re-reads, a failure in place with a retry where a second try can pass (`isRetryable`) — never a toast |
+| `useSession` + `NsSignedIn` | stack + ui | Who is signed in, read once for the client from its session message; a region that draws its content only once the session is read and signed in (Sign-in, below) |
 | `useForm` + `NsForm` + `NsField` | stack + ui | A form over one message, one send at a time (a call while one is in flight returns `false`), `saved` only while nothing changed since the send, `reset` clearing it unless `keepSaved` marks the re-read of what was just sent: `NsField name="…"` picks its input from the member's kind, its label from the member's key, its bounds from the message; refusals are checked as the user types and the server's land under the field they name; anything no field can show is drawn above the fields; `onReload` is offered only for a `Conflict` |
 | `NsTable`, `NsPager`, `NsSearch`, `NsEnumSelect` | ui | A projection's rows with headers from keys and cells formatted by kind (`ungrouped` columns skip digit grouping), rows that open by click also open from the keyboard; a `DataPage`'s pager; a debounced search bound by its member; an enum pick whose options come from the descriptor |
 | `NsPage`, `NsButton`, `useConfirm` | ui | A titled page; a button whose `text` is a key, never a sentence; one native `<dialog>` for confirmations (a second `confirm()` resolves the first `false`, as does an unmount), opening on the act it offers and on the way out when `danger` says the act destroys ([ui/forms.md](ui/forms.md), *Focus on open*) |
@@ -171,6 +172,39 @@ same defect it is in Razor.
 
 **Routes are a table.** The client declares each address once (`src/routes.ts`) and a link
 asks it by name; a path literal in a screen is a defect, as in Razor.
+
+---
+
+## Sign-in
+
+A client of a host that composes Iam declares two things, and the Stack carries no more of Iam
+than that: the Stack names no kit's message.
+
+```tsx
+const mediator = new Mediator({ signIn: routes.signIn.href() });
+
+<NsApp mediator={mediator} language={language} strings={strings} session={GetSession}>
+```
+
+- **The session is the host's cookie.** Every send leaves `credentials` at `same-origin`, so the
+  HttpOnly cookie Iam issued travels to the host that served the page and no script reads it or
+  holds a token in its place. A client whose API lives on another origin is not covered.
+- **The session message** (`session`, on `NsApp` or `StackProvider`) is the client's own Sdk
+  message that answers `NSail.Security.Session` — the house's is Iam's `GetSession`. It is read
+  once for the whole client; `useSession()` answers it as a `Load`, and its `reload()` is how the
+  client reports a sign-in or a sign-out it made. `NsSignedIn` draws its content only once the
+  session is read and signed in — never while it is read, never from a read that failed — and
+  `anonymous` otherwise.
+- **The sign-in address** (`signIn`, on `Mediator`) is a route of the client's table, never a
+  literal. A send answered 401 turns the page to it with `location.assign`, carrying where the
+  visitor was (path, query and fragment on the host) on `returnUrl` — the spelling of
+  `SignInRoutes.ReturnUrlParameter`, which Iam's sign-in page honours — and still throws its
+  refusal. It turns once per page however many sends answer 401 together, and carries nothing
+  from the root or from the sign-in address itself, as `NsNotAuthorized` does: a second turn
+  would write the sign-in page in as the way back.
+- **Only a 401 turns.** A 403 is a signed-in refusal: it stays a `BusinessError` drawn where the
+  send was made, because turning it to sign-in would loop. A client that declares no `signIn`
+  meets a 401 as any refusal.
 
 ---
 
@@ -199,9 +233,6 @@ gone in 19).
 
 ## Not yet
 
-- **Sign-in.** The Sample composes no Iam; its messages are open through an anonymous
-  built-in policy, with the gate on. A client of a host that composes Iam needs the
-  session, the cookie and the 401 → sign-in turn on the TypeScript side first.
 - **Publish.** The client is built beside the host by `Build`, and nothing copies it into a publish yet; a `dotnet publish` that
   should carry it has to run after that build on a machine with the workspace installed.
 - **Coded rules** are judged by the server only (above).
