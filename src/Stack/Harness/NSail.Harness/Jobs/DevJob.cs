@@ -441,6 +441,14 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
             return new Ending("a wall — blocked until it is lifted", "Walled");
         }
 
+        // A change that has to land in another repository first is the analysis's to split and block, never a hand's to rule.
+        if (Out("elsewhere.md") is { Length: > 0 } elsewhere)
+        {
+            if (await NothingToBuild(elsewhere) is { } landed) return landed;
+            await board.Comment(n, JobContext.Signed(elsewhere, Seat));
+            return new Ending("needs a change in another repository first — to the analyst", "Reanalyze");
+        }
+
         if (Out("ruling.md") is { Length: > 0 } question)
         {
             if (await NothingToBuild(question) is { } landed) return landed;
