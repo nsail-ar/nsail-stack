@@ -204,7 +204,7 @@ public class GitStorageProvider : IStorageProvider
             throw new BusinessException(BusinessProblem.RuleViolation(
                 "StorageGitEndpointRequired",
                 nameof(StorageTarget.Endpoint),
-                "A Git target needs the address its repositories live under."));
+                "A Git target needs the address of its repositories."));
         }
 
         var clone = new Checkout(target);

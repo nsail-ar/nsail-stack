@@ -21,7 +21,7 @@ namespace NSail.Components.Tests;
 /// a refusal that fades is the silent failure principles.md forbids.</summary>
 public sealed class ConfirmSendInUseTests : BunitContext
 {
-    const string Fallback = "Este registro está en uso y no se puede borrar. Deshabilitalo para ocultarlo.";
+    const string Fallback = "Este registro está en uso y no se puede eliminar. Deshabilitalo para ocultarlo.";
 
     readonly CountingDialogManager _dialogs = new();
     readonly RefusingMediator _mediator = new();

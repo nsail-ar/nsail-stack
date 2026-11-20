@@ -60,7 +60,7 @@ public class S3StorageProvider : IStorageProvider
         {
             throw new BusinessException(BusinessProblem.RuleViolation(
                 "ContentNotSeekable",
-                "An S3 target needs the length of what it is given, so the content must be a seekable stream."));
+                "An S3 target needs a seekable stream to know the content's length."));
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Put, Address(target, key))
@@ -276,7 +276,7 @@ public class S3StorageProvider : IStorageProvider
             throw new BusinessException(BusinessProblem.RuleViolation(
                 "StorageEndpointRequired",
                 nameof(StorageTarget.Endpoint),
-                "An S3 target needs the address of the service it lives at."));
+                "An S3 target needs the service address."));
         }
 
         return $"{target.Endpoint.TrimEnd('/')}/{Uri.EscapeDataString(target.Container)}";
