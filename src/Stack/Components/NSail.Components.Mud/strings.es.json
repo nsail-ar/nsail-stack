@@ -53,7 +53,7 @@
   "Common.UnsavedChanges": "Tenés cambios sin guardar. ¿Salir igual?",
   "Common.UnsavedChangesTitle": "Cambios sin guardar",
   "Common.ConfirmSend": "¿Confirmás esta acción?",
-  "Common.InUse": "Este registro está en uso y no se puede borrar. Deshabilitalo para ocultarlo.",
+  "Common.InUse": "Este registro está en uso y no se puede eliminar. Deshabilitalo para ocultarlo.",
   "Common.Confirm": "Confirmar",
   "Common.Alert": "Aviso",
   "Common.Yes": "Sí",
@@ -198,7 +198,7 @@
   "Mud.MudTabs_ScrollUp": "Desplazar hacia arriba",
   "Mud.MudTabs_ScrollDown": "Desplazar hacia abajo",
   "Common.NoRecords": "No hay registros para mostrar",
-  "Common.ExportTooLarge": "La exportación supera las {max} filas; acotá la lista con un filtro y exportá de nuevo.",
+  "Common.ExportTooLarge": "La exportación supera las {max} filas. Filtrá la lista y exportá de nuevo.",
   "Common.TimeGridHiddenDay": "Mostrando {day}. Hay 1 día más oculto esta semana",
   "Common.TimeGridHiddenDay.Plural": "Mostrando {day}. Hay {count} días más ocultos esta semana",
 
