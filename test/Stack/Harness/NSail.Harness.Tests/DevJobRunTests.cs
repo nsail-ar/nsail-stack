@@ -26,6 +26,10 @@ public class DevJobRunTests : IDisposable
     public void Dispose()
     {
         if (!Directory.Exists(_root)) return;
+        if (!OperatingSystem.IsWindows())
+        {
+            foreach (var d in Directory.EnumerateDirectories(_root, "*", SearchOption.AllDirectories)) File.SetUnixFileMode(d, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
         foreach (var f in Directory.EnumerateFiles(_root, "*", SearchOption.AllDirectories)) File.SetAttributes(f, FileAttributes.Normal);
         Directory.Delete(_root, true);
     }
@@ -293,10 +297,11 @@ public class DevJobRunTests : IDisposable
 
     FileRepository Repo => _repo ??= new FileRepository(Remote);
 
-    async Task<JobOutcome> Run(IAgent seat, MemoryBoard board, Lines logs, WorkerOptions? worker = null)
+    async Task<JobOutcome> Run(IAgent seat, MemoryBoard board, Lines logs, WorkerOptions? worker = null, string? runCodeAs = null)
     {
         var options = new HarnessOptions
         {
+            RunCodeAs = runCodeAs,
             WorkRoot = Path.Combine(_root, "work"),
             Repositories = [new RepositoryOptions { Name = "acme/app" }],
             ProtectedPaths = [".github/workflows/**"],
@@ -968,5 +973,67 @@ public class DevJobRunTests : IDisposable
         Assert.Equal(wall, outcome.QuotaUntil);
         Assert.Empty(JobEvents.Fired(outcome));
         Assert.Empty(Repo.Opened);
+    }
+
+    // A seat that leaves what a tool of it may leave in the dossier: a folder without write permission,
+    // holding a file, beside its ending. Then what the next seat finds there at its start.
+    sealed class Leaving(string? runsAs = null) : IAgent
+    {
+        public bool? Found { get; private set; }
+
+        public string Driver => "test";
+
+        public string? RunsAs => runsAs;
+
+        [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+        public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
+        {
+            var voyage = Path.Combine(run.WorkDir, ".voyage");
+            Found = Directory.Exists(Path.Combine(voyage, "cache")) || File.Exists(Path.Combine(voyage, "out", "handoff.md"));
+            var cache = Directory.CreateDirectory(Path.Combine(voyage, "cache")).FullName;
+            await File.WriteAllTextAsync(Path.Combine(cache, "kept"), "a tool's", ct);
+            File.SetUnixFileMode(cache, UnixFileMode.UserRead | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+            await File.WriteAllTextAsync(Path.Combine(voyage, "out", "handoff.md"), "Nothing to change yet.", ct);
+            return new AgentResult(0, false, null, false, null);
+        }
+
+        public IReadOnlyDictionary<string, string> ScriptEnvironment(string name)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        public (bool Refused, DateTimeOffset? Until) Quota(string output)
+        {
+            return (false, null);
+        }
+    }
+
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task AReadOnlyFolderTheLastSeatLeftInTheDossierIsGoneWhenTheNextSeatStarts()
+    {
+        await Seed();
+        var board = Board();
+        await Run(new Leaving(), board, new Lines());
+        var next = new Leaving();
+
+        var outcome = await Run(next, board, new Lines());
+
+        Assert.False(next.Found);
+        Assert.Equal("HandedOff", outcome.Event);
+    }
+
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task ADossierTheCodeAccountCannotRemoveIsTheMachinesFaultNamingTheStep()
+    {
+        await Seed();
+        var board = Board();
+        await Run(new Leaving(), board, new Lines());
+        using var sudo = new ChildEnvironmentTests.FakeSudo();
+        var next = new Leaving("builder");
+
+        var fault = await Assert.ThrowsAsync<WorkspaceFault>(() => Run(next, board, new Lines(), runCodeAs: "builder"));
+
+        Assert.Equal("reset .voyage", fault.Step);
+        Assert.Null(next.Found);
     }
 }

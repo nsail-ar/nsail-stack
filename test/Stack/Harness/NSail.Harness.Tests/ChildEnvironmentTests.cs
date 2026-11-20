@@ -118,7 +118,7 @@ public class ChildEnvironmentTests
         var dir = Directory.CreateTempSubdirectory().FullName;
         try
         {
-            var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => Context("builder").Remove(dir));
+            var refused = await Assert.ThrowsAsync<WorkspaceFault>(() => Context("builder").Remove(dir));
 
             Assert.Contains("argv=-n -H -u builder --preserve-env=", refused.Message);
             Assert.Contains($"-- setsid -w rm -rf {dir}", refused.Message);
@@ -138,6 +138,20 @@ public class ChildEnvironmentTests
 
         await ctx.Remove(dir);
         await ctx.Remove(dir);
+
+        Assert.False(Directory.Exists(dir));
+    }
+
+    // What a review's or a walk's seat left read-only in its dossier goes with the reset they make through the context.
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task AReadOnlyFolderASeatLeftIsRemovedWithTheReset()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        var cache = Directory.CreateDirectory(Path.Combine(dir, "cache")).FullName;
+        File.WriteAllText(Path.Combine(cache, "kept"), "");
+        File.SetUnixFileMode(cache, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+
+        await Context(null).Remove(dir);
 
         Assert.False(Directory.Exists(dir));
     }
@@ -177,7 +191,7 @@ public class ChildEnvironmentTests
 
     // A sudo first on the PATH that prints the line it was given and the HOME it was started with,
     // and fails, so a builder stops at its first step.
-    sealed class FakeSudo : IDisposable
+    internal sealed class FakeSudo : IDisposable
     {
         readonly string _bin = Directory.CreateTempSubdirectory().FullName;
         readonly Held _path;
