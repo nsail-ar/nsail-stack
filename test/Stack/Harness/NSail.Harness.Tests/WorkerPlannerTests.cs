@@ -26,7 +26,7 @@ public class WorkerPlannerTests
     [Fact]
     public void NSailsWorkersCompileInPriorityOrder()
     {
-        Assert.Equal(["release-shop", "release-clinic", "release-admin", "verify-main", "verify-pr", "review", "round", "test", "test-asked", "analyze-stalled", "analyze", "develop",
+        Assert.Equal(["release-shop", "release-clinic", "release-admin", "verify-main", "verify-pr", "review", "round", "test", "analyze-stalled", "analyze", "develop",
             "no-column", "unblock-backlog", "unblock", "epics-start", "orphans-new", "orphans-built"], Workers.Select(w => w.Name));
     }
 
@@ -143,7 +143,6 @@ public class WorkerPlannerTests
         Assert.Equal(["qa #1"], Lines(new Fixture().Story(1, "Released", milestone: true)));
         Assert.Empty(Lines(new Fixture().Story(1, "Released")));
         Assert.Empty(Lines(new Fixture().Story(1, "Released", "walking", milestone: true).LockAge(1, "walking", TimeSpan.FromMinutes(1))));
-        Assert.Equal(["qa #2"], Lines(new Fixture().Story(2, "QA", "qa-asked", milestone: true)));
         Assert.Empty(Lines(new Fixture().Story(2, "QA", milestone: true)));
     }
 

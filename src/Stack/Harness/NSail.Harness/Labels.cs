@@ -18,9 +18,6 @@ public static class Labels
     public const string Blocked = "blocked";
     public const string Hand = "hand";
 
-    // QA asked a person for something and waits for the answer.
-    public const string QaAsked = "qa-asked";
-
     // The analyst's word that nothing of the story shows on a screen: the gate and its tests are its
     // proof, and no walk is spent on it.
     public const string NoWalk = "no-walk";

@@ -13,8 +13,9 @@ public class QaVerdictTests
     [InlineData("VERDICT: ok", "Ok")]
     [InlineData("VERDICT: n/a", "NotApplicable")]
     [InlineData("VERDICT: bug", "Bug")]
-    [InlineData("VERDICT: asked", "Asked")]
-    [InlineData("VERDICT: waiting", "Waiting")]
+    [InlineData("VERDICT: ruling", "Ruling")]
+    [InlineData("VERDICT: asked", "NoVerdict")]
+    [InlineData("VERDICT: waiting", "NoVerdict")]
     [InlineData("VERDICT: not-live", "NotLive")]
     [InlineData("VERDICT: doubt", "Doubt")]
     [InlineData("VERDICT: maybe", "NoVerdict")]
@@ -28,7 +29,7 @@ public class QaVerdictTests
     public void TheReportIsWhatFollowsTheVerdict()
     {
         Assert.Equal("BUG: the total is wrong\n\n1. opened the sale", QaJob.Verdict("VERDICT: bug\nBUG: the total is wrong\n\n1. opened the sale\n").Report);
-        Assert.Equal("Ana, mandá un mensaje.", QaJob.Verdict("VERDICT: asked\nASKED: story\n\nAna, mandá un mensaje.\n").Report);
+        Assert.Equal("Falta una cuenta de Mercado Pago.", QaJob.Verdict("VERDICT: ruling\n\nFalta una cuenta de Mercado Pago.\n").Report);
         Assert.Equal("it died", QaJob.Verdict("it died").Report);
     }
 
@@ -49,7 +50,7 @@ public class QaVerdictTests
         Assert.Contains(test["Bug"], a => a.MoveTo == Stages.Analyze);
         Assert.Contains(test["Bug"], a => a.Comment!.Contains(WorkerTypes.QaBugMarker) == true);
         Assert.Contains(test["BugAgain"], a => a.AddLabel == Labels.Stalled);
-        Assert.Contains(test["Asked"], a => a.AddLabel == Labels.QaAsked);
+        Assert.Contains(test["Ruling"], a => a.AddLabel == Labels.Ruling);
         Assert.False(test.ContainsKey("NotLive"));
     }
 }

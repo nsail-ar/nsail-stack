@@ -77,11 +77,11 @@ public class PlannerTests
     }
 
     [Fact]
-    public void AStoryInQaWithNoAskIsSaidOutLoud()
+    public void AStoryInQaWithNoHoldIsSaidOutLoud()
     {
-        var plan = SampleWorkers.Plan(new Fixture().Story(6, "QA").Story(7, "QA", "qa-asked").Build());
+        var plan = SampleWorkers.Plan(new Fixture().Story(6, "QA").Story(7, "QA", "ruling").Build());
 
-        Assert.Contains(plan.Notes, n => n.StartsWith("#6: in QA with no ask", StringComparison.Ordinal));
+        Assert.Contains(plan.Notes, n => n.StartsWith("#6: in QA — no walk reads it", StringComparison.Ordinal));
         Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#7:", StringComparison.Ordinal));
     }
 
