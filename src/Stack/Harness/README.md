@@ -105,6 +105,10 @@ the files it leaves.
     a pinned repository's once the pin holds them — and it is analyzed against that tree. A story sends its
     parts once: a second `elsewhere` since a hand last lifted a hold counts as a death. Never on a release
     red or a `stalled` story.
+  - An analyst whose story cannot be proven by a walk, and that nothing it could add to the story would make
+    walkable, ends it with `VERDICT: unwalkable` and says in `comment.md` what is missing: the story takes
+    `unwalkable` where it stands (the `Unwalkable` event) and waits for a hand, as a walk that found the same
+    does. Never on a release red.
   - `Workers` (by name, ordered by `Priority`): everything the harness takes.
     Each has a `Type` (Analyze, Develop, Review, Verify, Test, Release, Watch, UpdateBoard) whose defaults
     (`Workers/WorkerTypes.cs`: filter, events, what each event does on the board, minutes) it changes only
@@ -134,16 +138,23 @@ the files it leaves.
     a tenant's `Live.Header`) — a story its tenant does not run yet is not walked, and is asked again
     after `QaJob.NotLiveRecheck` rather than at the next cut, because a deploy lands after its cut — and attaches
     the walk's shots to the board (on GitHub, the attachments a pasted file becomes). A walk that could
-    not be made for a reason outside the story (a doubt: the tenant is down, the tools failed) moves
-    nothing and is tried again after `QaJob.DoubtRecheck`.
+    not be made for a reason outside the story (a doubt: the tenant is down, the tools failed) puts its
+    report on the story, moves nothing and is tried once more after `QaJob.DoubtRecheck`; a second doubt
+    since a hand last lifted a hold puts `stalled` on the story where it stands, since a wall that did
+    not go away by itself is a hand's to read and another walk would only spend a walker on it. Both
+    clocks — walked, wait for the next cut; left to be tried again, and until when — are read back from
+    the machine's own job record when the harness starts (`QaJob.Remembered`), so a restart walks
+    nothing twice.
     A story wearing `no-walk` (the analyst's word that nothing of it shows on a screen; a hand takes
     it off to have it walked) closes as `n/a` with no walker and no browser: its gate and tests are its proof.
-    The walker writes `VERDICT: ok|n/a|bug|ruling|not-live|doubt` and its report: the verdict is
-    the event, and the board is the harness's. A `ruling` is a story that cannot be walked as it
-    stands (it needs an account, an environment, a person, a payment nobody provided): it goes to
-    Analyze wearing `ruling`, and a hand decides. The QA column is what is being walked: a story enters it when its walk
+    The walker writes `VERDICT: ok|n/a|bug|unwalkable|not-live|doubt` and its report: the verdict is
+    the event, and the board is the harness's. An `unwalkable` is a story that cannot be walked as it
+    stands (it needs an account, an environment, a person, a payment nobody provided): it stays
+    Released wearing `unwalkable` with the report, a hold every worker leaves alone, and it is walked again once a
+    hand takes the label off. It is not `ruling`: that is a question for whoever rules, and a story that cannot be
+    walked asks nobody one — a hand provides what is missing, proves it by hand or closes it. The QA column is what is being walked: a story enters it when its walk
     starts (after the check that every product it names runs it) and leaves it by its verdict; a walk that gave none (a
-    doubt, a dead walker, a tenant the walker found behind, the quota wall) puts it back in Released, where what waits its
+    doubt, an unwalkable, a dead walker, a tenant the walker found behind, the quota wall) puts it back in Released, where what waits its
     turn or its cut stands. A story a dead harness left in QA is walked again. A walker that found its tenant behind spent
     a walk, so it is tried again on the doubt's clock, not the check's. A Watch reads its `Source` (a log source by name) every `Every` minutes, from where it
     last read (`Lookback` hours the first time) up to `IngestLag` minutes (default five) short of now, for a
@@ -218,7 +229,7 @@ the files it leaves.
     blocker merged in a pinned repository holds until the pin holds its merge. A
     machine's Local changes or disables (`Enabled: false`) one by name.
     A worker's `DailyCap` is how many jobs that ran an agent one story takes from this machine in a
-    day, counted by kind of work since a hand last lifted `ruling` or `stalled` (`HarnessLoop.Capped`):
+    day, counted by kind of work since a hand last lifted a hold (`Labels.Lifts`; `HarnessLoop.Capped`):
     the next is not started, and the story takes `ruling` and one comment (Texts `DailyCap`). A story
     sent back that many times is not converging, and each lap costs an agent; a job that ended before
     its seat (a quiet ask, a tenant not live) counts for nothing. A red's story and a job sent by hand
@@ -290,7 +301,7 @@ the files it leaves.
   product's cut runs on the code host. Main's gate, the release's while an andon is lit, is no sign that the
   release moves: every merge of the line moves main. The andon stays lit; nothing unsticks it but what it waits for. It lifts when
   the red story ships (its walk moves it to Released, or its product published a release after the fix merged) or a hand closes it; a story a hand holds
-  (`ruling`, `hand`, `blocked`, `stalled`) keeps it lit and says so. A red story (a suite's or a red
+  (`ruling`, `hand`, `blocked`, `stalled`, `unwalkable`) keeps it lit and says so. A red story (a suite's or a red
   main's, `HarnessTexts.IsRed`) never asks a hand: a builder's question sends it to Analyze with no
   `ruling` (event `Reanalyze`; with a PR open, the next round decides it), a reviewer's crack goes
   back to its builder as `Findings`, and an analysis that ends `ruling` is refused and counted as a

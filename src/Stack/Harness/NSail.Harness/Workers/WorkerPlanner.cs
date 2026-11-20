@@ -78,7 +78,7 @@ public static class WorkerPlanner
 
         var items = new List<WorkItem>();
         var taken = new HashSet<int>();
-        var wip = prsByStory.Keys.Where(n => issues.FirstOrDefault(i => i.Number == n) is { } i && Planner.HoldOf(i, options) is not (Labels.Ruling or Labels.Blocked or Labels.Hand or Labels.Stalled))
+        var wip = prsByStory.Keys.Where(n => issues.FirstOrDefault(i => i.Number == n) is { } i && Planner.HoldOf(i, options) is not (Labels.Ruling or Labels.Blocked or Labels.Hand or Labels.Stalled or Labels.Unwalkable))
             .Union(flight.DevStories).Distinct().Count();
         var full = options.WipLimit > 0 && wip >= options.WipLimit;
         var limit = full && !held ? notes.Count : -1;

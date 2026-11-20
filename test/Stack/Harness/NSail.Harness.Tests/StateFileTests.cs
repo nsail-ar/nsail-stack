@@ -21,7 +21,7 @@ public sealed class StateFileTests : IDisposable
 
     HarnessLoop Loop(bool takeNew = true)
     {
-        return new HarnessLoop(null!, null!, null!, null!, null!, null!, null!, null!, null!,
+        return new HarnessLoop(null!, null!, null!, null!, new JobHistory(Path.Combine(_root, "history")), null!, null!, null!, null!,
             Options.Create(new HarnessOptions { TakeNew = takeNew }), null!, new HarnessMetrics(), new WatchState(null),
             new HarnessState(_root), NullLogger<HarnessLoop>.Instance);
     }
@@ -51,7 +51,7 @@ public sealed class StateFileTests : IDisposable
     [Fact]
     public void A_deploy_restart_pause_is_not_kept()
     {
-        var first = new HarnessLoop(null!, null!, null!, null!, null!, null!, null!, null!, null!,
+        var first = new HarnessLoop(null!, null!, null!, null!, new JobHistory(Path.Combine(_root, "history")), null!, null!, null!, null!,
             Options.Create(new HarnessOptions()), new Lifetime(), new HarnessMetrics(), new WatchState(null),
             new HarnessState(_root), NullLogger<HarnessLoop>.Instance);
         first.Restart("a deploy");
@@ -63,7 +63,7 @@ public sealed class StateFileTests : IDisposable
     [Fact]
     public void A_hand_pause_survives_a_deploy_restart()
     {
-        var first = new HarnessLoop(null!, null!, null!, null!, null!, null!, null!, null!, null!,
+        var first = new HarnessLoop(null!, null!, null!, null!, new JobHistory(Path.Combine(_root, "history")), null!, null!, null!, null!,
             Options.Create(new HarnessOptions()), new Lifetime(), new HarnessMetrics(), new WatchState(null),
             new HarnessState(_root), NullLogger<HarnessLoop>.Instance);
         first.Pause("by hand");

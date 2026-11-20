@@ -58,7 +58,7 @@ public static class ReleaseAndon
     // What the release waits for, read off where its red story stands.
     internal static string WaitsFor(Issue story)
     {
-        foreach (var hold in new[] { Labels.Ruling, Labels.Hand, Labels.Blocked, Labels.Stalled })
+        foreach (var hold in new[] { Labels.Ruling, Labels.Hand, Labels.Blocked, Labels.Stalled, Labels.Unwalkable })
         {
             if (story.Has(hold)) return $"a hand: #{story.Number} wears `{hold}`";
         }

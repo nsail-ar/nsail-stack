@@ -143,7 +143,8 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
             var (evt, report) = Verdict(text.Length > 0 ? text : why);
             report = $"{report}\n\n{await Evidence(n, dir, shots, started, ct)}\n\nLog: {Path.GetFileName(logPath)} on {ctx.Options.Machine}".Trim();
             if (quota is not null && evt == "NoVerdict") return new JobOutcome("walk stopped at the quota wall", quota);
-            if (evt is "Bug" && await BugBefore(n, ct)) evt = "BugAgain";
+            if (evt is "Bug" && await Before(n, WorkerTypes.QaBugMarker, ct)) evt = "BugAgain";
+            if (evt is "Doubt" && await Before(n, WorkerTypes.QaDoubtMarker, ct)) evt = "DoubtAgain";
             return new JobOutcome($"walked: {evt}", quota, Event: evt, Failed: evt == "NoVerdict", Report: report);
         }
     }
@@ -257,6 +258,33 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     // longer clock: each try spends a walker.
     public static readonly TimeSpan DoubtRecheck = TimeSpan.FromHours(1);
 
+    const string Walked = "walked: ";
+
+    // What this machine's own record says of its walks, for a harness that just started: the stories
+    // it walked and when, and the ones a walk left to be tried again and until when. Without it a
+    // restart forgets both clocks and walks everything again at once.
+    internal static (Dictionary<int, DateTimeOffset> Walked, Dictionary<int, DateTimeOffset> Again) Remembered(IEnumerable<JobRecord> jobs)
+    {
+        var walked = new Dictionary<int, DateTimeOffset>();
+        var again = new Dictionary<int, DateTimeOffset>();
+        foreach (var job in jobs.Where(j => j is { Story: not null, Ended: not null, Outcome: not null } && j.Outcome.StartsWith(Walked, StringComparison.Ordinal)).OrderBy(j => j.Ended))
+        {
+            var n = job.Story!.Value;
+            var outcome = new JobOutcome(job.Outcome!, Event: job.Outcome![Walked.Length..]);
+            walked.Remove(n);
+            again.Remove(n);
+            if (WaitsForTheCut(outcome))
+            {
+                walked[n] = job.Ended!.Value;
+            }
+            else
+            {
+                again[n] = job.Ended!.Value + RecheckOf(outcome);
+            }
+        }
+        return (walked, again);
+    }
+
     // Whether a walk keeps its story until the next cut: every verdict but NotLive and Doubt does.
     internal static bool WaitsForTheCut(JobOutcome outcome)
     {
@@ -266,7 +294,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     // Whether a walk's verdict moves its story out of QA by itself (WorkerTypes, Test): any other ending moves nothing.
     internal static bool LeavesQa(JobOutcome? outcome)
     {
-        return outcome?.Event is "Ok" or "NotApplicable" or "Bug" or "BugAgain" or "Ruling";
+        return outcome?.Event is "Ok" or "NotApplicable" or "Bug" or "BugAgain";
     }
 
     // The check before the walk writes no report; a walker that found its tenant behind wrote one, and spent a walk.
@@ -344,11 +372,12 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         return at < 0 ? "" : text[at..];
     }
 
-    async Task<bool> BugBefore(int n, CancellationToken ct)
+    // Whether an earlier walk already said the same on this story, since a hand last lifted a hold.
+    async Task<bool> Before(int n, string marker, CancellationToken ct)
     {
         var since = await ctx.Board.LastLift(n, Labels.Lifts, ct);
         var login = await ctx.Repo.Login(ct);
-        return (await ctx.Board.Comments(n, ct)).Any(c => (since is null || c.At > since) && ctx.Markers.Says(c, WorkerTypes.QaBugMarker, login));
+        return (await ctx.Board.Comments(n, ct)).Any(c => (since is null || c.At > since) && ctx.Markers.Says(c, marker, login));
     }
 
     async Task<JobOutcome> Script(int slot, string logPath, JobStep step, CancellationToken ct)
@@ -381,7 +410,8 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         if (file is null || !File.Exists(file)) return new JobOutcome(ended, quota, Failed: result.ExitCode != 0);
 
         var (evt, report) = Verdict(await File.ReadAllTextAsync(file, ct));
-        if (evt is "Bug" && Item.Story is { } n2 && await BugBefore(n2, ct)) evt = "BugAgain";
+        if (evt is "Bug" && Item.Story is { } n2 && await Before(n2, WorkerTypes.QaBugMarker, ct)) evt = "BugAgain";
+        if (evt is "Doubt" && Item.Story is { } n3 && await Before(n3, WorkerTypes.QaDoubtMarker, ct)) evt = "DoubtAgain";
         return new JobOutcome($"{ended}: {evt}", quota, Event: evt, Failed: evt == "NoVerdict", Report: report);
     }
 
@@ -395,7 +425,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
             "ok" => "Ok",
             "n/a" => "NotApplicable",
             "bug" => "Bug",
-            "ruling" => "Ruling",
+            "unwalkable" or "ruling" => "Unwalkable",
             "not-live" => "NotLive",
             "doubt" => "Doubt",
             _ => "NoVerdict",
