@@ -202,7 +202,8 @@ the files it leaves.
     an answer, and breaks. A job the host's stop cancels is not a break either: its result is `stopped`
     (`harness.jobs{outcome=stopped}`), nothing is said on its story, and the story goes back as a
     break's does. Nor is a job whose workspace this machine cannot prepare (`Workspace.Prepare`: the
-    shared clone's branch sweep or `worktree add`, the slot's checkout, reset or clean; the mirror's
+    shared clone's branch sweep or `worktree add`, the slot's checkout, reset or clean, and the reset of
+    a job's dossier, out folder or run folder, `reset <folder>`; the mirror's
     clone, config and fetch pause the harness instead, below), as the fault is the machine's and breaks every story its worker takes: nothing is said on
     any story or PR, the story goes back as a break's does, and that worker starts no job on this
     machine for the break's back-off, whatever the story; other workers, and the worker on other
@@ -241,7 +242,8 @@ the files it leaves.
     or neither names one: the seats and these steps build in the same slots, and a build sets the time of a file only if it
     owns it (MSBuild's `Touch`, error MSB3374), which no ACL grants, so two accounts there fail the start. What the account
     wrote in a slot (`.voyage`, a job's out folder, a walk's run folder, a suite's `bin` and `obj`) the harness removes
-    through the account (`Shell.Remove`): a temp folder it made for itself is 0700 and lists for nobody else. A seat gets no token. The
+    through the account (`Shell.Remove`): a temp folder it made for itself is 0700 and lists for nobody else, and an
+    entry it left read-only is made writable to its owner and removed. A seat gets no token. The
     harness's own git authenticates through `Shell.GitEnvironment`, not the process environment. It reads no global git
     configuration and no global attributes file (a seat sharing the harness user writes both) and removes the shared
     repository's `info/attributes` before it checks a slot out: a `safe.directory` the host needs goes in the system
