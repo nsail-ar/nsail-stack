@@ -423,27 +423,27 @@ public sealed class NsAutocompleteOfferTests : BunitContext, IAsyncLifetime
         await Press(cut, "ArrowDown");
 
         Assert.True(OnOffer(cut));
-        Assert.Equal([0], Lit);
+        Assert.Equal(new[] { 0 }, Lit);
 
         await Press(cut, "ArrowDown");
 
-        Assert.Equal([0, 1], Lit);
+        Assert.Equal(new[] { 0, 1 }, Lit);
 
         // Past the last control the page clamps, and the menu stays the lit one.
         await Press(cut, "ArrowDown");
 
-        Assert.Equal([0, 1, 2], Lit);
+        Assert.Equal(new[] { 0, 1, 2 }, Lit);
 
         await Press(cut, "ArrowUp");
 
-        Assert.Equal([0, 1, 2, 0], Lit);
+        Assert.Equal(new[] { 0, 1, 2, 0 }, Lit);
         Assert.Single(cut.FindAll(".ns-lookup-create-active"));
 
         // On an empty answer the first control is where ArrowUp stops.
         await Press(cut, "ArrowUp");
 
         Assert.True(OnOffer(cut));
-        Assert.Equal([0, 1, 2, 0], Lit);
+        Assert.Equal(new[] { 0, 1, 2, 0 }, Lit);
         Assert.Empty(_changes);
     }
 
@@ -464,7 +464,7 @@ public sealed class NsAutocompleteOfferTests : BunitContext, IAsyncLifetime
 
         Assert.False(OnOffer(cut));
         Assert.Single(cut.FindAll(".ns-lookup-create-active"));
-        Assert.Equal([0, 1, 0, -1], Lit);
+        Assert.Equal(new[] { 0, 1, 0, -1 }, Lit);
     }
 
     // Enter presses the lit control, whichever it is, and the form never hears it (K5).
@@ -500,7 +500,7 @@ public sealed class NsAutocompleteOfferTests : BunitContext, IAsyncLifetime
         }
 
         Assert.True(OnOffer(cut));
-        Assert.Equal([0, 1], Lit);
+        Assert.Equal(new[] { 0, 1 }, Lit);
         Assert.Empty(_changes);
     }
 

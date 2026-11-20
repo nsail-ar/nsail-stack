@@ -325,7 +325,7 @@ public sealed class NsLookupCreateKeyboardTests : BunitContext, IAsyncLifetime
         await Press(cut, "ArrowDown");
 
         Assert.Single(cut.FindAll(".ns-lookup-offer.ns-lookup-create-active"));
-        Assert.Equal([0, 1], JSInterop.Invocations.Where(call => call.Identifier == "nsapp.lightOffer").Select(call => (int)call.Arguments[0]!));
+        Assert.Equal(new[] { 0, 1 }, JSInterop.Invocations.Where(call => call.Identifier == "nsapp.lightOffer").Select(call => (int)call.Arguments[0]!));
 
         await Press(cut, "ArrowUp");
         await Press(cut, "ArrowUp");
