@@ -59,10 +59,10 @@ public static class WorkerPlanner
             notes.Add($"#{i.Number}: stalled in {i.Stage}, not Analyze — a hand moves it");
         }
 
-        // QA holds what waits on an ask; a story there with no ask and no hold is walked by nobody.
-        foreach (var i in issues.Where(i => i.Stage == Stages.Qa && !i.Has(Labels.QaAsked) && Planner.HoldOf(i, options) is null))
+        // No walk reads the QA column: a story there with no hold is a hand's to move.
+        foreach (var i in issues.Where(i => i.Stage == Stages.Qa && Planner.HoldOf(i, options) is null))
         {
-            notes.Add($"#{i.Number}: in QA with no ask — no walk reads it again");
+            notes.Add($"#{i.Number}: in QA — no walk reads it, a hand moves it");
         }
 
         // Another repository's review is its CI's to start; one that never came is said, not repaired.

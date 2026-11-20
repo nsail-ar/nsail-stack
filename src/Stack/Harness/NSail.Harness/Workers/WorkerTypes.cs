@@ -126,23 +126,23 @@ public static class WorkerTypes
         // One story walked in a browser on the test tenant, the one its release went live on; its
         // events are the walker's verdicts, and {report} in a comment is what the walker wrote. Ok and
         // NotApplicable close it. Bug sends it back to Analyze with the report; BugAgain is a second
-        // bug since a hand last lifted a hold — a fix that did not hold waits for a hand. Asked: a
-        // person must do or answer something, and the story waits in QA until somebody writes on it
-        // (the comment says so). Waiting: still no answer. NotLive: its tenant runs an older build, it
-        // stays for the next cut. Doubt: it could not be walked, which is an ask too — a story in QA
-        // wears qa-asked, or no walk ever reads it again — and it is tried again after the worker's
-        // Recheck. NoVerdict: the walker died.
+        // bug since a hand last lifted a hold — a fix that did not hold waits for a hand. Ruling: the
+        // story cannot be walked as it stands (it needs something nobody provided: an account, an
+        // environment, a person, a payment), so it goes to Analyze wearing `ruling` and the report
+        // says what a hand decides. NotLive: its tenant runs an older build, it stays for the next cut.
+        // Doubt: the walk could not be made for a reason outside the story (the tenant is down, the
+        // tools failed); nothing moves and it is tried again after QaJob.DoubtRecheck. NoVerdict: the
+        // walker died.
         ["Test"] = new("Test", WorkKind.Qa, true, false,
             new FilterOptions { Status = Stages.Released, InVersion = true, Labels = Holds },
-            [.. WorkerType.BaseEvents, "Ok", "NotApplicable", "Bug", "BugAgain", "Asked", "Waiting", "NotLive", "Doubt", "NoVerdict"],
+            [.. WorkerType.BaseEvents, "Ok", "NotApplicable", "Bug", "BugAgain", "Ruling", "NotLive", "Doubt", "NoVerdict"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {
-                ["Ok"] = [Remove(Labels.QaAsked), Say("{report}"), MoveTo(Stages.Closed), Close()],
-                ["NotApplicable"] = [Remove(Labels.QaAsked), Say("{report}"), MoveTo(Stages.Closed), Close()],
-                ["Bug"] = [Say(QaBug), Remove(Labels.QaAsked), MoveTo(Stages.Analyze)],
-                ["BugAgain"] = [Say(QaBug), Remove(Labels.QaAsked), Add(Labels.Stalled), MoveTo(Stages.Analyze)],
-                ["Asked"] = [Say("**QA pregunta**\n\n{report}\n\n_La story se vuelve a caminar cuando alguien comenta acá._\n\n<!-- qa-asked: -->"), Add(Labels.QaAsked), MoveTo(Stages.Qa)],
-                ["Doubt"] = [Say("**QA no pudo caminarla**\n\n{report}\n\n" + Jobs.QaJob.DoubtMarker), Add(Labels.QaAsked), MoveTo(Stages.Qa)],
+                ["Ok"] = [Say("{report}"), MoveTo(Stages.Closed), Close()],
+                ["NotApplicable"] = [Say("{report}"), MoveTo(Stages.Closed), Close()],
+                ["Bug"] = [Say(QaBug), MoveTo(Stages.Analyze)],
+                ["BugAgain"] = [Say(QaBug), Add(Labels.Stalled), MoveTo(Stages.Analyze)],
+                ["Ruling"] = [Say("**QA no puede caminarla**\n\n{report}"), Add(Labels.Ruling), MoveTo(Stages.Analyze)],
                 ["NoVerdict"] = [Say("QA terminó sin veredicto.\n\n{report}")],
             }, Minutes: 60),
         ["Release"] = new("Release", WorkKind.Release, false, false, new FilterOptions(), WorkerType.BaseEvents, None, Minutes: 150),

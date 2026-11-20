@@ -11,8 +11,7 @@ using NSail.Harness.Repositories;
 
 namespace NSail.Harness.Tests;
 
-// What the harness lays down for a QA walk: the product it is walked on, what QA already asked, the
-// browser it walks with.
+// What the harness lays down for a QA walk: the product it is walked on and the browser it walks with.
 public class QaWalkTests
 {
     static readonly Dictionary<string, ProductOptions> Products = new()
@@ -52,83 +51,15 @@ public class QaWalkTests
     }
 
     [Fact]
-    public void WhatWasAskedIsTheLastAskAndEverythingAfterIt()
-    {
-        var t = DateTimeOffset.Parse("2026-10-29T00:00:00Z");
-        var comments = new List<StoryComment>
-        {
-            new(t, "first ask <!-- qa-asked: -->", "crew-bot"),
-            new(t.AddHours(1), "second ask <!-- qa-asked: -->", "crew-bot"),
-            new(t.AddHours(2), "done, it works", "ana"),
-        };
-
-        var asked = QaJob.Asked(comments, new HashSet<string> { "crew-bot" });
-
-        Assert.DoesNotContain("first ask", asked);
-        Assert.Contains("second ask", asked);
-        Assert.Contains("done, it works", asked);
-        Assert.Contains("--- ana ", asked);
-        Assert.Contains("(untrusted)", asked);
-        Assert.Contains("UNTRUSTED", asked);
-        Assert.Equal("", QaJob.Asked([new StoryComment(t, "nothing asked", "x")], new HashSet<string>()));
-    }
-
-    static readonly DateTimeOffset AskedAt = DateTimeOffset.Parse("2026-10-29T00:00:00Z");
-    static readonly TimeSpan Recheck = TimeSpan.FromHours(6);
-
-    static bool Quiet(string marker, DateTimeOffset? walked, DateTimeOffset now, params (double Hours, string Body)[] since)
-    {
-        var comments = new List<StoryComment> { new(AskedAt, $"the walk's words {marker}", "crew-bot") };
-        comments.AddRange(since.Select(c => new StoryComment(AskedAt.AddHours(c.Hours), c.Body, "ana")));
-        return QaJob.Quiet(comments, walked, now, Recheck);
-    }
-
-    [Fact]
-    public void AnAskOfAPersonWaitsForWordsHoweverLong()
-    {
-        var walked = AskedAt.AddMinutes(-1);
-
-        Assert.True(Quiet("<!-- qa-asked: -->", walked, AskedAt.AddDays(9)));
-        Assert.True(Quiet("<!-- qa-asked: -->", null, AskedAt.AddDays(9)));
-        Assert.False(Quiet("<!-- qa-asked: -->", walked, AskedAt.AddHours(2), (1, "done")));
-    }
-
-    [Fact]
-    public void AnAnswerAlreadyWalkedIsNotNews()
-    {
-        Assert.True(Quiet("<!-- qa-asked: -->", AskedAt.AddHours(2), AskedAt.AddDays(9), (1, "what do you mean?")));
-        Assert.False(Quiet("<!-- qa-asked: -->", AskedAt.AddHours(2), AskedAt.AddDays(9), (1, "what do you mean?"), (3, "done")));
-    }
-
-    [Fact]
-    public void ADoubtIsTriedAgainAfterTheRecheckOrWhenSomebodyWrites()
-    {
-        var walked = AskedAt.AddMinutes(-1);
-
-        Assert.True(Quiet(QaJob.DoubtMarker, walked, AskedAt.AddHours(5)));
-        Assert.False(Quiet(QaJob.DoubtMarker, walked, AskedAt.AddHours(7)));
-        Assert.False(Quiet(QaJob.DoubtMarker, walked, AskedAt.AddHours(2), (1, "the tenant is back")));
-        Assert.False(Quiet(QaJob.DoubtMarker, null, AskedAt.AddHours(1)));
-    }
-
-    [Fact]
-    public void ALabelWithNoMarkedCommentIsWalkedLikeADoubt()
-    {
-        var comments = new List<StoryComment> { new(AskedAt, "a hand's note", "ana") };
-
-        Assert.True(QaJob.Quiet(comments, AskedAt.AddHours(1), AskedAt.AddHours(2), Recheck));
-        Assert.False(QaJob.Quiet(comments, AskedAt.AddHours(1), AskedAt.AddHours(8), Recheck));
-        Assert.False(QaJob.Quiet(comments, null, AskedAt.AddHours(2), Recheck));
-    }
-
-    [Fact]
-    public void ADoubtsCommentCarriesItsOwnMarkerAndAnAsksDoesNot()
+    public void ARulingWalkSendsTheStoryToAnalyzeWearingRulingWithTheReport()
     {
         var on = WorkerTypes.Of(WorkKind.Qa)!.Defaults;
 
-        Assert.Contains(QaJob.DoubtMarker, on["Doubt"].Single(a => a.Comment is not null).Comment);
-        Assert.Contains(QaJob.AskMarker, on["Asked"].Single(a => a.Comment is not null).Comment);
-        Assert.DoesNotContain(QaJob.DoubtMarker, on["Asked"].Single(a => a.Comment is not null).Comment);
+        Assert.Contains(on["Ruling"], a => a.AddLabel == Labels.Ruling);
+        Assert.Contains(on["Ruling"], a => a.MoveTo == Stages.Analyze);
+        Assert.Contains("{report}", on["Ruling"].Single(a => a.Comment is not null).Comment);
+        Assert.False(on.ContainsKey("Asked"));
+        Assert.False(on.ContainsKey("Doubt"));
     }
 
     [Fact]
@@ -144,16 +75,22 @@ public class QaWalkTests
     }
 
     [Fact]
-    public void ANotLiveWalkIsAskedAgainOnItsClockAndEveryOtherVerdictWaitsForTheCut()
+    public void ANotLiveOrDoubtedWalkIsTriedAgainOnItsOwnClockAndEveryOtherVerdictWaitsForTheCut()
     {
-        Assert.False(QaJob.WaitsForTheCut(new JobOutcome("walked: NotLive", Event: "NotLive")));
+        foreach (var verdict in new[] { "NotLive", "Doubt" })
+        {
+            Assert.False(QaJob.WaitsForTheCut(new JobOutcome($"walked: {verdict}", Event: verdict)));
+        }
 
-        foreach (var verdict in new[] { "Ok", "Bug", "Asked", "Doubt", "NoVerdict" })
+        foreach (var verdict in new[] { "Ok", "Bug", "Ruling", "NoVerdict" })
         {
             Assert.True(QaJob.WaitsForTheCut(new JobOutcome($"walked: {verdict}", Event: verdict)));
         }
 
+        Assert.Equal(QaJob.NotLiveRecheck, QaJob.RecheckOf(new JobOutcome("walked: NotLive", Event: "NotLive")));
+        Assert.Equal(QaJob.DoubtRecheck, QaJob.RecheckOf(new JobOutcome("walked: Doubt", Event: "Doubt")));
         Assert.InRange(QaJob.NotLiveRecheck, TimeSpan.FromMinutes(5), TimeSpan.FromHours(1));
+        Assert.True(QaJob.DoubtRecheck >= QaJob.NotLiveRecheck);
     }
 
     [Fact]

@@ -56,10 +56,6 @@ public sealed class WorkerOptions
     // (Markers.ReviewContext, a check a branch rule can require) and ends Approved: a hand merges.
     public bool Merge { get; set; } = true;
 
-    // A Test's story that could not be walked is tried again when someone wrote on it since its last
-    // walk, or after these minutes; none, six hours. One that asked a person waits for the comment.
-    public int? Recheck { get; set; }
-
     // Watch: the log source it reads (a provider's Name), every how many minutes (none, an hour),
     // how many hours its first pass reads back (none, a day), the most stories one pass opens (none,
     // five), the area label a service the source names takes when no product (Harness:Products) has

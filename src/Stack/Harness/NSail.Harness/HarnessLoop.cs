@@ -74,8 +74,8 @@ public sealed class HarnessLoop(
     volatile int _stalled;
 
     // When this machine last walked each story: a walk that left it where a walk takes it (a walk that
-    // could not be done) is not walked again before the next cut. A tenant not running its code yet
-    // is asked again after QaJob.NotLiveRecheck instead.
+    // could not be done) is not walked again before the next cut. A tenant not running its code yet,
+    // or a walk that could not be made, is tried again after QaJob.RecheckOf instead.
     readonly ConcurrentDictionary<int, DateTimeOffset> _walked = new();
 
     // By `worker#story`: a worker's ending that moved nothing where its type would have (a worker a
@@ -1044,7 +1044,7 @@ public sealed class HarnessLoop(
             if (running.Item is { Kind: WorkKind.Qa, Story: { } walked })
             {
                 if (QaJob.WaitsForTheCut(result)) _walked[walked] = DateTimeOffset.UtcNow;
-                else _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + QaJob.NotLiveRecheck;
+                else _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + QaJob.RecheckOf(result);
             }
             if (result.Idle) _backoff[BackoffKey(running.Item)] = DateTimeOffset.UtcNow + Backoff;
             if (result.QuotaUntil is { } until)

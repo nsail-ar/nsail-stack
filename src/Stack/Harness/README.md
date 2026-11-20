@@ -130,20 +130,20 @@ the files it leaves.
     product's red-suite story, which ships with its own product's cut — and the closed version says it was walked. A tag never
     published is no release, so a cut that died never reads as the last one. A Test walks one story with its seat in a fresh browser
     (its `Mcp` servers; `Tools` adds what the walker may call): the harness lays down the story, its
-    PRs and what QA already asked, and which build each of `Products` runs (the newest `Live.Tag`, or
+    PRs, and which build each of `Products` runs (the newest `Live.Tag`, or
     a tenant's `Live.Header`) — a story its tenant does not run yet is not walked, and is asked again
     after `QaJob.NotLiveRecheck` rather than at the next cut, because a deploy lands after its cut — and attaches
-    the walk's shots to the board (on GitHub, the attachments a pasted file becomes). A story waiting on
-    its ask is asked once. An ask of a person waits for words: it is walked again only when somebody
-    comments after it, so whoever answers by acting on the tenant says so on the story. A walk that
-    could not be made (a doubt) is tried again after `Recheck` minutes, or sooner on a comment
-    (`QaJob.Quiet`); only a walk that ran its seat counts as the last one.
+    the walk's shots to the board (on GitHub, the attachments a pasted file becomes). A walk that could
+    not be made for a reason outside the story (a doubt: the tenant is down, the tools failed) moves
+    nothing and is tried again after `QaJob.DoubtRecheck`.
     A story wearing `no-walk` (the analyst's word that nothing of it shows on a screen; a hand takes
     it off to have it walked) closes as `n/a` with no walker and no browser: its gate and tests are its proof.
-    The walker writes `VERDICT: ok|n/a|bug|asked|waiting|not-live|doubt` and its report: the verdict is
-    the event, and the board is the harness's. Every verdict leaves the story where a walk reads it
-    again: Released, or QA wearing `qa-asked` (a doubt is an ask) — a story in QA with neither is a
-    planner note. A Watch reads its `Source` (a log source by name) every `Every` minutes, from where it
+    The walker writes `VERDICT: ok|n/a|bug|ruling|not-live|doubt` and its report: the verdict is
+    the event, and the board is the harness's. A `ruling` is a story that cannot be walked as it
+    stands (it needs an account, an environment, a person, a payment nobody provided): it goes to
+    Analyze wearing `ruling`, and a hand decides. Every other verdict leaves the story where a walk
+    reads it again (Released) or closes or reopens it; nothing waits in the QA column, and a story
+    found there is a planner note. A Watch reads its `Source` (a log source by name) every `Every` minutes, from where it
     last read (`Lookback` hours the first time) up to `IngestLag` minutes (default five) short of now, for a
     line the source ingests late. A pass reads at most 5000 lines, oldest first, and the next takes up after the
     last one read. A Watch groups the error lines by service, logger, message

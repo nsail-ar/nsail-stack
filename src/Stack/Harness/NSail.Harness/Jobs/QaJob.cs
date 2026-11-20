@@ -12,8 +12,7 @@ using NSail.Harness.Workers;
 namespace NSail.Harness.Jobs;
 
 // A QA walk of one Released story in a fresh browser on its product's test tenant. The harness lays
-// down what the walker needs (the story, its PRs and files, what QA already asked, and which build
-// each tenant runs) and the Test worker's seat walks it through the worker's MCP servers, writing its
+// down what the walker needs (the story with its whole thread, its PRs and files, and which build each tenant runs) and the Test worker's seat walks it through the worker's MCP servers, writing its
 // verdict — `VERDICT: <word>` on the first line, the report under it. A story whose code its tenant
 // does not run yet is not walked. The verdict is the job's event; what each does on the board is the
 // worker's (WorkerTypes). A worker that names a Command instead runs it, and its command writes the
@@ -29,7 +28,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     public async Task<JobOutcome> Run(int slot, string logPath, CancellationToken ct)
     {
         // The board may have moved since the plan: a story no longer where a walk takes it is left.
-        if (Item.Story is { } n && await ctx.Board.StageOf(n, ct) is var stage && stage is not (Stages.Released or Stages.Qa))
+        if (Item.Story is { } n && await ctx.Board.StageOf(n, ct) is var stage && stage is not Stages.Released)
         {
             return new JobOutcome($"in {stage} now — not walked", Idle: true);
         }
@@ -44,7 +43,6 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         {
             return new JobOutcome("not walked: no-walk", Event: "NotApplicable", Report: $"{ctx.Texts.NoWalk} {ctx.Texts.Signature}");
         }
-        if (await Quiet(n, step, started, ct)) return new JobOutcome("waiting on its ask, nothing new since its last walk", Idle: true);
         var dir = await ctx.Workspace.Prepare(slot);
         await using var w = new StreamWriter(logPath, append: true) { AutoFlush = true };
         await w.WriteLineAsync($"== walk {ctx.Names.Ref(n)} on {ctx.Options.Machine} slot {slot}");
@@ -72,12 +70,9 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         if (Directory.Exists(outDir)) Directory.Delete(outDir, recursive: true);
         var shots = Path.Combine(outDir, "shots");
         Directory.CreateDirectory(shots);
-        var story = await ctx.Board.Story(n, ct);
-        await File.WriteAllTextAsync(Path.Combine(outDir, "story.md"), $"{StoryDossier.Heading(ctx.Names.Ref(n), story.Title, labels, story.Body)}\n\n{StoryDossier.Body(story.Body, labels)}", ct);
         var dossier = new StoryDossier(ctx, history);
+        await dossier.WriteStory(n, outDir, ct);
         await dossier.WritePrs(n, outDir, ct);
-        var asked = labels.Contains(Labels.QaAsked) ? Asked(await ctx.Board.Comments(n, ct), await dossier.Trusted(ct)) : "";
-        await File.WriteAllTextAsync(Path.Combine(outDir, "asked.md"), asked, ct);
 
         var env = await ctx.LaneEnv(started.AddMinutes(step.Minutes), Item, step, ct);
         await ctx.Prepare(dir, env, w);
@@ -96,7 +91,6 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
             ["PRODUCT"] = product.Name,
             ["TENANTS"] = tenants,
             ["LIVE"] = lives,
-            ["ASKED"] = asked.Length > 0 ? "yes" : "no",
             ["TREE"] = dir,
         }, ct);
 
@@ -126,46 +120,10 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         var text = File.Exists(reportFile) ? await File.ReadAllTextAsync(reportFile, ct) : FromVerdict(result.Result);
         var why = text.Length > 0 ? "" : result.TimedOut ? "El walker no terminó a tiempo." : $"El walker terminó sin reporte (exit {result.ExitCode}).";
         var (evt, report) = Verdict(text.Length > 0 ? text : why);
-        // A story waiting on a person is asked once: a walker that asks again, or doubts again, is still waiting.
-        if (evt is "Asked" or "Doubt" && asked.Length > 0)
-        {
-            await File.AppendAllTextAsync(logPath, $"{ctx.Names.Ref(n)} — {evt} again while waiting on the first ask: waiting{Environment.NewLine}", ct);
-            return new JobOutcome("walked: Waiting", quota, Event: "Waiting", Report: "");
-        }
         report = $"{report}\n\n{await Evidence(n, dir, shots, started, ct)}\n\nLog: {Path.GetFileName(logPath)} on {ctx.Options.Machine}".Trim();
         if (quota is not null && evt == "NoVerdict") return new JobOutcome("walk stopped at the quota wall", quota);
         if (evt is "Bug" && await BugBefore(n, ct)) evt = "BugAgain";
         return new JobOutcome($"walked: {evt}", quota, Event: evt, Failed: evt == "NoVerdict", Report: report);
-    }
-
-    // What marks the comment a walk leaves on a story it could not finish: an ask of a person, or a
-    // doubt (it could not be walked at all).
-    internal const string AskMarker = "<!-- qa-asked:";
-    internal const string DoubtMarker = "<!-- qa-asked: doubt -->";
-
-    async Task<bool> Quiet(int n, JobStep step, DateTimeOffset now, CancellationToken ct)
-    {
-        if (!(await ctx.Board.Labels(n, ct)).Contains(Labels.QaAsked)) return false;
-        var walked = history.Jobs()
-            .Where(j => j.Story == n && j.Ended is not null && j.Seated && j.Outcome?.StartsWith("walked", StringComparison.Ordinal) == true)
-            .Max(j => j.Ended);
-        return Quiet(await ctx.Board.Comments(n, ct), walked, now, TimeSpan.FromMinutes(step.Worker.Recheck ?? 360));
-    }
-
-    // A story waiting on its ask with nothing new to read: the walk would only read the same silence
-    // again. An ask of a person waits for words — quiet until somebody writes after it and after this
-    // machine's last walk. A doubt is tried again once its last walk is older than `recheck`, or
-    // sooner when somebody writes; so is a story that wears the label with no marked comment.
-    internal static bool Quiet(IReadOnlyList<Board.StoryComment> comments, DateTimeOffset? walked, DateTimeOffset now, TimeSpan recheck)
-    {
-        var ask = comments.Where(c => c.Body.Contains(AskMarker, StringComparison.Ordinal)).MaxBy(c => c.At);
-        if (ask is null || ask.Body.Contains(DoubtMarker, StringComparison.Ordinal))
-        {
-            if (walked is null || now - walked >= recheck) return false;
-        }
-        // The ask itself is posted after its walk ends: it is not news.
-        var seen = walked is null || ask?.At > walked ? ask!.At : walked.Value;
-        return !comments.Any(c => c.At > seen && !c.Body.Contains(AskMarker, StringComparison.Ordinal));
     }
 
     static readonly Dictionary<string, string> Media =new(StringComparer.OrdinalIgnoreCase)
@@ -273,10 +231,19 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     // so the cut that made the story live has always already passed when the tenant takes it.
     public static readonly TimeSpan NotLiveRecheck = TimeSpan.FromMinutes(15);
 
-    // Whether a walk keeps its story until the next cut: every verdict but NotLive does.
+    // A walk that could not be made (the tenant down, the tools failed) is tried again on its own,
+    // longer clock: each try spends a walker.
+    public static readonly TimeSpan DoubtRecheck = TimeSpan.FromHours(1);
+
+    // Whether a walk keeps its story until the next cut: every verdict but NotLive and Doubt does.
     internal static bool WaitsForTheCut(JobOutcome outcome)
     {
-        return outcome.Event != "NotLive";
+        return outcome.Event is not ("NotLive" or "Doubt");
+    }
+
+    internal static TimeSpan RecheckOf(JobOutcome outcome)
+    {
+        return outcome.Event == "Doubt" ? DoubtRecheck : NotLiveRecheck;
     }
 
     internal static ProductOptions? ProductOf(IReadOnlySet<string> labels, IReadOnlyDictionary<string, ProductOptions> products)
@@ -321,14 +288,6 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         if (merge is null || tag is null) return "unknown";
         var r = await Shell.Run("git", ["merge-base", "--is-ancestor", merge, $"{tag}^{{commit}}"], dir);
         return r.ExitCode switch { 0 => "yes", 1 => "no", _ => "unknown" };
-    }
-
-    // What QA asked a person, and every comment since: the walk only looks for the answer.
-    internal static string Asked(IReadOnlyList<Board.StoryComment> comments, ISet<string> trusted)
-    {
-        var ordered = comments.OrderBy(c => c.At).ToList();
-        var at = ordered.FindLastIndex(c => c.Body.Contains(AskMarker, StringComparison.Ordinal));
-        return at < 0 ? "" : StoryDossier.Thread(ordered.Skip(at), trusted);
     }
 
     static string Value(IReadOnlyDictionary<string, string> env, string? name)
@@ -407,16 +366,12 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
             "ok" => "Ok",
             "n/a" => "NotApplicable",
             "bug" => "Bug",
-            "asked" => "Asked",
-            "waiting" => "Waiting",
+            "ruling" => "Ruling",
             "not-live" => "NotLive",
             "doubt" => "Doubt",
             _ => "NoVerdict",
         };
         var body = word.Length > 0 ? lines[1..] : lines;
-        // `ASKED: story|product` is the walker telling how it asked: the reader is the one asked.
-        if (evt == "Asked" && body.FirstOrDefault(l => l.Trim().Length > 0) is { } first && first.StartsWith("ASKED:", StringComparison.Ordinal))
-            body = [.. body.SkipWhile(l => l != first).Skip(1)];
         return (evt, string.Join('\n', body).Trim());
     }
 }
