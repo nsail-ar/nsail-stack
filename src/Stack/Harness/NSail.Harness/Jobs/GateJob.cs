@@ -87,7 +87,7 @@ public sealed partial class GateJob(WorkItem item, JobContext ctx) : IJob
         }
 
         // The gate takes its build turn before its clock starts: time waiting in line is not the build's.
-        var lease = await ctx.Leases.Acquire(JobContext.HolderOf(Item), Planner.Rank(Item.Tier), ct);
+        var lease = await ctx.Leases.Acquire(JobContext.HolderOf(Item), Planner.Rank(Item.Tier), BuildTurn.Gate, ct);
         ShellResult result;
         try
         {

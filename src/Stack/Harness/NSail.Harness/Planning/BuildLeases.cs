@@ -7,14 +7,17 @@ namespace NSail.Harness.Planning;
 // holds an agent slot for its whole voyage but a build turn only while a `dotnet build|test`
 // runs, so the CPU is rationed where it is spent. When a turn frees, it goes to the WAITER OF
 // HIGHEST PRIORITY (the lowest rank, the planner's order), never to the one that asked first.
+// A release's suite holds its turn alone against the gates: both draw on the machine's one
+// Postgres, and a gate's clock starts at its turn. No gate is granted while a suite holds or awaits
+// a turn, and a suite waits only for the turns gates already hold. Lanes are never held back.
 public sealed class BuildLeases(int limit)
 {
 
-    sealed record Waiter(int Rank, long Seq, string Holder, TaskCompletionSource<BuildLease> Grant);
+    sealed record Waiter(int Rank, long Seq, string Holder, BuildTurn Turn, TaskCompletionSource<BuildLease> Grant);
 
     readonly Lock _gate = new();
     readonly List<Waiter> _waiting = [];
-    readonly Dictionary<Guid, BuildLease> _held = [];
+    readonly Dictionary<Guid, (BuildLease Lease, BuildTurn Turn)> _held = [];
     long _seq;
 
     // A plan change moves it: a lower limit revokes nothing (turns held run out), a higher one
@@ -52,16 +55,21 @@ public sealed class BuildLeases(int limit)
 
     public IReadOnlyList<BuildLease> Holders()
     {
-        lock (_gate) return _held.Values.OrderBy(l => l.At).ToList();
+        lock (_gate) return _held.Values.Select(h => h.Lease).OrderBy(l => l.At).ToList();
+    }
+
+    public Task<BuildLease> Acquire(string holder, int rank, CancellationToken ct)
+    {
+        return Acquire(holder, rank, BuildTurn.Lane, ct);
     }
 
     // A lower rank is more urgent. Cancelling the wait gives up the place in line.
-    public async Task<BuildLease> Acquire(string holder, int rank, CancellationToken ct)
+    public async Task<BuildLease> Acquire(string holder, int rank, BuildTurn turn, CancellationToken ct)
     {
         Waiter w;
         lock (_gate)
         {
-            w = new Waiter(rank, _seq++, holder, new TaskCompletionSource<BuildLease>(TaskCreationOptions.RunContinuationsAsynchronously));
+            w = new Waiter(rank, _seq++, holder, turn, new TaskCompletionSource<BuildLease>(TaskCreationOptions.RunContinuationsAsynchronously));
             _waiting.Add(w);
             Grant();
         }
@@ -70,7 +78,11 @@ public sealed class BuildLeases(int limit)
         {
             lock (_gate)
             {
-                if (_waiting.Remove(w)) w.Grant.TrySetCanceled(ct);
+                if (_waiting.Remove(w))
+                {
+                    w.Grant.TrySetCanceled(ct);
+                    Grant();
+                }
             }
         });
         return await w.Grant.Task;
@@ -83,7 +95,7 @@ public sealed class BuildLeases(int limit)
         var at = now ?? DateTimeOffset.UtcNow;
         lock (_gate)
         {
-            var stale = _held.Values.Where(l => at - l.At > olderThan).Select(l => l.Id).ToList();
+            var stale = _held.Values.Where(h => at - h.Lease.At > olderThan).Select(h => h.Lease.Id).ToList();
             foreach (var id in stale) _held.Remove(id);
             if (stale.Count > 0) Grant();
             return stale.Count;
@@ -94,7 +106,7 @@ public sealed class BuildLeases(int limit)
     {
         lock (_gate)
         {
-            var gone = _held.Values.Where(l => l.Holder == holder).Select(l => l.Id).ToList();
+            var gone = _held.Values.Where(h => h.Lease.Holder == holder).Select(h => h.Lease.Id).ToList();
             foreach (var id in gone) _held.Remove(id);
             if (gone.Count > 0) Grant();
             return gone.Count;
@@ -113,13 +125,32 @@ public sealed class BuildLeases(int limit)
 
     void Grant()
     {
-        while (_held.Count < _limit && _waiting.Count > 0)
+        while (_held.Count < _limit)
         {
-            var next = _waiting.OrderBy(x => x.Rank).ThenBy(x => x.Seq).First();
+            var next = _waiting.OrderBy(x => x.Rank).ThenBy(x => x.Seq).FirstOrDefault(Grantable);
+            if (next is null) return;
             _waiting.Remove(next);
             var lease = new BuildLease(Guid.NewGuid(), next.Holder, DateTimeOffset.UtcNow);
-            _held[lease.Id] = lease;
+            _held[lease.Id] = (lease, next.Turn);
             next.Grant.TrySetResult(lease);
         }
     }
+
+    bool Grantable(Waiter w)
+    {
+        return w.Turn switch
+        {
+            BuildTurn.Gate => !_held.Values.Any(h => h.Turn == BuildTurn.Suite) && !_waiting.Any(x => x.Turn == BuildTurn.Suite),
+            BuildTurn.Suite => !_held.Values.Any(h => h.Turn == BuildTurn.Gate),
+            _ => true,
+        };
+    }
+}
+
+// What a build turn is for: a release's suite is held alone against the gates (BuildLeases).
+public enum BuildTurn
+{
+    Lane,
+    Gate,
+    Suite,
 }

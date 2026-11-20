@@ -102,6 +102,78 @@ public class BuildLeasesTests
     }
 
     [Fact]
+    public async Task AGateIsNotGrantedWhileAReleaseSuiteHoldsATurn()
+    {
+        var leases = new BuildLeases(3);
+        var suite = await leases.Acquire("release-optical", 5, BuildTurn.Suite, default);
+
+        var gate = leases.Acquire("gate-main", 0, BuildTurn.Gate, default);
+        var lane = leases.Acquire("dev-7", 4, default);
+
+        Assert.Equal("dev-7", (await lane.WaitAsync(Soon)).Holder);
+        Assert.False(gate.IsCompleted);
+        Assert.True(leases.Waits("gate-main"));
+        leases.Release(suite.Id);
+        Assert.Equal("gate-main", (await gate.WaitAsync(Soon)).Holder);
+    }
+
+    [Fact]
+    public async Task AWaitingSuiteTakesOnlyTheGatesHeldBackAndNoLaterGateGoesAhead()
+    {
+        var leases = new BuildLeases(3);
+        var a = await leases.Acquire("gate-a", 3, BuildTurn.Gate, default);
+        var b = await leases.Acquire("gate-b", 3, BuildTurn.Gate, default);
+
+        var suite = leases.Acquire("release-optical", 5, BuildTurn.Suite, default);
+        var later = leases.Acquire("gate-c", 0, BuildTurn.Gate, default);
+
+        Assert.False(suite.IsCompleted);
+        Assert.False(later.IsCompleted);
+        leases.Release(a.Id);
+        Assert.False(suite.IsCompleted);
+        Assert.False(later.IsCompleted);
+        leases.Release(b.Id);
+        var held = await suite.WaitAsync(Soon);
+        Assert.Equal("release-optical", held.Holder);
+        Assert.False(later.IsCompleted);
+        leases.Release(held.Id);
+        Assert.Equal("gate-c", (await later.WaitAsync(Soon)).Holder);
+    }
+
+    [Fact]
+    public async Task ACancelledSuiteWaitLetsTheGatesBehindItIn()
+    {
+        var leases = new BuildLeases(2);
+        var held = await leases.Acquire("gate-a", 3, BuildTurn.Gate, default);
+        using var cts = new CancellationTokenSource();
+        var suite = leases.Acquire("release-optical", 5, BuildTurn.Suite, cts.Token);
+        var gate = leases.Acquire("gate-b", 3, BuildTurn.Gate, default);
+
+        Assert.False(gate.IsCompleted);
+        await cts.CancelAsync();
+        await Assert.ThrowsAsync<TaskCanceledException>(() => suite);
+
+        Assert.Equal("gate-b", (await gate.WaitAsync(Soon)).Holder);
+        Assert.Equal(2, leases.Held);
+        leases.Release(held.Id);
+    }
+
+    [Fact]
+    public async Task ASweepLeavesAGateWaitingBehindASuiteInLine()
+    {
+        var leases = new BuildLeases(2);
+        await leases.Acquire("release-optical", 5, BuildTurn.Suite, default);
+        var gate = leases.Acquire("gate-main", 0, BuildTurn.Gate, default);
+        var age = HarnessLoop.TurnAge(SampleWorkers.Workers);
+
+        Assert.Equal(0, leases.Sweep(age, DateTimeOffset.UtcNow.AddMinutes(90)));
+        Assert.True(leases.Waits("gate-main"));
+        Assert.Equal(1, leases.Sweep(age, DateTimeOffset.UtcNow.Add(age).AddMinutes(1)));
+        Assert.Equal("gate-main", (await gate.WaitAsync(Soon)).Holder);
+        Assert.Equal(1, leases.Held);
+    }
+
+    [Fact]
     public void ACutHeldByAnotherHarnessIsNotDueUntilItsClaimLapsesOrIsLetGo()
     {
         var worker = SampleWorkers.Workers.First(w => w.Kind == WorkKind.Release && w.Options.Product is not null);

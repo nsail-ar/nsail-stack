@@ -39,7 +39,7 @@ public sealed class MainGateJob(WorkItem item, JobContext ctx) : IJob
         // The head is marked before the build: another machine's planner reads any mark as judged.
         await ctx.Repo.SetStatus(head, Markers.GateContext, "pending", $"main's gate running on {ctx.Options.Machine}", ct);
 
-        var lease = await ctx.Leases.Acquire(JobContext.HolderOf(Item), Planner.Rank(Item.Tier), ct);
+        var lease = await ctx.Leases.Acquire(JobContext.HolderOf(Item), Planner.Rank(Item.Tier), BuildTurn.Gate, ct);
         ShellResult result;
         try
         {

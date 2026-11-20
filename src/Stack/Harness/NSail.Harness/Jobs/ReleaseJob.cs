@@ -166,7 +166,7 @@ public sealed partial class ReleaseJob(WorkItem item, JobContext ctx) : IJob
 
     async Task<ShellResult> Suite(string product, string? filter, string dir, JobStep step, TextWriter w, CancellationToken ct)
     {
-        var lease = await ctx.Leases.Acquire(JobContext.HolderOf(Item), Planner.Rank(Item.Tier), ct);
+        var lease = await ctx.Leases.Acquire(JobContext.HolderOf(Item), Planner.Rank(Item.Tier), BuildTurn.Suite, ct);
         try
         {
             var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(step.Minutes), Item, step, ct, runsCode: true);

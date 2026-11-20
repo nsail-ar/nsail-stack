@@ -257,6 +257,10 @@ the files it leaves.
 - **Capacity is per resource, per machine**: agents, builds, browsers (`Agents`, `Builds`,
   `Browsers`). The plan is walked in order and every item whose resources are free is taken; a
   worker's `Max` caps its own jobs at once, its `DailyCap` one story's in a day. Past the agent's quota wall (a refused run) only the agents stop.
+  A release's suite (a cut, a red fix's re-run) holds its build turn alone against the gates
+  (`BuildTurn`): both draw on the machine's one Postgres, and a gate's clock starts at its turn. No
+  gate is granted while a suite holds or awaits a turn, a suite waits only for the turns gates
+  already hold, and a lane's turn is never held back for either.
   A build turn whose holder died returns to the line once older than the longest step the machine's
   enabled workers run (a main gate counts twice its minutes) plus ten.
 - **The release andon** (`Planning/ReleaseAndon.cs`). A product's failed cut leaves its one open red
