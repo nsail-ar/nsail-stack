@@ -58,6 +58,25 @@ describe("Mediator's turn to sign-in", () => {
     expect(turns).toEqual(["/iam/sign-in?mode=web&returnUrl=%2Fcontacts%3Fpage%3D2"]);
   });
 
+  it("says the credential was refused when the 401 met a signed-in session", async () => {
+    const { turns, mediator } = answering(401, denied, { signIn: "/iam/sign-in" });
+
+    mediator.reportSession(true);
+    await mediator.send(ListOrders, {}).catch(() => {});
+
+    expect(turns).toEqual(["/iam/sign-in?returnUrl=%2Fcontacts%3Fpage%3D2&staleCredential=1"]);
+  });
+
+  it("says nothing of a refused credential once the client reported a sign-out", async () => {
+    const { turns, mediator } = answering(401, denied, { signIn: "/iam/sign-in", pathname: "/", search: "" });
+
+    mediator.reportSession(true);
+    mediator.reportSession(false);
+    await mediator.send(ListOrders, {}).catch(() => {});
+
+    expect(turns).toEqual(["/iam/sign-in"]);
+  });
+
   it("never turns a 403: the refusal stays where the send was made", async () => {
     const forbidden = { code: "Forbidden", title: "Not allowed", issues: [{ code: "Forbidden", message: "x" }], status: 403 };
     const { turns, mediator } = answering(403, forbidden, { signIn: "/iam/sign-in" });

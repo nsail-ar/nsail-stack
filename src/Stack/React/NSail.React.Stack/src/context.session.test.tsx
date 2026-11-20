@@ -9,7 +9,7 @@ import { StackProvider, useSession } from "./context";
 import type { Load } from "./load";
 import { Mediator } from "./mediator";
 import { Strings } from "./strings";
-import { GetSession, type Session } from "./fixtures.test-support";
+import { GetSession, ListOrders, type Session } from "./fixtures.test-support";
 
 // act() refuses to drive a renderer unless the environment says it is a test one.
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -56,6 +56,30 @@ describe("useSession", () => {
     await act(async () => seen.at(-1)!.reload());
     expect(seen.at(-1)?.data).toEqual({ isAuthenticated: false });
     expect(urls).toHaveLength(3);
+
+    await act(async () => root.unmount());
+  });
+
+  it("reports a signed-in session to the mediator, so a later 401 turns marked stale", async () => {
+    const turns: string[] = [];
+    const fetcher = (async (url: string) => {
+      return url.endsWith("/session") ? new Response(JSON.stringify({ isAuthenticated: true })) : new Response("{}", { status: 401 });
+    }) as unknown as typeof fetch;
+    const location = { pathname: "/", search: "", hash: "", assign: (url: string) => turns.push(url) };
+    const mediator = new Mediator({ fetch: fetcher, signIn: "/iam/sign-in", location: location as unknown as Location });
+    const root = createRoot(document.createElement("div"));
+
+    await act(async () => {
+      root.render(
+        <StackProvider mediator={mediator} strings={new Strings("en", {})} session={GetSession}>
+          {null}
+        </StackProvider>,
+      );
+    });
+
+    await mediator.send(ListOrders, {}).catch(() => {});
+
+    expect(turns).toEqual(["/iam/sign-in?staleCredential=1"]);
 
     await act(async () => root.unmount());
   });

@@ -627,7 +627,8 @@ Built once per request; the gate and helpers consume it (never `HttpContext.User
   somebody already inside meets the refusal on a send ([The three refusals](#the-three-refusals)).
   There the client is what carries the reason: `SessionInterceptor` renews on a 401 that met a
   live session, the state it rebuilds is anonymous *and marked* (`SignInRoutes.StaleClaim`), and
-  `NsNotAuthorized` puts `StaleParameter` on the address it bounces to. Without that the person
+  `NsNotAuthorized` puts `StaleParameter` on the address it bounces to; a React client's `Mediator`
+does the same when the 401 met the signed-in session its session message read ([react.md](react.md#sign-in)). Without that the person
   lands on a door that looks like it forgot them and no later document load can say otherwise —
   the cookie went out with the 401. Bound: an interactive circuit built its session from the
   document request that started it and does not pass the pipeline again, so it picks this

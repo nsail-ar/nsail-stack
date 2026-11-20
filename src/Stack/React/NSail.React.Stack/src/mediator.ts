@@ -22,8 +22,10 @@ export interface SendOptions {
   signal?: AbortSignal;
 }
 
-// SignInRoutes.ReturnUrlParameter: the one spelling Iam's sign-in page and NsNotAuthorized share.
+// SignInRoutes.ReturnUrlParameter and StaleParameter: the spellings Iam's sign-in page reads and
+// NsNotAuthorized writes.
 const returnUrlParameter = "returnUrl";
+const staleParameter = "staleCredential";
 
 function format(value: unknown): string {
   return typeof value === "string" ? value : String(value);
@@ -38,6 +40,7 @@ export class Mediator {
   readonly #signIn: string | undefined;
   readonly #location: MediatorOptions["location"];
   #turned = false;
+  #signedIn = false;
 
   constructor(options: MediatorOptions = {}) {
     this.#baseUrl = (options.baseUrl ?? "").replace(/\/+$/, "");
@@ -105,6 +108,14 @@ export class Mediator {
     }
   }
 
+  /** What the client last read of its session. A 401 that meets a signed-in session is a
+   * credential the server refused, and the turn to sign-in says so (SignInRoutes.StaleParameter):
+   * the cookie went out with the 401, so the sign-in page has nothing else to learn it from.
+   * StackProvider reports it from the session message it reads. */
+  reportSession(isAuthenticated: boolean): void {
+    this.#signedIn = isAuthenticated;
+  }
+
   url<TRequest>(message: MessageType<TRequest, unknown>, request: TRequest): string {
     const values = request as Record<string, unknown>;
     const fields = Object.entries(message.fields) as [string, Field][];
@@ -155,9 +166,19 @@ export class Mediator {
     // The root is where a sign-in lands with no return address anyway, and the sign-in page
     // naming itself is a trip to nowhere — NsNotAuthorized's two guards.
     const carry = path.length > 0 && path.toLowerCase() !== this.#signIn.split(/[?#]/)[0].replace(/^\/+|\/+$/g, "").toLowerCase();
+    const query: string[] = [];
+
+    if (carry) {
+      query.push(`${returnUrlParameter}=${encodeURIComponent(here)}`);
+    }
+
+    if (this.#signedIn) {
+      query.push(`${staleParameter}=1`);
+    }
+
     const separator = this.#signIn.includes("?") ? "&" : "?";
 
-    location.assign(carry ? `${this.#signIn}${separator}${returnUrlParameter}=${encodeURIComponent(here)}` : this.#signIn);
+    location.assign(query.length > 0 ? `${this.#signIn}${separator}${query.join("&")}` : this.#signIn);
   }
 
   private hasBody(message: MessageType<unknown, unknown>): boolean {

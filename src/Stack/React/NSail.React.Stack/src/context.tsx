@@ -37,7 +37,15 @@ export function StackProvider({ mediator, strings, session, children }: StackPro
 const noMembers: Record<never, never> = {};
 
 function SessionReader({ message, children }: { message: MessageType<Record<never, never>, SessionShape>; children: ReactNode }) {
+  const mediator = useMediator();
   const load = useLoad(message, noMembers);
+  const signedIn = load.state === "loaded" && load.data.isAuthenticated;
+
+  useEffect(() => {
+    if (load.state === "loaded") {
+      mediator.reportSession(signedIn);
+    }
+  }, [mediator, load.state, signedIn]);
 
   return <SessionContext.Provider value={load}>{children}</SessionContext.Provider>;
 }

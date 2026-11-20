@@ -194,14 +194,22 @@ const mediator = new Mediator({ signIn: routes.signIn.href() });
   once for the whole client; `useSession()` answers it as a `Load`, and its `reload()` is how the
   client reports a sign-in or a sign-out it made. `NsSignedIn` draws its content only once the
   session is read and signed in — never while it is read, never from a read that failed — and
-  `anonymous` otherwise.
+  `anonymous` otherwise. A failed read draws nothing in each region and offers no retry; a client
+  that wants the failure drawn wraps `useSession()` in its own `NsLoad`.
 - **The sign-in address** (`signIn`, on `Mediator`) is a route of the client's table, never a
-  literal. A send answered 401 turns the page to it with `location.assign`, carrying where the
+  literal, and it is an address on the page's host: `location.assign` does not read the router's
+  `basename`, so a sign-in page that is a route of a client served under a base is declared with
+  that base on it. A send answered 401 turns the page to it with `location.assign`, carrying where the
   visitor was (path, query and fragment on the host) on `returnUrl` — the spelling of
   `SignInRoutes.ReturnUrlParameter`, which Iam's sign-in page honours — and still throws its
   refusal. It turns once per page however many sends answer 401 together, and carries nothing
   from the root or from the sign-in address itself, as `NsNotAuthorized` does: a second turn
   would write the sign-in page in as the way back.
+- **The turn says why.** A 401 that meets a signed-in session is a credential the server refused,
+  and the cookie went out with it, so the turn adds `SignInRoutes.StaleParameter` and the sign-in
+  page draws its sentence ([permissions.md](permissions.md), the refusal says why). The client
+  that declares `session` gets this: `StackProvider` reports each read to the `Mediator`
+  (`reportSession`); one that declares none turns unmarked.
 - **Only a 401 turns.** A 403 is a signed-in refusal: it stays a `BusinessError` drawn where the
   send was made, because turning it to sign-in would loop. A client that declares no `signIn`
   meets a 401 as any refusal.

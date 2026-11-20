@@ -83,7 +83,7 @@ without it only when the pattern has no `\p{}`, `\P{}` or `\u{}`.
 | `baseUrl` | `""` | Origin the API lives at; empty is the host that served the page. |
 | `fetch` | global `fetch` | Replaceable transport. |
 | `headers` | none | Function returning headers every send carries (language, tenant); read per send. |
-| `signIn` | none | Sign-in address on the page's host (from your route table). A send answered 401 turns the page there once, carrying where the visitor was on `returnUrl`; absent, a 401 is a refusal like any other. A 403 never turns. |
+| `signIn` | none | Sign-in address on the page's host (from your route table). A send answered 401 turns the page there once, carrying where the visitor was on `returnUrl`, and `staleCredential=1` when the 401 met a signed-in session (`reportSession`, which `NsApp` calls from its `session`); not read through the router's `basename`; absent, a 401 is a refusal like any other. A 403 never turns. |
 | `location` | the page's `location` | Where the visitor is and how the turn is made; replaceable for tests. |
 
 `send(message, request, { signal? })` builds the URL (route tokens, query members, repeated
@@ -103,7 +103,7 @@ with keys. `useCatalog` and `StackProvider` are the pieces underneath when you n
 | Component | Props worth knowing |
 |---|---|
 | `NsLoad` | `load` (from `useLoad`) and a render function over the data; spinner the first time, dimmed while re-reading, failure in place, with retry where a second try can pass |
-| `NsSignedIn` | `anonymous?` (drawn when nobody is signed in); the content is drawn only once the session is read and signed in |
+| `NsSignedIn` | `anonymous?` (drawn when nobody is signed in); the content is drawn only once the session is read and signed in, and nothing from a failed read (wrap `useSession()` in `NsLoad` to draw the failure) |
 | `NsForm` + `useForm` | `form`, `onSubmit`, `onReload?` (offered only for a `Conflict`); `NsSaved` shows the saved state, which `form.reset(value, { keepSaved: true })` keeps over the re-read of what was just sent |
 | `NsField` | `name`, `multiline?`, `autoFocus?`, `label?` (a string key); input, label and bounds come from the descriptor |
 | `NsTable` | `model`, `rows`, `columns`, `rowKey`, `onRowClick?` (rows also open from Enter and Space), `actions?`, `empty?` (a key), `ungrouped?` (columns shown without digit grouping, for numbers that are identifiers) |
