@@ -66,3 +66,20 @@ export const RepriceOrder = defineMessage<RepriceOrder, RepriceOrder>({
     price: { kind: "decimal", key: "Shop.RepriceOrder.Price", binding: "body" },
   },
 });
+
+// Shaped as the generator writes a message with no members answering NSail.Security.Session.
+export interface GetSession {}
+
+export interface Session {
+  isAuthenticated: boolean;
+  displayName?: string | null;
+}
+
+export const GetSession = defineMessage<GetSession, Session>({
+  name: "GetSession",
+  key: "Iam.GetSession",
+  area: "Iam",
+  method: "GET",
+  path: "api/iam/session",
+  fields: {},
+});
