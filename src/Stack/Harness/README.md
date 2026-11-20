@@ -141,9 +141,11 @@ the files it leaves.
     The walker writes `VERDICT: ok|n/a|bug|ruling|not-live|doubt` and its report: the verdict is
     the event, and the board is the harness's. A `ruling` is a story that cannot be walked as it
     stands (it needs an account, an environment, a person, a payment nobody provided): it goes to
-    Analyze wearing `ruling`, and a hand decides. Every other verdict leaves the story where a walk
-    reads it again (Released) or closes or reopens it; nothing waits in the QA column, and a story
-    found there is a planner note. A Watch reads its `Source` (a log source by name) every `Every` minutes, from where it
+    Analyze wearing `ruling`, and a hand decides. The QA column is what is being walked: a story enters it when its walk
+    starts (after the check that every product it names runs it) and leaves it by its verdict; a walk that gave none (a
+    doubt, a dead walker, a tenant the walker found behind, the quota wall) puts it back in Released, where what waits its
+    turn or its cut stands. A story a dead harness left in QA is walked again. A walker that found its tenant behind spent
+    a walk, so it is tried again on the doubt's clock, not the check's. A Watch reads its `Source` (a log source by name) every `Every` minutes, from where it
     last read (`Lookback` hours the first time) up to `IngestLag` minutes (default five) short of now, for a
     line the source ingests late. A pass reads at most 5000 lines, oldest first, and the next takes up after the
     last one read. A Watch groups the error lines by service, logger, message

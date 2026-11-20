@@ -74,6 +74,23 @@ public class QaWalkTests
         Assert.Contains("/shots/7", json);
     }
 
+    // The QA column is what is being walked: a verdict that moves the story takes it out, and every other
+    // ending (a doubt, a dead walker, a tenant found behind, the quota wall) hands it back to Released.
+    [Fact]
+    public void OnlyAVerdictThatMovesTheStoryLeavesItOutOfReleased()
+    {
+        foreach (var verdict in new[] { "Ok", "NotApplicable", "Bug", "BugAgain", "Ruling" })
+        {
+            Assert.True(QaJob.LeavesQa(new JobOutcome($"walked: {verdict}", Event: verdict)));
+        }
+        foreach (var verdict in new[] { "NotLive", "Doubt", "NoVerdict" })
+        {
+            Assert.False(QaJob.LeavesQa(new JobOutcome($"walked: {verdict}", Event: verdict)));
+        }
+        Assert.False(QaJob.LeavesQa(new JobOutcome("walk stopped at the quota wall", DateTimeOffset.UtcNow)));
+        Assert.False(QaJob.LeavesQa(null));
+    }
+
     [Fact]
     public void ANotLiveOrDoubtedWalkIsTriedAgainOnItsOwnClockAndEveryOtherVerdictWaitsForTheCut()
     {
@@ -89,6 +106,7 @@ public class QaWalkTests
 
         Assert.Equal(QaJob.NotLiveRecheck, QaJob.RecheckOf(new JobOutcome("walked: NotLive", Event: "NotLive")));
         Assert.Equal(QaJob.DoubtRecheck, QaJob.RecheckOf(new JobOutcome("walked: Doubt", Event: "Doubt")));
+        Assert.Equal(QaJob.DoubtRecheck, QaJob.RecheckOf(new JobOutcome("walked: NotLive", Event: "NotLive", Report: "The tenant runs an older build.")));
         Assert.InRange(QaJob.NotLiveRecheck, TimeSpan.FromMinutes(5), TimeSpan.FromHours(1));
         Assert.True(QaJob.DoubtRecheck >= QaJob.NotLiveRecheck);
     }

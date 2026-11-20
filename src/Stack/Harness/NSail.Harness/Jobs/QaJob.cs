@@ -28,7 +28,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
     public async Task<JobOutcome> Run(int slot, string logPath, CancellationToken ct)
     {
         // The board may have moved since the plan: a story no longer where a walk takes it is left.
-        if (Item.Story is { } n && await ctx.Board.StageOf(n, ct) is var stage && stage is not Stages.Released)
+        if (Item.Story is { } n && await ctx.Board.StageOf(n, ct) is var stage && stage is not (Stages.Released or Stages.Qa))
         {
             return new JobOutcome($"in {stage} now — not walked", Idle: true);
         }
@@ -58,72 +58,94 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
             var tag = await LiveTag(dir, p, ct);
             live.Add((key, p, tag, await LiveIn(dir, merge, tag)));
         }
-        var own = live.Single(l => l.Product == product);
-        if (own.Answer == "no" || (own.Answer == "unknown" && product.Live.Header is not null))
+        // A story of two products is live when both run it: the walker would find the other one missing and spend the walk saying so.
+        var behind = live.Where(l => l.Product == product || l.Product.Labels.Any(labels.Contains))
+            .FirstOrDefault(l => l.Answer == "no" || (l.Answer == "unknown" && l.Product.Live.Header is not null));
+        if (behind.Product is not null)
         {
-            await w.WriteLineAsync($"{ctx.Names.Ref(n)} — not live on {product.Name} yet (it runs {own.Tag ?? "nothing it says"}), not walked");
+            await w.WriteLineAsync($"{ctx.Names.Ref(n)} — not live on {behind.Product.Name} yet (it runs {behind.Tag ?? "nothing it says"}), not walked");
             return new JobOutcome($"walked: NotLive", Event: "NotLive", Report: "");
         }
 
-        // A walk's out folder is its own: an earlier walk's shots would be attached as this one's.
-        var outDir = Path.Combine(dir, Out);
-        await ctx.Remove(outDir, ct);
-        var shots = Path.Combine(outDir, "shots");
-        Directory.CreateDirectory(shots);
-        var dossier = new StoryDossier(ctx, history);
-        await dossier.WriteStory(n, outDir, ct);
-        await dossier.WritePrs(n, outDir, ct);
-
-        var env = await ctx.LaneEnv(started.AddMinutes(step.Minutes), Item, step, ct);
-        await ctx.Prepare(dir, env, w);
-        var mcp = Path.Combine(outDir, "mcp.json");
-        await File.WriteAllTextAsync(mcp, McpConfig(step.Worker.Mcp, shots, ctx.Options.Products.Values.Select(p => p.Tenant)), ct);
-
-        var tenants = string.Join('\n', ctx.Options.Products.Values.Select(p =>
-            $"{p.Name}: {p.Tenant} — user `{Value(env, p.UserVariable)}`, password `{Value(env, p.PasswordVariable)}`"));
-        var lives = string.Join('\n', live.Select(l => $"{l.Product.Name} test runs {l.Tag ?? "unknown"}: this story is in it: {l.Answer}"));
-        var seat = step.Agent ?? throw new InvalidOperationException($"{step.Worker} names no seat");
-        var prompt = await SeatPrompt.Read(dir, seat, new Dictionary<string, string>
+        // The QA column is what is being walked: the story enters it here and leaves it by its verdict. A walk that
+        // gave none (a doubt, a dead walker, the quota wall) puts it back where it waits its turn.
+        await ctx.Board.SetStage(n, Stages.Qa, ct);
+        JobOutcome? ended = null;
+        try
         {
-            ["ISSUE"] = n.ToString(CultureInfo.InvariantCulture),
-            ["STORY"] = ctx.Names.Ref(n),
-            ["OUT"] = Out,
-            ["PRODUCT"] = product.Name,
-            ["TENANTS"] = tenants,
-            ["LIVE"] = lives,
-            ["TREE"] = dir,
-        }, ct);
-
-        var tools = step.Worker.Mcp.Keys.Select(k => $"mcp__{k}__*").Concat(step.Worker.Tools).ToList();
-        // The agent opens this same log to append to it, and a second writer is refused while this one is open.
-        await w.DisposeAsync();
-        var result = await ctx.RunSeat(new AgentRun(
-            prompt, dir, ctx.ModelOf(labels, seat),
-            Access: AgentAccess.Walker,
-            MaxTurns: 200,
-            Timeout: TimeSpan.FromMinutes(step.Minutes),
-            Env: ctx.SeatEnv(env),
-            LogPath: logPath,
-            Marketplace: dir,
-            Mcp: mcp,
-            Tools: tools), ct);
-        // A walker whose browser is not there still writes a verdict from the story alone: the walk is void, and loud.
-        if (File.Exists(logPath) && Browserless(await File.ReadAllTextAsync(logPath, ct), step.Worker.Mcp.Keys))
-        {
-            await File.AppendAllTextAsync(logPath, $"{ctx.Names.Ref(n)} — the walker had no browser: walk void{Environment.NewLine}", ct);
-            return new JobOutcome("walk void: the walker's browser is not installed on this machine (npx @playwright/mcp install-browser chromium)", Event: "NoVerdict", Failed: true, Report: "");
+            ended = await Seated();
+            return ended;
         }
-        var quota = result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : (DateTimeOffset?)null;
+        finally
+        {
+            if (!LeavesQa(ended))
+            {
+                await ctx.Board.TrySetStage(n, Stages.Released, ctx.Logs.CreateLogger<QaJob>(), CancellationToken.None);
+            }
+        }
 
-        // A walker that answered its report instead of writing it: its final message is the report.
-        var reportFile = Path.Combine(outDir, "report.md");
-        var text = File.Exists(reportFile) ? await File.ReadAllTextAsync(reportFile, ct) : FromVerdict(result.Result);
-        var why = text.Length > 0 ? "" : result.TimedOut ? "El walker no terminó a tiempo." : $"El walker terminó sin reporte (exit {result.ExitCode}).";
-        var (evt, report) = Verdict(text.Length > 0 ? text : why);
-        report = $"{report}\n\n{await Evidence(n, dir, shots, started, ct)}\n\nLog: {Path.GetFileName(logPath)} on {ctx.Options.Machine}".Trim();
-        if (quota is not null && evt == "NoVerdict") return new JobOutcome("walk stopped at the quota wall", quota);
-        if (evt is "Bug" && await BugBefore(n, ct)) evt = "BugAgain";
-        return new JobOutcome($"walked: {evt}", quota, Event: evt, Failed: evt == "NoVerdict", Report: report);
+        async Task<JobOutcome> Seated()
+        {
+            // A walk's out folder is its own: an earlier walk's shots would be attached as this one's.
+            var outDir = Path.Combine(dir, Out);
+            await ctx.Remove(outDir, ct);
+            var shots = Path.Combine(outDir, "shots");
+            Directory.CreateDirectory(shots);
+            var dossier = new StoryDossier(ctx, history);
+            await dossier.WriteStory(n, outDir, ct);
+            await dossier.WritePrs(n, outDir, ct);
+
+            var env = await ctx.LaneEnv(started.AddMinutes(step.Minutes), Item, step, ct);
+            await ctx.Prepare(dir, env, w);
+            var mcp = Path.Combine(outDir, "mcp.json");
+            await File.WriteAllTextAsync(mcp, McpConfig(step.Worker.Mcp, shots, ctx.Options.Products.Values.Select(p => p.Tenant)), ct);
+
+            var tenants = string.Join('\n', ctx.Options.Products.Values.Select(p =>
+                $"{p.Name}: {p.Tenant} — user `{Value(env, p.UserVariable)}`, password `{Value(env, p.PasswordVariable)}`"));
+            var lives = string.Join('\n', live.Select(l => $"{l.Product.Name} test runs {l.Tag ?? "unknown"}: this story is in it: {l.Answer}"));
+            var seat = step.Agent ?? throw new InvalidOperationException($"{step.Worker} names no seat");
+            var prompt = await SeatPrompt.Read(dir, seat, new Dictionary<string, string>
+            {
+                ["ISSUE"] = n.ToString(CultureInfo.InvariantCulture),
+                ["STORY"] = ctx.Names.Ref(n),
+                ["OUT"] = Out,
+                ["PRODUCT"] = product.Name,
+                ["TENANTS"] = tenants,
+                ["LIVE"] = lives,
+                ["TREE"] = dir,
+            }, ct);
+
+            var tools = step.Worker.Mcp.Keys.Select(k => $"mcp__{k}__*").Concat(step.Worker.Tools).ToList();
+            // The agent opens this same log to append to it, and a second writer is refused while this one is open.
+            await w.DisposeAsync();
+            var result = await ctx.RunSeat(new AgentRun(
+                prompt, dir, ctx.ModelOf(labels, seat),
+                Access: AgentAccess.Walker,
+                MaxTurns: 200,
+                Timeout: TimeSpan.FromMinutes(step.Minutes),
+                Env: ctx.SeatEnv(env),
+                LogPath: logPath,
+                Marketplace: dir,
+                Mcp: mcp,
+                Tools: tools), ct);
+            // A walker whose browser is not there still writes a verdict from the story alone: the walk is void, and loud.
+            if (File.Exists(logPath) && Browserless(await File.ReadAllTextAsync(logPath, ct), step.Worker.Mcp.Keys))
+            {
+                await File.AppendAllTextAsync(logPath, $"{ctx.Names.Ref(n)} — the walker had no browser: walk void{Environment.NewLine}", ct);
+                return new JobOutcome("walk void: the walker's browser is not installed on this machine (npx @playwright/mcp install-browser chromium)", Event: "NoVerdict", Failed: true, Report: "");
+            }
+            var quota = result.QuotaRefused ? result.QuotaUntil ?? DateTimeOffset.UtcNow.AddHours(1) : (DateTimeOffset?)null;
+
+            // A walker that answered its report instead of writing it: its final message is the report.
+            var reportFile = Path.Combine(outDir, "report.md");
+            var text = File.Exists(reportFile) ? await File.ReadAllTextAsync(reportFile, ct) : FromVerdict(result.Result);
+            var why = text.Length > 0 ? "" : result.TimedOut ? "El walker no terminó a tiempo." : $"El walker terminó sin reporte (exit {result.ExitCode}).";
+            var (evt, report) = Verdict(text.Length > 0 ? text : why);
+            report = $"{report}\n\n{await Evidence(n, dir, shots, started, ct)}\n\nLog: {Path.GetFileName(logPath)} on {ctx.Options.Machine}".Trim();
+            if (quota is not null && evt == "NoVerdict") return new JobOutcome("walk stopped at the quota wall", quota);
+            if (evt is "Bug" && await BugBefore(n, ct)) evt = "BugAgain";
+            return new JobOutcome($"walked: {evt}", quota, Event: evt, Failed: evt == "NoVerdict", Report: report);
+        }
     }
 
     static readonly Dictionary<string, string> Media =new(StringComparer.OrdinalIgnoreCase)
@@ -241,9 +263,16 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         return outcome.Event is not ("NotLive" or "Doubt");
     }
 
+    // Whether a walk's verdict moves its story out of QA by itself (WorkerTypes, Test): any other ending moves nothing.
+    internal static bool LeavesQa(JobOutcome? outcome)
+    {
+        return outcome?.Event is "Ok" or "NotApplicable" or "Bug" or "BugAgain" or "Ruling";
+    }
+
+    // The check before the walk writes no report; a walker that found its tenant behind wrote one, and spent a walk.
     internal static TimeSpan RecheckOf(JobOutcome outcome)
     {
-        return outcome.Event == "Doubt" ? DoubtRecheck : NotLiveRecheck;
+        return outcome.Event == "Doubt" || outcome.Report is { Length: > 0 } ? DoubtRecheck : NotLiveRecheck;
     }
 
     internal static ProductOptions? ProductOf(IReadOnlySet<string> labels, IReadOnlyDictionary<string, ProductOptions> products)
