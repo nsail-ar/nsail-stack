@@ -96,12 +96,12 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
    question applies the moment it is made. A comment is read only by whoever opens that file
    and defends nothing: `Seed.Vouchers.cs` carried *"C and E carry no VAT to discriminate"*
    three lines above the table implementing it, and a whole story and PR were written against
-   it unnoticed. The same sentence as a scenario (Escenario 43) refuses the PR in CI. **The
+   it unnoticed. The same sentence as a scenario (Scenario 43) refuses the PR in CI. **The
    comment still belongs there** — it says WHY, which a test cannot — but the scenario holds
    the line.
 10. **A money scenario asserts which accounts moved, never the net.** A net nets: a credit in
     the right account and a debit in the wrong one come to the zero the test wanted
-    (`Escenario15_OtCanceladaConSenaTests` passed while every refund debited `Proveedores`,
+    (`Scenario15_CancelledWorkOrderWithDepositTests` passed while every refund debited `Proveedores`,
     because `Ledger.PartyBalance` sums across accounts). Name the accounts the act may touch
     and fail on any other.
     **The tool is `Ledger.PartyMovedOnly` / `Ledger.EntryMovedOnly`**
@@ -148,8 +148,8 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
     after** — *cerrar caja* and *cerrar caja con diferencia* are two paths, two tests, two
     paragraphs. **The test's name, the path's name and the `##` title of its guide paragraph
     are the same words**, so "which E2E does this change touch" is a grep and not a
-    judgement. The suites are excluded from CI on purpose (`ci.yml`'s
-    `FullyQualifiedName!~.E2E.`) and run at the nightly regression and at a release, so a
+    judgement. The suites are excluded from the gate on purpose (the Harness build's
+    `TestFilter`, `FullyQualifiedName!~.E2E.`) and run at the product's release cut, so a
     path's proof is the builder's own run before the push. This bounds nothing in ruling 7:
     an outcome the product promises is a contract, and the anecdote it refuses is a second
     test of the same outcome. What it costs a story: the product's story template (a product page);
@@ -261,8 +261,8 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
   `@onclick="@(() => context.DoAsync())"` gets a fresh id every render and the previous one
   is retired. Inside a popover, where the vendor re-renders many times a second with a list
   open, the id the test dispatches against is already gone: `UnknownEventHandlerIdException`
-  in seconds, never a wait timeout (`NsMenu`'s `Content` face was the case, caught by
-  `AvailableProductSupplierMenuTests`; making the click a method of the component cured it).
+  in seconds, never a wait timeout (`NsMenu`'s `Content` face was the case; making the click a
+  method of the component cured it).
   What the hunt taught:
   - **The load that reproduces it is concurrent test HOSTS, not a busy CPU** — six copies of
     the same assembly at once on 16 cores lands it red, while 32 spinning burners leave it
@@ -277,14 +277,14 @@ Numbered; code and docs cite them by number ("testing.md, ruling 8").
 ### Browser suites (E2E)
 
 - **A product's browser suite is its own, and its release's gate.** Every app owns
-  `test/Apps/{Product}/NSail.{Product}.E2E`; `e2e.yml` takes a `product` and each
-  release passes its own, so a tag is gated by the screens it is about to ship. The nightly
-  names none and runs them all, one after the other on the one machine.
+  `test/Apps/{Product}/NSail.{Product}.E2E`; the Harness's `Release` worker names it as its
+  `Suite`, one worker per product (`src/Stack/Harness/README.md`), so a tag is gated by the
+  screens it is about to ship.
 - **A browser suite is cut into lanes by measured minutes, not by area.** xunit serializes
   within a collection and parallelizes across them, so a suite's wall time is its LONGEST
   lane — never its total — and its floor is how many fixtures may live at once
   (`TestDatabase`'s permits: its own default, unless the run declares
-  `NSAIL_TESTDB_CONCURRENCY`, which e2e.yml's E2E step sets). Each lane is a fixture of
+  `NSAIL_TESTDB_CONCURRENCY`, which the release worker's `Variables` set). Each lane is a fixture of
   its own — own host, own database, own Chromium — so no two share mutable state and a test
   arranges what it needs inside its own class. The lanes are the suite's collection
   definitions (Optical's close `OpticalE2EFixture.cs`): **a new class joins its shape's lane

@@ -31,7 +31,7 @@ One suffix, one meaning. A form listed here is owned by its family across the wh
 | `IValidator<TMessage>` / `*Validator` | a save-time condition a module imposes on a message it does not own — returns the `Problem` that refuses the send, null to allow. The send pipeline runs them innermost: after every interceptor, before the handler (messaging.md) | `ProductTypeValidator : IValidator<UpdateProduct>` |
 | `*Manager` | imperative instance service | `DialogManager`, `StringManager`, `SettingsManager` |
 | `*Provider` | supplies a value; replaceable, async-friendly | `IBrandProvider`, `MetadataProvider` |
-| `*Context` | stateful plumbing cascaded to components, or the ambient state of one operation | `SurfaceContext`, `SettingsContext`, `MessageContext` |
+| `*Context` | stateful plumbing cascaded to components, or the ambient state of one operation | `SurfaceContext`, `WizardContext`, `MessageContext` |
 | `*Accessor` | reads an ambient the framework wrote, and nothing else — the `IHttpContextAccessor` shape: injected, virtual so a test hands over a fixture, with no way for user code to write what it answers | `MessageContextAccessor` |
 | `*Settings` | settings POCO; storage key derives from the type | `ThemeSettings` |
 | `*EventArgs` | component event payload | `QueryEventArgs`, `ProblemEventArgs` |

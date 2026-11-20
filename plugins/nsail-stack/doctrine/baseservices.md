@@ -125,7 +125,7 @@ the app (the suspended page, below).
 - HSTS (production), with `includeSubDomains`; `preload` stays off — it commits every subdomain
   of the domain for good
 - `MapEndpoints()` — maps all generated `IEndpointEntry` implementations
-- `MapPush()` — the `PushHub` at `PushFeed.Path`, behind the same tenant wall and
+- `MapPush()` — the `PushHub` at `PushFeed.Path` and the SSE door at `PushFeed.SsePath`, behind the same tenant wall and
   authentication as every endpoint, so a host that publishes always has the door its clients
   listen on
 

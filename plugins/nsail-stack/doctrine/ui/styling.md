@@ -296,8 +296,8 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
 
 ## Text and image chrome
 
-- `NsText` has its own `As` (`NsTextAs`: `Body` default, `Title` = the h6 treatment) — a
-  separate enum from `NsAs`. **`PageName` is that same treatment drawn as a top-level heading**
+- `NsText` has its own `As` (`NsTextAs`: `Body` default, `Title` = the h6 treatment,
+  `Subtitle`, `PageName`) — a separate enum from `NsAs`. **`PageName` is that same treatment drawn as a top-level heading**
   (`<h1 tabindex="-1">` — the rank and the focusability a screen's name owes a screen reader and
   the router's arrival focus, never a change of size), and **one** title row takes it: the one
   that is the screen's subject, decided by `NsTitleBar` and never written by a screen

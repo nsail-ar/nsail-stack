@@ -41,9 +41,9 @@ just places `<NsNavMenu />`.
   The guide is today's one such screen ([guide.md](guide.md)).
 - **The drawer owns the brand.** `NsNavMenu.Brand` is the install's name and whatever rides under
   it, drawn in the drawer's header and nowhere else: the title row carries the toggle and the
-  page's name. The fragment reads on two grounds: the rail's graphite (dark in both schemes) and
-  the page's `Surface`; a mark drawn for one ground only is the product's to make readable on the
-  other.
+  page's name. The fragment reads on two grounds: the rail's chrome (the brand's `Chrome`, which
+  turns with the scheme — [branding.md](branding.md)) and the page's `Surface`; a mark drawn for
+  one ground only is the product's to make readable on the other.
 - **The drawer's header is one aligned block.** The logo, the search outline and the first
   entry's icon start on one left line; the search row's last control (the outline, or the app's
   `Tools` door when it draws one), the brand row's chip at its painted edge and the entries'

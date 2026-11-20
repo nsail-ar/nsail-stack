@@ -167,7 +167,7 @@ anything escapes it.
 `WorkOrderHandler` sends `CreateSettlement` and `RegisterStockMovement`. The mechanism lives
 once, in `AmbientUnitOfWork` (`NSail.Messaging.Runtime.UnitOfWork`), and travels by
 `AsyncLocal` — the only channel a handler cannot forget to pass. The torn-transaction cases
-(orphan rows, half-committed flows) are each pinned in `AtomicidadDelPipelineTests`
+(orphan rows, half-committed flows) are each pinned in `PipelineAtomicityTests`
 (`NSail.Optical.Scenarios.Tests`).
 
 The boundaries, each deliberate:

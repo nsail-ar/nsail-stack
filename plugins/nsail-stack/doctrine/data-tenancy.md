@@ -8,7 +8,7 @@ tenant is resolved, credentialed, bootstrapped and swept by background jobs.
 
 ## The tenant is a column EF puts on every entity
 
-Under `SingleDb` isolation is a **predicate, not a connection**, so the mode is three rules the
+Under `SingleDb` isolation is a **predicate, not a connection**, so the mode is rules the
 Stack sets and no product writes:
 
 - **The column and the filter are set over the whole model**, in `ApplySetups`, beside
@@ -167,7 +167,7 @@ refused rather than stored.
   down for work nobody has been given yet. A cell that HAS done the pass says so where it states
   `Tenancy:Mode`, and **refuses to start** instead — and owes its `backup` verb a credential that
   CAN bypass, because `pg_dump` reads with `row_security off` and Postgres refuses that to a role
-  the policies apply to (baseservices.md, Install console). That question is only asked where the
+  the policies apply to (baseservices.md, Install verbs). That question is only asked where the
   column IS the wall, so `Tenancy:RequireRowSecurity` under `None` or `MultiDb` is **refused at
   startup** rather than ignored: a cell that turned the switch on without moving `Tenancy:Mode`
   would get neither the refusal nor the warning it asked for.
@@ -222,7 +222,7 @@ names by id, and where the axis is declared and nothing constrains it.
 
 By-id read sites number in the hundreds (`GetWorkOrder`, the shared `Load(id)` behind every
 work-order transition, …), so scoping them is a WHERE set where the model is assembled, never a
-hand edit per site. The fourth model-wide pass (`OrgFilter`, beside the tenant column's) puts a query
+hand edit per site. A model-wide pass (`OrgFilter`, beside the tenant column's) puts a query
 filter on every entity the map classifies **org-scoped**, and a by-id read from outside the
 operation's subtree answers not-found.
 
@@ -694,7 +694,7 @@ every authenticated request:
   tenant is reached through a wildcard demo label and through its own domain; a wall that looked
   at where the request landed would refuse one of them.
 - **A mismatch answers 401, not 403**: on this install the holder of another tenant's ticket is
-  nobody, and signing in here fixes it (permissions.md, the two refusals). **A ticket that names
+  nobody, and signing in here fixes it (permissions.md, the three refusals). **A ticket that names
   no tenant is a mismatch too** — deny by default reads an absence as an absence.
 - **Changing tenant is re-authentication.** No switch endpoint, no claim refresh: a different
   tenant is a different sign-in, on a different host, against a different database. The

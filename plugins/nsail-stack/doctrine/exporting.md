@@ -239,5 +239,5 @@ set it came from is read a page at a time and dropped.
 
 The file's size is bounded by `NsTable.MaxExportRows` (default `TableExport.DefaultRowCap`, at
 least 1): the row past it ends the export with a message and no file, so a large `OnQuery` list
-cannot grow the circuit without limit. The refusal is `Problems.ExportTooLarge`, whose `{max}`
+cannot grow the circuit without limit. The refusal is `Common.ExportTooLarge`, whose `{max}`
 names the cap.

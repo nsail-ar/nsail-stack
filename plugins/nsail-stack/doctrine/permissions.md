@@ -279,7 +279,7 @@ Security mirrors the messaging architecture: **`Policy` is data** (entity at res
 - **A caller that can await calls `EnsureLoaded` before any synchronous read** — `PreAuthorize`, `RequiresMe`, `Permits`, `GetEffectivePolicies` all read whatever is already hydrated, and `DbSecurityManager`'s per-tenant store loads lazily, so a tenant nobody has sent a message for yet answers from an empty set until something awaits the load. `Authorize`, the page gate and the endpoint gate all await it first; a new synchronous-read call site on a route neither gate reaches (a hand-mapped endpoint, a background job) owes the same call.
 - **`Authorize` returns details, not a bool**: the result carries *which* policies allowed (Name, Origin) — "why do I have access" and audit logging fall out for free. `Origin: Stored | BuiltIn | Dependency` drives the editor's three displays (editable / read-only / grey implication row).
 - **`Session`**: see [Session](#session). Lives in Stack (messaging consumes it).
-- Validation runs on both sides: the editor validates documents on save (against `[PolicyField]`-marked fields via reflection); hydration validates again (unknown field/symbol → loud error, no silent skip). Two exceptions, both stored-row only: an unknown **message key** is dropped, and an unbound field in a row that dropped one is excused — neither silently, both reported once per load.
+- Validation runs on both sides: the editor validates documents on save (against the `[PolicyField]` fields each message's generated registration declares, `PolicyHandlerFactory.Fields`); hydration validates again (unknown field/symbol → loud error, no silent skip). Two exceptions, both stored-row only: an unknown **message key** is dropped, and an unbound field in a row that dropped one is excused — neither silently, both reported once per load.
 
 ## Attributes: kind, not rule
 
@@ -719,7 +719,7 @@ Visibility checks **satisfiability, not validity**: does *some* effective policy
 
 ## Admin UI
 
-Policies are **multi-message** in the editor — the primary authoring shape is the use case: a message checklist per row (a fully-marked feature collapses to its wildcard), the field-constraint panel showing the union of the members' `[PolicyField]` fields — a pattern contributing the fields of what it covers today — with per-member binding indicators. Each policy carries a meaningful free-text **Name** — the policy table doubles as living documentation of the security system; auditors read names, not JSON. Tree: Area → Feature → message-disguised-as-permission, message display names via localization keys (missing key shows raw key, house policy). Per-field constraint editors enabled by attribute discovery (server-side reflection is fine here — the generator-emitted accessors are only for the evaluation hot path). Message list derived at runtime from registered `[Http]` messages — no maintained catalog.
+Policies are **multi-message** in the editor — the primary authoring shape is the use case: a message checklist per row (a fully-marked feature collapses to its wildcard), the field-constraint panel showing the union of the members' `[PolicyField]` fields — a pattern contributing the fields of what it covers today — with per-member binding indicators. Each policy carries a meaningful free-text **Name** — the policy table doubles as living documentation of the security system; auditors read names, not JSON. Tree: Area → Feature → message-disguised-as-permission, message display names via localization keys (missing key shows raw key, house policy). Per-field constraint editors enabled by what the generated registrations declare (`SecurityManager.GetConstrainableFields`, below) — the same `Fields` the validation and the hydration read, never a reflection pass of the editor's own. Message list derived at runtime from registered `[Http]` messages — no maintained catalog.
 
 Field constraints in the editor:
 
@@ -756,7 +756,7 @@ Settled: empty audience = anonymous, allowed with a loud editor warning; validit
 
 **No deny.** The motivating case (freeze prescription 123 during a dispute) doesn't work as a deny in the input-only model: a deny on `GetPrescription.Id = 123` doesn't reach lists (the id isn't in their input) → half-protection. A record freeze is domain state — Locked flag with reason, checked by write handlers, visible in UI, auditable — which does more and doesn't hole the model.
 
-Known-outs (deliberate, workaround named): no "everything except X" (no denies — grant what is allowed); no delegation chains (one relationship hop — workflow creates the direct relation, or explicit grant); no payload/business conditions ("discounts up to 10%" → handler, or PolicyHandler<T>); no environment conditions (time/IP → PolicyHandler<T> if ever); no per-row deny (VIP records = sensitivity flag + business filtering).
+Known-outs (deliberate, workaround named): no "everything except X" (no denies — grant what is allowed); no delegation chains (one relationship hop — workflow creates the direct relation, or explicit grant); no payload/business conditions ("discounts up to 10%" → handler, or a hand-written `PolicyHandler`); no environment conditions (time/IP → a hand-written `PolicyHandler` if ever); no per-row deny (VIP records = sensitivity flag + business filtering).
 
 ## Relation to features/metadata
 

@@ -7,15 +7,15 @@ into — and back to what opened it when it closes).
 
 ## The marker, not a selector list
 
-`NsRouter` wraps Blazor's own `FocusOnNavigate`, which takes one plain CSS selector and nothing
-else — `FocusSelector`, "h1" by default, which is why a person who opens a list has always had
-to click into its search before typing. A comma list ("`[data-ns-arrival-focus], h1`") is not
-the fix: `querySelector` answers the first match in DOCUMENT ORDER, and a page's `h1` always
-comes before whatever a screen marks, so the marker would lose the one time it mattered.
+Blazor's own `FocusOnNavigate` takes one plain CSS selector and nothing else, and no selector
+says "the box a screen marked, else its name": a comma list ("`[data-ns-arrival-focus], h1`")
+is not that, because `querySelector` answers the first match in DOCUMENT ORDER, and a page's
+`h1` always comes before whatever a screen marks, so the marker would lose the one time it
+mattered.
 
-`NsArrivalFocus` (replacing `FocusOnNavigate` in `NsRouter`) checks the marker on its own first,
-and falls back to `FallbackSelector` ("h1", so a screen reader still hears the page's title)
-only where there is none — **the marker always wins when it exists.** `AutoFocus` — the
+`NsRouter` mounts `NsArrivalFocus` instead, which checks the marker on its own first, and falls
+back to `FallbackSelector` (the router's `FocusSelector`, "h1" by default, so a screen reader
+still hears the page's title) only where there is none — **the marker always wins when it exists.** `AutoFocus` — the
 parameter every `NsFieldBase` field and every `NsPickerBase` picker carries — is its one source:
 `true` writes `data-ns-arrival-focus` on the field's own input (`NsFieldBase.SetInputAttributes`),
 the same way it already writes `data-ns-field` for the Enter policy. Nothing else needs to spell

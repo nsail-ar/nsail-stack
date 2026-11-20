@@ -353,7 +353,8 @@ holds. The industry's own name for it is the companion pane.
 ### Targets
 
 **Where a link opens is its `Target`, HTML semantics.** A '_'-prefixed value goes to the
-browser (`"_blank"`); any other name is a surface from the `Surfaces` constants catalog — apps
+browser (`Surfaces.Blank`, HTML's own `_blank`); any other name is a surface from the `Surfaces`
+catalog — typed `Surface` values, so a quoted target does not compile — and apps
 add their own class for custom surfaces. `ActionItem.Target` carries the same semantics, and
 **there is no `Surface` parameter anywhere.** Two reserved targets — link vocabulary, never
 `SurfaceContext.Name` values:
@@ -366,7 +367,7 @@ add their own class for custom surfaces. `ActionItem.Target` carries the same se
   overlays.
 - **A target is never dropped for want of a cascade** (cases).
 - **A browser target leaves the surfaces behind.** The tab it opens has no aside and no modal,
-  so `"_blank"` resolves to the rooted route — the address `Surfaces.Main` gives — from whichever
+  so `Surfaces.Blank` resolves to the rooted route — the address `Surfaces.Main` gives — from whichever
   surface the link renders in. That is how a link reaches something that is not a page (a PDF
   endpoint).
 
@@ -513,18 +514,20 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
   - **The drawer owns the brand, and the session too**: a sticky chip
     at its foot — avatar, name, current organization — anchors the session menu. Sidebar is
     identity, the title row is context: the nav drawer runs the full viewport height, shows the brand
-    at the top of its header, and **wears one palette in both themes — a dark gray derived from
-    the tenant's brand primary, never a configured colour** (`.ns-nav-drawer` in `ns-mud.css`).
-    **Dark/light moves the content area's Background, Surface and TextPrimary and nothing
-    else — the chrome stays put.** **Top-level nav groups are separated by a divider**, the
-    rail's own hairline; nothing is divided inside a card, where spacing already says it. **The
+    at the top of its header, and **paints the brand's `Chrome` — a pick of its own, never
+    derived from the accent — in each scheme's own value** (`.ns-nav-drawer` in `ns-mud.css`).
+    **The chrome turns with the reader's scheme like every other ground**, and its ink is
+    derived from the chrome, never borrowed from the content's
+    ([ui/branding.md](ui/branding.md), Chrome). **A line in the drawer is an item somebody
+    placed** (`NavMenuItem.Separator`), drawn in the rail's own hairline and never deduced
+    between groups; nothing is divided inside a card, where spacing already says it. **The
     active entry wears the brand's own hue** — Secondary/Tertiary were refused: where the user
     *is* is the brand's business, and those stay accents for data (states, badges). It wears it
     as the band's INK (`--ns-rail-accent`) and not at full strength: a free pick painted as a
     word on a chrome the brand had no say in is the least readable word in the gutter
     ([ui/branding.md](ui/branding.md), The accent as ink). **Below the drawer's breakpoint the drawer is behind the
-    hamburger**, and the brand rides the title row beside it while the drawer is shut
-    ([ui/navigation.md](ui/navigation.md)); opened by the person, only the drawer draws it. The brand's other
+    hamburger**, and the brand stays in it: the title row carries the toggle and the page's name
+    ([ui/navigation.md](ui/navigation.md)). The brand's other
     place is the splash.
 - **Containers belong to layouts, not pages**: the app layout wraps `@Body` in one
   `<NsContainer>`, and the drawer and the dialog are their own chrome. **Pages never render an

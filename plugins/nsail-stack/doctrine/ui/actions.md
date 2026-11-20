@@ -25,9 +25,11 @@ text shows is the breakpoint's word alone:**
 | `Inline` | the flat rung with no box of its own — with a glyph and no word it IS the icon button | text/bare glyph |
 | `Danger` | the destructive act | error fill |
 
-**No value names a look, a size or a state**, and there is no `InlineMain`: a screen whose
-principal act is a glyph writes `Main` at `Never`. How each fill is painted is
-[styling.md](styling.md), *A button's fill*.
+**None of these names a look, a size or a state**, and there is no `InlineMain`: a screen
+whose principal act is a glyph writes `Main` at `Never`. How each fill is painted is
+[styling.md](styling.md), *A button's fill*. The enum's other values are `NsSubmit`'s alone
+— `Submit` (its default, the form's hero), `Filter` and `Send` (*The six
+components*, below).
 
 **Icon-only is a STATE of the label, not a rank** — a control with an `Icon` and no visible
 label — so every intention has one and none owns it. It is reached two ways, and they are one
@@ -215,7 +217,7 @@ precedent it looks like: that one originates above the X, so re-providing was th
 every refusal drawn on the X, and with `BackdropClick` off those two are the only ways out — so
 `NsOpenDialog` withdraws the key for the length of the save (`SetOptionsAsync`) and hands it back
 as the opener asked for it, never as a second literal. It is withdrawn too while a dropdown, help,
-hint or expander inside is open, because the innermost open thing wins Escape
+hint, expander or text field's camera inside is open, because the innermost open thing wins Escape
 ([menus.md](menus.md)); that one ends at the next Escape, which closes it. It reaches the host as a call from
 `NsDialogExit` rather than being read there: the dialog instance's own cascade does not reach
 `TitleContent`. **Not the whole refusal, and that bound is a constraint**: a form standing

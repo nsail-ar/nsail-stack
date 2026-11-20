@@ -56,8 +56,9 @@ a seam, the seam's test rides the story.
 ## Flaky suites
 
 - A whole assembly failing instantly on connects is the shared Postgres under cross-slot
-  load — **rerun serial before suspecting code**. `RetryingLazy` keeps a faulted sweep
-  from poisoning an assembly.
+  load, never its connection ceiling: `pg_locks` joined to `pg_stat_activity` says which
+  fixture holds each permit, and `NSAIL_TESTDB_CONCURRENCY` is the figure to move
+  (testing.md). `RetryingLazy` keeps a faulted sweep from poisoning an assembly.
 
 ## When a fix earns a test (testing.md, ruling 7 bounding ruling 6)
 

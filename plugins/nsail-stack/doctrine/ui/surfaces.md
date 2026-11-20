@@ -72,8 +72,8 @@ logged by the `Runner` that read it or cut short by the component ending.
 
 ```razor
 <NsLink Href="@(GetUrl<UpdatePartyPage>(new { id = row.Id }))" Target="@Surfaces.Aside">
-Surface.Open("aside", route)
-Surface.Open<UpdatePartyPage>("aside", new { Id = id })
+Surface.Open(Surfaces.Aside, route)
+Surface.Open<UpdatePartyPage>(Surfaces.Aside, new { Id = id })
 ```
 
 **Every one of them lands in browser history through `SurfaceContext.Follow`, which is the only
@@ -205,8 +205,8 @@ over the backdrop MudBlazor paints for it — the mobile degradation, not a leak
 
 On the main surface the page's title bar draws its own row and announces it. `NsTitleBar` — and
 `NsPageHeader`, which composes it — decides by where it lives: on main (`Surface.IsMain`) it draws
-the hamburger and, below the drawer's breakpoint, the install's brand while the drawer is
-shut, the glyph/spinner slot, the title and the utilities, with no X, and announces its title, its derived glyph and its utility-actions
+the hamburger, the glyph/spinner slot, the title and the utilities, with no X and no brand
+(the drawer's alone, navigation.md), and announces its title, its derived glyph and its utility-actions
 fragment to its surface (`SurfaceContext.Announce`). **Pages are unchanged** — the component
 decides by where it lives.
 
@@ -283,7 +283,7 @@ the bar and the page the overlay is standing over. `NsTable` compares against wh
 drew, and must: it raises `ExportChanged` itself, from its own render body, so a redraw for the
 whole event is a loop rather than merely a waste. The gate is the COUNT and never a
 duration: `SubmitRenderPassTests`, in the shipped composition, for the reason in
-judgment.md (nsail: `docs/agents/judgment.md`) 3 — the CI box swings several-fold on identical work.
+judgment.md (nsail: `plugins/nsail-crew/doctrine/judgment.md`) 3 — the CI box swings several-fold on identical work.
 
 **A page's heading may be two lines, and the second is `Subtitle`** — a fragment `NsPageHeader`
 draws on a row of its own between the title row and the toolbar, for **what the screen's subject

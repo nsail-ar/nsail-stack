@@ -14,7 +14,8 @@ compile time: no reflection, nothing saved until the handler's `SaveChanges`.
 
 1. **The holder, once per Data project.** `Mappings.cs` with
    `[Generated(Mappers.Entities)] public static partial void Add{Kit}Mappings(this IServiceCollection services);`,
-   the `NSail.SourceGenerator` analyzer reference in the csproj (`OutputItemType=Analyzer`),
+   the generator's analyzer reference in the csproj (the `NSail.Messaging.SourceGenerator`
+   package with `PrivateAssets="all"`),
    and in the project's `Persistence.cs`: `services.Add{Kit}Mappings();` plus
    `services.TryAddScoped<EntityMapper>();`. Precedent: `NSail.Accounting.Data`.
 2. **The declaration, on the entity.** The entity names the message, never the reverse (the

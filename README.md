@@ -152,7 +152,9 @@ your consumers:
 </ItemGroup>
 ```
 
-The published versions are this repository's `v*` tags. The React packages are on npm at the
+Every merge to `main` is tagged `v<version>`, and nuget.org and npm take a version once a
+product has released on it: pin the one the badge shows, which may trail the newest tag. The
+React packages are on npm at the
 same version as the NuGet packages; pin them together. They ship ES modules for a bundler (Vite,
 webpack), with their types.
 
@@ -269,8 +271,9 @@ The data tests need PostgreSQL as above (`PGHOST` and `PGPORT` override the host
 Read the doctrine page for the area before you change it, and change the page in the same pull
 request as the code: [CLAUDE.md](CLAUDE.md) holds the rules every change keeps, including the
 license header each source file opens with. Pull requests build, test and pack, and publish
-nothing; a merge to `main` publishes every package as the next `0.1.<n>` and tags the commit
-([ci.yml](.github/workflows/ci.yml)).
+nothing; a merge to `main` publishes every package to the organization's GitHub Packages feed as
+the next `0.1.<n>` and tags the commit, and nuget.org and npm take that version once a product
+has released on it ([ci.yml](.github/workflows/ci.yml)).
 
 ## License
 

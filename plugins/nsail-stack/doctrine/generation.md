@@ -24,23 +24,34 @@ HTTP client senders, the two ends of the push, and the entity mappers.
 
 ## The setup pattern
 
-Kit and App projects use a **partial static setup class** (`Web.cs` → `Web`):
+Kit and App projects compose in a plain static entry and declare each generated method in a
+**partial static holder** of its own, every file named by what it contributes
+([naming.md](naming.md): a kit WebApi's entry is `Api.cs`, an app host's `Web.cs`). The Sample's
+`Web.cs`, `Dependencies.cs` and `Endpoints.cs`:
 
 ```csharp
-public static partial class Web
+public static class Web
 {
-    public static void AddOpticalWebApi(this IServiceCollection services)
+    public static void AddSampleWebApi(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddOpticalServices();    // generated
-        services.AddOpticalEndpoints();   // generated
-        services.AddIamWebApi(iam);          // manual — compose kits
+        // … data, authentication
+        services.AddSampleServices();           // generated
+        services.AddSampleEndpoints();          // generated
+        services.AddSampleInProcessClients();   // generated
+        services.AddSampleSecurity();           // manual
     }
+}
 
+internal static partial class Dependencies
+{
     [Generated(Services.Registration)]
-    private static partial void AddOpticalServices(this IServiceCollection services);
+    internal static partial void AddSampleServices(this IServiceCollection services);
+}
 
+internal static partial class Endpoints
+{
     [Generated(Http.Endpoints)]
-    public static partial void AddOpticalEndpoints(this IServiceCollection services);
+    internal static partial void AddSampleEndpoints(this IServiceCollection services);
 }
 ```
 
@@ -169,7 +180,7 @@ public class GetPrescription : IMessage<Prescription>
 | `[AsRoute]` | Path segment |
 | `[AsQuery]` | Query string |
 | `[AsHeader]` | Request header (one value; a collection is `NSG024`) |
-| (default on POST/PUT) | JSON body |
+| (default on Post/Put/Patch) | JSON body |
 
 Only public, instance, non-indexer properties with a public `set` or `init` and no `[JsonIgnore]` enter the model, read once as the most derived declaration; any other member is not on the wire.
 

@@ -139,8 +139,9 @@ its `src/`, and everything else with `dist/`. This workspace asks for the condit
 nothing here builds a package before using it; an app outside the repository gets `dist/` from
 npm. `npm run build` writes `dist/` — `@nsail/stack`'s `build.mjs` also copies the Stack's own
 catalog from `NSail.Components.Mud` into it, so the tarball needs nothing outside itself.
-`ci.yml` packs both on every run and publishes them on a merge to `main`, at the NuGet version,
-by npm's Trusted Publishing; the checkout's own `0.1.0` never reaches npm.
+`ci.yml` packs both on every run, at the NuGet version, and its `publish` job puts a version on
+npm once a product has released on it, by npm's Trusted Publishing; the checkout's own `0.1.0`
+never reaches npm.
 
 A kit or app package imports both; nothing below `@nsail/ui` names a component.
 
