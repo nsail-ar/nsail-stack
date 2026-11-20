@@ -132,9 +132,10 @@ public static class WorkerTypes
         // says what a hand decides. NotLive: its tenant runs an older build, it stays for the next cut.
         // Doubt: the walk could not be made for a reason outside the story (the tenant is down, the
         // tools failed); nothing moves and it is tried again after QaJob.DoubtRecheck. NoVerdict: the
-        // walker died.
+        // walker died. The story stands in QA only while it is walked (QaJob.Walk); one a dead harness left
+        // there is walked again.
         ["Test"] = new("Test", WorkKind.Qa, true, false,
-            new FilterOptions { Status = Stages.Released, InVersion = true, Labels = Holds },
+            new FilterOptions { Status = $"{Stages.Released}|{Stages.Qa}", InVersion = true, Labels = Holds },
             [.. WorkerType.BaseEvents, "Ok", "NotApplicable", "Bug", "BugAgain", "Ruling", "NotLive", "Doubt", "NoVerdict"],
             new Dictionary<string, IReadOnlyList<ActionOptions>>
             {

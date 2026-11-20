@@ -76,12 +76,13 @@ public class PlannerTests
         Assert.Contains(plan.Notes, n => n.Contains("#5"));
     }
 
+    // A story stands in QA only while it is walked: one a dead walk left there is no hand's, the next walk takes it.
     [Fact]
-    public void AStoryInQaWithNoHoldIsSaidOutLoud()
+    public void AStoryLeftInQaIsNotSaidToBeAHands()
     {
         var plan = SampleWorkers.Plan(new Fixture().Story(6, "QA").Story(7, "QA", "ruling").Build());
 
-        Assert.Contains(plan.Notes, n => n.StartsWith("#6: in QA — no walk reads it", StringComparison.Ordinal));
+        Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#6:", StringComparison.Ordinal));
         Assert.DoesNotContain(plan.Notes, n => n.StartsWith("#7:", StringComparison.Ordinal));
     }
 

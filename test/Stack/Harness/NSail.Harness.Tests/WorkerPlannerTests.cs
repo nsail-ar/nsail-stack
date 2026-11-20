@@ -143,7 +143,8 @@ public class WorkerPlannerTests
         Assert.Equal(["qa #1"], Lines(new Fixture().Story(1, "Released", milestone: true)));
         Assert.Empty(Lines(new Fixture().Story(1, "Released")));
         Assert.Empty(Lines(new Fixture().Story(1, "Released", "walking", milestone: true).LockAge(1, "walking", TimeSpan.FromMinutes(1))));
-        Assert.Empty(Lines(new Fixture().Story(2, "QA", milestone: true)));
+        Assert.Equal(["qa #2"], Lines(new Fixture().Story(2, "QA", milestone: true)));
+        Assert.Empty(Lines(new Fixture().Story(2, "QA", "walking", milestone: true).LockAge(2, "walking", TimeSpan.FromMinutes(1))));
     }
 
     [Fact]
