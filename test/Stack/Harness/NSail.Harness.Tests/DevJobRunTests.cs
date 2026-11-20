@@ -356,6 +356,19 @@ public class DevJobRunTests : IDisposable
     }
 
     [Fact]
+    public async Task AChangeThatBelongsInAnotherRepositoryGoesToTheAnalystWithNoHold()
+    {
+        await Seed();
+        var board = Board();
+
+        var outcome = await Run(new Asking("elsewhere.md", "The column's rule lives in nsail-stack: the Stack change lands first."), board, new Lines());
+
+        Assert.Equal("Reanalyze", outcome.Event);
+        Assert.DoesNotContain(Labels.Ruling, board.Cards[1].Labels);
+        Assert.Contains(board.Cards[1].Comments, c => c.Body.Contains("lives in nsail-stack"));
+    }
+
+    [Fact]
     public async Task AnOrdinaryStorysQuestionStillWaitsForAHand()
     {
         await Seed();

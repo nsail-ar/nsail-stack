@@ -80,8 +80,8 @@ public static class WorkerTypes
                 ["Elsewhere"] = [MoveTo(Stages.Backlog)],
             }, Minutes: 45),
         // Started: a builder took it. Opened, Pushed: the gate decides what follows. Ruling: the builder's
-        // question goes back to the analyst. Reanalyze: a release red's question, which goes to the analyst
-        // with no hold. HandedOff: the next voyage takes it. Walled: something outside the story must change
+        // question waits for a hand's word. Reanalyze: a release red's question, or a change that has to
+        // land in another repository first, which goes to the analyst with no hold. HandedOff: the next voyage takes it. Walled: something outside the story must change
         // first, so it waits blocked in Backlog, where the rule that lifts `blocked` lifts it. Landed: it
         // rode main meanwhile. Unfinished: the voyage ended with no PR open (it died, its push was refused,
         // the quota wall), so a builder takes it again. Stalled: two dead voyages, for the analyst.
