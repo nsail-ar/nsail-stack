@@ -11,8 +11,8 @@ Both are npm packages (not NuGet), released at the same version as the NuGet pac
 
 | Package | Folder | What it is | Peer dependencies |
 |---|---|---|---|
-| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm` | `react >= 19`, `react-dom >= 19` |
-| `@nsail/ui` | `NSail.React.Ui` | The components (`NsApp`, `NsLoad`, `NsForm`, `NsField`, `NsTable`, ...) and the `@nsail/ui/ns.css` stylesheet; depends on `@nsail/stack` | `react >= 19`, `react-dom >= 19` |
+| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`, `useSession` | `react >= 19`, `react-dom >= 19` |
+| `@nsail/ui` | `NSail.React.Ui` | The components (`NsApp`, `NsLoad`, `NsSignedIn`, `NsForm`, `NsField`, `NsTable`, ...) and the `@nsail/ui/ns.css` stylesheet; depends on `@nsail/stack` | `react >= 19`, `react-dom >= 19` |
 
 The contract itself comes from the Sdk, through the build-time package `NSail.TypeScriptGenerator`
 (`PrivateAssets="all"`; no `lib/`, no runtime dependency). Your client also needs `react`,
@@ -83,13 +83,19 @@ without it only when the pattern has no `\p{}`, `\P{}` or `\u{}`.
 | `baseUrl` | `""` | Origin the API lives at; empty is the host that served the page. |
 | `fetch` | global `fetch` | Replaceable transport. |
 | `headers` | none | Function returning headers every send carries (language, tenant); read per send. |
+| `signIn` | none | Sign-in address on the page's host (from your route table). A send answered 401 turns the page there once, carrying where the visitor was on `returnUrl`, and `staleCredential=1` when the 401 met a signed-in session (`reportSession`, which `NsApp` calls from its `session`); not read through the router's `basename`; absent, a 401 is a refusal like any other. A 403 never turns. |
+| `location` | the page's `location` | Where the visitor is and how the turn is made; replaceable for tests. |
 
 `send(message, request, { signal? })` builds the URL (route tokens, query members, repeated
 collections), body and headers as the C# `HttpSender` does, refuses an invalid request before it
-leaves, and throws a `BusinessError` carrying a `Problem` on any failure.
+leaves, and throws a `BusinessError` carrying a `Problem` on any failure. Every send leaves
+`credentials` at `same-origin`: the session is the host's HttpOnly cookie, never a token the client
+holds.
 
 **`NsApp`** props: `mediator`, `language`, `strings?` (loader of the app's catalog, merged over
-the Stack's own sentences; the app's keys win), `children`. A failed catalog read still renders,
+the Stack's own sentences; the app's keys win), `session?` (the Sdk message that answers
+`NSail.Security.Session`, such as Iam's `GetSession`), `children`. With `session`, `useSession()`
+answers who is signed in as a `Load`; call its `reload()` after the client signs in or out. A failed catalog read still renders,
 with keys. `useCatalog` and `StackProvider` are the pieces underneath when you need your own root.
 
 **Components** (`@nsail/ui`):
@@ -97,6 +103,7 @@ with keys. `useCatalog` and `StackProvider` are the pieces underneath when you n
 | Component | Props worth knowing |
 |---|---|
 | `NsLoad` | `load` (from `useLoad`) and a render function over the data; spinner the first time, dimmed while re-reading, failure in place, with retry where a second try can pass |
+| `NsSignedIn` | `anonymous?` (drawn when nobody is signed in); the content is drawn only once the session is read and signed in, and nothing from a failed read (wrap `useSession()` in `NsLoad` to draw the failure) |
 | `NsForm` + `useForm` | `form`, `onSubmit`, `onReload?` (offered only for a `Conflict`); `NsSaved` shows the saved state, which `form.reset(value, { keepSaved: true })` keeps over the re-read of what was just sent |
 | `NsField` | `name`, `multiline?`, `autoFocus?`, `label?` (a string key); input, label and bounds come from the descriptor |
 | `NsTable` | `model`, `rows`, `columns`, `rowKey`, `onRowClick?` (rows also open from Enter and Space), `actions?`, `empty?` (a key), `ungrouped?` (columns shown without digit grouping, for numbers that are identifiers) |
@@ -132,8 +139,9 @@ root run every workspace.
   of the keys and the catalog `Strings` reads.
 - [Components](../Components/README.md) is the Blazor counterpart; `@nsail/ui` mirrors its `Ns*`
   family, with the same keys, without Mud.
-- Sign-in is not on the TypeScript side yet: the Sample's messages are open through an anonymous
-  policy ([Security](../Security/README.md) for the server half).
+- [Security](../Security/README.md) is the server half of sign-in: the cookie, `Session` and the
+  401 a send without one answers. The Sample composes no Iam, so its messages are open through an
+  anonymous policy.
 
 ## Going deeper
 

@@ -5,11 +5,13 @@ namespace NSail.Security;
 
 /// <summary>What the sign-in address carries when something sent a visitor to it. Every member
 /// lives in the Stack because each has its two sides on opposite sides of a boundary: the
-/// anonymous bounce (NsNotAuthorized, NSail.Components) and the cookie handler mint the return
+/// anonymous bounce (NsNotAuthorized, NSail.Components), the cookie handler and a React
+/// client's turn on a 401 (Mediator, @nsail/stack, which spells them by value) mint the return
 /// trip, the sign-in page and every provider's sign-in button read it; the credential wall
 /// (NSail.BaseServices.WebApi) marks its challenge and the identity kit's redirect turns that
 /// mark into the query the page reads; the identity kit marks the anonymous state a refusal
-/// left behind and the bounce turns that into the same query. A second spelling of any of them
+/// left behind and the bounce turns that into the same query, as the React turn does from the
+/// signed-in session a 401 met. A second spelling of any of them
 /// is a destination dropped in silence, or a person told nothing about why they are back at the
 /// door.</summary>
 public static class SignInRoutes
