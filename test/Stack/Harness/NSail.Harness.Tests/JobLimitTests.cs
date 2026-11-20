@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using System.Net;
+using System.Reflection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -30,6 +32,7 @@ public sealed class JobLimitTests : IDisposable
     readonly JobHistory _history;
     readonly HarnessMetrics _metrics = new();
     readonly DevJobRunTests.Lines _logs = new();
+    readonly Lifetime _lifetime = new();
     readonly HarnessLoop _loop;
 
     public JobLimitTests()
@@ -40,7 +43,7 @@ public sealed class JobLimitTests : IDisposable
         var repo = new DevJobRunTests.FileRepository("unused");
         var jobs = new JobContext(_board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace> { [repo.Name] = workspace }, new NoAgent(), options, [], NullLoggerFactory.Instance, new BuildLeases(1));
         _loop = new HarnessLoop(null!, _board, _locks, workspace,
-            _history, new JobStats(null), jobs, new BuildLeases(1), null!, Options.Create(options), new Lifetime(), _metrics,
+            _history, new JobStats(null), jobs, new BuildLeases(1), null!, Options.Create(options), _lifetime, _metrics,
             new WatchState(null), new HarnessState(Path.Combine(_root, "state")), new Logger<HarnessLoop>(_logs));
         _board.Add(Story, stage: Stages.InProgress, labels: [Labels.Claimed]);
     }
@@ -409,12 +412,85 @@ public sealed class JobLimitTests : IDisposable
         Assert.NotNull(_loop.Paused);
     }
 
+    [Fact]
+    public async Task AResumeDuringARestartsDrainLeavesTheRestartStanding()
+    {
+        var job = new Ends(Dev());
+        var running = new RunningJob("job-held", job.Item, 1, DateTimeOffset.UtcNow, Path.Combine(_root, "job-held.log"));
+        Running()[running.Id] = running;
+        var sailing = _loop.Sail(job, running);
+        _loop.Pause("a hand");
+        _loop.Restart("a deploy");
+        _loop.Resume();
+
+        Assert.Equal("restart: a deploy", _loop.Paused);
+        Assert.Equal(0, _lifetime.Stops);
+
+        job.Done.SetResult();
+        await sailing;
+        Assert.Equal(1, _lifetime.Stops);
+        Assert.Equal(75, Environment.ExitCode);
+        Environment.ExitCode = 0;
+    }
+
+    [Fact]
+    public async Task AResumeDuringARestartsDrainLiftsTheSharedPauseToTheRestarts()
+    {
+        var job = new Ends(Dev());
+        var running = new RunningJob("job-held", job.Item, 1, DateTimeOffset.UtcNow, Path.Combine(_root, "job-held.log"));
+        Running()[running.Id] = running;
+        var sailing = _loop.Sail(job, running);
+        await End(Shared(() => Task.CompletedTask));
+        _loop.Restart("a deploy");
+        _loop.Resume();
+
+        Assert.Equal("restart: a deploy", _loop.Paused);
+        job.Done.SetResult();
+        await sailing;
+        Assert.Equal(1, _lifetime.Stops);
+        Environment.ExitCode = 0;
+    }
+
+    [Fact]
+    public void AResumeWithNoRestartLiftsEveryPause()
+    {
+        _loop.Pause("a hand");
+        _loop.Resume();
+
+        Assert.Null(_loop.Paused);
+        Assert.Equal(0, _lifetime.Stops);
+    }
+
+    ConcurrentDictionary<string, RunningJob> Running()
+    {
+        return (ConcurrentDictionary<string, RunningJob>)typeof(HarnessLoop).GetField("_running", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(_loop)!;
+    }
+
     sealed class Lifetime : IHostApplicationLifetime
     {
+        public int Stops { get; private set; }
         public CancellationToken ApplicationStarted => default;
         public CancellationToken ApplicationStopping => default;
         public CancellationToken ApplicationStopped => default;
-        public void StopApplication() { }
+
+        public void StopApplication()
+        {
+            Stops++;
+        }
+    }
+
+    // A job that runs until the test ends it.
+    sealed class Ends(WorkItem item) : IJob
+    {
+        public TaskCompletionSource Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public WorkItem Item => item;
+
+        public async Task<JobOutcome> Run(int slot, string logPath, CancellationToken ct)
+        {
+            await Done.Task;
+            return new JobOutcome("done");
+        }
     }
 
     sealed class Throws(WorkItem item, Exception e) : IJob

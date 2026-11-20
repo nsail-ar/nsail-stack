@@ -344,7 +344,8 @@ the files it leaves.
   its lock label and lock come off and a Dev with no PR goes back to Ready. A job that meets it while the host
   stops ends as `stopped`, and pauses nothing. The pause is no hand's: every pass starts by running the step again and the first
   that succeeds lifts it, with nothing to clean; a hand's pause (`POST pause`) is never lifted that way,
-  a restart forgets the pause, and one draining for a restart is not lifted. A job's own failure (any other exception) still says `harness:broke`
+  a restart forgets the pause, and one draining for a restart is not lifted. A restart once asked stands: a resume
+  lifts a hand's pause, the shared step's and the quota wall, and the harness still stops when the last job ends. A job's own failure (any other exception) still says `harness:broke`
   on its story and the second in a row stalls it.
 - **By hand under the work root** (`Harness:WorkRoot`): anything that touches the mirror or a slot runs as the harness's user,
   never as root: a push from a slot writes the mirror's remote-tracking

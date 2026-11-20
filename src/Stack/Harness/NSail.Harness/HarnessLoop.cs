@@ -92,6 +92,8 @@ public sealed class HarnessLoop(
     // Until when a limited pass or a job's limited ending holds every pass; under _gate, as a job ends on its own task.
     DateTimeOffset? _limitedUntil;
     volatile bool _restarting;
+    // The pause a restart holds while it drains; under _gate.
+    string? _restartReason;
     DateTimeOffset? _pausedSince = state.PausedSince;
     bool _orphansSaid;
     bool _restartPause;
@@ -237,9 +239,10 @@ public sealed class HarnessLoop(
         _restarting = true;
         lock (_gate)
         {
+            _restartReason = $"restart: {why}";
             if (_paused is null)
             {
-                _paused = $"restart: {why}";
+                _paused = _restartReason;
                 _pausedSince ??= DateTimeOffset.UtcNow;
                 _restartPause = true;
             }
@@ -264,15 +267,22 @@ public sealed class HarnessLoop(
         state.Set(_restartPause || _sharedPause ? null : _paused, _restartPause || _sharedPause ? null : _pausedSince, _quotaUntil, _takeNew == options.Value.TakeNew ? null : _takeNew);
     }
 
+    // A hand's pause, the shared step's and the quota wall lift; a pending restart stays and keeps draining.
     public void Resume()
     {
-        _restarting = false;
         lock (_gate)
         {
-            _paused = null;
-            _pausedSince = null;
+            if (!_restarting)
+            {
+                _pausedSince = null;
+            }
+            else if (!_restartPause)
+            {
+                _pausedSince = DateTimeOffset.UtcNow;
+            }
+            _paused = _restarting ? _restartReason : null;
             _quotaUntil = null;
-            _restartPause = false;
+            _restartPause = _restarting;
             _sharedPause = false;
             _sharedProbe = null;
             Persist();
