@@ -4,6 +4,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSail.Harness.Agents;
 using NSail.Harness.Builds;
 using NSail.Harness.GitHub;
 using NSail.Harness.Jobs;
@@ -94,10 +95,84 @@ public class ChildEnvironmentTests
         Assert.Equal("direct", noCode.Output.Trim());
     }
 
+    // The seats and the steps that run code build in the same slots, and a build sets the time of a file
+    // only if it owns it: two accounts there fail the start, not the first gate.
+    [Theory]
+    [InlineData("seat", null)]
+    [InlineData(null, "builder")]
+    [InlineData("seat", "builder")]
+    public void SeatsAndCodeUnderDifferentAccountsFailTheStart(string? seats, string? code)
+    {
+        var refused = Assert.Throws<InvalidOperationException>(() => Context(code, seats));
+
+        Assert.Contains("two accounts building in one slot", refused.Message);
+        Assert.Contains(seats ?? "the harness user", refused.Message);
+        Assert.Contains(code ?? "unset", refused.Message);
+    }
+
+    // What the account wrote in a slot may hold a folder only it lists (a temp folder is 0700): it is removed through the account.
+    [FactOn("unix"), System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task AFolderTheCodeAccountWroteInIsRemovedThroughIt()
+    {
+        using var sudo = new FakeSudo();
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        try
+        {
+            var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => Context("builder").Remove(dir));
+
+            Assert.Contains("argv=-n -H -u builder --preserve-env=", refused.Message);
+            Assert.Contains($"-- setsid -w rm -rf {dir}", refused.Message);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task WithNoCodeAccountTheHarnessUserRemovesTheFolder()
+    {
+        var dir = Directory.CreateTempSubdirectory().FullName;
+        File.WriteAllText(Path.Combine(dir, "left"), "");
+        var ctx = Context(null);
+
+        await ctx.Remove(dir);
+        await ctx.Remove(dir);
+
+        Assert.False(Directory.Exists(dir));
+    }
+
     static JobContext Context(string? runCodeAs)
     {
+        return Context(runCodeAs, runCodeAs);
+    }
+
+    static JobContext Context(string? runCodeAs, string? seats)
+    {
         var options = new HarnessOptions { RunCodeAs = runCodeAs, Repositories = [new RepositoryOptions { Name = "acme/app" }] };
-        return new JobContext(null!, null!, new Dictionary<string, Workspace>(), null!, options, [], NullLoggerFactory.Instance, new BuildLeases(1));
+        return new JobContext(null!, null!, new Dictionary<string, Workspace>(), new Seats(seats), options, [], NullLoggerFactory.Instance, new BuildLeases(1));
+    }
+
+    sealed class Seats(string? account) : IAgent
+    {
+        public string Driver => "test";
+
+        public string? RunsAs => account;
+
+        public Task<AgentResult> Run(AgentRun run, CancellationToken ct)
+        {
+            throw new InvalidOperationException("no seat runs here");
+        }
+
+        public IReadOnlyDictionary<string, string> ScriptEnvironment(string name)
+        {
+            return new Dictionary<string, string>();
+        }
+
+        public (bool Refused, DateTimeOffset? Until) Quota(string output)
+        {
+            return (false, null);
+        }
     }
 
     // A sudo first on the PATH that prints the line it was given and the HOME it was started with,

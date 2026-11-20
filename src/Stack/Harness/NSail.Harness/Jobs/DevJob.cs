@@ -90,7 +90,7 @@ public sealed class DevJob(WorkItem item, JobContext ctx, JobHistory history) : 
         var (startedAt, from) = await Checkout(work, branch, ctx.WorkspaceOf(repo).Tip);
         await Exclude(work, Voyage);
         var voyage = Path.Combine(work, Voyage);
-        if (Directory.Exists(voyage)) Directory.Delete(voyage, recursive: true);
+        await ctx.Remove(voyage, ct);
         Directory.CreateDirectory(Path.Combine(voyage, "out"));
 
         // A voyage the screen refused left its work and its ending on this machine: once a hand lifts the

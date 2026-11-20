@@ -125,7 +125,7 @@ public class StoryDossierTests
             var repo = new Notes(dir);
             repo.Open.Add(new PrRef(7, "fix login", "story/1", null, "acme/app"));
             var options = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }], MarkerAuthors = ["vigia"], TrustedAuthors = ["Leonardo"] };
-            var ctx = new JobContext(board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace>(), null!, options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
+            var ctx = new JobContext(board, new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace>(), new DevJobRunTests.NoSeat(), options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
             var dossier = new StoryDossier(ctx, new JobHistory(Path.Combine(dir, "history")));
 
             await dossier.WriteStory(1, dir, CancellationToken.None);
@@ -206,7 +206,7 @@ public class StoryDossierTests
         repo.Open.Add(new PrRef(240, "fix it", "story/1", null, "acme/app"));
         var options = new HarnessOptions { Repositories = [new RepositoryOptions { Name = "acme/app" }] };
         if (gate) options.Workers["gate"] = new WorkerOptions { Type = "Verify" };
-        var ctx = new JobContext(new MemoryBoard(), new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace>(), null!, options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
+        var ctx = new JobContext(new MemoryBoard(), new RepositorySet([(repo, options.Repositories[0])]), new Dictionary<string, Workspace>(), new DevJobRunTests.NoSeat(), options, [], new DevJobRunTests.Lines(), new BuildLeases(1));
         await new StoryDossier(ctx, new JobHistory(Path.Combine(dir, "history"))).WritePrs(1, dir, CancellationToken.None);
         return await File.ReadAllTextAsync(Path.Combine(dir, "prs.md"));
     }

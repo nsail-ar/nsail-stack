@@ -111,6 +111,24 @@ public static class Shell
         return await Execute(psi, stdin, timeout, log, ct, lowPriority, seat ? runAs : null, tailChars, keep, stdoutOnly);
     }
 
+    // Removes a folder through the account that wrote in it, when there is one: a folder the account made for
+    // itself alone (a temp folder is 0700) lists for nobody else, the harness user included.
+    public static async Task Remove(string dir, string? runAs, CancellationToken ct = default)
+    {
+        if (!Directory.Exists(dir)) return;
+        if (runAs is null || OperatingSystem.IsWindows())
+        {
+            Directory.Delete(dir, recursive: true);
+            return;
+        }
+        var full = Path.GetFullPath(dir);
+        var removed = await Run("rm", ["-rf", full], Path.GetDirectoryName(full)!, ct: ct, runAs: runAs);
+        if (removed.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"{full} could not be removed as {runAs}: {removed.Output.Trim()}");
+        }
+    }
+
     static async Task<ShellResult> Execute(ProcessStartInfo psi, string? stdin, TimeSpan? timeout, TextWriter? log, CancellationToken ct, bool lowPriority, string? runAs, int tailChars, Func<string, bool>? keep, bool stdoutOnly)
     {
         using var p = new Process { StartInfo = psi, EnableRaisingEvents = true };

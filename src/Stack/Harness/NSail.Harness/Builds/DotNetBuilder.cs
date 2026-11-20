@@ -158,7 +158,10 @@ public sealed partial class DotNetBuilder(BuildOptions options, int buildNodes) 
         if (!File.Exists(Path.Combine(dir, project))) return run.Fail($"No suite at {project}.");
         // A build over another sha's outputs once served a mix of assemblies: the suite starts clean.
         var folder = Path.Combine(dir, Path.GetDirectoryName(project) ?? "");
-        foreach (var output in new[] { "bin", "obj" }.Select(o => Path.Combine(folder, o)).Where(Directory.Exists)) Directory.Delete(output, recursive: true);
+        foreach (var output in new[] { "bin", "obj" }.Select(o => Path.Combine(folder, o)))
+        {
+            await Shell.Remove(output, runAs, ct);
+        }
 
         if (await run.Dotnet(["restore", project, .. options.RestoreArgs]) is { ExitCode: not 0 } restore) return restore;
         if (await run.Dotnet(["build", project, "--configuration", options.Configuration, "--no-restore", Nodes]) is { ExitCode: not 0 } built) return built;
