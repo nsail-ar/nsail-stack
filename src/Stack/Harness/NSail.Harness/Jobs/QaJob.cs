@@ -67,7 +67,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
 
         // A walk's out folder is its own: an earlier walk's shots would be attached as this one's.
         var outDir = Path.Combine(dir, Out);
-        if (Directory.Exists(outDir)) Directory.Delete(outDir, recursive: true);
+        await ctx.Remove(outDir, ct);
         var shots = Path.Combine(outDir, "shots");
         Directory.CreateDirectory(shots);
         var dossier = new StoryDossier(ctx, history);
@@ -329,7 +329,7 @@ public sealed class QaJob(WorkItem item, JobContext ctx, JobHistory history) : I
         // walks side by side on one machine never touch each other's.
         var root = Path.Combine(ctx.Options.WorkRoot, "qa");
         var temp = Path.Combine(root, $"run-{slot}");
-        if (Directory.Exists(temp)) Directory.Delete(temp, recursive: true);
+        await ctx.Remove(temp, ct);
         Directory.CreateDirectory(temp);
 
         var env = await ctx.LaneEnv(DateTimeOffset.UtcNow.AddMinutes(step.Minutes), Item, step, ct);

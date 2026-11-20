@@ -29,7 +29,7 @@ public sealed class JobContext(
 
     // The default repository's slots: where every seat starts, the gate builds and a release cuts.
     public Workspace Workspace => workspaces[Repo.Name];
-    public IAgent Agent { get; } = agent;
+    public IAgent Agent { get; } = OneAccount(agent, options);
     public HarnessOptions Options { get; } = options;
     public HarnessTexts Texts => Options.Texts;
     public StoryNames Names { get; } = options.Names();
@@ -111,6 +111,24 @@ public sealed class JobContext(
     public bool TookSeat(string logPath)
     {
         return _seated.TryRemove(logPath, out _);
+    }
+
+    // A slot's build outputs belong to whoever built them, and a build sets the time of a file only if it owns it: the seats
+    // and the steps that run code share the slots, so they share the account, or have none.
+    static IAgent OneAccount(IAgent agent, HarnessOptions options)
+    {
+        if (agent.RunsAs != options.RunCodeAs)
+        {
+            throw new InvalidOperationException(
+                $"The seats run as {agent.RunsAs ?? "the harness user"} and Harness:RunCodeAs is {options.RunCodeAs ?? "unset"}: two accounts building in one slot cannot keep each other's outputs. Name the same account in both, or in neither");
+        }
+        return agent;
+    }
+
+    // What a seat or a step that runs code wrote in is removed through their account.
+    public Task Remove(string dir, CancellationToken ct = default)
+    {
+        return Shell.Remove(dir, Options.RunCodeAs, ct);
     }
 
     // A repository's own slots: a story it holds is built and pushed there.

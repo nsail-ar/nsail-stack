@@ -10,6 +10,9 @@ public interface IAgent
 
     Task<AgentResult> Run(AgentRun run, CancellationToken ct);
 
+    // The account its runs start as, when it has one: what a seat writes in a slot is that account's.
+    string? RunsAs => null;
+
     // What a script that drives this agent itself needs in its environment (its binary, its
     // credentials, a configuration folder of its own under this name).
     IReadOnlyDictionary<string, string> ScriptEnvironment(string name);

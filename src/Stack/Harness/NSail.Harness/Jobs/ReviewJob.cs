@@ -70,7 +70,7 @@ public sealed class ReviewJob(WorkItem item, JobContext ctx, JobHistory history)
         // What the board and the repository hold about the story and its PRs, on disk: the seat reads it
         // there and holds no token.
         var voyage = Path.Combine(dir, ".voyage");
-        if (Directory.Exists(voyage)) Directory.Delete(voyage, recursive: true);
+        await ctx.Remove(voyage, ct);
         Directory.CreateDirectory(voyage);
         var dossier = new StoryDossier(ctx, history);
         if (n is { } sd)

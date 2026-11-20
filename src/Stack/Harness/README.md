@@ -235,7 +235,11 @@ the files it leaves.
     account), that step — its `Command` or the builder's own `dotnet` — starts as the account through `sudo -n -H -u`,
     so the code reads neither the harness user's files nor the harness process's environment; it needs what `RunAs` below
     needs (the same sudoers shape, `setsid`, `pkill`, and write access to the slots and `gate/` under the work root).
-    Unset, the step runs as the harness user. Windows ignores it. A seat gets no token. The
+    Unset, the step runs as the harness user. Windows ignores it. `RunCodeAs` and `Claude:RunAs` name the same account,
+    or neither names one: the seats and these steps build in the same slots, and a build sets the time of a file only if it
+    owns it (MSBuild's `Touch`, error MSB3374), which no ACL grants, so two accounts there fail the start. What the account
+    wrote in a slot (`.voyage`, a job's out folder, a walk's run folder, a suite's `bin` and `obj`) the harness removes
+    through the account (`Shell.Remove`): a temp folder it made for itself is 0700 and lists for nobody else. A seat gets no token. The
     harness's own git authenticates through `Shell.GitEnvironment`, not the process environment. It reads no global git
     configuration and no global attributes file (a seat sharing the harness user writes both) and removes the shared
     repository's `info/attributes` before it checks a slot out: a `safe.directory` the host needs goes in the system

@@ -27,28 +27,15 @@ public sealed class ClaudeAgent(ClaudeOptions options, string configRoot) : IAge
 
     public TimeSpan? LongestCommand => Foreground;
 
+    public string? RunsAs => options.RunAs;
+
     public async Task<AgentResult> Run(AgentRun run, CancellationToken ct)
     {
         var command = options.Resolve();
         var config = Path.Combine(configRoot, Path.GetFileName(run.WorkDir));
         Directory.CreateDirectory(config);
         var plugins = Path.Combine(config, "plugins");
-        if (Directory.Exists(plugins))
-        {
-            if (options.RunAs is null)
-            {
-                Directory.Delete(plugins, recursive: true);
-            }
-            else
-            {
-                // The account created it, so the account removes it.
-                var removed = await Shell.Run("rm", ["-rf", plugins], config, ct: ct, runAs: options.RunAs);
-                if (removed.ExitCode != 0)
-                {
-                    throw new InvalidOperationException($"{plugins} could not be emptied as {options.RunAs}: {removed.Output.Trim()}");
-                }
-            }
-        }
+        await Shell.Remove(plugins, options.RunAs, ct);
 
         var env = new Dictionary<string, string>(run.Env)
         {
