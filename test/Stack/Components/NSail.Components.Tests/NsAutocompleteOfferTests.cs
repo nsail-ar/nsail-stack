@@ -332,6 +332,44 @@ public sealed class NsAutocompleteOfferTests : BunitContext, IAsyncLifetime
         Assert.Single(cut.FindAll(".ns-lookup-create-active"));
     }
 
+    // A list holding more answers than it shows draws its line between the last row and the
+    // offer, and the arrows pass it: the list opens on the first row, nine keys walk to the tenth,
+    // and the next lands on the offer.
+    [Fact]
+    public async Task The_more_line_is_passed_on_the_way_from_the_last_row_to_the_offer()
+    {
+        SelectRef[] shelf = [.. Enumerable.Range(1, 14).Select(n => new SelectRef(Guid.NewGuid(), $"Gómez {n:00}"))];
+
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, shelf)
+            .Add(x => x.Lazy, true)
+            .Add(x => x.Offer, Offer)
+            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _changes.Add(value))));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Gómez" });
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-lookup-more")), TimeSpan.FromSeconds(5));
+        cut.WaitForAssertion(() => Assert.Contains(Offered, Entries(cut)), TimeSpan.FromSeconds(5));
+
+        for (var i = 0; i < 9; i++)
+        {
+            await Press(cut, "ArrowDown");
+        }
+
+        Assert.False(OnOffer(cut));
+        Assert.Equal("true", cut.FindAll(".mud-list-item")[^1].GetAttribute("aria-selected"));
+
+        await Press(cut, "ArrowDown");
+
+        Assert.True(OnOffer(cut));
+
+        await Press(cut, "Enter");
+
+        Assert.Equal(1, Pressed);
+        Assert.Empty(_changes);
+    }
+
     // The selector the page presses the offer's control by, read from ns.js: the press itself
     // runs in a browser, so this layer proves which element it picks.
     static string OfferControlSelector()

@@ -77,6 +77,7 @@
                  ListClass="@ListClass"
                  ItemDisabledFunc="@ItemDisabledFunc"
                  NoItemsTemplate="@CreateContent"
+                 MoreItemsTemplate="@MoreContent"
                  AfterItemsTemplate="@CreateContent" />
 <NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
 
@@ -448,6 +449,13 @@
                 </CascadingValue>;
         }
     }
+
+    // The vendor draws its first MaxItems rows (ten, its default) of what a search answers, and
+    // this seam only when the answer held more. It is status text and not a row: the vendor's
+    // arrows walk its own items alone, and Walk reaches the entries below it, so neither the
+    // highlight nor Enter can land here.
+    RenderFragment MoreContent =>
+        @<div class="ns-lookup-more">@Strings.Translate("Common.MoreResults")</div>;
 
     // The caller's own entry, held to the same two conditions the quick add is: there has to be
     // text in the box, and the search for THAT text has to have answered. The offer is about the

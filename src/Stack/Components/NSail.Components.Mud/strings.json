@@ -7,6 +7,7 @@
   "Common.CreateNew": "Create {0}...",
   "Common.QuickAdd": "Add \"{0}\"",
   "Common.NoOptions": "There is no {0} to pick yet.",
+  "Common.MoreResults": "More results: keep typing to narrow them.",
   "Common.Filters": "Filters",
   "Common.FiltersCount": "Filters ({0})",
   "Common.New": "New",

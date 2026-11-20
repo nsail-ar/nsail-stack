@@ -1927,6 +1927,20 @@
     line-height: var(--mud-typography-body1-lineheight);
 }
 
+/* The line under a list that holds more answers than it shows (NsAutocomplete.MoreContent):
+   status about the list, not a row of it, so it reads in the secondary ink at caption size, on
+   the rows' own 16px gutter. */
+.ns-lookup-list .mud-autocomplete-more-items:not(:empty) {
+    padding: 0;
+}
+
+.ns-lookup-more {
+    padding: 8px 16px;
+    font-size: var(--mud-typography-caption-size);
+    line-height: var(--mud-typography-caption-lineheight);
+    color: var(--mud-palette-text-secondary);
+}
+
 /* The keyboard has reached an entry — create, quick add or offer (NsAutocomplete.Walk): it
    wears the highlight a reached row wears — the primary wash under the accent ink — and a row
    the vendor still marks gives it up, so one place is lit. The vendor states its highlight with

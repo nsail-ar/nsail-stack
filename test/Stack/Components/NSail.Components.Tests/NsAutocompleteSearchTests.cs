@@ -98,6 +98,8 @@ public sealed class NsAutocompleteSearchTests : BunitContext, IAsyncLifetime
         await cut.Find("input").FocusAsync(new FocusEventArgs());
 
         Shows(cut, "Caja en pesos", "Banco Nación", "Deudores por ventas", "Proveedores");
+
+        Assert.Empty(cut.FindAll(".ns-lookup-more"));
     }
 
     [Fact]
@@ -297,5 +299,69 @@ public sealed class NsAutocompleteSearchTests : BunitContext, IAsyncLifetime
         cut.WaitForAssertion(() => Assert.Equal("Caja", cut.Instance.Asked[^1]), TimeSpan.FromSeconds(5));
 
         Shows(cut, "Caja en pesos");
+    }
+
+    // A shelf of articles all answering the same word, numbered so a narrower term can cut it.
+    static SelectRef[] Articles(int count)
+    {
+        return [.. Enumerable.Range(1, count).Select(n => new SelectRef(Guid.NewGuid(), $"Artículo {n:00}"))];
+    }
+
+    async Task<IRenderedComponent<SearchLookupHost>> Searched(SelectRef[] rows, string text)
+    {
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, rows)
+            .Add(x => x.Lazy, true));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+
+        await Type(cut, text);
+
+        cut.WaitForAssertion(() => Assert.Equal(text, cut.Instance.Asked[^1]), TimeSpan.FromSeconds(5));
+
+        return cut;
+    }
+
+    static int More(IRenderedComponent<SearchLookupHost> cut)
+    {
+        return cut.FindAll(".ns-lookup-more").Count;
+    }
+
+    [Fact]
+    public async Task A_search_answering_more_than_the_list_shows_says_so_under_its_rows()
+    {
+        var cut = await Searched(Articles(14), "Artículo");
+
+        cut.WaitForAssertion(() => Assert.Equal(10, Options(cut).Length), TimeSpan.FromSeconds(5));
+
+        Assert.Equal(1, More(cut));
+
+        // Under the rows, and never one of them.
+        Assert.Empty(cut.FindAll(".mud-list-item .ns-lookup-more"));
+        Assert.Equal("Common.MoreResults", cut.Find(".ns-lookup-more").TextContent.Trim());
+    }
+
+    [Fact]
+    public async Task A_search_answering_ten_or_fewer_draws_no_more_line()
+    {
+        var cut = await Searched(Articles(10), "Artículo");
+
+        cut.WaitForAssertion(() => Assert.Equal(10, Options(cut).Length), TimeSpan.FromSeconds(5));
+
+        Assert.Equal(0, More(cut));
+    }
+
+    [Fact]
+    public async Task A_narrower_term_takes_the_more_line_away()
+    {
+        var cut = await Searched(Articles(14), "Artículo");
+
+        cut.WaitForAssertion(() => Assert.Equal(1, More(cut)), TimeSpan.FromSeconds(5));
+
+        await Type(cut, "Artículo 1");
+
+        Shows(cut, "Artículo 10", "Artículo 11", "Artículo 12", "Artículo 13", "Artículo 14");
+
+        Assert.Equal(0, More(cut));
     }
 }
