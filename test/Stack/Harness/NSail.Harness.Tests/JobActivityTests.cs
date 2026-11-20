@@ -112,6 +112,23 @@ public class JobActivityTests : IDisposable
     }
 
     [Fact]
+    public async Task AGateBehindAReleaseSuiteReadsWaitingForItsTurn()
+    {
+        var leases = new BuildLeases(3);
+        var gate = Job(WorkKind.Gate, Log("== gate main at abcdef12 on box slot 2"));
+        var holder = JobContext.HolderOf(gate.Item);
+        var suite = await leases.Acquire("release-optical", 5, BuildTurn.Suite, default);
+        var waiting = leases.Acquire(holder, 0, BuildTurn.Gate, default);
+
+        var inLine = JobActivity.Read(gate, Step(60, command: true), Ceiling, leases.Waits(holder));
+
+        Assert.Equal(RunningJob.WaitingForTurn, inLine.Doing);
+        Assert.Null(inLine.SilenceLimit);
+        leases.Release(suite.Id);
+        await waiting.WaitAsync(TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
     public void AGatesLineIsItsStepWaitingThenBuildingThenTesting()
     {
         var leases = new BuildLeases(1);
