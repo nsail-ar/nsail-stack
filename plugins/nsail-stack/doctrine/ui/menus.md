@@ -29,7 +29,7 @@ rows is drawn by position in `ns-mud.css`, so neither end needs a divider a call
   included — and `aria-haspopup="menu"` + `aria-expanded` + `aria-controls` on all four activator
   shapes, the custom `Content` face among them. Anything written from this side could only
   disagree with the list the row lands in, so `NsMenuItem` writes nothing (measured against
-  MudBlazor 9.10.0, `NsMenuTests`).
+  MudBlazor, `NsMenuTests`).
 - **`Selected` is the one thing a row still says for itself, and unset is an answer.** A
   `menuitem` carries no state at all, so a row that is one of a single CHOICE answers
   `menuitemradio` + `aria-checked` instead. The parameter is `bool?` for that reason: **unset is
@@ -86,7 +86,7 @@ opens a list of withheld rows is a button that does nothing.
   vendor's component by reference and toggles it from a method of its own; the activator's
   `context` goes unused.
 - **The face's tab stop is the vendor's wrapper, and the wrapper needs a BOX to be one.**
-  MudBlazor 9.5 puts `tabindex`, `role="button"`, `aria-haspopup` and the Enter/Space toggle on
+  MudBlazor puts `tabindex`, `role="button"`, `aria-haspopup` and the Enter/Space toggle on
   the `div.mud-menu-activator` it draws around a `Content` face, and then gives that div
   `display: contents` — which Chromium skips in sequential focus navigation and refuses
   `focus()` on, leaving the trigger with no tab stop and a click on it focusing `<body>` with

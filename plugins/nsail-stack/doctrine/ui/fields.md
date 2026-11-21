@@ -375,8 +375,8 @@ for the other answer — a field that commits late cannot be written.
   because `DateText` reads `15/8/2` as the year 2002 — a picker hearing every keystroke would
   commit a real wrong date and redraw the box over what is being typed (the round-trip trap the
   *Dates* section above measures in full). `NsColorField` is on the leave for the same reason: a
-  half-typed hex parses as a real other colour. Those three — `NsDateField`, `NsDateTimeField`,
-  `NsColorField` — are the whole exception, and they are the pickers.
+  half-typed hex parses as a real other colour. Those — `NsDateField`, `NsDateTimeField`,
+  `NsTimeField`, `NsColorField` — are the whole exception, and they are the pickers.
 
 ### `ValueChanged` answers what the value IS; `OnCommit` answers that the person is DONE
 

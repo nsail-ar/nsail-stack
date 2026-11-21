@@ -18,7 +18,8 @@ runs against `MapContext`, which has no store and maps plain objects.
 
 ## Use it
 
-In the Data project: reference `NSail.Data` and the `NSail.SourceGenerator` analyzer, and declare
+In the Data project: reference `NSail.Data` and the generator's analyzer package
+(`NSail.Messaging.SourceGenerator`, [Generation](../Generation/README.md)), and declare
 a holder the generator fills with the registrations:
 
 ```csharp

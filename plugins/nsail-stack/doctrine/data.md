@@ -116,8 +116,8 @@ The rest lives in [data-tenancy.md](data-tenancy.md), under these headings:
 connection route goes through `ConnectionStrings.Complete` (`NSail.Data`), which fills a missing
 password from the machine's `PGPASSWORD` (the variable psql already honors; Npgsql alone does
 not read it). `PGHOST` and `PGPORT` ride the same seam: set, they repoint the string's `Host=`
-and port (a CI job reaches its postgres service through the docker gateway on a per-run
-published port, never `localhost:5432`); unset, nothing changes. An explicit `Password=` always
+and port (a containerized run, or one whose Postgres listens on another port, never
+edits the string); unset, nothing changes. An explicit `Password=` always
 wins (a deployed install's full string passes through untouched), and no repo carries the dev
 password. The first `ApplyMigrations` creates the database the string names.
 
@@ -208,24 +208,37 @@ it fails at write time.
 Each app defines its own context in `{App}.Data`:
 
 ```csharp
-public class OpticalDbContext : DbContext, ITenanted
+public class OpticalDbContext : DbContext, ITenanted, IHasOrgScope
 {
     readonly IEnumerable<IDbContextSetup> _setups;
     readonly TenancyProvider _tenancy;
+    readonly OrgScopeProvider _orgs;
 
     public OpticalDbContext(
         DbContextOptions<OpticalDbContext> options,
         IEnumerable<IDbContextSetup> setups,
-        TenancyProvider? tenancy = null)
+        TenancyProvider? tenancy = null,
+        OrgScopeProvider? orgs = null)
         : base(options)
     {
         _setups = setups;
         _tenancy = tenancy ?? TenancyProvider.Install;
+        _orgs = orgs ?? OrgScopeProvider.Ambient;
     }
 
     public Guid? TenantId
     {
         get { return _tenancy.RowKey; }
+    }
+
+    public OrgScope OrgScope
+    {
+        get { return _orgs.Current; }
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseAuditStamps();
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -245,6 +258,8 @@ design-time or fixture-built context needs no argument), `ApplyTenancy` and `App
 everything a product says about tenancy. `TenantId` is `Guid?` and reads `RowKey`, not
 `Current.RowKey`: null is what an unresolved scope gets under `SingleDb`, and it is what makes
 that scope read nothing. Answering `Guid.Empty` there would hand it the install's rows.
+`IHasOrgScope` is the org axis' half of the same shape (data-tenancy.md) — `ApplySetups` asks
+for both — and `UseAuditStamps` is what stamps `IAudited` (*Mapping*, below).
 
 The context applies all registered `IDbContextSetup` instances in `OnModelCreating`, so EF
 conventions stay active. Do not pre-build the model with `UseModel` — a conventionless

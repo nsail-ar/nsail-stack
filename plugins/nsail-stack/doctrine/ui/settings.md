@@ -21,8 +21,12 @@ route — **no dynamic form engine, no settings shell**. Abstraction in `NSail.S
   the setting overrides the derivation, not the other way around. The control that means the
   concept reads the setting itself (`CurrencySelect`, `FiscalPeriodSelect`), so no screen
   repeats the lookup.
-- **`SettingsManager`**: `Get<T>()`/`Save<T>()` — resolves key and scope from the type. The
-  abstraction TryAdds a null implementation so apps without the kit still run.
+- **`SettingsManager`**: `Get<T>()` for a reader that acts on the value, `Read<T>()` and
+  `Save<T>(value, version)` for a screen — resolves key and scope from the type. `Read` answers
+  the value with the version of the row it came from and the save names that version, so a row
+  that moved since is refused; version 0 is the unconditional write of a background writer,
+  never a form's. The abstraction TryAdds a null implementation so apps without the kit still
+  run.
 - **Contribution**: each module implements `ISettingsContributor` returning nestable
   `SettingsItem`s (`Group`/`GroupIcon`/`Weight`) whose `PageType` names a concrete page.
   `SettingsMenu` — an `INavMenuContributor` — folds them into the nav's *Settings* group
@@ -60,8 +64,9 @@ route — **no dynamic form engine, no settings shell**. Abstraction in `NSail.S
   The consequence, shared by the Meta/Google handlers: a stored secret can be replaced
   but not cleared through its own save (Storage clears it only when its target moves).
   Reference: `SmtpSettingsHandler`, `WhatsAppSettingsHandler`, `SmtpSettingsWireShapeTests`.
-- **A POCO the STACK reads is still an ordinary settings type** — `ThemeSettings` and
-  `NavMenuArrangement` (`NSail.Settings`) both live beside the abstraction, and the kit's Sdk
+- **A POCO the STACK reads is still an ordinary settings type** — `ThemeSettings`
+  (`NSail.Components`, beside the theme that reads it) and `NavMenuArrangement`
+  (`NSail.Settings`, beside the abstraction) both live in the Stack, and the kit's Sdk
   carries the messages that move them. `NavMenuArrangement` is System scope and holds what this
   install did to its own menu; what reads it is a Stack seam the kit fills
   (`INavMenuArrangement`), never a screen, and it has no settings page yet — both are

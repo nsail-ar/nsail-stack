@@ -398,10 +398,20 @@ public static void AddTasksPolicies(this IServiceCollection services)
     services.AddBuiltInPolicy(new Policy
     {
         Name = "Tasks.Policies.Everyone",
-        Messages = ["Tasks.*"],
+        Messages =
+        [
+            "Tasks.Projects.ListProjects",
+            "Tasks.Projects.GetProject",
+            "Tasks.Projects.CreateProject",
+            "Tasks.Projects.UpdateProject",
+            "Tasks.Projects.DeleteProject",
+        ],
     });
 }
 ```
+
+The policy names each message, never `Tasks.*`: a wildcard also grants whatever is filed under
+the feature next, so a new message is refused until this list names it.
 
 An app with sign-in composes an identity provider and authors real policies instead
 ([Permissions](permissions.md)).

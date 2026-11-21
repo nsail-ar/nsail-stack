@@ -264,7 +264,7 @@ The shared read is `NsActBase`, and `NsCollectionBase` sits on it — one copy o
 `"ParentReadOnly"`/`"ParentDisabled"` for the chain that draws ways in. `NsFieldBase` and
 `NsPickerBase` still do not join it: those chains meet this one only at `ComponentBase`.
 
-**The vendor reads `"ParentDisabled"` too** (measured against MudBlazor 9.10): `MudBaseButton`
+**The vendor reads `"ParentDisabled"` too** (measured): `MudBaseButton`
 declares a cascading parameter of that exact name and ORs it into its own disabled state. The
 name is the vendor's convention, not a coincidence — so every `NsButton`, `MudButton` and
 `MudIconButton` under an `NsForm` answered a cascade NSail provided for its fields, and
@@ -331,7 +331,7 @@ so nothing separates nothing.
 
 ## What "keeps the panel alive" actually renders
 
-Measured against MudBlazor 9.10.0:
+Measured against MudBlazor:
 
 - `KeepPanelsAlive` defaults to **false** — an inactive panel's whole subtree is unmounted: the
   field leaves the DOM *and* `EditContext`, its validation message stops existing, and a submit
@@ -349,7 +349,7 @@ Measured against MudBlazor 9.10.0:
 - `mud-tab-panel` is on the **header** buttons too — scope to
   `.mud-tabs-panels > .mud-tab-panel`, which is also why the vendor's own rule carries a
   `:not(.mud-tab)`.
-- `NsTabs` owns no visibility CSS; `ns-mud.css` has no tab rule at all.
+- `NsTabs` owns no visibility CSS; `ns-mud.css` has no tab visibility rule.
 
 ## Why a tab derives its problem mark instead of the page wiring one
 
@@ -360,7 +360,7 @@ Measured against MudBlazor 9.10.0:
 problem alike. A tab only needs *which fields are mine*, which `IFieldTracker` carries: the field
 never names a tab, the tab never names a field, and no page wires a badge. `Icon` and `Disabled`
 came off `NsTab` for having no consumer; the parameter surface is pinned
-(`NsTab_ExposesOnlyLabelAndContent`) so growing it on speculation has to break something first.
+(`NsTab_ExposesOnlyLabelNameAndContent`) so growing it on speculation has to break something first.
 
 ## Which screens bind the tab to the query
 

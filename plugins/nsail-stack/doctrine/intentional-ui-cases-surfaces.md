@@ -44,7 +44,7 @@ the DI-registered `RootSurface` — built from the same `NavigationManager` and 
 where it does not. There is no bare-route fallback: a dropped `Target` would produce a *working*
 full-page navigation, a failure with nothing to see. Where the cascade is genuinely absent the
 answer is only *correct*, not *right* — a link inside an aside resolves against the page
-underneath — so `NsLink` writes that residual to the console in DEBUG. `Surface.Back()` is never
+underneath — so `NsLink` leaves that residual on the anchor as `data-ns-probe` in DEBUG. `Surface.Back()` is never
 called by a page: on a deep link `history.back` leaves the site, and only `Close()` knows whether
 this surface's own open left an entry to spend (below).
 

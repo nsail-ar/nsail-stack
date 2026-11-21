@@ -1,7 +1,7 @@
 # Principles
 
-What NSail optimizes for. Every other document in `framework/` is a consequence of these; when
-two documents seem to disagree, or a case is covered nowhere, decide here.
+What NSail optimizes for. Every other page of this doctrine is a consequence of these; when
+two pages seem to disagree, or a case is covered nowhere, decide here.
 
 ---
 

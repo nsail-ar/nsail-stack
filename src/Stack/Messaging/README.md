@@ -104,7 +104,7 @@ public class ProductRule : IValidator<UpdateProduct>   // a Problem refuses, nul
 
 | Attribute | On | Meaning |
 |---|---|---|
-| `[Http(Method, path)]` | class | Verb (`Get`, `Post`, `Put`, `Delete`, `Patch`, `Head`, `Options`) and route. By default `{tokens}` bind from the route, the rest from the query on Get/Delete and from the JSON body otherwise |
+| `[Http(Method, path)]` | class | Verb (`Get`, `Post`, `Put`, `Delete`, `Patch`, `Head`, `Options`) and route. By default `{tokens}` bind from the route, the rest from the query on Get/Delete/Head/Options and from the JSON body on Post/Put/Patch |
 | `[AsRoute]` `[AsQuery]` `[AsHeader]` | property | Override where a member binds. A non-`required` query/header/body member is optional: absent leaves the message's own default |
 | `[Pushed]` | event | A server publish also reaches every open client of the tenant. The event may carry no public property |
 | `[Queue]` | command | The send is durable. Only `IMessage`, never `IMessage<T>`; never beside `[Http]` |

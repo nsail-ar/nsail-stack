@@ -176,7 +176,7 @@ measurement.
 
 ## Why `MinCharacters` is 0 at the vendor and the threshold lives in `NsAutocomplete`
 
-Measured against MudBlazor 9.10.0: `MinCharacters` gates **the popover**, not just the query —
+Measured against MudBlazor: `MinCharacters` gates **the popover**, not just the query —
 below it `OpenMenuAsync` returns without opening, so a `Lazy` field set to 1 could never show the
 create entry on focus. The vendor is told 0 and `Search` returns nothing for an empty `Lazy` box
 instead. Two more measured facts, both load-bearing for the permanent create entry:
@@ -186,7 +186,7 @@ entry permanent rather than duplicated.
 
 ## Why a pick WITHHOLDS `OpenOnFocus` instead of closing the list its refocus raises
 
-Measured against MudBlazor 9.10.0: a click on an option runs `ListItemOnClickAsync`, which arms a
+Measured against MudBlazor: a click on an option runs `ListItemOnClickAsync`, which arms a
 one-shot mark of its own and focuses the box BEFORE it selects; `OnInputFocusedAsync` spends that
 mark and returns without opening. The mark is cleared on the FIRST LINE of
 `OnInputBlurredAsync` — and the box's blur belongs to the same gesture, raised at the option's
@@ -225,7 +225,7 @@ and the press, the chevron or a typed term it is followed by opens the list.
 
 ## Why a pick the FIELD makes closes the list itself
 
-Measured against MudBlazor 9.10.0: the vendor closes its popover inside `ListItemOnClickAsync`, so
+Measured against MudBlazor: the vendor closes its popover inside `ListItemOnClickAsync`, so
 every pick the VENDOR makes arrives with its list already down. The two picks the FIELD makes — the
 single answer a search-first Enter takes, and the quick add's row — reach the vendor as a `Value`
 change and nothing else, and a `Value` it already holds is where `OnParametersSet`'s own close belt
@@ -246,7 +246,7 @@ the marks a pick left.
 
 **The popover.** Measured in Chromium at 1600px on an OT: `RelativeWidth` defaults to
 `DropdownWidth.Relative`, whose popover script writes `max-width` = the anchor's own width
-**inline** on every open — the one width case MudBlazor 9.10.0 ships CSS for. In a line editor
+**inline** on every open — the one width case MudBlazor ships CSS for. In a line editor
 the anchor is a table cell, so an option reading "CR-150 - Orgánico CR-39 1.50 (1,00)" — 353px
 of text — came out three lines tall in a 191px popover, and the closed field read "CR-150 -".
 
@@ -385,6 +385,6 @@ split, read as a multi-file control. Hence: same parameters (the list adds a sel
 
 ## The toolbar's one icon size
 
-The `Md` box's unconstrained glyph measures 1.5rem in MudBlazor 9.10, and the grid's own glyphs
+The `Md` box's unconstrained glyph measures 1.5rem in MudBlazor, and the grid's own glyphs
 are the card size too. A passive label must not outweigh the controls that act — a status chip
 reading larger than the icons beside it is the hierarchy inverted, so the icon is what rises.

@@ -7,8 +7,8 @@ description: Convert a screen's data read into an NsLoad region (OnLoad, Reload,
 
 `NsLoad` is the region around content that had to be READ — a list, a card's figures, a
 counter. The contract is `${CLAUDE_PLUGIN_ROOT}/doctrine/ui/hosts.md` (NsLoad, NsDashboard); the
-handoff record is `${CLAUDE_PLUGIN_ROOT}/doctrine/intentional-ui-cases.md`, "One arrival, one
-loading". This skill is the conversion recipe.
+handoff record is `${CLAUDE_PLUGIN_ROOT}/doctrine/intentional-ui-cases-controls.md`, "One
+arrival, one loading". This skill is the conversion recipe.
 
 **No story sweeps the rest: a screen being touched for ANY reason converts.** Screens and
 cards still load from `OnCreatedAsync`/`OnParametersSetAsync`/`OnInitializedAsync` with no
