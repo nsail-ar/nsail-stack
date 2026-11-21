@@ -273,10 +273,11 @@
     bool _refocusIsStale;
 
     // The list's entries — create, quick add, offer — are its last rows to the keyboard, in the
-    // order they are drawn: ArrowDown from the last row the vendor can reach lands on the first,
-    // and Enter does what a click on the reached one does. The vendor knows nothing of them, so
-    // the reached entry is this field's own state, drawn through the class the list carries
-    // (ListClass) and dropped whenever the list is not the one it was reached in.
+    // order they are drawn, and each enabled control inside the offer is a row of its own:
+    // ArrowDown from the last row the vendor can reach lands on the first, and Enter does what a
+    // click on the reached one does. The vendor knows nothing of them, so the reached entry is
+    // this field's own state, drawn through the class the list carries (ListClass) and dropped
+    // whenever the list is not the one it was reached in.
     enum Entry
     {
         Create,
@@ -285,6 +286,14 @@
     }
 
     Entry? _reached;
+
+    // The offer's control the arrows stand on, in document order, and -1 off the offer or on one
+    // that holds no control. The fragment is the caller's, so its controls are known only to the
+    // page, which lights them (ns.js, lightOffer).
+    int _control = -1;
+
+    // The vendor's open state, as its own OpenChanged last said it.
+    bool _open;
 
     // The row the vendor highlighted when the last key finished, and null until one did: a list
     // that has only just opened says nothing about whether ArrowDown is walking it or opened it.
@@ -619,7 +628,7 @@
     /// sends the question from every other box would answer nothing from this one. A browsed
     /// lookup that does not search by the term never takes it — its whole set is on screen from the
     /// focus, so the vendor answers that Enter off the list already open. The one exception is an entry the arrow keys have
-    /// reached — the create entry, the quick add or the offer: that Enter is the entry's and nobody
+    /// reached — the create entry, the quick add or a control of the offer: that Enter is the entry's and nobody
     /// else's.</summary>
     protected override bool TakesEnter
     {
@@ -634,20 +643,48 @@
         get { return Searches; }
     }
 
+    /// <summary>A list of entries alone is open to the keyboard too, though the vendor writes the
+    /// box collapsed while it has no options: inside a grid row the arrows are the list's while it
+    /// draws an entry, and Enter while one is reached.</summary>
+    protected override string? EntryState
+    {
+        get
+        {
+            if (_reached is not null)
+            {
+                return "reached";
+            }
+
+            return _open && Entries().Count > 0 ? "open" : null;
+        }
+    }
+
     bool Searches => (Lazy || OnSearch.HasDelegate) && !IsReadOnly && !IsDisabled;
 
     // ArrowDown past the last row the vendor can reach lands on the first entry and walks on
-    // through the rest; ArrowUp walks back and, from the first, returns to that row. The vendor
-    // clamps at its ends, so the key that ran out of rows is the one that left its highlight where
-    // it already was — read against the row the last key left it on. An empty list has no row to
-    // run out of: the entries are the only things there to reach, and the first is where ArrowUp
-    // stops. Reaching an entry clears the vendor's highlight; a return writes the last row back.
-    void Walk(bool down)
+    // through the rest, the offer's controls one by one; ArrowUp walks back and, from the first,
+    // returns to that row. The vendor clamps at its ends, so the key that ran out of rows is the
+    // one that left its highlight where it already was — read against the row the last key left
+    // it on. An empty list has no row to run out of: the entries are the only things there to
+    // reach, and the first is where ArrowUp stops. Reaching an entry clears the vendor's
+    // highlight; a return writes the last row back.
+    async Task Walk(bool down)
     {
         var entries = Entries();
 
         if (entries.Count == 0 || _autocomplete is not { Open: true })
         {
+            return;
+        }
+
+        if (_reached == Entry.Offer && entries.Contains(Entry.Offer) && _control >= 0 && (down || _control > 0))
+        {
+            _control = await Js.InvokeAsync<int>("nsapp.lightOffer", _control + (down ? 1 : -1));
+            HighlightedRow?.SetValue(_autocomplete, -1);
+            _walkedTo = -1;
+
+            StateHasChanged();
+
             return;
         }
 
@@ -658,18 +695,17 @@
         if (on >= 0 && (down || on > 0 || reachable.Count == 0))
         {
             // The vendor moved its own highlight on this key; one place is lit, and it is the entry.
-            _reached = entries[down ? Math.Min(on + 1, entries.Count - 1) : Math.Max(on - 1, 0)];
             HighlightedRow?.SetValue(_autocomplete, -1);
             _walkedTo = -1;
 
-            StateHasChanged();
+            await Reach(entries[down ? Math.Min(on + 1, entries.Count - 1) : Math.Max(on - 1, 0)]);
 
             return;
         }
 
         if (on >= 0)
         {
-            _reached = null;
+            await Reach(null);
 
             HighlightedRow?.SetValue(_autocomplete, reachable[^1]);
 
@@ -677,22 +713,43 @@
         }
         else if (down && (reachable.Count == 0 || (at == reachable[^1] && _walkedTo == at)))
         {
-            _reached = entries[0];
-
             HighlightedRow?.SetValue(_autocomplete, -1);
 
-            StateHasChanged();
+            await Reach(entries[0]);
         }
         else
         {
             _reached = null;
+            _control = -1;
         }
 
         _walkedTo = HighlightedRow?.GetValue(_autocomplete) as int?;
     }
 
-    // Enter on a reached entry does what its click does. The offer is the caller's own control,
-    // which only the page can press (ns.js, pressOffer).
+    // Arriving on the offer lights its first control and leaving it puts the light out; between
+    // two other entries the page has nothing to light.
+    async Task Reach(Entry? entry)
+    {
+        var from = _reached;
+
+        _reached = entry;
+
+        if (entry == Entry.Offer && from != Entry.Offer)
+        {
+            _control = await Js.InvokeAsync<int>("nsapp.lightOffer", 0);
+        }
+        else if (entry != Entry.Offer && from == Entry.Offer)
+        {
+            _control = -1;
+
+            await Js.InvokeVoidAsync("nsapp.lightOffer", -1);
+        }
+
+        StateHasChanged();
+    }
+
+    // Enter on a reached entry does what its click does. The offer's lit control is the caller's
+    // own, which only the page can press (ns.js, pressOffer).
     async Task TakeEntryAsync(Entry entry)
     {
         switch (entry)
@@ -823,7 +880,7 @@
         // key left it.
         if (args.Key is "ArrowDown" or "ArrowUp")
         {
-            Walk(args.Key == "ArrowDown");
+            await Walk(args.Key == "ArrowDown");
 
             return;
         }
@@ -1013,7 +1070,9 @@
     // close and no list to flicker.
     async Task OnOpenChanged(bool open)
     {
+        _open = open;
         _reached = null;
+        _control = -1;
         _walkedTo = null;
 
         if (!open || !_reopenIsStale || _autocomplete is null)
@@ -1192,6 +1251,7 @@
         _reopenIsStale = false;
         _refocusIsStale = false;
         _reached = null;
+        _control = -1;
         _walkedTo = null;
         _searchesOut++;
 

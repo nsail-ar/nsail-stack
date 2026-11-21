@@ -1955,6 +1955,20 @@
     color: var(--ns-accent-ink, var(--mud-palette-text-primary));
 }
 
+/* Inside the offer each control is a row of its own (ns.js, lightOffer), so the lit control wears
+   the wash and the offer around it gives it up; an offer that holds no control stays lit whole. */
+.ns-lookup-offer.ns-lookup-create-active:has([data-ns-lit]) {
+    background-color: transparent;
+    color: inherit;
+}
+
+.ns-lookup-offer [data-ns-lit] {
+    background-color: var(--mud-palette-primary-hover);
+    color: var(--ns-accent-ink, var(--mud-palette-text-primary));
+    border-radius: var(--mud-default-borderradius);
+    box-shadow: 0 0 0 4px var(--mud-palette-primary-hover);
+}
+
 /* The measure the open list stops at, since the field does not cap it at whatever box it
    stands in (NsAutocomplete's RelativeWidth note). 28rem is the aside's own content width — the
    448 the .ns-grid block below already reckons with — which is the narrowest surface a lookup

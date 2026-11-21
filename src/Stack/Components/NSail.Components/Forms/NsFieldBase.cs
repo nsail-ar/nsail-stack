@@ -210,6 +210,12 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
     /// the key resolved, or at once where it resolved nothing. Off by default.</summary>
     protected virtual bool AnswersRowEnter => false;
 
+    /// <summary>The rows of this box's open list that the vendor's options are not (a lookup's
+    /// create entry, quick add and offer): "open" while the list draws one, "reached" while the
+    /// arrows stand on one, null otherwise. The keyboard layer leaves a grid's arrows to an open
+    /// list by it, and Enter to a reached row (ns.js, ownsArrows). Null by default.</summary>
+    protected virtual string? EntryState => null;
+
     /// <summary>The keyboard chords that land the cursor in this field (NsKeys), for the one
     /// kind of box a key is spent on: a page's search answers "/" and F3, the drawer's map
     /// answers Ctrl+K. Empty everywhere else — a chord per field is a keyboard nobody could
@@ -223,6 +229,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         var selectOnFocus = SelectOnFocus;
         var takesEnter = TakesEnter;
         var answersRowEnter = AnswersRowEnter;
+        var entries = EntryState;
         var describedBy = DescribedBy;
         var readOnly = IsReadOnly;
         var chords = Chords;
@@ -231,7 +238,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         // A separator neither an autofill token nor a label can contain, so no two different
         // sets share a signature and a change is never mistaken for none.
-        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{takesEnter}\n{answersRowEnter}\n{describedBy}\n{readOnly}\n{claimed}\n{autoFocus}";
+        var signature = $"{autocomplete}\n{name}\n{selectOnFocus}\n{takesEnter}\n{answersRowEnter}\n{entries}\n{describedBy}\n{readOnly}\n{claimed}\n{autoFocus}";
 
         if (_attributesFor == signature)
         {
@@ -240,7 +247,7 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
 
         _attributesFor = signature;
 
-        if (autocomplete is null && name is null && !selectOnFocus && !takesEnter && !answersRowEnter && describedBy is null && !readOnly && claimed.Length == 0 && !autoFocus)
+        if (autocomplete is null && name is null && !selectOnFocus && !takesEnter && !answersRowEnter && entries is null && describedBy is null && !readOnly && claimed.Length == 0 && !autoFocus)
         {
             _inputAttributes = Bare;
             return;
@@ -306,6 +313,11 @@ public abstract class NsFieldBase<TValue> : ComponentBase, IDisposable
         if (answersRowEnter)
         {
             attributes["data-ns-row-enter"] = "true";
+        }
+
+        if (entries is not null)
+        {
+            attributes["data-ns-entries"] = entries;
         }
 
         _inputAttributes = attributes;
