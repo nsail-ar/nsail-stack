@@ -122,18 +122,21 @@ opens a list of withheld rows is a button that does nothing.
 - **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
   surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
   make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint`,
-  `NsExpander` stop the key's propagation on their own wrapper **only while open**
-  (`@onkeydown:stopPropagation` bound to their state); closed, they let it through. **They close
+  `NsExpander` and `NsAutocomplete`'s list stop the key's propagation on their own wrapper **only
+  while open** (`@onkeydown:stopPropagation` bound to their state); closed, they let it through.
+  The lookup's wrapper is a `display: contents` span around its box, bound to the open state the
+  vendor reports (`OpenChanged`), and it closes nothing itself: the vendor closes the list on the
+  Escape's key up, after the keydown the surface listens to has been stopped. **The others close
   on the next turn (`await Task.Yield()`), never in the Escape's own dispatch**: Blazor reads the
   bound stop after the handler returns, so a same-dispatch close reads `false` and the same Escape
-  reaches the surface behind. A new surface whose stop is bound to its state owes the same
-  yield; one whose stop is literal does not. `NsTextField`'s camera is that case: its wrapper
+  reaches the surface behind. A new surface whose stop is bound to its state and that closes
+  itself owes the same yield; one whose stop is literal does not. `NsTextField`'s camera is that case: its wrapper
   exists only while the camera is open, so the stop is written literally and the close runs in
   the Escape's own dispatch. That stop cuts every key bubbling to a Blazor ancestor, not only
   Escape, which is harmless because the house's other keys (the dropdown's Enter and arrows) are
   ns.js's native listeners. Inside a hosted
   dialog the dialog's Escape is the vendor's native listener, which no Blazor stop reaches, so the
-  five report their open state up and `NsOpenDialog` withdraws `CloseOnEscapeKey` while any is
+  six report their open state up and `NsOpenDialog` withdraws `CloseOnEscapeKey` while any is
   open ([actions.md](actions.md)). **A menu the pointer opened is the one exception**: the vendor
   publishes no open state to bind the stop to and a flag of the house's own would drift from it,
   so its Escape closes the list and still reaches the surface behind.

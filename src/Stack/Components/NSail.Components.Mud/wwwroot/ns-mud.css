@@ -1712,6 +1712,12 @@
     display: contents;
 }
 
+/* NsAutocomplete's Escape stop around its box, for the same reason: the field stays the item its
+   parent sized. */
+.ns-lookup-keys {
+    display: contents;
+}
+
 /* NsMenu's custom-face activator (Content), the chip's actual clickable surface — a plain
    surface, not a button, so its hover takes the chip's own shape rather than the vendor's
    circular ripple. */

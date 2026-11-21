@@ -165,6 +165,62 @@ public sealed class NsAutocompleteQuickAddTests : BunitContext, IAsyncLifetime
         Assert.Empty(_changes);
     }
 
+    /// <summary>nsail#4043: the vendor answers the Enter that takes the quick add too, and a search
+    /// raised while the caller's alta is still open cancelled the token the alta was handed — the
+    /// field searched on the very Runner it raised the quick add on. The search here is raised by
+    /// a keystroke, which is what the bUnit key interceptor cannot raise from the Enter itself.</summary>
+    [Fact]
+    public async Task A_search_raised_while_the_quick_add_is_open_does_not_cancel_it()
+    {
+        var alta = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var made = new SelectRef(Guid.Parse("33333333-3333-3333-3333-333333333333"), "Zeta Nueva");
+        var cancelled = false;
+
+        var cut = Render<SearchLookupHost>(p => p
+            .Add(x => x.Rows, Gomez)
+            .Add(x => x.Lazy, true)
+            .Add(x => x.ValueChanged, EventCallback.Factory.Create<Guid>(this, value => _changes.Add(value)))
+            .Add(x => x.OnQuickAdd, EventCallback.Factory.Create<QuickAddEventArgs<SelectRef>>(this, async args =>
+            {
+                _added.Add(args.Text);
+
+                await alta.Task;
+
+                cancelled = args.CancellationToken.IsCancellationRequested;
+                args.CancellationToken.ThrowIfCancellationRequested();
+
+                args.Item = made;
+            })));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Zeta Nueva" });
+
+        cut.WaitForAssertion(() => Assert.Single(Entries(cut)), TimeSpan.FromSeconds(5));
+
+        await Press(cut, "ArrowDown");
+
+        Assert.True(OnQuickAdd(cut));
+
+        // Not awaited: the alta stays open until it is released below.
+        var enter = Press(cut, "Enter");
+
+        cut.WaitForAssertion(() => Assert.Equal(["Zeta Nueva"], _added), TimeSpan.FromSeconds(5));
+
+        var asked = cut.Instance.Asked.Count;
+
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "Zeta Nuev" });
+
+        cut.WaitForAssertion(() => Assert.True(cut.Instance.Asked.Count > asked), TimeSpan.FromSeconds(5));
+
+        alta.TrySetResult();
+
+        await enter;
+
+        cut.WaitForAssertion(() => Assert.Equal([made.Id], _changes), TimeSpan.FromSeconds(5));
+
+        Assert.False(cancelled);
+    }
+
     [Fact]
     public async Task ArrowDown_past_the_last_row_reaches_the_quick_add_and_ArrowUp_returns()
     {

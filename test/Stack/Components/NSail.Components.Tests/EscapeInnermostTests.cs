@@ -13,8 +13,8 @@ using NSail.Metadata;
 namespace NSail.Components.Tests;
 
 /// <summary>The innermost open thing wins Escape (menus.md): inside the wrapper a routed surface
-/// and the companion region take Escape from, an open dropdown, help, hint or expander answers
-/// the key and stops it, and only the next Escape closes the surface. The browser reads each
+/// and the companion region take Escape from, an open dropdown, help, hint, expander or lookup
+/// list answers the key and stops it, and only the next Escape closes the surface. The browser reads each
 /// <c>:stopPropagation</c> flag after that element's handler returned; bUnit reads them all
 /// before any handler runs, so the order is the browser suites' and the flag at that instant is
 /// what is pinned here.</summary>
@@ -136,6 +136,112 @@ public sealed class EscapeInnermostTests : BunitContext, IAsyncLifetime
 
         Assert.Equal("", stops);
         Assert.Equal(0, _closes);
+    }
+
+    // nsail#4043: a lookup's open list is an open thing too, whether it holds rows or only its
+    // entries, and whether the arrows reached one or not. The vendor closes the list on the
+    // Escape's key UP, so the keydown the surface listens to finds the stop still standing.
+
+    async Task<IRenderedComponent<EscapeNestHost>> OpenLookup(bool entries, bool reach, SurfaceContext? surface = null)
+    {
+        var cut = Render<EscapeNestHost>(p => p
+            .Add(x => x.Inner, "lookup")
+            .Add(x => x.LookupEntries, entries)
+            .Add(x => x.Surface, surface)
+            .Add(x => x.Closes, surface is null ? EventCallback.Factory.Create(this, () => _closes++) : default));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+
+        if (entries)
+        {
+            await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "zzz9" });
+
+            cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-lookup-create button")), TimeSpan.FromSeconds(5));
+        }
+        else
+        {
+            cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".mud-list-item").Count), TimeSpan.FromSeconds(5));
+        }
+
+        if (reach)
+        {
+            await cut.Find("input").KeyDownAsync(new KeyboardEventArgs { Key = "ArrowDown" });
+        }
+
+        return cut;
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task AnOpenLookupList_TakesEscape_AndOnlyTheNextOneClosesTheRegion(bool entries, bool reach)
+    {
+        var cut = await OpenLookup(entries, reach);
+
+        await cut.Find("input").KeyDownAsync(Escape);
+
+        Assert.Equal(0, _closes);
+
+        await cut.Find("input").KeyUpAsync(Escape);
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+        Assert.Equal(Guid.Empty, cut.Instance.Picked);
+
+        await cut.Find("input").KeyDownAsync(Escape);
+
+        Assert.Equal(1, _closes);
+    }
+
+    [Fact]
+    public async Task AnOpenLookupList_OnARoutedSurface_KeepsItsClose()
+    {
+        var surface = new SurfaceContext(
+            Surfaces.Dialog,
+            Services.GetRequiredService<NavigationManager>(),
+            Services.GetRequiredService<RouteTable>(),
+            JSInterop.JSRuntime,
+            new SurfaceHistory(),
+            close: () => _closes++);
+        var cut = await OpenLookup(entries: true, reach: false, surface);
+
+        await cut.Find("input").KeyDownAsync(Escape);
+
+        Assert.Equal(0, _closes);
+
+        await cut.Find("input").KeyUpAsync(Escape);
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open")), TimeSpan.FromSeconds(5));
+
+        await cut.Find("input").KeyDownAsync(Escape);
+
+        Assert.Equal(1, _closes);
+    }
+
+    /// <summary>Inside a hosted dialog the dialog's Escape is the vendor's native listener, which
+    /// no stop reaches: the open list holds it, as an open dropdown does.</summary>
+    [Fact]
+    public async Task AnOpenLookupList_HoldsTheHostedDialogsEscape_WhileOpen()
+    {
+        var holds = new EscapeHolds(() => Task.CompletedTask);
+        var cut = Render<CascadingValue<EscapeHolds>>(ps => ps
+            .Add(p => p.Value, holds)
+            .Add(p => p.IsFixed, true)
+            .AddChildContent<EscapeNestHost>(host => host
+                .Add(x => x.Inner, "lookup")
+                .Add(x => x.LookupEntries, true)));
+
+        Assert.False(holds.Any);
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        await cut.Find("input").InputAsync(new ChangeEventArgs { Value = "zzz9" });
+
+        cut.WaitForAssertion(() => Assert.True(holds.Any), TimeSpan.FromSeconds(5));
+
+        await cut.Find("input").KeyDownAsync(Escape);
+        await cut.Find("input").KeyUpAsync(Escape);
+
+        cut.WaitForAssertion(() => Assert.False(holds.Any), TimeSpan.FromSeconds(5));
     }
 
     [Fact]
