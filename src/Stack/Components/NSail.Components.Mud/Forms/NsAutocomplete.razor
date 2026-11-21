@@ -42,6 +42,13 @@
    label off the box's own text, and a bound value reads as text only once OnLoad has resolved
    the row for it — so the label would rest inside the box for the whole round trip and then
    travel over the name as it lands. *@
+@* The innermost open thing wins Escape (ui/menus.md): while the list is open — rows or its
+   entries alone — the span stops the keys it hears, so the Escape the vendor closes the list on
+   (its key UP) never reaches the routed surface around the box, and a hosted dialog's own
+   listener is withdrawn through EscapeHolds. Nothing here closes on the keydown, so the stop the
+   browser reads after it is still the open state's. display:contents keeps the field the box
+   its parent sized (.ns-menu-keys). *@
+<span class="ns-lookup-keys" @onkeydown:stopPropagation="_open">
 <MudAutocomplete T="TItem"
                  RelativeWidth="DropdownWidth.Adaptive"
                  @ref="_autocomplete"
@@ -79,9 +86,13 @@
                  NoItemsTemplate="@CreateContent"
                  MoreItemsTemplate="@MoreContent"
                  AfterItemsTemplate="@CreateContent" />
+</span>
 <NsFieldHelper Text="@Helper" Message="@GetErrorText()" DescribedBy="@DescribedBy" />
 
 @code {
+
+    [CascadingParameter]
+    EscapeHolds? Holds { get; set; }
 
     TItem? _selectedItem;
 
@@ -310,7 +321,13 @@
     /// (surfaces.md).</summary>
     Runner Resolver => field ??= new(this, RunLog);
 
-    bool IsBusy => Runner.IsRunning || Resolver.IsRunning;
+    // The Runner the quick add runs on, for the same two ways to lose: every search opens by
+    // cancelling the field's own Runner, and the Enter that reaches the entry is a key the vendor
+    // answers too, so a search raised while the caller's alta is still open ate the token it was
+    // handed and the alta with it. Its own Runner is out of every search's reach.
+    Runner Adder => field ??= new(this, RunLog);
+
+    bool IsBusy => Runner.IsRunning || Resolver.IsRunning || Adder.IsRunning;
 
     string ListClass => _reached is null ? "ns-lookup-list" : "ns-lookup-list ns-lookup-on-entry";
 
@@ -553,9 +570,15 @@
 
     async Task QuickAdd()
     {
+        // One alta per gesture: a second Enter or click while the first is open asks for nothing.
+        if (Adder.IsRunning)
+        {
+            return;
+        }
+
         var args = new QuickAddEventArgs<TItem> { Text = _text.Trim() };
 
-        await Runner.Raise(OnQuickAdd, args);
+        await Adder.Raise(OnQuickAdd, args);
 
         if (args.Item is null)
         {
@@ -1085,11 +1108,19 @@
         await _autocomplete.CloseMenuAsync();
     }
 
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        return Holds?.Set(this, _open) ?? Task.CompletedTask;
+    }
+
     protected override void DisposeCore()
     {
         Navigation.LocationChanged -= OnLocationChanged;
 
+        _ = Holds?.Set(this, false);
+
         Resolver.Dispose();
+        Adder.Dispose();
 
         base.DisposeCore();
     }
