@@ -869,6 +869,11 @@
             if ((e.key !== "Escape" && e.key !== "Tab") || !popover.contains(e.target))
                 return;
 
+            // Tab's own move would land on whatever follows the popover in the page, which no
+            // hand reached; the cursor goes back to the box instead.
+            if (e.key === "Tab")
+                e.preventDefault();
+
             // A key an open thing inside the menu answered (ui/menus.md, the innermost wins)
             // leaves the menu open, and the cursor with it. The listener stays armed while this
             // one waits, so a second key pressed inside the wait is heard too; whichever wait
