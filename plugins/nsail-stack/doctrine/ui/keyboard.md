@@ -13,8 +13,9 @@ A product's browser suite walks every page its route table lists — routes come
   visual order;
 - the focused element is visible: a ring that is drawn, not only a `:focus` rule;
 - there is no trap: Tab and Shift+Tab leave every region, Esc closes every popover, menu and
-  dialog and returns the cursor to what opened it, and Esc over an open list closes the list and
-  leaves the surface behind it standing — the next Esc closes that surface;
+  dialog and returns the cursor to what opened it, and Esc over a lookup's open list closes the
+  list and leaves the surface behind it standing — the next Esc closes that surface (a menu the
+  pointer opened is the exception, [menus.md](menus.md));
 - Enter and Space activate what a click activates.
 
 A screen that fails the walk is not done. A red that is not a one-line fix becomes a story

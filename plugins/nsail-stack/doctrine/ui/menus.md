@@ -129,8 +129,8 @@ opens a list of withheld rows is a button that does nothing.
   Escape's key up, after the keydown the surface listens to has been stopped. **The others close
   on the next turn (`await Task.Yield()`), never in the Escape's own dispatch**: Blazor reads the
   bound stop after the handler returns, so a same-dispatch close reads `false` and the same Escape
-  reaches the surface behind. A new surface whose stop is bound to its state owes the same
-  yield; one whose stop is literal does not. `NsTextField`'s camera is that case: its wrapper
+  reaches the surface behind. A new surface whose stop is bound to its state and that closes
+  itself owes the same yield; one whose stop is literal does not. `NsTextField`'s camera is that case: its wrapper
   exists only while the camera is open, so the stop is written literally and the close runs in
   the Escape's own dispatch. That stop cuts every key bubbling to a Blazor ancestor, not only
   Escape, which is harmless because the house's other keys (the dropdown's Enter and arrows) are
