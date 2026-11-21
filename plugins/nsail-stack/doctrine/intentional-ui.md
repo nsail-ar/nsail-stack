@@ -491,8 +491,11 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
   ([ui/surfaces.md](ui/surfaces.md), cases).
   - **The page name never gives way.** Where the title and the utilities beside it do not both
     fit, **the row wraps** — the utilities take a line of their own at the same trailing edge —
-    and the title keeps its own content width; it is never elided and never shortened. Both of
-    the bar's faces hold it, the main surface's and an overlay's. A title row that shrinks its
+    and the title keeps its own content width; it is never elided and never shortened. Where
+    the utilities outgrow even that line, **they wrap among themselves**, still at the trailing
+    edge, each at its own content width: a worded one moves to the next line whole, and nothing
+    on the surface scrolls sideways. Both of the bar's faces hold it, the main surface's and an
+    overlay's. A title row that shrinks its
     heading to a zero floor so the chrome can keep its full width has the trade backwards.
     The install's brand is the drawer's alone: the title row draws none, so on a phone the toggle
     and the page name are all it carries.
