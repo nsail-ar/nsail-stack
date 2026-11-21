@@ -50,7 +50,8 @@ just places `<NsNavMenu />`.
   highlight end on one right line, with the highlight inset from the drawer's edge rather than
   full-bleed. The gap from the brand row to the search box equals the gap from the box to the
   first entry, and a brand that fits on one line keeps the row at the height that centers it on
-  the page's title row (that height is a floor: a wrapped name grows the row past it). Nested
+  the page's title row (that height is a floor: a wrapped name keeps the one-line row's space
+  above its first line and below its last, and grows the row only by its extra lines). Nested
   entries, group rows, the page index, the divider, the no-match row, command entries and the
   session foot end on that same right line. The inset is the outer menu's alone: a group's
   nested menu adds none, so a nested row's highlight spans what a top-level row's spans and
