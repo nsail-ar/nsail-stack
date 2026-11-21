@@ -2,6 +2,9 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { styled } from "@mui/material/styles";
 import { NsButton } from "./button";
 
 interface Pending {
@@ -9,6 +12,19 @@ interface Pending {
   danger: boolean;
   resolve: (confirmed: boolean) => void;
 }
+
+// The browser's own <dialog>, worn in the theme: MUI's Dialog would bring a focus trap of its
+// own, and the one this surface keeps is the platform's.
+const Surface = styled("dialog")(({ theme }) => ({
+  border: "none",
+  borderRadius: Number(theme.shape.borderRadius) * 2,
+  padding: theme.spacing(3),
+  maxWidth: "min(480px, calc(100vw - 32px))",
+  background: theme.palette.background.raised,
+  color: theme.palette.text.primary,
+  boxShadow: theme.shadows[8],
+  "&::backdrop": { background: "rgb(0 0 0 / 45%)" },
+}));
 
 const DialogContext = createContext<((text: string, danger?: boolean) => Promise<boolean>) | null>(null);
 
@@ -52,7 +68,7 @@ export function NsDialogHost({ children }: { children: ReactNode }) {
     // 19.3, read off a live DOM: neither face carries the attribute). Those steps are synchronous
     // inside the call above, so the cursor is placed after them rather than racing them, and the
     // placing holds whichever of the two mechanisms the browser answers.
-    const [wayOut, act] = dialog.current.querySelectorAll<HTMLButtonElement>(".ns-actions button");
+    const [wayOut, act] = dialog.current.querySelectorAll<HTMLButtonElement>("button");
 
     (pending.danger ? wayOut : act).focus();
   }, [pending]);
@@ -67,17 +83,17 @@ export function NsDialogHost({ children }: { children: ReactNode }) {
   return (
     <DialogContext.Provider value={confirm}>
       {children}
-      <dialog ref={dialog} className="ns-dialog" onCancel={() => close(false)}>
+      <Surface ref={dialog} onCancel={() => close(false)}>
         {pending && (
           <>
-            <p>{pending.text}</p>
-            <div className="ns-actions">
+            <Typography sx={{ mb: 3 }}>{pending.text}</Typography>
+            <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
               <NsButton text="Actions.Cancel" onClick={() => close(false)} />
               <NsButton text="Actions.Confirm" variant={pending.danger ? "danger" : "primary"} onClick={() => close(true)} />
-            </div>
+            </Stack>
           </>
         )}
-      </dialog>
+      </Surface>
     </DialogContext.Provider>
   );
 }

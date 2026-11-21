@@ -2,6 +2,11 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import { useId, type ChangeEvent } from "react";
+import Checkbox from "@mui/material/Checkbox";
+import FormControl from "@mui/material/FormControl";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import FormHelperText from "@mui/material/FormHelperText";
+import TextField from "@mui/material/TextField";
 import { memberOf, type Field, useStrings } from "@nsail/stack";
 import { useFormContext } from "./form";
 
@@ -31,13 +36,13 @@ export function NsField<T>({ name, multiline = false, autoFocus, label }: NsFiel
     form.set(name, next as T[keyof T & string]);
   }
 
-  function text(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+  function text(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const raw = event.target.value;
 
     set(raw === "" && field.nullable ? null : raw);
   }
 
-  function number(event: ChangeEvent<HTMLInputElement>) {
+  function number(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const raw = event.target.value;
 
     if (raw !== "" && field.kind === "integer" && !Number.isInteger(Number(raw))) {
@@ -48,100 +53,98 @@ export function NsField<T>({ name, multiline = false, autoFocus, label }: NsFiel
   }
 
   // An emptied exact number is absent, as a number is: "" is no long the server reads.
-  function exact(event: ChangeEvent<HTMLInputElement>) {
+  function exact(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const raw = event.target.value;
 
     set(raw === "" ? (field.nullable ? null : undefined) : raw);
   }
 
+  const helper = invalid ? (
+    <span id={`${id}-issues`}>
+      {issues.map((issue, index) => (
+        <span key={index} style={{ display: "block" }}>
+          {strings.issue(issue)}
+        </span>
+      ))}
+    </span>
+  ) : undefined;
+
+  if (field.kind === "boolean") {
+    return (
+      <FormControl error={invalid} required={field.required}>
+        <FormControlLabel
+          label={caption}
+          control={
+            <Checkbox
+              id={id}
+              name={name}
+              autoFocus={autoFocus}
+              checked={value === true}
+              onChange={(event) => set(event.target.checked)}
+              slotProps={{ input: { "aria-invalid": invalid || undefined, "aria-describedby": invalid ? `${id}-issues` : undefined } }}
+            />
+          }
+        />
+        {helper && <FormHelperText component="div">{helper}</FormHelperText>}
+      </FormControl>
+    );
+  }
+
+  const shown = value === null || value === undefined ? "" : String(value);
   const common = {
     id,
     name,
     autoFocus,
-    "aria-invalid": invalid || undefined,
-    "aria-describedby": invalid ? `${id}-issues` : undefined,
+    fullWidth: true,
+    label: caption,
+    error: invalid,
     required: field.required,
+    helperText: helper,
+    slotProps: { formHelperText: { component: "div" } as object, inputLabel: { shrink: true } },
   };
 
-  let control;
-
   switch (field.kind) {
-    case "boolean":
-      control = <input {...common} type="checkbox" checked={value === true} onChange={(e) => set(e.target.checked)} />;
-      break;
     case "bigint":
     case "decimal":
       // The value stays the text the user typed: a Number would round it.
-      control = (
-        <input
-          {...common}
-          type="text"
-          inputMode={field.kind === "bigint" ? "numeric" : "decimal"}
-          value={value === null || value === undefined ? "" : String(value)}
-          onChange={exact}
-        />
-      );
-      break;
+      return <TextField {...common} type="text" value={shown} onChange={exact} slotProps={{ ...common.slotProps, htmlInput: { inputMode: field.kind === "bigint" ? "numeric" : "decimal" } }} />;
     case "integer":
     case "number":
-      control = (
-        <input
+      return (
+        <TextField
           {...common}
           type="number"
-          min={field.min}
-          max={field.max}
-          step={field.kind === "integer" ? 1 : "any"}
-          value={value === null || value === undefined ? "" : String(value)}
+          value={shown}
           onChange={number}
+          slotProps={{ ...common.slotProps, htmlInput: { min: field.min, max: field.max, step: field.kind === "integer" ? 1 : "any" } }}
         />
       );
-      break;
     case "enum":
-      control = (
-        <select {...common} value={(value as string | null | undefined) ?? ""} onChange={text}>
+      return (
+        <TextField {...common} select value={(value as string | null | undefined) ?? ""} onChange={text} slotProps={{ ...common.slotProps, select: { native: true } }}>
           {(field.nullable || value === undefined) && <option value="" />}
           {field.enum?.values.map((option) => (
             <option key={option} value={option}>
               {strings.enumValue(field.enum!, option)}
             </option>
           ))}
-        </select>
+        </TextField>
       );
-      break;
     case "date":
-      control = <input {...common} type="date" value={(value as string | null) ?? ""} onChange={text} />;
-      break;
+      return <TextField {...common} type="date" value={shown} onChange={text} />;
     case "time":
-      control = <input {...common} type="time" value={(value as string | null) ?? ""} onChange={text} />;
-      break;
+      return <TextField {...common} type="time" value={shown} onChange={text} />;
     default:
-      control = multiline ? (
-        <textarea {...common} rows={4} maxLength={field.maxLength} value={(value as string | null) ?? ""} onChange={text} />
-      ) : (
-        <input
+      return (
+        <TextField
           {...common}
-          type={(field.format && inputTypes[field.format]) || "text"}
-          maxLength={field.maxLength}
-          value={(value as string | null) ?? ""}
+          type={multiline ? undefined : (field.format && inputTypes[field.format]) || "text"}
+          multiline={multiline}
+          minRows={multiline ? 4 : undefined}
+          value={shown}
           onChange={text}
+          slotProps={{ ...common.slotProps, htmlInput: { maxLength: field.maxLength } }}
         />
       );
   }
-
-  return (
-    <div className={`ns-field ns-field-${field.kind}${invalid ? " ns-field-invalid" : ""}`}>
-      <label htmlFor={id}>
-        {caption}
-        {field.required && <span className="ns-required" aria-hidden="true"> *</span>}
-      </label>
-      {control}
-      {invalid && (
-        <div id={`${id}-issues`} className="ns-issues">
-          {issues.map((issue, index) => (
-            <div key={index}>{strings.issue(issue)}</div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }

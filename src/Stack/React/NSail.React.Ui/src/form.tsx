@@ -2,6 +2,10 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import { createContext, useContext, type FormEvent, type ReactNode } from "react";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { memberOf, useStrings, type Field, type Form } from "@nsail/stack";
 import { NsButton } from "./button";
 
@@ -23,9 +27,9 @@ export function NsSaved() {
   const strings = useStrings();
 
   return form.saved ? (
-    <span className="ns-saved" role="status">
+    <Typography component="span" variant="body2" sx={{ color: "ink.success" }} role="status">
       {strings.translate("Common.Saved")}
-    </span>
+    </Typography>
   ) : null;
 }
 
@@ -54,18 +58,21 @@ export function NsForm<T>({ form, onSubmit, onReload, children }: NsFormProps<T>
 
   return (
     <FormContext.Provider value={form as Form<unknown>}>
-      <form className="ns-form" onSubmit={handle} noValidate>
+      <Stack component="form" spacing={2} onSubmit={handle} noValidate>
         {banner && form.problem && (
-          <div className="ns-banner ns-banner-error" role="alert">
-            <strong>{strings.problem(form.problem)}</strong>
+          <Alert
+            severity="error"
+            role="alert"
+            action={onReload && form.problem.code === "Conflict" ? <NsButton text="Common.Reload" variant="quiet" onClick={onReload} /> : undefined}
+          >
+            <AlertTitle>{strings.problem(form.problem)}</AlertTitle>
             {loose.map((issue, index) => (
               <div key={index}>{strings.issue(issue)}</div>
             ))}
-            {onReload && form.problem.code === "Conflict" && <NsButton text="Common.Reload" onClick={onReload} />}
-          </div>
+          </Alert>
         )}
         {children}
-      </form>
+      </Stack>
     </FormContext.Provider>
   );
 }

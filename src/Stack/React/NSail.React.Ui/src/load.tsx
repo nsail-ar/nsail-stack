@@ -2,6 +2,10 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import type { ReactNode } from "react";
+import Alert from "@mui/material/Alert";
+import AlertTitle from "@mui/material/AlertTitle";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 import { isRetryable, useStrings, type Load } from "@nsail/stack";
 import { NsButton } from "./button";
 
@@ -18,19 +22,30 @@ export function NsLoad<T>({ load, children }: NsLoadProps<T>) {
 
   if (load.state === "failed") {
     return (
-      <div className="ns-failure" role="alert">
-        <strong>{strings.problem(load.problem)}</strong>
+      <Alert
+        severity="error"
+        role="alert"
+        action={isRetryable(load.problem) ? <NsButton text="Common.Retry" variant="quiet" onClick={load.reload} /> : undefined}
+      >
+        <AlertTitle>{strings.problem(load.problem)}</AlertTitle>
         {load.problem.issues.map((issue, index) => (
           <div key={index}>{strings.issue(issue)}</div>
         ))}
-        {isRetryable(load.problem) && <NsButton text="Common.Retry" onClick={load.reload} />}
-      </div>
+      </Alert>
     );
   }
 
   if (load.data === undefined) {
-    return <div className="ns-loading" aria-busy="true">{strings.translate("Common.Loading")}…</div>;
+    return (
+      <Box aria-busy="true" sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+        <CircularProgress aria-label={strings.translate("Common.Loading")} />
+      </Box>
+    );
   }
 
-  return <div className={load.state === "loading" ? "ns-region ns-stale" : "ns-region"}>{children(load.data)}</div>;
+  return (
+    <Box aria-busy={load.state === "loading" || undefined} sx={{ opacity: load.state === "loading" ? 0.6 : 1, transition: "opacity 120ms" }}>
+      {children(load.data)}
+    </Box>
+  );
 }

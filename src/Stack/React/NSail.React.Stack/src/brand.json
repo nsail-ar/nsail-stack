@@ -1,0 +1,209 @@
+{
+  "light": {
+    "logo": null,
+    "accent": "#F68E1E",
+    "accentHover": "#f79c39",
+    "accentPressed": "#d47a1a",
+    "accentFocus": "#f9b062",
+    "textOnAccent": "#1a1a1a",
+    "chrome": "#fcfbf9",
+    "textOnChrome": "#262625",
+    "textOnChromeSecondary": "#6a6969",
+    "isDark": false,
+    "rowHover": "#00000014",
+    "error": "#d32f2f",
+    "warning": "#c77700",
+    "success": "#2e7d32",
+    "info": "#0288d1",
+    "textOnError": "#ffffff",
+    "textOnWarning": "#121212",
+    "textOnSuccess": "#ffffff",
+    "textOnInfo": "#121212"
+  },
+  "dark": {
+    "logo": null,
+    "accent": "#F68E1E",
+    "accentHover": "#f79c39",
+    "accentPressed": "#d47a1a",
+    "accentFocus": "#f9b062",
+    "textOnAccent": "#1a1a1a",
+    "chrome": "#201f1b",
+    "textOnChrome": "#dedddd",
+    "textOnChromeSecondary": "#aaaaa8",
+    "isDark": true,
+    "rowHover": "#ffffff14",
+    "error": "#ef5350",
+    "warning": "#f0a441",
+    "success": "#66bb6a",
+    "info": "#64b5f6",
+    "textOnError": "#121212",
+    "textOnWarning": "#121212",
+    "textOnSuccess": "#121212",
+    "textOnInfo": "#121212"
+  },
+  "typefaces": {
+    "inter": [
+      "Inter",
+      "sans-serif"
+    ],
+    "work-sans": [
+      "Work Sans",
+      "sans-serif"
+    ],
+    "lora": [
+      "Lora",
+      "serif"
+    ],
+    "source-serif-4": [
+      "Source Serif 4",
+      "serif"
+    ],
+    "zilla-slab": [
+      "Zilla Slab",
+      "serif"
+    ],
+    "baloo-2": [
+      "Baloo 2",
+      "sans-serif"
+    ],
+    "comfortaa": [
+      "Comfortaa",
+      "sans-serif"
+    ],
+    "fraunces": [
+      "Fraunces",
+      "serif"
+    ],
+    "bricolage-grotesque": [
+      "Bricolage Grotesque",
+      "sans-serif"
+    ]
+  },
+  "weights": {
+    "washWeight": 0.13,
+    "railWeight": 0.08,
+    "inertWeight": 0.06,
+    "toneLean": 0.65
+  },
+  "samples": [
+    {
+      "dark": false,
+      "chrome": "#fcfbf9",
+      "accent": "#F68E1E",
+      "accentInk": "#985f21",
+      "accentOnChrome": "#8e5a22",
+      "ladder": {
+        "background": "#fdfbf9",
+        "surface": "#ffffff",
+        "surfaceRaised": "#ffffff",
+        "textPrimary": "#262624",
+        "textSecondary": "#6c6b6a",
+        "textDisabled": "#989896",
+        "lines": "#cecdcc",
+        "linesInputs": "#757573"
+      }
+    },
+    {
+      "dark": true,
+      "chrome": "#201f1b",
+      "accent": "#F68E1E",
+      "accentInk": "#efb575",
+      "accentOnChrome": "#ebb274",
+      "ladder": {
+        "background": "#161512",
+        "surface": "#1b1b17",
+        "surfaceRaised": "#201f1b",
+        "textPrimary": "#e6e4df",
+        "textSecondary": "#9b9994",
+        "textDisabled": "#65635f",
+        "lines": "#302f2b",
+        "linesInputs": "#71706b"
+      }
+    },
+    {
+      "dark": false,
+      "chrome": "#fcfbf9",
+      "accent": "#f9b062",
+      "accentInk": "#856440",
+      "accentOnChrome": "#7a5d3d",
+      "ladder": {
+        "background": "#fdfbf9",
+        "surface": "#ffffff",
+        "surfaceRaised": "#ffffff",
+        "textPrimary": "#262624",
+        "textSecondary": "#6c6b6a",
+        "textDisabled": "#989896",
+        "lines": "#cecdcc",
+        "linesInputs": "#757573"
+      }
+    },
+    {
+      "dark": false,
+      "chrome": "#d8e8d1",
+      "accent": "#0a7d4f",
+      "accentInk": "#145739",
+      "accentOnChrome": "#17563c",
+      "ladder": {
+        "background": "#f3feee",
+        "surface": "#ffffff",
+        "surfaceRaised": "#ffffff",
+        "textPrimary": "#21281e",
+        "textSecondary": "#666d62",
+        "textDisabled": "#919a8d",
+        "lines": "#c4d2be",
+        "linesInputs": "#6c7867"
+      }
+    },
+    {
+      "dark": true,
+      "chrome": "#1c2c12",
+      "accent": "#0a7d4f",
+      "accentInk": "#69ad8d",
+      "accentOnChrome": "#74ad96",
+      "ladder": {
+        "background": "#0f1809",
+        "surface": "#131d0e",
+        "surfaceRaised": "#182113",
+        "textPrimary": "#dee7d9",
+        "textSecondary": "#939c8f",
+        "textDisabled": "#5e665a",
+        "lines": "#283223",
+        "linesInputs": "#677361"
+      }
+    },
+    {
+      "dark": false,
+      "chrome": "#2b4a8c",
+      "accent": "#ffd54f",
+      "accentInk": "#7a6c3c",
+      "accentOnChrome": "#262625",
+      "ladder": {
+        "background": "#fafcff",
+        "surface": "#ffffff",
+        "surfaceRaised": "#ffffff",
+        "textPrimary": "#212630",
+        "textSecondary": "#656c77",
+        "textDisabled": "#9197a4",
+        "lines": "#c3cee2",
+        "linesInputs": "#6c7587"
+      }
+    },
+    {
+      "dark": true,
+      "chrome": "#c2185b",
+      "accent": "#7e57c2",
+      "accentInk": "#b295d1",
+      "accentOnChrome": "#dedddd",
+      "ladder": {
+        "background": "#211014",
+        "surface": "#271519",
+        "surfaceRaised": "#2c1a1e",
+        "textPrimary": "#f1e0e3",
+        "textSecondary": "#a69598",
+        "textDisabled": "#6f5f62",
+        "lines": "#3e2a2e",
+        "linesInputs": "#81696e"
+      }
+    }
+  ]
+}

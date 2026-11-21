@@ -3,8 +3,8 @@
 
 import { useEffect, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router";
-import { memberOf, useForm, useLoad, useMediator, useStrings, type Form } from "@nsail/stack";
-import { NsButton, NsField, NsForm, NsLoad, NsPage, NsSaved, NsTable } from "@nsail/ui";
+import { useForm, useLoad, useMediator, type Form } from "@nsail/stack";
+import { NsButton, NsCard, NsField, NsForm, NsLoad, NsPage, NsSaved, NsTable, NsToolBar } from "@nsail/ui";
 import { ContactAddressModel, CreateContact, GetContact, UpdateContact, type ContactModel } from "../sdk";
 import { routes } from "../routes";
 
@@ -28,15 +28,13 @@ function Fields<T extends CreateContact | UpdateContact>({ form, children }: { f
       <NsField<T> name="birthDate" />
       <NsField<T> name="rating" />
       <NsField<T> name="isFavorite" />
-      <div className="ns-field-wide">
-        <NsField<T> name="notes" multiline />
-      </div>
+      <NsField<T> name="notes" multiline />
       {children}
-      <div className="ns-actions">
+      <NsToolBar>
         <NsButton text="Common.Submit" type="submit" variant="primary" busy={form.submitting} />
         <NsButton text="Common.Back" onClick={() => navigate(routes.contacts.href())} />
         <NsSaved />
-      </div>
+      </NsToolBar>
     </>
   );
 }
@@ -54,11 +52,11 @@ function NewContact() {
 
   return (
     <NsPage title="Sample.CreateContactPage.Title">
-      <div className="ns-card">
+      <NsCard>
         <NsForm form={form} onSubmit={save}>
           <Fields form={form} />
         </NsForm>
-      </div>
+      </NsCard>
     </NsPage>
   );
 }
@@ -105,26 +103,22 @@ function EditForm({ model, reload }: { model: ContactModel; reload: () => void }
   }
 
   return (
-    <div className="ns-card">
+    <NsCard>
       <NsForm form={form} onSubmit={save} onReload={reload}>
         <Fields form={form}>
           <Addresses rows={model.addresses} />
         </Fields>
       </NsForm>
-    </div>
+    </NsCard>
   );
 }
 
 // Read-only here: the Blazor client edits them. UpdateContact still carries the whole set back,
 // because a composition deletes the rows its message no longer names.
 function Addresses({ rows }: { rows: ContactAddressModel[] }) {
-  const strings = useStrings();
-  const field = UpdateContact.fields.addresses;
-
   return (
-    <div className="ns-field ns-field-wide">
-      <label>{strings.translate(field.key, memberOf(field))}</label>
+    <NsCard title={UpdateContact.fields.addresses.key}>
       <NsTable model={ContactAddressModel} rows={rows} rowKey="id" columns={["kind", "street", "city"]} />
-    </div>
+    </NsCard>
   );
 }

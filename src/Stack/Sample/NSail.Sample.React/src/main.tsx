@@ -6,7 +6,6 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { Mediator } from "@nsail/stack";
 import { NsApp } from "@nsail/ui";
-import "@nsail/ui/ns.css";
 import { GetStrings } from "./sdk";
 import { routes } from "./routes";
 import { ContactsPage } from "./contacts/ContactsPage";
