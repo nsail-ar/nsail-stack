@@ -217,7 +217,7 @@ precedent it looks like: that one originates above the X, so re-providing was th
 every refusal drawn on the X, and with `BackdropClick` off those two are the only ways out — so
 `NsOpenDialog` withdraws the key for the length of the save (`SetOptionsAsync`) and hands it back
 as the opener asked for it, never as a second literal. It is withdrawn too while a dropdown, help,
-hint, expander or text field's camera inside is open, because the innermost open thing wins Escape
+hint, expander, lookup's list or text field's camera inside is open, because the innermost open thing wins Escape
 ([menus.md](menus.md)); that one ends at the next Escape, which closes it. It reaches the host as a call from
 `NsDialogExit` rather than being read there: the dialog instance's own cascade does not reach
 `TitleContent`. **Not the whole refusal, and that bound is a constraint**: a form standing

@@ -126,7 +126,7 @@ opens a list of withheld rows is a button that does nothing.
   while open** (`@onkeydown:stopPropagation` bound to their state); closed, they let it through.
   The lookup's wrapper is a `display: contents` span around its box, bound to the open state the
   vendor reports (`OpenChanged`), and it closes nothing itself: the vendor closes the list on the
-  Escape's key up, after the keydown the surface listens to has been stopped. **They close
+  Escape's key up, after the keydown the surface listens to has been stopped. **The others close
   on the next turn (`await Task.Yield()`), never in the Escape's own dispatch**: Blazor reads the
   bound stop after the handler returns, so a same-dispatch close reads `false` and the same Escape
   reaches the surface behind. A new surface whose stop is bound to its state owes the same

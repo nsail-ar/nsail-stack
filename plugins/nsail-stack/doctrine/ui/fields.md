@@ -722,7 +722,7 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   cascade read and the same `IsReadOnly`/`IsDisabled` derivation `NsFieldBase` gives a field:
   a picker gates on those two and never on the bare parameters, and a picker on `NsPartial`
   inherits that base rather than declaring the pair itself.
-- **A lookup asks two questions and they never share a Runner.** The SEARCH answers "what can
+- **A lookup's questions never share a Runner.** The SEARCH answers "what can
   I pick" and the RESOLVE (`OnLoad`) answers "what does the value I am already holding read as"
   — two independent reads that overlap the moment either costs a round trip. Sharing one Runner
   loses both ways: a resolve starting under a live search throws out of `OnParametersSetAsync`,
