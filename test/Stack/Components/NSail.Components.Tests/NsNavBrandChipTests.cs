@@ -35,6 +35,20 @@ public sealed class NsNavBrandChipTests : BunitContext
             css);
     }
 
+    /// <summary>AC1, K1: the row's block padding is half of its floor less one title line, so a
+    /// wrapped name keeps the one-line row's space above and below it and one line is the floor.</summary>
+    [Fact]
+    public void AWrappedBrandKeepsTheOneLineRowsSpaceAboveAndBelowIt()
+    {
+        var brand = Regex.Match(Uncommented(HouseStylesheet.Read()), @"(?:^|\})\s*\.ns-nav-brand\s*\{(?<body>[^}]*)\}").Groups["body"].Value;
+
+        Assert.Matches(@"min-height:\s*var\(--mud-appbar-height\);", brand);
+        Assert.Matches(
+            @"padding-block:\s*calc\(\(var\(--mud-appbar-height\)\s*-\s*var\(--mud-typography-h6-size\)\s*\*\s*var\(--mud-typography-h6-lineheight\)\)\s*/\s*2\);",
+            brand);
+        Assert.DoesNotMatch(@"box-sizing", brand);
+    }
+
     /// <summary>Every NsChip wears the ellipsis, so only the brand row's rule may move a chip's
     /// size or margin.</summary>
     [Fact]

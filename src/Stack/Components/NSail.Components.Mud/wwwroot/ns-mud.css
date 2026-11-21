@@ -1351,9 +1351,14 @@
    height (32px/2) puts that title's centre 32px down, exactly half of this variable — the
    vendor's own number rather than a value restated by hand. A taller or shorter logo would
    open a gap between the two. It is a floor: a name wrapped beside a chip grows the row past
-   it, and the brand's centre then sits below the title's. */
+   it, and the brand's centre then sits below the title's. The block padding is the space a
+   one-line name has inside the floor, half of the floor less one title line: a wrapped name
+   keeps it above its first line and below its last and grows the row only by its extra lines,
+   while one line plus the padding is the floor itself, the vendor's border-box counting the
+   padding inside the min-height. */
 .ns-nav-brand {
     min-height: var(--mud-appbar-height);
+    padding-block: calc((var(--mud-appbar-height) - var(--mud-typography-h6-size) * var(--mud-typography-h6-lineheight)) / 2);
     /* The row is the reference its chip's cap measures, below. Safe for NsPanel's reason: a
        block taking its width from the drawer, never from its content. */
     container-type: inline-size;
