@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
 import { useEffect, useState } from "react";
+import TextField from "@mui/material/TextField";
 import { type Field, useStrings } from "@nsail/stack";
 
 export interface NsSearchProps {
@@ -34,14 +35,13 @@ export function NsSearch({ field, value, onSearch, delay = 300 }: NsSearchProps)
   }, [term, value, onSearch, delay]);
 
   return (
-    <input
-      className="ns-search"
+    <TextField
       type="search"
-      aria-label={strings.translate(field.key)}
+      size="small"
       placeholder={strings.translate("Common.Search")}
-      maxLength={field.maxLength}
       value={term}
       onChange={(event) => setTerm(event.target.value)}
+      slotProps={{ htmlInput: { "aria-label": strings.translate(field.key), maxLength: field.maxLength } }}
     />
   );
 }

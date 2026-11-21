@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
+import TextField from "@mui/material/TextField";
 import { type Field, useStrings } from "@nsail/stack";
 
 export interface NsEnumSelectProps<TValue extends string> {
@@ -24,11 +25,12 @@ export function NsEnumSelect<TValue extends string>({ field, value, onChange, no
   const type = field.enum;
 
   return (
-    <select
-      className="ns-select"
-      aria-label={strings.translate(field.key)}
+    <TextField
+      select
+      size="small"
       value={value ?? ""}
       onChange={(event) => onChange((event.target.value || null) as TValue | null)}
+      slotProps={{ select: { native: true }, htmlInput: { "aria-label": strings.translate(field.key) } }}
     >
       {(field.nullable || value === null || value === undefined) && (
         <option value="">{field.nullable ? strings.translate(none) : ""}</option>
@@ -38,6 +40,6 @@ export function NsEnumSelect<TValue extends string>({ field, value, onChange, no
           {strings.enumValue(type, option)}
         </option>
       ))}
-    </select>
+    </TextField>
   );
 }

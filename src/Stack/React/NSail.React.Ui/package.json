@@ -1,7 +1,7 @@
 {
   "name": "@nsail/ui",
   "version": "0.1.0",
-  "description": "The Ns* components for a React client, drawn from the descriptors an Sdk generates.",
+  "description": "The Ns* components for a React client, drawn with MUI from the descriptors an Sdk generates and themed by the install's Brand.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,18 +10,12 @@
   },
   "homepage": "https://github.com/nsail-ar/nsail-stack#readme",
   "type": "module",
-  "sideEffects": [
-    "*.css"
-  ],
+  "sideEffects": false,
   "exports": {
     ".": {
       "@nsail/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    },
-    "./ns.css": {
-      "@nsail/source": "./src/ns.css",
-      "default": "./dist/ns.css"
     }
   },
   "files": [
@@ -35,10 +29,13 @@
     "react-dom": ">=19"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.5.0",
     "@nsail/stack": "0.1.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node -e \"require('fs').copyFileSync('src/ns.css', 'dist/ns.css')\"",
+    "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

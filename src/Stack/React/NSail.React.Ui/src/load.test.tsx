@@ -55,7 +55,7 @@ describe("NsLoad", () => {
   ])("draws a %s refusal (%i) and no retry", async (code, status) => {
     const host = await failed(problem(code, status));
 
-    expect(host.querySelector(".ns-failure")?.textContent).toContain(`${code} refused`);
+    expect(host.querySelector("[role=alert]")?.textContent).toContain(`${code} refused`);
     expect(host.querySelector("button")).toBeNull();
     expect(host.querySelector("#loaded")).toBeNull();
   });
@@ -64,7 +64,7 @@ describe("NsLoad", () => {
     let reloads = 0;
     const host = await failed(problem("RequestFailed", status), () => reloads++);
 
-    const retry = host.querySelector<HTMLButtonElement>(".ns-failure button");
+    const retry = host.querySelector<HTMLButtonElement>("[role=alert] button");
     expect(retry).not.toBeNull();
 
     await act(async () => retry!.click());
