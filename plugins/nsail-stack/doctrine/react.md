@@ -11,10 +11,14 @@ Stack's promise that the API is declared once. The example is the Stack's Sample
 React is the Stack's client for **public sites**; Blazor stays the client for the
 back office. A public page cannot open behind a loading bar — a visitor leaves before a
 runtime downloads — and it needs what an ERP never asks for: showcase pieces (a carousel,
-a hero, a gallery) beside forms that talk to the Sdk, and sometimes a cart. So the React
-side is judged by what a public site needs, not by parity with `NSail.Components.Mud`:
-HTML first, JavaScript only where a piece moves, the same message contract underneath. A
-cart is domain — a kit's, never the Stack's; the Stack owns the pieces and the contract.
+a hero, a gallery) beside forms that talk to the Sdk, and sometimes a cart. A cart is domain —
+a kit's, never the Stack's; the Stack owns the pieces and the contract.
+
+**The pieces wrap a vendor, as the Blazor ones do.** `@nsail/ui` is to MUI what
+`NSail.Components.Mud` is to MudBlazor: the same `Ns*` names, the vendor behind them, and the
+look an install picked arriving as a `Brand`. A family of hand-made CSS would be a second
+toolkit to keep accessible, keyboard-complete and themed; MUI already is one, so the Stack's
+work is the contract underneath and the mapping on top.
 
 ---
 
@@ -130,8 +134,24 @@ packages live in `src/Stack/React/`, split where the vendor starts — the line
 
 | Package | Folder | Holds |
 |---|---|---|
-| `@nsail/stack` | `src/Stack/React/NSail.React.Stack` | Vendor-free: the descriptors, `Mediator.send`, `Problem`, the client half of `MessageValidator`, `Strings`, and the hooks a page reads with (`useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`, `useSession`) |
-| `@nsail/ui` | `src/Stack/React/NSail.React.Ui` | The `Ns*` components and `ns.css` |
+| `@nsail/stack` | `src/Stack/React/NSail.React.Stack` | Vendor-free: the descriptors, `Mediator.send`, `Problem`, the client half of `MessageValidator`, `Strings`, `Brand` with `brandScheme` (a scheme's checked picks and its derived ladder), and the hooks a page reads with (`useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`, `useSession`) |
+| `@nsail/ui` | `src/Stack/React/NSail.React.Ui` | The `Ns*` components, drawn with MUI (`@mui/material` and Emotion are its dependencies, never a client's), and the theme a `Brand` lays |
+
+**Only `@nsail/ui` imports the vendor.** A screen, a kit's or an app's package names no
+`@mui/*` or `@emotion/*` module and no MUI type crosses the package's exports — the React twin of
+"no vendor types in a public NSail API": a vendor change is then one package's, and a screen
+reads the same whichever toolkit draws it. `package.test.ts` walks every workspace for an
+import. The package ships no stylesheet and no `--ns-*` variable either: the pieces are
+styled by the theme alone, so a client restyles them by its `Brand`, not by overriding CSS.
+
+**The Brand is the C# one.** `Brand` is `NSail.Components.Brand` as the wire carries it; a
+scheme names only the slots it picks and every other slot, or one that is not a hex, is that
+scheme's default, as `Brand.Checked()` does. The surfaces and inks are derived from the chrome
+by `BrandTone.Tint`'s own arithmetic. The defaults, the typeface catalog and samples of that
+derivation live in `brand.json`, which `ReactBrandDefaultsTests` holds to the C# classes and
+`brand.test.ts` holds the TypeScript derivation to. The theme maps it the way
+`BrandMudTheme` does: the accent and its stored states, the ladder, each severity and the ink
+read on it, the typeface on the heading ranks only. The font files are the client's to serve.
 
 **Two ways in, one source.** Each package's `exports` answers the `@nsail/source` condition with
 its `src/`, and everything else with `dist/`. This workspace asks for the condition
@@ -155,13 +175,18 @@ is always a `BusinessError` carrying a `Problem`: the server's own when it sent 
 
 | Piece | Package | Does |
 |---|---|---|
-| `NsApp` | ui | `StackProvider` plus the catalog read before the first paint (`useCatalog`) (a regional `language` such as `es-AR` uses its base language's Stack strings) and the one confirmation surface |
+| `NsApp` | ui | `StackProvider` plus the catalog read before the first paint (`useCatalog`) (a regional `language` such as `es-AR` uses its base language's Stack strings), the theme from `brand` in the scheme `dark` names (unset follows the device; no `brand` is the Stack's own) and the one confirmation surface |
 | `Strings` | stack | `StringManager`'s resolution: a miss renders the key; `Problems.{Code}.{Source}` → `Problems.{Code}` → the message; the `entity` argument is a key and `at` an ISO instant shown in the reader's zone |
 | `useLoad` + `NsLoad` | stack + ui | A region owns its read (convert-to-nsload's contract): a spinner the first time, the last answer dimmed while it re-reads, a failure in place with a retry where a second try can pass (`isRetryable`) — never a toast |
 | `useSession` + `NsSignedIn` | stack + ui | Who is signed in, read once for the client from its session message; a region that draws its content only once the session is read and signed in (Sign-in, below) |
 | `useForm` + `NsForm` + `NsField` | stack + ui | A form over one message, one send at a time (a call while one is in flight returns `false`), `saved` only while nothing changed since the send, `reset` clearing it unless `keepSaved` marks the re-read of what was just sent: `NsField name="…"` picks its input from the member's kind, its label from the member's key, its bounds from the message; refusals are checked as the user types and the server's land under the field they name; anything no field can show is drawn above the fields; `onReload` is offered only for a `Conflict` |
 | `NsTable`, `NsPager`, `NsSearch`, `NsEnumSelect` | ui | A projection's rows with headers from keys and cells formatted by kind (`ungrouped` columns skip digit grouping), rows that open by click also open from the keyboard; a `DataPage`'s pager; a debounced search bound by its member; an enum pick whose options come from the descriptor |
-| `NsPage`, `NsButton`, `useConfirm` | ui | A titled page; a button whose `text` is a key, never a sentence; one native `<dialog>` for confirmations (a second `confirm()` resolves the first `false`, as does an unmount), opening on the act it offers and on the way out when `danger` says the act destroys ([ui/forms.md](ui/forms.md), *Focus on open*) |
+| `NsPage`, `NsButton`, `useConfirm` | ui | A titled page; a button whose `text` is a key, never a sentence; one native `<dialog>` for confirmations, worn in the theme rather than MUI's `Dialog` so the focus trap stays the browser's (a second `confirm()` resolves the first `false`, as does an unmount), opening on the act it offers and on the way out when `danger` says the act destroys ([ui/forms.md](ui/forms.md), *Focus on open*) |
+| `NsNavMenu` | ui | The side navigation, in the brand's chrome: entries whose `text` is a key and whose `href` comes from the route table, the one the reader is on marked `aria-current`, a plain click handed to the client's router |
+| `NsCard`, `NsToolBar` | ui | A section with an optional heading (`title`, `subtitle` keys), an `aside` and its `actions`; a row of controls that wraps instead of overflowing |
+| `NsList`, `NsListItem` | ui | Rows of data in hand (a device, an address — never a sentence typed in a page), opening by `href` or `onClick`, from the keyboard too, with an `aside` at the row's end |
+| `NsAlert`, `NsChip` | ui | A message that sits on the screen, its `text` a key, read out as it arrives only for an `error` or a `warning`; a state named by a key, its `severity` worn as an outline and as the fill when `solid` |
+| `NsRadioGroup`, `NsEmpty` | ui | A segmented choice over an enum member, every value in sight and one always the answer; a region that arrived empty, said by a key with the act that fills it (`NsTable`'s empty answer) — never a read that failed, which is `NsLoad`'s |
 
 **The Stack's sentences are the Blazor catalog's.** `Strings` reads `Common.*`,
 `Actions.*` and `Problems.*` from the very `strings*.json` that
@@ -245,9 +270,8 @@ gone in 19).
 - **Publish.** The client is built beside the host by `Build`, and nothing copies it into a publish yet; a `dotnet publish` that
   should carry it has to run after that build on a machine with the workspace installed.
 - **Coded rules** are judged by the server only (above).
-- **Public-site pieces.** `@nsail/ui` mirrors the back office's `Ns*` family; the
-  showcase pieces a public site needs (carousel, hero, gallery) and server-rendered pages
-  are not there yet.
+- **Public-site pieces.** The showcase pieces a public site needs (carousel, hero, gallery)
+  and server-rendered pages are not there yet.
 - **One SDK package per kit.** An Sdk writes one `sdk.ts` where it is told; a kit
   composed by several apps would publish `@nsail/{kit}-sdk` instead, and two such files
   each carrying a shared model (`DataPage<T>`) still declare it once apiece.

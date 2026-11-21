@@ -68,7 +68,7 @@ async function ask(danger: boolean) {
 
   return {
     dialog: host.querySelector("dialog") as HTMLDialogElement,
-    faces: [...host.querySelectorAll<HTMLButtonElement>(".ns-actions button")],
+    faces: [...host.querySelectorAll<HTMLButtonElement>("dialog button")],
     answer,
     confirm,
   };
@@ -109,12 +109,13 @@ describe("the one confirmation surface", () => {
   // The cursor and the fill are one derivation answering two questions: where a bare Enter lands,
   // and what pressing that face costs (ui/actions.md).
   it.each([
-    [true, "ns-button-danger"],
-    [false, "ns-button-primary"],
+    [true, "MuiButton-colorError"],
+    [false, "MuiButton-colorPrimary"],
   ])("draws its act with the rank the act costs (danger: %s)", async (danger, rank) => {
     const { faces } = await ask(danger);
 
     expect(faces[1].className).toContain(rank);
+    expect(faces[1].className).toContain("MuiButton-contained");
   });
 
   it.each([
@@ -144,7 +145,7 @@ describe("pending confirmations", () => {
     await expect(answer).resolves.toBe(false);
 
     await act(async () => {
-      document.querySelectorAll<HTMLButtonElement>(".ns-actions button")[1].click();
+      document.querySelectorAll<HTMLButtonElement>("dialog button")[1].click();
     });
 
     await expect(second).resolves.toBe(true);
