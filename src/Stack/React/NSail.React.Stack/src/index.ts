@@ -9,3 +9,4 @@ export * from "./strings";
 export * from "./context";
 export * from "./load";
 export * from "./form";
+export * from "./brand";
