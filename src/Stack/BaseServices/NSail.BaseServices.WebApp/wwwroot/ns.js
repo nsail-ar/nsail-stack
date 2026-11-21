@@ -840,9 +840,9 @@
     // The vendor's keyboard opening hands the cursor to the menu's first ROW, and a menu that
     // opens on its own search holds no row until something is typed, so the cursor would stay in
     // the lookup's box. It goes to the first control of the popover that opened, the search where
-    // there is one. The box reached the offer, so it is what Escape returns to (ui/keyboard.md):
-    // the vendor's own return is the face, which stands inside the lookup's list and leaves the
-    // cursor on the body.
+    // there is one. The box reached the offer, so it is what Escape and Tab return to
+    // (ui/keyboard.md): the vendor's own return is the face, which stands inside the lookup's
+    // list and leaves the cursor on the body.
     async function enterOfferMenu(box, open) {
         const popover = await until(() => Array.from(document.querySelectorAll(MENU_OPEN)).find(el => !open.has(el)));
 
@@ -860,23 +860,24 @@
         const shut = () => !popover.isConnected || !popover.classList.contains("mud-popover-open");
         let returned = false;
 
-        const onEscape = async e => {
+        const onLeave = async e => {
             if (shut()) {
-                document.removeEventListener("keydown", onEscape, true);
+                document.removeEventListener("keydown", onLeave, true);
                 return;
             }
 
-            if (e.key !== "Escape" || !popover.contains(e.target))
+            if ((e.key !== "Escape" && e.key !== "Tab") || !popover.contains(e.target))
                 return;
 
-            // An Escape an open thing inside the menu answered (ui/menus.md, the innermost wins)
+            // A key an open thing inside the menu answered (ui/menus.md, the innermost wins)
             // leaves the menu open, and the cursor with it. The listener stays armed while this
-            // one waits, so a second Escape pressed inside the wait still closes the menu.
+            // one waits, so a second key pressed inside the wait is heard too; whichever wait
+            // sees the menu shut first returns the cursor, and only that one.
             if (!await until(shut) || returned)
                 return;
 
             returned = true;
-            document.removeEventListener("keydown", onEscape, true);
+            document.removeEventListener("keydown", onLeave, true);
 
             if (!box.isConnected)
                 return;
@@ -884,12 +885,12 @@
             box.focus();
 
             // focus() brings back whatever selection the box last held; the caret goes to the
-            // end, so the key after Escape carries the text on rather than replacing it.
+            // end, so the key after carries the text on rather than replacing it.
             if (typeof box.setSelectionRange === "function")
                 box.setSelectionRange(box.value.length, box.value.length);
         };
 
-        document.addEventListener("keydown", onEscape, true);
+        document.addEventListener("keydown", onLeave, true);
     }
 
     const OFFER_MENU_STOP = "input:not([type='hidden']):not([disabled]), textarea:not([disabled]), .mud-menu-item:not(.mud-disabled), button:not([disabled]), a[href]";
