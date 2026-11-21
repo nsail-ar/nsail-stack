@@ -13,8 +13,8 @@ using NSail.Metadata;
 namespace NSail.Components.Tests;
 
 /// <summary>The innermost open thing wins Escape (menus.md): inside the wrapper a routed surface
-/// and the companion region take Escape from, an open dropdown, help, hint or expander answers
-/// the key and stops it, and only the next Escape closes the surface. The browser reads each
+/// and the companion region take Escape from, an open dropdown, help, hint, expander or lookup
+/// list answers the key and stops it, and only the next Escape closes the surface. The browser reads each
 /// <c>:stopPropagation</c> flag after that element's handler returned; bUnit reads them all
 /// before any handler runs, so the order is the browser suites' and the flag at that instant is
 /// what is pinned here.</summary>
