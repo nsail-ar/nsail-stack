@@ -58,9 +58,9 @@ describe("the package", () => {
   });
 
   it("carries no CSS file and no --ns- variable", () => {
-    const files = readdirSync(join(pkg, "src"));
+    const files = readdirSync(join(pkg, "src"), { recursive: true, encoding: "utf8" });
 
     expect(files.filter((name) => name.endsWith(".css"))).toEqual([]);
-    expect(sources(join(pkg, "src")).filter((file) => !file.endsWith(".test.ts") && /--ns-/.test(readFileSync(file, "utf8")))).toEqual([]);
+    expect(sources(join(pkg, "src")).filter((file) => !/\.test\.tsx?$/.test(file) && /--ns-/.test(readFileSync(file, "utf8")))).toEqual([]);
   });
 });

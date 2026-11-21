@@ -55,9 +55,9 @@ export function NsNavMenu({ label, entries, current, onNavigate }: NsNavMenuProp
               selected={here}
               aria-current={here ? "page" : undefined}
               onClick={(event: MouseEvent) => follow(event, entry.href)}
-              sx={{ borderRadius: 1, mx: 1, color: "inherit", "&.Mui-selected": { color: "primary.main" } }}
+              sx={{ borderRadius: 1, mx: 1, color: "inherit", "&.Mui-selected, &.Mui-selected:hover": { color: "chrome.accent", bgcolor: "chrome.selected" } }}
             >
-              {entry.icon && <ListItemIcon sx={{ color: here ? "primary.main" : "chrome.secondary", minWidth: 36 }}>{entry.icon}</ListItemIcon>}
+              {entry.icon && <ListItemIcon sx={{ color: here ? "chrome.accent" : "chrome.secondary", minWidth: 36 }}>{entry.icon}</ListItemIcon>}
               <ListItemText primary={strings.translate(entry.text)} />
             </ListItemButton>
           );

@@ -18,6 +18,17 @@ export interface NsChipProps {
 /** A state, named: its word carries the meaning and the tone only repeats it. */
 export function NsChip({ text, severity, solid = false }: NsChipProps) {
   const strings = useStrings();
+  const filled = Boolean(severity && solid);
 
-  return <Chip size="small" label={strings.translate(text)} color={severity ?? "default"} variant={severity && solid ? "filled" : "outlined"} />;
+  // Outlined, the severity is a word on the surface, so it wears that severity's ink; filled, it
+  // is the ground and its own textOn* reads on it.
+  return (
+    <Chip
+      size="small"
+      label={strings.translate(text)}
+      color={severity ?? "default"}
+      variant={filled ? "filled" : "outlined"}
+      sx={severity && !filled ? { color: `ink.${severity}` } : undefined}
+    />
+  );
 }

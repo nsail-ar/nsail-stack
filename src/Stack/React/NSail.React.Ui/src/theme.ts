@@ -1,18 +1,50 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-import { createTheme, type Theme } from "@mui/material/styles";
-import { brandScheme, brandTypeface, type Brand, type Scheme } from "@nsail/stack";
+import { alpha, createTheme, type Theme } from "@mui/material/styles";
+import { brandMix, brandScheme, brandTypeface, type Brand, type Scheme } from "@nsail/stack";
+
+interface Chrome {
+  main: string;
+  contrastText: string;
+  secondary: string;
+  /** The accent as ink on the band: the entry the reader is on. */
+  accent: string;
+  /** The wash under that entry. */
+  selected: string;
+}
+
+// A word in the brand's hue or in a severity's: the accent and the severities are fills, and
+// each of these is the ink the same pick reads in as text.
+interface Inks {
+  accent: string;
+  error: string;
+  warning: string;
+  success: string;
+  info: string;
+}
 
 declare module "@mui/material/styles" {
   interface Palette {
-    chrome: { main: string; contrastText: string; secondary: string };
+    chrome: Chrome;
+    ink: Inks;
   }
 
   interface PaletteOptions {
-    chrome?: { main: string; contrastText: string; secondary: string };
+    chrome?: Chrome;
+    ink?: Inks;
+  }
+
+  interface TypeBackground {
+    /** The rung of a surface that floats over another: a dialog, a menu. */
+    raised: string;
   }
 }
+
+// BrandTone's ToneLean and InertWeight: a severity's share of its word's ink, and the scheme
+// ink's share of a refused control's fill.
+const toneLean = 0.65;
+const inertWeight = 0.06;
 
 // BrandMudTheme's mapping, onto MUI: the accent's states are the brand's own and handed over
 // rather than letting the vendor derive a second set, and every surface and ink is the scheme's
@@ -21,6 +53,7 @@ export function brandTheme(brand: Brand | null | undefined, dark: boolean): Them
   const scheme: Scheme = brandScheme(brand, dark);
   const headings = brandTypeface(brand?.typeface);
   const heading = headings ? { fontFamily: headings } : {};
+  const word = (severity: string) => brandMix(scheme.textPrimary, severity, toneLean);
 
   return createTheme({
     palette: {
@@ -31,11 +64,29 @@ export function brandTheme(brand: Brand | null | undefined, dark: boolean): Them
       warning: { main: scheme.warning, contrastText: scheme.textOnWarning },
       success: { main: scheme.success, contrastText: scheme.textOnSuccess },
       info: { main: scheme.info, contrastText: scheme.textOnInfo },
-      background: { default: scheme.background, paper: scheme.surface },
+      background: { default: scheme.background, paper: scheme.surface, raised: scheme.surfaceRaised },
       text: { primary: scheme.textPrimary, secondary: scheme.textSecondary, disabled: scheme.textDisabled },
       divider: scheme.lines,
-      action: { active: scheme.textSecondary, hover: scheme.rowHover, disabled: scheme.textDisabled },
-      chrome: { main: scheme.chrome, contrastText: scheme.textOnChrome, secondary: scheme.textOnChromeSecondary },
+      action: {
+        active: scheme.textSecondary,
+        hover: scheme.rowHover,
+        disabled: scheme.textDisabled,
+        disabledBackground: alpha(scheme.textPrimary, inertWeight),
+      },
+      chrome: {
+        main: scheme.chrome,
+        contrastText: scheme.textOnChrome,
+        secondary: scheme.textOnChromeSecondary,
+        accent: scheme.accentOnChrome,
+        selected: scheme.railGround,
+      },
+      ink: {
+        accent: scheme.accentInk,
+        error: word(scheme.error),
+        warning: word(scheme.warning),
+        success: word(scheme.success),
+        info: word(scheme.info),
+      },
     },
     shape: { borderRadius: 6 },
     // A pick reaches the heading ranks only, as on the Blazor side: tables, fields and figures
@@ -43,8 +94,22 @@ export function brandTheme(brand: Brand | null | undefined, dark: boolean): Them
     typography: { h1: heading, h2: heading, h3: heading, h4: heading, h5: heading, h6: heading },
     components: {
       // An outlined field's edge is a boundary, so it wears the ladder's input rung, not Lines.
+      // The vendor paints primary.main as a word or a line in these places; each wears the
+      // accent ink instead (ui/branding.md: the accent is a ground, never a word).
       MuiOutlinedInput: {
-        styleOverrides: { notchedOutline: { borderColor: scheme.linesInputs } },
+        styleOverrides: {
+          notchedOutline: { borderColor: scheme.linesInputs },
+          root: { "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: scheme.accentInk } },
+        },
+      },
+      MuiInputLabel: {
+        styleOverrides: { root: { "&.Mui-focused:not(.Mui-error)": { color: scheme.accentInk } } },
+      },
+      MuiInput: {
+        styleOverrides: { underline: { "&:after": { borderBottomColor: scheme.accentInk } } },
+      },
+      MuiLink: {
+        styleOverrides: { root: { color: scheme.accentInk, textDecorationColor: "currentColor" } },
       },
       MuiPaper: {
         styleOverrides: { root: { backgroundImage: "none" } },
@@ -57,10 +122,25 @@ export function brandTheme(brand: Brand | null | undefined, dark: boolean): Them
       },
       MuiButton: {
         defaultProps: { disableElevation: true },
-        styleOverrides: { root: { textTransform: "none" } },
+        styleOverrides: {
+          root: { textTransform: "none" },
+        },
+        // The vendor words a text or outlined primary button through these variables.
+        variants: [
+          {
+            props: { color: "primary" },
+            style: {
+              "--variant-textColor": scheme.accentInk,
+              "--variant-outlinedColor": scheme.accentInk,
+              "--variant-outlinedBorder": scheme.accentInk,
+            },
+          },
+        ],
       },
       MuiToggleButton: {
-        styleOverrides: { root: { textTransform: "none" } },
+        styleOverrides: {
+          root: { textTransform: "none", "&.MuiToggleButton-primary.Mui-selected": { color: scheme.accentInk } },
+        },
       },
     },
   });

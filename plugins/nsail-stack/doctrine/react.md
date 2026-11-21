@@ -151,7 +151,13 @@ by `BrandTone.Tint`'s own arithmetic. The defaults, the typeface catalog and sam
 derivation live in `brand.json`, which `ReactBrandDefaultsTests` holds to the C# classes and
 `brand.test.ts` holds the TypeScript derivation to. The theme maps it the way
 `BrandMudTheme` does: the accent and its stored states, the ladder, each severity and the ink
-read on it, the typeface on the heading ranks only. The font files are the client's to serve.
+read on it, the typeface on the heading ranks only. The accent is a ground and never a word
+([branding.md](ui/branding.md)): wherever the vendor would word or outline in it (a text or
+outlined button, a chosen segment, a focused field's label and edge, a link) the theme hands it
+`AccentInk` instead, the navigation entry the reader is on wears `AccentOnChrome` over the
+rail's wash, and a state's word leans its severity into the scheme's ink by `ToneLean`; all three
+are derived from the same picks as on the Blazor side and pinned by the same samples. The font
+files are the client's to serve.
 
 **Two ways in, one source.** Each package's `exports` answers the `@nsail/source` condition with
 its `src/`, and everything else with `dist/`. This workspace asks for the condition

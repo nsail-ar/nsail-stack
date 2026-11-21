@@ -83,6 +83,9 @@
     {
       "dark": false,
       "chrome": "#fcfbf9",
+      "accent": "#F68E1E",
+      "accentInk": "#985f21",
+      "accentOnChrome": "#8e5a22",
       "ladder": {
         "background": "#fdfbf9",
         "surface": "#ffffff",
@@ -97,6 +100,9 @@
     {
       "dark": true,
       "chrome": "#201f1b",
+      "accent": "#F68E1E",
+      "accentInk": "#efb575",
+      "accentOnChrome": "#ebb274",
       "ladder": {
         "background": "#161512",
         "surface": "#1b1b17",
@@ -110,7 +116,27 @@
     },
     {
       "dark": false,
+      "chrome": "#fcfbf9",
+      "accent": "#f9b062",
+      "accentInk": "#856440",
+      "accentOnChrome": "#7a5d3d",
+      "ladder": {
+        "background": "#fdfbf9",
+        "surface": "#ffffff",
+        "surfaceRaised": "#ffffff",
+        "textPrimary": "#262624",
+        "textSecondary": "#6c6b6a",
+        "textDisabled": "#989896",
+        "lines": "#cecdcc",
+        "linesInputs": "#757573"
+      }
+    },
+    {
+      "dark": false,
       "chrome": "#d8e8d1",
+      "accent": "#0a7d4f",
+      "accentInk": "#145739",
+      "accentOnChrome": "#17563c",
       "ladder": {
         "background": "#f3feee",
         "surface": "#ffffff",
@@ -125,6 +151,9 @@
     {
       "dark": true,
       "chrome": "#1c2c12",
+      "accent": "#0a7d4f",
+      "accentInk": "#69ad8d",
+      "accentOnChrome": "#74ad96",
       "ladder": {
         "background": "#0f1809",
         "surface": "#131d0e",
@@ -139,6 +168,9 @@
     {
       "dark": false,
       "chrome": "#2b4a8c",
+      "accent": "#ffd54f",
+      "accentInk": "#7a6c3c",
+      "accentOnChrome": "#262625",
       "ladder": {
         "background": "#fafcff",
         "surface": "#ffffff",
@@ -153,6 +185,9 @@
     {
       "dark": true,
       "chrome": "#c2185b",
+      "accent": "#7e57c2",
+      "accentInk": "#b295d1",
+      "accentOnChrome": "#dedddd",
       "ladder": {
         "background": "#211014",
         "surface": "#271519",

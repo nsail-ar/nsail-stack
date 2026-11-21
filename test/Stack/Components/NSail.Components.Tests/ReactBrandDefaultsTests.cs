@@ -12,27 +12,30 @@ namespace NSail.Components.Tests;
 /// <c>brand.test.ts</c> holds the TypeScript derivation to.</summary>
 public sealed class ReactBrandDefaultsTests
 {
-    const string File = "src/Stack/React/NSail.React.Stack/src/brand.json";
+    const string Relative = "src/Stack/React/NSail.React.Stack/src/brand.json";
 
-    static readonly (bool Dark, string Chrome)[] Samples =
+    // A null accent keeps the scheme's own; the picks are pale and deep on either ground, which
+    // is where AccentInk leans furthest or not at all.
+    static readonly (bool Dark, string Chrome, string? Accent)[] Samples =
     [
-        (false, BrandTheme.DefaultLight().Chrome),
-        (true, BrandTheme.DefaultDark().Chrome),
-        (false, "#d8e8d1"),
-        (true, "#1c2c12"),
-        (false, "#2b4a8c"),
-        (true, "#c2185b"),
+        (false, BrandTheme.DefaultLight().Chrome, null),
+        (true, BrandTheme.DefaultDark().Chrome, null),
+        (false, BrandTheme.DefaultLight().Chrome, "#f9b062"),
+        (false, "#d8e8d1", "#0a7d4f"),
+        (true, "#1c2c12", "#0a7d4f"),
+        (false, "#2b4a8c", "#ffd54f"),
+        (true, "#c2185b", "#7e57c2"),
     ];
 
     [Fact]
     public void The_React_brand_file_is_the_C_sharp_brand()
     {
         var expected = Expected();
-        var actual = JsonNode.Parse(System.IO.File.ReadAllText(Path.Combine(Root(), File)));
+        var actual = JsonNode.Parse(File.ReadAllText(Path.Combine(Root(), Relative)));
 
         Assert.True(
             JsonNode.DeepEquals(expected, actual),
-            $"{File} differs from the C# brand; write it as:\n{expected.ToJsonString(new JsonSerializerOptions { WriteIndented = true })}");
+            $"{Relative} differs from the C# brand; write it as:\n{expected.ToJsonString(new JsonSerializerOptions { WriteIndented = true })}");
     }
 
     static JsonObject Expected()
@@ -46,15 +49,19 @@ public sealed class ReactBrandDefaultsTests
 
         var samples = new JsonArray();
 
-        foreach (var (dark, chrome) in Samples)
+        foreach (var (dark, chrome, accent) in Samples)
         {
             var theme = dark ? BrandTheme.DefaultDark() : BrandTheme.DefaultLight();
 
             theme.Chrome = chrome;
+            theme.Accent = accent ?? theme.Accent;
             samples.Add(new JsonObject
             {
                 ["dark"] = dark,
                 ["chrome"] = chrome,
+                ["accent"] = theme.Accent,
+                ["accentInk"] = theme.AccentInk,
+                ["accentOnChrome"] = theme.AccentOnChrome,
                 ["ladder"] = new JsonObject
                 {
                     ["background"] = theme.Background,
@@ -84,7 +91,7 @@ public sealed class ReactBrandDefaultsTests
 
         while (directory is not null)
         {
-            if (System.IO.File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "NSail.sln")))
             {
                 return directory.FullName;
             }

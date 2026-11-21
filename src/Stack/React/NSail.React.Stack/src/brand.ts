@@ -50,8 +50,19 @@ export interface Ladder {
   linesInputs: string;
 }
 
-/** A scheme ready to paint: its picks checked and its ladder derived. */
-export type Scheme = BrandTheme & Ladder;
+/** The accent as ink, derived at paint as `BrandTheme.AccentInk`/`AccentOnChrome` are: the
+ * accent itself is a ground and never a word. */
+export interface AccentInks {
+  /** The accent as ink on the content's surfaces: a link, a quiet button, the focused field. */
+  accentInk: string;
+  /** The accent as ink on the chrome: the navigation entry the reader is on. */
+  accentOnChrome: string;
+  /** The wash the navigation marks the reader's entry with. */
+  railGround: string;
+}
+
+/** A scheme ready to paint: its picks checked, its ladder and its accent inks derived. */
+export type Scheme = BrandTheme & Ladder & AccentInks;
 
 // The defaults are BrandTheme.DefaultLight()/DefaultDark() and Typefaces.All as the C# side
 // serializes them; ReactBrandDefaultsTests fails when the file and the classes disagree.
@@ -83,6 +94,12 @@ const masks: Record<"light" | "dark", Ladder> = {
   },
 };
 
+// BrandTone's weights and the lean AccentInk walks, from the fullest down.
+const washWeight = 0.13;
+const railWeight = 0.08;
+const fullLean = 11;
+const leanSteps = 20;
+const bodyContrast = 4.5;
 const surfaceTint = 0.03;
 const inkTint = 0.02;
 const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
@@ -103,9 +120,7 @@ export function brandScheme(brand: Brand | null | undefined, dark: boolean): Sch
   }
 
   const mask = masks[dark ? "dark" : "light"];
-
-  return {
-    ...checked,
+  const ladder: Ladder = {
     background: tint(mask.background, checked.chrome, surfaceTint),
     surface: tint(mask.surface, checked.chrome, surfaceTint),
     surfaceRaised: tint(mask.surfaceRaised, checked.chrome, surfaceTint),
@@ -115,13 +130,74 @@ export function brandScheme(brand: Brand | null | undefined, dark: boolean): Sch
     lines: tint(mask.lines, checked.chrome, surfaceTint),
     linesInputs: tint(mask.linesInputs, checked.chrome, surfaceTint),
   };
+  const grounds = [ladder.background, ladder.surface, ladder.surfaceRaised].flatMap((rung) => [rung, brandMix(rung, checked.accent, washWeight)]);
+  const railGround = brandMix(checked.chrome, checked.textOnChrome, railWeight);
+
+  return {
+    ...checked,
+    ...ladder,
+    accentInk: accentInk(checked.accent, ladder.textPrimary, grounds),
+    accentOnChrome: accentInk(checked.accent, checked.textOnChrome, [checked.chrome, railGround]),
+    railGround,
+  };
+}
+
+/** `BrandTone.Mix`: `from` moved toward `to` by `weight`; `from` itself when either does not
+ * parse. */
+export function brandMix(from: string, to: string, weight: number): string {
+  const start = parse(from);
+  const end = parse(to);
+
+  if (!start || !end) {
+    return from;
+  }
+
+  return `#${start.map((channel, index) => hexByte(roundEven(channel + (end[index] - channel) * weight))).join("")}`;
 }
 
 /** The font stack of a typeface key (`Typefaces.Find`), or undefined for the house typeface. */
 export function brandTypeface(key: string | null | undefined): string | undefined {
-  const family = key ? typefaces[key] : undefined;
+  const family = key && Object.hasOwn(typefaces, key) ? typefaces[key] : undefined;
 
   return family?.map((name) => (name.includes(" ") ? `"${name}"` : name)).join(", ");
+}
+
+// BrandTone.AccentInk: the ink leaned toward the accent as far as clears AA on every ground at
+// once, and the plain ink where no lean does.
+function accentInk(accent: string, ink: string, grounds: string[]): string {
+  for (let lean = fullLean; lean > 0; lean--) {
+    const candidate = brandMix(ink, accent, lean / leanSteps);
+
+    if (grounds.every((ground) => contrast(ground, candidate) >= bodyContrast)) {
+      return candidate;
+    }
+  }
+
+  return ink;
+}
+
+function contrast(first: string, second: string): number {
+  const one = luminance(first);
+  const other = luminance(second);
+
+  return (Math.max(one, other) + 0.05) / (Math.min(one, other) + 0.05);
+}
+
+function luminance(color: string): number {
+  const channels = parse(color);
+
+  return channels ? relative(channels) : 0;
+}
+
+// .NET's Math.Round, which Blend uses: a half goes to the even neighbour.
+function roundEven(value: number): number {
+  const rounded = Math.round(value);
+
+  return Math.abs(value % 1) === 0.5 && rounded % 2 !== 0 ? rounded - 1 : rounded;
+}
+
+function hexByte(value: number): string {
+  return value.toString(16).padStart(2, "0");
 }
 
 // BrandTone.Tint: the rung keeps its relative luminance; hue and chroma are the chrome's in
@@ -144,7 +220,7 @@ function tint(rung: string, chrome: string, cap: number): string {
 
     if (scale < 0.01 || inGamut(lightness, a * scale, b * scale)) {
       return `#${fromOklab(lightness, a * scale, b * scale)
-        .map((channel) => channel.toString(16).padStart(2, "0"))
+        .map(hexByte)
         .join("")}`;
     }
 

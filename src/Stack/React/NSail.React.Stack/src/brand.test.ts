@@ -8,8 +8,8 @@ import defaults from "./brand.json";
 describe("brandScheme", () => {
   // brand.json's samples are BrandTheme's own derivation (ReactBrandDefaultsTests writes them),
   // so a ladder that drifts from the C# one fails here.
-  it.each(defaults.samples)("derives the ladder the C# brand derives (dark: $dark, chrome: $chrome)", ({ dark, chrome, ladder }) => {
-    const scheme = brandScheme({ [dark ? "dark" : "light"]: { chrome } }, dark);
+  it.each(defaults.samples)("derives the ladder the C# brand derives (dark: $dark, chrome: $chrome)", ({ dark, chrome, accent, ladder }) => {
+    const scheme = brandScheme({ [dark ? "dark" : "light"]: { chrome, accent } }, dark);
 
     expect({
       background: scheme.background,
@@ -21,6 +21,12 @@ describe("brandScheme", () => {
       lines: scheme.lines,
       linesInputs: scheme.linesInputs,
     }).toEqual(ladder);
+  });
+
+  it.each(defaults.samples)("leans the accent into ink as the C# brand does (dark: $dark, accent: $accent)", ({ dark, chrome, accent, accentInk, accentOnChrome }) => {
+    const scheme = brandScheme({ [dark ? "dark" : "light"]: { chrome, accent } }, dark);
+
+    expect({ accentInk: scheme.accentInk, accentOnChrome: scheme.accentOnChrome }).toEqual({ accentInk, accentOnChrome });
   });
 
   it("falls back to each scheme's own default with no brand", () => {
@@ -42,5 +48,6 @@ describe("brandTypeface", () => {
     expect(brandTypeface("work-sans")).toBe('"Work Sans", sans-serif');
     expect(brandTypeface(null)).toBeUndefined();
     expect(brandTypeface("comic-sans")).toBeUndefined();
+    expect(brandTypeface("constructor")).toBeUndefined();
   });
 });

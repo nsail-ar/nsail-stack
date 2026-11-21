@@ -20,7 +20,7 @@ const Surface = styled("dialog")(({ theme }) => ({
   borderRadius: Number(theme.shape.borderRadius) * 2,
   padding: theme.spacing(3),
   maxWidth: "min(480px, calc(100vw - 32px))",
-  background: theme.palette.mode === "dark" ? theme.palette.background.paper : theme.palette.common.white,
+  background: theme.palette.background.raised,
   color: theme.palette.text.primary,
   boxShadow: theme.shadows[8],
   "&::backdrop": { background: "rgb(0 0 0 / 45%)" },
