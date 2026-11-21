@@ -324,6 +324,27 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
         Assert.Null(face.GetAttribute("role"));
     }
 
+    /// <summary>nsail#4032: the marks a lookup's Enter opens an offer's menu by (ns.js,
+    /// pressOffer and enterOfferMenu). The face stands inside the vendor's wrapper, the wrapper
+    /// opens the menu on a keyboard Enter, and the popover that opens carries the house's class
+    /// with the vendor's open mark and its rows. A vendor that moved any of them would leave the
+    /// press opening nothing, or the cursor in the lookup's box.</summary>
+    [Fact]
+    public async Task AnEnterOnTheFacesWrapperOpensAPopoverThePageCanFind()
+    {
+        var cut = Render<MenuFaceHost>();
+
+        var wrapper = cut.Find(".ns-menu-activator").Closest(".mud-menu-activator");
+
+        Assert.NotNull(wrapper);
+        Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open"));
+
+        await cut.InvokeAsync(() => wrapper.KeyDownAsync(new KeyboardEventArgs { Key = "Enter", Code = "Enter" }));
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal(2, cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item").Count), TimeSpan.FromSeconds(5));
+    }
+
     /// <summary>A Disabled menu keeps its trigger — named, greyed, and opening nothing. It is
     /// the shape of a list that has nothing to say YET, which is not the shape of one nobody may
     /// use: that one is withheld whole (NsMenuWritabilityTests).</summary>
