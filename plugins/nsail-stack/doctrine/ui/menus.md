@@ -119,6 +119,11 @@ opens a list of withheld rows is a button that does nothing.
   first ancestor on the bubble the house owns. Tab belongs there beside Escape because leaving
   the trigger IS a dismissal: the next field takes the cursor, and a list still standing over it
   answers for nothing.
+- **Escape from a control a block holds closes the menu, and that is read off the block.** The
+  vendor answers Escape on the list's wrapper only while the menu holds a row, so a menu that is
+  a search alone (`NsMenuBlock` around the field) would stand open through every Escape until
+  something typed drew one. A control that answers Escape itself — a lookup's open list — stops
+  it first; in a menu with rows the vendor closes too, and closing a closed menu is absorbed.
 - **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
   surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
   make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint`,

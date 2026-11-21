@@ -345,6 +345,25 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
             Assert.Equal(2, cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item").Count), TimeSpan.FromSeconds(5));
     }
 
+    /// <summary>nsail#4056: Escape from a menu's own search closes the menu. The vendor answers
+    /// Escape on the list only while the menu holds a row, so a menu that is a search alone
+    /// stood open through every Escape, and the page's return of the cursor to the lookup's box
+    /// waits for it to close.</summary>
+    [Fact]
+    public async Task AnEscapeFromAMenusOwnSearchClosesTheMenu()
+    {
+        var cut = Render<MenuSearchHost>();
+
+        await cut.Find(".probe-face").ClickAsync(new MouseEventArgs());
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-menu-popover.mud-popover-open .probe-search")), TimeSpan.FromSeconds(5));
+        Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item"));
+
+        await cut.InvokeAsync(() => cut.Find(".probe-search").KeyDownAsync(new KeyboardEventArgs { Key = "Escape", Code = "Escape" }));
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
     /// <summary>A Disabled menu keeps its trigger — named, greyed, and opening nothing. It is
     /// the shape of a list that has nothing to say YET, which is not the shape of one nobody may
     /// use: that one is withheld whole (NsMenuWritabilityTests).</summary>

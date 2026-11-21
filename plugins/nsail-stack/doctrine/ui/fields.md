@@ -874,8 +874,10 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   offer's menu opens with the keyboard in it: the vendor's keyboard opening hands the cursor to
   the menu's first row, and a menu that opens on its own search has no row until something is
   typed, so the page puts the cursor on the popover's first control — the search where there is
-  one — and the next keys are the menu's. Its first Esc closes the menu alone and returns the
-  cursor to the box, text unchanged, since the box is what reached the offer; the next closes the
+  one — and the next keys are the menu's. Its first Esc closes the menu alone (from its own
+  search too, [menus.md](menus.md)) and returns the cursor to the box, text unchanged, since the
+  box is what reached the offer; an Esc a list open inside the menu answers leaves the menu and
+  the cursor where they are, and the next one is the menu's. The Esc after closes the lookup's
   list. Reaching an entry is not a pick — the bound value never moves — its Enter is the field's
   and never the form's, and a lookup that offers none of the three grows no such row. The vendor clamps at its last option,
   so the field reads its highlight after each key (`NsAutocomplete.Walk`); the vendor's highlight

@@ -1,0 +1,20 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+
+@* A menu that is a search alone, the shape an offer's menu takes when what it lists is what the
+   search answers: until something is typed it holds no row. *@
+<MudPopoverProvider />
+
+<NsMenu Content="@Face" Label="Link code" Beside="true">
+    <NsMenuBlock>
+        <input class="probe-search" />
+    </NsMenuBlock>
+</NsMenu>
+
+@code {
+
+    RenderFragment Face => @<span class="probe-face">sku-1</span>;
+}
