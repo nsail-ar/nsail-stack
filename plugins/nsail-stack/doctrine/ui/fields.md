@@ -730,6 +730,9 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   asked, leaving a box that can never fill again. The same split, and the same reason, as
   `NsPage`'s own load Runner ([surfaces.md](surfaces.md)). **A cancelled resolve files no
   answer** — it learned nothing, so the mark that says "asked" comes off with it.
+  The QUICK ADD runs on a third Runner for the same reason: every search opens by cancelling
+  the search Runner, and the Enter that takes the quick add is a key the vendor answers too, so a
+  search raised while the caller's alta is open would cancel the token the alta was handed.
 - **The SEARCH half of the same rule: an out-of-order answer never wins the vendor's own last
   write.** Two searches can be in flight over real latency, landing in whichever order the
   network hands them back rather than the order they were asked in, and the vendor redraws its
@@ -837,7 +840,10 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   takes nothing and asks nothing for the old text. A lookup with a local list has no search and
   leaves Enter to the vendor, which answers off the list already open.
 - **A lookup is complete only when it is keyboard-complete.** On a searching lookup whose term
-  has several answers: type, Enter, Arrow Down/Up, Enter picks, Esc closes. One answer is taken by
+  has several answers: type, Enter, Arrow Down/Up, Enter picks, Esc closes the list and never the
+  surface it stands in — a routed aside or a hosted dialog stays, and only the next Esc closes it
+  (the box stops the key while its list is open, rows or entries alone, and holds the dialog's
+  Escape: [menus.md](menus.md)). One answer is taken by
   the first Enter, and inside a `.ns-cells` row that same Enter then confirms the row and opens the
   next (`nsapp.confirmRow`, ns.js), so the row is confirmed once, after the take and never before
   the product is resolved. The grid's policy leaves EVERY Enter in a searching box to the box,

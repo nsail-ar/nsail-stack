@@ -323,8 +323,8 @@
 
     // The Runner the quick add runs on, for the same two ways to lose: every search opens by
     // cancelling the field's own Runner, and the Enter that reaches the entry is a key the vendor
-    // answers too, so a search raised while the caller's alta is still open ate the token it was
-    // handed and the alta with it. Its own Runner is out of every search's reach.
+    // answers too, so a search raised while the caller's alta is still open would cancel the
+    // token it was handed, and the alta with it. Its own Runner is out of every search's reach.
     Runner Adder => field ??= new(this, RunLog);
 
     bool IsBusy => Runner.IsRunning || Resolver.IsRunning || Adder.IsRunning;
