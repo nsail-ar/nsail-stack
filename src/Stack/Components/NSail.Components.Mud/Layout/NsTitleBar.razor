@@ -31,8 +31,11 @@
    no second box left to push against — and the title keeps its own content width. Hence no
    min-w-0 on either box and no text-truncate on the title: a flex item with a zero floor
    shrinks to nothing before a row ever considers wrapping, which hands the heading's word to
-   the icon boxes beside it. Both faces below carry the rule, and the wrap costs the row
-   nothing where both boxes already fit. *@
+   the icon boxes beside it. And where the utilities outgrow even a line of their own, they
+   WRAP among themselves, justified to the same trailing edge: a group that cannot wrap has only
+   overflow left there, and that pushes the whole surface sideways. Each utility keeps its own
+   content width and moves to the next line whole. Both faces below carry the rule, and the wrap
+   costs the row nothing where everything already fits. *@
 @if (OnMain)
 {
     <NsStack Horizontal Wrap Align="NsAlign.Center" Justify="NsAlign.SpaceBetween">
@@ -72,7 +75,7 @@
                 <NsText As="@GetTitleAs()">@Title</NsText>
             </NsStack>
         </div>
-        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ms-auto">
+        <NsStack Horizontal Wrap Gap="NsSize.Xs" Align="NsAlign.Center" Justify="NsAlign.End" Class="ms-auto">
             @ChildContent
         </NsStack>
     </NsStack>
@@ -100,7 +103,7 @@ else if (!Hoisted)
             </span>
             <NsText As="NsTextAs.Title">@Title</NsText>
         </NsStack>
-        <NsStack Horizontal Gap="NsSize.Xs" Align="NsAlign.Center" Class="ms-auto">
+        <NsStack Horizontal Wrap Gap="NsSize.Xs" Align="NsAlign.Center" Justify="NsAlign.End" Class="ms-auto">
             @ChildContent
             <NsClose As="NsAs.Inline" />
         </NsStack>

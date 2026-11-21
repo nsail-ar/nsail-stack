@@ -151,6 +151,29 @@ public sealed class OverlayChromeTests : BunitContext, IAsyncLifetime
         Assert.Equal(string.Empty, own.Markup.Trim());
     }
 
+    // The shell's row is the title bar's own, so the page's utilities wrap among themselves
+    // there too rather than pushing the drawer or the dialog sideways (NsTitleBarUtilitiesWrapTests).
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void TheShellsRowWrapsThePagesUtilitiesAtTheTrailingEdge(bool modal)
+    {
+        var routes = Setup();
+        var gate = new TaskCompletionSource();
+
+        var cut = Held(this, routes, gate, modal);
+
+        gate.SetResult();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll("input")));
+
+        var group = cut.Find(".probe-utility").ParentElement!;
+
+        Assert.Contains("flex-wrap", group.ClassList);
+        Assert.DoesNotContain("flex-nowrap", group.ClassList);
+        Assert.Contains("justify-end", group.ClassList);
+    }
+
     [Fact]
     public void ThePagesOwnRowHandsItsNameAndItsUtilitiesToTheSurface()
     {
