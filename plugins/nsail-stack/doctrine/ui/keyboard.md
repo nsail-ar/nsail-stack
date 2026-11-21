@@ -26,11 +26,11 @@ number, in the product that walks; nothing is silenced.
 
 | Control | Keys |
 |---|---|
-| `NsAutocomplete` and every lookup | the box is a tab stop; a browsed lookup opens its list with the first row highlighted, a `Lazy` one shows the create entry alone until something is typed; Arrow Down / Arrow Up move the highlight; Enter picks the highlighted row and closes the list, except on a searched term (`Lazy` or `OnSearch`) with several answers, where the first Enter leaves the list open to walk and the next one picks (one answer is taken by the first Enter, which in a `.ns-cells` row then also confirms the row and opens the next); on a lookup's create entry, quick add or offer (the last rows Arrow Down reaches, in the order drawn, each enabled control of the offer a row of its own, past the line a list holding more answers than it shows draws, which no key reaches) Enter does what its click does — opens the create route, adds the typed text, presses the offer's lit control, opening a menu with the cursor on its first control, whose first Esc returns it to the box — and picks nothing; the walk holds the same in a `.ns-cells` row, where the arrows and Enter are the row's again once the list is closed; Esc closes it and picks nothing; the cursor staying in the box is the browser walk's ([fields.md](fields.md), *keyboard-complete*) |
+| `NsAutocomplete` and every lookup | the box is a tab stop; a browsed lookup opens its list with the first row highlighted, a `Lazy` one shows the create entry alone until something is typed; Arrow Down / Arrow Up move the highlight; Enter picks the highlighted row and closes the list, except on a searched term (`Lazy` or `OnSearch`) with several answers, where the first Enter leaves the list open to walk and the next one picks (one answer is taken by the first Enter, which in a `.ns-cells` row then also confirms the row and opens the next); on a lookup's create entry, quick add or offer (the last rows Arrow Down reaches, in the order drawn, each enabled control of the offer a row of its own, past the line a list holding more answers than it shows draws, which no key reaches) Enter does what its click does — opens the create route, adds the typed text, presses the offer's lit control, opening a menu with the cursor on its first control, whose first Esc or Tab out returns it to the box — and picks nothing; the walk holds the same in a `.ns-cells` row, where the arrows and Enter are the row's again once the list is closed; Esc closes it and picks nothing; the cursor staying in the box is the browser walk's ([fields.md](fields.md), *keyboard-complete*) |
 | `NsSelect`, `NsMultiSelect` | the readonly box is a tab stop with `role="combobox"`; Arrow Down, Enter and Space open the list, Esc closes it |
 | `NsDateField`, `NsDateTimeField`, `NsTimeField` | typed in the box; the picker opens from the keyboard and Esc returns the cursor to the box |
 | `NsTable` | a sortable heading, a row action and a pager control are buttons or links, never a bare element with a click handler; a clickable row has a key for what the click does |
-| `NsMenu`, `NsNavMenu` | the trigger is a tab stop; Enter, Space or Arrow Down opens; a menu opened by key is dismissed by Esc and Tab from inside its list; one opened by a click, from the span around the trigger ([menus.md](menus.md)) |
+| `NsMenu`, `NsNavMenu` | the trigger is a tab stop; Enter, Space or Arrow Down opens; a menu opened by key is dismissed by Esc and Tab from inside its list; one opened by a click, from the span around the trigger; either, from a field a block of it holds ([menus.md](menus.md)) |
 | Dialogs, drawers, `NsWizard` | focus lands inside on open, stays inside, and returns to what opened it on close ([forms.md](forms.md), *Focus on open*; [focus.md](focus.md) for the return) |
 | `NsTabs` | the tab strip is one tab stop; arrows move between tabs |
 | Toggles (`NsCheckBox`) | Space toggles |
@@ -65,6 +65,7 @@ product.
 ## Owed
 
 Not red, not yet proved: Arrow Down / Enter / Space / Esc on `NsSelect` and `NsMultiSelect`
-(the vendor's JS interceptor), the date-and-time and time boxes' structure, opening and
-dismissing a menu by key, dialogs and wizards, tabs. Each is the browser walk's or a bUnit
+(the vendor's JS interceptor), the date-and-time and time boxes' structure, the vendor's own
+answer to a menu's keys (bUnit pins the house's: the face's Enter and a block's Esc and Tab, in
+`NsMenuTests`), dialogs and wizards, tabs. Each is the browser walk's or a bUnit
 case still to write; none is claimed by the tests above.

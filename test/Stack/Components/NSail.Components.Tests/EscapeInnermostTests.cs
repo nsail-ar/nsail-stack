@@ -194,6 +194,30 @@ public sealed class EscapeInnermostTests : BunitContext, IAsyncLifetime
         Assert.Equal(1, _closes);
     }
 
+    /// <summary>A lookup's open list inside a menu's block is the innermost thing too: its Escape
+    /// leaves the menu standing, and only the next one, from the same box, closes the menu.</summary>
+    [Fact]
+    public async Task AnOpenLookupListInsideAMenu_TakesEscape_AndOnlyTheNextOneClosesTheMenu()
+    {
+        var cut = Render("menu-lookup");
+
+        await cut.Find(".probe-face").ClickAsync(new MouseEventArgs());
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-menu-popover.mud-popover-open input")), TimeSpan.FromSeconds(5));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".mud-list-item").Count), TimeSpan.FromSeconds(5));
+
+        await cut.Find("input").KeyDownAsync(Escape);
+        await cut.Find("input").KeyUpAsync(Escape);
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-list-item")), TimeSpan.FromSeconds(5));
+        Assert.Single(cut.FindAll(".ns-menu-popover.mud-popover-open"));
+
+        await cut.Find("input").KeyDownAsync(Escape);
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
     [Fact]
     public async Task AnOpenLookupList_OnARoutedSurface_KeepsItsClose()
     {

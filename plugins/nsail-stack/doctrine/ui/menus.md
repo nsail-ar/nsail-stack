@@ -15,7 +15,7 @@ mechanism these rows are modelled on is [actions.md](actions.md).
 |---|---|
 | `NsMenu` | the menu: a trigger (`Icon` or `Content`, named by `Label`, sized by `Size`, `Disabled` when its list has nothing to say yet) and a body |
 | `NsMenuItem` | a row — an `ActionItem`, so a row is a link or a command and nothing new is modelled |
-| `NsMenuBlock` | what the menu *says* rather than offers: an identity header, fine print at the foot |
+| `NsMenuBlock` | what the menu *says* rather than offers: an identity header, fine print at the foot — or the field it holds, a menu's own search |
 | `NsMenuDivider` | the rule between two families of rows, for a list whose separation position cannot draw — the toolbar's kebab emits it where `ActionItem.Group` changes ([actions.md](actions.md)) |
 
 **A menu holds items and blocks, and it has no opinion about their order** — which block opens
@@ -42,8 +42,8 @@ rows is drawn by position in `ns-mud.css`, so neither end needs a divider a call
   organization's name — rather than a verb the string catalog names. Everything else about the
   row (`Actions.{Name}`, the destination page's title, the icon, `Disabled`) is `ActionItem`'s
   own derivation.
-- **A block is not an item**: no click, no tab stop, `role="presentation"` so the list never
-  offers an option that does nothing. That is what makes "the version is fine print at the
+- **A block is not an item**: no click, no tab stop of its own, `role="presentation"` so the
+  list never offers an option that does nothing; a field it holds keeps its own stop. That is what makes "the version is fine print at the
   foot" a shape the component enforces instead of a caller's discipline.
 - **A nested `NsMenu` is a submenu.** The vendor reads the nesting; a caller writes no wiring
   for the second level, and passing `Content` to a nested menu is what would cost it the arrow
@@ -119,11 +119,13 @@ opens a list of withheld rows is a button that does nothing.
   first ancestor on the bubble the house owns. Tab belongs there beside Escape because leaving
   the trigger IS a dismissal: the next field takes the cursor, and a list still standing over it
   answers for nothing.
-- **Escape from a control a block holds closes the menu, and that is read off the block.** The
-  vendor answers Escape on the list's wrapper only while the menu holds a row, so a menu that is
-  a search alone (`NsMenuBlock` around the field) would stand open through every Escape until
-  something typed drew one. A control that answers Escape itself — a lookup's open list — stops
-  it first; in a menu with rows the vendor closes too, and closing a closed menu is absorbed.
+- **Escape and Tab from a control a block holds close the menu, and that is read off the
+  block.** The vendor answers both on the list's wrapper only while the menu holds a row, so a
+  menu that is a search alone (`NsMenuBlock` around the field) would stand open through every
+  key until something typed drew one. A Tab between two controls of one block closes it too, as
+  the vendor's does in a menu with rows: inside a menu the arrows walk and Tab leaves. A control
+  that answers Escape itself — a lookup's open list — stops it first; in a menu with rows the
+  vendor closes too, and closing a closed menu is absorbed.
 - **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
   surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
   make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint`,

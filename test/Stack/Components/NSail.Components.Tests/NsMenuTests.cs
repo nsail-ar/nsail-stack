@@ -345,12 +345,14 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
             Assert.Equal(2, cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item").Count), TimeSpan.FromSeconds(5));
     }
 
-    /// <summary>nsail#4056: Escape from a menu's own search closes the menu. The vendor answers
-    /// Escape on the list only while the menu holds a row, so a menu that is a search alone
-    /// stood open through every Escape, and the page's return of the cursor to the lookup's box
-    /// waits for it to close.</summary>
-    [Fact]
-    public async Task AnEscapeFromAMenusOwnSearchClosesTheMenu()
+    /// <summary>nsail#4056: Escape and Tab from a menu's own search close the menu. The vendor
+    /// answers both on the list only while the menu holds a row, and a menu that is a search
+    /// alone holds none, so the block answers them; the page's return of the cursor to the
+    /// lookup's box waits for the menu to close.</summary>
+    [Theory]
+    [InlineData("Escape")]
+    [InlineData("Tab")]
+    public async Task AKeyThatDismissesFromAMenusOwnSearchClosesTheMenu(string key)
     {
         var cut = Render<MenuSearchHost>();
 
@@ -359,9 +361,24 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-menu-popover.mud-popover-open .probe-search")), TimeSpan.FromSeconds(5));
         Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item"));
 
-        await cut.InvokeAsync(() => cut.Find(".probe-search").KeyDownAsync(new KeyboardEventArgs { Key = "Escape", Code = "Escape" }));
+        await cut.InvokeAsync(() => cut.Find(".probe-search").KeyDownAsync(new KeyboardEventArgs { Key = key, Code = key }));
 
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>Any other key from the search is the search's, and the menu stands.</summary>
+    [Fact]
+    public async Task AnotherKeyFromAMenusOwnSearchLeavesTheMenuOpen()
+    {
+        var cut = Render<MenuSearchHost>();
+
+        await cut.Find(".probe-face").ClickAsync(new MouseEventArgs());
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-menu-popover.mud-popover-open .probe-search")), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => cut.Find(".probe-search").KeyDownAsync(new KeyboardEventArgs { Key = "g", Code = "KeyG" }));
+
+        Assert.Single(cut.FindAll(".ns-menu-popover.mud-popover-open"));
     }
 
     /// <summary>A Disabled menu keeps its trigger — named, greyed, and opening nothing. It is
