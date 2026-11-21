@@ -45,6 +45,19 @@
                                 @bind-Value="Picked"
                                 OnQuickAdd="@(LookupEntries ? QuickAdd : default)" />
                 break;
+            case "menu-lookup":
+                @* A menu that is a lookup alone, opened by the pointer on its face. *@
+                <NsMenu Content="@Face" Label="Link code" Beside="true">
+                    <NsMenuBlock>
+                        <NsAutocomplete TItem="SelectRef" TValue="Guid"
+                                        Label="Médico"
+                                        Items="Rows"
+                                        ItemValue="@(item => item.Id)"
+                                        ItemText="@(item => item.DisplayName)"
+                                        @bind-Value="Picked" />
+                    </NsMenuBlock>
+                </NsMenu>
+                break;
             case "menu":
                 <NsMenu Icon="@NsIcons.More" Label="Session">
                     <NsMenuItem Action="@Item" Label="Alpha" Selected="false" />
@@ -59,7 +72,8 @@
 
 @code {
 
-    /// <summary>dropdown, help, hint, expander, menu, lookup, or anything else for a bare field.</summary>
+    /// <summary>dropdown, help, hint, expander, menu, menu-lookup, lookup, or anything else for a
+    /// bare field.</summary>
     [Parameter]
     public string Inner { get; set; } = string.Empty;
 
@@ -85,6 +99,8 @@
     ];
 
     EventCallback<QuickAddEventArgs<SelectRef>> QuickAdd => EventCallback.Factory.Create<QuickAddEventArgs<SelectRef>>(this, _ => { });
+
+    RenderFragment Face => @<span class="probe-face">sku-1</span>;
 
     ActionItem Item => new() { Name = "Alpha", OnClick = () => Task.CompletedTask };
 }
