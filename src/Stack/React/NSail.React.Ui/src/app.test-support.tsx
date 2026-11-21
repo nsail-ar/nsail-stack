@@ -17,10 +17,10 @@ export interface Drawn {
 }
 
 /** A piece drawn the way a client draws it: inside NsApp, with the catalog given merged over the
- * Stack's own sentences in Spanish. */
+ * Stack's own sentences in Spanish. `dark: null` leaves the scheme to the device. */
 export async function draw(
   node: ReactNode,
-  { catalog = {}, brand, dark = false }: { catalog?: Record<string, string>; brand?: Brand; dark?: boolean } = {},
+  { catalog = {}, brand, dark = false }: { catalog?: Record<string, string>; brand?: Brand; dark?: boolean | null } = {},
 ): Promise<Drawn> {
   const host = document.body.appendChild(document.createElement("div"));
   const root = createRoot(host);
@@ -32,7 +32,7 @@ export async function draw(
   async function render(content: ReactNode) {
     await act(async () => {
       root.render(
-        <NsApp mediator={mediator} language="es" strings={strings} brand={brand} dark={dark}>
+        <NsApp mediator={mediator} language="es" strings={strings} brand={brand} dark={dark ?? undefined}>
           {content}
         </NsApp>,
       );

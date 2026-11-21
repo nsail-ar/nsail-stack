@@ -22,8 +22,9 @@ const faces = {
 export function NsButton({ text, variant = "default", busy = false, type = "button", disabled, ...rest }: NsButtonProps) {
   const strings = useStrings();
 
+  // At the start, the progress sits beside the word; centred, the vendor hides the word under it.
   return (
-    <Button {...rest} {...faces[variant]} type={type} disabled={disabled || busy} loading={busy || undefined} aria-busy={busy || undefined}>
+    <Button {...rest} {...faces[variant]} type={type} disabled={disabled || busy} loading={busy || undefined} loadingPosition="start" aria-busy={busy || undefined}>
       {strings.translate(text)}
     </Button>
   );

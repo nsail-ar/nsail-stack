@@ -12,7 +12,7 @@ Both are npm packages (not NuGet), released at the same version as the NuGet pac
 
 | Package | Folder | What it is | Peer dependencies |
 |---|---|---|---|
-| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, `Brand`, `brandScheme` and `brandMix`, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`, `useSession` | `react >= 19`, `react-dom >= 19` |
+| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, `Brand`, `brandScheme`, `brandMix` and `brandWeights`, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`, `useSession` | `react >= 19`, `react-dom >= 19` |
 | `@nsail/ui` | `NSail.React.Ui` | The components (`NsApp`, `NsLoad`, `NsSignedIn`, `NsForm`, `NsField`, `NsTable`, `NsNavMenu`, `NsCard`, ...), drawn with MUI; depends on `@nsail/stack`, `@mui/material` and Emotion | `react >= 19`, `react-dom >= 19` |
 
 Only `@nsail/ui` imports `@mui/*` or `@emotion/*`: your screens import the `Ns*` pieces and never
@@ -100,7 +100,9 @@ the Stack's own sentences; the app's keys win), `session?` (the Sdk message that
 `NSail.Security.Session`, such as Iam's `GetSession`), `brand?` (the install's `Brand`, below),
 `dark?` (the scheme to draw; unset follows the device's `prefers-color-scheme`), `children`. With `session`, `useSession()`
 answers who is signed in as a `Load`; call its `reload()` after the client signs in or out. A failed catalog read still renders,
-with keys. `useCatalog` and `StackProvider` are the pieces underneath when you need your own root.
+with keys. `useCatalog` and `StackProvider` are the pieces underneath when you need your own root, but
+only `NsApp` lays the `Brand`'s theme: a root of your own draws the `Ns*` pieces with the vendor's
+palette.
 
 **Components** (`@nsail/ui`):
 
@@ -141,7 +143,8 @@ scheme's default; with no `brand`, both schemes are the Stack's own. Surfaces an
 `chrome` as on the Blazor side, and so do the accent's inks (`accentInk` on the content,
 `accentOnChrome` on the navigation band), which a word in the brand's hue wears instead of the
 accent. The defaults are in [brand.json](NSail.React.Stack/src/brand.json); `brandScheme(brand,
-dark)` answers a scheme checked and derived, and `brandMix` is `BrandTone.Mix`.
+dark)` answers a scheme checked and derived, `brandMix` is `BrandTone.Mix`, and `brandWeights`
+are `BrandTone`'s weights.
 
 ```tsx
 <NsApp mediator={mediator} language="es" brand={{ light: { accent: "#0a7d4f" }, dark: { accent: "#5fd39c" } }}>

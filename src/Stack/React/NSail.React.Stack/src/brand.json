@@ -79,6 +79,12 @@
       "sans-serif"
     ]
   },
+  "weights": {
+    "washWeight": 0.13,
+    "railWeight": 0.08,
+    "inertWeight": 0.06,
+    "toneLean": 0.65
+  },
   "samples": [
     {
       "dark": false,

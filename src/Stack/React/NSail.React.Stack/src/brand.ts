@@ -64,10 +64,22 @@ export interface AccentInks {
 /** A scheme ready to paint: its picks checked, its ladder and its accent inks derived. */
 export type Scheme = BrandTheme & Ladder & AccentInks;
 
-// The defaults are BrandTheme.DefaultLight()/DefaultDark() and Typefaces.All as the C# side
-// serializes them; ReactBrandDefaultsTests fails when the file and the classes disagree.
+/** `BrandTone`'s weights: the accent's share of its wash, the chrome ink's of the rail's, the
+ * scheme ink's of a refused control's fill, and a severity's of a state's word. */
+export interface BrandWeights {
+  washWeight: number;
+  railWeight: number;
+  inertWeight: number;
+  toneLean: number;
+}
+
+// The defaults are BrandTheme.DefaultLight()/DefaultDark(), Typefaces.All and BrandTone's
+// weights as the C# side serializes them; ReactBrandDefaultsTests fails when the file and the
+// classes disagree.
 const schemes: Record<"light" | "dark", BrandTheme> = { light: defaults.light, dark: defaults.dark };
 const typefaces: Record<string, string[]> = defaults.typefaces;
+
+export const brandWeights: Readonly<BrandWeights> = defaults.weights;
 
 // BrandTheme's ladder masks: each rung keeps the luminance written here and wears the chrome's
 // hue. The derivation is pinned to the C# one by brand.test.ts over the samples in brand.json.
@@ -94,9 +106,8 @@ const masks: Record<"light" | "dark", Ladder> = {
   },
 };
 
-// BrandTone's weights and the lean AccentInk walks, from the fullest down.
-const washWeight = 0.13;
-const railWeight = 0.08;
+// The lean AccentInk walks, from the fullest down.
+const { washWeight, railWeight } = brandWeights;
 const fullLean = 11;
 const leanSteps = 20;
 const bodyContrast = 4.5;

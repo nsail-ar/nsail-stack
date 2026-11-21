@@ -2,7 +2,6 @@
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 // @vitest-environment happy-dom
 
-
 import { afterEach, describe, expect, it } from "vitest";
 import { NsChip } from "./chip";
 import { clear, draw } from "./app.test-support";

@@ -4,11 +4,12 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using NSail.Serialization;
+using NSail.Tones;
 
 namespace NSail.Components.Tests;
 
 /// <summary>@nsail/stack's <c>brand.json</c> is these classes as the wire writes them: each
-/// scheme's defaults, the typeface catalog, and the ladder sampled over a few chromes, which
+/// scheme's defaults, the typeface catalog, BrandTone's weights, and the ladder sampled over a few chromes, which
 /// <c>brand.test.ts</c> holds the TypeScript derivation to.</summary>
 public sealed class ReactBrandDefaultsTests
 {
@@ -81,6 +82,13 @@ public sealed class ReactBrandDefaultsTests
             ["light"] = JsonSerializer.SerializeToNode(BrandTheme.DefaultLight(), JsonOptions.Wire),
             ["dark"] = JsonSerializer.SerializeToNode(BrandTheme.DefaultDark(), JsonOptions.Wire),
             ["typefaces"] = typefaces,
+            ["weights"] = new JsonObject
+            {
+                ["washWeight"] = BrandTone.WashWeight,
+                ["railWeight"] = BrandTone.RailWeight,
+                ["inertWeight"] = BrandTone.InertWeight,
+                ["toneLean"] = BrandTone.ToneLean,
+            },
             ["samples"] = samples,
         };
     }

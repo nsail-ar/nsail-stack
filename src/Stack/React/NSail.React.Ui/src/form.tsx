@@ -27,7 +27,7 @@ export function NsSaved() {
   const strings = useStrings();
 
   return form.saved ? (
-    <Typography component="span" variant="body2" color="success.main" role="status">
+    <Typography component="span" variant="body2" sx={{ color: "ink.success" }} role="status">
       {strings.translate("Common.Saved")}
     </Typography>
   ) : null;

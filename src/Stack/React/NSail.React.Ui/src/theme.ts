@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack
 
-import { alpha, createTheme, type Theme } from "@mui/material/styles";
-import { brandMix, brandScheme, brandTypeface, type Brand, type Scheme } from "@nsail/stack";
+import { alpha, createTheme, type Shadows, type Theme } from "@mui/material/styles";
+import { brandMix, brandScheme, brandTypeface, brandWeights, type Brand, type Scheme } from "@nsail/stack";
 
 interface Chrome {
   main: string;
@@ -41,14 +41,12 @@ declare module "@mui/material/styles" {
   }
 }
 
-// BrandTone's ToneLean and InertWeight: a severity's share of its word's ink, and the scheme
-// ink's share of a refused control's fill.
-const toneLean = 0.65;
-const inertWeight = 0.06;
+const { toneLean, inertWeight } = brandWeights;
 
 // BrandMudTheme's mapping, onto MUI: the accent's states are the brand's own and handed over
-// rather than letting the vendor derive a second set, and every surface and ink is the scheme's
-// ladder, so no vendor default reaches the screen.
+// rather than letting the vendor derive a second set, and every colour the pieces draw with —
+// surfaces, inks, lines, the hover and the refused fill — is the scheme's, and so are the
+// shadows. The vendor's selection and focus washes and its opacities stay its own.
 export function brandTheme(brand: Brand | null | undefined, dark: boolean): Theme {
   const scheme: Scheme = brandScheme(brand, dark);
   const headings = brandTypeface(brand?.typeface);
@@ -88,6 +86,7 @@ export function brandTheme(brand: Brand | null | undefined, dark: boolean): Them
         info: word(scheme.info),
       },
     },
+    shadows: elevations(dark),
     shape: { borderRadius: 6 },
     // A pick reaches the heading ranks only, as on the Blazor side: tables, fields and figures
     // keep the body's family.
@@ -144,4 +143,21 @@ export function brandTheme(brand: Brand | null | undefined, dark: boolean): Them
       },
     },
   });
+}
+
+// BrandMudTheme.BuildElevations: the vendor's shadows vanish on a dark canvas, so each level
+// casts further and darker and carries a ring, a lifted white edge in dark and the surface's
+// own black edge in light, as NsTheme's ring answers per scheme.
+function elevations(dark: boolean): Shadows {
+  const ring = dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.08)";
+  const levels = ["none"];
+
+  for (let level = 1; level < 25; level++) {
+    const blur = Math.round((2 + level * 2.4) * 10) / 10;
+    const shade = Math.round(Math.min(0.45, 0.22 + level * 0.01) * 100) / 100;
+
+    levels.push(`0 ${1 + level}px ${blur}px rgba(0,0,0,${shade}), 0 0 0 1px ${ring}`);
+  }
+
+  return levels as Shadows;
 }
