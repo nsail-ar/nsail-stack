@@ -147,11 +147,12 @@ styled by the theme alone, so a client restyles them by its `Brand`, not by over
 **The Brand is the C# one.** `Brand` is `NSail.Components.Brand` as the wire carries it; a
 scheme names only the slots it picks and every other slot, or one that is not a hex, is that
 scheme's default, as `Brand.Checked()` does. The surfaces and inks are derived from the chrome
-by `BrandTone.Tint`'s own arithmetic. The defaults, the typeface catalog and samples of that
-derivation live in `brand.json`, which `ReactBrandDefaultsTests` holds to the C# classes and
+by `BrandTone.Tint`'s own arithmetic. The defaults, the typeface catalog, `BrandTone`'s weights and
+samples of that derivation live in `brand.json`, which `ReactBrandDefaultsTests` holds to the C# classes and
 `brand.test.ts` holds the TypeScript derivation to. The theme maps it the way
 `BrandMudTheme` does: the accent and its stored states, the ladder, each severity and the ink
-read on it, the typeface on the heading ranks only. The accent is a ground and never a word
+read on it, the typeface on the heading ranks only, and `BuildElevations`' shadows with the scheme's
+ring. The accent is a ground and never a word
 ([branding.md](ui/branding.md)): wherever the vendor would word or outline in it (a text or
 outlined button, a chosen segment, a focused field's label and edge, a link) the theme hands it
 `AccentInk` instead, the navigation entry the reader is on wears `AccentOnChrome` over the
