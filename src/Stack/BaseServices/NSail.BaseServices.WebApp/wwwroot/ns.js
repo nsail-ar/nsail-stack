@@ -838,11 +838,11 @@
     const MENU_OPEN = ".ns-menu-popover.mud-popover-open";
 
     // The vendor's keyboard opening hands the cursor to the menu's first ROW, and a menu that
-    // opens on its own search holds no row until something is typed: the cursor stayed in the
-    // lookup's box, and the next key typed into it and closed the menu. So the cursor goes to the
-    // first control of the popover that opened, the search where there is one. The box reached
-    // the offer, so it is what Escape returns to (ui/keyboard.md): the vendor's own return is
-    // the face, which stands inside the lookup's list and leaves the cursor on the body.
+    // opens on its own search holds no row until something is typed, so the cursor would stay in
+    // the lookup's box. It goes to the first control of the popover that opened, the search where
+    // there is one. The box reached the offer, so it is what Escape returns to (ui/keyboard.md):
+    // the vendor's own return is the face, which stands inside the lookup's list and leaves the
+    // cursor on the body.
     async function enterOfferMenu(box, open) {
         const popover = await until(() => Array.from(document.querySelectorAll(MENU_OPEN)).find(el => !open.has(el)));
 
@@ -868,15 +868,22 @@
 
             document.removeEventListener("keydown", onEscape, true);
 
-            await until(() => !popover.isConnected || !popover.classList.contains("mud-popover-open"));
+            // An Escape an open thing inside the menu answered (ui/menus.md, the innermost wins)
+            // leaves the menu open, and the cursor with it, for the next Escape.
+            const closed = await until(() => !popover.isConnected || !popover.classList.contains("mud-popover-open"));
+
+            if (!closed) {
+                document.addEventListener("keydown", onEscape, true);
+                return;
+            }
 
             if (!box.isConnected)
                 return;
 
             box.focus();
 
-            // The box selects its text on focus (NsFieldBase), and the key after Escape carries
-            // on with that text rather than replacing it.
+            // focus() brings back whatever selection the box last held; the caret goes to the
+            // end, so the key after Escape carries the text on rather than replacing it.
             if (typeof box.setSelectionRange === "function")
                 box.setSelectionRange(box.value.length, box.value.length);
         };

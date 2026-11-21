@@ -113,9 +113,9 @@ opens a list of withheld rows is a button that does nothing.
   question to answer — which rows are worth the first screen — not a measure to raise.
 - **Escape and Tab dismiss the list of a menu the POINTER opened, and that is read off the
   span around the trigger.** The vendor answers both keys on the list's own wrapper, inside the
-  popover, and hands the cursor to that wrapper only where the gesture that opened the menu was
-  itself a keystroke — so after a click the cursor is still on the trigger and neither key is
-  answered anywhere. The span (`ns-menu-keys`, `display: contents`, so it is not a box) is the
+  popover, and hands the cursor into it, to the list's first row, only where the gesture that
+  opened the menu was itself a keystroke (a list with no row takes none) — so after a click the
+  cursor is still on the trigger and neither key is answered anywhere. The span (`ns-menu-keys`, `display: contents`, so it is not a box) is the
   first ancestor on the bubble the house owns. Tab belongs there beside Escape because leaving
   the trigger IS a dismissal: the next field takes the cursor, and a list still standing over it
   answers for nothing.

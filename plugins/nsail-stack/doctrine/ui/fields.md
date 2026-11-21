@@ -870,9 +870,8 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   typed, so the page puts the cursor on the popover's first control — the search where there is
   one — and the next keys are the menu's. Its first Esc closes the menu alone and returns the
   cursor to the box, text unchanged, since the box is what reached the offer; the next closes the
-  list. Reaching an entry is not a
-  pick — the bound value never moves — its Enter is the field's and never the form's, and a
-  lookup that offers none of the three grows no such row. The vendor clamps at its last option,
+  list. Reaching an entry is not a pick — the bound value never moves — its Enter is the field's
+  and never the form's, and a lookup that offers none of the three grows no such row. The vendor clamps at its last option,
   so the field reads its highlight after each key (`NsAutocomplete.Walk`); the vendor's highlight
   leaves the last option while an entry is reached, so one place is lit, and a one-row list needs
   a second Arrow Down to reach it. A row the caller disables (`ItemDisabledFunc`) is skipped on the
