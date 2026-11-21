@@ -46,9 +46,11 @@
    entries alone — the span stops the keys it hears, so the Escape the vendor closes the list on
    (its key UP) never reaches the routed surface around the box, and a hosted dialog's own
    listener is withdrawn through EscapeHolds. Nothing here closes on the keydown, so the stop the
-   browser reads after it is still the open state's. display:contents keeps the field the box
-   its parent sized (.ns-menu-keys). *@
-<span class="ns-lookup-keys" @onkeydown:stopPropagation="_open">
+   browser reads after it is still the open state's. Tab is stopped with the rest, and inside a
+   menu's block it is handed to the block (OnSpanKeyDown): the list closes on it, and so does the
+   menu the cursor leaves. display:contents keeps the field the box its parent sized
+   (.ns-menu-keys). *@
+<span class="ns-lookup-keys" @onkeydown="OnSpanKeyDown" @onkeydown:stopPropagation="_open">
     <MudAutocomplete T="TItem"
                      RelativeWidth="DropdownWidth.Adaptive"
                      @ref="_autocomplete"
@@ -93,6 +95,9 @@
 
     [CascadingParameter]
     EscapeHolds? Holds { get; set; }
+
+    [CascadingParameter]
+    NsMenuBlock? Block { get; set; }
 
     TItem? _selectedItem;
 
@@ -886,6 +891,18 @@
     // pick of the vendor's own lands BEFORE that pick takes the mark, and the next key to arrive
     // is the person's. Not the blur: that one belongs to the gesture that made the pick, raised at
     // the option's mousedown, and a mark spent on it is the vendor's own mark, lost the same way.
+    // A Tab the open list's stop kept from the block; one the stop let through reaches the block
+    // itself, and the second close is absorbed.
+    Task OnSpanKeyDown(KeyboardEventArgs args)
+    {
+        if (Block is null || args.Key != "Tab")
+        {
+            return Task.CompletedTask;
+        }
+
+        return Block.Dismiss(args);
+    }
+
     async Task OnBoxKeyDown(KeyboardEventArgs args)
     {
         // Before the resolve below and before any key filter: the pick this key itself may make

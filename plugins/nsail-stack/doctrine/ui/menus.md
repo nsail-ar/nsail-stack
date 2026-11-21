@@ -43,8 +43,9 @@ rows is drawn by position in `ns-mud.css`, so neither end needs a divider a call
   row (`Actions.{Name}`, the destination page's title, the icon, `Disabled`) is `ActionItem`'s
   own derivation.
 - **A block is not an item**: no click, no tab stop of its own, `role="presentation"` so the
-  list never offers an option that does nothing; a field it holds keeps its own stop. That is what makes "the version is fine print at the
-  foot" a shape the component enforces instead of a caller's discipline.
+  list never offers an option that does nothing; a field it holds keeps its own stop. That is
+  what makes "the version is fine print at the foot" a shape the component enforces instead of
+  a caller's discipline.
 - **A nested `NsMenu` is a submenu.** The vendor reads the nesting; a caller writes no wiring
   for the second level, and passing `Content` to a nested menu is what would cost it the arrow
   that says it opens one.
@@ -123,9 +124,12 @@ opens a list of withheld rows is a button that does nothing.
   block.** The vendor answers both on the list's wrapper only while the menu holds a row, so a
   menu that is a search alone (`NsMenuBlock` around the field) would stand open through every
   key until something typed drew one. A Tab between two controls of one block closes it too, as
-  the vendor's does in a menu with rows: inside a menu the arrows walk and Tab leaves. A control
-  that answers Escape itself — a lookup's open list — stops it first; in a menu with rows the
-  vendor closes too, and closing a closed menu is absorbed.
+  the vendor's does in a menu with rows: a menu is left by Tab, never walked by it, so one shape
+  of menu does not answer the key two ways. A control that answers Escape itself — a lookup's
+  open list — stops it first. Its stop holds every key, Tab too, so the lookup hands a Tab it
+  stopped to the block it sits in (`NsMenuBlock` cascades itself): the list closes on the Tab
+  and so does the menu, since the cursor leaves both. In a menu with rows the vendor closes too,
+  and closing a closed menu is absorbed.
 - **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
   surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
   make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint`,

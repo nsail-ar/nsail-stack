@@ -4,20 +4,23 @@
 @namespace NSail.Components
 
 @* What a menu says rather than offers: who you are at its top, the version at its foot. It
-   is not an item — no click, no tab stop of its own — and it is presentational to the list it
-   renders inside, so a menu never offers an option that does nothing. The rule that separates it from
-   the items is drawn by position (ns-mud.css), not written here: a block that opens the menu
-   is ruled underneath and one that closes it is ruled above, so neither end needs a divider
-   the caller has to remember. *@
+   is not an item — no click, no tab stop of its own; a field it holds keeps its own — and it is
+   presentational to the list it renders inside, so a menu never offers an option that does
+   nothing. The rule that separates it from the items is drawn by position (ns-mud.css), not
+   written here: a block that opens the menu is ruled underneath and one that closes it is ruled
+   above, so neither end needs a divider the caller has to remember. *@
 @* Escape and Tab from a control the block holds (a menu's own search) close the menu: the
    vendor answers both on the list's wrapper only while the menu holds a row, and a menu that is
    a search alone holds none until something is typed. A Tab between two controls of one block
-   closes it too, as the vendor's does whenever the menu holds a row: inside a menu the arrows
-   walk and Tab leaves. A control that answers Escape itself (a lookup's open list) stops it
-   before it gets here; a menu with rows is closed by the vendor too, and a second close of a
-   closed menu is absorbed. *@
-<div class="ns-menu-block" role="presentation" @onkeydown="OnKeyDown">
-    @ChildContent
+   closes it too, as the vendor's does whenever the menu holds a row, so one shape of menu does
+   not answer the key two ways. A control that answers Escape itself (a lookup's open list) stops it
+   before it gets here; one that stops Tab with it hands the Tab on through Dismiss, since a Tab
+   out of the menu is never the inner list's alone. A menu with rows is closed by the vendor too,
+   and a second close of a closed menu is absorbed. *@
+<div class="ns-menu-block" role="presentation" @onkeydown="Dismiss">
+    <CascadingValue Value="this" IsFixed="true">
+        @ChildContent
+    </CascadingValue>
 </div>
 
 @code {
@@ -28,7 +31,7 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    Task OnKeyDown(KeyboardEventArgs args)
+    internal Task Dismiss(KeyboardEventArgs args)
     {
         if (Menu is null || args.Key is not ("Escape" or "Tab"))
         {
