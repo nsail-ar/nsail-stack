@@ -12,6 +12,7 @@ import { NsForm } from "./form";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 interface Reprice {
+  code?: string;
   price?: string;
   floor?: string | null;
   qty?: number;
@@ -24,6 +25,7 @@ const Reprice = defineMessage<Reprice, Reprice>({
   method: "POST",
   path: "api/shop/reprice",
   fields: {
+    code: { kind: "string", key: "Shop.Reprice.Code", binding: "body", maxLength: 3 },
     price: { kind: "decimal", key: "Shop.Reprice.Price", binding: "body" },
     floor: { kind: "decimal", key: "Shop.Reprice.Floor", binding: "body", nullable: true },
     qty: { kind: "integer", key: "Shop.Reprice.Qty", binding: "body" },
@@ -37,7 +39,7 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-function render(): { value: () => Reprice; type: (name: keyof Reprice, text: string) => void } {
+function render(): { host: HTMLElement; value: () => Reprice; type: (name: keyof Reprice, text: string) => void } {
   let current: Reprice = {};
 
   function Screen() {
@@ -47,6 +49,7 @@ function render(): { value: () => Reprice; type: (name: keyof Reprice, text: str
 
     return (
       <NsForm form={form} onSubmit={async () => {}}>
+        <NsField<Reprice> name="code" />
         <NsField<Reprice> name="price" />
         <NsField<Reprice> name="floor" />
         <NsField<Reprice> name="qty" />
@@ -67,6 +70,7 @@ function render(): { value: () => Reprice; type: (name: keyof Reprice, text: str
   });
 
   return {
+    host,
     value: () => current,
     type: (name, text) => {
       const input = host.querySelector<HTMLInputElement>(`input[name="${name}"]`)!;
@@ -93,6 +97,20 @@ describe("NsField", () => {
     screen.type("price", "");
     screen.type("floor", "");
     expect(screen.value()).toEqual({ price: undefined, floor: null });
+  });
+
+  it("draws a refusal under its field as it is typed, and drops it once the text passes", () => {
+    const screen = render();
+    const input = () => screen.host.querySelector<HTMLInputElement>('input[name="code"]')!;
+    const issues = () => screen.host.querySelector(`#${CSS.escape(input().getAttribute("aria-describedby") ?? "none")}`);
+
+    screen.type("code", "ABCD");
+    expect(input().getAttribute("aria-invalid")).toBe("true");
+    expect(issues()?.textContent).toBeTruthy();
+
+    screen.type("code", "ABC");
+    expect(input().getAttribute("aria-invalid")).not.toBe("true");
+    expect(screen.host.querySelector(".Mui-error")).toBeNull();
   });
 
   it("refuses a fraction on an integer field as it is typed", () => {
