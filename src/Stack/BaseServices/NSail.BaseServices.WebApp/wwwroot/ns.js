@@ -857,8 +857,11 @@
         if (!box || typeof box.focus !== "function" || box.getAttribute("data-ns-field") !== "true")
             return;
 
+        const shut = () => !popover.isConnected || !popover.classList.contains("mud-popover-open");
+        let returned = false;
+
         const onEscape = async e => {
-            if (!popover.isConnected || !popover.classList.contains("mud-popover-open")) {
+            if (shut()) {
                 document.removeEventListener("keydown", onEscape, true);
                 return;
             }
@@ -866,16 +869,14 @@
             if (e.key !== "Escape" || !popover.contains(e.target))
                 return;
 
-            document.removeEventListener("keydown", onEscape, true);
-
             // An Escape an open thing inside the menu answered (ui/menus.md, the innermost wins)
-            // leaves the menu open, and the cursor with it, for the next Escape.
-            const closed = await until(() => !popover.isConnected || !popover.classList.contains("mud-popover-open"));
-
-            if (!closed) {
-                document.addEventListener("keydown", onEscape, true);
+            // leaves the menu open, and the cursor with it. The listener stays armed while this
+            // one waits, so a second Escape pressed inside the wait still closes the menu.
+            if (!await until(shut) || returned)
                 return;
-            }
+
+            returned = true;
+            document.removeEventListener("keydown", onEscape, true);
 
             if (!box.isConnected)
                 return;

@@ -9,12 +9,30 @@
    the items is drawn by position (ns-mud.css), not written here: a block that opens the menu
    is ruled underneath and one that closes it is ruled above, so neither end needs a divider
    the caller has to remember. *@
-<div class="ns-menu-block" role="presentation">
+@* Escape from a control the block holds (a menu's own search) closes the menu: the vendor
+   answers Escape on the list's wrapper only while the menu holds a row, and a menu that is a
+   search alone holds none until something is typed. A control that answers Escape itself (a
+   lookup's open list) stops it before it gets here; a menu with rows is closed by the vendor
+   too, and a second close of a closed menu is absorbed. *@
+<div class="ns-menu-block" role="presentation" @onkeydown="OnKeyDown">
     @ChildContent
 </div>
 
 @code {
 
+    [CascadingParameter]
+    MudMenu? Menu { get; set; }
+
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    Task OnKeyDown(KeyboardEventArgs args)
+    {
+        if (Menu is null || args.Key != "Escape")
+        {
+            return Task.CompletedTask;
+        }
+
+        return Menu.CloseMenuAsync();
+    }
 }
