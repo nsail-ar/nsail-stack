@@ -533,7 +533,7 @@ under the same policies, and reads the same `strings.json`. Three pieces:
   ```
 
 - **The packages.** `@nsail/stack` (the `Mediator` that sends a message) and `@nsail/ui`
-  (`NsApp`, the controls, `@nsail/ui/ns.css`), at the same version as the NuGet pin, plus `react`,
+  (`NsApp` and the controls, drawn with MUI and themed by a `Brand`), at the same version as the NuGet pin, plus `react`,
   `react-dom` and `react-router`. A `package.json` at the solution root with the React project
   as a workspace keeps one `npm install` for the whole solution.
 - **The host serves it.** Vite builds with `base: "/react/"` into a folder beside the host (not

@@ -2,7 +2,8 @@
 
 A second client over the same messages, not a second API. The Sdk writes a TypeScript contract
 from its C# messages on every build; two npm packages send those messages, draw their refusals
-with the server's own sentences, and ship the `Ns*` building blocks of a React page. Nothing on
+with the server's own sentences, and ship the `Ns*` building blocks of a React page, drawn with
+MUI and themed by the install's `Brand`. Nothing on
 the TypeScript side declares a route, a binding, a bound or a label key.
 
 ## Packages
@@ -11,8 +12,11 @@ Both are npm packages (not NuGet), released at the same version as the NuGet pac
 
 | Package | Folder | What it is | Peer dependencies |
 |---|---|---|---|
-| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`, `useSession` | `react >= 19`, `react-dom >= 19` |
-| `@nsail/ui` | `NSail.React.Ui` | The components (`NsApp`, `NsLoad`, `NsSignedIn`, `NsForm`, `NsField`, `NsTable`, ...) and the `@nsail/ui/ns.css` stylesheet; depends on `@nsail/stack` | `react >= 19`, `react-dom >= 19` |
+| `@nsail/stack` | `NSail.React.Stack` | Vendor-free core: descriptors, `Mediator`, `Strings`, `Problem`/`BusinessError`, client-side validation, `Brand` and `brandScheme`, and the hooks `useMediator`, `useStrings`, `useCatalog`, `useLoad`, `useForm`, `useSession` | `react >= 19`, `react-dom >= 19` |
+| `@nsail/ui` | `NSail.React.Ui` | The components (`NsApp`, `NsLoad`, `NsSignedIn`, `NsForm`, `NsField`, `NsTable`, `NsNavMenu`, `NsCard`, ...), drawn with MUI; depends on `@nsail/stack`, `@mui/material` and Emotion | `react >= 19`, `react-dom >= 19` |
+
+Only `@nsail/ui` imports `@mui/*` or `@emotion/*`: your screens import the `Ns*` pieces and never
+the vendor, and the package ships no stylesheet to import.
 
 The contract itself comes from the Sdk, through the build-time package `NSail.TypeScriptGenerator`
 (`PrivateAssets="all"`; no `lib/`, no runtime dependency). Your client also needs `react`,
@@ -37,7 +41,6 @@ In the client, install `@nsail/stack`, `@nsail/ui` (same version as the NuGet pi
 ```tsx
 import { Mediator } from "@nsail/stack";
 import { NsApp } from "@nsail/ui";
-import "@nsail/ui/ns.css";
 import { GetStrings } from "./sdk";
 
 const mediator = new Mediator();
@@ -94,7 +97,8 @@ holds.
 
 **`NsApp`** props: `mediator`, `language`, `strings?` (loader of the app's catalog, merged over
 the Stack's own sentences; the app's keys win), `session?` (the Sdk message that answers
-`NSail.Security.Session`, such as Iam's `GetSession`), `children`. With `session`, `useSession()`
+`NSail.Security.Session`, such as Iam's `GetSession`), `brand?` (the install's `Brand`, below),
+`dark?` (the scheme to draw; unset follows the device's `prefers-color-scheme`), `children`. With `session`, `useSession()`
 answers who is signed in as a `Load`; call its `reload()` after the client signs in or out. A failed catalog read still renders,
 with keys. `useCatalog` and `StackProvider` are the pieces underneath when you need your own root.
 
@@ -113,6 +117,14 @@ with keys. `useCatalog` and `StackProvider` are the pieces underneath when you n
 | `NsPage` | `title` (a key), `actions?` |
 | `NsButton` | `text` (a key, never a sentence), `variant?` (`default`, `primary`, `danger`, `quiet`), `busy?` |
 | `useConfirm` | `confirm(text, danger?)` resolves to a boolean; one native `<dialog>` hosted by `NsApp` |
+| `NsNavMenu` | `label` (a key naming the navigation), `entries` (`text` key, `href` from your route table, `icon?`), `current?` (the href the reader is on), `onNavigate?` (your router's navigate; a plain click is handed to it) |
+| `NsCard` | `title?`, `subtitle?` (keys), `aside?`, `actions?`, `children` |
+| `NsToolBar` | `children`: a row of controls that wraps |
+| `NsList` + `NsListItem` | `primary`, `secondary?` (data, not sentences), `icon?`, `aside?`, `href?` or `onClick?` |
+| `NsAlert` | `text` (a key), `args?` (named arguments), `severity?` (`info`, `success`, `warning`, `error`; the last two are read out), `action?` |
+| `NsChip` | `text` (a key), `severity?`, `solid?` (the filled face) |
+| `NsRadioGroup` | `field` (an enum member), `value`, `onChange`: a segmented choice, one value always chosen |
+| `NsEmpty` | `text` (a key), `icon?`, `action?`; what `NsTable` draws for no rows |
 
 **Strings.** `Strings` is `StringManager` for the browser: `translate`, `format` (named or
 positional tokens), `count` (`.Plural`), `enumValue`, `issue`, `problem`. A missing key renders as
@@ -120,9 +132,19 @@ itself. The Stack's own sentences (`Common.*`, `Actions.*`, `Problems.*`) come f
 `strings.json` / `strings.es.json` that `NSail.Components.Mud` embeds, so both renderers say one
 sentence per key.
 
-**Styling.** `ns.css` is driven by CSS custom properties (`--ns-bg`, `--ns-surface`, `--ns-ink`,
-`--ns-primary`, `--ns-danger`, `--ns-radius`, ...) with a `prefers-color-scheme: dark` set; override
-them to retheme. The full list is in [ns.css](NSail.React.Ui/src/ns.css).
+**Branding.** `brand` is `NSail.Components.Brand` as the wire carries it (camelCase): `typeface?`
+(a key of `Typefaces`, set on the heading ranks; the font files are yours to serve), and `light?` /
+`dark?`, each naming only the slots it changes (`accent`, `accentHover`, `accentPressed`,
+`accentFocus`, `textOnAccent`, `chrome`, `textOnChrome`, `textOnChromeSecondary`, `rowHover`,
+`error`, `warning`, `success`, `info` and their `textOn*`). A slot left out, or not a hex, is that
+scheme's default; with no `brand`, both schemes are the Stack's own. Surfaces and inks derive from
+`chrome` as on the Blazor side. The defaults are in
+[brand.json](NSail.React.Stack/src/brand.json); `brandScheme(brand, dark)` answers a scheme
+checked and derived.
+
+```tsx
+<NsApp mediator={mediator} language="es" brand={{ light: { accent: "#0a7d4f" }, dark: { accent: "#5fd39c" } }}>
+```
 
 **Development.** Each package's `exports` answers an `@nsail/source` condition with its `src/`; add
 it to Vite's `resolve.conditions` (as the Sample does) to run against sources inside this
@@ -137,8 +159,8 @@ root run every workspace.
   client sends and renders.
 - [Localization](../Localization/README.md) and [Metadata](../Metadata/README.md) are the source
   of the keys and the catalog `Strings` reads.
-- [Components](../Components/README.md) is the Blazor counterpart; `@nsail/ui` mirrors its `Ns*`
-  family, with the same keys, without Mud.
+- [Components](../Components/README.md) is the Blazor counterpart; `@nsail/ui` wraps MUI as it
+  wraps MudBlazor, with the same `Ns*` names, the same keys and the same `Brand`.
 - [Security](../Security/README.md) is the server half of sign-in: the cookie, `Session` and the
   401 a send without one answers. The Sample composes no Iam, so its messages are open through an
   anonymous policy.
