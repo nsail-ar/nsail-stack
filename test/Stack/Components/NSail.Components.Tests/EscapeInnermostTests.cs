@@ -218,6 +218,24 @@ public sealed class EscapeInnermostTests : BunitContext, IAsyncLifetime
         cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open")), TimeSpan.FromSeconds(5));
     }
 
+    /// <summary>A Tab is not the open list's to keep: it closes the list and the menu the cursor
+    /// leaves, with the one key.</summary>
+    [Fact]
+    public async Task AnOpenLookupListInsideAMenu_LetsTabThrough_AndTheMenuCloses()
+    {
+        var cut = Render("menu-lookup");
+
+        await cut.Find(".probe-face").ClickAsync(new MouseEventArgs());
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-menu-popover.mud-popover-open input")), TimeSpan.FromSeconds(5));
+
+        await cut.Find("input").FocusAsync(new FocusEventArgs());
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".mud-list-item").Count), TimeSpan.FromSeconds(5));
+
+        await cut.Find("input").KeyDownAsync(new KeyboardEventArgs { Key = "Tab" });
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open")), TimeSpan.FromSeconds(5));
+    }
+
     [Fact]
     public async Task AnOpenLookupList_OnARoutedSurface_KeepsItsClose()
     {

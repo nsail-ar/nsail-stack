@@ -16,9 +16,9 @@ namespace NSail.Components.Tests;
 
 /// <summary>The anchored menu the Stack had no word for (nsail#438): a trigger that stays in
 /// place and a list that opens against it. What it holds is items (NsMenuItem) and blocks
-/// (NsMenuBlock) — and a block is not an item: no click, no tab stop, presentational to the
-/// list, which is what makes it non-interactive by construction rather than by a caller
-/// remembering not to wire it.</summary>
+/// (NsMenuBlock) — and a block is not an item: no click, no tab stop of its own (a field it holds
+/// keeps its own), presentational to the list, which is what makes it non-interactive by
+/// construction rather than by a caller remembering not to wire it.</summary>
 public sealed class NsMenuTests : BunitContext, IAsyncLifetime
 {
     public NsMenuTests()
