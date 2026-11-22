@@ -874,11 +874,11 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   offer's menu opens with the keyboard in it: Enter presses the menu's face as its click does,
   and the page puts the cursor on the popover's first control — the search where there is one —
   and the next keys are the menu's. The cursor stays in that search while rows the search
-  answers with arrive, and only Arrow Down moves it onto them, from the first: a keystroke on
-  the vendor's trigger would have armed its focus on the first row, which it acts on at the
-  render the rows arrive in, and the keys typed after would be lost. Its first Esc, or a Tab out of it, closes the menu
-  alone (from its own search too, [menus.md](menus.md)) and returns the cursor to the box, text
-  unchanged, since the box is what reached the offer. An Esc a list open inside the menu
+  answers with arrive, and only an arrow moves it onto them, Arrow Down to the first: a
+  keystroke on the vendor's trigger would have armed its focus on the first row, which it acts
+  on at the render the rows arrive in, and the keys typed after would be lost. Its first Esc,
+  or a Tab out of it, closes the menu alone (from its own search too, [menus.md](menus.md)) and
+  returns the cursor to the box, text unchanged, since the box is what reached the offer. An Esc a list open inside the menu
   answers leaves the menu and the cursor where they are, and the next one is the menu's; a Tab
   closes that list and the menu with the one key, since the cursor leaves both. The Esc after
   closes the lookup's list. Reaching an entry is not a pick — the bound value never moves — its
