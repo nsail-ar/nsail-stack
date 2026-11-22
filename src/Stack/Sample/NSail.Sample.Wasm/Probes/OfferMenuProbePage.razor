@@ -1,0 +1,104 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@page "/probes/offer-menu"
+
+@inherits NsPage
+
+@* A browser's reading of a lookup's offer whose second control is a menu: a link, then a menu
+   that opens on its own search and holds no row until the search answers, late on purpose, the
+   way a server's answer arrives while somebody is still typing. The same lookup stands on a form
+   and in a typed-into row, and a menu whose rows are there when it opens stands beside them for
+   the trigger's own opening. Not in the app's menu: it is reached by its address. *@
+<NsPanel>
+    <Header>
+        <NsPageHeader Title="@GetTitle()" />
+    </Header>
+    <Content>
+        <NsStack Gap="Md">
+            <div class="probe-form">
+                <NsAutocomplete TItem="Article" TValue="Guid" Lazy="true" Label="Article"
+                                OnSearch="SearchArticles" ItemValue="@(item => item.Id)" ItemText="@(item => item.Name)"
+                                @bind-Value="_article" Offer="@Offer" />
+            </div>
+            <NsListEditor TItem="Line" Items="_lines" Title="Lines" NewItem="@(() => new Line())">
+                <ItemTemplate Context="line">
+                    <NsText>@line.Article</NsText>
+                </ItemTemplate>
+                <ItemEditor Context="line">
+                    <NsAutocomplete TItem="Article" TValue="Guid" Lazy="true" Label="Article"
+                                    OnSearch="SearchArticles" ItemValue="@(item => item.Id)" ItemText="@(item => item.Name)"
+                                    @bind-Value="line.Article" Offer="@Offer" />
+                </ItemEditor>
+            </NsListEditor>
+            <div class="probe-ready">
+                <NsMenu Content="@ReadyFace" Label="Ready">
+                    <NsMenuItem Action="@Pick" Label="First" />
+                    <NsMenuItem Action="@Pick" Label="Second" />
+                </NsMenu>
+            </div>
+        </NsStack>
+    </Content>
+</NsPanel>
+
+@code {
+
+    // Longer than a person's pace between keys, so the rows land in the middle of the typing.
+    const int Answer = 300;
+
+    static readonly string[] Lenses = ["Lente Orgánico", "Lente Policarbonato", "Lente Mineral"];
+
+    Guid _article;
+    string _term = "";
+    string _found = "";
+    List<string> _rows = [];
+    readonly List<Line> _lines = [];
+
+    sealed record Article(Guid Id, string Name);
+
+    sealed class Line
+    {
+        public Guid Article { get; set; }
+    }
+
+    Task SearchArticles(SearchEventArgs<Article> args)
+    {
+        _term = args.Text ?? "";
+        args.Results = [];
+
+        return Task.CompletedTask;
+    }
+
+    RenderFragment Offer => @<NsStack Gap="Xs">
+        <NsLink Href="/probes/offer-menu#added" Label="@($"Add «{_term}»")" />
+        <NsMenu Content="@LinkFace" Label="@($"Link code {_term}")" Beside="true">
+            <NsMenuBlock>
+                <NsSearchField Label="Search" Value="@_found" ValueChanged="Find" />
+            </NsMenuBlock>
+            @foreach (var row in _rows)
+            {
+                <NsMenu Label="@row">
+                    <NsMenuItem Action="@Pick" Label="Unit" />
+                    <NsMenuItem Action="@Pick" Label="Box" />
+                </NsMenu>
+            }
+        </NsMenu>
+    </NsStack>;
+
+    RenderFragment LinkFace => @<span class="probe-link-face">Link code @_term</span>;
+
+    RenderFragment ReadyFace => @<span class="probe-ready-face">Ready</span>;
+
+    ActionItem Pick => new() { Name = "Pick", OnClick = () => Task.CompletedTask };
+
+    // Every key's answer lands, none superseded, so at a person's pace the first one arrives
+    // while the next keys are still being typed.
+    async Task Find(string? text)
+    {
+        _found = text ?? "";
+
+        await Task.Delay(Answer);
+
+        _rows = _found.Length == 0 ? [] : [.. Lenses];
+    }
+}

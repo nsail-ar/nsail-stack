@@ -11,6 +11,7 @@
   "Sample.ContactsPage.DeleteConfirm": "¿Eliminar a {name}?",
   "Sample.CreateContactPage.Title": "Nuevo Contacto",
   "Sample.UpdateContactPage.Title": "Editar Contacto",
+  "Sample.OfferMenuProbePage.Title": "Sonda del menú de una oferta",
   "Sample.DeleteContact.ConfirmMessage": "¿Eliminar este Contacto?",
   "Sample.ContactKind.Person": "Persona",
   "Sample.ContactKind.Company": "Empresa",
