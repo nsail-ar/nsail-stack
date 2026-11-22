@@ -413,6 +413,12 @@ Actualizar) are ordinary header actions, disabled while `Selection.IsEmpty`.
   it does not wear a tab's height**: the slot hands what it holds to a box of its own
   (`.ns-tabs-actions`, [styling.md](styling.md)) which insets it inside the strip — a page passes
   plain `<Actions>`.
+- **Where the tabs and the acts do not fit on one line, the acts wrap below — never the tabs
+  into a scroller.** A reader who cannot see which tabs a screen has cannot reach them, and a
+  tab bar only scrolls when its tabs alone are wider than it (Material's tabs; WCAG 1.4.10
+  Reflow). So the acts take a line of their own under the tabs, at the far end, and every tab
+  reads whole; tabs too wide by themselves still scroll, with the acts below their arrows. One
+  rule in `ns-mud.css` (`.ns-tabs-acted`, which `NsTabs` writes when it carries `Actions`).
 - `NsTab` takes `Title`, content, and an optional invariant `Name` — the word this tab answers
   to in an address, which never renders.
 - **The shown tab reaches the query only when the screen asks: `NsTabs BindQuery`.** Key is the

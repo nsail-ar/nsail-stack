@@ -15,7 +15,8 @@ namespace NSail.Components.Tests;
 /// as tall as the strip (Leonardo: "queda feo asi ocupando toda la altura del tab"), so NsTabs
 /// gives it a box of its own — the hook ns-mud.css insets it by. The height itself is a
 /// geometry only a browser settles (NuevaVentaFourthPassTests); what is held here is that the
-/// box exists, holds the act, and is not drawn for a strip that has no acts.</summary>
+/// box exists, holds the act, and is not drawn for a strip that has no acts — nor the hook its
+/// wrap under the tabs is scoped by (nsail#4073).</summary>
 public sealed class NsTabsActionsTests : BunitContext
 {
     public NsTabsActionsTests()
@@ -40,10 +41,23 @@ public sealed class NsTabsActionsTests : BunitContext
     }
 
     [Fact]
+    public void AStripWithActs_WearsTheHookItsWrapIsScopedBy()
+    {
+        var cut = Render<TabsActionsHost>();
+
+        var root = cut.Find(".ns-tabs");
+
+        Assert.Contains("ns-tabs-acted", root.ClassList);
+        Assert.NotNull(root.QuerySelector(":scope > .mud-tabs-tabbar > .mud-tabs-tabbar-inner > .mud-tabs-tabbar-content"));
+        Assert.NotNull(root.QuerySelector(":scope > .mud-tabs-tabbar > .mud-tabs-tabbar-inner > .mud-tabs-header-after > .ns-tabs-actions"));
+    }
+
+    [Fact]
     public void AStripWithNoActs_DrawsNoBoxAtAll()
     {
         var cut = Render<TabsGrowthHost>(p => p.Add(x => x.CardGrows, false));
 
         Assert.Empty(cut.FindAll(".ns-tabs-actions"));
+        Assert.Empty(cut.FindAll(".ns-tabs-acted"));
     }
 }

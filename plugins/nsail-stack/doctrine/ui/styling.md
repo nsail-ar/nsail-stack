@@ -501,7 +501,8 @@ Which channel a screen is in — state versus condition — is the core doc's
   `.ns-tabs-actions` is that box for `NsTabs.Actions` ([hosts.md](hosts.md)): the vendor's tab
   bar stretches its own children to the strip's height, so the act inside it is centred and
   inset there — one rule, in the Stack, rather than a margin every page that
-  passes `<Actions>` would have to repeat and could disagree on.
+  passes `<Actions>` would have to repeat and could disagree on. Its wrap under the tabs when
+  both do not fit is the same kind of rule, scoped by `.ns-tabs-acted` on the strip's root.
 - Structural rules reaching inside a vendor component are scoped under an `ns-*` class the
   component applies to itself (`.ns-table` + `NsTable.GetClasses()`). Compose class strings with
   `NsClassBuilder` (base classes + the user `Class` parameter).

@@ -4625,6 +4625,37 @@ div.mud-input-slot.mud-input-root::placeholder {
     margin: 6px 8px;
 }
 
+/* A STRIP WITH ACTS WRAPS THEM, NEVER ITS TABS. The vendor's tab bar is 100% wide and shrinks,
+   so beside acts that keep their width it squeezes the tabs into a scroller: on a phone, one tab
+   cut between two arrows and the rest out of sight. On .ns-tabs-acted, which NsTabs writes
+   only when it carries Actions, the bar asks for its tabs' own width and the row wraps: tabs and
+   acts that fit share one line as before, the acts at its far end; otherwise the acts take a line
+   of their own under the tabs, still at the far end, and every tab reads whole. The bar is capped
+   at the row, so tabs too wide by themselves still scroll as the vendor scrolls them — and once
+   its arrows show, the acts are sent below outright, so the arrows stay on the tabs' line. */
+.ns-tabs-acted > .mud-tabs-tabbar > .mud-tabs-tabbar-inner {
+    flex-wrap: wrap;
+}
+
+.ns-tabs-acted > .mud-tabs-tabbar > .mud-tabs-tabbar-inner > .mud-tabs-tabbar-content {
+    width: auto;
+    max-width: 100%;
+}
+
+.ns-tabs-acted > .mud-tabs-tabbar > .mud-tabs-tabbar-inner > .mud-tabs-header-after {
+    margin-inline-start: auto;
+}
+
+.ns-tabs-acted > .mud-tabs-tabbar > .mud-tabs-tabbar-inner:has(> .mud-tabs-scroll-button) > .mud-tabs-tabbar-content {
+    flex-basis: 0;
+    min-width: 0;
+}
+
+.ns-tabs-acted > .mud-tabs-tabbar > .mud-tabs-tabbar-inner:has(> .mud-tabs-scroll-button) > .mud-tabs-header-after {
+    flex-basis: 100%;
+    justify-content: flex-end;
+}
+
 /* NsExpander: a line that always shows and the detail it opens ABOVE itself. It is written for
    the strip at the foot of a surface — a panel footer's total, where a detail opening downward
    would open off the screen — so the detail is taken out of the flow and anchored to the top of

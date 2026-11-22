@@ -243,6 +243,7 @@
         // tabs shrink to a bounded host so the panel scrolls; non-growing, min-height:0 would
         // be alone and only strip the content floor a shrinking parent needs to respect.
         return new NsClassBuilder("ns-tabs d-flex flex-column")
+            .Add("ns-tabs-acted", Actions is not null)
             .Add("flex-1 min-h-0", Grows)
             .Add(Class)
             .ToString();
