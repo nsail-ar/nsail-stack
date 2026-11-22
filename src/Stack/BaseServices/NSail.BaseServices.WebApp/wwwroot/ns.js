@@ -815,8 +815,8 @@
     // Enter on a lookup's reached offer presses its lit control, as a click on it does. A menu's
     // face is pressed by its click too (NsMenu's own toggle), never by a keystroke on the
     // vendor's wrapper: a keyboard opening arms the vendor's focus on the first row, which it
-    // acts on at every render, so rows a search brings in mid-typing would take the cursor from
-    // that search. The page hands the cursor in instead (enterOfferMenu).
+    // acts on at the first render that finds one, wherever the cursor stands by then. The page
+    // hands the cursor in instead (enterOfferMenu).
     function pressOffer() {
         const control = document.querySelector(".ns-lookup-offer.ns-lookup-create-active [data-ns-lit]");
 

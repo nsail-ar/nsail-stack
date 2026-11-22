@@ -874,9 +874,9 @@ a `*Select`, or a non-`Lazy` `NsAutocomplete` where typing to filter still helps
   offer's menu opens with the keyboard in it: Enter presses the menu's face as its click does,
   and the page puts the cursor on the popover's first control — the search where there is one —
   and the next keys are the menu's. The cursor stays in that search while rows the search
-  answers with arrive, and only an arrow moves it onto them, Arrow Down to the first: a
-  keystroke on the vendor's trigger would have armed its focus on the first row, which it acts
-  on at the render the rows arrive in, and the keys typed after would be lost. Its first Esc,
+  answers with arrive, and only an arrow moves it onto them, Arrow Down to the first: a click
+  arms none of the vendor's focus on the first row, which a keystroke on its trigger would, and
+  the search spends what a keystroke armed ([menus.md](menus.md)). Its first Esc,
   or a Tab out of it, closes the menu alone (from its own search too, [menus.md](menus.md)) and
   returns the cursor to the box, text unchanged, since the box is what reached the offer. An Esc a list open inside the menu
   answers leaves the menu and the cursor where they are, and the next one is the menu's; a Tab
