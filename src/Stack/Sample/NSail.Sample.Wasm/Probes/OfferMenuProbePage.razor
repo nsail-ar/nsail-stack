@@ -17,24 +17,24 @@
     <Content>
         <NsStack Gap="Md">
             <div class="probe-form">
-                <NsAutocomplete TItem="Article" TValue="Guid" Lazy="true" Label="Article"
+                <NsAutocomplete TItem="Article" TValue="Guid" Lazy="true" Label="@Translate("Article")"
                                 OnSearch="SearchArticles" ItemValue="@(item => item.Id)" ItemText="@(item => item.Name)"
                                 @bind-Value="_article" Offer="@Offer" />
             </div>
-            <NsListEditor TItem="Line" Items="_lines" Title="Lines" NewItem="@(() => new Line())">
+            <NsListEditor TItem="Line" Items="_lines" Title="@Translate("Lines")" NewItem="@(() => new Line())">
                 <ItemTemplate Context="line">
                     <NsText>@line.Article</NsText>
                 </ItemTemplate>
                 <ItemEditor Context="line">
-                    <NsAutocomplete TItem="Article" TValue="Guid" Lazy="true" Label="Article"
+                    <NsAutocomplete TItem="Article" TValue="Guid" Lazy="true" Label="@Translate("Article")"
                                     OnSearch="SearchArticles" ItemValue="@(item => item.Id)" ItemText="@(item => item.Name)"
                                     @bind-Value="line.Article" Offer="@Offer" />
                 </ItemEditor>
             </NsListEditor>
             <div class="probe-ready">
-                <NsMenu Content="@ReadyFace" Label="Ready">
-                    <NsMenuItem Action="@Pick" Label="First" />
-                    <NsMenuItem Action="@Pick" Label="Second" />
+                <NsMenu Content="@ReadyFace" Label="@Translate("Ready")">
+                    <NsMenuItem Action="@Pick" Label="@Translate("First")" />
+                    <NsMenuItem Action="@Pick" Label="@Translate("Second")" />
                 </NsMenu>
             </div>
         </NsStack>
@@ -70,24 +70,29 @@
     }
 
     RenderFragment Offer => @<NsStack Gap="Xs">
-        <NsLink Href="/probes/offer-menu#added" Label="@($"Add «{_term}»")" />
-        <NsMenu Content="@LinkFace" Label="@($"Link code {_term}")" Beside="true">
+        <NsLink Href="@($"{GetUrl<OfferMenuProbePage>()}#added")" Label="@WithTerm("Add")" />
+        <NsMenu Content="@LinkFace" Label="@WithTerm("LinkCode")" Beside="true">
             <NsMenuBlock>
-                <NsSearchField Label="Search" Value="@_found" ValueChanged="Find" />
+                <NsSearchField Label="@Translate("Search")" Value="@_found" ValueChanged="Find" />
             </NsMenuBlock>
             @foreach (var row in _rows)
             {
                 <NsMenu Label="@row">
-                    <NsMenuItem Action="@Pick" Label="Unit" />
-                    <NsMenuItem Action="@Pick" Label="Box" />
+                    <NsMenuItem Action="@Pick" Label="@Translate("Unit")" />
+                    <NsMenuItem Action="@Pick" Label="@Translate("Box")" />
                 </NsMenu>
             }
         </NsMenu>
     </NsStack>;
 
-    RenderFragment LinkFace => @<span class="probe-link-face">Link code @_term</span>;
+    RenderFragment LinkFace => @<span class="probe-link-face">@WithTerm("LinkCode")</span>;
 
-    RenderFragment ReadyFace => @<span class="probe-ready-face">Ready</span>;
+    RenderFragment ReadyFace => @<span class="probe-ready-face">@Translate("Ready")</span>;
+
+    string WithTerm(string key)
+    {
+        return Strings.Translate(Metadata.KeyFor(GetType(), key), new Dictionary<string, string> { ["term"] = _term });
+    }
 
     ActionItem Pick => new() { Name = "Pick", OnClick = () => Task.CompletedTask };
 
