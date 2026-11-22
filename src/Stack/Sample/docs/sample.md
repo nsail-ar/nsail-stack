@@ -49,7 +49,7 @@ No tenancy either: the install is one database.
 |---|---|
 | `NSail.Sample.Sdk` | Writes `NSail.Sample.React/src/sdk.ts` on every build. Messages: `ListContacts`, `GetContact`, `CreateContact`, `UpdateContact`, `DeleteContact`; `GetStrings` (the host's merged string catalog for one language, for the client that runs no .NET) |
 | `NSail.Sample.Data` | `Contact` (`IVersioned`) and its `ContactAddress` composition, their mappings (`Mappings.cs`, the `[Generated(Mappers.Entities)]` holder), `SampleDbContext`, migrations |
-| `NSail.Sample.Wasm` | The Blazor client: layout, menu, home, the three contact screens and the address editor, a browser probe at `/probes/offer-menu` (a lookup's offer whose menu gets its rows late), the anonymous authentication state, and the app's `strings*.json` — the one catalog both clients read |
+| `NSail.Sample.Wasm` | The Blazor client: layout, menu, home, the three contact screens and the address editor, a browser probe at `/probes/offer-menu` (a lookup's offer whose menu gets its rows late, and a menu opened by key on its own search whose rows are submenus holding a lookup alone), the anonymous authentication state, and the app's `strings*.json` — the one catalog both clients read |
 | `NSail.Sample.Web` | The host: handlers, generated endpoints, enforcement, the Blazor app at `/` and the React build at `/react` (`MapReactClient`: its files, then `index.html` for every other address under it) |
 | `NSail.Sample.React` | The React client (Vite): `src/sdk.ts` is generated, `src/routes.ts` is the route table, `src/contacts/` the two screens |
 

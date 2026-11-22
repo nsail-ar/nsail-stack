@@ -22,6 +22,8 @@
   "Sample.OfferMenuProbePage.Box": "Box",
   "Sample.OfferMenuProbePage.Add": "Add «{term}»",
   "Sample.OfferMenuProbePage.LinkCode": "Link code {term}",
+  "Sample.OfferMenuProbePage.Keyed": "Keyed",
+  "Sample.OfferMenuProbePage.Variant": "Variant",
   "Sample.DeleteContact.ConfirmMessage": "Delete this Contact?",
   "Sample.ContactKind.Person": "Person",
   "Sample.ContactKind.Company": "Company",

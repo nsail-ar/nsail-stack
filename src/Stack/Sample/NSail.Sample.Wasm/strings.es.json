@@ -22,6 +22,8 @@
   "Sample.OfferMenuProbePage.Box": "Caja",
   "Sample.OfferMenuProbePage.Add": "Agregar «{term}»",
   "Sample.OfferMenuProbePage.LinkCode": "Vincular código {term}",
+  "Sample.OfferMenuProbePage.Keyed": "Por teclado",
+  "Sample.OfferMenuProbePage.Variant": "Variante",
   "Sample.DeleteContact.ConfirmMessage": "¿Eliminar este Contacto?",
   "Sample.ContactKind.Person": "Persona",
   "Sample.ContactKind.Company": "Empresa",

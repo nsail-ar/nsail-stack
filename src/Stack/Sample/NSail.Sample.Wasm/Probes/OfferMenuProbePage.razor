@@ -37,6 +37,23 @@
                     <NsMenuItem Action="@Pick" Label="@Translate("Second")" />
                 </NsMenu>
             </div>
+            <div class="probe-keyed">
+                <NsMenu Content="@KeyedFace" Label="@Translate("Keyed")">
+                    <NsMenuBlock>
+                        <NsSearchField Label="@Translate("Search")" Value="@_keyedTerm" ValueChanged="FindKeyed" />
+                    </NsMenuBlock>
+                    @foreach (var row in _keyedRows)
+                    {
+                        <NsMenu Label="@row">
+                            <NsMenuBlock>
+                                <NsAutocomplete TItem="string" TValue="string" Label="@Translate("Variant")"
+                                                Items="@Variants" ItemValue="@(item => item)" ItemText="@(item => item)"
+                                                @bind-Value="_variant" />
+                            </NsMenuBlock>
+                        </NsMenu>
+                    }
+                </NsMenu>
+            </div>
         </NsStack>
     </Content>
 </NsPanel>
@@ -53,6 +70,11 @@
     string _found = "";
     List<string> _rows = [];
     readonly List<Line> _lines = [];
+    string _keyedTerm = "";
+    List<string> _keyedRows = [];
+    string? _variant;
+
+    static readonly string[] Variants = ["Unidad", "Caja"];
 
     sealed record Article(Guid Id, string Name);
 
@@ -89,6 +111,8 @@
 
     RenderFragment ReadyFace => @<span class="probe-ready-face">@Translate("Ready")</span>;
 
+    RenderFragment KeyedFace => @<span class="probe-keyed-face">@Translate("Keyed")</span>;
+
     string WithTerm(string key)
     {
         return Strings.Translate(Metadata.KeyFor(GetType(), key), new Dictionary<string, string> { ["term"] = _term });
@@ -105,5 +129,14 @@
         await Task.Delay(Answer);
 
         _rows = _found.Length == 0 ? [] : [.. Lenses];
+    }
+
+    async Task FindKeyed(string? text)
+    {
+        _keyedTerm = text ?? "";
+
+        await Task.Delay(Answer);
+
+        _keyedRows = [.. Lenses.Where(lens => _keyedTerm.Length > 0 && lens.Contains(_keyedTerm, StringComparison.OrdinalIgnoreCase))];
     }
 }
