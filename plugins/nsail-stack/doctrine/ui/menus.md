@@ -48,7 +48,10 @@ rows is drawn by position in `ns-mud.css`, so neither end needs a divider a call
   a caller's discipline.
 - **A nested `NsMenu` is a submenu.** The vendor reads the nesting; a caller writes no wiring
   for the second level, and passing `Content` to a nested menu is what would cost it the arrow
-  that says it opens one.
+  that says it opens one. Its row stands on a line of its own like any other: the vendor's rule
+  for a nested menu reads it as a child of the list, and the span `NsMenu` wraps every menu in
+  stands between them, so `ns-mud.css` restates that rule past the span — without it several
+  submenus flow in a line and widen the menu toward the window's edge.
 
 ### A form that refuses writes
 
@@ -115,8 +118,7 @@ opens a list of withheld rows is a button that does nothing.
 - **Escape and Tab dismiss the list of a menu the POINTER opened, and that is read off the
   span around the trigger.** The vendor answers both keys on the list's own wrapper, inside the
   popover, and hands the cursor into it, to the list's first row, only where the gesture that
-  opened the menu was itself a keystroke (a list with no row takes none, and its rows take the
-  cursor at the render they arrive in) — so after a click the cursor is still on the trigger and
+  opened the menu was itself a keystroke — so after a click the cursor is still on the trigger and
   neither key is answered anywhere. A lookup's offer opens its menu by that click for this reason
   ([fields.md](fields.md), *keyboard-complete*). The span (`ns-menu-keys`, `display: contents`, so it is not a box) is the
   first ancestor on the bubble the house owns. Tab belongs there beside Escape because leaving
@@ -132,6 +134,19 @@ opens a list of withheld rows is a button that does nothing.
   stopped to the block it sits in (`NsMenuBlock` cascades itself): the list closes on the Tab
   and so does the menu, since the cursor leaves both. In a menu with rows the vendor closes too,
   and closing a closed menu is absorbed.
+- **A menu a key opened with no row takes the cursor on its first control, and Escape gives it
+  back.** The vendor hands the cursor in only to a row, so a submenu whose body is a field alone
+  (a lookup, opened by Arrow Right or Enter on its row) or a menu that is its own search would
+  open with the cursor left on what opened it — a parent's arrows walking on under a submenu left
+  standing. ns.js moves it to the popover's first control once the opening key is up (a lookup
+  answers Enter's key up by opening its list), and when an Escape closes that menu — the block's,
+  above — puts it back on the trigger or row it was opened from, where the vendor's own return
+  leaves it for a menu of rows. An Escape a list open inside answers leaves both where they are.
+- **The cursor in a control a block holds spends the vendor's keyboard opening.** Armed, the
+  vendor hands the cursor to the first row at the next render that finds one, so rows a menu's
+  own search draws while somebody types would take the cursor from it and the keys after with it.
+  `NsMenuBlock` clears the vendor's private mark when a control of its own takes focus
+  (`MudVendorContractTests` pins the name); only an arrow then moves the cursor onto the rows.
 - **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
   surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
   make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint`,

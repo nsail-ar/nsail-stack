@@ -9,7 +9,10 @@
    that opens on its own search and holds no row until the search answers, late on purpose, the
    way a server's answer arrives while somebody is still typing. The same lookup stands on a form
    and in a typed-into row, and a menu whose rows are there when it opens stands beside them for
-   the trigger's own opening. Not in the app's menu: it is reached by its address. *@
+   the trigger's own opening. A third menu opens on its own search, late the same way, and its
+   rows are submenus each holding a lookup alone: the cursor a key hands into a menu with no
+   row, and submenus standing one per line. Not in the app's menu: it is reached by its
+   address. *@
 <NsPanel>
     <Header>
         <NsPageHeader Title="@GetTitle()" />
@@ -37,6 +40,23 @@
                     <NsMenuItem Action="@Pick" Label="@Translate("Second")" />
                 </NsMenu>
             </div>
+            <div class="probe-keyed">
+                <NsMenu Content="@KeyedFace" Label="@Translate("Keyed")">
+                    <NsMenuBlock>
+                        <NsSearchField Label="@Translate("Search")" Value="@_keyedTerm" ValueChanged="FindKeyed" />
+                    </NsMenuBlock>
+                    @foreach (var row in _keyedRows)
+                    {
+                        <NsMenu Label="@row">
+                            <NsMenuBlock>
+                                <NsAutocomplete TItem="string" TValue="string" Label="@Translate("Variant")"
+                                                Items="@Variants" ItemValue="@(item => item)" ItemText="@(item => item)"
+                                                @bind-Value="_variant" />
+                            </NsMenuBlock>
+                        </NsMenu>
+                    }
+                </NsMenu>
+            </div>
         </NsStack>
     </Content>
 </NsPanel>
@@ -53,6 +73,11 @@
     string _found = "";
     List<string> _rows = [];
     readonly List<Line> _lines = [];
+    string _keyedTerm = "";
+    List<string> _keyedRows = [];
+    string? _variant;
+
+    static readonly string[] Variants = ["Unidad", "Caja"];
 
     sealed record Article(Guid Id, string Name);
 
@@ -89,6 +114,8 @@
 
     RenderFragment ReadyFace => @<span class="probe-ready-face">@Translate("Ready")</span>;
 
+    RenderFragment KeyedFace => @<span class="probe-keyed-face">@Translate("Keyed")</span>;
+
     string WithTerm(string key)
     {
         return Strings.Translate(Metadata.KeyFor(GetType(), key), new Dictionary<string, string> { ["term"] = _term });
@@ -105,5 +132,14 @@
         await Task.Delay(Answer);
 
         _rows = _found.Length == 0 ? [] : [.. Lenses];
+    }
+
+    async Task FindKeyed(string? text)
+    {
+        _keyedTerm = text ?? "";
+
+        await Task.Delay(Answer);
+
+        _keyedRows = [.. Lenses.Where(lens => _keyedTerm.Length > 0 && lens.Contains(_keyedTerm, StringComparison.OrdinalIgnoreCase))];
     }
 }

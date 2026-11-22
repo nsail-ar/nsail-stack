@@ -30,7 +30,7 @@ number, in the product that walks; nothing is silenced.
 | `NsSelect`, `NsMultiSelect` | the readonly box is a tab stop with `role="combobox"`; Arrow Down, Enter and Space open the list, Esc closes it |
 | `NsDateField`, `NsDateTimeField`, `NsTimeField` | typed in the box; the picker opens from the keyboard and Esc returns the cursor to the box |
 | `NsTable` | a sortable heading, a row action and a pager control are buttons or links, never a bare element with a click handler; a clickable row has a key for what the click does |
-| `NsMenu`, `NsNavMenu` | the trigger is a tab stop; Enter, Space or Arrow Down opens; a menu opened by key is dismissed by Esc and Tab from inside its list; one opened by a click, from the span around the trigger; either, from a field a block of it holds ([menus.md](menus.md)) |
+| `NsMenu`, `NsNavMenu` | the trigger is a tab stop; Enter or Space opens (Arrow Down walks a menu already open); a menu opened by key is dismissed by Esc and Tab from inside its list; one opened by a click, from the span around the trigger; either, from a field a block of it holds; Arrow Right or Enter on a submenu's row opens it; a menu or submenu opened by key puts the cursor on its first row, or on its first control where it holds no row, which rows its search draws after do not take, and an Esc that closes it returns the cursor to the trigger or row it came from ([menus.md](menus.md)) |
 | Dialogs, drawers, `NsWizard` | focus lands inside on open, stays inside, and returns to what opened it on close ([forms.md](forms.md), *Focus on open*; [focus.md](focus.md) for the return) |
 | `NsTabs` | the tab strip is one tab stop; arrows move between tabs |
 | Toggles (`NsCheckBox`) | Space toggles |

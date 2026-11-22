@@ -2,6 +2,7 @@
    Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
 
 @namespace NSail.Components
+@using System.Reflection
 
 @* What a menu says rather than offers: who you are at its top, the version at its foot. It
    is not an item — no click, no tab stop of its own; a field it holds keeps its own — and it is
@@ -17,7 +18,10 @@
    before it gets here; one that stops Tab with it hands the Tab on through Dismiss, since a Tab
    out of the menu is never the inner list's alone. A menu with rows is closed by the vendor too,
    and a second close of a closed menu is absorbed. *@
-<div class="ns-menu-block" role="presentation" @onkeydown="Dismiss">
+@* The cursor in a control the block holds spends the vendor's keyboard opening: armed, the vendor
+   hands the cursor to the first row at the next render that finds one, so rows a search draws
+   while somebody types would take it from the search and the next keys with it. *@
+<div class="ns-menu-block" role="presentation" @onkeydown="Dismiss" @onfocusin="Settle">
     <CascadingValue Value="this" IsFixed="true">
         @ChildContent
     </CascadingValue>
@@ -28,8 +32,22 @@
     [CascadingParameter]
     MudMenu? Menu { get; set; }
 
+    // Private; MudVendorContractTests pins the name.
+    static readonly FieldInfo? KeyboardOpening =
+        typeof(MudMenu).GetField("_lastInteractionWasKeyboard", BindingFlags.Instance | BindingFlags.NonPublic);
+
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    internal void Settle()
+    {
+        if (Menu is null)
+        {
+            return;
+        }
+
+        KeyboardOpening?.SetValue(Menu, false);
+    }
 
     internal Task Dismiss(KeyboardEventArgs args)
     {
