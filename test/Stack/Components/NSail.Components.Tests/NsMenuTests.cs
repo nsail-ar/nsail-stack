@@ -378,9 +378,21 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
             .Select(row => row.GetAttribute("blazor:elementreference"))
             .ToHashSet();
 
-        cut.WaitForAssertion(() => Assert.Equal(handed, JSInterop.Invocations
-            .Where(call => call.Identifier == "Blazor._internal.domWrapper.focus")
-            .Count(call => call.Arguments.OfType<ElementReference>().Any(element => rows.Contains(element.Id)))), TimeSpan.FromSeconds(5));
+        int Handed()
+        {
+            return JSInterop.Invocations
+                .Where(call => call.Identifier == "Blazor._internal.domWrapper.focus")
+                .Count(call => call.Arguments.OfType<ElementReference>().Any(element => rows.Contains(element.Id)));
+        }
+
+        if (keyboard)
+        {
+            cut.WaitForAssertion(() => Assert.Equal(handed, Handed()), TimeSpan.FromSeconds(5));
+        }
+        else
+        {
+            Assert.Equal(handed, Handed());
+        }
     }
 
     /// <summary>nsail#4056: Escape and Tab from a menu's own search close the menu. The vendor
