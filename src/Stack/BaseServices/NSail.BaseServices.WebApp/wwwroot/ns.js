@@ -813,21 +813,21 @@
     }
 
     // Enter on a lookup's reached offer presses its lit control, as a click on it does. A menu's
-    // face is opened by the keystroke it was asked with, and the cursor is then handed in
-    // (enterOfferMenu).
+    // face is pressed by its click too (NsMenu's own toggle), never by a keystroke on the
+    // vendor's wrapper: a keyboard opening arms the vendor's focus on the first row, which it
+    // acts on at every render, so rows a search brings in mid-typing would take the cursor from
+    // that search. The page hands the cursor in instead (enterOfferMenu).
     function pressOffer() {
         const control = document.querySelector(".ns-lookup-offer.ns-lookup-create-active [data-ns-lit]");
 
         if (!control)
             return;
 
-        const menu = control.matches(".ns-menu-activator") ? control.closest(".mud-menu-activator") : null;
-
-        if (menu) {
+        if (control.matches(".ns-menu-activator")) {
             const box = document.activeElement;
             const open = new Set(document.querySelectorAll(MENU_OPEN));
 
-            menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+            activate(control);
             enterOfferMenu(box, open);
             return;
         }
@@ -837,10 +837,9 @@
 
     const MENU_OPEN = ".ns-menu-popover.mud-popover-open";
 
-    // The vendor's keyboard opening hands the cursor to the menu's first ROW, and a menu that
-    // opens on its own search holds no row until something is typed, so the cursor would stay in
-    // the lookup's box. It goes to the first control of the popover that opened, the search where
-    // there is one. The box reached the offer, so it is what Escape and Tab return to
+    // A pointer opening leaves the cursor in the lookup's box, so it goes to the first control of
+    // the popover that opened, the search where there is one, and stays there while rows arrive:
+    // only an arrow moves it onto them. The box reached the offer, so it is what Escape and Tab return to
     // (ui/keyboard.md): the vendor's own return is the face, which stands inside the lookup's
     // list and leaves the cursor on the body.
     async function enterOfferMenu(box, open) {

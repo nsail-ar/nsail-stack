@@ -325,24 +325,74 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
     }
 
     /// <summary>nsail#4032: the marks a lookup's Enter opens an offer's menu by (ns.js,
-    /// pressOffer and enterOfferMenu). The face stands inside the vendor's wrapper, the wrapper
-    /// opens the menu on a keyboard Enter, and the popover that opens carries the house's class
-    /// with the vendor's open mark and its rows. A vendor that moved any of them would leave the
-    /// press opening nothing, or the cursor in the lookup's box.</summary>
+    /// pressOffer and enterOfferMenu). The face stands inside the vendor's wrapper, a click on
+    /// the face opens the menu, and the popover that opens carries the house's class with the
+    /// vendor's open mark and its rows. A vendor that moved any of them would leave the press
+    /// opening nothing, or the cursor in the lookup's box.</summary>
     [Fact]
-    public async Task AnEnterOnTheFacesWrapperOpensAPopoverThePageCanFind()
+    public async Task AClickOnTheFaceOpensAPopoverThePageCanFind()
     {
         var cut = Render<MenuFaceHost>();
 
-        var wrapper = cut.Find(".ns-menu-activator").Closest(".mud-menu-activator");
+        var face = cut.Find(".ns-menu-activator");
 
-        Assert.NotNull(wrapper);
+        Assert.NotNull(face.Closest(".mud-menu-activator"));
         Assert.Empty(cut.FindAll(".ns-menu-popover.mud-popover-open"));
 
-        await cut.InvokeAsync(() => wrapper.KeyDownAsync(new KeyboardEventArgs { Key = "Enter", Code = "Enter" }));
+        await cut.InvokeAsync(() => face.ClickAsync(new MouseEventArgs()));
 
         cut.WaitForAssertion(() =>
             Assert.Equal(2, cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item").Count), TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>nsail#4072: why an offer's Enter opens its menu by the face's click and never
+    /// by a keystroke on the vendor's wrapper. A keyboard opening arms the vendor's focus on the
+    /// first row and it acts on it at a later render, so rows a search brings in while somebody
+    /// types take the cursor from the search; a click arms nothing. Read as the focus calls the
+    /// vendor makes on a row's element once the rows arrive.</summary>
+    [Theory]
+    [InlineData(true, 1)]
+    [InlineData(false, 0)]
+    public async Task OnlyAKeyboardOpeningHandsTheCursorToRowsThatArriveLater(bool keyboard, int handed)
+    {
+        var cut = Render<MenuLateRowsHost>();
+
+        var face = cut.Find(".ns-menu-activator");
+
+        if (keyboard)
+        {
+            await cut.InvokeAsync(() => face.Closest(".mud-menu-activator")!.KeyDownAsync(new KeyboardEventArgs { Key = "Enter", Code = "Enter" }));
+        }
+        else
+        {
+            await cut.InvokeAsync(() => face.ClickAsync(new MouseEventArgs()));
+        }
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-menu-popover.mud-popover-open .probe-search")), TimeSpan.FromSeconds(5));
+
+        cut.Render(parameters => parameters.Add(host => host.Answered, true));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item").Count), TimeSpan.FromSeconds(5));
+
+        var rows = cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item")
+            .Select(row => row.GetAttribute("blazor:elementreference"))
+            .ToHashSet();
+
+        int Handed()
+        {
+            return JSInterop.Invocations
+                .Where(call => call.Identifier == "Blazor._internal.domWrapper.focus")
+                .Count(call => call.Arguments.OfType<ElementReference>().Any(element => rows.Contains(element.Id)));
+        }
+
+        if (keyboard)
+        {
+            cut.WaitForAssertion(() => Assert.Equal(handed, Handed()), TimeSpan.FromSeconds(5));
+        }
+        else
+        {
+            Assert.Equal(handed, Handed());
+        }
     }
 
     /// <summary>nsail#4056: Escape and Tab from a menu's own search close the menu. The vendor

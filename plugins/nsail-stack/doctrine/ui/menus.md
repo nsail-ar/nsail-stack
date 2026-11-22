@@ -115,8 +115,10 @@ opens a list of withheld rows is a button that does nothing.
 - **Escape and Tab dismiss the list of a menu the POINTER opened, and that is read off the
   span around the trigger.** The vendor answers both keys on the list's own wrapper, inside the
   popover, and hands the cursor into it, to the list's first row, only where the gesture that
-  opened the menu was itself a keystroke (a list with no row takes none) — so after a click the
-  cursor is still on the trigger and neither key is answered anywhere. The span (`ns-menu-keys`, `display: contents`, so it is not a box) is the
+  opened the menu was itself a keystroke (a list with no row takes none, and its rows take the
+  cursor at the render they arrive in) — so after a click the cursor is still on the trigger and
+  neither key is answered anywhere. A lookup's offer opens its menu by that click for this reason
+  ([fields.md](fields.md), *keyboard-complete*). The span (`ns-menu-keys`, `display: contents`, so it is not a box) is the
   first ancestor on the bubble the house owns. Tab belongs there beside Escape because leaving
   the trigger IS a dismissal: the next field takes the cursor, and a list still standing over it
   answers for nothing.
