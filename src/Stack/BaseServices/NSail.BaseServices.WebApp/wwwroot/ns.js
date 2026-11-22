@@ -918,11 +918,24 @@
             : e.key === "ArrowRight" ? e.target.closest(SUBMENU_ROW)
             : null;
 
-        if (trigger && trigger.getAttribute("aria-expanded") !== "true")
-            enterKeyedMenu(trigger, new Set(document.querySelectorAll(MENU_OPEN)));
+        if (!trigger || trigger.getAttribute("aria-expanded") === "true")
+            return;
+
+        // The cursor moves only once the key that opened the menu is up: a lookup answers
+        // Enter's key UP by opening its list, so the cursor arriving before it would open one.
+        let held = true;
+        const release = up => {
+            if (up.key === e.key) {
+                held = false;
+                document.removeEventListener("keyup", release, true);
+            }
+        };
+
+        document.addEventListener("keyup", release, true);
+        enterKeyedMenu(trigger, new Set(document.querySelectorAll(MENU_OPEN)), () => !held);
     }
 
-    async function enterKeyedMenu(trigger, open) {
+    async function enterKeyedMenu(trigger, open, released) {
         const popover = await until(() => Array.from(document.querySelectorAll(MENU_OPEN)).find(el => !open.has(el)));
 
         if (!popover || Array.from(popover.querySelectorAll(".mud-menu-item")).some(live))
@@ -930,7 +943,7 @@
 
         const first = Array.from(popover.querySelectorAll(OFFER_MENU_STOP)).find(live);
 
-        if (!first)
+        if (!first || !await until(released))
             return;
 
         first.focus();
