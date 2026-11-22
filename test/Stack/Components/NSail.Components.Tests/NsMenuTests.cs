@@ -395,6 +395,34 @@ public sealed class NsMenuTests : BunitContext, IAsyncLifetime
         }
     }
 
+    /// <summary>nsail#4074: the cursor in a menu's own search spends the vendor's keyboard
+    /// opening, so rows the search draws while somebody types leave the cursor where they type.
+    /// Read as the focus calls the vendor makes on a row's element once the rows arrive.</summary>
+    [Fact]
+    public async Task TheCursorInAMenusOwnSearchKeepsItFromRowsThatArriveLater()
+    {
+        var cut = Render<MenuLateRowsHost>();
+
+        var face = cut.Find(".ns-menu-activator");
+
+        await cut.InvokeAsync(() => face.Closest(".mud-menu-activator")!.KeyDownAsync(new KeyboardEventArgs { Key = "Enter", Code = "Enter" }));
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".ns-menu-popover.mud-popover-open .probe-search")), TimeSpan.FromSeconds(5));
+
+        await cut.InvokeAsync(() => cut.Find(".probe-search").FocusInAsync(new FocusEventArgs()));
+
+        cut.Render(parameters => parameters.Add(host => host.Answered, true));
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item").Count), TimeSpan.FromSeconds(5));
+
+        var rows = cut.FindAll(".ns-menu-popover.mud-popover-open .mud-menu-item")
+            .Select(row => row.GetAttribute("blazor:elementreference"))
+            .ToHashSet();
+
+        Assert.DoesNotContain(JSInterop.Invocations, call => call.Identifier == "Blazor._internal.domWrapper.focus"
+            && call.Arguments.OfType<ElementReference>().Any(element => rows.Contains(element.Id)));
+    }
+
     /// <summary>nsail#4056: Escape and Tab from a menu's own search close the menu. The vendor
     /// answers both on the list only while the menu holds a row, and a menu that is a search
     /// alone holds none, so the block answers them; the page's return of the cursor to the

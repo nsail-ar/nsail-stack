@@ -899,6 +899,71 @@
 
     const OFFER_MENU_STOP = "input:not([type='hidden']):not([disabled]), textarea:not([disabled]), .mud-menu-item:not(.mud-disabled), button:not([disabled]), a[href]";
 
+    // What a key opens a menu from: a trigger (its button, or the wrapper around a face of its own)
+    // and a submenu's row, which Arrow Right opens too.
+    const MENU_TRIGGER = ".ns-menu-keys > .mud-menu > .mud-menu-activator, .ns-menu-keys > .mud-menu > .mud-menu-button-activator, .ns-menu-keys > .mud-menu > .mud-menu-icon-button-activator";
+    const SUBMENU_ROW = ".mud-menu-sub-menu-activator";
+
+    // A menu a key opened is handed the cursor by the vendor only where it holds a row, so one
+    // whose body is a field alone (a submenu holding a lookup, a menu that is its own search)
+    // would open with the cursor left on its trigger, a parent menu's arrows still walking under
+    // it. The cursor goes to its first control instead, and an Escape that closes the menu puts
+    // it back on the trigger or row it was opened from, as the vendor does for a menu of rows.
+    function onMenuKeyDown(e) {
+        if (e.defaultPrevented || e.isComposing || !(e.target instanceof Element))
+            return;
+
+        const opens = e.key === "Enter" || e.key === " ";
+        const trigger = opens ? e.target.closest(`${MENU_TRIGGER}, ${SUBMENU_ROW}`)
+            : e.key === "ArrowRight" ? e.target.closest(SUBMENU_ROW)
+            : null;
+
+        if (trigger && trigger.getAttribute("aria-expanded") !== "true")
+            enterKeyedMenu(trigger, new Set(document.querySelectorAll(MENU_OPEN)));
+    }
+
+    async function enterKeyedMenu(trigger, open) {
+        const popover = await until(() => Array.from(document.querySelectorAll(MENU_OPEN)).find(el => !open.has(el)));
+
+        if (!popover || Array.from(popover.querySelectorAll(".mud-menu-item")).some(live))
+            return;
+
+        const first = Array.from(popover.querySelectorAll(OFFER_MENU_STOP)).find(live);
+
+        if (!first)
+            return;
+
+        first.focus();
+
+        const shut = () => !popover.isConnected || !popover.classList.contains("mud-popover-open");
+        let returned = false;
+
+        const onEscape = async ev => {
+            if (shut()) {
+                document.removeEventListener("keydown", onEscape, true);
+                return;
+            }
+
+            if (ev.key !== "Escape" || !popover.contains(ev.target))
+                return;
+
+            // An open thing inside the menu that answered the key leaves the menu open (ui/menus.md,
+            // the innermost wins), and the listener armed for the next one.
+            if (!await until(shut) || returned)
+                return;
+
+            returned = true;
+            document.removeEventListener("keydown", onEscape, true);
+
+            if (trigger.isConnected)
+                trigger.focus();
+        };
+
+        document.addEventListener("keydown", onEscape, true);
+    }
+
+    document.addEventListener("keydown", onMenuKeyDown, true);
+
     function onChordKeyDown(e) {
         if (e.defaultPrevented || e.isComposing)
             return;

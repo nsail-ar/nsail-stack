@@ -93,4 +93,13 @@ public sealed class MudVendorContractTests
         Assert.NotNull(field);
         Assert.True(type.IsAssignableFrom(field.FieldType));
     }
+
+    [Fact]
+    public void MudMenu_still_has_the_keyboard_opening_NsMenuBlock_spends()
+    {
+        var field = typeof(MudMenu).GetField("_lastInteractionWasKeyboard", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(field);
+        Assert.Equal(typeof(bool), field.FieldType);
+    }
 }
