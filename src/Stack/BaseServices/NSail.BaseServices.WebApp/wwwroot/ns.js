@@ -921,18 +921,23 @@
         if (!trigger || trigger.getAttribute("aria-expanded") === "true")
             return;
 
-        // The cursor moves only once the key that opened the menu is up: a lookup answers
-        // Enter's key UP by opening its list, so the cursor arriving before it would open one.
-        let held = true;
-        const release = up => {
-            if (up.key === e.key) {
-                held = false;
-                document.removeEventListener("keyup", release, true);
-            }
-        };
+        // The cursor moves only once the key that opened the menu is up, however long it is held:
+        // a lookup answers Enter's key UP by opening its list, so the cursor arriving before it
+        // would open one. A window losing focus takes the key up with it.
+        const released = new Promise(resolve => {
+            const release = up => {
+                if (up.type === "blur" || up.key === e.key) {
+                    document.removeEventListener("keyup", release, true);
+                    window.removeEventListener("blur", release);
+                    resolve();
+                }
+            };
 
-        document.addEventListener("keyup", release, true);
-        enterKeyedMenu(trigger, new Set(document.querySelectorAll(MENU_OPEN)), () => !held);
+            document.addEventListener("keyup", release, true);
+            window.addEventListener("blur", release);
+        });
+
+        enterKeyedMenu(trigger, new Set(document.querySelectorAll(MENU_OPEN)), released);
     }
 
     async function enterKeyedMenu(trigger, open, released) {
@@ -943,12 +948,18 @@
 
         const first = Array.from(popover.querySelectorAll(OFFER_MENU_STOP)).find(live);
 
-        if (!first || !await until(released))
+        const shut = () => !popover.isConnected || !popover.classList.contains("mud-popover-open");
+
+        if (!first)
+            return;
+
+        await released;
+
+        if (shut() || !first.isConnected)
             return;
 
         first.focus();
 
-        const shut = () => !popover.isConnected || !popover.classList.contains("mud-popover-open");
         let returned = false;
 
         const onEscape = async ev => {
