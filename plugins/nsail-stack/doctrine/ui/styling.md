@@ -378,8 +378,8 @@ pointer, which this box already measures and a worded one grows to ([actions.md]
   is already local or is a civil hour with no zone to it, and a half that moved it would whisper
   an instant the reading beside it contradicts.
 - `NsMeter` is the bar for a reading against an allowance: `Value` and `Max` in the caller's own
-  units — never a pre-computed percentage — plus `As` (`NsAs`, `Main` default, `Danger` for
-  an allowance already spent). The percentage is worked out inside and clamped, so a reading
+  units — never a pre-computed percentage — plus `Severity` (`NsSeverity`, `Error` for an
+  allowance already spent, `Warning` for one nearly spent; none draws the primary accent). The percentage is worked out inside and clamped, so a reading
   past the ceiling draws a full bar rather than overflowing it, and the numbers the bar is drawn
   from are still written beside it: a bar is never the only place a count lives.
 

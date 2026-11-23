@@ -13,7 +13,7 @@ using NSail.Metadata;
 namespace NSail.Components.Tests;
 
 /// <summary>The innermost open thing wins Escape (menus.md): inside the wrapper a routed surface
-/// and the companion region take Escape from, an open dropdown, help, hint, expander or lookup
+/// and the companion region take Escape from, an open dropdown, help, toned help, expander or lookup
 /// list answers the key and stops it, and only the next Escape closes the surface. The browser reads each
 /// <c>:stopPropagation</c> flag after that element's handler returned; bUnit reads them all
 /// before any handler runs, so the order is the browser suites' and the flag at that instant is
@@ -75,7 +75,7 @@ public sealed class EscapeInnermostTests : BunitContext, IAsyncLifetime
 
     [Theory]
     [InlineData("help")]
-    [InlineData("hint")]
+    [InlineData("toned-help")]
     public async Task AnOpenBubble_TakesEscape_AndTheRegionStays(string inner)
     {
         var cut = Render(inner);
@@ -112,7 +112,7 @@ public sealed class EscapeInnermostTests : BunitContext, IAsyncLifetime
     /// and the surface behind closes too.</summary>
     [Theory]
     [InlineData("help", ".ns-help button", ".ns-help")]
-    [InlineData("hint", ".ns-help button", ".ns-help")]
+    [InlineData("toned-help", ".ns-help button", ".ns-help")]
     [InlineData("expander", ".ns-expander-toggle", ".ns-expander")]
     [InlineData("dropdown", ".field", ".ns-dropdown")]
     public async Task TheStopStillHolds_WhenReadAfterTheHandlerRan(string inner, string from, string wrapper)

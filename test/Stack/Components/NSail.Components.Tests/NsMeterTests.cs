@@ -26,15 +26,15 @@ public sealed class NsMeterTests : BunitContext, IAsyncLifetime
         await DisposeAsync();
     }
 
-    MudProgressLinear Bar(double value, double max = 100, NsAs? meaning = null)
+    MudProgressLinear Bar(double value, double max = 100, NsSeverity? severity = null)
     {
         var cut = Render<NsMeter>(ps =>
         {
             ps.Add(p => p.Value, value).Add(p => p.Max, max);
 
-            if (meaning is { } as_)
+            if (severity is { } tone)
             {
-                ps.Add(p => p.As, as_);
+                ps.Add(p => p.Severity, tone);
             }
         });
 
@@ -65,20 +65,18 @@ public sealed class NsMeterTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void AnUnreadMeaningIsThePrimaryAccent()
+    public void NoSeverityIsThePrimaryAccent()
     {
         Assert.Equal(Color.Primary, Bar(10).Color);
     }
 
-    [Fact]
-    public void DangerSaysTheAllowanceIsSpentAsAWarning()
+    [Theory]
+    [InlineData(NsSeverity.Error, Color.Error)]
+    [InlineData(NsSeverity.Warning, Color.Warning)]
+    [InlineData(NsSeverity.Success, Color.Success)]
+    [InlineData(NsSeverity.Info, Color.Info)]
+    public void EachSeverityDrawsItsOwnColor(NsSeverity severity, Color color)
     {
-        Assert.Equal(Color.Warning, Bar(100, 100, NsAs.Danger).Color);
-    }
-
-    [Fact]
-    public void TheDefaultMeaningIsInfo()
-    {
-        Assert.Equal(Color.Info, Bar(10, 100, NsAs.Default).Color);
+        Assert.Equal(color, Bar(100, 100, severity).Color);
     }
 }

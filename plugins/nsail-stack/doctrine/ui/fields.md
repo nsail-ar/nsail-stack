@@ -74,9 +74,11 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   The button takes the end slot a `Suffix` would print in; `Copy` with a value keeps it.
 - **`NsHelp` says its paragraph with `Key` or `Text`.** `Key` is a **global** localization key,
   because the component cannot see the page whose prefix would scope it; `Text` is already
-  resolved — a per-row fact that changes with the data — and doubles as the button's name. An
-  optional `Icon` replaces the `?`, and `Severity` tones the glyph (Error red, Warning yellow,
-  Info its ordinary colour), since the paragraph does not render until it is asked for.
+  resolved — a per-row fact that changes with the data — and doubles as the button's name; a
+  `Text` wins over a `Key` given beside it, and an empty one falls back to the `Key` and the
+  house's `Common.Help` name, so the button never goes unnamed. An optional `Icon` replaces the
+  `?`, `Severity` tones the glyph (Error red, Warning yellow, Info its ordinary colour), since the
+  paragraph does not render until it is asked for, and `Class` reaches the wrapper.
 
 ### Dates
 

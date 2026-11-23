@@ -250,7 +250,7 @@ from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is
   tier under the popover ceiling (`SurfaceContext.VendorZIndex - 1`), and the vendor script seats
   a popover from a tier it reads before the theme writes it — under the catcher, where the first
   click on a row would close the panel instead. So the panel carries `z-index` at the ceiling
-  itself; `NsHelp` builds the same pair and do the same.
+  itself; `NsHelp` builds the same pair and does the same.
 - **Closing is the dropdown's.** A click outside lands on an overlay one tier under the popover
   (as `NsHelp`'s), and Escape from the wrapper or from inside the panel does the same: both set
   `Open` false and tell the host through `OpenChanged`, and neither reaches the surface around the

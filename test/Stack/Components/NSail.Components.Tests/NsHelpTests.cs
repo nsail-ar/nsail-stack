@@ -217,6 +217,15 @@ public sealed class NsHelpTests : BunitContext, IAsyncLifetime
         Assert.Equal("Solo quedan 0 en stock", cut.Find(".ns-help-text").TextContent.Trim());
     }
 
+    /// <summary>A row whose fact has no text this time still leaves the icon button its name.</summary>
+    [Fact]
+    public void AnEmptyText_FallsBackToTheHousesName()
+    {
+        var cut = Render<HelpHost>(p => p.Add(x => x.Text, string.Empty));
+
+        Assert.Equal("Ayuda", cut.Find(".ns-help button").GetAttribute("aria-label"));
+    }
+
     [Fact]
     public void WithNoIcon_TheGlyphIsHelp()
     {

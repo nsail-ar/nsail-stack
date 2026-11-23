@@ -40,6 +40,7 @@ public sealed class VocabularyTests
     [InlineData(typeof(NsTabs), "ActivePanelIndexChanged", "ActiveIndexChanged")]
     [InlineData(typeof(NsNumericField<decimal>), "Compact", "Stepper")]
     [InlineData(typeof(NsAlert), "As", "Severity")]
+    [InlineData(typeof(NsMeter), "As", "Severity")]
     public void ARenamedParameterIsAParameterOnlyUnderItsNewName(Type component, string old, string current)
     {
         Assert.False(IsParameter(component, old), $"{component.Name}.{old} is still a parameter.");

@@ -336,7 +336,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void TheHostsVerbsComeFirstAndTheConstantLast()
+    public void TheHostsVerbsComeFirstAndTheDoorLast()
     {
         var cut = Row(leading: 2, contributed: 1);
 
@@ -344,7 +344,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void TheConstantNeverFoldsIntoTheKebab()
+    public void TheDoorNeverFoldsIntoTheKebab()
     {
         var cut = Row(leading: 5);
 
@@ -359,7 +359,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void TheReserveCoversTheCapTheKebabAndTheConstant()
+    public void TheReserveCoversTheCapTheKebabAndTheDoor()
     {
         var toolbar = Row(leading: 1).Find(".ns-actions .ns-action-toolbar");
 
@@ -392,7 +392,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void ARowWithNoConstantReservesOneSlotLess()
+    public void ARowWithNoDoorReservesOneSlotLess()
     {
         var toolbar = Row(leading: 1, door: false).Find(".ns-actions .ns-action-toolbar");
 
@@ -432,7 +432,7 @@ public sealed class NsActionColumnTests : BunitContext, IAsyncLifetime
     // boxes it reserves.
 
     [Fact]
-    public void ACapOfZeroLeavesTheConstantAndTheKebabAlone()
+    public void ACapOfZeroLeavesTheDoorAndTheKebabAlone()
     {
         var cut = Row(leading: 3, contributed: 1, maxVisible: 0);
 

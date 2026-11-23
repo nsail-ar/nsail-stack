@@ -94,12 +94,12 @@
 
     string GetLabel()
     {
-        return Text ?? Strings.Translate("Common.Help");
+        return Text is { Length: > 0 } ? Text : Strings.Translate("Common.Help");
     }
 
     string GetText()
     {
-        return Text ?? Strings.Translate(Key ?? string.Empty);
+        return Text is { Length: > 0 } ? Text : Strings.Translate(Key ?? string.Empty);
     }
 
     void Toggle()
