@@ -149,7 +149,7 @@ opens a list of withheld rows is a button that does nothing.
   (`MudVendorContractTests` pins the name); only an arrow then moves the cursor onto the rows.
 - **The innermost open thing wins Escape**, so one Escape closes one thing and the next one the
   surface ([surfaces.md](surfaces.md)): a dismissal that also threw away the form under it would
-  make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`, `NsHint`,
+  make the universal gesture for a list a way to lose work. `NsDropdown`, `NsHelp`,
   `NsExpander` and `NsAutocomplete`'s list stop the key's propagation on their own wrapper **only
   while open** (`@onkeydown:stopPropagation` bound to their state); closed, they let it through.
   The lookup's wrapper is a `display: contents` span around its box, bound to the open state the
@@ -250,7 +250,7 @@ from a plain field the user is typing in. `Open` (two-way with `OpenChanged`) is
   tier under the popover ceiling (`SurfaceContext.VendorZIndex - 1`), and the vendor script seats
   a popover from a tier it reads before the theme writes it — under the catcher, where the first
   click on a row would close the panel instead. So the panel carries `z-index` at the ceiling
-  itself; `NsHelp` and `NsHint` build the same pair and do the same.
+  itself; `NsHelp` builds the same pair and do the same.
 - **Closing is the dropdown's.** A click outside lands on an overlay one tier under the popover
   (as `NsHelp`'s), and Escape from the wrapper or from inside the panel does the same: both set
   `Open` false and tell the host through `OpenChanged`, and neither reaches the surface around the

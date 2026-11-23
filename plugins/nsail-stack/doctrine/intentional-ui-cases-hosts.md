@@ -503,7 +503,7 @@ the rest behind a disclosure that opens on a tap too.
   detail on its whisper. It is cited for that shape; its chip goes against the status rule above
   (*State paints its text*) and is not the example.
 - **The Tareas grid** (`ServerTaskList`) is the rest of the rule: the state as `NsStatusText`, the
-  note, a failure's words and the result each behind an `NsHint`, so the row is a line and every
+  note, a failure's words and the result each behind an `NsHelp Text`, so the row is a line and every
   paragraph is one tap away.
 - **A running act** was a page's own work: a backup whose task is still on the box redrew its
   verb by hand, with a glyph of the product's and `Disabled`. `ActionItem.Running` is that face

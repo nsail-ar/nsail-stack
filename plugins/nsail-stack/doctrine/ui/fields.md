@@ -72,8 +72,11 @@ rather than one input. `NsFileUpload` and `NsRadioGroup` are built on it. They i
   reach it after the render that removed the video — a field disposed mid-read is stopped the
   same way.
   The button takes the end slot a `Suffix` would print in; `Copy` with a value keeps it.
-- **`NsHelp` takes one parameter, `Key`** — a **global** localization key, because the
-  component cannot see the page whose prefix would scope it.
+- **`NsHelp` says its paragraph with `Key` or `Text`.** `Key` is a **global** localization key,
+  because the component cannot see the page whose prefix would scope it; `Text` is already
+  resolved — a per-row fact that changes with the data — and doubles as the button's name. An
+  optional `Icon` replaces the `?`, and `Severity` tones the glyph (Error red, Warning yellow,
+  Info its ordinary colour), since the paragraph does not render until it is asked for.
 
 ### Dates
 

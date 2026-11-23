@@ -39,7 +39,7 @@ caller's own breakpoint reaches the same shape for as long as the query holds. W
 like is the intention's business:
 
 - **`Inline` in that state is the flat glyph** — the vendor's bare icon button, which is what
-  a grid row's actions, a title bar's utilities, the header X, `NsHelp` and `NsHint` wear.
+  a grid row's actions, a title bar's utilities, the header X and `NsHelp` wear.
 - **`NsLink` alone also draws a third `Inline` face no other primitive has**: a bare `<a>`
   carrying both an `Icon` and a word, the two laid out as one row (`ns-link-iconed`) on the
   same box every worded Inline face gets (below), rather than wherever the browser's own

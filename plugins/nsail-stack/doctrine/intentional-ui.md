@@ -447,7 +447,8 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
   document number, a CUIT, an amount, a short select — several flowing onto one line and
   wrapping when the container narrows; **`Grow`** for open-ended text — a name, a description, a
   search — filling the rest of the line. `NsItem` has three modes: content-width,
-  `Grow`, and `Full` (owns its line, wins over `Grow`). Nothing pads a lonely field. **Content
+  `Grow`, and `Full` (owns its line, wins over `Grow`); a content-width item says a width of its
+  own with `Wide` (20rem) or `Narrow` (6rem), never a hand-typed class. Nothing pads a lonely field. **Content
   width is a CAP, half the line**, so two content-width fields share a row wherever the
   container can seat two (the 448px aside included), filling it with the grid's gap between
   them. Below the width where a pair stops reading (two fields at the growing basis — the phone)
@@ -944,14 +945,14 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   something ([ui/actions.md](ui/actions.md)).
 - **A cell holds one word, a figure or a chip.** Anything longer — a note, a result, a warning, a
   log — is a disclosure: a whisper (`NsTooltip`, `NsChip Tooltip`) for a short detail, and
-  `NsHint` for a paragraph, which opens on a tap as well as a hover. Of the whispers only
+  `NsHelp` for a paragraph, which opens on a tap as well as a hover. Of the whispers only
   `NsChip Tooltip` opens on a tap. The whisper keeps its own rule — the long form of what the
-  cell already says, never the only copy — so a fact with no word in the cell rides `NsHint`,
-  whose glyph is that word.
+  cell already says, never the only copy — so a fact with no word in the cell rides `NsHelp`,
+  whose glyph is that word (its `Icon`, toned by its `Severity`).
 - **A status cell is one state**: quiet text (`NsStatusText`, still no chip), and that state's
   detail on its whisper (`NsTooltip`), never a second line. The detail is the long form of the
   word — why it failed, what it waits for — so the whisper stays the second copy; a fact the
-  row shows nowhere else, such as what a task reported, is a disclosure of its own (`NsHint`).
+  row shows nowhere else, such as what a task reported, is a disclosure of its own (`NsHelp`).
 - **A product cell shows the product's own logo beside its name**, the mark a reader already
   scans for; the name stays, since an image is never the only signal.
 - **A running act is disabled and its icon turns**, for as long as its work goes on and not
