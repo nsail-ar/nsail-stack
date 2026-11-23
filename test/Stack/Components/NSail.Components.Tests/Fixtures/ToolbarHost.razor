@@ -1,0 +1,17 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@using MudBlazor
+@using NSail.Components
+
+@* The kebab opens into a popover, which is a portal: without a provider in the tree there is no
+   open list to assert anything about. *@
+<MudPopoverProvider />
+
+<NsActionToolbar Actions="@Actions" />
+
+@code {
+
+    [Parameter]
+    public IReadOnlyList<ActionItem> Actions { get; set; } = [];
+}

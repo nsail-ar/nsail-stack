@@ -40,8 +40,8 @@ public sealed class ActionItem
     /// the router, another site — which the act opens in a new browser tab, always: there is no
     /// surface for the router to hand it to, so Target is not read. Drawn as a real anchor only
     /// where WebAddress.IsNavigable admits it (a root-relative path, http, https, mailto) and
-    /// withheld otherwise; never asked of the PageGate, which has no page to ask. A presenter
-    /// that draws no address (NsMenuItem and NsActionToolbar do) draws nothing for it.</summary>
+    /// withheld otherwise; never asked of the PageGate, which has no page to ask. NsMenuItem
+    /// and NsActionToolbar honour it; NsAction, which draws commands, does not.</summary>
     public string? Url { get; init; }
 
     public Func<Task>? OnClick { get; init; }

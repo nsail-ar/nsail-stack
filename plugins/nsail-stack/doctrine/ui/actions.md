@@ -330,11 +330,18 @@ reference or a refresh callback — "something changed" is an event (`PartySaved
 
 - `ActionItem` (`NSail.Components/Actions/`): `Name`, `Icon`, `Weight`, `Group`, `Heading`,
   `HeadingIcon`, `Disabled`, `Running`, `Severity`, `Writes`, and exactly
-  one of `PageType` (+ optional `Parameters`/`Target`), `OnClick` or `Menu`. The URL derives from
-  the route table at render. **Links render as real anchors, commands as buttons** — the golden
-  rule at the model level. **`Menu` is the third kind of act: offering a CHOICE** rather than a
-  destination or a deed — a `RenderFragment` the host renders in an `NsMenu` anchored on this
-  item's own face ([menus.md](menus.md)).
+  one of `PageType` (+ optional `Parameters`/`Target`), `Url`, `OnClick` or `Menu`. A page's URL
+  derives from the route table at render. **Links render as real anchors, commands as buttons**
+  — the golden rule at the model level. **`Url` is the one written address**, for a destination
+  the route table does not hold (a document the host serves outside the router, another site):
+  it opens in a new browser tab whatever `Target` says, since no surface of the app can hold it,
+  only where `WebAddress.IsNavigable` admits it, and it is never asked of the page gate. The
+  toolbar draws it as an anchor on the row and as an anchor row in its kebab, and an
+  `NsMenuItem` as an anchor row ([menus.md](menus.md)); a presenter that draws only commands
+  (`NsAction`) does not honour it. Like any destination it writes nothing, and its item says so
+  (`Writes = false`) or a form that refuses writes withholds it. **`Menu` is the third kind of
+  act: offering a CHOICE** rather than a destination or a deed — a `RenderFragment` the host
+  renders in an `NsMenu` anchored on this item's own face ([menus.md](menus.md)).
 - **`Writes` is whether this act changes what the form around it holds** (default `true`): an
   act drawn under an `NsForm` is a way IN unless it says otherwise, and a form that refuses
   writes — `ReadOnly`, `Disabled`, or frozen for the length of a submit — withholds it. The act

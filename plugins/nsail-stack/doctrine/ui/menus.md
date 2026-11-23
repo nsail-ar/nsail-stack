@@ -14,7 +14,7 @@ mechanism these rows are modelled on is [actions.md](actions.md).
 | Component | Is |
 |---|---|
 | `NsMenu` | the menu: a trigger (`Icon` or `Content`, named by `Label`, sized by `Size`, `Disabled` when its list has nothing to say yet) and a body |
-| `NsMenuItem` | a row — an `ActionItem`, so a row is a link or a command and nothing new is modelled |
+| `NsMenuItem` | a row — an `ActionItem`, so a row is a link (a page, or an address) or a command and nothing new is modelled |
 | `NsMenuBlock` | what the menu *says* rather than offers: an identity header, fine print at the foot — or the field it holds, a menu's own search |
 | `NsMenuDivider` | the rule between two families of rows, for a list whose separation position cannot draw — the toolbar's kebab emits it where `ActionItem.Group` changes ([actions.md](actions.md)) |
 
@@ -38,6 +38,14 @@ rows is drawn by position in `ns-mud.css`, so neither end needs a divider a call
   them. The row in force draws a **trailing** check — an `aria-hidden` glyph that announces
   nothing on its own; trailing, because a check in the icon gutter would indent the chosen row
   past its equals.
+- **A row with an address (`ActionItem.Url`) is a real `<a>` into a new browser tab**:
+  `href`, `target="_blank"` and `rel="noopener"`, so a click, a middle-click or Enter opens it
+  on the gesture itself — a window opened from a handler after a round trip is what a popup
+  blocker drops, the reason `NsLink` is an anchor too. It is the vendor's own anchor row, so its
+  role, `Selected`, label, icon and `Disabled` (greyed, and no `href` to follow) are any row's,
+  and choosing it closes the menu like any other. An address `WebAddress.IsNavigable` refuses
+  (a `javascript:` one) is not offered at all, and none is asked of the page gate, which has no
+  page to ask.
 - **`NsMenuItem.Label` overrides the derived label for a row whose text is DATA** — an
   organization's name — rather than a verb the string catalog names. Everything else about the
   row (`Actions.{Name}`, the destination page's title, the icon, `Disabled`) is `ActionItem`'s
@@ -205,7 +213,7 @@ it**, a kit's whole menu body included.
 
 ## The toolbar's menu entry
 
-`ActionItem.Menu` is the third mode beside `PageType` and `OnClick`: **a contributor offering
+`ActionItem.Menu` is the mode beside `PageType`, `Url` and `OnClick`: **a contributor offering
 a CHOICE rather than a destination or an act**. `NsActionToolbar` renders it as an `NsMenu`
 whose trigger is the item's own `Icon` or `Content`.
 

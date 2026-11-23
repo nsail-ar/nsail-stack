@@ -42,6 +42,20 @@
                         Href="@GetRoute(item)"
                         Target="@item.Target" />
             }
+            else if (item.PageType is null && item.Url is not null && !item.Disabled && !item.Running)
+            {
+                @* An address opens in a new browser tab whatever Target says: no surface of this
+                   app can hold it (ActionItem.Url). A written address no door may open draws
+                   the link inert (NsLink). *@
+                <NsLink As="@NsAs.Inline"
+                        Breakpoint="@(Breakpoint ?? NsBreakpoint.Never)"
+                        Icon="@item.Icon"
+                        Content="@item.Content"
+                        Size="@(Size ?? NsSize.Md)"
+                        Label="@GetName(item)"
+                        Href="@item.Url"
+                        Target="@Surfaces.Blank" />
+            }
             else
             {
                 @* The same size as the link branch above: one toolbar mixing a command and a
@@ -274,6 +288,7 @@
             PageType = item.PageType,
             Parameters = item.Parameters,
             Target = item.Target,
+            Url = item.Url,
             OnClick = item.OnClick,
             Menu = item.Menu,
             Weight = item.Weight,
