@@ -1,0 +1,21 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* A term and its description: read as a pair by a screen reader, whichever way the panel's
+   layout sets them. *@
+<dl class="ns-fact">
+    <dt class="ns-fact-label">@Label</dt>
+    <dd class="ns-fact-value">@ChildContent</dd>
+</dl>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public string? Label { get; set; }
+
+    /// <summary>The value: text, a link, a status word — whatever the screen shows for it.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

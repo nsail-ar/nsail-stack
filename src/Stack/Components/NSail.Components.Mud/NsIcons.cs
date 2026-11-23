@@ -337,6 +337,18 @@ public static class NsIcons
     public static readonly Glyph Warning =
         new("""<g transform="translate(0,24) scale(0.025)"><path d="m48-144 432-720 432 720H48Zm127-72h610L480-724 175-216Zm330.5-58.29q10.5-10.29 10.5-25.5t-10.29-25.71q-10.29-10.5-25.5-10.5t-25.71 10.29q-10.5 10.29-10.5 25.5t10.29 25.71q10.29 10.5 25.5 10.5t25.71-10.29ZM444-384h72v-192h-72v192Zm36-86Z"/></g>""");
 
+    /// <summary>Material Symbols <c>info</c>. The mark an NsInfoPanel wears at its neutral.</summary>
+    public static readonly Glyph Info =
+        new("""<g transform="translate(0,24) scale(0.025)"><path d="M444-288h72v-240h-72v240Zm36-312a36 36 0 1 0 0-72a36 36 0 1 0 0 72ZM480-96q-79 0-149-30t-122.5-82.5Q156-261 126-331T96-480q0-80 30-149.5t82.5-122Q261-804 331-834t149-30q80 0 149.5 30t122 82.5Q804-699 834-629.5T864-480q0 79-30 149t-82.5 122.5Q699-156 629.5-126T480-96Zm0-72q130 0 221-91t91-221q0-130-91-221t-221-91q-130 0-221 91t-91 221q0 130 91 221t221 91Z"/></g>""");
+
+    /// <summary>Material Symbols <c>error</c>.</summary>
+    public static readonly Glyph Error =
+        new("""<g transform="translate(0,24) scale(0.025)"><path d="M444-408h72v-240h-72v240Zm36 144a36 36 0 1 0 0-72a36 36 0 1 0 0 72ZM480-96q-79 0-149-30t-122.5-82.5Q156-261 126-331T96-480q0-80 30-149.5t82.5-122Q261-804 331-834t149-30q80 0 149.5 30t122 82.5Q804-699 834-629.5T864-480q0 79-30 149t-82.5 122.5Q699-156 629.5-126T480-96Zm0-72q130 0 221-91t91-221q0-130-91-221t-221-91q-130 0-221 91t-91 221q0 130 91 221t221 91Z"/></g>""");
+
+    /// <summary>Material Symbols <c>check_circle</c>.</summary>
+    public static readonly Glyph Success =
+        new("""<g transform="translate(0,24) scale(0.025)"><path d="M423-318 274-467l51-51 98 98 212-212 51 51-263 263ZM480-96q-79 0-149-30t-122.5-82.5Q156-261 126-331T96-480q0-80 30-149.5t82.5-122Q261-804 331-834t149-30q80 0 149.5 30t122 82.5Q804-699 834-629.5T864-480q0 79-30 149t-82.5 122.5Q699-156 629.5-126T480-96Zm0-72q130 0 221-91t91-221q0-130-91-221t-221-91q-130 0-221 91t-91 221q0 130 91 221t221 91Z"/></g>""");
+
     /// <summary>Material Symbols <c>help</c>. The circled question every field's help and the
     /// door to the guide share.</summary>
     public static readonly Glyph Help =
