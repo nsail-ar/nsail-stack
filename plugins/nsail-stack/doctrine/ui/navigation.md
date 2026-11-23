@@ -68,7 +68,8 @@ just places `<NsNavMenu />`.
   long name wraps rather than squeezing the chip, the row never overflows the drawer, and a
   product needs no override of its own for it. A chip that is `Stretch` lifts the cap, and the row
   wraps for it: the chip's box takes a line to itself, below the name's, and the chip spans it,
-  its own margin gone. Pushing the chip to the row's end is the
+  its own margin gone; the name's box keeps a zero flex basis, so a long name breaks its text
+  beside the logo instead of leaving the logo's line. Pushing the chip to the row's end is the
   fragment's job.
 - **The mechanism for the group order is weight bands**, so contributors compose without
   coordinating: domain groups 10–50, system groups 80+.
