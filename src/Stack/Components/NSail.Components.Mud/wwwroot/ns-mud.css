@@ -1466,6 +1466,23 @@
     max-width: 50cqi;
 }
 
+/* A stretched chip (NsChip Stretch) spans its box and centers its label. In the brand row
+   it lifts the half-row cap on itself and on the boxes around it, and takes a line of its own
+   when the row wraps, so a long name wraps above it and never squeezes it. */
+.ns-chip-stretch.mud-chip {
+    width: 100%;
+    justify-content: center;
+}
+
+.ns-nav-brand .ns-chip-stretch.mud-chip {
+    max-width: 100%;
+}
+
+.ns-nav-brand :has(.ns-chip-stretch) {
+    max-width: none;
+    flex-basis: 100%;
+}
+
 /* The rail: the brand's OWN chrome, in both scales. With no app bar
    above it the rail is the only chrome on screen — the piece the eye reads the install's
    colour off, and its Header (the brand block) and Footer (the session chip) are the two

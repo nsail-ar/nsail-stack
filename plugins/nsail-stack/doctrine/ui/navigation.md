@@ -66,7 +66,7 @@ just places `<NsNavMenu />`.
   wraps, a word longer than the room included, while a logo or product mark keeps its size —
   an `img`, an `svg` or an `NsRemoteImage`, whose flex item is its own span. So a
   long name wraps rather than squeezing the chip, the row never overflows the drawer, and a
-  product needs no override of its own for it. Pushing the chip to the row's end is the
+  product needs no override of its own for it. A chip that is `Stretch` takes a line of the row to itself, below the name, and spans it. Pushing the chip to the row's end is the
   fragment's job.
 - **The mechanism for the group order is weight bands**, so contributors compose without
   coordinating: domain groups 10–50, system groups 80+.

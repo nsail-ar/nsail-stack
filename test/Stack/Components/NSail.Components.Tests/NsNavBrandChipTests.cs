@@ -82,6 +82,26 @@ public sealed class NsNavBrandChipTests : BunitContext
     }
 
     [Fact]
+    public void AStretchedChipWearsTheSpanClassAndAPlainOneDoesNot()
+    {
+        var stretched = Render<NsChip>(p => p.Add(x => x.Text, "Prueba").Add(x => x.Stretch, true));
+        var plain = Render<NsChip>(p => p.Add(x => x.Text, "Prueba"));
+
+        Assert.Contains("ns-chip-stretch", stretched.Find(".mud-chip").ClassList);
+        Assert.DoesNotContain("ns-chip-stretch", plain.Find(".mud-chip").ClassList);
+    }
+
+    [Fact]
+    public void AStretchedChipSpansTheBrandRowPastTheHalfRowCap()
+    {
+        var css = Uncommented(HouseStylesheet.Read());
+
+        Assert.Matches(@"\.ns-chip-stretch\.mud-chip\s*\{[^}]*width:\s*100%;", css);
+        Assert.Matches(@"\.ns-nav-brand \.ns-chip-stretch\.mud-chip\s*\{[^}]*max-width:\s*100%;", css);
+        Assert.Matches(@"\.ns-nav-brand :has\(\.ns-chip-stretch\)\s*\{[^}]*max-width:\s*none;", css);
+    }
+
+    [Fact]
     public void AClosableChipsCloseButtonSitsOutsideTheLabel()
     {
         var cut = Render<NsChip>(p => p
