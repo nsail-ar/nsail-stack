@@ -1,0 +1,85 @@
+@* SPDX-License-Identifier: MIT
+   Copyright (c) 2026 Leonardo Porro and Emmanuel Arias. https://github.com/nsail-ar/nsail-stack *@
+
+@namespace NSail.Components
+
+@* The mark is the panel's one fixed point: always top right, so whatever the panel holds it is
+   found in the same place, and its glyph is the tone's, so the tint is never colour alone. It
+   carries the Label as its name, so the section takes only the Title and a reader never hears
+   the Label twice. *@
+<section class="@GetClasses()" aria-label="@Title">
+    @if (Title is not null)
+    {
+        <NsText As="NsTextAs.Title" Class="ns-info-panel-title">@Title</NsText>
+    }
+    <span class="ns-info-panel-mark">
+        <NsTooltip Text="@Label">
+            <NsIcon Icon="@GetGlyph()" Severity="@GetTone()" Label="@Label" Size="NsSize.Sm" />
+        </NsTooltip>
+    </span>
+    <div class="ns-info-panel-body">
+        @ChildContent
+    </div>
+    @if (Actions is not null)
+    {
+        <div class="ns-info-panel-actions">
+            @Actions
+        </div>
+    }
+</section>
+
+@code {
+
+    /// <summary>The facts: <see cref="NsFact"/> for a label and its value, any other content for
+    /// a line that is not one.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public NsInfoLayout Layout { get; set; } = NsInfoLayout.Facts;
+
+    /// <summary>The panel's tone: it tints the panel and swaps its mark. Null is the neutral, and
+    /// so is <see cref="NsSeverity.Info"/>: the neutral's mark already is the information one.</summary>
+    [Parameter]
+    public NsSeverity? Severity { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>What the panel is, in words: the mark's accessible name and its tooltip.</summary>
+    [Parameter, EditorRequired]
+    public string? Label { get; set; }
+
+    /// <summary>Acts on what the panel shows, end-aligned under it.</summary>
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    /// <summary>Composed on the panel's own classes, for the arranger it stands in.</summary>
+    [Parameter]
+    public string? Class { get; set; }
+
+    string GetClasses()
+    {
+        return new NsClassBuilder("ns-info-panel")
+            .Add(Layout == NsInfoLayout.List ? "ns-info-panel-list" : "ns-info-panel-facts")
+            .Add(NsSeverityMapper.ToStatusClass(GetTone()), GetTone() is not null)
+            .Add(Class)
+            .ToString();
+    }
+
+    NsSeverity? GetTone()
+    {
+        return Severity == NsSeverity.Info ? null : Severity;
+    }
+
+    Glyph GetGlyph()
+    {
+        return GetTone() switch
+        {
+            NsSeverity.Warning => NsIcons.Warning,
+            NsSeverity.Error => NsIcons.Error,
+            NsSeverity.Success => NsIcons.Success,
+            _ => NsIcons.Info
+        };
+    }
+}

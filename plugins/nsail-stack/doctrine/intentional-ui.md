@@ -436,6 +436,11 @@ host that mints it, never a target a card names ([ui/hosts.md](ui/hosts.md)). Fo
   once. **The component speaks adjective (`Enabled`), the model speaks predicate
   (`IsEnabled`).** Flags that are genuine data (`AllowsNegativeBalance`) work the same way — not
   a special case, the only case (cases).
+- **Loose facts go in an `NsInfoPanel`, never in a field nobody may write to.** A label over a
+  value, a status line, a read-only datum of the document: one surface a step above the page,
+  `Facts` (label over value, wrapping) or `List` (label and value per row), its mark top right
+  saying what the panel is. A disabled text field drawn to show a value reads as a control that
+  refused, and every screen drew its loose facts its own way ([ui/styling.md](ui/styling.md)).
 - **Tabs partition a document's facets — the facets decide, not the verb.** An editor whose
   document has real facets tabs them instead of scrolling forever: first tab the document's
   identity, every other tab a facet. **The test for a facet: related, and saved together** —
@@ -933,10 +938,10 @@ the action column that names itself by silence: [ui/hosts.md](ui/hosts.md).
   condition earns a second reading close up — the OT grid's word carries the same
   vencido/por-vencer/Listo tones as its wash (`WorkOrdersPage`, and the person's own card, which
   lists the same orders) — but that is a widening a screen argues for, never a default, and what
-  argues for it is a LIST: one order on a ficha has no column to scan and declares its state as a
-  labelled field. **Shared vocabulary is not shared PRECEDENCE**: each
-  channel answers its own question, so a row can read Listo on the word while its wash calls
-  the promise overdue. **Where a word does not fit, the same tone rides a dot** — an agenda
+  argues for it is a LIST: one order on a ficha has no row to wash, so its state is a fact of its
+  `NsInfoPanel` whose word carries the tone alone. **Shared vocabulary is not shared
+  PRECEDENCE**: each channel answers its own question, so a row can read Listo on the word while
+  its wash calls the promise overdue. **Where a word does not fit, the same tone rides a dot** — an agenda
   block's right edge — added BESIDE the words the surface already prints, never in their place:
   colour is never the only signal. One vocabulary for both forms; no screen owns a palette
   (`NsStatusText`/`NsStatusDot`, [ui/styling.md](ui/styling.md)). **A row's VERB may carry the

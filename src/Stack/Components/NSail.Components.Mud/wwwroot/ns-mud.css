@@ -2627,8 +2627,10 @@ div.mud-input-slot.mud-input-root::placeholder {
    decorates every status the same and so makes none of them stand out. Opt-in via a custom
    property, never direct inheritance — a color rule here would have to out-specificity Mud's
    own text color, a fight custom properties skip by cascading instead of competing. A status
-   class sets the property and nothing else; ns-status-text and ns-status-dot are its only
-   consumers. Theme severity colors only. */
+   class sets the property and nothing else; ns-status-text, ns-status-dot and an NsInfoPanel's
+   edge are its only consumers. The property inherits into a toned panel's subtree, so every
+   consumer inside one wears its own status class and never reads the panel's. Theme severity
+   colors only. */
 .ns-status-text {
     color: var(--ns-status-color, inherit);
 }
@@ -2708,6 +2710,122 @@ div.mud-input-slot.mud-input-root::placeholder {
 
 .ns-status-error {
     --ns-status-color: color-mix(in srgb, var(--mud-palette-error) 65%, var(--mud-palette-text-primary));
+}
+
+/* NsInfoPanel: loose facts on one surface. The raised rung (BackgroundGray carries
+   SurfaceRaised) and the hairline, the house's decorative line and never the accent: the accent
+   is the act's. In dark the rung is a step above every ground a panel stands on; in light the
+   card is white already, so on a card the hairline is what sets the panel apart.
+   A tone washes the ground with the RAW severity at BrandTone.RowWash, the semaphore row's own
+   recipe laid on the raised rung, and its status class gives the edge the leaned tone; the ink
+   of the facts stays the page's (BrandThemeContrastTests grades it on these grounds). Info is
+   no tone here: the neutral already is the information mark, and a second reading of it would
+   differ from the first by colour alone.
+   The mark spans the title's row and the body's, so it sits top right with or without a title
+   and never costs a row of its own. */
+.ns-info-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "title mark" "body mark" "actions actions";
+    column-gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: var(--mud-default-borderradius);
+    background-color: var(--mud-palette-background-gray);
+}
+
+.ns-info-panel[class*="ns-status-"] {
+    border-color: var(--ns-status-color);
+}
+
+.ns-info-panel.ns-status-error {
+    background-color: color-mix(in srgb, var(--mud-palette-error) 6%, var(--mud-palette-background-gray));
+}
+
+.ns-info-panel.ns-status-warning {
+    background-color: color-mix(in srgb, var(--mud-palette-warning) 6%, var(--mud-palette-background-gray));
+}
+
+.ns-info-panel.ns-status-success {
+    background-color: color-mix(in srgb, var(--mud-palette-success) 6%, var(--mud-palette-background-gray));
+}
+
+.ns-info-panel-title {
+    grid-area: title;
+    margin-bottom: 0.5rem;
+}
+
+.ns-info-panel-mark {
+    grid-area: mark;
+    align-self: start;
+    display: inline-flex;
+}
+
+.ns-info-panel-body {
+    grid-area: body;
+    min-width: 0;
+}
+
+.ns-info-panel-actions {
+    grid-area: actions;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+/* A fact is a term and its description. Its label wears the muted rank and the value the ink,
+   so the eye reads the values; a long label or value breaks inside its own box rather than
+   pushing the panel past the surface. */
+.ns-fact {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.ns-fact-label {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.8125rem;
+}
+
+.ns-fact-value {
+    margin: 0;
+}
+
+/* Facts: label over value, side by side, wrapping onto a new line where the surface runs out —
+   a phone stacks them, nothing scrolls sideways. */
+.ns-info-panel-facts .ns-info-panel-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 2rem;
+}
+
+.ns-info-panel-facts .ns-fact {
+    flex: 0 1 auto;
+}
+
+/* List: one fact per row, label at the start and value at the end, a hairline between rows —
+   a line that is not a fact is a row too, its air and its rule a fact's. A value too long
+   for the label's line drops under it instead of squeezing it. */
+.ns-info-panel-list .ns-fact {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
+}
+
+.ns-info-panel-list .ns-info-panel-body > * {
+    padding-block: 0.375rem;
+}
+
+.ns-info-panel-list .ns-info-panel-body > * + * {
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.ns-info-panel-list .ns-fact-value {
+    text-align: end;
 }
 
 /* AccentSoft: the accent at a tenth of its strength, and NsAs.Important's fill. DERIVED

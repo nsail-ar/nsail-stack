@@ -221,6 +221,31 @@ marked *(cases)* has its story there.
   Header/Content/Footer anatomy: what a lines editor or a step's optional block rests on where a
   card would claim the surface. It composes its `Class` over its own base like every other
   arranger.
+- **`NsInfoPanel` is the one surface for loose facts** — `Layout` (`NsInfoLayout.Facts`, the
+  default, or `List`), `Severity` (`NsSeverity?`, null the neutral), `Title`, `Label` (required),
+  `Actions` and `Class`, composed over its base like an arranger's; each fact is an `NsFact`
+  (`Label`, the value as its content, drawn as a `dt` and its `dd`), and anything else in the
+  content is a line that is not one, which in `List` takes a row and its hairline like a fact.
+  - **A step above the page, never the accent**: the raised rung (`SurfaceRaised`, the
+    vendor's `BackgroundGray`) with the decorative hairline and the house radius, on the
+    canvas, a card and an aside alike; in light the card is as white as the rung, so on a card
+    the hairline is what sets it apart. Primary is the action's colour, so a panel painted in it
+    would read as something to press.
+  - **The mark is always top right** and says what the panel is: `Label` is its accessible
+    name and its tooltip, and the section takes only the `Title`, so a reader never hears the
+    `Label` twice. It spans the title's row and the
+    content's, so a panel with no title spends no row on it. The glyph is the severity's —
+    `NsIcons.Info` at the neutral, `Warning`, `Error`, `Success` — so the tint is never colour
+    alone; `Info` draws the neutral, whose mark already is the information one.
+  - **The whisper is the one tooltip that carries no fact.** What the panel is names a group,
+    and every fact the panel holds is drawn; a phone that never hovers loses no value, only a
+    name the screen around the panel already gives. Where a reader must see what the panel is to
+    read it, it takes a `Title`.
+  - **`Facts`** sets label over value side by side and wraps where the surface runs out, so a
+    phone stacks them and nothing scrolls sideways; **`List`** gives each fact a row, label at
+    the start and value at the end, a hairline between rows, the value dropping under its label
+    when the line is too short for both. A long value breaks inside its own box.
+  - **`Actions`** are acts on what the panel shows, end-aligned under the content and wrapping.
 - **One overflow owner per surface** — `NsTable`'s container, `NsPanel`'s content, a grown
   `NsCard`'s content, an `NsStack` with `Scroll` — and the shell around them declares none
   (cases).
@@ -412,7 +437,13 @@ lifts the half-row cap and takes a line of the row. The side menu's cap on it is
 **Colour goes on the datum, never on the container.** A card is never tinted as a whole — a
 permanently coloured tile is an alarm nobody sees by Thursday — so what carries the tone is the
 number, the name or the dot beside it, and only while it has something to say: *Vencidas* reads
-`Error` above zero and plain at zero. **A figure reading zero drops to the muted rank**
+`Error` above zero and plain at zero. **The one container of data that takes a tone is an
+`NsInfoPanel` whose whole content is the notice** — the harness's «En pausa» — washed with the
+raw severity at the row wash's fraction (`BrandTone.RowWash`) over its raised rung, the leaned
+tone on its edge and mark, and the facts' ink left the page's, graded on those grounds by
+`BrandThemeContrastTests`; a panel of facts that happens to hold a state stays neutral and
+tones the datum. `NsAlert` is a message, not a container of data, and the row wash is the
+semaphore's own channel. **A figure reading zero drops to the muted rank**
 (`NsText Secondary`), which is what lets the figure that is not zero rise without anything being
 painted at all.
 
@@ -463,15 +494,15 @@ keeps `As="Title"`, which is a role and not a scale.
   a list row that takes padding and a rounded edge of its own keeps the tint
   (`PartyWorkOrdersCard`: four separated bands, and only the ones whose condition fires). Both
   forms are the same three severity classes, so the vocabulary is one either way.
-- **The channel is a LIST's, and its two edges are edges rather than gaps.** A *ficha* shows one
-  document and has no column to scan, so its state is a labelled read-only field — the house
-  pattern for every document page (`WorkOrderPage`, `PurchaseOrderPage`), read by its label in a
-  walk, and a toned word there would be colour on a form field. And where the state is a SEGMENT
-  of a joined sentence — a dashboard card's `N° 14 · Encargado · vence hoy` line — it stays in
-  that sentence: one `NsText` is one `<p>`, a status cannot nest inside it, and a clause painted on
-  its own reads as a highlight rather than as a state. One rule still answers what the tone IS
-  wherever a list prints it (`WorkOrderSeverity.OfStatus`), which is what keeps the edges from
-  becoming a second vocabulary.
+- **The channel reaches a *ficha*, and its one edge is an edge rather than a gap.** A ficha's
+  state is a fact of the page's `NsInfoPanel`, never a disabled field standing in for a value:
+  the panel stays neutral and the fact's value is the toned word, the datum carrying the colour
+  as it does on a card. A ficha has no row to wash, so the word is all the channel says there.
+  Where the state is a SEGMENT of a joined sentence — a dashboard card's
+  `N° 14 · Encargado · vence hoy` line — it stays in that sentence: one `NsText` is one `<p>`, a
+  status cannot nest inside it, and a clause painted on its own reads as a highlight rather than
+  as a state. One rule answers what the tone IS wherever the word is printed
+  (`WorkOrderSeverity.OfStatus`), which is what keeps the ficha and the list one vocabulary.
 - **A state in flight wears the neutral.** Work still moving is neither an alert nor an outcome,
   so it reads with history rather than beside it: on the OT grid an Encargado order still inside
   its promise and Anulado carry the same ink. That lost distinction is deliberate — the word
